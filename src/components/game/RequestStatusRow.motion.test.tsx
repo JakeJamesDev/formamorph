@@ -12,14 +12,14 @@ describe('RequestStatusRow glyph motion', () => {
   const needle = () => (document.querySelector('[data-glyph="compass"] path') as SVGElement | null)?.style.transform ?? '';
 
   it('animates the glyph', async () => {
-    render(<RequestStatusRow label="Generating Plan…" glyph="compass" />);
+    render(<RequestStatusRow label="Generating Planning…" glyph="compass" />);
     await waitReal(300);
     expect(needle()).toMatch(/rotate/);
   });
 
   it('renders the glyph and runs no animation with reduced motion on', async () => {
     stubReducedMotion();
-    render(<RequestStatusRow label="Generating Plan…" glyph="compass" />);
+    render(<RequestStatusRow label="Generating Planning…" glyph="compass" />);
     expect(document.querySelector('[data-glyph="compass"] svg')).toBeTruthy();
     await waitReal(300);
     expect(needle()).toBe('none');

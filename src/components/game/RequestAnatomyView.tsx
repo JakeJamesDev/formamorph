@@ -16,6 +16,7 @@ import {
   type AnatomySource,
 } from '@/lib/requestAnatomy';
 import { Tip } from '@/components/ui/tooltip';
+import { Hint, Meta } from '@/components/ui/typography';
 
 /**
  * One request drawn as its Request Anatomy: a hard System Prompt / Messages split, chat-staggered message
@@ -349,7 +350,7 @@ function Region({ title, hint, children }: { title: string; hint: string; childr
     <section className="rounded-lg border border-border">
       <header className="flex flex-wrap items-baseline gap-x-2 border-b border-border bg-muted/40 px-3 py-1.5">
         <h3 className="text-label font-semibold">{title}</h3>
-        <span className="text-meta text-muted-foreground">{hint}</span>
+        <Hint as="span">{hint}</Hint>
       </header>
       <div className="p-3">{children}</div>
     </section>
@@ -403,14 +404,14 @@ export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, pla
   const { system, messages } = anatomyRegions(blocks);
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <Region title="System Prompt" hint="one block, sent first, sets the rules">
+      <Region title="System Prompt" hint="Sent first, as one block that sets the AI's rules">
         {system.length === 0 ? (
-          <p className="text-helper text-muted-foreground">This request sent no system prompt</p>
+          <Meta as="p">This request had no system prompt.</Meta>
         ) : (
           system.map(([block, i]) => <div key={i}>{body(block, i)}</div>)
         )}
       </Region>
-      <Region title="Messages" hint="the conversation the AI continues">
+      <Region title="Messages" hint="The conversation the AI continues">
         <div className="flex flex-col gap-2">
           {messages.map(([block, i]) => (
             <div

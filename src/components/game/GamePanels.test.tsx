@@ -151,7 +151,7 @@ describe('MiddlePanel — the audio row', () => {
     setTtsPlayback({ duration: 12 });
     const view = renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Regenerate audio for current text' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate the audio for this narration' }));
     expect(view.props.onRegenerateTTS).toHaveBeenCalled();
     // The card's row offers the audio entries under Chat's conditions; the corner menu holds the whole-story item only.
     expect(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Text to Speech' })).toBeInTheDocument();
@@ -181,18 +181,18 @@ describe('LeftPanel', () => {
   ])('shows no missing-notes warning under %s', (_name, prompt) => {
     expect(prompt).toMatch(/<NOTES\|/);
     renderLeftPanel({ narrationPrompt: prompt });
-    expect(screen.getByPlaceholderText(/Add notes here/)).toBeInTheDocument();
-    expect(screen.queryByText(/does not include the <NOTES> placeholder/)).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Write notes the AI reads/)).toBeInTheDocument();
+    expect(screen.queryByText(/so the AI doesn't read these notes/)).not.toBeInTheDocument();
   });
 
   it('warns when the narration prompt places no notes chip', () => {
     renderLeftPanel({ narrationPrompt: 'Narrate the scene. <LOCATION>' });
-    expect(screen.getByText(/does not include the <NOTES> placeholder/)).toBeInTheDocument();
+    expect(screen.getByText(/so the AI doesn't read these notes/)).toBeInTheDocument();
   });
 
   it('keeps the notes the player types for the turn', () => {
     const view = renderLeftPanel();
-    fireEvent.change(screen.getByPlaceholderText(/Add notes here/), { target: { value: 'the dock is rotten' } });
+    fireEvent.change(screen.getByPlaceholderText(/Write notes the AI reads/), { target: { value: 'the dock is rotten' } });
     expect(view.gameplay().playerNotes).toBe('the dock is rotten');
   });
 

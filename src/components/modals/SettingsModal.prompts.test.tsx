@@ -60,7 +60,7 @@ const openEndpoints = () =>
 const railRow = (name: string) => screen.getAllByRole('button', { name }).at(-1)!;
 
 /** The hub draws the whole request, so its two region hints are what says it is on screen. */
-const onHub = () => screen.queryByText('one block, sent first, sets the rules') !== null;
+const onHub = () => screen.queryByText("Sent first, as one block that sets the AI's rules") !== null;
 
 /** The open surface is the sub-row marked current; the hub marks none, since it is not an editor. */
 const onSystemEditor = () => railRow(SURFACE_LABELS.system).getAttribute('aria-current') === 'true';

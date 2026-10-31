@@ -30,7 +30,7 @@ describe('SaveList', () => {
     const callbacks = renderList();
 
     expect(screen.getByText('Auto')).toBeInTheDocument();
-    expect(screen.getByText(/Game Time: 3h 6m/)).toBeInTheDocument();
+    expect(screen.getByText(/· Game time 3h 6m/)).toBeInTheDocument();
     const grip = screen.getAllByRole('button', { name: 'Drag to reorder' })[0];
     const pick = screen.getByRole('button', { name: 'Load save “Harbor Arrival”' });
     await user.tab();

@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn, formatMMSS } from "@/lib/utils";
 import { useVolumeMute } from "@/lib/useVolumeMute";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 
 // Compact, on-theme player replacing the native <audio controls> so it matches the app's
 // Button/Slider styling. `src` is a URL / data URL (e.g. uploaded background music or entity
@@ -69,9 +70,9 @@ export default function AudioPlayer({ src, autoPlay = false, className }: {
         onValueChange={seek}
         className="flex-grow"
       />
-      <span className="text-meta text-muted-foreground whitespace-nowrap shrink-0">
+      <Meta className="whitespace-nowrap shrink-0">
         {formatMMSS(currentTime)} / {formatMMSS(duration)}
-      </span>
+      </Meta>
       <Tip tip="Mute / unmute">
         <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0">
           <VolumeIcon className="h-4 w-4" />

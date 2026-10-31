@@ -183,17 +183,17 @@ An author can write an **Introduction** for the world. It opens before the **Ent
 
 The step shows when the persona you play has an Avatar. The button switches between **Continue to Avatar** and **Start Game** as you change your persona. A persona with no Avatar skips the step.
 
-**Continue to Avatar** opens **Character Customization**.
+**Continue to Avatar** opens **Avatar Customization**.
 
 1. When the persona uses **User's Default**, pick a **Player Avatar**. It starts on your default. **Add .vrm** imports another Avatar file.
 2. Adjust the Avatar.
-3. Select **Finalize Character** to start.
+3. Select **Finalize Avatar** to start.
 
 When the author picked an Avatar, that one shows and you can't change it.
 
 **Back** returns to the **Enter World** dialog. When the world skipped that dialog, the button reads **Abort** and leaves without starting.
 
-Your changes apply to the Avatar of the entity you play. See [Character Customization](Avatars#character-customization).
+Your changes apply to the Avatar of the entity you play. See [Avatar Customization](Avatars#avatar-customization).
 
 ## What Happens at Start
 <!-- keywords: first turn, opening scene, prefilled text, already typed, first message, greeting, popups, intro scene -->

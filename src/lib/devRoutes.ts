@@ -30,7 +30,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  `worldEditor` is an in-place modal on MainMenu (not a top-level view). `intro` replays the first-run
  *  welcome overlay on MainMenu. `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
- *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`).
+ *  MainMenu's Avatar Customization step directly (a MainMenu sub-state, like `worldEditor`).
  *  `aiSetup` opens the AI setup gate on MainMenu in its skippable (first-run) form. `entityEditor` and
  *  `dictionaryEditor` are the *library* editors (MainMenu), distinct from the in-game `entity` modal; both
  *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to

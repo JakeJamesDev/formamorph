@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { Hint } from '@/components/ui/typography';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { NoneRef } from '@/lib/persona';
@@ -153,7 +154,7 @@ export function PersonaPicker({ world = [], library, none = true, custom, value,
       {none && !custom && row('none', 'None', (
         <span className="min-w-0">
           <strong className="block text-label font-semibold">None</strong>
-          <span className="mt-1 block text-helper text-muted-foreground">Play as the world describes the player</span>
+          <Hint as="span" className="mt-1 block">Play as the world describes the player</Hint>
         </span>
       ))}
       {world.length > 0 && groupHeading('From This World')}

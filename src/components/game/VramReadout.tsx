@@ -1,4 +1,5 @@
 import { fmtGB, type VramStats } from "@/lib/useVramStats";
+import { Meta } from "@/components/ui/typography";
 
 // Live VRAM readout shared by the Settings dialog and the TTS modal. Takes the polled
 // stats as a prop so the parent owns a single useVramStats poll (no double-polling).
@@ -23,8 +24,8 @@ export default function VramReadout({
         ? "Connecting to VRAM helper…"
         : stats.status === "no-gpu"
           ? "No NVIDIA GPU detected."
-          : "VRAM helper not running — start it with npm run vram-helper.";
-    return <p className="text-meta text-muted-foreground">{msg}</p>;
+          : "The VRAM helper isn't running. Start it with npm run vram-helper.";
+    return <Meta as="p">{msg}</Meta>;
   }
 
   return (

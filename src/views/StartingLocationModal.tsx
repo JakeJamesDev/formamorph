@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Hint } from "@/components/ui/typography";
 import type { GameLocation } from "@/types";
 import { useBackStop } from "@/hooks/useBackStop";
 
@@ -52,9 +53,7 @@ const StartingLocationModal = ({
               <RadioGroupItem value={RANDOM} id="start-loc-random" className="mt-1" />
               <div>
                 <span className="font-semibold">Random</span>
-                <p className="text-meta sm:text-helper text-muted-foreground">
-                  Begin somewhere random among the starting locations for this world.
-                </p>
+                <Hint className="text-meta sm:text-helper">Starts you at one of this world&apos;s starting locations, picked at random</Hint>
               </div>
             </label>
 

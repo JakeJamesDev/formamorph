@@ -37,9 +37,9 @@ vi.mock('@/components/library/LibraryTileGrid', async (importOriginal) => {
   return { ...real, LibraryTileGrid };
 });
 
-/** Click Finalize Character once the library's models load: the button stays disabled until then. */
+/** Click Finalize Avatar once the library's models load: the button stays disabled until then. */
 async function finalize() {
-  const button = await screen.findByRole('button', { name: 'Finalize Character' });
+  const button = await screen.findByRole('button', { name: 'Finalize Avatar' });
   await waitFor(() => expect(button).toBeEnabled());
   fireEvent.click(button);
 }
@@ -292,7 +292,7 @@ describe('the retained entry draft', () => {
     const intro = await screen.findByRole('dialog', { name: 'Introduction' });
     expect(within(intro).getByRole('heading', { name: 'Welcome' })).toBeInTheDocument();
     expect(onStartGame).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Finalize Character' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Finalize Avatar' })).not.toBeInTheDocument();
     fireEvent.click(within(intro).getByRole('button', { name: 'Close' }));
     if (avatar) await finalize();
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
@@ -442,14 +442,14 @@ describe('the retained entry draft', () => {
       .getAllByRole('listitem').map((item) => item.textContent);
     expect(order()[0]).toContain('Library book');
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    await screen.findByRole('button', { name: 'Finalize Character' });
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(order()[0]).toContain('Library book');
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).toBeChecked();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from World' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    await screen.findByRole('button', { name: 'Finalize Character' });
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
@@ -542,7 +542,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
     expect(screen.getByText('Here: Hill town')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    await screen.findByRole('button', { name: 'Finalize Character' });
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
     vi.mocked(Math.random).mockReturnValue(0.9);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     fireEvent.click(screen.getByRole('radio', { name: /Random/ }));

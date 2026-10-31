@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { menuSections, type BubbleAction } from '@/lib/bubbleActions';
 import { isRequestedOpen } from '@/lib/bubbleMenuOpen';
@@ -88,7 +89,7 @@ export function BubbleMenu({ actions, disabled, children }: {
                 {action.endpoint ? (
                   <span className="flex min-w-0 flex-col">
                     {action.label}
-                    <span className="truncate text-meta text-muted-foreground">{action.endpoint}</span>
+                    <Meta className="truncate">{action.endpoint}</Meta>
                   </span>
                 ) : action.label}
               </ContextMenuItem>

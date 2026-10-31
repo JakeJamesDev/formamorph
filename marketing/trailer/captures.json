@@ -184,7 +184,7 @@
       "storyboard": "C12",
       "kind": "page",
       "route": { "modal": "avatar" },
-      "ready": { "text": "Character Viewer" },
+      "ready": { "text": "Avatar Preview" },
       "model": { "from": 1.4 },
       "frames": 180,
       "viewport": { "width": 1600, "height": 900 },

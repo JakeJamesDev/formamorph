@@ -9,7 +9,7 @@ You play by writing what you do. The AI narrator writes what happens next. The s
 <!-- keywords: play, type, write, do something, move, respond, reply, input, send, enter, talk, say, message box, text field, submit, stop generating, cancel response, interrupt, new line, chat with npc, command -->
 <!-- route: gameViewer#action-box -->
 
-1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
+1. Select the action box under the story. Its placeholder reads *Type your action. Text in [square brackets] directs the story as the author.*
 2. Write what you do, in the first person: *I ask her where the road leads.*
 3. Press **Enter**, or select the **Send** button. **Shift+Enter** starts a new line.
 
@@ -112,7 +112,7 @@ Only the action text and its images change. The narration stays as it is.
 
 1. Go back to the turn you want to keep. In Pages, use the page buttons. In Chat, scroll up.
 2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
-3. Select **Confirm** in the **Confirm Rollback** dialog.
+3. Select **Confirm** in the **Rewind to Here?** dialog.
 
 > ⚠️ You can't undo a rewind. It removes every later turn, with its stats, its location, the entities the story invented in it, and its scene images. Your notes go back to that turn's notes.
 
@@ -165,8 +165,8 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 3. Pick a voice under **Voice Selection**, and set the **Speed**.
 4. Select **Start**.
 
-- **Stream narration audio** starts to speak each sentence as it arrives.
-- **Highlight while speaking** marks the sentence you hear.
+- **Stream Narration Audio** starts to speak each sentence as it arrives.
+- **Highlight While Speaking** marks the sentence you hear.
 - **Unload Model** frees the memory the model uses.
 - After the model loads, **Regenerate Audio** is under the turn's **More** button.
 
@@ -196,7 +196,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 | Top right | **Edit World** and the **Menu** |
 | Bottom left | **Hide UI**, which hides the panels so only the story shows |
 
-On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). The **Character** tab also has a **View** tab that holds the entity view. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
+On mobile, three tabs at the top switch between **Story** (the left panel), **Game** (the story) and **Status** (the right panel). The **Story** tab also has a **View** tab that holds the entity view. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
 
 ## Turn Actions
 <!-- keywords: buttons under text, more menu, copy to clipboard, message options, toolbar, icons below, three dots, long press -->

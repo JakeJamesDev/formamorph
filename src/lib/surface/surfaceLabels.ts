@@ -69,7 +69,7 @@ const ENTRIES: [string, string][] = [
   ['backup', 'Backup & Restore'],
   ['updateRequired', 'Update Formamorph'],
   ['changelog', "What's new"],
-  ['avatar', 'Character Customization'],
+  ['avatar', 'Avatar Customization'],
   ['modelDetails', 'Avatar'],
   ['community', 'Community Creations'],
   ['publish', 'Publish'],

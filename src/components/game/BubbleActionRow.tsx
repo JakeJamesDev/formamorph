@@ -1,6 +1,7 @@
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import { openBubbleMenu } from '@/lib/bubbleMenuOpen';
 import { BubbleActionButton } from './BubbleMenu';
@@ -13,7 +14,7 @@ export function BubbleActionRow({ turnNumber, actions }: { turnNumber: number; a
   return (
     <div className="mt-2 flex items-center gap-0.5 border-t border-border pt-1.5" data-testid="bubble-actions">
       {/* The article's own label already names the turn for a screen reader. */}
-      <span className="mr-auto text-meta text-muted-foreground" aria-hidden>Turn {turnNumber}</span>
+      <Meta className="mr-auto" aria-hidden>Turn {turnNumber}</Meta>
       {actions.filter((a) => !a.menuOnly).map((a) => <BubbleActionButton key={a.key} action={a} />)}
       {actions.some((a) => a.menuOnly) && (
         <Tip tip="More">

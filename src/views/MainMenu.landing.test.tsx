@@ -101,11 +101,11 @@ describe('Take Me There landing on the main menu', () => {
     expect(document.activeElement).toBe(button);
   });
 
-  it('lands on Finalize Character in Character Customization', async () => {
+  it('lands on Finalize Avatar in Avatar Customization', async () => {
     await renderMenu();
     requester.send('avatar', 'finalize-character');
     const button = await landed('avatar#finalize-character');
-    expect(button).toHaveTextContent('Finalize Character');
+    expect(button).toHaveTextContent('Finalize Avatar');
     expect(document.activeElement).toBe(button);
   });
 

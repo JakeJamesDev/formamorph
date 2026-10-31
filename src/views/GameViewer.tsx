@@ -60,6 +60,7 @@ import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, Chevron
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
 import { cancelOpenPrompts, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
@@ -453,12 +454,12 @@ const DIARY_MEMORY_ENTRIES = 5;
 // What each named turn failure tells the player. `connection` and `emptyNarration` speak for themselves at
 // the call site, so they get their own text there rather than a row here.
 const TURN_ERROR_MESSAGES: Partial<Record<TurnErrorKind, string>> = {
-  notFound: "Request failed (404) Invalid endpoint URL or model name. Please check your settings.",
-  badRequest: "Request failed (400). Either model name is wrong or memory limit exceeded model limit.",
-  parse: "The AI model was unable to produce the correct JSON format. Try a different model.",
+  notFound: "Request failed (404). The endpoint URL or the model name is wrong. Check “Endpoint URL” and “Model Name” in Settings.",
+  badRequest: "Request failed (400). The model name is wrong, or the prompt is longer than the model accepts. Check “Model Name” and “Context Window” in Settings.",
+  parse: "The AI didn't return valid JSON. Try a different model.",
 };
 const turnErrorMessage = (kind: TurnErrorKind): string =>
-  TURN_ERROR_MESSAGES[kind] ?? "Failed to complete action. Please try again.";
+  TURN_ERROR_MESSAGES[kind] ?? "The action failed. Try again.";
 
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
@@ -1490,7 +1491,7 @@ const GameViewer = ({
     // A turn that froze no notes (empty at finalize, or a stopped turn) falls back to the snapshot's
     // scratchpad — same resolution the paged view uses (viewNotes).
     setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(page, messagesPerPage)]?.content ?? '')?.notes ?? targetState.playerNotes ?? '');
-    addSystemLogEntry("Rolled back to previous game state");
+    addSystemLogEntry(`Rewound to turn ${page}`);
     // Mark the AI-context entries for the turns this rollback discarded (those after the page we
     // rolled back to). States after the current page are kept, allowing future "redo" functionality.
     setDebugTurns((prev) => markPrunedTurns(prev, page));
@@ -2296,7 +2297,7 @@ const GameViewer = ({
         adjustStatByName("Health", -healthLoss);
         // The loss scales by the turn's measured hours, so it's usually fractional — the log reads to a
         // tenth rather than printing the raw float. The stat still takes the exact amount.
-        addLogEntry(`You're starving! Lost ${Math.round(healthLoss * 10) / 10} health.`);
+        addLogEntry(`You're starving and lost ${Math.round(healthLoss * 10) / 10} Health.`);
         addStatDeltas(null, { health: -healthLoss });
       }
     },
@@ -2448,7 +2449,7 @@ const GameViewer = ({
   // What this playthrough can actually answer for. The lore blocks and the per-turn value tokens
   // (action / narration / speaking character) are assembled fresh per request, so there is nothing live to
   // show between turns — those fall through to the shared pool's samples rather than to a second set of
-  // placeholder strings kept here, which is how the two copies used to drift.
+  // placeholder strings kept here, so the two copies can't disagree.
   const promptPreviewValues = useMemo<TokenValues>(() => contextValues(), [contextValues]);
   // Recall searches the committed history as the narration prompt's memory reads it; digests off, no memory.
   // Its meaning match reads the drainer's vectors under the drainer's own gates.
@@ -2667,7 +2668,7 @@ const GameViewer = ({
     // never set and is left alone. Silence here would be indistinguishable from a dead submit button.
     if (kind === "emptyNarration") {
       discardUnpairedUserTurn();
-      addSystemLogEntry("The AI returned an empty narration — the turn was not advanced.");
+      addSystemLogEntry("The AI returned an empty narration, so the turn didn't advance.");
       toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
         position: "top-right",
         autoClose: 5000,
@@ -2682,7 +2683,7 @@ const GameViewer = ({
     // A foreground request's connection failure already surfaced its own guide toast — don't stack a
     // second on top of it.
     if (kind === "connection" && spokeForItself) {
-      addSystemLogEntry("Couldn't reach the AI server — see the connection guide.");
+      addSystemLogEntry("Couldn't reach the AI server. See the connection guide.");
       return;
     }
     const errorMessage = turnErrorMessage(kind);
@@ -4183,7 +4184,7 @@ const GameViewer = ({
       discardUnpairedUserTurn();
     }
 
-    addSystemLogEntry("AI generation aborted");
+    addSystemLogEntry("You stopped the AI.");
   };
 
   // Abort any in-flight AI request when GameViewer unmounts (e.g. exiting to the menu mid-turn), so the SSE
@@ -5661,7 +5662,7 @@ const GameViewer = ({
     return (
       <div className="flex items-center gap-2 mb-1">
         <Popover>
-          <Tip tip="Memory usage">
+          <Tip tip="Context Window">
             <PopoverTrigger asChild>
               <button className="text-muted-foreground hover:text-foreground">
                 <Database className="h-4 w-4" />
@@ -5674,7 +5675,7 @@ const GameViewer = ({
             {row("History", historyTokens)}
             {bandCounts && (
               <div className="pl-3 text-muted-foreground space-y-0.5">
-                {row("Summary band", bandCounts.bandTokens)}
+                {row("Summaries", bandCounts.bandTokens)}
                 {/* TODO(rehydration): restore when rehydration is re-enabled — it is disabled in
                     turnBanding.ts (drove the charged-scene freeze), so this row is always 0. */}
                 {/* {row("Rehydrated", bandCounts.rehydratedTokens)} */}
@@ -5919,7 +5920,7 @@ const GameViewer = ({
       {isMobile && !uiHidden && (
         <div className="flex shrink-0 items-center gap-1 mb-1">
           {[
-            { key: "character", label: "Character" },
+            { key: "character", label: "Story" },
             { key: "game", label: "Game" },
             { key: "status", label: "Status" },
           ].map((t) => (
@@ -6230,10 +6231,10 @@ const GameViewer = ({
               if (region.startsWith("history:")) return "an earlier message";
               if (region.startsWith("recursion:")) {
                 const src = nameById.get(region.slice("recursion:".length));
-                return src ? `the lore of "${src}"` : "another entry's lore";
+                return src ? `the Value of "${src}"` : "another entry's Value";
               }
               if (region.startsWith("<LOCATION") || region.startsWith("<ENTITIES")) {
-                const what = region.startsWith("<LOCATION") ? "location" : "characters & things";
+                const what = region.startsWith("<LOCATION") ? "location" : "entities";
                 const variant = tokenVariant(region) ?? "";
                 const scope = variant.includes("sublocations") ? "in the sub-locations"
                   : variant.includes("reachable") ? "nearby"
@@ -6275,7 +6276,7 @@ const GameViewer = ({
                   {sec ? (
                     <div className="text-muted-foreground">
                       Secondary ({sec.requireAll ? "all" : "any"} of {sec.keywords.map((k) => `“${k}”`).join(", ")}):{" "}
-                      {sec.present ? "present" : "absent"}{sec.exclude ? " — inverted, fires when absent" : ""}.
+                      {sec.present ? "present" : "absent"}{sec.exclude ? " (inverted, so the entry activates when they're absent)" : ""}.
                     </div>
                   ) : null}
                 </div>
@@ -6426,15 +6427,15 @@ const GameViewer = ({
                         e.preventDefault();
                         stepHit(e.shiftKey ? -1 : 1);
                       }}
-                      placeholder="Search (space-separated terms)…"
+                      placeholder="Search terms, separated by spaces"
                       className={`pl-8 ${debugSearch !== "" ? "pr-36" : ""}`}
                     />
                     {/* Any text shows the group. The X follows the counter, whose width changes with the count. */}
                     {debugSearch !== "" && (
                       <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-                        <span className="px-1 text-meta tabular-nums text-muted-foreground">
+                        <Meta className="px-1 tabular-nums">
                           {hitTotal > 0 ? `${currentHit + 1} of ${hitTotal}` : "0 of 0"}
-                        </span>
+                        </Meta>
                         <ClearSearchButton size="sm" onClick={clearSearch} />
                         <Tip tip="Previous match (Shift+Enter)">
                           <button
@@ -6490,7 +6491,7 @@ const GameViewer = ({
                         const label = (semantic ? "≈ " : "") + (entry.name || parseKeywords(entry)[0] || "unnamed");
                         if (!activated) {
                           return (
-                            <Tip key={entry.id} tip="Did not activate this turn" labelsChild={false}>
+                            <Tip key={entry.id} tip="Didn't activate this turn" labelsChild={false}>
                               <span className="rounded border border-border px-1.5 py-0.5 opacity-40 text-muted-foreground">
                                 {label}
                               </span>
@@ -6504,7 +6505,7 @@ const GameViewer = ({
                             labelsChild={false}
                             tip={
                               semantic
-                                ? `Activated by meaning (similarity ${activation?.semanticSimilarity?.toFixed(2) ?? "?"}) — no keyword hit to highlight`
+                                ? `Activated by meaning (similarity ${activation?.semanticSimilarity?.toFixed(2) ?? "?"}). No keyword match to highlight.`
                                 : disabled ? "Click to show highlights" : "Click to hide highlights"
                             }
                           >

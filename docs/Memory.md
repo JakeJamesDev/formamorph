@@ -53,7 +53,7 @@ Memories you write are always kept. The story never judges them.
 1. Open the side panel's **Memory** tab.
 2. Find the memory.
 3. Select **Pin This Memory** to keep a memory the story let go. Select **Forget This Memory** to let go of a memory the story kept.
-4. To give the decision back to the story, select **Clear Pin (Let the Story Decide)**.
+4. To give the decision back to the story, select **Clear the Pin and Let the Story Decide**.
 
 Memories you wrote have no pin button, because the story never lets them go.
 
@@ -99,7 +99,7 @@ Open the side panel's **Memory** tab during the game to see the whole ledger. Fa
 |---|---|
 | 📌 **Pin This Memory** | Forces a let-go memory to stay. |
 | 🚫 **Forget This Memory** | Forces a kept memory out. |
-| ↺ **Clear Pin (Let the Story Decide)** | Gives the decision back to the story. Shows only on a pinned memory. |
+| ↺ **Clear the Pin and Let the Story Decide** | Gives the decision back to the story. Shows only on a pinned memory. |
 | **Manage Memories** | Opens the **Memories** dialog. |
 
 The filter chips are **All · Verbatim · Summary · Held · Custom**. **Custom** shows the memories you wrote.
@@ -119,7 +119,7 @@ Memories under the **Recent** divider still go to the AI word for word. A pin on
 | 🗑️ **Delete This Memory** | Removes a memory. Select the **Deleted** chip to bring it back. |
 | ↩️ **Revert to the Original** | Puts an edited memory back to the story's own words. |
 | ♻️ **Restore This Memory** | Brings a deleted memory back. Shows under the **Deleted** chip. |
-| 📌 **Pin This Memory**, 🚫 **Forget This Memory**, ↺ **Clear Pin (Let the Story Decide)** | The same pin buttons as the **Memory** tab. |
+| 📌 **Pin This Memory**, 🚫 **Forget This Memory**, ↺ **Clear the Pin and Let the Story Decide** | The same pin buttons as the **Memory** tab. |
 
 **Add Memory** writes a memory for something that never happened in a turn: a standing fact, a promise, a detail you want carried. Yours carry a **Yours** badge, and the story never judges them.
 

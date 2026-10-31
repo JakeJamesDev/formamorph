@@ -22,7 +22,7 @@ The Avatar gets the title in its file, or the file name. A message counts the Av
 - If the file is the same as an Avatar you have, the app asks before it adds a second copy.
 - A `.glb` tile shows a **GLB** badge. The file has no license information, and **Initial Body Features** may not work on it.
 
-You can also add one file during **Character Customization**: select **Add .vrm** under **Player Avatar**. The app adds it to your library and selects it. **Add .vrm** is hidden when the author picked your Avatar.
+You can also add one file during **Avatar Customization**: select **Add .vrm** under **Player Avatar**. The app adds it to your library and selects it. **Add .vrm** is hidden when the author picked your Avatar.
 
 ## How to Customize Your Avatar
 <!-- keywords: change, edit, hair, body, colors, appearance, look, character creator, 3d model, skin tone, eye shade, hairstyle, outfit recolor, body sliders, proportions, dress up, makeover -->
@@ -30,10 +30,10 @@ You can also add one file during **Character Customization**: select **Add .vrm*
 
 You customize an Avatar when you start a game as a persona that has an Avatar. See [The Avatar Step](Starting-a-Game#the-avatar-step).
 
-1. In the **Enter World** dialog, select **Continue to Avatar**. **Character Customization** opens. The button reads **Start Game** when your persona has no Avatar.
+1. In the **Enter World** dialog, select **Continue to Avatar**. **Avatar Customization** opens. The button reads **Start Game** when your persona has no Avatar.
 2. If your persona uses **User's Default**, select an Avatar in **Player Avatar**. Otherwise the author's Avatar shows, and the list does not.
 3. Change the **Hair**, **Initial Body Features** and **Colors** controls. The viewer shows each change.
-4. Select **Finalize Character** to start the game.
+4. Select **Finalize Avatar** to start the game.
 
 Your choices are kept in the game and its saves.
 
@@ -41,7 +41,7 @@ Your choices are kept in the game and its saves.
 - The Avatar in your library does not change.
 - **Quick Start** skips this step and uses the Avatar as it is.
 
-See [Character Customization](#character-customization).
+See [Avatar Customization](#avatar-customization).
 
 ## How to Set Your Default Avatar
 <!-- keywords: favorite avatar, preferred model, which avatar do i wear, default badge, clear default, bundled avatar, users default -->
@@ -109,21 +109,21 @@ To tie a slider to a stat, open a world stat in the World Editor and pick the ke
 
 > An object with *hair* in its name gives one key only: `LENGTH`, in capitals, for **Hair Length**. Stats can't change it.
 
-## Character Customization
+## Avatar Customization
 <!-- keywords: creator screen, rotate the model, spin view, stop it moving, sliders missing, clothing recolor, body grows with stats, hide model in game, transformation -->
 <!-- route: avatar -->
 
-**Character Customization** opens between the **Enter World** dialog and the game, when the persona you play has an Avatar. It fills the screen: the viewer on the left and the controls on the right. On mobile, the controls are in a sheet. Select **Customize** to open it.
+**Avatar Customization** opens between the **Enter World** dialog and the game, when the persona you play has an Avatar. It fills the screen: the viewer on the left and the controls on the right. On mobile, the controls are in a sheet. Select **Customize** to open it.
 
 Drag the viewer to turn the Avatar. Scroll to zoom.
 
 | Control | What it does |
 |---|---|
 | **Back** | Returns to the **Enter World** dialog. When there is no step before this one, the button is **Abort**, and it cancels the start. |
-| **Finalize Character** | Starts the game with this Avatar |
+| **Finalize Avatar** | Starts the game with this Avatar |
 | **Player Avatar** | The Avatar you wear. It shows only when your persona uses **User's Default**. It lists the Avatars in your library and starts on your default. When the author picked an Avatar, that one shows and you can't change it. |
 | **Add .vrm** | Adds a `.vrm` or `.glb` file to your library and selects it. Part of **Player Avatar**, so it shows only with that list. |
-| **Animate character** | Plays the idle animations. Clear it to stop the Avatar. |
+| **Animate Avatar** | Plays the idle animations. Clear it to stop the Avatar. |
 | **Hair** | A hair style, when the model has more than one, and **Hair Length** |
 | **Initial Body Features** | One slider for each body shape the model has. The world's stats can change these during the game. |
 | **Colors** | **Hair Color**, **Eye Color** and **Skin Color**. **Revert to original** restores the file's color. |
@@ -162,7 +162,7 @@ Select an Avatar's tile on the **Avatars** tab to open its details. The dialog's
 | **Credit** | Whether the author asks to be credited |
 | **Community Creations** | **Shareable** or **Not shareable**. See [The Permissive License](#the-permissive-license). |
 
-Under **Details** are the same controls as in **Character Customization**. Use them to test the model. They do not change the Avatar.
+Under **Details** are the same controls as in **Avatar Customization**. Use them to test the model. They do not change the Avatar.
 
 | Button | What it does |
 |---|---|

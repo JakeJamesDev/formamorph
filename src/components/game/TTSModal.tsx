@@ -22,6 +22,8 @@ import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Hint, Meta } from "@/components/ui/typography";
+import { HintInfo } from "@/components/SettingsRows";
 import VramReadout from "./VramReadout";
 import { useVramStats } from "@/lib/useVramStats";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -296,7 +298,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
         <DialogHeader>
           <DialogTitle>Text to Speech</DialogTitle>
           <DialogDescription>
-            Model: KokoroTTS v2
+            Model: Kokoro 82M
           </DialogDescription>
         </DialogHeader>
         {isLoading ? (
@@ -306,9 +308,9 @@ const TTSModal = forwardRef<TTSModalHandle, {
         ) : tts ? (
           <div className="py-4 space-y-4">
             {actualUsedMB != null && (
-              <p className="text-meta text-muted-foreground">
-                Kokoro is using ~{actualUsedMB} MB of VRAM.
-              </p>
+              <Meta as="p">
+                Kokoro is using about {actualUsedMB} MB of VRAM.
+              </Meta>
             )}
             <div className="flex flex-col gap-2">
               <label className="text-label font-medium mb-2">Voice Selection</label>
@@ -339,9 +341,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 step={0.1}
                 onValueChange={(v) => setTtsSpeed(v[0])}
               />
-              <p className="text-meta text-muted-foreground">
-                Applies to newly generated audio — use the regenerate button (↻) to re-speak the current text.
-              </p>
+              <Hint>Applies to new audio. Select ↻ to speak the current narration again at this speed.</Hint>
             </div>
             <div className="flex items-start gap-2">
               <Checkbox
@@ -350,11 +350,13 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 onCheckedChange={(c) => setStreamNarrationAudio(c === true)}
                 className="mt-0.5 shrink-0"
               />
-              <label htmlFor="streamNarrationAudio" className="text-meta text-muted-foreground leading-4">
-                <span className="font-medium text-foreground">Stream narration audio.</span> Start speaking each
-                sentence as soon as it finishes streaming, instead of after the whole story. Lower latency, but TTS
-                runs alongside the model — may compete for the GPU if your LLM is on the same machine.
+              <label htmlFor="streamNarrationAudio" className="text-label leading-4">
+                <span className="font-medium">Stream Narration Audio</span>{' '}
+                <Hint as="span">Speaks each sentence as soon as it&apos;s written</Hint>
               </label>
+              <HintInfo>
+                {"Audio starts sooner than when it waits for the whole narration. Text to Speech shares the GPU with your AI when both run on this machine."}
+              </HintInfo>
             </div>
             <div className="flex items-start gap-2">
               <Checkbox
@@ -363,11 +365,13 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 onCheckedChange={(c) => setTtsHighlight(c === true)}
                 className="mt-0.5 shrink-0"
               />
-              <label htmlFor="ttsHighlight" className="text-meta text-muted-foreground leading-4">
-                <span className="font-medium text-foreground">Highlight while speaking.</span> Highlight the
-                sentence being narrated and follow the playhead when you scrub. Falls back gracefully on browsers
-                without highlight support.
+              <label htmlFor="ttsHighlight" className="text-label leading-4">
+                <span className="font-medium">Highlight While Speaking</span>{' '}
+                <Hint as="span">Highlights the sentence being spoken</Hint>
               </label>
+              <HintInfo>
+                {"The highlight moves when you drag the playback bar. Some browsers can't show it."}
+              </HintInfo>
             </div>
             <Button
             className='w-full'
@@ -379,14 +383,14 @@ const TTSModal = forwardRef<TTSModalHandle, {
               }}
               disabled={isPlaying || isUnloading}
             >
-              {isPlaying ? "Generating..." : "Start"}
+              {isPlaying ? "Generating…" : "Start"}
             </Button>
             {isPlaying && genProgress && (
               <div className="space-y-1">
                 <Progress value={(genProgress.done / genProgress.total) * 100} className="h-2" />
-                <p className="text-meta text-muted-foreground text-center">
+                <Meta as="p" className="text-center">
                   Generating sentence {Math.min(genProgress.done + 1, genProgress.total)} of {genProgress.total}…
-                </p>
+                </Meta>
               </div>
             )}
             <Button
@@ -395,7 +399,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
               onClick={unloadModel}
               disabled={isPlaying || isUnloading}
             >
-              {isUnloading ? "Unloading..." : "Unload Model"}
+              {isUnloading ? "Unloading…" : "Unload Model"}
             </Button>
           </div>
         ) : null}
@@ -418,12 +422,12 @@ const TTSModal = forwardRef<TTSModalHandle, {
               )}
               {!webGPUSupported && (
                 <div className="text-label text-destructive">
-                  WebGPU is not supported in your browser. Please use a WebGPU-enabled browser like Chrome Canary or Edge Canary.
+                  This browser doesn&apos;t support WebGPU, so Text to Speech can&apos;t run. Open Formamorph in a browser with WebGPU, such as Chrome or Edge.
                 </div>
               )}
               {lowVram && (
                 <div className="text-label text-destructive whitespace-nowrap">
-                  Low VRAM: ~{KOKORO_VRAM_ESTIMATE_MB} MB needed, only {minFreeMB} MB free — loading may fail or fall back to CPU.
+                  Low VRAM: about {KOKORO_VRAM_ESTIMATE_MB} MB needed, {minFreeMB} MB free. Loading may fail.
                 </div>
               )}
               <Button

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import TagField from '@/components/prompt/TagField';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 
 /**
  * A turn's scene job, under its narration: the draw status, the live frame while a render runs, and the tag
@@ -63,14 +64,14 @@ export const SceneImagePanel = ({
       {busy && (
         <div className="flex items-center gap-2">
           {job === 'tags' || progress === null ? (
-            <span className="flex items-center gap-2 text-meta text-muted-foreground">
+            <Meta className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
               {job === 'tags' ? 'Writing tags…' : 'Drawing this scene…'}
-            </span>
+            </Meta>
           ) : (
             <>
               <Progress value={progress * 100} className="h-1.5 flex-1" />
-              <span className="text-meta text-muted-foreground whitespace-nowrap">{Math.round(progress * 100)}%</span>
+              <Meta className="whitespace-nowrap">{Math.round(progress * 100)}%</Meta>
             </>
           )}
           <Tip tip="Stop">
@@ -100,7 +101,7 @@ export const SceneImagePanel = ({
             value={draft}
             onChange={setDraft}
             ariaLabel="Scene tags"
-            placeholder="comma-separated tags…"
+            placeholder="Comma-separated tags"
           />
           <div className="flex items-center gap-2">
             {/* Re-rolling the tags costs one small text request and no render — the loop for judging whether
