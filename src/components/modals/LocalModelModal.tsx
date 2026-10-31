@@ -48,6 +48,7 @@ import {
   type LocalMoveResult,
 } from '@/lib/imageGen/desktop';
 import { Tip } from '@/components/ui/tooltip';
+import { FieldError, Hint, Meta } from '@/components/ui/typography';
 
 /** Catalog display name keyed by GGUF filename, for labeling installed files we recognize. */
 const CATALOG_BY_FILE = new Map(LOCAL_MODELS.map((m) => [m.fileName, m.name]));
@@ -107,12 +108,12 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
         {external && (
           <Tip tip={item.path} labelsChild={false}>
             <div className="truncate text-meta text-muted-foreground">
-              {item.subpath ? `From ${item.subpath}` : 'From your other folder'}
+              {item.subpath ? `From ${item.subpath}` : 'From your additional search folder'}
             </div>
           </Tip>
         )}
       </div>
-      <span className="shrink-0 text-meta tabular-nums text-muted-foreground">{formatModelSize(item.size)}</span>
+      <Meta className="shrink-0 tabular-nums">{formatModelSize(item.size)}</Meta>
       {/* One fixed-width toggle so Load / Unload / Loading… never change the row's button size. */}
       <Button
         size="sm"
@@ -200,12 +201,12 @@ export function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
                 <div className="truncate font-mono text-muted-foreground">To {flow.to}</div>
               </Tip>
               <p className="text-warning">
-                The old folder is no longer searched, so anything left there won&apos;t appear in your model list.
+                After the change, the old folder isn&apos;t searched. Models left there won&apos;t appear in your list.
               </p>
               {flow.freeBytes !== null && flow.freeBytes < flow.bytes && (
                 <p className="text-destructive">
-                  The new folder only has {formatModelSize(flow.freeBytes)} free — not enough for all of them.
-                  Files that don&apos;t fit will be reported and left where they are.
+                  The new folder has only {formatModelSize(flow.freeBytes)} free, which isn&apos;t enough for all of them.
+                  Files that don&apos;t fit stay where they are, and the result lists them.
                 </p>
               )}
             </div>
@@ -221,7 +222,7 @@ export function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
             <DialogHeader>
               <DialogTitle>Moving models…</DialogTitle>
               <DialogDescription>
-                Your models are being copied to the new folder. Nothing is deleted until each copy finishes.
+                Copying your models to the new folder. Each original is deleted only after its copy finishes.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
@@ -304,7 +305,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
 
   return (
     <div className="grid gap-6 py-4 pr-2">
-      <Section title="Loading" hint="When a model gets loaded into memory.">
+      <Section title="Loading" hint="Sets when a model loads into memory">
         <CheckRow
           {...rowCopy('localAutoLoad')}
           htmlFor="modelAutoLoad"
@@ -313,7 +314,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
         />
       </Section>
 
-      <Section title="Download Folder" hint="Where models you download are saved.">
+      <Section title="Download Folder" hint="Sets where your downloads are saved">
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-2">
           <RowLabel className="mb-2 sm:mb-0">Folder</RowLabel>
           {/* The path gets its own row above the buttons: these run long, and truncating one to make
@@ -323,9 +324,9 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
               <span className="min-w-0 flex-grow truncate font-mono text-meta">{rootDir}</span>
             </Tip>
             {freeBytes !== null && (
-              <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
+              <Meta className="shrink-0 tabular-nums">
                 {formatModelSize(freeBytes)} free
-              </span>
+              </Meta>
             )}
           </div>
           <div className="flex items-center gap-2 sm:col-start-2">
@@ -347,20 +348,20 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
             )}
           </div>
           {downloadDirMissing && (
-            <p className="text-helper text-destructive sm:col-start-2">
-              That folder isn&apos;t available right now — downloads are paused until it&apos;s back or you choose another.
-            </p>
+            <FieldError className="sm:col-start-2">
+              That folder isn&apos;t available. Downloads are paused until it&apos;s back or you choose another folder.
+            </FieldError>
           )}
           {!isDefaultDir && (
-            <p className="text-helper text-muted-foreground sm:col-start-2">
-              Models live outside the app folder now, so copying the app folder won&apos;t bring them along.
-              The default is <span className="font-mono">{defaultDir}</span>.
-            </p>
+            <Hint className="sm:col-start-2">
+              Your models are outside the app folder, so a copy of the app folder doesn&apos;t include them.
+              The default folder is <span className="font-mono">{defaultDir}</span>.
+            </Hint>
           )}
         </div>
       </Section>
 
-      <Section title="Additional Search Folder" hint="Already have models for another app? Point us at them and they'll show up in your list.">
+      <Section title="Additional Search Folder" hint="Adds the models you keep for another app to your list">
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-2">
           <RowLabel
             className="mb-2 sm:mb-0"
@@ -410,7 +411,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
           </div>
           {externalMissing && (
             <p className="text-helper text-warning sm:col-start-2">
-              That folder isn&apos;t available right now — its models are hidden until it&apos;s back.
+              That folder isn&apos;t available. Its models are hidden until it&apos;s back.
             </p>
           )}
         </div>
@@ -421,7 +422,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
             htmlFor="modelSearchSubfolders"
             checked={searchSubfolders}
             onChange={(v) => onChange({ externalDir, searchSubfolders: v })}
-            hint="Look inside folders within that folder. Needed for LM Studio, which files models under a publisher and a repository."
+            hint="Searches the folders inside that folder. LM Studio stores models by publisher and repository, so it needs this."
           />
         )}
       </Section>
@@ -621,8 +622,8 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         <DialogHeader className="shrink-0">
           <DialogTitle>Local model</DialogTitle>
           <DialogDescription>
-            Download a model to run Formamorph fully offline — no endpoint setup. Options sets where models
-            are saved and which folders are searched.
+            Download a model to run Formamorph offline, with no endpoint to set up. The <strong>Options</strong> tab
+            sets where models are saved and which folders are searched.
           </DialogDescription>
         </DialogHeader>
 
@@ -663,10 +664,10 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                 `> * + *` rule would stop reaching them. A gap still does, since that wrapper draws no box. */}
             <div className="flex flex-col gap-2">
             {installed.length === 0 ? (
-              <div className="pt-8 text-center text-helper text-muted-foreground">
-                No models installed. Grab one from the Recommended tab, drop a `.gguf` into your download
-                folder, or point us at a folder you already keep models in from the Options tab.
-              </div>
+              <Hint className="pt-8 text-center">
+                No models installed. Download one from the <strong>Recommended</strong> tab, add a .gguf file to
+                your download folder, or add a search folder on the <strong>Options</strong> tab.
+              </Hint>
             ) : (
               <EditorDndContext
                 // A longer reach before a press becomes a drag than the editor lists take: a row here is a
@@ -729,15 +730,15 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-medium">
-                          {m.name} <span className="text-meta text-muted-foreground">{m.params} · {m.quant} · {formatModelSize(totalBytes)}</span>
+                          {m.name} <Meta>{m.params} · {m.quant} · {formatModelSize(totalBytes)}</Meta>
                           {m.reasoning && <InfoTag className="ml-1.5">Reasoning</InfoTag>}
                           {m.projector && <InfoTag className="ml-1.5">Vision</InfoTag>}
                         </div>
-                        <div className="text-meta text-muted-foreground">{m.note}</div>
-                        <div className="text-meta text-muted-foreground">License: {m.license}</div>
+                        <Meta as="div">{m.note}</Meta>
+                        <Meta as="div">License: {m.license}</Meta>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="text-meta text-muted-foreground">Released {formatReleased(m.released)}</span>
+                        <Meta>Released {formatReleased(m.released)}</Meta>
                         {isLoaded && <span className="rounded bg-success px-2 py-0.5 text-meta text-success-foreground">Loaded</span>}
                       </div>
                     </div>
@@ -772,16 +773,16 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                               Resume ({partialPct}%)
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => discardPartial(m)} disabled={busy || downloading}>Discard</Button>
-                            <span className="text-meta text-muted-foreground">
+                            <Meta>
                               {formatModelSize(partialBytes)} / {formatModelSize(totalBytes)}
-                            </span>
+                            </Meta>
                           </>
                         ) : (
                           <>
                             <Button size="sm" onClick={() => startDownload(m)} disabled={downloading}>
                               Download ({formatModelSize(totalBytes)})
                             </Button>
-                            <span className="text-meta text-muted-foreground">{downloadsLabel}</span>
+                            <Meta>{downloadsLabel}</Meta>
                           </>
                         )}
                       </div>
@@ -808,7 +809,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         onOpenChange={(o) => { if (!o) setSpaceWarning(null); }}
         title="Not enough room?"
         description={spaceWarning
-          ? `${spaceWarning.model.name} needs ${formatModelSize(spaceWarning.needed)}, but the download folder only has ${formatModelSize(spaceWarning.free)} free. You can download anyway — it will stop if it runs out.`
+          ? `${spaceWarning.model.name} needs ${formatModelSize(spaceWarning.needed)}, but the download folder only has ${formatModelSize(spaceWarning.free)} free. You can download anyway. The download stops if the folder runs out of space.`
           : ''}
         onConfirm={() => {
           const pending = spaceWarning;

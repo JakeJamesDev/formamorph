@@ -741,10 +741,10 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   if (!model) {
     throw new Error(params.model.trim()
       ? `InvokeAI model not found: "${params.model}". Pick an installed model in Settings.`
-      : 'InvokeAI has no default model — choose one in Settings → Endpoints → Image → Model.');
+      : 'InvokeAI has no default model. Choose one in Settings → Endpoints → Image → Model.');
   }
   if (!(SUPPORTED_INVOKE_BASES as readonly string[]).includes(model.base)) {
-    throw new Error(`InvokeAI provider does not support ${model.base} models yet (supports SDXL, SD1.5, Z-Image, Anima).`);
+    throw new Error(`Formamorph can't use ${model.base} models through InvokeAI. Pick an SDXL, SD1.5, Z-Image or Anima model.`);
   }
 
   // Boards are cosmetic filing, so a failed lookup falls back to Uncategorized rather than blocking the run.

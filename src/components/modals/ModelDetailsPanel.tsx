@@ -13,6 +13,7 @@ import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { VrmFileDetails, Row } from '@/components/VrmFileDetails';
 import type { VrmLicense } from '@/types';
 import { SurfaceLayer } from '@/components/ui/surface';
+import { Hint, Meta } from '@/components/ui/typography';
 import { gateAvatarLicense, type AvatarLicenseRequirement } from '@/lib/avatarLicenseGate';
 
 /** Player-facing name for each Permissive License requirement, named only when it fails — a passing
@@ -63,13 +64,13 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   // Keyed on the url so switching models rebuilds the scene rather than reusing the old one.
   const preview = failed ? (
     <div className="h-full flex items-center justify-center p-4">
-      <p className="text-helper text-muted-foreground text-center">This player avatar couldn&apos;t be loaded.</p>
+      <Hint className="text-center">This player avatar couldn&apos;t be loaded.</Hint>
     </div>
   ) : url ? (
     <VRMViewer key={url} ref={vrmViewerRef} {...viewerProps} modelUrl={url} onCapabilities={setCaps} />
   ) : (
     <div className="h-full flex items-center justify-center">
-      <p className="text-helper text-muted-foreground">Loading Player Avatar…</p>
+      <Hint>Loading the player avatar…</Hint>
     </div>
   );
 
@@ -83,10 +84,10 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
         </Row>
 
         {!verdict.allowed && (
-          <p className="mt-3 text-[11px] text-muted-foreground">
+          <Meta as="p" className="mt-3">
             Needs {verdict.failedRequirements.map((id) => REQUIREMENT_LABELS[id]).join(', ')} to publish to
             Community Creations.
-          </p>
+          </Meta>
         )}
       </VrmFileDetails>
     </CollapsibleSection>

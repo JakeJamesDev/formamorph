@@ -7,6 +7,7 @@ import { useWheelScroll } from '@/lib/useWheelScroll';
 import { cn } from '@/lib/utils';
 import { chipRowMatches, chipSectionOpens, type ChipRow, type ChipVocabulary } from '@/lib/chipVocabulary';
 import ChipRowHeading from './ChipRowHeading';
+import { Hint, Meta } from '@/components/ui/typography';
 
 /**
  * Re-aim a placed chip by walking what its family holds. Two kinds of step are on offer and they resolve
@@ -52,10 +53,10 @@ function PickerRow({ row, marker, note, onPick, onDrill }: {
           </span>
         )}
         {note && (
-          <span className="flex min-w-0 items-center gap-1 text-meta text-muted-foreground">
+          <Meta className="flex min-w-0 items-center gap-1">
             <Lock className="h-3 w-3 shrink-0" aria-hidden />
             <span className="truncate">{note}</span>
-          </span>
+          </Meta>
         )}
       </button>
       {onDrill && (
@@ -156,7 +157,7 @@ const DrillPicker = ({ vocab, token, onPick }: {
         value={filter}
         onChange={(next) => { setFilter(next); setBlocked(null); }}
         aria-label="Filter Placeholders"
-        placeholder="Filter…"
+        placeholder="Filter placeholders"
         size="sm"
         inputClassName="h-7 text-label"
       />
@@ -185,7 +186,7 @@ const DrillPicker = ({ vocab, token, onPick }: {
         {!!slots.length && (
           <div>
             <p className="px-1.5 text-meta font-medium">Slots</p>
-            <p className="px-1.5 text-meta text-muted-foreground">Reached through whichever value rolls</p>
+            <Meta as="p" className="px-1.5">Each comes from whichever value rolls</Meta>
             {slots.map((slot) => (
               <PickerRow
                 key={slot.token}
@@ -197,20 +198,20 @@ const DrillPicker = ({ vocab, token, onPick }: {
           </div>
         )}
         {!rows.length && !slots.length && !newName && (
-          <p className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches</p>
+          <Hint className="px-1.5 py-1">Nothing matches</Hint>
         )}
       </div>
       {!!structure?.plain && (
-        <p className="px-1.5 text-meta text-muted-foreground">
+        <Meta as="p" className="px-1.5">
           {structure.plain === 1 ? '1 plain value' : `${structure.plain} plain values`} you can&apos;t address
-        </p>
+        </Meta>
       )}
       {blocked && (
         <div data-testid="drill-picker-owned" className="space-y-1 rounded border border-border p-1.5">
-          <p className="flex items-center gap-1 text-meta text-muted-foreground">
+          <Meta as="p" className="flex items-center gap-1">
             <Lock className="h-3 w-3 shrink-0" aria-hidden />
             <span className="truncate">{blocked.label} belongs to another placeholder</span>
-          </p>
+          </Meta>
           <div className="flex gap-1">
             <Button type="button" size="sm" className="h-6 px-2 text-helper" onClick={promote}>
               Promote And Use

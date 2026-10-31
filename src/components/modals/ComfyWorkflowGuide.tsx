@@ -14,15 +14,15 @@ const ComfyWorkflowGuide = ({ open, onOpenChange }: { open: boolean; onOpenChang
       <ScrollArea className="flex-1 min-h-0 pr-3">
         <div className="space-y-3 text-label">
           <p className="text-muted-foreground">
-            The Workflow field is a ComfyUI graph in <strong>API format</strong> with <Code>%tokens%</Code>{" "}
-            marking the values Formamorph fills in on each generation. To adapt one of your own workflows:
+            The <strong>Workflow</strong> field holds a ComfyUI graph in <strong>API format</strong>. Its{" "}
+            <Code>%tokens%</Code> mark the values Formamorph fills in for each image. To adapt a workflow of your own:
           </p>
 
           <ol className="list-decimal list-inside space-y-1.5">
             <li>In ComfyUI, open <strong>Settings</strong> and enable <strong>&quot;Enable dev mode options (API save, etc.)&quot;</strong>.</li>
-            <li>Load (or build) the workflow you want to use.</li>
-            <li>Export it in API format: <strong>Workflow → Export (API)</strong> (older builds: the <strong>Save (API Format)</strong> button) — this downloads a <Code>.json</Code>.</li>
-            <li>Open that file and paste everything into the Workflow field here.</li>
+            <li>Load or build the workflow you want to use.</li>
+            <li>Export it in API format with <strong>Workflow → Export (API)</strong>. Older builds use the <strong>Save (API Format)</strong> button. Either one downloads a <Code>.json</Code> file.</li>
+            <li>Open that file and paste all of it into the <strong>Workflow</strong> field.</li>
             <li>Replace the values Formamorph should control with the tokens below.</li>
           </ol>
 
@@ -35,13 +35,14 @@ const ComfyWorkflowGuide = ({ open, onOpenChange }: { open: boolean; onOpenChang
               <li>Sampler (<Code>sampler_name</Code>) → <Code>&quot;%sampler%&quot;</Code></li>
               <li>Latent width / height → <Code>%width%</Code> / <Code>%height%</Code></li>
               <li>KSampler seed / steps / cfg → <Code>%seed%</Code> / <Code>%steps%</Code> / <Code>%cfg%</Code></li>
+              <li>Save node prefix (<Code>filename_prefix</Code>) → <Code>&quot;%prefix%&quot;</Code></li>
             </ul>
           </div>
 
           <p className="text-muted-foreground">
-            Text tokens go <em>inside</em> the quotes (<Code>&quot;text&quot;: &quot;%prompt%&quot;</Code>); number tokens
-            replace the number (<Code>&quot;width&quot;: %width%</Code>). Anything you leave as-is stays fixed every
-            generation — so you can hardcode a LoRA, refiner, or resolution and only tokenize what you want to vary.
+            Text tokens go <em>inside</em> the quotes: <Code>&quot;text&quot;: &quot;%prompt%&quot;</Code>. Number tokens
+            replace the number: <Code>&quot;width&quot;: %width%</Code>. A value you leave as it is stays the same for every
+            image. Leave a LoRA, a refiner or a resolution as it is to keep it, and use tokens only for what should change.
           </p>
         </div>
       </ScrollArea>

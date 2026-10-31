@@ -80,8 +80,8 @@ export const DOWNLOADS_AS_OF = '2026-07';
 // the top of this file). The one flagged `reasoning: true` is an RP finetune on a reasoning base
 // (Qwen3.6-A3B); the local engine handles the thought segment (per-prompt budget → llama-server
 // `thinking_budget_tokens`, with `<think>` restored when the template opens it). That handling is not a
-// guarantee at small sizes — the 4B reasoning entry was cut for returning empty narrations, so screen any
-// reasoning candidate before adding it. Refresh this list periodically; the scene moves fast.
+// guarantee at small sizes, so screen any reasoning candidate for empty narrations before adding it.
+// Refresh this list periodically; new models release often.
 //
 // ORDER IS LOAD-BEARING: entries are grouped by tier, and within a tier they run best-first by screen ranking
 // (testing/baseline/leaderboard.md), with untested/unfit models last. The UI recommends a tier's FIRST entry
@@ -97,7 +97,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     id: 'impish-llama-4b', name: 'Impish LLAMA 4B', params: '4B', quant: 'Q4_K_M', tier: 'tier4',
     fileName: 'Impish_LLAMA_V2-Q4_K_M.gguf',
     url: hf('SicariusSicariiStuff/Impish_LLAMA_4B_GGUF', 'Impish_LLAMA_V2-Q4_K_M.gguf'),
-    sizeBytes: 2_780_000_000, note: 'Sicarius’s compact roleplay model.', license: 'Llama 3.2',
+    sizeBytes: 2_780_000_000, note: 'Sicarius’s compact roleplay model', license: 'Llama 3.2',
     released: '2025-07', downloads: 20_245,
   },
 
@@ -108,7 +108,7 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     url: hf('HauhauCS/Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced', 'Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf'),
     // License 'gemma' (Gemma Terms of Use) as declared by the uploader — surfaced to the user, who is the party
     // bound by it on download. The app links to HF; it neither redistributes nor runs the weights itself.
-    sizeBytes: 7_380_000_000, note: 'Best-fitting model for an 8GB card — clean stats, choices and routing.', license: 'Gemma',
+    sizeBytes: 7_380_000_000, note: 'The best fit for an 8 GB card, with clean stats, choices and location changes', license: 'Gemma',
     released: '2026-06', downloads: 150_443,
     projector: {
       url: hf('HauhauCS/Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced', 'mmproj-Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-BF16.gguf'),
@@ -119,28 +119,28 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     id: 'anubis-mini-8b', name: 'Anubis Mini 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
     fileName: 'Anubis-Mini-8B-v1h-Q4_K_M.gguf',
     url: hf('TheDrummer/Anubis-Mini-8B-v1-GGUF', 'Anubis-Mini-8B-v1h-Q4_K_M.gguf'),
-    sizeBytes: 4_920_000_000, note: 'TheDrummer’s compact RP 8B (Llama 3.3).', license: 'Llama 3.3',
+    sizeBytes: 4_920_000_000, note: 'TheDrummer’s compact RP 8B (Llama 3.3)', license: 'Llama 3.3',
     released: '2026-01', downloads: 12_035,
   },
   {
     id: 'stheno-8b-v34', name: 'Stheno v3.4 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
     fileName: 'Llama-3.1-8B-Stheno-v3.4-Q4_K_M.gguf',
     url: hf('bartowski/Llama-3.1-8B-Stheno-v3.4-GGUF', 'Llama-3.1-8B-Stheno-v3.4-Q4_K_M.gguf'),
-    sizeBytes: 4_920_000_000, note: 'Sao10K’s classic 8B RP finetune — the 8B roleplay standard.', license: 'CC-BY-NC 4.0',
+    sizeBytes: 4_920_000_000, note: 'Sao10K’s classic 8B RP finetune, the standard roleplay model at this size', license: 'CC-BY-NC 4.0',
     released: '2024-09', downloads: 41_900,
   },
   {
     id: 'lunaris-8b-v1', name: 'Lunaris v1 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
     fileName: 'L3-8B-Lunaris-v1-Q4_K_M.gguf',
     url: hf('bartowski/L3-8B-Lunaris-v1-GGUF', 'L3-8B-Lunaris-v1-Q4_K_M.gguf'),
-    sizeBytes: 4_920_000_000, note: 'Sao10K’s well-rounded RP/creativity 8B blend.', license: 'Llama 3',
+    sizeBytes: 4_920_000_000, note: 'Sao10K’s well-rounded RP/creativity 8B blend', license: 'Llama 3',
     released: '2024-06', downloads: 153_645,
   },
   {
     id: 'wingless-imp-8b', name: 'Wingless Imp 8B', params: '8B', quant: 'Q4_K_M', tier: 'tier8',
     fileName: 'Wingless_Imp_8B.Q4_K_M.gguf',
     url: hf('mradermacher/Wingless_Imp_8B-GGUF', 'Wingless_Imp_8B.Q4_K_M.gguf'),
-    sizeBytes: 4_920_000_000, note: 'Uncensored 8B with strong prose.', license: 'Llama 3.1',
+    sizeBytes: 4_920_000_000, note: 'Uncensored 8B with strong prose', license: 'Llama 3.1',
     released: '2025-02', downloads: 3_446,
   },
 
@@ -149,28 +149,28 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     id: 'cydonia-24b-v43', name: 'Cydonia 24B v4.3', params: '24B', quant: 'Q4_K_M', tier: 'tier16',
     fileName: 'Cydonia-24B-v4zg-Q4_K_M.gguf',
     url: hf('TheDrummer/Cydonia-24B-v4.3-GGUF', 'Cydonia-24B-v4zg-Q4_K_M.gguf'),
-    sizeBytes: 14_330_000_000, note: 'TheDrummer’s flagship RP 24B; optional [THINK] prefill.', license: 'Apache 2.0',
+    sizeBytes: 14_330_000_000, note: 'TheDrummer’s flagship RP 24B; optional [THINK] prefill', license: 'Apache 2.0',
     released: '2025-11', downloads: 116_605,
   },
   {
     id: 'rocinante-x-12b', name: 'Rocinante-X 12B', params: '12B', quant: 'Q4_K_M', tier: 'tier16',
     fileName: 'Rocinante-X-12B-v1b-Q4_K_M.gguf',
     url: hf('TheDrummer/Rocinante-X-12B-v1-GGUF', 'Rocinante-X-12B-v1b-Q4_K_M.gguf'),
-    sizeBytes: 7_480_000_000, note: 'Newer Rocinante — reliable, well-rounded 12B.', license: 'Apache 2.0',
+    sizeBytes: 7_480_000_000, note: 'A newer Rocinante: a reliable, well-rounded 12B', license: 'Apache 2.0',
     released: '2026-01', downloads: 44_913,
   },
   {
     id: 'paintedfantasy-24b', name: 'Painted Fantasy 24B v4.1', params: '24B', quant: 'Q4_K_M', tier: 'tier16',
     fileName: 'MS3.2-PaintedFantasy-v4.1-24B-Q4_K_M.gguf',
     url: hf('zerofata/MS3.2-PaintedFantasy-v4.1-24B-GGUF', 'MS3.2-PaintedFantasy-v4.1-24B-Q4_K_M.gguf'),
-    sizeBytes: 14_330_000_000, note: 'zerofata’s vivid, scene-driven RP 24B.', license: 'Apache 2.0',
+    sizeBytes: 14_330_000_000, note: 'zerofata’s vivid, scene-driven RP 24B', license: 'Apache 2.0',
     released: '2026-02', downloads: 8_578,
   },
   {
     id: 'impish-bloodmoon-12b', name: 'Impish Bloodmoon 12B', params: '12B', quant: 'Q4_K_M', tier: 'tier16',
     fileName: 'Impish_Bloodmoon-Q4_K_M.gguf',
     url: hf('SicariusSicariiStuff/Impish_Bloodmoon_12B_GGUF', 'Impish_Bloodmoon-Q4_K_M.gguf'),
-    sizeBytes: 7_480_000_000, note: 'Sicarius’s current 12B RP model.', license: 'Apache 2.0',
+    sizeBytes: 7_480_000_000, note: 'Sicarius’s current 12B RP model', license: 'Apache 2.0',
     released: '2025-12', downloads: 32_488,
   },
 
@@ -179,21 +179,21 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     id: 'g4-meromero-31b', name: 'G4 MeroMero 31B', params: '31B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'G4-MeroMero-31B-Q4_K_M.gguf',
     url: hf('zerofata/G4-MeroMero-31B-gguf', 'G4-MeroMero-31B-Q4_K_M.gguf'),
-    sizeBytes: 18_690_000_000, note: 'Gemma-4 31B RP finetune — top screen scorer; the one model that keeps stats quiet on idle turns.', license: 'Apache 2.0',
+    sizeBytes: 18_690_000_000, note: 'Gemma-4 31B RP finetune. It scored highest in testing and leaves stats alone on quiet turns.', license: 'Apache 2.0',
     released: '2026-05', downloads: 6_492,
   },
   {
     id: 'gemma4-styletune-26b-a4b', name: 'Gemma-4 26B StyleTune V2', params: '26B-A4B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf',
     url: hf('mradermacher/Gemma-4-26B-A4B-StyleTune-V2-i1-GGUF', 'Gemma-4-26B-A4B-StyleTune-V2.i1-Q4_K_M.gguf'),
-    sizeBytes: 17_210_000_000, note: 'Gryphe’s StyleTune on a Gemma-4 MoE — second-highest screen score, unusually disciplined stats.', license: 'Apache 2.0',
+    sizeBytes: 17_210_000_000, note: 'Gryphe’s StyleTune on a Gemma-4 MoE. It scored second-highest in testing, with unusually accurate stats.', license: 'Apache 2.0',
     released: '2026-06', downloads: 25_934,
   },
   {
     id: 'qwen36-35b-a3b-anko', name: 'Qwen3.6 35B-A3B Anko', params: '35B-A3B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'allura-org_Qwen3.6-35B-A3B-Anko-Q4_K_M.gguf',
     url: hf('bartowski/allura-org_Qwen3.6-35B-A3B-Anko-GGUF', 'allura-org_Qwen3.6-35B-A3B-Anko-Q4_K_M.gguf'),
-    sizeBytes: 21_390_000_000, note: 'Allura’s RP finetune of Qwen3.6 — reasoning MoE, smart and characterful.', license: 'Apache 2.0',
+    sizeBytes: 21_390_000_000, note: 'Allura’s RP finetune of Qwen3.6, a smart reasoning MoE with strong characters', license: 'Apache 2.0',
     released: '2026-04', downloads: 26_028, reasoning: true,
     projector: {
       url: hf('bartowski/allura-org_Qwen3.6-35B-A3B-Anko-GGUF', 'mmproj-allura-org_Qwen3.6-35B-A3B-Anko-f16.gguf'),
@@ -204,14 +204,14 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     id: 'skyfall-31b', name: 'Skyfall 31B v4.2', params: '31B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'Skyfall-31B-v4y-Q4_K_M.gguf',
     url: hf('TheDrummer/Skyfall-31B-v4.2-GGUF', 'Skyfall-31B-v4y-Q4_K_M.gguf'),
-    sizeBytes: 18_980_000_000, note: 'Upscaled 31B for richer, longer writing.', license: 'Apache 2.0',
+    sizeBytes: 18_980_000_000, note: 'Upscaled 31B for richer, longer writing', license: 'Apache 2.0',
     released: '2026-02', downloads: 34_448,
   },
   {
     id: 'euryale-70b', name: 'Euryale 70B v2.3', params: '70B', quant: 'Q4_K_M', tier: 'unlimited',
     fileName: 'L3.3-70B-Euryale-v2.3-Q4_K_M.gguf',
     url: hf('bartowski/L3.3-70B-Euryale-v2.3-GGUF', 'L3.3-70B-Euryale-v2.3-Q4_K_M.gguf'),
-    sizeBytes: 42_520_000_000, note: 'Elite 70B roleplay; heavy VRAM (needs partial offload on 24 GB).', license: 'Llama 3.3',
+    sizeBytes: 42_520_000_000, note: 'A top 70B roleplay model. It needs a lot of VRAM, and a partial offload on 24 GB.', license: 'Llama 3.3',
     released: '2024-12', downloads: 38_367,
   },
 ];

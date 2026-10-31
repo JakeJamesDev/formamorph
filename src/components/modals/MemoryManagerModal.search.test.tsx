@@ -27,7 +27,7 @@ describe('the Memory Manager search', () => {
   it('empties the box and keeps the cursor in it when the X is selected', async () => {
     const user = userEvent.setup();
     render(<MemoryManagerModal isOpen onOpenChange={() => {}} />);
-    const box = screen.getByPlaceholderText('Search memories…');
+    const box = screen.getByPlaceholderText('Search memories');
     await user.type(box, 'harbor');
 
     await user.click(screen.getByRole('button', { name: 'Clear Search' }));

@@ -1,4 +1,5 @@
 import { HintInfo } from '@/components/SettingsRows';
+import { Hint } from '@/components/ui/typography';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 
@@ -34,7 +35,7 @@ export function SamplerControl({ id, label, hint, info, custom, value, defaultVa
       <div className="flex items-center gap-2">
         <Checkbox id={id} checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
         <label htmlFor={id} className="text-label">{label}</label>
-        <span className="hidden sm:inline text-helper text-muted-foreground">{hint}</span>
+        <Hint as="span" className="hidden sm:inline">{hint}</Hint>
         {info && <HintInfo>{info}</HintInfo>}
       </div>
       {/* pl-2.5 is the thumb's own overhang: at `min` it reaches 10px left of the track and a scroll frame
