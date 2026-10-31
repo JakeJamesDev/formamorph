@@ -13,6 +13,8 @@ Bring these pages in line with the app on `main`: [WorldFormat](../../../../docs
 
 It waits for every other wording ticket, so the Glossary and the format page match the terms those pages settled (Q5).
 
+Carried from ticket 08: Home still describes entities as "people, creatures and things", but the editor pages say "a person, a creature, an object or a fixture". Make Home and the Glossary match the editor pages.
+
 List each page's checkable claims: control and tab names, steps, limits, defaults, file formats, shortcuts, what a setting does. Check each one in source or in the dev-router preview. Fix what is wrong, remove what is gone, and add a short mention of shipped behavior that belongs on the page and is missing. Leave correct text as it is: ticket 20 owns the wording.
 
 Spec: Implementation Decisions, "Truth source", "Staleness pass", "Headings and anchors".
