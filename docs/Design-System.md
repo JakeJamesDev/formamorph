@@ -1702,7 +1702,7 @@ Open `#dev?modal=designSystem&tab=supporter-flair` for the light and dark panels
 
 ### Writing review
 
-The badge labels are **Supporter**, **Supporter+**, and the top tier's working label **Supporter++**. Copy says Profile Image, never avatar.
+Each badge shows its tier's Patreon name, or **Member** when no name is known. Copy says Profile Image, never avatar.
 
 ## Pattern: Preset Header
 

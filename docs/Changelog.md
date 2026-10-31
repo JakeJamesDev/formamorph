@@ -30,7 +30,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items can now be unidentified, showing the player only an Unidentified Name and Description until the story reveals them.** The narrator sees both faces. Effects still apply. Scripts read both faces and can reveal.
     - **The Inventory prompt now records a use, a change of State, and an item's true nature becoming known.** Opening a letter or lighting a lantern keeps the item. Burning or shattering one still removes it with no effect.
     - **The story can now use one item on another, such as pouring lamp oil into a lantern.** The oil is the item spent. Its When Used script reads the lantern as `self.event.target`.
-  - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Supporter tier sets the context window.
+  - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 
 ### Minor Changes
 
@@ -55,9 +55,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Supporter Flair now covers a third Patreon tier.** The new tier gets its own badge and ring color in the app, and lists first on the Supporters page.
     - **Supporter badges, the Supporters page and the account page show each tier's Patreon name.** A tier with no known name shows Member.
   - **Formamorph AI:**
-    - **The Formamorph AI section on your formamorph.ai account page shows your allowance.** It shows your tier, percent used, about how many turns are left and the reset date.
+    - **The Formamorph AI section on your formamorph.ai account page shows your allowance.** It shows your Patreon support, percent used, about how many turns are left and the reset date.
     - **Formamorph AI shows your allowance, warns you twice, and offers one click back when it runs out.** Settings shows the percent used, about how many turns are left and the reset date. A new Supporter device switches to it once.
-    - **Formamorph AI and the Supporter pages now read as thanks for your support.** Buttons say Support on Patreon, and the account page row says Support, not Tier.
   - **Main Menu:**
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.

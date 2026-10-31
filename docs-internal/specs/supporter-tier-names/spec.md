@@ -20,10 +20,10 @@ The three tiers show working labels ("Supporter", "Supporter+", "Supporter++") f
 
 **Server.** The server reads each tier's `title` from Patreon (Tier resource, "Tier display title") and keeps the names by tier key. It refreshes them on the hourly reconcile and on a tier webhook. A public route returns `{ supporter, supporter_plus, supporter_top }`, each a string or `null`. The route never calls Patreon on a request.
 
-- Patreon v2 returns no attribute unless `fields[tier]=title` asks for it. The campaign call with `include=tiers` is the first choice, because it names tiers with no members. Its behavior is not in the docs: verify it against the live API first, and fall back to `fields[tier]=title` on the members call the reconcile already makes.
+- Patreon v2 returns no attribute unless `fields[tier]=title` asks for it. The campaign call with `include=tiers` is the primary path, because it names tiers with no members. A live check on 2026-10-31 returned all three titles from it. A failed or title-less campaign call falls back to `fields[tier]=title` on the members call the reconcile already makes, and that answer renames only the tiers it lists.
 - An unknown or empty title is `null`, never a guess.
 
-**Client and site.** One module owns tier names. It reads the route once per session, keeps the last answer in local storage, and returns **Member** for a tier with no known name. Every place that shows a tier name reads it from that module. The hardcoded label map goes. Flair colors, icons and sort order stay keyed on the tier key.
+**Client and site.** One module owns tier names. It reads the route once per session, keeps the last answer in local storage, and returns **Member** for a tier with no known name. A tier the server answers `null` for keeps its cached name. Every place that shows a tier name reads it from that module. The hardcoded label map goes. Flair colors, icons and sort order stay keyed on the tier key.
 
 **Copy.** A sweep finds every player-facing line about support, tiers or the allowance, in the app, the site and `docs/`. Each line reads as a donation and follows the Writing Guide. Wording a player sees for the first time goes to the user for approval.
 
