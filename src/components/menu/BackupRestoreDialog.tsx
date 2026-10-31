@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Hint, Meta } from '@/components/ui/typography';
 import { BreadcrumbLabel, BreadcrumbTip } from '@/components/ui/breadcrumb-picker';
 import {
   buildBackup,
@@ -331,12 +332,12 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
 
           {step === 'backup-what' &&
             (items === null ? (
-              <p className="text-helper text-muted-foreground">Checking your library…</p>
+              <Meta as="p">Checking your library…</Meta>
             ) : exportGroups.length === 0 ? (
-              <p className="text-helper text-muted-foreground">Nothing to back up yet.</p>
+              <Meta as="p">Nothing to back up yet</Meta>
             ) : (
               <div className="flex flex-col gap-2">
-                <p className="text-helper text-muted-foreground">Select what to back up:</p>
+                <Hint>Select what to back up</Hint>
                 <CategoryTree
                   groups={exportGroups}
                   selected={exportSel}
@@ -347,18 +348,18 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
             ))}
 
           {step === 'backup-done' && (
-            <p className="text-helper text-muted-foreground">Backup saved. Keep the file somewhere safe.</p>
+            <Meta as="p">Backup saved. Keep the file somewhere safe.</Meta>
           )}
 
           {step === 'restore-what' &&
             (restoreGroups.length === 0 ? (
-              <p className="text-helper text-muted-foreground">This backup is empty — nothing to restore.</p>
+              <Meta as="p">This backup is empty, so there&apos;s nothing to restore.</Meta>
             ) : (
               <div className="flex flex-col gap-2">
-                <p className="text-helper text-muted-foreground">
-                  Select what to restore. Items tagged <span className="uppercase">exists</span> already exist —
-                  turn on Overwrite for a group to replace those.
-                </p>
+                <Hint>
+                  Select what to restore. An item tagged <span className="uppercase">exists</span> is already
+                  stored. Turn on <strong>Overwrite existing</strong> for its group to replace it.
+                </Hint>
                 <CategoryTree
                   groups={restoreGroups}
                   selected={restoreSel}
@@ -380,7 +381,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
               </div>
             ))}
 
-          {step === 'restore-done' && <p className="text-helper text-muted-foreground">Backup restored. Reloading…</p>}
+          {step === 'restore-done' && <Meta as="p">Backup restored. Reloading…</Meta>}
         </div>
 
         <DialogFooter>

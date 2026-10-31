@@ -157,7 +157,7 @@ describe('the Privacy Policy at signup', () => {
     // closed and a header that still offers Login.
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(toast.success).toHaveBeenCalledWith('Registered successfully');
+    expect(toast.success).toHaveBeenCalledWith('Account created');
   });
 
   it('reports the new session the same way when the policy was accepted', async () => {
@@ -174,7 +174,7 @@ describe('the Privacy Policy at signup', () => {
     // The pair of these two cases is the point: neither route may quietly skip a step the other takes.
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(toast.success).toHaveBeenCalledWith('Registered successfully');
+    expect(toast.success).toHaveBeenCalledWith('Account created');
   });
 
   it('treats a policy switched off mid-signup as nothing outstanding', async () => {
@@ -244,15 +244,15 @@ describe('a deletion the sign-in called off', () => {
   it('says so, because the server cancelled it without being asked', async () => {
     await signIn({ deletionCancelled: true });
 
-    expect(await screen.findByText('Your account deletion was cancelled.')).toBeTruthy();
+    expect(await screen.findByText('Signing in canceled your account deletion.')).toBeTruthy();
     vi.unstubAllGlobals();
   });
 
   it('says nothing on an ordinary sign-in', async () => {
     await signIn({});
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Logged in successfully'));
-    expect(screen.queryByText('Your account deletion was cancelled.')).toBeNull();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Logged in'));
+    expect(screen.queryByText('Signing in canceled your account deletion.')).toBeNull();
     vi.unstubAllGlobals();
   });
 });

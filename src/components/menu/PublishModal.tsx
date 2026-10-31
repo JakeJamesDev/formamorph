@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Hint, Meta } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import WorldStorageService, { type ListingDetails } from "@/services/WorldStorageService";
@@ -473,7 +474,7 @@ export function PublishModal({
         <DialogHeader>
           <DialogTitle>Publish {KIND_LABELS[kind].one}</DialogTitle>
           <DialogDescription>
-            Publish your {noun} to share it with other players.
+            Shares your {noun} with other players on Community Creations
           </DialogDescription>
         </DialogHeader>
 
@@ -489,7 +490,7 @@ export function PublishModal({
               <div className="mb-4 p-3 bg-muted border rounded-md text-label">
                 <p className="font-medium">{policies.gate?.title}</p>
                 <p className="text-muted-foreground mt-1">
-                  You declined these terms, so publishing is unavailable.
+                  You declined these terms, so you can&apos;t publish.
                 </p>
                 <Button
                   variant="link"
@@ -565,9 +566,7 @@ export function PublishModal({
                   <ScrollText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   <div className="min-w-0">
                     <p className="text-label font-medium">Changelog Entry</p>
-                    <p className="text-meta text-muted-foreground">
-                      Optional. Tell anyone holding a copy what this update changes.
-                    </p>
+                    <Hint>Optional. Tells players who have a copy what this update changes.</Hint>
                   </div>
                 </div>
 
@@ -592,9 +591,7 @@ export function PublishModal({
             {kind === 'mascot' && (
               <div className="mt-4 space-y-2" data-testid="mascot-publish-thumbnail">
                 <p className="text-label font-medium">Thumbnail</p>
-                <p className="text-meta text-muted-foreground">
-                  Shows the Initial Look. Pick an expression or upload an image to replace it.
-                </p>
+                <Hint>Shows the Initial Look. Pick an expression or upload an image to replace it.</Hint>
                 {mascotLooks && mascotLooks.expressions.length > 0 && (
                   <div className="space-y-1">
                     <Label htmlFor="publish-mascot-expression" className="text-label">Expression</Label>
@@ -679,9 +676,7 @@ export function PublishModal({
                 <li key={failure.name}>{failure.name}: {failure.message}</li>
               ))}
             </ul>
-            <p className="text-meta text-muted-foreground">
-              Select &ldquo;Retry&rdquo;. Content that already published is skipped.
-            </p>
+            <Meta as="p">Select <strong>Retry</strong>. Content that already published is skipped.</Meta>
           </div>
         )}
 
@@ -755,7 +750,7 @@ export function PublishModal({
         onOpenChange={setEntryOpen}
         entry={changelogDraft}
         submitLabel="Attach to Update"
-        description="Optional. This is added to the listing's changelog once the update is published."
+        description="Optional. Adds this to the listing's changelog when the update publishes."
         onSubmit={setDraft}
       />
 

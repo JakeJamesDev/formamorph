@@ -24,7 +24,7 @@ describe('checkUsername', () => {
   });
 
   it('reports an empty or blank field as required', () => {
-    expect(checkUsername('')).toEqual({ ok: false, error: 'Username is required' });
-    expect(checkUsername('   ')).toEqual({ ok: false, error: 'Username is required' });
+    expect(checkUsername('')).toEqual({ ok: false, error: 'Enter a username' });
+    expect(checkUsername('   ')).toEqual({ ok: false, error: 'Enter a username' });
   });
 });

@@ -1,4 +1,5 @@
 import { Heart } from 'lucide-react';
+import { Hint } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { PublishOptionSwitch } from '@/components/menu/PublishOptionSwitch';
 
@@ -19,9 +20,7 @@ export function SupporterOnlyCard({ checked, onCheckedChange }: SupporterOnlyCar
       <Heart className="h-5 w-5 shrink-0 text-primary" aria-hidden />
       <div className="flex-1 min-w-0">
         <div className="text-label font-semibold">Supporter-Only</div>
-        <div className="text-meta text-muted-foreground">
-          Limits downloads to Supporters, marks each copy and pins the listing
-        </div>
+        <Hint as="div">Limits downloads to Supporters, marks each copy and pins the listing</Hint>
       </div>
       <PublishOptionSwitch
         checked={checked}

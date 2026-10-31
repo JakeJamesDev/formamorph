@@ -159,7 +159,7 @@ export async function openEditorSection(page: Page, name: string): Promise<void>
  */
 export async function signIn(page: Page, username: string, password: string): Promise<void> {
   await page.getByRole('button', { name: 'Login' }).click();
-  const dialog = page.getByRole('dialog').filter({ has: page.getByText('Enter your credentials') });
+  const dialog = page.getByRole('dialog').filter({ has: page.getByText('Log in with your username and password') });
   await dialog.getByLabel('Username').fill(username);
   await dialog.getByLabel('Password', { exact: true }).fill(password);
   await dialog.getByRole('button', { name: 'Login', exact: true }).click();

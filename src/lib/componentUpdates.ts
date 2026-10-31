@@ -85,11 +85,11 @@ const SKIPPED_FIELDS = new Set(['entries', 'locationRefs']);
 /** What each field is called on screen. A field absent here reads as its own name, spaced and capitalized. */
 const FIELD_LABELS: Record<string, string> = {
   name: 'Name',
-  aliases: 'Also Known As',
+  aliases: 'Aliases',
   type: 'Type',
-  playerDescription: 'Player Description',
-  aiDescription: 'AI Description',
-  aiSummary: 'AI Summary',
+  playerDescription: 'Player-Facing Description',
+  aiDescription: 'AI-Facing Description',
+  aiSummary: 'AI-Facing Summary',
   images: 'Images',
   tags: 'Tags',
   imageTags: 'Image Tags',
@@ -97,11 +97,11 @@ const FIELD_LABELS: Record<string, string> = {
   model: 'Model',
   description: 'Description',
   enabled: 'Enabled',
-  thumbnail: 'Cover Art',
+  thumbnail: 'Cover Image',
   vrmPick: 'Avatar',
 };
 
-/** A field name nobody labeled, as words: `aiSummary` reads AI Summary, `scanDepth` reads Scan Depth. */
+/** A field name nobody labeled, as words: `scanDepth` reads Scan Depth. */
 function fieldLabel(field: string): string {
   if (FIELD_LABELS[field]) return FIELD_LABELS[field];
   const spaced = field.replace(/([a-z0-9])([A-Z])/g, '$1 $2');

@@ -152,7 +152,7 @@ test.describe('the Privacy Policy at sign-in', () => {
     await openApp(page);
 
     await page.getByRole('button', { name: 'Login' }).click();
-    const auth = page.getByRole('dialog').filter({ has: page.getByText('Enter your credentials') });
+    const auth = page.getByRole('dialog').filter({ has: page.getByText('Log in with your username and password') });
     await auth.getByLabel('Username').fill(ACCOUNT.username);
     await auth.getByLabel('Password', { exact: true }).fill('hunter2!');
     await auth.getByRole('button', { name: 'Login', exact: true }).click();
@@ -179,7 +179,7 @@ test.describe('the Privacy Policy at sign-in', () => {
     await openApp(page);
 
     await page.getByRole('button', { name: 'Login' }).click();
-    const auth = page.getByRole('dialog').filter({ has: page.getByText('Enter your credentials') });
+    const auth = page.getByRole('dialog').filter({ has: page.getByText('Log in with your username and password') });
     await auth.getByLabel('Username').fill(ACCOUNT.username);
     await auth.getByLabel('Password', { exact: true }).fill('hunter2!');
     await auth.getByRole('button', { name: 'Login', exact: true }).click();

@@ -262,7 +262,7 @@ describe('the retained entry draft', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     expect(screen.queryByRole('button', { name: 'Remembered' })).not.toBeInTheDocument();
-    expect(toastTexts(vi.mocked(toast.error))).toContain('Formamorph could not save these additions. Try again.View Details →');
+    expect(toastTexts(vi.mocked(toast.error))).toContain("Couldn't save these additions. Try again.View Details →");
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
     write.mockRestore();
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
@@ -643,7 +643,7 @@ describe('the retained entry draft', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain(
-      'Formamorph could not prepare those library additions. Try again.View Details →',
+      "Couldn't prepare those library additions. Try again.View Details →",
     ));
     expect(consoleError).toHaveBeenCalledWith(
       'Could not finalize enter-world library additions',

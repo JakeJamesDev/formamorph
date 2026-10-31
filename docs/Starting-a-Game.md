@@ -94,7 +94,7 @@ Under the buttons:
 
 Notices can show above them:
 
-- A world whose stats run custom code shows a warning. **Examine Code** shows the code.
+- A world that runs scripts shows a warning. **Examine Code** shows the scripts.
 - A world with its own prompts names them, such as *This world uses …*. **View** shows the text.
 
 > [!NOTE]

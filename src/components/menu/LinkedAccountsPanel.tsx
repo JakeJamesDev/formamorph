@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 import { StatusPill } from "@/components/StatusPill";
 import { describeAccountAge } from "@/lib/accountAge";
 import { formatServerDateTime, parseServerDate } from "@/lib/serverDate";
@@ -76,9 +77,7 @@ export function LinkedAccountsPanel({ accounts, loading, onFind }: LinkedAccount
               </button>
             </Tip>
             <StatusPill status={account.status} />
-            <span className="text-helper text-muted-foreground">
-              account {describeAccountAge(ageSeconds(account.createdAt))} old
-            </span>
+            <Meta>account {describeAccountAge(ageSeconds(account.createdAt))} old</Meta>
           </div>
 
           <div className="mt-2 grid gap-3 sm:grid-cols-2">

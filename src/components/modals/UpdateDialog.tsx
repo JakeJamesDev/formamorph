@@ -20,7 +20,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
   const available = state.phase === 'available';
   const checking = state.phase === 'checking';
   const title = available
-    ? `Update available — ${state.latestVersion}`
+    ? `Update Available: ${state.latestVersion}`
     : state.phase === 'error'
       ? 'Couldn’t check for updates'
       : 'You’re up to date';
@@ -46,7 +46,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
         ) : (
           <ChangelogBody
             text={state.changelog}
-            placeholder="No release notes."
+            placeholder="No release notes"
             currentVersion={state.currentVersion}
             updateVersion={available ? state.latestVersion : undefined}
           />

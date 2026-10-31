@@ -128,5 +128,5 @@ export function LibraryGroupTile({
   );
 
   // A small folder tile keeps only the face, so its name and count reach the player as a tip.
-  return compact ? <Tip tip={`${group.name} — ${count}`}>{tile}</Tip> : tile;
+  return compact ? <Tip tip={`${group.name} · ${count}`}>{tile}</Tip> : tile;
 }

@@ -12,7 +12,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 
 /** Footer version line for every build that can install an update: the version number opens the update
- *  dialog, gains a " — Update Available!" tag when a newer release exists, and shows download progress →
+ *  dialog, gains a " · Update Available" tag when a newer release exists, and shows download progress →
  *  an apply button underneath. Mounted only where a bridge exists, so the browser never checks for or
  *  shows updates. */
 export function UpdateVersionControl() {
@@ -34,7 +34,7 @@ export function UpdateVersionControl() {
           className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
         >
           v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
-          {updateReady && <span className="text-info"> — Update Available!</span>}
+          {updateReady && <span className="text-info"> · Update Available</span>}
         </button>
       </Tip>
 

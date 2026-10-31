@@ -32,11 +32,11 @@ describe('UpdateVersionControl', () => {
     render(<UpdateVersionControl />);
 
     // The check resolves to "available" → the info-colored tag appears next to the version.
-    await waitFor(() => expect(screen.getByText(/Update Available!/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/· Update Available/)).toBeInTheDocument());
 
     // Clicking the version opens the update dialog in its available state.
     fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
-    expect(await screen.findByText(/Update available — v9\.9\.9/)).toBeInTheDocument();
+    expect(await screen.findByText(/Update Available: v9\.9\.9/)).toBeInTheDocument();
     expect(screen.getByTestId('changelog')).toHaveTextContent('New stuff');
     expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
 

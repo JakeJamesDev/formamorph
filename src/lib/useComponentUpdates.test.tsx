@@ -113,7 +113,8 @@ describe('Check for Updates', () => {
     expect(within(rowFor('Sedge Landing')).getByRole('combobox').textContent).toBe('Update');
     expect(within(rowFor('Fen Crossing')).getByRole('combobox').textContent).toBe('Keep Mine');
     expect(within(rowFor('Fen Crossing')).getByText('Local replacement')).toBeTruthy();
-    expect(within(rowFor('Fen Crossing')).getByText("Keep Mine keeps this world's edits.")).toBeTruthy();
+    expect(within(rowFor('Fen Crossing')).getByText('Keep Mine', { selector: 'strong' }).parentElement)
+      .toHaveTextContent("Keep Mine keeps this world's edits");
     expect(within(rowFor('Sedge Landing')).queryByText(/keeps this world's edits/)).toBeNull();
   });
 
@@ -127,7 +128,7 @@ describe('Check for Updates', () => {
     fireEvent.click(screen.getByRole('button', { name: /View Changes/ }));
 
     const row = rowFor('Sedge Landing');
-    await waitFor(() => expect(within(row).queryByText('AI Description')).toBeTruthy());
+    await waitFor(() => expect(within(row).queryByText('AI-Facing Description')).toBeTruthy());
     expect(within(row).getByText(/What this world holds\./)).toBeTruthy();
     expect(within(row).getByText(/The author's latest\./)).toBeTruthy();
     // Name did not change, so it sits behind the disclosure rather than in the changed list.

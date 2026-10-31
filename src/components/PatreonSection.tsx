@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Hint, Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { supporterTenure } from '@/lib/supporterFlair';
 import { useTierName } from '@/lib/tierNames';
@@ -33,7 +34,7 @@ const MESSAGES = {
   taken: 'That Patreon account is linked to another Formamorph account. Unlink it there, then try again.',
   denied: 'You didn’t approve the request on Patreon. Select Link Patreon to try again.',
   expired: 'The link request expired. Select Link Patreon to start again.',
-  failed: 'Patreon didn’t answer. Try again in a moment.',
+  failed: 'Patreon didn’t respond. Try again in a moment.',
 } as const;
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
@@ -225,7 +226,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
     <section className={cn('space-y-3', className)}>
       <h2 className="text-title font-semibold">Patreon</h2>
 
-      {status === undefined && <p className="text-helper text-muted-foreground">Checking your Patreon link…</p>}
+      {status === undefined && <Meta as="p">Checking your Patreon link…</Meta>}
 
       {status === null && (
         <Button
@@ -238,9 +239,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
 
       {status && !status.linked && (
         <>
-          <p className="text-helper text-muted-foreground">
-            Link your Patreon account to get Supporter Flair next to your name
-          </p>
+          <Hint>Link your Patreon account to get Supporter Flair next to your name</Hint>
           <div className="flex flex-wrap items-center gap-3">
             <Button disabled={busy || suspended} onClick={() => { void link(); }}>
               {busy ? 'Opening Patreon…' : 'Link Patreon'}
@@ -280,9 +279,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
             />
             <div>
               <label htmlFor="patreon-show-flair" className="text-label">Show Supporter Flair</label>
-              <p className="text-helper text-muted-foreground">
-                Shows your badge, name color, Profile Image ring, and place on the Supporters wall
-              </p>
+              <Hint>Shows your badge, name color, Profile Image ring, and place on the Supporters wall</Hint>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -306,7 +303,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
           <AlertDialogHeader>
             <AlertDialogTitle>Unlink Patreon?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your Supporter Flair disappears at once. You can link this Patreon account to another Formamorph account.
+              Your Supporter Flair is removed at once. You can then link this Patreon account to another Formamorph account.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

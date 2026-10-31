@@ -231,7 +231,7 @@ describe('returning from Patreon', () => {
     ['taken', /linked to another Formamorph account/],
     ['denied', /didn.t approve the request/],
     ['expired', /link request expired/],
-    ['failed', /Patreon didn.t answer/],
+    ['failed', /Patreon didn.t respond/],
   ])('says what the %s result means, and reads the status without a confirm', async (result, message) => {
     at(`/account?patreon=${result}`);
     patreon({ 'GET ': ok(NOT_LINKED) });

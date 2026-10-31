@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchField } from '@/components/ui/search-field';
-import { FieldError } from '@/components/ui/typography';
+import { FieldError, Meta } from '@/components/ui/typography';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
 
 /** The tile menu's chooser and named creation flow share one focus scope. */
@@ -28,7 +28,7 @@ export function LibraryGroupPicker({ name, groups, currentGroupId, initialPanel 
   const errorId = useId();
   const trimmedName = groupName.trim();
   const duplicate = groups.some((group) => group.name.trim().toLowerCase() === trimmedName.toLowerCase());
-  const error = duplicate ? 'A group has this name.' : submitted && !trimmedName ? 'Write a group name.' : undefined;
+  const error = duplicate ? 'A group already has this name.' : submitted && !trimmedName ? 'Enter a group name.' : undefined;
   const matches = groups.filter((group) => group.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
@@ -53,7 +53,7 @@ export function LibraryGroupPicker({ name, groups, currentGroupId, initialPanel 
                   onClose();
                 }}>{group.name}</CompactSelectionRow>
               ))}
-              {!matches.length && <p className="p-3 text-helper text-muted-foreground" role="status">{groups.length ? 'The search found no groups.' : 'There are no groups.'}</p>}
+              {!matches.length && <Meta as="p" className="p-3" role="status">{groups.length ? 'No groups match your search.' : 'You have no groups yet.'}</Meta>}
             </div>
           </ScrollArea>
           <DialogFooter className="shrink-0">

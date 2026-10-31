@@ -22,7 +22,7 @@ The Android app is the full Formamorph on your device: play, the [World Editor](
 <!-- keywords: new version, upgrade, latest, phone, apk, mobile, out of date, outdated, patch, auto update, newer release, get newest build -->
 <!-- route: mainMenu#app-version -->
 
-1. On the main menu, look at the version number at the bottom. It reads **— Update Available!** when a newer release exists.
+1. On the main menu, look at the version number at the bottom. It reads **Update Available** when a newer release exists.
 2. Tap the version number. The update dialog opens.
 3. Tap **Download**. Progress shows under the version line.
 4. When it finishes, tap **Install**.
@@ -101,7 +101,7 @@ Updating on Android works like the desktop app, with one extra tap at the end fo
 
 | Step | What happens |
 |---|---|
-| Check | Formamorph checks on start, then every few hours. The version line then shows **— Update Available!** |
+| Check | Formamorph checks on start, then every few hours. The version line then shows **Update Available** |
 | Dialog | Tap the version number to see what changed. With nothing new, the dialog offers **Check for updates** instead of **Download**. |
 | Download | Nothing downloads until you tap **Download**, so a 90 MB file never starts on mobile data without you. |
 | Install | An **Install** button replaces the progress bar. Android shows its own install sheet. |

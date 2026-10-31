@@ -3,6 +3,7 @@ import { Key, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Hint, Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useAccountDeletion } from '@/contexts/AccountDeletionContext';
@@ -78,7 +79,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       } else if (mailSent) {
         setNote({ kind: 'success', text: `Verification email sent to ${address}. Open the link in it to finish.` });
       } else {
-        setNote({ kind: 'error', text: 'Address saved, but the verification email could not be sent. Try Resend Verification Email in a moment.' });
+        setNote({ kind: 'error', text: "Address saved, but the verification email couldn't be sent. Select “Resend Verification Email” in a moment." });
       }
     } catch (failure) {
       if (!mounted.current) return;
@@ -101,7 +102,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       } else if (mailSent) {
         setNote({ kind: 'success', text: 'Verification email sent. Open the link in it to finish.' });
       } else {
-        setNote({ kind: 'error', text: 'The verification email could not be sent. Try again in a moment.' });
+        setNote({ kind: 'error', text: "The verification email couldn't be sent. Try again in a moment." });
       }
     } catch (failure) {
       if (!mounted.current) return;
@@ -113,7 +114,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
 
   return (
     <Section title="Email">
-      <p className="text-helper text-muted-foreground">
+      <Meta as="p">
         {account.address ? (
           <>
             On file: <span className="text-foreground">{account.address}</span>.{' '}
@@ -122,12 +123,10 @@ function EmailSection({ suspended }: { suspended: boolean }) {
         ) : (
           'No email address on file. Add one so you can reset your password.'
         )}
-      </p>
+      </Meta>
 
       {suspended && (
-        <p className="text-helper text-muted-foreground">
-          Your email address can&rsquo;t be changed while your account is suspended.
-        </p>
+        <Hint>You can&rsquo;t change your email address while your account is suspended.</Hint>
       )}
 
       <form onSubmit={(event) => { void save(event); }} noValidate className="space-y-3">
@@ -141,7 +140,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
             value={typed}
             onChange={(event) => setTyped(event.target.value)}
           />
-          <p className="text-helper text-muted-foreground">Confirm the new address by email after you change it.</p>
+          <Hint>You&apos;ll get a link to confirm the new address</Hint>
         </div>
         {note && (
           <p
@@ -193,9 +192,7 @@ export function AccountSettingsTab({ suspended, onChangePassword }: {
       </Section>
 
       <Section title="Delete Account">
-        <p className="text-helper text-muted-foreground">
-          We erase your account seven days after you ask. Sign in during those days to cancel.
-        </p>
+        <Hint>Erases your account seven days after you ask. Signing in before then cancels it.</Hint>
         {/* Shown to a suspended account too: the flow's first step is where it learns the team does this one. */}
         <Button variant="destructive" size="sm" onClick={startDeletion}>
           <Trash2 className="mr-2 h-4 w-4" /> Delete Account

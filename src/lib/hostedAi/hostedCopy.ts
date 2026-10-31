@@ -28,8 +28,8 @@ const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
     action: { kind: 'privacy', label: 'Review Policy' },
   },
   suspended: { reason: "Your account is suspended, so you can't use Formamorph AI", action: null },
-  'age-gate': { reason: 'Confirm that you are 18 or older to use Formamorph AI', action: { kind: 'ageGate', label: 'Confirm Age' } },
-  locked: { reason: 'Formamorph AI is a thank-you for Patreon Supporters', action: { kind: 'patreon', label: HOSTED_SUPPORT_LABEL } },
+  'age-gate': { reason: "Confirm that you're 18 or older to use Formamorph AI", action: { kind: 'ageGate', label: 'Confirm Age' } },
+  locked: { reason: 'Formamorph AI is for Patreon Supporters', action: { kind: 'patreon', label: HOSTED_SUPPORT_LABEL } },
   exhausted: {
     reason: "You've used this month's Formamorph AI allowance",
     action: { kind: 'switchBack', label: HOSTED_SWITCH_BACK_LABEL },

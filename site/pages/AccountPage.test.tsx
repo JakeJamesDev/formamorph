@@ -166,7 +166,7 @@ describe('a suspended account', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }));
 
-    expect(await screen.findByText(/cannot be deleted from here/i)).toBeTruthy();
+    expect(await screen.findByText(/can't delete it here/i)).toBeTruthy();
     expect(asked('/auth/delete-account')).toBe(false);
   });
 
