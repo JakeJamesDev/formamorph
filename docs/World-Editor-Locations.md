@@ -191,7 +191,7 @@ Example: put a *wounded* backdrop first with the rule *Health < 20%*, and a calm
 
 The default prompt gives the **narrator** the current location in full. It gives the sub-locations and reachable places as summaries.
 
-> ⚠️ **Only the narrator gets the full description.** The other steps get the **summary** of the current location: the choice writer, the continuity planner, the location router, and every other step. Text that is only in the full description reaches the narrator and no other step. This matters for a random-event list or a rule about the place. With a blank summary, those steps use the full text.
+> ⚠️ **Only the narrator gets the full description.** Every other AI step gets the **summary** of the current location, such as the step that writes the choices. Text that is only in the full description reaches the narrator and no other step. This matters for a random-event list or a rule about the place. With a blank summary, those steps use the full text.
 
 > 💡 **The player reads only the Player-Facing Description, and the AI reads only the AI-Facing fields.** Put a secret in the AI-Facing Description.
 

@@ -185,7 +185,7 @@ An entity's own stats become *persona stats* while the player plays as it. Under
 |---|---|
 | Stat panel | The global stats show under **Global**. The persona's stats show under its name, below them. Pick the persona's name, marked **You**, in the entity picker, and no entity section shows. |
 | AI stat updates | The AI updates every persona stat under **Player Character**, and the global stats under **Global Stats**. A stat with the same name as a global stat stays a separate stat. See [How the AI Tracks Stat Changes](World-Editor-Stats#how-the-ai-tracks-stat-changes). |
-| AI prompts | The narrator, choice writer and storyboard planner read the global stats and traits first. The persona's own stats follow in its **Player Character** block. Under a library persona and under **None**, the **Custom Persona** entity's stats sit in that block. A stat with the same name as an earlier stat reads as "*name* (2)". |
+| AI prompts | The AI reads the global stats and traits first. The persona's own stats follow in its **Player Character** block. Under a library persona and under **None**, the **Custom Persona** entity's stats sit in that block. A stat with the same name as an earlier stat reads as "*name* (2)". |
 | Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
 | Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
 
