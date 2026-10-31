@@ -14,6 +14,8 @@ Everywhere Formamorph shows you formatted prose — world descriptions, readmes,
 
 A split button's face then applies the last item you picked from it.
 
+**Bold** and **Italic** also take Ctrl+B and Ctrl+I (⌘B and ⌘I on a Mac). **Undo** and **Redo** buttons sit on the same row.
+
 ## How to Highlight Text
 <!-- keywords: color, mark, marker, background, colour, yellow, make words stand out, tint, paint over words, neon, undo it, colored words -->
 
@@ -104,6 +106,8 @@ Neither may contain a space — that's what stops a stray `~` in ordinary prose 
 | `![alt](https://example.com/art.png)` | An image |
 | `https://example.com` | An automatic link |
 
+Selecting a link to another website first asks you to confirm. Select **Open Link** to go.
+
 Tables use the usual pipe syntax:
 
 ```
@@ -124,6 +128,8 @@ const greeting = 'hello';
 ````
 
 Formatting is never applied inside code — an inline span or a fenced block shows exactly what you typed, `==` and `~` included.
+
+Only a fence makes a code block. Text indented by four spaces stays ordinary text.
 
 ## Line Breaks
 <!-- keywords: enter key, paragraph spacing, poem, verse, lines run together, carriage return, shift enter, lyrics layout -->

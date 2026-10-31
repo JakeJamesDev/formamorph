@@ -4,7 +4,7 @@
 
 The **Prompts** tab in Settings holds the text the app sends to the AI for each request. A **prompt preset** is one full set of that text, with its per-prompt options. The app sends the prompts of the active preset.
 
-The **Prompts** tab shows in **Advanced** mode only. To open it, open **Settings**, select **Advanced** in the switch next to the title, then open the **Prompts** tab.
+The **Prompts** tab shows in **Advanced** mode only. To open it, open **Settings**, select **Advanced** in the mode dropdown next to the title, then open the **Prompts** tab.
 
 > A prompt sends only what it holds. Text you delete is gone from the request, and a chip you delete sends nothing. See [The Chip Editor](#the-chip-editor).
 
@@ -173,8 +173,9 @@ The list on the left groups the prompts by the job they do. A prompt shows only 
 | **Storyboard** | Story | Merges the intentions of every staged entity into one plan, before narration | **Thinking** is **Staged** |
 | **Choices** | Story | Writes your choices for the next turn, after narration | **Choices** is on |
 | **Stat Updates** | Trackers | Reads the turn after narration and records which stats changed | **Stat Updates** is on |
-| **Inventory** | Trackers | Reads the turn after narration and records who gained, lost, moved, equipped, used or found an item | The world has items, or the game holds any |
+| **Inventory** | Trackers | Reads the turn after narration and records who gained, lost, moved, equipped, used or found an item | Always |
 | **Location Change** | Trackers | Decides after narration if your action takes you to a new location | **Location Change** is on |
+| **Entity Location** | Trackers | Decides whether each entity here comes with you or stays | **Location Change** and **Entity Movement** are on |
 | **Clock** | Trackers | Measures how much story time the turn took. Runs after narration. | **Measured Clock** is on |
 | **Opening** | Trackers | Reads the opening scene once, at the start, to set the time of day | **Measured Clock** is on |
 | **Summaries** | Memory | Condenses an older turn into one line that the AI can still read later. Runs when a turn is too old to go word for word. | **Memory Summaries** is on |
@@ -194,7 +195,7 @@ Select a prompt to open its **Anatomy**. The rows under the prompt open its othe
 |---|---|---|
 | **Anatomy** | The request this prompt sends, built from your current settings | Every prompt |
 | **System Prompt** | The instructions the AI reads first | Every prompt |
-| **User Message** | The message that asks for the reply, such as your action | **Narration** with **Thinking** set to **Native**, **Choices**, **Stat Updates**, **Inventory**, **Location Change**, **Clock**, **Opening**, **Summaries**, **Milestone Select**, **Director**, **Discover Entity**, **Scene Tags** |
+| **User Message** | The message that asks for the reply, such as your action | **Narration** with **Thinking** set to **Native**, **Choices**, **Stat Updates**, **Inventory**, **Location Change**, **Entity Location**, **Clock**, **Opening**, **Summaries**, **Milestone Select**, **Director**, **Discover Entity**, **Scene Tags** |
 | **Messages** | Extra lines in the narration history | **Narration**, while one of its messages is live |
 | **Options** | Per-prompt settings | Every prompt |
 
@@ -240,7 +241,7 @@ A field shows only while its feature can send it.
 |---|---|---|
 | **Endpoint** | Sends this prompt to an endpoint preset. **Use Active Endpoint** follows the **Endpoints** tab. See [How to Route a Prompt to Another Endpoint](#how-to-route-a-prompt-to-another-endpoint). | Every prompt |
 | **Include Attachments** | Sends the images attached to your action with this prompt. On for **Narration** only, by default. | Prompts that send your action, while **Image Attachments** is on |
-| **Max Output** | Caps the answer length of this prompt. Off shows **Auto** and the shipped cap. It does not cap reasoning. | **Planning**, **Director**, **Character**, **Storyboard**, **Choices**, **Discover Entity**, **Summaries**, **Milestone Select**, **Diary**, **Scene Tags** |
+| **Max Output** | Caps the answer length of this prompt. Off shows **Auto** and the shipped cap. It does not cap reasoning. | **Planning**, **Director**, **Character**, **Storyboard**, **Choices**, **Discover Entity**, **Summaries**, **Milestone Select**, **Diary**, **Scene Tags**, **Inventory** |
 | **Verbatim Turns** | Sets how many recent turns go word for word. Older turns go as summaries. | **Narration**, **Planning**, **Choices**, **Stat Updates**, **Location Change**, **Summaries**, while **Memory Summaries** is on |
 | **Native Reasoning** | Sets whether this prompt reasons, and how hard. Clear the checkbox and the prompt does no reasoning. **Global** follows **Native Reasoning** in Settings → **Output**. **Model Default** sends no hint. Where no **Reasoning Budget** slider shows, a readout gives the prompt's Thinking Room, such as "Low · 1,024 tok". | Endpoints whose model reasons. Not on **Narration** with **Thinking** set to **Inline**. |
 | **Reasoning Budget** | Sets the reasoning tokens as a percent of the endpoint's **Max Output Tokens**. The answer keeps its full length. | Endpoints that take a token budget, such as the desktop engine and llama.cpp |
@@ -260,6 +261,22 @@ Each prompt editor is a chip editor. A **chip** is a box in the text. When the a
 - **The editor has two tabs.** **Edit** holds the template. **Preview** shows the text with each chip filled in. Outside a game, a **Sample data** tag marks the sample values. **Preview** is off while the prompt has no chips.
 
 The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the editor in a large window. For the chips that carry the persona and names, see [Personas for Authors](Persona-Authoring).
+
+| Chip | Offered in |
+|---|---|
+| **World**, **Stats**, **Traits**, **Persona**, **Location**, **Entities**, **Inventory**, **Notes**, **Time** | Every System Prompt |
+| **Dictionary**, **Length Guidance**, **Markdown Guidance** | **Narration** |
+| **Language** | **Narration** and **Choices**. It carries the **AI Language** setting, and sends nothing for English. |
+| **Active Character Guidance** | **Director** |
+| **Character** | **Character** and **Entity Location**, and the User Message of **Discover Entity** |
+| **Player Action** | User Messages that send your action |
+| **Narration** | User Messages that send the turn's narration |
+| **Move State**, **Move Options** | The User Message of **Entity Location** |
+| **In Frame** | The User Message of **Scene Tags** |
+| **First Passage**, **Later Material** | The User Message of **Discover Entity** |
+| **Remembered Moments**, **New Moments** | The User Message of **Milestone Select** |
+
+The **Now Message** offers **Location**, **Entities**, **Time** and **Notes**.
 
 ## Chip Options
 <!-- keywords: chip settings, chip popup, pop out, options for a chip, what does this chip send, what the ai reads, scope content format, header prepend append, only with, include, stat detail -->
@@ -284,10 +301,11 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 | **Include** | **Entities**, **Persona** | Sends each entity's **Traits** and **Stats**, each on or off |
 | **Stat Detail** | **Stats**, **Entities**, **Persona** | Sends **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
 | **Format** | **Stats**, **Traits**, **Location**, **Entities**, **Persona**, **Inventory** | Shapes the text as **Simple**, **Markdown** or **XML** |
-| **Mode** | **Dictionary** | Picks **Foreground** or **Background** lore |
-| **Label**, **Header**, **Prepend**, **Append** | Placement fields, below a rule | **Header** starts a section. **Prepend** and **Append** wrap the value. A chip with no value sends none of them. |
+| **Mode** | **Dictionary**, placeholder chips | Picks **Foreground** or **Background** lore. On a placeholder chip, picks **World** or **Unique**. |
+| **Label** | Placeholder chips set to **Unique** | Names the chip |
+| **Header**, **Prepend**, **Append** | Placement fields, below a rule | **Header** starts a section. **Prepend** and **Append** wrap the value. A chip with no value sends none of them. |
 
-- **Include Stats is on by default** for **Here** and **In Scene**. It is off for **In Sub** and **Reachable**.
+- **Include Stats is on by default** for **Here** and **In Scene**. It is off for **In Sub**, **Reachable** and **Known**.
 - **Name content turns off Include and Stat Detail.** **Only With** still works, so the name list holds only the entities that pass.
 - **Include Stats off turns off Stat Detail.**
 - **A bare chip sends what it sent before.** Chips in saved presets and worlds keep working.
@@ -306,7 +324,7 @@ The **Inventory** chip tells the AI who has which items in the scene.
 
 - **Hidden items are marked hidden.** The AI knows where they are, so it can reveal one when you search.
 - **A stack shows its count**, such as ×3.
-- **The chip sends nothing when nobody here has an item.** Its **Header** and **Prepend** text go too.
+- **When nobody here has an item, the chip sends `N/A`.** With a **Header**, **Prepend** or **Append**, it sends nothing.
 - **The built-in presets hold it in the narration prompt.** A preset you made keeps its prompts as you saved them. To add the chip, select **Inventory** in the bar above the editor.
 
 ## How to Send Only Entities With Stats
