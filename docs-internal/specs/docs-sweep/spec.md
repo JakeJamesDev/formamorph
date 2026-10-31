@@ -49,6 +49,7 @@ Settled with the user on 2026-10-31.
 | Q23 | The Glossary gains one row per shipped term a swept page uses as a name: the owning page's word, one definition sentence, a link to that page (19) |
 | Q24 | A stale claim on a page outside the ticket's group is fixed when source plainly shows it, and listed under Landed as that group's staleness miss; unclear intent goes to the spec session first (19) |
 | Q25 | The `{{char}}` chip is **Entity Name** on every page, its source label. Persona-Authoring's heading becomes "The Entity Name Chip" and every link follows; the misses on other groups' pages are listed under Landed (20) |
+| Q26 | Entities in Game, missed by the group table, joins as its own group at close review: staleness 21, wording 22. The spec closes after they land (user ruling) |
 
 ## Page groups
 
@@ -64,6 +65,7 @@ Settled with the user on 2026-10-31.
 | Tools and Test Bench | Tools, Test-Bench | World Tools, Test Bench | 15, 16 |
 | Formaquestion | Formaquestion | Formaquestion, its settings, the Mascot | 17, 18 |
 | Reference | WorldFormat, Glossary, _Sidebar | World export shape, the glossary terms, wiki nav | 19, 20 |
+| Entities in Game | Entities | In-game Entities tab, scene presence, runtime entities | 21, 22 |
 
 ## User Stories
 
