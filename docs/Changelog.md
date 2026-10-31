@@ -96,6 +96,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Traits tab shows a stranger's traits under the name you know.** Trait names and descriptions use that name, and strangers who share one get numbers.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
   - **The Entities tab now clears when you move to a new place, and keeps your followers.** The last room's people no longer stay listed until the next narration.
+  - **Closing the World Editor while the Test Bench is still checking a large world no longer freezes Formamorph.** The check stops when the editor closes.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

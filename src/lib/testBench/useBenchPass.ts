@@ -26,6 +26,8 @@ function createBenchRunner(): BenchRunner {
   );
   const patcher = createWorldPatcher();
   let failed = false;
+  // Set at teardown: a pass the teardown rejected must not rerun on the main thread.
+  let disposed = false;
   // The worker's last findings. Every reply arrives in order, so a reply without findings means these.
   let last: Pick<BenchPassResult, 'findings' | 'keys'> = { findings: [], keys: [] };
   return {
@@ -39,13 +41,14 @@ function createBenchRunner(): BenchRunner {
         }
         return { ...last, bytes: reply.bytes };
       } catch (error) {
+        if (disposed) throw error;
         console.error('Test Bench worker failed; checking on the main thread:', error);
         failed = true;
         client.terminate();
         return runLocal(world);
       }
     },
-    terminate: () => { client.terminate(); patcher.reset(); },
+    terminate: () => { disposed = true; client.terminate(); patcher.reset(); },
   };
 }
 
