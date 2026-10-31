@@ -10,7 +10,7 @@ import {
   DEFAULT_IMAGE_SAMPLER, DEFAULT_IMAGE_ADETAILER, DEFAULT_IMAGE_CLEAN_TAGS,
 } from '../contexts/settingsDefaults';
 
-/** The full AI Endpoints → Image field set a preset captures (everything except the Tag Prompt sub-tab). */
+/** The full Endpoints → Image field set a preset captures (everything except the Tag Prompt sub-tab). */
 export interface ImageEndpointValues {
   provider: ImageProviderId;
   endpoint: string;

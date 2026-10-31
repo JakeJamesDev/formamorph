@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -73,7 +74,7 @@ function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; 
   if (!field) {
     return (
       <Row muted target={row} label={copy.label}>
-        <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
+        <Hint className="pt-2">{REASONING_NOTES.never}</Hint>
       </Row>
     );
   }
@@ -111,7 +112,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
           target={targetAttribute('formaquestionSettings.general', 'mascot-switch')}
           {...GENERAL_COPY.mascot}
         />
-        <Row target={targetAttribute('formaquestionSettings.general', 'chat-style')} label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint}>
+        <Row target={targetAttribute('formaquestionSettings.general', 'chat-style')} label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint} info={<HintInfo>{GENERAL_COPY.chatStyle.info}</HintInfo>}>
           <OptionSwitcher
             ariaLabel={GENERAL_COPY.chatStyle.label}
             value={settings.chatStyle}

@@ -54,7 +54,7 @@ The actions beside the **Preset** list are icon buttons. Hover over one to read 
 | **Duplicate** | Make an editable copy of this mascot | Copies the mascot you see into one you can edit, and selects it |
 | **Rename** | Rename this mascot | Renames this mascot |
 | **Delete** | Delete this mascot and its images | Deletes this mascot and the images no other mascot uses. It asks first. |
-| **Reset** | Put this mascot back to Morphie | Puts Morphie's rig in place of this mascot's. **Cancel** takes it back. |
+| **Reset** | Reset this mascot to Morphie | Puts Morphie's rig in place of this mascot's. **Cancel** takes it back. |
 | **Import** | Add a mascot from a card | Adds a mascot from a card file, and selects it. See [The Mascot Card](#the-mascot-card). |
 | **Export** | Save this mascot as a card | Saves this mascot as a card |
 | **Publish** | Share this mascot in Community Creations | Shares this mascot in Community Creations. It shows when you're signed in, and never on Morphie. See [Publish a Mascot](#publish-a-mascot). |

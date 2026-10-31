@@ -168,10 +168,10 @@ The **General** tab sets how the window looks and how your AI answers. It also s
 
 | Setting | Default | What it does |
 |---|---|---|
-| **Mascot** | On | Shows the mascot with a bare chat column. It takes effect at once, with no **Save**. With it off, the **Mascot** tab disables every control and shows a link back to this row. |
-| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Bubble** with the **Mascot** on. The **More Actions** menu has the same three choices. |
-| **Mascot Position** | Outside | Sets where the mascot stands around the chat: **Above**, **Below**, **Inside** or **Outside**. The **More Actions** menu has the same choices. Under **Bubble**, only **Inside** and **Outside** show. Hidden while the mascot is off. |
-| **Mascot Scale** | 25% | Sizes the mascot beside the chat. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. Hidden while the mascot is off. |
+| **Mascot** | On | Shows the mascot with the chat and answers in its **Voice**. It takes effect at once, with no **Save**. With it off, the **Mascot** tab disables every control and shows a link back to this row. |
+| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** uses **Bubble** while the **Mascot** is on. The **More Actions** menu has the same three choices. |
+| **Mascot Position** | Outside | Sets where the mascot appears around the chat: **Above**, **Below**, **Inside** or **Outside**. The **More Actions** menu has the same choices. Under **Bubble**, only **Inside** and **Outside** show. Hidden while the mascot is off. |
+| **Mascot Scale** | 25% | Sizes the mascot. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. Hidden while the mascot is off. |
 | **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Bubble** and **Minimal** styles. Set 0 for none. |
 | **Confirm Before Opening the Wiki** | On | Asks before **Open Wiki** opens your browser. **Don’t Ask Again** in the confirm clears it. See [How to Open the Wiki](Formaquestion#how-to-open-the-wiki). |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |

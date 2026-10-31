@@ -960,15 +960,15 @@ export function MascotTab({ settings, control, onOpenGeneral, onOpenListing }: {
         onChange={pickCard}
       />
       </fieldset>
-      <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{copy.hint}</p>
+      <Hint className="flex-shrink-0 pt-1">{copy.hint}</Hint>
       {/* The off line takes the columns' place; the rows stay mounted and disabled. Always mounted, so a screen reader announces it. */}
       <div role="status" data-testid="mascot-off-status" className={cn('flex items-center justify-center px-6 text-center', off && 'min-h-0 flex-1')}>
         {off && (
-          <p className="text-helper text-muted-foreground">
+          <Meta>
             {MASCOT_COPY.off.before}
-            <Button variant="link" className="h-auto p-0 text-helper" onClick={onOpenGeneral}>{MASCOT_COPY.off.link}</Button>
+            <Button variant="link" className="h-auto p-0 text-meta" onClick={onOpenGeneral}>{MASCOT_COPY.off.link}</Button>
             {MASCOT_COPY.off.after}
-          </p>
+          </Meta>
         )}
       </div>
       {/* A class, not the `hidden` attribute: the flex utility overrides `[hidden]`. */}
