@@ -1,6 +1,6 @@
 # 01: Play Staleness
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -17,10 +17,26 @@ Spec: Implementation Decisions, "Truth source", "Staleness pass", "Headings and 
 
 ## Acceptance criteria
 
-- [ ] Every control, tab and setting name on the pages matches its on-screen label
-- [ ] Every default and limit the pages state matches the source
-- [ ] No page describes a removed feature
-- [ ] Shipped behavior on each page's subject has at least a short mention
-- [ ] A renamed or removed heading updates every anchor table that names it; the docs tests are green
-- [ ] No code change beyond anchor tables; a page/code contradiction where the code looks wrong is named under Landed
-- [ ] Landed lists any missing page, stale ADR, or contradicting UI label found on the way
+- [x] Every control, tab and setting name on the pages matches its on-screen label (each label grepped in component source; source text, not CSS caps, per Q11)
+- [x] Every default and limit the pages state matches the source (Autosaves Kept 1–20 in `autosave.ts`, 4 images, 1568 px, 15 turns, minSdk 24)
+- [x] No page describes a removed feature (no GONE claims found)
+- [x] Shipped behavior on each page's subject has at least a short mention (In Progress and 3.5.x changelog read against each page)
+- [x] A renamed or removed heading updates every anchor table that names it; the docs tests are green (no heading changed; `src/lib/docs` + `codeGuideLinks` 345/345 green)
+- [x] No code change beyond anchor tables; a page/code contradiction where the code looks wrong is named under Landed (docs-only diff)
+- [x] Landed lists any missing page, stale ADR, or contradicting UI label found on the way
+
+## Landed
+
+**Not verified:** none. Claims were checked in source; no dev-router frames were taken.
+
+**For you:**
+
+- Code looks wrong (pages describe current behavior; nothing changed in code):
+  - On a Mac, **Download** opens the `.dmg` in the browser, but the main-menu footer likely moves to a progress bar that never fills (`electron/updater.cjs` sends no progress on macOS; `useUpdateChecker.ts` still enters `downloading`). Not run on a Mac.
+  - The update dialog's title reads **You're up to date** while a download runs or waits (`UpdateDialog.tsx`, only the `available` phase gets its own title).
+  - A drag makes a Group named *New Group* with no unique-name check (`operations.ts` `createGroupFromItem`), while **Create New Group** requires a unique name. Its comment "No drag gesture makes one" is stale too.
+- Contradicting sources: the README still links the github.io demo (main build, community off); Home now links formamorph.ai/play/ per the spec session's ruling.
+- The changelog's Inventory entry says "Give lists people in the scene first"; the later Scene Presence entry and the code list only the scene. Both are unreleased, so the older lead may want a fold.
+- Unconfirmed figure: "about 90 MB" on Install-on-Android comes only from a code comment in `UpdatePlugin.kt`; nothing measures the APK.
+- Formamorph AI's allowance warnings in play have no mention on How-to-Play; they belong to Connect-Your-Own-AI (ticket 03).
+- No missing page or stale ADR found.

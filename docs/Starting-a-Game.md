@@ -26,7 +26,7 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 1. On the main menu, select a world.
 2. Select **Quick Start**. In portrait it is the icon beside **Enter World**.
 
-**Quick Start** skips the **Introduction** and the **Enter World** dialog. You get the persona that **Enter World** picks first. You also get the author's default traits and a random starting location. When the persona is one of the world's own entities, you start at its location. No library additions come in, and the world's own dictionaries are on.
+**Quick Start** skips the **Introduction**, the **Enter World** dialog and the Avatar step. You get the persona that **Enter World** picks first. You also get the author's default traits and a random starting location. When the persona is one of the world's own entities, you start at its location. No library additions come in, even after **Remember Additions**, and the world's own dictionaries are on as the author set them.
 
 ## How to Pick Starting Traits
 <!-- keywords: choose, character creation, options, class, race, perks, background, skills, abilities, attributes, species, feats, start button disabled, greyed out, customize character -->
@@ -52,14 +52,14 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 1. In the **Enter World** dialog, open **Library Additions**.
 2. Under **Dictionaries**, select the checkbox of each dictionary this game should use. Clear one to leave it out.
 3. To change the order, drag a row by its grip, or select it and use **Move Up** or **Move Down**.
-4. To start future games in this world with the same picks, select **Remember Additions**.
+4. To start future games in this world with the same picks, select **Remember Additions**. The button reads **Remembered** for a moment.
 
 ## How to Read the Introduction Again
 <!-- keywords: readme, intro, show, see, info, description, author message, welcome text, reopen, missed it, stop popup, world notes, hide on entry, creator instructions -->
 <!-- route: enterWorld -->
 
 1. Select **Enter World** on the world.
-2. In the **Enter World** dialog, select **Introduction** at the top.
+2. In the **Enter World** dialog, select **Introduction** at the top. On a narrow screen, it is an icon button.
 
 To stop the **Introduction** and the in-game **Readme** from showing on entry, select **Don't Show This Again** in either one. The **Show Readme on entry** checkbox in the world dialog turns them back on.
 
@@ -84,9 +84,15 @@ Under the buttons:
 
 - **Use this world's prompt** (or **prompts**) shows when the world brings its own prompts. Clear it to play with your own.
 - **Show Readme on entry** shows when the world has an **Introduction** or a **Readme**.
+- **Prompts** picks the prompt preset this world plays on. **Use global preset** plays on the preset in **Settings**. In a Group with its own preset, it reads **Use group preset** and plays on the Group's. See [Prompts](Prompts).
+
+Notices can show above them:
+
+- A world whose stats run custom code shows a warning. **Examine Code** shows the code.
+- A world with its own prompts names them, such as *This world uses …*. **View** shows the text.
 
 > [!NOTE]
-> When its author removed a source the world requires, **Enter World** and **Quick Start** are off. See [While a Source Is Missing](LinkedContent#while-a-source-is-missing).
+> When its author removed a source the world requires, **Enter World**, **Quick Start** and **Publish World** are off. The dialog says why, and **Repair Sources** opens the World Editor. See [While a Source Is Missing](LinkedContent#while-a-source-is-missing).
 
 ## The Enter World Dialog
 <!-- keywords: setup screen, pre game menu, new game options, categories button, skipped, nothing to choose, back out, creation screen -->
@@ -101,18 +107,18 @@ The dialog shows the world's name at the top and a category list on the left. On
 | **Starting Location** | Where the story begins | The world offers more than one starting location |
 | **Library Additions** | Entities and dictionaries for this game | Your library has something to add, or the world has dictionaries |
 
-The dialog opens on the first category. **Cancel** leaves without starting. **Escape** does the same.
+The dialog opens on the first category. **Cancel** leaves without starting. **Escape** does the same. While the game gets your library additions ready, **Start Game** reads **Loading…**.
 
 ## Starting Traits
 <!-- keywords: padlock, locked option, unable to unselect, radio button, stat bonus, companion, prerequisite, turned off automatically, default picks -->
 
-**General** holds the global traits for you. No one owns a global trait, so none of them is your persona's. Each trait group with traits to pick gets its own category.
+**General** holds the global traits that are in no group. No one owns a global trait, so none of them is your persona's. Each trait group with traits to pick gets its own category.
 
 An entity whose traits you set gets a category with its portrait and name. Your own entity is marked **You**. This is how a world lets you pick a companion's traits, or the race and class of a [Custom Persona](Personas#create-your-own).
 
 | You see | What it means |
 |---|---|
-| A round button | Pick one. Select it again to clear it. |
+| A round button | Pick one. Select it again to clear it. When the group has an active **Automatic** trait, the other choices are off. |
 | A checkbox | Pick several. When the group is full, the rest turn off. |
 | A check mark with no control | **Automatic**. The trait is on and you can't change it. |
 | A lock and *Requires …* | The trait needs something first, such as *Requires Knight and not Paladin, or Mercenary*. Meet every part of one alternative and it unlocks. |
@@ -136,7 +142,7 @@ The list shows **Random** first, then each starting location with its descriptio
 | A location | That location |
 | **Random** | Any starting location, at random |
 
-When you play one of the world's own entities, its locations join the list, and its starting location is picked for you. You can pick another. After you pick a location yourself, a persona change no longer moves it.
+When you play one of the world's own entities, its locations join the list, and its starting location is picked for you. You can pick another. After you pick a location yourself, a persona change no longer moves it, unless the new persona can't start there.
 
 ## Library Additions
 <!-- keywords: bring my character, extra npc, companion, mods, custom content, lorebook order, remember for next time, tag meaning, include my own -->
@@ -165,12 +171,12 @@ An author can write an **Introduction** for the world. It opens before the **Ent
 
 The step shows when the persona you play has an Avatar. The button switches between **Continue to Avatar** and **Start Game** as you change your persona. A persona with no Avatar skips the step.
 
-**Continue to Avatar** opens **Character Customization**. When the persona uses **User's Default**, pick a **Player Avatar**. It starts on your default. When the author picked an Avatar, that one shows and you can't change it. Adjust it, and select **Finalize Character** to start. **Back** returns to the **Enter World** dialog. Your changes apply to the Avatar of the entity you play. See [Character Customization](Avatars#character-customization).
+**Continue to Avatar** opens **Character Customization**. When the persona uses **User's Default**, pick a **Player Avatar**. It starts on your default. When the author picked an Avatar, that one shows and you can't change it. **Add .vrm** imports another Avatar file. Adjust it, and select **Finalize Character** to start. **Back** returns to the **Enter World** dialog. When the world skipped that dialog, the button reads **Abort** and leaves without starting. Your changes apply to the Avatar of the entity you play. See [Character Customization](Avatars#character-customization).
 
 ## What Happens at Start
 <!-- keywords: first turn, opening scene, prefilled text, already typed, first message, greeting, popups, intro scene -->
 
-The game applies your picks, then draws one opening:
+The game applies your picks and gives out the world's starting items: yours, the entities', and those lying at each location. Then it draws one opening:
 
 - An **Opening Narration** becomes page one at once.
 - An **Opening Action** fills your action box. Edit it if you like, then send it.
