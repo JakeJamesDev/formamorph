@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { chipValues } from './chipValues';
+import { labelsInPlay } from '../presence';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import type { Entity, GameLocation, Stat, Trait, TraitGroup, TraitLink, WorldOverview } from '@/types';
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -75,6 +76,19 @@ describe('authoredChipScene and stranger labels', () => {
     const tied: Entity = { ...peddler, relationships: [{ targetId: 'kin', label: 'owes' }] };
     const scene = authoredChipScene(world({ entities: [wren, tied, kin] }), { persona: { ref: { source: 'world', entityId: 'kin' } } });
     expect(scene.strangerLabels).toEqual({});
+  });
+
+  it('gives the same labels as play on turn one, for every persona', () => {
+    const tied: Entity = { ...peddler, id: 'tied', name: 'Tied', relationships: [{ targetId: 'kin', label: 'owes' }] };
+    const plain: Entity = { ...harrow, id: 'plain', name: 'Plain' };
+    const entities = [wren, drifter, peddler, tied, plain, kin];
+    const w = world({ entities });
+    for (const played of [null, kin]) {
+      const persona = played ? { ref: { source: 'world' as const, entityId: played.id } } : undefined;
+      // Turn one in play: nobody on the met-in-play list, no runtime characters, no story aliases yet.
+      const turnOne = labelsInPlay(entities, [], played, w.locations, new Set(), {});
+      expect(authoredChipScene(w, { persona }).strangerLabels).toEqual(turnOne);
+    }
   });
 
   it("meets the entity the persona's place covers", () => {
