@@ -1,7 +1,7 @@
 # 🧪 Test Bench
 <!-- keywords: playtest, trial run, sanity check, simulator, free to use, lint, without spending tokens -->
 
-The Test Bench checks a world before you play it. It lives in the World Editor and works in Simple and Advanced mode.
+The Test Bench checks a world before you play it. It is in the World Editor and works in Simple and Advanced mode.
 
 The bench shows only what the app computes from your world. It never calls the AI, so it works offline, costs nothing and updates as you type. Only **Check Sources** needs the server. To see what the AI writes, play a turn.
 
@@ -21,9 +21,9 @@ The list updates as you edit. To see the full bench, select **Open Test Bench** 
 <!-- route: worldEditorBench.triggers#scene-text -->
 
 1. Open the Test Bench, then select the **Triggers** tab.
-2. Paste story text into the **Scene text** box. If you've played this world, select **Paste Last Turn** to fill it and **History** from your latest save.
-3. Read **Dictionary**. Each entry says why it fired, or why it stayed out.
-4. Select a marked word in your text to jump to the entity or entry it matched. Select it again to step through every row that shares the word.
+2. Paste story text into the **Scene text** box. If you've played this world, select **Paste Last Turn**. It fills the box and **History** from your latest save.
+3. Read **Dictionary**. Each entry says why it activated, or why it didn't.
+4. Select a marked word in your text to go to the entity or entry it matched. Select it again to step through every row that shares the word.
 
 To test scan depth, open **History** and paste earlier messages, oldest first, with a `---` line between them.
 
@@ -43,19 +43,19 @@ If a new game can start in more than one place, pick one in the **Starting Locat
 
 The bench runs the same functions a real turn runs, so its results match play. It shows the text and lists the AI receives. It doesn't guess what the AI does with them.
 
-Where a result ends in the AI's choice, the bench says so. For example, **AI Context** lists every place a player can go. Whether an action counts as travel is the AI's call.
+Where a result depends on the AI's choice, the bench says so. For example, **AI Context** lists every place a player can go. The AI decides whether an action counts as travel.
 
 ## Opening the Bench
 <!-- keywords: where to find it, beaker button, orange counter, dock or float, detach panel, side by side, simulate as a class, choose test place, instruments list -->
 
-The **Test Bench** flask button sits at the right of the World Editor's header. Its badge counts the rows on the **Issues** tab. Dismissed rows don't count.
+The **Test Bench** flask button is at the right of the World Editor's header. Its badge counts the rows on the **Issues** tab. Dismissed rows don't count.
 
 - An amber badge counts new findings: ones you haven't seen yet.
 - A gray badge counts every finding, after you've seen them all.
 
 ### The Bench Popover
 
-The flask opens the Bench Popover first. It holds only the **World Doctor** list, so you can fix a few findings without the full bench. Select **Open Test Bench** at its foot for the full panel. Select the flask again to close it.
+The flask opens the Bench Popover first. It holds only the **World Doctor** list, so you can fix a few findings without the full bench. Select **Open Test Bench** at the bottom of the popover for the full panel. Select the flask again to close it.
 
 ### The Full Panel
 
@@ -64,7 +64,7 @@ The full panel has a tab for each Instrument. Each Instrument answers one questi
 | Tab | Answers |
 |---|---|
 | **Issues** | What is wrong with this world? |
-| **Triggers** | What does this text make fire? |
+| **Triggers** | What does this text match and activate? |
 | **AI Context** | What does the AI get from this location? |
 | **Opening** | What does a new game look like? |
 
@@ -77,7 +77,7 @@ On desktop, the panel can sit inside the editor's list panel or beside it. Selec
 - **Testing as** lists the traits in groups where the player picks one. **Anyone** tests with no pick.
 - **at** lists every location. **Nowhere** tests with no location.
 
-Your pick stays when you switch tabs. A broken pin on the traits in force, the **at** location or the starting stats shows in red under the bar. The bar also names the stats your pick adds or removes.
+Your pick stays when you switch tabs. A broken pin on an active trait, the **at** location or a starting stat shows in red under the bar. The bar also names the stats your pick adds or removes.
 
 ## Issues
 <!-- keywords: ignore a warning, suppress, silence a finding, bring back hidden warning, world too large, file size meter, linter, simple mode hides findings -->
@@ -88,7 +88,8 @@ The **Issues** tab is the World Doctor. It checks your world's structure: broken
 - **Publish Size** shows how much of the publish limit the world uses. Images, sounds and 3D models count toward it. A world over the limit adds a warning that opens the **Media** tab, where you can find the heavy files.
 - Each finding is one row with the items it names. A **New** tag marks a row you haven't seen.
 - **Fix** repairs a row when the fix is safe. **Fix All** repairs every item in the row.
-- The eye button dismisses a row. Open **dismissed** at the bottom, then select the restore button to bring it back. A row about a missing source can't be dismissed.
+- **Dismiss** hides a row. It is an eye icon button on the row, and its tooltip reads "Dismiss". A row about a missing source can't be dismissed.
+- To bring a row back, open **dismissed** at the bottom, then select **Restore** on the row. **Restore** is an icon button with that tooltip.
 - **Mark All Seen** clears the **New** tags. Closing the bench also marks the list seen. A row whose text changes shows as **New** again.
 - This browser remembers seen and dismissed rows for each world. An update to a downloaded world clears the seen marks.
 - A world with no findings shows **No Problems Found**.
@@ -106,10 +107,10 @@ In Simple mode, findings about hidden fields fold into one line. Switch to Advan
 <!-- keywords: vector search, similarity matching, rag, near miss, name detection test, quoted names ignored, lore token budget, chat history depth -->
 <!-- route: worldEditorBench.triggers -->
 
-The **Triggers** tab is the Activation Tester. Paste text, and it shows what that text makes fire.
+The **Triggers** tab is the Activation Tester. Paste text, and it shows what that text matches and activates.
 
 - **Entities Present** lists each entity the text names, and whether its name, part of its name or an alias matched. A name only inside quotes is a mention, so it doesn't count.
-- **Dictionary** lists every entry, book by book. A fired entry shows the keyword that matched. An entry that stayed out says why, for example a keyword that almost matched.
+- **Dictionary** lists every entry, book by book. An activated entry shows the keyword that matched. An entry that didn't activate says why, for example a keyword that almost matched.
 - **Rendered Context** shows the lore text the AI would get, with its token cost.
 - **History** holds earlier messages, so you can test an entry's scan depth.
 
@@ -137,7 +138,7 @@ The **Opening** tab shows turn one of a new game for your **Testing as** pick.
 - **Persona** picks who you play, when the world has persona choices.
 - **Opening Pool** lists every opening a new game here can draw, with its chance.
 - **Stats at Game Start** shows each stat's starting value. Drag a slider to see which descriptor the AI gets at other values. Dragging never changes the world. When traits change a stat, the row shows by how much.
-- **Active Traits** lists the traits in force at the start, with their pins and the stats they add or remove.
+- **Active Traits** lists the traits that are on at the start, with their pins and the stats they add or remove.
 - **Placeholder Rolls** shows what each Wildcard drew, every value's chance, and the chance of a repeat.
 - **First Prompt** shows the **System Prompt** and **Opening User Turn**. An Opening Narration shows **Page One** instead, since no request goes out on turn one.
 

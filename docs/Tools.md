@@ -21,7 +21,12 @@ The **Tools** tab in Settings lists the built-in Tools and your own Tools. It sh
 7. Select a Tool in the list, then select the **Enabled** checkbox.
 8. Under **Offered To**, check that the list names the prompts that should get the Tool.
 
-The dot next to a Tool's name is filled while the Tool is on in that preset. A note at the top of the tab tells you when your prompts get no Tools: when the **Tools** checkbox is clear, or when your text endpoint does not support Tools. See [Endpoints Without Tool Support](#endpoints-without-tool-support).
+The dot next to a Tool's name is filled while the Tool is on in that preset.
+
+A note at the top of the tab tells you when your prompts get no Tools. This happens when:
+
+- The **Tools** checkbox is clear.
+- Your text endpoint does not support Tools. See [Endpoints Without Tool Support](#endpoints-without-tool-support).
 
 ## How to Make a Tool
 <!-- keywords: create, custom, new function, function calling, script, write, build my own, define arguments, inputs the ai sends, clone a built in, save button disabled, plugin authoring, javascript helper -->
@@ -75,7 +80,7 @@ A **World Tool** is a Tool that a world holds. It exports with the world, and ev
 3. Select **Add Tool**, then edit the Tool as in [The Tool Editor](#the-tool-editor).
 4. Select **Save Tool**.
 
-To change a World Tool, select it and then **Edit**. The X on its row deletes it.
+To change a World Tool, select it and then **Edit**. To delete it, select **Delete** on its row. **Delete** is an X icon button, and its tooltip reads "Delete".
 
 | | World Tool | Your own Tool |
 |---|---|---|
@@ -83,7 +88,9 @@ To change a World Tool, select it and then **Edit**. The X on its row deletes it
 | 🎚️ Switched by | **Tools** in Settings → **Output** only | That switch and the prompt preset |
 | 🌍 Offered in | That world only | Every world |
 
-A World Tool named like a built-in Tool or one of your Tools replaces it in that world, for every prompt. The **Tools** tab names the Tool it replaces. Two Tools in one world can't share a name. The list is the run order: Tools that fire at the same timing run top to bottom, before the world's scripts of that timing. Drag a Tool to change the order.
+A World Tool can have the name of a built-in Tool or of one of your Tools. Then it replaces that Tool in this world, for every prompt. The **Tools** tab names the Tool it replaces. Two Tools in one world can't share a name.
+
+The list is the run order. Tools with the same timing run top to bottom, before the world's scripts of that timing. Drag a Tool to change the order.
 
 ## How to Make a Tool That Changes the Story
 <!-- keywords: world tool script, trigger, arm, timing, on call, during ai output, after the ai, reply, stack calls, ai decides, narration filter, move location, pass time, change stats from a tool, ai calls my script -->
@@ -93,7 +100,7 @@ A World Tool named like a built-in Tool or one of your Tools replaces it in that
 2. On the **Definition** tab, write a **Description** that names the scene that calls for the Tool.
 3. On the **Handler** tab, pick **Script** in **Handler Type**.
 4. Pick a **Timing**. **On Call** runs the script at once and sends its return value to the AI. **During AI Output** runs it on each later narration sentence of the turn. **After the AI** runs it right before the After the AI scripts.
-5. For **During AI Output** or **After the AI**, type a **Reply**: the text the AI gets back. Blank sends "Done."
+5. For **During AI Output** or **After the AI**, type a **Reply**: the text the AI gets back. Leave it blank to send "Done."
 6. Select **Stack Calls** to run the script once for each call. Leave it clear to let a later call replace the earlier one.
 7. Write the script and select **Save Tool**. The **Templates** button inserts a starter script for the Tool's timing. See [How to Insert a World Tool Template](ScriptsGuide#how-to-insert-a-world-tool-template).
 
@@ -119,14 +126,25 @@ A request offers a Tool only when all of these are true:
 
 The AI decides when to call a Tool. The Tool's **Description** tells it when. Each round of calls is one more request, so a turn with Tool calls takes longer. One prompt sends at most 6 requests, the last one included.
 
-**Max Calls per Request** caps how many times the AI can call one Tool for one prompt. The default is 4. A call past the cap gets an error. After a call past the cap, a call to an unknown Tool or a call with arguments that don't fit the Tool's parameters, the AI gets one last request with no Tools. It then writes its reply.
+**Max Calls per Request** caps how many times the AI can call one Tool for one prompt. The default is 4. A call past the cap gets an error.
+
+The AI gets one last request with no Tools after any of these calls. It then writes its reply.
+
+- A call past the cap
+- A call to an unknown Tool
+- A call with arguments that don't fit the Tool's parameters
 
 To see the calls, turn on **Show Silent Requests** in Settings → **Display**. The status line then names the Tools while the AI calls them, such as **Calling get_entity…**. In the AI Context inspector, a request that called Tools has a **Tool Rounds** section with each call and its result. See [The AI Context Inspector](How-to-Play#the-ai-context-inspector).
 
 ## Endpoints Without Tool Support
 <!-- keywords: unsupported model, not compatible, capability check, backend ignores it, which models work, note replaces checkbox, falls back to summaries, local model limits, tool calling, function calling, tool use -->
 
-The app sends Tools only to an endpoint and model that it knows support them. It learns this from the server's model list, such as the `trained_for_tool_use` flag in LM Studio or the `tools` capability in Ollama, or from a one-time check. The app remembers the answer for each endpoint and model. An LM Studio model without the `trained_for_tool_use` flag gets no Tools.
+The app sends Tools only to an endpoint and model that it knows support them. It learns this in one of two ways:
+
+- From the server's model list, such as the `trained_for_tool_use` flag in LM Studio or the `tools` capability in Ollama.
+- From a one-time check.
+
+The app remembers the answer for each endpoint and model. An LM Studio model without the `trained_for_tool_use` flag gets no Tools.
 
 On an endpoint with no Tool support:
 
@@ -139,7 +157,9 @@ The **Tools** tab shows a note while your text endpoint gets no Tools. In Settin
 ## The Tools Tab
 <!-- keywords: panel layout, enlarge window, per prompt targeting, call limit field, clone button disabled, erase permanently, applies to all presets -->
 
-The list on the left has two groups. **Built-In** holds the Tools that ship with the app. **My Tools** holds yours, with **New Tool** at the end. The **Preset** list at the top picks which prompt preset the **Enabled** checkboxes change. It is the same choice as on the **Prompts** tab, so it also sets the active preset. Built-in presets have their own switches too.
+The list on the left has two groups. **Built-In** holds the Tools that ship with the app. **My Tools** holds yours, with **New Tool** at the end.
+
+The **Preset** list at the top picks which prompt preset the **Enabled** checkboxes change. It is the same choice as on the **Prompts** tab, so it also sets the active preset. Each preset has its own **Enabled** switches, built-in presets included.
 
 Select a Tool to see it on the right:
 
@@ -156,7 +176,7 @@ Select a Tool to see it on the right:
 
 The buttons under the Tool act on it. A built-in Tool has **Duplicate**, which makes an editable copy under **My Tools**. The copy is on in the active preset. **Duplicate** is off for **recall**, because only the built-in Tool can search memories. Your own Tool has **Edit** and **Delete**. **Delete** removes the Tool from every preset, and it cannot be undone.
 
-The **View full screen** button opens the tab in a large window.
+**View full screen** opens the tab in a large window. It is an icon button, and its tooltip reads "View full screen".
 
 ## The Built-In Tools
 <!-- keywords: skill check, random number, rng, fair dice, stock functions, search past events, fetch lore, fetch character sheet, what ships included -->
@@ -217,7 +237,9 @@ The **Handler** tab sets the Tool Handler: the part that runs when the AI calls 
 
 - **Lookup Settings.** **Search** picks **Entities**, **Locations** or **Dictionary Entries**. **By Parameter** picks the parameter to search by. **Returns** picks **Full Description** or **Summary**, for entities and locations.
 - **Template Settings.** **Template** is the text to return. Insert a parameter chip where the AI's value goes. Scene chips and placeholder chips fill in too.
-- **Script Settings.** **Script** is JavaScript. It reads `args` and the same names a world script reads, and returns text, or any other value as JSON. The script can't write: see [What a Script Can Read](#what-a-script-can-read). The ⓘ next to **Script** opens **What a Script Can Read**, which lists every value. The **Variable** menu opens level by level on **Arguments** and the other names, then your world's names, then their fields. Select a field to insert its full path. A script runs in a sandbox and stops after one second.
+- **Script Settings.** **Script** is JavaScript. It reads `args` and the same names a world script reads, and returns text, or any other value as JSON. A script runs in a sandbox and stops after one second.
+  - The script can't write: see [What a Script Can Read](#what-a-script-can-read). The ⓘ next to **Script** opens **What a Script Can Read**, which lists every value.
+  - The **Variable** menu opens level by level on **Arguments** and the other names, then your world's names, then their fields. Select a field to insert its full path.
 
 On a World Tool, **Script Settings** also has **Timing**, and **Reply** and **Stack Calls** for the two later timings. See [How to Make a Tool That Changes the Story](#how-to-make-a-tool-that-changes-the-story).
 
@@ -244,7 +266,14 @@ A script reads `args` and the same globals a world script reads. Each entry has 
 | `notes` | The player's notes as one text | [Notes](ScriptsGuide#notes) |
 | `console` | `log()` | None |
 
-A Tool script has none of the calls that write. A call to `memories.add`, `memories.pin`, an entry verb, an item verb, `location.move`, `entities.<Entity>.move`, `follow`, `unfollow` or `diary` is a "not a function" error. A write to a field is ignored and the read keeps its value. The Tool does not fail, and **Try It** lists the write as ignored. `self`, `owner`, `trait`, `narration`, `player`, `discover` and `clock.advance` are not available.
+A Tool script has none of the calls that write. Each of these calls is a "not a function" error:
+
+- `memories.add`, `memories.pin`
+- An entry verb or an item verb
+- `location.move`, `entities.<Entity>.move`, `follow`, `unfollow`
+- `diary`
+
+A write to a field is ignored and the read keeps its value. The Tool does not fail, and **Try It** lists the write as ignored. `self`, `owner`, `trait`, `narration`, `player`, `discover` and `clock.advance` are not available.
 
 In the World Editor and outside a game, `memories` is an empty list and `clock` reads the opening. The sample world in Settings keeps a played state with a persona, notes, three memories and day 3 evening. Its `turn` reads `"Look around."` at turn `4`.
 
@@ -254,7 +283,7 @@ In the World Editor and outside a game, `memories` is an empty list and `clock` 
 
 #### Moving an Old Script to the New Names
 
-`world` and `scene` are gone. When Settings loads, and on each Tool import, the app rewrites each old form that has an exact new one:
+A Tool script has no `world` or `scene`. When Settings loads, and on each Tool import, the app rewrites each old form that has an exact new one:
 
 | Old form | New form |
 | --- | --- |
@@ -277,9 +306,17 @@ A form with no exact new one stays as written. The editor underlines it and name
 | `scene.present` | `location.present` |
 | `scene.inScene` | `inScene` on each `entities` entry |
 
-The rewrite leaves a `world.entities` or `world.locations` read as it is when the script returns, stringifies or spreads an item from it, or reads `.placeholders` off one. An item has a new shape: a location has `starting` and full `present` entries, and an entity has more fields. Check such a script by hand. The rewrite never changes `world.dictionary`. The new `entries` map keys by entry name. Of entries with one name, an enabled one stays, else the later one. The map lists disabled entries too, which `world.dictionary` left out, so filter on `enabled` to match it.
+The rewrite doesn't change a `world.entities` or `world.locations` read in two cases:
+
+- The script returns, stringifies or spreads an item from it.
+- The script reads `.placeholders` from an item.
+
+An item has a new shape: a location has `starting` and full `present` entries, and an entity has more fields. Check such a script by hand.
+
+The rewrite never changes `world.dictionary`. The new `entries` map keys by entry name. Of entries with one name, an enabled one stays, else the later one. The map lists disabled entries too, which `world.dictionary` left out. Filter on `enabled` to match it.
 
 The same load also rewrites `memory.add(` to `memories.add(`, `memory.pin(` to `memories.pin(`, and `diary("Mira", line)` to `entities.Mira.diary(line)`. A `diary` call with a computed first argument becomes `entities[expr].diary(line)`.
+
 ## Try It
 <!-- keywords: try it tab, fourth tab, narrow editor, small window, side column -->
 <!-- route: settingsToolEdit.tryIt -->
