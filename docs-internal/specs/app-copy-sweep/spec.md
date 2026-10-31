@@ -60,6 +60,10 @@ Spec-session answers to ticket intent questions.
 | R13 | `textEndpointEditorModel.ts` belongs to ticket 02. `editorMode.ts`'s mode lines stay the same as Settings' lines, because the Design System quotes them |
 | R14 | A ticket that renames a label updates every quote of it: wiki pages, the Design System doc, design-system reference screens and their tests. Only comments in another ticket's files are routed to that ticket. An unassigned `src/contexts/` file goes to the ticket whose screen uses it |
 | R15 | A hint placed after its control (Field help order) is a layout change and stays. The ticket lists it under Findings; close-spec gathers the list |
+| R16 | The Test Bench lens selects take the visible words as their accessible names ("Testing as", "Testing at"). The Opening tab's "Lens Pick" badge becomes "Testing As". Copy says "Testing as" and "at", never "the lens" |
+| R17 | A dictionary entry activates; it never "fires". Use the Writing Guide's match, activate and inject in the Triggers UI and Test Bench findings. Other trigger kinds take their own defined verb (a trait switches, a script runs) |
+| R18 | Sample world text a tour suggests is world text and keeps its own voice. Only the tour's instructions are swept |
+| R19 | A control named in a plain-text slot (Test Bench findings, row descriptions) takes curly quotation marks |
 
 ## Screen groups
 

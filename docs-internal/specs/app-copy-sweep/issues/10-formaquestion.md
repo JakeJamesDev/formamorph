@@ -18,7 +18,7 @@ Sweep the copy of the Formaquestion window and its settings under the Writing Gu
 **Notes**
 
 - Prompt text sent to the help model is out of scope. Sweep only the copy a player reads.
-- The Settings tab is **Endpoints**, not "AI Endpoints". Fix the name in `formaquestionSettingsTabs.ts`.
+- The Settings tab is **Endpoints**, not "AI Endpoints". Fix the name in `formaquestionSettingsTabs.ts`, and in the comment in `src/lib/imageEndpointPresets.ts` (unassigned, so it's yours).
 
 Spec: Rulings, "Per ticket", "Facts and bugs", Testing Decisions.
 
