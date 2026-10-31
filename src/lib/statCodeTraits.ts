@@ -2,6 +2,7 @@ import type { CascadeOffTraitIds, Entity, EntityGroup, OwnedTraitStates, Placeho
 import type { LiveSnapshot } from './globalSaveFields';
 import { buildTree, flattenTree, type TreeGroup, type TreeLeaf } from './groupTree';
 import { canBePlayer, inCast, playsAs, resolveOwners, type Owner, type OwnerWorld } from './owners';
+import { startsMet } from './presence';
 import type { SandboxEntity, SandboxPlaceholderNode, SandboxTrait } from './statCodeExecutor';
 import type { CodeEntityNames, CodeTraitPlace } from './statCodeAnalysis';
 import { statCodeName, statCodeNamed } from './statCodeNames';
@@ -31,7 +32,8 @@ export interface StatCodeOwners {
   discovered?: readonly Entity[];
   /** Ids of the entities in the turn's scene. Absent ⇒ none; the played persona is always in it. */
   inSceneIds?: readonly string[];
-  /** Ids of the entities the player has met. Absent ⇒ an entity with no Stranger Name is met and the rest are not. */
+  /** Ids of the entities the player has met, by the Presence module's rule: the met-in-play list plus the start
+   *  rule. Absent ⇒ the start rule under no persona. */
   metIds?: readonly string[];
 }
 
@@ -136,7 +138,7 @@ function codeEntity(
     type: statCodeName(authored.type, named),
     pronouns: statCodeName(authored.pronouns, named),
     inScene: authored.id === played || !!ownerTraits.inSceneIds?.includes(authored.id),
-    met: authored.id === played || (ownerTraits.metIds ? ownerTraits.metIds.includes(authored.id) : authored.strangerName === undefined),
+    met: authored.id === played || (ownerTraits.metIds ? ownerTraits.metIds.includes(authored.id) : startsMet(authored, null, [])),
     traits: (owner?.traits ?? []).map((trait) => ({
       ...traitIdentity({ ...trait, name: authoredTraitName(trait, authored, ownerTraits.world.traits) }, authored.id,
         [...(owner?.groups ?? []), ...ownerTraits.world.groups], gates, named),

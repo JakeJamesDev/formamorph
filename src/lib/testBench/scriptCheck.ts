@@ -15,7 +15,7 @@ import {
   ruleScripts, scriptFinding, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
 } from './rules';
 import { boxHomeOf } from '@/lib/codeBoxOwner';
-import { openingHomeOf, openingStateOf } from '@/lib/openingState';
+import { openingHomeOf, openingStateOf, type OpeningPersona } from '@/lib/openingState';
 import { snapshotOf, type SandboxSnapshot, type UnitHome } from '@/lib/sandboxSnapshot';
 import { turnOneClock, type RunTiming } from '@/lib/statCodeTiming';
 import type { Script } from '@/types';
@@ -92,8 +92,8 @@ export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(worl
 
 /** The Bench's snapshot of `world` at turn one for a `timing` run: Test Code's clock, the authored enabled map and
  *  the open cast, with no editor overlays (Q2, Q6). */
-export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming): SandboxSnapshot =>
-  snapshotOf({ ...openingStateOf(world), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true });
+export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming, persona?: OpeningPersona): SandboxSnapshot =>
+  snapshotOf({ ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true });
 
 /**
  * Run each filled script once, in its own timing, and report the ones that fail, then the ones whose writes
@@ -101,7 +101,7 @@ export const benchSnapshotOf = (world: RuleWorld, timing: RunTiming): SandboxSna
  * Output script rewrites a sample sentence and a switch script fires on a sample trait (Q49). `prompts` answers
  * `player.*`.
  */
-export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost): Promise<Finding[]> {
+export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost, persona?: OpeningPersona): Promise<Finding[]> {
   const units = scriptUnits(world);
   if (!units.length) return [];
   // One snapshot per timing, since each timing reads its own clock.
@@ -109,7 +109,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
   const snapshotFor = (timing: RunTiming) => {
     const found = snapshots.get(timing);
     if (found) return found;
-    const made = benchSnapshotOf(world, timing);
+    const made = benchSnapshotOf(world, timing, persona);
     snapshots.set(timing, made);
     return made;
   };

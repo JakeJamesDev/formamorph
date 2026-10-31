@@ -135,12 +135,17 @@ export function useTestBench({
     setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
     closeCodePrompts();
   }, [benchWorld, closeCodePrompts]);
+  // Which start, persona and opening the author is looking at: view state, never stored.
+  const [openingChoice, setOpeningChoice] = useState<OpeningChoice>({});
   const runScriptCheck = useCallback(async () => {
     const stillCurrent = beginCodeRun();
     const prompts = openCodePrompts();
     setCodeCheckStatus('running');
     try {
-      const found = await checkScripts(getWorldData(), prompts.host);
+      const world = getWorldData();
+      // The persona the Opening instrument shows, so `met` reads the start rule under it.
+      const played = world.entities?.find((e) => e.persona && e.id === openingChoice.personaId);
+      const found = await checkScripts(world, prompts.host, played && { ref: { source: 'world', entityId: played.id } });
       if (!stillCurrent()) return;
       setCodeFindings(found);
       setCodeCheckStatus('done');
@@ -152,7 +157,7 @@ export function useTestBench({
     } finally {
       if (isCurrentCodeRun(prompts)) closeCodePrompts();
     }
-  }, [getWorldData, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
+  }, [getWorldData, openingChoice.personaId, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
   const scriptCount = useMemo(() => checkedScriptCount(benchWorld), [benchWorld]);
   // Out of the rule catalog, since its input is the measured byte count rather than the world.
   // Kept while it says the same thing: a keystroke in an over-limit world must not re-mark every finding.
@@ -200,8 +205,6 @@ export function useTestBench({
   // assembly itself — stat settling, the roll table, the whole first prompt — runs only while watched.
   const openingLive = panelShown && benchTab === 'opening';
   const openingRolls = useOpeningRolls(benchWorld, openingLive);
-  // Which start and which opening the author is looking at: view state, never stored.
-  const [openingChoice, setOpeningChoice] = useState<OpeningChoice>({});
   const opening = useMemo(
     () => (openingLive ? buildOpening(benchWorld, benchLens.lens, openingRolls.rolls, openingChoice) : EMPTY_OPENING),
     [openingLive, benchWorld, benchLens.lens, openingRolls.rolls, openingChoice],
