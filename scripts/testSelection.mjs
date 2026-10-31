@@ -107,6 +107,7 @@ export const PATH_TRIGGERS = {
   'testing/parity/turn-pipeline-parity.json': ['src/lib/turnPipeline/parityFixture.test.ts', 'src/lib/turnPipeline/parityTestInputs.ts'],
   'testing/baseline/help-baseline-cases.json': ['testing/baseline/harness/help-baseline-cases.ts'],
   'testing/baseline/help-recall-blind-cases.json': ['testing/baseline/harness/help-recall-cases.ts'],
+  'testing/baseline/help-intent-cases.json': ['testing/baseline/harness/help-intent-score.ts'],
   // The proxy forks the host as a child process instead of importing it.
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
   // The fake llama-server replays the run recorded at the pinned tag; the stream parser test reads the same files.

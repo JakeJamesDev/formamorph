@@ -7,6 +7,7 @@
 //            the Player View's place, the control that shows the leak score catch a real leak
 //   oldline  game cases only, named in --arms: shipped with the World Editor pick line on the game pick request
 //   fullold  game cases only, named in --arms: full with the World Editor pick line, the old-line control of full
+//   intent   named in --arms: shipped with the Intent Classifier on, so each answer gets its Intent's plan
 //
 // Editor cases ask how a part of a bundled world works, with the World Editor open on it. Game cases ask about the
 // lore so far on a hand-written save (world-question-cases.ts); "what would you try" cases score opinion phrasing (Q19).
@@ -42,7 +43,7 @@ import { isWorldSource } from '@/lib/formaquestion/helpWorldSource';
 import { worldIndexOf, type WorldIndex } from '@/lib/formaquestion/worldIndex';
 import { HELP_STORY_CHAR_BUDGET } from '@/lib/formaquestion/storySoFar';
 import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
-import { noUsage, pct, probeSnapshot, sessionFetch } from './help-probe-shared';
+import { INTENT_PROMPT, noUsage, pct, probeSnapshot, sessionFetch } from './help-probe-shared';
 import { bundledWorld, fullInputOf, GAME_SAVES, gameInputOf, uncutStory, WORLD_QUESTION_CASES, type WorldQuestionCase } from './world-question-cases';
 import { scoreWorldAnswer, summarizeWorldScores, type Check, type WorldAnswerScore } from './world-question-score';
 
@@ -64,11 +65,11 @@ const rescore = argVal('--rescore', '');
 const language = argVal('--language', '');
 const check = (label: string, pattern: RegExp): Check => ({ label, pattern });
 
-type Arm = 'shipped' | 'off' | 'full' | 'rules-cleared' | 'rules-cleared-old' | 'oldline' | 'fullold';
+type Arm = 'shipped' | 'off' | 'full' | 'rules-cleared' | 'rules-cleared-old' | 'oldline' | 'fullold' | 'intent';
 /** The arms that send the game pick request with the World Editor line; they run only when --arms names them. */
 const OLD_LINE_ARMS: readonly Arm[] = ['oldline', 'fullold'];
-const ARM_SET: readonly Arm[] = language ? ['shipped', 'rules-cleared', 'rules-cleared-old'] : ['shipped', 'off', 'full', 'oldline', 'fullold'];
-const ARMS = ARM_SET.filter((arm) => (armList.length ? armList.includes(arm) : !OLD_LINE_ARMS.includes(arm)));
+const ARM_SET: readonly Arm[] = language ? ['shipped', 'rules-cleared', 'rules-cleared-old', 'intent'] : ['shipped', 'off', 'full', 'oldline', 'fullold', 'intent'];
+const ARMS = ARM_SET.filter((arm) => (armList.length ? armList.includes(arm) : !OLD_LINE_ARMS.includes(arm) && arm !== 'intent'));
 const ARM_PAD = Math.max(7, ...ARMS.map((arm) => arm.length));
 /**
  * The language cases: each question as a Spanish-writing player asks it, its facts in either language, the world
@@ -114,6 +115,7 @@ const SETTINGS: Record<Arm, HelpSettings> = {
   'rules-cleared-old': noRules,
   oldline: DEFAULT_HELP_SETTINGS,
   fullold: DEFAULT_HELP_SETTINGS,
+  intent: { ...DEFAULT_HELP_SETTINGS, intentClassifier: true },
 };
 
 /** A fetch that sends each request through `edit`, which changes its messages in place and says whether it did. */
@@ -225,7 +227,8 @@ async function ask(c: WorldQuestionCase, arm: Arm): Promise<Sample> {
   let message = '';
   let body = '';
   const sessionFetchImpl = sessionFetch(usage, (sent, completion) => {
-    if (String(sent.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT)) return;
+    const system = String(sent.messages[0]?.content);
+    if (system.startsWith(HELP_PICK_SYSTEM_PROMPT) || system.startsWith(INTENT_PROMPT)) return;
     finish = completion.choices?.[0]?.finish_reason ?? null;
     message = String(sent.messages.at(-1)?.content ?? '');
     body = JSON.stringify(sent);

@@ -21,6 +21,8 @@
 //   search-old with `--ai`: shipped, with exact keywords, as before guide-open-and-search ticket 01
 //   world-open with `--ai`: shipped, with a bundled world open in the World Editor (`--world`, default emberwatch),
 //             so a world pick request runs beside the guide's; scores the guide pool only
+//   intent    with `--ai`: shipped, with the Intent Classifier beside the pick request; a question its Intent
+//             sends no guide (Chat, and World with no world open) scores the empty block it carried
 // The pick prompt, the pick list and the rank merge are the app's.
 //
 // `--screen` asks every task and follow-up over one open screen, as the app does; the "here" questions keep
@@ -35,7 +37,7 @@
 //   at5     a keyed section is among the block's five sections, with no size budget (recall@5)
 //   sent    a keyed section is in the block that fits the request's size budget
 //
-// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped,pick-old,keep-old,howto-old,semantic-on,search-old] [--sets known,blind] [--text head|full|chunks]
+// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped,pick-old,keep-old,howto-old,semantic-on,search-old,world-open,intent] [--sets known,blind] [--text head|full|chunks]
 //          [--screen library|stats|game] [--world emberwatch]
 //          [--ai] [--runs 5] [--parallel 4] [--endpoint URL] [--model default] [--token T] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -46,6 +48,9 @@ import { CHANGELOG_PAGE, FAVORED_PAGE_WEIGHT, type DocSection, type DocsIndex } 
 import { guideSections, type GuideSection } from '@/lib/formaquestion/guideSections';
 import { HELP_PICK_MAX_TOKENS, pickList, pickMessage, readPicks } from '@/lib/formaquestion/helpPicks';
 import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { requestIntent } from '@/lib/formaquestion/helpIntent';
+import { DEFAULT_HELP_OPTIONS } from '@/lib/formaquestion/helpPresets';
+import { fullHelpPlan, intentHelpPlan } from '@/lib/formaquestion/helpRequestPlan';
 import { askHelp, HELP_SECTION_LIMIT, helpSearch, helpSections, type EarlierExchange, type HelpQuestion } from '@/lib/formaquestion/helpSession';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { mergeRanks, rankByVector } from '@/lib/formaquestion/rankMerge';
@@ -55,7 +60,7 @@ import { migrateWorld } from '@/lib/version';
 import type { World } from '@/types';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
-import { exactDocsIndex, mean, noUsage, probeSnapshot, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
+import { exactDocsIndex, INTENT_PROMPT, mean, noUsage, probeSnapshot, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
 import { nodeEmbedder } from './help-node-embedder';
 import { loadBlindCases, loadKnownCases, RECALL_KINDS, RECALL_SETS, type RecallCase, type RecallKind, type RecallSet } from './help-recall-cases';
 import { chunksOf, scoreRecall, summarizeRecall, type RecallScore } from './help-recall-score';
@@ -65,7 +70,7 @@ const argVal = (flag: string, fallback: string) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : fallback;
 };
-const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old', 'world-open'] as const;
+const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old', 'world-open', 'intent'] as const;
 type Arm = (typeof ARMS)[number];
 /** The values of a comma list flag, each one of `allowed`. */
 function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
@@ -75,7 +80,7 @@ function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
   return values as T[];
 }
 /** The arms that run the help session's own search. */
-const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old', 'world-open'] as const satisfies readonly Arm[];
+const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old', 'world-open', 'intent'] as const satisfies readonly Arm[];
 const isSessionArm = (arm: Arm): arm is (typeof SESSION_ARMS)[number] => (SESSION_ARMS as readonly Arm[]).includes(arm);
 const isAiArm = (arm: Arm) => arm.startsWith('ai') || isSessionArm(arm);
 // The arms that send requests run only with `--ai`.
@@ -107,6 +112,7 @@ const screen = screens.at(0);
 const index = bundledDocsIndex();
 const exactIndex = exactDocsIndex();
 const SEMANTIC_ON = helpSettingsOf({ sources: { semantic: true } });
+const INTENT_ON = helpSettingsOf({ intentClassifier: true });
 const worldId = argVal('--world', 'emberwatch');
 const WORLD_INDEX = arms.includes('world-open') ? buildWorldIndex(migrateWorld(JSON.parse(readFileSync(`src/defaultworlds/${worldId}.json`, 'utf8'))) as World) : undefined;
 const nodeSemantic = args.includes('--ai') && arms.includes('semantic-on') ? await nodeEmbedder(index) : null;
@@ -123,8 +129,9 @@ const sectionById = new Map(guide.map(({ section }) => [section.id, section]));
 
 interface Blocks { ranked: DocSection[]; sent: DocSection[] }
 
-/** The docs block the app builds for a question when `search` finds the sections, with and without the size budget. */
-function blocksOf(search: DocsIndex, c: RecallCase, history: EarlierExchange[], howToRule: boolean): Blocks {
+/** The docs block the app builds for a question when `search` finds the sections, with and without the size budget. A plan with no guide sends none. */
+function blocksOf(search: DocsIndex, c: RecallCase, history: EarlierExchange[], howToRule: boolean, guide = true): Blocks {
+  if (!guide) return { ranked: [], sent: [] };
   const lead = surfaceHint(c.surface, index)?.section;
   return {
     ranked: helpSections(search, c.question, { history, lead, budget: Infinity, howToRule }),
@@ -143,12 +150,12 @@ interface Row { arm: Arm; run: number; caseId: string; score: RecallScore; ranke
  * Scores every question with one search; a follow-up runs after its first question. `searchFor` may differ by
  * question. `exchanges` holds the real answers of first questions, by id, in place of the stand-in history.
  */
-function scoreAll(arm: Arm, run: number, searchFor: (c: RecallCase) => DocsIndex, costOf: (c: RecallCase) => Pick<Row, 'ms' | 'promptTokens' | 'answerTokens'> | null, exchanges?: Map<string, EarlierExchange>): Row[] {
+function scoreAll(arm: Arm, run: number, searchFor: (c: RecallCase) => DocsIndex, costOf: (c: RecallCase) => Pick<Row, 'ms' | 'promptTokens' | 'answerTokens'> | null, exchanges?: Map<string, EarlierExchange>, guideOf?: (c: RecallCase) => boolean): Row[] {
   const rows: Row[] = [];
   const sentOf = new Map<string, DocSection[]>();
   const one = (c: RecallCase, history: EarlierExchange[]) => {
     const started = performance.now();
-    const { ranked, sent } = blocksOf(searchFor(c), c, history, arm !== 'howto-old');
+    const { ranked, sent } = blocksOf(searchFor(c), c, history, arm !== 'howto-old', guideOf?.(c) ?? true);
     // `blocksOf` builds the block twice; a request builds it once.
     const ms = (performance.now() - started) / 2;
     sentOf.set(c.id, sent);
@@ -365,7 +372,7 @@ if (arms.some(isAiArm)) {
       const exchangesOf = (arm: (typeof SESSION_ARMS)[number]) => (arm === 'keep-old' ? unruled : arm === 'howto-old' ? howToUnruled : ruled)!.exchanges;
       // The app's own search for each question, the arms of a question next to each other in time: its pick
       // request goes out once, and a failed one is not sent again.
-      const found = new Map<string, { search: DocsIndex; ms: number; usage: Usage }>();
+      const found = new Map<string, { search: DocsIndex; ms: number; usage: Usage; guide: boolean }>();
       await pool(cases.flatMap((c) => sessionArms.map((arm) => async () => {
         const exchange = exchangesOf(arm).get(c.after ?? '');
         const first = caseById.get(c.after ?? '');
@@ -376,19 +383,27 @@ if (arms.some(isAiArm)) {
           ? withoutEarlierAnswer(sessionFetch(usage), PICKS.lines, { question: c.question, earlier: history.at(-1)?.question, earlierAnswer: history.at(-1)?.answer, where: hint?.where })
           : sessionFetch(usage);
         const asked = performance.now();
+        // The intent arm's classifier goes out beside the pick request; a plan with no guide sends no section.
+        const reading = arm === 'intent'
+          ? requestIntent({ question: c.question, prompt: INTENT_PROMPT, earlier: history.at(-1)?.question, earlierAnswer: history.at(-1)?.answer, where: hint?.where },
+            probeSnapshot(target), DEFAULT_HELP_OPTIONS.intent, { fetchImpl }).catch(() => null)
+          : null;
         const search = await helpSearch({
           question: c.question, history, settings: arm === 'semantic-on' ? SEMANTIC_ON : DEFAULT_HELP_SETTINGS, snapshot: probeSnapshot(target),
           index: arm === 'search-old' ? exactIndex : index, hint, screenRule: arm !== 'keep-old', embedder: nodeSemantic?.embedder, fetchImpl,
           world: arm === 'world-open' ? WORLD_INDEX : undefined,
         });
-        found.set(`${arm}|${c.id}`, { search, ms: performance.now() - asked, usage });
+        const intent = await reading;
+        const planInput = { question: c.question, settings: INTENT_ON, surface: c.surface, hint, quickReference: null, takesFunctions: false };
+        const guide = arm !== 'intent' || (intent ? intentHelpPlan(planInput, intent, false) : fullHelpPlan(planInput)).guide;
+        found.set(`${arm}|${c.id}`, { search, ms: performance.now() - asked, usage, guide });
       })), parallel);
       shippedFailed += [...found.values()].filter(({ usage }) => usage.requests === 0).length;
       for (const arm of sessionArms) {
         rows.push(...scoreAll(arm, run, (c) => found.get(`${arm}|${c.id}`)!.search, (c) => {
           const { ms, usage } = found.get(`${arm}|${c.id}`)!;
           return { ms, promptTokens: usage.promptTokens, answerTokens: usage.answerTokens };
-        }, exchangesOf(arm)));
+        }, exchangesOf(arm), (c) => found.get(`${arm}|${c.id}`)!.guide));
       }
     }
     if (!probeArms) continue;
@@ -426,6 +441,7 @@ const ARM_LABELS: Record<Arm, string> = {
   keyword: 'Keyword', semantic: 'Semantic', hybrid: 'Hybrid', ai: 'AI picks', 'ai+keyword': 'AI picks + keyword', 'ai+keyword+semantic': 'AI picks + keyword + semantic',
   shipped: 'Shipped switches', 'pick-old': 'Pick with no earlier answer', 'keep-old': 'Every pick over the screen', 'howto-old': 'Page how-tos on every question',
   'semantic-on': 'Shipped with Semantic Search', 'search-old': 'Shipped with exact keywords', 'world-open': 'Shipped with a world open',
+  intent: 'Shipped with the Intent Classifier',
 };
 const KIND_LABELS: Record<RecallKind, string> = { task: 'Task', here: 'Here', followUp: 'Follow-up' };
 const ranArms = ARMS.filter((arm) => rows.some((r) => r.arm === arm));
