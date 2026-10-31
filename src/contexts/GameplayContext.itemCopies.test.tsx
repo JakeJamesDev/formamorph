@@ -223,3 +223,30 @@ describe('Item Copies in a save', () => {
     expect(live().gameplay.gameStates[0].entityStats?.bram.find((s) => s.id === 'vigor')?.value).toBe(5);
   });
 });
+
+describe('Body state in a save', () => {
+  const traitsOn = [{ ownerId: 'bram', traitId: 'cat' }, { ownerId: null, traitId: 'wolf' }];
+
+  it('comes back from a save file, in switch-on order', async () => {
+    const live = mount();
+    await loadWorld(live);
+    await act(async () => { live().gameplay.setBodies({ traitsOn }); });
+    await act(async () => { await live().gameplay.saveGame('slot', 'World', 'w1', 'bodies-out'); });
+    const file = JSON.stringify(await getSaveRecord('bodies-out'));
+    await putSaveRecord({ ...JSON.parse(file), id: 'bodies-in' } as SaveRecord);
+
+    await act(async () => { live().gameplay.setBodies({}); });
+    await load(live, 'bodies-in');
+    expect(live().gameplay.bodies).toEqual({ traitsOn });
+  });
+
+  it("goes back to the turn's own when a re-roll restores its snapshot", async () => {
+    const live = mount();
+    await loadWorld(live);
+    await act(async () => { live().gameplay.setBodies({ traitsOn }); });
+    const turnStart = live().gameplay.saveCurrentGameState();
+    await act(async () => { live().gameplay.setBodies({}); });
+    await act(async () => { live().gameplay.loadGameState(turnStart, [cellar], { keepLiveHistory: true }); });
+    expect(live().gameplay.bodies).toEqual({ traitsOn });
+  });
+});

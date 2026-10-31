@@ -22,7 +22,9 @@ import { equipRequirement, settleInventory, startingCopies, type NewId } from '.
 import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
-import type { Entity, EntityStatValues, PersonaRef, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World } from '@/types';
+import type {
+  BodyRuntime, Entity, EntityStatValues, PersonaRef, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World,
+} from '@/types';
 
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
@@ -68,6 +70,8 @@ export interface OpeningFold {
   traitState: TraitRuntimeState;
   /** What the seeded Item Copies' effects applied, for the ledger, and the start log with names unresolved. */
   itemEffects: { ledger: ItemEffectLedger; log: string[] };
+  /** Which Body-setting traits opened on, in order. */
+  bodies: BodyRuntime;
 }
 
 /** Authored text resolved as turn one would: an unrolled chip draws once, and every text after it reads that roll. */
@@ -112,7 +116,10 @@ export function openingFold(
   const settleWorld = { items: world.items ?? [], traits: traitWorld, persona: ref, entities, quietUnequips: true };
   const itemCopies = startingCopies(startWorld, ref, newId, equipRequirement({ traits: traitState, ledger: undefined }, settleWorld));
   // Seeded Item Copies apply their effects, On First Obtain included (Q59).
-  const items = settleInventory({ copies: itemCopies, traits: traitState, ledger: undefined }, settleWorld);
+  const items = settleInventory(
+    { copies: itemCopies, traits: traitState, ledger: undefined },
+    { ...settleWorld, bodies: { bodies: world.bodies, slots: world.slots, entities: [...entities, ...library] } },
+  );
   traitState = items.traits;
   const playWorld: TraitWorld = { ...traitWorld, itemCopies: [...items.copies] };
   const entityStats = traitState.entityStats ?? {};
@@ -142,7 +149,7 @@ export function openingFold(
     itemCopies: playWorld.itemCopies,
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
-  return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log } };
+  return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log }, bodies: items.bodies };
 }
 
 /** The `SandboxState` of turn one. */

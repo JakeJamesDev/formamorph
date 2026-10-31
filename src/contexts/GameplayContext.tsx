@@ -55,6 +55,7 @@ import type {
   ItemCopy,
   RuntimeItem,
   ItemEffectLedger,
+  BodyRuntime,
   LogEntry,
   GameLocation,
   Stat,
@@ -87,6 +88,7 @@ const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
 const NO_ITEM_COPIES: readonly ItemCopy[] = [];
 const NO_ITEM_EFFECTS: ItemEffectLedger = {};
+const NO_BODIES: BodyRuntime = {};
 const NO_RUNTIME_ITEMS: readonly RuntimeItem[] = [];
 
 const EMPTY_ENTITY_STATS: EntityStatValues = {};
@@ -189,6 +191,8 @@ function useProvideGameplay() {
   const [itemCopies, setItemCopies] = useState<readonly ItemCopy[]>(NO_ITEM_COPIES);
   // What item effects have applied, beside the Item Copies they follow.
   const [itemEffects, setItemEffects] = useState<ItemEffectLedger>(NO_ITEM_EFFECTS);
+  // The Body state beyond the authored picks. Snapshotted per turn, so undo and re-roll restore it.
+  const [bodies, setBodies] = useState<BodyRuntime>(NO_BODIES);
   // The runtime items the Inventory pass made, which runtime Item Copies point at.
   const [runtimeItems, setRuntimeItems] = useState<readonly RuntimeItem[]>(NO_RUNTIME_ITEMS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
@@ -368,6 +372,7 @@ function useProvideGameplay() {
       ...(itemCopies.length ? { itemCopies: [...itemCopies] } : {}),
       ...(runtimeItems.length ? { runtimeItems: [...runtimeItems] } : {}),
       ...(Object.keys(itemEffects).length ? { itemEffects } : {}),
+      ...(Object.keys(bodies).length ? { bodies } : {}),
       visibleEntities,
       discoveredEntities,
       suppressedCharacterNames,
@@ -388,7 +393,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -421,6 +426,7 @@ function useProvideGameplay() {
       setLoreToggles(gameState.loreToggles ?? NO_LORE_TOGGLES);
       setItemCopies(gameState.itemCopies ?? NO_ITEM_COPIES);
       setItemEffects(gameState.itemEffects ?? NO_ITEM_EFFECTS);
+      setBodies(gameState.bodies ?? NO_BODIES);
       setRuntimeItems(gameState.runtimeItems ?? NO_RUNTIME_ITEMS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -954,6 +960,8 @@ function useProvideGameplay() {
     setItemCopies,
     itemEffects,
     setItemEffects,
+    bodies,
+    setBodies,
     runtimeItems,
     setRuntimeItems,
     runtimeDictionaries,

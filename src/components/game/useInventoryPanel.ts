@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { bodyPickEntities, slotsInForce } from '@/lib/bodies';
+import { bodyPickEntities, slotsInForce, type TraitBodyPicks } from '@/lib/bodies';
 import { applyInventoryOps, copiesAt, type ItemUse, type InventoryOp, type ItemScriptEvent, type TimedEffectView } from '@/lib/inventory';
 import { usePresence } from '@/lib/usePresence';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
@@ -22,6 +22,8 @@ export interface InventoryPanelSettle {
     copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], itemUses: readonly ItemUse[], events: readonly ItemScriptEvent[],
   ) => void;
   timed?: readonly TimedEffectView[];
+  /** Each owner's winning trait Body pick. Absent = none. */
+  traitPicks?: TraitBodyPicks;
 }
 
 /** The Inventory tab's data and its one write: panel operations through the Inventory module (Q17), then the
@@ -36,8 +38,9 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   } = useGameplay();
   const { currentLocation, persona, entities: cast, worldPersonas, customPersona } = useResolvedWorld();
   const entities = useMemo(() => bodyPickEntities(cast, worldPersonas, customPersona), [cast, worldPersonas, customPersona]);
+  const traitPicks = settle?.traitPicks;
   const bodySlotsOfYou = useMemo(
-    () => slotsInForce({ bodies, entities, slots }, YOU, personaRef), [bodies, entities, personaRef, slots],
+    () => slotsInForce({ bodies, entities, slots, traitPicks }, YOU, personaRef), [bodies, entities, personaRef, slots, traitPicks],
   );
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
@@ -48,7 +51,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
 
   const onOps = useCallback((ops: InventoryOp[]) => {
     const result = applyInventoryOps(itemCopies, ops, {
-      world: { items, slots, bodies, entities }, source: 'panel', newId: randomUUID, persona: personaRef,
+      world: { items, slots, bodies, entities, traitPicks }, source: 'panel', newId: randomUUID, persona: personaRef,
       presence: { locationId, entityIds: new Set(present.map((e) => e.id)) },
       ...(settle && { requirement: settle.requirement }),
     });
@@ -58,7 +61,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     }
     setItemCopies(result.copies);
     for (const line of result.diagnostics) addLogEntry(line);
-  }, [itemCopies, items, slots, bodies, entities, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
+  }, [itemCopies, items, slots, bodies, entities, traitPicks, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
 
   return {
     ownerName: persona?.entity.name ?? null,

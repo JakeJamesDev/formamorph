@@ -46,6 +46,7 @@ vi.mock('@/contexts/GameDataContext', () => {
     entities: [],
     locations: store.locations,
     placeholders: WORLD,
+    bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [] }, { id: 'wolf', name: 'Wolf', entries: [] }],
     updateTrait: (next: Trait) => {
       store.writes.push(next);
       store.trait = next;
@@ -104,6 +105,26 @@ describe('the section help buttons', () => {
 
     renderManager('pins');
     expect(screen.getByRole('button', { name: 'About Placeholder Pins' })).toBeInTheDocument();
+  });
+});
+
+describe('the Body row', () => {
+  it('adds a blank row, picks a Body from None and the world Bodies, and removes the row', async () => {
+    const user = userEvent.setup();
+    renderManager('stats');
+    expect(screen.getByRole('button', { name: 'About Body' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add Body' }));
+    expect(store.trait.body).toEqual({});
+    await user.click(screen.getByRole('combobox', { name: 'Body' }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['None', 'Humanoid', 'Wolf']);
+    await user.click(screen.getByRole('option', { name: 'Wolf' }));
+    expect(store.trait.body).toEqual({ pick: { kind: 'body', id: 'wolf' } });
+    await user.click(screen.getByRole('combobox', { name: 'Body' }));
+    await user.click(screen.getByRole('option', { name: 'None' }));
+    expect(store.trait.body).toEqual({ pick: { kind: 'none' } });
+    await user.click(screen.getByRole('button', { name: 'Remove Body' }));
+    expect(store.trait.body).toBeUndefined();
+    expect(screen.getByRole('button', { name: 'Add Body' })).toBeInTheDocument();
   });
 });
 

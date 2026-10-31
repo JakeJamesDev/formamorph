@@ -30,7 +30,7 @@ import { TraitScripts } from './TraitScripts';
 import { offWorldOf, traitPanelHome } from '@/lib/scriptBoxHome';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import type {
-  Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
+  BodyPick, Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
@@ -81,6 +81,9 @@ const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: 
   const global = new Set(globalStatsOf(world.stats, world.statGroups).map((s) => s.id));
   return (row: StatRow) => statRowSide(row, own, global);
 };
+
+/** The Body row's None item, kept apart from every Body id. */
+const NONE_BODY = 'none:';
 
 /** The picker value of a global stat on an owner's trait, kept apart from an own stat with the same id. */
 const GLOBAL_ITEM = 'global:';
@@ -165,6 +168,7 @@ const TraitManager = ({
 }) => {
   const {
     updateTrait, editEntity, stats, statGroups, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld, entities, entityRoot,
+    bodies,
   } = useTraitStore();
   const ownerId = owner?.id;
   // A linked trait's scripts run as the trait it brings, on the link's owner.
@@ -233,6 +237,9 @@ const TraitManager = ({
   // Computed off the saved world (edits write through on every keystroke), so the note follows a drag or a
   // change in another trait without any extra plumbing.
   const conflicts = traitConflicts({ ...editingTrait, statToggles: globalToggles }, traits, traitGroups);
+
+  const bodyRow = editingTrait.body;
+  const setBodyPick = (pick: BodyPick) => apply({ body: { pick } });
 
   const pins = editingTrait.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
@@ -401,6 +408,39 @@ const TraitManager = ({
         ))}
         <Button size="sm" onClick={handleStatChangeAdd}>Add Stat Change</Button>
       </div>
+
+      {(bodies || bodyRow) && (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Label>Body</Label>
+          <HelpButton topicId="worldEditor.traitBody" className="h-6 w-6" />
+        </div>
+        {bodyRow ? (
+          <div className="flex space-x-2">
+            <Select
+              value={bodyRow.pick ? (bodyRow.pick.kind === 'none' ? NONE_BODY : bodyRow.pick.id) : ''}
+              onValueChange={(v) => setBodyPick(v === NONE_BODY ? { kind: 'none' } : { kind: 'body', id: v })}
+              disabled={readOnly}
+            >
+              <SelectTrigger aria-label="Body" {...fieldFrame('body')}>
+                <SelectValue placeholder="Select Body" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_BODY}>None</SelectItem>
+                {(bodies ?? []).map((body) => (
+                  <SelectItem key={body.id} value={body.id}>{statLabel(body.name)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="ghost" size="icon" aria-label="Remove Body" disabled={readOnly} onClick={() => apply({ body: undefined })}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : !readOnly && (
+          <Button size="sm" onClick={() => apply({ body: {} })}>Add Body</Button>
+        )}
+      </div>
+      )}
 
       {advanced && (
       <div className="space-y-2">

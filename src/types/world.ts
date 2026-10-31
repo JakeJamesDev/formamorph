@@ -364,6 +364,13 @@ export interface Trait {
   mode?: TraitMode;
   /** Scripts with this trait as `self`. Absent = none. */
   scripts?: Script[];
+  /** The Body its owner takes while it is active. Absent = no Body row. */
+  body?: TraitBodyRow;
+}
+
+/** A trait's Body row. Absent `pick` = blank: the row sets no Body. */
+export interface TraitBodyRow {
+  pick?: BodyPick;
 }
 
 /** A trait's non-Optional mode. */

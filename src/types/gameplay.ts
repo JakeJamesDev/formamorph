@@ -334,6 +334,18 @@ export interface ItemEffectLedger {
   timed?: Record<string, TimedItemEffect>;
 }
 
+/** One active trait with a Body pick: global (`ownerId` null) or an entity owner's. */
+export interface BodyTraitOn {
+  ownerId: string | null;
+  traitId: string;
+}
+
+/** The Body state play keeps beyond the authored picks. */
+export interface BodyRuntime {
+  /** The active Body-setting traits, oldest switch-on first. The last one an owner holds wins (Q13). Absent ⇒ none. */
+  traitsOn?: BodyTraitOn[];
+}
+
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */
 export interface GameState {
   globalStats: PlayerStat[];
@@ -368,6 +380,8 @@ export interface GameState {
   runtimeItems?: RuntimeItem[];
   /** What item effects have applied. Absent ⇒ none. */
   itemEffects?: ItemEffectLedger;
+  /** Body state beyond the authored picks. Absent ⇒ none. */
+  bodies?: BodyRuntime;
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** Absent ⇒ none. */
