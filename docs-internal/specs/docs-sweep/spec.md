@@ -48,6 +48,7 @@ Settled with the user on 2026-10-31.
 | Q22 | WorldFormat gives every exported record a field table, World Tools included; behavior stays on the owning page behind one link line (19) |
 | Q23 | The Glossary gains one row per shipped term a swept page uses as a name: the owning page's word, one definition sentence, a link to that page (19) |
 | Q24 | A stale claim on a page outside the ticket's group is fixed when source plainly shows it, and listed under Landed as that group's staleness miss; unclear intent goes to the spec session first (19) |
+| Q25 | The `{{char}}` chip is **Entity Name** on every page, its source label. Persona-Authoring's heading becomes "The Entity Name Chip" and every link follows; the misses on other groups' pages are listed under Landed (20) |
 
 ## Page groups
 
