@@ -16,6 +16,7 @@ Sweep the copy of the World Editor instruments, Test Bench and the authoring tou
 - `src/components/editor/`
 - `src/components/aiContext/`, `src/components/authoringTour/`, `src/lib/authoringTour/`, `src/lib/testBench/`
 - `src/views/WorldEditor.tsx`
+- `src/lib/placeholderInsert.ts`: the "Add keyword" insert line has an em-dash aside (ticket 01 finding)
 
 **Notes**
 

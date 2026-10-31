@@ -19,6 +19,7 @@ Sweep the copy of the design-system showcase and the dev screens under the Writi
 **Notes**
 
 - A reference screen shows the pattern other screens copy. Its sample copy follows the rules exactly.
+- `MainMenuContextMenuReference.tsx` shows "Delete Character" with a generic "cannot be undone" consequence. Use the term the real menu uses, and state the real consequence. `ConfirmDialog` now requires a description (ticket 01).
 - The built-in chip is "Entity Name" (R10). Fix the `PromptChipsReference.tsx` comment that names "Character Name".
 
 Spec: Rulings, "Per ticket", "Facts and bugs", Testing Decisions.
