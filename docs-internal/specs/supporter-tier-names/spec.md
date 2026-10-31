@@ -1,7 +1,7 @@
 # Spec: Supporter Tier Names
 
-Status: ready-for-agent
-Status note: The tier names themselves are open. The user sets them in Patreon; release blocker 04 holds the release until then.
+Status: done
+Status note: Closed 2026-10-31. Tickets 01–03 done, ticket 04 wontfix (Q5). Last landing 17f7f5ecf. Review: spec text corrected, and the docs and changelog were fixed in 17af9d513. Gates green on 2026-10-31. The tier names are still open: release blocker 04 holds the release until the user sets them in Patreon.
 
 The app and site show each Supporter tier by the name it has in Patreon, and every line about support reads as a donation. Rulings from the spec session on 2026-10-31 (Q1–Q4).
 
@@ -15,10 +15,11 @@ The three tiers show working labels ("Supporter", "Supporter+", "Supporter++") f
 - **Q2:** The fallback name is **Member**, the word Patreon uses. It shows whenever no title is known: offline, before the first answer, or for a tier Patreon did not return.
 - **Q3:** Names and copy follow the idea of supporting, not tiers of a service. Allowances read as a thank-you ("your support includes"), never as a plan or a purchase.
 - **Q4:** No release ships until the user has decided the names and set them in Patreon (release blocker 04).
+- **Q5:** The hourly reconcile is the refresh path for a tier rename. Patreon's v2 webhooks have no tier trigger (ticket 04). A member delivery that includes tier titles also updates them, but nobody has checked that deliveries include them, and the server does not depend on it.
 
 ## Solution
 
-**Server.** The server reads each tier's `title` from Patreon (Tier resource, "Tier display title") and keeps the names by tier key. It refreshes them on the hourly reconcile and on a tier webhook. A public route returns `{ supporter, supporter_plus, supporter_top }`, each a string or `null`. The route never calls Patreon on a request.
+**Server.** The server reads each tier's `title` from Patreon (Tier resource, "Tier display title") and keeps the names by tier key. It refreshes them on the hourly reconcile, and from any member webhook that includes tier titles (Q5). A public route returns `{ supporter, supporter_plus, supporter_top }`, each a string or `null`. The route never calls Patreon on a request.
 
 - Patreon v2 returns no attribute unless `fields[tier]=title` asks for it. The campaign call with `include=tiers` is the primary path, because it names tiers with no members. A live check on 2026-10-31 returned all three titles from it. A failed or title-less campaign call falls back to `fields[tier]=title` on the members call the reconcile already makes, and that answer renames only the tiers it lists.
 - An unknown or empty title is `null`, never a guess.
