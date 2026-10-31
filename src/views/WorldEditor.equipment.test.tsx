@@ -137,7 +137,7 @@ describe('the Bodies section', () => {
     renderWorldEditorBench(WORLD, 'simple');
     openEquipment();
     const bodies = section('Bodies');
-    expect(bodies.textContent).toContain('Humanoid is the Default.');
+    expect(bodies.textContent).toContain('Humanoid is the Default, for entities set to Default');
     expect(within(bodies).getAllByText(/^Default · /).map((meta) => meta.textContent)).toEqual(['Default · Hand ×2, Ring']);  });
 
   it('adds a Body with no entries, renames it, and adds a slot to it with a capacity', () => {
@@ -253,7 +253,7 @@ describe('the entity Body select', () => {
   it("says on the Custom Persona entity that its pick also sets the player's Body", () => {
     renderWorldEditorBench(WORLD, 'simple');
     openEntityItems('Custom Persona');
-    expect(section('Body').textContent).toContain("Also sets the player's Body when they pick None or a library persona");
+    expect(section('Body').textContent).toContain("Also sets the player's Body under None or a library persona");
     expect(bodySelect()).toBeTruthy();
   });
 
