@@ -77,6 +77,7 @@ Spec-session answers to ticket intent questions.
 | R30 | Legal attestations (the age gate's "By choosing Accept…" line) stay word for word. The text around them is swept |
 | R31 | Drafts that staff edit and send (takedown and quarantine notices) are message content and keep their voice. Fix only wrong terms and false facts. A preview that mirrors a server template (the podium announcement) stays as the server sends it |
 | R32 | A count in a label ("Approved (3)") is data, not an aside |
+| R33 | Ticket 01 has landed, so a wrong shared string now goes to the ticket that finds it, which fixes it in its own pass and lists it as a drive-by |
 
 ## Screen groups
 
