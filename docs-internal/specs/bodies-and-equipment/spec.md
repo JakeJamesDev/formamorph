@@ -1,6 +1,7 @@
 # Spec: Bodies and Equipment
 
 Status: ready-for-agent
+Spec session: bodies-and-equipment — spec
 
 ## Problem Statement
 
