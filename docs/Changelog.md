@@ -18,27 +18,21 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Inventory:**
-    - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Uses, When Empty, Bound and an equipment slot. Set the world's slots on the Overview tab.
-    - **Worlds can now place starting items on the player, on entities and at locations.** Set them under Persona Items on the Overview tab, or on an entity's or location's Items tab. A new game starts with them; saved games never gain them.
+    - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Uses, When Empty, Bound and an equipment slot. Equipment Settings, at the top of the Items list, holds the world's slots and Bodies.
+    - **Worlds can now place starting items on the player, on entities and at locations.** Set them under Persona Items in Equipment Settings, or on an entity's or location's Items tab. Check Equipped to start an item worn. Saved games never gain them.
     - **The narrator now knows what you and the people near you carry, through a new Inventory prompt chip.** It sends equipped items with their AI Summary, carried items by name, and the items lying here, with hidden ones marked. Built-in presets hold it; add it to your own from the chip bar.
     - **The game's right panel has an Inventory tab to equip, unequip, drop and give your items.** Changes apply at once and are off while a turn runs. Drop and Give on a stack ask how many. Give lists people in the scene first. Side panel tabs show icons alone when their labels don't fit.
     - **Items can now change their owner's stats, through effect rows on the item's new Effects tab.** Each row raises or lowers a value, minimum, maximum or regen While Equipped, While Owned or On First Obtain. Ending an effect gives back exactly what it gave, and the log names the item.
     - **Items can now grant traits, and an item's Requirements tab sets what its owner needs to equip it.** A granted trait comes from the owner's own list and leaves the owner's own picks alone. An item unequips on its own once its requirement stops holding; its own bonus never counts.
-    - **Items can now be used from the Inventory tab, and each item sets what remains when its uses run out.** An empty item stays, vanishes or becomes another item, such as a potion that leaves a bottle. After Use effects last a set story time or for good.
+    - **Items can now be used from the Inventory tab, and each item sets what remains when its uses run out.** An empty item stays, vanishes or becomes another, like a potion leaving a bottle. After Use effects last a set story time or for good. The story can also use one item on another.
     - **Items can now run scripts when an Item Copy is gained, lost, equipped, unequipped or used.** Scripts read who owns what through `items` and can give, take, move, equip, use, reveal and recharge items.
     - **Items now have a State word, such as sealed or lit, shown beside the name in the Inventory tab.** The story and scripts change it, and a letter can turn "opened" on its last use. Copies with different States never stack.
     - **Items can now be unidentified, showing the player only an Unidentified Name and Description until the story reveals them.** The narrator sees both faces. Effects still apply. Scripts read both faces and can reveal.
     - **The Inventory prompt now records a use, a change of State, and an item's true nature becoming known.** Opening a letter or lighting a lantern keeps the item. Burning or shattering one still removes it with no effect.
-    - **The story can now use one item on another, such as pouring lamp oil into a lantern.** The oil is the item spent. Its When Used script reads the lantern as `self.event.target`.
-    - **Starting items on the player or an entity can now start equipped, through a new Equipped checkbox.** While Equipped effects apply from the first turn. An item that can't be equipped starts carried, and its row warns you first.
-    - **Traits can now change their owner's Body, which sets the equipment slots they have while the trait is active.** Items the new Body has no slot for come off and stay in the inventory. The trait switched on last wins, and the log names the change.
-    - **The story now knows each person's equipment slots and the slot each item takes.** A character whose Body is None no longer gets items equipped by the story. The narrator and the Inventory prompt see the slots, never the Body's name.
-    - **Equipment Settings, at the top of the Items list, now holds the world's slots, its Bodies and Persona Items.** Slots and Persona Items moved there from the Overview tab. Each entity picks its Body on its own Items tab, and the first Body is the Default.
-    - **Scripts can now read and set an entity's or the player's Body through `body`.** Items the new Body has no slot for come off at once and stay carried. The Test Bench reports a Body name the world lacks.
+    - **The player and each entity now have a Body setting their equipment slots; traits and scripts can change it.** Each entity picks a Body on its Items tab; the first Body is the Default. Items the new Body has no slot for come off and stay carried. The narrator sees the slots, never the Body's name.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
-  - **Inventory:**
-    - **World files now list Bodies, and each entity equips into the slots of its own Body.** A slot is a name only; each Body entry gives it a capacity. An entity picks a Body, the first one, or None. See World Format.
+  - **World files now list Bodies, and each entity equips into the slots of its own Body.** A slot is a name only; each Body entry gives it a capacity. An entity picks a Body, the first one, or None. See World Format.
 
 ### Minor Changes
 
@@ -51,7 +45,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Inventory tab can pick up the items lying at your location.** Pick Up works on Bound items too, and on a stack it asks how many.
     - **After each turn, the story now updates your inventory: items picked up, given, used, equipped or found.** Names the world lacks become plain usable items. The stat changes never count an item's own effect twice. An item you carry stays one item when the story mentions it again, and an item someone hands you leaves their inventory.
     - **Items the story makes up now get a short description, shown in the Inventory tab and sent to the narrator.** An item keeps the first description it gets. The description tells what the item is and how it looks, not where it lies.
-    - **Emberwatch now has 32 items: starting gear for each hero, cold iron, remedies, grave goods and the broken crown.** Search the keep and the barrow for hidden finds, some unidentified. Lay both crown halves on the king's bier to end the Wight.
+    - **Emberwatch now has 32 items: starting gear for each hero, cold iron, remedies, grave goods and the broken crown.** Search the keep and the barrow for hidden finds, some unidentified. Lay both crown halves on the king's bier to end the Wight. The heroes and cast start wearing their gear.
     - **Requirement Rows can now require an item's State word and whether it is identified.** Both combine with Not. A lantern can grant Darkvision only while it is "lit".
   - **Formaquestion:**
     - **Formaquestion Settings gain a Read the World switch and two world rules prompts.** The switch is on by default. Custom presets can edit the **Editor World** and **Game World** prompts. Older preset files still import.
@@ -81,8 +75,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Test Bench's opening preview and the AI Context show a stranger under its Stranger Name.** The true name stays beside it, as in the first turn of play.
   - **Formaquestion Tools:**
     - **Formaquestion Tools now choose which kinds of question get them.** Pick the kinds in Sorted As; new Tools go to How-to, Code and Your world.
-  - **Bodies and Equipment:**
-    - **Emberwatch starts its heroes and cast in their gear.** Albus, Sylvie, Mother Hesk, Corvin and the Barrow Wight open worn, and the Grave Hounds have their own Body.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
 - **🛠️ Developer tooling**
