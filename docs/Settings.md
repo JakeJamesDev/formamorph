@@ -100,7 +100,7 @@ What you see and hear.
 | Setting | What it does |
 |---|---|
 | **Theme** | **Light**, **Dark** or **System**. **System** follows the light or dark setting of your operating system. |
-| **Theme Color** | Sets the color palette for both themes. **Preview theme…** shows the palette on sample controls, and you can edit each color there. |
+| **Theme Color** | Sets the color palette for both themes. **Preview theme…** shows the palette on sample controls. You can try each color there, but nothing is saved. |
 | **Font** | Sets the typeface for the whole app. **Customize…** tunes its **Font Size**, **Bold Weight**, **Italic Slant**, **Line Height** and **Letter Spacing**. |
 
 ### Scene
@@ -159,6 +159,7 @@ What the AI makes each turn, and what it carries forward. Most of these settings
 |---|---|
 | **System Prompts** | Three checkboxes for the requests that run after the narration: **Choices**, **Stat Updates** and **Location Change**. Turn one off and its feature stops, and its editor in the **Prompts** tab hides. |
 | **Move Automatically** | Applies the move in your action before the scene is written, so the scene happens in the new location. It skips the **Move to…?** question. Shows when **Location Change** is on. |
+| **Entity Movement** | Asks the AI each turn which entities come with you. Each one that can follow adds a request. Shows when **Location Change** is on. |
 
 ### Reasoning
 
@@ -176,7 +177,7 @@ Turn on **Show Reasoning** to read what a mode wrote.
 | Setting | What it does |
 |---|---|
 | **Limit Active Characters** | **Advanced**, **Staged** only. Sets the largest number of entities the director stages each turn. Each staged entity adds its own request. With the checkbox off, the scene stages as many as it needs. |
-| **Native Reasoning** | **Advanced.** Sets whether a reasoning model thinks, and how hard. The checkbox turns reasoning off. The list sets the effort, and **Model Default** sends no hint. Every prompt set to **Global** follows this row. A model with no native reasoning shows a note here in place of the control. A model that always reasons keeps the checkbox on, with a note. |
+| **Native Reasoning** | **Advanced.** Sets whether a reasoning model thinks, and how hard. The checkbox turns reasoning off. The list sets the effort, and **Model Default** sends no hint. Every prompt set to **Global** follows this row. A model with no native reasoning shows a note here in place of the control. A model that always reasons keeps the checkbox on, with a note. **Recheck** checks the model again, here and on the **Tools** row. |
 
 ### Tools
 
@@ -235,11 +236,11 @@ Which AI the app connects to. The tab has its own tabs: **Text**, **Image** and,
 ### Text
 <!-- route: settingsEndpoints.text -->
 
-The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud endpoint, and you cannot edit it. On the desktop app, **Built-In Engine** runs a model on your PC. **Add New Preset…** makes a new one. **Rename**, **Reset** and **Delete** act on the preset you made.
+The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud endpoint, and you cannot edit it. **Formamorph AI** is the preset for Patreon Supporters; it shows your allowance in place of the fields. See [Formamorph AI for Supporters](Connect-Your-Own-AI#formamorph-ai-for-supporters). On the desktop app, **Built-In Engine** runs a model on your PC. **Add New Preset…** makes a new one. **Duplicate** copies **Demo AI** or a preset you made. **Rename**, **Reset** and **Delete** act on the preset you made.
 
 | Setting | What it does |
 |---|---|
-| **Endpoint URL** | The address of your model server. The line under it shows the full URL that requests go to. **Trouble Connecting?** opens a checklist. |
+| **Endpoint URL** | The address of your model server. When the app completes the address, the line under it shows the full URL that requests go to. **Trouble Connecting?** opens a checklist. |
 | **API Token** | The token for a hosted service. Leave it empty for a local server. |
 | **Model Name** | The model the endpoint uses, exactly as the server names it |
 | **Context Window** | **Advanced.** How many tokens the model keeps in context. **Detect** asks the server. |
@@ -255,7 +256,7 @@ On the desktop app, the **Built-In Engine** preset shows the engine's own panel 
 
 | Setting | What it does |
 |---|---|
-| **Local Model** | **Manage Models…** opens the **Local model** dialog to download and load a model |
+| **Local Model** | **Manage Models…** opens the **Local model** dialog to download and load a model. Its **Options** view holds **Auto-Load**, on by default, which loads a model as soon as the engine is in use. |
 | **Context Size** | How much recent story the model can see. More context uses more GPU memory. Lower it first when a model does not fit. |
 | **GPU** | **Simple** on the panel. Runs the model on the GPU. Off runs it on the CPU, which is slower. |
 | **GPU Layers**, **Layers** | **Advanced** on the panel. **Auto** puts as many layers on the GPU as fit. **Max** puts all of them there and can run out of memory. **Custom** sets the count in **Layers**. |
@@ -298,7 +299,7 @@ It never cuts a message in half. A change applies on the next turn, with no relo
 | Setting | What it does |
 |---|---|
 | **Preset** | Your saved image endpoints. You can edit each one, **Default** too. |
-| **Enable Image Generation** | Shows the **Generate with AI** buttons. Off hides the rest of this tab and **Scene Images**. |
+| **Enable Image Generation** | On by default. Shows the **Generate with AI** buttons. Off hides the other rows of this tab, the **Tag Prompt** tab and **Scene Images**. |
 
 The **Connection** section sets which server makes the images. The setup steps for each provider are in [Image Generation](Image-Generation).
 
@@ -314,11 +315,12 @@ The **Image** section sets how each image is made.
 |---|---|
 | **Prompt Prefix** | Quality and style tags put before every image prompt |
 | **Negative Prompt** | Tags the image must not have |
+| **Clean Up Tags** | On by default. Rewrites scene and generated tags as plain lowercase words, without weights or other prompt syntax. Turn it off to send your entity and location tags as you wrote them. It never changes **Prompt Prefix** or **Negative Prompt**. |
 | **Portrait Size**, **Landscape Size** | **Advanced.** Image width and height. Portraits are for entities. Landscapes are for locations and thumbnails. |
 | **Steps / CFG** | Sampling steps and how closely the image follows the prompt |
 | **Sampler** | The sampling method |
 | **Face Fix** | Automatic1111 / Forge and InvokeAI only. Draws faces again in a second pass. On Automatic1111 / Forge it needs the **ADetailer** extension on your server. On InvokeAI it about doubles the time. |
-| **Workflow** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph with one exported in API format. **How to Get This** shows how to export one. |
+| **Workflow** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph with one exported in API format. **How to Get This** shows how to export one. **Reset to Defaults** brings back the default graph. |
 | **File Name** | **Advanced**, ComfyUI only. Where each image is saved under ComfyUI's `output` folder: `{world}`, `{subject}` (an entity's or location's name, or `turn-12-scene`), `{turn}` and `{preset}`. The default is `formamorph/{world}/{subject}`. A `/` in the pattern makes a folder. A custom workflow uses it where its save node's prefix is `%prefix%`; without one, the row is grayed out. |
 | **Board** | **Advanced**, InvokeAI only. The InvokeAI board that gets the images |
 | **Qwen3 Encoder**, **Z-Image VAE**, **Anima VAE** | **Advanced**, InvokeAI only. Shows for a Z-Image or Anima model. Leave them empty to pick one automatically. |
@@ -336,7 +338,7 @@ Saves, the Authoring Tour, and stored data. To back up your worlds, saves, libra
 
 ### Saves
 
-**Autosave** saves after every turn, named by turn. It never changes your own saves. **Autosaves Kept** sets how many autosaves each world keeps; it starts at one, and a new turn replaces the oldest, and **Re-generate** replaces its turn's autosave. Lowering it shows a red warning while Settings is open: each world's oldest extras are deleted on its next autosave. Autosaves show under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
+**Autosave** saves after every turn, named by turn. It never changes your own saves. **Autosaves Kept** shows while **Autosave** is on. It runs from 1 to 20. It sets how many autosaves each world keeps; it starts at one, and a new turn replaces the oldest, and **Re-generate** replaces its turn's autosave. Lowering it shows a red warning while Settings is open: each world's oldest extras are deleted on its next autosave. Autosaves show under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
 
 ### Authoring
 
