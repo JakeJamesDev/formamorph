@@ -5,9 +5,9 @@
 
 **Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a game starts, after **Start Game** (or **Continue to Avatar** and the Avatar step), the game draws one opening from the pool.
 
-Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text lands:
+Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text goes:
 
-| Opens As | Called | Where the text lands | Who writes page one |
+| Opens As | Called | Where the text goes | Who writes page one |
 |---|---|---|---|
 | **Player Action** | Opening Action | The player's input box. The player can edit it, then sends it. | The AI, from the sent action |
 | **Narration** | Opening Narration | Page one itself, shown at once exactly as written. No narration request goes out. | You |
@@ -60,7 +60,9 @@ Drag a row by its handle to change its place in the list. Order doesn't change t
 ## Collapse the Cards
 <!-- keywords: fold, minimize, shrink rows, hide long text, expand all, too much scrolling, compact list -->
 
-Each opening is a card. A card collapses to one line: the handle, "Opening N", the first line of its text, the switches, the weight, the chance and **Remove opening**. Every control works while the card is collapsed, so you can drag and tune weights without scrolling past the text.
+Each opening is a card. A collapsed card is one line. It holds the handle, "Opening N", the first line of the text, the switches, the weight, the chance and **Remove opening**.
+
+Every control works while the card is collapsed. You can drag cards and tune weights without scrolling past the text.
 
 | Rule | Effect |
 |---|---|
@@ -83,7 +85,12 @@ The checkbox beside **Openings** turns the whole list on or off. Off keeps every
 ## The default opening
 <!-- keywords: fallback, none written, generic beginning, built-in start, ai writes first scene, empty pool, what if none -->
 
-The game uses the default opening at a start where nothing else can come up. That happens when the switch is off, or when the pool at that start is empty. A world with no openings reads unchecked, because the box follows whether openings exist. This is an Opening Action with a general instruction to write the opening scene.
+The default opening is an Opening Action with a general instruction to write the opening scene. The game uses it at a start where nothing else can come up:
+
+- The **Openings** checkbox is unchecked.
+- The pool at that start is empty.
+
+A world with no openings reads unchecked, because the box follows whether openings exist.
 
 The **Openings** panel shows its text under **This World**. It shows the text only where it can draw:
 
