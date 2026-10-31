@@ -126,7 +126,7 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
         <p className="text-label font-medium">Give {name}</p>
         {copy.quantity > 1 && <CountField max={copy.quantity} text={text} onChange={setText} />}
         {present.length === 0 ? (
-          <p role="status" className="text-meta text-muted-foreground">Nobody is in the scene.</p>
+          <p role="status" className="text-meta text-muted-foreground">No entities are in the scene.</p>
         ) : (
           <div role="list" aria-label="Give to">
             {present.map((entity) => (

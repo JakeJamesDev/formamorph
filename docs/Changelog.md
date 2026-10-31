@@ -60,13 +60,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.
   - **Scene Presence:**
-    - **The Entities tab lists everyone here, strangers by label.** People in the scene come first. Click a stranger for a popup with the label, image and description only.
-    - **Give offers only people in the scene, strangers by label.** A stranger never shows a true name there. Someone with no label isn't offered.
-    - **Entities in the World Editor take a Stranger Name and Stranger Description.** In Advanced mode, the player sees them until the story names the entity. A blank Stranger Name means met from the start.
-    - **The stat picker and the Traits tab list only people in the scene.** Strangers show by label, and a stranger's traits and stats never show the true name.
-    - **The map and the Help window show the people you've met, and never a stranger's true name.** People with no Stranger Name show from the start, and a multi-place entity shows at each place.
-    - **The story calls a stranger by their Stranger Name until you meet them.** The planner casts them under it, and a first name alone no longer slips into the scene.
-    - **Scripts can now read whether the player has met an entity and introduce one.** Read `entities.<Entity>.met`, or call `entities.<Entity>.meet()` to make a stranger known. `met` never turns false.
+    - **The Entities tab lists every entity at your location, and shows a stranger under the name you know.** Entities in the scene come first. Select a stranger to see that name, its image and its stranger description.
+    - **Give lists only the entities in the scene, and shows a stranger under the name you know.** A stranger with no name to show isn't listed.
+    - **World Editor entities have a Stranger Name and a Stranger Description, in Advanced mode.** The player sees them in place of the Name and the Player-Facing Description until they meet the entity.
+    - **The stat picker and the Traits tab list only the entities in the scene.** A stranger shows under the name you know, in its stats and traits too.
+    - **The Map and the Help window show only the entities you've met.** An entity with no Stranger Name shows from the start. An entity at several locations shows at each one.
+    - **The narrator calls a stranger by its Stranger Name until you meet it.** You meet it when the narration uses its Name. The narrator doesn't use the stranger's first name before then.
+    - **Scripts can read whether the player has met an entity, and can make the player meet it.** Read `entities.<Entity>.met`, or call `entities.<Entity>.meet()`. `met` never turns false.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
 - **🛠️ Developer tooling**
   - **Inventory:**
@@ -80,7 +80,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Scene Presence:**
-    - **Strangers keep their label in the Traits tab.** A stranger's trait names and descriptions use the label, never the name, and strangers who share a label get numbers.
+    - **The Traits tab shows a stranger's traits under the name you know.** Trait names and descriptions use that name, and strangers who share one get numbers.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
   - **The Entities tab now clears when you move to a new place, and keeps your followers.** The last room's people no longer stay listed until the next narration.
 - **🛠️ Developer tooling**

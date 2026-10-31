@@ -818,7 +818,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 | `type` | The entity's type, or `''` when it has none. Read-only |
 | `pronouns` | The entity's pronouns, or `''` when it has none. Read-only |
 | `inScene` | True when the entity is in this turn's scene. Read-only |
-| `met` | True when the player has met the entity. It never turns false again. Read-only |
+| `met` | True when the player has met the entity. Never turns false. Read-only |
 | `location` | The code name of the location the entity is at. A follower reads the player's location. Empty when the entity has no position of its own and is at every location it lists. Read-only |
 | `following` | True when the entity follows the player. Read-only |
 | `description` | The full AI description, with each placeholder chip filled in. Read-only |
@@ -831,7 +831,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 | `move()` | Moves the entity to a location. See [Moving Entities](#moving-entities) |
 | `follow()` | Makes the entity follow the player |
 | `unfollow()` | Stops the entity following the player |
-| `meet()` | Introduces the entity to the player. See [Meeting Entities](#meeting-entities) |
+| `meet()` | The player meets the entity. See [Meeting Entities](#meeting-entities) |
 | `diary(line)` | Adds a line to the entity's diary. See [Diary](#diary) |
 
 Each entry in an entity's `stats` has the [same members as a `stats` entry](#stat-properties), `previous` and `delta` included. Code writes `value`, `min`, `max` and `regen` on an entry, by the rules in [Writing to Other Stats](#writing-to-other-stats). A write to any other field is ignored and reported. An entity's stats run every turn, whether or not the entity is in the scene. A stat the entity has switched off reads with `enabled` false, and a write to it is ignored and reported.
@@ -867,13 +867,13 @@ A name no entity in the game has reads as a blank entry. Its `name` and `id` are
 #### Meeting Entities
 <!-- keywords: met, meet, stranger, introduce, reveal identity, stranger name, known entity, hooded stranger -->
 
-An entity with a **Stranger Name** is a stranger until the story names it. `entities.<Entity>.met` is true once the player has met the entity. It never turns false again.
+An entity with a **Stranger Name** shows to the player under that name until the player meets it. The player meets it when the narration uses its name. [Strangers](World-Editor-Entities#strangers) lists the rules. `entities.<Entity>.met` is true once the player has met the entity. It never turns false again.
 
-**`entities.<Entity>.meet()`** introduces the entity to the player, for example when a found letter reveals who the stranger is. It works on any entity of the game, here or not. On an entity the player has met, it does nothing.
+**`entities.<Entity>.meet()`** makes the player meet the entity, so they see its name from then on. Use it when the story reveals a stranger without the narration naming it, such as a found letter. It works on any entity in the game, at the player's location or not. On an entity whose `met` is already true, the call is ignored.
 
-- A read of `met` later in the same run already sees the call.
-- The write lands when the turn ends.
-- A user Tool script reads `met` but has no `meet()`.
+- A later read of `met` in the same run returns true.
+- The change applies when the turn ends.
+- A user Tool script can read `met` but has no `meet()`.
 
 ```javascript
 // Once the clue stat reaches 3, the player learns who the hooded stranger is.

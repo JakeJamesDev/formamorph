@@ -106,7 +106,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
               <HelpButton topicId="worldEditor.strangerName" className="h-6 w-6" />
             </div>
             <Hint id={`entity-stranger-name-hint-${value.id}`}>
-              Shows this name until the story names the entity. Blank means the player knows the entity from the start.
+              The player sees this name until they meet the entity. They meet it when the narration uses its Name.
             </Hint>
             <PlaceholderNameField
               value={value.strangerName ?? ''}
@@ -122,7 +122,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
             label="Stranger Description"
             ariaLabel="Stranger Description"
             historyField="strangerDescription"
-            hint="Shows this text when the player looks at the entity before they know it. Blank shows nothing."
+            hint="Replaces the Player-Facing Description until the player meets the entity. Leave it blank to show no description."
             value={value.strangerDescription ?? ''}
             onChange={(v) => onChange('strangerDescription', v.trim() ? v : undefined)}
             placeholders={placeholders}

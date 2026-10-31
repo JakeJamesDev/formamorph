@@ -140,20 +140,23 @@ Two more rules:
 <!-- keywords: stranger name, stranger description, hidden identity, unknown npc, meet, met, start met, hooded figure, known in, introduction -->
 <!-- route: worldEditorEntity.profile -->
 
-A **stranger** is an entity the player doesn't know yet. Give an entity a **Stranger Name** and the player sees that name, for example "a hooded figure", until the story names the entity. The AI uses the Stranger Name too. The optional **Stranger Description** is the only text the player reads about a stranger. Both fields show in Advanced mode, in the World Editor only. Both take placeholders and rolls. Clear a field to remove it.
+Give an entity a **Stranger Name** to hide who it is until the player meets it. Until then, the player sees the Stranger Name, such as "a hooded figure", in place of the **Name**. The AI narrator uses the Stranger Name too. Both stranger fields are in Advanced mode, in the World Editor only, and take placeholders and rolls.
 
-An entity with no Stranger Name starts **met**. Your existing worlds play as before.
+**How the player meets the entity.** Once met, the player sees the Name for the rest of the game.
 
-An entity with a Stranger Name starts as a stranger, unless one of these is true:
+- The narration uses the entity's Name, or a distinctive part of it such as a first name, while the entity is at the player's location. Dialogue counts. Entries in **Aliases** don't.
+- A script calls [`meet()`](ScriptsGuide#meeting-entities) on the entity.
 
-| Rule | Result |
-|---|---|
-| A relationship joins the entity to the persona the player plays, on either side | Starts met |
-| One of the entity's **Known In** picks covers a place where the persona lives | Starts met. Child places of the pick count. |
-| **Known In** is on its **Nearby** default | Nobody starts met from it |
-| The persona lives nowhere, such as the Custom Persona | Every stranger starts unmet |
+**Before the player meets the entity:**
 
-A stranger turns met when the story uses the entity's real name, in dialogue too. Aliases don't count. Met stays met for the rest of the game.
+- If the narration calls the entity something else, such as "the tall woman", the player sees that name instead.
+- The entity's popup in the **Entities** tab shows the **Stranger Description** in place of the **Player-Facing Description**. Leave the Stranger Description blank to show no description.
+- The Map and the Help window don't show the entity.
+
+**Entities the player has already met.** The player has met an entity from the start when it has no Stranger Name, or when either of these is true:
+
+- It has a relationship with the persona, in either direction.
+- One of its **Known In** picks is one of the persona's **Locations**, or contains one. The **Nearby** default doesn't count.
 
 ## Locations
 <!-- keywords: where npc lives, assign to place, put in room, vanished after delete, several places, too many npcs, crowded scene, orphaned -->

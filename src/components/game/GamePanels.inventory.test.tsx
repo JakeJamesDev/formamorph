@@ -104,7 +104,7 @@ describe('RightPanel — Inventory tab', () => {
   it('says nobody is in the scene when people stand here but none took part', async () => {
     renderRightPanel({}, stage([copy('c', 'coin')]));
     await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
-    expect(await screen.findByText('Nobody is in the scene.')).toBeInTheDocument();
+    expect(await screen.findByText('No entities are in the scene.')).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Give to' })).toBeNull();
   });
 
@@ -193,7 +193,7 @@ describe('RightPanel — Inventory tab', () => {
     it('is not offered with no label', async () => {
       renderRightPanel({}, withStranger(' '));
       await userEvent.click(await screen.findByRole('button', { name: 'Give Coin' }));
-      expect(await screen.findByText('Nobody is in the scene.')).toBeInTheDocument();
+      expect(await screen.findByText('No entities are in the scene.')).toBeInTheDocument();
     });
   });
 
