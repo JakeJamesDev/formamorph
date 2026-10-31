@@ -1,20 +1,13 @@
 import type { HostedState } from './hostedState';
 
-/**
- * The percents that raise a warning. The server holds the same list in its settings and rejects an ack for
- * any other value; its hosted state does not carry the list yet.
- */
-export const WARN_THRESHOLDS: readonly number[] = [75, 90];
-
 /** The highest threshold the account has crossed and not yet acknowledged this month, or null. */
 export function pendingWarning(
   hosted: HostedState | null,
   alsoSeen: ReadonlySet<number> = new Set(),
-  thresholds: readonly number[] = WARN_THRESHOLDS,
 ): number | null {
-  if (hosted?.percentUsed == null) return null;
+  if (hosted?.percentUsed == null || !hosted.warnThresholds) return null;
   const percent = hosted.percentUsed;
-  const open = thresholds.filter((t) => percent >= t && percent < 100 && !hosted.acknowledged.includes(t) && !alsoSeen.has(t));
+  const open = hosted.warnThresholds.filter((t) => percent >= t && percent < 100 && !hosted.acknowledged.includes(t) && !alsoSeen.has(t));
   return open.length > 0 ? Math.max(...open) : null;
 }
 

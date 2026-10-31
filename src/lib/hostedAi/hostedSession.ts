@@ -2,7 +2,6 @@ import AuthService from '@/services/AuthService';
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
 import { hostedReasoningCapability, parseHostedState, recordOf, type HostedState, type HostedUsage } from './hostedState';
 import { HOSTED_STATE_URL, hostedAckUrl } from './hostedUrls';
-import { WARN_THRESHOLDS } from './hostedAllowance';
 import { hostedStateSends, readHostedRefusal, type HostedPresetState, type HostedRefusal } from './refusals';
 import { HostedTurn, HostedTurnRegistry } from './hostedTurn';
 
@@ -181,7 +180,7 @@ export class HostedSession {
     const hosted = this.hosted;
     if (!hosted || (hosted.state !== 'ready' && hosted.state !== 'warned') || hosted.percentUsed === null) return;
     const state = hosted.percentUsed >= 100 ? 'exhausted'
-      : hosted.percentUsed >= WARN_THRESHOLDS[0] ? 'warned' : hosted.state;
+      : hosted.warnThresholds && hosted.percentUsed >= hosted.warnThresholds[0] ? 'warned' : hosted.state;
     if (state === hosted.state) return;
     this.hosted = { ...hosted, state };
     this.changed();
@@ -213,7 +212,7 @@ export class HostedSession {
    */
   async acknowledgeWarning(threshold: number): Promise<void> {
     const token = this.credential();
-    const crossed = [...WARN_THRESHOLDS].filter((t) => t <= threshold);
+    const crossed = (this.hosted?.warnThresholds ?? []).filter((t) => t <= threshold);
     crossed.forEach((t) => this.shown.add(t));
     if (!token) return;
     for (const t of crossed) {

@@ -25,7 +25,7 @@ function NoticeBody({ text, actions }: { text: string; actions: { label: string;
 
 const upgrade = { label: HOSTED_UPGRADE_LABEL, run: () => openExternal(PATREON_PAGE_URL) };
 
-/** Toasts the 75% or 90% notice. */
+/** Toasts the notice for a crossed threshold. */
 export function showWarningNotice(threshold: number, hosted: HostedState | null): void {
   toast.info(<NoticeBody text={hostedWarningText(threshold, hosted)} actions={[upgrade]} />, { ...OPTIONS, toastId: `hosted-warning-${threshold}` });
 }

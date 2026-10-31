@@ -15,7 +15,7 @@ import {
 const READY_STATE = {
   tier: 'supporter', state: 'ready', window: 20000, maxTokens: 800, tokenMargin: 500,
   model: { id: 'entry-1', capabilities: { tools: true, reasoning: null } },
-  percentUsed: 10, turnsLeft: 90, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [],
+  percentUsed: 10, turnsLeft: 90, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [], warnThresholds: [75, 90],
 };
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>

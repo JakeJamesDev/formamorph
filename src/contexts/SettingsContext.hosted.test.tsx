@@ -33,7 +33,7 @@ const STATE = {
   // maxTokens sits below any local VITE_DEFAULT_MAX_TOKENS, so the state's cap is what binds.
   tier: 'supporter', state: 'ready', window: 24000, maxTokens: 200, tokenMargin: 800,
   model: { id: 'entry-7', capabilities: { tools: true, reasoning: 'openrouter', budget: true } },
-  percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [],
+  percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [], warnThresholds: [75, 90],
 };
 
 // The app's order: the hosted reads sit inside the age gate, which sits inside the settings.
