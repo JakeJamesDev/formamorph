@@ -28,6 +28,14 @@ A tooltip inherits its purpose, not a special grammar exemption: an action toolt
 
 Additional setting detail belongs behind the information control. Do not repeat the row description there. Required action conditions or destructive consequences must also be visible where the action occurs; do not make a procedure depend on opening optional help. Review procedural notes under rule 5.5 rather than treating every information popover as a note.
 
+## Before you write
+
+Copy takes on the words and the order of whatever its writer read last. A spec, a glossary, or the code gives copy that explains the design, not the screen.
+
+1. **List the facts in the user's words first.** Write what the user sees, clicks, and fills in. Then write the copy from that list, not from the spec, `CONTEXT.md`, or the code.
+2. **Glossary words aren't UI words.** A `CONTEXT.md` term goes into copy only when a visible label uses it, or when the copy defines it first. Pipeline words (planner, cast, pass) never go in.
+3. **Read it aloud. Would you say this?** A line that no one would say to a colleague fails, however well it scores on the other rules.
+
 ## Labels, capitalization, and complete sentences
 
 **Capitalization:** Keep local Title Case for labels, buttons, section headings, and dialog titles; use sentence case for prose. The standard's General introduction, page ii ([PDF page 36](https://www.asd-ste100.org/assets/files/ASD-STE100_ISSUE9.pdf#page=36)), assigns formatting to applicable publication/style directives. Rule 1.5's explanation on page 1-1-9 distinguishes ordinary terms from official identifiers and titles. This supports local presentation; capitalization does not approve a word's meaning or grammar.
@@ -77,7 +85,7 @@ These entries preserve established concepts. Noun admission is assessed under ru
 | linked copy, independent copy | A linked copy is a world's entity or dictionary that follows a library item or a source. An independent copy follows nothing. Unlink turns a linked copy into an independent copy. | [linkedContent.ts](../src/lib/linkedContent.ts); category 19 |
 | bundled content | The entities and dictionaries an imported world file carries whose library items are not on this machine. The Link bundled content to my library choice saves them as library items. | [worldBundle.ts](../src/lib/worldBundle.ts); category 19 |
 
-Use the same term for the same concept in prose, accessible names, and help. Quoted labels retain their display casing; ordinary nouns use normal prose casing. Introduce unfamiliar terms in help before depending on them. This register is scoped to the listed meanings, not a blanket whitelist for all game vocabulary.
+Use the same term for the same concept in prose, accessible names, and help. One fact reads the same on every surface: the hint, the help topic, the docs page, and the changelog. An entity is "it"; never "people", "everyone", "someone", or "nobody" for entities. Help and docs state the current behavior, never a change (`Old worlds play as before` fails); the changelog is the one place for change. Quoted labels retain their display casing; ordinary nouns use normal prose casing. Introduce unfamiliar terms in help before depending on them. This register is scoped to the listed meanings, not a blanket whitelist for all game vocabulary.
 
 Technical verbs need a separate entry under rule 1.12; a noun entry does not authorize verb use. For example, `save` means persist application data and `open` means load/access a file. Category 2b, page 1-1-14 ([PDF page 58](https://www.asd-ste100.org/assets/files/ASD-STE100_ISSUE9.pdf#page=58)), covers these computer operations. Record why an approved dictionary verb cannot convey the same operation accurately: keeping something is not necessarily persisting it; showing something is not necessarily opening/parsing it. Apply the rule's approved-word preference on page 1-1-15. Do not justify `delete` as a technical verb when approved `erase` conveys the intended data operation accurately.
 
@@ -94,8 +102,13 @@ A setting's brief line, a help line under a field, a tooltip, and a ⓘ popover 
 | **Contractions, and the period rule.** One sentence takes no period. Two or more sentences end with one. | `You'll be signed out` | `You will be signed out.` |
 | **Common words, no figurative language.** "Trash", "badge", "bandwidth" pass. Metaphor, idiom, "simply", "easy", and exclamation marks fail. | `Sends requests to your model server` | `Points requests at your model server`, `Rides the narration history` |
 
-Two more checks:
+More checks:
 
+- **State the trigger in product terms.** Name the thing the user knows: the narration, a tab, a field. Not the story concept, and not the code. `Shows this name to the player until the narration uses the entity's Name` passes; `until the player learns who it is` and `until a parse of the output detects the name` fail.
+- **Name who gets the effect** when it isn't the reader. An author's field acts on the player or the AI, so say which: `Shows this name to the player`, not `Shows this name`.
+- **Cut a condition only when the line stays true without it.** The test: would an author who reads only this line build something that breaks? If not, cut it and state it in the help topic. If so, keep it in the line.
+- **Paired fields mirror each other.** A field that replaces another field names that field and the condition: `Replaces the Player-Facing Description until…`. Write both hints together.
+- **A blank field that acts as a mode gets its own sentence,** stated as the result: `Leave it blank to start known`. Never `Blank means…`.
 - **No definition cadence.** Never `A [noun with a packed clause] is [noun]`. Write the action, with you as the subject or no subject.
 - **Named controls are bold**, in their on-screen casing, with their element type on first mention when the label is a common word: `The **Chips** tab shows your template`. Bare bold after that. Never quotation marks, never code font. A slot that renders plain text, such as a row description, keeps quotation marks, because bold can't render there.
 
