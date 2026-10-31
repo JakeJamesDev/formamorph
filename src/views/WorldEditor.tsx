@@ -23,8 +23,10 @@ import {
   useTutorialSeen,
 } from '@/lib/tutorials';
 import {
-  entityRootCount, newBlankWorld,
+  entityRootCount, newBlankWorld, newEntity,
 } from '@/lib/blankWorld';
+import { randomUUID } from '@/lib/uuid';
+import type { EntityDraft } from '@/lib/formaquestion/entityBlock';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
 } from '@/lib/authoringTour/steps';
@@ -612,7 +614,13 @@ const WorldEditorInner = ({
       case 'prompt': return setActiveTab('overview');
     }
   }, [getWorldData, openCodeCardItem, navigateToBenchItem]);
-  useHelpWorldSource(editorToolWorld, getWorldData, { lean: 'editor', world: getWorldData, open: openWorldSource });
+  // An entity card's Add: a blank entity at the root with the block's two fields, shown on the Entities tab.
+  const addEntityDraft = useCallback(({ name, aiDescription }: EntityDraft) => {
+    const entity = { ...newEntity(randomUUID(), entityRootCount(getWorldData()), name), aiDescription };
+    addEntity(entity);
+    navigateToBenchItem('entities', entity.id);
+  }, [getWorldData, addEntity, navigateToBenchItem]);
+  useHelpWorldSource(editorToolWorld, getWorldData, { lean: 'editor', world: getWorldData, open: openWorldSource, addEntity: addEntityDraft });
   // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
   const goToCodeUse = useCallback(({ entityId, rowId, trait, world, tool, timing, scriptId, line }: CodeUse) => {
     requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), ...(tool && { tool }), timing, scriptId, line });

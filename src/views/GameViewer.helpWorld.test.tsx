@@ -104,6 +104,8 @@ describe('the game registers the Player View for Formaquestion', () => {
     const world = await openGame();
     expect(world.lean).toBe('game');
     expect(world.open).toBeUndefined();
+    // The game cannot write: an entity card's Add stays off.
+    expect(world.addEntity).toBeUndefined();
     const { view, story } = world.game!();
     expect(view.entities.map((e) => e.name)).toEqual(['Odd Wick']);
     expect(view.stats.map((s) => s.id)).toEqual(['Coins']);

@@ -111,7 +111,8 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  edit of the answer prompt. `formaquestionAiContext` opens the window and its AI Context under it, on two
  *  canned questions with traces, so the popup has pages to show without an AI. `formaquestionWikiConfirm` opens the
  *  window and the Open Wiki confirm, named for the section `subtab=…` gives or for the wiki home, whatever the
- *  Confirm Before Opening the Wiki setting says. `settingsCompare` opens Settings
+ *  Confirm Before Opening the Wiki setting says. `formaquestion` with `fixture=entityCards` opens the window on a
+ *  canned answer with entity blocks (`devEntityCardSample.ts`): open a World Editor first for a live Add. `settingsCompare` opens Settings
  *  and the compare view over it, on a canned edit of the Narration prompt. `chipOptions` opens Settings and
  *  Chip Options over it, on a canned Entities chip. `scriptPrompt` is in game (GameViewer) and fires one
  *  canned `player.*` request through the live prompt store once the game has a turn; `tab=…` picks the shape

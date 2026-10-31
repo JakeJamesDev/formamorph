@@ -49,6 +49,24 @@ In the World Editor, your AI gets the parts of your world that match your questi
 - The world sections have a size limit of their own, so they never push a guide section out of the request.
 - To keep your world out of help requests, turn off **Read the World** in Formaquestion Settings → **General**. A question then sends the guide alone.
 
+## How to Add an Entity From an Answer
+<!-- keywords: make an entity, create a character, draft an npc, generate an entity, entity card, add to world, creation, new entity from help, add button on answer -->
+<!-- route: formaquestionSettings.general -->
+
+1. Select **⋮** in the Formaquestion title bar, then **Settings**.
+2. On the **General** tab, turn on **Creation**.
+3. Open a world in the World Editor.
+4. Ask for an entity, such as "Make me a gate guard for this town".
+5. On the card in the answer, select **Add**.
+
+Each entity in the answer shows as a card with its name and AI description. **Add** puts the entity in the world you have open, ungrouped, and selects it on the **Entities** tab. Every other field starts blank, so you edit the rest in the World Editor. Undo removes the entity.
+
+- **Copy** copies the card's text.
+- A warning icon next to the name means your world already has an entity with that name. **Add** still adds a second one.
+- **Add** works in the World Editor only, including the World Editor you open from a game. On any other screen it's unavailable.
+- Your next question tells your AI which entities you added.
+- A card that has fields other than the name and the AI description, or an AI description longer than four sentences, shows as a code block with **Copy** instead.
+
 ## How to Ask About Your Story
 <!-- keywords: in game, who is, who was, what happened, story so far, recap, lore, characters i met, places i visited, my items, my stats, spoilers, what should i do next, stuck, hint -->
 <!-- route: formaquestion.ask#question-field -->
@@ -565,6 +583,7 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. A card at the top of the window offers it first. See [The Semantic Search Card](#the-semantic-search-card). |
 | **Sort Questions** | Off | Sends one short request first, in which your AI sorts your question: small talk, a how-to, code, your world, or a request to make something. Each kind then sends only what it needs. See [How to Turn On Sort Questions](#how-to-turn-on-sort-questions). |
 | **Use the Open Screen** | On | Sends the open screen, your selected item, and its guide section |
+| **Creation** | Off | Lets you ask for entities in the World Editor and add them. See [How to Add an Entity From an Answer](#how-to-add-an-entity-from-an-answer). |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 
 The selected item is a stat, trait, entity, location or dictionary entry open in the World Editor, or the entity open in the Entity Editor. Its name goes with the screen, such as "Scripts tab of the stat Courage".
