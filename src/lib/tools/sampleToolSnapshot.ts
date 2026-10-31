@@ -7,7 +7,7 @@ import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { sampleChipScene, sampleDictionaries, samplePersona, sampleWorld } from '@/lib/chipValues/sampleScene';
 import { serializeTurnContent } from '@/lib/turnDigest';
 import { buildMemoryLedger, closedTurns, scriptMemories } from '@/lib/memoryView';
-import { NO_OPENING_PICKS, openingStateOf } from '@/lib/openingState';
+import { NO_OPENING_PICKS, openingPersonaOf, openingStateOf } from '@/lib/openingState';
 import { SAMPLE_ACTION } from '@/lib/scriptTestSamples';
 import { EMPTY_REPLY } from '@/lib/statCodeExecutor';
 import { buildToolSnapshot, type ToolScriptSource, type ToolSnapshot } from './toolSnapshot';
@@ -29,7 +29,9 @@ function sampleHistory(): ChatMessage[] {
  *  sample scene has them. */
 function sampleScriptSource(scene: ChipScene, history: ChatMessage[]): ToolScriptSource {
   const persona = samplePersona();
-  const opening = openingStateOf(sampleWorld(), NO_OPENING_PICKS, { ref: { source: 'library', entityId: persona.id }, libraryEntity: persona });
+  const opening = openingStateOf(
+    sampleWorld(), NO_OPENING_PICKS, openingPersonaOf({ source: 'library', entityId: persona.id }, { libraryEntity: persona }),
+  );
   const ledger = buildMemoryLedger({ history, overrides: {}, pins: {}, selection: null, verbatimFloor: 0 });
   return {
     state: {

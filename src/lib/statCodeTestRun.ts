@@ -203,7 +203,8 @@ const worldWriteLines = (
 /** Test Code's snapshot of `world` at turn one for a `timing` run. No playthrough: no picks, no persona and no
  *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
 export const testCodeSnapshotOf = (
-  world: OpeningFoldWorld, timing: ScriptTiming, overlays: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> = {}, persona?: OpeningPersona,
+  world: OpeningFoldWorld, timing: ScriptTiming,
+  { persona, ...overlays }: Pick<SnapshotOptions, 'pendingPersona' | 'assumedStats'> & { persona?: OpeningPersona } = {},
 ): SandboxSnapshot => snapshotOf(
   { ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) }, { openCast: true, ...overlays },
 );
@@ -222,7 +223,7 @@ export async function runTestCode(
   const entityNames = new Map((world.entities ?? []).map((entity) => [entity.id, statCodeName(entity.name, list)]));
   const { locations } = codeLocationsOf(world.locations ?? [], list);
   const assumed = [...new Set((missing ?? []).filter(({ kind }) => kind === 'stat').map(({ segments }) => segments[0]))];
-  const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, ...(assumed.length && { assumedStats: assumed }) }, persona);
+  const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, persona, ...(assumed.length && { assumedStats: assumed }) });
   const unit: ScriptRunUnit = {
     home: seeded, timing, code,
     ...(timing === 'output' && { narration: sentence ?? '' }),

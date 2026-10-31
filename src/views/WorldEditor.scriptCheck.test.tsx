@@ -121,8 +121,8 @@ describe('WorldEditor — the on-demand script check', () => {
     const { ctx } = setup();
     const button = await openBench();
     let asked!: Promise<boolean>;
-    vi.mocked(checkScripts).mockImplementation((_world, prompts) => {
-      asked = prompts!.prompt({ kind: 'confirm', question: 'Drink it?' });
+    vi.mocked(checkScripts).mockImplementation((_world, options) => {
+      asked = options!.prompts!.prompt({ kind: 'confirm', question: 'Drink it?' });
       return asked.then(() => [], () => [FAILURE]);
     });
     fireEvent.click(button);

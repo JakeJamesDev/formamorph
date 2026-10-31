@@ -22,6 +22,7 @@ import { buildAiContext, EMPTY_AI_CONTEXT } from './aiContext';
 import { buildOpening, EMPTY_OPENING, type OpeningChoice } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
+import { openingPersonaOf } from '@/lib/openingState';
 import { checkedScriptCount, checkScripts } from './scriptCheck';
 import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
 import { lensStatOverrides } from './lens';
@@ -145,7 +146,9 @@ export function useTestBench({
       const world = getWorldData();
       // The persona the Opening instrument shows, so `met` reads the start rule under it.
       const played = world.entities?.find((e) => e.persona && e.id === openingChoice.personaId);
-      const found = await checkScripts(world, prompts.host, played && { ref: { source: 'world', entityId: played.id } });
+      const found = await checkScripts(world, {
+        prompts: prompts.host, persona: openingPersonaOf(played && { source: 'world', entityId: played.id }),
+      });
       if (!stillCurrent()) return;
       setCodeFindings(found);
       setCodeCheckStatus('done');

@@ -28,7 +28,7 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { newGamePool } from '@/lib/newGameOpening';
-import { openingStateOf, type OpeningPicks } from '@/lib/openingState';
+import { openingPersonaOf, openingStateOf, type OpeningPicks } from '@/lib/openingState';
 import type { SandboxState } from '@/lib/statCodeTurn';
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, lonePlaceholderToken,
@@ -204,7 +204,7 @@ function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: st
   const flagged = startingLocations(locations);
   const pool = flagged.length > 0 ? flagged : locations;
   const location = pool.find((l) => l.id === startLocationId) ?? pool[0] ?? null;
-  const state = openingStateOf(world, openingPicks(world, active, persona), { ref: persona });
+  const state = openingStateOf(world, openingPicks(world, active, persona), openingPersonaOf(persona));
   return { active, state, settled: [...state.stats], pool, location };
 }
 

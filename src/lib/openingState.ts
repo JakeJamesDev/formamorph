@@ -22,7 +22,7 @@ import { seedItemCopies, settleInventory, type NewId } from './inventory';
 import { randomUUID } from './uuid';
 import type { OwnerId } from './scope';
 import { resolveEntityText, type PlaceholderMode } from './placeholders';
-import type { Entity, EntityStatValues, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World } from '@/types';
+import type { Entity, EntityStatValues, PersonaRef, ItemEffectLedger, OwnedTraitPicks, Placeholder, Trait, World } from '@/types';
 
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
@@ -38,6 +38,16 @@ export interface OpeningPicks {
 
 /** The played persona and the library characters added at the entry step. Absent ⇒ None, no library. */
 export type OpeningPersona = PersonaPick & { characters?: readonly Entity[] };
+
+/** The opening persona from what a caller holds: the reference, and the library entity when the reference is a
+ *  library one. Absent reference ⇒ None. */
+export function openingPersonaOf(
+  ref: PersonaRef | null | undefined, held: { libraryEntity?: Entity | null } = {},
+): OpeningPersona | undefined {
+  if (!ref) return undefined;
+  const { libraryEntity } = held;
+  return { ref, ...(ref.source === 'library' && libraryEntity && { libraryEntity }) };
+}
 
 export const NO_OPENING_PICKS: OpeningPicks = { traits: [], owned: {} };
 
