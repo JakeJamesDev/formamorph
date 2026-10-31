@@ -1,7 +1,7 @@
 # Spec: Scene Presence and Strangers
 
-Status: done
-Status note: Closed on 2026-10-30. Tickets 01–08 are done; the last landing is eb6c4ea72. Review: spec text corrected, and two fixes landed in 268e1a00e. Closed with gaps: tickets 09 and 10 are open. Closed red: EditorModalShell.test.tsx failed on a peer's uncommitted edit, outside this effort.
+Status: in-progress
+Status note: Reopened on 2026-10-30 for tickets 09–10. First closed on 2026-10-30. Tickets 01–08 are done; the last landing is eb6c4ea72. Review: spec text corrected, and two fixes landed in 268e1a00e. Closed with gaps: tickets 09 and 10 are open. Closed red: EditorModalShell.test.tsx failed on a peer's uncommitted edit, outside this effort.
 Spec session: scene-presence — spec
 
 ## Problem Statement
@@ -178,6 +178,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
   - `persona.met` is always true, and the persona has no `meet()`.
   - A blank entry reads `met: false`, and its `meet()` stops the script.
   - `met` ships wherever entity entries do. `meet()` ships only where entity writes are allowed, so a read-only run, such as a user Tool, has `met` and no `meet()`.
+- **Q75:** The opening state lands a Start-timing script's `meet()`, move and follow writes, so they take effect on turn one (ticket 10).
 
 - **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
 
