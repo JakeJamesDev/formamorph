@@ -176,7 +176,7 @@ describe('hub sections in the bundled docs', () => {
 });
 
 describe('the Scripts sections for a player who still says stat code', () => {
-  const SCRIPTS_SECTIONS = /^(ScriptsGuide#|World-Editor-Stats#scripts$|World-Editor-Traits#scripts$)/;
+  const SCRIPTS_SECTIONS = /^(ScriptsGuide#|Scripts-Reference#|World-Editor-Stats#scripts$|World-Editor-Traits#scripts$)/;
 
   it.each([
     'stat code',
@@ -223,7 +223,7 @@ describe('the Chip Options sections of the Prompt Chips guide', () => {
 });
 
 describe('the other-stat write sections of the Stat Code Guide', () => {
-  const IDS = ['ScriptsGuide#how-to-change-another-stat-from-code', 'ScriptsGuide#writing-to-other-stats'];
+  const IDS = ['ScriptsGuide#how-to-change-another-stat-from-code', 'Scripts-Reference#writing-to-other-stats'];
 
   it.each([
     'how can one of my stat scripts change a different stat, like lowering health when a dice roll comes up 1?',
@@ -237,14 +237,14 @@ describe('the other-stat write sections of the Stat Code Guide', () => {
 
   it('is first for a question about two scripts that write one stat', () => {
     expect(index.search('two of my stat scripts change the same stat, which one wins?', 1).map((s) => s.id))
-      .toEqual(['ScriptsGuide#writing-to-other-stats']);
+      .toEqual(['Scripts-Reference#writing-to-other-stats']);
   });
 });
 
 describe('the owner sections of the Stat Code Guide', () => {
   // Code hover cards link each global to its own heading.
   it.each(['self', 'stats', 'owner'])('has one heading for %s', (name) => {
-    const [section] = index.get([`ScriptsGuide#${name}`]);
+    const [section] = index.get([`Scripts-Reference#${name}`]);
     expect(section?.markdown).toMatch(new RegExp(`^### ${name}\\b`, 'i'));
   });
 
@@ -254,7 +254,7 @@ describe('the owner sections of the Stat Code Guide', () => {
     'in a script on one of my monster\'s stats, how do I get to that monster\'s other stats?',
     'what does owner mean in a Blueprint stat script?',
   ])('answers "%s" in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('ScriptsGuide#owner');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Scripts-Reference#owner');
   });
 
   it.each([
@@ -262,6 +262,6 @@ describe('the owner sections of the Stat Code Guide', () => {
     'I want a village event script to lower a villager\'s energy. How do I write that?',
     'when two scripts set one number in the same turn, whose result stays?',
   ])('answers "%s" with the write section in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('ScriptsGuide#writing-to-other-stats');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Scripts-Reference#writing-to-other-stats');
   });
 });

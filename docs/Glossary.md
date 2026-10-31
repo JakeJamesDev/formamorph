@@ -152,7 +152,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [At Game Start](ScriptsGuide#at-game-start) | The timing that runs once on the opening turn of a new game |
 | [When a Trait Switches](ScriptsGuide#when-a-trait-switches) | The timing that runs each time a trait turns on or off in play |
 | [Trait](World-Editor-Traits) | A fact about the player or an entity, such as a class or a fear. It is global or an entity's own. |
-| [Acquired](ScriptsGuide#traits) | A trait the player has. A trait switched off is still acquired. |
+| [Acquired](Scripts-Reference#traits) | A trait the player has. A trait switched off is still acquired. |
 | [Trait Modes](World-Editor-Traits#mode) | **Optional**: the player chooses. **Automatic**: active while its requirements hold. **Hidden**: Automatic, and the player never sees it. |
 | [Curse](World-Editor-Traits#curses) | An Automatic trait that requires the cursed item |
 | [Pick Count](World-Editor-Traits#pick-count) | How many traits the player must and can pick from a group: **Any**, **Exactly One**, **Up to One** or **Custom** |

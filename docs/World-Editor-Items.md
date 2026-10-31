@@ -178,7 +178,7 @@ The **Scripts** tab runs code on the item's events. It shows in Advanced mode.
 - 🔗 A script that gives or takes items runs those items' scripts too, 3 levels deep at most.
 - 🌱 Starting items run no script.
 
-The [Scripts Guide](ScriptsGuide#items) lists what an item script can read and write.
+The [Scripts Guide](Scripts-Reference#items) lists what an item script can read and write.
 
 ## Slots
 <!-- keywords: equipment slots, hand, ring, head, armor slot, capacity, two handed -->

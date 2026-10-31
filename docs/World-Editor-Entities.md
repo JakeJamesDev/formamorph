@@ -166,7 +166,7 @@ Give an entity a **Stranger Name** to hide who it is until the player meets it. 
 **How the player meets the entity.** Once met, the player sees the Name for the rest of the game.
 
 - The narration uses the entity's Name, or a distinctive part of it such as a first name, while the entity is at the player's location. Dialogue counts. Entries in **Aliases** don't.
-- A script calls [`meet()`](ScriptsGuide#meeting-entities) on the entity.
+- A script calls [`meet()`](Scripts-Reference#meeting-entities) on the entity.
 
 **Before the player meets the entity:**
 

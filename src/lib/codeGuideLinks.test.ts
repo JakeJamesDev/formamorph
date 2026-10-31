@@ -43,7 +43,7 @@ describe('the Guide link table', () => {
 
   it('points the three owner-route globals at the headings the Guide gives them', () => {
     expect(['self', 'stats', 'owner'].map((name) => docTargetId(STAT_CODE_GUIDE_LINKS[name]))).toEqual([
-      'ScriptsGuide#self', 'ScriptsGuide#stats', 'ScriptsGuide#owner',
+      'Scripts-Reference#self', 'Scripts-Reference#stats', 'Scripts-Reference#owner',
     ]);
   });
 });
@@ -59,7 +59,7 @@ describe('the Guide link on a global’s card', () => {
   it.each([['narration', 'output'], ['player', 'before'], ['trait', 'switch']] as const)(
     'carries the Scripts Guide row of %s in a %s script',
     (name, timing) => {
-      expect(linkOf(name, 1, scriptSurface(STAT_CODE_SURFACE, timing))).toEqual({ id: 'guide', target: { page: 'ScriptsGuide', anchor: name } });
+      expect(linkOf(name, 1, scriptSurface(STAT_CODE_SURFACE, timing))).toEqual({ id: 'guide', target: { page: 'Scripts-Reference', anchor: name } });
     },
   );
 

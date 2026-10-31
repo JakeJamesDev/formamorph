@@ -14,7 +14,7 @@ import { helpSettingsOf, type HelpSettings } from './helpSettings';
 
 const LEAD = 'World-Editor-Stats#scripts';
 const FIELDS = 'World-Editor-Stats#the-fields';
-const GUIDE_TRAITS = 'ScriptsGuide#traits';
+const GUIDE_TRAITS = 'Scripts-Reference#traits';
 
 const PAGES = {
   'World-Editor-Stats': [
@@ -22,14 +22,14 @@ const PAGES = {
     '## The Fields', '', 'A stat has a name and a range.', '',
     '## Scripts', '', 'The **Scripts** tab lists every script and its timing.', '',
   ].join('\n'),
-  ScriptsGuide: [
-    '# Scripts Guide', '', 'A script changes a stat each turn.', '',
+  'Scripts-Reference': [
+    '# Scripts Reference', '', 'A script changes a stat each turn.', '',
     '## Quick Reference', '', '| Object | Read |', '|---|---|', '| `self` | `self.value` |', '', 'A stat compares through `.value`.', '',
     '## Traits', '', 'Switch a trait from code through `traits.<Name>.enabled`.', '',
   ].join('\n'),
   Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n',
 };
-const index = createDocsIndex({ pages: PAGES, sidebar: '- [World Editor Stats](World-Editor-Stats)\n- [Scripts Guide](ScriptsGuide)\n- [Traits](Traits)\n' });
+const index = createDocsIndex({ pages: PAGES, sidebar: '- [World Editor Stats](World-Editor-Stats)\n- [Scripts Reference](Scripts-Reference)\n- [Traits](Traits)\n' });
 
 const surface = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
 const CODE_TAB = surface(SCRIPT_TAB);

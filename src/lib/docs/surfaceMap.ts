@@ -74,7 +74,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   persona: { page: 'Personas', anchor: 'change-it-in-game' },
   replaceSource: { page: 'LinkedContent', anchor: 'the-three-repairs' },
   imageReplace: { page: 'World-Editor-Entities', anchor: 'images-and-models' },
-  codeRename: { page: 'ScriptsGuide', anchor: 'accessing-other-stats' },
+  codeRename: { page: 'Scripts-Reference', anchor: 'accessing-other-stats' },
   replaceAll: { page: 'WorldEditor', anchor: 'find-and-replace' },
   deleteWorldAvatar: { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   savedElsewhere: { page: 'WorldEditor', anchor: 'editing-in-two-tabs' },

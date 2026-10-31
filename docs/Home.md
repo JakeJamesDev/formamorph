@@ -69,6 +69,7 @@ Pick a world that comes with Formamorph, import one, or build your own in the Wo
 | 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Allowed Personas** and **Starts On** controls, and the Persona chip and the Persona Name chip |
 | 📐 **[World Format](WorldFormat)** | Every field of a world `.json` file, and how to add a stat, a trait or an entity by hand |
 | 🧮 **[Scripts Guide](ScriptsGuide)** | Writing JavaScript scripts for stats, traits and the world: formulas, narration rewrites and player prompts |
+| 🧮 **[Scripts Reference](Scripts-Reference)** | Every object a script reads and writes, with examples |
 | 🔗 **[Linked Content](LinkedContent)** | How a world's entities and dictionaries follow a library item, take updates, publish, download, and repair a missing source |
 
 ### Project

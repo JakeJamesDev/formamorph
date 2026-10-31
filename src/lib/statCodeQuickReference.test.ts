@@ -20,8 +20,8 @@ import type { SurfaceEntry } from './codeSurface';
  * are held to the surface lists, which `statCodeSurface.test.ts` holds to the sandbox; its code forms run in
  * the sandbox and in the editor's checks.
  */
-const SECTION_ID = 'ScriptsGuide#quick-reference';
-const WRITING_SECTION_ID = 'ScriptsGuide#writing-to-other-stats';
+const SECTION_ID = 'Scripts-Reference#quick-reference';
+const WRITING_SECTION_ID = 'Scripts-Reference#writing-to-other-stats';
 
 interface Row { object: string; members: string[]; read: string; write: string }
 
