@@ -22,7 +22,7 @@ Without items, a sword exists only in the prose, and the narrator forgets it a f
 5. On the **Descriptions** tab, write the **AI-Facing Description**.
 6. Select **Save**.
 
-> 💡 Drag an item by its grip to change the order of the list. Use the row's buttons to duplicate or delete it.
+> 💡 With the box empty, the new item is named "New Item". Drag an item by its grip to change the order of the list. Use the row's buttons to duplicate or delete it. Deleting an item also removes it from every **Starting Items** list.
 
 ## The panel
 <!-- keywords: item tabs, profile, descriptions, item image, item placeholders, image rule -->
@@ -34,8 +34,10 @@ The item panel works like the entity panel.
 |---|---|
 | **Profile** | The name, the images with their rules, and the image tags |
 | **Descriptions** | The player-facing and AI-facing descriptions, in Advanced mode the **AI-Facing Summary**, and the **Unidentified Name** and **Unidentified Description** |
-| **Properties** | Value, Stackable, Uses, When Empty, Bound, Slot and Slot Size |
-| **Effects** | The stat effect rows: what the item does to its owner's stats |
+| **Properties** | Value, Stackable, Uses, State, When Empty, Bound, Slot and Slot Size |
+| **Effects** | The stat and trait effect rows: what the item does to its owner |
+| **Requirements** | The [Equip Requirements](#requirements) |
+| **Scripts** | The item's [scripts](#scripts) (Advanced mode only) |
 | **Placeholders** | The item's own placeholders (Advanced mode only) |
 
 An image's **Visibility Rule** reads whoever owns the item. A Condition with no owner reads as **Item Owner**.
@@ -204,7 +206,7 @@ Starting items are the items a new game begins with. You can place them in three
 Each row picks an item, a quantity and **Hidden**. A hidden item is there, but the player doesn't see it until the story reveals it.
 
 - When the player plays a world entity, that entity's starting items are the player's.
-- Two rows of the same stackable item on one owner become one stack. A hidden row stays its own row.
+- Two rows of the same stackable item on one owner become one stack. Hidden rows stack only with hidden rows.
 - A persona-only entity that nobody plays gets no items.
 
 > ⚠️ Starting items appear only in a new game. A saved game never gains the items you add later.
@@ -215,9 +217,9 @@ Each row picks an item, a quantity and **Hidden**. A hidden item is there, but t
 After each turn's narration, the **Inventory** prompt reads the turn and records what it did to items. It can give, take, move, equip, unequip and use an item, change its State, and reveal a hidden or unidentified one. It sees the items of the player, of the people here, and of the location.
 
 - 🧪 A use follows the item's **When Empty**. For a plain item the story made, the story says whether the use kept it or used it up.
-- 🔤 A name in the story matches your item when it's the same name, ignoring case and spaces. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.
+- 🔤 A name in the story matches your item when it's the same name, ignoring case and the spaces at the ends. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.
 - ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used, and it has no slot and no effects. The same name later reuses it.
 - 🎒 The step runs only while the world has items or the game holds any. A world with no items never sends it.
 - ⚖️ The story can take a **Bound** item. Only the player's buttons can't.
 
-The step's prompt is on the **Prompts** tab in Settings, under **Inventory**.
+The step's prompt is on the **Prompts** tab in Settings, under **Inventory**. That tab shows in Advanced mode.
