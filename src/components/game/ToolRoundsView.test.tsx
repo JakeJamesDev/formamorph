@@ -57,4 +57,15 @@ describe('ToolRoundsView', () => {
     })]} />);
     expect(screen.getByText('Unknown Tool')).toBeTruthy();
   });
+
+  it('strikes through a call later rounds leave out, and only that call', () => {
+    const shown = round().calls[0];
+    render(<ToolRoundsView rounds={[round({ calls: [{ ...shown, id: '000000002', name: 'set_face', unseen: true }, shown] })]} />);
+    const hidden = screen.getByText('set_face');
+    const kept = screen.getByText('get_entity');
+    expect(hidden.tagName).toBe('DEL');
+    expect(kept.tagName).toBe('SPAN');
+    expect(hidden.closest('p')!.parentElement!.className).toContain('line-through');
+    expect(kept.closest('p')!.parentElement!.className).not.toContain('line-through');
+  });
 });

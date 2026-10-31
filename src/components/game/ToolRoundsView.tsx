@@ -1,5 +1,6 @@
 import type { AiToolRound, AiToolRoundFailure } from '@/lib/aiRequest/toolLoop';
 import { ToolText } from '@/components/prompt/ToolText';
+import { cn } from '@/lib/utils';
 
 const FAILURE_LABELS: Record<AiToolRoundFailure, string> = {
   arguments: 'Bad Arguments',
@@ -32,9 +33,10 @@ export function ToolRoundsView({ rounds }: { rounds: readonly AiToolRound[] }) {
             </div>
           )}
           {round.calls.map((call) => (
-            <div key={call.id} className="flex flex-col gap-1 min-w-0">
+            // A call later rounds leave out reads struck through.
+            <div key={call.id} className={cn('flex flex-col gap-1 min-w-0', call.unseen && 'line-through')}>
               <p className="flex flex-wrap items-baseline gap-2">
-                <span className="font-mono text-label">{call.name}</span>
+                {call.unseen ? <del className="font-mono text-label">{call.name}</del> : <span className="font-mono text-label">{call.name}</span>}
                 {call.failure && (
                   <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-meta text-destructive">{FAILURE_LABELS[call.failure]}</span>
                 )}

@@ -51,6 +51,8 @@ export type AiToolRoundFailure = ToolCallFailure | 'unknown' | 'limit';
 export interface AiToolRoundCall extends AiToolCall {
   result: string;
   failure?: AiToolRoundFailure;
+  /** Later rounds carry neither this call nor its result. */
+  unseen?: true;
 }
 
 /** One tool round, as the silent capture records it. */
@@ -311,7 +313,8 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
         return;
       }
       if (outcome.failure === 'unknown' || outcome.failure === 'limit' || outcome.failure === 'arguments') offerTools = false;
-      if (unseenNames.has(call.function.name)) spent.add(call.function.name);
+      const unseen = unseenNames.has(call.function.name);
+      if (unseen) spent.add(call.function.name);
       else messages.push({ role: 'tool', tool_call_id: call.id, content: outcome.text });
       roundCalls.push({
         id: call.id,
@@ -319,6 +322,7 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
         arguments: call.function.arguments,
         result: outcome.text,
         ...(outcome.failure ? { failure: outcome.failure } : {}),
+        ...(unseen && { unseen: true as const }),
       });
     }
     if (options.captureRounds) {

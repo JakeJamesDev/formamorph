@@ -323,6 +323,7 @@ describe('streamAiToolLoop: unseen functions', () => {
     expect(second.messages).toEqual(first.messages);
     expect(second).not.toHaveProperty('tools');
     expect(roundsOf(events)[0].calls[0].result).toContain(BRAM_FACT);
+    expect(roundsOf(events)[0].calls[0].unseen).toBe(true);
     expect(doneOf(events).content).toBe('Bram nods.');
   });
 
@@ -355,8 +356,9 @@ describe('streamAiToolLoop: unseen functions', () => {
   it('keeps a call in the next round when no unseen set names it', async () => {
     const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('x')]);
 
-    await run(transport, { unseen: new Set(['get_location']) });
+    const events = await run(transport, { unseen: new Set(['get_location']), captureRounds: true });
 
+    expect(roundsOf(events)[0].calls[0]).not.toHaveProperty('unseen');
     expect(toolMessagesOf(transport.sent[1])).toHaveLength(1);
     expect(transport.sent[1].tools).toEqual([toolSchema(GET_ENTITY)]);
   });
