@@ -450,6 +450,7 @@ export function buildOpening(
     stats: liveStats,
     resolve,
     resolveEntity,
+    persona: openingPersonaOf(personaRef),
   }));
   // The opening pool for this persona at this start, as new-game play reads it. The Bench has no library, so
   // the persona is a world entity or None; picked library entities are a player choice.

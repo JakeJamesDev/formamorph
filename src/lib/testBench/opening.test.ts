@@ -375,6 +375,24 @@ describe('the Character Name chip on turn one', () => {
   });
 });
 
+describe('the stranger label on turn one', () => {
+  const stranger: Entity = { id: 'e-stranger', name: 'Tobin', strangerName: 'the net mender', locations: ['harbor'], aiDescription: 'Mends nets.' };
+  const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true, locations: ['market'] };
+  const first = (entity: Entity, personaId: string | null) => {
+    const w = world({ entities: [entity, wren] });
+    return buildOpening(w, lensAt(w), primeOpeningRolls(w, {}, pickFirst), { personaId }).system;
+  };
+
+  it('prints an unmet stranger under its label in the first prompt', () => {
+    expect(first(stranger, 'e-wren')).toMatch(/stranger[ _]name.{0,6}the net mender/);
+  });
+
+  it('prints a stranger the persona knows without its label', () => {
+    const known = { ...stranger, relationships: [{ targetId: 'e-wren', label: 'kin' }] };
+    expect(first(known, 'e-wren')).not.toContain('the net mender');
+  });
+});
+
 describe('the opening pool', () => {
   const ov = (over: Partial<WorldOverview> = {}) =>
     ({ name: 'Sedge Landing', description: '', systemPrompt: '', ...over }) as WorldOverview;

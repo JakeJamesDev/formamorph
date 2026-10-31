@@ -55,6 +55,36 @@ describe('authoredChipScene and the Character Name chip', () => {
   });
 });
 
+describe('authoredChipScene and stranger labels', () => {
+  const drifter: Entity = { ...harrow, strangerName: 'the map seller', knownIn: ['landing'] };
+  const kin: Entity = { ...wren, id: 'kin', name: 'Kin', persona: true, locations: ['landing'] };
+  const peddler: Entity = { ...drifter, id: 'peddler', name: 'Peddler', knownIn: [] };
+
+  it('labels an entity with a Stranger Name that the start rule leaves unmet', () => {
+    expect(authoredChipScene(world({ entities: [wren, peddler] })).strangerLabels).toEqual({ peddler: 'the map seller' });
+  });
+
+  it('prints the label beside the true name in the roster, as turn one does', () => {
+    const at = { location: landing, resolve: (text: string) => text };
+    const text = chipValues(authoredChipScene(world({ entities: [wren, peddler] }), at))('<ENTITIES>');
+    expect(text).toContain('Peddler');
+    expect(text).toContain('stranger name: the map seller');
+  });
+
+  it('leaves a met entity and one without a Stranger Name unlabeled', () => {
+    const tied: Entity = { ...peddler, relationships: [{ targetId: 'kin', label: 'owes' }] };
+    const scene = authoredChipScene(world({ entities: [wren, tied, kin] }), { persona: { ref: { source: 'world', entityId: 'kin' } } });
+    expect(scene.strangerLabels).toEqual({});
+  });
+
+  it("meets the entity the persona's place covers", () => {
+    const labelsFor = (persona?: { ref: { source: 'world'; entityId: string } }) =>
+      authoredChipScene(world({ entities: [drifter, kin] }), { persona }).strangerLabels;
+    expect(labelsFor({ ref: { source: 'world', entityId: 'kin' } })).toEqual({});
+    expect(labelsFor()).toEqual({ harrow: 'the map seller' });
+  });
+});
+
 describe('authoredChipScene and entity stats', () => {
   const trust: Stat = { id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 100, value: 30, regen: 0, descriptors: [] };
   const dread: Stat = { ...trust, id: 'dread', name: 'Dread', enabled: false };
