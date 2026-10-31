@@ -321,7 +321,7 @@ export const MemoryManagerModal = ({
                               accent it explains, which is hidden while editing. */}
                           <Tip
                             labelsChild={false}
-                            tip={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
+                            tip={row.asScene ? 'Sent to the AI as the full scene last turn' : row.inContext ? 'Sent to the AI last turn' : undefined}
                           >
                             <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
                           </Tip>

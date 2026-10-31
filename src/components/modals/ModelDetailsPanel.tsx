@@ -33,7 +33,7 @@ const REQUIREMENT_LABELS: Record<AvatarLicenseRequirement, string> = {
  * that varies per surface (each one's Export button, which resolves its bytes differently) goes in `footer`.
  *
  * Portrait/narrow: the model fills the screen and its info + controls move into a bottom sheet, mirroring the
- * character-customization step. A standalone full-screen overlay (not a nested Dialog) keeps the vaul drawer
+ * Avatar Customization step. A standalone full-screen overlay (not a nested Dialog) keeps the vaul drawer
  * out of a Radix focus trap. Desktop keeps the side-by-side dialog.
  */
 export function ModelDetailsPanel({ open, name, url, license, size, failed = false, footer, onClose }: {
