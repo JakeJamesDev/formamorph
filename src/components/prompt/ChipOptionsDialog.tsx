@@ -15,6 +15,7 @@ import { resolveTokenRuns } from '@/lib/promptTemplate';
 import { AFFIX_FORBIDDEN, isValidAffix, toggleIsOn, toggleOptionFor, type PromptVariantAxis } from '@/lib/promptVariables';
 import type { TokenValues } from '@/lib/promptValues';
 import { cn } from '@/lib/utils';
+import { Meta } from '@/components/ui/typography';
 
 const FULL = 'full'; // control value for an axis's default option (null id)
 
@@ -229,7 +230,7 @@ function OptionRows({ token, vocab, editable, update, hasActions, light }: Omit<
 
   const placement = header != null || affixes != null;
   if (!rows.length && !placement) {
-    return hasActions ? null : <p className="text-meta text-muted-foreground">No options for this variable.</p>;
+    return hasActions ? null : <Meta as="p">No options for this variable.</Meta>;
   }
   return (
     <div className="space-y-2.5">

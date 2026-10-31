@@ -213,7 +213,7 @@ export function extractImageBytes(bytes: Uint8Array): Uint8Array {
 
 const STATUS_MESSAGES: Record<number, string> = {
   401: 'NovelAI rejected the API token. Generate a fresh persistent token in your NovelAI account settings.',
-  402: 'NovelAI declined the request for lack of Anlas. Top up, or lower the resolution and steps.',
+  402: 'NovelAI declined the request because you have too few Anlas. Buy more, or lower the resolution and steps.',
   429: 'NovelAI is already generating for this account. Wait for that image to finish, then retry.',
 };
 

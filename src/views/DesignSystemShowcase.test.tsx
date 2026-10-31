@@ -72,7 +72,7 @@ describe('settings design reference', () => {
     await user.click(screen.getByRole('option', { name: /^Simple/ }));
     expect(screen.queryByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Memory' })).toBeNull();
-    expect(modeSelect).toHaveAccessibleDescription('Hidden settings are off their defaults');
+    expect(modeSelect).toHaveAccessibleDescription('Hidden settings differ from their defaults');
 
     await user.click(modeSelect);
     await user.click(screen.getByRole('option', { name: /^Advanced/ }));

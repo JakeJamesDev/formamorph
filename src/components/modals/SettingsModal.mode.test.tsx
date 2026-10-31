@@ -240,7 +240,7 @@ describe('settings mode', () => {
     // Markdown Formatting is a hidden row, and off is not its default.
     localStorage.setItem('FORMAMORPH_markdownOutput', 'false');
     const second = openSettings('simple');
-    expect(modeSelect()).toHaveAccessibleDescription('Hidden settings are off their defaults');
+    expect(modeSelect()).toHaveAccessibleDescription('Hidden settings differ from their defaults');
     second.unmount();
 
     // Advanced hides nothing, so it has nothing to report.

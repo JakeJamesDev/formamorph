@@ -179,7 +179,7 @@ export function LocalModelPanel() {
 
       {/* When a change takes effect is a property of the whole group, not of any one row, so it belongs
           on the section header rather than at the end of every description. */}
-      <Section title="Engine" hint="Sampling and Context Overflow apply to the next turn; the rest need a reload">
+      <Section title="Engine" hint="Sampler settings and “Context Overflow” apply on the next turn. The rest need a reload.">
       {/* Simple rows — always visible */}
       <Row htmlFor="localContextSize" {...rowCopy('localContextSize')}>
         <ValueSlider id="localContextSize" value={Math.min(localContextSize, contextMax)} min={2048} max={contextMax} step={1024} onChange={setLocalContextSize} format={(v) => `${v.toLocaleString()} tok`} />
@@ -227,7 +227,7 @@ export function LocalModelPanel() {
           <Hint>
             {gpuDevices.backend === null
               ? 'The engine couldn’t list your graphics cards.'
-              : 'No GPU available — models run on the CPU.'}
+              : 'No GPU found, so models run on the CPU.'}
           </Hint>
         ) : (
           <Select value={localGpuDevice} onValueChange={setLocalGpuDevice}>
@@ -366,8 +366,9 @@ export function LocalModelPanel() {
         {loadFailed && (
           <Hint>
             The model didn’t fit in VRAM at these settings. Lower <strong>Context Size</strong>
-            {advancedMode ? <> or <strong>GPU Layers</strong></> : <> (or turn on <strong>Advanced</strong> to lower GPU Layers)</>},
-            then reload.
+            {advancedMode
+              ? <> or <strong>GPU Layers</strong>, then reload.</>
+              : <>, then reload. <strong>Advanced</strong> mode also shows <strong>GPU Layers</strong>.</>}
           </Hint>
         )}
         <div className="flex items-center justify-between gap-2">

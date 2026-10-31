@@ -3,7 +3,7 @@ import type { ThinkingMode } from '@/contexts/SettingsContext';
 import { TURN_TIME_UNITS, joinTurnHours, splitTurnHours, type TurnTimeUnit } from '@/lib/gameClock';
 import { CONTINUE_CHOICE_MODES, type ContinueChoiceMode } from '@/contexts/settingsDefaults';
 import { Row, CheckRow, Section, SubGroup, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
-import { Hint, Meta } from '@/components/ui/typography';
+import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import { SETTINGS_COPY, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, TOOLS_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import { reasoningLevelOptions, reasoningOffRefused, toolsSupported, type ReasoningSetting } from '@/lib/reasoningEffort';
@@ -76,7 +76,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
 
   return (
     <div className="grid gap-6 py-4">
-      <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration">
+      <Section title="Turn Extras" hint="Runs optional requests with each turn's narration">
       {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
           shows a prompt's editor tab only while it's enabled here. */}
       <Row target={targetAttribute('settings.output', 'choices')} {...rowCopy('systemPrompts')}>
@@ -190,7 +190,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       {/* Reads the active endpoint's record, like the Native Reasoning row; the wire gate checks each
           prompt's own target. */}
       {advanced && (
-      <Section title="Tools" hint="What the AI can look up while it works">
+      <Section title="Tools" hint="Lets the AI look up information while it writes">
       {activeToolsSupported ? (
         <CheckRow
           htmlFor="toolsEnabled"
@@ -211,7 +211,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       )}
 
       {advanced && (<>
-      <Section title="Memory" hint="What the AI carries forward from earlier turns">
+      <Section title="Memory" hint="Sets what the AI keeps from earlier turns">
       <CheckRow
         htmlFor="memoryDigests"
         checked={memoryDigests}
@@ -273,7 +273,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       {embedError && !embedLoading && (semanticMemory || semanticLore) && (
         <Row>
           <div className="flex items-center gap-2">
-            <span className="text-helper text-destructive">Model download failed: {embedError}</span>
+            <FieldError as="span">Model download failed: {embedError}</FieldError>
             <Button variant="outline" size="sm" onClick={embeddingModel.start}>Retry</Button>
           </div>
         </Row>
@@ -282,7 +282,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
 
       {/* The story's clock. It runs without memories too (the Log, stat regeneration), so only Time in
           Memory is gated on Memory Summaries. */}
-      <Section title="Time" hint="How long each turn takes, and when things happened">
+      <Section title="Time" hint="Sets how much story time passes and dates your memories">
       {memoryDigests && (
       <CheckRow
         htmlFor="timeContext"
@@ -300,9 +300,9 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       {!aiClock && <TimePerTurnRow hours={fixedTurnHours} onChange={setFixedTurnHours} />}
       </Section>
 
-      {/* Semantic Lore acts on the dictionary, not on memories — it sat under Memory only because it
-          shares Semantic Memory's on-device model, whose download progress stays up there. */}
-      <Section title="Lore" hint="How dictionary entries reach the AI">
+      {/* Semantic Lore acts on the dictionary. It shares Semantic Memory's on-device model, whose
+          download progress shows under Memory. */}
+      <Section title="Lore" hint="Sets how dictionary entries activate">
       <CheckRow
         htmlFor="semanticLore"
         checked={semanticLore}
@@ -311,8 +311,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       />
       </Section>
 
-      {/* Split out of Memory: these three are about the cast, and only sat under Memory because
-          that is where the code for them happens to live. */}
+      {/* The cast's settings, kept apart from Memory. */}
       <Section title="Characters">
       {/* Descriptions work from the narration alone, so unlike diaries this is offered in every mode. */}
       <CheckRow

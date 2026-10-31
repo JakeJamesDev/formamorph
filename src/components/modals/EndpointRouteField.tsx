@@ -1,4 +1,5 @@
 import { HintInfo } from '@/components/SettingsRows';
+import { Hint } from '@/components/ui/typography';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
 import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
 import type { ReachabilityTarget } from '@/lib/useEndpointReachable';
@@ -35,7 +36,7 @@ export function EndpointRouteField({ label, description, info, value, activeName
         <label className="text-label">{label}</label>
         <HintInfo>{info}</HintInfo>
       </div>
-      <span className="text-helper text-muted-foreground">{description}</span>
+      <Hint as="span">{description}</Hint>
       <Select
         value={value ?? FOLLOW_ACTIVE}
         onValueChange={(v) => onChange(v === FOLLOW_ACTIVE ? null : v)}

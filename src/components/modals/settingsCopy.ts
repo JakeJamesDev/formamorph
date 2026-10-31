@@ -41,6 +41,14 @@ export type SettingOptionCopy<V extends string = string> = {
   recommended?: true;
 };
 
+/** The ⓘ of both font rows: the reading need each accessibility typeface serves, since the options show bare names. */
+const FONT_PURPOSES = `Four typefaces serve reading needs:
+
+- **OpenDyslexic** for dyslexia
+- **Atkinson Hyperlegible** for low vision
+- **Lexend** for reading fluency
+- **Andika** for early literacy`;
+
 export const SETTINGS_COPY = {
   // ── Display · Appearance ────────────────────────────────────────────────────
   theme: {
@@ -54,6 +62,7 @@ export const SETTINGS_COPY = {
   font: {
     label: 'Font',
     description: 'Sets the typeface for the whole app',
+    info: FONT_PURPOSES,
   },
 
   // ── Display · Scene ─────────────────────────────────────────────────────────
@@ -100,20 +109,20 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
   stripLinksAndImages: {
     label: 'Strip Links And Images',
     description: 'Sends past narration to the AI without markdown links and images',
-    info: `Keeps a link’s text and removes images before past narration goes to the AI.
+    info: `Keeps each link’s text and removes each image before past narration goes to the AI.
 
-- Covers the last story, memory summaries, diary entries and recall results
-- You still see them in the story
-- Your world’s own text never changes
+- Covers past narration, memory summaries, diary entries and recall results
+- The story you read still shows them
+- Your world’s own text stays as written
 
-Turn off if your model should keep writing links.`,
+Turn it off if your model should keep writing links.`,
   },
 
   // ── Display · Accessibility ─────────────────────────────────────────────────
   narrationFont: {
     label: 'Narration Font',
     description: 'Sets a separate typeface for the story text',
-    info: 'Includes typefaces tuned for **dyslexia** and **low vision**',
+    info: FONT_PURPOSES,
   },
   narrationTextSize: {
     label: 'Narration Text Size',
@@ -128,7 +137,7 @@ Turn off if your model should keep writing links.`,
     description: 'Colors quoted speech so dialogue stands out',
     info: `Applies to the narration and your own typed lines. The color comes from your theme unless you set your own below.
 
-Only double quotes count. Apostrophes and single quotes stay plain, so contractions keep the body color.`,
+Only double quotes count. Apostrophes and single quotes stay plain, so contractions keep the text color.`,
   },
   quoteColorLight: {
     label: 'Light Mode Color',
@@ -150,23 +159,23 @@ Only double quotes count. Apostrophes and single quotes stay plain, so contracti
   showReasoning: {
     label: 'Show Reasoning',
     description: 'Shows the model’s private reasoning above each turn',
-    info: `Some models think privately before they write. Thinking modes add the same step. Shows that text as a collapsible **Thinking…** note above the narration.
+    info: `Some models reason in private before they write, and the **Thinking** setting can add that step. Shows that text as a collapsible note above the narration.
 
 The text is saved either way. Turn this on later and past turns show theirs too.`,
   },
   showSilentRequests: {
     label: 'Show Silent Requests',
     description: 'Shows background requests in the status bar and context viewer',
-    info: `Covers **memory summaries**, **character diaries**, and notes on new characters.
+    info: `Covers background requests such as **Memory Summaries**, **Character Diaries** and **Describe New Characters**.
 
-Useful for world authoring and debugging.`,
+Helps when you build a world or debug a prompt.`,
   },
 
   // ── Output · Turn Extras ────────────────────────────────────────────────────
   systemPrompts: {
     label: 'System Prompts',
     description: 'Chooses which follow-up requests run after each turn',
-    info: 'Each item runs as its own request after the narration. Turn one off and that feature stops: choice buttons, stat changes, or detected moves. Its editor under the **Prompts** tab hides too.',
+    info: 'Each item runs as its own request after the narration. Turn one off and its feature stops: the choice buttons, stat changes or location changes. Its editor on the **Prompts** tab hides too.',
   },
   moveAutomatically: {
     label: 'Move Automatically',
@@ -187,15 +196,15 @@ Useful for world authoring and debugging.`,
   },
   limitActiveCharacters: {
     label: 'Limit Active Characters',
-    description: 'Caps how many characters the director stages per turn',
-    info: `- Each staged character adds its **own request**
-- Without a cap, the scene stages as many as it needs`,
+    description: 'Caps how many characters plan their motivation each turn',
+    info: `- Each character that plans adds its **own request**
+- Without a cap, the **Director** picks as many as the scene needs`,
   },
   nativeReasoning: {
     label: 'Native Reasoning',
     description: 'Sets whether reasoning models think, and how hard',
-    // The caveat that used to close all eight effort levels, said once for the whole control.
-    info: `Some models think privately before they answer. Uncheck to stop that on every prompt. Each prompt keeps its own setting for when you check it again.
+    // The reasoning-model caveat for every effort level, said once for the whole control.
+    info: `Some models reason in private before they answer. Uncheck to stop that on every prompt. Each prompt keeps its own setting for when you check it again.
 
 - The dropdown sets how much effort they spend
 - **Model Default** sends no hint
@@ -229,7 +238,7 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
 
 - Runs a small model **on your device**
 - One-time **~23 MB** download when you turn it on
-- Nothing about your story leaves your machine`,
+- Nothing about your story leaves your device`,
   },
   memoryCap: {
     label: 'Memory Cap',
@@ -298,14 +307,14 @@ Runs one extra request the first time a new character is named. Remove any you d
   characterDiaries: {
     label: 'Character Diaries',
     description: 'Gives each character a diary that shapes their motivation',
-    info: `As turns age out, each character present writes a **first-person diary entry**. A character's recent entries feed its motivation.
+    info: `After each turn, each character present writes a **first-person diary entry**. A character's recent entries feed its motivation.
 
-Runs one extra request per participant. Edit its prompt under **Prompts → Diary**.`,
+Runs one extra request per character present. Edit its prompt under **Prompts → Diary**.`,
   },
   diaryRecall: {
     label: 'Diary Recall',
     description: 'Recalls older diary entries relevant to the moment',
-    info: `Characters recall the older entries most relevant to the moment, not only their newest ones. An old rival remembers the last time you drew a blade.
+    info: `Characters recall the older entries most relevant to the moment, as well as their newest ones. An old rival remembers the last time you drew a blade.
 
 - Same total entry count, so it costs **nothing extra**
 - Uses the **Semantic Memory** model`,
@@ -315,7 +324,9 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   continueTheStory: {
     label: 'Continue the Story',
     description: 'Adds a choice that nudges the story forward',
-    info: `Shows a **[Continue the Story]** button under the choices. Like any choice, it puts its text in the action box, and you send it. The story reads it as a nudge to keep going, not as something your persona does.
+    info: `Shows a **[Continue the Story]** button under the choices. Like any choice, it puts its text in the action box, and you send it.
+
+The story reads it as a request to keep going. Your persona doesn't do it.
 
 **Always** keeps the button even when the **Choices** request is off.`,
   },
@@ -323,7 +334,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   // ── Output · Attachments ────────────────────────────────────────────────────
   imageAttachments: {
     label: 'Image Attachments',
-    description: 'Attach up to 4 images to an action or a help question',
+    description: 'Lets you attach up to 4 images to an action or question',
     info: `Adds an attach button to the action box and to the **Ask a Question** field in Formaquestion. On an action, the images go with your action text, on that turn only.
 
 - Each prompt's **Include Attachments** option decides which requests get them. **Narration** has it on by default.
@@ -364,7 +375,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   },
   maxOutputTokens: {
     label: 'Max Output Tokens',
-    description: 'Caps how long each answer can run, not the reasoning',
+    description: 'Caps the tokens in each answer, not counting reasoning',
   },
   endpointTemperature: { label: 'Temperature', description: 'Overrides this endpoint’s temperature' },
   endpointRepetitionPenalty: { label: 'Repetition Penalty', description: 'Overrides this endpoint’s repetition penalty' },
@@ -376,7 +387,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
     description: 'Adds JSON fields to every request to this endpoint',
     info: `Write one JSON object, for example a vendor's reasoning switch, \`top_a\`, \`chat_template_kwargs\` or a routing block.
 
-A field the request already carries wins over the same field here. These fields only add what the request doesn't set.
+A field the request already carries takes priority over the same field here. These fields only add what the request doesn't set.
 
 You can't set \`model\`, \`messages\`, \`stream\`, \`tools\`, \`tool_choice\`, \`response_format\`, \`n\` or \`stop\`.
 
@@ -398,6 +409,9 @@ You can still generate a single scene yourself from the button above the story.`
   imageProvider: {
     label: 'Provider',
     description: 'Selects which image server to send requests to',
+    info: `- **ComfyUI**, **InvokeAI** and **Automatic1111 / Forge** run on your own machine
+- **NovelAI** and **OpenAI-compatible** servers run in the cloud
+- **OpenAI-compatible** works only in the desktop app`,
   },
   imageEndpointUrl: {
     label: 'Endpoint URL',
@@ -442,7 +456,7 @@ You can still generate a single scene yourself from the button above the story.`
   },
   faceFix: {
     label: 'Face Fix',
-    description: 'Re-renders faces in a second pass',
+    description: 'Renders the faces again after the first image',
   },
   imageFileName: {
     label: 'File Name',
@@ -570,18 +584,18 @@ The model never sees part of a message.`,
   localAutoLoad: {
     label: 'Auto-Load',
     description: 'Loads the first downloaded model when the engine is in use',
-    info: 'Loads the first model in your download folder when the engine is in use. A finished download also loads itself.\n\nWithout it, nothing loads until you press the **Load** button, and no VRAM is spent until then.',
+    info: 'Each download also loads when it finishes.\n\nWithout it, no model loads until you press **Load**, and the engine uses no VRAM until then.',
   },
   localTemperature: {
     label: 'Temperature',
     description: 'Sets how randomly the model picks each word',
-    info: `Scales how boldly the model picks each word. Low values take the safe pick. High values give rare words a chance.
+    info: `Sets how often the model picks a less likely word. Low values pick the likeliest word. High values give rare words a chance.
 
 Around 0.7 fits most story models. Above 1.2 the text can lose coherence.`,
   },
   localMaxTokens: {
     label: 'Max Output Tokens',
-    description: 'Caps how long each answer can run, not the reasoning',
+    description: 'Caps the tokens in each answer, not counting reasoning',
     info: 'An answer that hits the cap ends at the last full sentence',
   },
   localTopP: {
@@ -651,7 +665,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   },
   promptMaxOutput: {
     label: 'Max Output',
-    description: 'Overrides how long this prompt’s answer can run, not its reasoning',
+    description: 'Overrides the token cap on this prompt’s answer, not counting reasoning',
   },
 
   // ── Prompts · Narration messages ────────────────────────────────────────────
@@ -665,7 +679,9 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
     label: 'Now Message',
     description: 'Closes the recap with where things stand now',
     sentWhen: 'Sent in the narration history at the end of the recap’s reply',
-    info: 'The recap is all past tense. Without this stated present, the AI can treat an ongoing scene as if you had just arrived. Each chip carries its own clause and disappears when it has nothing to say, so any combination still reads as a sentence.',
+    info: `The recap is all past tense. Without this message, the AI can treat an ongoing scene as one you only now entered.
+
+Each chip adds its own clause and is left out when it has no value. Any mix of chips still reads as a sentence.`,
   },
   recallMessage: {
     label: 'Recall Message',
@@ -724,7 +740,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   editorAutoSavePause: {
     label: 'Autosave Pause',
     description: 'Waits this long after your last edit before saving',
-    info: 'A longer pause writes less often but leaves more unsaved',
+    info: 'A longer pause saves less often, so more edits stay unsaved',
   },
   authoringTour: {
     label: 'Authoring Tour',
@@ -766,7 +782,7 @@ export const SETTINGS_CONFIRMS = {
   },
   restoreDefaultWorlds: {
     title: 'Restore Default Worlds',
-    description: "Bring back the bundled worlds you've deleted (City Rampage, Valentines Survival, Reincarnated Drone)? Worlds you still have are left untouched, and nothing you made or imported is affected.",
+    description: "Bring back the bundled worlds you've deleted? The worlds you still have stay as they are, and nothing you made or imported changes.",
   },
   clearCachedImages: {
     title: 'Clear Cached Images',
@@ -834,7 +850,7 @@ export const SETTINGS_OPTIONS = {
     {
       value: 'staged', label: 'Staged',
       help: 'Highest quality, slowest',
-      detail: 'Runs three kinds of pass before the narration: a director picks who is in the scene, each staged character plans its own motivation, and a storyboarder turns that into a plan.\n\n- Several extra requests per turn, so it\'s the slowest option\n- The best at keeping a cast consistent\n- **Limit Active Characters** caps how many character passes run',
+      detail: 'Runs three steps before the narration, each with its own prompt. **Director** picks who is in the scene, **Character** plans each one\'s motivation, and **Storyboard** turns that into one plan.\n\n- Several extra requests per turn, so it\'s the slowest option\n- The best at keeping a cast consistent\n- **Limit Active Characters** caps how many characters plan',
     },
   ],
 } as const satisfies Record<string, readonly SettingOptionCopy[]>;

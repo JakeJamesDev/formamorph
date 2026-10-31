@@ -294,7 +294,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
               </Row>
               <Section title="Sampling">
                 <Hint>
-                  Your per-prompt settings and built-in prompt values take priority over “Temperature” and “Repetition Penalty”. Leave a checkbox unchecked to send no override.
+                  Your per-prompt settings and built-in prompt values take priority over <strong>Temperature</strong> and <strong>Repetition Penalty</strong>. Leave a checkbox unchecked to send no override.
                 </Hint>
                 <div className="grid gap-4 pt-3">
                   {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sentenceShapeViolation } from '@/test/copyShape';
+import { FONT_LIST } from '@/contexts/settingsDefaults';
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_NOTES, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingCopy, type SettingOptionCopy } from './settingsCopy';
 
 /**
@@ -177,6 +178,14 @@ describe('settings copy', () => {
     const bad = Object.entries(SETTINGS_OPTIONS)
       .filter(([, list]) => list.filter((o: SettingOptionCopy) => o.recommended).length > 1);
     expect(bad.map(([k]) => k)).toEqual([]);
+  });
+
+  it('names every accessibility font in both font ⓘ bodies, since the options show bare names', () => {
+    const a11y = FONT_LIST.filter((f) => f.a11y).map((f) => f.label);
+    expect(a11y.length).toBeGreaterThan(0);
+    for (const key of ['font', 'narrationFont'] as const) {
+      expect(a11y.filter((name) => !SETTINGS_COPY[key].info.includes(`**${name}**`)), key).toEqual([]);
+    }
   });
 
   it('gives every confirmation a body that reads as a sentence', () => {

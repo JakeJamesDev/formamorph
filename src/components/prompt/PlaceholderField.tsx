@@ -47,7 +47,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, o
    *  For an entity's or book's field: its scoped placeholders read bare and come first, and one created
    *  from here lands in its list. */
   ownerId?: string;
-  /** The owning entity's authored name, which a Character Name chip previews as. */
+  /** The owning entity's authored name, which an Entity Name chip previews as. */
   ownerName?: string;
   /** Previews a trait's text as this owner's: its copies and its pins. */
   ownerPreview?: OwnerPreview;

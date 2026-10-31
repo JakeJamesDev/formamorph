@@ -14,7 +14,7 @@ const TITLES: Record<ImageProviderId, string> = {
   comfyui: "Set up ComfyUI",
   invokeai: "Set up InvokeAI",
   novelai: "Set up NovelAI",
-  openai: "Set up OpenAI-compatible (cloud)",
+  openai: "Set up an OpenAI-compatible server",
 };
 
 /** Connection guide for the currently-selected image provider. Assumes the tool is already installed and
@@ -36,7 +36,7 @@ const ImageSetupGuide = ({
 
       <div className="space-y-2 text-label">
         {provider !== "openai" && provider !== "novelai" && (
-          <p className="text-muted-foreground">Assumes it&apos;s already installed.</p>
+          <p className="text-muted-foreground">Install and start it first. This guide covers only the connection.</p>
         )}
 
         {provider === "a1111" && (
@@ -44,7 +44,7 @@ const ImageSetupGuide = ({
             <p>Add this line to <Code>webui-user.bat</Code>, then run that file to launch:</p>
             <Snippet>set COMMANDLINE_ARGS=--api --cors-allow-origins=*</Snippet>
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-              <li>Optional: install the <strong>ADetailer</strong> extension to use the face/hand-fix toggle.</li>
+              <li>Optional: install the <strong>ADetailer</strong> extension to use <strong>Face Fix</strong>.</li>
             </ul>
           </>
         )}
@@ -63,37 +63,37 @@ const ImageSetupGuide = ({
               {!isDesktop() && (
                 <li>Keep the address after the flag. Without it, any website you visit can send ComfyUI work.</li>
               )}
-              <li>The Model &amp; Sampler lists load from the server automatically; the Workflow field ships an editable default.</li>
+              <li>The <strong>Model</strong> and <strong>Sampler</strong> lists load from the server. The <strong>Workflow</strong> field starts with a default you can edit.</li>
             </ul>
           </>
         )}
 
         {provider === "invokeai" && (
           <>
-            <p>Let InvokeAI accept the app&apos;s origin. Add it to <Code>allow_origins</Code> in your <Code>invokeai.yaml</Code> (in the InvokeAI root folder), then restart InvokeAI:</p>
+            <p>Add this app&apos;s address to <Code>allow_origins</Code> in <Code>invokeai.yaml</Code>, in the InvokeAI root folder. Then restart InvokeAI:</p>
             <Snippet>{`allow_origins: ["${window.location.origin}"]`}</Snippet>
             <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-              <li>Default endpoint is <Code>http://localhost:9090</Code>. The Model list loads from the server automatically — pick an installed SDXL, SD1.5, or Z-Image model.</li>
-              <li>Z-Image also needs a Qwen3 encoder and a FLUX-type VAE; Formamorph auto-picks installed ones (override in Settings if needed).</li>
-              <li><strong>Face Fix</strong> needs no extension, but the first image you generate with it on pauses while InvokeAI downloads its detector models (a few hundred MB, once).</li>
+              <li>The default endpoint is <Code>http://localhost:9090</Code>. The <strong>Model</strong> list loads from the server. Pick an installed SDXL, SD1.5 or Z-Image model.</li>
+              <li>Z-Image also needs a Qwen3 encoder and a FLUX-type VAE. Installed ones are picked automatically. To pick others, use <strong>Qwen3 Encoder</strong> and <strong>Z-Image VAE</strong> in <strong>Advanced</strong> mode.</li>
+              <li><strong>Face Fix</strong> needs no extension. The first image with it on waits while InvokeAI downloads its detector models, a few hundred MB, one time only.</li>
             </ul>
           </>
         )}
 
         {provider === "novelai" && (
           <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-            <li>Needs a NovelAI subscription. In NovelAI, open the <strong>cog icon</strong> → <strong>Account</strong> tab and scroll to <strong>Get Persistent API Token</strong> — copy it before closing the popup, as it is shown only once.</li>
-            <li>Paste it into <strong>API Token</strong> above. It stays on your machine. The endpoint is already set to <Code>https://image.novelai.net</Code>.</li>
-            <li><strong>Opus</strong> subscribers get one free image per request at up to <strong>1024×1024</strong> and <strong>28 steps</strong> — the settings this provider starts on. Going above either spends Anlas.</li>
-            <li>NovelAI cannot interrupt a generation it has already started, so <strong>Stop</strong> only frees the app up — that image may still cost Anlas.</li>
+            <li>Needs a NovelAI subscription. In NovelAI, open the <strong>cog icon</strong> → <strong>Account</strong> tab and scroll to <strong>Get Persistent API Token</strong>. Copy the token before you close the popup, because NovelAI shows it only once.</li>
+            <li>Paste it into <strong>API Token</strong> in Settings. It stays on your machine. The endpoint is already set to <Code>https://image.novelai.net</Code>.</li>
+            <li><strong>Opus</strong> subscribers get one free image per request at up to <strong>1024×1024</strong> and <strong>28 steps</strong>. This provider starts at those settings. Higher values spend Anlas.</li>
+            <li>NovelAI can&apos;t stop a generation it has started. <strong>Stop</strong> frees the app, but that image can still cost Anlas.</li>
           </ul>
         )}
 
         {provider === "openai" && (
           <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-            <li>Available only in the <strong>Formamorph desktop app</strong> — browsers can&apos;t call these APIs directly, so the app proxies them (no CORS setup).</li>
-            <li>Endpoint: your provider&apos;s base URL, e.g. <Code>https://api.openai.com</Code>.</li>
-            <li>Paste your API key — it stays on your machine.</li>
+            <li>Works only in the <strong>Formamorph desktop app</strong>. Browsers can&apos;t call these APIs directly, so the desktop app sends the requests for you. You need no CORS setup.</li>
+            <li><strong>Endpoint URL</strong>: your provider&apos;s base URL, for example <Code>https://api.openai.com</Code>.</li>
+            <li>Paste your API key into <strong>API Token</strong>. It stays on your machine.</li>
           </ul>
         )}
       </div>

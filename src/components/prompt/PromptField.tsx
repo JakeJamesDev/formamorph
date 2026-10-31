@@ -21,7 +21,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
-import { Hint } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FullscreenShell, FULLSCREEN_CORNER_CLEAR } from '@/components/FullscreenShell';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
@@ -336,7 +336,7 @@ function VariableToolbar({ vocab, interactive }: {
     // since a flex item stuck at content width has nothing to scroll within and nothing to wrap into.
     // Insertable tokens, not this field's contents — see the palette bar for why the find bar skips them.
     <div data-editor-find-skip className="flex items-center gap-1 min-w-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
-      <span className="text-meta text-muted-foreground mr-1 flex-shrink-0">Insert:</span>
+      <Meta className="mr-1 flex-shrink-0">Insert:</Meta>
       {items.map((v) => (
         // Nothing to add while inert: the tip said the label the chip is already showing.
         <Tip key={v.token} tip={interactive ? `Insert ${v.label}` : undefined} labelsChild={false}>
