@@ -32,6 +32,8 @@ Settled with the user on 2026-10-31.
 | Q6 | Verification per ticket: the docs tests and `npm run copy:sweep` on the group's pages. No help baseline run |
 | Q7 | The help vectors are rebuilt once, at spec close. No ticket commits `build:help-vectors` output |
 | Q8 | Formaquestion (about 13k words) is split from Tools and Test Bench into its own group |
+| Q9 | Each wording ticket opens with a structure check: readability on every page, and a split assessment on every page over 4,000 words |
+| Q10 | A page splits when it serves readers who come for different tasks. Word count alone never splits a page |
 
 ## Page groups
 
@@ -67,6 +69,9 @@ Settled with the user on 2026-10-31.
 15. As a developer, I want a contradiction between a page and the code named, not fixed in code, so that a docs ticket never changes behavior.
 16. As a developer, I want the help vectors rebuilt once at close, so that parallel tickets don't collide on the vectors file.
 17. As the user, I want each ticket to list what it could not settle from the code, so that I can rule on intent.
+18. As a player, I want a long page split by the task I came for, so that I don't scroll past authoring detail to find a play step.
+19. As a player, I want each section to lead with its point, so that I can stop reading once I have the answer.
+20. As a developer, I want every split ruled before it lands, so that the wiki nav changes only on purpose.
 
 ## Implementation Decisions
 
@@ -83,6 +88,15 @@ Settled with the user on 2026-10-31.
 - Add a short mention of shipped behavior that belongs on the page's subject and is missing. A missing whole page is out of scope: the ticket names it under Landed.
 - Settings defaults come from the settings defaults module. Control labels come from the component source.
 - The staleness pass does not reword correct text. Wording is the next ticket's job.
+
+### Structure check
+
+- Runs first in each wording ticket, after the staleness pass settled the facts (Q9).
+- Every page gets a readability check: scannable headings, steps as lists, no section that buries its point.
+- Every page over 4,000 words gets a split assessment. A page splits when it serves readers who come for different tasks, such as play vs authoring or setup vs reference (Q10).
+- The ticket sends each proposed split to the spec session: the page, the new pages, and the reader task of each. The spec session rules, and escalates to the user when the spec and the conversation don't settle it.
+- A ruled split lands before the rewrite. The new pages go in the sidebar and on Home, and every anchor table that named a moved heading points at the new page.
+- Pages under 4,000 words split only when they plainly serve two reader tasks.
 
 ### Wording pass
 
@@ -121,10 +135,11 @@ Settled with the user on 2026-10-31.
 - `Writing-Guide.md` and `Design-System.md`: the rule sources.
 - UI copy in components. A label that contradicts its page is named under Landed; the copy sweep owns UI copy.
 - Code changes, except anchor tables that follow a heading rename.
-- New pages.
+- New pages, except the pages a ruled split creates.
 - The help baseline and the help vectors per ticket.
 
 ## Further Notes
 
-- Three tickets can run at once: groups share no pages. Anchor tables are the one shared surface; prepare's rebase handles two tickets editing one table.
+- Three tickets can run at once: groups share no pages. Anchor tables are a shared surface; prepare's rebase handles two tickets editing one table.
+- A split adds lines to `_Sidebar` and Home, which belong to the Reference and Play groups. A wording ticket that splits a page adds only those links there; the owning group's tickets keep the rest.
 - A ticket that finds a stale ADR, a missing page, or a contradicting UI label lists it under Landed. `close-spec` gathers the lists.
