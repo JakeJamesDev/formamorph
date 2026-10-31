@@ -169,7 +169,7 @@ _Avoid_: body type, form, paperdoll
 The first Body in the world's list. Every owner without a pick uses it: an entity with no pick, a library character and a character the AI introduces. A world with no Bodies has no Default, so no owner has slots.
 
 **Body in force**:
-The Body an owner equips into right now, from the one resolver every slot reader uses. An entity reads its own pick. The played Persona reads a world persona's own pick, or the Custom Persona entity's under None or a library persona. A pick whose Body is gone reads as the Default.
+The Body an owner equips into right now, from the one resolver every slot reader uses. The latest-on active trait Body row wins, then a script's base Body, then the authored pick. An entity reads its own pick. The played Persona reads a world persona's own pick, or the Custom Persona entity's under None or a library persona. A pick whose Body is gone reads as the Default.
 
 **Persona**:
 The entity that fills the player slot for a playthrough. It comes from the player's library or from the world's entities that carry the Persona mark. A save names one, or an explicit None.

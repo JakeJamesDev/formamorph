@@ -210,7 +210,7 @@ A Body is a name and a list of slots, each with a **Capacity**. A Humanoid can h
 2. Expand it and type its **Name**.
 3. Pick a slot from **Add Slot**, then set its **Capacity**.
 
-- 🥇 **The first Body is the Default.** Every entity without a pick uses it, and so do library personas and entities the AI adds. Drag a Body by its grip to change which one is first.
+- 🥇 **The first Body is the Default.** Every entity without a pick uses it, and so do entities the AI adds. Drag a Body by its grip to change which one is first.
 - ⚠️ Two Bodies with one name get a warning. Scripts pick a Body by its name.
 - 📏 An item's **Slot Size** can't be larger than the biggest Capacity any Body gives its slot. Lower a Capacity, and Slot Sizes above it drop to match.
 - 🚫 A world with no Bodies gives no one a slot.

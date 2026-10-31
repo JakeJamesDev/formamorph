@@ -53,10 +53,10 @@ const BodiesSection = () => {
       <Hint>Sets which slots an entity has, and how many of each</Hint>
       {bodies[0] ? (
         <Hint>
-          <b>{bodies[0].name || 'The first Body'}</b> is the Default. Entities set to Default use it, and so do library personas and entities the AI adds.
+          <b>{bodies[0].name || 'The first Body'}</b> is the Default, for entities set to Default and entities the AI adds
         </Hint>
       ) : (
-        <Hint>Without a Body, no one can equip items.</Hint>
+        <Hint>Without a Body, an entity has no slots</Hint>
       )}
       {bodies.length > 0 && (
         <EditorDndContext onDragEnd={onDragEnd}>

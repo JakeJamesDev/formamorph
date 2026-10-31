@@ -37,7 +37,7 @@ const EntityBodyField = ({ entity }: { entity: Entity }) => {
             </SelectContent>
           </Select>
           <Hint>
-            {entity.customPersona ? "Also sets the player's Body when they pick None or a library persona" : 'Sets which slots this entity can equip items into'}
+            {entity.customPersona ? "Also sets the player's Body under None or a library persona" : 'Sets which slots this entity can equip items into'}
           </Hint>
         </>
       ) : (
