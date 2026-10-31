@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingPersonaOf, openingStateOf } from '@/lib/openingState';
 import {
-  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, statEffectItems, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
+  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
 import { playedEntityIds } from '@/lib/scope';
@@ -100,7 +100,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemEffectLedger, RuntimeItem } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, DictionaryEntry, Entity, EntityStatValues, GameState, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates, InventoryOwner, InventoryPassOp, ItemCopy, ItemEffectLedger, RuntimeItem, BodyRuntime } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -253,7 +253,7 @@ import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   activeTraits as traitsInForce, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
   gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn, traitSwitchEvents,
-  type GatedTraitResult, type TraitRuntimeState, type TraitSettle, type TraitWorld,
+  type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import type { GateStats } from "../lib/traitGates";
 import { starvationLoss } from "../lib/starvation";
@@ -718,6 +718,8 @@ const GameViewer = ({
     setItemCopies,
     itemEffects,
     setItemEffects,
+    bodies,
+    setBodies,
     runtimeItems,
     setRuntimeItems,
     statDeltas,
@@ -1930,13 +1932,15 @@ const GameViewer = ({
         setCascadeOffTraitIds(preTurn.cascadeOffTraitIds ?? {});
         setOwnedTraits(preTurn.ownedTraits ?? {});
         // The turn's item changes go back too; the replay below makes them again, its script writes included.
-        liveItemsRef.current = { copies: preTurnItems.copies, effects: preTurnItems.ledger ?? {} };
+        liveItemsRef.current = { copies: preTurnItems.copies, effects: preTurnItems.ledger ?? {}, bodies: preTurnItems.bodies ?? {} };
         setItemCopies(preTurnItems.copies);
         setItemEffects(preTurnItems.ledger ?? {});
+        setBodies(preTurnItems.bodies ?? {});
         setRuntimeItems(preTurnItems.runtimeItems);
       };
       const preTurnItems = {
-        copies: preTurnState.itemCopies ?? [], ledger: preTurnState.itemEffects, runtimeItems: preTurnState.runtimeItems ?? [],
+        copies: preTurnState.itemCopies ?? [], ledger: preTurnState.itemEffects, bodies: preTurnState.bodies,
+        runtimeItems: preTurnState.runtimeItems ?? [],
       };
       toPreTurn();
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
@@ -3082,7 +3086,7 @@ const GameViewer = ({
         globalStats: rawGlobalStatsRef.current, codePins, loreToggles, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
         ownedTraits, entityStats: entityStatsRef.current,
       };
-      turnStartItemsRef.current = { copies: [...liveItemsRef.current.copies], effects: liveItemsRef.current.effects };
+      turnStartItemsRef.current = { ...liveItemsRef.current, copies: [...liveItemsRef.current.copies] };
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
       scriptLocationRef.current = turnLocation;
       turnMemoriesRef.current = scriptMemoriesRef.current;
@@ -3667,14 +3671,17 @@ const GameViewer = ({
   // before the next render builds on that commit.
   const liveTraitStateRef = useRef(traitState);
   liveTraitStateRef.current = traitState;
-  // The Item Copies and item effects play stands at, which a run reads and an item landing builds on. A landing
-  // writes them at once, so the next landing before a render builds on it.
-  const liveItemsRef = useRef({ copies: itemCopies, effects: itemEffects });
-  liveItemsRef.current = { copies: itemCopies, effects: itemEffects };
+  // The equip check and the panel read each owner's Body in force, trait Body rows included (Q13).
+  const traitBodyPicks = useMemo(() => traitPicksInPlay(bodies, traitState, gatedWorld()), [bodies, traitState, gatedWorld]);
+  const inventoryWorldInForce = useMemo(() => ({ ...inventoryWorld, traitPicks: traitBodyPicks }), [inventoryWorld, traitBodyPicks]);
+  // The Item Copies, item effects and Body state play stands at, which a run reads and an item landing builds on.
+  // A landing writes them at once, so the next landing before a render builds on it.
+  const liveItemsRef = useRef({ copies: itemCopies, effects: itemEffects, bodies });
+  liveItemsRef.current = { copies: itemCopies, effects: itemEffects, bodies };
   // The landing of a script's inventory writes, which needs the settle defined further down.
   const landScriptInventoryRef = useRef<((ops: readonly InventoryOp[]) => void) | null>(null);
   // The Item Copies and item effects a turn started with, which a discarded turn puts back. Null between turns.
-  const turnStartItemsRef = useRef<{ copies: ItemCopy[]; effects: ItemEffectLedger } | null>(null);
+  const turnStartItemsRef = useRef<{ copies: ItemCopy[]; effects: ItemEffectLedger; bodies: BodyRuntime } | null>(null);
   // Bumped when a turn is discarded, so item runs it started land nothing.
   const itemRunGenerationRef = useRef(0);
   const commitTraitState = useCallback(
@@ -4116,9 +4123,10 @@ const GameViewer = ({
     if (items) {
       turnStartItemsRef.current = null;
       itemRunGenerationRef.current += 1;
-      liveItemsRef.current = { copies: items.copies, effects: items.effects };
+      liveItemsRef.current = items;
       setItemCopies(items.copies);
       setItemEffects(items.effects);
+      setBodies(items.bodies);
     }
     setFullMessageHistory((prev) =>
       prev[prev.length - 1]?.role === "user" ? prev.slice(0, -1) : prev,
@@ -5125,37 +5133,54 @@ const GameViewer = ({
    *  The same state, and no `items`, when nothing moves. */
   const settleWorldOf = useCallback(
     // Every world entity, so a `you` owner finds the Custom Persona, which is never in the cast.
-    (world: TraitWorld, nameOf: (trait: Trait) => string = traitName) => ({ items: worldItems, traits: world, entities: traitEntities, nameOf, resolve: resolvePH }),
-    [worldItems, traitEntities, traitName, resolvePH],
+    (world: TraitWorld, nameOf: (trait: Trait) => string = traitName, previousPersona?: PersonaRef) => ({
+      items: worldItems, traits: world, entities: traitEntities, nameOf, resolve: resolvePH, bodies: inventoryWorld,
+      ...(previousPersona && { previousPersona }),
+    }),
+    [worldItems, traitEntities, traitName, resolvePH, inventoryWorld],
   );
-  const settleWithItems = useCallback<TraitSettle>((state, world, nameOf) => {
+  const settleWithItems = useCallback((state: TraitRuntimeState, world: TraitWorld, nameOf: (trait: Trait) => string, previousPersona?: PersonaRef): GatedTraitResult => {
     // The turn's settle runs after the clock advances, so this is where timed effects end (Q40).
-    const settled = settleInventory({ copies: itemCopies, traits: state, ledger: itemEffects, now: gameTime }, settleWorldOf(world, nameOf));
-    const itemsMoved = settled.copies !== itemCopies || JSON.stringify(settled.ledger) !== JSON.stringify(itemEffects ?? {});
+    const settled = settleInventory(
+      { copies: itemCopies, traits: state, ledger: itemEffects, now: gameTime, bodies }, settleWorldOf(world, nameOf, previousPersona),
+    );
+    const itemsMoved = settled.copies !== itemCopies || JSON.stringify(settled.ledger) !== JSON.stringify(itemEffects ?? {})
+      || JSON.stringify(settled.bodies) !== JSON.stringify(bodies) || settled.bodyLog.length > 0;
     if (settled.traits === state && !itemsMoved) return { state, log: settled.log, cascade: [], cascadeNames: [] };
     return {
       state: settled.traits === state ? { ...state } : settled.traits, log: settled.log, cascade: settled.cascade, cascadeNames: settled.cascadeNames,
-      items: { copies: settled.copies, ledger: settled.ledger },
+      items: {
+        copies: settled.copies, ledger: settled.ledger, bodies: settled.bodies, bodyLog: settled.bodyLog,
+        bodyUnequipped: settled.bodyUnequipped, events: settled.events,
+      },
     };
-  }, [itemCopies, itemEffects, gameTime, settleWorldOf]);
+  }, [itemCopies, itemEffects, gameTime, bodies, settleWorldOf]);
   const commitSettledItems = useCallback((result: GatedTraitResult) => {
     if (!result.items) return;
-    liveItemsRef.current = { copies: result.items.copies, effects: result.items.ledger };
+    liveItemsRef.current = { copies: result.items.copies, effects: result.items.ledger, bodies: result.items.bodies };
     if (result.items.copies !== itemCopies) setItemCopies([...result.items.copies]);
     setItemEffects(result.items.ledger);
-  }, [itemCopies, setItemCopies, setItemEffects]);
+    setBodies(result.items.bodies);
+  }, [itemCopies, setItemCopies, setItemEffects, setBodies]);
+  const runItemEventsRef = useRef<((events: readonly ItemScriptEvent[]) => Promise<void>) | null>(null);
   const commitGatedTraits = useCallback(
     (result: GatedTraitResult, because: string) => {
       if (result.state !== traitState) commitTraitState(result.state);
       commitSettledItems(result);
-      for (const line of result.log) addLogEntry(line);
+      for (const line of [...result.log, ...(result.items?.bodyLog ?? [])]) addLogEntry(line);
       setTraitCascade(result.cascadeNames.length ? { off: result.cascadeNames, because } : null);
+      if (result.items?.events.length) void runItemEventsRef.current?.(result.items.events);
     },
     [traitState, commitTraitState, commitSettledItems, addLogEntry],
   );
+  // The load settle fires no item script and writes no Body line; what Bodies took off is one diagnostic (Q42).
   const commitLoadSettle = useCallback(
-    (result: GatedTraitResult) => commitGatedTraits(result, 'changes to the world'),
-    [commitGatedTraits],
+    (result: GatedTraitResult) => {
+      const n = result.items?.bodyUnequipped ?? 0;
+      commitGatedTraits(result.items ? { ...result, items: { ...result.items, bodyLog: [], events: [] } } : result, 'changes to the world');
+      if (n) addSystemLogEntry(`Unequipped ${n} ${n === 1 ? 'item' : 'items'} their owner's Body no longer holds`);
+    },
+    [commitGatedTraits, addSystemLogEntry],
   );
   const settleHistory = useMemo(() => ({ states: gameStates, commit: setGameStates }), [gameStates, setGameStates]);
   useSettleOnSaveLoad(saveLoads, !personaPending, traitState, gatedWorld, traitName, commitLoadSettle, settleHistory, settleWithItems);
@@ -5165,9 +5190,11 @@ const GameViewer = ({
     (result: GatedTraitResult) => {
       commitTraitState(result.state);
       commitSettledItems(result);
-      for (const line of result.log) addLogEntry(line);
+      for (const line of [...result.log, ...(result.items?.bodyLog ?? [])]) addLogEntry(line);
+      const events = result.items?.events ?? [];
       // The settle waits for these runs, so the turn's snapshot holds their writes.
-      return fireSwitchScripts(traitState, result.state, gatedWorld());
+      return fireSwitchScripts(traitState, result.state, gatedWorld())
+        .then(() => (events.length ? runItemEventsRef.current?.(events) : undefined));
     },
     [commitTraitState, commitSettledItems, addLogEntry, fireSwitchScripts, traitState, gatedWorld],
   );
@@ -5198,11 +5225,11 @@ const GameViewer = ({
 
   /** Script inventory writes through the Inventory module, checked against the live state (Q41, Q58). */
   const applyScriptOps = useCallback<ApplyInventory>((copies, ops) => applyInventoryOps(copies, ops, {
-    world: inventoryWorld, source: 'script', newId: randomUUID, persona: personaRef,
+    world: inventoryWorldInForce, source: 'script', newId: randomUUID, persona: personaRef,
     requirement: equipRequirement(
       { traits: liveTraitStateRef.current, ledger: liveItemsRef.current.effects, now: gameTime }, settleWorldOf(gatedWorld()),
     ),
-  }), [inventoryWorld, personaRef, gameTime, settleWorldOf, gatedWorld]);
+  }), [inventoryWorldInForce, personaRef, gameTime, settleWorldOf, gatedWorld]);
 
   /** `copies` settled over the live state and committed, `previous` naming the items whose grants leave; the
    *  settle fires the switch scripts. Hands back the settle's auto-unequip events. */
@@ -5211,18 +5238,20 @@ const GameViewer = ({
       const live = liveTraitStateRef.current;
       const world = gatedWorld();
       const settled = settleInventory(
-        { copies, previous, traits: live, ledger: liveItemsRef.current.effects, itemUses, now: gameTime }, settleWorldOf(world),
+        { copies, previous, traits: live, ledger: liveItemsRef.current.effects, itemUses, now: gameTime, bodies: liveItemsRef.current.bodies },
+        settleWorldOf(world),
       );
-      liveItemsRef.current = { copies: settled.copies, effects: settled.ledger };
+      liveItemsRef.current = { copies: settled.copies, effects: settled.ledger, bodies: settled.bodies };
       if (settled.traits !== live) commitTraitState(settled.traits);
       setItemCopies([...settled.copies]);
       setItemEffects(settled.ledger);
-      for (const line of [...lines, ...settled.log]) addLogEntry(line);
+      setBodies(settled.bodies);
+      for (const line of [...lines, ...settled.log, ...settled.bodyLog]) addLogEntry(line);
       setTraitCascade(settled.cascadeNames.length ? { off: settled.cascadeNames, because: 'an item change' } : null);
       void fireSwitchScripts(live, settled.traits, world);
       return settled.events;
     },
-    [gatedWorld, gameTime, settleWorldOf, commitTraitState, setItemCopies, setItemEffects, addLogEntry, fireSwitchScripts],
+    [gatedWorld, gameTime, settleWorldOf, commitTraitState, setItemCopies, setItemEffects, setBodies, addLogEntry, fireSwitchScripts],
   );
 
   /** The item scripts of `events`, fired at `depth`, over the committed state; their writes land at once (Q66). */
@@ -5246,6 +5275,7 @@ const GameViewer = ({
       // Each write's automatic unequips fire one level below it, settled over what the runs so far left.
       const settle: SettleCopies = (copies, itemUses, so) => settleInventory({
         copies, previous: start, traits: codeStateOver(prepared.writtenBy(so), live, traits), ledger, itemUses, now: gameTime,
+        bodies: liveItemsRef.current.bodies,
       }, settleWorldOf(gatedWorld()));
       const ran = await runItemScripts(turn, events, worldItems ?? [], applyScriptOps, (item) => resolvePH(item.name), { depth, settle });
       // A discarded turn takes the runs it started with it.
@@ -5273,6 +5303,7 @@ const GameViewer = ({
     void runItemEvents([...applied.events, ...unequips]);
   }, [applyScriptOps, commitItemCopies, runItemEvents]);
   landScriptInventoryRef.current = landScriptInventory;
+  runItemEventsRef.current = runItemEvents;
 
   /** A panel write's equip check and settle over the live state; the settle fires the switch scripts and the
    *  item scripts run against the committed state. */
@@ -5281,6 +5312,7 @@ const GameViewer = ({
     const settleWorld = settleWorldOf(world);
     return {
       requirement: equipRequirement({ traits: traitState, ledger: itemEffects, now: gameTime }, settleWorld),
+      traitPicks: traitBodyPicks,
       commit: (copies, previous, lines, itemUses, events) => {
         void runItemEvents([...events, ...commitItemCopies(copies, previous, lines, itemUses)]);
       },
@@ -5289,7 +5321,7 @@ const GameViewer = ({
         trait: (ownerId, traitId) => traitNameIn(world, traitId, traitName, ownerId) ?? traitId,
       }) : [],
     };
-  }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitItemCopies, runItemEvents]);
+  }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitItemCopies, runItemEvents, traitBodyPicks]);
 
   /** The present items whose stat effects the game applies, which the stat request names (Q53). */
   const statItemNames = (location: GameLocation | null): string[] =>
@@ -5336,22 +5368,26 @@ const GameViewer = ({
       items: worldItems, runtimeItems: from.runtimeItems, playerNames, owners,
       location: location && { id: location.id, name: location.name }, resolve: resolvePH,
     }, {
-      world: inventoryWorld, newId: randomUUID, persona: personaRef,
+      world: inventoryWorldInForce, newId: randomUUID, persona: personaRef,
       requirement: equipRequirement({ traits: traitsBefore, ledger: from.ledger, now: gameTime }, settleWorld),
     });
     for (const line of result.diagnostics) addSystemLogEntry(line);
     if (result.runtimeItems.length !== from.runtimeItems.length) setRuntimeItems(result.runtimeItems);
     if (JSON.stringify(result.copies) === JSON.stringify(from.copies)) return null;
     const settled = settleInventory(
-      { copies: result.copies, previous: from.copies, traits: traitsBefore, ledger: from.ledger, itemUses: result.itemUses, now: gameTime },
+      {
+        copies: result.copies, previous: from.copies, traits: traitsBefore, ledger: from.ledger, itemUses: result.itemUses, now: gameTime,
+        bodies: liveItemsRef.current.bodies,
+      },
       settleWorld,
     );
     commitTraitState(settled.traits);
     // The turn's later script writes land over these Item Copies, before React renders them.
-    liveItemsRef.current = { copies: settled.copies, effects: settled.ledger };
+    liveItemsRef.current = { copies: settled.copies, effects: settled.ledger, bodies: settled.bodies };
     setItemCopies([...settled.copies]);
     setItemEffects(settled.ledger);
-    for (const line of settled.log) addLogEntry(line);
+    setBodies(settled.bodies);
+    for (const line of [...settled.log, ...settled.bodyLog]) addLogEntry(line);
     void fireSwitchScripts(traitsBefore, settled.traits, world);
     const codeBase = base ?? liveCodeStateRef.current;
     const state: TurnCodeState = {
@@ -5370,7 +5406,7 @@ const GameViewer = ({
       const to = gatedWorld(ref);
       const moved = switchPersonaStats(traitState, from, to, traitName);
       // The `you` Item Copies' effects and grants move onto the new played entity (Q107, Q117).
-      const settled = settleWithItems(moved.state, to, traitName);
+      const settled = settleWithItems(moved.state, to, traitName, from.persona);
       commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change');
       void fireSwitchScripts(traitState, settled.state, to, from);
     },
@@ -5447,6 +5483,7 @@ const GameViewer = ({
       commitTraitState(opening.traitState);
       setItemCopies(opening.state.itemCopies ?? []);
       setItemEffects(opening.itemEffects.ledger);
+      setBodies(opening.bodies);
       setRuntimeItems([]);
       for (const line of opening.itemEffects.log) addLogEntry(resolvePH(line));
       // The seeded entity stats are also the baseline their first changes read from.

@@ -6,7 +6,7 @@ import type { GateInput } from '@/lib/traitGates';
 import type { PinEditorWorld } from '@/lib/placeholderPins';
 import type { PlacementLetters } from '@/lib/placementLetters';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
-import type { Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Body, Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /**
  * The trait CRUD the trait-editing widgets need. The World Editor binds it to the world; a library entity
@@ -32,6 +32,8 @@ export interface TraitStore {
   editEntity: (id: string, edit: (entity: Entity) => Entity) => void;
   /** Every owner's traits with nothing active: what gates read in the editor. */
   gateInput: GateInput;
+  /** The world's Bodies, which a trait's Body row picks from. Absent off-world. */
+  bodies?: Body[];
   /** What the pin rows read rivals from. Null off-world. */
   pinWorld: PinEditorWorld | null;
   /** Off-world: requirements point only inside the entity, so the picker offers no personas. */
@@ -102,6 +104,7 @@ export function useOptionalTraitStore(): TraitStore | null {
     removeTraitGroup: world.removeTraitGroup,
     editEntity: world.editEntity,
     gateInput,
+    bodies: world.bodies,
     pinWorld: world,
   };
 }

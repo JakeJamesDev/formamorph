@@ -1,17 +1,24 @@
 /**
- * The inventory settle: item trait grants, item stat effects, trait gates and equip requirements, brought in
- * line with the Item Copies together. An equipped Item Copy whose requirement stops holding unequips and its
- * effects reverse (Q48); the passes repeat to a fixed point under a cap (Q66). Pure.
+ * The inventory settle: item trait grants, item stat effects, trait gates, equip requirements and Bodies,
+ * brought in line with the Item Copies together. An equipped Item Copy whose requirement stops holding, or
+ * whose owner's Body no longer holds it, unequips and its effects reverse (Q12, Q48); the passes repeat to a
+ * fixed point under a cap (Q66). Pure.
  */
+import {
+  bodyInForce, bodyMisfits, nextTraitsOn, slotOwnerKey, traitBodyPicks, type BodyWorld, type SlotOwner, type TraitBodyPicks,
+} from '@/lib/bodies';
 import { itemRuleStates } from '@/lib/imageVisibility';
 import { copySighting, sameWhere, seenItemName, type SourceSighting } from '@/lib/items';
-import { isHidden } from '@/lib/traitEffects';
+import { inAuthoredOrder, isHidden, traitOrderIndex } from '@/lib/traitEffects';
+import { playedEntityIds } from '@/lib/scope';
 import {
-  entityStatTraitsInForce, setGrantedTraits, settleTraits, traitGateInput, traitNameIn, traitSwitchLog,
+  entityStatTraitsInForce, setGrantedTraits, settleTraits, traitForceScope, traitGateInput, traitNameIn, traitSwitchLog,
   type TraitRuntimeState, type TraitWorld,
 } from '@/lib/traitRuntime';
 import type { RowState } from '@/lib/traitGates';
-import type { Item, ItemCopy, ItemEffectLedger, PersonaRef, TimedItemEffect, Trait } from '@/types';
+import type {
+  Body, BodyRuntime, BodyTraitOn, Item, ItemCopy, ItemEffectLedger, PersonaRef, Slot, TimedItemEffect, Trait,
+} from '@/types';
 import { itemEffectLog, settleItemEffects, type ItemUse } from './effects';
 import type { ItemScriptEvent } from './index';
 import { grantKey, wantedGrants } from './grants';
@@ -29,6 +36,8 @@ export interface InventorySettleState {
   itemUses?: readonly ItemUse[];
   /** The story clock's `gameTime`, which timed effects end by and start from. Absent: none ends. */
   now?: number;
+  /** The Body state before the change. Absent ⇒ none. */
+  bodies?: BodyRuntime;
 }
 
 export interface InventorySettleWorld {
@@ -42,10 +51,16 @@ export interface InventorySettleWorld {
   nameOf?: (trait: Trait) => string;
   /** Resolves the placeholders in an item or stat name. */
   resolve?: (text: string) => string;
+  /** The Bodies and slots owners equip into. Absent ⇒ the settle leaves Bodies alone. */
+  bodies?: SettleBodies;
+  /** Who `you` was before a persona change, for the Body it had. Absent ⇒ `persona`. */
+  previousPersona?: PersonaRef;
   cap?: number;
   /** Keeps requirement unequips out of the log, as a new game does (Q50). */
   quietUnequips?: boolean;
 }
+
+export type SettleBodies = Omit<BodyWorld, 'traitPicks'> & { slots?: readonly Slot[] };
 
 export interface InventorySettleResult {
   copies: readonly ItemCopy[];
@@ -55,8 +70,13 @@ export interface InventorySettleResult {
   /** The traits a gate cascade turned off, and their names as the banner reads them. */
   cascade: Trait[];
   cascadeNames: string[];
-  /** One When Unequipped event per Item Copy a failed requirement unequipped. */
+  /** One When Unequipped event per Item Copy a failed requirement or a Body change unequipped. */
   events: ItemScriptEvent[];
+  bodies: BodyRuntime;
+  /** One line per owner whose Body in force changed, naming what that unequipped (Q41). Apart from `log`. */
+  bodyLog: string[];
+  /** How many Item Copies the owners' Bodies no longer held. */
+  bodyUnequipped: number;
 }
 
 interface Pass {
@@ -152,6 +172,22 @@ function reader(world: InventorySettleWorld) {
 const rowsText = (rows: readonly RowState[]): string =>
   rows.map((row) => row.conditions.map((c) => c.text).join(' and ')).join(' or ');
 
+/** Every trait an entry can name, active or not: the acquired ones, the world's and each owner's tree. */
+function traitLookup(world: TraitWorld, acquired: readonly Trait[]): (on: BodyTraitOn) => Trait | undefined {
+  const owners = new Map((world.owners ?? []).map((owner) => [owner.id, owner.traits]));
+  return (on) => (on.ownerId === null
+    ? acquired.find((t) => t.id === on.traitId) ?? world.traits.find((t) => t.id === on.traitId)
+    : owners.get(on.ownerId)?.find((t) => t.id === on.traitId));
+}
+
+/** Each owner's winning trait Body pick under `traitsOn`. */
+const picksOf = (traitsOn: readonly BodyTraitOn[], world: TraitWorld, acquired: readonly Trait[], persona: PersonaRef | undefined) =>
+  traitBodyPicks(traitsOn, traitLookup(world, acquired), persona ? playedEntityIds(persona, world.entities) : []);
+
+/** Each owner's winning trait Body pick, as play reads it between settles. */
+export const traitPicksInPlay = (bodies: BodyRuntime, traits: TraitRuntimeState, world: TraitWorld): TraitBodyPicks =>
+  picksOf(bodies.traitsOn ?? [], world, traits.traits, world.persona);
+
 const unequipped = (copy: ItemCopy): ItemCopy => {
   const { equipped: _off, ...rest } = copy;
   return rest;
@@ -166,37 +202,95 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
   const read = reader(world);
   const cap = world.cap ?? SETTLE_CAP;
   if (state.previous) read.remember(state.previous, state.ledger);
+  const persona = world.persona ?? world.traits.persona;
+  const globalOrder = traitOrderIndex(world.traits.traits, world.traits.groups);
+  const before = state.bodies?.traitsOn ?? [];
+  let traitsOn: readonly BodyTraitOn[] = before;
+  let picks: TraitBodyPicks = {};
   let copies = state.copies;
   let current: Omit<InventorySettleState, 'copies'> = state;
   const log: string[] = [];
   const cascade: Trait[] = [];
   const cascadeNames: string[] = [];
   const events: ItemScriptEvent[] = [];
+  const offByBody: ItemCopy[] = [];
+  const fireUnequipped = (copy: ItemCopy) => {
+    if (copy.item.kind !== 'item') return;
+    events.push({ timing: 'unequipped', itemId: copy.item.itemId, copyId: copy.id, where: copy.where, quantity: copy.quantity });
+  };
   for (let n = 1; ; n += 1) {
     const done = read.pass(current, copies, copies, n === 1 ? state.itemUses : undefined);
     current = { ...done, ...(state.now !== undefined && { now: state.now }) };
     log.push(...done.log);
     cascade.push(...done.cascade);
     cascadeNames.push(...done.cascadeNames);
+    const tw: TraitWorld = { ...world.traits, itemCopies: copies };
+    const scope = traitForceScope(current.traits, tw);
+    // Global traits are held in acquisition order; a same-commit tie goes by tree order (Q40).
+    traitsOn = nextTraitsOn(traitsOn, { ...scope, global: inAuthoredOrder(scope.global, globalOrder) });
+    picks = picksOf(traitsOn, tw, current.traits.traits, persona);
+    const misfits = world.bodies ? bodyMisfits(copies, { ...world.bodies, items: world.items, traitPicks: picks }, persona) : [];
     const failing = copies.filter((copy) => {
-      if (!copy.equipped) return false;
+      if (!copy.equipped || misfits.includes(copy)) return false;
       const rows = read.requirementStates(current, copy, copies);
       return !!rows && !rows.some((row) => row.holds);
     });
-    if (!failing.length) break;
+    if (!failing.length && !misfits.length) break;
     if (n >= cap) {
       log.push(`Inventory settle stopped after ${cap} passes`);
       break;
     }
-    copies = copies.map((copy) => (failing.includes(copy) ? unequipped(copy) : copy));
+    copies = copies.map((copy) => (failing.includes(copy) || misfits.includes(copy) ? unequipped(copy) : copy));
     for (const copy of failing) {
       if (!world.quietUnequips) log.push(`Unequipped ${read.copyName(copy)}: requirement no longer holds`);
-      if (copy.item.kind === 'item') {
-        events.push({ timing: 'unequipped', itemId: copy.item.itemId, copyId: copy.id, where: copy.where, quantity: copy.quantity });
-      }
+      fireUnequipped(copy);
     }
+    for (const copy of misfits) fireUnequipped(copy);
+    offByBody.push(...misfits);
   }
-  return { copies, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames, events };
+  const was = world.previousPersona ?? persona;
+  const bodyLog = world.bodies ? bodyChangeLog({
+    world: world.bodies,
+    before: { picks: picksOf(before, world.traits, state.traits.traits, was), persona: was },
+    after: { picks, persona },
+    offByBody, copyName: read.copyName, resolve: world.resolve ?? same,
+  }) : [];
+  const { traitsOn: _was, ...rest } = state.bodies ?? {};
+  return {
+    copies, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames, events,
+    bodies: traitsOn.length ? { ...rest, traitsOn: [...traitsOn] } : rest, bodyLog, bodyUnequipped: offByBody.length,
+  };
+}
+
+interface BodyChange {
+  world: SettleBodies;
+  before: { picks: TraitBodyPicks; persona: PersonaRef | undefined };
+  after: { picks: TraitBodyPicks; persona: PersonaRef | undefined };
+  offByBody: readonly ItemCopy[];
+  copyName: (copy: ItemCopy) => string;
+  resolve: (text: string) => string;
+}
+
+/** "Body: Wolf" for the played Persona, "Rex's Body: Wolf" for an entity, with ". Unequipped A, B" when the
+ *  change took items off (Q41). One line per owner whose Body in force changed. */
+function bodyChangeLog(change: BodyChange): string[] {
+  const { world, before, after } = change;
+  const entityIds = new Set([
+    ...Object.keys(before.picks), ...Object.keys(after.picks),
+    ...change.offByBody.flatMap((copy) => (copy.where.kind === 'entity' ? [copy.where.id] : [])),
+  ]);
+  const owners: SlotOwner[] = [{ kind: 'you' }, ...[...entityIds].filter(Boolean).map((id) => ({ kind: 'entity' as const, id }))];
+  const nameOf = (body: Body | undefined) => (body ? change.resolve(body.name) : 'None');
+  return owners.flatMap((owner) => {
+    const was = bodyInForce({ ...world, traitPicks: before.picks }, owner, before.persona);
+    const is = bodyInForce({ ...world, traitPicks: after.picks }, owner, after.persona);
+    if (was?.id === is?.id) return [];
+    const key = slotOwnerKey(owner);
+    const off = change.offByBody.filter((copy) => copy.where.kind !== 'location' && slotOwnerKey(copy.where) === key).map(change.copyName);
+    const entity = owner.kind === 'entity' ? world.entities?.find((e) => e.id === owner.id) : undefined;
+    const who = owner.kind === 'entity' ? `${change.resolve(entity?.name ?? owner.id)}'s ` : '';
+    return [`${who}Body: ${nameOf(is)}${off.length ? `. Unequipped ${off.join(', ')}` : ''}`];
+  });
 }
 
 /** Why `copy` cannot be equipped under `copies` (Q49), or null when its requirement holds. For the validator's

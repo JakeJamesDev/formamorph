@@ -273,6 +273,18 @@ A stat that is off is gone, not just hidden: the player doesn't see it, the AI i
 
 When two active traits switch the same stat, the one lower in the trait list wins. The row says so whenever that applies.`,
   },
+  'worldEditor.traitBody': {
+    title: 'Body',
+    wikiPage: 'World-Editor-Traits',
+    wikiAnchor: 'body',
+    body: `Gives whoever has this trait a different Body while the trait is active, like a *Wolf Form* trait whose Body has no hand slots. A world trait changes the player. An entity's own trait changes that entity.
+
+The Body decides which equipment slots they have, and how many items each slot holds. **None** leaves no slots at all.
+
+Items in a slot the new Body lacks come off and stay in the inventory. Where a slot holds fewer than before, the item equipped last comes off first.
+
+When two active traits set a Body, the one switched on last wins. When it switches off, the one before it takes over. With none left, the Body goes back to the one they started with.`,
+  },
   'worldEditor.placeholderPins': {
     title: 'Placeholder Pins',
     wikiPage: 'World-Editor-Traits',

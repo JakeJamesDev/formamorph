@@ -74,7 +74,7 @@ Select a trait to open its panel.
 |---|---|---|
 | **Details** | **Name** and the two descriptions | Simple and Advanced |
 | **Availability** | **Mode**, **Starts**, **In Game** and [**Requires**](#requirements) | Simple and Advanced |
-| **Stats** | **Stat Changes**, and **Stat Availability** in Advanced mode | Simple and Advanced |
+| **Stats** | **Stat Changes**, [**Body**](#body), and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 | **Scripts** | [Scripts](#scripts) | Advanced only |
 
@@ -145,6 +145,18 @@ On an entity's trait, the rows change that entity's own stats. The stat list sho
 
 A disabled stat isn't shown to the player or sent to the AI. Its Regen and scripts don't run.
 
+## Body
+<!-- keywords: transformation, wolf form, change shape, equipment slots, lose slots, unequip on transform, curse body -->
+
+A Body row changes which equipment slots the trait's owner has while the trait is active. For example, a *Wolf Form* trait sets the Body to *Wolf*, which has no hand slots.
+
+- Select **Add Body**, then pick a Body in the menu. **None** leaves no slots at all.
+- A world trait changes the player. An entity's own trait changes that entity.
+- Items in a slot the new Body lacks come off and stay in the inventory. Where a slot holds fewer items, the item equipped last comes off first.
+- The game log shows the change, such as *Body: Wolf. Unequipped Iron Helm*.
+
+When two active traits set a Body, the one switched on last wins. When it switches off, the one before it takes over. With none left, the Body goes back to the one the owner started with.
+
 ## Placeholder Pins
 <!-- keywords: appearance from choice, force a word, lock random text, returns when off, type custom text, hair by perk -->
 <!-- route: worldEditorTrait.pins -->
@@ -170,6 +182,8 @@ You can type a value that isn't in the placeholder's list. The game uses it as w
 <!-- keywords: clash, priority, which wins, overlap, contradiction, order matters, tie -->
 
 Two active traits can change the availability of the same stat, or pin the same placeholder. The trait lower in the trait list then wins. The row tells you when this applies, and it links to the other trait.
+
+[Body](#body) rows work differently: the trait switched on last wins.
 
 ## Groups
 <!-- keywords: category, start button disabled, choose more message, cant begin game, none of these, swap mid game, over the limit, folders -->

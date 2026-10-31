@@ -22,7 +22,7 @@ export {
   INVENTORY_TEXT_FORMAT, PASS_OP_KINDS, type InventoryPassResult, type PassScene,
 } from './pass';
 export {
-  equipRequirement, settleInventory, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,
+  equipRequirement, settleInventory, traitPicksInPlay, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,
 } from './settle';
 
 /** Makes a fresh Item Copy id. */
