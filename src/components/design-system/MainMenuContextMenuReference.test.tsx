@@ -71,7 +71,7 @@ describe('main menu context menu reference', () => {
 
     openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
-    const confirmation = screen.getByRole('alertdialog', { name: 'Delete Character' });
+    const confirmation = screen.getByRole('alertdialog', { name: 'Delete Entity' });
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(confirmation).not.toBeInTheDocument();
     expect(getSample()).toBeInTheDocument();

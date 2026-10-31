@@ -9,7 +9,7 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CONTENT_LINK_LABELS } from '@/lib/contentLink';
@@ -126,7 +126,7 @@ function AdditionLabel({ name, provenanceLine, selected, ariaLabel, buttonRef, o
 }
 
 function EmptySection({ children }: { children: string }) {
-  return <p className="rounded-md border border-dashed p-3 text-helper text-muted-foreground">{children}</p>;
+  return <Hint className="rounded-md border border-dashed p-3">{children}</Hint>;
 }
 
 function reorderVisibleItems(
@@ -233,9 +233,9 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, worldAutho
 }) {
   if (!addition) {
     return (
-      <div className="flex h-full min-h-48 items-center justify-center rounded-md border border-dashed p-6 text-center text-helper text-muted-foreground">
-        Select an entity or dictionary to inspect it.
-      </div>
+      <Hint as="div" className="flex h-full min-h-48 items-center justify-center rounded-md border border-dashed p-6 text-center">
+        Select an entity or dictionary to inspect it
+      </Hint>
     );
   }
 
@@ -261,9 +261,9 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, worldAutho
           large
         />
         <div className="min-w-0 flex-1">
-          <p className="mb-1 text-meta uppercase tracking-wide text-muted-foreground">
+          <Meta as="p" className="mb-1 uppercase tracking-wide">
             {addition.kind === 'entity' ? 'Entity' : `${sourceLabel(addition.item.source)} Dictionary`}
-          </p>
+          </Meta>
           <h3 ref={headingRef} tabIndex={-1} className="break-words text-heading font-semibold outline-none">
             {name}
           </h3>
@@ -468,9 +468,9 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
             <section aria-labelledby="library-entities-heading">
               <div className="mb-2 flex items-baseline justify-between gap-3">
                 <h3 id="library-entities-heading" className="text-title font-semibold">Entities</h3>
-                <p className="text-meta text-muted-foreground">
+                <Meta as="p">
                   {entityCount} of {props.entities.length} entities included
-                </p>
+                </Meta>
               </div>
               {visibleEntities.length ? (
                 <EditorRowList role="list" aria-label="Entities">
@@ -513,9 +513,9 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
             <section aria-labelledby="library-dictionaries-heading">
               <div className="mb-2 flex items-baseline justify-between gap-3">
                 <h3 id="library-dictionaries-heading" className="text-title font-semibold">Dictionaries</h3>
-                <p className="text-meta text-muted-foreground">
+                <Meta as="p">
                   {dictionaryCount} of {props.dictionaryItems.length} dictionaries enabled
-                </p>
+                </Meta>
               </div>
               {visibleDictionaryItems.length ? (
                 <EditorDndContext collisionDetection={closestCorners} modifiers={DICTIONARY_LIST_MODIFIERS} onDragEnd={handleDragEnd}>

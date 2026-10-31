@@ -77,7 +77,7 @@ Restore adds to what you have. It never erases an item that is not in the backup
 <!-- keywords: new version, upgrade, latest, download, patch, install, mac, windows, out of date, outdated, auto updater, newer release, dmg, pc client, linux -->
 <!-- route: mainMenu#app-version -->
 
-1. On the main menu, look at the version number at the bottom left. It shows **— Update Available!** when a newer release is out.
+1. On the main menu, look at the version number at the bottom left. It shows **Update Available** when a newer release is out.
 2. Select the version number. The update dialog opens.
 3. Select the **Download** button. A progress bar shows under the version number.
 4. Select **Update & Restart**.
@@ -219,7 +219,7 @@ The desktop and Android apps check for updates on start, then every few hours. S
 
 | Part | What it does |
 |---|---|
-| Title | **Update available —** and the version, **You're up to date**, or **Couldn't check for updates** |
+| Title | **Update Available:** and the version, **You're up to date**, or **Couldn't check for updates** |
 | **Release channel** | **Stable** gets finished releases. **Pre-release** also gets beta builds. |
 | Release notes | What changed in the new version |
 | **Full changelog →** | Opens the full changelog |

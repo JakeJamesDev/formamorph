@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Hint, Meta } from "@/components/ui/typography";
 import { MessagesTab } from "@/components/menu/MessagesTab";
 import { ProfileAvatarEditor } from "@/components/menu/ProfileAvatarEditor";
 import { type ProfileTab } from "@/components/menu/profileTabs";
@@ -151,7 +152,7 @@ export function AuthModals({
     setPasswordError('');
 
     if (!currentPassword || !newPassword) {
-      setPasswordError('Both current and new passwords are required');
+      setPasswordError('Enter your current password and a new password');
       return;
     }
 
@@ -159,7 +160,7 @@ export function AuthModals({
       await AuthService.changePassword(currentPassword, newPassword);
       setShowPasswordDialog(false);
       resetPasswordForm();
-      toast.success('Password changed successfully');
+      toast.success('Password changed');
     } catch (error) {
       setPasswordError((error as Error).message || 'Failed to change password');
     }
@@ -189,7 +190,7 @@ export function AuthModals({
                 <h3 className="text-title font-semibold truncate">
                   {currentUser?.username || 'User'}
                 </h3>
-                {memberSince && <p className="text-helper text-muted-foreground">Member since {memberSince}</p>}
+                {memberSince && <Meta as="p">Member since {memberSince}</Meta>}
                 {/* The same row a stranger reads on your profile popup. */}
                 {profileStats && <ProfileStats profile={profileStats} />}
               </div>
@@ -275,16 +276,14 @@ export function AuthModals({
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Key className="h-4 w-4" /> Change Password</DialogTitle>
-            <DialogDescription>Enter your current password, then the one you want instead.</DialogDescription>
+            <DialogDescription>Enter your current password, then a new one</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             {/* A suspended account can sign in and read, but the server refuses every write —
                 saying so here beats letting them fill the form and be rejected on submit. */}
             {isSuspended && (
-              <p className="text-helper text-muted-foreground">
-                Your password can&rsquo;t be changed while your account is suspended.
-              </p>
+              <Hint>You can&rsquo;t change your password while your account is suspended.</Hint>
             )}
 
             {passwordError && (

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Hint } from "@/components/ui/typography";
 import { PolicyDialog } from "@/components/menu/PolicyDialog";
 import { usePrivacyPolicy } from "@/contexts/PrivacyPolicyContext";
 import { useAgeGate } from "@/contexts/AgeGateContext";
@@ -69,7 +70,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
     setAuthError('');
 
     if (!username || !password) {
-      setAuthError('Username and password are required');
+      setAuthError('Enter your username and password');
       return;
     }
 
@@ -79,7 +80,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
       authenticationSucceeded(() => { void checkPrivacyPolicy(); });
       onOpenChange(false);
       resetForm();
-      toast.success('Logged in successfully');
+      toast.success('Logged in');
       // Signing in is what cancels a pending deletion, and the server does it without being asked. The
       // account may not remember asking, so it is said out loud rather than left to be noticed.
       if (deletionCancelled) noticeCancelled();
@@ -100,24 +101,24 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
     checkedName.current = usernameVerdict.username;
 
     if (!password) {
-      setAuthError('Password is required');
+      setAuthError('Enter a password');
       return;
     }
 
     if (password.length < 6) {
-      setAuthError('Password must be at least 6 characters long');
+      setAuthError('Use a password of at least 6 characters');
       return;
     }
 
     if (password !== confirmPassword) {
-      setAuthError('Passwords do not match');
+      setAuthError("The passwords don't match");
       return;
     }
 
     // Checked here as well as in AuthService, because the policy step runs between the two. Left to the
     // service, a mistyped address would be found only after the reader had read and accepted a policy.
     if (email.trim() && !AuthService.isValidEmail(email.trim())) {
-      setAuthError('Invalid email format');
+      setAuthError('Enter a valid email address');
       return;
     }
 
@@ -164,7 +165,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
     if (resolveAgeGate) authenticationSucceeded(() => { void checkPrivacyPolicy(); });
     onOpenChange(false);
     resetForm();
-    toast.success('Registered successfully');
+    toast.success('Account created');
   };
 
   /**
@@ -191,7 +192,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
           await PolicyService.acceptPrivacyPolicy();
         } catch (error) {
           console.error('Failed to record the privacy acceptance after signup:', error);
-          toast.warn('Your account was created, but recording your acceptance failed. You will be asked again.');
+          toast.warn("Your account was created, but your acceptance didn't save. You'll be asked again.");
           privacyAccepted = false;
           void checkPrivacyPolicy();
         }
@@ -222,8 +223,8 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
             <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>
             <DialogDescription>
               {authMode === 'login'
-                ? 'Enter your credentials to access your account.'
-                : 'Create a new account to save and share your worlds.'}
+                ? 'Log in with your username and password'
+                : 'Create an account for Community Creations and Formamorph AI'}
             </DialogDescription>
           </DialogHeader>
 
@@ -243,7 +244,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
                 placeholder="Enter your username"
               />
               {authMode === 'register' && (
-                <p className="text-meta text-muted-foreground">{USERNAME_RULE_HELP}</p>
+                <Hint>{USERNAME_RULE_HELP}</Hint>
               )}
             </div>
 
@@ -287,7 +288,8 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
                 {/* Last, and only in register mode, so switching between the two modes never moves a
                     box the reader is already typing in. */}
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-label font-medium">Email (Optional)</label>
+                  <label htmlFor="email" className="text-label font-medium">Email</label>
+                  <Hint>Optional. Lets you reset your password once you confirm it by email.</Hint>
                   <Input
                     id="email"
                     type="email"
@@ -296,9 +298,6 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                   />
-                  <p className="text-meta text-muted-foreground">
-                    Lets you reset your password. We send one message to confirm it.
-                  </p>
                 </div>
               </>
             )}

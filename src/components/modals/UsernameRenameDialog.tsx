@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FieldError, Hint } from '@/components/ui/typography';
 import { useAgeGate } from '@/contexts/AgeGateContext';
 import { usePrivacyPolicy } from '@/contexts/PrivacyPolicyContext';
 import { useDevRoute } from '@/lib/devRouter';
@@ -69,7 +70,7 @@ export function UsernameRenameDialog({ prompt, onClose }: UsernameRenameDialogPr
             Choose a new name to keep using Community Creations.
           </p>
           <p className="text-muted-foreground">
-            Your games and saves aren&apos;t affected. After this, you log in with the new name.
+            Your worlds and saves don&apos;t change. You&apos;ll log in with the new name.
           </p>
 
           <div className="space-y-2">
@@ -84,8 +85,8 @@ export function UsernameRenameDialog({ prompt, onClose }: UsernameRenameDialogPr
               disabled={busy}
             />
             {error
-              ? <p id="username-rename-help" role="alert" className="text-meta text-destructive">{error}</p>
-              : <p id="username-rename-help" className="text-meta text-muted-foreground">{USERNAME_RULE_HELP}</p>}
+              ? <FieldError id="username-rename-help" role="alert">{error}</FieldError>
+              : <Hint id="username-rename-help">{USERNAME_RULE_HELP}</Hint>}
           </div>
         </form>
 

@@ -76,7 +76,7 @@ function ChangeList({ diff, side }: { diff: ContentDiff; side: string }) {
   return (
     <div className="space-y-3">
       {!diffHasChanges(diff) && (
-        <Meta as="p">This copy has none of the changed fields.</Meta>
+        <Meta as="p">This copy has no changes to apply.</Meta>
       )}
       {diff.changed.map((row) => (
         <Comparison key={row.field} label={row.label} current={row.current} incoming={row.incoming} side={side} />
@@ -146,15 +146,15 @@ function WorldUpdateRow({ row, action, diff, failure, busy, side, onChoose, onEx
               ))}
             </SelectContent>
           </Select>
-          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world&apos;s edits.</Hint>}
+          {row.state === 'local-replacement' && <Hint><strong>Keep Mine</strong> keeps this world&apos;s edits</Hint>}
 
           <CollapsibleSection
             title="View Changes"
             open={open}
             onOpenChange={(next) => { setOpen(next); if (next) onExpand(); }}
           >
-            {diff === undefined ? <Meta as="p">Reading this copy.</Meta>
-              : diff === null ? <p className="text-meta text-destructive">Formamorph could not read this copy.</p>
+            {diff === undefined ? <Meta as="p">Reading this copy</Meta>
+              : diff === null ? <p className="text-meta text-destructive">Couldn&apos;t read this copy.</p>
                 : <ChangeList diff={diff} side={side} />}
           </CollapsibleSection>
         </>
@@ -253,7 +253,7 @@ export function UpdateAvailableDialog({
         await applyUpdate(row, actions[rowKey(row)] ?? defaultAction(row.state), source, sourceData, live);
         done += 1;
       } catch (error) {
-        broke[rowKey(row)] = (error as Error).message || `Formamorph could not update ${row.worldName}.`;
+        broke[rowKey(row)] = (error as Error).message || `Couldn't update ${row.worldName}.`;
       }
     }
     // Only the rows this run attempted change: a Retry on one world must leave another world's failure
@@ -323,7 +323,7 @@ export function UpdateAvailableDialog({
           </Button>
           {!failed.length && (
             <Button disabled={applying} onClick={() => { void runRows(rows); }}>
-              {applying ? 'Applying...' : 'Apply Updates'}
+              {applying ? 'Applying…' : 'Apply Updates'}
             </Button>
           )}
         </DialogFooter>

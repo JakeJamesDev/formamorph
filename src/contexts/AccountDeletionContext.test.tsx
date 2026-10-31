@@ -16,10 +16,10 @@ describe('the canceled-deletion handoff into the game', () => {
       </StrictMode>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'Deletion Cancelled' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Deletion Canceled' })).toBeVisible();
 
     first.unmount();
     render(<AccountDeletionProvider><p>Game again</p></AccountDeletionProvider>);
-    expect(screen.queryByRole('heading', { name: 'Deletion Cancelled' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Deletion Canceled' })).toBeNull();
   });
 });

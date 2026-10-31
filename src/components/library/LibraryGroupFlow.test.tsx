@@ -107,7 +107,7 @@ describe('library group flow', () => {
     await openPicker(user);
     const search = screen.getByRole('searchbox', { name: 'Find a Group' });
     await user.type(search, 'missing');
-    expect(screen.getByRole('status')).toHaveTextContent('The search found no groups.');
+    expect(screen.getByRole('status')).toHaveTextContent('No groups match your search.');
 
     await user.click(screen.getByRole('button', { name: 'Clear Search' }));
 
@@ -139,7 +139,7 @@ describe('library group flow', () => {
     render(<LibraryFlow />);
     await openPicker(user);
     await user.type(screen.getByRole('searchbox', { name: 'Find a Group' }), 'missing');
-    expect(screen.getByRole('status')).toHaveTextContent('The search found no groups.');
+    expect(screen.getByRole('status')).toHaveTextContent('No groups match your search.');
     if (action === 'Escape') await user.keyboard('{Escape}');
     else await user.click(screen.getByRole('button', { name: action }));
     expect(organization()).toEqual(before);
@@ -151,7 +151,7 @@ describe('library group flow', () => {
     const user = userEvent.setup();
     render(<LibraryFlow />);
     await openPicker(user);
-    expect(screen.getByRole('status')).toHaveTextContent('There are no groups.');
+    expect(screen.getByRole('status')).toHaveTextContent('You have no groups yet.');
     await user.click(screen.getByRole('button', { name: 'Create New Group…' }));
     const input = screen.getByRole('textbox', { name: 'Group Name' });
     expect(input).toHaveFocus();
@@ -175,10 +175,10 @@ describe('library group flow', () => {
     await user.type(input, '   ');
     expect(screen.getByRole('button', { name: 'Create Group' })).toBeDisabled();
     fireEvent.submit(input.closest('form')!);
-    expect(screen.getByRole('alert')).toHaveTextContent('Write a group name.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a group name.');
     await user.type(input, 'fAvOrItEs ');
     expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent('A group has this name.');
+    expect(screen.getByRole('alert')).toHaveTextContent('A group already has this name.');
     fireEvent.submit(input.closest('form')!);
     expect(organization()).toEqual(before);
     await user.clear(input);

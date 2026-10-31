@@ -8,7 +8,7 @@ export const USERNAME_TAKEN_MESSAGE = 'That username is taken';
 export const USERNAME_RENAME_FAILED_MESSAGE = 'Failed to change the username';
 
 /** First clause of the rename screens' intro. The caller adds the current name and the closing sentence. */
-export const USERNAME_RULE_INTRO = 'Formamorph has a new username rule';
+export const USERNAME_RULE_INTRO = 'Usernames follow a new rule';
 
 // The server applies the same rule; `usernameRuleCases.json` is copied from its `tests/fixtures/usernameRuleCases.json`.
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]+(?: [A-Za-z0-9_-]+)*$/;
@@ -28,7 +28,7 @@ export type UsernameVerdict =
 /** Trims the typed name, collapses space runs, then checks it against the rule. `username` is the collapsed name to send. */
 export function checkUsername(typed: string): UsernameVerdict {
   const username = typed.trim().replace(/ {2,}/g, ' ');
-  if (!username) return { ok: false, error: 'Username is required' };
+  if (!username) return { ok: false, error: 'Enter a username' };
   const sized = username.length >= USERNAME_MIN && username.length <= USERNAME_MAX;
   if (!sized || !USERNAME_PATTERN.test(username)) return { ok: false, error: USERNAME_RULE_HELP };
   return { ok: true, username };

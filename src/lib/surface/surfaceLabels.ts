@@ -80,7 +80,7 @@ const ENTRIES: [string, string][] = [
   ['usernameRename', 'Choose a New Username'],
   ['profile', 'User Profile'],
   ['deleteAccount', 'Delete Account'],
-  ['deletionCancelled', 'Deletion Cancelled'],
+  ['deletionCancelled', 'Deletion Canceled'],
   ['feedbackHub', 'Feedback'],
   ['worldPrompts', 'Custom Prompts'],
   ['likePrompt', 'Like Prompt'],

@@ -173,7 +173,7 @@ Right-click a tile for **Set as Default Avatar** (or **Clear Default Avatar**), 
 
 ### Deleting an Avatar
 
-**Delete Player Avatar** asks you to confirm. You can't delete your last Avatar.
+**Delete Avatar** asks you to confirm. You can't delete your last Avatar.
 
 - If saves use the Avatar, the dialog names them. Those saves use the Default Avatar after you delete it.
 - If library entities use the Avatar, the dialog names them too. Those entities show no Avatar after you delete it.

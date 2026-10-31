@@ -137,8 +137,8 @@ export function MainMenuContextMenuReference() {
       <ConfirmDialog
         open={pendingDelete}
         onOpenChange={setPendingDelete}
-        title="Delete Character"
-        description="Are you sure you want to delete this character? This action cannot be undone."
+        title="Delete Entity"
+        description="This entity is deleted from your library. You can't undo this."
         onConfirm={() => {
           setPendingDelete(false);
           setDeleted(true);

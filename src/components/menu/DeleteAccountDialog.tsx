@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Hint } from "@/components/ui/typography";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { formatServerDate } from "@/lib/serverDate";
 import AuthService from "@/services/AuthService";
@@ -37,8 +38,8 @@ interface DeleteAccountDialogProps {
  * server. The password is asked last and is the account's own: a stolen session must not be able to
  * end the account it stole.
  *
- * Nothing is hidden by the request. The account keeps everything for seven days and signing in during
- * them calls the whole thing off, so this is a slow door rather than a trapdoor.
+ * Nothing is hidden by the request. The account keeps everything for seven days, and signing in during
+ * them cancels the deletion.
  */
 export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }: DeleteAccountDialogProps) {
   const [step, setStep] = useState<Step>('what');
@@ -94,7 +95,7 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
           </DialogTitle>
           <DialogDescription>
             {suspended
-              ? 'Suspended accounts are deleted by the team.'
+              ? 'The team deletes suspended accounts.'
               : 'Three steps: what happens, then your published work, then your password.'}
           </DialogDescription>
         </DialogHeader>
@@ -102,14 +103,14 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
         {suspended && (
           <>
             <div className="space-y-2 py-2 text-label">
-              <p>Your account is suspended, so it cannot be deleted from here.</p>
+              <p>Your account is suspended, so you can&apos;t delete it here.</p>
               {/* Named differently where there is no button to press. The site mounts this dialog with
                   no Feedback hub to open, and pointing at a control that is not on screen reads as a
                   missing button rather than as a different place to go. */}
               <p className="text-muted-foreground">
                 {onOpenFeedback
-                  ? 'Ask through Feedback and the team will handle it.'
-                  : 'Ask through Feedback in the game and the team will handle it.'}
+                  ? 'Ask the team to delete it in Feedback.'
+                  : 'Ask the team to delete it through Feedback in the game.'}
               </p>
             </div>
 
@@ -126,8 +127,7 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
               <p>Your account is erased seven days from now.</p>
               <p>Signing in during those seven days cancels the deletion.</p>
               <p className="text-muted-foreground">
-                Nothing is hidden while you wait. Your listings, comments and profile stay exactly as
-                they are until the day comes.
+                Until then, your listings, comments and profile stay visible.
               </p>
             </div>
 
@@ -151,9 +151,7 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
                   <RadioGroupItem value="true" id="delete-content-yes" />
                   <div className="grid gap-1">
                     <Label htmlFor="delete-content-yes">Delete My Work</Label>
-                    <p className="text-helper text-muted-foreground">
-                      Your listings, their files and your comments go with the account.
-                    </p>
+                    <Hint>Deletes your listings, their files and your comments with the account</Hint>
                   </div>
                 </div>
 
@@ -161,10 +159,7 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
                   <RadioGroupItem value="false" id="delete-content-no" />
                   <div className="grid gap-1">
                     <Label htmlFor="delete-content-no">Keep My Work</Label>
-                    <p className="text-helper text-muted-foreground">
-                      Your listings and comments stay, under the name [deleted user]. Your name is gone
-                      from them.
-                    </p>
+                    <Hint>Keeps your listings and comments under the name [deleted user]</Hint>
                   </div>
                 </div>
               </RadioGroup>
@@ -197,11 +192,11 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                 />
-                <p className="text-helper text-muted-foreground">
+                <Hint>
                   {deleteContent
                     ? 'Your published work is deleted with the account.'
-                    : 'Your published work stays, under the name [deleted user].'}
-                </p>
+                    : 'Your published work stays under the name [deleted user].'}
+                </Hint>
               </div>
             </div>
 
@@ -219,7 +214,7 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
             <div className="space-y-2 py-2 text-label">
               <p>Your account will be erased on {formatServerDate(scheduledFor)}.</p>
               <p className="text-muted-foreground">
-                Sign in before then and the deletion is called off.
+                Signing in before then cancels the deletion.
               </p>
             </div>
 

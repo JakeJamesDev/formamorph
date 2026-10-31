@@ -13,7 +13,7 @@ A Community Creations account lets you publish, comment, follow and send Reports
 2. On the main menu, select the round **User Profile** button at the bottom left.
 3. Select your profile image.
 4. Select a `.png`, `.jpg`, `.webp` or `.gif` file, up to 10 MB.
-5. In **Position Your Picture**, drag the image to move it. Scroll, or use the **Zoom** slider, to zoom. The circle shows what everyone sees.
+5. In **Position Your Profile Image**, drag the image to move it. Scroll, or use the **Zoom** slider, to zoom. The circle shows what everyone sees.
 6. Select **Save**.
 
 To remove the image, select **Remove your profile image**. Your initial then shows in its place. See [The User Profile Dialog](#the-user-profile-dialog).
@@ -40,7 +40,7 @@ Select the round button at the bottom left of the main menu to open **Login**. T
 | Dialog | Fields |
 |---|---|
 | **Login** | **Username** and **Password**. **Forgot password?** opens the reset page on formamorph.ai. |
-| **Register** | **Username**, **Password**, **Confirm Password** and **Email (Optional)**. The email lets you reset your password. |
+| **Register** | **Username**, **Password**, **Confirm Password** and **Email**, which is optional. The email lets you reset your password. |
 
 The **Register** fields have these rules:
 
@@ -110,7 +110,7 @@ The steps are in [How to Delete Your Account](#how-to-delete-your-account). The 
 
 The last screen names the date.
 
-To cancel, log in before that date. The **Deletion Cancelled** notice opens and says your account is as it was. Select **OK**.
+To cancel, log in before that date. The **Deletion Canceled** notice opens and says your account is unchanged. Select **OK**.
 
 A suspended account can't be deleted from here. Select **Open Feedback** to ask the team.
 

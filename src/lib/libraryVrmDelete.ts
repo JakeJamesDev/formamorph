@@ -32,13 +32,13 @@ export async function findModelUsage(modelId: string): Promise<ModelUsage> {
 export function deleteModelDescription(usage: ModelUsage | null): string {
   if (!usage) return 'Checking what uses this Avatar…';
   const { saves, entities } = usage;
-  if (!saves.length && !entities.length) return 'Are you sure you want to delete this Avatar? This action cannot be undone.';
   const parts = [
+    'This Avatar is deleted from your library.',
     ...(entities.length ? [`${listNames(entities)} will show no Avatar.`] : []),
     ...(saves.length
-      ? [`${saves.length === 1 ? 'One save uses' : `${saves.length} saves use`} this Avatar: ${listNames(saves)}. ${saves.length === 1 ? 'It' : 'They'} will fall back to the Default Avatar.`]
+      ? [`${saves.length === 1 ? 'One save uses' : `${saves.length} saves use`} this Avatar: ${listNames(saves)}. ${saves.length === 1 ? 'It' : 'They'}'ll use the Default Avatar instead.`]
       : []),
-    'This action cannot be undone.',
+    "You can't undo this.",
   ];
   return parts.join(' ');
 }
