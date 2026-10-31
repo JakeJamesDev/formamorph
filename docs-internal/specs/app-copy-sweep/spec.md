@@ -39,6 +39,24 @@ Settled with the user on 2026-10-31.
 | Q12 | The shared-components ticket owns shared strings. Other tickets read shared components and never edit their copy |
 | Seam | Existing tests that pin strings, plus the copy:sweep count before and after. New pins only where the copy-sweep skill says. Each in-place bug fix gets one test that fails without it |
 
+### Ticket rulings
+
+Spec-session answers to ticket intent questions.
+
+| # | Ruling |
+|---|---|
+| R1 | "Unlisted files in these folders belong here" applies only to folders a ticket holds whole. In a shared folder such as `src/components/modals/` or `src/components/menu/`, a ticket holds only the files it lists. An unassigned file goes to the spec session |
+| R2 | "Character" stays where it names the AI pipeline's people-in-the-story machinery: Limit Active Characters, Describe New Characters, the Output "Characters" section, staged-character detail, and the Active Character Guidance and Character chips. A line that means an entity in general says entity |
+| R3 | Q5 applies to select option values. Official names stay (NovelAI model names). "(default)" stays; it marks the default value. A purpose gloss moves into the field's ⓘ and the option becomes the bare name, but only when the ⓘ then carries the meaning; otherwise the option stays |
+| R4 | A file that belongs to another ticket stays out of this ticket's edits and its before and after counts |
+| R5 | Every `src/components/` root file belongs to ticket 01 except the two its ticket names, even when it renders on one other screen. Read that screen's code for the facts |
+| R6 | Specimen text (lorem ipsum, sample widget lines in a preview) is not copy and stays |
+| R7 | A dev readout's property names are data. Its label-parenthetical notices are false positives |
+| R8 | Developer-only text (console messages, thrown errors no screen shows) is out of scope. A thrown message that a screen or Error Details shows is in scope. Screen-reader text is in scope |
+| R9 | A shared fallback must be true for every caller that relies on it. Audit the callers; a fallback that claims a consequence some caller lacks drops that claim. A caller that needs a specific consequence goes to its ticket as a finding |
+| R10 | The built-in chip for `{{char}}` is "Entity Name": it resolves to the owning entity's name, as its own hint says. `char` stays a search term. The renaming ticket updates every test that pins the label, in any folder; comments in another ticket's files go to that ticket |
+| R11 | The Overview readme fields' accessible names are "Introduction Readme" and "Gameplay Readme". The Overview Voice Pass did not rule them, so Q5's parenthetical rule applies |
+
 ## Screen groups
 
 Counts are real notices from `copy:sweep --all` on 2026-10-31, without tests and case-only label hits. A ticket file lists its exact files.
