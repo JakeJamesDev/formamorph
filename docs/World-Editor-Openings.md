@@ -162,7 +162,7 @@ To check the draw before you play, use the **Opening** tab of the [Test Bench](T
 ## Chips, search and older worlds
 <!-- keywords: variables in intro, my name in intro, legacy world, ai asks what next, ai offers options, pre-filled action, random details per run -->
 
-- **[Placeholder](World-Editor-Placeholders) chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time. A **Character Name** chip in an entity's opening names that entity.
+- **[Placeholder](World-Editor-Placeholders) chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time. An **Entity Name** chip in an entity's opening names that entity.
 - **The Persona Name chip works in openings.** Type `{` and pick **Persona Name**. Page one then says the [persona](Persona-Authoring#the-persona-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
 - **Search and replace reaches every opening**, on the world, each location and each entity.
 - **A world saved with one pre-filled opening** loads with it as an Opening Action. If that opening was switched off, the list switch starts off, and the text stays.

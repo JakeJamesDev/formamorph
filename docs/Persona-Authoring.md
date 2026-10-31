@@ -8,7 +8,7 @@ This page covers how your world meets the player's persona:
 - The **Persona** chip
 - The two Built-in chips that put names in your text
 
-> Players read [Personas](Personas). This page covers the World Editor side. Everything here except the **Persona Name** and **Character Name** chips is **Advanced mode only**.
+> Players read [Personas](Personas). This page covers the World Editor side. Everything here except the **Persona Name** and **Entity Name** chips is **Advanced mode only**.
 
 ---
 
@@ -51,9 +51,9 @@ See [Persona Rules](#persona-rules) for each choice.
 
 1. Select a prose field, such as an entity's **AI-Facing Description** or an opening.
 2. Type `{`. The menu opens with **Built-in** at the top.
-3. Pick **Persona Name** for the player's name, or **Character Name** for the name of the entity that owns the text.
+3. Pick **Persona Name** for the player's name, or **Entity Name** for the name of the entity that owns the text.
 
-The menu offers **Character Name** only in an entity's own fields. You can also type `{{user}}` or `{{char}}` in any prose field, and the field turns it into the chip.
+The menu offers **Entity Name** only in an entity's own fields. You can also type `{{user}}` or `{{char}}` in any prose field, and the field turns it into the chip.
 
 ## The Short Version
 <!-- keywords: cheat sheet, quick reference, tldr, which option fits -->
@@ -66,7 +66,7 @@ The menu offers **Character Name** only in an entity's own fields. You can also 
 | To decide who the player can be | **Allowed Personas** and **Starts On** on the **Overview** tab |
 | Your own prompt to know the persona | The **Persona** chip |
 | Your text to say the player's name | The **Persona Name** chip |
-| An entity's text to say its own name | The **Character Name** chip |
+| An entity's text to say its own name | The **Entity Name** chip |
 
 ## Playable Entities
 <!-- keywords: role options, role modes, what changes when chosen, text contradicts itself, proofread from hero view, dot on mode switch, leaves and returns -->
@@ -243,10 +243,10 @@ Both fallbacks take a capital at the start of a sentence. A possessive follows: 
 
 > 💡 For what the chip does to page one, see [Openings](World-Editor-Openings).
 
-## The Character Name Chip
+## The Entity Name Chip
 <!-- keywords: self reference, name token, survives renaming, bot name macro, not in menu, inside trait text, owner of text -->
 
-Type `{` in one of an entity's own fields and pick **Character Name** under **Built-in**. It reads as the name of the entity that owns the text. Write one description that names its owner, and it stays right after a rename.
+Type `{` in one of an entity's own fields and pick **Entity Name** under **Built-in**. It reads as the name of the entity that owns the text. Write one description that names its owner, and it stays right after a rename.
 
 - **The menu offers it only in an entity's own fields**, such as its descriptions and its openings. A book, a location or a world field doesn't offer it.
 - **In trait text, type `{{char}}`.** It becomes the chip and names the trait's owner. See [Entity Traits](World-Editor-Traits#entity-traits).

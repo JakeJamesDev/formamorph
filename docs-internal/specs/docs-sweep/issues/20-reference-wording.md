@@ -1,6 +1,6 @@
 # 20: Reference Wording
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 19
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -26,11 +26,24 @@ Spec: Implementation Decisions, "Structure check", "Wording pass", "Headings and
 
 ## Acceptance criteria
 
-- [ ] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves
-- [ ] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page
-- [ ] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here
-- [ ] Control names take the exact casing of the on-screen label
-- [ ] Product terms match "Controlled product terms"
-- [ ] Paragraphs are short and steps are scannable lists
-- [ ] No fact changed: a diff read finds no new claim, limit or default
-- [ ] A renamed heading updates every anchor table that names it; the docs tests are green
+- [x] Each page over 4,000 words has a recorded split decision here: the ruling, or "no split" with the one reader task it serves. WorldFormat (10,449 words): no split, accepted by the spec session. Its one reader task: edit a world file by hand, or write a tool that reads or writes one. Glossary (3,384) and _Sidebar are under the bar.
+- [x] A split page's new pages are in the sidebar and Home, and every anchor table that named a moved heading points at its new page. No split, so nothing moved.
+- [x] Every copy-sweep notice on the pages is fixed or triaged as a false positive; the count before and after is recorded here. 57 before, 50 after. Fixed: 2 "In play", 2 "live", 1 long sentence, 1 "characters". The 50 left are false positives: 45 on `<!-- keywords -->` and route comments (search terms and the `-->` arrow), 5 ellipses inside JSON samples and `{ "value": … }` shapes.
+- [x] Control names take the exact casing of the on-screen label. Movement and Presence options read against `src/lib/entityPresenceCopy.ts`. The `{{char}}` chip is **Entity Name** (`builtinPlaceholders.ts:94`), renamed on every docs page (Q25).
+- [x] Product terms match "Controlled product terms". "Characters" → entity, "character card" → entity card, "No one owns it" → "It has no owner".
+- [x] Paragraphs are short and steps are scannable lists. Pages were already table and list shaped; one long sentence and one packed `owner` bullet split.
+- [x] No fact changed: a diff read finds no new claim, limit or default. Two review agents read the diff; each reworded row matches the WorldFormat field it restates.
+- [x] A renamed heading updates every anchor table that names it; the docs tests are green. Grep finds no anchor table outside `sectionVectors.json` (close rebuilds it, Q7). The docs tests run in prepare's gates, which refuse a red landing.
+
+## Landed
+
+**Not verified**
+
+- Nothing left unticked.
+
+**For you**
+
+- Staleness misses, fixed here under Q25: the `{{char}}` chip was still "Character Name" on Persona-Authoring (Personas group; heading now "The Entity Name Chip") and on World-Editor-Placeholders, World-Editor-Entities, World-Editor-Openings and World-Editor-Traits (Editor text and Editor groups).
+- Code comments still call the chip "Character Name": `src/lib/chipValues/authoredScene.ts`, `chipScene.ts`, `liveScene.ts`, `newGameOpening.ts`, `ownedTraitsInPlay.ts`, `persona.ts`, `placeholders.ts`, `resolveWorldNames.ts`. Out of scope for a docs ticket.
+- The Writing Guide's timing row still says "in play" ("When a Trait Switches runs when a trait turns on or off in play"). The guide is a rule source, out of scope.
+- WorldFormat's Stat Changes note says "Apps older than this change don't read `"global"`". It names no version, and docs state current behavior only. The fix needs the version number.

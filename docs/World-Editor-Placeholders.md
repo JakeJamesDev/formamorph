@@ -168,9 +168,9 @@ The `{` menu lists two chips under **Built-in**, above your own placeholders. Th
 | Chip | Typed form | Reads as | Offered in |
 |---|---|---|---|
 | **Persona Name** | `{{user}}` | The persona's name. With no persona: "you" in an opening, "the player" elsewhere. | Every prose field |
-| **Character Name** | `{{char}}` | The name of the entity the text belongs to | An entity's own fields |
+| **Entity Name** | `{{char}}` | The name of the entity the text belongs to | An entity's own fields |
 
-Type the typed form in any prose field, and it becomes the chip. In trait text the player carries, **Character Name** reads as **Persona Name**. See [The Persona Name Chip](Persona-Authoring#the-persona-name-chip) and [The Character Name Chip](Persona-Authoring#the-character-name-chip).
+Type the typed form in any prose field, and it becomes the chip. In trait text the player carries, **Entity Name** reads as **Persona Name**. See [The Persona Name Chip](Persona-Authoring#the-persona-name-chip) and [The Entity Name Chip](Persona-Authoring#the-entity-name-chip).
 
 ## The Roll Stays for the Playthrough
 <!-- keywords: change mid game, persist, stays the same, reroll, decided when, after loading, fresh result, locked in, random -->

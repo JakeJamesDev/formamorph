@@ -172,7 +172,7 @@ See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
-| `images` | ✓ | [Gallery image](#media-fields)[] | One or more images. In play, the Map shows the first visible one. A condition with no `owner` reads the played persona. The editor's canvas shows the first |
+| `images` | ✓ | [Gallery image](#media-fields)[] | One or more images. During the game, the Map shows the first visible one. A condition with no `owner` reads the played persona. The editor's canvas shows the first |
 | `frame` | ✓ | Object | `{ "x", "y", "width", "height" }` in canvas units. Every image fits inside it at its own aspect ratio |
 | `opacity` | ✓ | Number | From `0` to `1` |
 
@@ -275,7 +275,7 @@ A group holds stats and other groups. The world's `statGroups` group the global 
 
 ### Stat Links
 
-A stat link gives a Blueprint stat or stat group to an entity. In play, each linked stat runs under the original stat's `id`, with the entity's own value. The link reads its original live, except for the fields it overrides.
+A stat link gives a Blueprint stat or stat group to an entity. During the game, each linked stat runs under the original stat's `id`, with the entity's own value. The link takes every change to its original, except in the fields it overrides.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -341,7 +341,7 @@ Each requirement has a `kind`:
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
-- `owner` is optional, and it applies only to a trait, group, stat or item an entity owns. A requirement that names a global item (a root trait, a root group or a global stat) reads the global scope, and the app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- `owner` is optional. It applies only to a trait, group, stat or item an entity owns. A requirement whose target is global (a root trait, a root group or a global stat) reads the global scope. The app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
 - An `"item"` requirement's `state` and `identity` are optional. They narrow it to a copy with that State word (any case, ends trimmed) or that identity, `"identified"` or `"unidentified"`. On an item, a requirement with no `owner` reads the Item Copy's owner, and never holds while the copy lies at a location.
 - A `"time"` requirement's `dayparts` lists one or more of `"night"`, `"dawn"`, `"morning"`, `"midday"`, `"afternoon"` and `"evening"`. It has no `id`, `owner` or `not`. `{ "kind": "time", "dayparts": ["evening", "night"] }` holds from evening until dawn.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
@@ -381,7 +381,7 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
 | `description` | | String | An older field. The player reads it when `playerDescription` is absent |
-| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. In play the backdrop shows the first visible image |
+| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. During the game, the backdrop shows the first visible image |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
 | `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `locations` join the choices |
@@ -468,7 +468,7 @@ One entity at most has `customPersona`, at the top level of the Traits tree. In 
 
 ### Trait Links
 
-A link gives a [Blueprints](#blueprints) trait or group to an entity. The entity does not get its own trait. The link reads its original live, except for the fields it overrides.
+A link gives a [Blueprints](#blueprints) trait or group to an entity. The entity does not get its own trait. The link takes every change to its original, except in the fields it overrides.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -562,7 +562,7 @@ A pin sets one placeholder to one value while its source is active. Traits, loca
 
 A world shared placeholder in the [Blueprints group](#placeholder-groups), or a group below it, is a **blueprint**. An entity holds a copy of each blueprint its traits need, in its own `placeholders`, with `blueprintId` set. The app makes copies when it loads the world.
 
-A copy reads its blueprint's values live. Its own `values` hold only the values it adds. Its `valueOverrides` map a blueprint value `id` to changes:
+A copy takes every change to its blueprint's values. Its own `values` hold only the values it adds. Its `valueOverrides` map a blueprint value `id` to changes:
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -597,9 +597,9 @@ A chip is a token in a text field. The editor inserts chips. To write one by han
 | `unique` | This chip draws its own value |
 | `<placement id>` | A unique id for this chip. A `unique` chip keeps its draw under it |
 
-The editor can add two more parts after the placement id: a path to a part of the placeholder, and a label after `:=`. Copy those from a chip the editor wrote.
+The editor can add two more parts after the placement id. One is a path to a part of the placeholder. The other is a label after `:=`. Copy those from a chip the editor wrote.
 
-Two chips need no placeholder. `{{user}}` is the [Persona Name chip](Persona-Authoring#the-persona-name-chip). `{{char}}` is the [Character Name chip](Persona-Authoring#the-character-name-chip).
+Two chips need no placeholder. `{{user}}` is the [Persona Name chip](Persona-Authoring#the-persona-name-chip). `{{char}}` is the [Entity Name chip](Persona-Authoring#the-entity-name-chip).
 
 ## Dictionaries
 <!-- keywords: lorebook object, keyword array, regex flag, constant flag, position values, depth key, world info fields, token budget -->
@@ -665,7 +665,7 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 ## Items
 <!-- keywords: item object, item fields, effects array, equip requirements key, uses, when empty, stackable flag, bound flag, slot size, unidentified name, item scripts -->
 
-An item is a kind of object. In play, a save holds Item Copies of it. See [World Editor: Items](World-Editor-Items) for how items behave.
+An item is a kind of object. During the game, a save holds Item Copies of it. See [World Editor: Items](World-Editor-Items) for how items behave.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -736,7 +736,7 @@ An entity's `body` picks its Body:
 | `{ "kind": "none" }` | No Body. The entity carries items but equips none |
 | `{ "kind": "body", "id": "…" }` | That Body. An `id` the world lacks reads as the Default |
 
-The player's Body comes from the persona they play. A world persona uses its own `body`. With no persona, or with a library persona, the player uses the Custom Persona entity's `body`. Library characters and characters the AI adds use the Default.
+The player's Body comes from the persona they play. A world persona uses its own `body`. With no persona, or with a library persona, the player uses the Custom Persona entity's `body`. Library entities and story-invented entities use the Default.
 
 A trait's `body` row overrides this while the trait is active. A world trait sets the player's Body, and an entity's own trait sets that entity's. When several active traits set one, the trait switched on last wins. A save records that order in `bodies.traitsOn`.
 
@@ -835,7 +835,7 @@ An Avatar pick says which Avatar an entity shows. It is an object with a `kind`:
 | `{ "kind": "world", "id": "<vrmStore id>" }` | An Avatar in the world's `vrmStore` |
 | `{ "kind": "library", "id": "<id>" }` | An Avatar in the player's library. Library entities use this form. A world file never holds it. |
 
-Entities share an Avatar by naming the same `id`. A pick of an `id` the store lacks reads as none. A character card or entity listing that carries a pick also carries the Avatar file.
+Entities share an Avatar by naming the same `id`. A pick of an `id` the store lacks reads as none. An entity card or entity listing that carries a pick also carries the Avatar file.
 
 A world file from an older version can hold `use3DModel` and `customPlayerVRM` in `worldOverview`. The app moves the Avatar into `vrmStore` and sets `legacyVrmFallback` only when `use3DModel` is `true`. New files do not write those two keys.
 
