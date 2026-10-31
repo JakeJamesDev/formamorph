@@ -1,7 +1,7 @@
 import type {
   Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
-import type { OwnedStatsInForce, OwnedTraitsInForce } from '../locationContext';
+import type { OwnedStatsInForce, OwnedTraitsInForce, StrangerLabels } from '../locationContext';
 import type { OwnerStatPart, StatPlacement } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
@@ -76,4 +76,6 @@ export interface ChipScene {
   outerScopeEntities?: Entity[];
   /** Participant names that match nobody in the roster. They join the In Scene Name content only. */
   inSceneNames?: string[];
+  /** The label each unmet stranger's roster block prints, by entity id. None when absent. */
+  strangerLabels?: StrangerLabels;
 }

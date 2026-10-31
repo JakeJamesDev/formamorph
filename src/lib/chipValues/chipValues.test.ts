@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chipValues, plannerEntityChipValues, sceneEntityChipValues } from './chipValues';
-import { readValue } from '../promptValues';
+import { chipValues, sceneEntityChipValues } from './chipValues';
 import type { ChipScene } from './chipScene';
 import { knownPersonaLine } from '../personaContext';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
@@ -296,30 +295,45 @@ describe('the scene-roster override for the Choices prompt', () => {
   });
 });
 
-describe("the planner's stranger override", () => {
-  const labels = { guard: 'a gate guard', merchant: 'a man with a lantern' };
+describe("a scene's stranger labels", () => {
+  const strangerLabels = { guard: 'a gate guard', merchant: 'a man with a lantern' };
 
   it("prints each unmet stranger's label in its own block, in every scope that lists it", () => {
-    const values = plannerEntityChipValues(scene(), labels);
-    expect(readValue(values, '<ENTITIES|summary.markdown>')).toContain('- **Guard**\n  - **stranger name:** a gate guard\n');
-    expect(readValue(values, '<ENTITIES|summary>')).toContain('Guard\n  stranger name: a gate guard\n');
-    expect(readValue(values, '<ENTITIES|xml>')).toContain('<stranger_name>a gate guard</stranger_name>');
-    expect(readValue(values, '<ENTITIES|sublocations.summary.markdown>')).toContain('  - **stranger name:** a man with a lantern\n');
+    const values = chipValues(scene({ strangerLabels }));
+    expect(values('<ENTITIES|summary.markdown>')).toContain('- **Guard**\n  - **stranger name:** a gate guard\n');
+    expect(values('<ENTITIES|summary>')).toContain('Guard\n  stranger name: a gate guard\n');
+    expect(values('<ENTITIES|xml>')).toContain('<stranger_name>a gate guard</stranger_name>');
+    expect(values('<ENTITIES|sublocations.summary.markdown>')).toContain('  - **stranger name:** a man with a lantern\n');
   });
 
-  it('covers every Entities token, and differs from the base values only by the label lines', () => {
+  it('differs from a scene without labels only by the labels, in every Entities token', () => {
     const base = chipValues(scene());
-    const values = plannerEntityChipValues(scene(), labels);
+    const values = chipValues(scene({ strangerLabels }));
     for (const token of spelledTokens('<ENTITIES>')) {
-      const planner = readValue(values, token);
-      expect(planner, token).toBeDefined();
-      expect(planner!.replace(/^.*stranger[ _]name.*\n/gm, ''), token).toBe(base(token));
+      const unlabeled = Object.values(strangerLabels).reduce(
+        (text, label) => text.replaceAll(` (${label})`, ''),
+        values(token)!.replace(/^.*stranger[ _]name.*\n/gm, ''),
+      );
+      expect(unlabeled, token).toBe(base(token));
     }
   });
 
-  it('adds nothing when no stranger has a label, so the planner reads the base values', () => {
-    expect(plannerEntityChipValues(scene(), {})).toEqual({});
+  it('prints the label after the true name in a name-only roster', () => {
+    const values = chipValues(scene({ strangerLabels }));
+    expect(values('<ENTITIES|sublocations.name>')).toBe(chipValues(scene())('<ENTITIES|sublocations.name>')!
+      .replace('Merchant', 'Merchant (a man with a lantern)'));
+    expect(sceneEntityChipValues(scene({ strangerLabels }), ['guard'])('<ENTITIES|name>')).toBe('Guard (a gate guard)');
+  });
+
+  it("prints the label in the choices writer's scene roster too", () => {
+    const values = sceneEntityChipValues(scene({ strangerLabels }), ['guard']);
+    expect(values('<ENTITIES|summary.markdown>')).toContain('- **Guard**\n  - **stranger name:** a gate guard\n');
+  });
+
+  it('prints no label line for an entity the labels leave out', () => {
     expect(chipValues(scene())('<ENTITIES|summary.markdown>')).not.toContain('stranger name');
+    expect(chipValues(scene({ strangerLabels: { guard: 'a gate guard' } }))('<ENTITIES|sublocations.summary.markdown>'))
+      .not.toContain('stranger name');
   });
 });
 

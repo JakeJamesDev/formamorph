@@ -75,6 +75,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`inventory-regain-probe.cli.ts` scores the Inventory pass on items the player already carries.** It replays five real duplicate turns, checks retouch cases and two take-another guards, and scores runtime item descriptions for place words.
     - **`inventory-chip-probe.cli.ts` scores the narration Inventory chip against the prompt without it.** It checks carried items named, AI Summary use, hidden-item leaks, reveals on search, and a panel change with and without an event line.
     - **`inventory-leak-probe.cli.ts` scores how often the narrator names an unidentified item's true name.** It runs five scenes against a control that holds only the unidentified face, and reports name and nature rates per arm.
+  - **Scene Presence:**
+    - **A narration probe measures how often an unmet stranger's true name reaches the prose with Thinking Mode Off.** `narration-stranger-probe.mjs` scores name leaks and label use per case, and a guard case where the stranger gives their name.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
 #### 🔧 Fixed

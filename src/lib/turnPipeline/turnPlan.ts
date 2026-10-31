@@ -180,8 +180,6 @@ export interface TurnMaterial {
   baseCtx: TokenValues;
   /** Entity chips narrowed to who is actually in the scene, for the choices pass. */
   sceneEntityTokens: TokenValues;
-  /** Entity chips with each unmet stranger's label, for the precall planner. None when absent. */
-  plannerEntityTokens?: TokenValues;
   /** Names the location router may answer with. */
   destinations: string[];
   /**

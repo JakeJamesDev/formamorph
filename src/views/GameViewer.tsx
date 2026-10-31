@@ -11,7 +11,7 @@ import { samePersonaRef } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
 import { usePresence } from '@/lib/usePresence';
 import {
-  IN_SCENE_TURNS, introducedIds, metCheck, plannerStrangers, sceneAfterMove, strangerAliasesFromCast, withMet,
+  IN_SCENE_TURNS, introducedIds, metCheck, strangersInPlay, sceneAfterMove, strangerAliasesFromCast, withMet,
 } from '@/lib/presence';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
@@ -134,7 +134,7 @@ import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
-import { chipValues, entityStatsField, plannerEntityChipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
+import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
@@ -2373,6 +2373,11 @@ const GameViewer = ({
     const { global, owners } = gatedWorld();
     return { global, owners };
   }, [gatedWorld]);
+  // Every roster lists an unmet stranger under its true name with its label beside it.
+  const strangerLabels = useMemo(
+    () => strangersInPlay(allEntities, metCheckFor(metEntities), strangerAliases).labels,
+    [allEntities, metCheckFor, metEntities, strangerAliases],
+  );
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
@@ -2402,6 +2407,7 @@ const GameViewer = ({
     items: worldItems,
     itemCopies,
     runtimeItems,
+    strangerLabels,
   });
 
   const contextValues = useCallback((
@@ -2983,9 +2989,9 @@ const GameViewer = ({
     let turnWorldWrites: WorldWrites | undefined;
     let actionVec: Float32Array | null = null;
     let priorNarration = "";
-    // Who the player has met as the turn starts: the planner casts each unmet stranger under its label.
+    // Who the player has met as the turn starts: the plan's backstop hides each unmet stranger's name.
     const isMetAtStart = metCheckFor(metEntities);
-    const strangers = plannerStrangers(allEntities, isMetAtStart, strangerAliases);
+    const strangers = strangersInPlay(allEntities, isMetAtStart, strangerAliases);
     // Staged/precall candidates the narration confirms afterward: ad-hoc = planner-invented (no entity
     // record, strict match); director = defined entities the planner cast (loose match, since it already
     // vouched they're present — "the tank" can confirm a "Battle Tank").
@@ -3178,15 +3184,12 @@ const GameViewer = ({
 
         // Banded turns ride as condensed pairs, so the last assistant message is the real last narration.
         const lastStory = [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
-        const plannerEntityTokens = thinkingMode === "precall"
-          ? plannerEntityChipValues(liveScene(turnLocation, sceneBox()), strangers.labels)
-          : {};
         const plannerTurns = thinkingMode === "precall" && memoryDigests ? parseEffectiveTurns(fullMessageHistory) : null;
         const band = plannerTurns
           ? buildPlannerBand({
               turns: plannerTurns,
               template: thinkingPrompt,
-              ctx: layerValues(ctx, plannerEntityTokens),
+              ctx,
               contextWindow: resolveEndpointForKind('thinking').contextWindow,
               verbatimFloor: thinkingVerbatimTurns,
               milestoneDrop: getMilestoneDrop(plannerTurns),
@@ -3202,7 +3205,6 @@ const GameViewer = ({
 
         return {
           ctx,
-          plannerEntityTokens,
           narrationSystemPrompt: prompt,
           narrationSystemPromptRuns: runs,
           trimmedHistory,

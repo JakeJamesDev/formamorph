@@ -257,7 +257,8 @@ export function entityRosterRuns(
   if (nameOnly) {
     const named = entityIds.flatMap((id) => {
       const name = entities.find((e) => e.id === id)?.name;
-      return name ? [mark(["content", ...ownedKinds(id, opts)], name)] : [];
+      const label = strangerLabels?.[id];
+      return name ? [mark(["content", ...ownedKinds(id, opts)], label ? `${name} (${label})` : name)] : [];
     });
     return named.length ? joinRuns(named, ", ") : emptyRosterRuns(opts);
   }
