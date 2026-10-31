@@ -80,6 +80,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q53 | (ticket 07) An equippable item's line names its slot, such as `Iron Helm (Head)`, with Slot Size above 1 as `(Hand ×2)`. The equip operation gains the clause "into a slot listed for that owner", kept only if the probe supports it |
 | Q55 | (ticket 07, probe evidence) The model reads `slots: none`, but it does not match an item's `(Head)` against `slots: Collar`: 0/8 in every arm for a transformed owner. Each item an owner can't fit gets a precomputed per-owner mark in that owner's list, worded by the ticket under the prompt-writing guide, with one more probe round. If the mark does not move the rate, 07 ships slots, the item slot and the clause, and records the mismatch as a known gap; the validator still skips those equips (Q8) |
 | Q54 | (ticket 07) 07 does not wait for 05. Whichever lands second wires 05's trait overrides into 07's prompt slice |
+| Q56 | (user ruling, from 05's report) A between-turn script's trait or Body writes settle at once, as a Traits tab toggle does: the switch-run landing and the item-script landing run the settle, its unequips fire When Unequipped, and the Body log line writes then. This covers requirement unequips too. 06 builds it |
 
 ## User Stories
 
@@ -188,6 +189,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 
 - The owner surface gains `body`: the Body in force's name, with its slots, each slot's capacity and its Item Copies. Assigning a Body name to `body` sets the base Body (Q14). An unknown name fails the write, and a Test Bench rule reports the script's literal name.
 - The Variable menu and hover cards list the new name.
+- A script that runs between turns settles its trait and Body writes at once (Q56).
 
 ### AI
 
