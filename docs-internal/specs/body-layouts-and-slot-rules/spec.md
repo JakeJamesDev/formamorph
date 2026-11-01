@@ -1,6 +1,7 @@
 # Spec: Body Layouts and Slot Rules
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-01, tickets 01–08, last landing eabbc94c2. Review: four gaps fixed in ticket 08, spec text corrected. Gates green on 2026-11-01.
 Spec session: body-layouts-and-slot-rules — spec
 
 ## Problem Statement
@@ -182,7 +183,7 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 - **Play doll.** A display component the Inventory panel renders in place of the slot list. It takes the layout, the slot names and "what fills this unit", and the panel supplies the actions.
 - **Slot Rule helpers (item module).** One helper answers which slots a copy occupies, and it replaces `slotSizeOf`. Every occupancy reader goes through it: the validator, the Body settle, the panel, the prompt context, the sandbox read and the Player View.
 - **Inventory validator and settle.** The equip operation gains an optional slot. Either of and All of follow Q37–Q40. An All of item takes one unit in each slot; the existing "longest equipped first" swap-out frees room per slot.
-- **Inventory pass and prompt.** The item line and the equip clause follow Q41. The can't-fit mark follows Q45.
+- **Inventory pass and prompt.** The item line and the optional slot follow Q41. No can't-fit mark ships (Q67).
 
 ### Schema (from the prototype, trimmed)
 
@@ -237,7 +238,7 @@ A good test drives the public seam and asserts what a player or an author sees. 
 | Seam | Covers | Prior art |
 |---|---|---|
 | `applyInventoryOps` and the settle | Either of first free, naming a slot, swap-out; All of refusal, multi-slot swap-out, whole item off on a lost slot; reload stability | `inventory.test.ts`, `settle.bodies.test.ts` |
-| `buildInventoryContext` | Item line in both modes; can't-fit mark in both modes | `inventoryContext.slots.test.ts` |
+| `buildInventoryContext` | Item line in both modes | `inventoryContext.slots.test.ts` |
 | Body Layout module (new) | Box sync, center square, stacking and ties, snap lines, clamps | `bodies.test.ts` |
 | World Editor bench | Backdrop choice, capacity adds a box, row and box selection, keyboard moves, slot rule control, placement select | `WorldEditor.equipment.test.tsx` |
 | InventoryTab | Doll fills by order, All of in each box, empty box, name fallback, Equip choices, tap actions | `GamePanels.inventory.test.tsx` |
@@ -256,6 +257,6 @@ A good test drives the public seam and asserts what a player or an author sees. 
 
 ## Further Notes
 
-**Prototype.** The question was what the Body Layout should look like in the editor and in play. The verdict is variant B plus Q47–Q49. The source is branch `prototype/paperdoll` at `422d61ba9`, in `src/managers/paperdollPrototype/`. To run it, use the `proto-paperdoll` launch entry in the prototype worktree (port 5262) and open Items → Equipment Settings. The prototype does not build the Slot Rule. It wasn't checked with real touch or in the light theme, and the outlines are first drafts.
+**Prototype.** The question was what the Body Layout should look like in the editor and in play. The verdict is variant B plus Q47–Q49. The source is branch `prototype/paperdoll` at `422d61ba9`, in `src/managers/paperdollPrototype/`. To run it, use the `proto-paperdoll` launch entry in the prototype worktree (port 5262) and open Items → Equipment Settings. The prototype does not build the Slot Rule. It wasn't checked with real touch or in the light theme, and its outlines are first drafts that Q69 replaced.
 
 **Reminders.** World export shape changes (Body, BodyEntry, Item, Placement). The save shape does not.
