@@ -1,6 +1,7 @@
 import { AbsoluteFill } from 'remotion';
-import type { SceneProps } from '../layout';
-import { DEFAULT_DELAY, Pills, copyReads, type CopyLines } from '../parts/CopyBlock';
+import type { Layout, SceneProps } from '../layout';
+import type { TextTrack } from '../onScreen';
+import { DEFAULT_DELAY, Pills, copyReads, pillTracks, type CopyLines } from '../parts/CopyBlock';
 import type { CameraPath } from '../parts/FrameCamera';
 import { ShotCard } from '../parts/GlassCard';
 import { STACK_CARDS, STACK_PLACE } from '../poses';
@@ -27,6 +28,10 @@ export const paneRise = (index: number) => paneDelay(index) - DEFAULT_DELAY;
 /** The frames each pane's caption enters, is legible and leaves, for the reading check. */
 export const stackReads = (panes: readonly StackPane[], durationInFrames: number): CopyRead[] =>
   panes.flatMap((pane, i) => copyReads(pane.caption, durationInFrames, paneDelay(i)));
+
+/** Each pane's pills on every frame, for the on-screen check. */
+export const stackTexts = async (panes: readonly StackPane[], layout: Layout, durationInFrames: number): Promise<TextTrack[]> =>
+  (await Promise.all(panes.map((pane, i) => pillTracks({ lines: pane.caption, layout, place: STACK_PLACE[layout][i], dot: pane.dot, delay: paneDelay(i), durationInFrames })))).flat();
 
 /** Two shots on their own glass cards, one above the other (tall) or side by side (wide), a pill caption on each. */
 export const StackScene = ({ layout, durationInFrames, panes }: StackSceneProps) => (

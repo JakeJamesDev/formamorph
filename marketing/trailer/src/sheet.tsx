@@ -41,7 +41,7 @@ const SheetGrid = ({ layout, cells }: { layout: Layout; cells: { id: string; fro
           <div key={`${id}-${offset}`} style={{ ...cell, position: 'relative', overflow: 'hidden', outline: '1px solid #222' }}>
             <div style={{ ...canvas, position: 'absolute', transform: `scale(${cell.width / canvas.width})`, transformOrigin: '0 0' }}>
               <Sequence from={-at} layout="none">
-                <Trailer layout={layout} reading={[]} dense={[]} stack={[]} camera={[]} />
+                <Trailer layout={layout} reading={[]} dense={[]} stack={[]} camera={[]} onScreen={[]} />
               </Sequence>
             </div>
             <div style={{ position: 'absolute', left: 6, top: 4, fontFamily: 'monospace', fontSize: 14, color: '#fff', background: 'rgba(0,0,0,.6)', padding: '1px 5px', borderRadius: 4 }}>

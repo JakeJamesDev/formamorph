@@ -2,7 +2,7 @@ import { Composition } from 'remotion';
 import { CANVAS, FPS, type Layout } from './layout';
 import { SceneLibrary } from './library';
 import { SheetCompositions } from './sheet';
-import { cameraReport, denseReport, readingReport, stackReport, totalFrames } from './timeline';
+import { cameraReport, denseReport, onScreenReport, readingReport, stackReport, totalFrames } from './timeline';
 import { Trailer } from './Trailer';
 
 const CUTS: { id: string; layout: Layout }[] = [
@@ -17,9 +17,9 @@ export const Root = () => (
         key={id}
         id={id}
         component={Trailer}
-        defaultProps={{ layout, reading: readingReport(layout), dense: denseReport(layout), stack: stackReport(layout), camera: [] }}
-        // The subject check measures laid-out copy, so the camera report fills in once the browser has the fonts.
-        calculateMetadata={async ({ props }) => ({ props: { ...props, camera: await cameraReport(layout) } })}
+        defaultProps={{ layout, reading: readingReport(layout), dense: denseReport(layout), stack: stackReport(layout), camera: [], onScreen: [] }}
+        // The subject and on-screen checks measure laid-out copy, so their reports fill in once the browser has the fonts.
+        calculateMetadata={async ({ props }) => ({ props: { ...props, camera: await cameraReport(layout), onScreen: await onScreenReport(layout) } })}
         fps={FPS}
         durationInFrames={totalFrames(layout)}
         {...CANVAS[layout]}

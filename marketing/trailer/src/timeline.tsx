@@ -1,18 +1,19 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cardBox, readCamera, type CameraReading, type CameraUse } from './framing';
 import { FPS, type Layout, type Rect, type SceneProps } from './layout';
-import { copyReads, measurePills, type PillSpec } from './parts/CopyBlock';
+import { readText, type TextReading, type TextTrack } from './onScreen';
+import { copyReads, headlineTracks, measurePills, pillTracks, type PillSpec } from './parts/CopyBlock';
 import type { CameraPath, CameraStop } from './parts/FrameCamera';
 import { cardBob, cardLandFrames, fullFrame, type CardPose } from './parts/GlassCard';
 import { readDenseHold, type DenseReading, type StackHoldReading } from './holds';
 import { exitStart } from './motion';
 import { BUILD_STACK, CAPTION_PLACE, ENTITY_STACK, STACK_CARDS, STACK_PLACE, TURN_STACK, type CardPair, type StackPoses } from './poses';
 import { readLines, type CopyRead, type LineReading } from './reading';
-import { FrameScene, frameCards } from './scenes/FrameScene';
-import { GrowingStack, growingHolds, growingReads, growingTiming, type GrowingPane } from './scenes/GrowingStack';
+import { FRAME_DOT, FrameScene, frameCards } from './scenes/FrameScene';
+import { GrowingStack, growingHolds, growingReads, growingTexts, growingTiming, type GrowingPane } from './scenes/GrowingStack';
 import { KineticText } from './scenes/KineticText';
-import { StackScene, paneRise, stackReads, type StackPane } from './scenes/StackScene';
-import { TitleCard, titleReads, type CallToAction } from './scenes/TitleCard';
+import { StackScene, paneRise, stackReads, stackTexts, type StackPane } from './scenes/StackScene';
+import { TitleCard, titleReads, titleTracks, type CallToAction } from './scenes/TitleCard';
 import { WordmarkTitle } from './scenes/WordmarkTitle';
 import { SHOTS, TURN_PROMPT, shotFor } from './shots';
 import { joinFor, overlapFrames, type Join, type TransitionName } from './transitions';
@@ -25,6 +26,8 @@ type SceneEntry = {
   render: (props: SceneProps) => ReactNode;
   /** Each line of copy and the scene frames it enters, is legible and leaves, for the reading check. */
   reads: CopyRead[];
+  /** Each text element the scene draws in a layout and its boxes on every frame, for the on-screen check. Runs in the browser. */
+  texts: (layout: Layout) => Promise<TextTrack[]>;
   /** Each camera the scene runs in a layout, for the camera check. */
   cameras: (layout: Layout) => CameraUse[];
   /** What the scene draws over its cards in a layout, for the subject check: caption pills and panel cards. */
@@ -56,9 +59,10 @@ const shot = (
   out: TransitionName,
   render: SceneEntry['render'],
   reads: CopyRead[],
+  texts: SceneEntry['texts'] = async () => [],
   cameras: SceneEntry['cameras'] = () => [],
   covers: SceneEntry['covers'] = () => [],
-): SceneEntry => ({ id, durationInFrames, join: joinFor(out), render, reads, cameras, covers, denseRise: null });
+): SceneEntry => ({ id, durationInFrames, join: joinFor(out), render, reads, texts, cameras, covers, denseRise: null });
 
 /** Marks the scene's card that rises at frame `rise` as dense: the subject holds more than one thing the eye must find. */
 const dense = (entry: SceneEntry, rise = 0): SceneEntry => ({ ...entry, denseRise: rise });
@@ -67,7 +71,7 @@ const dense = (entry: SceneEntry, rise = 0): SceneEntry => ({ ...entry, denseRis
 type Own<Props> = Omit<Props, keyof SceneProps>;
 
 const kinetic = (id: string, frames: number, out: TransitionName, props: Own<ComponentProps<typeof KineticText>>) =>
-  shot(id, frames, out, (scene) => <KineticText {...scene} {...props} />, copyReads(props.lines, frames, props.delay));
+  shot(id, frames, out, (scene) => <KineticText {...scene} {...props} />, copyReads(props.lines, frames, props.delay), (layout) => headlineTracks({ lines: props.lines, layout, durationInFrames: frames, delay: props.delay }));
 
 const frameShot = (id: string, frames: number, out: TransitionName, props: Own<ComponentProps<typeof FrameScene>>) =>
   shot(
@@ -76,8 +80,9 @@ const frameShot = (id: string, frames: number, out: TransitionName, props: Own<C
     out,
     (scene) => <FrameScene {...scene} {...props} />,
     props.caption ? copyReads(props.caption, frames) : [],
+    async (layout) => (props.caption ? pillTracks({ lines: props.caption, layout, place: CAPTION_PLACE[layout], dot: props.dot ?? FRAME_DOT, durationInFrames: frames }) : []),
     (layout) => [{ shot: shotFor(props.shot, layout), path: props.camera[layout], card: frameCards(layout, props.cards).front, bob: cardBob('shot') }],
-    (layout) => (props.caption ? [{ pills: { lines: props.caption, layout, place: CAPTION_PLACE[layout], dot: props.dot } }] : []),
+    (layout) => (props.caption ? [{ pills: { lines: props.caption, layout, place: CAPTION_PLACE[layout], dot: props.dot ?? FRAME_DOT } }] : []),
   );
 
 const stack = (id: string, frames: number, out: TransitionName, panes: readonly [StackPane, StackPane]) =>
@@ -87,6 +92,7 @@ const stack = (id: string, frames: number, out: TransitionName, panes: readonly 
     out,
     (scene) => <StackScene {...scene} panes={panes} />,
     stackReads(panes, frames),
+    (layout) => stackTexts(panes, layout, frames),
     (layout) => panes.map((pane, i) => ({ shot: shotFor(pane.shot, layout), path: pane.camera, card: STACK_CARDS[layout][i], bob: cardBob('shot'), pane: i + 1 })),
     (layout) => panes.map((pane, i) => ({ pills: { lines: pane.caption, layout, place: STACK_PLACE[layout][i], dot: pane.dot } })),
   );
@@ -109,6 +115,7 @@ const growing = (id: string, out: TransitionName, layout: Layout, panes: readonl
       out,
       (scene) => <GrowingStack {...scene} panes={panes} poses={poses} />,
       growingReads(panes, layout),
+      (cut) => growingTexts(panes, cut, poses, durationInFrames),
       (cut) => panes.map((pane, i) => ({ shot: shotFor(pane.shot, cut), path: pane.camera[cut], card: poses[cut].cards[i], bob: cardBob('shot'), pane: i + 1 })),
       (cut) => panes.map((pane, i) => paneCover(pane, i, poses, cut)),
     ),
@@ -121,7 +128,7 @@ const growing = (id: string, out: TransitionName, layout: Layout, panes: readonl
 const wordmark = (id: string, frames: number, out: TransitionName) => shot(id, frames, out, (scene) => <WordmarkTitle {...scene} />, []);
 
 const title = (id: string, frames: number, cta: CallToAction) =>
-  shot(id, frames, 'cut', (scene) => <TitleCard {...scene} cta={cta} />, titleReads(frames, cta));
+  shot(id, frames, 'cut', (scene) => <TitleCard {...scene} cta={cta} />, titleReads(frames, cta), (layout) => titleTracks(layout, cta));
 
 /** A wide shot that the tall cut plays in the same place with the same copy, renamed to its tall id. */
 const reuse = (id: string, entry: SceneEntry): SceneEntry => ({ ...entry, id });
@@ -278,6 +285,15 @@ export const cameraReport = async (layout: Layout): Promise<CameraReading[]> => 
     }
   }
   return readings;
+};
+
+/** Every text element in a cut, measured against the frame's margin on every frame its scene plays (ruling Q70). Runs in the browser, which lays out the copy. */
+export const onScreenReport = async (layout: Layout): Promise<TextReading[]> => {
+  const starts = sceneStarts(layout);
+  const readings = await Promise.all(
+    TIMELINES[layout].map(async (scene, i) => (await scene.texts(layout)).map((track) => readText(layout, scene.id, track, scene.durationInFrames, starts[i].from))),
+  );
+  return readings.flat();
 };
 
 /** Every line of copy in a cut, measured against the reading bar on the frames no join covers. */

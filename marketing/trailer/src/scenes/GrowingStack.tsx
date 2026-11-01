@@ -2,10 +2,11 @@ import { AbsoluteFill } from 'remotion';
 import { readStackHold, type StackHoldReading } from '../holds';
 import { FPS, type Layout, type SceneProps } from '../layout';
 import { ENTER_FRAMES, EXIT_FRAMES } from '../motion';
-import { DEFAULT_DELAY, Pills, copyReads, type CopyLines } from '../parts/CopyBlock';
+import type { TextTrack } from '../onScreen';
+import { DEFAULT_DELAY, Pills, copyReads, pillTracks, type CopyLines } from '../parts/CopyBlock';
 import type { Callout, CameraPath } from '../parts/FrameCamera';
 import { ShotCard, cardLandFrames } from '../parts/GlassCard';
-import { TypedPanel, turnReads } from '../parts/TypedPanel';
+import { TypedPanel, panelTrack, turnReads } from '../parts/TypedPanel';
 import type { StackPoses } from '../poses';
 import { READING_BAR, type CopyRead } from '../reading';
 import { panelFrameOf, shotFor, type LayoutShot, type Shot } from '../shots';
@@ -66,6 +67,22 @@ export const growingReads = (panes: readonly GrowingPane[], layout: Layout): Cop
 export const growingHolds = (id: string, panes: readonly GrowingPane[], layout: Layout, joinOut: number): StackHoldReading[] => {
   const { rises, holdEnds, durationInFrames } = growingTiming(panes, layout, joinOut);
   return panes.map((pane, i) => readStackHold(id, i + 1, rises[i] + cardLandFrames(FPS), Math.min(holdEnds[i], durationInFrames - joinOut), minHoldSeconds(pane, shotFor(pane.shot, layout)), FPS));
+};
+
+/** Each pane's text boxes on every frame, for the on-screen check. */
+export const growingTexts = async (panes: readonly GrowingPane[], layout: Layout, poses: StackPoses, durationInFrames: number): Promise<TextTrack[]> => {
+  const { rises, holdEnds } = growingTiming(panes, layout);
+  const { places, panel } = poses[layout];
+  const tracks = await Promise.all(
+    panes.map(async (pane, i) => {
+      if ('typed' in pane) {
+        if (!panel) throw new Error('A turn card needs a panel pose');
+        return [await panelTrack({ layout, clip: risenShot(pane, layout, rises[i]), pose: panel.pose, padding: panel.padding, prompt: pane.typed.prompt, caption: pane.typed.caption, durationInFrames })];
+      }
+      return pillTracks({ lines: pane.caption, layout, place: places[i], dot: pane.dot, delay: rises[i] + DEFAULT_DELAY, durationInFrames: i < panes.length - 1 ? holdEnds[i] + EXIT_FRAMES : durationInFrames });
+    }),
+  );
+  return tracks.flat();
 };
 
 type GrowingStackProps = SceneProps & { panes: readonly GrowingPane[]; poses: StackPoses };

@@ -74,6 +74,8 @@ Total: **4,960 frames, 82.67 s**, under the 90 s target. W01, W02 and W18 are cu
 
 **Subject (Q38, Q39):** each capture has a subject region, the part that carries its point. The render check fails a shot whose subject leaves the card's crop, or sits under a caption pill or panel, on any frame.
 
+**Text on screen (Q70):** every headline word, caption pill, typed panel and end-card line stays whole at least 4% of the frame height from every edge, on every frame it shows. The render check fails one that leaves, by shot and frame.
+
 **Opening card (Q49, Q53, Q55):** the wordmark coalesces from goo blobs, as the app's first-run intro does, in the wordmark's white and gradient. Once the letters settle, the blobs shrink away, outer ones first, and leave the crisp letters. The letters hold, then leave before frame 359.
 
 **End card (Q37, Q59):** the wordmark springs in. Then F, o, r, m and a each grow and shrink back in turn, one beat each, and "morph" does the same as one unit, a little larger. Every glyph settles at its normal size. The tagline and the call to action enter after the pop. The call to action is a pill with no dot. "formamorph.ai" is in the accent color.

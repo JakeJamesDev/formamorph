@@ -29,10 +29,13 @@ export const TITLE_CARDS: Record<Layout, readonly [CardPose, CardPose]> = {
   ],
 };
 
+/** A tall pill column's sides: inside the text margin (ruling Q70), with room for a pill's spring overshoot. */
+const TALL_PILLS: CSSProperties = { left: 82, right: 82, alignItems: 'center' };
+
 /** Where a frame shot's caption pills sit. */
 export const CAPTION_PLACE: Record<Layout, CSSProperties> = {
   wide: { left: 120, bottom: 110, alignItems: 'flex-start' },
-  tall: { left: 60, right: 60, bottom: 170, alignItems: 'center' },
+  tall: { ...TALL_PILLS, bottom: 170 },
 };
 
 /** The two cards of a stack, one above the other (tall) or side by side (wide), each with its own pill. */
@@ -42,8 +45,8 @@ export const STACK_CARDS: Record<Layout, readonly [CardPose, CardPose]> = {
     { width: 840, height: 630, x: 450, y: 20, tilt: [-10, -6], lean: 3 },
   ],
   tall: [
-    { width: 960, height: 760, x: 0, y: -440, tilt: [-7, -4], lean: 4 },
-    { width: 960, height: 760, x: 0, y: 420, tilt: [7, 4], lean: 2 },
+    { width: 960, height: 760, x: 0, y: -460, tilt: [-7, -4], lean: 4 },
+    { width: 960, height: 760, x: 0, y: 385, tilt: [7, 4], lean: 2 },
   ],
 };
 
@@ -59,19 +62,19 @@ export const TURN_STACK: StackPoses = {
   wide: {
     cards: [
       { width: 1200, height: 675, x: -280, y: -150, tilt: [-5, -3], lean: 2 },
-      { width: 1200, height: 675, x: 290, y: 110, tilt: [-5, -3], lean: 2 },
+      { width: 1200, height: 675, x: 290, y: 60, tilt: [-5, -3], lean: 2 },
     ],
-    places: [{}, { right: 110, top: 960, alignItems: 'flex-end' }],
-    panel: { pose: { width: 1100, height: 280, x: -280, y: 352, tilt: [-5, -3], lean: 2 }, padding: 40 },
+    places: [{}, { right: 110, top: 855, alignItems: 'flex-end' }],
+    panel: { pose: { width: 1100, height: 280, x: -280, y: 332, tilt: [-5, -3], lean: 2 }, padding: 40 },
   },
   tall: {
     cards: [
       { width: 900, height: 1200, x: 0, y: -280, tilt: [-4, -2], lean: 2 },
-      { width: 960, height: 760, x: 0, y: 440, tilt: [4, 2], lean: 2 },
+      { width: 960, height: 760, x: 0, y: 376, tilt: [4, 2], lean: 2 },
     ],
-    places: [{}, { left: 60, right: 60, top: 1752, alignItems: 'center' }],
-    // The caption line wraps to two lines at this width.
-    panel: { pose: { width: 920, height: 340, x: 0, y: 530, tilt: [-4, -2], lean: 2 }, padding: 44 },
+    places: [{}, { ...TALL_PILLS, top: 1683 }],
+    // The caption line wraps to two lines at this width, and the panel's exit drift stays inside the margin.
+    panel: { pose: { width: 790, height: 340, x: 0, y: 530, tilt: [-4, -2], lean: 2 }, padding: 44 },
   },
 };
 
@@ -80,21 +83,21 @@ export const ENTITY_STACK: StackPoses = {
   wide: {
     cards: [
       { width: 1200, height: 675, x: -280, y: -150, tilt: [-5, -3], lean: 2 },
-      { width: 1200, height: 675, x: 290, y: 130, tilt: [-5, -3], lean: 2 },
+      { width: 1200, height: 675, x: 290, y: 60, tilt: [-5, -3], lean: 2 },
     ],
     places: [
       { left: 120, top: 703, alignItems: 'flex-start' },
-      { right: 110, top: 983, alignItems: 'flex-end' },
+      { right: 110, top: 855, alignItems: 'flex-end' },
     ],
   },
   tall: {
     cards: [
-      { width: 960, height: 760, x: 0, y: -460, tilt: [-4, -2], lean: 2 },
-      { width: 960, height: 900, x: 0, y: 420, tilt: [4, 2], lean: 2 },
+      { width: 960, height: 760, x: 0, y: -500, tilt: [-4, -2], lean: 2 },
+      { width: 960, height: 900, x: 0, y: 326, tilt: [4, 2], lean: 2 },
     ],
     places: [
-      { left: 60, right: 60, top: 860, alignItems: 'center' },
-      { left: 60, right: 60, top: 1806, alignItems: 'center' },
+      { ...TALL_PILLS, top: 820 },
+      { ...TALL_PILLS, top: 1683 },
     ],
   },
 };
@@ -107,7 +110,7 @@ export const BUILD_STACK: StackPoses = {
       { width: 1060, height: 596, x: -220, y: -130, tilt: [-5, -3], lean: 2 },
       { width: 1060, height: 596, x: -70, y: -48, tilt: [-5, -3], lean: 2 },
       { width: 1060, height: 596, x: 80, y: 34, tilt: [-5, -3], lean: 2 },
-      { width: 690, height: 596, x: 575, y: 118, tilt: [-5, -3], lean: 2 },
+      { width: 690, height: 596, x: 575, y: 28, tilt: [-5, -3], lean: 2 },
     ],
     places: [
       { left: 100, top: 602, alignItems: 'flex-start' },
@@ -115,7 +118,7 @@ export const BUILD_STACK: StackPoses = {
       { left: 400, top: 766, alignItems: 'flex-start' },
       // Its long caption fits one line only when it grows leftward.
       { right: 350, top: 848, alignItems: 'flex-end' },
-      { right: 60, top: 948, alignItems: 'flex-end' },
+      { right: 60, top: 855, alignItems: 'flex-end' },
     ],
   },
   tall: {
@@ -124,14 +127,14 @@ export const BUILD_STACK: StackPoses = {
       { width: 900, height: 506, x: 40, y: -387, tilt: [4, 2], lean: 2 },
       { width: 900, height: 506, x: -40, y: -97, tilt: [-4, -2], lean: 2 },
       { width: 900, height: 506, x: 40, y: 193, tilt: [4, 2], lean: 2 },
-      { width: 620, height: 560, x: 110, y: 490, tilt: [4, 2], lean: 2 },
+      { width: 620, height: 560, x: 110, y: 390, tilt: [4, 2], lean: 2 },
     ],
     places: [
-      { left: 60, right: 60, top: 516, alignItems: 'center' },
-      { left: 60, right: 60, top: 806, alignItems: 'center' },
-      { left: 60, right: 60, top: 1096, alignItems: 'center' },
-      { left: 60, right: 60, top: 1386, alignItems: 'center' },
-      { left: 60, right: 60, top: 1724, alignItems: 'center' },
+      { ...TALL_PILLS, top: 516 },
+      { ...TALL_PILLS, top: 806 },
+      { ...TALL_PILLS, top: 1096 },
+      { ...TALL_PILLS, top: 1386 },
+      { ...TALL_PILLS, top: 1618 },
     ],
   },
 };
@@ -143,7 +146,7 @@ export const STACK_PLACE: Record<Layout, readonly [CSSProperties, CSSProperties]
     { right: 80, bottom: 110, alignItems: 'flex-end' },
   ],
   tall: [
-    { left: 60, right: 60, top: 820, alignItems: 'center' },
-    { left: 60, right: 60, bottom: 90, alignItems: 'center' },
+    { ...TALL_PILLS, top: 800 },
+    { ...TALL_PILLS, bottom: 137 },
   ],
 };
