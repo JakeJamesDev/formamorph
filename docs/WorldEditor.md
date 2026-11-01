@@ -196,7 +196,7 @@ A search covers the **Overview**, **Entities**, **Items**, **Locations**, **Trai
 - **Replace all** asks first, and says how many matches and fields it changes.
 - A chip can't be replaced as text. Change it in its Chip Options.
 - A field that can't hold a chip is skipped when you replace text with a placeholder.
-- A Tool's name is skipped when the new name isn't one **Save Tool** accepts.
+- A Tool's name is skipped when the new name isn't one **Save Tool** accepts. That includes a name another Tool already has, or just took in the same **Replace all**.
 
 In Advanced mode, the replace row can put a placeholder chip in place of text. Select the swap button, then pick a placeholder in **Choose Placeholder**.
 

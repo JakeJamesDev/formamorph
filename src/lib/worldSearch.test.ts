@@ -619,6 +619,39 @@ describe('Items, Scripts and Tools', () => {
     expect(tools).toEqual([{ ...TOOL, name: 'find_gong' }]);
   });
 
+  describe('Tool names across one Replace All', () => {
+    const twin = (id: string, name: string): Tool => ({ ...TOOL, id, name });
+    /** Tools whose writes land in `src.tools`, as the editor's saved list does. */
+    function toolWorld(names: string[]) {
+      const { src } = sources({ tools: names.map((n, i) => twin(`t${i + 1}`, n)) });
+      src.updateTool = (tool) => { src.tools = (src.tools ?? []).map((t) => (t.id === tool.id ? tool : t)); };
+      const nameHits = (query: string) =>
+        findMatches(collectSearchTargets(src), query, LOOSE).filter((m) => m.target.tab === 'tools' && m.target.fieldKey === 'name');
+      return { src, nameHits, names: () => (src.tools ?? []).map((t) => t.name) };
+    }
+
+    it('renames one Tool and skips the one that would take the same name', () => {
+      const { nameHits, names } = toolWorld(['bell_2', 'bell__2']);
+      // The summary counts hits: `bell_2` has one underscore, the skipped `bell__2` has two.
+      expect(replaceAll(nameHits('_'), () => '')).toMatchObject({ replaced: 1, refused: 2 });
+      expect(names()).toEqual(['bell2', 'bell__2']);
+    });
+
+    it('renames every Tool when the new names stay distinct', () => {
+      const { nameHits, names } = toolWorld(['bell_a', 'bell_b']);
+      expect(replaceAll(nameHits('bell'), () => 'gong')).toMatchObject({ replaced: 2, refused: 0 });
+      expect(names()).toEqual(['gong_a', 'gong_b']);
+    });
+
+    it('reads the saved names in a later pass, not the last pass’s', () => {
+      const { nameHits, names } = toolWorld(['bell_2', 'bell__2']);
+      replaceAll(nameHits('_'), () => '');
+      expect(replaceAll(nameHits('bell__2'), () => 'bell2')).toMatchObject({ replaced: 0, refused: 1 });
+      expect(replaceAll(nameHits('bell__2'), () => 'bell3')).toMatchObject({ replaced: 1, refused: 0 });
+      expect(names()).toEqual(['bell2', 'bell3']);
+    });
+  });
+
   it('writes a Tool replace through its updater, parameters included', () => {
     const { src, tools } = logicSources();
     replaceAll(findMatches(collectSearchTargets(src), 'tower', LOOSE).filter((m) => m.target.tab === 'tools'), () => 'spire');
