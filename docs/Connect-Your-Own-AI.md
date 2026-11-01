@@ -10,10 +10,10 @@ The AI writes everything you read. Nothing else changes the experience as much. 
 - entities that act the same from turn to turn
 
 ## Formamorph AI for Supporters
-<!-- keywords: formamorph ai, supporter, patreon, allowance, monthly allowance, turns left, used up, ran out, switch back, hosted ai, no setup, no key -->
+<!-- keywords: formamorph ai, supporter, patreon, allowance, weekly allowance, turns left, used up, ran out, switch back, hosted ai, no setup, no key -->
 <!-- route: settingsEndpoints.text#text-preset -->
 
-**Formamorph AI** is a built-in preset that thanks Patreon Supporters. It needs no key. Your support includes a context window and a monthly allowance. Their size depends on how you support the project.
+**Formamorph AI** is a built-in preset that thanks Patreon Supporters. It needs no key. Your support includes a context window and a weekly allowance. Their size depends on how you support the project.
 
 To use it:
 
@@ -25,12 +25,12 @@ The panel shows **Sign In**, **Review Policy** or **Confirm Age** for each step 
 
 The first time a device sees your support, Formamorph selects **Formamorph AI** for you. It does this once on each device. After that, your choice stays.
 
-To see your allowance, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your support, the percent used, about how many turns are left, and the reset date. The numbers update after each turn.
+To see your allowance, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your support, the percent used, about how many turns are left, and when it resets, in your local time. The numbers update after each turn.
 
 - Each turn on any device counts against one shared allowance.
-- The allowance resets on the 1st of each month (UTC).
-- A notice appears after a turn when you pass a warning level, with a **Support on Patreon** link. Each notice shows once a month across all your devices.
-- When the allowance runs out, Formamorph AI stops until the reset date. A notice says so after the turn and stays until you close it. Select **Switch Back** to return to your last preset, or **Support on Patreon** to open the Patreon page.
+- The allowance resets every week. The panel shows the day and time in your local time.
+- A notice appears after a turn when you reach the highest warning level, with a **Support on Patreon** link. It shows once a week across all your devices.
+- When the allowance runs out, Formamorph AI stops until the reset. A notice says so after the turn and stays until you close it. Select **Switch Back** to return to your last preset, or **Support on Patreon** to open the Patreon page.
 
 If you are not a Supporter, the preset shows a **Support on Patreon** button.
 

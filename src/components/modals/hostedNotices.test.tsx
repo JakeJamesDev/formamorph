@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
@@ -14,7 +14,7 @@ import { showHostedNotices } from './hostedNotices';
 
 const BASE = {
   tier: 'supporter', state: 'ready', window: 32000, maxTokens: 900, tokenMargin: 1000,
-  model: { id: 'm', capabilities: {} }, percentUsed: 10, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [] as number[], warnThresholds: [75, 90],
+  model: { id: 'm', capabilities: {} }, percentUsed: 10, turnsLeft: 50, resetAt: '2026-11-09T00:00:00.000Z', acknowledged: [] as number[], warnThresholds: [75, 90],
 };
 const acks: string[] = [];
 
@@ -34,28 +34,33 @@ const usage = (session: HostedSession, percentUsed: number) =>
   session.noteUsage({ percentUsed, turnsLeft: 5, resetAt: BASE.resetAt });
 const body = (mock: typeof info): ReactNode => mock.mock.calls.at(-1)?.[0] as ReactNode;
 
+beforeAll(() => { process.env.TZ = 'America/Los_Angeles'; });
 beforeEach(() => { info.mockClear(); warn.mockClear(); openExternal.mockClear(); acks.length = 0; });
 
 describe('the allowance notices after a turn commits', () => {
-  it('shows the 75% notice once and acknowledges it on the server', async () => {
-    const s = await sessionAt();
-    usage(s, 76);
-    showHostedNotices(() => {}, s);
-    expect(info).toHaveBeenCalledTimes(1);
-    expect(acks).toEqual([hostedAckUrl(75)]);
-    // A later turn at the same level raises nothing.
-    usage(s, 77);
-    showHostedNotices(() => {}, s);
-    expect(info).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows only the 90% notice when both lines were crossed in one turn', async () => {
+  it('shows the 90% notice once and acknowledges every crossed line on the server', async () => {
     const s = await sessionAt();
     usage(s, 91);
     showHostedNotices(() => {}, s);
     expect(info).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(acks).toEqual([hostedAckUrl(75), hostedAckUrl(90)]));
     render(<>{body(info)}</>);
-    expect(screen.getByText(/used 90%/)).toBeTruthy();
+    expect(screen.getByText(/used 90% of this week's/)).toBeTruthy();
+    // A later turn at the same level raises nothing.
+    usage(s, 92);
+    showHostedNotices(() => {}, s);
+    expect(info).toHaveBeenCalledTimes(1);
+  });
+
+  it('raises no notice for a lower line, and none for it later either', async () => {
+    const s = await sessionAt();
+    usage(s, 80);
+    showHostedNotices(() => {}, s);
+    expect(info).not.toHaveBeenCalled();
+    expect(acks).toEqual([]);
+    usage(s, 90);
+    showHostedNotices(() => {}, s);
+    expect(info).toHaveBeenCalledTimes(1);
   });
 
   it('raises nothing below 75%', async () => {
@@ -75,14 +80,15 @@ describe('the allowance notices after a turn commits', () => {
     expect(info).not.toHaveBeenCalled();
   });
 
-  it('shows the exhausted notice once, names the reset date, and switches back or upgrades on click', async () => {
+  it('shows the exhausted notice once, names the local reset time, and switches back or upgrades on click', async () => {
     const s = await sessionAt();
     const switchBack = vi.fn();
     usage(s, 100);
     showHostedNotices(switchBack, s);
     expect(warn).toHaveBeenCalledTimes(1);
     render(<>{body(warn)}</>);
-    expect(screen.getByText(/November 1/)).toBeTruthy();
+    expect(screen.getByText(/used this week's/)).toBeTruthy();
+    expect(screen.getByText(/comes back Sunday at 4:00 PM/)).toBeTruthy();
     fireEvent.click(screen.getByText('Switch Back'));
     expect(switchBack).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByText('Support on Patreon'));

@@ -1,19 +1,12 @@
 import { useEffect, useState } from 'react';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
+import { formatResetTime } from '@/lib/resetTime';
 import { useTierName } from '@/lib/tierNames';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { fetchHostedAllowance, type HostedAllowance } from '@/services/HostedStateService';
 
 /** `undefined` while the read is out, `null` when it failed. */
 type Reading = HostedAllowance | null | undefined;
-
-/** The reset moment as a UTC calendar date, since the server resets at 00:00 UTC. */
-const resetDate = (resetAt: string | null): string | null => {
-  const date = resetAt ? new Date(resetAt) : null;
-  if (!date || Number.isNaN(date.getTime())) return null;
-
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
-};
 
 function PatreonLink({ children }: { children: string }) {
   return (
@@ -51,7 +44,7 @@ function Figures({ reading, reset }: { reading: HostedAllowance; reset: string |
 }
 
 /**
- * The reader's Formamorph AI allowance: tier, percent used, about how many turns are left and the reset date.
+ * The reader's Formamorph AI allowance: tier, percent used, about how many turns are left and the local reset time.
  *
  * It reads the server's hosted state once. It writes nothing and shows no dollar amounts.
  */
@@ -71,7 +64,7 @@ export function AllowanceSection() {
     return <p className="text-helper text-muted-foreground">Couldn’t load your Formamorph AI allowance.</p>;
   }
 
-  const reset = resetDate(reading.resetAt);
+  const reset = formatResetTime(reading.resetAt);
 
   switch (reading.state) {
     case 'locked':
@@ -97,7 +90,7 @@ export function AllowanceSection() {
       return (
         <div className="space-y-2">
           <p className="text-helper text-muted-foreground">
-            You’ve used this month’s Formamorph AI allowance{reset ? `. It comes back on ${reset}.` : '.'}
+            You’ve used this week’s Formamorph AI allowance{reset ? `. It comes back ${reset}.` : '.'}
           </p>
           <PatreonLink>Support on Patreon</PatreonLink>
         </div>

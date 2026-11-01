@@ -55,6 +55,7 @@ const ALLOWED = [
   '@/components/SupporterBadge',
   '@/lib/supporterFlair',
   '@/lib/tierNames',
+  '@/lib/resetTime',
   '@/components/community/AgeGateDialog',
   '@/components/community/ProfileStats',
   '@/components/community/UserCreationsTab',
@@ -196,7 +197,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 71: `HostedStateService`, the read-only hosted-state call the allowance section makes; it reads only the auth leaves.
     // 72: `tierNames`, the one place a tier's name comes from; it reads only `apiBase` and `supporterFlair`.
     // 73: `typography`, the text roles the age gate, creations list, Patreon section and delete-account dialog read; it reads only `utils`.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(73);
+    // 74: `resetTime`, the pure leaf that formats the local reset weekday and time for the allowance section.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(74);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

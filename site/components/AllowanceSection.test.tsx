@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AccountPage } from '../pages/AccountPage';
 import { res, resetAccountPage, signIn } from '../test/support';
@@ -14,7 +14,7 @@ const READY = {
   state: 'ready',
   percentUsed: 42,
   turnsLeft: 118,
-  resetAt: '2026-11-01T00:00:00.000Z',
+  resetAt: '2026-11-09T00:00:00.000Z',
 };
 
 /** Answer the hosted-state route with `response`; every other route gets an empty user. */
@@ -27,6 +27,8 @@ const hostedState = (response: Response | Error) => {
 };
 
 const ok = (data: unknown) => res({ success: true, data });
+
+beforeAll(() => { process.env.TZ = 'America/Los_Angeles'; });
 
 beforeEach(() => {
   resetAccountPage('/account');
@@ -48,7 +50,7 @@ describe('the allowance section: an entitled account', () => {
     expect(screen.queryByText('Tier')).toBeNull();
     expect(screen.getByText('42%')).toBeTruthy();
     expect(screen.getByText('About 118')).toBeTruthy();
-    expect(screen.getByText('November 1')).toBeTruthy();
+    expect(screen.getByText('Sunday at 4:00 PM')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Support on Patreon' })).toBeNull();
   });
 
@@ -71,7 +73,7 @@ describe('the allowance section: an entitled account', () => {
     hostedState(ok({ ...READY, state: 'exhausted', percentUsed: 100, turnsLeft: 0 }));
     render(<AllowanceSection />);
 
-    expect(await screen.findByText(/It comes back on November 1/)).toBeTruthy();
+    expect(await screen.findByText(/this week’s Formamorph AI allowance. It comes back Sunday at 4:00 PM./)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Support on Patreon' })).toHaveAttribute('href', PATREON_URL);
   });
 

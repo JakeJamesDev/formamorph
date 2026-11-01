@@ -115,6 +115,7 @@ const FILES = [
   'src/lib/serverDate.ts',
   'src/lib/supporterFlair.ts',
   'src/lib/tierNames.ts',
+  'src/lib/resetTime.ts',
   'src/lib/thumbAspect.ts',
   'src/lib/useCachedThumbnail.tsx',
   'src/lib/useMountedRef.ts',
