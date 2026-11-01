@@ -803,6 +803,58 @@ describe('the persona at world entry', () => {
   });
 });
 
+describe('a world with nothing else to choose at world entry', () => {
+  // One starting location, no traits, no dictionaries, and a player whose library holds nothing to add.
+  const bareWorld = (entities: StoredWorldRecord['data']['entities']): StoredWorldRecord => {
+    const record = world();
+    return {
+      ...record,
+      data: {
+        ...record.data, entities, traits: [], traitGroups: [], dictionaries: [],
+        locations: [{ id: 'harbor', name: 'Harbor', isStarting: true }],
+      },
+    };
+  };
+  const emptyLibrary = async () => {
+    // Earlier cases in this file leave records behind, and the store outlives each case.
+    for (const { id } of await EntityStorageService.getEntityMetadata()) await EntityStorageService.deleteEntity(id);
+    for (const { id } of await DictionaryStorageService.getDictionaryMetadata()) await DictionaryStorageService.deleteDictionary(id);
+  };
+  const selectEnterWorld = async () => {
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
+  };
+
+  it('opens the dialog for a Custom Persona and starts the game with the entered name', async () => {
+    await emptyLibrary();
+    await WorldStorageService.storeWorld(bareWorld([{
+      id: 'you', name: 'Wanderer', playerDescription: '', aiDescription: '', aiSummary: '', customPersona: true,
+    }]));
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await selectEnterWorld();
+    await screen.findByRole('dialog', { name: 'Enter Entry World' });
+    expect(onStartGame).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Ash' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual({ ref: { source: 'none', name: 'Ash' } });
+  });
+
+  it('skips the dialog with no Custom Persona', async () => {
+    await emptyLibrary();
+    await WorldStorageService.storeWorld(bareWorld([{
+      id: 'npc', name: 'Innkeeper', playerDescription: '', aiDescription: '', aiSummary: '',
+    }]));
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await selectEnterWorld();
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(screen.queryByRole('dialog', { name: 'Enter Entry World' })).not.toBeInTheDocument();
+    expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
+  });
+});
+
 describe('a world persona at world entry', () => {
   const keeperRef: PersonaRef = { source: 'world', entityId: 'keeper' };
   // One marked world entity whose only starting location is the second one, and no library persona.

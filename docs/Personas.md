@@ -119,7 +119,7 @@ A persona from your library can bring its own Self openings. They draw in any wo
 ## Create Your Own
 <!-- keywords: self insert, blank slate, fill in my details, enter my name, race and class picks, replaces none option, author portrait shown -->
 
-Some worlds have a **Custom Persona**. It takes **None**'s place in the list, with the author's portrait and name. Pick it, and **Name** and **Description** fields open under it.
+Some worlds have a **Custom Persona**. It takes **None**'s place in the list, with the author's portrait and name. Pick it, and **Name** and **Description** fields open under it. The **Enter World** dialog always opens for these worlds, even with nothing else to choose.
 
 - **Your name replaces the entity's name.** The story calls you by it.
 - **Your description follows the author's.** The AI reads both.
