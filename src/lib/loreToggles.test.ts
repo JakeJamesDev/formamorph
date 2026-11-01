@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { loreEntries, playthroughBooks, withLoreWrites } from './loreToggles';
+import { loreEntries, namedEntries, playthroughBooks, withLoreWrites } from './loreToggles';
 import type { Dictionary } from '@/types';
+
+describe('namedEntries (Q9)', () => {
+  it('leaves out unnamed entries and keeps the named one', () => {
+    const entries = [
+      { name: '', enabled: true, id: 'a' },
+      { name: 'Old King', enabled: true, id: 'b' },
+      { name: '', enabled: false, id: 'c' },
+    ];
+    expect([...namedEntries(entries).keys()]).toEqual(['Old King']);
+  });
+});
 
 const book = (id: string, over: Partial<Dictionary> = {}): Dictionary =>
   ({ id, name: id, entries: [{ id: `${id}-e`, name: 'E', key: ['k'], value: `${id}-text` }], ...over });
