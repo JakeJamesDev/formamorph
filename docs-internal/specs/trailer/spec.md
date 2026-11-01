@@ -102,6 +102,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q67 | The four play shots become two two-card stacks under the stack rules (Q61, Q62): the turn card (W05) with the stats clip (W06) landing on it, then the entity card (W07) with the chat shot (W08) landing on it, with a section join between the stacks. The tall cut gets the same two column stacks in place of T05 and T06; the old pairing of stats with the entity card was mismatched. |
 | Q68 | The Blueprint card (W12) joins the build stack as its fourth card: map, profile, travel, traits, inventory. Inventory stays last. The traits title card (W12a, T10a) is cut. |
 | Q69 | A title card "Join the community." sits before the world grid (W14, T11) in both cuts. |
+| Q70 | Every text element (headline, caption pill, typed panel, end-card lines) stays whole inside the frame on every frame of both cuts, at least 4% of the frame height from every edge; the render check fails one that leaves. On review the chat caption in the play stack sat below the frame. The check sweeps both cuts and the ticket fixes every offender by moving the text, not the crop. The 4% margin is the spec session's proposal; the user may change it. |
 
 ### Facts the design rests on
 
@@ -169,3 +170,4 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 14 | Sixth review fixes | 13 | Typed panel timing (Q54), goo moves to the opening and dissolves into the letters (Q55), three copy changes (Q56 to Q58). |
 | 15 | Build stack | 14 | The authoring section as a stack of four cards under the hold and subject rules (Q61, Q62), the map with its Map Background (Q63), a new inventory capture and caption (Q64, Q65). |
 | 16 | Seventh review fixes | 15 | Two play stacks, turn with stats and entity with chat (Q67), traits inside the build stack (Q68), a community title card (Q69). |
+| 17 | Text on-screen check | 16 | A render check that fails any text outside the frame's 4% margin (Q70), a sweep of both cuts, and a fix for every shot it catches. |
