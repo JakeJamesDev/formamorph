@@ -14,6 +14,7 @@ import { hintsLinked, travelHintFieldKey, withHint, withLink } from '@/lib/conne
 import { connectionLegs } from '@/lib/locationGraph';
 import { homeKey, worldScriptEntries, type ScriptEdit } from '@/lib/worldScripts';
 import { draftProblems } from '@/lib/tools/toolDraft';
+import { toolNameProblemText } from '@/lib/tools/toolValidation';
 import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, PlaceholderGroup, Script, Stat, StatGroup, Tool, Trait,
   TraitGroup, WorldOverview,
@@ -66,9 +67,9 @@ export interface SearchTarget {
    *  editor is edited as chips, and an entry often repeats its item's name verbatim — so which of the two
    *  a hit belongs to cannot be read off the text. */
   inChipList: boolean;
-  /** True where the field's own checks reject `next`; a replace leaves the field as it is. `written` holds
-   *  the text this pass already wrote, keyed `itemKey#fieldKey`. */
-  refuses?: (next: string, written?: ReadonlyMap<string, string>) => boolean;
+  /** The reason the field's own checks reject `next`, or null; a replace leaves a rejected field as it is.
+   *  `written` holds the text this pass already wrote, keyed `itemKey#fieldKey`. */
+  refuses?: (next: string, written?: ReadonlyMap<string, string>) => string | null;
   value: string;
   write: (next: string) => void;
 }
@@ -464,7 +465,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       // Counts the names this pass already wrote, so two Tools can't end up with one name.
       const refuses = (name: string, written?: ReadonlyMap<string, string>) => {
         const others = (src.tools ?? []).map((t) => ({ ...t, name: written?.get(writtenKey(`tool:${t.id}`, 'name')) ?? t.name }));
-        return draftProblems({ ...tool, name }, others, [], { world: true }).name !== null;
+        const problem = draftProblems({ ...tool, name }, others, [], { world: true }).name;
+        return problem && toolNameProblemText(problem, true);
       };
       add(where, 'name', 'Name', tool.name, (r, v) => ({ ...r, name: v }), { refuses });
       add(where, 'description', 'Description', tool.description, (r, v) => ({ ...r, description: v }));

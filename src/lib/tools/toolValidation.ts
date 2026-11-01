@@ -15,6 +15,16 @@ export const TOOL_NAME_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${TOOL_NAME_MAX}}$
 /** Why a Tool name can't be saved: bad characters or length, used by another user Tool, or a catalog name. */
 export type ToolNameProblem = 'format' | 'taken' | 'builtin';
 
+const NAME_PROBLEM_TEXT: Record<ToolNameProblem, string> = {
+  format: `Use only letters, digits, _ and -, from 1 to ${TOOL_NAME_MAX} characters`,
+  taken: 'Another of your Tools uses this name',
+  builtin: 'A built-in Tool uses this name',
+};
+
+/** The line that tells a player why a name can't be saved, as the Save Tool check words it. */
+export const toolNameProblemText = (problem: ToolNameProblem, world: boolean): string =>
+  world && problem === 'taken' ? 'Another Tool in this world uses this name' : NAME_PROBLEM_TEXT[problem];
+
 /** Whether two Tool names clash, ignoring case. */
 export const sameToolName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
