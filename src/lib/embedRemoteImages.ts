@@ -5,7 +5,7 @@
  * the downscale-on-export pass does. Publishing never runs this: keeping a published world's images remote is
  * the point of linking them.
  */
-import type { GalleryImage, World } from '@/types';
+import type { Body, GalleryImage, World } from '@/types';
 import { IMAGE_CAPS, type ImageCap } from './imageOptim';
 import { entityImageData, entityImages } from './entityImages';
 import { locationImages } from './locationImages';
@@ -27,6 +27,8 @@ export function remoteWorldImages(world: World): string[] {
   for (const e of world.entities ?? []) urls.push(...entityImageData(e).filter(isRemoteImage));
   for (const l of world.locations ?? []) urls.push(...locationImages(l).map((img) => img.data).filter(isRemoteImage));
   urls.push(...mapImages(world.worldOverview).map((img) => img.data).filter(isRemoteImage));
+  // A stored world file may hold a Body that predates its Backdrop.
+  for (const b of world.bodies ?? []) if (b.backdrop?.kind === 'image' && isRemoteImage(b.backdrop.image?.data)) urls.push(b.backdrop.image.data);
   return urls;
 }
 
@@ -91,6 +93,13 @@ export async function embedWorldRemoteImages(
     locations.push({ ...l, images });
   }
 
+  const bodies: Body[] = [];
+  for (const b of world.bodies ?? []) {
+    if (b.backdrop?.kind !== 'image') { bodies.push(b); continue; }
+    const { image } = b.backdrop;
+    bodies.push({ ...b, backdrop: { kind: 'image', image: { ...image, data: (await embed(image.data, IMAGE_CAPS.entity)) ?? image.data } } });
+  }
+
   const map = await rewriteMapImages(world.worldOverview, async (data) => (await embed(data, IMAGE_CAPS.map)) ?? data);
 
   return {
@@ -103,6 +112,7 @@ export async function embedWorldRemoteImages(
       },
       entities,
       locations,
+      ...(world.bodies ? { bodies } : {}),
     },
     failures,
   };

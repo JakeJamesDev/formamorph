@@ -2,7 +2,8 @@
  * Every media item a world holds, with its stored size, and the sections the Media tab lays them out in.
  * DOM-free: sizes come from string lengths, so nothing decodes to list.
  */
-import type { Entity, GalleryImage, GameLocation, TraitRequirementRow, World } from '@/types';
+import type { Body, Entity, GalleryImage, GameLocation, TraitRequirementRow, World } from '@/types';
+import { bodyLabel } from './bodies';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 import { mapImages } from './mapBackground';
@@ -14,7 +15,7 @@ import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
-export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary';
+export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body';
 
 /** What holds a media item. Its name is what copy calls it; world media has the world as its parent. */
 export interface MediaParent {
@@ -25,7 +26,7 @@ export interface MediaParent {
 
 /** A slot inside its parent: a field, a gallery position, or an Avatar's store id. */
 export type MediaSlotKey =
-  | 'thumbnail' | 'bgm' | 'sound' | 'model' | 'ambientSound' | `image:${number}` | `avatar:${string}`;
+  | 'thumbnail' | 'bgm' | 'sound' | 'model' | 'ambientSound' | 'backdrop' | `image:${number}` | `avatar:${string}`;
 
 export interface MediaItem {
   /** Stable for the item's slot: parent and slot key. */
@@ -54,7 +55,7 @@ export interface MediaItem {
   blank?: true;
 }
 
-export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups'>;
+export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups' | 'bodies'>;
 
 const WORLD_PARENT: MediaParent = { kind: 'world', id: 'world', name: 'World' };
 /** The Map Background's gallery, which cards name like an entity's. */
@@ -136,6 +137,7 @@ interface MediaSource {
   entity: (e: Entity) => MediaItem[];
   location: (l: GameLocation) => MediaItem[];
   dictionaries: (w: MediaWorld) => MediaItem[];
+  bodies: (w: MediaWorld) => MediaItem[];
 }
 
 const BLANK_SOURCE: MediaSource = {
@@ -146,6 +148,8 @@ const BLANK_SOURCE: MediaSource = {
   location: (l) => (locationImages(l).length ? [] : [blankImage(locationParent(l), 'image:0', 'Image 1')]),
   // A dictionary's Cover Image is optional, so an empty one is not a gap.
   dictionaries: () => [],
+  // A Body's Custom Image is optional too.
+  bodies: () => [],
 };
 
 function worldMedia(w: MediaWorld): MediaItem[] {
@@ -167,6 +171,17 @@ function dictionaryMedia(w: MediaWorld): MediaItem[] {
   return w.dictionaries.flatMap((d) => {
     const parent: MediaParent = { kind: 'dictionary', id: d.id, name: d.name };
     return d.thumbnail ? [image(parent, 'thumbnail', 'Cover Image', d.thumbnail, capOf(parent))] : [];
+  });
+}
+
+/** The Bodies whose Backdrop is a Custom Image, each as one Backdrop image. */
+function bodyMedia(w: MediaWorld): MediaItem[] {
+  return (w.bodies ?? []).flatMap((b: Body) => {
+    // A stored world file may hold a Body that predates its Backdrop.
+    const backdrop = b.backdrop;
+    if (backdrop?.kind !== 'image' || !backdrop.image?.data) return [];
+    const parent: MediaParent = { kind: 'body', id: b.id, name: bodyLabel(b) };
+    return [image(parent, 'backdrop', 'Backdrop', backdrop.image.data, capOf(parent))];
   });
 }
 
@@ -219,11 +234,12 @@ function sectionsFrom(w: MediaWorld, source: MediaSource): MediaSection[] {
   locationFolder('locations', ['Locations'], [], buildLocationTree(w.locations));
 
   add('dictionaries', ['Dictionaries'], source.dictionaries(w));
+  add('bodies', ['Bodies'], source.bodies(w));
   return sections;
 }
 
 const MEDIA_SOURCE: MediaSource = {
-  world: worldMedia, avatars: avatarMedia, map: (w) => galleryMedia(MAP_PARENT, mapImages(w.worldOverview)), entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia,
+  world: worldMedia, avatars: avatarMedia, map: (w) => galleryMedia(MAP_PARENT, mapImages(w.worldOverview)), entity: entityMedia, location: locationMedia, dictionaries: dictionaryMedia, bodies: bodyMedia,
 };
 
 /** The selection id of a section's header, apart from any item's. */
@@ -252,6 +268,7 @@ export function worldImageItems(w: Partial<MediaWorld>): (MediaItem & { budget: 
     locations: w.locations ?? [],
     dictionaries: w.dictionaries ?? [],
     entityGroups: w.entityGroups,
+    bodies: w.bodies,
   });
   return index.filter((i): i is MediaItem & { budget: ImageCap } => i.kind === 'image' && !!i.budget);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Dictionary, Entity, GameLocation, WorldOverview } from '@/types';
+import type { Body, Dictionary, Entity, GameLocation, WorldOverview } from '@/types';
 import { buildMediaIndex, type MediaWorld } from './mediaIndex';
 import { mapGalleryStepLabel, mapImages } from './mapBackground';
 import { mediaParentSpec, writeMediaSlot, type MediaEditor } from './mediaParents';
@@ -13,16 +13,22 @@ const overview = {
 const entity = { id: 'e1', name: 'Ent', images: [{ data: 'e0' }, { data: 'e1', requires: rule }] } as unknown as Entity;
 const location = { id: 'l1', name: 'Loc', images: [{ data: 'l0' }] } as unknown as GameLocation;
 const book = { id: 'd1', name: 'Lore', entries: [], thumbnail: 'cover' } as unknown as Dictionary;
-const world: MediaWorld = { worldOverview: overview, entities: [entity], locations: [location], dictionaries: [book] };
+const body: Body = {
+  id: 'b1', name: 'Imp', entries: [{ slotId: 'hand', boxes: [{ x: 0.1, y: 0.2, w: 0.3, h: 0.4 }] }],
+  backdrop: { kind: 'image', image: { data: 'bd' } }, aspect: 2,
+};
+const outlineBody: Body = { ...body, id: 'b2', name: 'Plain Imp', backdrop: { kind: 'plain' } };
+const world: MediaWorld = { worldOverview: overview, entities: [entity], locations: [location], dictionaries: [book], bodies: [body, outlineBody] };
 
 /** An editor over the fixture records that returns what each edit produced. */
 function recorder() {
-  const out: { overview?: Partial<WorldOverview>; entity?: Entity; location?: GameLocation; dictionary?: Dictionary } = {};
+  const out: { overview?: Partial<WorldOverview>; entity?: Entity; location?: GameLocation; dictionary?: Dictionary; body?: Body } = {};
   const editor: MediaEditor = {
     overview: (patch) => { out.overview = patch(overview); },
     entity: (_id, edit) => { out.entity = edit(entity); },
     location: (_id, edit) => { out.location = edit(location); },
     dictionary: (_id, edit) => { out.dictionary = edit(book); },
+    body: (_id, edit) => { out.body = edit(body); },
   };
   return { out, editor };
 }
@@ -67,7 +73,32 @@ describe('media parent table', () => {
     expect(top.out.overview).toEqual({ thumbnail: 't2' });
   });
 
+  it('indexes only a Body whose Backdrop is a Custom Image, at the entity cap', () => {
+    const items = buildMediaIndex(world).filter((i) => i.parent.kind === 'body');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ id: 'body:b1:backdrop', slot: 'Backdrop', value: 'bd', linked: false, budget: { maxDim: 1280 } });
+    expect(items[0].parent.name).toBe('Imp');
+  });
+
+  it('flags a linked Custom Image as linked', () => {
+    const linked: MediaWorld = { ...world, bodies: [{ ...body, backdrop: { kind: 'image', image: { data: 'https://example.com/a.png' } } }] };
+    expect(buildMediaIndex(linked).find((i) => i.parent.kind === 'body')?.linked).toBe(true);
+  });
+
+  it('writes a Custom Image to the Backdrop, keeping boxes and aspect, and a removal leaves the Humanoid outline', () => {
+    const replaced = recorder();
+    writeMediaSlot(replaced.editor, itemOf('body:b1:backdrop'), { data: 'new' });
+    expect(replaced.out.body).toEqual({ ...body, backdrop: { kind: 'image', image: { data: 'new' } } });
+
+    const removed = recorder();
+    writeMediaSlot(removed.editor, itemOf('body:b1:backdrop'), null);
+    expect(removed.out.body).toEqual({ ...body, backdrop: { kind: 'humanoid' }, aspect: 0.5 });
+  });
+
   it('names where each parent kind lands and which rule host its rows use', () => {
+    expect(mediaParentSpec('body').goTo).toEqual({ to: 'equipment' });
+    expect(mediaParentSpec('body').ruleHost).toBeUndefined();
+    expect(mediaParentSpec('body').stacks).toBe(false);
     expect(mediaParentSpec('world').goTo).toEqual({ to: 'overview' });
     expect(mediaParentSpec('map').goTo).toEqual({ to: 'canvas' });
     expect(mediaParentSpec('entity').goTo).toEqual({ to: 'bench', tab: 'entities' });

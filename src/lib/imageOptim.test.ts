@@ -199,9 +199,10 @@ describe('downscaleWorldImages', () => {
         mapBackground: { images: [{ data: 'BIG-map', requires: WOUNDED }], frame, opacity: 1 },
       },
       dictionaries: [{ id: 'd1', name: 'Lore', entries: [], thumbnail: 'BIG-book' }],
+      bodies: [{ id: 'b1', name: 'Imp', entries: [], aspect: 2, backdrop: { kind: 'image', image: { data: 'BIG-backdrop' } } }],
     } as unknown as World;
     const listed = worldImageItems(everything);
-    expect(new Set(listed.map((i) => i.parent.kind))).toEqual(new Set(['world', 'map', 'entity', 'location', 'dictionary']));
+    expect(new Set(listed.map((i) => i.parent.kind))).toEqual(new Set(['world', 'map', 'entity', 'location', 'dictionary', 'body']));
 
     const out = await downscaleWorldImages(everything, capDeps);
     const after = worldImageItems(out);
@@ -209,6 +210,28 @@ describe('downscaleWorldImages', () => {
     expect(after.map((i) => i.value)).toEqual(listed.map((i) => `OPT:${i.value}`));
     expect(after.map((i) => i.rules)).toEqual(listed.map((i) => i.rules));
     for (const i of listed) expect(seen.get(i.value)).toEqual(i.budget);
+  });
+
+  it('shrinks a Body\'s Custom Image under the entity budget and leaves its aspect, boxes and outlines alone', async () => {
+    const caps: unknown[] = [];
+    const capDeps: DownscaleDeps = {
+      shouldEncode: (url, cap) => { if (url === 'BIG-backdrop') caps.push(cap); return Promise.resolve(url.startsWith('BIG')); },
+      optimize: (url) => Promise.resolve(`OPT:${url}`),
+    };
+    const boxes = [{ x: 0.1, y: 0.2, w: 0.3, h: 0.4 }];
+    const withBodies = {
+      ...world,
+      bodies: [
+        { id: 'b1', name: 'Imp', aspect: 2, entries: [{ slotId: 'hand', boxes }], backdrop: { kind: 'image', image: { data: 'BIG-backdrop' } } },
+        { id: 'b2', name: 'Plain', aspect: 0.5, entries: [], backdrop: { kind: 'humanoid' } },
+      ],
+    } as unknown as World;
+    const out = await downscaleWorldImages(withBodies, capDeps);
+    expect(out.bodies).toEqual([
+      { id: 'b1', name: 'Imp', aspect: 2, entries: [{ slotId: 'hand', boxes }], backdrop: { kind: 'image', image: { data: 'OPT:BIG-backdrop' } } },
+      withBodies.bodies?.[1],
+    ]);
+    expect(caps).toEqual([IMAGE_CAPS.entity]);
   });
 
   it('reports a zero total when the world has no images', async () => {

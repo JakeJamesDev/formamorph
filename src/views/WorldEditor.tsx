@@ -1092,11 +1092,14 @@ const WorldEditorInner = ({
   const goToMediaParent = useCallback((parent: MediaParent) => {
     const target = mediaParentSpec(parent.kind).goTo;
     if (target.to === 'overview') setActiveTab('overview');
-    else if (target.to === 'canvas') {
+    else if (target.to === 'equipment') {
+      setActiveTab('items');
+      select('items', EQUIPMENT_ID);
+    } else if (target.to === 'canvas') {
       setActiveTab('locations');
       setLocationView('canvas');
     } else navigateToBenchItem(target.tab, parent.id);
-  }, [navigateToBenchItem]);
+  }, [navigateToBenchItem, select]);
   const mediaParts = useWorldMediaEditor({
     selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
     publishBytes: bench.publishBytes,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   boxLabel, centerBox, clampedBox, dragMove, dragResize, grownBox, MAX_CAPACITY, MIN_BOX_SIZE, movedBox, newBody, newEntry, parseEntryLayout,
-  rowSelection, snapLines, stackOrder, withBox, withCapacity, withOutline, boxAt,
+  rowSelection, snapLines, stackOrder, withBackdropImage, withBox, withCapacity, withOutline, boxAt, MAX_ASPECT, MIN_ASPECT,
 } from './bodyLayout';
 import { parseBodies } from './bodies';
 import type { BodyEntry, SlotBox } from '@/types';
@@ -59,6 +59,42 @@ describe('withOutline', () => {
 
   it('keeps the current aspect on Plain', () => {
     expect(withOutline(placed, 'plain').aspect).toBe(0.9);
+  });
+});
+
+describe('Custom Image Backdrop', () => {
+  const placed = { ...newBody('b', 'B'), aspect: 0.9, entries: [entry('hand', box(0.1, 0.2, 0.3, 0.4))] };
+
+  it('takes the image, its aspect and keeps the boxes', () => {
+    const next = withBackdropImage(placed, 'data:a', 1.25);
+    expect(next.backdrop).toEqual({ kind: 'image', image: { data: 'data:a' } });
+    expect(next.aspect).toBe(1.25);
+    expect(next.entries).toEqual(placed.entries);
+  });
+
+  it('clamps an aspect past the drag range, so the image gets bars rather than a stretch', () => {
+    expect(withBackdropImage(placed, 'data:a', 9).aspect).toBe(MAX_ASPECT);
+    expect(withBackdropImage(placed, 'data:a', 0.05).aspect).toBe(MIN_ASPECT);
+  });
+
+  it('keeps the aspect when no new one is given', () => {
+    expect(withBackdropImage(placed, 'data:a').aspect).toBe(0.9);
+  });
+
+  it('leaves for an outline with the image gone and the boxes kept; Plain keeps the image aspect (Q72)', () => {
+    const custom = withBackdropImage(placed, 'data:a', 1.25);
+    expect(withOutline(custom, 'humanoid')).toMatchObject({ backdrop: { kind: 'humanoid' }, aspect: 0.5, entries: placed.entries });
+    expect(withOutline(custom, 'quadruped').aspect).toBe(1.6);
+    expect(withOutline(custom, 'plain')).toMatchObject({ backdrop: { kind: 'plain' }, aspect: 1.25, entries: placed.entries });
+  });
+
+  it('survives import and drops an image with no data', () => {
+    const [kept] = parseBodies([{ id: 'x', name: 'X', backdrop: { kind: 'image', image: { data: 'data:a' } }, aspect: 1.25 }]);
+    expect(kept.backdrop).toEqual({ kind: 'image', image: { data: 'data:a' } });
+    for (const image of [{ data: '' }, {}, 'text', null]) {
+      const [broken] = parseBodies([{ id: 'x', name: 'X', backdrop: { kind: 'image', image } }]);
+      expect(broken.backdrop).toEqual({ kind: 'humanoid' });
+    }
   });
 });
 
@@ -224,7 +260,7 @@ describe('parseBodies layout', () => {
   });
 
   it('keeps an image Backdrop', () => {
-    const backdrop = { kind: 'image', image: { id: 'i', url: 'x' } };
+    const backdrop = { kind: 'image', image: { data: 'x' } };
     expect(parseBodies([{ id: 'b', entries: [], backdrop, aspect: 1 }])[0].backdrop).toEqual(backdrop);
   });
 

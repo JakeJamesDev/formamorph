@@ -2,8 +2,9 @@
  * Body Layout: one Slot Box per capacity unit on a Backdrop. Pure: box sync to entries, stacking order, snap lines
  * and clamps. Every position and size is a fraction of the Backdrop.
  */
+import { entityImages } from '@/lib/entityImages';
 import { clamp } from '@/lib/utils';
-import type { Backdrop, Body, BodyEntry, SlotBox } from '@/types';
+import type { Backdrop, Body, BodyEntry, GalleryImage, SlotBox } from '@/types';
 
 /** The Backdrops a Body can pick without an image of its own. */
 export type OutlineKind = Exclude<Backdrop['kind'], 'image'>;
@@ -52,6 +53,12 @@ export function withCapacity(entry: BodyEntry, capacity: number, aspect: number)
 /** The Body on a new Backdrop. An outline sets its own aspect and Plain keeps the current one (Q53). */
 export function withOutline(body: Body, kind: OutlineKind): Body {
   return { ...body, backdrop: { kind }, aspect: kind === 'plain' ? body.aspect : OUTLINE_ASPECT[kind] };
+}
+
+/** The Body on a Custom Image. A new file keeps the image's other fields; `aspect` is the clamped aspect of the file (Q15). */
+export function withBackdropImage(body: Body, data: string, aspect: number = body.aspect): Body {
+  const had = body.backdrop.kind === 'image' ? body.backdrop.image : {};
+  return { ...body, backdrop: { kind: 'image', image: { ...had, data } }, aspect: clampAspect(aspect) };
 }
 
 /** The label of one box in the editor: "Hand 1", or "Head" at capacity 1 (Q19). */
@@ -199,7 +206,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> => !!value &
 export function parseBackdrop(raw: unknown): Backdrop {
   if (isRecord(raw)) {
     if (raw.kind === 'humanoid' || raw.kind === 'quadruped' || raw.kind === 'plain') return { kind: raw.kind };
-    if (raw.kind === 'image' && isRecord(raw.image)) return raw as Backdrop;
+    if (raw.kind === 'image' && isRecord(raw.image)) {
+      // entityImages checks the stored shape; the cast only satisfies its input type.
+      const [image] = entityImages({ images: [raw.image as unknown as GalleryImage] });
+      if (image) return { kind: 'image', image };
+    }
   }
   return { kind: 'humanoid' };
 }
