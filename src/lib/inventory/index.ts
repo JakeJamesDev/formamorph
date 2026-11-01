@@ -3,7 +3,7 @@
  * come from an injected maker, as the turn commit's do.
  */
 import {
-  byEquipOrder, isUnidentified, itemStackable, itemUsable, occupiedSlots, ruleGaps, sameState, sameWhere, seededState, stateWord, usesLeft, whenEmptyOf,
+  byEquipOrder, isUnidentified, itemStackable, itemUsable, occupiedSlots, ruleGaps, ruleSlots, sameState, sameWhere, seededState, stateWord, usesLeft, whenEmptyOf,
 } from '@/lib/items';
 import { slotsInForce, type BodyWorld } from '@/lib/bodies';
 import { inCast, playsAs } from '@/lib/owners';
@@ -419,8 +419,7 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         const slotsOf = (c: ItemCopy) => occupiedSlots(c, itemOf(c));
         const unitsLeft = (slotId: string, gone: readonly ItemCopy[]) => (capacities.get(slotId) ?? 0)
           - worn.filter((c) => !gone.includes(c) && slotsOf(c).includes(slotId)).length;
-        const taken = rule.mode === 'all' ? rule.slotIds
-          : [op.slotId ?? held.find((id) => unitsLeft(id, []) > 0) ?? held[0]];
+        const taken = ruleSlots(rule, op.slotId ?? held.find((id) => unitsLeft(id, []) > 0) ?? held[0]);
         const leaving: ItemCopy[] = [];
         for (const slotId of taken) {
           while (unitsLeft(slotId, leaving) < 1) {

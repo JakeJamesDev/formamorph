@@ -103,13 +103,21 @@ export function seededState(item: Item): ItemCopyState | undefined {
 /** What a copy of `item` leaves on its last use (Q26). */
 export const whenEmptyOf = (item: Item): ItemWhenEmpty => item.whenEmpty ?? { kind: 'gone' };
 
+/** The slots a copy takes under its rule: every listed slot for All of, else `chosen`. */
+export const ruleSlots = (rule: SlotRule | undefined, chosen: string): readonly string[] =>
+  (rule?.mode === 'all' ? rule.slotIds : [chosen]);
+
+/** Whether a copy stored in `slotId` still fits its rule: always for All of, a listed slot for Either of. */
+export const ruleKeeps = (rule: SlotRule | undefined, slotId: string): boolean =>
+  rule?.mode === 'all' || !!rule?.slotIds.includes(slotId);
+
 /**
  * The slots an equipped Item Copy occupies, one unit in each: every listed slot under All of, else its stored one.
  * Empty for a carried copy. The first is the slot a reader names when it names one.
  */
 export const occupiedSlots = (copy: Pick<ItemCopy, 'equipped'>, item: Pick<Item, 'slotRule'> | undefined): readonly string[] => {
   if (!copy.equipped) return [];
-  return item?.slotRule?.mode === 'all' ? item.slotRule.slotIds : [copy.equipped.slotId];
+  return ruleSlots(item?.slotRule, copy.equipped.slotId);
 };
 
 /** A Slot Rule as the prompt writes it: `A or B` for Either of, `A + B` for All of. Empty when no listed slot exists. */
