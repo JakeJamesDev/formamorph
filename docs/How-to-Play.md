@@ -315,7 +315,7 @@ An **Equipped** list shows what the entity wears, when you can see it. What the 
 <!-- keywords: item details, item picture, item image, item description, what does this item do, look at item -->
 <!-- route: item -->
 
-Select an item's row in the **Inventory** tab to open its dialog. The dialog shows the item's image and description, with its State, count and uses left. An unidentified item shows only its unidentified name and description.
+Select an item's row in the **Inventory** tab, or an item in an entity's **Equipped** list, to open its dialog. The dialog shows the item's image and description, with its State, count and uses left. An unidentified item shows only its unidentified name and description.
 
 ## The Stranger Dialog
 <!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->

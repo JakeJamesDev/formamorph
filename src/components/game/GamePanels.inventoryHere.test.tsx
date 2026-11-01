@@ -15,7 +15,16 @@ const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
 const slots: Slot[] = [{ id: 'hand', name: 'Hand' }];
 const items = [
   item('coin', 'Coin'),
-  item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false }),
+  item('dagger', 'Dagger', { playerDescription: 'A short blade.', slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false }),
+  item('charm', 'Cursed Charm', {
+    playerDescription: 'It drains the wearer.', unidentifiedName: 'Dull Charm', unidentifiedDescription: 'It looks like tin.',
+    slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false,
+  }),
+  // Shows the cursed art while the owner also owns the Coin.
+  item('band', 'Pale Band', {
+    slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false,
+    images: [{ data: CURSED, requires: [{ all: [{ kind: 'item', id: 'coin', status: 'owned' }] }] }, { data: PLAIN }],
+  }),
   item('crown', 'Old Crown', { stackable: false, bound: true }),
   // Shows the cursed art while the owner also owns the Coin.
   item('ring', 'Silver Ring', {
@@ -122,6 +131,36 @@ describe('Entity Equipped', () => {
     const list = await screen.findByRole('region', { name: 'Equipped' });
     expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['DaggerHand']);
     expect(screen.queryByText('Coin')).not.toBeInTheDocument();
+  });
+
+  it('opens a worn item’s popup, with its description and no carried item', async () => {
+    show([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } }), bramHas('b', 'coin')]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Dagger' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(dialog.getByRole('heading', { name: 'Dagger' })).toBeInTheDocument();
+    expect(dialog.getByText('A short blade.')).toBeInTheDocument();
+    expect(dialog.queryByText('Coin')).not.toBeInTheDocument();
+  });
+
+  it('keeps a worn unidentified item on its unidentified face in the popup', async () => {
+    show([bramHas('a', 'charm', { state: { unidentified: true }, equipped: { slotId: 'hand', order: 1 } })]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Dull Charm' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('It looks like tin.')).toBeInTheDocument();
+    expect(dialog.textContent).not.toContain('Cursed Charm');
+  });
+
+  it('shows the image the rules pick for the entity wearing the item', async () => {
+    const band = bramHas('a', 'band', { equipped: { slotId: 'hand', order: 1 } });
+    show([band, bramHas('b', 'coin')]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Pale Band' }));
+    expect(within(await screen.findByRole('dialog')).getByAltText('Pale Band')).toHaveAttribute('src', CURSED);
+  });
+
+  it('shows the image the rules fall back to when the entity lacks what they need', async () => {
+    show([bramHas('a', 'band', { equipped: { slotId: 'hand', order: 1 } }), copy('b', 'coin')]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Pale Band' }));
+    expect(within(await screen.findByRole('dialog')).getByAltText('Pale Band')).toHaveAttribute('src', PLAIN);
   });
 
   it('leaves out a hidden equipped item, and draws nothing when nothing visible is equipped', async () => {

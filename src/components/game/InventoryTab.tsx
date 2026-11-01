@@ -11,7 +11,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
-import { byEquipOrder, copyFace, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, wholeCount } from '@/lib/items';
+import { byEquipOrder, copyFace, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
@@ -153,14 +153,6 @@ function GiveButton({ copy, name, present, disabled, onGive }: {
   );
 }
 
-/** Uses left: "N of M uses" for Uses 2+; a Uses 1 copy shows a line only once spent (Q30). */
-const lineFor = (copy: ItemCopy, item: Item | undefined): string | null => {
-  const left = usesLeft(copy, item);
-  if (left === undefined || item?.uses === undefined) return null;
-  if (item.uses > 1) return `${left} of ${item.uses} uses`;
-  return left === 0 ? 'No uses left' : null;
-};
-
 /** Use, for an item with Uses, After Use effects or a When Used script, or a runtime item (Q20, Q56). Off at
  *  zero uses. */
 function UseButton({ copy, item, name, disabled, onOps }: {
@@ -250,21 +242,14 @@ export function InventoryTab({
   };
   const factsOf = (copy: ItemCopy) => {
     const item = itemOf(copy);
-    const state = copyState(copy);
-    const uses = lineFor(copy, item);
-    return [
-      ...(state ? [state] : []),
-      ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []),
-      ...(uses ? [uses] : []),
-      ...(item?.bound ? [BOUND_TIP] : []),
-    ];
+    return [...copyFacts(copy, item), ...(item?.bound ? [BOUND_TIP] : [])];
   };
 
   const row = (copy: ItemCopy, actions: ReactNode) => {
     const item = itemOf(copy);
     const name = nameOf(copy);
     const state = copyState(copy);
-    const line = copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : lineFor(copy, item);
+    const line = copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item);
     const image = imageOf?.(copy);
     return (
       <li key={copy.id} className="relative flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
