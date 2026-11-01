@@ -66,6 +66,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Formamorph AI section on your formamorph.ai account page shows your allowance.** It shows your Patreon support, percent used, about how many turns are left and the reset date.
     - **Formamorph AI shows your allowance, warns you twice, and offers one click back when it runs out.** Settings shows the percent used, about how many turns are left and the reset date. A new Supporter device switches to it once.
     - **Your Formamorph AI allowance now resets every week, and Formamorph shows the reset in your local time.** Settings and your formamorph.ai account page name the weekday and time. One notice appears at the highest warning level each week.
+    - **AI settings shows where this week's Formamorph AI use went.** Seven groups appear by percent, and any single prompt with a large share is named under its group.
   - **Main Menu:**
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.
