@@ -17,7 +17,7 @@ interface UserLikesTabProps {
   userId: string | null;
   /** Their name, for the empty line and the confirmation. */
   username: string | null;
-  /** Whether the reader may act on this account. False hides Clear all; the rows still read. */
+  /** Whether the reader may act on this account. False hides Remove All Likes; the rows still read. */
   canModerateAccount: boolean;
   /** Opens a listing in Community Creations. Absent leaves the names as plain text. */
   onOpenListing?: (listing: { id: string; kind: string }) => void;

@@ -31,8 +31,8 @@ Spec: Rulings, "Per ticket", "Facts and bugs", Testing Decisions.
 - [x] Every help line, ⓘ body, tooltip, description, status, error and confirmation in the listed files follows the Writing Guide, written from a facts list in the user's words. Hand pass on every file; facts checked in code (diary trigger, `%prefix%`, tab names, Advanced-only rows, bundled world list). Standards and Spec reviews folded in.
 - [x] The copy:sweep count per rule before and after is recorded here; each remaining notice has its triage reason. See Landed.
 - [x] Raw help paragraphs in the listed files render through Hint or Meta. Three raw spans remain, triaged under Landed.
-- [x] Labels changed only for a wrong term, a parenthetical aside, or a name that differs from its help (Q5). Each rename is checked against the Find bar and the tests. Font and provider options (R3), Memory manager pin tooltip (R13), InvokeAI board fallbacks. None is a Find caption (`worldSearchLabels` covers the World Editor only); tests grepped and updated.
-- [x] Comments in the listed files changed only when false, history-telling, or figurative (Q6). Fixed: two "AI Endpoints", "Presentation", two history notes in OutputSettingsSection, promptGroups header, localModels, MemoryManager tip comment, textEndpointEditorModel (R12).
+- [x] Labels changed only for a wrong term, a parenthetical aside, or a name that differs from its help (Q5). Each rename is checked against the Find bar and the tests. Font and provider options (R3), Memory manager pin tooltip (R12), InvokeAI board fallbacks. None is a Find caption (`worldSearchLabels` covers the World Editor only); tests grepped and updated.
+- [x] Comments in the listed files changed only when false, history-telling, or figurative (Q6). Fixed: two "AI Endpoints", "Presentation", two history notes in OutputSettingsSection, promptGroups header, localModels, MemoryManager tip comment, textEndpointEditorModel (R13).
 - [x] Every test that pinned a changed string is updated. ImageSetupGuide, MemoryManagerModal.search, SettingsModal.mode, DesignSystemShowcase, GameViewer.memoryVerdicts.
 - [x] Each in-place bug fix has a test that fails with the bug reinstated, and is listed as a drive-by under Landed. No code bug fixes; all fixes are copy.
 - [x] No changelog fragment.
@@ -71,7 +71,7 @@ For you: Open **Settings** on each tab and read the brief lines and ⓘ bodies.
 - The installed-models empty state printed literal backticks around `.gguf`
 - New: the Provider row has an ⓘ, since its options dropped "(local)" and "(cloud)"; both font rows share a ⓘ naming each accessibility font, pinned in `settingsCopy.test.ts`
 
-**Shared strings sent to the spec session:** the "AI Endpoints" text in formaquestionSettingsTabs.ts (R12, ticket 10); the pin tooltip in MemoryPanel.tsx and helpTopics.ts (R13, tickets 06 and 12); the Settings mode lines kept for parity with editorMode.ts.
+**Shared strings sent to the spec session:** the "AI Endpoints" text in formaquestionSettingsTabs.ts (ticket 10); the pin tooltip in MemoryPanel.tsx and helpTopics.ts (R12, tickets 06 and 12); the Settings mode lines kept for parity with editorMode.ts.
 
 **Findings**
 
