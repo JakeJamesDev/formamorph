@@ -1,6 +1,6 @@
 # 29: Other Imports Name the File and the Cause
 
-Status: ready-for-human
+Status: done
 Blocked by: 28
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -29,7 +29,7 @@ Spec session ruling, folded into the spec by that session: the criterion "a worl
 Written lines from `WrittenImportError` (new, `src/lib/writtenImportError.ts`) show on the toast line. Every other parser or storage message stays in View Details. The em dashes in the Worlds-tab and "unrecognized" dictionary lines became periods. "character card" became "entity card" in the entity file's own lines.
 
 **Not verified**
-- The `copy-sweep` skill did not run on the new lines. A hand check against the Writing Guide stood in.
+- The `copy-sweep` script ran at the spec close and flagged none of the new lines.
 - No live check in the app. The tests cover the toasts through the Main Menu and the Load Game dialog.
 
 **For you**

@@ -1,7 +1,7 @@
 # Spec: Docs Sweep Bugs
 
-Status: ready-for-agent
-Status note: Reopened 2026-11-01 for tickets 27–30, from the error audit after the second close. Tickets 01–26 done; second close at 324c887ff.
+Status: done
+Status note: Closed 2026-11-01, tickets 01–30, last landing d2781184b. Closed with gaps: Q23 does not reach the World Editor, Tools, stat template or Formaquestion imports; a full-storage failure on a card that carries an Avatar reads as a read failure; Q25 does not cover the autosave list read and trim. Gates green on 2026-11-01.
 Spec session: docs-sweep-bugs — spec
 
 ## Problem Statement
@@ -42,7 +42,7 @@ Settled with the user on 2026-11-01.
 | Q20 | A single skipped Tool name Replace names its reason from the Save Tool check. Replace All keeps its count (ticket 24) |
 | Q21 | A website download of a bad preset listing says "listing", not "file". The app's file import keeps its text (ticket 25). This ticket adds no changelog fragment: ticket 05's unreleased entry covers the preset download |
 | Q22 | A failed response's `errors` array of `{ msg }` gives the reason when `error` and `message` give none. Several reasons show on one line (ticket 27) |
-| Q23 | One skipped import file shows its name and cause. Several keep the count, and View Details lists each file and cause. Written text shows on the line; a raw parser or storage message stays in View Details (tickets 28, 29) |
+| Q23 | One skipped import file shows its name and cause. Several keep the count, and View Details lists each file and cause. Written text shows on the line; a raw parser or storage message stays in View Details (tickets 28, 29). The entity import shows its existing lines and gains no new world-file check, so a world `.json` there reads "This JSON isn't a SillyTavern character card." Ticket 29's move from "character card" to "entity card" in the entity file's other lines, and its new dictionary line, stand |
 | Q24 | A declined duplicate avatar is not a skipped file (ticket 29) |
 | Q25 | A failed autosave drops the claim that manual saves still work and carries its cause. Full storage says so; any other failure keeps the cause in View Details (ticket 30) |
 
