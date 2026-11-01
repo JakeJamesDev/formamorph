@@ -64,7 +64,8 @@ async function deviceFile(kind: CatalogKind, content: unknown, listingId: string
       const { parseSharedContent, presetFileName, serializeSharedJson } = await import('./promptPresetShare');
       const { id: _listingId, ...shared } = content as SharedPreset & { id?: string };
       const parsed = parseSharedContent(shared, APP_VERSION);
-      if (!parsed.ok) throw new Error(parsed.error ?? 'This listing is not a prompt preset.');
+      // The parser's text says "file"; this source is a listing.
+      if (!parsed.ok) throw new Error('This listing is not a Formamorph prompt preset.');
       return { blob: new Blob([serializeSharedJson(shared)], { type: 'application/json' }), filename: presetFileName(shared.name) };
     }
     case 'mascot': {

@@ -234,7 +234,7 @@ describe('useDeviceDownload', () => {
 
     await act(async () => { await result.current.download(presetListing); });
 
-    expect(toastTexts(vi.mocked(toast.error))).toContain('This file is not a Formamorph prompt preset.View Details →');
+    expect(toastTexts(vi.mocked(toast.error))).toContain('This listing is not a Formamorph prompt preset.View Details →');
     expect(mocks.downloadBlob).not.toHaveBeenCalled();
   });
 
