@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { HOSTED_REFUSALS, readHostedRefusal } from './refusals';
+import { ALL_REQUEST_KINDS } from '@/lib/reasoningEffort';
+import { HOSTED_REFUSALS,readHostedRefusal } from './refusals';
 import { HostedSession } from './hostedSession';
 import { hostedPromptWindow, hostedReasoningCapability, parseHostedState } from './hostedState';
 import { HOSTED_STATE_URL } from './hostedUrls';
@@ -20,6 +21,17 @@ const sessionOn = (respond: () => Response, token: string | null = 't') =>
   });
 
 const ok = (data: unknown) => () => new Response(JSON.stringify({ success: true, data }), { status: 200 });
+
+describe('the prompt type list', () => {
+  // Pinned against the server's prompt type list (FormamorphServer tests/hostedAiBreakdown.test.js).
+  it('matches the server list type for type', () => {
+    expect(new Set<string>(ALL_REQUEST_KINDS)).toEqual(new Set([
+      'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
+      'entityLocation', 'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime',
+      'sceneTags', 'inventory', 'descriptionSummary', 'descriptionBridge', 'imageTags', 'help',
+    ]));
+  });
+});
 
 describe('the refusal code list', () => {
   // Pinned against the server's REFUSALS table (FormamorphServer tests/hostedAiProxy.test.js).

@@ -16,7 +16,8 @@ import {
 import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { customMaxOutput, type PromptMaxOutputMap } from '@/lib/promptMaxOutput';
-import { responseFormat, type ResponseFormat, type ResponseSchema } from './responseSchema';
+import { PROMPT_TYPE_HEADER } from '@/lib/hostedAi/hostedUrls';
+import { responseFormat,type ResponseFormat, type ResponseSchema } from './responseSchema';
 
 /** Everything about the endpoint one call resolved to. The probe/cache state producing it stays outside. */
 export interface AiEndpointTarget {
@@ -342,7 +343,7 @@ export function buildAiRequestSpec<TTool extends OfferedFunction = OfferedFuncti
   return {
     url: target.url,
     headers: target.hosted
-      ? { 'Content-Type': 'application/json' }
+      ? { 'Content-Type': 'application/json', [PROMPT_TYPE_HEADER]: call.requestType }
       : { 'Content-Type': 'application/json', Authorization: `Bearer ${target.apiToken}` },
     body: bodyForTarget(snapshot, call, target),
     target,
