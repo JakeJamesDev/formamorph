@@ -94,7 +94,7 @@ The breakdown shows seven groups by share of cost. Any single prompt with a larg
 | Group | Prompt types |
 |---|---|
 | Narration | `narration` |
-| Planning | `thinking`, `director`, `character`, `storyboard` |
+| Story Planning | `thinking`, `director`, `character`, `storyboard` |
 | Choices | `choices` |
 | Stats and World Tracking | `statUpdates`, `locationChange`, `entityLocation`, `discoverEntity`, `timePassed`, `openingTime`, `sceneTags` |
 | Inventory | `inventory` |
@@ -102,7 +102,7 @@ The breakdown shows seven groups by share of cost. Any single prompt with a larg
 | Help and Editor | `help`, `descriptionSummary`, `descriptionBridge`, `imageTags` |
 
 - Group names above are working names. Final labels follow the Writing Guide.
-- A prompt at or above the threshold gets an indented row under its group, named as in AI settings (Q9). A group of one prompt never repeats itself as a nested row. The editor types have no AI settings row, so they get their own names here.
+- A prompt whose unrounded share is at or above the threshold gets an indented row under its group, named as in AI settings (Q9). The group isn't "Planning" because `thinking` already has that name in AI settings. A group of one prompt never repeats itself as a nested row. The editor types have no AI settings row, so they get their own names here.
 - `other` and unknown types form an Other row, shown only when above zero.
 - Groups show whole percents and total 100, using largest-remainder rounding. A group with a zero share still shows, so the list keeps its shape.
 - The rollup has one source of truth for the group of each type. A test fails when `AIRequestType` gains a type with no group.
