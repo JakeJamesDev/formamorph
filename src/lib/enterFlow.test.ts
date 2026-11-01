@@ -8,6 +8,7 @@ const bare: EnterFlowWorld = {
   startingLocationCount: 1,
   hasLibraryAdditions: false,
   hasWorldPersonas: false,
+  hasCustomPersona: false,
   showsAvatar: false,
 };
 
@@ -34,6 +35,14 @@ describe('buildEnterFlow', () => {
 
   it('shows the workspace for world personas alone, so the player can pick one', () => {
     expect(buildEnterFlow(world({ hasWorldPersonas: true }), 'newGame')).toEqual(['workspace']);
+  });
+
+  it('shows the workspace for a Custom Persona alone, so the player can type a name', () => {
+    expect(buildEnterFlow(world({ hasCustomPersona: true }), 'newGame')).toEqual(['workspace']);
+  });
+
+  it('shows no step for a world with nothing to choose', () => {
+    expect(buildEnterFlow(bare, 'newGame')).toEqual([]);
   });
 
   it('skips every step, Introduction included, on Quick Start', () => {

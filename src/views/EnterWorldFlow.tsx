@@ -426,6 +426,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,
+    hasCustomPersona: !!customPersonaOption,
     showsAvatar: showsDraftVrm,
   }, mode);
   const showEnterStep = (step: NavigableStep) => {

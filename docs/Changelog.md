@@ -118,6 +118,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Two scripts that run in the same moment no longer draw the same random numbers.** Every script run now gets its own `Math.random` seed, not only Tools.
   - **Scripts now skip dictionary entries that have no name.** Before, all unnamed entries shared one blank name, so a script reached only one of them.
   - **The Test Bench Opening tab no longer shows the "at" location pick.** Opening starts at its own Starting Location pick, so the unused pick is gone.
+  - **A world whose only choice is its Custom Persona opens Enter World instead of skipping it.** You can type your **Name** and **Description** before the game starts.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

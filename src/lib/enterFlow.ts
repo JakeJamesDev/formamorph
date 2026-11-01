@@ -30,6 +30,8 @@ export interface EnterFlowWorld {
   hasLibraryAdditions: boolean;
   /** The world has entities the player can play as. */
   hasWorldPersonas: boolean;
+  /** The world has a Custom Persona, whose fields only the workspace offers. */
+  hasCustomPersona: boolean;
   /** The draft persona's played side shows an Avatar. */
   showsAvatar: boolean;
 }
@@ -72,6 +74,7 @@ export function buildEnterFlow(world: EnterFlowWorld, mode: EnterMode): EnterSte
     || world.startingLocationCount > 1
     || world.hasLibraryAdditions
     || world.hasWorldPersonas
+    || world.hasCustomPersona
   ) steps.push('workspace');
   if (world.showsAvatar) steps.push('avatar');
   return steps;
