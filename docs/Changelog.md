@@ -127,6 +127,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In Simple mode, Search World no longer finds text in an item's scripts.** The item's Scripts tab is hidden there, so the match opened nothing. Advanced mode still finds it.
   - **Renaming a Group to a name another Group has now says so.** A red line under the name field reads "A group already has this name." and clears when you type again.
   - **Scripts now skip entities, places and dictionary entries whose name is only spaces.** Before, a script reached each under its blank name. They now count as unnamed.
+  - **The World Editor marks a Persona-Only entity's Others openings with a Never Draws badge and no draw chance.** Other rows' chances no longer count them. The entity's Openings tab now says only Self openings draw.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

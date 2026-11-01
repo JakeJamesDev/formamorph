@@ -1,5 +1,6 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { entityIdsAt, entityIdsAtAny } from '@/lib/entityPresence';
+import { playsOnlyWhenPicked } from '@/lib/entityRelationships';
 import { locationRows } from '@/lib/locationTree';
 import { startCandidates } from '@/lib/startingLocation';
 import { randomUUID } from '@/lib/uuid';
@@ -23,6 +24,8 @@ export interface OpeningOwner {
   /** Either mark lets the owner's Self rows show and draw. */
   persona?: boolean;
   customPersona?: boolean;
+  /** Reads only with `persona`. */
+  personaOnly?: boolean;
 }
 
 /** One drawable row, its owner and its weight, always above 0. `ownerId` is the entity's id, or null for
@@ -57,6 +60,10 @@ export function hasAuthoredOpenings(owner: MaybeOwner): boolean {
 /** Whether an owner's Self rows exist for the editor and the draw: only a Persona or the Custom Persona entity
  *  has any. */
 export const canOwnSelfOpenings = (owner: MaybeOwner): boolean => !!owner?.persona || !!owner?.customPersona;
+
+/** Whether a world entity's Others rows can never come up, picked or not: played, it is the player; unpicked,
+ *  it is absent. A library entity's marks mean nothing, so never ask this of one. */
+export const othersNeverDraw = (owner: MaybeOwner): boolean => !!owner && playsOnlyWhenPicked(owner);
 
 /** A row's relative weight: 1 unless the author set one. Negatives count as 0. */
 export function openingWeight(weights: Record<string, number> | undefined, id: string): number {
@@ -240,7 +247,7 @@ export interface EditorOpeningRow {
   index: number;
   weight: number;
   chance: number | null;
-  /** An Others row on the Custom Persona entity, which no pool ever holds. Its chance is null. */
+  /** An Others row on an owner whose Others rows no pool ever holds. Its chance is null. */
   neverDraws: boolean;
 }
 
@@ -287,7 +294,7 @@ const editorRows = (
   keep: (opening: Opening) => boolean = () => true,
 ): EditorOpeningRow[] =>
   shownOpenings(owner, showSelf).map((opening, index) => {
-    const neverDraws = !!owner.customPersona && !opening.self;
+    const neverDraws = othersNeverDraw(owner) && !opening.self;
     return {
       opening,
       index,
@@ -322,8 +329,8 @@ export function openingsEditorView(
   const allLocations = starts.length > 1 && !starts.some((l) => l.id === filter);
   const startId = allLocations ? null : starts.length > 1 ? filter : starts[0]?.id ?? null;
   const filtering = starts.length > 1 && startId !== null;
-  // The cast as play resolves it: never the Custom Persona entity.
-  const cast = entities.filter((e) => !e.customPersona);
+  // The cast as play resolves it: never an entity that plays only when picked.
+  const cast = entities.filter((e) => !othersNeverDraw(e));
   const poolAt = (startingLocationId: string | null) => openingPool({
     overview: overview && { ...overview, openingsEnabled: undefined },
     entities: cast,
@@ -340,17 +347,17 @@ export function openingsEditorView(
   const entityGroup = (e: Entity): EditorOpeningGroup => {
     const showSelf = canOwnSelfOpenings(e);
     const own = openingChances(e);
-    // A picked start keeps only the Self rows of an absent entity or the Custom Persona entity: they draw wherever the player plays it.
+    // A picked start keeps only the Self rows of an absent entity or one that never draws its Others rows: they draw wherever the player plays it.
     const rows = editorRows(
       e, (o) => (o.self ? own[o.id] ?? 0 : othersChance(openingKey(e.id, o.id), here.has(e.id))), showSelf,
-      (o) => !filtering || !!o.self || (here.has(e.id) && !e.customPersona),
+      (o) => !filtering || !!o.self || (here.has(e.id) && !othersNeverDraw(e)),
     );
     return {
       entity: e,
       name: e.name,
       rows,
       showSelf,
-      atNoStart: !e.customPersona && rows.some((r) => !r.opening.self) && !atAnyStart.has(e.id),
+      atNoStart: !othersNeverDraw(e) && rows.some((r) => !r.opening.self) && !atAnyStart.has(e.id),
     };
   };
 
