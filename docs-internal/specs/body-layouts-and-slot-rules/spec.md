@@ -58,6 +58,8 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q47 | A smaller box draws above a larger one, in the editor and in play. Equal areas follow entry order, then unit order. Selection doesn't reorder boxes, and only its handles draw above them |
 | Q48 | In play, a filled box with an image takes taps only on its drawn frame. Its margin falls through to the box below |
 | Q49 | The in-game doll caps its height so Carried stays reachable, about 320 px for a Humanoid. Its width follows the aspect, up to the panel's width. This narrows Q11's "scales to the panel's width" |
+| Q68 | (ticket 04, new evidence) Capacity caps at 99 in the editor input and in `parseBodies`, since each unit draws a box. Amends Bodies Q45's "no max" |
+| Q69 | (ticket 04) The user approved revised outlines: a Humanoid with its head joined to the body, a larger head and a shorter neck, and a fox-like Quadruped with two visible legs and no face. Ticket 07 places boxes on these |
 | Q50 | (ticket 04) Q46 settles variant B's structure. The approval step covers the two outlines. Frames of variant B in both themes go with that request, for the user to see, never to reopen Q46 |
 | Q51 | (ticket 04) A Body row gets a Duplicate action, named "\<name\> (Copy)" as elsewhere. It copies entries, Backdrop, aspect and boxes (Q32) |
 | Q52 | (ticket 04) A row click selects unit 1. Another click on the same row moves to the next unit and wraps. This also reaches a box hidden behind another |
@@ -87,6 +89,14 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q57 | (ticket 01) Ticket 01 moves the placement warning onto the rule. Ticket 03 adds only the select and the Placement field |
 | Q58 | (ticket 01) Emberwatch: Hands becomes Main Hand (same id) plus a new Off Hand, capacity 1 each on Humanoid. All of Main + Off: Spiral-Cut Staff. Either of Main, Off: swords, daggers, walking staves. Either of Off, Main: Hooded Lantern, shields, Grimoire, Spyglass |
 | Q59 | (ticket 01) An unnamed Either of equip with every slot full swaps in the first listed slot the Body holds. A named slot on an All of item is accepted if listed. The panel offers a choice only for 2+ allowed slots the Body holds, and an All of item shows Equip only when the Body has every slot. A list row shows an All of item in each slot row, and the entity list joins the slot names. Bodies Q44 retires with Slot Size |
+| Q64 | (ticket 02) Q45 assumed a can't-fit mark in the code, but Bodies ticket 07 removed it on probe evidence. Ticket 02 builds it with Q45's fit rule and new wording, as its own probe arm. It ships only if the transformed rate rises and slotless-held and normal hold. Otherwise it comes out and the mismatch stays a known gap with the numbers recorded (Bodies Q55's gate) |
+| Q65 | (ticket 02, widened on probe evidence) A `slot` value made only of two or more of the item's own slot names, joined by anything, counts as no name, so the equip follows Q37 and Q38. A single allowed name is a named slot. A single disallowed name, or any unknown name, is skipped with a diagnostic. Names match ignoring case. Evidence: the model wrote "Main Hand or Off Hand" on a `Main Hand + Off Hand` item, and the equip landed 1/12 at best under an exact-copy rule |
+| Q67 | (ticket 02, Q64's result) The mark failed its gate on every shape tried and came out: transformed was 2/12 at best in the final batch, slotless-held 0/12. The mismatch stays a known gap, and the validator skips those equips |
+| Q66 | (ticket 02) Probe arms on the cloud endpoint: no-slot control, today's line, Q41's wording, and the Q64 mark. Cases add Either of and All of equips with a named hand, an All of item on a Body that lacks one slot, and the existing cases as guards |
+| Q60 | (ticket 03) `copy.equip(slotName)` takes the slot's name. A name the rule doesn't list reaches the validator, which refuses it with a diagnostic at commit, never a throw at the call. `equip()` with no name stays |
+| Q61 | (ticket 03) `copy.slot` reads the first occupied slot, with no new field. An All of copy appears in `items` of every slot it occupies in the `body` read |
+| Q62 | (ticket 03) `Placement.slotId` is optional, and absent means first free. Seeding drops a slot the rule no longer lists. Changing the item or unticking Equipped clears it |
+| Q63 | (ticket 03) When two placements name one slot and it is full, the later swaps out the earlier (Q38), with no warning |
 
 ## User Stories
 

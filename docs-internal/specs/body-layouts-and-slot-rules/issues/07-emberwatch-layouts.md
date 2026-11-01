@@ -9,7 +9,7 @@ Authoring work in one world file.
 
 ## What to build
 
-Author real layouts on Emberwatch's Humanoid and Hound Bodies: Humanoid on the Humanoid outline, Hound on the Quadruped outline. Boxes sit on the body parts they equip to, using the slots from ticket 01. Follow the bundled-worlds skill, and don't read the world JSON raw.
+Author real layouts on Emberwatch's Humanoid and Hound Bodies: Humanoid on the Humanoid outline, Hound on the Quadruped outline. Boxes sit on the body parts they equip to, on the outlines the user approved in ticket 04 (Q69), using the slots from ticket 01. Follow the bundled-worlds skill, and don't read the world JSON raw.
 
 ## Acceptance criteria
 
