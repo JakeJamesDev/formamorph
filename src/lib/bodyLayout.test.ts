@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   boxLabel, centerBox, clampedBox, dragMove, dragResize, fillBoxes, frameInBox, grownBox, MAX_CAPACITY, MIN_BOX_SIZE, movedBox, newBody, newEntry, parseEntryLayout,
-  rowSelection, snapLines, stackOrder, withBackdropImage, withBox, withCapacity, withOutline, boxAt, MAX_ASPECT, MIN_ASPECT,
+  rowSelection, snapLines, stackOrder, withBackdropImage, withBackdropOpacity, withBox, withCapacity, withOutline, boxAt, MAX_ASPECT, MIN_ASPECT,
 } from './bodyLayout';
 import { parseBodies } from './bodies';
 import type { BodyEntry, SlotBox } from '@/types';
@@ -86,6 +86,34 @@ describe('Custom Image Backdrop', () => {
     expect(withOutline(custom, 'humanoid')).toMatchObject({ backdrop: { kind: 'humanoid' }, aspect: 0.5, entries: placed.entries });
     expect(withOutline(custom, 'quadruped').aspect).toBe(1.6);
     expect(withOutline(custom, 'plain')).toMatchObject({ backdrop: { kind: 'plain' }, aspect: 1.25, entries: placed.entries });
+  });
+
+  it('keeps its opacity when the file is replaced, and starts without one', () => {
+    const faded = { ...withBackdropImage(placed, 'data:a', 1.25), backdrop: { kind: 'image' as const, image: { data: 'data:a' }, opacity: 0.3 } };
+    expect(withBackdropImage(faded, 'data:b').backdrop).toEqual({ kind: 'image', image: { data: 'data:b' }, opacity: 0.3 });
+    expect(withBackdropImage(placed, 'data:a').backdrop).toEqual({ kind: 'image', image: { data: 'data:a' } });
+  });
+
+  it('sets the opacity of a Custom Image, clamped, and leaves an outline Backdrop alone', () => {
+    const custom = withBackdropImage(placed, 'data:a', 1.25);
+    expect(withBackdropOpacity(custom, 0.3).backdrop).toEqual({ kind: 'image', image: { data: 'data:a' }, opacity: 0.3 });
+    expect(withBackdropOpacity(custom, 0).backdrop).toMatchObject({ opacity: 0 });
+    expect(withBackdropOpacity(custom, 4).backdrop).toMatchObject({ opacity: 1 });
+    expect(withBackdropOpacity(placed, 0.3)).toBe(placed);
+  });
+
+  it('keeps its opacity on import, clamps it to 0 to 1, and reads a non-number as absent', () => {
+    const load = (opacity: unknown) => parseBodies([{ id: 'x', name: 'X', backdrop: { kind: 'image', image: { data: 'data:a' }, opacity }, aspect: 1.25 }])[0].backdrop;
+    expect(load(0.3)).toEqual({ kind: 'image', image: { data: 'data:a' }, opacity: 0.3 });
+    expect(load(0)).toEqual({ kind: 'image', image: { data: 'data:a' }, opacity: 0 });
+    expect(load(7)).toMatchObject({ opacity: 1 });
+    expect(load(-2)).toMatchObject({ opacity: 0 });
+    for (const bad of ['0.3', null, Number.NaN, Infinity]) expect(load(bad)).toEqual({ kind: 'image', image: { data: 'data:a' } });
+  });
+
+  it('drops an opacity on an outline Backdrop', () => {
+    const [body] = parseBodies([{ id: 'x', name: 'X', backdrop: { kind: 'plain', opacity: 0.3 } }]);
+    expect(body.backdrop).toEqual({ kind: 'plain' });
   });
 
   it('survives import and drops an image with no data', () => {

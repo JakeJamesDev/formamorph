@@ -41,6 +41,7 @@ export function BodyBackdropArt({ backdrop }: { backdrop: Backdrop }) {
         src={backdrop.image.data}
         alt=""
         draggable={false}
+        style={{ opacity: backdrop.opacity ?? 1 }}
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
       />
     );

@@ -58,7 +58,13 @@ export function withOutline(body: Body, kind: OutlineKind): Body {
 /** The Body on a Custom Image. A new file keeps the image's other fields; `aspect` is the clamped aspect of the file (Q15). */
 export function withBackdropImage(body: Body, data: string, aspect: number = body.aspect): Body {
   const had = body.backdrop.kind === 'image' ? body.backdrop.image : {};
-  return { ...body, backdrop: { kind: 'image', image: { ...had, data } }, aspect: clampAspect(aspect) };
+  const opacity = body.backdrop.kind === 'image' ? body.backdrop.opacity : undefined;
+  return { ...body, backdrop: { kind: 'image', image: { ...had, data }, ...(opacity === undefined ? {} : { opacity }) }, aspect: clampAspect(aspect) };
+}
+
+/** The Body with its Custom Image faded to `opacity` (0 to 1, clamped). Any other Backdrop stays as it is. */
+export function withBackdropOpacity(body: Body, opacity: number): Body {
+  return body.backdrop.kind === 'image' ? { ...body, backdrop: { ...body.backdrop, opacity: clamp(opacity, 0, 1) } } : body;
 }
 
 /** The label of one box in the editor: "Hand 1", or "Head" at capacity 1 (Q19). */
@@ -228,7 +234,7 @@ export function parseBackdrop(raw: unknown): Backdrop {
     if (raw.kind === 'image' && isRecord(raw.image)) {
       // entityImages checks the stored shape; the cast only satisfies its input type.
       const [image] = entityImages({ images: [raw.image as unknown as GalleryImage] });
-      if (image) return { kind: 'image', image };
+      if (image) return { kind: 'image', image, ...(isNumber(raw.opacity) ? { opacity: clamp(raw.opacity, 0, 1) } : {}) };
     }
   }
   return { kind: 'humanoid' };

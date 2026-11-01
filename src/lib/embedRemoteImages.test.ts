@@ -84,6 +84,12 @@ describe('Custom Image Backdrop links', () => {
     ]);
   });
 
+  it('keeps the Backdrop Opacity through the embed', async () => {
+    const faded = { ...bodied(), bodies: [{ ...bodied().bodies![0], backdrop: { kind: 'image', image: { data: 'https://host/imp.png' }, opacity: 0.3 } }] } as unknown as World;
+    const { world: out } = await embedWorldRemoteImages(faded);
+    expect(out.bodies?.[0].backdrop).toEqual({ kind: 'image', image: { data: 'data:image/webp;base64,EMBEDDED(https://host/imp.png)' }, opacity: 0.3 });
+  });
+
   it('adds no bodies field to a world without any', async () => {
     expect((await embedWorldRemoteImages(world())).world).not.toHaveProperty('bodies');
   });

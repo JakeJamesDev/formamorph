@@ -96,7 +96,7 @@ export async function embedWorldRemoteImages(
   for (const b of world.bodies ?? []) {
     if (b.backdrop.kind !== 'image') { bodies.push(b); continue; }
     const { image } = b.backdrop;
-    bodies.push({ ...b, backdrop: { kind: 'image', image: { ...image, data: (await embed(image.data, IMAGE_CAPS.entity)) ?? image.data } } });
+    bodies.push({ ...b, backdrop: { ...b.backdrop, image: { ...image, data: (await embed(image.data, IMAGE_CAPS.entity)) ?? image.data } } });
   }
 
   const map = await rewriteMapImages(world.worldOverview, async (data) => (await embed(data, IMAGE_CAPS.map)) ?? data);

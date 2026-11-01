@@ -735,6 +735,7 @@ A **slot** is a name only. A **Body** lists the slots an owner has, and how many
 | `"humanoid"` | A standing figure |
 | `"quadruped"` | A four-legged figure |
 | `"plain"` | No figure |
+| `"image"` | The `image` you give it. `opacity` is a number from 0 to 1 that fades it. Absent = 1 |
 
 A **box** has `x`, `y`, `w` and `h`, each a fraction of the figure from 0 to 1, so a box keeps its place when the aspect changes. Its smallest width and height are 0.04.
 
