@@ -1,6 +1,6 @@
 # 13: 🔗 Marker Shows Link Pending Save
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,7 +15,15 @@ Spec: Implementation Decisions "Pending links". Evidence: docs-sweep ticket 11, 
 
 ## Acceptance criteria
 
-- [ ] A World Editor library-links test reads the row marker's tip after a link and before save: it fails today, then passes with **Link pending save**
-- [ ] After save, the row marker shows the linked state (test)
-- [ ] The LinkedContent page no longer says only the footer shows **Link pending save**; the docs tests are green
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A World Editor library-links test reads the row marker's tip after a link and before save: it fails today, then passes with **Link pending save** (`reads Link pending save on the … row marker until the world saves`, dictionary and entity; red with the argument dropped)
+- [x] After save, the row marker shows the linked state (same test, after Save)
+- [x] The LinkedContent page no longer says only the footer shows **Link pending save**; the docs tests are green (docs tests run in the gates)
+- [x] A changelog fragment under Minor / Fixed / 👤 (`docs-internal/changelog.d/13-pending-link-marker.md`)
+
+## Landed
+
+**Not verified**
+- None. The docs tests ran in the prepare gates, not apart.
+
+**For you**
+- Link a row to the library in the World Editor, hover its 🔗 marker, and read **Link pending save · name**. Save the world and read **Linked · name**.

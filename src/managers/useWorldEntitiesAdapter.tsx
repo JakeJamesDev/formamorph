@@ -25,7 +25,7 @@ import { useRemoveEntity } from './useRemoveEntity';
  */
 export function useWorldEntitiesAdapter({
   selectedId, onSelect, tab, onTabChange, traitId, onTraitIdChange, statId, onStatIdChange, placeholderId, onPlaceholderIdChange,
-  onOpenWorldPlaceholder, focusField, library,
+  onOpenWorldPlaceholder, focusField, library, pendingLinks,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -41,6 +41,8 @@ export function useWorldEntitiesAdapter({
   focusField: FocusFieldHint | null;
   /** The + menu's library and file routes; the host owns the picker and the import. */
   library: LibraryAddRoutes;
+  /** Library ids linked this session and not yet saved, for the row markers. */
+  pendingLinks: readonly string[];
 }): { adapter: ListEditorAdapter; dialog: ReactNode } {
   const {
     entities, entityGroups, placeholders, placementLetters, placeholderOwners, addEntity, addEntityGroup, setEntities,
@@ -70,7 +72,7 @@ export function useWorldEntitiesAdapter({
   const rows = (): ListEditorRow[] => entities.map((e) => ({
     id: e.id,
     name: e.name,
-    icon: <ContentLinkIcon link={e.link} />,
+    icon: <ContentLinkIcon link={e.link} pending={pendingLinks} />,
     sortable: true,
     actions: [
       { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicate(e.id) },
@@ -114,7 +116,7 @@ export function useWorldEntitiesAdapter({
   };
 
   const adapter: ListEditorAdapter = {
-    tree: <EntityTree selectedId={selectedId} onSelect={onSelect} />,
+    tree: <EntityTree selectedId={selectedId} onSelect={onSelect} pendingLinks={pendingLinks} />,
     rows,
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'entities',

@@ -97,7 +97,7 @@ All four make the same link.
 
 ### The Three Link States
 
-A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Hover either one to read the state and the name of what the copy follows, such as *Linked · Sedge*. Only the footer button shows **Link pending save**.
+A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Hover either one to read the state and the name of what the copy follows, such as *Linked · Sedge*. Both show **Link pending save** until you save the world.
 
 | State | Meaning | Default in a review |
 |---|---|---|
