@@ -141,6 +141,9 @@ export const DEFAULT_CANVAS_GRID_VISIBLE = true;
 // Straight lines are the plainest reading of the map, so curves and elbows are opted into.
 export const DEFAULT_CANVAS_CONNECTION_STYLE: ConnectionStyle = 'straight';
 
+// Snap to Others in the Body Layout editor. A per-user editor preference like the canvas ones above.
+export const DEFAULT_BODY_LAYOUT_SNAP = true;
+
 // The Change Location dialog's first-open view. A per-player preference like the canvas ones above — the
 // dialog thereafter opens on whichever view was used last.
 export const DEFAULT_TRAVEL_VIEW: TravelView = 'list';

@@ -52,8 +52,18 @@ const WHITE_ROOM_ID = '1783535114538';
 /** The `items` fixture's slots, its Bodies and its items. Nobody picks the Hound, so play reads the Humanoid. */
 const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Main Hand' }, { id: 'dev-slot-off-hand', name: 'Off Hand' }, { id: 'dev-slot-ring', name: 'Ring' }, { id: 'dev-slot-neck', name: 'Neck' }];
 const DEV_BODIES: Body[] = [
-  { id: 'dev-body-humanoid', name: 'Humanoid', entries: [{ slotId: 'dev-slot-hand' }, { slotId: 'dev-slot-off-hand' }, { slotId: 'dev-slot-ring', capacity: 2 }] },
-  { id: 'dev-body-hound', name: 'Hound', entries: [{ slotId: 'dev-slot-neck' }] },
+  {
+    id: 'dev-body-humanoid', name: 'Humanoid', backdrop: { kind: 'humanoid' }, aspect: 0.5,
+    entries: [
+      { slotId: 'dev-slot-hand', boxes: [{ x: 0.03, y: 0.36, w: 0.2, h: 0.14 }] },
+      { slotId: 'dev-slot-off-hand', boxes: [{ x: 0.77, y: 0.36, w: 0.2, h: 0.14 }] },
+      { slotId: 'dev-slot-ring', capacity: 2, boxes: [{ x: 0.06, y: 0.52, w: 0.12, h: 0.06 }, { x: 0.82, y: 0.52, w: 0.12, h: 0.06 }] },
+    ],
+  },
+  {
+    id: 'dev-body-hound', name: 'Hound', backdrop: { kind: 'quadruped' }, aspect: 1.6,
+    entries: [{ slotId: 'dev-slot-neck', boxes: [{ x: 0.68, y: 0.26, w: 0.14, h: 0.22 }] }],
+  },
 ];
 const devItems = (valueStatId: string | undefined): Item[] => [
   {

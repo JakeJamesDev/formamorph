@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { defaultInventoryPrompt, defaultInventoryUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import type { Body, Item, ItemCopy, ItemCopyWhere, Slot } from '@/types';
 import { authoredChipScene } from './chipValues/authoredScene';
@@ -17,8 +18,8 @@ const copy = (itemId: string, where: ItemCopyWhere, extra: Partial<ItemCopy> = {
 });
 
 const SLOTS: Slot[] = [{ id: 'head', name: 'Head' }, { id: 'hand', name: 'Hand' }, { id: 'collar', name: 'Collar' }];
-const HUMANOID: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] };
-const BEAST: Body = { id: 'beast', name: 'Beast', entries: [{ slotId: 'collar' }] };
+const HUMANOID: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] });
+const BEAST: Body = bodyFixture({ id: 'beast', name: 'Beast', entries: [{ slotId: 'collar' }] });
 const ITEMS = [
   item('helm', 'Iron Helm', { slotRule: { mode: 'either', slotIds: ['head'] } }),
   item('pike', 'Long Pike', { slotRule: { mode: 'all', slotIds: ['hand', 'head'] }, aiSummary: 'A pike taller than a man.' }),

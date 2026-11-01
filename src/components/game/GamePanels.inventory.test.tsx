@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderInGame, renderRightPanel, type Gameplay, type TurnFixture } from '@/test/gamePanels';
@@ -14,7 +15,7 @@ vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 const slots: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }, { id: 'tail', name: 'Tail' }];
-const bodies: Body[] = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] }];
+const bodies: Body[] = [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] })];
 const items = [
   item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['hand'] } }),
   item('helm', 'Iron Helm', { stackable: false, slotRule: { mode: 'either', slotIds: ['head'] } }),
@@ -129,7 +130,7 @@ describe('RightPanel — Inventory tab', () => {
     const owner = () => screen.getByRole('region', { name: /inventory$/ });
 
     it("lists the Body's slots in its entry order", async () => {
-      const headFirst: Body = { id: 'b', name: 'B', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] };
+      const headFirst: Body = bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] });
       renderRightPanel({}, withBody([], headFirst));
       await screen.findByText('Equipped');
       expect(within(owner()).getAllByRole('listitem').filter((li) => li.getAttribute('aria-label')).map((li) => li.getAttribute('aria-label')))
@@ -144,7 +145,7 @@ describe('RightPanel — Inventory tab', () => {
     });
 
     it('shows an item equipped in a slot the Body lacks under Carried, where it unequips (Q35)', async () => {
-      const handsOnly: Body = { id: 'b', name: 'B', entries: [{ slotId: 'hand', capacity: 2 }] };
+      const handsOnly: Body = bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 'hand', capacity: 2 }] });
       const h = renderRightPanel({}, withBody([copy('h', 'helm', { equipped: { slotId: 'head', order: 1 } })], handsOnly));
       await userEvent.click(await screen.findByRole('button', { name: 'Unequip Iron Helm' }));
       expect(mine(h.gameplay())[0].equipped).toBeUndefined();

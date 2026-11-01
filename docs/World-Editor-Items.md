@@ -214,6 +214,26 @@ A Body is a name and a list of slots, each with a **Capacity**. A Humanoid can h
 - ⚠️ Two Bodies with one name get a warning. Scripts pick a Body by its name.
 - 💍 Each unit of Capacity holds one item. Use Capacity for slots that work alike, such as rings. Use two slots when the difference matters, such as hands.
 - 🚫 A world with no Bodies gives no one a slot.
+- 📄 Select a Body's **Duplicate** button to copy it, with its figure and boxes.
+
+### Laying out a Body
+<!-- keywords: body layout, paperdoll, doll, figure, backdrop, humanoid, quadruped, slot box, snap to others, move box, resize box -->
+
+An expanded Body shows a figure with one box for each unit of each slot. Hand with Capacity 2 gets **Hand 1** and **Hand 2**.
+
+| To do this | Do this |
+|---|---|
+| Move a box | Drag it |
+| Resize a box | Select it, then drag a corner |
+| Change the figure's height | Drag its bottom edge. Boxes stretch with it |
+| Change the figure | Pick from **Backdrop**: **Humanoid**, **Quadruped** or **Plain** |
+| Line boxes up | Turn on **Snap to Others**. Hold Alt to skip it for one drag |
+| Move or resize by keyboard | Select the box, then use the arrow keys, or Shift + arrow keys to resize |
+
+- ➕ A raised **Capacity** adds a small box at the center. A lowered one removes the last box.
+- 👆 A small box draws above a large one, so you can still select a ring on a hand.
+- 🔍 Select a slot's row to find its box. Select the row again to reach the next unit, even one hidden behind another box.
+- 💾 **Snap to Others** is your own setting. It isn't saved in the world.
 
 ### Each entity's Body
 

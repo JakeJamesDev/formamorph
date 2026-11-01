@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import type {
   Daypart, Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
   GalleryImage, Item, Script, StatRequirement, Tool, TraitRequirement, TraitRequirementRow, WorldOverview,
@@ -516,7 +517,7 @@ describe('reference-integrity rules', () => {
 
   describe('a script assigning a Body name', () => {
     const bodyWorld = (code: string) => base({
-      bodies: [{ id: 'b1', name: 'Wolf', entries: [] }, { id: 'b2', name: 'Two Words', entries: [] }],
+      bodies: [bodyFixture({ id: 'b1', name: 'Wolf', entries: [] }), bodyFixture({ id: 'b2', name: 'Two Words', entries: [] })],
       stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: code }) })],
     });
 

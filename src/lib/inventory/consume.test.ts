@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, settleInventory, timedEffectViews, timedKey, withoutOrphanTimedTraits, type InventoryOp, type InventorySettleWorld } from '.';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
 import { seedStatBases, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
@@ -116,7 +117,7 @@ describe('timed effects', () => {
     let n = 0;
     const slots = [{ id: 'hand', name: 'Hand' }];
     let play = act(start([stat('strength', 5)]), [gain('sword'), gain('sap')], list);
-    const equipped = applyInventoryOps(play.copies, [{ kind: 'equip', copyId: copiesOf(play, 'sword')[0].id }], { world: { items: list, slots, bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] }] }, source: 'panel', newId: () => `e${n++}` });
+    const equipped = applyInventoryOps(play.copies, [{ kind: 'equip', copyId: copiesOf(play, 'sword')[0].id }], { world: { items: list, slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
     play = { ...play, copies: equipped.copies };
     play = act(play, [use(play, 'sap')], list);
     expect(copiesOf(play, 'sword')[0].equipped).toBeUndefined();
@@ -303,7 +304,7 @@ describe('uses and When Empty', () => {
     const list = [...items, shard, gem];
     let n = 0;
     let play = act(start([]), [gain('gem')], list);
-    const equipped = applyInventoryOps(play.copies, [{ kind: 'equip', copyId: copiesOf(play, 'gem')[0].id }], { world: { items: list, slots: [{ id: 'hand', name: 'Hand' }], bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] }] }, source: 'panel', newId: () => `e${n++}` });
+    const equipped = applyInventoryOps(play.copies, [{ kind: 'equip', copyId: copiesOf(play, 'gem')[0].id }], { world: { items: list, slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, source: 'panel', newId: () => `e${n++}` });
     play = { ...play, copies: equipped.copies };
     expect(copiesOf(play, 'gem')[0].equipped).toBeDefined();
     play = act(play, [use(play, 'gem')], list);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, type InventoryCall, type InventoryOp } from '.';
 import type { Item, ItemCopy } from '@/types';
 
@@ -17,7 +18,7 @@ const copy = (id: string, itemId: string, over: Partial<ItemCopy> = {}): ItemCop
 
 const call = (source: InventoryCall['source'] = 'script'): InventoryCall => {
   let i = 0;
-  return { world: { items: [potion, ring, wand], slots: [{ id: 'finger', name: 'Finger' }], bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'finger' }] }] }, source, newId: () => `n${i++}` };
+  return { world: { items: [potion, ring, wand], slots: [{ id: 'finger', name: 'Finger' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'finger' }] })] }, source, newId: () => `n${i++}` };
 };
 const events = (copies: ItemCopy[], ops: InventoryOp[], source?: InventoryCall['source']) =>
   applyInventoryOps(copies, ops, call(source)).events.map(({ timing, copyId, where, quantity }) => [timing, copyId, where, quantity]);

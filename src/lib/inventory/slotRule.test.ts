@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, type InventoryCall, type InventoryOp } from '.';
 import { occupiedSlots } from '@/lib/items';
 import type { Body, Item, ItemCopy, Slot, SlotRule } from '@/types';
@@ -10,8 +11,8 @@ const item = (id: string, slotRule: SlotRule): Item =>
 
 const slots: Slot[] = [{ id: 'main', name: 'Main Hand' }, { id: 'off', name: 'Off Hand' }, { id: 'ring', name: 'Ring' }];
 const bodies: Body[] = [
-  { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off' }, { slotId: 'ring', capacity: 2 }] },
-  { id: 'oneArm', name: 'One Arm', entries: [{ slotId: 'main' }] },
+  bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off' }, { slotId: 'ring', capacity: 2 }] }),
+  bodyFixture({ id: 'oneArm', name: 'One Arm', entries: [{ slotId: 'main' }] }),
 ];
 const items = [
   item('dagger', either('main', 'off')),
@@ -87,7 +88,7 @@ describe('Either of', () => {
   });
 
   it('refuses a slot with no room for anyone, which only a hand-edited capacity of 0 gives', () => {
-    const world = { items, slots, bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main', capacity: 0 }] }] };
+    const world = { items, slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main', capacity: 0 }] })] };
     const { copies, diagnostics } = applyInventoryOps([copy('dagger', 'd')], [{ kind: 'equip', copyId: 'd' }], { ...call(), world });
     expect(slotOf(copies, 'd')).toBeUndefined();
     expect(diagnostics).toEqual(['Inventory (panel) skipped equip: no room in Main Hand on you']);

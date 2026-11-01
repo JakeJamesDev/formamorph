@@ -1,6 +1,7 @@
 /** DEV only: mounts each `DEV_PANE_MODALS` pane on canned props; closing one clears the route. */
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ChangelogEntryDialog } from '@/components/community/ChangelogEntryDialog';
+import { BodyLayoutReference } from '@/components/design-system/BodyLayoutReference';
 import { PendingUpdateSection } from '@/components/community/PendingUpdateSection';
 import PlaceholderSectionList from '@/components/editor/PlaceholderSectionList';
 import { FontTuneDialog } from '@/components/FontTuneDialog';
@@ -77,6 +78,11 @@ export default function DevPaneRoutes() {
       );
     }
     case 'changelogEntry': return <ChangelogEntryDialog open onOpenChange={clearRouteOnClose} entry={devChangelogDraft()} onSubmit={ignore} />;
+    case 'bodyLayout': return (
+      <ScrollArea className="fixed inset-0 z-50 bg-background">
+        <div className="p-4"><BodyLayoutReference /></div>
+      </ScrollArea>
+    );
     case 'fontTune': return <FontTuneDialog font="system" open onOpenChange={clearRouteOnClose} />;
     case 'revealDemo': return <RevealAnimationDialog open onOpenChange={clearRouteOnClose} kind="narration" />;
     case 'presetImport': return (

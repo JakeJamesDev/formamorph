@@ -13,6 +13,7 @@ import { ChipOptionsReference } from '@/components/design-system/ChipOptionsRefe
 import { CodeCardReference } from '@/components/design-system/CodeCardReference';
 import { VariableMenuReference } from '@/components/design-system/VariableMenuReference';
 import { YouMarkReference } from '@/components/design-system/YouMarkReference';
+import { BodyLayoutReference } from '@/components/design-system/BodyLayoutReference';
 import { InventoryTabReference } from '@/components/design-system/InventoryTabReference';
 import { SegmentedMultiSelectReference } from '@/components/design-system/SegmentedMultiSelectReference';
 import { CollapsingSegmentedReference } from '@/components/design-system/CollapsingSegmentedReference';
@@ -487,6 +488,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Inventory Tab',
     description: 'The Status panel’s slots and carried items, and its tab strip at narrow widths',
     Component: InventoryTabReference,
+  },
+  {
+    id: 'body-layout',
+    label: 'Body Layout',
+    description: 'A figure with movable, sizable boxes beside the rows they belong to',
+    Component: BodyLayoutReference,
   },
 ];
 

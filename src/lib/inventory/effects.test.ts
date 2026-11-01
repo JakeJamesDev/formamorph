@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, itemEffectLine, settleItemEffects, type InventoryOp, type ItemEffectWorld } from '.';
 import { seedStatBases } from '@/lib/traitRuntime';
 import type { Body, EntityStatValues, Item, ItemCopy, ItemEffectLedger, ItemStatEffect, PlayerStat, Slot } from '@/types';
@@ -13,7 +14,7 @@ const item = (id: string, over: Partial<Item> = {}): Item =>
 
 const hand: Slot = { id: 'hand', name: 'Hand' };
 const ring: Slot = { id: 'ring', name: 'Ring' };
-const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'ring', capacity: 2 }] };
+const humanoid: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'ring', capacity: 2 }] });
 const sword = item('sword', { stackable: false, slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [row('strength', 2, 'equipped')] });
 const amulet = item('amulet', { statEffects: [row('health', 5, 'owned', 'max')] });
 const coin = item('coin', { statEffects: [row('luck', 1, 'owned')] });

@@ -1,6 +1,6 @@
 # 04: Body Layout Editor
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,18 +23,29 @@ Snap to Others' choice is an app setting with a default in the settings defaults
 
 ## Acceptance criteria
 
-- [ ] A new Body starts on Humanoid with a small center square per capacity unit.
-- [ ] Raising capacity adds a center box, and lowering it drops the last.
-- [ ] Dragging moves a box and corner handles resize it, clamped inside the Backdrop with a minimum size.
-- [ ] Dragging the bottom edge changes the aspect, and boxes keep their fractions.
-- [ ] Snap to Others aligns to box edges and centers and the vertical midline. Alt skips it for one drag. The toggle is remembered.
-- [ ] Arrow keys move a selected box, and Shift + arrow keys resize it.
-- [ ] A smaller box draws above a larger one, and equal areas follow entry then unit order.
-- [ ] A selected large box leaves a small box inside it clickable, and the handles still take the pointer.
-- [ ] Selecting a box selects its entry row, and the reverse.
-- [ ] Boxes are labeled "Hand 1", "Hand 2", or "Head" at capacity 1.
-- [ ] Duplicating a Body copies its Backdrop and boxes.
-- [ ] A Playwright spec drives a real drag, a handle resize and a snap.
-- [ ] Frames saved as `.scratch/frames/body-layout-editor-<theme>-<width>.png` in light and dark, at 1440 and 375 wide.
+- [x] A new Body starts on Humanoid with a small center square per capacity unit. `bodyLayout.test.ts` new boxes; `WorldEditor.equipment.test.tsx` adds a Body.
+- [x] Raising capacity adds a center box, and lowering it drops the last. `withCapacity` tests; the bench's capacity tests.
+- [x] Dragging moves a box and corner handles resize it, clamped inside the Backdrop with a minimum size. `e2e/body-layout.spec.ts`, both viewports.
+- [x] Dragging the bottom edge changes the aspect, and boxes keep their fractions. Same spec, fractions read from real boxes.
+- [x] Snap to Others aligns to box edges and centers and the vertical midline. Alt skips it for one drag. The toggle is remembered. `snapLines` and `dragMove` tests; the spec's snap, Alt and reload tests.
+- [x] Arrow keys move a selected box, and Shift + arrow keys resize it. Bench test.
+- [x] A smaller box draws above a larger one, and equal areas follow entry then unit order. `stackOrder` tests.
+- [x] A selected large box leaves a small box inside it clickable, and the handles still take the pointer. Spec hit test.
+- [x] Selecting a box selects its entry row, and the reverse. Bench tests, including Q52's unit cycling.
+- [x] Boxes are labeled "Hand 1", "Hand 2", or "Head" at capacity 1. Bench test.
+- [x] Duplicating a Body copies its Backdrop and boxes. Bench test.
+- [x] A Playwright spec drives a real drag, a handle resize and a snap. `e2e/body-layout.spec.ts`, 16 passed and 2 skipped by project, plus real touch through CDP.
+- [x] Frames saved as `.scratch/frames/body-layout-editor-<theme>-<width>.png` in light and dark, at 1440 and 375 wide. Read by eye.
 
-For you: Equipment Settings: does laying out a Humanoid feel good with mouse and with touch?
+## Landed
+
+**Not verified**
+
+- Touch on a real device. The spec sends touch through Chromium's CDP, not a finger.
+
+**For you**
+
+- Equipment Settings: does laying out a Humanoid feel good with mouse and with touch?
+- Frames: `.scratch/body-layouts-and-slot-rules-04/frames/body-layout-editor-light-1440.png`, `.scratch/body-layouts-and-slot-rules-04/frames/body-layout-quadruped-dark-1440.png`.
+- Capacity now stops at 99, because each unit draws a box (Q68).
+- ⚠️ The world export shape changed: `backdrop` and `aspect` on a Body, `boxes` on an entry.

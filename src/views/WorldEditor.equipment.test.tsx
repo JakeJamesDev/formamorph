@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { screen, fireEvent, within, act } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { centerBox, KEY_STEP } from '@/lib/bodyLayout';
 import { blankItem } from '@/lib/items';
 import type { Body, Entity, Item, Placement, Slot, World } from '@/types';
 
@@ -26,8 +28,8 @@ vi.mock('react-toastify', () => ({
 const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'ring', name: 'Ring' }, { id: 'tail', name: 'Tail' }];
 // Hand holds 2 in Humanoid and 1 in Imp; no Body holds Tail.
 const BODIES: Body[] = [
-  { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] },
-  { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] },
+  bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] }),
+  bodyFixture({ id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] }),
 ];
 const ITEMS: Item[] = [blankItem('lamp', 'Lamp'), { ...blankItem('sword', 'Greatsword'), slotRule: { mode: 'either', slotIds: ['hand'] } }];
 const PLACEMENTS: Placement[] = [{ id: 'p-lamp', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } }];
@@ -146,12 +148,141 @@ describe('the Bodies section', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Body' }));
     const names = within(section('Bodies')).getAllByLabelText('Name');
     fireEvent.change(names[2], { target: { value: 'Dog' } });
-    expect(ctx().bodies[2]).toEqual({ id: expect.any(String), name: 'Dog', entries: [] });
+    expect(ctx().bodies[2]).toEqual({ id: expect.any(String), name: 'Dog', entries: [], backdrop: { kind: 'humanoid' }, aspect: 0.5 });
     pickOption(screen.getByRole('combobox', { name: 'Add a slot to Dog' }), 'Tail');
     fireEvent.change(screen.getAllByLabelText('Tail Capacity')[0], { target: { value: '3' } });
-    expect(ctx().bodies[2].entries).toEqual([{ slotId: 'tail', capacity: 3 }]);
+    expect(ctx().bodies[2].entries).toEqual([{ slotId: 'tail', capacity: 3, boxes: [centerBox(0.5), centerBox(0.5), centerBox(0.5)] }]);
     fireEvent.change(screen.getAllByLabelText('Tail Capacity')[0], { target: { value: '1' } });
-    expect(ctx().bodies[2].entries).toEqual([{ slotId: 'tail' }]);
+    expect(ctx().bodies[2].entries).toEqual([{ slotId: 'tail', boxes: [centerBox(0.5)] }]);
+  });
+
+  describe('the layout', () => {
+    const humanoidFields = () => within(section('Bodies')).getAllByLabelText('Name')[0].closest('.grid.gap-3') as HTMLElement;
+    const boxButton = (name: string) => within(humanoidFields()).getByRole('button', { name });
+    const pressed = () => within(humanoidFields()).getAllByRole('button', { pressed: true }).map((b) => b.getAttribute('aria-label'));
+    const rowSelected = (name: string) => !!within(humanoidFields()).getByRole('button', { name: `Select ${name}` }).closest('[data-editor-row-selected]');
+
+    it('labels boxes by slot and unit, or by slot alone at capacity 1', () => {
+      renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      expect(within(humanoidFields()).getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed')).map((b) => b.getAttribute('aria-label')))
+        .toEqual(['Hand 1', 'Hand 2', 'Ring']);
+    });
+
+    it('selects a box from its row, each click moving to the next unit', () => {
+      renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      const select = within(humanoidFields()).getByRole('button', { name: 'Select Hand' });
+      fireEvent.click(select);
+      expect(pressed()).toEqual(['Hand 1']);
+      expect(document.activeElement).toBe(boxButton('Hand 1'));
+      fireEvent.click(select);
+      expect(pressed()).toEqual(['Hand 2']);
+      fireEvent.click(select);
+      expect(pressed()).toEqual(['Hand 1']);
+    });
+
+    it('returns focus to the box when a capacity 1 row is clicked again', () => {
+      renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      const select = within(humanoidFields()).getByRole('button', { name: 'Select Ring' });
+      fireEvent.click(select);
+      select.focus();
+      fireEvent.click(select);
+      expect(document.activeElement).toBe(boxButton('Ring'));
+    });
+
+    it('selects a row from its box', () => {
+      renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      expect(rowSelected('Ring')).toBe(false);
+      fireEvent.focus(boxButton('Ring'));
+      expect(rowSelected('Ring')).toBe(true);
+      expect(rowSelected('Hand')).toBe(false);
+    });
+
+    it('leaves the selection alone while a capacity is typed', () => {
+      renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      fireEvent.click(within(humanoidFields()).getByLabelText('Hand Capacity'));
+      expect(within(humanoidFields()).queryAllByRole('button', { pressed: true })).toEqual([]);
+    });
+
+    it('moves a selected box with arrow keys, and resizes it with Shift', () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      const start = ctx().bodies[0].entries[1].boxes[0];
+      fireEvent.keyDown(boxButton('Ring'), { key: 'ArrowRight' });
+      fireEvent.keyDown(boxButton('Ring'), { key: 'ArrowDown' });
+      expect(ctx().bodies[0].entries[1].boxes[0]).toEqual({ ...start, x: start.x + KEY_STEP, y: start.y + KEY_STEP });
+      fireEvent.keyDown(boxButton('Ring'), { key: 'ArrowLeft', shiftKey: true });
+      expect(ctx().bodies[0].entries[1].boxes[0].w).toBeCloseTo(start.w - KEY_STEP);
+      expect(ctx().bodies[0].entries[1].boxes[0].x).toBeCloseTo(start.x + KEY_STEP);
+    });
+
+    it('drops the last box when capacity falls, and clears a selection on it', () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      fireEvent.keyDown(boxButton('Hand 1'), { key: 'ArrowRight' });
+      const kept = ctx().bodies[0].entries[0].boxes[0];
+      fireEvent.focus(boxButton('Hand 2'));
+      fireEvent.change(within(humanoidFields()).getByLabelText('Hand Capacity'), { target: { value: '1' } });
+      expect(ctx().bodies[0].entries[0].boxes).toEqual([kept]);
+      expect(within(humanoidFields()).queryAllByRole('button', { pressed: true })).toEqual([]);
+      expect(humanoidFields().querySelector('[data-editor-row-selected]')).toBeNull();
+    });
+
+    it('sets the aspect from an outline and keeps it on Plain, with the boxes in place', () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      const boxes = ctx().bodies[0].entries;
+      const backdrop = () => within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' });
+      pickOption(backdrop(), 'Quadruped');
+      expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'quadruped' }, aspect: 1.6, entries: boxes });
+      pickOption(backdrop(), 'Plain');
+      expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'plain' }, aspect: 1.6, entries: boxes });
+    });
+
+    it('offers no Custom Image yet', () => {
+      renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      expect(options(within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' }))).toEqual(['Humanoid', 'Quadruped', 'Plain']);
+    });
+
+    it('changes the aspect from the bottom edge by keyboard, and leaves the boxes alone', () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      const entries = ctx().bodies[0].entries;
+      fireEvent.keyDown(within(humanoidFields()).getByRole('slider', { name: 'Backdrop Height' }), { key: 'ArrowDown' });
+      expect(ctx().bodies[0].aspect).toBeLessThan(0.5);
+      expect(ctx().bodies[0].entries).toEqual(entries);
+    });
+
+    it('duplicates a Body after itself, with its Backdrop and boxes', () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      fireEvent.keyDown(boxButton('Ring'), { key: 'ArrowRight' });
+      pickOption(within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' }), 'Plain');
+      fireEvent.click(screen.getByRole('button', { name: 'Duplicate Humanoid' }));
+      const [source, copy, next] = ctx().bodies;
+      expect(next.id).toBe('imp');
+      expect(copy).toEqual({ ...source, id: expect.any(String), name: 'Humanoid (Copy)' });
+      expect(copy.id).not.toBe(source.id);
+    });
+
+    it('remembers Snap to Others for the next visit, off the world', () => {
+      const { unmount, ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      const toggle = () => within(humanoidFields()).getByRole('checkbox');
+      expect(toggle().getAttribute('data-state')).toBe('checked');
+      fireEvent.click(toggle());
+      expect(localStorage.getItem('FORMAMORPH_bodyLayoutSnap')).toBe('false');
+      expect(JSON.stringify(ctx().bodies)).not.toContain('snap');
+      unmount();
+      renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      expect(toggle().getAttribute('data-state')).toBe('unchecked');
+    });
   });
 
   it('offers only the slots a Body lacks', () => {
@@ -174,7 +305,7 @@ describe('the Bodies section', () => {
     openEquipment();
     fireEvent.change(screen.getAllByLabelText('Hand Capacity')[0], { target: { value: '1' } });
     act(() => bench.history().undo());
-    expect(bench.ctx().bodies[0].entries[0]).toEqual({ slotId: 'hand', capacity: 2 });
+    expect(bench.ctx().bodies[0].entries[0]).toEqual({ slotId: 'hand', capacity: 2, boxes: [centerBox(0.5), centerBox(0.5)] });
   });
 
   it('counts the entities that pick a Body in use, then sets them back to Default', () => {

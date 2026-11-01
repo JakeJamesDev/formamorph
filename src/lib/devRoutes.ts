@@ -20,9 +20,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `feedbackThread` opens the answered question from the feedback fixture (add `fixture=feedback`); `tab=staff`
  *  reads it as staff, with the triage controls. `pendingUpdate` shows the author's Pending Update section of the
  *  details modal on a canned update (`devPendingUpdate`); `tab=compare` opens its Compare view. Add
- *  `fixture=review` so the held thumbnail and the listing names load.
+ *  `fixture=review` so the held thumbnail and the listing names load. `bodyLayout` mounts the Body Layout editor
+ *  on a sample Body; the real rows are at `modal=worldEditor&tab=items&subtab=equipment&fixture=items`.
  *  Players never navigate to these. */
-export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate'] as const;
+export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate', 'bodyLayout'] as const;
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,

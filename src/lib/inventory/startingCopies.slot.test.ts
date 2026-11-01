@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { startingCopies, type StartWorld } from '.';
 import { parsePlacements } from '@/lib/items';
 import type { Entity, Item, Placement } from '@/types';
@@ -12,7 +13,7 @@ const ids = () => { let i = 0; return () => `c${i++}`; };
 const world = (placements: Placement[]): StartWorld => ({
   items: [dagger], entities: [{ id: 'self', name: 'Self', customPersona: true } as Entity], locations: [], placements,
   slots: [{ id: 'main', name: 'Main Hand' }, { id: 'off', name: 'Off Hand' }],
-  bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off' }] }],
+  bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off' }] })],
 });
 const slots = (placements: Placement[]) => startingCopies(world(placements), undefined, ids()).map((c) => c.equipped?.slotId);
 
@@ -35,7 +36,7 @@ describe('startingCopies with a placement slot', () => {
 
   it('keeps both when the named slot has room for two', () => {
     const wide = world([place({ slotId: 'off' }), place({ id: 'q', slotId: 'off' })]);
-    wide.bodies = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off', capacity: 2 }] }];
+    wide.bodies = [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'main' }, { slotId: 'off', capacity: 2 }] })];
     expect(startingCopies(wide, undefined, ids()).map((c) => c.equipped?.slotId)).toEqual(['off', 'off']);
   });
 

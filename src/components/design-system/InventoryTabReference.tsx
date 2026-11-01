@@ -9,11 +9,11 @@ import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
 import { ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { randomUUID } from '@/lib/uuid';
-import { bodySlots } from '@/lib/bodies';
+import { bodySlots, parseBodies } from '@/lib/bodies';
 import type { Body, Item, ItemCopy, Slot } from '@/types';
 
 const SLOTS: Slot[] = [{ id: 'hand', name: 'Main Hand' }, { id: 'off-hand', name: 'Off Hand' }, { id: 'ring', name: 'Ring' }];
-const BODIES: Body[] = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'off-hand' }, { slotId: 'ring' }] }];
+const BODIES: Body[] = parseBodies([{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'off-hand' }, { slotId: 'ring' }] }]);
 const BODY_SLOTS = bodySlots(BODIES[0], SLOTS);
 const item = (id: string, name: string, over: Partial<Item>): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });

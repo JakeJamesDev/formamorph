@@ -721,11 +721,22 @@ A **slot** is a name only. A **Body** lists the slots an owner has, and how many
 | `id` | ✓ | String | Unique id |
 | `name` | ✓ | String | The name, such as "Humanoid" |
 | `entries` | ✓ | Entry[] | The Body's slots, in the order the Inventory panel lists them |
+| `backdrop` | | Backdrop | The figure the boxes sit on. Absent = Humanoid |
+| `aspect` | | Number | The figure's width divided by its height, 0.3 to 3. Absent = 0.5 |
 
 | Entry field | Req. | Type | Meaning |
 |---|---|---|---|
 | `slotId` | ✓ | String | The slot's `id` |
-| `capacity` | | Number | How many items fit. Absent = 1 |
+| `capacity` | | Number | How many items fit, up to 99. Absent = 1 |
+| `boxes` | | Box[] | One box per capacity unit. A missing box starts small, at the center |
+
+| `backdrop.kind` | Meaning |
+|---|---|
+| `"humanoid"` | A standing figure |
+| `"quadruped"` | A four-legged figure |
+| `"plain"` | No figure |
+
+A **box** has `x`, `y`, `w` and `h`, each a fraction of the figure from 0 to 1, so a box keeps its place when the aspect changes. Its smallest width and height are 0.04.
 
 An entity's `body` picks its Body:
 

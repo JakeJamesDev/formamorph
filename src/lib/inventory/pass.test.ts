@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { followsResponseSchema } from '@/lib/aiRequest/responseSchema';
 import {
   applyInventoryPass, inventoryPassSchema, parseInventoryLines, parseInventoryReply, withoutOrphanCopies, type PassScene,
@@ -28,7 +29,7 @@ const scene = (over: Partial<PassScene> = {}): PassScene => ({
   resolve: (text) => text.replace('{Cursed}', 'Cursed'), ...over,
 });
 const run = (copies: ItemCopy[], ops: InventoryPassOp[], over: Partial<PassScene> = {}) =>
-  applyInventoryPass(copies, ops, scene(over), { world: { items: [sword, tonic, ring], slots: [hand], bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] }] }, newId: ids() });
+  applyInventoryPass(copies, ops, scene(over), { world: { items: [sword, tonic, ring], slots: [hand], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, newId: ids() });
 
 describe('parseInventoryReply', () => {
   it('reads the schema reply, and a reply the schema shapes passes the schema check', () => {
@@ -395,7 +396,7 @@ describe("the pass's named slot (Q37, Q41, Q65)", () => {
   const equipOn = (name: string, slot?: string, quantity = 1, itemId = name.toLowerCase()) => applyInventoryPass(
     [copy('c', itemId, you, { quantity })], [op('equip', name, { owner: 'you', quantity, ...(slot !== undefined && { slot }) })],
     scene({ items, resolve: undefined }),
-    { world: { items, slots: hands, bodies: [{ id: 'b', name: 'B', entries: [{ slotId: 'main' }, { slotId: 'off' }] }] }, newId: ids() },
+    { world: { items, slots: hands, bodies: [bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 'main' }, { slotId: 'off' }] })] }, newId: ids() },
   );
   const slotsTaken = (result: ReturnType<typeof equipOn>) => result.copies.flatMap((c) => (c.equipped ? [c.equipped.slotId] : []));
 
@@ -436,7 +437,7 @@ describe("the pass's named slot (Q37, Q41, Q65)", () => {
   it('counts a shorter slot name inside a longer one only once', () => {
     const glove = item('glove', 'Glove', { slotRule: { mode: 'either', slotIds: ['hand', 'off'] } });
     const slotFor = (slot: string) => applyInventoryPass([copy('c', 'glove', you)], [op('equip', 'Glove', { owner: 'you', slot })], scene({ items: [glove], resolve: undefined }), {
-      world: { items: [glove], slots: hands, bodies: [{ id: 'b', name: 'B', entries: [{ slotId: 'hand' }, { slotId: 'off' }] }] }, newId: ids(),
+      world: { items: [glove], slots: hands, bodies: [bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 'hand' }, { slotId: 'off' }] })] }, newId: ids(),
     }).copies[0].equipped?.slotId;
     expect(slotFor('Off Hand')).toBe('off');
     expect(slotFor('Off Hand or Hand')).toBe('hand');
