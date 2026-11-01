@@ -67,7 +67,7 @@ Only files that exist show. An empty slot makes no card.
 <!-- keywords: optimize images, shrink images, downscale, over budget, thumbnail budget, spinner, undo optimize -->
 <!-- route: worldEditor.media#list-toolbar -->
 
-**Optimize Images** is the last icon in the header row, in both modes. It changes the thumbnail, entity images, location images and dictionary cover images. The **Optimize world images?** dialog offers up to two choices, and each shows only when it has an image to act on:
+**Optimize Images** is the last icon in the header row, in both modes. It changes the thumbnail, Map Background images, entity images, location images and dictionary cover images. The **Optimize world images?** dialog offers up to two choices, and each shows only when it has an image to act on:
 
 - **Optimize** converts each image that a lossless WebP makes smaller, at any size. The image keeps its resolution. A message then says how many images stayed as they were.
 - **Downscale** turns each image that is over its budget, or stored lossless (PNG, BMP, lossless WebP), into a smaller lossy WebP.

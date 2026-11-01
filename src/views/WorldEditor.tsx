@@ -227,7 +227,10 @@ const WorldEditorInner = ({
   });
   // Apply a downscaled world back to the editor's state (marks dirty for the user to Save).
   const applyDownscaled = (w: World) => {
-    updateWorldOverview({ thumbnail: w.worldOverview.thumbnail });
+    updateWorldOverview({
+      thumbnail: w.worldOverview.thumbnail,
+      ...(w.worldOverview.mapBackground ? { mapBackground: w.worldOverview.mapBackground } : {}),
+    });
     setEntities(w.entities);
     setLocations(w.locations);
     setDictionaries(w.dictionaries);
