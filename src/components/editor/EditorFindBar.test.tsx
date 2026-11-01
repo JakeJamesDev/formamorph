@@ -4,8 +4,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { encodePlaceholderToken } from '@/lib/placeholders';
-import type { SearchTarget } from '@/lib/worldSearch';
-import type { Placeholder } from '@/types';
+import { collectSearchTargets, type SearchTarget } from '@/lib/worldSearch';
+import type { Placeholder, Tool } from '@/types';
 import EditorFindBar from './EditorFindBar';
 
 import { phValues } from '@/test/placeholderValues';
@@ -245,5 +245,50 @@ describe('EditorFindBar placeholder picker', () => {
     // The trigger has no row left to read, so the button must not still insert a chip nothing can aim.
     expect(screen.getByRole('button', { name: /Choose Placeholder/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Replace' })).toBeDisabled();
+  });
+});
+
+describe('EditorFindBar skipped Tool name', () => {
+  const noop = () => {};
+  const tool = (id: string, name: string): Tool => ({
+    id, name, description: 'Looks up a bell.', params: [],
+    handler: { kind: 'lookup', source: 'entities', param: '', returns: 'full' }, emptyResult: '', offeredTo: ['narration'],
+  });
+
+  /** The bar over a world with two Tools, its targets read by the real scan. */
+  function ToolHarness() {
+    const targets = useMemo(() => collectSearchTargets({
+      worldOverview: { name: '', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', tags: [] },
+      stats: [], entities: [], entityGroups: [], locations: [], traits: [], traitGroups: [], dictionaries: [], placeholders: [],
+      tools: [tool('t1', 'bell_a'), tool('t2', 'bell_b')], updateTool: noop,
+      updateWorldOverview: noop, updateStat: noop, updateEntity: noop, updateEntityGroup: noop, updateLocation: noop,
+      updateTrait: noop, updateTraitGroup: noop, updateDictionary: noop, updateDictionaryEntry: noop, updatePlaceholder: noop,
+    }), []);
+    return (
+      <EditorFindBar
+        targets={targets} placeholders={[]} placementLetters={new Map()} allowPlaceholderReplace={false} startWithReplace
+        onNavigate={noop} onAddPlaceholder={noop} onClose={noop}
+      />
+    );
+  }
+
+  const replaceWith = async (text: string) => {
+    const user = userEvent.setup();
+    render(<ToolHarness />);
+    await user.type(screen.getByRole('textbox', { name: 'Find' }), 'bell_a');
+    await user.type(screen.getByRole('textbox', { name: 'Replace with' }), text);
+    // The scan is debounced; Replace stays disabled until it finds the Tool's name.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Replace' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'Replace' }));
+  };
+
+  it('names the other Tool that holds the name', async () => {
+    await replaceWith('bell_b');
+    expect(await screen.findByText(/can’t take that name\. Another Tool in this world uses this name\.$/)).toBeInTheDocument();
+  });
+
+  it('names the characters a name may hold', async () => {
+    await replaceWith('bell a');
+    expect(await screen.findByText(/can’t take that name\. Use only letters, digits, _ and -, from 1 to 64 characters\.$/)).toBeInTheDocument();
   });
 });

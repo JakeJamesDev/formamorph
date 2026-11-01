@@ -322,8 +322,9 @@ export default function EditorFindBar({
       return;
     }
     const next = spliceText(current.target.value, current.start, current.end, insert);
-    if (current.target.refuses?.(next)) {
-      setNotice(`Skipped: ${current.target.itemLabel} can’t take that ${current.target.fieldLabel.toLowerCase()}`);
+    const reason = current.target.refuses?.(next);
+    if (reason) {
+      setNotice(`Skipped: ${current.target.itemLabel} can’t take that ${current.target.fieldLabel.toLowerCase()}. ${reason}.`);
       step(1);
       return;
     }

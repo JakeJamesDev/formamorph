@@ -37,26 +37,15 @@ import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { settleCodeUseReveal, useCodeUseReveal } from '@/lib/codeUseReveal';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
 import type { ValueLookup } from '@/lib/promptValues';
-import { armsTrigger, type ToolNameProblem } from '@/lib/tools/toolValidation';
+import { armsTrigger, toolNameProblemText } from '@/lib/tools/toolValidation';
 import { TOOL_EDIT_TABS, type ToolEditTab } from './toolsView';
 import { ToolTryIt, type TryItWorld } from './ToolTryIt';
 import { useTryItPlacement } from './useTryItPlacement';
 
 type Change = (next: Tool) => void;
 
-const NAME_PROBLEM: Record<ToolNameProblem, string> = {
-  format: 'Use only letters, digits, _ and -, from 1 to 64 characters',
-  taken: 'Another of your Tools uses this name',
-  builtin: 'A built-in Tool uses this name',
-};
-
 /** Where the edited Tool lives: the player's own list, or a world's (which may take a built-in name). */
 export type ToolHome = 'user' | 'world';
-
-const NAME_PROBLEM_BY_HOME: Record<ToolHome, Record<ToolNameProblem, string>> = {
-  user: NAME_PROBLEM,
-  world: { ...NAME_PROBLEM, taken: 'Another Tool in this world uses this name' },
-};
 
 /** Shown under a parameter's name. An unnamed one is left to the footer, so a new card shows no error. */
 const PARAM_PROBLEM: Record<ParamProblem, string | null> = {
@@ -152,7 +141,7 @@ function DefinitionTab({ draft, onChange, problems, home, nameNote }: TabProps &
     const kept = draft.description.trimEnd();
     onChange({ ...draft, description: `${kept}${kept ? '\n' : ''}${missing.map((h) => `${h} `).join('\n')}` });
   };
-  const nameError = draft.name && problems.name ? NAME_PROBLEM_BY_HOME[home][problems.name] : null;
+  const nameError = draft.name && problems.name ? toolNameProblemText(problems.name, home === 'world') : null;
   return (
     <div className="flex flex-col gap-4">
       <Field
