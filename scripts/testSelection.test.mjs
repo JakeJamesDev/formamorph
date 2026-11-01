@@ -1,9 +1,10 @@
 // @vitest-environment node
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ALWAYS_RUN, GRAPH_COVERED, PATH_TRIGGERS, cjsRequires, gateOptions, gitFiles, relatedFiles, requirersOf } from './testSelection.mjs';
+import { ALWAYS_RUN, GRAPH_COVERED, PATH_TRIGGERS, changedSince, cjsRequires, gateOptions, gitFiles, relatedFiles, requirersOf, touchedSince } from './testSelection.mjs';
 
 // Tracked and new files; a tracked file deleted in the working tree is gone.
 const FILES = gitFiles('ls-files', '--cached', '--others', '--exclude-standard').filter((file) => existsSync(file));
@@ -153,6 +154,33 @@ describe('relatedFiles', () => {
 describe('gitFiles', () => {
   it('splits the list of a command that ends in a pathspec', () => {
     expect(gitFiles('ls-files', '--', '*.cjs')).toContain('electron/main.cjs');
+  });
+});
+
+describe('a @<path> change source', () => {
+  const withList = (text, check) => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'gate-list-'));
+    try {
+      const list = path.join(dir, 'files');
+      writeFileSync(list, text);
+      check(`@${list}`);
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  };
+
+  it('reads its paths and ignores what git says changed', () => {
+    withList('package.json\r\n\r\neslint.config.js\n', (source) => {
+      expect(changedSince(source)).toEqual(['package.json', 'eslint.config.js']);
+      expect(touchedSince(source)).toEqual(['package.json', 'eslint.config.js']);
+    });
+  });
+
+  it('keeps a deleted path only for the build decision', () => {
+    withList('package.json\nsrc/no-such-file.ts\n', (source) => {
+      expect(changedSince(source)).toEqual(['package.json']);
+      expect(touchedSince(source)).toEqual(['package.json', 'src/no-such-file.ts']);
+    });
   });
 });
 
