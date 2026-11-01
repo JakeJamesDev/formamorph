@@ -39,7 +39,7 @@ The user's seventh review. The authoring section shows each feature building on 
 **Not verified:**
 
 - Nothing left unticked. The profile candidate on Drone's Tiamat never filmed, because Drone is not in the capture's library.
-- `travel` was not recaptured. `capture:diff` fails it with `Capture scene does not match the world`: Drone moved Tiamat out of Demon Frontier, so `site-game.json` no longer fits. Every shot on the demo scene shares this. The committed `travel.png` shows the older Drone list.
+- The demo scene stopped fitting Drone during this ticket. The follow-up commit "Fix the Trailer's Demo Scene Recapture" fixed it and recaptured its seven shots.
 
 **For you:**
 

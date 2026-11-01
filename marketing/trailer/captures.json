@@ -50,7 +50,7 @@
       "kind": "game",
       "route": { "view": "gameViewer", "fixture": "whiteRoom", "mode": "pages", "tab": "entities" },
       "ready": { "testId": "narration" },
-      "steps": [{ "click": "Tiamat" }],
+      "steps": [{ "click": "Tiamat" }, { "click": "Tiamat" }],
       "expect": "A mighty silver dragon of legend.",
       "verify": false,
       "viewport": { "width": 1600, "height": 900 },
