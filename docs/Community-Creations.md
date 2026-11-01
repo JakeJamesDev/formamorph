@@ -65,7 +65,7 @@ Only a world can enter, and you can enter one world per contest.
 2. Open the listing's details window.
 3. Select **Report This World**. The button names the kind, such as **Report This Entity**.
 4. Under **What is wrong with it**, select a reason.
-5. Optional: write what staff should know in **Anything else (optional)**.
+5. Optional: write what staff should know in **Anything else**.
 6. Select **Send Report**.
 
 To report a comment, select its **Report comment** button. To report a person, open their profile and select **Report Profile**.
