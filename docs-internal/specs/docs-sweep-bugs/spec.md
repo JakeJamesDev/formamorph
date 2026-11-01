@@ -1,7 +1,7 @@
 # Spec: Docs Sweep Bugs
 
-Status: done
-Status note: Closed 2026-11-01. Tickets 01–18 done; last landing 6c82fe96f. Review: spec text corrected, three trivial gaps fixed in 364cd84d7, two gaps became tickets 17–18 (Q12, Q13). Gates green on 2026-11-01.
+Status: ready-for-agent
+Status note: Reopened 2026-11-01 for tickets 19–25, the rulings from the first close report. Tickets 01–18 done; first close at 4020e81ec, lint and test green.
 Spec session: docs-sweep-bugs — spec
 
 ## Problem Statement
@@ -33,6 +33,14 @@ Settled with the user on 2026-11-01.
 | Q11 | Tests sit at the highest existing seam. Two new seams: a pure update phase → dialog title function (ticket 01) and an injected seed on the stat-code executor (ticket 14) |
 | Q12 | A Replace All never leaves two Tools with one name. The name check counts names the pass already wrote (ticket 17) |
 | Q13 | In Simple mode, an item script hit drops, because the item's Scripts tab is hidden (ticket 18) |
+| Q14 | **Reset All My Changes** keeps lines from a script's `memories.pin()` too. They work like hand-written memories |
+| Q15 | An unpicked Persona-Only entity's Others openings get the Custom Persona treatment: **Never Draws**, a dash, out of the view's pool (ticket 19) |
+| Q16 | The Openings checkbox and the panel's footer hint count only rows the game can draw (ticket 20) |
+| Q17 | A Group rename to a taken name shows the Group picker's error line under the field (ticket 21) |
+| Q18 | A name that holds only spaces is blank, for entities and dictionary entries alike (ticket 22) |
+| Q19 | **Optimize Images** scans and applies item images (ticket 23) |
+| Q20 | A single skipped Tool name Replace names its reason from the Save Tool check. Replace All keeps its count (ticket 24) |
+| Q21 | A website download of a bad preset listing says "listing", not "file". The app's file import keeps its text (ticket 25) |
 
 ## The bugs
 
@@ -110,7 +118,6 @@ Settled with the user on 2026-11-01.
 
 ## Out of Scope
 
-- Item images that **Optimize Images** may never scan. Unverified; a follow-up if a check confirms it.
 - Running the Mac update path on a Mac. The ticket proves it through the fake bridge.
 - The two server settings and image generation default the docs sweep ruled intended.
 - Released changelog sections, which stay history (the Load World note included).
