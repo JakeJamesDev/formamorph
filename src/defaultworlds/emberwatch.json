@@ -3706,33 +3706,97 @@
       "name": "Humanoid",
       "entries": [
         {
-          "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51"
+          "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "boxes": [
+            {
+              "x": 0.09,
+              "y": 0.47,
+              "w": 0.14,
+              "h": 0.1
+            }
+          ]
         },
         {
-          "slotId": "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+          "slotId": "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97",
+          "boxes": [
+            {
+              "x": 0.77,
+              "y": 0.47,
+              "w": 0.14,
+              "h": 0.1
+            }
+          ]
         },
         {
-          "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c"
+          "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c",
+          "boxes": [
+            {
+              "x": 0.32,
+              "y": 0.28,
+              "w": 0.36,
+              "h": 0.22
+            }
+          ]
         },
         {
-          "slotId": "58c8bc32-9dfa-47f2-affe-0a032671cbf4"
+          "slotId": "58c8bc32-9dfa-47f2-affe-0a032671cbf4",
+          "boxes": [
+            {
+              "x": 0.43,
+              "y": 0.165,
+              "w": 0.14,
+              "h": 0.04
+            }
+          ]
         },
         {
-          "slotId": "b9c8a35a-3873-4bf7-a5db-b23593a63d07"
+          "slotId": "b9c8a35a-3873-4bf7-a5db-b23593a63d07",
+          "boxes": [
+            {
+              "x": 0.38,
+              "y": 0.03,
+              "w": 0.24,
+              "h": 0.12
+            }
+          ]
         }
-      ]
+      ],
+      "backdrop": {
+        "kind": "humanoid"
+      },
+      "aspect": 0.5
     },
     {
       "id": "83c2490e-1f40-412d-99bc-bfd782762175",
       "name": "Hound",
       "entries": [
         {
-          "slotId": "58c8bc32-9dfa-47f2-affe-0a032671cbf4"
+          "slotId": "58c8bc32-9dfa-47f2-affe-0a032671cbf4",
+          "boxes": [
+            {
+              "x": 0.67,
+              "y": 0.224,
+              "w": 0.09,
+              "h": 0.224
+            }
+          ]
         },
         {
-          "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c"
+          "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c",
+          "boxes": [
+            {
+              "x": 0.31,
+              "y": 0.352,
+              "w": 0.33,
+              "h": 0.272
+            }
+          ]
         }
-      ]
+      ],
+      "backdrop": {
+        "kind": "quadruped"
+      },
+      "aspect": 1.6
     }
   ],
   "placements": [
