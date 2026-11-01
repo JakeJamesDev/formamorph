@@ -52,9 +52,11 @@ export function openingsEnabled(overview: Overview, owners: readonly MaybeOwner[
 }
 
 /** Whether this owner has written an opening that can draw. Weight 0 benches one row, so it still counts
- *  here; a Self row counts only on an owner that can own Self rows. */
+ *  here; a Self row counts only on an owner that can own Self rows, and an Others row not on one whose
+ *  Others rows never draw. */
 export function hasAuthoredOpenings(owner: MaybeOwner): boolean {
-  return (owner?.openings ?? []).some((o) => o.text.trim().length > 0 && (!o.self || canOwnSelfOpenings(owner)));
+  return (owner?.openings ?? []).some((o) => o.text.trim().length > 0
+    && (o.self ? canOwnSelfOpenings(owner) : !othersNeverDraw(owner)));
 }
 
 /** Whether an owner's Self rows exist for the editor and the draw: only a Persona or the Custom Persona entity

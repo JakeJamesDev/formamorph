@@ -58,6 +58,14 @@ describe('the draw', () => {
     expect(hasAuthoredOpenings({ openings: [action('a', '   ')] })).toBe(false);
   });
 
+  it('leaves out Others rows that never draw, and keeps Self rows', () => {
+    const self = { ...action('s'), self: true as const };
+    expect(hasAuthoredOpenings({ customPersona: true, openings: [action('a')] })).toBe(false);
+    expect(hasAuthoredOpenings({ persona: true, personaOnly: true, openings: [action('a')] })).toBe(false);
+    expect(hasAuthoredOpenings({ customPersona: true, openings: [action('a'), self] })).toBe(true);
+    expect(hasAuthoredOpenings({ persona: true, openings: [action('a')] })).toBe(true);
+  });
+
   it('derives off for a world that has no opening anywhere, and on once one exists', () => {
     expect(openingsEnabled(overview())).toBe(false);
     expect(openingsEnabled(overview({ openings: [action('a', '   ')] }))).toBe(false);

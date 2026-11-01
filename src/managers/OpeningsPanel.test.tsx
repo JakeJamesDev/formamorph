@@ -74,6 +74,35 @@ describe('an entity opening’s Preview', () => {
   });
 });
 
+describe('the footer hint on the World tab’s Openings panel', () => {
+  const others: Opening = { id: 'o1', text: 'The Warden waves you in.', kind: 'action' };
+  const self: Opening = { id: 'o2', text: 'You wake as the Warden.', kind: 'narration', self: true };
+  const custom = { id: 'custom', name: 'You', customPersona: true } as Entity;
+  const hint = () => screen.getByText(/Draws one opening|Write an opening here|Openings are off/).textContent;
+  const showWith = (entities: Entity[]) => {
+    game.current = {
+      worldOverview: {}, updateWorldOverview: () => {}, entities, updateEntity: () => {}, locations: [],
+      placeholders: [],
+    };
+    mount(<OpeningsPanel />);
+  };
+
+  it('keeps the default-opening state when the only text is on Custom Persona Others rows', () => {
+    showWith([{ ...custom, openings: [others] } as Entity]);
+    expect(hint()).toMatch(/^Write an opening here/);
+  });
+
+  it('says one opening draws when a Custom Persona Self row has text', () => {
+    showWith([{ ...custom, openings: [others, self] } as Entity]);
+    expect(hint()).toMatch(/^Draws one opening/);
+  });
+
+  it('says one opening draws when another entity has a drawable row', () => {
+    showWith([{ ...custom, openings: [others] } as Entity, { ...keeper, openings: [others] } as Entity]);
+    expect(hint()).toMatch(/^Draws one opening/);
+  });
+});
+
 describe('the Others | Self switch on an entity’s Openings tab', () => {
   const rows: Opening[] = [
     { id: 'o1', text: 'You wake as the Warden.', kind: 'narration' },
