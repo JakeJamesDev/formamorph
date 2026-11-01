@@ -1,7 +1,7 @@
 # Spec: Bodies and Equipment
 
 Status: done
-Status note: Closed 2026-10-31, tickets 01–08, last landing cb452d9f1. Review: spec text corrected. Closed red: the test gate crashed out of memory twice with no test failing; lint green.
+Status note: Closed 2026-10-31, tickets 01–08, last landing cb452d9f1. Review: spec text corrected. Lint green. Test gate rerun 2026-11-01: 30906 pass, 2 fail under load (CodeArea.test.tsx, Formaquestion.settings.test.tsx), both pass alone.
 Spec session: bodies-and-equipment — spec
 
 ## Problem Statement
