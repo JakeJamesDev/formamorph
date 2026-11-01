@@ -34,6 +34,13 @@ describe('EntityCardBody outside a running game', () => {
     expect(screen.getByText('No description provided.')).toBeInTheDocument();
   });
 
+  it('stacks unless the host asks for two columns', () => {
+    const { container, rerender } = render(<EntityCardBody entity={sedge}>text</EntityCardBody>);
+    expect(container.firstElementChild).not.toHaveClass('lg:flex-row');
+    rerender(<EntityCardBody entity={sedge} sideBySide>text</EntityCardBody>);
+    expect(container.firstElementChild).toHaveClass('lg:flex-row');
+  });
+
   it('draws no picture area for an entity with nothing to show', () => {
     render(
       <EntityCardBody entity={{ id: 'e2', name: 'Voice' }}>

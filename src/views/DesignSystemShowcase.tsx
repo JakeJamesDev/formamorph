@@ -54,6 +54,7 @@ import { NarrationTurnReference } from '@/components/design-system/NarrationTurn
 import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
 import { RequestStatusStripReference } from '@/components/design-system/RequestStatusStripReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
+import { EntityPopupReference } from '@/components/design-system/EntityPopupReference';
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
 import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
@@ -338,6 +339,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Footer Actions',
     description: 'Negative and affirmative dialog actions',
     Component: FooterActionOrderReference,
+  },
+  {
+    id: 'entity-popup',
+    label: 'Entity Popup',
+    description: 'Picture beside the text on large screens',
+    Component: EntityPopupReference,
   },
   {
     id: 'panel-tabs',
