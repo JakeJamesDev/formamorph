@@ -140,7 +140,7 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
 
     it('states in the hint which openings draw, in place of joining at its locations', () => {
       mount(<EntityOpenings entity={custom} onChange={() => {}} placeholders={[]} />);
-      expect(document.body).toHaveTextContent('Draws only Self openings');
+      expect(document.body).toHaveTextContent('Self openings draw when played, or for a library persona without any.');
       expect(screen.queryByText(/one of this entity's locations/)).toBeNull();
     });
 
