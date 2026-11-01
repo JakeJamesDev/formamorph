@@ -9,8 +9,8 @@ import { updateDialogTitle } from '@/lib/updates/updateDialogTitle';
 
 /** The update popout reached by clicking the footer version number. Shows the release channel selector plus,
  *  depending on phase, an available-update view (new version + notes + Download), a download view (same notes,
- *  Close only) or an up-to-date view (current notes + Check for updates). Download/apply are driven by the
- *  parent (per-platform). */
+ *  Close only) or an up-to-date view (current notes + Check for updates). After a browser download (the Mac
+ *  `.dmg`) the available view adds a line saying so. Download/apply are driven by the parent (per-platform). */
 export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -39,6 +39,12 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
             </SelectContent>
           </Select>
         </div>
+
+        {available && state.openedInBrowser && (
+          <p className="text-label text-muted-foreground">
+            The download opened in your browser. Open the .dmg file and copy the new app over the old one.
+          </p>
+        )}
 
         {state.phase === 'error' ? (
           <p className="text-label text-destructive">{state.error}</p>

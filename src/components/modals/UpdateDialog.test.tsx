@@ -15,9 +15,9 @@ vi.mock('@/components/ChangelogUi', () => ({
 import { UpdateDialog } from './UpdateDialog';
 import type { UpdatePhase, UpdateState } from '@/lib/updates/updateState';
 
-function renderDialog(phase: UpdatePhase) {
+function renderDialog(phase: UpdatePhase, extra: Partial<UpdateState> = {}) {
   const state: UpdateState = {
-    phase, currentVersion: 'v1.0.0', channel: 'stable', latestVersion: 'v9.9.9', changelog: 'New stuff',
+    phase, currentVersion: 'v1.0.0', channel: 'stable', latestVersion: 'v9.9.9', changelog: 'New stuff', ...extra,
   };
   return render(<UpdateDialog open onOpenChange={() => {}} state={state} onCheck={() => {}} onDownload={() => {}} />);
 }
@@ -39,6 +39,17 @@ describe('UpdateDialog while the update downloads', () => {
     expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     expect(screen.getByTestId('changelog')).toHaveAttribute('data-update-version', 'v9.9.9');
+  });
+
+  it('says the file opened in the browser after a browser download, with Download still offered', () => {
+    renderDialog('available', { openedInBrowser: true });
+    expect(screen.getByText(/opened in your browser/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
+  });
+
+  it.each(['available', 'downloading', 'downloaded', 'up-to-date'] as const)('shows no browser line without a browser download (%s)', (phase) => {
+    renderDialog(phase);
+    expect(screen.queryByText(/opened in your browser/i)).not.toBeInTheDocument();
   });
 
   it('keeps Check for updates for the up-to-date phase, with no marker', () => {

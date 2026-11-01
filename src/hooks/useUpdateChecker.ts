@@ -83,6 +83,7 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
     // arrives here too, which is why the Android plugin rejects rather than reporting a finished download.
     updateBridge()
       ?.download({ version: state.latestVersion, channel, ...assets.current })
+      .then((r) => { if (r?.openedInBrowser) dispatch({ type: 'DOWNLOAD_OPENED_IN_BROWSER' }); })
       .catch((e) => dispatch({ type: 'ERROR', error: (e as Error)?.message ?? 'Update download failed' }));
   }, [state.latestVersion, channel]);
 
