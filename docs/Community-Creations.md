@@ -207,7 +207,7 @@ On formamorph.ai, the download button saves the file to your device instead. It 
 | Kind | File |
 |---|---|
 | World | `<name>.json`, a world file |
-| Entity | `<name>.webp`, a character card |
+| Entity | `<name>.webp`, an Entity Card |
 | Dictionary | `<name>.json`, a dictionary file |
 | Avatar | `<name>.vrm` |
 | Prompt | `<name>.preset.json`, a prompt preset file |

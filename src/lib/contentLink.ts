@@ -33,14 +33,19 @@ export function contentLinkState(link: ContentLink | undefined | null): ContentL
 /** What a link made in this editing session reads as until the world save commits it. */
 export const PENDING_LINK_LABEL = 'Link pending save';
 
-/** The state and the source on one line, for the footer button's tip and the row marker: "Linked · Sedge".
- *  `pending` holds the library ids linked this session and not yet saved with the world. Null for an
- *  independent copy. */
-export function contentLinkStatusLine(link: ContentLink | undefined | null, pending: readonly string[] = []): string | null {
+/** The state alone, for the row marker's accessible name. `pending` holds the library ids linked this session
+ *  and not yet saved with the world. Null for an independent copy. */
+export function contentLinkStateLabel(link: ContentLink | undefined | null, pending: readonly string[] = []): string | null {
   const state = contentLinkState(link);
   if (!state) return null;
-  const waiting = !!link?.libraryId && pending.includes(link.libraryId);
-  const label = waiting ? PENDING_LINK_LABEL : CONTENT_LINK_LABELS[state];
+  return link?.libraryId && pending.includes(link.libraryId) ? PENDING_LINK_LABEL : CONTENT_LINK_LABELS[state];
+}
+
+/** The state and the source on one line, for the footer button's tip and the row marker: "Linked · Sedge".
+ *  Null for an independent copy. */
+export function contentLinkStatusLine(link: ContentLink | undefined | null, pending: readonly string[] = []): string | null {
+  const label = contentLinkStateLabel(link, pending);
+  if (!label) return null;
   const source = contentLinkSourceName(link);
   return source ? `${label} · ${source}` : label;
 }

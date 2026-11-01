@@ -233,8 +233,8 @@ The title is one of these:
 
 - **App Updates** before the first check
 - **Checking for Updates** while a check runs
-- **You're up to date** when no update is available
-- **Couldn't check for updates** when the check fails
+- **You're Up to Date** when no update is available
+- **Couldn't Check for Updates** when the check fails
 - **Update Available:** and the version
 - **Downloading Update:** and the version
 - **Update Downloaded:** and the version

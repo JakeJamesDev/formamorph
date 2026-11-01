@@ -232,7 +232,7 @@ Each entity picks its Avatar in its **Avatar** dropdown, in Simple and Advanced 
 A library entity picks from your library instead. The **Avatar** dropdown of the library's entity editor offers **None**, **User's Default**, or one of your Avatars.
 
 - When you add a library entity to a world, the world copies its Avatar once.
-- An exported character card carries the entity's Avatar.
+- An exported Entity Card carries the entity's Avatar.
 - When you import a card, the Avatar joins your **Avatars** tab. If you import the same Avatar twice, you keep one copy. See [World Editor Media](World-Editor-Media) and [World Editor Entities](World-Editor-Entities).
 
 Old worlds still work. An older world that showed one Avatar for the player keeps showing it under any persona. This stops when the world's Custom Persona gets an Avatar of its own.

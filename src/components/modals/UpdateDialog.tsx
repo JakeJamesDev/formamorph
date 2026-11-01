@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Hint } from '@/components/ui/typography';
 import { ChangelogBody, FullChangelogLink } from '@/components/ChangelogUi';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { UpdateChannel } from '@/contexts/settingsDefaults';
@@ -41,9 +42,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
         </div>
 
         {available && state.openedInBrowser && (
-          <p className="text-label text-muted-foreground">
-            The download opened in your browser. Open the .dmg file and copy the new app over the old one.
-          </p>
+          <Hint>The download opened in your browser. Open the .dmg file and copy the new app over the old one.</Hint>
         )}
 
         {state.phase === 'error' ? (

@@ -8,7 +8,7 @@ export function updateDialogTitle(state: Pick<UpdateState, 'phase' | 'latestVers
     case 'downloaded': return `Update Downloaded: ${state.latestVersion}`;
     case 'checking': return 'Checking for Updates';
     case 'idle': return 'App Updates';
-    case 'error': return 'Couldn’t check for updates';
-    case 'up-to-date': return 'You’re up to date';
+    case 'error': return 'Couldn’t Check for Updates';
+    case 'up-to-date': return 'You’re Up to Date';
   }
 }
