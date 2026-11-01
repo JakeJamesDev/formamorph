@@ -221,7 +221,7 @@ See [World Editor Media](World-Editor-Media).
 
 A library entity whose Avatar isn't in your library on this device reads **Missing Avatar** in its **Avatar** dropdown. In the game it shows the bundled Avatar. Pick another option to replace it.
 
-Each entity picks its Avatar in its **Avatar** dropdown, in Advanced mode:
+Each entity picks its Avatar in its **Avatar** dropdown, in Simple and Advanced mode:
 
 | Choice | What the entity shows |
 |---|---|

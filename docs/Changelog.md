@@ -107,6 +107,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Optimize Images now keeps the Map Background images it re-encoded.** Before, only the thumbnail came back, and one undo now reverts the map with the rest.
   - **Importing an entity card keeps each opening set to Self.** Before, every Self opening came back as an Others opening.
   - **The World Editor's Search World now finds text on the Items, Scripts and Tools tabs.** A match opens its item, script or Tool, and Replace works there too.
+  - **The entity Avatar dropdown now shows in Simple mode.** You can assign an Avatar you upload in the Media tab without switching to Advanced mode.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

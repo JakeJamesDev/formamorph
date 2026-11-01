@@ -105,7 +105,7 @@ The **World › Avatars** section holds the world's Avatars, in Simple and Advan
 - **Delete** names the entities that use the Avatar, and they go back to **None**. Undo brings it all back.
 - **Used By** lists the entities that pick the Avatar. Select one to open it.
 
-Each entity still picks its Avatar in its own **Avatar** dropdown, which shows in Advanced mode only. See [World Avatars](Avatars#world-avatars).
+Each entity still picks its Avatar in its own **Avatar** dropdown, in Simple and Advanced mode. See [World Avatars](Avatars#world-avatars).
 
 ## The image panel
 <!-- keywords: entity gallery, location background, reorder images, primary image, generate with ai, image tags, visibility rule, framed image, avatar link -->

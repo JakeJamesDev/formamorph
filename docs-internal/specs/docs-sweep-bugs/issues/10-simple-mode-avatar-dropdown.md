@@ -1,6 +1,6 @@
 # 10: Avatar Dropdown in Simple Mode
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,7 +15,15 @@ Spec: Q4, Implementation Decisions "Simple mode Avatar". Evidence: docs-sweep ti
 
 ## Acceptance criteria
 
-- [ ] A World Editor entity test in Simple mode fails today (no **Avatar** dropdown), then passes and assigns an uploaded Avatar
-- [ ] The upload tests that run in both modes still pass; any test that asserted the dropdown absent in Simple is changed and named in Landed
-- [ ] World-Editor-Media, Avatars and World-Editor-Entities no longer call the dropdown Advanced only; the docs tests are green
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A World Editor entity test in Simple mode fails today (no **Avatar** dropdown), then passes and assigns an uploaded Avatar. `shows in Simple mode and assigns an uploaded Avatar` failed on the missing combobox before the fix.
+- [x] The upload tests that run in both modes still pass; any test that asserted the dropdown absent in Simple is changed and named in Landed. All 32 tests in `WorldEditor.worldAvatars.test.tsx` pass.
+- [x] World-Editor-Media, Avatars and World-Editor-Entities no longer call the dropdown Advanced only; the docs tests are green. `src/lib/docs` passes.
+- [x] A changelog fragment under Minor / Fixed / 👤. `docs-internal/changelog.d/10-simple-mode-avatar-dropdown.md`.
+
+## Landed
+
+**Changed test:** `is hidden in Simple mode` in `WorldEditor.worldAvatars.test.tsx` asserted the dropdown absent in Simple. It is now `shows in Simple mode and assigns an uploaded Avatar`.
+
+**Not verified:** none.
+
+**For you:** none.
