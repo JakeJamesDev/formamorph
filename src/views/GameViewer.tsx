@@ -191,7 +191,7 @@ import {
   commitEntityMoves, computeTurnCommit, entityMovesOf, withCodeLines, withCodeWrites, type TurnCommit, type TurnCommitContext,
 } from "../lib/turnPipeline/computeTurnCommit";
 import {
-  entityMoveOffers, entityMoveSubjects, hasEntityOffer, joinEntityMoves, movedPositions, moveWithPlayer,
+  entityMoveRequests, hasEntityOffer, joinEntityMoves, movedPositions, moveWithPlayer,
   NO_ENTITY_MOVES, NO_ENTITY_OFFER, peelIntents, peeledCharacters, runtimePositions, turnPeelOff,
   type EntityMoveOffer, type FollowerState, type PeelOff,
 } from "../lib/entityFollowing";
@@ -813,7 +813,7 @@ const GameViewer = ({
   // an entity/location/stat/trait/dictionary name is a plain string with no chips left in it. The `raw*`
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
-    entities, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
+    entities, authoredCast, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
     presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona,
@@ -3047,13 +3047,9 @@ const GameViewer = ({
       .filter((d) => participants.some((name) => sameCharacterName(name, d.entity.name)))
       .map((d) => d.entity.id));
     /** Each entity the turn asks whether it moves, with the replies it is offered. */
-    const moveSubjects = (): TurnPassSubject[] => !moveFrom ? [] : entityMoveSubjects(
-      movingCast, moveStart, moveFrom, { runtime: discoveredEntities, inScene: runtimeInScene },
-    ).map((entity) => ({
-      name: entity.name,
-      entity,
-      ...entityMoveOffers(entity, moveStart.followers.includes(entity.id), moveFrom, locations, connections),
-    }));
+    const moveSubjects = (): TurnPassSubject[] => entityMoveRequests(
+      movingCast, authoredCast, moveStart, moveFrom, locations, connections, { runtime: discoveredEntities, inScene: runtimeInScene },
+    );
     /** The characters `join` peels off, born this turn. */
     const peeledBy = (join: FollowerState) =>
       peeledCharacters(join, peel, new Set(discoveredEntities.map((d) => d.entity.id)), currentTurnIdRef.current);

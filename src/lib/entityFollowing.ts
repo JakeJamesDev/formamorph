@@ -255,6 +255,26 @@ export function entityMoveOffers(
   };
 }
 
+/**
+ * Each entity the turn asks whether it moves, with what it is offered. `cast` is the entities as they stand in
+ * play, which list a positioned entity at its position only; each route reads the same entity in `authored`.
+ */
+export function entityMoveRequests(
+  cast: readonly Entity[], authored: readonly Entity[], state: FollowerState, playerLocationId: string | undefined,
+  locations: GameLocation[], connections: Connection[], runtimeCast?: RuntimeCast,
+): { name: string; entity: Entity; moves: EntityMoveReply[]; destinations: GameLocation[] }[] {
+  if (!playerLocationId) return [];
+  const authoredById = new Map(authored.map((entity) => [entity.id, entity]));
+  return entityMoveSubjects(cast, state, playerLocationId, runtimeCast).map((standing) => {
+    const entity = authoredById.get(standing.id) ?? standing;
+    return {
+      name: entity.name,
+      entity,
+      ...entityMoveOffers(entity, state.followers.includes(entity.id), playerLocationId, locations, connections),
+    };
+  });
+}
+
 /** `state` with `ids` no longer following, each left at `locationId`. */
 export function leaveBehind<S extends FollowerState>(state: S, ids: readonly string[], locationId: string): S {
   const leaving = ids.filter((id) => state.followers.includes(id));
