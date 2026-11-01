@@ -1,7 +1,7 @@
 # Spec: Docs Sweep Bugs
 
-Status: done
-Status note: Closed 2026-11-01, tickets 01–26, last landing ba93137c3. Review: spec text corrected, one gap fixed in 050354aa6. Ticket 26 (ba93137c3) fixed the one red test from the close; a full run on main then passed it.
+Status: ready-for-agent
+Status note: Reopened 2026-11-01 for tickets 27–29, from the error audit after the second close. Tickets 01–26 done; second close at 324c887ff.
 Spec session: docs-sweep-bugs — spec
 
 ## Problem Statement
@@ -41,6 +41,9 @@ Settled with the user on 2026-11-01.
 | Q19 | **Optimize Images** scans and applies item images (ticket 23). They join the one optimize list, so every flow that reads it follows, and the Test Bench rule opens Items for them. The Media gallery gains no item section. Item copies have no image field, so that clause needs no code. The `image-not-webp` and `image-mislabeled` Fixes reach item images too |
 | Q20 | A single skipped Tool name Replace names its reason from the Save Tool check. Replace All keeps its count (ticket 24) |
 | Q21 | A website download of a bad preset listing says "listing", not "file". The app's file import keeps its text (ticket 25). This ticket adds no changelog fragment: ticket 05's unreleased entry covers the preset download |
+| Q22 | A failed response's `errors` array of `{ msg }` gives the reason when `error` and `message` give none. Several reasons show on one line (ticket 27) |
+| Q23 | One skipped import file shows its name and cause. Several keep the count, and View Details lists each file and cause. Written text shows on the line; a raw parser or storage message stays in View Details (tickets 28, 29) |
+| Q24 | A declined duplicate avatar is not a skipped file (ticket 29) |
 
 ## The bugs
 
