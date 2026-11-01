@@ -87,6 +87,7 @@ describe('a Body written by a script between turns', () => {
     await screen.findByPlaceholderText(/Type your action/);
     await waitFor(() => expect(worn()).toBe(2));
     gameplay().setActiveTab('inventory');
+    fireEvent.click(await screen.findByRole('button', { name: /: Helm$/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Unequip Helm' }));
     await waitFor(() => expect(gameplay().logEntries.map((e) => e.text)).toContain('Body: Wolf. Unequipped Sword'));
     expect(worn()).toBe(0);

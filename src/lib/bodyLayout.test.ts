@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  boxLabel, centerBox, clampedBox, dragMove, dragResize, grownBox, MAX_CAPACITY, MIN_BOX_SIZE, movedBox, newBody, newEntry, parseEntryLayout,
+  boxLabel, centerBox, clampedBox, dragMove, dragResize, fillBoxes, frameInBox, grownBox, MAX_CAPACITY, MIN_BOX_SIZE, movedBox, newBody, newEntry, parseEntryLayout,
   rowSelection, snapLines, stackOrder, withBackdropImage, withBox, withCapacity, withOutline, boxAt, MAX_ASPECT, MIN_ASPECT,
 } from './bodyLayout';
 import { parseBodies } from './bodies';
@@ -116,6 +116,41 @@ describe('stackOrder', () => {
     const same = box(0, 0, 0.2, 0.2);
     const order = stackOrder([entry('hand', same, same), entry('ring', same)]);
     expect([order.get('hand-0'), order.get('hand-1'), order.get('ring-0')]).toEqual([1, 2, 3]);
+  });
+});
+
+describe('fillBoxes', () => {
+  const entries: BodyEntry[] = [
+    { slotId: 'hand', capacity: 2, boxes: [box(0, 0, 0.1, 0.1), box(0.2, 0, 0.1, 0.1)] },
+    { slotId: 'head', boxes: [box(0.4, 0, 0.1, 0.1)] },
+  ];
+
+  it('fills units in the order given, per slot', () => {
+    const filled = fillBoxes(entries, (slotId) => (slotId === 'hand' ? ['a', 'b'] : ['a']));
+    expect([...filled]).toEqual([['hand-0', 'a'], ['hand-1', 'b'], ['head-0', 'a']]);
+  });
+
+  it('leaves spare units empty and drops occupants past the last box', () => {
+    expect([...fillBoxes(entries, (slotId) => (slotId === 'hand' ? ['a'] : []))]).toEqual([['hand-0', 'a']]);
+    expect([...fillBoxes(entries, (slotId) => (slotId === 'head' ? ['a', 'b'] : []))]).toEqual([['head-0', 'a']]);
+  });
+});
+
+describe('frameInBox', () => {
+  it('fits a tall image to the height of a wider box', () => {
+    const frame = frameInBox(box(0, 0, 0.5, 0.25), 1, 240 / 720);
+    expect(frame.h).toBe(1);
+    expect(frame.w).toBeCloseTo(1 / 6);
+  });
+
+  it('fits a wide image to the width of a taller box', () => {
+    const frame = frameInBox(box(0, 0, 0.25, 0.5), 1, 2);
+    expect(frame.w).toBe(1);
+    expect(frame.h).toBeCloseTo(1 / 4);
+  });
+
+  it('reads the box on screen, through the Backdrop aspect', () => {
+    expect(frameInBox(box(0, 0, 0.5, 0.25), 0.5, 1)).toEqual({ w: 1, h: 1 });
   });
 });
 

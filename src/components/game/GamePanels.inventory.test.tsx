@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderInGame, renderRightPanel, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import { usePresence } from '@/lib/usePresence';
 import type { Presence } from '@/lib/presence';
 import { useInventoryPanel } from './useInventoryPanel';
-import type { InventoryTabProps } from './InventoryTab';
+import { InventoryTab, type InventoryTabProps } from './InventoryTab';
 import type { Entity, GameLocation, Body, Item, ItemCopy, Slot } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -58,6 +58,7 @@ const stage = (copies: ItemCopy[], over: { page?: number; inScene?: string[]; me
 
 const carried = () => screen.getByRole('region', { name: 'Your inventory' });
 const mine = (g: Gameplay) => g.itemCopies.filter((c) => c.where.kind === 'you');
+const dollBoxes = () => within(screen.getByRole('group', { name: 'Equipped' })).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
 
 describe('RightPanel — Inventory tab', () => {
   it('offers one Equip choice per allowed slot in the item order, and equips into the one picked', async () => {
@@ -92,24 +93,109 @@ describe('RightPanel — Inventory tab', () => {
     expect(screen.queryByRole('button', { name: 'Equip Spike' })).toBeNull();
   });
 
-  it('lists an All of item under every slot it occupies, and one Unequip takes it off whole', async () => {
+  it('draws an All of item in every slot it occupies, and one Unequip takes it off whole', async () => {
     const h = renderRightPanel({}, stage([copy('a', 'halberd', { equipped: { slotId: 'hand', order: 1 } })]));
-    const hand = await screen.findByRole('listitem', { name: 'Hand' });
-    expect(within(hand).getByText('Halberd')).toBeTruthy();
-    expect(within(hand).getByText('1 of 2')).toBeTruthy();
-    const head = screen.getByRole('listitem', { name: 'Head' });
-    await userEvent.click(within(head).getByRole('button', { name: 'Unequip Halberd' }));
+    await screen.findByRole('group', { name: 'Equipped' });
+    expect(dollBoxes()).toEqual(['Hand 1: Halberd', 'Hand 2: Empty', 'Head: Halberd']);
+    await userEvent.click(screen.getByRole('button', { name: 'Head: Halberd' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Unequip Halberd' }));
     expect(mine(h.gameplay())[0].equipped).toBeUndefined();
+    expect(dollBoxes()).toEqual(['Hand 1: Empty', 'Hand 2: Empty', 'Head: Empty']);
   });
 
   it('equips one dagger from a stack of five at once and leaves four carried', async () => {
     const h = renderRightPanel({}, stage([copy('d', 'dagger', { quantity: 5 })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Equip Dagger' }));
     expect(mine(h.gameplay()).map((c) => [c.quantity, c.equipped?.slotId])).toEqual([[4, undefined], [1, 'hand']]);
-    const hand = within(carried()).getByRole('listitem', { name: 'Hand' });
-    expect(within(hand).getByText('Dagger')).toBeInTheDocument();
-    expect(within(hand).getByText('1 of 2')).toBeInTheDocument();
+    expect(dollBoxes()).toEqual(['Hand 1: Dagger', 'Hand 2: Empty', 'Head: Empty']);
     expect(within(carried()).getByText('×4')).toBeInTheDocument();
+  });
+
+  describe('the figure', () => {
+    it('fills a slot by equip order, and reflows after an unequip with the popover closed', async () => {
+      const h = renderRightPanel({}, stage([
+        copy('late', 'wand', { equipped: { slotId: 'hand', order: 2 } }),
+        copy('early', 'dagger', { equipped: { slotId: 'hand', order: 1 } }),
+      ]));
+      await screen.findByRole('group', { name: 'Equipped' });
+      expect(dollBoxes()).toEqual(['Hand 1: Dagger', 'Hand 2: Ash Wand', 'Head: Empty']);
+      await userEvent.click(screen.getByRole('button', { name: 'Hand 1: Dagger' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Unequip Dagger' }));
+      expect(mine(h.gameplay()).find((c) => c.id === 'early')?.equipped).toBeUndefined();
+      expect(dollBoxes()).toEqual(['Hand 1: Ash Wand', 'Hand 2: Empty', 'Head: Empty']);
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Unequip Ash Wand' })).toBeNull());
+    });
+
+    it('carries a copy with no box left, where it unequips', async () => {
+      renderRightPanel({}, stage([
+        copy('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } }),
+        copy('b', 'wand', { equipped: { slotId: 'hand', order: 2 } }),
+        copy('c', 'torch', { equipped: { slotId: 'hand', order: 3 } }),
+      ]));
+      await screen.findByRole('group', { name: 'Equipped' });
+      expect(dollBoxes()).toEqual(['Hand 1: Dagger', 'Hand 2: Ash Wand', 'Head: Empty']);
+      expect(screen.getByRole('button', { name: 'Unequip Torch' })).toBeInTheDocument();
+    });
+
+    it('shows the slot name on a tap of an empty box and no text before it', async () => {
+      renderRightPanel({}, stage([]));
+      const doll = await screen.findByRole('group', { name: 'Equipped' });
+      expect(doll).toHaveTextContent('');
+      await userEvent.click(screen.getByRole('button', { name: 'Head: Empty' }));
+      expect(await within(doll).findByRole('status')).toHaveTextContent('Head');
+    });
+
+    it('swaps with the Body in force', async () => {
+      const worn: Body[] = [bodies[0], bodyFixture({ id: 'hound', name: 'Hound', entries: [{ slotId: 'tail' }] })];
+      const world = (pick?: Entity['body']) => ({
+        ...stage([]),
+        world: { items, slots, bodies: worn, locations: [yard, hall], entities: [{ id: 'me', name: 'Me', locations: [], customPersona: true, ...(pick && { body: pick }) } as Entity] },
+      });
+      const first = renderRightPanel({}, world());
+      await screen.findByRole('group', { name: 'Equipped' });
+      expect(dollBoxes()).toEqual(['Hand 1: Empty', 'Hand 2: Empty', 'Head: Empty']);
+      first.unmount();
+      renderRightPanel({}, world({ kind: 'body', id: 'hound' }));
+      await screen.findByRole('group', { name: 'Equipped' });
+      expect(dollBoxes()).toEqual(['Tail: Empty']);
+    });
+
+    describe('with images', () => {
+      const body: Body = { id: 'b', name: 'B', backdrop: { kind: 'plain' }, aspect: 1, entries: [{ slotId: 'hand', boxes: [{ x: 0, y: 0, w: 0.5, h: 0.5 }] }, { slotId: 'head', boxes: [{ x: 0.5, y: 0, w: 0.5, h: 0.25 }] }] };
+      const tab = (imageOf: (c: ItemCopy) => string | undefined): InventoryTabProps => ({
+        ownerName: null, copies: [copy('a', 'halberd', { equipped: { slotId: 'hand', order: 1 } })], lying: [], items, body,
+        slots: [{ slot: slots[0], capacity: 1 }, { slot: slots[1], capacity: 1 }], present: [], locationId: 'yard', disabled: false, resolveText: (t) => t, imageOf, onOps: vi.fn(),
+      });
+      const loaded = (img: Element, width: number, height: number) => {
+        Object.defineProperty(img, 'naturalWidth', { value: width });
+        Object.defineProperty(img, 'naturalHeight', { value: height });
+        fireEvent.load(img);
+      };
+
+      it('draws an All of image in each box, each frame at the image aspect', async () => {
+        renderInGame(<InventoryTab {...tab(() => 'staff.png')} />);
+        const hand = await screen.findByRole('button', { name: 'Hand: Halberd' });
+        const head = screen.getByRole('button', { name: 'Head: Halberd' });
+        loaded(hand.querySelector('img')!, 240, 720);
+        loaded(head.querySelector('img')!, 720, 240);
+        expect(parseFloat(hand.style.width)).toBeCloseTo(100 / 3);
+        expect(hand.style.height).toBe('100%');
+        expect(head.style.width).toBe('100%');
+        // A 2:1 box holds a 3:1 image at two thirds of its height.
+        expect(parseFloat(head.style.height)).toBeCloseTo(200 / 3);
+        expect(hand).not.toHaveTextContent('Halberd');
+      });
+
+      it('shows the name when the image fails', async () => {
+        renderInGame(<InventoryTab {...tab(() => 'gone.png')} />);
+        fireEvent.error((await screen.findByRole('button', { name: 'Hand: Halberd' })).querySelector('img')!);
+        // With no tip left, the frame is a new element.
+        const hand = screen.getByRole('button', { name: 'Hand: Halberd' });
+        expect(hand).toHaveTextContent('Halberd');
+        expect(hand.querySelector('img')).toBeNull();
+        expect(hand.style.width).toBe('100%');
+      });
+    });
   });
 
   it('swaps out the helm equipped longest when the slot is full', async () => {
@@ -127,14 +213,20 @@ describe('RightPanel — Inventory tab', () => {
         entities: [...entities, { id: 'me', name: 'Me', locations: [], customPersona: true, ...(pick && { body: pick }) } as Entity],
       },
     });
-    const owner = () => screen.getByRole('region', { name: /inventory$/ });
 
-    it("lists the Body's slots in its entry order", async () => {
+    it("draws the Body's boxes in its entry order", async () => {
       const headFirst: Body = bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] });
       renderRightPanel({}, withBody([], headFirst));
       await screen.findByText('Equipped');
-      expect(within(owner()).getAllByRole('listitem').filter((li) => li.getAttribute('aria-label')).map((li) => li.getAttribute('aria-label')))
-        .toEqual(['Head', 'Hand']);
+      expect(dollBoxes()).toEqual(['Head: Empty', 'Hand 1: Empty', 'Hand 2: Empty']);
+    });
+
+    it('draws no figure for a Body with no boxes, and carries what it wore', async () => {
+      const bare: Body = bodyFixture({ id: 'b', name: 'B', entries: [] });
+      renderRightPanel({}, withBody([copy('h', 'helm', { equipped: { slotId: 'head', order: 1 } })], bare));
+      await within(await screen.findByRole('region', { name: /inventory$/ })).findByText('Iron Helm');
+      expect(screen.queryByText('Equipped')).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Equipped' })).toBeNull();
     });
 
     it('shows no slots and offers no Equip under None', async () => {
@@ -154,9 +246,11 @@ describe('RightPanel — Inventory tab', () => {
 
   it('unequips an item into the carried list', async () => {
     const h = renderRightPanel({}, stage([copy('h', 'helm', { equipped: { slotId: 'head', order: 1 } })]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Head: Iron Helm' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Unequip Iron Helm' }));
     expect(mine(h.gameplay())[0].equipped).toBeUndefined();
-    expect(within(within(carried()).getByRole('listitem', { name: 'Head' })).getByText('Empty')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Head: Empty' })).toBeInTheDocument();
+    expect(within(carried()).getByRole('button', { name: 'Equip Iron Helm' })).toBeInTheDocument();
   });
 
   it('gives a count of the stack to an entity in scene', async () => {
@@ -313,9 +407,12 @@ describe('RightPanel — Inventory tab', () => {
     const h = renderRightPanel({}, stage([copy('c', 'coin', { quantity: 2 }), copy('h', 'helm', { equipped: { slotId: 'head', order: 1 } })]));
     await screen.findByRole('button', { name: 'Give Coin' });
     act(() => h.gameplay().setIsWaitingForAI(true));
-    const buttons = within(carried()).getAllByRole('button').filter((b) => b.getAttribute('aria-expanded') === null);
-    expect(buttons.length).toBeGreaterThan(0);
-    for (const button of buttons) expect(button).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Give Coin' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Drop Coin' })).toBeDisabled();
+    // A figure's box only reads: its popover's actions are what turn off.
+    await userEvent.click(screen.getByRole('button', { name: 'Head: Iron Helm' }));
+    expect(await screen.findByRole('button', { name: 'Unequip Iron Helm' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
     act(() => h.gameplay().setIsWaitingForAI(false));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Give Coin' })).toBeEnabled());
   });
@@ -329,14 +426,13 @@ describe('RightPanel — Inventory tab', () => {
     expect(h.gameplay().itemCopies).toEqual([copy('c', 'coin', { quantity: 2 })]);
   });
 
-  it('leaves a hidden equipped item out of its slot display and count (Q112)', async () => {
+  it('draws a hidden equipped item in no box (Q112)', async () => {
     renderRightPanel({}, stage([
       copy('x', 'dagger', { visibility: 'hidden', equipped: { slotId: 'hand', order: 1 } }),
       copy('y', 'dagger', { equipped: { slotId: 'hand', order: 2 } }),
     ]));
-    const hand = within(await screen.findByRole('region', { name: 'Your inventory' })).getByRole('listitem', { name: 'Hand' });
-    expect(within(hand).getByText('1 of 2')).toBeInTheDocument();
-    expect(within(hand).getAllByText('Dagger')).toHaveLength(1);
+    await screen.findByRole('group', { name: 'Equipped' });
+    expect(dollBoxes()).toEqual(['Hand 1: Dagger', 'Hand 2: Empty', 'Head: Empty']);
   });
 
   it('turns every button off on a past page', async () => {
@@ -362,6 +458,7 @@ describe('RightPanel — Inventory tab', () => {
 
   it('spends a use on an equipped wand, and turns Use off at zero uses', async () => {
     const h = renderRightPanel({}, stage([copy('w', 'wand', { state: { uses: 1 }, equipped: { slotId: 'hand', order: 1 } })]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Hand 1: Ash Wand' }));
     expect(await screen.findByText('1 of 3 uses')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Use Ash Wand' }));
     expect(mine(h.gameplay())[0].state).toEqual({ uses: 0 });

@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import {
-  boxAt, boxKey, clampAspect, dragMove, dragResize, grownBox, KEY_STEP, MAX_ASPECT, MIN_ASPECT, movedBox, sameBox, snapLines, stackOrder, withBackdropImage, withBox, withOutline,
+  boxAt, boxKey, boxStyle, clampAspect, dragMove, dragResize, grownBox, KEY_STEP, MAX_ASPECT, MIN_ASPECT, movedBox, sameBox, snapLines, stackOrder, withBackdropImage, withBox, withOutline,
   type BoxCorner, type BoxRef, type OutlineKind, type SnappedBox, type SnapReach,
 } from '@/lib/bodyLayout';
 import { readImageAspect } from '@/lib/imageAspect';
@@ -40,10 +40,6 @@ const ASPECT_KEY_STEP = 0.02;
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [-KEY_STEP, 0], ArrowRight: [KEY_STEP, 0], ArrowUp: [0, -KEY_STEP], ArrowDown: [0, KEY_STEP],
 };
-
-const boxStyle = (box: SlotBox, zIndex: number | undefined) => ({
-  left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.w * 100}%`, height: `${box.h * 100}%`, zIndex,
-});
 
 /** A Body's figure: the Backdrop, one movable, sizable box per capacity unit, and a bottom edge that sets the aspect.
  *  A drag shows on a local copy and writes once on release, so it is one History step. */

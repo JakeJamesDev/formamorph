@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { bodyPickEntities, slotsInForce, type TraitBodyPicks } from '@/lib/bodies';
+import { bodyInForce, bodyPickEntities, bodySlots, type TraitBodyPicks } from '@/lib/bodies';
 import { applyInventoryOps, copiesAt, type ItemUse, type InventoryOp, type ItemScriptEvent, type TimedEffectView } from '@/lib/inventory';
 import { usePresence } from '@/lib/usePresence';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
@@ -42,9 +42,10 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   const entities = useMemo(() => bodyPickEntities(cast, worldPersonas, customPersona), [cast, worldPersonas, customPersona]);
   const traitPicks = settle?.traitPicks;
   const basePicks = settle?.basePicks;
-  const bodySlotsOfYou = useMemo(
-    () => slotsInForce({ bodies, entities, slots, traitPicks, basePicks }, YOU, personaRef), [bodies, entities, personaRef, slots, traitPicks, basePicks],
+  const bodyOfYou = useMemo(
+    () => bodyInForce({ bodies, entities, traitPicks, basePicks }, YOU, personaRef), [bodies, entities, personaRef, traitPicks, basePicks],
   );
+  const bodySlotsOfYou = useMemo(() => bodySlots(bodyOfYou, slots), [bodyOfYou, slots]);
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
   const disabled = isWaitingForAI || isViewingPast;
@@ -70,7 +71,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     ownerName: persona?.entity.name ?? null,
     copies: useMemo(() => copiesAt(itemCopies, YOU), [itemCopies]),
     lying: useMemo(() => (locationId ? copiesAt(itemCopies, { kind: 'location', id: locationId }) : NONE), [itemCopies, locationId]),
-    items, ...(runtimeItems?.length && { runtimeItems }), slots: bodySlotsOfYou, present, locationId,
+    items, ...(runtimeItems?.length && { runtimeItems }), body: bodyOfYou, slots: bodySlotsOfYou, present, locationId,
     locationName: currentLocation ? resolveText(currentLocation.name) : null, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
   };
 }

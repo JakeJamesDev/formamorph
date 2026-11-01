@@ -263,8 +263,9 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 <!-- route: gameViewer.inventory -->
 
 1. In the right panel, open the **Inventory** tab. On mobile, open **Status** first.
-2. **Equipped** lists each slot with what you wear there. **Carried** lists the rest. A second card, named for your location, lists the items lying there.
-3. Use the buttons on an item's row:
+2. **Equipped** draws a figure with what you wear on it. **Carried** lists the rest below it. A second card, named for your location, lists the items lying there.
+3. Select a filled box on the figure to see the item's row. Hover over or select an empty box to see its slot's name.
+4. Use the buttons on an item's row:
 
 | Button | What it does |
 |---|---|
@@ -283,7 +284,8 @@ Changes apply at once, and the next turn's narration sees them.
 - An item with uses shows how many are left under its name.
 - An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack.
 - An unidentified item shows only its unidentified name and description until the story reveals what it is.
-- Items with art show a small image on their row.
+- An item with an image shows it small on its row and larger on the figure. An item with no image shows its name there.
+- An item that takes two slots shows in both boxes. When a slot holds several items, the rest move up after you take one off.
 - The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it.
 - On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
 

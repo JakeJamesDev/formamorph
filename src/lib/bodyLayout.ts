@@ -96,6 +96,25 @@ export function stackOrder(entries: readonly BodyEntry[]): Map<string, number> {
   return new Map(sorted.map(({ key }, index) => [key, index + 1]));
 }
 
+/** A box's place on its Backdrop, as CSS. */
+export const boxStyle = (box: SlotBox, zIndex: number | undefined) => ({
+  left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.w * 100}%`, height: `${box.h * 100}%`, zIndex,
+});
+
+/** What each box holds, by {@link boxKey}: a slot's occupants fill its boxes in the order given (Q20, Q21). */
+export function fillBoxes<T>(entries: readonly BodyEntry[], occupantsOf: (slotId: string) => readonly T[]): Map<string, T> {
+  return new Map(entries.flatMap((entry) => {
+    const occupants = occupantsOf(entry.slotId);
+    return entry.boxes.slice(0, occupants.length).map((_, unit) => [boxKey({ slotId: entry.slotId, unit }), occupants[unit]] as const);
+  }));
+}
+
+/** An image's frame inside its box at the image's own aspect, as fractions of the box (Q7). `aspect` is the Backdrop's. */
+export function frameInBox(box: SlotBox, aspect: number, imageAspect: number): { w: number; h: number } {
+  const boxAspect = (box.w * aspect) / box.h;
+  return imageAspect >= boxAspect ? { w: 1, h: boxAspect / imageAspect } : { w: imageAspect / boxAspect, h: 1 };
+}
+
 /** The box moved by a delta, kept inside the Backdrop. */
 export const movedBox = (box: SlotBox, dx: number, dy: number): SlotBox => ({
   ...box, x: clamp(box.x + dx, 0, 1 - box.w), y: clamp(box.y + dy, 0, 1 - box.h),

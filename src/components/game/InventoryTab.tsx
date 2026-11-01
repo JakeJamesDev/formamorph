@@ -9,11 +9,13 @@ import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
+import { fillBoxes } from '@/lib/bodyLayout';
 import { byEquipOrder, copyFace, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
-import type { Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import { BodyDoll } from './BodyDoll';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
 export interface InventoryTabProps {
@@ -26,6 +28,8 @@ export interface InventoryTabProps {
   items: readonly Item[];
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: readonly RuntimeItem[];
+  /** The played Persona's Body in force. Absent = no Body. */
+  body?: Body;
   /** The played Persona's Body slots, in entry order. Empty = no Body. */
   slots: readonly BodySlot[];
   /** The In Scene entities Give can pick, each under its label (Q59). */
@@ -200,10 +204,10 @@ function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: 
   );
 }
 
-/** The game panel's Inventory tab: the played Persona's slots with their equipped items, then carried items,
+/** The game panel's Inventory tab: the played Persona's figure with their equipped items, then carried items,
  *  then a card for what lies at the location. */
 export function InventoryTab({
-  ownerName, copies, lying, items, runtimeItems = [], slots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps,
+  ownerName, copies, lying, items, runtimeItems = [], body, slots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
@@ -217,10 +221,13 @@ export function InventoryTab({
       ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
   };
   const occupies = (c: ItemCopy, slotId: string) => occupiedSlots(c, itemOf(c)).includes(slotId);
-  const inBody = (c: ItemCopy) => slots.some((s) => occupies(c, s.slot.id));
-  const equipped = shown.filter(inBody).sort(byEquipOrder);
-  // A copy equipped in a slot the Body lacks shows as carried, so it never hides (Q35).
-  const carried = shown.filter((c) => !inBody(c));
+  const equipped = shown.filter((c) => slots.some((s) => occupies(c, s.slot.id))).sort(byEquipOrder);
+  // An entry whose slot is gone draws nothing.
+  const entries = body?.entries.filter((e) => e.boxes.length > 0 && slots.some((s) => s.slot.id === e.slotId)) ?? [];
+  const inBoxes = fillBoxes(entries, (slotId) => equipped.filter((c) => occupies(c, slotId)));
+  const boxed = new Set([...inBoxes.values()].map((c) => c.id));
+  // A copy with no box to draw in shows as carried, so it never hides (Q35).
+  const carried = shown.filter((c) => !boxed.has(c.id));
   const lyingHere = lying.filter((c) => c.visibility === 'visible');
   const here: ItemCopyWhere | null = locationId ? { kind: 'location', id: locationId } : null;
 
@@ -263,38 +270,27 @@ export function InventoryTab({
       <PanelOwnerCard
         role="region" aria-label={`${ownerName ?? 'Your'} inventory`} name={ownerName ?? 'You'} entity you={ownerName !== null}
       >
-        {slots.length > 0 && (
+        {body && entries.length > 0 && (
           <>
             <PanelSubheader>Equipped</PanelSubheader>
-            <ul className="space-y-0.5">
-              {slots.map(({ slot, capacity }) => {
-                // The count shows visible items only: a hidden equipped one takes capacity unseen (Q112).
-                const inSlot = equipped.filter((c) => occupies(c, slot.id));
-                return (
-                  <li key={slot.id} className="flex gap-2 rounded-md bg-background/40 px-1 py-0.5" aria-label={slot.name}>
-                    <div className="w-20 shrink-0 py-1.5 pl-1">
-                      <Meta as="p" className="truncate font-medium">{resolveText(slot.name)}</Meta>
-                      {capacity > 1 && <Meta as="p">{inSlot.length} of {capacity}</Meta>}
-                    </div>
-                    {inSlot.length === 0 ? (
-                      <p className="flex-1 py-1.5 text-label text-muted-foreground">Empty</p>
-                    ) : (
-                      <ul className="min-w-0 flex-1">
-                        {inSlot.map((copy) => row(copy, (
-                          <div className="flex shrink-0 items-center">
-                            <UseButton copy={copy} item={itemOf(copy)} name={nameOf(copy)} disabled={disabled} onOps={onOps} />
-                            <ItemRowButton
-                              label={`Unequip ${nameOf(copy)}`} icon={Undo2} disabled={disabled}
-                              onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
-                            />
-                          </div>
-                        )))}
-                      </ul>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            <BodyDoll
+              body={{ ...body, entries }}
+              slotName={(slotId) => resolveText(slots.find((s) => s.slot.id === slotId)?.slot.name ?? '')}
+              fills={new Map([...inBoxes].map(([key, copy]) => [key, {
+                id: copy.id,
+                name: nameOf(copy),
+                image: imageOf?.(copy),
+                detail: row(copy, (
+                  <div className="flex shrink-0 items-center">
+                    <UseButton copy={copy} item={itemOf(copy)} name={nameOf(copy)} disabled={disabled} onOps={onOps} />
+                    <ItemRowButton
+                      label={`Unequip ${nameOf(copy)}`} icon={Undo2} disabled={disabled}
+                      onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
+                    />
+                  </div>
+                )),
+              }]))}
+            />
           </>
         )}
         <PanelSubheader>Carried</PanelSubheader>
