@@ -2,7 +2,7 @@
  * Bodies: which slots each owner equips into, with each slot's capacity. `bodyInForce` is the one resolver
  * every slot reader takes.
  */
-import { parseAspect, parseBackdrop, parseEntryLayout } from '@/lib/bodyLayout';
+import { boxLabel, parseAspect, parseBackdrop, parseEntryLayout, type BoxRef } from '@/lib/bodyLayout';
 import { itemsInSlot, occupiedSlots, ruleGaps } from '@/lib/items';
 import { usedByText } from '@/lib/usedByText';
 import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, SlotRule, Trait, TraitBodyRow } from '@/types';
@@ -36,6 +36,12 @@ export const slotOwnerKey = (owner: SlotOwner): string => (owner.kind === 'you' 
 export const bodyLabel = (body: Body): string => body.name || 'Unnamed Body';
 
 export const entryCapacity = (entry: BodyEntry): number => entry.capacity ?? 1;
+
+/** A Slot Box's editor label under its entry's capacity. */
+export const bodyBoxLabel = (body: Body, slotName: string, { slotId, unit }: BoxRef): string => {
+  const entry = body.entries.find((e) => e.slotId === slotId);
+  return boxLabel(slotName, entry ? entryCapacity(entry) : 1, unit);
+};
 
 /** The Body a pick names: the Default when absent or when its Body is gone (Q33), none for None. */
 const bodyOfPick = (bodies: readonly Body[], pick: BodyPick | undefined): Body | undefined => {
@@ -233,8 +239,8 @@ export function bodyMisfits(
   const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
   const worn = copies.flatMap((copy) => (copy.equipped && copy.where.kind !== 'location' ? [{ copy, owner: copy.where, stored: copy.equipped.slotId }] : []));
   const used = new Map<string, number>();
-  const unit = (owner: SlotOwner, slotId: string) => `${slotOwnerKey(owner)}|${slotId}`;
-  const count = (owner: SlotOwner, slotId: string, by: number) => used.set(unit(owner, slotId), (used.get(unit(owner, slotId)) ?? 0) + by);
+  const ownerSlotKey = (owner: SlotOwner, slotId: string) => `${slotOwnerKey(owner)}|${slotId}`;
+  const count = (owner: SlotOwner, slotId: string, by: number) => used.set(ownerSlotKey(owner, slotId), (used.get(ownerSlotKey(owner, slotId)) ?? 0) + by);
   for (const { copy, owner } of worn) for (const slotId of occupiedSlots(copy, itemOf(copy))) count(owner, slotId, 1);
   const bodySlotsOf = new Map<string, readonly BodySlot[]>();
   const capacityOf = (owner: SlotOwner, slotId: string) => {
@@ -247,7 +253,7 @@ export function bodyMisfits(
     const item = itemOf(copy);
     const taken = occupiedSlots(copy, item);
     const allowed = !item || item.slotRule?.mode === 'all' || !!item.slotRule?.slotIds.includes(stored);
-    if (allowed && taken.every((slotId) => (used.get(unit(owner, slotId)) ?? 0) <= capacityOf(owner, slotId))) continue;
+    if (allowed && taken.every((slotId) => (used.get(ownerSlotKey(owner, slotId)) ?? 0) <= capacityOf(owner, slotId))) continue;
     out.push(copy);
     for (const slotId of taken) count(owner, slotId, -1);
   }

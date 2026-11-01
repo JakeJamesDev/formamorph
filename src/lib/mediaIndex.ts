@@ -177,7 +177,7 @@ function dictionaryMedia(w: MediaWorld): MediaItem[] {
 /** The Bodies whose Backdrop is a Custom Image, each as one Backdrop image. */
 function bodyMedia(w: MediaWorld): MediaItem[] {
   return (w.bodies ?? []).flatMap((b: Body) => {
-    // A stored world file may hold a Body that predates its Backdrop.
+    // A stored world file may hold a Body with no Backdrop.
     const backdrop = b.backdrop;
     if (backdrop?.kind !== 'image' || !backdrop.image?.data) return [];
     const parent: MediaParent = { kind: 'body', id: b.id, name: bodyLabel(b) };

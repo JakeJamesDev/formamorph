@@ -8,7 +8,7 @@ import type { BodyEntry, SlotBox } from '@/types';
 
 const box = (x: number, y: number, w: number, h: number): SlotBox => ({ x, y, w, h });
 const entry = (slotId: string, ...boxes: SlotBox[]): BodyEntry => (boxes.length > 1 ? { slotId, capacity: boxes.length, boxes } : { slotId, boxes });
-const reach = (lines: { x: number[]; y: number[] }, within = 0.02) => ({ lines, x: within, y: within });
+const reach = (lines: { x: number[]; y: number[] }, within = 0.02) => ({ lines, reachX: within, reachY: within });
 
 describe('new boxes', () => {
   it('centers a box that is square on screen at any aspect', () => {

@@ -5,6 +5,7 @@
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { isUnidentified, sameState, sameWhere, stateWord, usesLeft } from '@/lib/items';
+import { escapeRegExp } from '@/lib/utils';
 import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
@@ -264,12 +265,13 @@ export function applyInventoryPass(
     const ref = copy.item;
     const rule = ref.kind === 'item' ? authored.find((a) => a.item.id === ref.itemId)?.item.slotRule : undefined;
     const own = slots.filter((s) => rule?.slotIds.includes(s.id)).map((s) => itemNameKey(s.name)).sort((a, b) => b.length - a.length);
-    // Longest first, so `hand` never counts inside `off hand`.
+    // Longest first, so `hand` never counts inside `off hand`. Whole names only, so `off handle` holds no `off hand`.
     let rest = key;
     let joined = 0;
     for (const slotName of own) {
-      if (!rest.includes(slotName)) continue;
-      rest = rest.replace(slotName, ' ');
+      const whole = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(slotName)}(?![\\p{L}\\p{N}])`, 'u');
+      if (!whole.test(rest)) continue;
+      rest = rest.replace(whole, ' ');
       joined += 1;
     }
     if (joined >= 2) return undefined;
