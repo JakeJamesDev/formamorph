@@ -1657,6 +1657,8 @@ export interface StatCodeRunOptions {
   /** A user Tool's run: the surface without writes (Q24, Q44). Every field is read-only, a write is listed in
    *  `readOnlyWrites`, and no verb, `self`, `owner`, `discover` or `player` exists. */
   readOnly?: boolean;
+  /** The four 32-bit words that seed `Math.random` for the run. Absent, they come from `crypto.getRandomValues`. */
+  randomSeed?: readonly number[];
   /** The world's items with their Item Copies in play. Absent, `items` is empty. */
   items?: readonly SandboxItem[];
   /** An item script's event: `self` reads the item's entry and the event. */
@@ -2053,7 +2055,7 @@ export const executeStatCode = async (
   {
     clock, readings, turn = NO_TURN, choicesWritable = false, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner,
     dictionaries = [], resolveEntryValue, narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
-    openCast = false, memories = [], notes = '', readOnly = false, items = [], itemEvent, bodies = [],
+    openCast = false, memories = [], notes = '', readOnly = false, items = [], itemEvent, bodies = [], randomSeed,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -2132,7 +2134,7 @@ export const executeStatCode = async (
     // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
     // the entities' traits.
     const program = [
-      ...(readOnly ? [reseedRandom([...crypto.getRandomValues(new Uint32Array(4))])] : []),
+      reseedRandom(randomSeed ?? [...crypto.getRandomValues(new Uint32Array(4))]),
       `const ${STRINGIFY} = JSON.stringify;`,
       HOST_READ_PRELUDE,
       `const ${SELF_ASSIGNED} = [];`,

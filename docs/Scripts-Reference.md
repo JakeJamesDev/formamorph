@@ -244,6 +244,8 @@ if (roll === 20) stats.Luck.value += 1;
 return roll;
 ```
 
+Each run draws its own random numbers, so two scripts in one turn never repeat each other's `Math.random()`.
+
 An entity's stat can set a global stat too. This code runs on a stat of The Creature:
 
 ```javascript

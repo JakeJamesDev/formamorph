@@ -1,6 +1,6 @@
 # 14: Seed Math.random on Every Run
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,7 +15,13 @@ Spec: Q11, Implementation Decisions "Random seed". Evidence: docs-sweep ticket 1
 
 ## Acceptance criteria
 
-- [ ] A test runs a non-Tool script twice with one injected seed and gets the same draw, then with two seeds and gets different draws: it fails today, then passes
-- [ ] Tool runs keep their fresh seed (existing tests green)
-- [ ] Scripts-Reference says each run draws its own random numbers, beside the random examples; the docs tests are green
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A test runs a non-Tool script twice with one injected seed and gets the same draw, then with two seeds and gets different draws: it fails today, then passes (`statCodeExecutor.randomSeed.test.ts`; red with the old `readOnly` condition restored, green with the fix)
+- [x] Tool runs keep their fresh seed (existing tests green) (Tool-run seed test; affected-tests gate green)
+- [x] Scripts-Reference says each run draws its own random numbers, beside the random examples; the docs tests are green (docs tests run in prepare's gates)
+- [x] A changelog fragment under Minor / Fixed / 👤 (`docs-internal/changelog.d/docs-sweep-bugs-14.md`)
+
+## Landed
+
+**Not verified**: none.
+
+**For you**: none.
