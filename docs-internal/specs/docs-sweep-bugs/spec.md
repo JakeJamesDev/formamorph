@@ -1,7 +1,7 @@
 # Spec: Docs Sweep Bugs
 
 Status: ready-for-agent
-Status note: Reopened 2026-11-01 for tickets 27–29, from the error audit after the second close. Tickets 01–26 done; second close at 324c887ff.
+Status note: Reopened 2026-11-01 for tickets 27–30, from the error audit after the second close. Tickets 01–26 done; second close at 324c887ff.
 Spec session: docs-sweep-bugs — spec
 
 ## Problem Statement
@@ -44,6 +44,7 @@ Settled with the user on 2026-11-01.
 | Q22 | A failed response's `errors` array of `{ msg }` gives the reason when `error` and `message` give none. Several reasons show on one line (ticket 27) |
 | Q23 | One skipped import file shows its name and cause. Several keep the count, and View Details lists each file and cause. Written text shows on the line; a raw parser or storage message stays in View Details (tickets 28, 29) |
 | Q24 | A declined duplicate avatar is not a skipped file (ticket 29) |
+| Q25 | A failed autosave drops the claim that manual saves still work and carries its cause. Full storage says so; any other failure keeps the cause in View Details (ticket 30) |
 
 ## The bugs
 
