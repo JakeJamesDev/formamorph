@@ -1,10 +1,11 @@
 // Lists the file revisions that scripts/genBundledFingerprints.ts fingerprints.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
+import pins from './pinnedCommits.json';
 
 export const WORLDS_DIR = 'src/defaultworlds';
 /** The last commit before the ship-time Downscale. Builds up to it bundled the source files. */
-export const SHIPPED_SINCE = 'cd6fe508c480fa5921f48dd65befc892ac73fb4b';
+export const SHIPPED_SINCE = pins.shippedSince;
 
 /** One file revision: where it came from, and a reader for its bytes. `blob` is absent for the working tree. */
 export interface Revision {

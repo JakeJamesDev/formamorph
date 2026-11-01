@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process';
+import pins from '../../scripts/pinnedCommits.json';
 
-/** The last commit before the bundled worlds refresh changed a world file. CI fetches it into its shallow clone. */
-export const PRE_REFRESH_SHA = 'ace2e02040d6e94e0367beae64e72bc0aa65bdef';
+/** The last commit before the bundled worlds refresh changed a world file. */
+export const PRE_REFRESH_SHA = pins.preRefresh;
 
-/** The last commit before the bundled worlds expansion changed a world file. CI fetches it into its shallow clone. */
-export const PRE_EXPANSION_SHA = '2f45261a55abe56fc50148c08097301b57d8b05c';
+/** The last commit before the bundled worlds expansion changed a world file. */
+export const PRE_EXPANSION_SHA = pins.preExpansion;
 
 /**
  * A bundled world's file as it stood at a commit, parsed. Throws when the commit is missing, so a clone without
