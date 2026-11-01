@@ -11,7 +11,7 @@ const SALES_WORDS = /\b(upgrade|plan|purchase|subscri\w*|buy)\b/i;
 
 describe('hosted preset copy reads as a donation', () => {
   it.each(STATES)('%s names no plan, purchase or upgrade', (state) => {
-    const copy = hostedStateCopy(state, '2026-12-01T00:00:00.000Z');
+    const copy = hostedStateCopy(state, '2026-11-09T00:00:00.000Z');
     const lines = copy ? [copy.reason, copy.action?.label, copy.extra?.label] : [];
 
     for (const line of lines) expect(line ?? '').not.toMatch(SALES_WORDS);

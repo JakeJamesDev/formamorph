@@ -151,7 +151,7 @@ function TierRows({ tier, value, onChange }: { tier: SupporterTier; value: Hoste
         <NumberField id={`hosted-${tier}-window`} label={`${name} Window`} value={current.window || null}
           onChange={(window) => onChange({ ...current, window: window ?? 0 })} />
       </Row>
-      <Row label={`${name} Budget`} htmlFor={`hosted-${tier}-budget`} hint="Dollars per month">
+      <Row label={`${name} Budget`} htmlFor={`hosted-${tier}-budget`} hint="Dollars per week">
         <NumberField id={`hosted-${tier}-budget`} label={`${name} Budget`} value={value ? current.budget : null} step={0.01}
           onChange={(budget) => onChange({ ...current, budget: budget ?? 0 })} />
       </Row>
@@ -335,7 +335,7 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
           label="Warning Percents"
           htmlFor="hosted-warn"
           hint="Whole percents, lowest first, separated by commas"
-          info={<HintInfo>Each percent of a tier’s allowance shows one notice per month.</HintInfo>}
+          info={<HintInfo>Only the highest percent raises a notice, once per week.</HintInfo>}
         >
           <Input
             id="hosted-warn"

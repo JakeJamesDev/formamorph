@@ -198,7 +198,7 @@ export class HostedSession {
     return this.shown;
   }
 
-  /** True once per reset date, so the exhausted notice shows once per month. */
+  /** True once per reset date, so the exhausted notice shows once per week. */
   claimExhaustedNotice(): boolean {
     const key = this.hosted?.resetAt ?? 'unknown';
     if (this.exhaustedShownFor === key) return false;
@@ -208,7 +208,7 @@ export class HostedSession {
 
   /**
    * Marks a warning as shown and acknowledges it, and every lower one, on the server so no device shows it
-   * again this month. A refusal of the ack keeps the warning hidden for this session only.
+   * again this week. A refusal of the ack keeps the warning hidden for this session only.
    */
   async acknowledgeWarning(threshold: number): Promise<void> {
     const token = this.credential();

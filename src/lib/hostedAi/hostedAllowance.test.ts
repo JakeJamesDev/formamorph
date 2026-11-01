@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HostedSession } from './hostedSession';
 import { hostedAckUrl, HOSTED_STATE_URL } from './hostedUrls';
 import {
-  formatResetDate, HOSTED_DEVICE_KEY, pendingWarning, readHostedDevice, shouldSwitchOnce, writeHostedDevice,
+  HOSTED_DEVICE_KEY, pendingWarning, readHostedDevice, shouldSwitchOnce, writeHostedDevice,
 } from './hostedAllowance';
 import { hostedStateCopy, hostedUsageCopy, hostedWarningText } from './hostedCopy';
 import { parseHostedState, type HostedState } from './hostedState';
@@ -11,7 +11,7 @@ import { parseHostedState, type HostedState } from './hostedState';
 const BASE = {
   tier: 'supporter_plus', state: 'ready', window: 30000, maxTokens: 900, tokenMargin: 1000,
   model: { id: 'entry-2', capabilities: {} },
-  percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [] as number[], warnThresholds: [75, 90] as unknown,
+  percentUsed: 20, turnsLeft: 50, resetAt: '2026-11-09T00:00:00.000Z', acknowledged: [] as number[], warnThresholds: [75, 90] as unknown,
 };
 const hosted = (patch: Partial<typeof BASE> = {}): HostedState => parseHostedState({ ...BASE, ...patch }) as HostedState;
 
@@ -20,18 +20,19 @@ describe('pendingWarning', () => {
     expect(pendingWarning(hosted({ percentUsed: 74 }))).toBeNull();
   });
 
-  it('names the highest crossed threshold, so one notice shows when both are crossed', () => {
-    expect(pendingWarning(hosted({ percentUsed: 76 }))).toBe(75);
+  it('names only the highest threshold, so a lower one raises no notice', () => {
+    expect(pendingWarning(hosted({ percentUsed: 76 }))).toBeNull();
+    expect(pendingWarning(hosted({ percentUsed: 89 }))).toBeNull();
     expect(pendingWarning(hosted({ percentUsed: 93 }))).toBe(90);
   });
 
-  it('skips a threshold the account acknowledged, and shows the next one up', () => {
-    expect(pendingWarning(hosted({ percentUsed: 80, acknowledged: [75] }))).toBeNull();
+  it('skips the highest threshold once the account acknowledged it', () => {
     expect(pendingWarning(hosted({ percentUsed: 92, acknowledged: [75] }))).toBe(90);
+    expect(pendingWarning(hosted({ percentUsed: 92, acknowledged: [75, 90] }))).toBeNull();
   });
 
-  it('skips a threshold already shown in this session', () => {
-    expect(pendingWarning(hosted({ percentUsed: 80 }), new Set([75]))).toBeNull();
+  it('skips the highest threshold already shown in this session', () => {
+    expect(pendingWarning(hosted({ percentUsed: 92 }), new Set([90]))).toBeNull();
   });
 
   it('leaves the cap to the exhausted notice', () => {
@@ -40,7 +41,7 @@ describe('pendingWarning', () => {
 
   it('fires at the reported thresholds, not a fixed pair', () => {
     const custom = { warnThresholds: [50, 80] };
-    expect(pendingWarning(hosted({ percentUsed: 60, ...custom }))).toBe(50);
+    expect(pendingWarning(hosted({ percentUsed: 60, ...custom }))).toBeNull();
     expect(pendingWarning(hosted({ percentUsed: 85, ...custom }))).toBe(80);
     expect(pendingWarning(hosted({ percentUsed: 80, ...custom, acknowledged: [50] }))).toBe(80);
     expect(pendingWarning(hosted({ percentUsed: 40, ...custom }))).toBeNull();
@@ -92,14 +93,11 @@ describe('the device record', () => {
 });
 
 describe('allowance copy', () => {
-  it('names the reset date in UTC', () => {
-    expect(formatResetDate('2026-11-01T00:00:00.000Z')).toBe('November 1');
-    expect(formatResetDate('garbage')).toBeNull();
-  });
+  beforeAll(() => { process.env.TZ = 'America/Los_Angeles'; });
 
-  it('labels turns left as "about" and shows the tier, percent and date', () => {
+  it('labels turns left as "about" and shows the tier, percent and local reset time', () => {
     const copy = hostedUsageCopy(hosted({ percentUsed: 32.4, turnsLeft: 41.9 }), 'Supporter+');
-    expect(copy).toEqual({ tier: 'Supporter+', used: '32% used', turnsLeft: 'About 41 turns left', resets: 'Resets November 1' });
+    expect(copy).toEqual({ tier: 'Supporter+', used: '32% used', turnsLeft: 'About 41 turns left', resets: 'Resets Sunday at 4:00 PM' });
   });
 
   it('shows nothing before usage is known', () => {
@@ -107,14 +105,14 @@ describe('allowance copy', () => {
   });
 
   it('puts the reset date in the exhausted reason, with a switch back and an upgrade', () => {
-    const copy = hostedStateCopy('exhausted', '2026-11-01T00:00:00.000Z');
-    expect(copy?.reason).toContain('November 1');
+    const copy = hostedStateCopy('exhausted', '2026-11-09T00:00:00.000Z');
+    expect(copy?.reason).toBe("You've used this week's Formamorph AI allowance. It comes back Sunday at 4:00 PM.");
     expect(copy?.action?.kind).toBe('switchBack');
     expect(copy?.extra?.kind).toBe('patreon');
   });
 
-  it('writes the threshold notice with the reset date', () => {
-    expect(hostedWarningText(75, hosted())).toBe("You've used 75% of this month's Formamorph AI allowance. It resets on November 1.");
+  it('writes the threshold notice with the local reset time', () => {
+    expect(hostedWarningText(75, hosted())).toBe("You've used 75% of this week's Formamorph AI allowance. It resets Sunday at 4:00 PM.");
   });
 });
 

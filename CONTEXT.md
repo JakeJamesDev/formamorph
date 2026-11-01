@@ -247,7 +247,7 @@ The tie between one Formamorph account and one Patreon user, made in the account
 _Avoid_: Patreon login, connection (the AI endpoint word), integration
 
 **Formamorph AI**:
-The built-in endpoint preset for Supporters, next to the Demo AI. Turns go through Formamorph's server to an AI provider, against a monthly allowance. Its model, context window and output limit come from the Hosted state and can't be edited. It is never stored and never probed.
+The built-in endpoint preset for Supporters, next to the Demo AI. Turns go through Formamorph's server to an AI provider, against a weekly allowance. Its model, context window and output limit come from the Hosted state and can't be edited. It is never stored and never probed.
 _Avoid_: hosted tier (in copy), premium AI, the proxy
 
 **Hosted state**:
@@ -255,7 +255,7 @@ What Formamorph's server reports about one account's Formamorph AI: its tier, it
 _Avoid_: usage, quota, entitlement (the Patreon word)
 
 **Spend subject**:
-What Formamorph AI spend is counted against: the Patreon membership for a pledge, or the grant for a staff grant. It is not the account, so relinking Patreon or making a new account keeps the month's spend.
+What Formamorph AI spend is counted against: the Patreon membership for a pledge, or the grant for a staff grant. It is not the account, so relinking Patreon or making a new account keeps the week's spend.
 _Avoid_: account (for spend), payer, customer
 
 **Permissive License**:

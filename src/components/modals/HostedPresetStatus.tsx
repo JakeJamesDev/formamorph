@@ -15,9 +15,9 @@ import { useTierName } from '@/lib/tierNames';
 
 /** The dev route's canned usage, so `fixture=fai-<state>` shows the allowance lines without a server. */
 const DEV_SAMPLE: Partial<Record<HostedPresetState, Pick<HostedState, 'tier' | 'percentUsed' | 'turnsLeft' | 'resetAt'>>> = {
-  ready: { tier: 'supporter_plus', percentUsed: 32, turnsLeft: 41, resetAt: '2026-12-01T00:00:00.000Z' },
-  warned: { tier: 'supporter_plus', percentUsed: 78, turnsLeft: 9, resetAt: '2026-12-01T00:00:00.000Z' },
-  exhausted: { tier: 'supporter_plus', percentUsed: 100, turnsLeft: 0, resetAt: '2026-12-01T00:00:00.000Z' },
+  ready: { tier: 'supporter_plus', percentUsed: 32, turnsLeft: 41, resetAt: '2026-11-09T00:00:00.000Z' },
+  warned: { tier: 'supporter_plus', percentUsed: 78, turnsLeft: 9, resetAt: '2026-11-09T00:00:00.000Z' },
+  exhausted: { tier: 'supporter_plus', percentUsed: 100, turnsLeft: 0, resetAt: '2026-11-09T00:00:00.000Z' },
 };
 
 /** Formamorph AI's state in place of the connection fields: its allowance, its reason and its actions. `state` overrides the live one. */

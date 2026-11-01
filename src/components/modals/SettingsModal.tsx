@@ -264,7 +264,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const kind = devRoute?.fixture?.startsWith('fai-notice-') ? devRoute.fixture.slice(11) : '';
-    const sample = { resetAt: '2026-12-01T00:00:00.000Z' } as HostedState;
+    const sample = { resetAt: '2026-11-09T00:00:00.000Z' } as HostedState;
     if (kind === '75' || kind === '90') showWarningNotice(Number(kind), sample);
     if (kind === 'exhausted') showExhaustedNotice(sample, () => {});
   }, [devRoute]);
