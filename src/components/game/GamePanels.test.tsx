@@ -40,15 +40,15 @@ const TURNS = [
 
 const STATS = [statFixture('Vigor', 50)];
 
-/** The latest page's partial re-generates, including the stats action in its menu. */
+/** The latest page's partial regenerates, including the stats action in its menu. */
 const partialRegens = () => {
-  const choices = screen.getByRole('button', { name: 'Re-generate Choices' });
+  const choices = screen.getByRole('button', { name: 'Regenerate Choices' });
   fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
-  return { stats: screen.getByRole('menuitem', { name: 'Re-generate Stats' }), choices };
+  return { stats: screen.getByRole('menuitem', { name: 'Regenerate Stats' }), choices };
 };
 
-describe('MiddlePanel — partial re-generate against a scene render', () => {
-  it('holds both partial re-generates while a scene image is being drawn', () => {
+describe('MiddlePanel — partial regenerate against a scene render', () => {
+  it('holds both partial regenerates while a scene image is being drawn', () => {
     const view = renderMiddlePanel({ sceneImageJob: 'image' }, { turns: TURNS, stats: STATS });
     const items = partialRegens();
 
@@ -61,7 +61,7 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
     expect(view.props.handleRegenerateStats).not.toHaveBeenCalled();
     expect(view.props.handleRegenerateChoices).not.toHaveBeenCalled();
     // These two keep the turn, so the picture being drawn is still the right one for it — holding them must
-    // not mean killing the render, the way rollback and a full re-generate do.
+    // not mean killing the render, the way rollback and a full regenerate do.
     expect(view.props.onCancelSceneImage).not.toHaveBeenCalled();
     expect(view.props.abortGeneration).not.toHaveBeenCalled();
   });
@@ -73,23 +73,23 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
     expect(items.choices).toBeDisabled();
   });
 
-  it('offers only the partial re-generates their aux requests are switched on for', () => {
+  it('offers only the partial regenerates their aux requests are switched on for', () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: (s) => s.setChoicesEnabled(false) });
 
-    // Re-generating choices that are switched off would fire a request whose result nothing displays.
-    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    // Regenerating choices that are switched off would fire a request whose result nothing displays.
+    expect(screen.queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
     fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
-    expect(screen.getByRole('menuitem', { name: 'Re-generate Stats' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Regenerate Stats' })).toBeInTheDocument();
   });
 
-  it('offers neither when neither is available, and keeps the full re-generate', () => {
+  it('offers neither when neither is available, and keeps the full regenerate', () => {
     // No stats in this world and choices off.
     renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setChoicesEnabled(false) });
-    expect(screen.queryByRole('button', { name: 'Re-generate Stats' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Regenerate Stats' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Regenerate Narration' })).toBeInTheDocument();
     fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
-    expect(screen.queryByRole('menuitem', { name: 'Re-generate Stats' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Regenerate Stats' })).toBeNull();
   });
 
   it('offers them again with nothing in flight', () => {

@@ -19,7 +19,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Direction](How-to-Play#how-to-direct-the-story) | Text in `[square brackets]` in your action. The AI reads it as the author's instruction, not as something you do. |
 | [Narration](How-to-Play#the-game-screen) | The story text the AI writes each turn |
 | [Narration Layout](How-to-Play#narration-layout) | **Pages** shows one turn at a time. **Chat** shows every turn in one list. |
-| [Re-generate](How-to-Play#how-to-re-generate-a-turn) | Asks the AI to write the latest turn again from the same action |
+| [Regenerate](How-to-Play#how-to-regenerate-a-turn) | Asks the AI to write the latest turn again from the same action |
 | [Rewind](How-to-Play#how-to-rewind-to-an-earlier-turn) | Goes back to an earlier turn and removes every later turn. You can't undo it. |
 | [Notes](How-to-Play#notes) | Your standing facts for the AI. It reads them with every action. |
 | [AI Context Inspector](How-to-Play#the-ai-context-inspector) | Shows the exact text the game sent to the AI each turn, and what came back |

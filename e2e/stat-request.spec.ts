@@ -55,10 +55,10 @@ test(`formatted stat names update, keep pins live, and report skipped replies ($
   await expect(page.getByText(/85\s*\/\s*120/).first()).toBeVisible();
   await expect(page.getByText('=g=Health==', { exact: true }).first()).toBeVisible();
   if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
-  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
-  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await page.getByRole('button', { name: 'More regenerate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate Stats', exact: true }).click();
   await expect.poll(() => statPrompts.length).toBe(2);
-  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'More regenerate options', exact: true })).toBeEnabled();
   if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
   await expect(page.getByText(/85\s*\/\s*120/).first()).toBeVisible();
   expect(statPrompts[1]).toContain('**Health:** 85/120');

@@ -33,7 +33,7 @@ export function removeSceneImage(map: SceneImageMap, turnId: string, index: numb
 }
 
 /**
- * Forget images whose turn is no longer in the history — a rolled-back or re-generated turn. Living in the
+ * Forget images whose turn is no longer in the history — a rolled-back or regenerated turn. Living in the
  * message used to make this free; keyed beside it, it has to be swept explicitly or the map grows forever
  * holding pixels for scenes that no longer exist.
  */

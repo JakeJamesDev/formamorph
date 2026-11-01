@@ -31,7 +31,7 @@ export function addScriptPins(notes: readonly MemoryNote[], turnId: string, line
   return [...notes, ...lines.map((text, index) => ({ id: pinId(turnId, next + index), text, anchorTurn }))];
 }
 
-/** `notes` without the pins of turns no longer in `history`: a failed, rolled-back or re-generated turn. */
+/** `notes` without the pins of turns no longer in `history`: a failed, rolled-back or regenerated turn. */
 export function pruneScriptPins(notes: readonly MemoryNote[], history: ChatMessage[]): MemoryNote[] {
   const live = survivingTurnIds(history);
   const kept = notes.filter((note) => {

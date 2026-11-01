@@ -80,10 +80,10 @@ test('the next turn\'s request begins on the hidden start message, then the writ
   expect(chat[1].content).toContain(WRITTEN);
 });
 
-test('Re-generate in a pool of one Opening Narration leaves page one as it is', async ({ page }) => {
+test('Regenerate in a pool of one Opening Narration leaves page one as it is', async ({ page }) => {
   const calls = await startOnWrittenOpening(page);
   const before = calls();
-  await page.getByRole('button', { name: 'Re-generate Narration', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate Narration', exact: true }).click();
 
   await expect(page.getByText(WRITTEN).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Step through the door' }).first()).toBeVisible();
@@ -91,7 +91,7 @@ test('Re-generate in a pool of one Opening Narration leaves page one as it is', 
   expect(await turns(page)).toHaveLength(1);
 });
 
-test('Re-generate swipes to the opening not yet shown, and never repeats the one on the page', async ({ page }) => {
+test('Regenerate swipes to the opening not yet shown, and never repeats the one on the page', async ({ page }) => {
   const FERRY = 'The ferry bell rings twice.';
   const REEDS = 'You wake in the reed-beds.';
   await withOpenings(page, { openings: [
@@ -104,7 +104,7 @@ test('Re-generate swipes to the opening not yet shown, and never repeats the one
   // Two presses: the first exhausts the set, the second starts it over with the page still excluded.
   let current = await shown();
   for (let press = 0; press < 2; press++) {
-    await page.getByRole('button', { name: 'Re-generate Narration', exact: true }).click();
+    await page.getByRole('button', { name: 'Regenerate Narration', exact: true }).click();
     await expect(page.getByText(other(current)).first()).toBeVisible();
     await expect(page.getByText(current)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Step through the door' }).first()).toBeVisible();
@@ -114,7 +114,7 @@ test('Re-generate swipes to the opening not yet shown, and never repeats the one
   expect(log.flatMap((turn) => turn.requests.map((request) => request.type))).not.toContain('narration');
 });
 
-test('Re-generate that draws an Opening Action returns to the filled box, not started', async ({ page }) => {
+test('Regenerate that draws an Opening Action returns to the filled box, not started', async ({ page }) => {
   const ACTION = 'I open my eyes and look around.';
   // The action row all but never wins the first draw; it is the only row left for the second.
   await withOpenings(page, {
@@ -123,7 +123,7 @@ test('Re-generate that draws an Opening Action returns to the filled box, not st
   });
   const calls = await startOnWrittenOpening(page);
   const before = calls();
-  await page.getByRole('button', { name: 'Re-generate Narration', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate Narration', exact: true }).click();
 
   await expect(actionBox(page)).toHaveValue(ACTION);
   await expect(page.getByText(WRITTEN)).toHaveCount(0);

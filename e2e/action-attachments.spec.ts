@@ -49,7 +49,7 @@ const thumbs = (page: Page) => latestTurn(page).getByRole('button', { name: /^Vi
 
 async function regenerate(page: Page) {
   await expect(thumbs(page)).toHaveCount(2);
-  await latestTurn(page).getByRole('button', { name: 'Re-generate Narration' }).click();
+  await latestTurn(page).getByRole('button', { name: 'Regenerate Narration' }).click();
   await expect(latestTurn(page).getByTestId('narration')).toHaveText('The seam glows under your hand.', { timeout: 30_000 });
 }
 

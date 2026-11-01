@@ -24,7 +24,7 @@ afterEach(() => {
 const fillIn = async (username: string, password: string, confirm = password, email = '') => {
   const user = userEvent.setup();
   if (username) await user.type(screen.getByLabelText('Username'), username);
-  if (email) await user.type(screen.getByLabelText('Email (Optional)'), email);
+  if (email) await user.type(screen.getByLabelText('Email'), email);
   if (password) await user.type(screen.getByLabelText('Password'), password);
   if (confirm) await user.type(screen.getByLabelText('Confirm Password'), confirm);
   await user.click(screen.getByRole('button', { name: 'Create Account' }));
@@ -246,7 +246,7 @@ describe('RegisterPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Your account was created, but recording your acceptance failed. Try again.',
+      "Your account was created, but your acceptance didn't save. Try again.",
     );
     expect(localStorage.getItem('authToken')).toBe('tok');
     expect(screen.getByRole('heading', { name: 'Privacy Policy' })).toBeInTheDocument();
@@ -327,7 +327,7 @@ describe('RegisterPage', () => {
 
     await fillIn('alice', 'hunter22', 'hunter23');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Passwords do not match');
+    expect(await screen.findByRole('alert')).toHaveTextContent("The passwords don't match");
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -366,7 +366,7 @@ describe('RegisterPage', () => {
     await fillIn('alice', 'short');
 
     expect(await screen.findByRole('alert'))
-      .toHaveTextContent('Password must be at least 6 characters long');
+      .toHaveTextContent('Use a password of at least 6 characters');
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -408,7 +408,7 @@ describe('RegisterPage', () => {
 
     await fillIn('alice', 'hunter22', 'hunter22', 'not-an-address');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email format');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter a valid email address');
     expect(fetch).not.toHaveBeenCalled();
   });
 

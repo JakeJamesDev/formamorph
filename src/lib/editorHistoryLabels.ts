@@ -30,9 +30,9 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
   "*": {
     name: "Name",
     description: "Description",
-    playerDescription: "Player Description",
-    aiDescription: "AI Description",
-    aiSummary: "AI Summary",
+    playerDescription: "Player-Facing Description",
+    aiDescription: "AI-Facing Description",
+    aiSummary: "AI-Facing Summary",
     aiVisible: "Show Heading to AI",
     imageTags: "Image Tags",
     placeholderPins: "Placeholder Pins",

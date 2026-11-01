@@ -213,7 +213,7 @@ The clock also has to start at the right time of day. With **Measured Clock** on
 | **What it reads** | Your opening scene, not the world description |
 | **If it can't tell** | The clock starts in the morning |
 | **Existing stories** | Never re-dated. See below. |
-| **Re-generating the opening** | Read again, so a new opening gets its own clock |
+| **Regenerating the opening** | Read again, so a new opening gets its own clock |
 
 > [!IMPORTANT]
 > **Turning Measured Clock on partway through a story does not change when that story began.** The opening scene is long gone by then, and a new start would move every stamp you already have.

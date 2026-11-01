@@ -25,15 +25,15 @@ const rowLabels = (state: BubbleState) => bubbleActions(state, handlers()).filte
 const find = (state: BubbleState, label: string) => bubbleActions(state, handlers()).find((a) => a.label === label);
 
 describe('bubbleActions', () => {
-  it('gives the latest turn the re-generate actions and no Rewind to Here', () => {
+  it('gives the latest turn the regenerate actions and no Rewind to Here', () => {
     expect(rowLabels(idle)).toEqual([
-      'Re-generate Narration', 'Edit', 'Text to Speech', 'Copy Text',
+      'Regenerate Narration', 'Edit', 'Text to Speech', 'Copy Text',
     ]);
     expect(labels(idle)).not.toContain('Rewind to Here');
-    expect(labels(idle)).toContain('Re-generate Stats');
+    expect(labels(idle)).toContain('Regenerate Stats');
   });
 
-  it('gives a past turn Rewind to Here and no re-generate actions', () => {
+  it('gives a past turn Rewind to Here and no regenerate actions', () => {
     const past = { ...idle, isLatest: false };
     expect(rowLabels(past)).toEqual(['Edit', 'Copy Text', 'Rewind to Here']);
   });
@@ -58,8 +58,8 @@ describe('bubbleActions', () => {
     expect(off).not.toContain('Write Scene Tags');
   });
 
-  it('drops Re-generate Stats when stats cannot be re-rolled', () => {
-    expect(labels({ ...idle, canRegenStats: false })).not.toContain('Re-generate Stats');
+  it('drops Regenerate Stats when stats cannot be re-rolled', () => {
+    expect(labels({ ...idle, canRegenStats: false })).not.toContain('Regenerate Stats');
   });
 
   it('drops Regenerate Audio with no voice model loaded, but keeps Text to Speech', () => {
@@ -114,7 +114,7 @@ describe('bubbleActions', () => {
 
   it('runs only its own handler for each action', () => {
     const expected: Record<string, keyof BubbleActionHandlers> = {
-      'Re-generate Narration': 'regenerate', 'Re-generate Stats': 'regenerateStats',
+      'Regenerate Narration': 'regenerate', 'Regenerate Stats': 'regenerateStats',
       'Generate Scene Image': 'sceneImage', 'Write Scene Tags': 'sceneTags', Edit: 'edit',
       'Text to Speech': 'textToSpeech', 'Regenerate Audio': 'regenerateAudio', 'Copy Text': 'copy',
       'Rewind to Here': 'rewind',
@@ -160,15 +160,15 @@ describe('playerBubbleActions', () => {
 });
 
 describe('choicesActions', () => {
-  it('offers Re-generate Choices when the choices request is on', () => {
+  it('offers Regenerate Choices when the choices request is on', () => {
     const run = vi.fn();
     const actions = choicesActions({ canRegenerate: true, hasChoices: true, busy: false, regenerating: false }, run);
-    expect(actions.map((a) => [a.label, a.section, a.disabled])).toEqual([['Re-generate Choices', 'generate', false]]);
+    expect(actions.map((a) => [a.label, a.section, a.disabled])).toEqual([['Regenerate Choices', 'generate', false]]);
     actions[0].run();
     expect(run).toHaveBeenCalledTimes(1);
   });
 
-  it('disables it while a reply streams, and spins while the choices re-generate', () => {
+  it('disables it while a reply streams, and spins while the choices regenerate', () => {
     const [action] = choicesActions({ canRegenerate: true, hasChoices: true, busy: true, regenerating: true }, vi.fn());
     expect(action.disabled).toBe(true);
     expect(action.spinning).toBe(true);

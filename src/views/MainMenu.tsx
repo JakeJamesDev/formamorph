@@ -60,6 +60,7 @@ import { useAiReachable } from '@/lib/useAiReachable';
 import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
+import { DELETE_ENTITY_CONFIRM } from '@/components/library/LibraryTileContextMenu';
 import { EntityPlaceholderArt } from '@/components/EntityPlaceholderArt';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import { isWorldOptimizing, useOptimizingWorldIds } from '@/lib/worldOptimizeProgress';
@@ -2800,8 +2801,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <ConfirmDialog
         open={!!entityToDelete}
         onOpenChange={(open) => !open && setEntityToDelete(null)}
-        title="Delete Entity"
-        description="This entity is deleted from your library. You can't undo this."
+        title={DELETE_ENTITY_CONFIRM.title}
+        description={DELETE_ENTITY_CONFIRM.description}
         onConfirm={async () => {
           try {
             await EntityStorageService.deleteEntity(entityToDelete!);

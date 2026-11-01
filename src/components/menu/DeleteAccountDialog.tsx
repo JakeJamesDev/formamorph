@@ -185,6 +185,11 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
 
               <div className="space-y-2">
                 <Label htmlFor="delete-password" className="text-label font-medium">Password</Label>
+                <Hint>
+                  {deleteContent
+                    ? 'Your published work is deleted with the account.'
+                    : 'Your published work stays under the name [deleted user].'}
+                </Hint>
                 <Input
                   id="delete-password"
                   type="password"
@@ -192,11 +197,6 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                 />
-                <Hint>
-                  {deleteContent
-                    ? 'Your published work is deleted with the account.'
-                    : 'Your published work stays under the name [deleted user].'}
-                </Hint>
               </div>
             </div>
 

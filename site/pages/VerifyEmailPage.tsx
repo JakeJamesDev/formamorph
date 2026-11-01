@@ -52,7 +52,7 @@ function ResendPath() {
       } else if (mailSent) {
         setNote({ kind: 'success', text: 'Verification email sent. Open the link in it to finish.' });
       } else {
-        setNote({ kind: 'error', text: 'The verification email could not be sent. Try again in a moment.' });
+        setNote({ kind: 'error', text: "The verification email couldn't be sent. Try again in a moment." });
       }
     } catch (failure) {
       setNote({ kind: 'error', text: (failure as Error).message || 'Failed to send the verification email' });

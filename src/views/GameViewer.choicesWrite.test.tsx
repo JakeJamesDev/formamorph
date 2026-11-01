@@ -113,7 +113,7 @@ beforeEach(async () => {
 });
 
 const box = () => screen.getByPlaceholderText(/Type your action/);
-const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 
 async function enter(world: World) {
   renderGameViewer(world, { inGameplay: <Probe /> });
@@ -131,7 +131,7 @@ async function send(action: string) {
 
 async function rerollStats() {
   const asked = statCalls;
-  fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
   await waitFor(() => expect(statCalls).toBe(asked + 1));
   await turnDone();
 }
@@ -238,7 +238,7 @@ const stat = (name: string) => live().globalStats.find((s) => s.name === name);
 
 async function rerollChoices() {
   const asked = choiceCalls;
-  fireEvent.click(await screen.findByRole('button', { name: 'Re-generate Choices' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Regenerate Choices' }));
   await waitFor(() => expect(choiceCalls).toBe(asked + 1));
   await turnDone();
 }
@@ -318,7 +318,7 @@ describe('Re-Roll Choices in a world that scripts them', () => {
     await send('I walk the pier.');
     await waitFor(() => expect(live().choices).toEqual([...AI, 'Board the ferry']));
     holdRedraw = true;
-    fireEvent.click(await screen.findByRole('button', { name: 'Re-generate Choices' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Regenerate Choices' }));
     await waitFor(() => expect(choiceCalls).toBe(2));
     fireEvent.click(screen.getByRole('button', { name: /Stop/ }));
     await turnDone();

@@ -236,6 +236,8 @@ export function MessageComposerDialog({
               it. A direct message has no audience to widen, so it gets the permanence half only. */}
           <div className="space-y-2">
             <label className="text-label font-medium">Who Sees This</label>
+            {/* Two lines are reserved so switching options can't move the buttons under it. */}
+            <Hint className="min-h-8">{activeHint}</Hint>
 
             <ToggleGroup
               type="single"
@@ -251,9 +253,6 @@ export function MessageComposerDialog({
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
-
-            {/* Two lines are reserved so switching options can't shift the fields below. */}
-            <Hint className="min-h-8">{activeHint}</Hint>
           </div>
 
           {/* Editing only. Off by default because most edits are typo fixes. */}

@@ -75,7 +75,7 @@ The **Inventory** chip tells the AI who has which items in the scene.
 
 | Who | What it sends |
 |---|---|
-| 🧍 You, and each entity at your location | Each equipped item with its **AI Summary** (or its **AI Description** when there is no summary), then the carried items by name |
+| 🧍 You, and each entity at your location | Each equipped item with its **AI-Facing Summary** (or its **AI-Facing Description** when there is no summary), then the carried items by name |
 | 📍 The current location | The items that lie there, by name |
 
 - **Hidden items are marked hidden.** The chip sends where they are, so the AI can reveal one when you search.

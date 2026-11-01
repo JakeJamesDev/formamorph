@@ -1,5 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { downloadBlob } from "@/lib/downloadBlob";
+import { toastError } from "@/lib/linkToast";
+import { useMountedRef } from "@/lib/useMountedRef";
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -154,6 +156,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
   const [pendingLoad, setPendingLoad] = React.useState<{ row: SaveRow; targetWorldId?: string } | null>(null);
   const [blockedLoad, setBlockedLoad] = React.useState<SaveRow | null>(null); // cold-start orphan (world not installed)
 
+  const mountedRef = useMountedRef();
   React.useEffect(() => () => { terminateExportWorker(); }, []);
 
   const loadData = React.useCallback(async () => {
@@ -234,9 +237,12 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
       onOpenChange(false);
     } catch (error) {
       console.error('Error loading game:', error);
+      toastError(error, { headline: "Couldn't load the save. Try again." });
     } finally {
-      setIsLoading(false);
-      setLoadingMessage('');
+      if (mountedRef.current) {
+        setIsLoading(false);
+        setLoadingMessage('');
+      }
     }
   };
 
@@ -266,19 +272,23 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
       downloadBlob(blob, `${fileData.name || 'save'}.json`);
     } catch (error) {
       console.error('Error exporting save:', error);
+      toastError(error, { headline: "Couldn't export the save. Try again." });
     } finally {
-      setIsExporting(false);
-      setExportingSaveName('');
-      setLoadingMessage('');
+      if (mountedRef.current) {
+        setIsExporting(false);
+        setExportingSaveName('');
+        setLoadingMessage('');
+      }
     }
   };
 
   const doDelete = async (row: SaveRow) => {
     try {
       await deleteSaveRecord(row.id);
-      setRecords(prev => prev.filter(r => r.id !== row.id));
+      if (mountedRef.current) setRecords(prev => prev.filter(r => r.id !== row.id));
     } catch (error) {
       console.error('Error deleting save:', error);
+      toastError(error, { headline: "Couldn't delete the save. Try again." });
     }
   };
 

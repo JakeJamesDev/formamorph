@@ -161,7 +161,7 @@ export interface StatCodeTurn {
   triggers?: readonly ScriptTrigger[];
   /** Runs `triggers` and `replayed` alone, as an On Call Tool does. */
   triggersOnly?: boolean;
-  /** Runs the scripts alone, as Re-generate Choices does: `choices` is the one thing the result carries, and every
+  /** Runs the scripts alone, as Regenerate Choices does: `choices` is the one thing the result carries, and every
    *  `player` call answers through {@link silentPrompts} (Q10, Q20). */
   choicesOnly?: boolean;
   /** Saved World Tool writes laid on ahead of `triggers`, in this order, with no script run (Q41). */

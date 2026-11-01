@@ -132,6 +132,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       <form onSubmit={(event) => { void save(event); }} noValidate className="space-y-3">
         <div className="space-y-2">
           <Label htmlFor="settings-email">Email Address</Label>
+          <Hint>You&apos;ll get a link to confirm the new address</Hint>
           <Input
             id="settings-email"
             type="email"
@@ -140,7 +141,6 @@ function EmailSection({ suspended }: { suspended: boolean }) {
             value={typed}
             onChange={(event) => setTyped(event.target.value)}
           />
-          <Hint>You&apos;ll get a link to confirm the new address</Hint>
         </div>
         {note && (
           <p

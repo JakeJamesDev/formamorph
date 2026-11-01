@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDevRoute } from '@/lib/devRouter';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryFilter } from '@/lib/memoryView';
+import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, memorySentTip, CLEAR_PIN_LABEL, type MemoryFilter } from '@/lib/memoryView';
 import { MemoryManagerModal } from '@/components/modals/MemoryManagerModal';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -163,7 +163,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
                     {/* On the text, not the row: a row-wide trigger sits under the pin buttons and the
                         two tips would open together. */}
                     <Tip
-                      tip={row.asScene ? 'Sent to the AI as the full scene last turn' : row.inContext ? 'Sent to the AI last turn' : undefined}
+                      tip={memorySentTip(row)}
                       labelsChild={false}
                     >
                       <p className={cn('text-meta', !row.kept && 'line-through')}>{row.text}</p>
@@ -172,7 +172,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-0.5">
                     {row.pin && (
-                      <Tip tip="Clear the Pin and Let the Story Decide">
+                      <Tip tip={CLEAR_PIN_LABEL}>
                         <Button
                           variant="ghost"
                           size="icon"

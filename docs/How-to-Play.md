@@ -72,16 +72,16 @@ Each action takes up to 4 images. They go with that turn only. Select a thumbnai
 
 The attach button shows after the game starts, not on the opening turn.
 
-## How to Re-generate a Turn
+## How to Regenerate a Turn
 <!-- keywords: redo, retry, reroll, try again, different answer, last, swipe, did not like, regen, new response, another version, bad output, refresh, alternate, new options, do over -->
 <!-- route: gameViewer -->
 
 1. Find the latest turn's action row, under its narration.
-2. Select **Re-generate Narration**.
+2. Select **Regenerate Narration**.
 
 The game goes back to the state before the turn and sends the same action again, with the same images. On page one, it draws another opening. See [Regenerating Page One](Entities#regenerating-page-one).
 
-To re-roll only the choices, select **Re-generate Choices** beside them.
+To re-roll only the choices, select **Regenerate Choices** beside them.
 
 ## How to Edit Narration
 <!-- keywords: change, fix, rewrite, correct, ai text, response, reply, typo, modify story text, alter output, retcon, amend, wrong detail, what ai wrote, bot message, manually adjust -->
@@ -205,8 +205,8 @@ Each turn has an action row under its narration. Some actions sit under its **Mo
 
 | Action | Shows on |
 |---|---|
-| **Re-generate Narration** | The latest turn |
-| **Re-generate Stats** | The latest turn, under **More**, when stat updates are on |
+| **Regenerate Narration** | The latest turn |
+| **Regenerate Stats** | The latest turn, under **More**, when stat updates are on |
 | **Generate Scene Image** | Under **More**, when [image generation](Image-Generation#how-to-make-an-image-of-one-turn) is on and the turn has no image |
 | **Write Scene Tags** | Under **More**, when image generation is on |
 | **Edit** | Every turn |
@@ -253,7 +253,7 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 |---|---|
 | Language box | Sets the language or style the AI writes in, the same as **AI Language** in **Settings** |
 | Persona row | Shows who you play. **Change** opens **Change Persona**. See [Change It in Game](Personas#change-it-in-game). |
-| **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Re-generate Stats** asks the AI again. A picker shows the stats of one entity in the scene. Shows only when the world has stats you can see. |
+| **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Regenerate Stats** asks the AI again. A picker shows the stats of one entity in the scene. Shows only when the world has stats you can see. |
 | **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Entities in the scene follow. Filter them, or switch one on or off. |
 | **Inventory** | What you wear and what you carry. See [How to Use Your Inventory](#how-to-use-your-inventory). Shows only when the world has items. |
 | **Location** | Where you are, its description and the places it connects to |
@@ -368,7 +368,7 @@ The inspector shows exactly what the game sent to the AI each turn, and what cam
 |---|---|
 | Search box | Finds terms in the turn. A counter shows the match you are on, such as *2 of 5*. **Enter** or **Next match** goes to the next match, **Shift+Enter** or **Previous match** to the previous one. |
 | **Dictionary** / **Hydrations** | Picks what the text highlights. **Dictionary** marks the dictionary entries. Select a legend chip to hide its highlights. |
-| **Current context only** | Hides turns that were re-generated, rewound or stopped. On by default. |
+| **Current context only** | Hides turns that were regenerated, rewound or stopped. On by default. |
 | **Collapse all** / **Expand all** | Collapses or expands every section |
 | **Export** | Downloads the full turn history as a `.json` file |
 

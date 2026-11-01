@@ -119,7 +119,7 @@ export function NarrationTurnReference() {
               busy={false}
               editing={editingStats}
               onEditingChange={(editing) => { setEditingStats(editing); setLastAction('Edit Stats'); }}
-              onRegenerate={() => setLastAction('Re-generate Stats')}
+              onRegenerate={() => setLastAction('Regenerate Stats')}
             />
           </StatsPair>
         </section>

@@ -40,43 +40,43 @@ import type { BugDiagnostics, FeedbackCategory, FeedbackThread, FeedbackType } f
 const COPY: Record<FeedbackType, {
   description: string;
   /** Appended where the Feedback window lists the reader's threads. */
-  profileNote: string;
+  followNote: string;
   titlePlaceholder: string;
   bodyLabel: string;
   bodyPlaceholder: string;
   submit: string;
   sent: string;
-  sentProfileNote: string;
+  sentFollowNote: string;
 }> = {
   bug: {
     description: 'Filed under your account, so staff can ask you follow-up questions.',
-    profileNote: ' Replies show on the “Bugs” tab in Feedback.',
+    followNote: ' Replies show on the “Bugs” tab in Feedback.',
     titlePlaceholder: 'What went wrong, in a line',
     bodyLabel: 'What Happened',
     bodyPlaceholder: 'What you did, what you expected, what happened instead',
     submit: 'Send Report',
     sent: 'Report filed',
-    sentProfileNote: '. Follow it on the “Bugs” tab in Feedback.',
+    sentFollowNote: '. Follow it on the “Bugs” tab in Feedback.',
   },
   suggestion: {
     description: 'Everyone can read and vote on suggestions. Check whether yours is already there.',
-    profileNote: ' Replies show on the “Suggestions” tab in Feedback.',
+    followNote: ' Replies show on the “Suggestions” tab in Feedback.',
     titlePlaceholder: 'What you’d like, in a line',
     bodyLabel: 'What You Have in Mind',
     bodyPlaceholder: 'What it would do, and what it would let you do that you can’t today',
     submit: 'Send Suggestion',
     sent: 'Suggestion filed',
-    sentProfileNote: '. Follow it on the “Suggestions” tab in Feedback.',
+    sentFollowNote: '. Follow it on the “Suggestions” tab in Feedback.',
   },
   question: {
     description: 'Everyone can read, answer and vote on questions. Similar questions show as you type a title.',
-    profileNote: ' Replies show on the “Questions” tab in Feedback.',
+    followNote: ' Replies show on the “Questions” tab in Feedback.',
     titlePlaceholder: 'What you want to know, in a line',
     bodyLabel: 'What You Tried',
     bodyPlaceholder: 'Where you got stuck, and what you tried already',
     submit: 'Post Question',
     sent: 'Question posted',
-    sentProfileNote: '. Follow it on the “Questions” tab in Feedback.',
+    sentFollowNote: '. Follow it on the “Questions” tab in Feedback.',
   },
 };
 
@@ -249,7 +249,7 @@ export function FeedbackDialog({
       // show through the dialog's fade-out — and the mirror is muted so it can't write the sent text back.
       filedRef.current = true;
       clearFeedbackDraft();
-      notify(capabilities.profileThreads ? copy.sent + copy.sentProfileNote : copy.sent, 'success');
+      notify(capabilities.followThreads ? copy.sent + copy.sentFollowNote : copy.sent, 'success');
       onFiled?.(filed);
       onOpenChange(false);
     } catch (error) {
@@ -282,7 +282,7 @@ export function FeedbackDialog({
             <MessageSquarePlus className="h-4 w-4" /> Send Feedback
           </DialogTitle>
           <DialogDescription>
-            {capabilities.profileThreads ? copy.description + copy.profileNote : copy.description}
+            {capabilities.followThreads ? copy.description + copy.followNote : copy.description}
           </DialogDescription>
         </DialogHeader>
 

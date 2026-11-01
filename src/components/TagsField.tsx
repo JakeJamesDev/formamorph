@@ -20,6 +20,7 @@ export function TagsField({ values, onChange, label = 'Tags' }: {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
+      <Hint>Shows on your Community Creations listing, where players filter by tags</Hint>
       <TokenAutocomplete
         values={values || []}
         onChange={onChange}
@@ -29,7 +30,6 @@ export function TagsField({ values, onChange, label = 'Tags' }: {
         editable
         placeholder="Add tags"
       />
-      <Hint>Shows on your Community Creations listing, where players filter by tags</Hint>
     </div>
   );
 }

@@ -91,13 +91,13 @@ describe('Chat choices', () => {
     expect((leave as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(leave);
     expect(input().value).toBe('');
-    expect((screen.getByRole('button', { name: 'Re-generate Choices' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Regenerate Choices' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('calls the re-generate handler from the icon under the choices', async () => {
+  it('calls the regenerate handler from the icon under the choices', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS, settings: chat });
     const turns = await screen.findAllByRole('article');
-    fireEvent.click(within(turns[2]).getByRole('button', { name: 'Re-generate Choices' }));
+    fireEvent.click(within(turns[2]).getByRole('button', { name: 'Regenerate Choices' }));
     expect(view.props.handleRegenerateChoices).toHaveBeenCalledTimes(1);
   });
 
@@ -137,9 +137,9 @@ describe('Chat choices', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
-  it('has no re-generate icon with the choices request off', async () => {
+  it('has no regenerate icon with the choices request off', async () => {
     renderMiddlePanel({}, { turns: TURNS, settings: (s) => { chat(s); s.setChoicesEnabled(false); } });
     await screen.findAllByRole('article');
-    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
   });
 });

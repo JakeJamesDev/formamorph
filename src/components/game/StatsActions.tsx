@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-/** The Stats panel's Edit Stats and Re-generate Stats pair, bound to the viewed turn. */
+/** The Stats panel's Edit Stats and Regenerate Stats pair, bound to the viewed turn. */
 export function StatsActions({ past, busy, editing, onEditingChange, onRegenerate, className }: {
   /** The viewed turn is a past one. */
   past: boolean;
@@ -11,7 +11,7 @@ export function StatsActions({ past, busy, editing, onEditingChange, onRegenerat
   busy: boolean;
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
-  /** Absent when stat updates are off or the world has no stats, which hides Re-generate Stats. */
+  /** Absent when stat updates are off or the world has no stats, which hides Regenerate Stats. */
   onRegenerate?: () => void;
   className?: string;
 }) {
@@ -31,13 +31,13 @@ export function StatsActions({ past, busy, editing, onEditingChange, onRegenerat
         </Button>
       </Tip>
       {onRegenerate && (
-        <Tip tip="Re-generate Stats">
+        <Tip tip="Regenerate Stats">
           <Button
             variant="ghost"
             size="icon"
             onClick={onRegenerate}
             disabled={past || busy}
-            aria-label="Re-generate Stats"
+            aria-label="Regenerate Stats"
             className="h-8 w-8"
           >
             <RefreshCw className="h-4 w-4" />

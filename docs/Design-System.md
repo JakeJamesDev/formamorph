@@ -557,7 +557,7 @@ Tile Size, Add To Group, Create New Group, Remove From Group, Check for Updates,
 | The endpoint each request kind resolves to | `useEndpointTip` in [`useEndpointTip.ts`](../src/lib/useEndpointTip.ts) |
 | Isolated reference, on the Context Menu tab's Item Detail Line view | [`MenuDetailLineReference.tsx`](../src/components/design-system/MenuDetailLineReference.tsx) |
 
-Re-generate Narration, Re-generate Stats, Re-generate Choices, and Write Scene Tags carry the line, in the turn's More menu and its right-click menu.
+Regenerate Narration, Regenerate Stats, Regenerate Choices, and Write Scene Tags carry the line, in the turn's More menu and its right-click menu.
 
 **States:**
 
@@ -1128,7 +1128,7 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 - Only the name truncates. The verb, the type and the chip always show in full.
 - Mute the verb and type with opacity, not a gray color. Opacity stacks with an undone row's dimming, so a muted part never looks brighter than its row.
 - **A row with no name has one line:** the verb, the type and the field chip, not muted. A labeled batch shows its label.
-- The row's accessible name is the whole label in its natural order, such as "Edit Entity Mara: Player Description".
+- The row's accessible name is the whole label in its natural order, such as "Edit Entity Mara: Player-Facing Description".
 - **A cut-off row has its own tip,** not the shared `Tip`. It opens on the left on hover and on keyboard focus, and shows the same parts in the same order. The name wraps and the chip wraps under it, 18rem wide at most. A row that shows in full opens none. The tip adds nothing to the accessible name.
 - The popover is 20rem wide, at most 90% of the window.
 - Mark the current row with the accent fill and a **Now** tag. Mark the head with the fill only.
@@ -1177,9 +1177,9 @@ The live reference draws both layouts over one sample history, with buttons to a
 - One card renders a turn's narration in both layouts. The card owns its surface, its right-click menu, and its action row.
 - One action list feeds the row and the menu. Every row icon is also a menu item, and **More** opens that menu for the menu-only actions. **Generate Scene Image** is available only in **More** and the context menu in Pages and Chat.
 - The row is absent while the turn streams and when the list is empty. It does not show disabled icons in place of a live turn.
-- **Re-generate Stats** sits to the right of **Edit Stats** in the Stats panel, with a tooltip on each button. It also remains in the narration menus. The panel disables regeneration on past turns and while a reply or scene render is running.
+- **Regenerate Stats** sits to the right of **Edit Stats** in the Stats panel, with a tooltip on each button. It also remains in the narration menus. The panel disables regeneration on past turns and while a reply or scene render is running.
 - A turn with no scene image shows no plate. There is no empty box.
-- Choices in Pages are unnumbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers. **Re-generate Choices** waits for the latest turn to have narration; it remains available after a turn returns no choices. **Jump to Latest** stays hidden before the opening narration.
+- Choices in Pages are unnumbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers. **Regenerate Choices** waits for the latest turn to have narration; it remains available after a turn returns no choices. **Jump to Latest** stays hidden before the opening narration.
 
 **Density:** Comfortable. The card uses the narration text size the player sets. The action row and the plate controls are compact icon buttons with tooltips.
 
@@ -1191,7 +1191,7 @@ The three parts, in reading order for Pages:
 | --- | --- | --- |
 | **Turn Card** | The plate, the action line, the reasoning block, the narration, then the action row | The caller supplies the body. Chat puts the plate under the narration and keeps the action bubble outside the card. |
 | **Scene Plate** | One turn's images, newest in view | A click zooms. Hover or focus within shows previous, the count, next, and delete. One image shows delete only. |
-| **Choice rows** | Unnumbered choices, then a Continue action; an inset muted line with centered, muted “or” separates them | Continue and **Re-generate Choices** share a segmented row with a muted vertical divider and no separate icon-button border. Re-generate sits below the choices when Continue is hidden. No rule appears when Continue is the only choice. |
+| **Choice rows** | Unnumbered choices, then a Continue action; an inset muted line with centered, muted “or” separates them | Continue and **Regenerate Choices** share a segmented row with a muted vertical divider and no separate icon-button border. Regenerate sits below the choices when Continue is hidden. No rule appears when Continue is the only choice. |
 
 - The action row starts with the turn number, then the icon actions, then **More** for the menu-only actions.
 - The action line in Pages is the player's text with a left rule in the primary color and the muted foreground. It is upright, so the player's italics and quote color show. It has its own right-click menu, and that event does not reach the card's menu.
@@ -1209,7 +1209,7 @@ The three parts, in reading order for Pages:
 | Choice rows | `ChoiceRows` in [`ChoiceRows.tsx`](../src/components/game/ChoiceRows.tsx) |
 | Chat's bubble choices and the shared choice text | `ChatChoices` and `ChoiceText` in [`ChatChoices.tsx`](../src/components/game/ChatChoices.tsx) |
 | Pages action line with its own menu | `ActionLine` in [`ActionLine.tsx`](../src/components/game/ActionLine.tsx) |
-| Stats panel's **Edit Stats** and **Re-generate Stats** pair | `StatsActions` in [`StatsActions.tsx`](../src/components/game/StatsActions.tsx) |
+| Stats panel's **Edit Stats** and **Regenerate Stats** pair | `StatsActions` in [`StatsActions.tsx`](../src/components/game/StatsActions.tsx) |
 | Pages host | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
 | Chat host | [`ChatNarration.tsx`](../src/components/game/ChatNarration.tsx) |
 | Layout parity guard | [`GamePanels.pagesCard.test.tsx`](../src/components/game/GamePanels.pagesCard.test.tsx) |

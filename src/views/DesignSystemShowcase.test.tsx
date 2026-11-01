@@ -247,7 +247,7 @@ describe('narration turn reference', () => {
 
     const latest = screen.getByRole('region', { name: 'Latest Page' });
     expect(within(latest).getByRole('button', { name: 'Zoom image' })).toBeInTheDocument();
-    expect(within(latest).getByRole('button', { name: 'Re-generate Narration' })).toBeInTheDocument();
+    expect(within(latest).getByRole('button', { name: 'Regenerate Narration' })).toBeInTheDocument();
     expect(within(latest).getByTestId('choice-rows')).toBeInTheDocument();
   });
 });

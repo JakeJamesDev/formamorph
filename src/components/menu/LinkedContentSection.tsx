@@ -76,17 +76,17 @@ export function LinkedContentSection({ rows, onChange, disabled }: {
                   already has, and this publish never touches it. */}
               {row.required && row.state === 'unpublished' && (
                 <div className="pl-6 space-y-1">
+                  <Hint>
+                    {row.visibility === 'unlisted'
+                      ? 'Keeps this out of Community Creations. It still downloads with this world.'
+                      : 'Lists this in Community Creations on its own'}
+                  </Hint>
                   <OptionSwitcher
                     value={row.visibility}
                     onChange={(visibility) => update(row.libraryId, { visibility })}
                     options={LISTING_OPTIONS}
                     ariaLabel={`Listing for ${row.name}`}
                   />
-                  <Hint>
-                    {row.visibility === 'unlisted'
-                      ? 'Keeps this out of Community Creations. It still downloads with this world.'
-                      : 'Lists this in Community Creations on its own'}
-                  </Hint>
                 </div>
               )}
             </li>

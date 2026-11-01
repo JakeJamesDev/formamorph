@@ -11,9 +11,7 @@ import { scriptSurface, TURN_MEMBERS, WORLD_SCRIPT_SURFACE } from '@/lib/statCod
 import type { VariableNode } from '@/lib/statCodeVariableTree';
 import { SCRIPT_TIMING_OF_TOOL } from './worldTools';
 import { namedParams } from './toolDraft';
-import { argEntry } from './toolScriptSurface';
-
-const ARGS_INFO = 'The arguments the AI sent, checked against the parameters';
+import { ARGS_INFO, argEntry, TOOL_MISSING_RETURN } from './toolScriptSurface';
 
 const shapeOf = (names: readonly string[]) => `{ ${names.join(', ')} }`;
 
@@ -30,7 +28,7 @@ export function worldToolSurface(params: readonly ToolParam[], timing: ToolScrip
     ],
     // A Tool's `turn.choices` write drops at every timing (Q21).
     members: new Map([...surface.members, ['turn', TURN_MEMBERS], ['args', argEntries.map((entry) => ({ ...entry, access: 'readOnly' as const }))]]),
-    missingReturn: timing === 'call' ? 'This script never returns. The Tool sends its “Empty Result”.' : null,
+    missingReturn: timing === 'call' ? TOOL_MISSING_RETURN : null,
     guide: WORLD_TOOL_GUIDE_LINKS,
   };
 }

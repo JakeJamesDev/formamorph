@@ -86,6 +86,13 @@ export const MEMORY_FILTER_COUNT_LABELS: Record<MemoryFilter, string> = {
   deleted: 'Memories Deleted',
 };
 
+/** The row tooltip in the panel and the manager: what the AI got from this memory last turn. */
+export const memorySentTip = (row: Pick<MemoryRow, 'asScene' | 'inContext'>): string | undefined =>
+  row.asScene ? 'Sent to the AI as the full scene last turn' : row.inContext ? 'Sent to the AI last turn' : undefined;
+
+/** The pin-clearing control's name in the panel and the manager. */
+export const CLEAR_PIN_LABEL = 'Clear the Pin and Let the Story Decide';
+
 /** The story has this memory's real text — riding in the verbatim floor, or pulled back whole by Scene
  *  Recall. Either way the model sees more than the one line the row shows. */
 function hasFullText(row: MemoryRow): boolean {

@@ -109,7 +109,7 @@ afterEach(() => vi.restoreAllMocks());
 async function playTurn(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 }
 
 const SLEEP = onCallTool('clock.advance(480);');
@@ -195,9 +195,9 @@ describe('a clock advance mid-turn', () => {
     await playTurn('I wait more.');
     await waitFor(() => expect(gameTime).toBe(8));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Narration' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
     await waitFor(() => expect(sent.narration).toHaveLength(3));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
     // The regenerated turn reads its own start, four hours in, and ends where the first try did.
     expect(narrationSystem(sent.narration[2])).toBe(narrationSystem(sent.narration[1]));
     expect(gameTime).toBe(8);

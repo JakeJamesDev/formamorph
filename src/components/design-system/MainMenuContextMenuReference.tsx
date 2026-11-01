@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { LibraryGroupPicker } from '@/components/library/LibraryGroupPicker';
 import { useDevRoute } from '@/lib/devRouter';
-import { LibraryTileContextMenu, type LibraryTileMenuModel } from '@/components/library/LibraryTileContextMenu';
+import { DELETE_ENTITY_CONFIRM, LibraryTileContextMenu, type LibraryTileMenuModel } from '@/components/library/LibraryTileContextMenu';
 import { WorldCardFace } from '@/components/WorldCardFace';
 import { EntityPlaceholderArt } from '@/components/EntityPlaceholderArt';
 import { DefaultBadge, DefaultPersonaMenuItem } from '@/components/library/LibraryDefault';
@@ -139,8 +139,8 @@ export function MainMenuContextMenuReference() {
       <ConfirmDialog
         open={pendingDelete}
         onOpenChange={setPendingDelete}
-        title="Delete Entity"
-        description="This entity is deleted from your library. You can't undo this."
+        title={DELETE_ENTITY_CONFIRM.title}
+        description={DELETE_ENTITY_CONFIRM.description}
         onConfirm={() => {
           setPendingDelete(false);
           setDeleted(true);

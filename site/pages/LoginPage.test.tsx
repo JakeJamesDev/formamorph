@@ -314,7 +314,7 @@ describe('LoginPage', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Sign In' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Username and password are required');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter your username and password');
     expect(fetch).not.toHaveBeenCalled();
   });
 

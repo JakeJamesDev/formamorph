@@ -1,4 +1,4 @@
-import { useContext, useMemo } from 'react';
+import { useContext, useMemo, type ReactNode } from 'react';
 import { Settings } from 'lucide-react';
 import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -63,11 +63,12 @@ export function useHasRuleSource(): boolean {
 }
 
 /** The Requirement Rows editor over one rule of `host`, such as an image's, with the host as the default owner. */
-export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule' }: {
+export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule', hint }: {
   host: RuleHost;
   rows: TraitRequirementRow[];
   onChange: (rows: TraitRequirementRow[]) => void;
   label?: string;
+  hint?: ReactNode;
 }) {
   const source = useRuleSource();
   const read = useMemo(() => {
@@ -84,6 +85,7 @@ export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule' }
   return (
     <RequirementRowsField
       label={label}
+      hint={hint}
       rows={rows}
       states={read.states}
       options={read.options}
@@ -107,8 +109,7 @@ export function ImageRuleEditor(props: {
 }) {
   return (
     <div className="space-y-2">
-      <HostRuleRows {...props} />
-      <Hint>Shows this image to the player while any row holds. With no rows, it always shows.</Hint>
+      <HostRuleRows {...props} hint="Shows this image to the player while any row holds. With no rows, it always shows." />
     </div>
   );
 }

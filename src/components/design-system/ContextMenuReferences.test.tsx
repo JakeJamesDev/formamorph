@@ -38,17 +38,17 @@ describe('context menu references', () => {
     route('detail-line');
     rightClick('Sample narration');
 
-    const regenerate = screen.getByRole('menuitem', { name: 'Re-generate Narration' });
+    const regenerate = screen.getByRole('menuitem', { name: 'Regenerate Narration' });
     expect(regenerate).toHaveAttribute('aria-description', 'Sends to Default · default');
     expect(regenerate).toHaveTextContent('Sends to Default · default');
-    expect(screen.getByRole('menuitem', { name: 'Re-generate Stats' })).toHaveAttribute('aria-description', 'Sends to Quick Stats · gemma-4-e4b');
+    expect(screen.getByRole('menuitem', { name: 'Regenerate Stats' })).toHaveAttribute('aria-description', 'Sends to Quick Stats · gemma-4-e4b');
 
     const edit = screen.getByRole('menuitem', { name: 'Edit' });
     expect(edit).not.toHaveAttribute('aria-description');
     expect(edit).not.toHaveAttribute('aria-label');
 
     await user.click(regenerate);
-    expect(screen.getByRole('status')).toHaveTextContent('Re-generate Narration ran on the local sample.');
+    expect(screen.getByRole('status')).toHaveTextContent('Regenerate Narration ran on the local sample.');
   });
 
   it('truncates a long endpoint line on one row', () => {
@@ -58,6 +58,6 @@ describe('context menu references', () => {
 
     const line = screen.getByText(/^Sends to Silver Siren/);
     expect(line).toHaveClass('truncate');
-    expect(screen.getByRole('menuitem', { name: 'Re-generate Choices' })).toHaveAttribute('aria-description', line.textContent);
+    expect(screen.getByRole('menuitem', { name: 'Regenerate Choices' })).toHaveAttribute('aria-description', line.textContent);
   });
 });

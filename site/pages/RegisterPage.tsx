@@ -110,19 +110,19 @@ export function RegisterPage() {
       return;
     }
     if (!password) {
-      setError('Password is required');
+      setError('Enter a password');
       return;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      setError('Use a password of at least 6 characters');
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("The passwords don't match");
       return;
     }
     if (email.trim() && !AuthService.isValidEmail(email.trim())) {
-      setError('Invalid email format');
+      setError('Enter a valid email address');
       return;
     }
 
@@ -179,7 +179,7 @@ export function RegisterPage() {
       await finishAuthentication();
     } catch (failure) {
       setError(creating
-        ? 'Your account was created, but recording your acceptance failed. Try again.'
+        ? "Your account was created, but your acceptance didn't save. Try again."
         : (failure as Error).message || 'Failed to record your acceptance');
     } finally {
       setBusy(false);
@@ -277,14 +277,13 @@ export function RegisterPage() {
           value={username}
           onChange={setUsername}
         />
-        {/* Optional, and the account works without one. It is what password reset needs, so what the
-            hint states is what it buys rather than that it may be left blank. */}
+        {/* Optional: the account works without one, and the hint says what it buys. */}
         <Field
           id="email"
-          label="Email (Optional)"
+          label="Email"
           type="email"
           autoComplete="email"
-          hint="Lets you reset your password. We send one message to confirm it."
+          hint="Optional. Lets you reset your password once you confirm it by email."
           value={email}
           onChange={setEmail}
         />

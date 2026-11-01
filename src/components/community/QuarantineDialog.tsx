@@ -50,6 +50,11 @@ export function QuarantineDialog({
 
         <div className="space-y-2 py-2">
           <label className="text-label font-medium">Delete it after</label>
+          <Meta as="p">
+            {willNotifyAuthor
+              ? 'You’ll write to the author next, so they know what to fix. Nothing is deleted before the deadline.'
+              : 'Nothing is deleted before the deadline. You can release it at any time.'}
+          </Meta>
           <Select value={String(days)} onValueChange={(value) => setDays(Number(value))}>
             <SelectTrigger aria-label="Delete it after"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -60,11 +65,6 @@ export function QuarantineDialog({
               ))}
             </SelectContent>
           </Select>
-          <Meta as="p">
-            {willNotifyAuthor
-              ? 'You’ll write to the author next, so they know what to fix. Nothing is deleted before the deadline.'
-              : 'Nothing is deleted before the deadline. You can release it at any time.'}
-          </Meta>
         </div>
 
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">

@@ -46,7 +46,7 @@ export const latestTurnId = (history: readonly ChatMessage[]): string | undefine
   return last ? parseTurnContent(last.content)?.turnId : undefined;
 };
 
-/** Forget the tells of turns no longer in the history: a failed, rolled-back or re-generated turn. */
+/** Forget the tells of turns no longer in the history: a failed, rolled-back or regenerated turn. */
 export const pruneTells = (map: TellMap, history: ChatMessage[]): TellMap => pruneTurnMap(map, history);
 
 const isTell = (value: unknown): value is ScriptTell => {

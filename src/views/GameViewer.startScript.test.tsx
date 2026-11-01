@@ -82,14 +82,14 @@ async function playOpening(world: World) {
   stubEndpoint();
   fireEvent.change(box, { target: { value: 'I walk the pier.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Narration' })).toBeEnabled());
   return view;
 }
 
 /** Regenerate page one: the opening returns to the box for the player to submit again. */
 const regenerateOpening = async () => {
   const before = narrations.length;
-  fireEvent.click(screen.getByRole('button', { name: 'Re-generate Narration' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
   await waitFor(() => expect(screen.getByPlaceholderText(/Type your action/)).not.toHaveValue(''));
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(narrations.length).toBe(before + 1));
@@ -127,9 +127,9 @@ describe('a new game whose opening is redone', () => {
     await playOpening(worldWith([startScript]));
 
     const before = statRequests.length;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statRequests.length).toBe(before + 1));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 
     // The next turn's prompt reads the stat the re-roll left.
     fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I ring the bell.' } });
@@ -169,7 +169,7 @@ describe('a loaded save', () => {
     renderGameViewer(world, { initialSaveId: save.id });
     // The harness stubs fetch again on every render, so the scripted endpoint goes back in after it.
     stubEndpoint();
-    await screen.findByRole('button', { name: 'Re-generate Narration' });
+    await screen.findByRole('button', { name: 'Regenerate Narration' });
     expect(narrations).toHaveLength(1);
 
     const regenerated = await regenerateOpening();

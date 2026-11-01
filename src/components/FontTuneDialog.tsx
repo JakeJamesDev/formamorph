@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ const SAMPLE = 'The lantern guttered as you stepped into the hollow.';
 
 /** One labeled slider over a numeric field of the draft. */
 function TuneSlider({
-  label, value, min, max, step, format, onChange,
+  label, value, min, max, step, format, onChange, hint,
 }: {
   label: string;
   value: number;
@@ -34,6 +34,8 @@ function TuneSlider({
   step: number;
   format: (v: number) => string;
   onChange: (v: number) => void;
+  /** Help line between the caption and the slider. */
+  hint?: ReactNode;
 }) {
   return (
     <label className="flex flex-col gap-1 text-label">
@@ -41,6 +43,7 @@ function TuneSlider({
         <span className="text-muted-foreground">{label}</span>
         <Meta className="tabular-nums">{format(value)}</Meta>
       </span>
+      {hint && <Hint as="span" className="block">{hint}</Hint>}
       <Slider value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
     </label>
   );
@@ -117,6 +120,10 @@ export function FontTuneDialog({ font, open, onOpenChange, source }: { font: Fon
               {...boldRange}
               format={(v) => `${v} / ${bold}`}
               onChange={set('boldWeight')}
+              hint={<>
+                Bold Weight sets the semibold weight, the first number beside the slider. Bold is 100
+                heavier, up to this font&apos;s heaviest weight.
+              </>}
             />
             <TuneSlider
               label="Italic Slant"
@@ -139,10 +146,6 @@ export function FontTuneDialog({ font, open, onOpenChange, source }: { font: Fon
               format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(3)}em`}
               onChange={set('letterSpacing')}
             />
-            <Hint>
-              Bold Weight sets the semibold weight, the first number beside the slider. Bold is 100
-              heavier, up to this font&apos;s heaviest weight.
-            </Hint>
           </div>
         </ScrollArea>
 

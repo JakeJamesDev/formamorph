@@ -11,7 +11,7 @@ const turns = [
   { action: 'walk', narration: 'You walk.', turnId: 't2' },
 ];
 const options = { turns, stats: [statFixture('Vigor', 50)] };
-const regenerate = () => screen.getByRole('button', { name: 'Re-generate Stats' });
+const regenerate = () => screen.getByRole('button', { name: 'Regenerate Stats' });
 
 describe('Stats panel actions', () => {
   it('places regeneration after edit and calls it for the viewed latest turn', () => {
@@ -70,13 +70,13 @@ describe('Stats panel actions', () => {
 
   it('hides regeneration when stat updates are off but keeps editing', () => {
     renderRightPanel({}, { ...options, settings: (settings) => settings.setStatUpdatesEnabled(false) });
-    expect(screen.queryByRole('button', { name: 'Re-generate Stats' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regenerate Stats' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Edit Stats' })).toBeEnabled();
   });
 
   it('offers no stats controls in a world without stats', () => {
     renderRightPanel({}, { turns });
-    expect(screen.queryByRole('button', { name: 'Re-generate Stats' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regenerate Stats' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit Stats' })).toBeNull();
   });
 });
