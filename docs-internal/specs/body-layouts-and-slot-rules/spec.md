@@ -60,6 +60,12 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q49 | The in-game doll caps its height so Carried stays reachable, about 320 px for a Humanoid. Its width follows the aspect, up to the panel's width. This narrows Q11's "scales to the panel's width" |
 | Q68 | (ticket 04, new evidence) Capacity caps at 99 in the editor input and in `parseBodies`, since each unit draws a box. Amends Bodies Q45's "no max" |
 | Q69 | (ticket 04) The user approved revised outlines: a Humanoid with its head joined to the body, a larger head and a shorter neck, and a fox-like Quadruped with two visible legs and no face. Ticket 07 places boxes on these |
+| Q70 | (ticket 05) A Custom Image is a new `body` media parent kind: the entity image cap, no rule host, no stacking, and Go to lands on Equipment Settings. It has no Visibility rule UI and no new link kind |
+| Q71 | (ticket 05) Picking Custom Image leaves the current Backdrop until a file lands. An image past the aspect clamp draws fit inside with bars, never stretched. Boxes stay fractions of the Backdrop |
+| Q72 | (ticket 05) Leaving a Custom Image drops the image and keeps the boxes. The aspect then follows Q53: Humanoid and Quadruped set theirs, and Plain keeps the current one |
+| Q73 | (ticket 06) Visible copies fill units from unit 1. A hidden equipped copy draws in no box, and the spare box reads as empty (inventory Q112) |
+| Q74 | (ticket 06) A Body with no drawable slots, or None, shows no figure and no Equipped subheader. A visible copy that gets no box lists under Carried with Unequip (Bodies Q35) |
+| Q75 | (ticket 06) The tap popover holds today's row: thumbnail, name, state, count, uses line, Use and Unequip. It stays open after Use. A filled box with an image shows the item's name in a hover tooltip. A failed image load falls back to the name |
 | Q50 | (ticket 04) Q46 settles variant B's structure. The approval step covers the two outlines. Frames of variant B in both themes go with that request, for the user to see, never to reopen Q46 |
 | Q51 | (ticket 04) A Body row gets a Duplicate action, named "\<name\> (Copy)" as elsewhere. It copies entries, Backdrop, aspect and boxes (Q32) |
 | Q52 | (ticket 04) A row click selects unit 1. Another click on the same row moves to the next unit and wraps. This also reaches a box hidden behind another |
