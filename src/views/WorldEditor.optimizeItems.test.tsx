@@ -34,7 +34,6 @@ vi.mock('@/lib/imageOptimWorkerClient', () => ({
 
 import { encodeInWorker, measureInWorker } from '@/lib/imageOptimWorkerClient';
 
-// These fills decode to a positive size in the scan's WebP chunk walk.
 const THUMBNAIL = fakeDataUrl('image/webp', 900, 'B');
 const ITEM_IMAGE = fakeDataUrl('image/webp', 900, 'C');
 const SHRUNK = fakeDataUrl('image/webp', 100, 'D');
@@ -72,6 +71,27 @@ describe('Optimize Images over an item image', () => {
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
     expect(ctx().items[0].images).toEqual([{ data: ITEM_IMAGE }]);
+    expect(ctx().worldOverview.thumbnail).toBe(THUMBNAIL);
+  });
+
+  it('writes a Body\'s Custom Image back and undoes it with the rest of the run', async () => {
+    const backdrop = { kind: 'image' as const, image: { data: ITEM_IMAGE } };
+    const { ctx } = renderWorldEditorBench({
+      ...WORLD,
+      items: [],
+      bodies: [{ id: 'imp', name: 'Imp', aspect: 2, entries: [], backdrop }],
+    }, 'advanced');
+    openEditorTab(/^Media$/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Optimize Images' }));
+    await screen.findByText(/This world has 2 images larger than recommended/);
+    fireEvent.click(screen.getByRole('button', { name: 'Downscale' }));
+
+    await waitFor(() => expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { data: SHRUNK } }));
+    expect(ctx().bodies[0].aspect).toBe(2);
+
+    await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
+    expect(ctx().bodies[0].backdrop).toEqual(backdrop);
     expect(ctx().worldOverview.thumbnail).toBe(THUMBNAIL);
   });
 });
