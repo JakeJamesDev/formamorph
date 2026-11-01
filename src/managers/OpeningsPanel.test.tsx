@@ -99,6 +99,65 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
     expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
   });
 
+  describe('on the Custom Persona entity', () => {
+    const custom = { ...warden, persona: undefined, customPersona: true } as Entity;
+    const markOn = (row: HTMLElement) => within(row).queryByText('Never Draws');
+    const chanceOf = (n: number) => screen.getByLabelText(`Chance for Opening ${n}`).textContent;
+
+    it('marks an Others row with a dash for its chance, and leaves a Self row its chance', () => {
+      mount(<EntityOpenings entity={custom} onChange={() => {}} placeholders={[]} />);
+      const [others, self] = screen.getAllByTestId('opening-row');
+      expect(markOn(others)).toBeInTheDocument();
+      expect(markOn(self)).toBeNull();
+      expect([chanceOf(1), chanceOf(2)]).toEqual(['—', '100%']);
+    });
+
+    it('drops the mark when the row flips to Self', async () => {
+      const onChange = vi.fn();
+      const user = userEvent.setup();
+      const { rerender } = mount(<EntityOpenings entity={custom} onChange={onChange} placeholders={[]} />);
+      await user.click(within(switchFor(1)!).getByRole('radio', { name: 'Self' }));
+      const flipped = { ...custom, ...onChange.mock.calls[0][0] };
+      rerender(
+        <PlaceholderStoreProvider value={store}>
+          <EditorPreviewRollsProvider><EntityOpenings entity={flipped} onChange={onChange} placeholders={[]} /></EditorPreviewRollsProvider>
+        </PlaceholderStoreProvider>,
+      );
+      expect(screen.queryByText('Never Draws')).toBeNull();
+    });
+
+    it('marks the row in the World tab’s Openings panel too', () => {
+      game.current = {
+        worldOverview: {}, updateWorldOverview: () => {}, entities: [custom], updateEntity: () => {},
+        locations: [{ id: 'dock', name: 'Dock', isStarting: true }], updateLocation: () => {}, placeholders: [],
+      };
+      mount(<OpeningsPanel />);
+      const [others, self] = screen.getAllByTestId('opening-row');
+      expect(markOn(others)).toBeInTheDocument();
+      expect(markOn(self)).toBeNull();
+      expect(screen.queryByText('No Starting Location')).toBeNull();
+    });
+
+    it('states in the hint which openings draw, in place of joining at its locations', () => {
+      mount(<EntityOpenings entity={custom} onChange={() => {}} placeholders={[]} />);
+      expect(document.body).toHaveTextContent('Draws only Self openings');
+      expect(screen.queryByText(/one of this entity's locations/)).toBeNull();
+    });
+
+    it('leaves a library entity’s row and hint alone', () => {
+      mount(<EntityOpenings library entity={custom} onChange={() => {}} placeholders={[]} />);
+      expect(screen.queryByText('Never Draws')).toBeNull();
+      expect(chanceOf(1)).toBe('100%');
+      expect(screen.getByText(/one of this entity's locations/)).toBeInTheDocument();
+    });
+
+    it('marks no row on any other entity', () => {
+      mount(<EntityOpenings entity={warden} onChange={() => {}} placeholders={[]} />);
+      expect(screen.queryByText('Never Draws')).toBeNull();
+      expect(screen.getByText(/one of this entity's locations/)).toBeInTheDocument();
+    });
+  });
+
   it('flips only that field, keeping text, kind and weight', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

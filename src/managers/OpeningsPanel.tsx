@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronDown, GripVertical, MapPinOff, Plus, Trash2 } from 'lucide-react';
+import { Ban, ChevronDown, GripVertical, MapPinOff, Plus, Trash2 } from 'lucide-react';
 import { CollapseAllButton } from '@/components/CollapseAllButton';
 import { useCardCollapse } from '@/lib/cardCollapse';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
@@ -35,6 +35,13 @@ import { fieldFrame, fieldPath } from '@/lib/historyField';
 const ALL_LOCATIONS = 'all-locations';
 
 const OR = new Intl.ListFormat('en', { type: 'disjunction' });
+
+/** An outline badge with a tip. A span, not Badge: the tip's trigger needs a ref, and Badge forwards none. */
+const TipBadge = ({ tip, children }: { tip: string; children: ReactNode }) => (
+  <Tip tip={tip} labelsChild={false}>
+    <span tabIndex={0} className={cn(badgeVariants({ variant: 'outline' }), 'gap-1')}>{children}</span>
+  </Tip>
+);
 
 /**
  * Every opening in the world, grouped by owner: the world's own rows, then each location with openings, then
@@ -142,17 +149,13 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
                 </Button>
               </Tip>
               {atNoStart && (
-                <Tip
+                <TipBadge
                   tip={location
                     ? "Isn't a starting location, so its openings never come up"
                     : "Isn't at any starting location, so its openings never come up"}
-                  labelsChild={false}
                 >
-                  {/* A span, not Badge: the tip's trigger needs a ref, and Badge forwards none. */}
-                  <span tabIndex={0} className={cn(badgeVariants({ variant: 'outline' }), 'gap-1')}>
-                    <MapPinOff className="h-3 w-3" aria-hidden /> No Starting Location
-                  </span>
-                </Tip>
+                  <MapPinOff className="h-3 w-3" aria-hidden /> No Starting Location
+                </TipBadge>
               )}
             </div>
             {location ? (
@@ -209,6 +212,8 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
 }) {
   const search = useListSearch();
   const showSelf = library ? !!entity.persona : canOwnSelfOpenings(entity);
+  // A library entity's mark means nothing until a world holds it.
+  const worldCustomPersona = !library && !!entity.customPersona;
   return (
     <div className="space-y-2">
       <ListSearchToolbar
@@ -218,7 +223,7 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
       />
       <OpeningsList
         owner={entity}
-        rows={ownerOpeningRows(entity, showSelf)}
+        rows={ownerOpeningRows(worldCustomPersona ? entity : { ...entity, customPersona: false }, showSelf)}
         onChange={onChange}
         placeholders={placeholders}
         ownerId={entity.id}
@@ -230,8 +235,11 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
-        {"Joins the world's openings when a game starts at one of this entity's locations. Turning off the world's openings turns these off too."}
-        {showSelf && ' Mark one Self to make it the only opening for a player who plays this entity.'}
+        {worldCustomPersona
+          ? <>Draws only <strong>Self</strong> openings, for a player who plays this entity or a library persona with no Self openings.</>
+          : "Joins the world's openings when a game starts at one of this entity's locations."}
+        {" Turning off the world's openings turns these off too."}
+        {showSelf && !worldCustomPersona && ' Mark one Self to make it the only opening for a player who plays this entity.'}
       </Hint>
     </div>
   );
@@ -332,7 +340,7 @@ export function OpeningsList({
         <EditorDndContext onDragEnd={handleDragEnd}>
           <StableSortableContext items={shown.map((row) => row.opening)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-3">
-              {shown.map(({ opening, index: i, weight, chance }) => (
+              {shown.map(({ opening, index: i, weight, chance, neverDraws }) => (
                 <OpeningCard
                   key={opening.id}
                   opening={opening}
@@ -342,6 +350,7 @@ export function OpeningsList({
                   onToggle={() => collapse.toggle(opening.id)}
                   weight={weight}
                   chance={chance}
+                  neverDraws={neverDraws}
                   placeholders={placeholders}
                   ownerId={ownerId}
                   ownerName={ownerName}
@@ -373,7 +382,7 @@ export function OpeningsList({
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, open, onToggle, weight, chance, placeholders, ownerId, ownerName, onKind, onSelf, selfBadge,
+  opening, label, a11yLabel, open, onToggle, weight, chance, neverDraws, placeholders, ownerId, ownerName, onKind, onSelf, selfBadge,
   onText, onWeight, onRemove,
 }: {
   opening: Opening;
@@ -385,6 +394,7 @@ const OpeningCard = ({
   onToggle: () => void;
   weight: number;
   chance: number | null;
+  neverDraws: boolean;
   placeholders: Placeholder[];
   ownerId?: string;
   ownerName?: string;
@@ -433,6 +443,11 @@ const OpeningCard = ({
           )}
         </button>
         {selfBadge && <Badge variant="outline">Self</Badge>}
+        {neverDraws && (
+          <TipBadge tip={'Never draws on the Custom Persona. Select "Self" to draw this opening.'}>
+            <Ban className="h-3 w-3" aria-hidden /> Never Draws
+          </TipBadge>
+        )}
         <ToggleGroup
           type="single"
           value={opening.kind}

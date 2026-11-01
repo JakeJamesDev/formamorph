@@ -4,7 +4,7 @@ import type { Entity, GameLocation, Opening, WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, drawPoolEntry, openingOwner, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
   drawUnseenOpening, hasAuthoredOpenings, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
-  setOpeningText, setOpeningWeight,
+  ownerOpeningRows, setOpeningText, setOpeningWeight,
 } from './openings';
 
 /** Mulberry32: a small seeded source, so a draw test is repeatable without mocking a global. */
@@ -448,6 +448,58 @@ describe('the editor view', () => {
   it('counts the rows of the switched-off list, so a draft reads the odds it will have', () => {
     const v = view({ overview: overview({ openings: [action('w1'), action('w2')], openingsEnabled: false }) });
     expect(chances(v)).toEqual([[null, [50, 50]]]);
+  });
+
+  describe('with a Custom Persona entity', () => {
+    const selfRow = (id: string): Opening => ({ ...action(id), self: true });
+    const custom = (locations: string[] | undefined = ['dock']) =>
+      ent('c', locations, [action('c1'), selfRow('cs1'), selfRow('cs2')], { customPersona: true, openingWeights: { cs2: 3 } });
+    const marks = (v: ReturnType<typeof view>) => v.groups.map((g) => g.rows.map((r) => r.neverDraws));
+
+    it('marks its Others rows and drops their chance, and its Self rows keep theirs', () => {
+      const v = view({ overview: overview({ openings: [action('w1')] }), entities: [custom()], locations: [loc('dock', true)] });
+      expect(chances(v)).toEqual([[null, [100]], ['c', [null, 25, 75]]]);
+      expect(marks(v)).toEqual([[false], [true, false, false]]);
+    });
+
+    it('gives the world the default opening when only those rows have text, as the draw does', () => {
+      const v = view({ entities: [custom()], locations: [loc('dock', true)] });
+      expect(v.defaultOpening).toBe(true);
+      expect(v.defaultStarts.map((l) => l.id)).toEqual(['dock']);
+    });
+
+    it('marks nothing on an ordinary entity or a persona', () => {
+      const v = view({
+        entities: [ent('g', ['dock'], [action('g1')]), ent('p', ['dock'], [action('p1'), selfRow('p2')], { persona: true })],
+        locations: [loc('dock', true)],
+      });
+      expect(marks(v)).toEqual([[], [false], [false, false]]);
+    });
+
+    it('never gets the No Starting Location badge, with or without a location', () => {
+      for (const locations of [['dock'], [], undefined]) {
+        const v = view({ entities: [custom(locations)], locations: [loc('dock', true)] });
+        expect(v.groups.map((g) => g.atNoStart)).toEqual([false, false]);
+      }
+    });
+
+    it('shows its Others rows with the mark under All Locations and at a lone start', () => {
+      const several = [loc('dock', true), loc('cave', true)];
+      expect(marks(view({ entities: [custom()], locations: several }))).toEqual([[], [true, false, false]]);
+      expect(marks(view({ entities: [custom()], locations: [loc('dock', true)] }))).toEqual([[], [true, false, false]]);
+    });
+
+    it('hides its Others rows at a picked start, even the one it stands at', () => {
+      const v = view({ entities: [custom()], locations: [loc('dock', true), loc('cave', true)] }, 'dock');
+      expect(v.groups[1].rows.map((r) => r.opening.id)).toEqual(['cs1', 'cs2']);
+    });
+
+    it('gives the entity’s own list a dash and the mark on those rows', () => {
+      expect(ownerOpeningRows(custom()).map((r) => [r.opening.id, r.chance, r.neverDraws])).toEqual([
+        ['c1', null, true], ['cs1', 25, false], ['cs2', 75, false],
+      ]);
+      expect(ownerOpeningRows(ent('g', ['dock'], [action('g1')])).map((r) => [r.chance, r.neverDraws])).toEqual([[100, false]]);
+    });
   });
 
   describe('with several starts', () => {

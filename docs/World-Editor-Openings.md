@@ -133,9 +133,9 @@ A chance is the share of the whole draw at one starting location. World, locatio
 
 A world with one starting location has no filter. The panel shows chances as at that start. A row that can't come up there shows a dash.
 
-An entity at no starting location shows a **No Starting Location** badge. A location that isn't a starting location shows it too. Their openings never come up.
+An entity at no starting location shows a **No Starting Location** badge. A location that isn't a starting location shows it too. Their openings never come up. The **Custom Persona** entity never shows this badge. Its Others openings show a **Never Draws** badge: see [Self Openings](#self-openings).
 
-With no location marked **Starting Location**, every location counts as one. In a world with no locations, only the world's own openings draw, and every entity group with Others openings shows the badge.
+With no location marked **Starting Location**, every location counts as one. In a world with no locations, only the world's own openings draw, and every other entity group with Others openings shows the **No Starting Location** badge.
 
 ## Location Openings
 <!-- keywords: start per place, room specific intro, area greeting, different per spawn, place based beginning, parent not inherited -->
@@ -178,7 +178,7 @@ To check the draw before you play, use the **Opening** tab of the [Test Bench](T
 
 | Rule | Effect |
 |---|---|
-| **Starting location** | The entity's Others openings join the draw only when it is at the player's starting location. |
+| **Starting location** | The entity's Others openings join the draw only when it is at the player's starting location. The **Custom Persona** entity's never join. |
 | **The world switch** | The world's **Openings** checkbox turns the entity's openings off too, and an entity's openings check that box. An entity has no switch of its own. |
 | **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch turns them off with the rest. They also never draw when the world, its locations and its entities have no openings. That world plays the default opening. |
 | **Entity card** | The openings, their **Others** or **Self** switch and their weights travel with the entity in its [card file](Library#how-to-export-an-entity-or-a-dictionary) and in a published listing. |
@@ -214,7 +214,8 @@ The game looks for Self openings in this order. The first source that has one wi
 - **The world switch covers Self openings.** Off means the default opening.
 - **A world persona with no Self openings starts on the normal pool.** Its Others openings still stay out.
 - **A library persona with no Self openings uses the Custom Persona's Self openings.** With none there, it starts on the normal pool.
-- **A Persona-Only entity's Self openings draw when the player picks it.** Its Others openings never draw, and neither do the **Custom Persona** entity's.
+- **A Persona-Only entity's Self openings draw when the player picks it.** Its Others openings never draw.
+- **The Custom Persona entity's Others openings never draw.** Each one shows a **Never Draws** badge and a dash for its chance. Select **Self** on one to draw it. A filter on one location hides these rows.
 - **Setting it back to Cast keeps the text.** An entity set back to **Cast** keeps its Self openings in the file. The editor hides them until you set it to a persona choice again.
 
 In the panel, Self openings stay in their owner's group with a **Self** badge.
