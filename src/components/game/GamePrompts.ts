@@ -575,6 +575,7 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - state: for change, the item's new state in a word or two. Empty for every other operation.
 - after: for use, "kept" when the item is still there after the use, or "used up" when it is gone. Empty for every other operation.
 - target: for use, the other item it is used on, by its name as Items Here shows it. Empty when it acts on no other item, and for every other operation.
+- slot: for equip, the one slot the story puts the item in, by a slot name shown after the item's name. Empty when the story shows no particular slot, and for every other operation.
 
 Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.
 

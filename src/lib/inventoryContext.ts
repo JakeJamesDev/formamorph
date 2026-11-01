@@ -1,6 +1,6 @@
 import type { BodySlot, SlotOwner } from './bodies';
 import { copiesAt } from './inventory';
-import { copyFace, copyState, isUnidentified, usesLeft } from './items';
+import { copyFace, copyState, isUnidentified, slotRuleMark, usesLeft } from './items';
 import type { ContextFormat } from './statContext';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { xmlEscape } from './utils';
@@ -70,7 +70,7 @@ function unidentifiedLine(item: Named, copy: ItemCopy, slotMark: string): string
  * Description where there is none) and carried items by name, then the Item Copies lying at the location,
  * hidden ones marked. A runtime item goes by its name; one with a description gets a line of its own (Q145), as
  * does an unidentified copy, with both faces. In a world with Bodies, each owner block opens with that owner's
- * slots and each equippable item names its slot (Q52, Q53); the player's block shows even when empty.
+ * slots and each equippable item names its Slot Rule (Q52, Q41); the player's block shows even when empty.
  * N/A when nobody present has an item and the world has no Bodies.
  */
 export function buildInventoryContext(scene: InventoryScene, format: ContextFormat): string {
@@ -80,8 +80,8 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
     const item: Named | undefined = copy.item.kind === 'item' ? items.get(copy.item.itemId) : runtime.get(copy.item.runtimeItemId);
     return item ? [{ item, copy }] : [];
   });
-  /** The item's first slot; empty for an item with none or in a world with no Bodies. */
-  const slotMark = (item: Named) => scene.equipment?.slots.find((s) => s.id === item.slotRule?.slotIds[0])?.name ?? '';
+  /** The item's Slot Rule; empty for an item with no slot or in a world with no Bodies. */
+  const slotMark = (item: Named) => slotRuleMark(item.slotRule, scene.equipment?.slots ?? []);
   const nameOf = (item: Named, copy: ItemCopy) => copyName(item, copy, slotMark(item));
   const faceLine = (item: Named, copy: ItemCopy) => unidentifiedLine(item, copy, slotMark(item));
   const md = format === 'markdown';

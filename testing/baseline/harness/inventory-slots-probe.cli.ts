@@ -7,14 +7,19 @@
 //   transformed    — the player on the Wolf Body pushes into the helm: an equip is wrong
 //
 //   transformed-odette — the same scene with Odette on the Wolf Body
+//   either-named   — both hands free, the story names the off hand: the equip lands in that slot
+//   either-plain   — both hands free, no hand named: the equip lands
+//   all-fits       — an All of greatsword on a two-handed Body: the equip lands
+//   all-lacks      — the same greatsword on a one-handed Body: an equip is wrong
+//   either-partial — an Either of dagger on a one-handed Body: the equip lands
 //
-// Arms, paired by run index on the shipped schema request:
-//   control — Items Here as before Bodies reached the prompt (no slots), and the equip line without its slot clause
-//   slots   — Items Here with each owner's slots and each item's slot, the equip line without its slot clause
-//   clause  — the shipped request: slots, and the equip line with its slot clause (Q53)
+// Arms, paired by run index on the schema request (Q66):
+//   control — no slots in Items Here, no slot clause, no slot field
+//   first   — each item shows only its first slot, the slot clause, no slot field
+//   rule    — the shipped request: each item shows its whole Slot Rule, the slot clause, the slot field
 //
 // Usage: npx vite-node testing/baseline/harness/inventory-slots-probe.cli.ts --
-//          [--endpoint URL] [--model ID] [--runs 8] [--pool 4] [--only <case>] [--out results.json] [--show] [--dump]
+//          [--endpoint URL] [--model ID] [--runs 8] [--pool 4] [--only <case,case>] [--arms <arm,arm>] [--out results.json] [--show] [--dump]
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { defaultInventoryPrompt, defaultInventoryUserPrompt } from '@/components/game/GamePrompts';
@@ -41,14 +46,20 @@ const pool = Number(argVal('--pool', '4'));
 const only = argVal('--only', '');
 const SEED = 707070;
 
-const CLAUSE = ", when that owner's slots include the slot shown after the item's name";
-if (!defaultInventoryPrompt.includes(CLAUSE)) throw new Error('The equip line no longer carries the slot clause this probe ablates.');
-const PROMPTS = { clause: defaultInventoryPrompt, bare: defaultInventoryPrompt.replace(CLAUSE, '') };
+const EQUIP_LINE = /- equip: [^\n]*\n/;
+const SLOT_FIELD = /- slot: [^\n]*\n/;
+if (!EQUIP_LINE.test(defaultInventoryPrompt) || !SLOT_FIELD.test(defaultInventoryPrompt)) throw new Error('The prompt no longer carries the lines this probe ablates.');
+const noField = defaultInventoryPrompt.replace(SLOT_FIELD, '');
+const PROMPTS = {
+  shipped: defaultInventoryPrompt,
+  first: noField,
+  bare: noField.replace(EQUIP_LINE, '- equip: an owner wields or wears an item they carry.\n'),
+};
 
 type CopySpec = { item: string; where: string; equipped?: boolean; quantity?: number };
 type Case = {
   id: string; picks: Record<string, string>; copies: CopySpec[]; action: string; narration: string;
-  owner: string; item: string; want: 'equip' | 'no-equip';
+  owner: string; item: string; want: 'equip' | 'no-equip'; wantSlot?: string;
 };
 const BASELINE = path.resolve('testing/baseline');
 const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-landing.json'), 'utf8')));
@@ -88,14 +99,23 @@ const startOf = (c: Case): ItemCopy[] => c.copies.map((spec, i) => ({
   ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotRule?.slotIds[0] ?? 'hand', order: i } }),
 }));
 
-type Arm = 'control' | 'slots' | 'clause';
-const ARMS: Arm[] = ['control', 'slots', 'clause'];
+type Arm = 'control' | 'first' | 'rule';
+const ARMS = (['control', 'first', 'rule'] as Arm[]).filter((arm) => argVal('--arms', arm).split(',').includes(arm));
+const firstSlotItems: Item[] = items.map((item) => (item.slotRule ? { ...item, slotRule: { mode: 'either', slotIds: item.slotRule.slotIds.slice(0, 1) } } : item));
 const requestOf = (arm: Arm, c: Case) => {
-  const scene = { ...baseScene, items, itemCopies: startOf(c), ...(arm !== 'control' && { equipment: equipmentOf(c) }) };
-  return inventoryRequest(
-    { system: arm === 'clause' ? PROMPTS.clause : PROMPTS.bare, user: defaultInventoryUserPrompt },
+  const scene = {
+    ...baseScene, items: arm === 'first' ? firstSlotItems : items, itemCopies: startOf(c),
+    ...(arm !== 'control' && { equipment: equipmentOf(c) }),
+  };
+  const request = inventoryRequest(
+    { system: arm === 'control' ? PROMPTS.bare : arm === 'first' ? PROMPTS.first : PROMPTS.shipped, user: defaultInventoryUserPrompt },
     { ctx: chipValues(scene), action: c.action, narration: c.narration }, { textPass: false, quiet: false },
   );
+  if (arm === 'rule') return request;
+  const responseSchema = structuredClone(request.responseSchema!);
+  const operation = (responseSchema.schema.properties as { operations: { items: { properties: Record<string, unknown> } } }).operations.items;
+  delete operation.properties.slot;
+  return { ...request, responseSchema };
 };
 
 const pins = {
@@ -128,8 +148,8 @@ const ownerName = (c: Case) => (c.owner === 'you' ? 'you' : itemNameKey(world.en
 const equipsIt = (c: Case, op: InventoryPassOp) => op.op === 'equip' && itemNameKey(op.item).startsWith(itemName(c))
   && (c.owner === 'you' ? PLAYER.has(itemNameKey(op.owner).replace(/^the\s+/, '')) : itemNameKey(op.owner) === ownerName(c));
 
-/** Right: no equip of the item on a slotless owner; or, for `equip`, an equip that the validator lands. */
-function score(c: Case, raw: string): { hit: boolean; proposed: boolean; landed: boolean; ops: number } {
+/** Right: no equip of the item on an owner it can't fit; or, for `equip`, an equip the validator lands, in `wantSlot` when set. */
+function score(c: Case, raw: string): { hit: boolean; proposed: boolean; landed: boolean; named: boolean; ops: number } {
   const ops = parseInventoryReply(raw);
   const proposed = ops.some((op) => equipsIt(c, op));
   const start = startOf(c);
@@ -137,19 +157,20 @@ function score(c: Case, raw: string): { hit: boolean; proposed: boolean; landed:
     items, runtimeItems: [], playerNames: ['Traveler'], owners, location: { id: location!.id, name: location!.name },
   }, { world: { items, ...equipmentOf(c).world }, newId: (() => { let i = 0; return () => `n${i++}`; })() });
   const landed = result.copies.some((copy) => copy.item.kind === 'item' && copy.item.itemId === c.item && !!copy.equipped
-    && JSON.stringify(copy.where) === JSON.stringify(whereOf(c.owner)));
-  return { hit: c.want === 'equip' ? proposed && landed : !proposed, proposed, landed, ops: ops.length };
+    && JSON.stringify(copy.where) === JSON.stringify(whereOf(c.owner)) && (!c.wantSlot || copy.equipped.slotId === c.wantSlot));
+  const named = ops.some((op) => equipsIt(c, op) && !!op.slot);
+  return { hit: c.want === 'equip' ? proposed && landed : !proposed, proposed, landed, named, ops: ops.length };
 }
 
-type Row = { arm: Arm; case: string; run: number; hit: boolean; proposed: boolean; raw: string };
+type Row = { arm: Arm; case: string; run: number; hit: boolean; proposed: boolean; named: boolean; raw: string };
 const results: Row[] = [];
-const cases = fixture.cases.filter((c) => !only || c.id === only);
+const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
 const jobs = cases.flatMap((c) => Array.from({ length: runs }, (_, run) => ARMS.map((arm) => async () => {
   const raw = await send(requestOf(arm, c), SEED + run);
   const s = score(c, raw);
   console.log(`[${arm}] ${c.id} #${run} ${s.hit ? 1 : 0} · ops ${s.ops} · equip proposed ${s.proposed ? 1 : 0} landed ${s.landed ? 1 : 0}`);
   if (args.includes('--show')) console.log(`    ${raw.replace(/\n+/g, ' ¶ ')}`);
-  return { arm, case: c.id, run, hit: s.hit, proposed: s.proposed, raw };
+  return { arm, case: c.id, run, hit: s.hit, proposed: s.proposed, named: s.named, raw };
 })).flat());
 
 if (args.includes('--dump')) {
@@ -173,10 +194,10 @@ await Promise.all(Array.from({ length: pool }, async () => {
 
 const outPath = argVal('--out', '');
 if (outPath) writeFileSync(outPath, JSON.stringify({ model, runs, results }, null, 2));
-const rate = (xs: Row[], key: 'hit' | 'proposed') => `${xs.filter((r) => r[key]).length}/${xs.length}`;
+const rate = (xs: Row[], key: 'hit' | 'proposed' | 'named') => `${xs.filter((r) => r[key]).length}/${xs.length}`;
 const of = (arm: Arm, id: string) => results.filter((r) => r.arm === arm && r.case === id);
-console.log('\nRIGHT (no-equip cases: no equip proposed · normal: equip proposed and landed) — and equip proposed');
+console.log('\nRIGHT (no-equip cases: no equip proposed · equip cases: proposed and landed, in wantSlot when set) — equip proposed, slot named');
 for (const c of cases) {
-  console.log(`  ${c.id.padEnd(15)} ${c.want === 'equip' ? '↑' : '↓'}  ${ARMS.map((arm) => `${arm} ${rate(of(arm, c.id), 'hit')} (eq ${rate(of(arm, c.id), 'proposed')})`).join(' · ')}`);
+  console.log(`  ${c.id.padEnd(18)} ${c.want === 'equip' ? '↑' : '↓'}  ${ARMS.map((arm) => `${arm} ${rate(of(arm, c.id), 'hit')} (eq ${rate(of(arm, c.id), 'proposed')} sl ${rate(of(arm, c.id), 'named')})`).join(' · ')}`);
 }
 console.log(`duration ${((Date.now() - started) / 1000).toFixed(0)}s`);

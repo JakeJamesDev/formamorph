@@ -3,16 +3,22 @@
     { "id": "helm", "name": "Iron Helm", "slotRule": { "mode": "either", "slotIds": ["head"] }, "stackable": false, "aiSummary": "A dented iron cap with a leather chin strap." },
     { "id": "knife", "name": "Gutting Knife", "slotRule": { "mode": "either", "slotIds": ["hand"] } },
     { "id": "collar", "name": "Studded Collar", "slotRule": { "mode": "either", "slotIds": ["neck"] }, "stackable": false },
+    { "id": "dagger", "name": "Bone Dagger", "slotRule": { "mode": "either", "slotIds": ["main", "off"] }, "stackable": false, "aiSummary": "A short dagger with a yellowed bone grip." },
+    { "id": "greatsword", "name": "Greatsword", "slotRule": { "mode": "all", "slotIds": ["main", "off"] }, "stackable": false, "aiSummary": "A long blade that takes both hands to lift." },
     { "id": "eel", "name": "Smoked Eel", "uses": 1 }
   ],
   "slots": [
     { "id": "head", "name": "Head" },
     { "id": "hand", "name": "Hand" },
-    { "id": "neck", "name": "Collar" }
+    { "id": "neck", "name": "Collar" },
+    { "id": "main", "name": "Main Hand" },
+    { "id": "off", "name": "Off Hand" }
   ],
   "bodies": [
     { "id": "humanoid", "name": "Humanoid", "entries": [{ "slotId": "head" }, { "slotId": "hand", "capacity": 2 }] },
-    { "id": "wolf", "name": "Wolf", "entries": [{ "slotId": "neck" }] }
+    { "id": "wolf", "name": "Wolf", "entries": [{ "slotId": "neck" }] },
+    { "id": "paired", "name": "Paired", "entries": [{ "slotId": "head" }, { "slotId": "main" }, { "slotId": "off" }] },
+    { "id": "onearmed", "name": "One-Armed", "entries": [{ "slotId": "head" }, { "slotId": "main" }] }
   ],
   "cases": [
     {
@@ -88,6 +94,91 @@
       "owner": "ent-odette",
       "item": "helm",
       "want": "no-equip"
+    },
+    {
+      "id": "either-named",
+      "note": "Either of with both hands free; the story puts the dagger in the off hand, so an unnamed equip lands in the wrong one.",
+      "picks": { "you": "paired" },
+      "copies": [
+        { "item": "dagger", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I draw my bone dagger with my off hand.",
+      "narration": "You reach across your belt and draw the bone dagger with your off hand, keeping your main hand free. The grip is cold against your palm. Odette glances over from the firepit.",
+      "owner": "you",
+      "item": "dagger",
+      "want": "equip",
+      "wantSlot": "off"
+    },
+    {
+      "id": "either-plain",
+      "note": "Either of and no hand named: any allowed slot is right, and a junk slot name would lose the equip.",
+      "picks": { "you": "paired" },
+      "copies": [
+        { "item": "dagger", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I draw my bone dagger.",
+      "narration": "You draw the bone dagger and hold it low at your side. The grip is cold against your palm. Odette glances over from the firepit.",
+      "owner": "you",
+      "item": "dagger",
+      "want": "equip"
+    },
+    {
+      "id": "all-fits",
+      "note": "All of on a Body with both slots.",
+      "picks": { "you": "paired" },
+      "copies": [
+        { "item": "greatsword", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I draw my greatsword.",
+      "narration": "You draw the greatsword from the sheath on your back and grip it in both hands. The blade settles level before you. Odette whistles from the firepit.",
+      "owner": "you",
+      "item": "greatsword",
+      "want": "equip"
+    },
+    {
+      "id": "all-named",
+      "note": "All of with the story naming one of its slots: the name is listed, so the equip lands in both.",
+      "picks": { "you": "paired" },
+      "copies": [
+        { "item": "greatsword", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I draw my greatsword with my main hand.",
+      "narration": "You draw the greatsword from the sheath on your back with your main hand, then bring your off hand up to the grip. The blade settles level before you. Odette whistles from the firepit.",
+      "owner": "you",
+      "item": "greatsword",
+      "want": "equip"
+    },
+    {
+      "id": "all-lacks",
+      "note": "All of on a Body with one of its two slots: the validator refuses, so an equip is wrong.",
+      "picks": { "you": "onearmed" },
+      "copies": [
+        { "item": "greatsword", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I draw my greatsword.",
+      "narration": "You draw the greatsword from the sheath on your back and grip it in your one hand. The blade settles level before you. Odette whistles from the firepit.",
+      "owner": "you",
+      "item": "greatsword",
+      "want": "no-equip"
+    },
+    {
+      "id": "either-partial",
+      "note": "Either of on a Body with one of its two slots: it fits, so a can't-fit reading is wrong.",
+      "picks": { "you": "onearmed" },
+      "copies": [
+        { "item": "dagger", "where": "you" },
+        { "item": "eel", "where": "ent-odette", "quantity": 2 }
+      ],
+      "action": "I draw my bone dagger.",
+      "narration": "You draw the bone dagger and hold it low at your side. The grip is cold against your palm. Odette glances over from the firepit.",
+      "owner": "you",
+      "item": "dagger",
+      "want": "equip"
     }
   ]
 }
