@@ -2267,6 +2267,45 @@ Button names are verb-first and name the item: "Equip Greatsword", "Drop Ash Wan
 
 Open `#dev?modal=designSystem&tab=inventory-tab`, or `#dev?view=gameViewer&fixture=items&tab=inventory` for the tab in a game.
 
+## Pattern: Entity Popup
+
+**Purpose:** Show an entity's picture and everything the player can read about it at once, in game.
+
+> ✅ **Approved.** The user approved the layout on 2026-11-01 from a mock on `prototype/entity-popup-layout`.
+
+**Density:** The picture leads. The text column holds the description, its actions, Equipped and the sound.
+
+### Composition
+
+- 🖼️ **Picture.** The left 3/5, at its own aspect and top-aligned. Its corner buttons and gallery controls stay on it.
+- 📝 **Text.** The right 2/5. It starts level with the picture and scrolls on its own.
+- 📐 **Dialog.** 1040px wide at most, and 90% of the screen tall.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The body | `EntityCardBody` with `sideBySide` in [`EntityCard.tsx`](../src/components/game/EntityCard.tsx) |
+| Met entities | `EntityModal` in [`EntityModal.tsx`](../src/components/modals/EntityModal.tsx) |
+| Strangers | `StrangerModal` in [`StrangerModal.tsx`](../src/components/modals/StrangerModal.tsx) |
+| Isolated reference | [`EntityPopupReference.tsx`](../src/components/design-system/EntityPopupReference.tsx) |
+
+### Responsive behavior
+
+Two columns start at the `lg` breakpoint (1024px). Below it the picture sits above the text and takes 3/4 of the height. The tour's In Play pane has no fixed height, so it leaves `sideBySide` off and always stacks.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Portrait art | Fills the column's height. |
+| Landscape art | Fills the column's width, with empty space below it. |
+| Avatar or 3D model | Fills the column. |
+| No picture | The text takes the full width. |
+| Long text | The text column scrolls and the picture stays in place. |
+
+Open `#dev?modal=designSystem&tab=entity-popup`, or `#dev?view=gameViewer&fixture=entityStats&tab=entities` and select an entity's name twice.
+
 ## Standard: In-Use Delete
 
 **Purpose:** Make every editor delete behave the same way, whether or not other records use the thing.

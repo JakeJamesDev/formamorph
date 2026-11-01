@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import { EntityVisual } from './EntityVisual';
 import { hasEntityVisual } from '@/lib/entityVisual';
 import AudioPlayer from './AudioPlayer';
@@ -29,17 +30,20 @@ export function EntityDescription({ text, resolveText = identity, children }: {
 /**
  * The entity card's body: the picture, then the description area and the entity's sound. `children` is
  * the description area. The visual props are the gameplay-held picture state `EntityVisual` takes.
+ * `sideBySide` puts the picture left of the text on large screens; it needs a host with a fixed height.
  */
-export function EntityCardBody({ entity, children, images, avatar, preference, onPreferenceChange, imageIndex, onImageStep, morphValues }: {
+export function EntityCardBody({ entity, children, sideBySide = false, images, avatar, preference, onPreferenceChange, imageIndex, onImageStep, morphValues }: {
   entity: Entity;
   children: ReactNode;
+  sideBySide?: boolean;
 } & Pick<ComponentProps<typeof EntityVisual>, 'images' | 'avatar' | 'preference' | 'onPreferenceChange' | 'imageIndex' | 'onImageStep' | 'morphValues'>) {
   return (
-    <div className="flex-grow min-h-0 flex flex-col gap-4 p-4">
-      {/* Picture takes 3/4 of the body height (aspect ratio preserved); description fills the rest. */}
+    <div className={cn('flex-grow min-h-0 flex flex-col gap-4 p-4', sideBySide && 'lg:flex-row lg:gap-6')}>
+      {/* Picture takes 3/4 of the height, or 3/5 of the width side by side (aspect ratio preserved). */}
       {(hasEntityVisual(entity) || !!avatar) && (
-        <div className="flex-[3] min-h-0 flex items-center justify-center">
+        <div className="flex-[3] min-h-0 min-w-0 flex items-center justify-center">
           <EntityVisual
+            className={sideBySide ? 'lg:items-start' : undefined}
             entity={entity}
             images={images}
             avatar={avatar}
@@ -51,10 +55,10 @@ export function EntityCardBody({ entity, children, images, avatar, preference, o
           />
         </div>
       )}
-      {/* Scroll area whose content sits vertically centered when short (min-h-full + justify-center)
-          and scrolls from the top when long. */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="min-h-full flex flex-col justify-center">
+      {/* Stacked, short content sits vertically centered (min-h-full + justify-center). Side by side, it starts
+          level with the picture. Long content scrolls from the top. */}
+      <ScrollArea className={cn('flex-1 min-h-0 min-w-0', sideBySide && 'lg:flex-[2]')}>
+        <div className={cn('min-h-full flex flex-col justify-center', sideBySide && 'lg:justify-start')}>
           <div className="flex flex-col gap-4">
             {children}
             {entity.sound && (

@@ -32,6 +32,13 @@ function editing(overrides: Partial<EntityDescriptionEditing> = {}): EntityDescr
   };
 }
 
+describe('EntityModal layout', () => {
+  it('lays the card out in two columns', () => {
+    const { baseElement } = render(<EntityModal entity={entity} isOpen onOpenChange={() => {}} />);
+    expect(baseElement.querySelector('.lg\\:flex-row')).not.toBeNull();
+  });
+});
+
 describe('EntityModal description controls', () => {
   it('shows no edit or regenerate control for an authored entity', () => {
     render(<EntityModal entity={entity} isOpen onOpenChange={() => {}} />);

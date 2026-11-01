@@ -36,6 +36,11 @@ describe('StrangerModal', () => {
     expect(screen.getByText('Face hidden.')).toBeTruthy();
   });
 
+  it('lays the card out in two columns', () => {
+    const { baseElement } = render(<StrangerModal entity={sylvie} label="a hooded figure" isOpen onOpenChange={() => {}} />);
+    expect(baseElement.querySelector('.lg\\:flex-row')).not.toBeNull();
+  });
+
   it('shows no name, description, stats or sound', () => {
     const { baseElement } = render(<StrangerModal entity={sylvie} label="a hooded figure" isOpen onOpenChange={() => {}} />);
     expect(baseElement.textContent).not.toContain('Sylvie');
