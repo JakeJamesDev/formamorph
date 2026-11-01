@@ -6,7 +6,7 @@ import path from 'node:path'
 
 const WORLD_RAW = /[\\/]src[\\/]defaultworlds[\\/]([^\\/?]+)\.json\?raw$/
 
-const lossless = () => process.env.FORMAMORPH_LOSSLESS_WORLDS === '1'
+export const shipsLossless = () => process.env.FORMAMORPH_LOSSLESS_WORLDS === '1'
 
 const megabytes = (n) => `${(n / 1e6).toFixed(2)} MB`
 
@@ -25,38 +25,54 @@ export function shipBundledWorlds(root) {
   const sizes = []
   /** @type {string[]} */
   const skipped = []
+  /** @type {Map<string, Promise<string>>} */
+  const shippedTexts = new Map()
+
+  const shipFile = async (file) => {
+    const name = path.basename(file, '.json')
+    const source = readFileSync(file, 'utf8')
+    // A Node-side module loader, so the shipped-world module keeps its `@/` imports and TypeScript.
+    loader ??= import('vite').then(({ createServer }) => createServer({
+      configFile: false,
+      root,
+      logLevel: 'error',
+      appType: 'custom',
+      resolve: { alias: { '@': path.resolve(root, 'src') } },
+      server: { middlewareMode: true, hmr: false, watch: null },
+      optimizeDeps: { noDiscovery: true, include: [] },
+    }))
+    const { shippedWorldText, skippedAnimations } = await (await loader).ssrLoadModule('/src/lib/shippedWorld.ts')
+    const shipped = await shippedWorldText(source)
+    sizes.push({ name, source: Buffer.byteLength(source), shipped: Buffer.byteLength(shipped) })
+    for (const skip of await skippedAnimations(source)) skipped.push(`${name}: ${skip}`)
+    return shipped
+  }
+
+  /** One world's shipped text, encoded once per build. */
+  const shippedText = (file) => {
+    const text = shippedTexts.get(file) ?? shipFile(file)
+    shippedTexts.set(file, text)
+    return text
+  }
 
   return {
     name: 'ship-bundled-worlds',
     apply: 'build',
     enforce: 'pre',
+    api: { shippedText },
     configResolved(config) {
       logger = config.logger
     },
     async load(id) {
       const match = WORLD_RAW.exec(id)
-      if (!match || lossless()) return null
+      if (!match || shipsLossless()) return null
       const file = id.slice(0, id.indexOf('?'))
       this.addWatchFile(file)
-      const source = readFileSync(file, 'utf8')
-      // A Node-side module loader, so the shipped-world module keeps its `@/` imports and TypeScript.
-      loader ??= import('vite').then(({ createServer }) => createServer({
-        configFile: false,
-        root,
-        logLevel: 'error',
-        appType: 'custom',
-        resolve: { alias: { '@': path.resolve(root, 'src') } },
-        server: { middlewareMode: true, hmr: false, watch: null },
-        optimizeDeps: { noDiscovery: true, include: [] },
-      }))
-      const { shippedWorldText, skippedAnimations } = await (await loader).ssrLoadModule('/src/lib/shippedWorld.ts')
-      const shipped = await shippedWorldText(source)
-      sizes.push({ name: match[1], source: Buffer.byteLength(source), shipped: Buffer.byteLength(shipped) })
-      for (const name of await skippedAnimations(source)) skipped.push(`${match[1]}: ${name}`)
+      const shipped = await shippedText(file)
       return `export default ${JSON.stringify(shipped)}`
     },
     async buildEnd() {
-      if (lossless()) logger?.info('Bundled worlds ship lossless (FORMAMORPH_LOSSLESS_WORLDS=1).')
+      if (shipsLossless()) logger?.info('Bundled worlds ship lossless (FORMAMORPH_LOSSLESS_WORLDS=1).')
       if (sizes.length) {
         const rows = [...sizes].sort((a, b) => a.name.localeCompare(b.name))
         const total = rows.reduce((t, r) => ({ source: t.source + r.source, shipped: t.shipped + r.shipped }), { source: 0, shipped: 0 })
@@ -68,6 +84,7 @@ export function shipBundledWorlds(root) {
       }
       await (await loader)?.close()
       loader = null
+      shippedTexts.clear()
     },
   }
 }
