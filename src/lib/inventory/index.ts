@@ -40,6 +40,10 @@ export interface SeedWorld {
 export const copiesAt = (copies: readonly ItemCopy[], where: ItemCopyWhere): ItemCopy[] =>
   copies.filter((copy) => sameWhere(copy.where, where));
 
+/** The Item Copies at `where` the player can see worn. */
+export const visibleWorn = (copies: readonly ItemCopy[], where: ItemCopyWhere): ItemCopy[] =>
+  copiesAt(copies, where).filter((c) => c.equipped && c.visibility === 'visible').sort(byEquipOrder);
+
 /**
  * The items with stat effects that the stat request names (Q53, Q149): visible Item Copies held by you or a
  * present entity, or lying at `scene.locationId`. In authored order.

@@ -40,9 +40,15 @@ const ENTITY_STATS_CAST = [
       devStat('Secret', 9, { hidden: true }),
       devStat('Dormant', 3, { enabled: false }),
     ],
+    traits: [{ id: 'dev-trait-oath', name: 'Oathbound', statChanges: [], playerToggle: true }],
   },
-  { id: 'dev-wick', name: 'Wick', image: portrait('#3e5c7a'), stats: [devStat('Nerve', 70), devStat('Stamina', 55)] },
+  {
+    id: 'dev-wick', name: 'Wick', image: portrait('#3e5c7a'), strangerName: 'a thin runner', stats: [devStat('Nerve', 70), devStat('Stamina', 55)],
+    traits: [{ id: 'dev-trait-swift', name: 'Swift', statChanges: [], playerToggle: true }],
+  },
   { id: 'dev-odette', name: 'Odette', stats: [devStat('Stock', 12)] },
+  // Stands here with no art and takes no part: an Also Here row.
+  { id: 'dev-mara', name: 'Mara' },
   // The played persona, for the You mark on the persona row, its stat heading and the picker.
   { id: 'dev-sable', name: 'Sable', persona: true, stats: [devStat('Poise', 65)] },
 ] as unknown as Entity[];
@@ -189,21 +195,42 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       };
     }
     case 'entityStats': {
-      // The white room plus three entities that own stats, in the scene: one met by name, one by alias only,
-      // and one who left earlier. Their values are the authored values the load backfills. Sable is played.
+      // The white room plus three entities that own stats: one In Scene and met, one In Scene as a stranger, and
+      // one who left earlier. Mara stands here quiet. Bram wears a wand and carries a tonic, and holds a trait.
+      // Their values are the authored values the load backfills. Sable is played.
       const [world, save] = await Promise.all([
         import('./devFixtures/whiteRoomWorld.json'),
         import('./devFixtures/whiteRoomSave.json'),
       ]);
       const base = world.default as unknown as World;
       const saved = save.default as unknown as SaveObject;
+      const here = new Set(['dev-bram', 'dev-wick', 'dev-mara']);
+      const history = saved.currentState.fullMessageHistory ?? [];
+      const last = history.length - 1;
       return {
-        world: { ...base, entities: [...base.entities, ...ENTITY_STATS_CAST] },
+        world: {
+          ...base,
+          slots: DEV_SLOTS,
+          bodies: DEV_BODIES,
+          items: devItems(base.stats[0]?.id),
+          entities: [...base.entities, ...ENTITY_STATS_CAST.map((e) => (here.has(e.id) ? { ...e, locations: [WHITE_ROOM_ID] } : e))],
+        },
         save: {
           ...saved,
           persona: { source: 'world', entityId: 'dev-sable' },
           currentState: {
             ...saved.currentState,
+            locationId: WHITE_ROOM_ID,
+            metEntities: ['dev-bram', 'dev-mara'],
+            ownedTraits: { 'dev-bram': { chosen: ['dev-trait-oath'] } },
+            itemCopies: [
+              { id: 'dev-copy-worn', item: { kind: 'item', itemId: 'dev-item-wand' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'dev-slot-hand', order: 0 } },
+              { id: 'dev-copy-carried', item: { kind: 'item', itemId: 'dev-item-tonic' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible' },
+            ],
+            // The latest turn names who took part, which is what puts them In Scene.
+            fullMessageHistory: history.map((message, index) => (
+              index === last ? { ...message, content: JSON.stringify({ ...JSON.parse(message.content), entities: ['Bram', 'Wick'] }) } : message
+            )),
             visibleEntities: [
               { name: 'Bram', revealed: true },
               { name: 'Wick', alias: 'a thin runner', revealed: false },

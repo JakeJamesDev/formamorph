@@ -1,15 +1,11 @@
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { Meta } from '@/components/ui/typography';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { byEquipOrder, copyFace, occupiedSlots } from '@/lib/items';
-import { copiesAt } from '@/lib/inventory';
+import { copyFace, occupiedSlots } from '@/lib/items';
+import { visibleWorn } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
-import type { Entity, ItemCopy, ItemCopyWhere } from '@/types';
-
-/** The Item Copies at `where` the player can see worn. */
-export const visibleWorn = (copies: readonly ItemCopy[], where: ItemCopyWhere): ItemCopy[] =>
-  copiesAt(copies, where).filter((c) => c.equipped && c.visibility === 'visible').sort(byEquipOrder);
+import type { Entity } from '@/types';
 
 /**
  * An entity's visible equipped items, each under its slot (Q31, Q116). Carried and hidden Item Copies stay
