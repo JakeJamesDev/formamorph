@@ -17,9 +17,6 @@ const cellSize = (layout: Layout) => {
   return { width, height: (width * CANVAS[layout].height) / CANVAS[layout].width };
 };
 
-/** Rows of a stack sheet: one per card. */
-const STACK_SHEET_ROWS = 4;
-
 /** Pages a cut's sheet needs. */
 const sheetPages = (layout: Layout) => Math.ceil(sceneStarts(layout).length / ROWS_PER_PAGE[layout]);
 
@@ -60,11 +57,14 @@ const SheetGrid = ({ layout, cells }: { layout: Layout; cells: { id: string; fro
 /** Frames of each landing a stack sheet row samples, from the card's rise. */
 const LANDING_FRAMES = [8, 20, 34, 50, 70];
 
-/** The growing stack frame by frame: each card is one row, through its landing. */
-const StackSheet = ({ layout }: { layout: Layout }) => {
-  const scene = sceneStarts(layout).find((item) => item.buildRises);
-  if (!scene?.buildRises) throw new Error(`The ${layout} cut has no growing stack`);
-  return <SheetGrid layout={layout} cells={scene.buildRises.flatMap((rise) => LANDING_FRAMES.map((frame) => ({ id: scene.id, from: scene.from, offset: rise + frame })))} />;
+/** The growing stacks of a cut. */
+const stacksOf = (layout: Layout) => sceneStarts(layout).flatMap((scene) => (scene.stackRises ? [{ id: scene.id, from: scene.from, rises: scene.stackRises }] : []));
+
+/** One growing stack frame by frame: each card is one row, through its landing. */
+const StackSheet = ({ layout, id }: { layout: Layout; id: string }) => {
+  const scene = stacksOf(layout).find((item) => item.id === id);
+  if (!scene) throw new Error(`The ${layout} cut has no growing stack "${id}"`);
+  return <SheetGrid layout={layout} cells={scene.rises.flatMap((rise) => LANDING_FRAMES.map((frame) => ({ id: scene.id, from: scene.from, offset: rise + frame })))} />;
 };
 
 /** The studio's "Sheets" folder: one still per cut, with the page as a prop. `npm run sheet` renders every page. */
@@ -82,8 +82,10 @@ export const SheetCompositions = () => (
         height={Math.ceil(cellSize(layout).height * ROWS_PER_PAGE[layout])}
       />
     ))}
-    {(['wide', 'tall'] as const).map((layout) => (
-      <Still key={layout} id={`Sheet-stack-${layout}`} component={StackSheet} defaultProps={{ layout }} width={SHEET_WIDTH} height={Math.ceil(cellSize(layout).height * STACK_SHEET_ROWS)} />
-    ))}
+    {(['wide', 'tall'] as const).flatMap((layout) =>
+      stacksOf(layout).map(({ id, rises }) => (
+        <Still key={id} id={`Sheet-stack-${layout}-${id}`} component={StackSheet} defaultProps={{ layout, id }} width={SHEET_WIDTH} height={Math.ceil(cellSize(layout).height * rises.length)} />
+      )),
+    )}
   </Folder>
 );
