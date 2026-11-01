@@ -15,14 +15,19 @@ import { useRemoveEntity } from './useRemoveEntity';
 
 /** The Entities tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Groups are
  *  editor-only folders (never sent to the AI); entities are leaves. Mirrors the Traits tab. */
-const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
+const EntityTree = ({ selectedId, onSelect, pendingLinks }: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** Library ids linked this session and not yet saved, for the row markers. */
+  pendingLinks?: readonly string[];
+}) => {
   const { entities, entityGroups, setEntities, setEntityGroups, removeEntityGroup, placeholders } = useGameData();
   const { advanced } = useEditorMode();
   const { ask: askRemoveEntity, dialog: removeEntityDialog } = useRemoveEntity();
 
   const adapter: SortableTreeAdapter<FlatEntityNode> = {
     visibleDeps: [entityGroups, entities],
-    rowDeps: [],
+    rowDeps: [pendingLinks],
     rowInputs: (node) => [chipInput(placeholders, node.kind === 'group' ? node.group?.name : node.leaf?.name)],
     placeholders,
     getVisible: (collapsed) => removeChildrenOf(flattenEntityTree(buildEntityTree(entityGroups, entities)), collapsed),
@@ -39,7 +44,7 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
         // Only groups collapse; entities get no leading slot (matching the flat list layout).
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
-        icon: isGroup ? <GroupIcon className="h-4 w-4 shrink-0" /> : <ContentLinkIcon link={node.leaf?.link} />,
+        icon: isGroup ? <GroupIcon className="h-4 w-4 shrink-0" /> : <ContentLinkIcon link={node.leaf?.link} pending={pendingLinks} />,
         label: <PlaceholderText text={isGroup ? node.group?.name ?? '' : node.leaf?.name ?? ''} placeholders={placeholders} />,
         labelClass: isGroup ? 'font-medium' : undefined,
         remove: () => { if (isGroup) removeEntityGroup(node.id); else askRemoveEntity(node.id); },

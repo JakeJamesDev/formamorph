@@ -23,7 +23,7 @@ import { dictionarySearchRows, useDictionaryActions, useDictionaryCollapse } fro
  */
 export function useWorldDictionaryAdapter({
   selectedId, onSelect, bookTab, onBookTabChange, bookPlaceholderId, onBookPlaceholderIdChange,
-  onOpenWorldPlaceholder, entryTab, onEntryTabChange, focusField, library,
+  onOpenWorldPlaceholder, entryTab, onEntryTabChange, focusField, library, pendingLinks,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -37,6 +37,8 @@ export function useWorldDictionaryAdapter({
   focusField: FocusFieldHint | null;
   /** The + menu's library and file routes; the host owns the picker and the import. */
   library: LibraryAddRoutes;
+  /** Library ids linked this session and not yet saved, for the row markers. */
+  pendingLinks: readonly string[];
 }): { adapter: ListEditorAdapter; dialog: ReactNode; book: Dictionary | undefined } {
   const { placeholders, placementLetters, placeholderOwners } = useGameData();
   const { dictionaries, addDictionary } = useDictionaryStore();
@@ -89,7 +91,7 @@ export function useWorldDictionaryAdapter({
   };
 
   const adapter: ListEditorAdapter = {
-    tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} collapse={collapse} />,
+    tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} collapse={collapse} pendingLinks={pendingLinks} />,
     rows: () => dictionarySearchRows(dictionaries, actions, true),
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'dictionaries',

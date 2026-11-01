@@ -7,13 +7,17 @@ import type { ContentLink } from '@/types';
 /** The marker beside a World Editor row whose copy follows a source. Nothing at all for an independent
  *  copy, so an unlinked world's lists look exactly as they did. Takes no color of its own, so it inverts
  *  with the row the way the folder glyph does. */
-export function ContentLinkIcon({ link }: { link?: ContentLink }) {
+export function ContentLinkIcon({ link, pending }: {
+  link?: ContentLink;
+  /** Library ids linked this session and not yet saved with the world. */
+  pending?: readonly string[];
+}) {
   const state = contentLinkState(link);
   if (!state) return null;
   const label = CONTENT_LINK_LABELS[state];
   // The span, not the glyph, takes the tooltip's composed ref — a lucide icon is not ref-safe here.
   return (
-    <Tip tip={contentLinkStatusLine(link) ?? label} labelsChild={false}>
+    <Tip tip={contentLinkStatusLine(link, pending) ?? label} labelsChild={false}>
       <span className="shrink-0" aria-label={label} role="img">
         <Link2 className="h-4 w-4" />
       </span>

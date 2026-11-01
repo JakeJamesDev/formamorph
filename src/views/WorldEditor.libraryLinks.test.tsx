@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, openAddFromLibrary, renderWorldEditorBench } from '@/test/worldEditorBench';
+import userEvent from '@testing-library/user-event';
 import { toastTexts } from '@/test/toastText';
 import { markHelpSeen } from '@/lib/helpSeenStore';
 import { openingsEnabled } from '@/lib/openings';
@@ -188,6 +189,29 @@ describe('Save to Library', () => {
     clickButton('Save');
     expect(await screen.findByText('Linked · Marsh Lore')).toBeTruthy();
     expect(screen.queryByText('Link pending save · Marsh Lore')).toBeNull();
+  });
+
+  /** The row marker's tip opens on hover; the marker is the one element labeled with the link state. */
+  const hoverRowMarker = (label: string) => userEvent.hover(screen.getByLabelText(label));
+
+  it.each([
+    ['dictionary', /Dictionary/, 'Marsh Lore'],
+    ['entity', /Entities/, 'Wren'],
+  ])('reads Link pending save on the %s row marker until the world saves', async (_kind, tab, name) => {
+    renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
+    openTab(tab);
+    selectRow(name);
+    clickButton('Save to Library');
+    await screen.findByRole('button', { name: 'Open in Library' });
+
+    await hoverRowMarker('Linked');
+    expect(await screen.findByText(`Link pending save · ${name}`, {}, { timeout: 3000 })).toBeTruthy();
+
+    clickButton('Save');
+    await waitFor(() => expect(screen.queryByText(`Link pending save · ${name}`)).toBeNull());
+    await userEvent.unhover(screen.getByLabelText('Linked'));
+    await hoverRowMarker('Linked');
+    expect(await screen.findByText(`Linked · ${name}`, {}, { timeout: 3000 })).toBeTruthy();
   });
 
   it('offers the linked copy the library item instead of a second save', async () => {

@@ -1046,6 +1046,7 @@ const WorldEditorInner = ({
     onOpenWorldPlaceholder: openWorldPlaceholder,
     focusField: findField,
     library: { onAddFromLibrary: () => setShowAddEntity(true), onImport: () => linking.openImportFile('entity') },
+    pendingLinks: linking.pendingLinks,
   });
   const entitiesParts = useListEditor(entitiesEditor.adapter, {
     selectedId: selections.entities ?? null, onSelect: selectEntity, search,
@@ -1082,6 +1083,7 @@ const WorldEditorInner = ({
     onEntryTabChange: setEntryTab,
     focusField: findField,
     library: { onAddFromLibrary: () => setShowAddDictionary(true), onImport: () => linking.openImportFile('dictionary') },
+    pendingLinks: linking.pendingLinks,
   });
   const dictionaryParts = useListEditor(dictionaryEditor.adapter, {
     selectedId: selections.dictionary ?? null, onSelect: selectDictionaryItem, search,
