@@ -433,12 +433,10 @@ const AvatarPickField = ({ entityId, hint, named, stored, onPick }: {
 
 export const ENTITY_VRM_HINT = 'Picks the Avatar this entity shows. Add Avatars on the Media tab.';
 
-/** The entity's Avatar: none, the player's default, or one of the world's. World Editor and Advanced only. */
+/** The entity's Avatar: none, the player's default, or one of the world's. World Editor, Simple and Advanced. */
 export const EntityVrmPickField = ({ value, onChange }: EntityFieldGroupProps) => {
-  const { advanced } = useEditorMode();
   const spendFallback = useSpendFallback();
   const store = useGameDataOptional()?.worldOverview?.vrmStore;
-  if (!advanced) return null;
   const pick = (next: VrmPick | undefined) =>
     spendFallback('Set Avatar', !!next && !!value.customPersona, () => onChange('vrmPick', next));
   const named = Object.entries(store ?? {}).map(([id, vrm]) => ({ value: vrmPickValue({ kind: 'world', id }), label: vrm.name || 'Unnamed' }));

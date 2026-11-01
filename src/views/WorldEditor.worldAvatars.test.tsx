@@ -450,9 +450,17 @@ describe('the entity Avatar dropdown', () => {
     expect(screen.getByRole('combobox', { name: 'Avatar' })).toHaveTextContent('Grey Heron');
   });
 
-  it('is hidden in Simple mode', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    selectEntity('Wren');
-    expect(screen.queryByRole('combobox', { name: 'Avatar' })).toBeNull();
+  it('shows in Simple mode and assigns an uploaded Avatar', async () => {
+    const bench = renderWorldEditorBench(WORLD, 'simple');
+    openMedia();
+    openSummary();
+    const file = new File([LIBRARY_BYTES], 'Bittern.vrm', { type: '' });
+    await act(async () => { fireEvent.change(screen.getByLabelText('Avatar File'), { target: { files: [file] } }); });
+    await waitFor(() => expect(avatarNames()).toEqual(['Heron', 'Reed', 'Bittern']));
+    const [uploadedId] = Object.entries(bench.ctx().worldOverview.vrmStore ?? {}).find(([, vrm]) => vrm.name === 'Bittern')!;
+
+    selectEntity('Odd Wick');
+    pickOption(screen.getByRole('combobox', { name: 'Avatar' }), 'Bittern');
+    expect(bench.ctx().entities.find((e) => e.id === 'e3')?.vrmPick).toEqual({ kind: 'world', id: uploadedId });
   });
 });
