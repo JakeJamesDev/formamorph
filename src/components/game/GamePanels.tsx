@@ -88,7 +88,7 @@ import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { LocationTabBody } from './LocationTabBody';
-import { EntityListRow } from './EntityListRow';
+import { EntityListRow, EntityListSection } from './EntityListRow';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
 import { rowDelta } from '@/lib/useStatDeltas';
@@ -218,6 +218,20 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
     if (revealed && (isMobile || !selects)) onEntityClick(match.name);
   };
 
+  const inSceneRows = lookAround.filter((row) => row.inScene);
+  const alsoHereRows = lookAround.filter((row) => !row.inScene);
+  const lookAroundRow = (row: EntityPresence) => (
+    <EntityListRow
+      key={row.entity.id}
+      label={row.label ?? ''}
+      following={entityFollowers.includes(row.entity.id)}
+      selected={row.entity.id === entityViewEntity?.id}
+      onClick={() => handleLookAroundClick(row)}
+      // Runtime characters are the story's; authored ones belong to the world and never delete from play.
+      onRemove={row.met && !authoredIds.has(row.entity.id) ? () => setPendingRemoval(row.entity.name) : undefined}
+    />
+  );
+
   // In landscape the view lives on top, not in a tab; leave the "model" tab.
   React.useEffect(() => {
     if (!isMobile && leftTab === "model") setLeftTab("notes");
@@ -311,13 +325,9 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
         {/* `flex` must be state-scoped: a plain `flex` class beats the UA `[hidden]{display:none}` Radix
             uses to hide an inactive panel, so the list would keep its space and shove the live tab down. */}
         <TabsContent value="entities" className="flex-grow overflow-hidden min-h-[100px] flex-col data-[state=active]:flex">
-          {/* Shown even when the list is empty — "no entity visible" is itself the state that prompts
-              the question, so the `?` has to be reachable then too. */}
-          <div className="flex-shrink-0 flex justify-end px-2 pt-1">
-            <HelpButton topicId="game.entities" className="h-6 w-6" />
-          </div>
           <ScrollArea className="flex-grow min-h-0">
-            <div className="p-2">
+            <div className="flex flex-col gap-3 p-2">
+              <div>
               {personaEntity && (
                 <EntityListRow
                   label={personaEntity.name}
@@ -334,20 +344,17 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
                   onClick={() => setSelectedEntityId(undefined)}
                 />
               )}
-              {lookAround.length > 0 ? (
-                lookAround.map((row) => (
-                  <EntityListRow
-                    key={row.entity.id}
-                    label={row.label ?? ''}
-                    following={entityFollowers.includes(row.entity.id)}
-                    selected={row.entity.id === entityViewEntity?.id}
-                    onClick={() => handleLookAroundClick(row)}
-                    // Runtime characters are the story's; authored ones belong to the world and never delete from play.
-                    onRemove={row.met && !authoredIds.has(row.entity.id) ? () => setPendingRemoval(row.entity.name) : undefined}
-                  />
-                ))
-              ) : personaEntity || youRow ? null : (
-                <p>No entity visible.</p>
+              </div>
+              {/* Shown even when empty: an empty list is itself what prompts the question, so its `?` stays reachable. */}
+              <EntityListSection title="In Scene" topicId="game.entities.inScene">
+                {inSceneRows.length > 0 ? inSceneRows.map(lookAroundRow) : (
+                  <p className="p-2 text-label text-muted-foreground">No entities are in the scene.</p>
+                )}
+              </EntityListSection>
+              {alsoHereRows.length > 0 && (
+                <EntityListSection title="Also Here" topicId="game.entities.alsoHere">
+                  {alsoHereRows.map(lookAroundRow)}
+                </EntityListSection>
               )}
             </div>
           </ScrollArea>

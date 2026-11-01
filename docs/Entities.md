@@ -11,7 +11,7 @@ During the game, the story counts some entities as present with you. They come f
 <!-- route: gameViewer.entities -->
 
 1. During the game, open the side panel's **Entities** tab. On mobile, the panel opens on **View**; select **Entities** next to it.
-2. Read the list. Your persona is first, marked **You**. The entities at your location come next, with those in the scene first.
+2. Read the list. Your persona is first, marked **You**. **In Scene** lists the entities at your location that took part in the story in the last 3 turns. **Also Here** lists the others.
 3. Look for the footprints icon on an entry. Its tooltip reads **Following you**. That entity follows you. See [Movement](World-Editor-Locations#entities).
 4. Select an entry to open its details. See [The Entity Dialog](How-to-Play#the-entity-dialog).
 

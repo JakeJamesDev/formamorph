@@ -67,6 +67,17 @@ export function HintInfo({ children }: { children: string }) {
   );
 }
 
+/** A small-caps title with a hairline rule, and an optional control at the rule's end. */
+export function SectionHeading({ id, title, action }: { id: string; title: string; action?: ReactNode }) {
+  return (
+    <div className={`flex gap-3 ${action ? 'items-center' : 'items-baseline'}`}>
+      <h3 id={id} className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      <div className="h-hairline flex-1 bg-border" />
+      {action}
+    </div>
+  );
+}
+
 /** A titled block of setting rows: a small-caps header with a hairline rule, so a long tab reads as a few
  *  named groups instead of one undifferentiated list. Sections space themselves via the tab's outer grid. */
 export function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -75,10 +86,7 @@ export function Section({ title, hint, children }: { title: string; hint?: strin
   return (
     <section role="group" aria-labelledby={titleId} className="grid gap-4">
       <div className="space-y-1">
-        <div className="flex items-baseline gap-3">
-          <h3 id={titleId} className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
-          <div className="h-hairline flex-1 bg-border" />
-        </div>
+        <SectionHeading id={titleId} title={title} />
         {hint && <Hint>{hint}</Hint>}
       </div>
       {children}
