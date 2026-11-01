@@ -1,6 +1,6 @@
 # 15: Scripts Skip Unnamed Dictionary Entries
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,7 +15,15 @@ Spec: Q9, Implementation Decisions "Unnamed entries". Evidence: docs-sweep ticke
 
 ## Acceptance criteria
 
-- [ ] A test with two unnamed entries and one named entry fails today (an empty-string key), then passes with only the named key
-- [ ] A script write to a named entry still toggles it (existing write-back tests green)
-- [ ] Scripts-Reference says unnamed entries are left out, beside the entry-name rules; the docs tests are green
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A test with two unnamed entries and one named entry fails today (an empty-string key), then passes with only the named key. `namedEntries (Q9)` in `loreToggles.test.ts`: red before the fix, green after
+- [x] A script write to a named entry still toggles it (existing write-back tests green). `statCodeExecutor*` and `codeCards*` suites green
+- [x] Scripts-Reference says unnamed entries are left out, beside the entry-name rules; the docs tests are green. `docs` tests green
+- [x] A changelog fragment under Minor / Fixed / 👤. `docs-internal/changelog.d/docs-sweep-bugs-15.md`
+
+## Landed
+
+**Not verified**
+- None. The test sits on `namedEntries` itself, the one builder the script map, write-back and code cards share. No executor-level test with unnamed entries was added.
+
+**For you**
+- Whitespace-only names still count as named, as for entities (`hasEntityKey` checks `''` only).

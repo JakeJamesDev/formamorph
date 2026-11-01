@@ -707,6 +707,7 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 ```
 
 - **A disabled entry reads `enabled: false`.** A dictionary the player turned off lists none.
+- **An entry with no name is left out.** Scripts can't read it or write to it. It still works in the story.
 - **Of two entries with one name, the name resolves to the enabled one.** Between two enabled or two disabled entries, it resolves to the later one. A write through the name sets that entry.
 - **A name with no entry in the dictionary reads as a blank entry.** Its `id`, `name` and `value` are `''`, `keys` is an empty list, and `enabled` and `constant` are false. A write through it is ignored and reported.
 - **A write applies after the run.** Writes apply in run order, so a later write wins. Later in the same run, the entry reads what you set. Its name still resolves to the entry it named at the start of the run.

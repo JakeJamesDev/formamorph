@@ -2,6 +2,7 @@
 
 import type { Dictionary, DictionaryEntry, LoreEntryToggle, LoreToggles } from '@/types';
 import { flattenEnabledBookEntries } from './dictionaryUtils';
+import { hasEntityKey } from './statCodeNames';
 
 /** One field a run wrote, by book id: an entry's field by entry id, or the book's own `enabled` with no entry. */
 export type LoreWrite =
@@ -15,11 +16,12 @@ export const bareLoreWrite = (write: LoreWrite): LoreWrite => (write.entry === u
 
 export const NO_LORE_TOGGLES: LoreToggles = {};
 
-/** Each entry under its name, in first-seen order: an enabled entry takes a name over a disabled one, and the
- *  later of two equals wins (Q26). */
+/** Each named entry under its name, in first-seen order: an enabled entry takes a name over a disabled one, and the
+ *  later of two equals wins (Q26). An unnamed entry is left out (Q9). */
 export function namedEntries<E extends { name: string; enabled: boolean }>(entries: readonly E[]): Map<string, E> {
   const named = new Map<string, E>();
   for (const entry of entries) {
+    if (!hasEntityKey(entry.name)) continue;
     const held = named.get(entry.name);
     if (!held || entry.enabled || !held.enabled) named.set(entry.name, entry);
   }
