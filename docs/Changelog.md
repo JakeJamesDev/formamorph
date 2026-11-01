@@ -67,7 +67,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.
   - **Scene Presence:**
-    - **The Entities tab lists every entity at your location, and shows a stranger under the name you know.** Entities in the scene come first. Select a stranger to see that name, its image and its stranger description.
+    - **The Entities tab lists every entity at your location, and shows a stranger under the name you know.** **In Scene** lists those who took part in the last 3 turns, and **Also Here** lists the rest. Select a stranger to see that name, its image and its stranger description.
     - **Give lists only the entities in the scene, and shows a stranger under the name you know.** A stranger with no name to show isn't listed.
     - **World Editor entities have a Stranger Name and a Stranger Description, in Advanced mode.** The player sees them in place of the Name and the Player-Facing Description until they meet the entity.
     - **The stat picker and the Traits tab list only the entities in the scene.** A stranger shows under the name you know, in its stats and traits too.
@@ -93,8 +93,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Scene Presence:**
     - **A narration probe measures how often an unmet stranger's true name reaches the prose with Thinking Mode Off.** `narration-stranger-probe.mjs` scores name leaks and label use per case, and a guard case where the stranger gives their name.
   - **Trailer:**
-    - **The trailer's authoring section builds a stack of four cards: map, profile, travel and inventory.** Each card lands on the last and holds 2 s or its caption's reading time. The tall cut plays it as a column and runs 65 s.
-    - **The trailer's play section becomes two card stacks, traits join the build stack, and a title card introduces the community.** The turn takes the stats card and the entity takes the chat card, in both cuts. The traits title card is gone. The wide cut runs 83 s and the tall cut 67 s.
+    - **The trailer stacks its cards: a five-card build stack, the turn with its stats, the entity with its chat.** Each card lands on the last and holds 2 s or its caption's reading time. A title card introduces the community; the traits title card is gone. The wide cut runs 83 s and the tall cut 67 s.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
 #### ➖ Removed
@@ -107,7 +106,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Scene Presence:**
     - **The Traits tab shows a stranger's traits under the name you know.** Trait names and descriptions use that name, and strangers who share one get numbers.
-  - **The Entities tab now highlights the entity the game's entity view is showing.** The highlight moves when you select another entity.
+  - **The Entities tab now highlights the entity the game's entity view is showing, and its rows work from the keyboard.** The highlight moves when you select another entity.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
   - **The Entities tab now clears when you move to a new place, and keeps your followers.** The last room's people no longer stay listed until the next narration.
   - **Closing the World Editor while the Test Bench is still checking a large world no longer freezes Formamorph.** The check stops when the editor closes.
