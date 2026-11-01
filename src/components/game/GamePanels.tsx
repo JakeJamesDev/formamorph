@@ -200,10 +200,15 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
   const entityViewMorphs = useEntityStatMorphs(entityViewSource);
   const entityViewAvatar = entityViewSubject && (entityViewEntity ? avatars.sourceOf(entityViewEntity) : avatars.played);
 
-  // Clicking an entity with something to show selects it, so the view swaps to it. The popup opens on mobile,
-  // and in landscape when the view is hidden or already on that entity. A not-yet-revealed entity can show
-  // its image but never opens the detail popup: that would spoil the name the scene is withholding.
-  // A stranger opens its reduced popup instead and never selects in the view.
+  // The highlighted row: a pick still listed here, else whoever the view falls back to.
+  const selectedRowId = selectedEntityId && (selectedEntityId === personaEntity?.id || lookAround.some((row) => row.entity.id === selectedEntityId))
+    ? selectedEntityId
+    : entityViewEntity?.id;
+
+  // Clicking an entity selects it, which moves the view when it has something to show and the stat panel when
+  // it is listed there. The popup opens on mobile, and in landscape on the row already selected. A
+  // not-yet-revealed entity can show its image but never opens the detail popup: that would spoil the name the
+  // scene is withholding. A stranger opens its reduced popup instead and never selects in the view.
   const handleLookAroundClick = (row: EntityPresence) => {
     if (!row.met) {
       if (row.label) onStrangerClick?.(row.entity.id, row.label);
@@ -213,7 +218,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
   };
 
   const openEntity = (match: Entity, revealed: boolean) => {
-    const selects = showable(match) && (isMobile || (showEntityView && match.id !== entityViewEntity?.id));
+    const selects = isMobile || match.id !== selectedRowId;
     if (selects) setSelectedEntityId(match.id);
     if (revealed && (isMobile || !selects)) onEntityClick(match.name);
   };
@@ -225,7 +230,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
       key={row.entity.id}
       label={row.label ?? ''}
       following={entityFollowers.includes(row.entity.id)}
-      selected={row.entity.id === entityViewEntity?.id}
+      selected={row.entity.id === selectedRowId}
       onClick={() => handleLookAroundClick(row)}
       // Runtime characters are the story's; authored ones belong to the world and never delete from play.
       onRemove={row.met && !authoredIds.has(row.entity.id) ? () => setPendingRemoval(row.entity.name) : undefined}
@@ -332,7 +337,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
                 <EntityListRow
                   label={personaEntity.name}
                   you
-                  selected={personaEntity.id === entityViewEntity?.id}
+                  selected={personaEntity.id === selectedRowId}
                   onClick={() => openEntity(personaEntity, true)}
                 />
               )}
@@ -340,7 +345,7 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
               {youRow && (
                 <EntityListRow
                   label={PLAYED_SIDE.name}
-                  selected={entityViewSubject?.kind === 'played'}
+                  selected={!selectedRowId && entityViewSubject?.kind === 'played'}
                   onClick={() => setSelectedEntityId(undefined)}
                 />
               )}

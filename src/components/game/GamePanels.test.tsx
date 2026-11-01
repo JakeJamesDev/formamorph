@@ -334,6 +334,8 @@ describe('LeftPanel', () => {
 
       openEntitiesTab();
       fireEvent.click(screen.getByText('Sylvie Thornwhistle'));
+      expect(view.props.onEntityClick).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText('Sylvie Thornwhistle'));
       expect(view.props.onEntityClick).toHaveBeenCalledWith('Sylvie Thornwhistle');
     });
   });
@@ -372,6 +374,8 @@ describe('LeftPanel', () => {
     expect(name.parentElement).toHaveTextContent(/^KiraYou$/);
     expect(screen.getByRole('region', { name: 'In Scene' })).not.toContainElement(name);
     expect(name.compareDocumentPosition(screen.getByRole('region', { name: 'In Scene' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(name);
+    expect(onEntityClick).not.toHaveBeenCalled();
     fireEvent.click(name);
     expect(onEntityClick).toHaveBeenCalledWith('Kira');
   });
