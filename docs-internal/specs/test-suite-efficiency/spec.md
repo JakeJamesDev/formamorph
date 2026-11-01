@@ -1,6 +1,7 @@
 # Test Suite Efficiency and Trust
 
-Status: ready-for-agent
+Status: wontfix
+Status note: Closed as not started on 2026-11-01. Its evidence is stale, and reopening it needs a full reverify. The test-sweep effort is separate.
 
 ## Problem
 
