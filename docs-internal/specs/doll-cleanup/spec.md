@@ -35,7 +35,9 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q7 | The word list is English only. A name in another language falls through to the slot icon, then the generic icon. |
 | Q10 | None shows the Item image. With no image, a Slot Box is a plain filled box with the name in its tooltip, and rows show no icon. Long text never returns to the doll. |
 | Q11 | An unidentified Item Copy ignores the Icon field and the Item image. It derives from its unidentified name, then its slot, then the generic icon. |
-| Q13 | Game Icons is the only icon set, under CC BY 3.0. The credit and license text go in THIRD-PARTY-NOTICES.md only. |
+| Q13 | Game Icons is the only icon set, under CC BY 3.0. Its credit is set by Q16 and Q17. |
+| Q16 | New evidence: no build shipped THIRD-PARTY-NOTICES.md, and desktop and APK players can't easily open a packaged file. Every build now ships the file, with the credit and license text, and the app also shows a short credit line that opens the full credit. The credit names the authors of the icons we ship. |
+| Q17 | The credit line sits in the Main Menu footer, beside the copyright and origin credit, at the same prominence. |
 
 ### Layout
 
@@ -50,7 +52,7 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 
 | # | Ruling |
 |---|---|
-| Q14 | Opacity applies to Custom Image Backdrops only. It is a slider in the Body Layout editor, default 100%. |
+| Q14 | Opacity applies to Custom Image Backdrops only. It is a slider in the Body Layout editor, 0 to 100 in steps of 1 like the Map Background's, default 100%. 0% is allowed. |
 | Q8 | One effort. Backdrop Opacity is its own ticket. |
 
 ## User Stories
@@ -83,6 +85,8 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 - **Resolution order.** Unidentified: derive only. Otherwise a specific icon, then None's image or nothing, then Auto's derivation.
 - **Derivation.** Take the head noun before of, from, with or for, else read from the last word back. Container words skip to the tail, so "Vial of Antidote" reads the contents. Then the slot's name, then the generic icon. This came from the prototype's `iconFromName` and `iconFromSlots`.
 - **Catalog.** A generated module holds each icon's id, group, SVG body and words. Ids are our own, not Game Icons names, so an art swap never touches a world. The prototype's generated data is the starting point, and its lucide column goes.
+- **Containers.** Vial, phial, bottle and flask are container words: the tail reads first, then the container's own icon. The generic icon's words are bag, sack and pouch. Every catalog icon records its author.
+- **Item details.** The popup a row opens keeps the Item image under every Icon choice. Q3 and Q9 cover the doll and rows only.
 - **Unknown id.** An id missing from the catalog reads as Auto.
 - **Item shape.** `Item.icon?` holds an icon id or `'none'`. Absent means Auto. No migration: absent already means the right thing. **Export-shape change, additive.**
 - **Backdrop shape.** The Custom Image Backdrop gets `opacity?`, 0 to 1, absent means 1. The Backdrop parser rebuilds the object on load, so it must keep and clamp this field, and replacing the image must keep it too. **Export-shape change, additive.** The save shape does not change.
@@ -91,7 +95,7 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 - **Panel layout.** The doll takes `fit` sizing as in the prototype. The list is the existing row with the slot names as its second line.
 - **Empty Slot Box.** It keeps today's behavior: a tap flashes the slot's name.
 - **Copy.** Labels and hints follow the Writing Guide at build time.
-- **Prototype data.** The bigger dev fixture (9 slots, worn items, a bright image) moves to the real dev route, so that later checks have it.
+- **Prototype data.** The bigger dev fixture (9 slots, worn items, a bright image) moves to the real dev route, so that later checks have it. The image Backdrop is its Humanoid default at 100%, and a dev-only `opacity=N` hash param stays for frames. The other prototype params do not move. Ticket 02 adds any `icon` values.
 
 ## Testing Decisions
 
@@ -109,7 +113,7 @@ A good test calls the module's public interface and checks what the player or au
 - The AI choosing icons, or any Inventory pass prompt change.
 - Other languages in the word list.
 - Icons outside the Game Icons catalog, uploaded icons, or the full 4,133-icon set.
-- A credits screen or an in-app credit line.
+- A separate credits screen beyond what opens the full credit.
 - A color tint over a Backdrop.
 - Opacity on Humanoid, Quadruped or Plain Backdrops.
 - Icons on other surfaces, such as narration or the Effects list.
@@ -117,7 +121,7 @@ A good test calls the module's public interface and checks what the player or au
 ## Further Notes
 
 - ⚠️ **Effect on existing worlds:** Auto beats images, so existing Item images leave the doll and the rows by default. The author must set None to bring one back. This is the ruling (Q3, Q9), and the changelog should say so.
-- **Credit check:** a ticket must confirm that builds ship THIRD-PARTY-NOTICES.md. The file says it is generated from production dependencies, so this entry needs a way to stay in it.
+- **Credit:** the Game Icons entry lives in the hand-kept Bundled assets section of THIRD-PARTY-NOTICES.md, and a test fails if it leaves.
 - **Measurements (layout C, 9 equipped items):**
 
 | Width | Doll | Ring box | Names clipped |
