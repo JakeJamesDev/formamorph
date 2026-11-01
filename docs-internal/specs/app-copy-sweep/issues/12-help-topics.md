@@ -1,6 +1,6 @@
 # 12: Help Topics
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Waits for: every docs-sweep wording ticket (02, 04, 06, 08, 10, 12, 14, 16, 18, 20 of that spec)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -97,7 +97,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Entities tab now clears when you move to a new place, and keeps your followers.** The last room's people no longer stay listed until the next narration.
   - **Closing the World Editor while the Test Bench is still checking a large world no longer freezes Formamorph.** The check stops when the editor closes.
   - **Formaquestion's replies no longer stop short or come back empty after your mascot changes her face.** Some models, such as the default cloud model, started thinking again after the face change and ran out of room for the reply. AI Context still lists the face change, struck through, since the model no longer sees it.
-  - **Settings and World Editor hints now match what the controls do.** Scene Images points at the turn's More menu, Face Fix lists SD2, and the Remove dialog fits entities you added.
+  - **Help text across Formamorph now says what each control does, in plain words.** The rewrite covers Settings, the World Editor, the game screen, Community, Formaquestion and the help topics. Scene Images points at the turn's More menu, Face Fix lists SD2, and confirm buttons name their action.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.
