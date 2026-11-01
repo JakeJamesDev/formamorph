@@ -44,6 +44,7 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 | Need | Component |
 | --- | --- |
 | Section heading and divider | `Section` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
+| Section heading with a help button | `SectionHeading` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx), as in `EntityListSection` |
 | Label/control alignment | `Row` and `RowLabel` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Checkbox plus description | `CheckRow` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Segmented desktop / select mobile | `OptionSwitcher` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |

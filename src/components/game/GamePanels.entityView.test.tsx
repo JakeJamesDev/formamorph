@@ -124,7 +124,7 @@ describe('LeftPanel — one entity view', () => {
     show({
       cast: [heron, golem], scene: [{ name: 'Heron', revealed: true }, { name: 'Golem', revealed: true }],
     });
-    const row = (name: string) => entityRow(name).closest('div');
+    const row = (name: string) => entityRow(name).closest('button');
     expect(row('Heron')).toHaveAttribute('aria-current', 'true');
     expect(row('Golem')).not.toHaveAttribute('aria-current');
 
@@ -138,8 +138,8 @@ describe('LeftPanel — one entity view', () => {
       cast: [heron, wren], scene: [{ name: 'Heron', revealed: true }],
       seed: (g) => g.setPersonaRef({ source: 'world', entityId: 'wren' }),
     });
-    expect(entityRow('Wren').closest('div[aria-current]')).not.toBeNull();
-    expect(entityRow('Heron').closest('div')).not.toHaveAttribute('aria-current');
+    expect(entityRow('Wren').closest('button')).toHaveAttribute('aria-current', 'true');
+    expect(entityRow('Heron').closest('button')).not.toHaveAttribute('aria-current');
   });
 
   it("opens on the played entity's Avatar, in the save's customization with the player's stat morphs", async () => {

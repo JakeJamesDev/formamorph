@@ -203,12 +203,20 @@ With **Measured Clock** off, every turn costs the same **Time Per Turn**, so the
     wikiPage: 'Memory',
     wikiAnchor: 'the-memory-manager',
   },
-  // For a player mid-story wondering who a name in their scene list is.
-  'game.entities': {
-    title: 'Entities in Game',
+  'game.entities.alsoHere': {
+    title: 'Also Here',
     wikiPage: 'Entities',
     wikiAnchor: '-entities-in-game',
-    body: `Every entity at your location, with those in the scene first. Your persona is first, marked **You**.
+    body: `The entities at your location that haven't taken part in the story in the last 3 turns.
+
+When the story shows one, it moves to **In Scene**. An entity moves back here after 3 turns without taking part.`,
+  },
+  // For a player mid-story wondering who a name in their scene list is.
+  'game.entities.inScene': {
+    title: 'In Scene',
+    wikiPage: 'Entities',
+    wikiAnchor: '-entities-in-game',
+    body: `The entities at your location that took part in the story in the last 3 turns. Your persona sits above this list, marked **You**.
 
 The entities come from three places: the world's author, your library, and the story itself. You add entities from your library under **Library Additions** at **Enter World**.
 

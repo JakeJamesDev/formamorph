@@ -58,9 +58,10 @@ describe('HELP_TOPICS registry', () => {
     expect(tabTopics).toEqual([]);
   });
 
-  it('registers the in-play entities topic the game panel mounts', () => {
-    // The panel asks for this id by string; an unknown id renders nothing, so a rename here would
+  it('registers the in-play entities topics the game panel mounts', () => {
+    // The panel asks for these ids by string; an unknown id renders nothing, so a rename here would
     // silently remove the help button rather than fail.
-    expect(HELP_TOPICS['game.entities']?.wikiPage).toBe('Entities');
+    expect(HELP_TOPICS['game.entities.inScene']?.wikiPage).toBe('Entities');
+    expect(HELP_TOPICS['game.entities.alsoHere']?.wikiPage).toBe('Entities');
   });
 });

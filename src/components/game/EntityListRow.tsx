@@ -1,9 +1,27 @@
+import { useId, type ReactNode } from 'react';
 import { Footprints, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { DESTRUCTIVE_ROW_ACTION_HOVER } from '@/components/EditorRow';
+import { HelpButton } from '@/components/HelpButton';
+import { SectionHeading } from '@/components/SettingsRows';
 import { YouMark } from '@/components/game/YouMark';
 import { cn } from '@/lib/utils';
+
+/** A labeled group of Entities tab rows, with its own help. */
+export function EntityListSection({ title, topicId, children }: { title: string; topicId: string; children: ReactNode }) {
+  const titleId = useId();
+  return (
+    <section aria-labelledby={titleId}>
+      <SectionHeading
+        id={titleId}
+        title={title}
+        action={<HelpButton topicId={topicId} className="h-6 w-6" />}
+      />
+      <div className="mt-1">{children}</div>
+    </section>
+  );
+}
 
 /** One row of the Entities tab: the name the player knows the entity by, a mark when it follows the player,
  *  and a remove control when `onRemove` is given. */
@@ -21,9 +39,14 @@ export function EntityListRow({ label, you, following, selected = false, disable
 }) {
   // Selected rows sit on the primary fill, so their chrome inverts with them.
   const chrome = selected ? 'text-primary-foreground' : 'text-muted-foreground';
+  const name = (
+    <>
+      <span className="min-w-0 truncate">{label}</span>
+      {you && <YouMark onFill={selected} />}
+    </>
+  );
   return (
     <div
-      aria-current={selected || undefined}
       className={cn(
         'mb-1 flex justify-between items-center gap-2 rounded-md p-2 transition-colors',
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
@@ -31,10 +54,22 @@ export function EntityListRow({ label, you, following, selected = false, disable
       )}
       onClick={onClick}
     >
-      <span className="flex min-w-0 items-center">
-        <span className="min-w-0 truncate">{label}</span>
-        {you && <YouMark onFill={selected} />}
-      </span>
+      {onClick ? (
+        <button
+          type="button"
+          disabled={disabled}
+          aria-current={selected || undefined}
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          className={cn(
+            'flex min-w-0 flex-grow items-center rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset',
+            selected ? 'focus-visible:ring-primary-foreground' : 'focus-visible:ring-ring',
+          )}
+        >
+          {name}
+        </button>
+      ) : (
+        <span aria-current={selected || undefined} className="flex min-w-0 items-center">{name}</span>
+      )}
       {(following || onRemove) && (
         <span className="flex items-center gap-1 shrink-0">
           {following && (

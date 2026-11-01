@@ -218,6 +218,52 @@ describe('LeftPanel', () => {
 
     openEntitiesTab();
     expect(rowNames()).toEqual(['Mara', 'Hesk', 'Bram']);
+    const inScene = screen.getByRole('region', { name: 'In Scene' });
+    const alsoHere = screen.getByRole('region', { name: 'Also Here' });
+    expect(within(inScene).getByText('Mara')).toBeInTheDocument();
+    expect(within(inScene).queryByText('Hesk')).toBeNull();
+    expect(within(alsoHere).getByText('Hesk')).toBeInTheDocument();
+    expect(within(alsoHere).getByText('Bram')).toBeInTheDocument();
+    expect(within(alsoHere).queryByText('Mara')).toBeNull();
+  });
+
+  it('gives each label its own help topic', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Hesk' }, { id: 'e2', name: 'Mara' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [{ narration: 'Mara waves.', entities: ['Mara'] }],
+      seed: stageYard,
+    });
+
+    openEntitiesTab();
+    for (const title of ['In Scene', 'Also Here']) {
+      fireEvent.click(within(screen.getByRole('region', { name: title })).getByRole('button', { name: `About ${title}` }));
+      expect(screen.getByRole('dialog', { name: title })).toBeInTheDocument();
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    }
+  });
+
+  it('says nobody is in the scene and keeps its help when everyone here is quiet', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Hesk' }]);
+    renderLeftPanel({ entities: world.entities as never }, { world: world as never, seed: stageYard });
+
+    openEntitiesTab();
+    const inScene = screen.getByRole('region', { name: 'In Scene' });
+    expect(within(inScene).getByText('No entities are in the scene.')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Also Here' })).getByText('Hesk')).toBeInTheDocument();
+  });
+
+  it('hides Also Here when everyone here is in the scene', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Mara' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [{ narration: 'Mara waves.', entities: ['Mara'] }],
+      seed: stageYard,
+    });
+
+    openEntitiesTab();
+    expect(screen.queryByRole('region', { name: 'Also Here' })).toBeNull();
+    expect(screen.queryByText('No entities are in the scene.')).toBeNull();
   });
 
   it('labels two present entities whose names share a word with their own names', () => {
@@ -324,7 +370,8 @@ describe('LeftPanel', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
     const name = screen.getByText('Kira');
     expect(name.parentElement).toHaveTextContent(/^KiraYou$/);
-    expect(screen.queryByText('No entity visible.')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'In Scene' })).not.toContainElement(name);
+    expect(name.compareDocumentPosition(screen.getByRole('region', { name: 'In Scene' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(name);
     expect(onEntityClick).toHaveBeenCalledWith('Kira');
   });
@@ -337,7 +384,7 @@ describe('LeftPanel', () => {
     });
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    expect(screen.getByText('No entity visible.')).toBeInTheDocument();
+    expect(screen.getByText('No entities are in the scene.')).toBeInTheDocument();
     expect(screen.queryByText('You')).toBeNull();
   });
 });
