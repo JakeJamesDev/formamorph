@@ -92,7 +92,7 @@ import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
-import { useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
+import { useScriptWrites, useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
 import { useWorldToolsAdapter } from '../managers/useWorldToolsAdapter';
 import { EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
 import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPanelTabs';
@@ -200,7 +200,7 @@ const WorldEditorInner = ({
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools,
+    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools, worldScripts, items, updateItem, updateWorldTool,
     addStat, addLocation, addEntity, addTrait, addDictionary,
     addPlaceholder,
     updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -503,18 +503,20 @@ const WorldEditorInner = ({
   // A hit on a tab this mode hides has nowhere to navigate to, so it isn't a hit.
   // Collected only while a search runs, so an idle field costs nothing on world edits.
   const searching = isMobile ? findOpen : dockedSearching;
+  const writeScripts = useScriptWrites();
   const searchTargets = useMemo(() => {
     if (!searching) return [];
     const reachable = new Set<string>(visibleTabs.map((t) => t.value));
     return collectSearchTargets({
       worldOverview, stats, statGroups, entities, entityGroups, locations, connections, traits, traitGroups, dictionaries, placeholders,
-      placeholderGroups, updateWorldOverview, updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation,
-      updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
+      placeholderGroups, items, scripts: worldScripts, tools: worldTools, updateWorldOverview, updateStat, updateStatGroup, updateEntity,
+      updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry,
+      updatePlaceholder, updatePlaceholderGroup, updateItem, writeScripts, updateTool: updateWorldTool,
     }).filter((t) => reachable.has(t.tab));
   }, [searching, visibleTabs, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, connections, traits,
-      traitGroups, dictionaries, placeholders, placeholderGroups, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
-      updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
-      updatePlaceholderGroup]);
+      traitGroups, dictionaries, placeholders, placeholderGroups, items, worldScripts, worldTools, updateWorldOverview, updateStat,
+      updateEntity, updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary,
+      updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup, updateItem, writeScripts, updateWorldTool]);
   // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.
   // `itemId` says which item the hit belongs to — null for Overview's own fields, which sit in no item.
@@ -1043,6 +1045,7 @@ const WorldEditorInner = ({
     placeholderId: itemPlaceholderId,
     onPlaceholderIdChange: setItemPlaceholderId,
     onOpenWorldPlaceholder: openWorldPlaceholder,
+    focusField: findField,
   });
   const itemsParts = useListEditor(itemsAdapter, { selectedId: selections.items ?? null, onSelect: selectItem, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.

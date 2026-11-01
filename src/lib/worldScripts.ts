@@ -50,7 +50,8 @@ export interface ScriptEntry {
   box?: StatCodeBox | TraitCodeBox;
 }
 
-const homeKey = (home: ScriptHomeRef): string => {
+/** One key per stored script list. */
+export const homeKey = (home: ScriptHomeRef): string => {
   switch (home.kind) {
     case 'world': return 'world';
     case 'stat': return `stat/${home.statId}`;

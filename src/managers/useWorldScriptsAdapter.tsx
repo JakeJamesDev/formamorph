@@ -39,7 +39,7 @@ const groupTiming = (id: string): ScriptTiming | null => {
 
 /** Writes the slices a script edit rewrote through the per-record writers, so a typed run is one Step and a
  *  write that spans homes lands in one commit. */
-function useScriptWrites() {
+export function useScriptWrites() {
   const world = useGameData();
   const { updateStat, updateTrait, editEntity, setWorldScripts, updateWorldScript } = world;
   const latest = useRef(world);

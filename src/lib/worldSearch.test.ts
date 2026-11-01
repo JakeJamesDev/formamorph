@@ -5,7 +5,10 @@ import { placementLetters } from '@/lib/placementLetters';
 import { isOpeningFieldKey, openingFieldKey } from '@/lib/openings';
 import { collectSearchTargets, findMatches, refusesBlueprintInsert, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchSources, SearchTarget } from '@/lib/worldSearch';
-import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Connection, Dictionary, Entity, GameLocation, Item, Placeholder, Stat, Tool, Trait, WorldOverview } from '@/types';
+import { itemTabForField } from '@/views/itemPanelTabs';
+import { blankItem } from '@/lib/items';
+import { scriptEntryKey, type ScriptEdit } from '@/lib/worldScripts';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
 const LOOSE = { matchCase: false, wholeWord: false };
@@ -477,6 +480,152 @@ describe('Travel Hints', () => {
     expect(matches.map((m) => m.target.itemId)).toEqual(['quay']);
     replaceAll(matches, () => 'ferry');
     expect(written.at(-1)).toMatchObject({ aToB: { hint: 'by the ferry' }, bToA: { hint: 'by the ferry' } });
+  });
+});
+
+describe('Items, Scripts and Tools', () => {
+  const ITEM: Item = {
+    ...blankItem('i1', 'Brass Key'), playerDescription: 'Opens the bell tower.', aiDescription: 'A key to the bell tower.',
+    aiSummary: 'Tower key.', unidentifiedName: 'Odd Key', unidentifiedDescription: 'It hums near bells.',
+    imageTags: 'key, brass', scripts: [{ id: 'is1', name: 'Ring On Use', timing: 'used', code: 'stats.Bells += 1;' }],
+  };
+  const STAT: Stat = {
+    id: 's1', name: 'Bells', type: 'number', description: '', min: 0, max: 10, regen: 0, descriptors: [],
+    scripts: [
+      { id: 'ss1', timing: 'after', code: 'if (stats.Bells > 3) return 0;' },
+      { id: 'ss2', name: 'Bell Echo', timing: 'after', code: 'return stats.Bells;' },
+    ],
+  };
+  const TOOL: Tool = {
+    id: 't1', name: 'find_bell', description: 'Looks up a bell by its tower.',
+    params: [{ name: 'tower', type: 'string', description: 'The bell tower to search.', required: true, options: [] }],
+    handler: { kind: 'lookup', source: 'entities', param: 'tower', returns: 'full' }, emptyResult: '', offeredTo: ['narration'],
+  };
+
+  /** A world holding text only in an item, a script and a Tool, with writers that record what they were handed. */
+  function logicSources() {
+    const items: Item[] = [];
+    const scriptEdits: ScriptEdit[][] = [];
+    const tools: Tool[] = [];
+    const { src, writes } = sources({
+      items: [ITEM], scripts: [{ id: 'ws1', name: 'Dusk', timing: 'before', code: 'narration.say("dusk");' }],
+      stats: [STAT], tools: [TOOL],
+      updateItem: (item) => items.push(item),
+      writeScripts: (edits) => scriptEdits.push([...edits]),
+      updateTool: (tool) => tools.push(tool),
+    });
+    return { src, writes, items, scriptEdits, tools };
+  }
+
+  it('finds text in an item, a script and a Tool, one hit on each tab', () => {
+    const { src } = logicSources();
+    const at = (query: string) => findMatches(collectSearchTargets(src), query, LOOSE).map(({ target }) => [target.tab, target.itemId]);
+    expect(at('hums near')).toEqual([['items', 'i1']]);
+    expect(at('Bells > 3')).toEqual([['scripts', scriptEntryKey({ kind: 'stat', statId: 's1' }, 'ss1')]]);
+    expect(at('bell tower to search')).toEqual([['tools', 't1']]);
+  });
+
+  it('reaches every item field the panel shows, each on the panel tab that holds it', () => {
+    const fields = collectSearchTargets(logicSources().src).filter((t) => t.tab === 'items')
+      .map((t) => [t.fieldKey, t.fieldLabel, t.chipCapable, itemTabForField(t.fieldKey)]);
+    expect(fields).toEqual([
+      ['name', 'Name', true, 'profile'],
+      ['imageTags', 'Image Tags', false, 'profile'],
+      ['playerDescription', 'Player-Facing Description', true, 'descriptions'],
+      ['aiDescription', 'AI-Facing Description', true, 'descriptions'],
+      ['aiSummary', 'AI-Facing Summary', true, 'descriptions'],
+      ['unidentifiedName', 'Unidentified Name', true, 'descriptions'],
+      ['unidentifiedDescription', 'Unidentified Description', true, 'descriptions'],
+      ['scripts[0].name', 'Script Name', false, 'scripts'],
+      ['scripts[0].code', 'Script Code', false, 'scripts'],
+    ]);
+  });
+
+  it('reaches each Scripts-tab row by its name and code, world and stat scripts alike', () => {
+    const rows = collectSearchTargets(logicSources().src).filter((t) => t.tab === 'scripts')
+      .map((t) => [t.itemLabel, t.fieldLabel, t.chipCapable]);
+    expect(rows).toEqual([
+      ['Dusk', 'Name', false], ['Dusk', 'Code', false],
+      ['Bells · After the AI', 'Code', false],
+      ['Bell Echo', 'Name', false], ['Bell Echo', 'Code', false],
+    ]);
+  });
+
+  it('reaches a Tool’s name, description and each parameter description', () => {
+    const fields = collectSearchTargets(logicSources().src).filter((t) => t.tab === 'tools')
+      .map((t) => [t.itemLabel, t.fieldKey, t.fieldLabel, t.chipCapable]);
+    expect(fields).toEqual([
+      ['find_bell', 'name', 'Name', false],
+      ['find_bell', 'description', 'Description', false],
+      ['find_bell', 'params[0].description', 'Parameter tower', false],
+    ]);
+  });
+
+  it('writes an item replace through its updater, scripts and other fields in one write', () => {
+    const { src, items } = logicSources();
+    replaceAll(findMatches(collectSearchTargets(src), 'Bell', LOOSE).filter((m) => m.target.tab === 'items'), () => 'Gong');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      playerDescription: 'Opens the Gong tower.',
+      unidentifiedDescription: 'It hums near Gongs.',
+      scripts: [{ id: 'is1', code: 'stats.Gongs += 1;' }],
+    });
+  });
+
+  it('merges a replace across a stat’s name and two of its scripts into one write of that stat', () => {
+    // Each write replaces the whole stat from the record it was handed, so apart, the last would undo the rest.
+    const { src, writes, scriptEdits } = logicSources();
+    const matches = findMatches(collectSearchTargets(src), 'Bells', LOOSE).filter((m) => m.target.tab !== 'items');
+    expect(matches.map((m) => m.target.tab)).toEqual(['stats', 'scripts', 'scripts']);
+    replaceAll(matches, () => 'Gongs');
+    expect(scriptEdits).toEqual([]);
+    expect(writes).toEqual([['stat', {
+      ...STAT, name: 'Gongs',
+      scripts: [
+        { id: 'ss1', timing: 'after', code: 'if (stats.Gongs > 3) return 0;' },
+        { id: 'ss2', name: 'Bell Echo', timing: 'after', code: 'return stats.Gongs;' },
+      ],
+    }]]);
+  });
+
+  it('writes a world trait’s script replace through the trait’s own updater', () => {
+    const trait: Trait = { id: 't1', name: 'Bellringer', scripts: [{ id: 'ts1', timing: 'after', code: 'stats.Bells += 1;' }] } as Trait;
+    const { src, writes } = sources({ traits: [trait], writeScripts: () => { throw new Error('not through the script writer'); } });
+    replaceAll(findMatches(collectSearchTargets(src), 'stats.Bells', LOOSE), () => 'stats.Gongs');
+    expect(writes).toEqual([['trait', { ...trait, scripts: [{ id: 'ts1', timing: 'after', code: 'stats.Gongs += 1;' }] }]]);
+  });
+
+  it('merges a replace across two world scripts into one script edit', () => {
+    const scriptEdits: ScriptEdit[][] = [];
+    const world = [
+      { id: 'w1', timing: 'before' as const, code: 'narration.say("dusk");' },
+      { id: 'w2', timing: 'after' as const, code: 'if (dusk) return 1;' },
+    ];
+    const { src } = sources({ scripts: world, writeScripts: (edits) => scriptEdits.push([...edits]) });
+    replaceAll(findMatches(collectSearchTargets(src), 'dusk', LOOSE), () => 'dawn');
+    expect(scriptEdits).toHaveLength(1);
+    const [[edit]] = scriptEdits;
+    expect(edit.home).toEqual({ kind: 'world' });
+    expect(edit.edit(world).map((s) => s.code)).toEqual(['narration.say("dawn");', 'if (dawn) return 1;']);
+  });
+
+  it('skips a Tool name replace the Save Tool check refuses, and writes one it accepts', () => {
+    const { src, tools } = logicSources();
+    const nameHits = () => findMatches(collectSearchTargets(src), 'find_bell', LOOSE).filter((m) => m.target.tab === 'tools');
+    // A space is not allowed in a function name the AI calls.
+    expect(replaceAll(nameHits(), () => 'find bell')).toMatchObject({ replaced: 0, refused: 1 });
+    expect(tools).toEqual([]);
+    expect(replaceAll(nameHits(), () => 'find_gong')).toMatchObject({ replaced: 1, refused: 0 });
+    expect(tools).toEqual([{ ...TOOL, name: 'find_gong' }]);
+  });
+
+  it('writes a Tool replace through its updater, parameters included', () => {
+    const { src, tools } = logicSources();
+    replaceAll(findMatches(collectSearchTargets(src), 'tower', LOOSE).filter((m) => m.target.tab === 'tools'), () => 'spire');
+    expect(tools).toEqual([{
+      ...TOOL, description: 'Looks up a bell by its spire.',
+      params: [{ ...TOOL.params[0], description: 'The bell spire to search.' }],
+    }]);
   });
 });
 
