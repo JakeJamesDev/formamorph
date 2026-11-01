@@ -64,6 +64,31 @@ describe('Map Background links', () => {
   });
 });
 
+describe('Custom Image Backdrop links', () => {
+  const boxes = [{ x: 0.1, y: 0.2, w: 0.3, h: 0.4 }];
+  const bodied = (): World => ({
+    ...world(),
+    bodies: [
+      { id: 'b1', name: 'Imp', aspect: 1.5, entries: [{ slotId: 'hand', boxes }], backdrop: { kind: 'image', image: { data: 'https://host/imp.png' } } },
+      { id: 'b2', name: 'Plain', aspect: 0.5, entries: [], backdrop: { kind: 'humanoid' } },
+    ],
+  } as unknown as World);
+
+  it('are found and embedded, with the Body\'s aspect, boxes and other Bodies kept', async () => {
+    expect(remoteWorldImages(bodied()).at(-1)).toBe('https://host/imp.png');
+    const { world: out, failures } = await embedWorldRemoteImages(bodied());
+    expect(failures).toEqual([]);
+    expect(out.bodies).toEqual([
+      { id: 'b1', name: 'Imp', aspect: 1.5, entries: [{ slotId: 'hand', boxes }], backdrop: { kind: 'image', image: { data: 'data:image/webp;base64,EMBEDDED(https://host/imp.png)' } } },
+      bodied().bodies?.[1],
+    ]);
+  });
+
+  it('adds no bodies field to a world without any', async () => {
+    expect((await embedWorldRemoteImages(world())).world).not.toHaveProperty('bodies');
+  });
+});
+
 describe('remoteImagesInContent', () => {
   it('lists a published character’s linked pictures, ruled ones included', () => {
     const entity = { id: 'e1', name: 'A', images: [{ data: 'https://host/a.png', requires: KNIGHT }, { data: 'data:image/webp;base64,K' }, { data: 'https://host/b.png' }] };

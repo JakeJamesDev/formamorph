@@ -5,9 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import {
-  boxAt, boxKey, clampAspect, dragMove, dragResize, grownBox, KEY_STEP, MAX_ASPECT, MIN_ASPECT, movedBox, sameBox, snapLines, stackOrder, withBox, withOutline,
+  boxAt, boxKey, clampAspect, dragMove, dragResize, grownBox, KEY_STEP, MAX_ASPECT, MIN_ASPECT, movedBox, sameBox, snapLines, stackOrder, withBackdropImage, withBox, withOutline,
   type BoxCorner, type BoxRef, type OutlineKind, type SnappedBox, type SnapReach,
 } from '@/lib/bodyLayout';
+import { readImageAspect } from '@/lib/imageAspect';
+import { IMAGE_CAPS } from '@/lib/imageSlots';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { ImageUpload } from '@/lib/UtilityComponents';
 import { cn } from '@/lib/utils';
 import type { Body, SlotBox } from '@/types';
 
@@ -16,6 +20,8 @@ const OUTLINES: { kind: OutlineKind; label: string }[] = [
   { kind: 'quadruped', label: 'Quadruped' },
   { kind: 'plain', label: 'Plain' },
 ];
+
+const CUSTOM_IMAGE = 'image';
 
 const CORNERS: BoxCorner[] = ['nw', 'ne', 'sw', 'se'];
 const CORNER_SPOT: Record<BoxCorner, string> = {
@@ -226,21 +232,47 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
   /** The slot rows. */
   children: ReactNode;
 }) {
+  const mounted = useMountedRef();
+  const latest = useRef(body);
+  latest.current = body;
+  // Custom Image is picked but holds no file yet; the Backdrop stays as it was until one lands (Q71).
+  const [asking, setAsking] = useState(false);
+  const isImage = body.backdrop.kind === 'image';
+  const choosing = asking || isImage;
+
+  const pickBackdrop = (kind: string) => {
+    if (kind === CUSTOM_IMAGE) {
+      setAsking(true);
+      return;
+    }
+    const outline = OUTLINES.find((o) => o.kind === kind);
+    if (!outline) return;
+    setAsking(false);
+    onChange(withOutline(body, outline.kind));
+  };
+
+  const setImage = async (data: string) => {
+    if (!data) {
+      setAsking(false);
+      if (latest.current.backdrop.kind === 'image') onChange(withOutline(latest.current, 'humanoid'));
+      return;
+    }
+    const aspect = await readImageAspect(data);
+    if (!mounted.current) return;
+    setAsking(false);
+    onChange(withBackdropImage(latest.current, data, aspect));
+  };
+
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex items-center gap-2">
           <span className="text-label" aria-hidden>Backdrop</span>
-          <Select
-            value={body.backdrop.kind}
-            onValueChange={(kind) => {
-              const outline = OUTLINES.find((o) => o.kind === kind);
-              if (outline) onChange(withOutline(body, outline.kind));
-            }}
-          >
+          <Select value={choosing ? CUSTOM_IMAGE : body.backdrop.kind} onValueChange={pickBackdrop}>
             <SelectTrigger className="h-8 w-36 text-label" aria-label="Backdrop"><SelectValue /></SelectTrigger>
             <SelectContent>
               {OUTLINES.map(({ kind, label }) => <SelectItem key={kind} value={kind}>{label}</SelectItem>)}
+              <SelectItem value={CUSTOM_IMAGE}>Custom Image</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -251,6 +283,17 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
           </label>
         </Tip>
       </div>
+      {choosing && (
+        <div className="grid max-w-[260px] gap-1">
+          <ImageUpload
+            id={`body-backdrop-${body.id}`}
+            value={body.backdrop.kind === 'image' ? body.backdrop.image.data : ''}
+            cap={IMAGE_CAPS.entity}
+            onChange={(data) => void setImage(data)}
+          />
+          <Hint>The image sets the shape of the Backdrop</Hint>
+        </div>
+      )}
       <div className="flex flex-wrap items-start gap-3">
         <div className="grid w-[260px] max-w-full shrink-0 gap-2.5">
           <BodyLayoutCanvas body={body} onChange={onChange} labelOf={labelOf} selected={selected} onSelect={onSelect} focusRequest={focusRequest} snap={snap} />

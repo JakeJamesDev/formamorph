@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Inventory prompt now records a use, a change of State, and an item's true nature becoming known.** Opening a letter or lighting a lantern keeps the item. Burning or shattering one still removes it with no effect.
     - **The player and each entity now have a Body setting their equipment slots; traits and scripts can change it.** Each entity picks a Body on its Items tab; the first Body is the Default. Items the new Body has no slot for come off and stay carried. The narrator sees the slots, never the Body's name.
     - **Each Body in Equipment Settings now has a figure, where you drag and resize one box per slot unit.** Pick Humanoid, Quadruped or Plain, and use Snap to Others to line boxes up. A Duplicate button copies a Body with its figure.
+    - **A Body's figure can now use your own picture, by picking Custom Image under Backdrop.** The figure takes the picture's shape and keeps your boxes where they are. Optimize Images and export cover the picture too.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
   - **World files now list Bodies, and each entity equips into the slots of its own Body.** A slot is a name only; each Body entry gives it a capacity. An entity picks a Body, the first one, or None. See World Format.

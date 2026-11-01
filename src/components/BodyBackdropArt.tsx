@@ -1,3 +1,4 @@
+import { RemoteImg } from '@/lib/useRemoteImage';
 import type { Backdrop } from '@/types';
 
 const OUTLINE_PROPS = {
@@ -31,6 +32,17 @@ export function BodyBackdropArt({ backdrop }: { backdrop: Backdrop }) {
         <path d={QUADRUPED_BODY} vectorEffect="non-scaling-stroke" />
         <path d={QUADRUPED_TAIL} vectorEffect="non-scaling-stroke" />
       </svg>
+    );
+  }
+  if (backdrop.kind === 'image') {
+    // Fit inside the stage: an image past the aspect clamp gets bars, never a stretch (Q71).
+    return (
+      <RemoteImg
+        src={backdrop.image.data}
+        alt=""
+        draggable={false}
+        className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+      />
     );
   }
   return null;

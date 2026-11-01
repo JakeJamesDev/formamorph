@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
 import { screen, fireEvent, within, act } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
-import { centerBox, KEY_STEP } from '@/lib/bodyLayout';
+import { centerBox, KEY_STEP, MAX_ASPECT } from '@/lib/bodyLayout';
 import { blankItem } from '@/lib/items';
 import type { Body, Entity, Item, Placement, Slot, World } from '@/types';
 
@@ -67,7 +67,11 @@ const options = (combobox: HTMLElement) => {
   return names;
 };
 
-beforeEach(() => { localStorage.clear(); });
+// jsdom decodes no image, so the measured aspect is what each test says it is.
+const readImageAspect = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/imageAspect', () => ({ readImageAspect }));
+
+beforeEach(() => { localStorage.clear(); readImageAspect.mockReset(); });
 
 describe('the Equipment Settings entry', () => {
   it('opens the Slots, Bodies and Persona Items sections, which leave the Overview', () => {
@@ -243,10 +247,77 @@ describe('the Bodies section', () => {
       expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'plain' }, aspect: 1.6, entries: boxes });
     });
 
-    it('offers no Custom Image yet', () => {
-      renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
-      expect(options(within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' }))).toEqual(['Humanoid', 'Quadruped', 'Plain']);
+    describe('Custom Image', () => {
+      const backdrop = () => within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' });
+      const link = async (url: string) => {
+        fireEvent.change(within(humanoidFields()).getByLabelText('Image URL'), { target: { value: url } });
+        await act(async () => { fireEvent.click(within(humanoidFields()).getByRole('button', { name: 'Use this image URL' })); });
+      };
+
+      it('is the fourth Backdrop', () => {
+        renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        expect(options(backdrop())).toEqual(['Humanoid', 'Quadruped', 'Plain', 'Custom Image']);
+      });
+
+      it('leaves the Backdrop alone until a file lands, then draws it at the image\'s aspect with no edge drag', async () => {
+        readImageAspect.mockResolvedValue(1.25);
+        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        const before = ctx().bodies[0];
+        pickOption(backdrop(), 'Custom Image');
+        expect(ctx().bodies[0]).toEqual(before);
+        expect(within(humanoidFields()).getByLabelText('Image URL')).toBeInTheDocument();
+
+        await link('https://host/imp.png');
+        expect(ctx().bodies[0]).toEqual({ ...before, backdrop: { kind: 'image', image: { data: 'https://host/imp.png' } }, aspect: 1.25 });
+        expect(humanoidFields().querySelector('[data-body-layout-stage]')).toHaveStyle({ aspectRatio: '1.25' });
+        expect(humanoidFields().querySelector('[data-body-layout-stage] img')).toHaveClass('object-contain');
+        expect(within(humanoidFields()).queryByRole('slider', { name: 'Backdrop Height' })).toBeNull();
+      });
+
+      it('clamps an extreme image to the drag range', async () => {
+        readImageAspect.mockResolvedValue(8);
+        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        pickOption(backdrop(), 'Custom Image');
+        await link('https://host/strip.png');
+        expect(ctx().bodies[0].aspect).toBe(MAX_ASPECT);
+      });
+
+      it('keeps the boxes when it leaves for an outline, drops the image, and follows Q53 for the aspect', async () => {
+        readImageAspect.mockResolvedValue(1.25);
+        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        const entries = ctx().bodies[0].entries;
+        pickOption(backdrop(), 'Custom Image');
+        await link('https://host/imp.png');
+        pickOption(backdrop(), 'Plain');
+        expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'plain' }, aspect: 1.25, entries });
+        pickOption(backdrop(), 'Custom Image');
+        await link('https://host/imp.png');
+        pickOption(backdrop(), 'Quadruped');
+        expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'quadruped' }, aspect: 1.6, entries });
+      });
+
+      it('goes back to Humanoid when its image is removed', async () => {
+        readImageAspect.mockResolvedValue(1.25);
+        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        pickOption(backdrop(), 'Custom Image');
+        await link('https://host/imp.png');
+        fireEvent.click(within(humanoidFields()).getByRole('button', { name: /remove image/i }));
+        expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'humanoid' }, aspect: 0.5 });
+      });
+
+      it('abandons a pick that never got a file when another Backdrop is chosen', () => {
+        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        pickOption(backdrop(), 'Custom Image');
+        pickOption(backdrop(), 'Quadruped');
+        expect(within(humanoidFields()).queryByLabelText('Image URL')).toBeNull();
+        expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'quadruped' } });
+      });
     });
 
     it('changes the aspect from the bottom edge by keyboard, and leaves the boxes alone', () => {
