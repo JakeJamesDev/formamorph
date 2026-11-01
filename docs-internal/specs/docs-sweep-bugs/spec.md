@@ -1,7 +1,7 @@
 # Spec: Docs Sweep Bugs
 
-Status: ready-for-agent
-Status note: Reopened 2026-11-01 for tickets 19–25, the rulings from the first close report. Tickets 01–18 done; first close at 4020e81ec, lint and test green.
+Status: done
+Status note: Closed 2026-11-01, tickets 01–25, last landing dd41f37b6. Review: spec text corrected, one gap fixed in 050354aa6. Closed red: src/components/prompt/CodeArea.cards.test.tsx, one assertion under full-suite load; the file passes alone.
 Spec session: docs-sweep-bugs — spec
 
 ## Problem Statement
@@ -34,13 +34,13 @@ Settled with the user on 2026-11-01.
 | Q12 | A Replace All never leaves two Tools with one name. The name check counts names the pass already wrote (ticket 17) |
 | Q13 | In Simple mode, an item script hit drops, because the item's Scripts tab is hidden (ticket 18) |
 | Q14 | **Reset All My Changes** keeps lines from a script's `memories.pin()` too. They work like hand-written memories |
-| Q15 | An unpicked Persona-Only entity's Others openings get the Custom Persona treatment: **Never Draws**, a dash, out of the view's pool (ticket 19) |
+| Q15 | A Persona-Only entity's Others openings get the Custom Persona treatment: **Never Draws**, a dash, out of the view's pool (ticket 19). They never draw, picked or not, so the mark takes no pick condition. Ticket 11's other rulings carry over, and its false "Joins the world's openings" hint is replaced here too |
 | Q16 | The Openings checkbox and the panel's footer hint count only rows the game can draw (ticket 20) |
 | Q17 | A Group rename to a taken name shows the Group picker's error line under the field (ticket 21) |
-| Q18 | A name that holds only spaces is blank, for entities and dictionary entries alike (ticket 22) |
-| Q19 | **Optimize Images** scans and applies item images (ticket 23) |
+| Q18 | A name that holds only spaces is blank, for entities and dictionary entries alike (ticket 22). The check is `name.trim() === ''`, and locations follow it, since they share the check. The editor's name menus and bracket completion follow it too |
+| Q19 | **Optimize Images** scans and applies item images (ticket 23). They join the one optimize list, so every flow that reads it follows, and the Test Bench rule opens Items for them. The Media gallery gains no item section. Item copies have no image field, so that clause needs no code. The `image-not-webp` and `image-mislabeled` Fixes reach item images too |
 | Q20 | A single skipped Tool name Replace names its reason from the Save Tool check. Replace All keeps its count (ticket 24) |
-| Q21 | A website download of a bad preset listing says "listing", not "file". The app's file import keeps its text (ticket 25) |
+| Q21 | A website download of a bad preset listing says "listing", not "file". The app's file import keeps its text (ticket 25). This ticket adds no changelog fragment: ticket 05's unreleased entry covers the preset download |
 
 ## The bugs
 

@@ -117,27 +117,20 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Help text across Formamorph now says what each control does, in plain words.** The rewrite covers Settings, the World Editor, the game screen, Community, Formaquestion and the help topics. Scene Images points at the turn's More menu, Face Fix lists SD2, and confirm buttons name their action.
   - **The update dialog no longer says "You're up to date" while an update downloads.** It names the version, keeps the new-version notes marker, and offers Close instead of Check for updates.
   - **Reset All My Changes in the Memories dialog no longer deletes the memories you wrote.** It clears your edits, deletions and pins only.
-  - **Dragging a tile onto another tile now gives the new Group its own name.** A drop names it *New Group*, then *New Group 2*, and so on. Rename also refuses a name another Group has.
+  - **Dragging a tile onto another tile now gives the new Group its own name.** A drop names it *New Group*, then *New Group 2*, and so on. Rename also refuses a name another Group has, and a red line says why.
   - **On a Mac, Download now returns the version number to Update Available once the .dmg opens in your browser.** The update dialog says the download opened in your browser, with no stuck progress bar.
   - **Prompt presets and Mascots downloaded from formamorph.ai now import into the app.** A preset saves as a `.preset.json` share file, and a Mascot saves as its card image.
   - **Optimize Images now keeps the Map Background images it re-encoded.** Before, only the thumbnail came back, and one undo now reverts the map with the rest.
   - **Importing an entity card keeps each opening set to Self.** Before, every Self opening came back as an Others opening.
-  - **The World Editor's Search World now finds text on the Items, Scripts and Tools tabs.** A match opens its item, script or Tool, and Replace works there too.
+  - **The World Editor's Search World now finds text on the Items, Scripts and Tools tabs.** A match opens its item, script or Tool, and Replace works there too. Replace skips a Tool name another Tool uses, and the notice says why. Simple mode leaves out item scripts.
   - **The entity Avatar dropdown now shows in Simple mode.** You can assign an Avatar you upload in the Media tab without switching to Advanced mode.
-  - **The World Editor marks the Custom Persona's Others openings with a Never Draws badge and no draw chance.** Other rows' chances no longer count them. The entity's Openings tab now says only Self openings draw.
+  - **The World Editor marks Others openings that can never draw with a Never Draws badge and no draw chance.** This covers the Custom Persona and Persona-Only entities. Other rows' chances, the Openings checkbox and its hint no longer count them. The entity's Openings tab says only Self openings draw.
   - **The 🔗 marker on a World Editor row now reads Link pending save until you save the world.** Before, only the footer button showed it, and the row always read Linked.
   - **Two scripts that run in the same moment no longer draw the same random numbers.** Every script run now gets its own `Math.random` seed, not only Tools.
-  - **Scripts now skip dictionary entries that have no name.** Before, all unnamed entries shared one blank name, so a script reached only one of them.
+  - **Scripts now skip dictionary entries that have no name, and entities or places whose name is only spaces.** Before, all unnamed entries shared one blank name, so a script reached only one of them. A name of only spaces now counts as blank.
   - **The Test Bench Opening tab no longer shows the "at" location pick.** Opening starts at its own Starting Location pick, so the unused pick is gone.
   - **A world whose only choice is its Custom Persona opens Enter World instead of skipping it.** You can type your **Name** and **Description** before the game starts.
-  - **Search World's Replace All no longer gives two Tools the same name.** The first Tool takes the new name. Search World skips the later Tool and counts it as skipped.
-  - **In Simple mode, Search World no longer finds text in an item's scripts.** The item's Scripts tab is hidden there, so the match opened nothing. Advanced mode still finds it.
-  - **Renaming a Group to a name another Group has now says so.** A red line under the name field reads "A group already has this name." and clears when you type again.
-  - **Scripts now skip entities, places and dictionary entries whose name is only spaces.** Before, a script reached each under its blank name. They now count as unnamed.
-  - **The World Editor marks a Persona-Only entity's Others openings with a Never Draws badge and no draw chance.** Other rows' chances no longer count them. The entity's Openings tab now says only Self openings draw.
-  - **A skipped Tool rename in Find and Replace now says why.** The notice names the reason, such as another Tool already using the name.
   - **World tiles on the Main Menu now appear faster each time it opens.** The bundled worlds load only when one is new or has changed.
-  - **The Openings checkbox and hint now count only openings that can draw.** Text only on a Custom Persona's Others rows leaves the default opening on.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.
