@@ -95,6 +95,10 @@ export function serializeSharedJson(shared: SharedPreset): string {
   return JSON.stringify(shared, null, 2);
 }
 
+/** The `.json` export's file name: the preset name with each run of characters outside ASCII letters and digits as one underscore. */
+export const presetFileName = (name: string): string =>
+  `${name.trim().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'preset'}.preset.json`;
+
 /** Compact, prefixed, UTF-8-safe base64 for the copy-paste share code. */
 export function serializeSharedCode(shared: SharedPreset): string {
   return SHARE_CODE_PREFIX + b64encode(JSON.stringify(shared));

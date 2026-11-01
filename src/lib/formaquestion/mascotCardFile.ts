@@ -99,10 +99,21 @@ export async function buildMascotCardWithLook(
   return { card, look };
 }
 
+const cardFile = (card: MascotCardData, look: RenderedCardImage): Blob =>
+  new Blob([embedEntityCard(look.bytes, JSON.stringify(card), { w: look.width, h: look.height })], { type: 'image/webp' });
+
 /** The card of the mascot `name`: a WebP of its Initial look carrying its name and the whole rig, every image in full. */
 export async function exportMascotCard(name: string, rig: MascotRig, overrides: Partial<MascotCardExportDeps> = {}): Promise<Blob> {
   const { card, look } = await buildMascotCardWithLook(name, rig, overrides);
-  return new Blob([embedEntityCard(look.bytes, JSON.stringify(card), { w: look.width, h: look.height })], { type: 'image/webp' });
+  return cardFile(card, look);
+}
+
+/** The card file of card data already in hand, such as a listing's: its Initial look is drawn from the card's own images. */
+export async function mascotCardFileFromData(card: MascotCardData, overrides: Partial<Pick<MascotCardExportDeps, 'render'>> = {}): Promise<Blob> {
+  const render = overrides.render ?? renderMascotLayers;
+  // Each image's id is its own data URL, so the Initial draw list names the pixels to draw.
+  const drawn = composeInitialWith(mascotRigFromCard(card, card.images), null).flatMap((ref) => (ref.kind === 'stored' ? [ref.id] : []));
+  return cardFile(card, await render(await Promise.all(drawn.map(dataUrlBlob))));
 }
 
 /** The card data a file carries. Throws, naming the problem, on any file that is not a whole card. */
