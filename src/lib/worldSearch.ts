@@ -66,8 +66,9 @@ export interface SearchTarget {
    *  editor is edited as chips, and an entry often repeats its item's name verbatim — so which of the two
    *  a hit belongs to cannot be read off the text. */
   inChipList: boolean;
-  /** True where the field's own checks reject `next`; a replace leaves the field as it is. */
-  refuses?: (next: string) => boolean;
+  /** True where the field's own checks reject `next`; a replace leaves the field as it is. `written` holds
+   *  the text this pass already wrote, keyed `itemKey#fieldKey`. */
+  refuses?: (next: string, written?: ReadonlyMap<string, string>) => boolean;
   value: string;
   write: (next: string) => void;
 }
@@ -140,6 +141,9 @@ export interface SearchSources {
 type DictionaryEntryWithBook = Dictionary['entries'][number];
 
 const untitled = (name: string | undefined, fallback: string) => name?.trim() || fallback;
+
+/** The key of one field in `refuses`' `written` map. */
+const writtenKey = (itemKey: string, fieldKey: string) => `${itemKey}#${fieldKey}`;
 
 /**
  * Every authored string the editor can navigate to, in tab order — and within an item, in the order its
@@ -455,7 +459,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       const where = { tab: 'tools', itemId: tool.id, itemLabel: untitled(tool.name, 'Tool'), chipCapable: false };
       const { add } = bind(`tool:${tool.id}`, tool, updateTool);
       // The Save Tool draft's own check: a name the AI can't call, or another Tool's, stays as it is.
-      const refuses = (name: string) => draftProblems({ ...tool, name }, src.tools ?? [], [], { world: true }).name !== null;
+      // Counts the names this pass already wrote, so two Tools can't end up with one name.
+      const refuses = (name: string, written?: ReadonlyMap<string, string>) => {
+        const others = (src.tools ?? []).map((t) => ({ ...t, name: written?.get(writtenKey(`tool:${t.id}`, 'name')) ?? t.name }));
+        return draftProblems({ ...tool, name }, others, [], { world: true }).name !== null;
+      };
       add(where, 'name', 'Name', tool.name, (r, v) => ({ ...r, name: v }), { refuses });
       add(where, 'description', 'Description', tool.description, (r, v) => ({ ...r, description: v }));
       (tool.params ?? []).forEach((param, i) => {
@@ -593,6 +601,7 @@ export function replaceAll(
   }
 
   const drafts = new Map<string, { record: SearchRecord; commit: (record: SearchRecord) => void }>();
+  const written = new Map<string, string>();
   for (const [target, hits] of byTarget) {
     if (insertFor(target) === null) {
       summary.skipped += hits.length;
@@ -604,10 +613,11 @@ export function replaceAll(
       // Asked per occurrence, not once: a chip's placement id keys its Unique roll and can never be shared.
       next = spliceText(next, hit.start, hit.end, insertFor(target) ?? '');
     }
-    if (target.refuses?.(next)) {
+    if (target.refuses?.(next, written)) {
       summary.refused += hits.length;
       continue;
     }
+    written.set(writtenKey(target.itemKey, target.fieldKey), next);
     const draft = drafts.get(target.itemKey) ?? { record: target.record, commit: target.commit };
     drafts.set(target.itemKey, { ...draft, record: target.applyTo(draft.record, next) });
     summary.replaced += hits.length;
