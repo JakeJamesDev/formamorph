@@ -69,8 +69,9 @@ The breakdown shows seven groups by share of cost. Any single prompt with a larg
 - The budget period is the UTC week starting Monday 00:00. Every monthly reader moves to it: admission, the hosted state, the usage snapshot, the admin spend read and the `resetAt` value.
 - There is no monthly meter left (Q1). The rest of the meter keeps its rules: the reservation, the overrun bound, tier changes at once, and turns admitted before a reset finishing after it.
 - A tier's `budget` setting holds the weekly amount directly. There is no conversion in code. The admin panel labels it as weekly.
-- Warning acknowledgments are keyed by week.
-- The retention setting can't be set below 7 days.
+- Warning acknowledgments are keyed by week: a schema step renames the key column to `week`, holding the Monday as `YYYY-MM-DD`. Old monthly keys never match.
+- The retention setting can't be set below 7 days. A stored lower value isn't rewritten; the next admin save is refused until it is fixed.
+- The admin spend read keeps its response field names, and its `since` becomes the week start.
 - The daily ceiling, the spend-versus-estimate report and the Supporter subject rules don't change.
 
 **Prompt type on usage rows**
