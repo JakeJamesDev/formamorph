@@ -105,6 +105,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **On a Mac, Download now returns the version number to Update Available once the .dmg opens in your browser.** The update dialog says the download opened in your browser, with no stuck progress bar.
   - **Prompt presets and Mascots downloaded from formamorph.ai now import into the app.** A preset saves as a `.preset.json` share file, and a Mascot saves as its card image.
   - **Optimize Images now keeps the Map Background images it re-encoded.** Before, only the thumbnail came back, and one undo now reverts the map with the rest.
+  - **Importing an entity card keeps each opening set to Self.** Before, every Self opening came back as an Others opening.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

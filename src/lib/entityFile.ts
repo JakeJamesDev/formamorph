@@ -405,6 +405,7 @@ function cardOpening(raw: unknown): Opening[] {
     id: typeof row.id === 'string' && row.id ? row.id : randomUUID(),
     text: row.text,
     kind: row.kind === 'narration' ? 'narration' : 'action',
+    ...(row.self === true ? { self: true } : {}),
   }];
 }
 

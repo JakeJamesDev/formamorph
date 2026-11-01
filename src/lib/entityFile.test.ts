@@ -330,6 +330,24 @@ describe('a character card’s openings', () => {
     expect(parsed.openingWeights).toEqual({ [openings[1].id]: 3 });
   });
 
+  it('keep each opening’s Self mark through a card round trip', () => {
+    const entity: Entity = {
+      id: 'w',
+      name: 'Wren',
+      openings: [
+        { id: 'o1', text: 'I wake on the jetty.', kind: 'narration', self: true },
+        { id: 'o2', text: 'Wren waves.', kind: 'narration' },
+      ],
+    };
+    const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(entity)), { w: 4, h: 4 });
+    const openings = parseEntityCardData(JSON.parse(readEntityCard(bytes) as string)).openings ?? [];
+    expect(openings.map((o) => [o.text, o.self === true])).toEqual([
+      ['I wake on the jetty.', true],
+      ['Wren waves.', false],
+    ]);
+    expect(openings[1]).not.toHaveProperty('self');
+  });
+
   it('keep the stored user macro through a card round trip', () => {
     const entity: Entity = { id: 'w', name: 'Wren', openings: [{ id: 'o1', text: `Wren greets ${PLAYER_NAME.token}.`, kind: 'narration' }] };
     const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(entity)), { w: 4, h: 4 });
