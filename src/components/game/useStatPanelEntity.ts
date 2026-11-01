@@ -22,7 +22,7 @@ const ownerOf = (entity: Entity, values: Readonly<Record<string, readonly Player
 /**
  * The entity the in-game stat panel shows below the player's stats: who the picker lists, which one is shown,
  * and that entity's visible stat rows. With no pick it reads the entity view's own fallback, so both places
- * open on the same entity. The entities the player plays as list in `players`, whose rows join the player's;
+ * open on the same entity. The Traits and Inventory tabs read the same shown entity. The entities the player plays as list in `players`, whose rows join the player's;
  * picking one shows no entity section. `showPicker` is false when no other listed entity has a stat the
  * player can see. `inForce` gives each entity's stat traits in force on the viewed turn, which switch its
  * stats on and off.
@@ -38,7 +38,8 @@ export function useStatPanelEntity(inForce: OwnerStatTraits) {
     [persona, inScene],
   );
   const { shows } = usePlayAvatars();
-  const firstShown = inScene.find((p) => shows(p.entity))?.entity.id;
+  // With no art in the scene, the first met entity holds the panel, so its Traits node isn't hidden behind (None).
+  const firstShown = (inScene.find((p) => shows(p.entity)) ?? inScene.find((p) => p.met) ?? inScene[0])?.entity.id;
   const shownId = statPanelSelection(selectedEntityId, options, firstShown);
   const playedIds = new Set(played.map((entity) => entity.id));
   const shownPresence = shownId && !playedIds.has(shownId) ? inScene.find((p) => p.entity.id === shownId) : undefined;

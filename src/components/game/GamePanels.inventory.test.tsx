@@ -60,6 +60,50 @@ const carried = () => screen.getByRole('region', { name: 'Your inventory' });
 const mine = (g: Gameplay) => g.itemCopies.filter((c) => c.where.kind === 'you');
 const dollBoxes = () => within(screen.getByRole('group', { name: 'Equipped' })).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
 
+describe('RightPanel — the selected entity on the Inventory tab', () => {
+  const onBram = (id: string, itemId: string, over: Partial<ItemCopy> = {}) => copy(id, itemId, { where: { kind: 'entity', id: 'bram' }, ...over });
+  const picker = () => screen.queryByRole('combobox', { name: 'Selected entity' });
+  const bramCard = () => screen.queryByRole('region', { name: 'Bram inventory' });
+  const inScene = { inScene: ['Bram'], met: ['bram'] };
+
+  it('lists what the entity visibly wears, between the player’s card and the location’s, with no actions', async () => {
+    renderRightPanel({}, stage([
+      onBram('w', 'torch', { equipped: { slotId: 'hand', order: 0 } }),
+      onBram('h', 'whip', { equipped: { slotId: 'hand', order: 0 }, visibility: 'hidden' }),
+      onBram('c', 'tonic'),
+    ], inScene));
+    const card = await screen.findByRole('region', { name: 'Bram inventory' });
+    expect(within(card).getByText('Torch')).toBeInTheDocument();
+    expect(within(card).queryByText('Whip')).toBeNull();
+    expect(within(card).queryByText('Tonic')).toBeNull();
+    expect(within(card).queryByRole('button', { name: /Equip|Give|Drop/ })).toBeNull();
+    const order = screen.getAllByRole('region').map((r) => r.getAttribute('aria-label')).filter((label) => label !== 'Equipped');
+    expect(order).toEqual(['Your inventory', 'Bram inventory', 'Here']);
+    expect(picker()).toHaveTextContent('Bram');
+  });
+
+  it('hides the card under (None)', async () => {
+    renderRightPanel({}, stage([onBram('w', 'torch', { equipped: { slotId: 'hand', order: 0 } })], inScene));
+    await userEvent.click(await screen.findByRole('combobox', { name: 'Selected entity' }));
+    await userEvent.click(await screen.findByRole('option', { name: '(None)' }));
+    expect(bramCard()).toBeNull();
+  });
+
+  it('adds no picker and no card when no listed entity visibly wears anything', async () => {
+    renderRightPanel({}, stage([onBram('c', 'tonic'), onBram('h', 'whip', { equipped: { slotId: 'hand', order: 0 }, visibility: 'hidden' })], inScene));
+    await screen.findByRole('region', { name: 'Your inventory' });
+    expect(picker()).toBeNull();
+    expect(bramCard()).toBeNull();
+  });
+
+  it('adds no picker for an entity out of the scene', async () => {
+    renderRightPanel({}, stage([onBram('w', 'torch', { equipped: { slotId: 'hand', order: 0 } })], { met: ['bram'] }));
+    await screen.findByRole('region', { name: 'Your inventory' });
+    expect(picker()).toBeNull();
+    expect(bramCard()).toBeNull();
+  });
+});
+
 describe('RightPanel — Inventory tab', () => {
   it('offers one Equip choice per allowed slot in the item order, and equips into the one picked', async () => {
     const h = renderRightPanel({}, stage([copy('t', 'torch')]));

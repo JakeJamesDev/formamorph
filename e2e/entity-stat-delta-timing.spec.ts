@@ -82,7 +82,7 @@ test("entity rows take the player's chip fade, held band and drain", async ({ pa
     FORMAMORPH_locationChangeEnabled: false, FORMAMORPH_memoryDigests: false, FORMAMORPH_aiClock: false,
   }, { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
   if ((page.viewportSize()?.width ?? 1280) < 768) await page.getByRole('button', { name: 'Status', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Entity stats' }).click();
+  await page.getByRole('combobox', { name: 'Selected entity' }).click();
   await page.getByRole('option', { name: 'Bram' }).click();
   await expect(page.getByTestId('entity-stats').getByText(/40\s*\/\s*100/)).toBeVisible();
   await page.waitForFunction(() => '__baseline' in window);

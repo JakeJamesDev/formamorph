@@ -42,11 +42,11 @@ const stage = {
 };
 
 const choose = async (label: string) => {
-  await userEvent.click(screen.getByRole('combobox', { name: 'Entity stats' }));
+  await userEvent.click(screen.getByRole('combobox', { name: 'Selected entity' }));
   await userEvent.click(await screen.findByRole('option', { name: label }));
 };
 const optionLabels = async () => {
-  await userEvent.click(screen.getByRole('combobox', { name: 'Entity stats' }));
+  await userEvent.click(screen.getByRole('combobox', { name: 'Selected entity' }));
   return (await screen.findAllByRole('option')).map((o) => o.textContent);
 };
 const section = () => screen.queryByTestId('entity-stats');
@@ -131,7 +131,7 @@ describe('RightPanel — entity stats', () => {
 
   it('opens on the entity the entity view falls back to when nothing was picked', () => {
     renderRightPanel({}, stage);
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Bram');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Bram');
     expect(within(section()!).getByText('Trust')).toBeInTheDocument();
   });
 
@@ -147,14 +147,14 @@ describe('RightPanel — entity stats', () => {
       world, turns, stats: [statFixture('Vigor', 50)],
       seed: (g) => { g.setEntityStats(secret); g.setVisibleEntities(now); },
     });
-    expect(screen.queryByRole('combobox', { name: 'Entity stats' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Selected entity' })).not.toBeInTheDocument();
     expect(section()).toBeNull();
   });
 
   it('opens the Stats tab for a world whose only visible stats belong to entities', () => {
     renderRightPanel({}, { ...stage, stats: [statFixture('Vigor', 50, { hidden: true })] });
     expect(screen.getByRole('tab', { name: /Stats/ })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toBeInTheDocument();
   });
 
   it('drops the pick when a save loads, but keeps it through a rollback', () => {
@@ -244,7 +244,7 @@ describe('the entity view and the stat panel', () => {
   it('shows the same entity in both places before anyone picks', () => {
     both();
     expect(shownInView()).toContain('Bram');
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Bram');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Bram');
   });
 
   it('moves the entity view when the dropdown picks', async () => {
@@ -258,7 +258,7 @@ describe('the entity view and the stat panel', () => {
     both();
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
     fireEvent.click(await screen.findByText('Odette'));
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Odette');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Odette');
     expect(within(section()!).getByText('Stock')).toBeInTheDocument();
   });
 
@@ -276,7 +276,7 @@ describe('the entity view and the stat panel', () => {
     );
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
     fireEvent.click(await screen.findByText('Odette'));
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Odette');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Odette');
     expect(within(section()!).getByText('Stock')).toBeInTheDocument();
     expect(shownInView()).toContain('Bram');
   });
@@ -287,7 +287,7 @@ describe('the entity view and the stat panel', () => {
     const quiet = within(await screen.findByRole('region', { name: 'Also Here' })).getByText('Mara');
     fireEvent.click(quiet);
     expect(quiet.closest('button')).toHaveAttribute('aria-current', 'true');
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Bram');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Bram');
   });
 
   it('leaves the entity view on its fallback while the dropdown reads (None)', async () => {
@@ -340,7 +340,7 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
   it('lists the persona with the You mark and shows no entity section when it is picked', async () => {
     renderRightPanel({}, asMira('bram'));
     await choose('Mira You');
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent(/^MiraYou$/);
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent(/^MiraYou$/);
     expect(section()).toBeNull();
     expect(within(personaSection('Mira')).getByText('60 / 100')).toBeInTheDocument();
   });
@@ -351,7 +351,7 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
       seed: (g) => { g.setEntityStats({ mira: played.mira }); g.setPersonaRef({ source: 'world', entityId: 'mira' }); },
     });
     expect(screen.getByRole('tab', { name: /Stats/ })).toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: 'Entity stats' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Selected entity' })).toBeNull();
     expect(within(personaSection('Mira')).getByText('Calm')).toBeInTheDocument();
   });
 
