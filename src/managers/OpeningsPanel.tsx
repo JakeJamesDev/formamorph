@@ -22,7 +22,7 @@ import { useListSearch } from '@/components/listToolbarHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   addOpening, DEFAULT_OPENING, hasAuthoredOpenings, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
-  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, canOwnSelfOpenings, type EditorOpeningRow, type OpeningOwner,
+  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -212,8 +212,8 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
 }) {
   const search = useListSearch();
   const showSelf = library ? !!entity.persona : canOwnSelfOpenings(entity);
-  // A library entity's mark means nothing until a world holds it.
-  const worldCustomPersona = !library && !!entity.customPersona;
+  // A library entity's marks mean nothing until a world holds it.
+  const worldOwner = library ? { ...entity, customPersona: false, personaOnly: false } : entity;
   return (
     <div className="space-y-2">
       <ListSearchToolbar
@@ -223,7 +223,7 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
       />
       <OpeningsList
         owner={entity}
-        rows={ownerOpeningRows(worldCustomPersona ? entity : { ...entity, customPersona: false }, showSelf)}
+        rows={ownerOpeningRows(worldOwner, showSelf)}
         onChange={onChange}
         placeholders={placeholders}
         ownerId={entity.id}
@@ -235,11 +235,13 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
-        {worldCustomPersona
+        {worldOwner.customPersona
           ? <><strong>Self</strong> openings draw when played, or for a library persona without any.</>
-          : "Joins the world's openings when a game starts at one of this entity's locations."}
+          : othersNeverDraw(worldOwner)
+            ? <><strong>Self</strong> openings draw when the player picks this entity.</>
+            : "Joins the world's openings when a game starts at one of this entity's locations."}
         {" Turning off the world's openings turns these off too."}
-        {showSelf && !worldCustomPersona && ' Mark one Self to make it the only opening for a player who plays this entity.'}
+        {showSelf && !othersNeverDraw(worldOwner) && ' Mark one Self to make it the only opening for a player who plays this entity.'}
       </Hint>
     </div>
   );
@@ -328,6 +330,7 @@ export function OpeningsList({
     if (from !== -1 && to !== -1) onChange(moveOpening(owner, from, to));
   };
   const collapse = useCardCollapse(shown.map((row) => row.opening.id));
+  const neverDrawsOwner = owner.customPersona ? 'the Custom Persona' : 'a Persona-Only entity';
 
   return (
     <div className="space-y-2">
@@ -350,7 +353,7 @@ export function OpeningsList({
                   onToggle={() => collapse.toggle(opening.id)}
                   weight={weight}
                   chance={chance}
-                  neverDraws={neverDraws}
+                  neverDrawsOn={neverDraws ? neverDrawsOwner : undefined}
                   placeholders={placeholders}
                   ownerId={ownerId}
                   ownerName={ownerName}
@@ -382,7 +385,7 @@ export function OpeningsList({
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, open, onToggle, weight, chance, neverDraws, placeholders, ownerId, ownerName, onKind, onSelf, selfBadge,
+  opening, label, a11yLabel, open, onToggle, weight, chance, neverDrawsOn, placeholders, ownerId, ownerName, onKind, onSelf, selfBadge,
   onText, onWeight, onRemove,
 }: {
   opening: Opening;
@@ -394,7 +397,8 @@ const OpeningCard = ({
   onToggle: () => void;
   weight: number;
   chance: number | null;
-  neverDraws: boolean;
+  /** Names the owner in the Never Draws mark's tip. Absent on a row that can draw. */
+  neverDrawsOn?: string;
   placeholders: Placeholder[];
   ownerId?: string;
   ownerName?: string;
@@ -443,8 +447,8 @@ const OpeningCard = ({
           )}
         </button>
         {selfBadge && <Badge variant="outline">Self</Badge>}
-        {neverDraws && (
-          <TipBadge tip={'Never draws on the Custom Persona. Select "Self" to draw this opening.'}>
+        {neverDrawsOn && (
+          <TipBadge tip={`Never draws on ${neverDrawsOn}. Select "Self" to draw this opening.`}>
             <Ban className="h-3 w-3" aria-hidden /> Never Draws
           </TipBadge>
         )}
