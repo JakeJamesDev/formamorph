@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import {
   applyInventoryOps, copiesAt, seedItemCopies, statEffectItems, withoutOrphanCopies, type InventoryCall, type SeedWorld,
 } from '.';
@@ -145,7 +146,7 @@ describe('withoutOrphanCopies', () => {
 describe('applyInventoryOps', () => {
   const hand = { id: 'hand', name: 'Hand' };
   const head = { id: 'head', name: 'Head' };
-  const humanoid = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] };
+  const humanoid = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] });
   const dagger = item('dagger', { slotRule: { mode: 'either', slotIds: ['hand'] } });
   const helm = item('helm', { stackable: false, slotRule: { mode: 'either', slotIds: ['head'] } });
   const crown = item('crown', { stackable: false, slotRule: { mode: 'either', slotIds: ['head'] }, bound: true });
@@ -296,8 +297,8 @@ describe('applyInventoryOps', () => {
   });
 
   describe("the owner's Body in force", () => {
-    const dog = { id: 'dog', name: 'Dog', entries: [{ slotId: 'collar' }] };
-    const imp = { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] };
+    const dog = bodyFixture({ id: 'dog', name: 'Dog', entries: [{ slotId: 'collar' }] });
+    const imp = bodyFixture({ id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] });
     const bodies = [humanoid, dog, imp];
     const withPicks = (entities: { id: string; body?: { kind: 'none' } | { kind: 'body'; id: string }; customPersona?: boolean }[], over: Partial<InventoryCall> = {}) =>
       call({ world: { items, slots: [hand, head], bodies, entities }, ...over });

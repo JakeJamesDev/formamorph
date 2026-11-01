@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { bodyFixture } from '@/test/bodyFixture';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { useGameplay } from '@/contexts/GameplayContext';
@@ -16,8 +17,8 @@ vi.mock('react-toastify', () => ({
 
 const slots: Slot[] = [{ id: 'head', name: 'Head' }, { id: 'collar', name: 'Collar' }];
 const bodies: Body[] = [
-  { id: 'human', name: 'Humanoid', entries: [{ slotId: 'head' }] },
-  { id: 'wolf', name: 'Wolf', entries: [{ slotId: 'collar' }] },
+  bodyFixture({ id: 'human', name: 'Humanoid', entries: [{ slotId: 'head' }] }),
+  bodyFixture({ id: 'wolf', name: 'Wolf', entries: [{ slotId: 'collar' }] }),
 ];
 const calm: PlayerStat = { id: 'calm', name: 'Calm', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
 const unequipScript: Script = { id: 'off', timing: 'unequipped', code: 'stats.Calm.value = 99;' };
@@ -79,7 +80,7 @@ describe('a Body written by a script between turns', () => {
       { id: 'p-helm', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'helm' } },
       { id: 'p-sword', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'sword' } },
     ];
-    const both: Body[] = [{ id: 'human', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand' }] }, bodies[1]];
+    const both: Body[] = [bodyFixture({ id: 'human', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand' }] }), bodies[1]];
     renderGameViewer({
       ...worldWith(''), items: [wolfHelm, sword], slots: [...slots, hand], bodies: both, placements: armed, scripts: [],
     }, { inGameplay: <Probe /> });

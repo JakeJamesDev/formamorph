@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import {
   bodyInForce, bodyPickEntities, bodySlots, parseBodies, slotEntryCount, slotsInForce, withoutBodyPicks,
   withoutSlotEntries, type BodyWorld,
 } from './bodies';
 import type { Body, Slot } from '@/types';
 
-const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] };
-const dog: Body = { id: 'dog', name: 'Dog', entries: [{ slotId: 'collar' }] };
+const humanoid: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] });
+const dog: Body = bodyFixture({ id: 'dog', name: 'Dog', entries: [{ slotId: 'collar' }] });
 const slots: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }, { id: 'collar', name: 'Collar' }];
 
 const world = (entities: BodyWorld['entities'] = [], bodies: Body[] = [humanoid, dog]): BodyWorld => ({ bodies, entities });
@@ -62,7 +63,7 @@ describe('bodyInForce', () => {
 
 describe('bodySlots', () => {
   it('lists the Body slots in entry order with their capacity, skipping a slot that is gone', () => {
-    const body: Body = { ...humanoid, entries: [...humanoid.entries, { slotId: 'tail' }] };
+    const body: Body = bodyFixture({ ...humanoid, entries: [...humanoid.entries, { slotId: 'tail' }] });
     expect(bodySlots(body, slots).map((s) => [s.slot.name, s.capacity])).toEqual([['Head', 1], ['Hand', 2]]);
   });
 
@@ -97,14 +98,14 @@ describe('withoutSlotEntries', () => {
 describe('parseBodies', () => {
   it('drops records without an id and entries without a slot', () => {
     expect(parseBodies([{ id: 'b', name: 'B', entries: [{ slotId: 's', capacity: 2 }, { capacity: 1 }] }, { name: 'no id' }, 'x']))
-      .toEqual([{ id: 'b', name: 'B', entries: [{ slotId: 's', capacity: 2 }] }]);
+      .toEqual([bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 's', capacity: 2 }] })]);
     expect(parseBodies(undefined)).toEqual([]);
   });
 });
 
 describe('slotEntryCount', () => {
   it('counts the Body entries that hold the slot', () => {
-    const imp: Body = { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand', capacity: 3 }] };
+    const imp: Body = bodyFixture({ id: 'imp', name: 'Imp', entries: [{ slotId: 'hand', capacity: 3 }] });
     expect(slotEntryCount([humanoid, imp, dog], 'hand')).toBe(2);
     expect(slotEntryCount([humanoid, dog], 'tail')).toBe(0);
   });

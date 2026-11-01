@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { screen, fireEvent, within, act } from '@testing-library/react';
 import { $createParagraphNode, $createTextNode, $getRoot, getNearestEditorFromDOMNode } from 'lexical';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
@@ -27,8 +28,8 @@ vi.mock('react-toastify', () => ({
 const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'ring', name: 'Ring' }, { id: 'tail', name: 'Tail' }];
 // Hand holds 2 in one Body and 1 in the other; no Body holds Tail.
 const BODIES: Body[] = [
-  { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] },
-  { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] },
+  bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] }),
+  bodyFixture({ id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] }),
 ];
 const ITEMS: Item[] = [
   { ...blankItem('lamp', 'Lamp'), playerDescription: 'A brass lamp.' },

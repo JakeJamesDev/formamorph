@@ -3,6 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import { openingFold } from './openingState';
 import type { StatCodeOwners } from './statCodeTraits';
@@ -104,7 +105,7 @@ describe('the At Game Start timing', () => {
     const helm = { id: 'helm', name: 'Helm', slotRule: { mode: 'either' as const, slotIds: ['head'] }, statEffects: [], traitEffects: [], equipRequires: [] };
     const slots = [{ id: 'head', name: 'Head' }];
     const { state } = openingFold({
-      items: [helm], slots, bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }] }],
+      items: [helm], slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }] })],
       placements: [{ id: 'p1', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'helm' } }],
     });
     const out = await runStatCodeTurn(start({

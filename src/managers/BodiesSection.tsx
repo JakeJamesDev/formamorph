@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, TriangleAlert, X } from 'lucide-react';
+import { Copy, Plus, TriangleAlert, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,11 @@ import { useCardCollapse } from '@/lib/cardCollapse';
 import { dragStyle, droppedMove } from '@/lib/sortableDrag';
 import { fieldFrame } from '@/lib/historyField';
 import { bodyLabel, bodyUsedBy, entryCapacity } from '@/lib/bodies';
+import { boxAt, boxLabel, MAX_CAPACITY, newBody, newEntry, rowSelection, withCapacity, type BoxRef } from '@/lib/bodyLayout';
+import { useBodyLayoutSnap } from '@/lib/bodyLayoutPrefs';
+import { copyWithFreshRolls, duplicateAfter } from '@/lib/duplicateAfter';
 import { wholeCount } from '@/lib/items';
+import { BodyLayoutEditor } from '@/managers/BodyLayoutEditor';
 import { randomUUID } from '@/lib/uuid';
 import type { Body, BodyEntry, Slot } from '@/types';
 
@@ -26,14 +30,16 @@ const sameName = (a: string, b: string) => a.trim() !== '' && a.trim().toLowerCa
 // An entry list is its own drag boundary, so an entry never leaves its Body.
 const ENTRY_LIST_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
 
-/** The world's Bodies in order, as expandable rows: a name and slot entries with a capacity. The first is the Default. */
+/** The world's Bodies in order, as expandable rows: a name, a layout and slot entries with a capacity. The first is the Default. */
 const BodiesSection = () => {
   const { bodies, setBodies, removeBody, slots, entities, traits } = useGameData();
   const [pending, setPending] = useState<{ body: Body; text: string } | null>(null);
   const collapse = useCardCollapse(bodies.map((b) => b.id));
+  const [snap, setSnap] = useBodyLayoutSnap();
 
   const write = (next: Body) => setBodies(bodies.map((b) => (b.id === next.id ? next : b)));
-  const add = () => setBodies([...bodies, { id: randomUUID(), name: 'New Body', entries: [] }]);
+  const add = () => setBodies([...bodies, newBody(randomUUID(), 'New Body')]);
+  const duplicate = (body: Body) => setBodies(duplicateAfter(bodies, body.id, copyWithFreshRolls).list);
   const askRemove = (body: Body) => {
     const text = bodyUsedBy(entities, traits, body.id);
     if (text) setPending({ body, text });
@@ -70,6 +76,7 @@ const BodiesSection = () => {
                   slots={slots}
                   expanded={collapse.isOpen(body.id)}
                   onToggle={() => collapse.toggle(body.id)}
+                  onDuplicate={() => duplicate(body)}
                   onRemove={() => askRemove(body)}
                 >
                   <BodyFields
@@ -77,6 +84,8 @@ const BodiesSection = () => {
                     duplicate={bodies.some((other) => other.id !== body.id && sameName(other.name, body.name))}
                     slots={slots}
                     onChange={write}
+                    snap={snap}
+                    onSnap={setSnap}
                   />
                 </SortableBody>
               ))}
@@ -104,12 +113,13 @@ const BodiesSection = () => {
 };
 
 /** A Body's row: its name, its Default mark and slot summary, and its fields below while expanded. */
-function SortableBody({ body, isDefault, slots, expanded, onToggle, onRemove, children }: {
+function SortableBody({ body, isDefault, slots, expanded, onToggle, onDuplicate, onRemove, children }: {
   body: Body;
   isDefault: boolean;
   slots: readonly Slot[];
   expanded: boolean;
   onToggle: () => void;
+  onDuplicate: () => void;
   onRemove: () => void;
   children: ReactNode;
 }) {
@@ -134,33 +144,45 @@ function SortableBody({ body, isDefault, slots, expanded, onToggle, onRemove, ch
         onToggleCollapse={onToggle}
         attached={expanded}
         label={label}
-        meta={[isDefault ? 'Default' : '', summary || 'No slots'].filter(Boolean).join(' · ')}
-        actions={[{ icon: <X className="h-4 w-4" />, destructive: true, title: `Delete ${label}`, onClick: onRemove }]}
+        // A narrow row keeps its room for the name.
+        meta={<span className="block truncate max-sm:max-w-20">{[isDefault ? 'Default' : '', summary || 'No slots'].filter(Boolean).join(' · ')}</span>}
+        actions={[
+          { icon: <Copy className="h-4 w-4" />, title: `Duplicate ${label}`, onClick: onDuplicate },
+          { icon: <X className="h-4 w-4" />, destructive: true, title: `Delete ${label}`, onClick: onRemove },
+        ]}
       />
       {expanded && children}
     </div>
   );
 }
 
-/** The expanded fields of a Body: its name and its slot entries in order. */
-function BodyFields({ body, duplicate, slots, onChange }: {
+/** The expanded fields of a Body: its name, its layout and its slot entries in order. Selecting a box selects its row, and the reverse. */
+function BodyFields({ body, duplicate, slots, onChange, snap, onSnap }: {
   body: Body;
   duplicate: boolean;
   slots: readonly Slot[];
   onChange: (next: Body) => void;
+  snap: boolean;
+  onSnap: (on: boolean) => void;
 }) {
   const label = bodyLabel(body);
   const nameId = `body-name-${body.id}`;
   const byId = new Map(slots.map((slot) => [slot.id, slot]));
+  const [picked, setPicked] = useState<BoxRef | null>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const selected = picked && boxAt(body.entries, picked) ? picked : null;
   // removeSlot drops a slot's entries with it, so every entry names a live slot.
   const entries = body.entries.map((e) => ({ ...e, id: e.slotId }));
   const open = slots.filter((slot) => !body.entries.some((e) => e.slotId === slot.id));
+  const slotName = (slotId: string) => byId.get(slotId)?.name || 'Unnamed Slot';
+  const labelOf = ({ slotId, unit }: BoxRef) => {
+    const entry = body.entries.find((e) => e.slotId === slotId);
+    return boxLabel(slotName(slotId), entry ? entryCapacity(entry) : 1, unit);
+  };
   const setEntries = (next: BodyEntry[]) => onChange({ ...body, entries: next });
-  const setCapacity = (slotId: string, capacity: number) => setEntries(body.entries.map((e) => {
-    if (e.slotId !== slotId) return e;
-    const { capacity: _drop, ...rest } = e;
-    return capacity === 1 ? rest : { ...e, capacity };
-  }));
+  const setCapacity = (slotId: string, capacity: number) => setEntries(body.entries.map((e) => (
+    e.slotId === slotId ? withCapacity(e, capacity, body.aspect) : e
+  )));
   const onDragEnd = (event: DragEndEvent) => {
     const move = droppedMove(entries, event);
     if (move) setEntries(arrayMove(body.entries, ...move));
@@ -178,7 +200,7 @@ function BodyFields({ body, duplicate, slots, onChange }: {
           </p>
         )}
       </div>
-      <div className="grid gap-1">
+      <BodyLayoutEditor body={body} onChange={onChange} labelOf={labelOf} selected={selected} onSelect={setPicked} focusRequest={focusRequest} snap={snap} onSnap={onSnap}>
         <span className="text-label">Slots</span>
         {entries.length > 0 && (
           <EditorDndContext modifiers={ENTRY_LIST_MODIFIERS} onDragEnd={onDragEnd}>
@@ -188,8 +210,13 @@ function BodyFields({ body, duplicate, slots, onChange }: {
                   <SortableEntry
                     key={entry.id}
                     entry={entry}
-                    name={byId.get(entry.slotId)?.name || 'Unnamed Slot'}
+                    name={slotName(entry.slotId)}
                     bodyLabel={label}
+                    selected={selected?.slotId === entry.slotId}
+                    onSelect={() => {
+                      setPicked(rowSelection(selected, entry.slotId, entryCapacity(entry)));
+                      setFocusRequest((n) => n + 1);
+                    }}
                     onCapacity={(capacity) => setCapacity(entry.slotId, capacity)}
                     onRemove={() => setEntries(body.entries.filter((e) => e.slotId !== entry.slotId))}
                   />
@@ -201,7 +228,7 @@ function BodyFields({ body, duplicate, slots, onChange }: {
         {slots.length === 0 ? (
           <Hint>Add a slot under <b>Slots</b> first</Hint>
         ) : open.length > 0 && (
-          <Select value="" onValueChange={(slotId) => setEntries([...body.entries, { slotId }])}>
+          <Select value="" onValueChange={(slotId) => setEntries([...body.entries, newEntry(slotId, body.aspect)])}>
             <SelectTrigger className="h-8 w-auto justify-self-start gap-1 text-label" aria-label={`Add a slot to ${label}`}>
               <Plus className="h-4 w-4" aria-hidden />
               <SelectValue placeholder="Add Slot" />
@@ -211,16 +238,18 @@ function BodyFields({ body, duplicate, slots, onChange }: {
             </SelectContent>
           </Select>
         )}
-      </div>
+      </BodyLayoutEditor>
     </div>
   );
 }
 
 /** One slot entry: the slot, its capacity in this Body, and Remove. */
-function SortableEntry({ entry, name, bodyLabel, onCapacity, onRemove }: {
+function SortableEntry({ entry, name, bodyLabel, selected, onSelect, onCapacity, onRemove }: {
   entry: BodyEntry & { id: string };
   name: string;
   bodyLabel: string;
+  selected: boolean;
+  onSelect: () => void;
   onCapacity: (capacity: number) => void;
   onRemove: () => void;
 }) {
@@ -230,21 +259,24 @@ function SortableEntry({ entry, name, bodyLabel, onCapacity, onRemove }: {
       setNodeRef={setNodeRef}
       style={dragStyle(drag)}
       gripProps={{ ...attributes, ...listeners }}
-      selected={false}
-      onSelect={() => undefined}
+      selected={selected}
+      onSelect={onSelect}
+      selectionLabel={`Select ${name}`}
       label={name}
       meta={
-        <span className="inline-flex items-center gap-1.5">
+        // Typing a capacity never counts as a click on the row.
+        <span className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           Capacity
           <WorldInput
             aria-label={`${name} Capacity`}
             type="number"
             min={1}
-            className="h-6 w-14 px-1.5 text-helper"
+            max={MAX_CAPACITY}
+            className="h-6 w-14 px-1.5 text-helper text-foreground"
             value={entryCapacity(entry)}
             onChange={(e) => {
               const typed = wholeCount(e.target.value);
-              if (typed !== undefined) onCapacity(Math.max(1, typed));
+              if (typed !== undefined) onCapacity(Math.min(MAX_CAPACITY, Math.max(1, typed)));
             }}
           />
         </span>

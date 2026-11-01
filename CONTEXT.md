@@ -169,6 +169,15 @@ _Avoid_: slot size, two-handed flag
 A named, ordered list of slot entries, each a slot and its capacity (absent = 1), such as Humanoid with Head and Hand ×2. The world holds an ordered Body list. An entity picks a Body, the Default, or None; None gives the owner no slots.
 _Avoid_: body type, form, paperdoll
 
+**Body Layout**:
+A Body's figure: its Backdrop and one Slot Box per capacity unit. It is display only: scripts and prompts don't see it.
+
+**Backdrop**:
+What a Body Layout's boxes sit on: Humanoid, Quadruped or Plain. Its size is an aspect ratio.
+
+**Slot Box**:
+Where one capacity unit of a Body entry sits on the Backdrop, stored as fractions of the Backdrop. A smaller box draws above a larger one.
+
 **Default Body**:
 The first Body in the world's list. Every owner without a pick uses it: an entity with no pick, a library character and a character the AI introduces. A world with no Bodies has no Default, so no owner has slots.
 

@@ -622,11 +622,24 @@ export interface Slot {
   name: string;
 }
 
+/** Where one capacity unit sits on a Body's figure, as fractions (0–1) of the Backdrop. */
+export interface SlotBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** What a Body's Slot Boxes are laid out on. */
+export type Backdrop = { kind: 'humanoid' | 'quadruped' | 'plain' } | { kind: 'image'; image: GalleryImage };
+
 /** One slot a Body holds. */
 export interface BodyEntry {
   slotId: string;
   /** Absent = 1. */
   capacity?: number;
+  /** One per capacity unit. */
+  boxes: SlotBox[];
 }
 
 /** A named set of slots an owner equips into, in the order the Inventory panel lists them. */
@@ -634,6 +647,9 @@ export interface Body {
   id: string;
   name: string;
   entries: BodyEntry[];
+  backdrop: Backdrop;
+  /** The Backdrop's width / height. */
+  aspect: number;
 }
 
 /** An entity's Body pick. Absent = the Default Body, the world's first. */

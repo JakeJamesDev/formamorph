@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { chipValues } from './chipValues';
 import { labelsInPlay } from '../presence';
@@ -335,7 +336,7 @@ describe('authoredChipScene', () => {
     const scene = authoredChipScene(world({
       items: [{ id: 'lamp', name: 'Lamp', slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [], traitEffects: [], equipRequires: [] }],
       placements: [{ id: 'p1', where: { kind: 'entity', id: 'wren' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'lamp' } }],
-      slots: [{ id: 'hand', name: 'Hand' }], bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] }],
+      slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })],
     }));
     expect(scene.itemCopies?.[0]).toMatchObject({ where: { kind: 'entity', id: 'wren' }, equipped: { slotId: 'hand' } });
   });

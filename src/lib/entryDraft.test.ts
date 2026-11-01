@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, libraryCastIds, rekeyOwnedPicks, withLibraryDefaults,
   withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
@@ -208,7 +209,7 @@ describe('entryGateInput — starting equips', () => {
       placements: [{ id: 'p1', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'ring' } }],
       slots: [{ id: 'finger', name: 'Finger' }], bodies,
     }, emptyEntryDraft())), null, 'curse')?.unlocked;
-    expect(unlocked([{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'finger' }] }])).toBe(true);
-    expect(unlocked([{ id: 'dog', name: 'Dog', entries: [] }])).toBe(false);
+    expect(unlocked([bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'finger' }] })])).toBe(true);
+    expect(unlocked([bodyFixture({ id: 'dog', name: 'Dog', entries: [] })])).toBe(false);
   });
 });

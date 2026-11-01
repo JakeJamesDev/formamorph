@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, settleInventory, type InventoryOp, type InventorySettleWorld } from '.';
 import { seedStatBases, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
 import type { Body, BodyRuntime, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, PersonaRef, PlayerStat, Slot, Trait } from '@/types';
@@ -13,13 +14,13 @@ const slots: Slot[] = [
   { id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }, { id: 'collar', name: 'Collar' }, { id: 'main', name: 'Main Hand' }, { id: 'off', name: 'Off Hand' },
 ];
 const bodies: Body[] = [
-  { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] },
-  { id: 'wolf', name: 'Wolf', entries: [{ slotId: 'collar' }] },
-  { id: 'cat', name: 'Cat', entries: [{ slotId: 'head' }] },
-  { id: 'tiny', name: 'Tiny', entries: [{ slotId: 'hand' }, { slotId: 'head' }] },
-  { id: 'knight', name: 'Knight', entries: [{ slotId: 'main' }, { slotId: 'off' }] },
-  { id: 'maimed', name: 'Maimed', entries: [{ slotId: 'main' }] },
-  { id: 'gripless', name: 'Gripless', entries: [{ slotId: 'off' }] },
+  bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] }),
+  bodyFixture({ id: 'wolf', name: 'Wolf', entries: [{ slotId: 'collar' }] }),
+  bodyFixture({ id: 'cat', name: 'Cat', entries: [{ slotId: 'head' }] }),
+  bodyFixture({ id: 'tiny', name: 'Tiny', entries: [{ slotId: 'hand' }, { slotId: 'head' }] }),
+  bodyFixture({ id: 'knight', name: 'Knight', entries: [{ slotId: 'main' }, { slotId: 'off' }] }),
+  bodyFixture({ id: 'maimed', name: 'Maimed', entries: [{ slotId: 'main' }] }),
+  bodyFixture({ id: 'gripless', name: 'Gripless', entries: [{ slotId: 'off' }] }),
 ];
 const sword = item('sword', 'Sword', { slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [{ id: 'e1', statId: 'strength', facet: 'value', timing: 'equipped', amount: 3, op: 'add' }] });
 const dagger = item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['hand'] } });

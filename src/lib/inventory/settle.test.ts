@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, equipRequirement, settleInventory, type InventoryOp, type InventorySettleWorld } from '.';
 import { groupPickStates } from '@/lib/traitGates';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
@@ -23,7 +24,7 @@ const trait = (id: string, over: Partial<Trait> = {}, statChanges: StatChange[] 
 const hand: Slot = { id: 'hand', name: 'Hand' };
 const body: Slot = { id: 'body', name: 'Body' };
 const finger: Slot = { id: 'finger', name: 'Finger' };
-const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'body' }, { slotId: 'finger' }] };
+const humanoid: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'body' }, { slotId: 'finger' }] });
 const stance: TraitGroup = { id: 'stance', name: 'Stance', parentId: null, maxPicks: 1 } as TraitGroup;
 
 const cursed = trait('cursed', {}, [{ statId: 'luck', value: -1, type: 'starting' }]);

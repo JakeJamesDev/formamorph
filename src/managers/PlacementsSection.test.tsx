@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { bodyFixture } from '@/test/bodyFixture';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
@@ -18,8 +19,8 @@ const gauntlets = gear('gauntlets', 'Gauntlets', { slotRule: { mode: 'all', slot
 const circlet = gear('circlet', 'Circlet', { slotRule: { mode: 'either', slotIds: ['head', 'hand'] } });
 const crest = gear('crest', 'Crest', { slotRule: { mode: 'either', slotIds: ['head', 'tail'] } });
 const potion = gear('potion', 'Potion');
-const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] };
-const dog: Body = { id: 'dog', name: 'Dog', entries: [{ slotId: 'hand' }] };
+const humanoid: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] });
+const dog: Body = bodyFixture({ id: 'dog', name: 'Dog', entries: [{ slotId: 'hand' }] });
 const entity = (id: string, over: Partial<Entity> = {}) => ({ id, name: id, description: '', locations: [], ...over }) as Entity;
 
 const place = (id: string, where: PlacementWhere, itemId: string, over: Partial<Placement> = {}): Placement =>

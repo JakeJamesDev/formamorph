@@ -2176,6 +2176,41 @@ Editor detail panels, the game's side panels, the library editors' headers and t
 - 🎯 **Or hugs its tabs.** With `hug`, the strip keeps its full-label width and stays centered. In the library editor header, the title truncates to 128px first, then the strip folds.
 - 🆕 **New tabs land.** A tab that arrives or renames after mount, such as the game's Inventory tab or the log count, snaps to its step without a slide.
 
+## Pattern: Body Layout
+
+**Purpose:** Place boxes on a figure, next to the list rows they belong to.
+
+> ✅ **Approved.** The user chose variant B of the prototype on 2026-11-01 (Body Layouts Q46), and approved the Humanoid and fox-like Quadruped outlines the same day (Body Layouts ticket 04).
+
+**Density:** A 260px figure beside rows that keep their usual height. Below that room, the figure sits above the rows.
+
+### Composition
+
+- 🧍 **Figure.** A bordered stage at the Body's aspect, with a theme-colored outline that stretches with it. Plain draws no outline.
+- ⬜ **Boxes.** A hairline frame on a translucent card fill, with the slot and unit centered. A smaller box always draws above a larger one, and selection never reorders them.
+- ⚪ **Handles.** The selected box has four corner dots that draw above every box. A coarse pointer gets a larger target than the dot.
+- ➖ **Bottom edge.** A pill on the stage's bottom edge sets the aspect. A drag shows on a local copy and writes once on release, so it is one History step.
+- 🧲 **Snap guides.** A primary hairline across the stage shows the line a drag snapped to.
+- 🔗 **Row link.** A selected box selects its row. A row click selects its first box, then each next one.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The editor | `BodyLayoutEditor` in [`BodyLayoutEditor.tsx`](../src/managers/BodyLayoutEditor.tsx) |
+| The outlines | `BodyBackdropArt` in [`BodyBackdropArt.tsx`](../src/components/BodyBackdropArt.tsx) |
+| Sync, stacking, snap and clamps | [`bodyLayout.ts`](../src/lib/bodyLayout.ts) |
+| Isolated reference | [`BodyLayoutReference.tsx`](../src/components/design-system/BodyLayoutReference.tsx) |
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Selected | Primary border and a primary/25 fill, plus handles |
+| Hover | Primary border |
+| Focus | Shared inset ring. Arrow keys move the box, and Shift + arrow keys resize it |
+| Touch | Boxes and handles take touch drags. The stage around them still scrolls the page |
+
 ## Pattern: Inventory Tab
 
 **Purpose:** Show the player's equipment and carried items in the game's side panel, and act on them in one click.

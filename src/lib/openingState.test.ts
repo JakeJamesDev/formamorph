@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { openingFold, openingStateOf, type OpeningFoldWorld } from './openingState';
 import type { Body, Entity, GameLocation, Item, Placement, Stat, StatChange, Trait } from '@/types';
 
@@ -148,8 +149,8 @@ describe('openingFold — Equipped placements', () => {
   const place = (id: string, where: Placement['where'], itemId: string, over: Partial<Placement> = {}): Placement =>
     ({ id, where, quantity: 1, equipped: true, source: { kind: 'item', itemId }, ...over });
   const you = { kind: 'you' } as const;
-  const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'ring', capacity: 2 }, { slotId: 'head' }] };
-  const dog: Body = { id: 'dog', name: 'Dog', entries: [{ slotId: 'collar' }] };
+  const humanoid: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'ring', capacity: 2 }, { slotId: 'head' }] });
+  const dog: Body = bodyFixture({ id: 'dog', name: 'Dog', entries: [{ slotId: 'collar' }] });
   const kit: OpeningFoldWorld = {
     ...world,
     slots: [{ id: 'hand', name: 'Hand' }, { id: 'ring', name: 'Ring' }, { id: 'head', name: 'Head' }, { id: 'collar', name: 'Collar' }],

@@ -2,6 +2,7 @@
  * Bodies: which slots each owner equips into, with each slot's capacity. `bodyInForce` is the one resolver
  * every slot reader takes.
  */
+import { parseAspect, parseBackdrop, parseEntryLayout } from '@/lib/bodyLayout';
 import { itemsInSlot, occupiedSlots, ruleGaps } from '@/lib/items';
 import { usedByText } from '@/lib/usedByText';
 import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, SlotRule, Trait, TraitBodyRow } from '@/types';
@@ -166,14 +167,22 @@ export const bodyUsedBy = (entities: readonly BodyPicker[], traits: readonly Bod
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 
-/** A world file's Bodies. Records without an id, and entries without a slot, are dropped. */
+/** A world file's Bodies. Records without an id, and entries without a slot, are dropped. An absent Backdrop, aspect or
+ *  box takes the new-Body default. */
 export const parseBodies = (raw: unknown): Body[] => (Array.isArray(raw) ? raw : [])
-  .filter((value): value is Body => isRecord(value) && typeof value.id === 'string')
-  .map((body) => ({
-    ...body,
-    name: typeof body.name === 'string' ? body.name : '',
-    entries: (Array.isArray(body.entries) ? body.entries : []).filter((e): e is BodyEntry => isRecord(e) && typeof e.slotId === 'string'),
-  }));
+  .filter((value): value is Record<string, unknown> & { id: string } => isRecord(value) && typeof value.id === 'string')
+  .map((body) => {
+    const aspect = parseAspect(body.aspect);
+    return {
+      ...body,
+      name: typeof body.name === 'string' ? body.name : '',
+      entries: (Array.isArray(body.entries) ? body.entries : [])
+        .filter((e): e is Record<string, unknown> & { slotId: string } => isRecord(e) && typeof e.slotId === 'string')
+        .map((e) => parseEntryLayout(e, aspect)),
+      backdrop: parseBackdrop(body.backdrop),
+      aspect,
+    };
+  });
 
 /** The active traits as one settle reads them: global ones, and each entity owner's in its tree order. */
 export interface BodyTraitScope {
