@@ -236,7 +236,7 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
       />
       <Hint>
         {worldCustomPersona
-          ? <>Draws only <strong>Self</strong> openings, for a player who plays this entity or a library persona with no Self openings.</>
+          ? <><strong>Self</strong> openings draw when played, or for a library persona without any.</>
           : "Joins the world's openings when a game starts at one of this entity's locations."}
         {" Turning off the world's openings turns these off too."}
         {showSelf && !worldCustomPersona && ' Mark one Self to make it the only opening for a player who plays this entity.'}
