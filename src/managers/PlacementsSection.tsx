@@ -84,7 +84,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                   <Select
                     value={p.source.itemId}
                     onValueChange={(itemId) => update({
-                      ...withSlot(withFlag(p, 'equipped', !!p.equipped && !!ruleOf(itemOf(itemId))), undefined), source: { kind: 'item', itemId },
+                      ...withFlag(p, 'equipped', !!p.equipped && !!ruleOf(itemOf(itemId))), source: { kind: 'item', itemId },
                     })}
                   >
                     <SelectTrigger className="min-w-0 flex-1" aria-label="Item">

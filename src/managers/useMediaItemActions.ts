@@ -64,9 +64,9 @@ export function useMediaItemActions() {
     const verb = item.blank ? 'Add' : 'Replace';
     if (item.parent.kind !== 'body') return run(verb, item, media);
     // A Custom Image sets the Backdrop's aspect (Q15), in the same step as the file.
-    const aspect = await readImageAspect(media.data);
+    const aspect = await readImageAspect(media.data, null);
     if (!mounted.current) return;
-    return run(verb, item, media, () => editor.body(item.parent.id, (b) => withBackdropImage(b, media.data, aspect)));
+    return run(verb, item, media, () => editor.body(item.parent.id, (b) => withBackdropImage(b, media.data, aspect ?? undefined)));
   }, [run, editor, mounted]);
   const remove = useCallback((item: MediaItem) => run('Remove', item, null), [run]);
   /** Sets a gallery image's Visibility rule rows, an ordinary edit with no step of its own. */

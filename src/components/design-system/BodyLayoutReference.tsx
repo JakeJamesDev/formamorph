@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { entryCapacity } from '@/lib/bodies';
-import { boxLabel, type BoxRef } from '@/lib/bodyLayout';
+import { bodyBoxLabel } from '@/lib/bodies';
+import type { BoxRef } from '@/lib/bodyLayout';
 import { BodyLayoutEditor } from '@/managers/BodyLayoutEditor';
 import type { Body } from '@/types';
 
@@ -20,10 +20,7 @@ export function BodyLayoutReference() {
   const [body, setBody] = useState(SAMPLE);
   const [selected, setSelected] = useState<BoxRef | null>(null);
   const [snap, setSnap] = useState(true);
-  const labelOf = ({ slotId, unit }: BoxRef) => {
-    const entry = body.entries.find((e) => e.slotId === slotId);
-    return boxLabel(NAMES[slotId], entry ? entryCapacity(entry) : 1, unit);
-  };
+  const labelOf = (box: BoxRef) => bodyBoxLabel(body, NAMES[box.slotId], box);
   return (
     <Card>
       <CardHeader>

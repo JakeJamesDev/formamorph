@@ -171,16 +171,16 @@ export interface SnappedBox {
 /** How far a snap reaches, as fractions of the Backdrop's width and height. */
 export interface SnapReach {
   lines: SnapLines;
-  x: number;
-  y: number;
+  reachX: number;
+  reachY: number;
 }
 
 /** The start box moved by the drag's delta, then snapped by its edges and center when `snap` is given. */
 export function dragMove(start: SlotBox, dx: number, dy: number, snap: SnapReach | null): SnappedBox {
   const moved = movedBox(start, dx, dy);
   if (!snap) return { box: moved };
-  const sx = nearestLine([moved.x, moved.x + moved.w / 2, moved.x + moved.w], snap.lines.x, snap.x);
-  const sy = nearestLine([moved.y, moved.y + moved.h / 2, moved.y + moved.h], snap.lines.y, snap.y);
+  const sx = nearestLine([moved.x, moved.x + moved.w / 2, moved.x + moved.w], snap.lines.x, snap.reachX);
+  const sy = nearestLine([moved.y, moved.y + moved.h / 2, moved.y + moved.h], snap.lines.y, snap.reachY);
   return {
     box: movedBox(moved, sx?.shift ?? 0, sy?.shift ?? 0),
     guideX: sx?.line,
@@ -198,8 +198,8 @@ export function dragResize(start: SlotBox, corner: BoxCorner, dx: number, dy: nu
   const nextY = (shift: number) => (north ? clamp(start.y + shift, 0, bottom - MIN_BOX_SIZE) : clamp(bottom + shift, start.y + MIN_BOX_SIZE, 1));
   const clampedX = nextX(dx);
   const clampedY = nextY(dy);
-  const sx = snap && nearestLine([clampedX], snap.lines.x, snap.x);
-  const sy = snap && nearestLine([clampedY], snap.lines.y, snap.y);
+  const sx = snap && nearestLine([clampedX], snap.lines.x, snap.reachX);
+  const sy = snap && nearestLine([clampedY], snap.lines.y, snap.reachY);
   const edgeX = nextX(clampedX - (west ? start.x : right) + (sx?.shift ?? 0));
   const edgeY = nextY(clampedY - (north ? start.y : bottom) + (sy?.shift ?? 0));
   return {

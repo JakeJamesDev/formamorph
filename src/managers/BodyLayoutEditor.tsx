@@ -109,7 +109,7 @@ function BodyLayoutCanvas({ body, onChange, labelOf, selected, onSelect, focusRe
     const lines = snapLines(body.entries, ref);
     const origin = { x: event.clientX, y: event.clientY };
     const started = startGesture(event, (e, bounds) => {
-      const reach = snap && !e.altKey ? { lines, x: SNAP_PX / bounds.width, y: SNAP_PX / bounds.height } : null;
+      const reach = snap && !e.altKey ? { lines, reachX: SNAP_PX / bounds.width, reachY: SNAP_PX / bounds.height } : null;
       const { box, guideX, guideY } = step((e.clientX - origin.x) / bounds.width, (e.clientY - origin.y) / bounds.height, reach);
       setGuides({ x: guideX, y: guideY });
       return { ...body, entries: withBox(body.entries, ref, box) };
@@ -255,10 +255,10 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
       if (latest.current.backdrop.kind === 'image') onChange(withOutline(latest.current, 'humanoid'));
       return;
     }
-    const aspect = await readImageAspect(data);
+    const aspect = await readImageAspect(data, null);
     if (!mounted.current) return;
     setAsking(false);
-    onChange(withBackdropImage(latest.current, data, aspect));
+    onChange(withBackdropImage(latest.current, data, aspect ?? undefined));
   };
 
   return (

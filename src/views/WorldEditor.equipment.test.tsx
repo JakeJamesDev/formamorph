@@ -308,6 +308,17 @@ describe('the Bodies section', () => {
         expect(within(humanoidFields()).queryByRole('slider', { name: 'Backdrop Height' })).toBeNull();
       });
 
+      it('keeps the aspect for an image that never loads', async () => {
+        readImageAspect.mockImplementation(async (_src: string, fallback?: number | null) => (fallback === undefined ? 16 / 9 : fallback));
+        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        const { aspect } = ctx().bodies[0];
+        pickOption(backdrop(), 'Custom Image');
+        await link('https://host/gone.png');
+        expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { data: 'https://host/gone.png' } });
+        expect(ctx().bodies[0].aspect).toBe(aspect);
+      });
+
       it('clamps an extreme image to the drag range', async () => {
         readImageAspect.mockResolvedValue(8);
         const { ctx } = renderWorldEditorBench(WORLD, 'simple');

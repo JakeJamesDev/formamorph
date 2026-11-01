@@ -16,8 +16,8 @@ import { WorldInput } from '@/components/editor/WorldField';
 import { useCardCollapse } from '@/lib/cardCollapse';
 import { dragStyle, droppedMove } from '@/lib/sortableDrag';
 import { fieldFrame } from '@/lib/historyField';
-import { bodyLabel, bodyUsedBy, entryCapacity } from '@/lib/bodies';
-import { boxAt, boxLabel, MAX_CAPACITY, newBody, newEntry, rowSelection, withCapacity, type BoxRef } from '@/lib/bodyLayout';
+import { bodyBoxLabel, bodyLabel, bodyUsedBy, entryCapacity } from '@/lib/bodies';
+import { boxAt, MAX_CAPACITY, newBody, newEntry, rowSelection, withCapacity, type BoxRef } from '@/lib/bodyLayout';
 import { useBodyLayoutSnap } from '@/lib/bodyLayoutPrefs';
 import { copyWithFreshRolls, duplicateAfter } from '@/lib/duplicateAfter';
 import { wholeCount } from '@/lib/items';
@@ -175,10 +175,7 @@ function BodyFields({ body, duplicate, slots, onChange, snap, onSnap }: {
   const entries = body.entries.map((e) => ({ ...e, id: e.slotId }));
   const open = slots.filter((slot) => !body.entries.some((e) => e.slotId === slot.id));
   const slotName = (slotId: string) => byId.get(slotId)?.name || 'Unnamed Slot';
-  const labelOf = ({ slotId, unit }: BoxRef) => {
-    const entry = body.entries.find((e) => e.slotId === slotId);
-    return boxLabel(slotName(slotId), entry ? entryCapacity(entry) : 1, unit);
-  };
+  const labelOf = (box: BoxRef) => bodyBoxLabel(body, slotName(box.slotId), box);
   const setEntries = (next: BodyEntry[]) => onChange({ ...body, entries: next });
   const setCapacity = (slotId: string, capacity: number) => setEntries(body.entries.map((e) => (
     e.slotId === slotId ? withCapacity(e, capacity, body.aspect) : e
