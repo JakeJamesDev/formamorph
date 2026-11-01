@@ -213,6 +213,25 @@ describe('placeholders', () => {
 });
 
 describe('entities, the persona and dictionaries', () => {
+  it('lists no entity, entry or location whose name holds only spaces, as the sandbox keys none', () => {
+    const names = editorNames();
+    const blank = '   ';
+    const spaced = buildVariableTree({
+      ...names,
+      entities: [{ ...names.entities![0], name: blank }, ...names.entities!],
+      locations: [blank, 'Dock'],
+      placeholders: {
+        ...names.placeholders!,
+        dictionaries: names.placeholders!.dictionaries!.map((book) =>
+          ({ ...book, entries: [{ ...book.entries![0], name: blank }, ...book.entries!] })),
+      },
+    });
+    expect(levelAt(spaced, 'Entities')).not.toContain(blank);
+    expect(levelAt(spaced, 'Dictionaries', 'Lore', 'Entries')).not.toContain(blank);
+    expect(levelAt(spaced, 'Locations')).not.toContain(blank);
+    expect(levelAt(spaced, 'Locations')).toContain('Dock');
+  });
+
   it('opens an entity to its fields plus Traits and Placeholders over its own names', () => {
     expect(levelAt(tree, 'Entities')).toEqual(['Mira', 'Rook', 'Old Tom']);
     expect(levelAt(tree, 'Entities', 'Mira')).toEqual(asLevel(ENTITY_FIELDS));

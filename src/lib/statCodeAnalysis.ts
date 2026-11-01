@@ -438,10 +438,10 @@ function mapKeyEntries(map: CodeValue, options: AnalysisOptions, dotted: boolean
       const book = books.findLast((each) => each.name === map.dictionary);
       const entries = book ? book.entries : [];
       return entries && [...new Set(entries.map((entry) => entry.name))]
-        .filter((name) => !dotted || isIdentifier(name))
+        .filter((name) => hasEntityKey(name) && (!dotted || isIdentifier(name)))
         .map((name) => ({ name, detail: 'entry', info: `The “${name}” entry in the “${map.dictionary}” dictionary` }));
     }
-    case 'locationMap': return options.locations ? [...new Set(options.locations)].filter((name) => !dotted || isIdentifier(name))
+    case 'locationMap': return options.locations ? [...new Set(options.locations)].filter((name) => hasEntityKey(name) && (!dotted || isIdentifier(name)))
       .map((name) => ({ name, detail: 'location', info: `The “${name}” location in this world` })) : null;
     default: return undefined;
   }

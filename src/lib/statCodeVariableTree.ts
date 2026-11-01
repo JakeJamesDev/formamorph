@@ -8,6 +8,7 @@ import type { AnalysisOptions, CodeDictionaryNames, CodeEntityNames, CodeTraitPl
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
 import { isMethodEntry, surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
+import { hasEntityKey } from '@/lib/statCodeNames';
 import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
@@ -264,7 +265,7 @@ function firstOfEach<T>(items: readonly T[], keyOf: (item: T) => string): T[] {
  *  An unnamed item has no key. */
 function keyedLastWins<T extends { name: string }>(items: readonly T[]): T[] {
   const byName = new Map<string, T>();
-  for (const item of items) if (item.name !== '') byName.set(item.name, item);
+  for (const item of items) if (hasEntityKey(item.name)) byName.set(item.name, item);
   return [...byName.values()];
 }
 
