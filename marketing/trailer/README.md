@@ -58,6 +58,16 @@ The command also checks each card of the growing stacks. It reports the seconds 
 
 - 🥞 A growing stack skips the dense check, since the eye follows the newest card.
 
+The command also checks that text stays on screen. Each headline word, caption pill, typed panel and end-card line must stay whole at least 4% of the frame height from every edge, on every frame it shows. That is 43 px in the wide cut and 77 px in the tall cut. It prints `FAIL` with the shot, the edge, and the scene and cut frames when:
+
+- a text element crosses the margin, while it enters and leaves too
+- a typed panel cuts off its text
+
+Notes:
+
+- 📐 The check measures the laid-out text in the browser, then moves each box with the same motion functions the scenes use.
+- 🪂 A pill rises 60 px as it enters, so a pill at the bottom of the frame needs that room below it.
+
 The command also checks the camera inside every card. Each camera reports its zoom, `holds` when its crop stays still, and how far its subject sits from the crop's edge. It prints `FAIL` when:
 
 - a card zooms or pans at all; the card's own float is the motion
@@ -68,7 +78,7 @@ Notes:
 
 - 🎯 Each shot in `captures.json` has a `subject`: the part of the screen that carries its point, in 0–1 fractions of the shot. A new shot needs one.
 - 🃏 The check skips the dimmed depth cards and ignores a card's tilt. In a growing stack it checks each card as the newest, against its own caption alone, since a later card may cover it.
-- ⚡ `npm run check` runs the copy and camera checks alone, in about 20 s, with no render.
+- ⚡ `npm run check` runs the copy, on-screen and camera checks alone, in about 20 s, with no render.
 
 The render leaves its files in `out/`:
 

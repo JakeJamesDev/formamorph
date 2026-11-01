@@ -3,12 +3,13 @@ import { Fragment } from 'react';
 import type { CameraReading } from './framing';
 import type { DenseReading, StackHoldReading } from './holds';
 import type { Layout } from './layout';
+import type { TextReading } from './onScreen';
 import { Stage } from './parts/Stage';
 import type { LineReading } from './reading';
 import { TIMELINES } from './timeline';
 
-/** `reading`, `dense`, `stack` and `camera` are the cut's reports, carried in the props so the render check can read them from the composition. */
-type TrailerProps = { layout: Layout; reading: LineReading[]; dense: DenseReading[]; stack: StackHoldReading[]; camera: CameraReading[] };
+/** `reading`, `dense`, `stack`, `camera` and `onScreen` are the cut's reports, carried in the props so the render check can read them from the composition. */
+type TrailerProps = { layout: Layout; reading: LineReading[]; dense: DenseReading[]; stack: StackHoldReading[]; camera: CameraReading[]; onScreen: TextReading[] };
 
 /** Plays one cut's scene list in its layout over one continuous stage. Each scene's join overlaps it with the next. */
 export const Trailer = ({ layout }: TrailerProps) => {

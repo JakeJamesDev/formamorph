@@ -2,7 +2,9 @@ import { AbsoluteFill, measureSpring, spring, useCurrentFrame, useVideoConfig } 
 import { FPS, type Layout, type SceneProps } from '../layout';
 import { ENTER_FRAMES, SPRINGS, springIn, springOpacity } from '../motion';
 import { TITLE_CARDS } from '../poses';
-import { Pills } from '../parts/CopyBlock';
+import type { TextTrack } from '../onScreen';
+import { PillColumn, pillBoxesAt } from '../parts/CopyBlock';
+import { measureText } from '../parts/measureText';
 import { ShotCard, fullFrame } from '../parts/GlassCard';
 import { POP_BEATS, POP_BEAT_FRAMES, Wordmark, WordmarkFilter, popScales } from '../parts/Wordmark';
 import type { CopyRead } from '../reading';
@@ -22,6 +24,8 @@ const PLACEMENT: Record<Layout, Placement> = {
 };
 
 const TAGLINE = 'AI text RPG';
+/** How far the tagline rises as it enters. */
+const TAG_RISE = 30;
 /** Frame the wordmark starts to rise. */
 const MARK_FRAME = 12;
 /** Frame the wordmark's spring lands within 0.5%, where the pop starts. */
@@ -40,13 +44,65 @@ export const titleReads = (durationInFrames: number, cta?: CallToAction): CopyRe
     ...(cta ? [{ text: cta.text, start: RISE.cta }] : []),
   ].map(({ text, start }) => ({ text, start, from: start + ENTER_FRAMES, until: durationInFrames, end: null }));
 
+type TitleCopyProps = {
+  layout: Layout;
+  cta?: CallToAction;
+  /** The wordmark's rise, the tagline's rise and the call to action's rise. */
+  mark: number;
+  tag: number;
+  action: number;
+  pop?: readonly number[];
+};
+
+/** The wordmark, the tagline and the call to action at one moment. */
+const TitleCopy = ({ layout, cta, mark, tag, action, pop }: TitleCopyProps) => {
+  const place = PLACEMENT[layout];
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', transform: `translateY(${-place.lift}px)` }}>
+      <Wordmark fontSize={place.fontSize} progress={mark} pop={pop} />
+      <p
+        data-text
+        style={{
+          margin: '28px 0 0',
+          fontSize: place.tagSize,
+          fontWeight: 300,
+          letterSpacing: '.3em',
+          textTransform: 'uppercase',
+          color: colors.muted,
+          opacity: springOpacity(tag),
+          transform: `translateY(${(1 - tag) * TAG_RISE}px)`,
+        }}
+      >
+        {TAGLINE}
+      </p>
+      {cta && <PillColumn lines={[cta.text]} accent={cta.link} layout={layout} place={{ position: 'relative', marginTop: 44 }} out={1} progress={() => action} />}
+    </AbsoluteFill>
+  );
+};
+
+/** The tagline's and the call to action's boxes on every frame, for the on-screen check. */
+export const titleTracks = async (layout: Layout, cta?: CallToAction): Promise<TextTrack[]> => {
+  const [tagBox, ctaBox] = await measureText(layout, <TitleCopy layout={layout} cta={cta} mark={1} tag={1} action={1} />);
+  const tracks: TextTrack[] = [
+    {
+      text: TAGLINE,
+      boxesAt: (frame) => {
+        const tag = springIn(frame, FPS, SPRINGS.pill, RISE.tag, ENTER_FRAMES);
+        return springOpacity(tag) > 0 ? [{ ...tagBox, y: tagBox.y + (1 - tag) * TAG_RISE }] : [];
+      },
+    },
+  ];
+  if (cta) tracks.push({ text: cta.text, boxesAt: (frame) => pillBoxesAt(ctaBox, 1, springIn(frame, FPS, SPRINGS.pill, RISE.cta, ENTER_FRAMES)) });
+  return tracks;
+};
+
 /** The end card: the wordmark springs in on the stage between two dimmed cards and pops letter by letter, then the tagline and an optional call-to-action pill with its link in the accent color (ruling Q37). Everything holds to the last frame. */
 export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?: CallToAction }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const place = PLACEMENT[layout];
   const mark = spring({ frame: frame - RISE.mark, fps, config: SPRINGS.mark });
   const tag = springIn(frame, fps, SPRINGS.pill, RISE.tag, ENTER_FRAMES);
+  const action = springIn(frame, fps, SPRINGS.pill, RISE.cta, ENTER_FRAMES);
 
   return (
     <AbsoluteFill style={{ fontFamily: fonts.body, color: colors.foreground }}>
@@ -64,34 +120,7 @@ export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?
           bobPhase={i * 2}
         />
       ))}
-      <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', transform: `translateY(${-place.lift}px)` }}>
-        <Wordmark fontSize={place.fontSize} progress={mark} pop={popScales(frame, RISE.pop)} />
-        <p
-          style={{
-            margin: '28px 0 0',
-            fontSize: place.tagSize,
-            fontWeight: 300,
-            letterSpacing: '.3em',
-            textTransform: 'uppercase',
-            color: colors.muted,
-            opacity: springOpacity(tag),
-            transform: `translateY(${(1 - tag) * 30}px)`,
-          }}
-        >
-          {TAGLINE}
-        </p>
-        {cta && (
-          <Pills
-            lines={[cta.text]}
-            accent={cta.link}
-            layout={layout}
-            durationInFrames={durationInFrames}
-            delay={RISE.cta}
-            place={{ position: 'relative', marginTop: 44 }}
-            holdsToEnd
-          />
-        )}
-      </AbsoluteFill>
+      <TitleCopy layout={layout} cta={cta} mark={mark} tag={tag} action={action} pop={popScales(frame, RISE.pop)} />
     </AbsoluteFill>
   );
 };
