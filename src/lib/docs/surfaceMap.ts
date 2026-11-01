@@ -88,6 +88,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   editText: { page: 'How-to-Play', anchor: 'how-to-edit-narration' },
   entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },
   stranger: { page: 'How-to-Play', anchor: 'the-stranger-dialog' },
+  item: { page: 'How-to-Play', anchor: 'the-item-dialog' },
   enterWorld: { page: 'Starting-a-Game', anchor: 'the-enter-world-dialog' },
   errorDetails: { page: 'How-to-Play', anchor: 'error-details' },
   imageSetup: { page: 'Image-Generation', anchor: 'providers' },

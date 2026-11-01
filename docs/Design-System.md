@@ -2231,6 +2231,7 @@ Editor detail panels, the game's side panels, the library editors' headers and t
 - ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
 - 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the entities in the scene, each under its label, as `CompactSelectionRow`s, or "Nobody is in the scene."
 - 🔒 **Bound.** Drop and Give stay in place, disabled, with the reason in their tooltips.
+- 🔍 **Item popup.** The name's button covers the row, and the row's buttons sit above it. It opens an [Entity Popup](#pattern-entity-popup)'s layout with the item's image, description, State, count and uses. With no image it is a short 520px window.
 - 🏷️ **Tab strip.** The side panels' strips are [collapsing tab strips](#as-a-tab-strip): every label, then only the selected tab's, then icons alone. A folded tab's tooltip names it.
 
 ### Production mapping
@@ -2242,6 +2243,7 @@ Editor detail panels, the game's side panels, the library editors' headers and t
 | Its data and its one write | `useInventoryPanel` in [`useInventoryPanel.ts`](../src/components/game/useInventoryPanel.ts), through `applyInventoryOps` in [`inventory/index.ts`](../src/lib/inventory/index.ts) |
 | The measured tab strip | `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) |
 | The host | `RightPanel` in [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| The item popup | `ItemModal` in [`ItemModal.tsx`](../src/components/modals/ItemModal.tsx) |
 | Isolated reference | [`InventoryTabReference.tsx`](../src/components/design-system/InventoryTabReference.tsx) |
 
 ### Responsive behavior
@@ -2288,6 +2290,7 @@ Open `#dev?modal=designSystem&tab=inventory-tab`, or `#dev?view=gameViewer&fixtu
 | The body | `EntityCardBody` with `sideBySide` in [`EntityCard.tsx`](../src/components/game/EntityCard.tsx) |
 | Met entities | `EntityModal` in [`EntityModal.tsx`](../src/components/modals/EntityModal.tsx) |
 | Strangers | `StrangerModal` in [`StrangerModal.tsx`](../src/components/modals/StrangerModal.tsx) |
+| Items | `ItemModal` in [`ItemModal.tsx`](../src/components/modals/ItemModal.tsx) |
 | Isolated reference | [`EntityPopupReference.tsx`](../src/components/design-system/EntityPopupReference.tsx) |
 
 ### Responsive behavior

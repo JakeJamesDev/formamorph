@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { EntityVisual } from './EntityVisual';
-import { hasEntityVisual } from '@/lib/entityVisual';
+import { hasEntityVisual, type EntityVisualSource } from '@/lib/entityVisual';
 import AudioPlayer from './AudioPlayer';
 import type { Entity } from '@/types';
 
@@ -28,12 +28,12 @@ export function EntityDescription({ text, resolveText = identity, children }: {
 }
 
 /**
- * The entity card's body: the picture, then the description area and the entity's sound. `children` is
+ * The entity card's body, which an item's popup borrows: the picture, then the description area and the entity's sound. `children` is
  * the description area. The visual props are the gameplay-held picture state `EntityVisual` takes.
  * `sideBySide` puts the picture left of the text on large screens; it needs a host with a fixed height.
  */
 export function EntityCardBody({ entity, children, sideBySide = false, images, avatar, preference, onPreferenceChange, imageIndex, onImageStep, morphValues }: {
-  entity: Entity;
+  entity: EntityVisualSource & Pick<Entity, 'sound'>;
   children: ReactNode;
   sideBySide?: boolean;
 } & Pick<ComponentProps<typeof EntityVisual>, 'images' | 'avatar' | 'preference' | 'onPreferenceChange' | 'imageIndex' | 'onImageStep' | 'morphValues'>) {

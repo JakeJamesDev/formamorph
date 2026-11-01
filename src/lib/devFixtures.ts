@@ -82,7 +82,7 @@ const devItems = (valueStatId: string | undefined): Item[] => [
     slotRule: { mode: 'either', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] }, statEffects: [], traitEffects: [], equipRequires: [],
   },
   {
-    id: 'dev-item-sword', name: 'Greatsword', playerDescription: 'A long two-handed blade.', slotRule: { mode: 'all', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] },
+    id: 'dev-item-sword', name: 'Greatsword', playerDescription: 'A long two-handed blade.', images: [{ data: portrait('#6b7a8f') }], slotRule: { mode: 'all', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] },
     ...(valueStatId ? { value: 40, valueUnit: { kind: 'stat' as const, statId: valueStatId } } : {}),
     statEffects: [], traitEffects: [], equipRequires: [],
   },

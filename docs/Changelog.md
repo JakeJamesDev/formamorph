@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Inventory:**
+    - **Selecting an item in the Inventory tab opens a popup with its image and description.** An unidentified item shows only its unidentified name and description.
     - **The World Editor has an Items tab for the objects of your world.** Each item has images, descriptions, placeholders, a value, Stackable, Uses, When Empty, Bound and an equipment slot. Equipment Settings, at the top of the Items list, holds the world's slots and Bodies.
     - **Worlds can now place starting items on the player, on entities and at locations.** Set them under Persona Items in Equipment Settings, or on an entity's or location's Items tab. Check Equipped to start an item worn. Saved games never gain them.
     - **The narrator now knows what you and the people near you carry, through a new Inventory prompt chip.** It sends equipped items with their AI Summary, carried items by name, and the items lying here, with hidden ones marked. Built-in presets hold it; add it to your own from the chip bar.
