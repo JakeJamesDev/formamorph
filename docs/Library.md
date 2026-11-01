@@ -116,7 +116,7 @@ A **Small** tile hides its name. Point to it to see the name. **Tile Size** show
 2. Select its name at the top, and type a new one.
 3. Press **Enter** to keep the name, or **Escape** to cancel.
 
-Each Group needs its own name. If another Group has the name you type, the Group keeps its old name.
+Each Group needs its own name. If another Group has the name you type, the Group keeps its old name. A red line under the field says *A group already has this name.* The line goes away when you type again.
 
 ## How to Delete a Group
 <!-- keywords: folder, remove, ungroup, get rid of, disband, dissolve, erase, break apart, trash, lose contents -->

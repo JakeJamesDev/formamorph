@@ -73,8 +73,12 @@ describe('the Personas filter', () => {
     await user.type(field, ' plain folder {Enter}');
     expect(field).toHaveValue('Mixed Folder');
     expect(loadTabOrganization('entities').groups.gA.name).toBe('Mixed Folder');
-    await user.type(field, ' Renamed{Enter}');
+    expect(screen.getByRole('alert')).toHaveTextContent('A group already has this name.');
+    await user.type(field, ' Renamed');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await user.type(field, '{Enter}');
     expect(field).toHaveValue('Mixed Folder Renamed');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('offers the item’s own actions but no size or folder edits', () => {
