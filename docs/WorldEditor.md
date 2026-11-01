@@ -73,6 +73,8 @@ The app remembers your pick for every world. You can't switch while the Authorin
 4. Select **Match case** or **Match whole word** to narrow the search. Type the new text in the **Replace** box.
 5. Select **Replace** for this match, or **Replace all** for every match.
 
+The search reads an item's scripts in Advanced mode only.
+
 ## How to Restart the Authoring Tour
 <!-- keywords: tutorial, guide, walkthrough, help, intro, learn, onboarding, show me around, beginner lesson -->
 <!-- route: settings.data#start-authoring-tour -->

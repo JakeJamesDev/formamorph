@@ -85,11 +85,11 @@ describe('Search World on the Items, Scripts and Tools tabs', () => {
     await waitFor(() => expect(counter()).toBe('1 / 4'));
   });
 
-  it('opens the item on a tab Simple mode shows when the hit sits in its hidden Scripts tab', async () => {
+  it('finds no hit in an item script in Simple mode, which hides the item’s Scripts tab', async () => {
     renderWorldEditorBench(WORLD, 'simple');
     search('stats.Chime');
-    await waitFor(() => expect(selectedRow()).toHaveTextContent('Brass Key'));
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Profile/, selected: true })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('No results')).toBeInTheDocument());
+    expect(selectedRow()).toBeNull();
   });
 
   it('finds only the item in Simple mode, which hides the Scripts and Tools tabs', async () => {
