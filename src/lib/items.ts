@@ -20,6 +20,14 @@ export const itemUsable = (item: Item): boolean => item.uses !== undefined
 export const usesLeft = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'uses'> | undefined): number | undefined =>
   (item?.uses === undefined ? undefined : copy.state?.uses ?? item.uses);
 
+/** Uses left: "N of M uses" for Uses 2+; a Uses 1 copy shows a line only once spent (Q30). */
+export const usesLine = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'uses'> | undefined): string | null => {
+  const left = usesLeft(copy, item);
+  if (left === undefined || item?.uses === undefined) return null;
+  if (item.uses > 1) return `${left} of ${item.uses} uses`;
+  return left === 0 ? 'No uses left' : null;
+};
+
 /** Its copies start unidentified: it has an Unidentified Name or Unidentified Description (Q16). */
 export const itemHasUnidentifiedFace = (item: Pick<Item, 'unidentifiedName' | 'unidentifiedDescription'>): boolean => !!item.unidentifiedName?.trim() || !!item.unidentifiedDescription?.trim();
 
@@ -256,3 +264,10 @@ export function itemTraitOptions(owners: readonly { id: string; name: string; tr
     return traits.length ? [{ id: owner.id, name: owner.name, traits }] : [];
   });
 }
+
+/** What an item popup lists under the description: State, count, uses left. */
+export const copyFacts = (copy: ItemCopy, item: Pick<Item, 'uses'> | undefined): string[] => {
+  const state = copyState(copy);
+  const uses = usesLine(copy, item);
+  return [...(state ? [state] : []), ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(uses ? [uses] : [])];
+};

@@ -2243,7 +2243,7 @@ Editor detail panels, the game's side panels, the library editors' headers and t
 | Its data and its one write | `useInventoryPanel` in [`useInventoryPanel.ts`](../src/components/game/useInventoryPanel.ts), through `applyInventoryOps` in [`inventory/index.ts`](../src/lib/inventory/index.ts) |
 | The measured tab strip | `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) |
 | The host | `RightPanel` in [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
-| The item popup | `ItemModal` in [`ItemModal.tsx`](../src/components/modals/ItemModal.tsx) |
+| The item popup, also opened from `EntityEquipped` in [`EntityEquipped.tsx`](../src/components/game/EntityEquipped.tsx) | `ItemModal` in [`ItemModal.tsx`](../src/components/modals/ItemModal.tsx) |
 | Isolated reference | [`InventoryTabReference.tsx`](../src/components/design-system/InventoryTabReference.tsx) |
 
 ### Responsive behavior

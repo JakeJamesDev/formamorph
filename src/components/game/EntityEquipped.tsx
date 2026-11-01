@@ -1,38 +1,69 @@
+import { useState } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { Meta } from '@/components/ui/typography';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { copyFace, occupiedSlots } from '@/lib/items';
+import { visibleItemImage } from '@/lib/imageVisibility';
+import { copyFace, copyFacts, occupiedSlots } from '@/lib/items';
 import { visibleWorn } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
-import type { Entity } from '@/types';
+import { useViewedGateInput } from '@/lib/useViewedGateInput';
+import type { Entity, ItemCopy } from '@/types';
+import { ItemModal } from '../modals/ItemModal';
 
 /**
- * An entity's visible equipped items, each under its slot (Q31, Q116). Carried and hidden Item Copies stay
- * private. Draws nothing when the entity wears nothing the player can see.
+ * An entity's visible equipped items, each under its slot (Q31, Q116), each opening its popup. Carried and
+ * hidden Item Copies stay private. Draws nothing when the entity wears nothing the player can see.
  */
 export function EntityEquipped({ entity }: { entity: Entity }) {
   const { itemCopies, personaRef } = useGameplay();
   const data = useGameDataOptional();
   const resolveText = usePlaceholderResolver();
+  const gateInput = useViewedGateInput();
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const worn = visibleWorn(itemCopies, playsAs(entity, personaRef) ? { kind: 'you' } : { kind: 'entity', id: entity.id });
   if (worn.length === 0) return null;
   const slotName = (slotId: string) => resolveText(data?.slots?.find((s) => s.id === slotId)?.name ?? '');
+  const itemOf = ({ item: ref }: ItemCopy) => (ref.kind === 'item' ? data?.items?.find((i) => i.id === ref.itemId) : undefined);
+  const nameOf = (copy: ItemCopy) => {
+    const item = itemOf(copy);
+    return resolveText(item ? copyFace(item, copy).name : '') || 'Unknown Item';
+  };
+  // A copy that left the entity closes its popup.
+  const viewing = worn.find((copy) => copy.id === viewingId);
+  const viewingItem = viewing && itemOf(viewing);
   return (
     <section aria-label="Equipped" className="flex flex-col gap-1">
       <p className="text-meta uppercase tracking-wide text-muted-foreground">Equipped</p>
       <ul>
         {worn.map((copy) => {
-          const ref = copy.item;
-          const item = ref.kind === 'item' ? data?.items?.find((i) => i.id === ref.itemId) : undefined;
+          const item = itemOf(copy);
           return (
-            <li key={copy.id} className="flex items-baseline gap-2">
-              <span>{resolveText(item ? copyFace(item, copy).name : '') || 'Unknown Item'}</span>
+            <li key={copy.id} className="relative flex items-baseline gap-2 rounded-md hover:bg-secondary/60">
+              {/* The name's button covers the row, so the slot opens the popup too. */}
+              <button
+                type="button"
+                onClick={() => setViewingId(copy.id)}
+                className="rounded-sm text-left after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"
+              >
+                {nameOf(copy)}
+              </button>
               <Meta>{occupiedSlots(copy, item).map(slotName).join(' + ')}</Meta>
             </li>
           );
         })}
       </ul>
+      {viewing && (
+        <ItemModal
+          id={viewing.id}
+          name={nameOf(viewing)}
+          image={viewingItem && visibleItemImage(viewingItem, viewing, gateInput)}
+          description={resolveText(viewingItem ? copyFace(viewingItem, viewing).description ?? '' : '')}
+          facts={copyFacts(viewing, viewingItem)}
+          isOpen
+          onOpenChange={(open) => { if (!open) setViewingId(null); }}
+        />
+      )}
     </section>
   );
 }
