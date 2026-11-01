@@ -54,6 +54,15 @@ describe('updateReducer', () => {
     ] as const)('clears the flag when %s', (_, action) => {
       expect(updateReducer(opened(), action).openedInBrowser).toBeUndefined();
     });
+
+    it('ignores an answer that arrives after the channel changed', () => {
+      let s = updateReducer(base(), { type: 'CHECK_RESULT', available: true, latestVersion: '2.2.0', changelog: 'n', at: 1 });
+      s = updateReducer(s, { type: 'DOWNLOAD_START' });
+      s = updateReducer(s, { type: 'SET_CHANNEL', channel: 'prerelease' });
+      s = updateReducer(s, { type: 'DOWNLOAD_OPENED_IN_BROWSER' });
+      expect(s.phase).toBe('idle');
+      expect(s.openedInBrowser).toBeUndefined();
+    });
   });
 
   it('accumulates download progress then completes', () => {
