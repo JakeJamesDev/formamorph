@@ -4,11 +4,11 @@ import { Composition, Folder } from 'remotion';
 import { CANVAS, FPS, type Layout } from './layout';
 import type { CameraPath, CameraStop } from './parts/FrameCamera';
 import { Stage } from './parts/Stage';
-import { BuildStack, buildTiming, type BuildPane } from './scenes/BuildStack';
+import { BUILD_STACK, TURN_STACK } from './poses';
 import { FrameScene } from './scenes/FrameScene';
+import { GrowingStack, growingTiming, type GrowingPane } from './scenes/GrowingStack';
 import { KineticText } from './scenes/KineticText';
 import { StackScene } from './scenes/StackScene';
-import { TypedTurn } from './scenes/TypedTurn';
 import { WordmarkTitle } from './scenes/WordmarkTitle';
 import { SHOTS, TURN_PROMPT } from './shots';
 import { joinElement, overlapFrames, type TransitionName } from './transitions';
@@ -50,9 +50,18 @@ const joinEntry = (name: TransitionName): LibraryEntry => ({
   },
 });
 
-const BUILD_SAMPLE: readonly BuildPane[] = [
+const BUILD_SAMPLE: readonly GrowingPane[] = [
   { shot: SHOTS.canvas, camera: both(hold(stop(0.5, 0.5))), caption: ['Place locations on a map.'], dot: 'mint' },
   { shot: SHOTS.travel, camera: both(hold(stop(0.5, 0.3, 1.6))), caption: ['Then travel there and meet them.'], dot: 'sky' },
+];
+
+const TURN_SAMPLE: readonly GrowingPane[] = [
+  {
+    shot: { wide: SHOTS.narrationClip, tall: SHOTS.narrationClipTall },
+    camera: { wide: hold(stop(0.5, 0.32, 1.5)), tall: hold(stop(0.5, 0)) },
+    typed: { prompt: TURN_PROMPT, caption: 'The narrator continues the story.' },
+  },
+  { shot: SHOTS.statsClip, camera: both(hold(stop(0.8, 0.38, 1.8))), caption: ['Every turn updates your stats.'], dot: 'mint' },
 ];
 
 /** Every scene type and transition, with sample copy from the storyboard. The studio lists each in both layouts. */
@@ -134,23 +143,14 @@ const ENTRIES: LibraryEntry[] = [
     ),
   },
   {
-    id: 'BuildStack',
-    durationInFrames: buildTiming(BUILD_SAMPLE).durationInFrames,
-    render: (layout, durationInFrames) => <BuildStack layout={layout} durationInFrames={durationInFrames} panes={BUILD_SAMPLE} />,
+    id: 'GrowingStack',
+    durationInFrames: growingTiming(BUILD_SAMPLE, 'wide').durationInFrames,
+    render: (layout, durationInFrames) => <GrowingStack layout={layout} durationInFrames={durationInFrames} panes={BUILD_SAMPLE} poses={BUILD_STACK} />,
   },
   {
-    id: 'TypedTurn',
-    durationInFrames: 360,
-    render: (layout, durationInFrames) => (
-      <TypedTurn
-        layout={layout}
-        durationInFrames={durationInFrames}
-        clip={{ wide: SHOTS.narrationClip, tall: SHOTS.narrationClipTall }}
-        camera={{ wide: hold(stop(0.5, 0.32, 1.5)), tall: hold(stop(0.5, 0)) }}
-        prompt={TURN_PROMPT}
-        caption="The narrator continues the story."
-      />
-    ),
+    id: 'GrowingStack-Turn',
+    durationInFrames: growingTiming(TURN_SAMPLE, 'wide').durationInFrames,
+    render: (layout, durationInFrames) => <GrowingStack layout={layout} durationInFrames={durationInFrames} panes={TURN_SAMPLE} poses={TURN_STACK} />,
   },
   {
     id: 'WordmarkTitle',

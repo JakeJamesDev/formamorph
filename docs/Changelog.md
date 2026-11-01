@@ -94,6 +94,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A narration probe measures how often an unmet stranger's true name reaches the prose with Thinking Mode Off.** `narration-stranger-probe.mjs` scores name leaks and label use per case, and a guard case where the stranger gives their name.
   - **Trailer:**
     - **The trailer's authoring section builds a stack of four cards: map, profile, travel and inventory.** Each card lands on the last and holds 2 s or its caption's reading time. The tall cut plays it as a column and runs 65 s.
+    - **The trailer's play section becomes two card stacks, traits join the build stack, and a title card introduces the community.** The turn takes the stats card and the entity takes the chat card, in both cuts. The traits title card is gone. The wide cut runs 83 s and the tall cut 67 s.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
 #### ➖ Removed
