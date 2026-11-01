@@ -1,6 +1,7 @@
 # Spec: Docs Sweep Bugs
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-01. Tickets 01–18 done; last landing 6c82fe96f. Review: spec text corrected, three trivial gaps fixed in 364cd84d7, two gaps became tickets 17–18 (Q12, Q13). Gates green on 2026-11-01.
 Spec session: docs-sweep-bugs — spec
 
 ## Problem Statement

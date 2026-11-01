@@ -1,6 +1,6 @@
 # 04: Reset Keeps Hand-Written Memories
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
