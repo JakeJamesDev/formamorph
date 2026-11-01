@@ -86,6 +86,13 @@ describe('media parent table', () => {
     expect(buildMediaIndex(linked).find((i) => i.parent.kind === 'body')?.linked).toBe(true);
   });
 
+  it('keeps the Backdrop Opacity when the Custom Image is replaced', () => {
+    const faded: Body = { ...body, backdrop: { kind: 'image', image: { data: 'bd' }, opacity: 0.3 } };
+    let out: Body | undefined;
+    writeMediaSlot({ ...recorder().editor, body: (_id, edit) => { out = edit(faded); } }, itemOf('body:b1:backdrop'), { data: 'new' });
+    expect(out?.backdrop).toEqual({ kind: 'image', image: { data: 'new' }, opacity: 0.3 });
+  });
+
   it('writes a Custom Image to the Backdrop, keeping boxes and aspect, and a removal leaves the Humanoid outline', () => {
     const replaced = recorder();
     writeMediaSlot(replaced.editor, itemOf('body:b1:backdrop'), { data: 'new' });

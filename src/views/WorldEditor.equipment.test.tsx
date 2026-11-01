@@ -353,6 +353,36 @@ describe('the Bodies section', () => {
         expect(ctx().bodies[0]).toMatchObject({ backdrop: { kind: 'humanoid' }, aspect: 0.5 });
       });
 
+      it('shows the Opacity slider for a Custom Image only', async () => {
+        readImageAspect.mockResolvedValue(1.25);
+        renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        const slider = () => within(humanoidFields()).queryByRole('slider', { name: 'Opacity' });
+        expect(slider()).toBeNull();
+        pickOption(backdrop(), 'Custom Image');
+        expect(slider()).toBeNull();
+        await link('https://host/imp.png');
+        expect(slider()).toHaveAttribute('aria-valuenow', '100');
+        pickOption(backdrop(), 'Quadruped');
+        expect(slider()).toBeNull();
+        pickOption(backdrop(), 'Plain');
+        expect(slider()).toBeNull();
+      });
+
+      it('fades the image in the editor', async () => {
+        readImageAspect.mockResolvedValue(1.25);
+        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+        openEquipment();
+        pickOption(backdrop(), 'Custom Image');
+        await link('https://host/imp.png');
+        const image = () => humanoidFields().querySelector('[data-body-layout-stage] img');
+        expect(image()).toHaveStyle({ opacity: '1' });
+        const thumb = within(humanoidFields()).getByRole('slider', { name: 'Opacity' });
+        fireEvent.keyDown(thumb, { key: 'ArrowLeft' });
+        expect(ctx().bodies[0].backdrop).toEqual({ kind: 'image', image: { data: 'https://host/imp.png' }, opacity: 0.99 });
+        expect(image()).toHaveStyle({ opacity: '0.99' });
+      });
+
       it('abandons a pick that never got a file when another Backdrop is chosen', () => {
         const { ctx } = renderWorldEditorBench(WORLD, 'simple');
         openEquipment();

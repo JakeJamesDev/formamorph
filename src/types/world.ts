@@ -631,7 +631,7 @@ export interface SlotBox {
 }
 
 /** What a Body's Slot Boxes are laid out on. */
-export type Backdrop = { kind: 'humanoid' | 'quadruped' | 'plain' } | { kind: 'image'; image: GalleryImage };
+export type Backdrop = { kind: 'humanoid' | 'quadruped' | 'plain' } | { kind: 'image'; image: GalleryImage; /** 0 to 1. Absent = 1. */ opacity?: number };
 
 /** One slot a Body holds. */
 export interface BodyEntry {

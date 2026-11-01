@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { BodyBackdropArt } from '@/components/BodyBackdropArt';
+import { ValueSlider } from '@/components/SettingsRows';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import {
-  boxAt, boxKey, boxStyle, clampAspect, dragMove, dragResize, grownBox, KEY_STEP, MAX_ASPECT, MIN_ASPECT, movedBox, sameBox, snapLines, stackOrder, withBackdropImage, withBox, withOutline,
+  boxAt, boxKey, boxStyle, clampAspect, dragMove, dragResize, grownBox, KEY_STEP, MAX_ASPECT, MIN_ASPECT, movedBox, sameBox, snapLines, stackOrder, withBackdropImage, withBackdropOpacity, withBox, withOutline,
   type BoxCorner, type BoxRef, type OutlineKind, type SnappedBox, type SnapReach,
 } from '@/lib/bodyLayout';
 import { readImageAspect } from '@/lib/imageAspect';
@@ -290,6 +292,22 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
             onChange={(data) => void setImage(data)}
           />
           <Hint>The image sets the shape of the Backdrop</Hint>
+        </div>
+      )}
+      {body.backdrop.kind === 'image' && (
+        <div className="max-w-[260px] space-y-1.5">
+          <Label htmlFor={`body-backdrop-opacity-${body.id}`}>Opacity</Label>
+          <ValueSlider
+            id={`body-backdrop-opacity-${body.id}`}
+            ariaLabel="Opacity"
+            min={0}
+            max={100}
+            step={1}
+            value={Math.round((body.backdrop.opacity ?? 1) * 100)}
+            format={(v) => `${v}%`}
+            valueClassName="w-12"
+            onChange={(value) => onChange(withBackdropOpacity(latest.current, value / 100))}
+          />
         </div>
       )}
       <div className="flex flex-wrap items-start gap-3">
