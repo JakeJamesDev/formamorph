@@ -1,7 +1,7 @@
 # Spec: Docs Sweep Bugs
 
 Status: done
-Status note: Closed 2026-11-01, tickets 01–25, last landing dd41f37b6. Review: spec text corrected, one gap fixed in 050354aa6. Closed red: src/components/prompt/CodeArea.cards.test.tsx, one assertion under full-suite load; the file passes alone. Ticket 26 is open for it.
+Status note: Closed 2026-11-01, tickets 01–26, last landing ba93137c3. Review: spec text corrected, one gap fixed in 050354aa6. Ticket 26 (ba93137c3) fixed the one red test from the close; a full run on main then passed it.
 Spec session: docs-sweep-bugs — spec
 
 ## Problem Statement
