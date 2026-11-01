@@ -1,6 +1,6 @@
 # 07: Emberwatch Layouts
 
-Status: ready-for-human
+Status: done
 Blocked by: 01, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -15,7 +15,7 @@ Author real layouts on Emberwatch's Humanoid and Hound Bodies: Humanoid on the H
 
 - [x] Both Bodies have an authored Backdrop and boxes, and no box is left at the default center. Humanoid and Quadruped Backdrops with fitted aspects; the editor frame shows each box on its part.
 - [x] Main Hand and Off Hand sit on the two hands, and mirror around the midline. Off Hand x = 1 − Main Hand x − width; outline midline is x = 50.
-- [ ] Emberwatch loads and the bundled-world tests pass. Loads in the editor (frame); the bundled-world tests run in prepare's gates.
+- [x] Emberwatch loads and the bundled-world tests pass. Loads in the editor (frame); the bundled-world tests run in prepare's gates.
 - [x] A frame saved as `.scratch/frames/emberwatch-layouts.png` shows both Bodies in the editor.
 
 ## Landed
