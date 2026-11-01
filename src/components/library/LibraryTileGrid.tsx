@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { FieldError } from '@/components/ui/typography';
 import {
   DragOverlay,
   getScrollableAncestors,
@@ -26,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   filteredPlacements,
+  GROUP_NAME_TAKEN_MESSAGE,
   isGroupNameTaken,
   readGesture,
   resolvePlacements,
@@ -198,7 +200,9 @@ function FolderHeader({ name, settings, onBack, onRename, isNameTaken }: {
   isNameTaken: (name: string) => boolean;
 }) {
   const [draft, setDraft] = useState(name);
-  useEffect(() => setDraft(name), [name]);
+  const [taken, setTaken] = useState(false);
+  const errorId = useId();
+  useEffect(() => { setDraft(name); setTaken(false); }, [name]);
 
   return (
     <div className="px-4 pb-3 flex flex-wrap items-center gap-3">
@@ -208,20 +212,24 @@ function FolderHeader({ name, settings, onBack, onRename, isNameTaken }: {
       </Button>
       {onRename ? <Input
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => { setDraft(e.target.value); setTaken(false); }}
+        aria-invalid={taken}
+        aria-describedby={taken ? errorId : undefined}
         onBlur={() => {
+          setTaken(isNameTaken(draft));
           onRename(draft);
           // A blank or taken name is refused, so the field goes back to the name the folder kept.
           setDraft((current) => (current.trim() && !isNameTaken(current) ? current : name));
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setDraft(name);
+          if (e.key === 'Escape') { setDraft(name); setTaken(false); }
         }}
         aria-label="Group name"
         className="h-8 w-56 font-semibold"
       /> : <span className="font-semibold">{name}</span>}
       {settings}
+      {taken && <FieldError id={errorId} role="alert" className="basis-full">{GROUP_NAME_TAKEN_MESSAGE}</FieldError>}
     </div>
   );
 }

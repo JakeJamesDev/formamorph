@@ -1,6 +1,6 @@
 # 21: Group Rename Says Why It Refused
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -15,7 +15,15 @@ Spec: Q17. Evidence: ticket 03, Landed.
 
 ## Acceptance criteria
 
-- [ ] A Library test that renames a Group to a taken name fails today (no message), then passes with the error line
-- [ ] The line clears on the next valid edit (test)
-- [ ] The Library page says so; the docs tests are green
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A Library test that renames a Group to a taken name fails today (no message), then passes with the error line (`LibraryTileGrid.filter.test.tsx`, refused rename; no alert existed before)
+- [x] The line clears on the next valid edit (same test: alert gone after typing)
+- [x] The Library page says so; the docs tests are green (`npx vitest run docs`, 347 pass)
+- [x] A changelog fragment under Minor / Fixed / 👤
+
+## Landed
+
+**Not verified**
+- Bite check by reinstating the bug was not run; the alert assertion cannot pass without the new line.
+
+**For you**
+- Library, open a Group, rename it to another Group's name, press Enter: a red line shows under the field.

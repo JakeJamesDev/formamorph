@@ -124,6 +124,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A world whose only choice is its Custom Persona opens Enter World instead of skipping it.** You can type your **Name** and **Description** before the game starts.
   - **Search World's Replace All no longer gives two Tools the same name.** The first Tool takes the new name. Search World skips the later Tool and counts it as skipped.
   - **In Simple mode, Search World no longer finds text in an item's scripts.** The item's Scripts tab is hidden there, so the match opened nothing. Advanced mode still finds it.
+  - **Renaming a Group to a name another Group has now says so.** A red line under the name field reads "A group already has this name." and clears when you type again.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

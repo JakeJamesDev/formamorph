@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchField } from '@/components/ui/search-field';
 import { FieldError, Meta } from '@/components/ui/typography';
-import { isGroupNameTaken, type LibraryGroup } from '@/lib/libraryOrganization';
+import { GROUP_NAME_TAKEN_MESSAGE, isGroupNameTaken, type LibraryGroup } from '@/lib/libraryOrganization';
 
 /** The tile menu's chooser and named creation flow share one focus scope. */
 export function LibraryGroupPicker({ name, groups, currentGroupId, initialPanel = 'picker', onSelect, onCreate, onClose, restoreFocus }: {
@@ -28,7 +28,7 @@ export function LibraryGroupPicker({ name, groups, currentGroupId, initialPanel 
   const errorId = useId();
   const trimmedName = groupName.trim();
   const duplicate = isGroupNameTaken(groups, trimmedName);
-  const error = duplicate ? 'A group already has this name.' : submitted && !trimmedName ? 'Enter a group name.' : undefined;
+  const error = duplicate ? GROUP_NAME_TAKEN_MESSAGE : submitted && !trimmedName ? 'Enter a group name.' : undefined;
   const matches = groups.filter((group) => group.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (

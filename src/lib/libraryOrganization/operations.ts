@@ -44,6 +44,9 @@ export const isGroupId = (org: LibraryTabOrganization, id: string): boolean => i
 export const groupOf = (org: LibraryTabOrganization, itemId: string): LibraryGroup | undefined =>
   Object.values(org.groups).find((group) => group.members.includes(itemId));
 
+/** The error line for a Group name another Group already carries. */
+export const GROUP_NAME_TAKEN_MESSAGE = 'A group already has this name.';
+
 /** True when another folder already carries the name, compared trimmed and case-insensitive. */
 export const isGroupNameTaken = (groups: LibraryGroup[], name: string, exceptId?: string): boolean => {
   const wanted = name.trim().toLowerCase();
