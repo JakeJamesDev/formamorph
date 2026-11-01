@@ -1,6 +1,7 @@
 # Spec: Body Layouts and Slot Rules
 
 Status: ready-for-agent
+Spec session: body-layouts-and-slot-rules — spec
 
 ## Problem Statement
 
