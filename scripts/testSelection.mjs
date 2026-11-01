@@ -85,6 +85,10 @@ export const GRAPH_COVERED = {
   'scripts/copySweep.mjs': 'reads files only in its command-line sweep, which no test calls',
   'scripts/moveReach.mjs': 'reads only the probe file its caller passes; the compiler walks the files the probe names',
   'scripts/testSelection.mjs': 'runs git only in the helpers the gate scripts call',
+  'scripts/runTests.mjs': 'reads only its own temp reports and runs vitest and git in the folder its caller passes',
+  'scripts/runTests.test.mjs': 'reads only its own temp folder',
+  'scripts/runOutcomeReporter.mjs': 'writes only the file its runner names; a test of it runs real vitest',
+  'scripts/fetchPinnedCommits.mjs': 'runs git only in its command-line run, which no test calls',
   'vite.config.js': 'a change to it runs the full suite',
   'scripts/shipBundledWorlds.mjs': 'reads only the world file its caller names; a change to it runs the full suite',
   'scripts/stripSeededWorlds.mjs': 'reads only the world file an import names; a change to it runs the full suite',
@@ -129,6 +133,9 @@ export const PATH_TRIGGERS = {
   'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'package-lock.json': ['src/components/ui/radixSingleCopy.test.ts'],
+  '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
+  // The runner test loads this reporter by path through real vitest.
+  'scripts/runOutcomeReporter.mjs': ['scripts/runTests.test.mjs'],
 };
 
 const REQUIRE_CALL = /\brequire\(\s*([^)]*?)\s*\)/g;

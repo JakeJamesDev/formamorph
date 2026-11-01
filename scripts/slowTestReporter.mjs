@@ -4,6 +4,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { testKey } from './testRetry.mjs';
 
 const SAMPLE_EVERY_MS = 250;
 const HISTORY_RUNS = 5;
@@ -100,7 +101,7 @@ export default class SlowTestReporter {
     const { duration, startTime } = testCase.diagnostic() ?? {};
     if (typeof duration !== 'number' || testCase.result().state !== 'passed') return;
     const file = path.relative(process.cwd(), testCase.module.moduleId).replace(/\\/g, '/');
-    this.tests.push({ key: `${file} > ${testCase.fullName}`, duration, startTime });
+    this.tests.push({ key: testKey(file, testCase.fullName), duration, startTime });
   }
 
   onTestRunEnd() {
