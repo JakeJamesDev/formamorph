@@ -322,6 +322,11 @@ export default function EditorFindBar({
       return;
     }
     const next = spliceText(current.target.value, current.start, current.end, insert);
+    if (current.target.refuses?.(next)) {
+      setNotice(`Skipped: ${current.target.itemLabel} can’t take that ${current.target.fieldLabel.toLowerCase()}`);
+      step(1);
+      return;
+    }
     current.target.write(next);
     noteRename(current.target, next);
     // The rescan runs off the rewritten world; holding the index leaves the cursor on what is now next.
@@ -336,7 +341,10 @@ export default function EditorFindBar({
     const chips = summary.chips
       ? ` Skipped ${summary.chips} chip${summary.chips === 1 ? '' : 's'}. Change a chip in its “Chip Options”.`
       : '';
-    setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}${chips}`);
+    const refused = summary.refused
+      ? ` Skipped ${summary.refused} match${summary.refused === 1 ? '' : 'es'} where the new text isn’t valid.`
+      : '';
+    setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}${refused}${chips}`);
   };
   useEffect(() => { if (notice) { const t = setTimeout(() => setNotice(null), 6000); return () => clearTimeout(t); } }, [notice]);
 

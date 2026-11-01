@@ -7,6 +7,8 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { blankItem, duplicateItem } from '@/lib/items';
 import { randomUUID } from '@/lib/uuid';
 import type { ItemPanelTab } from '@/views/itemPanelTabs';
+import { focusFieldForItem } from '@/views/findFocus';
+import type { FocusFieldHint } from '@/types';
 import ItemManager from './ItemManager';
 import EquipmentEditor from './EquipmentEditor';
 
@@ -18,7 +20,7 @@ export const EQUIPMENT_ID = 'equipment';
  * reorder, and the item panel. The panel's tab and open placeholder are held by the host, so they survive a
  * switch between items.
  */
-export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder }: {
+export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder, focusField }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   tab: ItemPanelTab;
@@ -26,6 +28,8 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
   placeholderId: string | null;
   onPlaceholderIdChange: (id: string | null) => void;
   onOpenWorldPlaceholder: (id: string) => void;
+  /** The search target the find bar just navigated to. */
+  focusField?: FocusFieldHint | null;
 }): ListEditorAdapter {
   const { items, setItems, removeItem, placeholders, placementLetters, placeholderOwners } = useGameData();
   const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
@@ -58,6 +62,7 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
           placeholderId={placeholderId}
           onPlaceholderIdChange={onPlaceholderIdChange}
           onOpenWorldPlaceholder={onOpenWorldPlaceholder}
+          focusField={focusFieldForItem(focusField ?? null, item.id)}
         />
       );
     }

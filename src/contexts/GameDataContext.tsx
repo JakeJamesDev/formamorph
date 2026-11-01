@@ -232,6 +232,7 @@ function useProvideGameData() {
       updatePlaceholderGroup: keyedTo('placeholderGroups', replaceIn(setPlaceholderGroups)),
       updateWorldScript: keyedTo('scripts', replaceIn(setWorldScripts)),
       updateItem: keyedTo('items', replaceIn(setItems)),
+      updateWorldTool: keyedTo('tools', replaceIn(setWorldTools)),
       updateSlot: keyedTo('slots', replaceIn(setSlots)),
       updateWorldOverview: keyedTo('worldOverview', (updates: Partial<WorldOverview>) =>
         setWorldOverview((prev) => ({ ...prev, ...updates }))),
@@ -240,6 +241,7 @@ function useProvideGameData() {
   const {
     keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateStatGroup, updateLocation, updateConnection, updateEntity, editEntity,
     updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview, updateWorldScript, updateItem, updateSlot,
+    updateWorldTool,
   } = keyed;
   const dictStore = useMemo(() => ({
     dictionaries, setDictionaries, addDictionary, updateDictionary, removeDictionary,
@@ -788,7 +790,7 @@ function useProvideGameData() {
     addPlaceholder, updatePlaceholder, removePlaceholder,
     addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
     setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
-    setDictionaries, setWorldPlaceholders, setWorldScripts, updateWorldScript, setWorldTools,
+    setDictionaries, setWorldPlaceholders, setWorldScripts, updateWorldScript, setWorldTools, updateWorldTool,
     setItems, updateItem, removeItem, setSlots, updateSlot, removeSlot, setBodies: writeBodies, removeBody, setPlacements,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
@@ -804,7 +806,7 @@ function useProvideGameData() {
     addDictionary, updateDictionary, removeDictionary,
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
     addPlaceholder, updatePlaceholder, removePlaceholder,
-    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript, updateItem, removeItem, updateSlot, removeSlot, writeBodies, removeBody,
+    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript, updateWorldTool, updateItem, removeItem, updateSlot, removeSlot, writeBodies, removeBody,
     setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   ]);
 

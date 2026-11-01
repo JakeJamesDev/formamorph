@@ -3,6 +3,7 @@
 import { AlignLeft, Code, ListChecks, SlidersHorizontal } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
+import { tabForField } from './findFocus';
 
 export const ITEM_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: ELEMENT_ICONS.item },
@@ -19,4 +20,22 @@ export type ItemPanelTab = (typeof ITEM_PANEL_TABS)[number]['value'];
 /** The tabs one editor mode shows. Simple drops the `advancedOnly` ones. */
 export function itemPanelTabsFor(advanced: boolean) {
   return ITEM_PANEL_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
+}
+
+/** Which tab holds each searchable field. */
+const TAB_BY_FIELD: Record<string, ItemPanelTab> = {
+  name: 'profile',
+  imageTags: 'profile',
+  playerDescription: 'descriptions',
+  aiDescription: 'descriptions',
+  aiSummary: 'descriptions',
+  unidentifiedName: 'descriptions',
+  unidentifiedDescription: 'descriptions',
+  'scripts[].name': 'scripts',
+  'scripts[].code': 'scripts',
+};
+
+/** The tab holding `fieldKey`, or `null` for a key no tab claims. */
+export function itemTabForField(fieldKey: string): ItemPanelTab | null {
+  return tabForField(fieldKey, TAB_BY_FIELD);
 }

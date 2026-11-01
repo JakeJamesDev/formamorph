@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,8 +21,8 @@ import { largestCapacity } from '@/lib/bodies';
 import { WHEN_EMPTY_LABEL, itemStackable, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { canBePlayer } from '@/lib/owners';
-import { itemPanelTabsFor, type ItemPanelTab } from '@/views/itemPanelTabs';
-import type { Item, ItemValueUnit, ItemWhenEmpty } from '@/types';
+import { itemPanelTabsFor, itemTabForField, type ItemPanelTab } from '@/views/itemPanelTabs';
+import type { FocusFieldHint, Item, ItemValueUnit, ItemWhenEmpty } from '@/types';
 
 const WHEN_EMPTY_KINDS = ['stays', 'gone', 'becomes', 'changesState'] as const satisfies readonly ItemWhenEmpty['kind'][];
 const isWhenEmptyKind = (value: string): value is ItemWhenEmpty['kind'] => (WHEN_EMPTY_KINDS as readonly string[]).includes(value);
@@ -251,19 +251,28 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
  * Right-panel editor for one item: Profile, Descriptions, Properties, Effects and, in Advanced mode, its own
  * Placeholders. The panel remounts per item, so the tab and the open placeholder arrive as props.
  */
-const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder }: {
+const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder, focusField }: {
   item: Item;
   tab: ItemPanelTab;
   onTabChange: (tab: ItemPanelTab) => void;
   placeholderId: string | null;
   onPlaceholderIdChange: (id: string | null) => void;
   onOpenWorldPlaceholder: (id: string) => void;
+  /** The search target the find bar just navigated to; its field's tab opens. */
+  focusField?: FocusFieldHint | null;
 }) => {
   const { updateItem, placeholders } = useGameData();
   const { advanced } = useEditorMode();
   const { draft, apply, setField } = useEditingDraft<Item>(item, updateItem);
   const ruleHost = useItemRuleHost(item.id);
   const groupProps = { value: draft, onChange: setField, placeholders, ownerId: item.id };
+
+  // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by then.
+  // A key no tab claims leaves the panel where the author put it.
+  useEffect(() => {
+    const owning = focusField ? itemTabForField(focusField.fieldKey) : null;
+    if (owning) onTabChange(owning);
+  }, [focusField, onTabChange]);
 
   return (
     <PanelTabs

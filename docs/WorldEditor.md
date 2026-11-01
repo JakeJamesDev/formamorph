@@ -187,7 +187,7 @@ Switching to Simple mode doesn't remove anything. The hidden fields keep their v
 <!-- keywords: swap text for chip, keyboard shortcuts, skip to next result, turn word into variable, undo a swap, confirm bulk change, shift+enter -->
 <!-- route: replaceAll -->
 
-A search covers the **Overview**, **Stats**, **Entities**, **Locations**, **Traits**, **Dictionary** and **Placeholders** tabs, on each one the current mode shows. Text on the **Media**, **Items**, **Scripts** and **Tools** tabs isn't searched. It matches chips by their label, name or values.
+A search covers the **Overview**, **Entities**, **Items**, **Locations**, **Traits**, **Stats**, **Dictionary**, **Placeholders**, **Scripts** and **Tools** tabs, on each one the current mode shows. The **Media** tab holds no text of its own, so a search skips it. It matches chips by their label, name or values.
 
 - **Enter** goes to the next match. **Shift+Enter** goes to the previous one. **Esc** clears the search, or closes the bar on mobile.
 - On desktop, **Show options and replace** opens the full bar over the top of the editor. **Collapse to search** folds it back and keeps your search. **Close Search** clears your search and folds the bar back.
@@ -196,6 +196,7 @@ A search covers the **Overview**, **Stats**, **Entities**, **Locations**, **Trai
 - **Replace all** asks first, and says how many matches and fields it changes.
 - A chip can't be replaced as text. Change it in its Chip Options.
 - A field that can't hold a chip is skipped when you replace text with a placeholder.
+- A Tool's name is skipped when the new name isn't one **Save Tool** accepts.
 
 In Advanced mode, the replace row can put a placeholder chip in place of text. Select the swap button, then pick a placeholder in **Choose Placeholder**.
 
