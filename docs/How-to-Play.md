@@ -305,7 +305,7 @@ After each turn's narration, the **Inventory** prompt reads what happened and up
 <!-- keywords: npc profile, character sheet, portrait, bio, unknown name, who is this, click a name, cast details -->
 <!-- route: entity -->
 
-Select a name in the **Entities** tab to open it. The first select shows that entity's Avatar, 3D model or image in the entity view.
+Select a name in the **Entities** tab, then select it again to open the dialog. The first select shows that entity's Avatar, 3D model or image in the entity view. If the entity is under **In Scene**, it also shows in the **Stats** tab. On mobile, one select does both.
 
 The dialog shows the entity's image or 3D model, its player-facing description, and its sound. An entity the story invented also has **Edit** and **Regenerate** for its description. **Regenerate** shows a **New Description** to **Keep** or **Discard**.
 

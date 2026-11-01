@@ -262,6 +262,34 @@ describe('the entity view and the stat panel', () => {
     expect(within(section()!).getByText('Stock')).toBeInTheDocument();
   });
 
+  it('moves the dropdown when the entity list picks an entity with nothing to show', async () => {
+    const plainOdette = { ...odette, image: undefined };
+    renderInGame(
+      <>
+        <LeftPanel entities={[bram, plainOdette, wick] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />
+        <RightPanel
+          onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
+          onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null} language="" setLanguage={vi.fn()}
+        />
+      </>,
+      { ...stage, world: { entities: [bram, plainOdette, wick, mara], locations: [YARD] } as never },
+    );
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    fireEvent.click(await screen.findByText('Odette'));
+    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Odette');
+    expect(within(section()!).getByText('Stock')).toBeInTheDocument();
+    expect(shownInView()).toContain('Bram');
+  });
+
+  it('leaves the dropdown on its fallback when the entity list picks an Also Here entity', async () => {
+    both();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    const quiet = within(await screen.findByRole('region', { name: 'Also Here' })).getByText('Mara');
+    fireEvent.click(quiet);
+    expect(quiet.closest('button')).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Bram');
+  });
+
   it('leaves the entity view on its fallback while the dropdown reads (None)', async () => {
     both('wick');
     await choose('(None)');

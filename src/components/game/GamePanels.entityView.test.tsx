@@ -133,6 +133,49 @@ describe('LeftPanel — one entity view', () => {
     expect(row('Heron')).not.toHaveAttribute('aria-current');
   });
 
+  it('selects an entity with nothing to show first, keeps the view on its fallback, then opens the popup', () => {
+    const plain = { id: 'plain', name: 'Plain', locations: [] } as unknown as Entity;
+    const { onEntityClick } = show({
+      cast: [heron, plain], scene: [{ name: 'Heron', revealed: true }, { name: 'Plain', revealed: true }],
+    });
+    fireEvent.click(entityRow('Plain'));
+    expect(onEntityClick).not.toHaveBeenCalled();
+    expect(entityRow('Plain').closest('button')).toHaveAttribute('aria-current', 'true');
+    expect(entityRow('Heron').closest('button')).not.toHaveAttribute('aria-current');
+    expect(screen.getByAltText('Heron')).toBeInTheDocument();
+
+    fireEvent.click(entityRow('Plain'));
+    expect(onEntityClick).toHaveBeenCalledWith('Plain');
+  });
+
+  it('selects first with the entity view hidden, then opens the popup', () => {
+    const { onEntityClick } = show({
+      cast: [heron, golem], scene: [{ name: 'Heron', revealed: true }, { name: 'Golem', revealed: true }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Hide Entity View' }));
+    fireEvent.click(entityRow('Golem'));
+    expect(onEntityClick).not.toHaveBeenCalled();
+    expect(entityRow('Golem').closest('button')).toHaveAttribute('aria-current', 'true');
+
+    fireEvent.click(entityRow('Golem'));
+    expect(onEntityClick).toHaveBeenCalledWith('Golem');
+  });
+
+  it('opens the popup at once on the entity the view already shows', () => {
+    const { onEntityClick } = show({ cast: [heron], scene: [{ name: 'Heron', revealed: true }] });
+    fireEvent.click(entityRow('Heron'));
+    expect(onEntityClick).toHaveBeenCalledWith('Heron');
+  });
+
+  it('selects and opens the popup together on mobile, even with nothing to show', () => {
+    mobile.value = true;
+    const plain = { id: 'plain', name: 'Plain', locations: [] } as unknown as Entity;
+    const { onEntityClick } = show({ cast: [plain], scene: [{ name: 'Plain', revealed: true }] });
+    fireEvent.click(entityRow('Plain'));
+    expect(onEntityClick).toHaveBeenCalledWith('Plain');
+    expect(entityRow('Plain').closest('button')).toHaveAttribute('aria-current', 'true');
+  });
+
   it('marks the persona row when the view falls back to the played entity', () => {
     show({
       cast: [heron, wren], scene: [{ name: 'Heron', revealed: true }],

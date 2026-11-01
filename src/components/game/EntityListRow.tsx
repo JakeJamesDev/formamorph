@@ -30,7 +30,7 @@ export function EntityListRow({ label, you, following, selected = false, disable
   /** The played persona's row: the You pill follows the name. */
   you?: boolean;
   following?: boolean;
-  /** The entity the entity view shows. */
+  /** The player's current pick, or the entity view's fallback with no pick. */
   selected?: boolean;
   /** An authored entity that failed to resolve: shown, but it opens nothing. */
   disabled?: boolean;
