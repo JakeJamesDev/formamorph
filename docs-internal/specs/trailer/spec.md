@@ -98,6 +98,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q63 | The map card shows the Map Background. C05 captures Veilwood's authored layout with its map image behind the locations, not Auto Arrange All on the plain canvas. The travel-rule labels stay hidden. |
 | Q64 | Stack captures are picked by what looks best on the card, not by world. The Brinewell entity's image (Q42) is a candidate for the profile card. The inventory card is new: the game's Inventory tab (`gameViewer`, tab `inventory`, `fixture=items`) or the editor's Items tab, whichever reads better at the card's crop. The ticket session shows both on a contact sheet and picks. |
 | Q65 | Inventory caption, proposed by the spec session, user may change: "Give them items to carry, wear and use." |
+| Q66 | Ticket 15 intent. The stack takes the tall cut to about 66 s. Accepted: Q16 makes the tall length the storyboard's, not a bar, and cutting approved shots to stay under 60 s is the worse trade. Storyboard §4 states the measured total in place of the "under 60 s" sentence. The wide cut stays under 90 s. |
 
 ### Facts the design rests on
 
