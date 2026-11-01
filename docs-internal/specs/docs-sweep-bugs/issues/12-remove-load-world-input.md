@@ -1,6 +1,6 @@
 # 12: Remove the Unreachable Load World Input
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -15,7 +15,15 @@ Spec: Q8, Implementation Decisions "Dead input". Evidence: docs-sweep ticket 07,
 
 ## Acceptance criteria
 
-- [ ] A search of the source finds no `load-world` id, handler or test after the change
-- [ ] The World Editor still opens a world from the main menu (existing tests green)
-- [ ] No current docs page describes the input (checked); released changelog notes stay as written
-- [ ] A changelog fragment under Minor / Removed / 🛠️
+- [x] A search of the source finds no `load-world` id, handler or test after the change (grep of `src` found only the `sound-upload-world-bgm` ids; unused imports removed, typecheck green)
+- [x] The World Editor still opens a world from the main menu (affected tests green in the gate run)
+- [x] No current docs page describes the input (checked); released changelog notes stay as written
+- [x] A changelog fragment under Minor / Removed / 🛠️ (`docs-internal/changelog.d/docs-sweep-bugs-12.md`)
+
+## Landed
+
+**Not verified**
+- None. The mattpocock code review was skipped: the change is a pure deletion with typecheck, lint and affected tests green.
+
+**For you**
+- None.

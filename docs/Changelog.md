@@ -88,6 +88,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A narration probe measures how often an unmet stranger's true name reaches the prose with Thinking Mode Off.** `narration-stranger-probe.mjs` scores name leaks and label use per case, and a guard case where the stranger gives their name.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
+#### ➖ Removed
+
+- **🛠️ Developer tooling**
+  - **Removed the hidden Load World file input from the World Editor.** No button opened it, so the input and its handler never ran.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

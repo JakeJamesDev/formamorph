@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type MutableRefObject, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type MutableRefObject, type ReactNode } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMoves } from '@/contexts/worldRecorder';
@@ -6,7 +6,6 @@ import { useHistoryChords } from '@/components/editor/useHistoryChords';
 import { DevEditorPrompts } from '@/components/editor/DevEditorPrompts';
 import { HistoryPill } from '@/components/editor/HistoryPill';
 import { useDevRoute } from '@/lib/devRouter';
-import { filesFrom } from '@/lib/importFiles';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
@@ -45,7 +44,6 @@ import { useListEditor, type ListEditorParts } from '@/components/listEditorHook
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { NavRail } from '@/components/NavRail';
@@ -118,12 +116,11 @@ import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { exportedComponentLinks } from '@/lib/componentExportLinks';
-import { resolveImportedWorld } from '@/lib/worldBundleRun';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { toastSaveFailure } from '@/lib/saveFailureToast';
 import { useWorldExport } from '@/lib/useWorldExport';
-import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
+import { terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
@@ -976,21 +973,6 @@ const WorldEditorInner = ({
   };
   const takeTourOffer = () => (newWorld ? startTour() : leaveWorld(startTourOnNewWorld));
 
-  const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(e);
-    if (!file) return;
-    try {
-      // Parsed off-thread — an image-heavy world file is multi-MB and JSON.parse can't be chunked.
-      const loadedWorld = await parseJsonText(await file.text());
-      // The same import boundary the main menu uses: what the file's copies follow is settled here, or
-      // the editor would show links to a library this machine has not got.
-      loadWorldData(await resolveImportedWorld(loadedWorld as World), false);
-    } catch (error) {
-      console.error('Error parsing JSON:', error);
-      toastError(error, { headline: 'Formamorph can’t read this world file. Check that it’s a world exported from Formamorph.' });
-    }
-  };
-
   // A library entity goes at the root, after every root sibling.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
@@ -1652,7 +1634,6 @@ const WorldEditorInner = ({
       <ChangedElsewhereDialog change={worldChangedElsewhere} {...changedElsewhereProps} />
       {worldExportDialog}
       {downscaleDialog}
-      <Input type="file" accept=".json" onChange={loadWorld} className="hidden" id="load-world" />
       <AddDictionaryModal
         open={showAddDictionary}
         resume={resumePicker}
