@@ -7,6 +7,7 @@ export interface ErrorBody {
   error?: string;
   message?: string;
   code?: unknown;
+  errors?: unknown;
 }
 
 /** The body fields a call site reads its message from, in order. */
@@ -49,11 +50,21 @@ function responseDetails(response: Response, text: string): string {
   ].join('\n');
 }
 
-/** A failed response whose body was already read as `text`: the parsed body, the reason from `fields` or `fallback`, and the details. */
+/** The validation reasons of an `errors` array of `{ msg }`, joined onto one line. */
+function validationReasons(errors: unknown): string {
+  if (!Array.isArray(errors)) return '';
+  return errors
+    .map((entry: unknown) => (typeof entry === 'object' && entry !== null && 'msg' in entry ? entry.msg : undefined))
+    .filter((msg): msg is string => typeof msg === 'string' && msg !== '')
+    .map((msg) => msg.replace(/[.\s]+$/, ''))
+    .join('. ');
+}
+
+/** A failed response whose body was already read as `text`: the parsed body, the details, and one message. The message is the first reason in `fields`, else the `errors` reasons, else `fallback`. */
 export function failureFromText(response: Response, text: string, fallback: string, fields = ERROR_FIRST): Failure {
   const body = parseErrorBody(text);
   const reason = fields.map((field) => body[field]).find((value) => typeof value === 'string' && value);
-  return { body, message: reason || fallback, details: responseDetails(response, text) };
+  return { body, message: reason || validationReasons(body.errors) || fallback, details: responseDetails(response, text) };
 }
 
 /** Reads a failed response once; see {@link failureFromText}. */
