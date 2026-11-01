@@ -50,6 +50,11 @@ const renderTraits = (
   });
 };
 
+const pick = async (label: string) => {
+  await userEvent.click(screen.getByRole('combobox', { name: 'Selected entity' }));
+  await userEvent.click(await screen.findByRole('option', { name: label }));
+};
+
 /** The traits with a control on screen right now, in render order. */
 const shown = () =>
   screen.queryAllByRole('checkbox').concat(screen.queryAllByRole('radio'))
@@ -514,9 +519,11 @@ describe('entity nodes in the traits tab', () => {
       expect(screen.queryByText(/Ash/)).toBeNull();
     });
 
-    it('numbers strangers who share a label as distinct nodes', () => {
+    it('numbers strangers who share a label as distinct nodes', async () => {
       pastTraits([{ id: 'e-ash', name: 'Ash' }, { id: 'e-bo', name: 'Bo' }]);
-      expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['a hooded man', 'a hooded man (2)']);
+      expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['a hooded man']);
+      await pick('a hooded man (2)');
+      expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['a hooded man (2)']);
       expect(screen.queryByText(/Ash|Bo\b/)).toBeNull();
     });
   });
@@ -586,14 +593,56 @@ describe('linked traits in the traits tab', () => {
     openDisabled(name);
   };
 
-  it('lists a linked original once per owner, under each owner’s node, and never at the top level', () => {
+  it('lists a linked original once per owner, under each owner’s node, and never at the top level', async () => {
     withLinks();
     expect(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' })).toBeEnabled();
+    await pick('Bo');
     unfold('Bo');
     expect(within(section('Bo')).getByRole('checkbox', { name: 'Switch on Paladin' })).toBeEnabled();
-    expect(screen.getAllByText('Paladin')).toHaveLength(2);
     expect(screen.queryByRole('group', { name: 'Blueprints' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Classes' })).toBeNull();
+  });
+
+  it('draws the selected entity’s node alone, and keeps the player’s own through every pick', async () => {
+    withLinks();
+    expect(screen.queryByRole('group', { name: 'Bo' })).toBeNull();
+    expect(section('Wanderer')).toBeInTheDocument();
+    await pick('Bo');
+    expect(section('Bo')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+    expect(section('Wanderer')).toBeInTheDocument();
+    await pick('(None)');
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Bo' })).toBeNull();
+    expect(section('Wanderer')).toBeInTheDocument();
+  });
+
+  it('counts only the drawn owners in the active line', async () => {
+    withLinks();
+    expect(screen.getByText(/1 active:/)).toBeInTheDocument();
+    await pick('Bo');
+    expect(screen.queryByText(/1 active:/)).toBeNull();
+  });
+
+  it('keeps a node’s fold when a pick hides it and brings it back', async () => {
+    withLinks();
+    fireEvent.click(within(section('Ash')).getByRole('button', { name: /^Ash,/ }));
+    expect(within(section('Ash')).queryByRole('radio', { name: 'Switch off Paladin' })).toBeNull();
+    await pick('Bo');
+    await pick('Ash');
+    expect(within(section('Ash')).queryByRole('radio', { name: 'Switch off Paladin' })).toBeNull();
+  });
+
+  it('says so when the selected entity has no traits', async () => {
+    renderTraits([PALADIN, WIZARD], GROUPS, [], { world: { entities: [ash, bo, { id: 'e-cy', name: 'Cy' }] } });
+    await pick('Cy');
+    expect(screen.getByRole('status')).toHaveTextContent('No traits to show.');
+    expect(screen.getByRole('button', { name: 'Cy' })).toBeInTheDocument();
+  });
+
+  it('adds no picker when no other entity owns traits', () => {
+    renderTraits([PALADIN], [], [], { world: { entities: [{ id: 'e-cy', name: 'Cy' }] } });
+    expect(screen.queryByRole('combobox', { name: 'Selected entity' })).toBeNull();
   });
 
   it('hands a linked trait’s switch to the runtime with the owner whose row it is', () => {

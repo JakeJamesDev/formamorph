@@ -72,6 +72,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Give lists only the entities in the scene, and shows a stranger under the name you know.** A stranger with no name to show isn't listed.
     - **World Editor entities have a Stranger Name and a Stranger Description, in Advanced mode.** The player sees them in place of the Name and the Player-Facing Description until they meet the entity.
     - **The stat picker and the Traits tab list only the entities in the scene.** A stranger shows under the name you know, in its stats and traits too.
+    - **The Stats, Traits and Inventory tabs now show the entity you select in the Entities tab.** Each has the same picker, for **In Scene** entities. Traits shows that entity's traits, and Inventory lists what it visibly wears.
     - **The Map and the Help window show only the entities you've met.** An entity with no Stranger Name shows from the start. An entity at several locations shows at each one.
     - **The narrator calls a stranger by its Stranger Name until you meet it.** You meet it when the narration uses its Name. The narrator doesn't use the stranger's first name before then.
     - **Scripts can read whether the player has met an entity, and can make the player meet it.** Read `entities.<Entity>.met`, or call `entities.<Entity>.meet()`. `met` never turns false.
@@ -108,7 +109,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Scene Presence:**
     - **The Traits tab shows a stranger's traits under the name you know.** Trait names and descriptions use that name, and strangers who share one get numbers.
-  - **The Entities tab now highlights the selected entity, and its rows work from the keyboard.** The first click selects any entity you've met, even one with no art, and the next opens its details. An **In Scene** entity also shows in the **Stats** tab.
+  - **The Entities tab now highlights the selected entity, and its rows work from the keyboard.** The first click selects any entity you've met, even one with no art, and the next opens its details.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
   - **The Entities tab now clears when you move to a new place, and keeps your followers.** The last room's people no longer stay listed until the next narration.
   - **Closing the World Editor while the Test Bench is still checking a large world no longer freezes Formamorph.** The check stops when the editor closes.

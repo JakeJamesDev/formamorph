@@ -89,6 +89,7 @@ import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { LocationTabBody } from './LocationTabBody';
 import { EntityListRow, EntityListSection } from './EntityListRow';
+import { EntityEquipped, visibleWorn } from './EntityEquipped';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
 import { rowDelta } from '@/lib/useStatDeltas';
@@ -200,10 +201,11 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
   const entityViewMorphs = useEntityStatMorphs(entityViewSource);
   const entityViewAvatar = entityViewSubject && (entityViewEntity ? avatars.sourceOf(entityViewEntity) : avatars.played);
 
-  // The highlighted row: a pick still listed here, else whoever the view falls back to.
+  // The highlighted row: a pick still listed here, else whoever the view falls back to, else with no pick the
+  // entity the right panel falls back to.
   const selectedRowId = selectedEntityId && (selectedEntityId === personaEntity?.id || lookAround.some((row) => row.entity.id === selectedEntityId))
     ? selectedEntityId
-    : entityViewEntity?.id;
+    : entityViewEntity?.id ?? (selectedEntityId === undefined ? lookAround.find((row) => row.inScene && row.met)?.entity.id : undefined);
 
   // Clicking an entity selects it, which moves the view when it has something to show and the stat panel when
   // it is listed there. The popup opens on mobile, and in landscape on the row already selected. A
@@ -1391,6 +1393,29 @@ export const RightPanel = ({
   const {
     options: entityOptions, shown: shownEntity, section: entitySection, players: playedOwners, showPicker: entitiesShowStats,
   } = useStatPanelEntity(entityInForce);
+  // The listed entities the player doesn't play. Each tab shows the picker only when one of them has something there.
+  const otherOptions = entityOptions.filter((option) => !playedOwners.some((owner) => owner.entity.id === option.id));
+  const entitiesShowTraits = otherOptions.some((option) => traitTree.entityNodes.has(option.id));
+  const entitiesShowWorn = otherOptions.some((option) => visibleWorn(itemCopies, { kind: 'entity', id: option.id }).length > 0);
+  // Only listed entities follow the pick: a library owner out of the scene has no picker row to reach it by.
+  const hiddenTraitOwners = new Set(otherOptions.filter((option) => option.id !== shownEntity?.id).map((option) => option.id));
+  const entityPicker = (
+    <div className="flex-shrink-0 px-2 pb-2">
+      <Select
+        value={shownEntity?.id ?? NO_ENTITY}
+        onValueChange={(value) => setSelectedEntityId(value === NO_ENTITY ? null : value)}
+      >
+        <SelectTrigger aria-label="Selected entity" className="h-8 w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {entityItems(entityOptions)}
+          <SelectSeparator />
+          <SelectItem value={NO_ENTITY}>(None)</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
   const playedRows = playedOwners.filter((owner) => owner.rows.length > 0);
   // Stats the player sees besides the world's own.
   const ownersShowStats = entitiesShowStats || playedRows.length > 0;
@@ -1475,23 +1500,7 @@ export const RightPanel = ({
         />
         {/* `flex` is state-scoped for the same reason as on the Entities tab. */}
         <TabsContent value="stats" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
-          {entitiesShowStats && (
-            <div className="flex-shrink-0 px-2 pb-2">
-              <Select
-                value={shownEntity?.id ?? NO_ENTITY}
-                onValueChange={(value) => setSelectedEntityId(value === NO_ENTITY ? null : value)}
-              >
-                <SelectTrigger aria-label="Entity stats" className="h-8 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {entityItems(entityOptions)}
-                  <SelectSeparator />
-                  <SelectItem value={NO_ENTITY}>(None)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {entitiesShowStats && entityPicker}
           <ScrollArea className="min-h-0 flex-grow mb-4 relative">
             <div className="space-y-2 pb-2">
               {visibleStats.length > 0 && (
@@ -1561,32 +1570,58 @@ export const RightPanel = ({
             />
           </ScrollArea>
         </TabsContent>
-        <TabsContent value="traits" className="flex-grow overflow-hidden">
-          {/* Unticked whether it was switched off or never taken — the panel draws no line between the two,
-              because a trait that can be taken at will makes "owned" a distinction without a difference. */}
-          <TraitsTab
-            traits={listedTraits}
-            groups={traitTree.groups}
-            entityNodes={traitTree.entityNodes}
-            playerEntityIds={playerEntityIds(traitTree)}
-            stats={globalStats}
-            ownerStats={viewEntityStats}
-            isOff={(id, ownerId) => (ownerId === null
-              ? disabledTraits.has(id) || !heldTraitIds.has(id)
-              : !activeOwned[ownerId]?.includes(id))}
-            readOnly={isViewingPast}
-            onToggleTrait={onToggleTrait}
-            resolveTraitText={resolveTreeTraitText}
-            view={traitsView}
-            setView={setTraitsView}
-            gates={traitGates}
-            cascade={traitCascade}
-            onDismissCascade={onDismissTraitCascade}
-          />
+        <TabsContent value="traits" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
+          {entitiesShowTraits && entityPicker}
+          <div className="min-h-0 flex-grow">
+            {/* Unticked whether it was switched off or never taken — the panel draws no line between the two,
+                because a trait that can be taken at will makes "owned" a distinction without a difference. */}
+            <TraitsTab
+              traits={listedTraits}
+              groups={traitTree.groups}
+              entityNodes={traitTree.entityNodes}
+              playerEntityIds={playerEntityIds(traitTree)}
+              stats={globalStats}
+              ownerStats={viewEntityStats}
+              isOff={(id, ownerId) => (ownerId === null
+                ? disabledTraits.has(id) || !heldTraitIds.has(id)
+                : !activeOwned[ownerId]?.includes(id))}
+              readOnly={isViewingPast}
+              onToggleTrait={onToggleTrait}
+              resolveTraitText={resolveTreeTraitText}
+              hiddenOwners={hiddenTraitOwners}
+              emptyOwner={entitiesShowTraits && entitySection && !traitTree.entityNodes.has(entitySection.entity.id) ? shownEntity?.label : undefined}
+              view={traitsView}
+              setView={setTraitsView}
+              gates={traitGates}
+              cascade={traitCascade}
+              onDismissCascade={onDismissTraitCascade}
+            />
+          </div>
         </TabsContent>
         {hasInventory && (
-          <TabsContent value="inventory" className="flex-grow overflow-hidden">
-            <InventoryTab {...inventory} />
+          <TabsContent value="inventory" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
+            {entitiesShowWorn && entityPicker}
+            <div className="min-h-0 flex-grow">
+              <InventoryTab
+                {...inventory}
+                entityCard={entitiesShowWorn && shownEntity && entitySection && (
+                  <PanelOwnerCard
+                    key={shownEntity.id}
+                    role="region"
+                    aria-label={`${shownEntity.label} inventory`}
+                    name={shownEntity.label}
+                    entity
+                    className="mt-2"
+                  >
+                    {visibleWorn(itemCopies, { kind: 'entity', id: entitySection.entity.id }).length === 0 ? (
+                      <p role="status" className="px-2 py-2 text-label text-muted-foreground">Nothing equipped.</p>
+                    ) : (
+                      <div className="px-2 py-1"><EntityEquipped entity={entitySection.entity} /></div>
+                    )}
+                  </PanelOwnerCard>
+                )}
+              />
+            </div>
           </TabsContent>
         )}
         <TabsContent value="location" className="flex-grow overflow-hidden">

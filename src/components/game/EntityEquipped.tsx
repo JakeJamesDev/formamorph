@@ -5,7 +5,11 @@ import { byEquipOrder, copyFace, occupiedSlots } from '@/lib/items';
 import { copiesAt } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
-import type { Entity } from '@/types';
+import type { Entity, ItemCopy, ItemCopyWhere } from '@/types';
+
+/** The Item Copies at `where` the player can see worn. */
+export const visibleWorn = (copies: readonly ItemCopy[], where: ItemCopyWhere): ItemCopy[] =>
+  copiesAt(copies, where).filter((c) => c.equipped && c.visibility === 'visible').sort(byEquipOrder);
 
 /**
  * An entity's visible equipped items, each under its slot (Q31, Q116). Carried and hidden Item Copies stay
@@ -15,9 +19,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
   const { itemCopies, personaRef } = useGameplay();
   const data = useGameDataOptional();
   const resolveText = usePlaceholderResolver();
-  const worn = copiesAt(itemCopies, playsAs(entity, personaRef) ? { kind: 'you' } : { kind: 'entity', id: entity.id })
-    .filter((c) => c.equipped && c.visibility === 'visible')
-    .sort(byEquipOrder);
+  const worn = visibleWorn(itemCopies, playsAs(entity, personaRef) ? { kind: 'you' } : { kind: 'entity', id: entity.id });
   if (worn.length === 0) return null;
   const slotName = (slotId: string) => resolveText(data?.slots?.find((s) => s.id === slotId)?.name ?? '');
   return (

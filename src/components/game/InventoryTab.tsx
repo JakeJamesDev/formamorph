@@ -45,6 +45,8 @@ export interface InventoryTabProps {
   /** The After Use effects running on the played Persona (Q40). */
   timed?: readonly TimedEffectView[];
   onOps: (ops: InventoryOp[]) => void;
+  /** The selected entity's card, between the player's and the location's. */
+  entityCard?: ReactNode;
 }
 
 const YOU: ItemCopyWhere = { kind: 'you' };
@@ -207,7 +209,7 @@ function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: 
 /** The game panel's Inventory tab: the played Persona's figure with their equipped items, then carried items,
  *  then a card for what lies at the location. */
 export function InventoryTab({
-  ownerName, copies, lying, items, runtimeItems = [], body, slots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps,
+  ownerName, copies, lying, items, runtimeItems = [], body, slots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
@@ -351,6 +353,7 @@ export function InventoryTab({
           </>
         )}
       </PanelOwnerCard>
+      {entityCard}
       {/* A location is not an owner (Q69), so what lies here gets its own card. */}
       <PanelOwnerCard role="region" aria-label="Here" name={locationName || 'Here'} className="mt-2">
         {lyingHere.length === 0 ? (
