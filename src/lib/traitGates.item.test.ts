@@ -13,7 +13,7 @@ const ring = (status: ItemRequirement['status'] = 'owned', extra: Partial<ItemRe
   ({ kind: 'item', id: 'ring', status, ...extra });
 const copy = (id: string, where: ItemCopy['where'], over: Partial<ItemCopy> = {}): ItemCopy =>
   ({ id, item: { kind: 'item', itemId: 'ring' }, where, quantity: 1, visibility: 'visible', ...over });
-const worldItems = [{ id: 'ring', name: 'Cursed Ring', slotId: 'finger' }, { id: 'cup', name: 'Cup' }];
+const worldItems = [{ id: 'ring', name: 'Cursed Ring', slotRule: { mode: 'either' as const, slotIds: ['finger'] } }, { id: 'cup', name: 'Cup' }];
 const entities = [{ id: 'ash', name: 'Ash' }];
 
 const input = (

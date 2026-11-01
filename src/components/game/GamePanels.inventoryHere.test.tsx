@@ -15,7 +15,7 @@ const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
 const slots: Slot[] = [{ id: 'hand', name: 'Hand' }];
 const items = [
   item('coin', 'Coin'),
-  item('dagger', 'Dagger', { slotId: 'hand', stackable: false }),
+  item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false }),
   item('crown', 'Old Crown', { stackable: false, bound: true }),
   // Shows the cursed art while the owner also owns the Coin.
   item('ring', 'Silver Ring', {

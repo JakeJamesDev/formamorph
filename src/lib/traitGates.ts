@@ -4,6 +4,7 @@
 
 import type {
   Daypart, ItemCopy, ItemRequirement, PersonaRef, RequirementOwner, StatComparison, StatRequirement, TimeRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow,
+  SlotRule,
 } from '@/types';
 import { DAYPARTS, OPENING_DAYPART, daypartSet } from './gameClock';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
@@ -85,11 +86,11 @@ export type GateActive = Scoped<readonly string[]>;
 /** No trait active anywhere. */
 export const NO_ACTIVE: GateActive = scoped([]);
 
-/** An authored item as a Condition reads it. `slotId` marks an item that can be equipped. */
+/** An authored item as a Condition reads it. `slotRule` marks an item that can be equipped. */
 export interface GateItem {
   id: string;
   name: string;
-  slotId?: string;
+  slotRule?: SlotRule;
   unidentifiedName?: string;
   unidentifiedDescription?: string;
 }
@@ -1190,7 +1191,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   ];
   const items = (input.worldItems ?? []).flatMap((item) => [
     option({ kind: 'item', id: item.id, status: 'owned' }, [], itemOwners),
-    ...(item.slotId ? [option({ kind: 'item', id: item.id, status: 'equipped' }, [], itemOwners)] : []),
+    ...(item.slotRule ? [option({ kind: 'item', id: item.id, status: 'equipped' }, [], itemOwners)] : []),
   ].map((o) => ({ ...o, label: item.name })));
   return { traits, groups, personas, items };
 }

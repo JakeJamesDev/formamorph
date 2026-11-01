@@ -33,7 +33,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q5 | A Body can change in play. This is in scope |
 | Q6 | Superseded by Q9 and Q27 |
 | Q7 | Superseded by Q27 and Q28 |
-| Q8 | The validator refuses an equip into a slot the owner's Body lacks. The Inventory pass lists each owner's own slots |
+| Q8 | The validator refuses an equip into a slot the owner's Body lacks. The Inventory pass lists each owner's own slots. **Extended:** an All of item is refused when the Body lacks any of its slots (body-layouts-and-slot-rules Q39) |
 | Q9 | The played Persona takes the Custom Persona entity's Body pick, otherwise the Default, otherwise none |
 | Q10 | Inventory has not shipped (`fe698b8d4` is not in v3.5.2). No migration. Emberwatch is reauthored |
 | Q11 | A Body changes through a trait Body row or through a script |
@@ -43,7 +43,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q15 | The record is called **Body** |
 | Q16 | Persona Items leaves Overview with the slots and goes into the Equipment Settings editor |
 | Q17 | An entity's Body pick sits at the top of its Items tab, above its placements |
-| Q18 | An owner placement row shows an **Equipped** checkbox only when its item has a slot. The row warns when the owner's Body lacks that slot |
+| Q18 | An owner placement row shows an **Equipped** checkbox only when its item has a slot. The row warns when the owner's Body lacks that slot. **Amended:** the warning follows the Slot Rule (body-layouts-and-slot-rules Q57) |
 | Q19 | Reauthoring Emberwatch is a ticket in this spec |
 | Q20 | Scripts read and write an owner's Body by name. They read the Body in force, with each slot's capacity and the Item Copies in it |
 | Q21 | AI prompts see an owner's slots, never the Body's name. The traits tell the story of a transformation |
@@ -69,7 +69,7 @@ Slots, Bodies and the player's starting items move out of Overview. They go into
 | Q41 | (ticket 05) The log line reads "Body: Wolf" for the player and "Rex's Body: Wolf" for an entity, plus ". Unequipped A, B" when something came off, with copies named as the settle names them. None logs "Body: None"; an unwind logs the Body it returns to. A Hidden trait's row works and logs the same line |
 | Q42 | (ticket 05) A load that finds a different Body settles it: it unequips what no longer fits and reverses effects exactly, but fires no When Unequipped (the load settle fires nothing, scripts Q47) and writes no log line. It leaves a diagnostic, as inventory Q60 does |
 | Q43 | (ticket 03) `usedByText` gains a verb per reference kind, so one helper says what happens: "deletes its 2 Body entries and clears the slot on 3 items", "resets 3 picks to Default" |
-| Q44 | (ticket 03) When a Body entry's capacity drops, an entry goes, or a Body is deleted, item Slot Sizes in that slot are cut silently to the new largest capacity (inventory Q77) |
+| Q44 | (ticket 03) When a Body entry's capacity drops, an entry goes, or a Body is deleted, item Slot Sizes in that slot are cut silently to the new largest capacity (inventory Q77). **Superseded:** Slot Size retires, so nothing is cut (body-layouts-and-slot-rules Q35, Q59) |
 | Q45 | (ticket 03) A Body has one entry per slot. Add Entry offers only the slots it lacks, entries drag-reorder, capacity is a whole number of 1 or more with no max, and a new Body starts as "New Body" with no entries |
 | Q46 | (ticket 03) With no Bodies, the entity Body select is hidden and a hint points at Equipment. Duplicate Body names get an inline warning in the Bodies section, because scripts address Bodies by name; they are not blocked |
 | Q47 | (ticket 03) The Custom Persona entity's Body select carries a short hint that it also sets the player's Body under None or a library persona. The Equipment Settings entry stays pinned under any Items filter, with no row actions and no drag |

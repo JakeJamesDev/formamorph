@@ -2730,7 +2730,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": [
@@ -2767,7 +2773,12 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "58c8bc32-9dfa-47f2-affe-0a032671cbf4",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "58c8bc32-9dfa-47f2-affe-0a032671cbf4"
+        ]
+      },
       "statEffects": [
         {
           "id": "0876b548-60d0-4d65-9e31-52f5e0671e45",
@@ -2821,8 +2832,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
-      "slotSize": 2,
+      "slotRule": {
+        "mode": "all",
+        "slotIds": [
+          "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+        ]
+      },
       "statEffects": [
         {
           "id": "c7330ad4-13db-422e-a80b-8cf5d2aaac66",
@@ -2924,7 +2940,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97",
+          "e97ee514-725f-4b62-8a79-9ea920d3db51"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [
         {
@@ -2952,7 +2974,12 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "bf8a9e30-4a2e-4710-b294-9324688bbd3c"
+        ]
+      },
       "statEffects": [
         {
           "id": "896344da-242a-40c2-abb6-0181c339bd4a",
@@ -3021,7 +3048,12 @@
       "imageTags": "broken iron crown, crown points, dull red gems, sheared metal edge, frost, dark fantasy",
       "stackable": false,
       "bound": true,
-      "slotId": "b9c8a35a-3873-4bf7-a5db-b23593a63d07",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "b9c8a35a-3873-4bf7-a5db-b23593a63d07"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": [],
@@ -3047,7 +3079,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97",
+          "e97ee514-725f-4b62-8a79-9ea920d3db51"
+        ]
+      },
       "statEffects": [
         {
           "id": "f5818e0e-54a0-43b0-91f6-b4bbce671237",
@@ -3084,7 +3122,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": []
@@ -3102,7 +3146,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": []
@@ -3137,7 +3187,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": []
@@ -3155,7 +3211,12 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "bf8a9e30-4a2e-4710-b294-9324688bbd3c"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": []
@@ -3205,7 +3266,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": []
@@ -3223,7 +3290,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "e97ee514-725f-4b62-8a79-9ea920d3db51",
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
+        ]
+      },
       "statEffects": [
         {
           "id": "f4c76351-dd42-40ef-8821-b443e6844494",
@@ -3337,7 +3410,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97",
+          "e97ee514-725f-4b62-8a79-9ea920d3db51"
+        ]
+      },
       "statEffects": [
         {
           "id": "b28911b1-168c-4223-81b3-9f8b596fd991",
@@ -3391,7 +3470,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97",
+          "e97ee514-725f-4b62-8a79-9ea920d3db51"
+        ]
+      },
       "statEffects": [],
       "traitEffects": [
         {
@@ -3450,7 +3535,13 @@
         "statId": "gold"
       },
       "stackable": false,
-      "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
+      "slotRule": {
+        "mode": "either",
+        "slotIds": [
+          "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97",
+          "e97ee514-725f-4b62-8a79-9ea920d3db51"
+        ]
+      },
       "statEffects": [
         {
           "id": "af5dde28-ff70-4aff-8dc9-d9456f5193e9",
@@ -3590,7 +3681,11 @@
   "slots": [
     {
       "id": "e97ee514-725f-4b62-8a79-9ea920d3db51",
-      "name": "Hands"
+      "name": "Main Hand"
+    },
+    {
+      "id": "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97",
+      "name": "Off Hand"
     },
     {
       "id": "bf8a9e30-4a2e-4710-b294-9324688bbd3c",
@@ -3611,8 +3706,10 @@
       "name": "Humanoid",
       "entries": [
         {
-          "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51",
-          "capacity": 2
+          "slotId": "e97ee514-725f-4b62-8a79-9ea920d3db51"
+        },
+        {
+          "slotId": "7c1e4f02-9a3b-4d68-b5e1-2f6a8d0c3b97"
         },
         {
           "slotId": "bf8a9e30-4a2e-4710-b294-9324688bbd3c"

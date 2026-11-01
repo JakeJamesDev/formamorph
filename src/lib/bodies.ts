@@ -2,9 +2,9 @@
  * Bodies: which slots each owner equips into, with each slot's capacity. `bodyInForce` is the one resolver
  * every slot reader takes.
  */
-import { itemsInSlot, slotSizeOf } from '@/lib/items';
+import { itemsInSlot, occupiedSlots, ruleGaps } from '@/lib/items';
 import { usedByText } from '@/lib/usedByText';
-import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, Trait, TraitBodyRow } from '@/types';
+import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, SlotRule, Trait, TraitBodyRow } from '@/types';
 
 /** The authored slice the resolver reads. An absent slice reads as empty. */
 export interface BodyWorld {
@@ -86,30 +86,23 @@ export function bodyReadingOf(world: BodyWorld, owner: SlotOwner, persona: Perso
   return { id: bodyInForce(world, owner, persona)?.id ?? null, locked: !!world.traitPicks?.[slotOwnerKey(owner)] };
 }
 
-/** Why the owner's authored Body refuses a starting equip: no Body, no such slot, or too little room. */
+/** Why the owner's authored Body refuses a starting equip: no Body, or it lacks the slots the rule needs. */
 export type StartingEquipGap =
   | { kind: 'noBody' }
-  | { kind: 'noSlot'; body: Body }
-  | { kind: 'tooSmall'; body: Body; capacity: number };
+  | { kind: 'noSlot'; body: Body; slotIds: string[] };
 
-/** The editor's read of a starting equip into `slotId` taking `size` (Q2, Q18), or null when it fits. The played
- *  Persona reads the Custom Persona entity's pick. */
-export function startingEquipGap(world: BodyWorld, owner: SlotOwner, slotId: string, size: number): StartingEquipGap | null {
+/** The editor's read of a starting equip under `rule` (Q2, Q57), or null when it fits. The played Persona reads
+ *  the Custom Persona entity's pick. */
+export function startingEquipGap(world: BodyWorld, owner: SlotOwner, rule: SlotRule): StartingEquipGap | null {
   const body = bodyInForce(world, owner, undefined);
   if (!body) return { kind: 'noBody' };
-  const entry = body.entries.find((e) => e.slotId === slotId);
-  if (!entry) return { kind: 'noSlot', body };
-  const capacity = entryCapacity(entry);
-  return size > capacity ? { kind: 'tooSmall', body, capacity } : null;
+  const slotIds = ruleGaps(rule, (slotId) => body.entries.some((e) => e.slotId === slotId));
+  return slotIds.length ? { kind: 'noSlot', body, slotIds } : null;
 }
 
 /** The entities whose Body picks play reads: the cast, plus the persona entities the cast leaves out. */
 export const bodyPickEntities = <E>(cast: readonly E[], worldPersonas: readonly E[], customPersona: E | null): E[] =>
   [...cast, ...worldPersonas, ...(customPersona ? [customPersona] : [])];
-
-/** The largest capacity any Body gives the slot: the bound on an item's Slot Size. 1 when no Body holds it. */
-export const largestCapacity = (bodies: readonly Body[], slotId: string): number =>
-  Math.max(1, ...bodies.flatMap((body) => body.entries.filter((e) => e.slotId === slotId).map(entryCapacity)));
 
 /** `bodies` without their entries for the slot. */
 export function withoutSlotEntries(bodies: Body[], slotId: string): Body[] {
@@ -120,18 +113,6 @@ export function withoutSlotEntries(bodies: Body[], slotId: string): Body[] {
 /** How many Body entries hold the slot. */
 export const slotEntryCount = (bodies: readonly Body[], slotId: string): number =>
   bodies.reduce((n, body) => n + body.entries.filter((e) => e.slotId === slotId).length, 0);
-
-/** `items` with each Slot Size cut to the largest capacity `bodies` give its slot (Q44). */
-export function withSlotSizesWithin<I extends { slotId?: string; slotSize?: number }>(items: I[], bodies: readonly Body[]): I[] {
-  const over = (item: I) => !!item.slotId && (item.slotSize ?? 1) > largestCapacity(bodies, item.slotId);
-  if (!items.some(over)) return items;
-  return items.map((item) => {
-    if (!over(item) || !item.slotId) return item;
-    const size = largestCapacity(bodies, item.slotId);
-    const { slotSize: _drop, ...rest } = item;
-    return (size === 1 ? rest : { ...item, slotSize: size }) as I;
-  });
-}
 
 /** Whether the entity picks the Body by id. */
 export const picksBody = (entity: { body?: BodyPick }, bodyId: string): boolean =>
@@ -229,32 +210,33 @@ export function traitBodyPicks(
   return picks;
 }
 
-/** The equipped Item Copies the owners' Bodies in force no longer hold: every copy in a slot its Body lacks, and
- *  the most recently equipped first where a slot's capacity dropped (Q12). */
+/** The equipped Item Copies the owners' Bodies in force no longer hold: every copy that occupies a slot its Body
+ *  lacks, the most recently equipped where a capacity dropped (Q12, Q40), and a copy its item's rule no longer
+ *  allows (Q55). */
 export function bodyMisfits(
   copies: readonly ItemCopy[], world: BodyWorld & { slots?: readonly Slot[]; items: readonly Item[] }, persona: PersonaRef | undefined,
 ): ItemCopy[] {
   const items = new Map(world.items.map((item) => [item.id, item]));
-  const sizeOf = (copy: ItemCopy) => slotSizeOf(copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
-  const groups = new Map<string, ItemCopy[]>();
-  for (const copy of copies) {
-    if (!copy.equipped || copy.where.kind === 'location') continue;
-    const key = `${slotOwnerKey(copy.where)}|${copy.equipped.slotId}`;
-    groups.set(key, [...(groups.get(key) ?? []), copy]);
+  const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
+  const worn = copies.flatMap((copy) => (copy.equipped && copy.where.kind !== 'location' ? [{ copy, owner: copy.where, stored: copy.equipped.slotId }] : []));
+  const used = new Map<string, number>();
+  const unit = (owner: SlotOwner, slotId: string) => `${slotOwnerKey(owner)}|${slotId}`;
+  const count = (owner: SlotOwner, slotId: string, by: number) => used.set(unit(owner, slotId), (used.get(unit(owner, slotId)) ?? 0) + by);
+  for (const { copy, owner } of worn) for (const slotId of occupiedSlots(copy, itemOf(copy))) count(owner, slotId, 1);
+  const bodySlotsOf = new Map<string, readonly BodySlot[]>();
+  const capacityOf = (owner: SlotOwner, slotId: string) => {
+    const held = bodySlotsOf.get(slotOwnerKey(owner)) ?? slotsInForce(world, owner, persona);
+    bodySlotsOf.set(slotOwnerKey(owner), held);
+    return held.find((s) => s.slot.id === slotId)?.capacity ?? 0;
+  };
+  const out: ItemCopy[] = [];
+  for (const { copy, owner, stored } of worn.sort((a, b) => (b.copy.equipped?.order ?? 0) - (a.copy.equipped?.order ?? 0))) {
+    const item = itemOf(copy);
+    const taken = occupiedSlots(copy, item);
+    const allowed = !item || item.slotRule?.mode === 'all' || !!item.slotRule?.slotIds.includes(stored);
+    if (allowed && taken.every((slotId) => (used.get(unit(owner, slotId)) ?? 0) <= capacityOf(owner, slotId))) continue;
+    out.push(copy);
+    for (const slotId of taken) count(owner, slotId, -1);
   }
-  return [...groups.values()].flatMap((worn) => {
-    const [first] = worn;
-    if (!first.equipped || first.where.kind === 'location') return [];
-    const { slotId } = first.equipped;
-    const capacity = slotsInForce(world, first.where, persona).find((s) => s.slot.id === slotId)?.capacity ?? 0;
-    const newestFirst = [...worn].sort((a, b) => (b.equipped?.order ?? 0) - (a.equipped?.order ?? 0));
-    let used = worn.reduce((sum, copy) => sum + sizeOf(copy), 0);
-    const out: ItemCopy[] = [];
-    for (const copy of newestFirst) {
-      if (used <= capacity) break;
-      out.push(copy);
-      used -= sizeOf(copy);
-    }
-    return out;
-  });
+  return copies.filter((copy) => out.includes(copy));
 }

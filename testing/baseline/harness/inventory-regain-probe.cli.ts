@@ -90,7 +90,7 @@ const copiesOf = (specs: CopySpec[], offset: number): ItemCopy[] => specs.map((s
   id: `c${offset + i}`,
   item: spec.runtime ? { kind: 'runtime', runtimeItemId: spec.runtime } : { kind: 'item', itemId: spec.item! },
   where: whereOf(spec.where), quantity: spec.quantity ?? 1, visibility: spec.hidden ? 'hidden' : 'visible',
-  ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotId ?? 'hand', order: i } }),
+  ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotRule?.slotIds[0] ?? 'hand', order: i } }),
   ...((spec.state || spec.unidentified) && { state: { ...(spec.state && { state: spec.state }), ...(spec.unidentified && { unidentified: true }) } }),
 }));
 

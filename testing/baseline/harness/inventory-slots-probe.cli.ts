@@ -85,7 +85,7 @@ const equipmentOf = (c: Case): SceneEquipment => ({
 });
 const startOf = (c: Case): ItemCopy[] => c.copies.map((spec, i) => ({
   id: `c${i}`, item: { kind: 'item', itemId: spec.item }, where: whereOf(spec.where), quantity: spec.quantity ?? 1, visibility: 'visible',
-  ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotId ?? 'hand', order: i } }),
+  ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotRule?.slotIds[0] ?? 'hand', order: i } }),
 }));
 
 type Arm = 'control' | 'slots' | 'clause';

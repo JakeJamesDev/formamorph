@@ -146,11 +146,10 @@ describe('applyInventoryOps', () => {
   const hand = { id: 'hand', name: 'Hand' };
   const head = { id: 'head', name: 'Head' };
   const humanoid = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] };
-  const dagger = item('dagger', { slotId: 'hand' });
-  const greatsword = item('greatsword', { stackable: false, slotId: 'hand', slotSize: 2 });
-  const helm = item('helm', { stackable: false, slotId: 'head' });
-  const crown = item('crown', { stackable: false, slotId: 'head', bound: true });
-  const items = [potion, sword, wand, dagger, greatsword, helm, crown];
+  const dagger = item('dagger', { slotRule: { mode: 'either', slotIds: ['hand'] } });
+  const helm = item('helm', { stackable: false, slotRule: { mode: 'either', slotIds: ['head'] } });
+  const crown = item('crown', { stackable: false, slotRule: { mode: 'either', slotIds: ['head'] }, bound: true });
+  const items = [potion, sword, wand, dagger, helm, crown];
   const call = (over: Partial<InventoryCall> = {}): InventoryCall =>
     ({ world: { items, slots: [hand, head], bodies: [humanoid] }, source: 'panel', newId: ids(), ...over });
   const of = (itemId: string, id: string, over: Partial<ItemCopy> = {}) => copy(id, { item: { kind: 'item', itemId }, ...over });
@@ -172,18 +171,15 @@ describe('applyInventoryOps', () => {
     expect(copies).toEqual([of('helm', 'old'), of('helm', 'new', { equipped: { slotId: 'head', order: 4 } })]);
   });
 
-  it('unequips the longest equipped first until a size-2 item fits, and the daggers merge into one stack', () => {
+  it('unequips the longest equipped first when a slot is full, and the dagger rejoins its stack', () => {
     const start = [
       of('dagger', 'late', { equipped: { slotId: 'hand', order: 5 } }),
       of('dagger', 'early', { equipped: { slotId: 'hand', order: 2 } }),
-      of('greatsword', 'gs'),
+      of('dagger', 'pack'),
     ];
-    const first = applyInventoryOps(start, [{ kind: 'equip', copyId: 'gs' }], call()).copies;
-    // The early dagger leaves first; the late one then joins its stack.
-    expect(first).toEqual([of('dagger', 'early', { quantity: 2 }), of('greatsword', 'gs', { equipped: { slotId: 'hand', order: 6 } })]);
-    // A size-1 dagger needs one free unit, so the size-2 greatsword goes.
-    const second = applyInventoryOps(first, [{ kind: 'equip', copyId: 'early' }], call()).copies;
-    expect(second.filter((c) => c.equipped).map((c) => c.item)).toEqual([{ kind: 'item', itemId: 'dagger' }]);
+    const { copies } = applyInventoryOps(start, [{ kind: 'equip', copyId: 'pack' }], call());
+    expect(copies.filter((c) => c.equipped).map((c) => c.equipped?.order).sort()).toEqual([5, 6]);
+    expect(copies.filter((c) => !c.equipped).map((c) => c.quantity)).toEqual([1]);
   });
 
   it('keeps an item equipped while the slot has room', () => {
@@ -328,13 +324,6 @@ describe('applyInventoryOps', () => {
       expect(two.every((c) => c.equipped)).toBe(true);
       const one = applyInventoryOps(start, [{ kind: 'equip', copyId: 'b' }], withPicks([{ id: 'bram', body: { kind: 'body', id: 'imp' } }])).copies;
       expect(one.filter((c) => c.equipped).map((c) => c.quantity)).toEqual([1]);
-    });
-
-    it("refuses an item bigger than the owner's Body entry", () => {
-      const result = applyInventoryOps(
-        [of('greatsword', 'gs', { where: bramWhere })], [{ kind: 'equip', copyId: 'gs' }], withPicks([{ id: 'bram', body: { kind: 'body', id: 'imp' } }]),
-      );
-      expect(result.diagnostics).toEqual(['Inventory (panel) skipped equip: Item Copy gs takes 2 of slot Hand\'s 1']);
     });
 
     it('equips the played Persona through the Custom Persona pick under None, and a world persona through its own', () => {

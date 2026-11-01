@@ -110,7 +110,7 @@ describe('timed effects', () => {
   });
 
   it('applies a use once when it sets off an unequip', () => {
-    const sword = item('sword', 'Sword', { slotId: 'hand', equipRequires: [{ all: [{ kind: 'stat', id: 'strength', operator: '>=', value: 5, unit: 'raw' }] }] });
+    const sword = item('sword', 'Sword', { slotRule: { mode: 'either', slotIds: ['hand'] }, equipRequires: [{ all: [{ kind: 'stat', id: 'strength', operator: '>=', value: 5, unit: 'raw' }] }] });
     const sap = item('sap', 'Weakening Sap', { uses: 1, statEffects: [after('strength', -1, PERMANENT)] });
     const list = [...items, sword, sap];
     let n = 0;
@@ -299,7 +299,7 @@ describe('uses and When Empty', () => {
 
   it('carries the Becomes result even when the used copy was equipped', () => {
     const shard = item('shard', 'Cracked Gem');
-    const gem = item('gem', 'Focus Gem', { slotId: 'hand', stackable: false, uses: 1, whenEmpty: { kind: 'becomes', itemId: 'shard' } });
+    const gem = item('gem', 'Focus Gem', { slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false, uses: 1, whenEmpty: { kind: 'becomes', itemId: 'shard' } });
     const list = [...items, shard, gem];
     let n = 0;
     let play = act(start([]), [gain('gem')], list);

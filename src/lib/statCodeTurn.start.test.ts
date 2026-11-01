@@ -101,7 +101,7 @@ describe('the At Game Start timing', () => {
   });
 
   it("reads an Equipped placement's Item Copy as equipped, in its slot", async () => {
-    const helm = { id: 'helm', name: 'Helm', slotId: 'head', statEffects: [], traitEffects: [], equipRequires: [] };
+    const helm = { id: 'helm', name: 'Helm', slotRule: { mode: 'either' as const, slotIds: ['head'] }, statEffects: [], traitEffects: [], equipRequires: [] };
     const slots = [{ id: 'head', name: 'Head' }];
     const { state } = openingFold({
       items: [helm], slots, bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }] }],

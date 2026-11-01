@@ -17,7 +17,7 @@ import { personaStartLocation } from './personaPick';
 import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
-import { seedItemCopies } from './inventory';
+import { applyInventoryOps, seedItemCopies } from './inventory';
 import { openingFold } from './openingState';
 import { wantedGrants } from './inventory/grants';
 import type { Entity, ItemCopy, PersonaRef, World } from '@/types';
@@ -347,7 +347,7 @@ describe('the Emberwatch items', () => {
     const statIds = new Set(world.stats.map((stat) => stat.id));
     const traitIds = new Set(world.traits.map((trait) => trait.id));
     for (const item of items) {
-      if (item.slotId) expect(slotIds).toContain(item.slotId);
+      for (const slotId of item.slotRule?.slotIds ?? []) expect(slotIds).toContain(slotId);
       if (item.valueUnit?.kind === 'stat') expect(statIds).toContain(item.valueUnit.statId);
       for (const row of item.statEffects) expect(statIds).toContain(row.statId);
       for (const row of item.traitEffects) expect(traitIds).toContain(row.traitId);
@@ -420,12 +420,41 @@ describe('the Emberwatch items', () => {
     };
     const darkvision = traitId(world, 'Darkvision');
     const albus = entityNamed(world, 'Albus').id;
-    const equipped = { ...lantern, equipped: { slotId: itemNamed('Hooded Lantern').slotId!, order: 1 } };
+    const equipped = { ...lantern, equipped: { slotId: itemNamed('Hooded Lantern').slotRule!.slotIds[0], order: 1 } };
     expect(wantedGrants([lantern], grantWorld).held[albus] ?? []).not.toContain(darkvision);
     expect(wantedGrants([equipped], grantWorld).held[albus]).toContain(darkvision);
   });
 
   describe('Bodies and starting gear', () => {
+    const hands = (world.slots ?? []).filter((slot) => slot.name.endsWith('Hand'));
+    it('splits hands into Main Hand and Off Hand on the Humanoid only', () => {
+      expect(hands.map((slot) => slot.name)).toEqual(['Main Hand', 'Off Hand']);
+      const entriesOf = (name: string) => world.bodies?.find((b) => b.name === name)?.entries ?? [];
+      expect(entriesOf('Humanoid').slice(0, 2)).toEqual(hands.map((slot) => ({ slotId: slot.id })));
+      expect(entriesOf('Hound').some((e) => hands.some((slot) => slot.id === e.slotId))).toBe(false);
+    });
+
+    it('takes both hands with the Spiral-Cut Staff, unequipping what they hold', () => {
+      const staff = itemNamed('Spiral-Cut Staff');
+      expect(staff.slotRule).toEqual({ mode: 'all', slotIds: hands.map((slot) => slot.id) });
+      const owner = { kind: 'entity', id: entityNamed(world, 'Albus').id } as const;
+      const copyOf = (id: string, itemId: string) => ({ id, item: { kind: 'item', itemId } as const, where: owner, quantity: 1, visibility: 'visible' as const });
+      const { copies, diagnostics } = applyInventoryOps(
+        [copyOf('sword', itemNamed('Steel Longsword').id), copyOf('shield', itemNamed("Oath-Keeper's Shield").id), copyOf('staff', staff.id)],
+        [{ kind: 'equip', copyId: 'sword' }, { kind: 'equip', copyId: 'shield' }, { kind: 'equip', copyId: 'staff' }],
+        { world: { items, slots: world.slots, bodies: world.bodies, entities: world.entities }, source: 'panel', newId: () => 'new' },
+      );
+      expect(diagnostics).toEqual([]);
+      expect(copies.filter((c) => c.equipped).map((c) => c.id)).toEqual(['staff']);
+    });
+
+    it('prefers the off hand for a held light or shield, and the main hand for a blade', () => {
+      const first = (name: string) => (world.slots ?? []).find((slot) => slot.id === itemNamed(name).slotRule?.slotIds[0])?.name;
+      expect(first('Hooded Lantern')).toBe('Off Hand');
+      expect(first("Oath-Keeper's Shield")).toBe('Off Hand');
+      expect(first('Steel Longsword')).toBe('Main Hand');
+    });
+
     /** A new game as Enter World leaves it: every owner on its settled default traits. */
     const opened = (persona: PersonaRef) => {
       const owned = Object.fromEntries(world.entities.map((entity) => [entity.id, settledDefaults(world, entity.id, persona)]));

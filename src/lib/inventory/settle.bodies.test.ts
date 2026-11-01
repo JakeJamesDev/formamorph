@@ -9,17 +9,24 @@ const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
 const trait = (id: string, over: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], playerToggle: true, ...over });
 const sets = (id: string): Trait['body'] => ({ pick: { kind: 'body', id } });
 
-const slots: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }, { id: 'collar', name: 'Collar' }];
+const slots: Slot[] = [
+  { id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }, { id: 'collar', name: 'Collar' }, { id: 'main', name: 'Main Hand' }, { id: 'off', name: 'Off Hand' },
+];
 const bodies: Body[] = [
   { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] },
   { id: 'wolf', name: 'Wolf', entries: [{ slotId: 'collar' }] },
   { id: 'cat', name: 'Cat', entries: [{ slotId: 'head' }] },
   { id: 'tiny', name: 'Tiny', entries: [{ slotId: 'hand' }, { slotId: 'head' }] },
+  { id: 'knight', name: 'Knight', entries: [{ slotId: 'main' }, { slotId: 'off' }] },
+  { id: 'maimed', name: 'Maimed', entries: [{ slotId: 'main' }] },
+  { id: 'gripless', name: 'Gripless', entries: [{ slotId: 'off' }] },
 ];
-const sword = item('sword', 'Sword', { slotId: 'hand', statEffects: [{ id: 'e1', statId: 'strength', facet: 'value', timing: 'equipped', amount: 3, op: 'add' }] });
-const dagger = item('dagger', 'Dagger', { slotId: 'hand' });
-const helm = item('helm', 'Helm', { slotId: 'head' });
-const items = [sword, dagger, helm];
+const sword = item('sword', 'Sword', { slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [{ id: 'e1', statId: 'strength', facet: 'value', timing: 'equipped', amount: 3, op: 'add' }] });
+const dagger = item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['hand'] } });
+const helm = item('helm', 'Helm', { slotRule: { mode: 'either', slotIds: ['head'] } });
+const greatsword = item('greatsword', 'Greatsword', { slotRule: { mode: 'all', slotIds: ['main', 'off'] } });
+const knife = item('knife', 'Knife', { slotRule: { mode: 'either', slotIds: ['main', 'off'] } });
+const items = [sword, dagger, helm, greatsword, knife];
 
 const rexTraits = [
   trait('wolfForm', { body: sets('wolf') }), trait('catCurse', { body: sets('cat') }), trait('shrink', { body: sets('tiny') }),
@@ -32,11 +39,12 @@ const moonlit = trait('moonlit', {
 const wolfSkin = trait('wolfSkin', { body: sets('wolf') });
 const catSkin = trait('catSkin', { body: sets('cat') });
 const worldTraits = [moonlit, wolfSkin, catSkin];
+const sirTraits = [trait('maim', { body: sets('maimed') }), trait('losesGrip', { body: sets('gripless') })];
 const heroRef: PersonaRef = { source: 'world', entityId: 'hero' };
 const otherRef: PersonaRef = { source: 'world', entityId: 'other' };
 const entities = [
   { id: 'hero', name: 'Hero', persona: true }, { id: 'other', name: 'Other', persona: true, body: sets('cat')!.pick },
-  { id: 'rex', name: 'Rex' },
+  { id: 'rex', name: 'Rex' }, { id: 'sir', name: 'Sir', body: sets('knight')!.pick },
 ];
 
 const traitWorld = (persona: PersonaRef = heroRef): TraitWorld => ({
@@ -44,7 +52,7 @@ const traitWorld = (persona: PersonaRef = heroRef): TraitWorld => ({
   global: { traits: worldTraits, groups: [] },
   owners: [
     { id: 'rex', name: 'Rex', traits: rexTraits, groups: [] }, { id: 'hero', name: 'Hero', traits: [], groups: [] },
-    { id: 'other', name: 'Other', traits: [], groups: [] },
+    { id: 'other', name: 'Other', traits: [], groups: [] }, { id: 'sir', name: 'Sir', traits: sirTraits, groups: [] },
   ],
 });
 const settleWorld = (persona: PersonaRef = heroRef, previousPersona?: PersonaRef): InventorySettleWorld => ({
@@ -238,5 +246,70 @@ describe('a script-written base Body', () => {
     const wolf = baseOn(armed, { '': { kind: 'body', id: 'wolf' } });
     expect(worn(wolf, you)).toEqual([]);
     expect(wolf.bodyLog).toEqual(['Body: Wolf. Unequipped Helm']);
+  });
+});
+
+describe('the Slot Rule in the Body settle', () => {
+  const sir = { kind: 'entity', id: 'sir' } as const;
+  const sirOn = (play: Play, ids: string[]): Settled =>
+    settle({ ...play, traits: { ...play.traits, ownedTraits: { sir: { chosen: ids } } } });
+
+  it('takes a whole All of item off when the Body loses any of its slots, and fires When Unequipped', () => {
+    const on = wear(start(), sir, 'greatsword');
+    expect(worn(on, sir)).toEqual(['greatsword']);
+    // The stored slot survives this Body: only the listed slot it lost takes the item off.
+    const after = sirOn(on, ['maim']);
+    expect(worn(after, sir)).toEqual([]);
+    expect(after.events.map((e) => [e.timing, e.itemId])).toEqual([['unequipped', 'greatsword']]);
+    expect(after.bodyLog).toEqual(["Sir's Body: Maimed. Unequipped Greatsword"]);
+  });
+
+  it('takes it off when the stored slot is the one lost, too', () => {
+    const after = sirOn(wear(start(), sir, 'greatsword'), ['losesGrip']);
+    expect(worn(after, sir)).toEqual([]);
+  });
+
+  it('keeps an Either of copy whose own slot stays, and takes off the one whose slot went', () => {
+    const on = wear(start(), sir, 'knife', 'knife');
+    expect(on.copies.map((c) => c.equipped?.slotId)).toEqual(['main', 'off']);
+    const after = sirOn(on, ['maim']);
+    expect(after.copies.map((c) => c.equipped?.slotId)).toEqual(['main', undefined]);
+  });
+
+  it('keeps an Either of copy in its slot across a save round trip', () => {
+    const on = wear(start(), sir, 'knife', 'knife');
+    const reloaded = settle({ ...on, copies: JSON.parse(JSON.stringify(on.copies)) as ItemCopy[] });
+    expect(reloaded.copies.map((c) => c.equipped?.slotId)).toEqual(['main', 'off']);
+    expect(reloaded.events).toEqual([]);
+  });
+
+  describe('after an author edits the rule', () => {
+    const reruled = (rule: Item['slotRule']): InventorySettleWorld => {
+      const edited = items.map((i) => (i.id === 'knife' || i.id === 'greatsword' ? { ...i, slotRule: rule } : i));
+      return { ...settleWorld(), items: edited };
+    };
+
+    it('takes off an Either of copy whose stored slot the rule left (Q55)', () => {
+      const on = wear(start(), sir, 'knife');
+      const after = settle(on, reruled({ mode: 'either', slotIds: ['off'] }));
+      expect(worn(after, sir)).toEqual([]);
+      expect(after.events.map((e) => e.timing)).toEqual(['unequipped']);
+    });
+
+    it('takes off a copy whose item lost its rule', () => {
+      const after = settle(wear(start(), sir, 'knife'), reruled(undefined));
+      expect(worn(after, sir)).toEqual([]);
+    });
+
+    it('reads an All of copy from the rule, so it stays when its first slot leaves and the rest still fit', () => {
+      const after = settle(wear(start(), sir, 'greatsword'), reruled({ mode: 'all', slotIds: ['off'] }));
+      expect(worn(after, sir)).toEqual(['greatsword']);
+    });
+
+    it('keeps an All of copy when only the order changed', () => {
+      const after = settle(wear(start(), sir, 'greatsword'), reruled({ mode: 'all', slotIds: ['off', 'main'] }));
+      expect(worn(after, sir)).toEqual(['greatsword']);
+      expect(after.events).toEqual([]);
+    });
   });
 });

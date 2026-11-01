@@ -75,6 +75,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Test Bench's opening preview and the AI Context show a stranger under its Stranger Name.** The true name stays beside it, as in the first turn of play.
   - **Formaquestion Tools:**
     - **Formaquestion Tools now choose which kinds of question get them.** Pick the kinds in Sorted As; new Tools go to How-to, Code and Your world.
+  - **Items:**
+    - **Items in the World Editor can equip into either of several slots, or all of them.** A dagger fits either hand, and a greatsword takes both. In the Inventory tab, Equip lets you pick the slot.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
 - **🛠️ Developer tooling**

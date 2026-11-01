@@ -14,12 +14,12 @@ const item = (id: string, over: Partial<Item> = {}): Item =>
 const hand: Slot = { id: 'hand', name: 'Hand' };
 const ring: Slot = { id: 'ring', name: 'Ring' };
 const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'ring', capacity: 2 }] };
-const sword = item('sword', { stackable: false, slotId: 'hand', statEffects: [row('strength', 2, 'equipped')] });
+const sword = item('sword', { stackable: false, slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [row('strength', 2, 'equipped')] });
 const amulet = item('amulet', { statEffects: [row('health', 5, 'owned', 'max')] });
 const coin = item('coin', { statEffects: [row('luck', 1, 'owned')] });
 const charm = item('charm', { stackable: false, statEffects: [row('luck', 1, 'owned')] });
 const relic = item('relic', { statEffects: [row('health', 5, 'firstObtain', 'max'), row('luck', 1, 'firstObtain')] });
-const band = item('band', { stackable: false, slotId: 'ring', statEffects: [row('luck', 1, 'equipped')] });
+const band = item('band', { stackable: false, slotRule: { mode: 'either', slotIds: ['ring'] }, statEffects: [row('luck', 1, 'equipped')] });
 const items = [sword, amulet, coin, charm, relic, band];
 
 const hero = { kind: 'entity', id: 'hero' } as const;

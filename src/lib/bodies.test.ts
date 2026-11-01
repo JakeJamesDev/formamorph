@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bodyInForce, bodyPickEntities, bodySlots, largestCapacity, parseBodies, slotEntryCount, slotsInForce, withoutBodyPicks,
-  withoutSlotEntries, withSlotSizesWithin, type BodyWorld,
+  bodyInForce, bodyPickEntities, bodySlots, parseBodies, slotEntryCount, slotsInForce, withoutBodyPicks,
+  withoutSlotEntries, type BodyWorld,
 } from './bodies';
 import type { Body, Slot } from '@/types';
 
@@ -86,14 +86,6 @@ describe('bodyPickEntities', () => {
   });
 });
 
-describe('largestCapacity', () => {
-  it('takes the largest capacity any Body gives the slot, and 1 when none holds it', () => {
-    const imp: Body = { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand', capacity: 3 }] };
-    expect(largestCapacity([humanoid, imp], 'hand')).toBe(3);
-    expect(largestCapacity([humanoid, dog], 'tail')).toBe(1);
-  });
-});
-
 describe('withoutSlotEntries', () => {
   it('drops the slot from every Body and keeps the list when no Body holds it', () => {
     expect(withoutSlotEntries([humanoid, dog], 'hand').map((b) => b.entries.map((e) => e.slotId))).toEqual([['head'], ['collar']]);
@@ -115,27 +107,6 @@ describe('slotEntryCount', () => {
     const imp: Body = { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand', capacity: 3 }] };
     expect(slotEntryCount([humanoid, imp, dog], 'hand')).toBe(2);
     expect(slotEntryCount([humanoid, dog], 'tail')).toBe(0);
-  });
-});
-
-describe('withSlotSizesWithin', () => {
-  it('cuts each Slot Size to the largest capacity left for its slot, dropping a size of 1', () => {
-    const items = [
-      { id: 'sword', slotId: 'hand', slotSize: 2 },
-      { id: 'helm', slotId: 'head', slotSize: 3 },
-      { id: 'potion' },
-    ];
-    const shrunk: Body = { ...humanoid, entries: [{ slotId: 'head', capacity: 2 }, { slotId: 'hand' }] };
-    expect(withSlotSizesWithin(items, [shrunk, dog])).toEqual([
-      { id: 'sword', slotId: 'hand' },
-      { id: 'helm', slotId: 'head', slotSize: 2 },
-      { id: 'potion' },
-    ]);
-  });
-
-  it('keeps the list when every size fits', () => {
-    const items = [{ id: 'sword', slotId: 'hand', slotSize: 2 }];
-    expect(withSlotSizesWithin(items, [humanoid])).toBe(items);
   });
 });
 

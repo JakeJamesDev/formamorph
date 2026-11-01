@@ -269,7 +269,7 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 | Button | What it does |
 |---|---|
 | **Use** | Uses the item once and starts its effects. Off when no uses are left. |
-| **Equip** | Wears the item in its slot. A full slot takes off the item you equipped there first. From a stack, you equip one. |
+| **Equip** | Wears the item. When it fits more than one slot, you pick the slot. A full slot takes off the item you equipped there first. An item that takes two slots fills both. From a stack, you equip one. To change hands, unequip it and equip it again. |
 | **Unequip** | Takes the item off. You keep it. |
 | **Drop** | Leaves the item here, at your location. |
 | **Give** | Hands the item to an entity in the scene. |

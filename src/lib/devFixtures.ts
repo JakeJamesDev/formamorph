@@ -50,9 +50,9 @@ const ENTITY_STATS_CAST = [
 const WHITE_ROOM_ID = '1783535114538';
 
 /** The `items` fixture's slots, its Bodies and its items. Nobody picks the Hound, so play reads the Humanoid. */
-const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand' }, { id: 'dev-slot-ring', name: 'Ring' }, { id: 'dev-slot-neck', name: 'Neck' }];
+const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Main Hand' }, { id: 'dev-slot-off-hand', name: 'Off Hand' }, { id: 'dev-slot-ring', name: 'Ring' }, { id: 'dev-slot-neck', name: 'Neck' }];
 const DEV_BODIES: Body[] = [
-  { id: 'dev-body-humanoid', name: 'Humanoid', entries: [{ slotId: 'dev-slot-hand', capacity: 2 }, { slotId: 'dev-slot-ring' }] },
+  { id: 'dev-body-humanoid', name: 'Humanoid', entries: [{ slotId: 'dev-slot-hand' }, { slotId: 'dev-slot-off-hand' }, { slotId: 'dev-slot-ring', capacity: 2 }] },
   { id: 'dev-body-hound', name: 'Hound', entries: [{ slotId: 'dev-slot-neck' }] },
 ];
 const devItems = (valueStatId: string | undefined): Item[] => [
@@ -63,15 +63,15 @@ const devItems = (valueStatId: string | undefined): Item[] => [
   },
   {
     id: 'dev-item-wand', name: 'Ash Wand', playerDescription: 'A wand of pale ash wood.', uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true,
-    slotId: 'dev-slot-hand', statEffects: [], traitEffects: [], equipRequires: [],
+    slotRule: { mode: 'either', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] }, statEffects: [], traitEffects: [], equipRequires: [],
   },
   {
-    id: 'dev-item-sword', name: 'Greatsword', playerDescription: 'A long two-handed blade.', slotId: 'dev-slot-hand', slotSize: 2,
+    id: 'dev-item-sword', name: 'Greatsword', playerDescription: 'A long two-handed blade.', slotRule: { mode: 'all', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] },
     ...(valueStatId ? { value: 40, valueUnit: { kind: 'stat' as const, statId: valueStatId } } : {}),
     statEffects: [], traitEffects: [], equipRequires: [],
   },
   {
-    id: 'dev-item-ring', name: 'Silver Ring', playerDescription: 'A plain silver band.', stackable: false, slotId: 'dev-slot-ring',
+    id: 'dev-item-ring', name: 'Silver Ring', playerDescription: 'A plain silver band.', stackable: false, slotRule: { mode: 'either', slotIds: ['dev-slot-ring'] },
     statEffects: [], traitEffects: [], equipRequires: [],
   },
 ];

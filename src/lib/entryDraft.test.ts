@@ -204,7 +204,7 @@ describe('entryGateInput — starting equips', () => {
     const curse: Trait = { id: 'curse', name: 'Curse', statChanges: [], requires: [{ all: [{ kind: 'item', id: 'ring', status: 'equipped' }] }] };
     const unlocked = (bodies: Body[]) => gateOf(gateStates(entryGateInput({
       traits: [curse], traitGroups: [], entities: [], library: [],
-      items: [{ id: 'ring', name: 'Ring', slotId: 'finger', statEffects: [], traitEffects: [], equipRequires: [] }],
+      items: [{ id: 'ring', name: 'Ring', slotRule: { mode: 'either', slotIds: ['finger'] }, statEffects: [], traitEffects: [], equipRequires: [] }],
       placements: [{ id: 'p1', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'ring' } }],
       slots: [{ id: 'finger', name: 'Finger' }], bodies,
     }, emptyEntryDraft())), null, 'curse')?.unlocked;
