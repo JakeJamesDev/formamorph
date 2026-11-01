@@ -105,6 +105,13 @@ describe('PlacementsSection — Equipped', () => {
     expect(stored()[0].equipped).toBeUndefined();
   });
 
+  it('warns on a named slot the Body lacks, even when another slot of the rule fits (Q76)', async () => {
+    const rex = entity('rex', { body: { kind: 'body', id: 'dog' } });
+    const where = { kind: 'entity', id: 'rex' } as const;
+    show({ where, entities: [rex], placements: [place('p1', where, 'circlet', { equipped: true, slotId: 'head' })] });
+    expect(await screen.findByText('Dog has no Head slot. Circlet starts carried.')).toBeInTheDocument();
+  });
+
   it('stays quiet on the Default Body when it fits', async () => {
     show({ where: { kind: 'you' }, placements: [place('p1', { kind: 'you' }, 'gauntlets', { equipped: true })] });
     await screen.findByRole('checkbox', { name: 'Gauntlets Equipped' });
@@ -133,6 +140,15 @@ describe('PlacementsSection — starting slot', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Circlet Equipped' }));
     expect(stored()[0].slotId).toBeUndefined();
     expect(slotSelect('Circlet')).toBeNull();
+  });
+
+  it("lists only the rule's slots the owner's Body holds (Q76)", async () => {
+    const rex = entity('rex', { body: { kind: 'body', id: 'dog' } });
+    const dogWhere = { kind: 'entity', id: 'rex' } as const;
+    show({ where: dogWhere, entities: [rex], placements: [place('p1', dogWhere, 'circlet', { equipped: true })] });
+    fireEvent.keyDown(await screen.findByRole('combobox', { name: 'Circlet Slot' }), { key: 'Enter' });
+    expect(await screen.findByRole('option', { name: 'Hand' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Head' })).toBeNull();
   });
 
   it('shows First Free Slot when no slot is chosen', async () => {

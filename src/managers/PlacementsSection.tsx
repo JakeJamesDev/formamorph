@@ -10,7 +10,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
-import { startingEquipGap, type StartingEquipGap } from '@/lib/bodies';
+import { bodyInForce, startingEquipGap, type StartingEquipGap } from '@/lib/bodies';
 import { placementsAt, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { randomUUID } from '@/lib/uuid';
@@ -56,6 +56,9 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
   /** The rule a row can equip under: its item's, never at a location. */
   const ruleOf = (item: Item | undefined) => (where.kind !== 'location' ? item?.slotRule : undefined);
   const slotName = (slotId: string) => slots.find((slot) => slot.id === slotId)?.name ?? '';
+  /** The slots the owner's Body holds. */
+  const owner = where.kind === 'location' ? undefined : where;
+  const held = new Set(owner && bodyInForce({ bodies, entities }, owner, undefined)?.entries.map((e) => e.slotId));
 
   const update = (next: Placement) => setPlacements(placements.map((p) => (p.id === next.id ? next : p)));
   const remove = (id: string) => setPlacements(placements.filter((p) => p.id !== id));
@@ -73,7 +76,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
           {rows.map((p) => {
             const item = itemOf(p.source.itemId);
             const rule = ruleOf(item);
-            const gap = p.equipped && rule && where.kind !== 'location' ? startingEquipGap({ bodies, entities }, where, rule) : null;
+            const gap = p.equipped && rule && where.kind !== 'location' ? startingEquipGap({ bodies, entities }, where, rule, p.slotId) : null;
             const warn = gap && gapText(gap, name(p.source.itemId), slotName);
             return (
               <li key={p.id} className="space-y-1">
@@ -123,11 +126,12 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                   {p.equipped && rule?.mode === 'either' && rule.slotIds.length >= 2 && (
                     <Select value={p.slotId && rule.slotIds.includes(p.slotId) ? p.slotId : FIRST_FREE} onValueChange={(slotId) => update(withSlot(p, slotId === FIRST_FREE ? undefined : slotId))}>
                       <SelectTrigger className="w-40" aria-label={`${name(p.source.itemId)} Slot`}>
-                        <SelectValue />
+                        {/* A named slot the Body lacks has no item, so the trigger names it and the warning explains. */}
+                        <SelectValue>{p.slotId && rule.slotIds.includes(p.slotId) ? slotName(p.slotId) || 'Unnamed Slot' : 'First Free Slot'}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={FIRST_FREE}>First Free Slot</SelectItem>
-                        {rule.slotIds.map((id) => <SelectItem key={id} value={id}>{slotName(id) || 'Unnamed Slot'}</SelectItem>)}
+                        {rule.slotIds.filter((id) => held.has(id)).map((id) => <SelectItem key={id} value={id}>{slotName(id) || 'Unnamed Slot'}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}

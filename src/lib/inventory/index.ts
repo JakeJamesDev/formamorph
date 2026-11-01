@@ -98,10 +98,10 @@ function seedPlacements(world: SeedWorld, persona: PersonaRef | undefined, newId
   const copies: ItemCopy[] = [];
   const equips: InventoryOp[] = [];
   // The validator refuses an equip at a location, so a stray flag there is harmless.
-  const equip = (placement: Placement, item: Item, copyId: string) => {
+  const equip = (placement: Placement, item: Item, copyId: string, unit: number) => {
     if (!placement.equipped) return;
-    // A slot the rule no longer lists falls back to the first free one.
-    const slotId = placement.slotId && item.slotRule?.slotIds.includes(placement.slotId) ? placement.slotId : undefined;
+    // Only the first unit takes the named slot (Q78). A slot the rule no longer lists falls back to the first free one.
+    const slotId = unit === 0 && placement.slotId && item.slotRule?.slotIds.includes(placement.slotId) ? placement.slotId : undefined;
     equips.push({ kind: 'equip', copyId, ...(slotId && { slotId }) });
   };
   for (const placement of world.placements ?? []) {
@@ -119,13 +119,13 @@ function seedPlacements(world: SeedWorld, persona: PersonaRef | undefined, newId
       if (stack) stack.quantity += quantity;
       else copies.push({ id, item: ref, where, quantity, visibility, ...(state && { state }) });
       // Each equip splits one copy off the stack, which keeps its id.
-      for (let i = 0; i < quantity; i += 1) equip(placement, item, id);
+      for (let i = 0; i < quantity; i += 1) equip(placement, item, id, i);
       continue;
     }
     for (let i = 0; i < quantity; i += 1) {
       const id = newId();
       copies.push({ id, item: ref, where, quantity: 1, visibility, ...(state && { state }) });
-      equip(placement, item, id);
+      equip(placement, item, id, i);
     }
   }
   return { copies, equips };
