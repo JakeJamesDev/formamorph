@@ -656,6 +656,8 @@ export interface Placement {
   hidden?: boolean;
   /** Starts equipped at new game. An owner placement's only; a location placement never carries it. */
   equipped?: boolean;
+  /** The slot an Equipped Either of item starts in. Absent = the first free one. */
+  slotId?: string;
   source: PlacementSource;
 }
 

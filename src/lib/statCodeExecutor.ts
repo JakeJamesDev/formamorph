@@ -1059,9 +1059,8 @@ const entitiesPrelude = (
     `    if (shown && shown.id === id) return shown.view;`,
     `    const def = id === null ? undefined : spec.bodies.find((body) => body.id === id);`,
     `    if (!def) return null;`,
-    `    const owned = data.played ? ${ITEMS_AT}('you') : ${ITEMS_AT}('entity', who.id);`,
     `    const slots = def.slots.map((slot) => Object.freeze({`,
-    `      name: slot.name, capacity: slot.capacity, items: Object.freeze(owned.filter((copy) => copy.equipped && copy.slot === slot.name)),`,
+    `      name: slot.name, capacity: slot.capacity, items: data.played ? ${ITEMS_AT}('you', undefined, slot.name) : ${ITEMS_AT}('entity', who.id, slot.name),`,
     `    }));`,
     `    shown = { id, view: Object.freeze({ name: def.name, slots: Object.freeze(slots) }) };`,
     `    return shown.view;`,
@@ -1140,6 +1139,10 @@ export interface SandboxItemCopy {
   equipped: boolean;
   /** The slot's name; empty when carried. */
   slot: string;
+  /** Every slot an equipped copy occupies, by name. */
+  occupies: readonly string[];
+  /** The slots the item's rule lists, which `equip` names pick from. */
+  allowed: readonly { id: string; name: string }[];
   hidden: boolean;
   /** It shows the item's unidentified face to the player. Absent = identified. */
   unidentified?: boolean;
@@ -1202,7 +1205,7 @@ const itemsPrelude = (
   const named = [...new Map(items.map((item) => [item.name, item]))];
   const copyData = (item: SandboxItem, copy: SandboxItemCopy) => ({
     id: copy.id, item: item.name, owner: ownerName(copy.where), location: copy.where.kind === 'location' ? placeName.get(copy.where.id) ?? '' : '',
-    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, hidden: copy.hidden, unidentified: copy.unidentified === true, uses: copy.uses ?? null, state: copy.state ?? null,
+    quantity: copy.quantity, equipped: copy.equipped, slot: copy.slot, occupies: copy.occupies, allowed: copy.allowed, hidden: copy.hidden, unidentified: copy.unidentified === true, uses: copy.uses ?? null, state: copy.state ?? null,
     at: copy.where.kind === 'you' ? 'you' : `${copy.where.kind}:${copy.where.id}`,
   });
   const targets: [string, ItemCopyWhere][] = [
@@ -1244,13 +1247,21 @@ const itemsPrelude = (
     `    return { quantity: value };`,
     `  };`,
     `  const byPlace = Object.create(null);`,
+    `  const occupying = new Map();`,
     `  const copyEntry = (data, path, listed = true) => {`,
     `    const out = lock({ ${ITEM_COPY_KEYS.map((field) => `${field}: data.${field}`).join(', ')} }, ${JSON.stringify(ITEM_COPY_KEYS)}, path, note);`,
     `    const copyId = data.id;`,
+    `    occupying.set(out, data.occupies);`,
     `    const op = (kind, extra = {}) => { writes.inventory.push({ kind, copyId, ...extra }); };`,
     `    verb(out, path, 'lose', (quantity) => op('lose', count(quantity, path + 'lose')));`,
     `    verb(out, path, 'moveTo', (to, quantity) => op('transfer', { to: whereOf(to, path + 'moveTo'), ...count(quantity, path + 'moveTo') }));`,
-    `    verb(out, path, 'equip', () => op('equip'));`,
+    // A name outside the rule goes through as given, and the validator refuses it.
+    `    verb(out, path, 'equip', (slot) => {`,
+    `      if (slot === undefined) return op('equip');`,
+    `      if (typeof slot !== 'string') throw new TypeError(path + 'equip needs a slot name');`,
+    `      const hit = data.allowed.find((entry) => entry.name === slot);`,
+    `      op('equip', { slotId: hit ? hit.id : slot });`,
+    `    });`,
     `    verb(out, path, 'unequip', () => op('unequip'));`,
     `    verb(out, path, 'use', () => op('use'));`,
     `    verb(out, path, 'reveal', (quantity) => op('reveal', count(quantity, path + 'reveal')));`,
@@ -1286,7 +1297,11 @@ const itemsPrelude = (
     `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1, copies: [], unidentifiedName: '', unidentifiedDescription: '' }, true)),`,
     `  });`,
     `  const none = Object.freeze([]);`,
-    `  const at = (kind, id) => byPlace[kind === 'you' ? 'you' : kind + ':' + id] || none;`,
+    // With a slot name, only the equipped copies that occupy it.
+    `  const at = (kind, id, slot) => {`,
+    `    const list = byPlace[kind === 'you' ? 'you' : kind + ':' + id] || none;`,
+    `    return slot === undefined ? list : Object.freeze(list.filter((copy) => copy.equipped && (occupying.get(copy) || []).includes(slot)));`,
+    `  };`,
     `  const gone = spec.event && spec.event.was ? copyEntry(spec.event.was, 'self.event.copy.', false) : null;`,
     `  return [items, at, gone];`,
     `})(JSON.parse(${JSON.stringify(JSON.stringify(spec))}), ${LOCK_FIELDS}, ${LOOSE_NOTE}, ${WORLD_WRITES}, ${OWNER_VIEW});`,

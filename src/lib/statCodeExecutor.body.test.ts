@@ -21,9 +21,9 @@ const hero: SandboxEntity = { id: 'e-hero', name: 'Hero', traits: [], body: { id
 
 const sword: SandboxItem = {
   id: 'i-sword', name: 'Sword', copies: [
-    { id: 'c-1', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', hidden: false },
-    { id: 'c-2', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: false, slot: '', hidden: false },
-    { id: 'c-3', where: { kind: 'you' }, quantity: 1, equipped: true, slot: 'Head', hidden: false },
+    { id: 'c-1', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', occupies: ['Hand'], allowed: [], hidden: false },
+    { id: 'c-2', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: false, slot: '', occupies: [], allowed: [], hidden: false },
+    { id: 'c-3', where: { kind: 'you' }, quantity: 1, equipped: true, slot: 'Head', occupies: ['Head'], allowed: [], hidden: false },
   ],
 };
 
