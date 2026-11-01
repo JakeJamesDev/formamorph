@@ -93,6 +93,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A new inventory slots probe measures whether the Inventory prompt equips only into an owner's slots.** It runs the prompt before slots, with slots, and with the equip clause, each in the same batch.
   - **Scene Presence:**
     - **A narration probe measures how often an unmet stranger's true name reaches the prose with Thinking Mode Off.** `narration-stranger-probe.mjs` scores name leaks and label use per case, and a guard case where the stranger gives their name.
+  - **Trailer:**
+    - **The trailer's authoring section builds a stack of four cards: map, profile, travel and inventory.** Each card lands on the last and holds 2 s or its caption's reading time. The tall cut plays it as a column and runs 65 s.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
 
 #### ➖ Removed

@@ -88,7 +88,7 @@ const report = (ok, line, details = []) => {
   for (const detail of details) console.log(`      ${detail}`);
 };
 
-/** Rulings Q17, Q25, Q32, Q38 and Q48: the copy, dense hold and camera checks, measured by the timeline the composition plays. */
+/** Rulings Q17, Q25, Q32, Q38, Q48, Q61 and Q62: the copy, dense hold, stack hold and camera checks, measured by the timeline the composition plays. */
 const reportCopyAndCamera = (composition) => {
   // Each line's enter, legible and exit seconds and its characters per second.
   for (const line of composition.props.reading) {
@@ -100,6 +100,11 @@ const reportCopyAndCamera = (composition) => {
   // A dense card holds at least 5 s after it lands.
   for (const card of composition.props.dense) {
     report(card.ok, `${card.shot.padEnd(4)} dense card holds ${card.seconds.toFixed(2)} s after it lands at frame ${card.landFrame} (${card.minSeconds} s minimum)`);
+  }
+
+  // A growing stack's card holds 2 s or its caption's reading time from the frame it lands, before the next rises.
+  for (const card of composition.props.stack) {
+    report(card.ok, `${`${card.shot}/${card.pane}`.padEnd(6)} stack card holds ${card.seconds.toFixed(2)} s after it lands at frame ${card.landFrame} (${card.minSeconds.toFixed(2)} s minimum)`);
   }
 
   // Every card holds one crop, and its subject region stays whole in the card's visible area on every frame.

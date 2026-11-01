@@ -4,10 +4,11 @@ import { FPS, type Layout, type Rect, type SceneProps } from './layout';
 import { copyReads, measurePills, type PillSpec } from './parts/CopyBlock';
 import type { CameraPath, CameraStop } from './parts/FrameCamera';
 import { cardBob, cardLandFrames, fullFrame, type CardPose } from './parts/GlassCard';
-import { readDenseHold, type DenseReading } from './holds';
+import { readDenseHold, type DenseReading, type StackHoldReading } from './holds';
 import { exitStart } from './motion';
-import { CAPTION_PLACE, STACK_CARDS, STACK_PLACE, TURN_CARDS, type CardPair } from './poses';
+import { BUILD_CARDS, BUILD_PLACE, CAPTION_PLACE, STACK_CARDS, STACK_PLACE, TURN_CARDS, type CardPair } from './poses';
 import { readLines, type CopyRead, type LineReading } from './reading';
+import { BuildStack, buildHolds, buildReads, buildTiming, type BuildPane } from './scenes/BuildStack';
 import { FrameScene, frameCards } from './scenes/FrameScene';
 import { KineticText } from './scenes/KineticText';
 import { StackScene, paneRise, stackReads, type StackPane } from './scenes/StackScene';
@@ -31,10 +32,14 @@ type SceneEntry = {
   covers: (layout: Layout) => Cover[];
   /** The frame the scene's dense card starts to rise, for the dense hold check (ruling Q48), or null for a scene with none. */
   denseRise: number | null;
+  /** The frame each card of a growing stack rises, for the stack's contact sheet. */
+  buildRises?: number[];
+  /** A growing stack's card holds, for the stack check. The dense check skips it (ruling Q62). */
+  stackHolds?: (id: string, joinOut: number) => StackHoldReading[];
 };
 
-/** Something drawn over a shot card: a pill column, measured in the browser, or a card at its pose. */
-type Cover = { pills: PillSpec } | { card: CardPose; bob: number };
+/** Something drawn over a shot card: a pill column, measured in the browser, or a card at its pose. `pane` limits it to one pane's camera. */
+type Cover = ({ pills: PillSpec } | { card: CardPose; bob: number }) & { pane?: number };
 
 const stop = (focusX: number, focusY: number, zoom = 1): CameraStop => ({ focusX, focusY, zoom });
 /** Ruling Q32: every card holds one crop for its whole shot; the card's own float is the motion. */
@@ -99,6 +104,21 @@ const stack = (id: string, frames: number, out: TransitionName, panes: readonly 
     (layout) => panes.map((pane, i) => ({ pills: { lines: pane.caption, layout, place: STACK_PLACE[layout][i], dot: pane.dot } })),
   );
 
+/** A growing stack (ruling Q62): each camera runs its subject check as the newest card, against its own pill alone. */
+const buildStack = (id: string, out: TransitionName, panes: readonly BuildPane[]): SceneEntry => ({
+  ...shot(
+    id,
+    buildTiming(panes).durationInFrames,
+    out,
+    (scene) => <BuildStack {...scene} panes={panes} />,
+    buildReads(panes),
+    (layout) => panes.map((pane, i) => ({ shot: shotFor(pane.shot, layout), path: pane.camera[layout], card: BUILD_CARDS[layout][i], bob: cardBob('shot'), pane: i + 1 })),
+    (layout) => panes.map((pane, i) => ({ pills: { lines: pane.caption, layout, place: BUILD_PLACE[layout][i], dot: pane.dot }, pane: i + 1 })),
+  ),
+  buildRises: buildTiming(panes).rises,
+  stackHolds: (shotId, joinOut) => buildHolds(shotId, panes, joinOut),
+});
+
 /** The wordmark is a logo, not copy, so it has no reads. */
 const wordmark = (id: string, frames: number, out: TransitionName) => shot(id, frames, out, (scene) => <WordmarkTitle {...scene} />, []);
 
@@ -117,12 +137,9 @@ const SQUARE_TALL: CardPair = {
   depth: { width: 820, height: 769, x: -70, y: -420, tilt: [-14, -10], lean: 4 },
 };
 
-/** The eight shots the tall cut stacks in pairs, each on its own card. */
+/** The shots the tall cut stacks in pairs, each on its own card. */
 const STATS: StackPane = { shot: SHOTS.statsClip, caption: ['Every turn updates your stats.'], camera: hold(1.8, 0.8, 0.38), dot: 'mint' };
 const ENTITY: StackPane = { shot: SHOTS.entity, caption: ['Talk to anyone you meet.'], camera: hold(1.45, 0.5, 0.44), dot: 'pink' };
-const MAP: StackPane = { shot: SHOTS.canvas, caption: ['Place locations on a map.'], camera: hold(1, 0.395), dot: 'mint' };
-const PROFILE: StackPane = { shot: SHOTS.profile, caption: ['Write who lives there.'], camera: hold(1.6, 0.72, 0.4), dot: 'rose' };
-const TRAVEL: StackPane = { shot: SHOTS.travel, caption: ['Then travel there and meet them.'], camera: hold(1.25, 0.5, 0.28), dot: 'sky' };
 const BLUEPRINTS: StackPane = { shot: SHOTS.blueprints, caption: ['Define your world and everyone in it, your way.'], camera: hold(1, 0.34), dot: 'amber' };
 const COMMUNITY: StackPane = { shot: SHOTS.community, caption: ['Download hundreds of worlds from the community.'], camera: FULL, dot: 'sky' };
 const CONTEST: StackPane = { shot: SHOTS.contest, caption: ['Share your ideas with the community.', 'Compete with other creators.'], camera: hold(1.75, 0.275, 0.48), dot: 'amber' };
@@ -161,10 +178,14 @@ const W08 = frameShot('W08', 242, 'section', {
   cards: { tall: SQUARE_TALL },
 });
 const W09 = kinetic('W09', 175, 'overlap', { lines: ['Build your own world.'] });
-/** The authoring section plays map, profile, travel, the traits card, then blueprints (ruling Q43). */
-const W10 = frameShot('W10', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.profile, caption: MAP.caption, dot: MAP.dot, camera: both(FULL) });
-const W11 = frameShot('W11', 240, 'overlap', { shot: PROFILE.shot, depth: SHOTS.travel, caption: PROFILE.caption, dot: PROFILE.dot, camera: both(hold(1.6, 0.67, 0.4)) });
-const W10b = frameShot('W10b', 270, 'overlap', { shot: TRAVEL.shot, depth: SHOTS.canvas, caption: TRAVEL.caption, dot: TRAVEL.dot, camera: both(hold(1.6, 0.5, 0.3)) });
+/** The authoring section: the stack of map, profile, travel and inventory, the traits card, then blueprints (rulings Q43, Q61). */
+const BUILD_PANES: readonly BuildPane[] = [
+  { shot: SHOTS.canvas, caption: ['Place locations on a map.'], camera: both(FULL), dot: 'mint' },
+  { shot: SHOTS.profile, caption: ['Write who lives there.'], camera: both(hold(1.5, 0.68, 0.42)), dot: 'rose' },
+  { shot: SHOTS.travel, caption: ['Then travel there and meet them.'], camera: both(hold(1.6, 0.5, 0.3)), dot: 'sky' },
+  { shot: SHOTS.inventory, caption: ['Give them items to carry, wear and use.'], camera: both(hold(2.09, 0.8675, 0.3925)), dot: 'amber' },
+];
+const W10 = buildStack('W10', 'overlap', BUILD_PANES);
 const W12a = kinetic('W12a', 212, 'overlap', { lines: ['Traits shape who you play.'] });
 const W12 = frameShot('W12', 305, 'overlap', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(FULL) });
 const W13a = kinetic('W13a', 176, 'overlap', { lines: ['Need help? Just ask.'] });
@@ -198,28 +219,19 @@ const W17 = frameShot('W17', 310, 'overlap', {
 });
 const W19 = title('W19', 376, { text: 'Play free at formamorph.ai', link: 'formamorph.ai' });
 
-/** A tall card at the stack cards' shape, for a single shot whose subject is wider than the 3:4 window shows. */
-const LANDSCAPE_TALL: CardPair = {
-  front: { width: 960, height: 760, x: 0, y: -160, tilt: [-8, -4], lean: 3 },
-  depth: { width: 820, height: 649, x: -70, y: -420, tilt: [-14, -10], lean: 4 },
-};
-
 const T05 = turn('T05', 360, 'overlap', 'tall', TURN);
 /** The tall cut's stacks: two wide captures on two cards, one above the other (storyboard §4). */
 const T06 = stack('T06', 240, 'overlap', [STATS, ENTITY]);
-/** The map alone, then profile and travel as one pair, since the traits card parts blueprints from them (ruling Q51). */
-const T09 = frameShot('T09', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.profile, caption: MAP.caption, dot: MAP.dot, camera: both(MAP.camera), cards: { tall: LANDSCAPE_TALL } });
-const T10 = stack('T10', 290, 'overlap', [PROFILE, TRAVEL]);
 const T10b = frameShot('T10b', 311, 'section', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(hold(1, 0.31)) });
 /** The contest pane is the dense one. */
 const T11 = dense(stack('T11', 403, 'section', [COMMUNITY, CONTEST]), paneRise(1));
 
 /** The wide cut: storyboard §2. */
-const WIDE: SceneEntry[] = [W03, W04, W05, W06, W07, W08, W09, W10, W11, W10b, W12a, W12, W13a, W13, W14, W15, W16, W17, W19];
+const WIDE: SceneEntry[] = [W03, W04, W05, W06, W07, W08, W09, W10, W12a, W12, W13a, W13, W14, W15, W16, W17, W19];
 
 /**
  * The tall cut: storyboard §4. It drops Morphie with its title card (W13a, W13), and stacks
- * six wide shots into three.
+ * four wide shots into two.
  */
 const TALL: SceneEntry[] = [
   reuse('T03', W03),
@@ -228,8 +240,7 @@ const TALL: SceneEntry[] = [
   T06,
   reuse('T07', W08),
   reuse('T08', W09),
-  T09,
-  T10,
+  reuse('T09', W10),
   reuse('T10a', W12a),
   T10b,
   T11,
@@ -251,6 +262,7 @@ export const sceneStarts = (layout: Layout) => {
   return scenes.map((scene, i) => ({
     id: scene.id,
     durationInFrames: scene.durationInFrames,
+    buildRises: scene.buildRises,
     from: scenes.slice(0, i).reduce((sum, before, j) => sum + before.durationInFrames - joinFrames(scenes, j), 0),
   }));
 };
@@ -272,8 +284,11 @@ const coverBoxes = async (layout: Layout, cover: Cover): Promise<Rect[]> => {
 export const cameraReport = async (layout: Layout): Promise<CameraReading[]> => {
   const readings: CameraReading[] = [];
   for (const scene of TIMELINES[layout]) {
-    const covers = (await Promise.all(scene.covers(layout).map((cover) => coverBoxes(layout, cover)))).flat();
-    for (const use of scene.cameras(layout)) readings.push(readCamera(layout, scene.id, use, scene.durationInFrames, covers));
+    const covers = await Promise.all(scene.covers(layout).map(async (cover) => ({ pane: cover.pane, boxes: await coverBoxes(layout, cover) })));
+    for (const use of scene.cameras(layout)) {
+      const over = covers.filter(({ pane }) => pane === undefined || pane === use.pane).flatMap(({ boxes }) => boxes);
+      readings.push(readCamera(layout, scene.id, use, scene.durationInFrames, over));
+    }
   }
   return readings;
 };
@@ -288,8 +303,14 @@ export const readingReport = (layout: Layout): LineReading[] => {
 export const denseReport = (layout: Layout): DenseReading[] => {
   const scenes = TIMELINES[layout];
   return scenes.flatMap((scene, i) =>
-    scene.denseRise === null
+    scene.denseRise === null || scene.stackHolds
       ? []
       : [readDenseHold(scene.id, scene.denseRise + cardLandFrames(FPS), exitStart(scene.durationInFrames), scene.durationInFrames, joinFrames(scenes, i), FPS)],
   );
+};
+
+/** Every growing stack's card holds in a cut. */
+export const stackReport = (layout: Layout): StackHoldReading[] => {
+  const scenes = TIMELINES[layout];
+  return scenes.flatMap((scene, i) => scene.stackHolds?.(scene.id, joinFrames(scenes, i)) ?? []);
 };

@@ -62,6 +62,38 @@ export const STACK_CARDS: Record<Layout, readonly [CardPose, CardPose]> = {
   ],
 };
 
+/** The four cards of the growing stack, each offset on the one before: a cascade (wide) or a column (tall). The last shows a narrow panel, so it is narrower. */
+export const BUILD_CARDS: Record<Layout, readonly CardPose[]> = {
+  wide: [
+    { width: 1060, height: 596, x: -370, y: -212, tilt: [-5, -3], lean: 2 },
+    { width: 1060, height: 596, x: -170, y: -102, tilt: [-5, -3], lean: 2 },
+    { width: 1060, height: 596, x: 30, y: 8, tilt: [-5, -3], lean: 2 },
+    { width: 690, height: 596, x: 575, y: 118, tilt: [-5, -3], lean: 2 },
+  ],
+  tall: [
+    { width: 900, height: 506, x: -40, y: -677, tilt: [-4, -2], lean: 2 },
+    { width: 900, height: 506, x: 40, y: -297, tilt: [4, 2], lean: 2 },
+    { width: 900, height: 506, x: -40, y: 83, tilt: [-4, -2], lean: 2 },
+    { width: 620, height: 560, x: 110, y: 490, tilt: [4, 2], lean: 2 },
+  ],
+};
+
+/** Where the newest stack card's pill sits: on its bottom edge. */
+export const BUILD_PLACE: Record<Layout, readonly CSSProperties[]> = {
+  wide: [
+    { left: 100, top: 602, alignItems: 'flex-start' },
+    { left: 300, top: 712, alignItems: 'flex-start' },
+    { left: 500, top: 822, alignItems: 'flex-start' },
+    { right: 60, top: 948, alignItems: 'flex-end' },
+  ],
+  tall: [
+    { left: 60, right: 60, top: 516, alignItems: 'center' },
+    { left: 60, right: 60, top: 896, alignItems: 'center' },
+    { left: 60, right: 60, top: 1276, alignItems: 'center' },
+    { left: 60, right: 60, top: 1724, alignItems: 'center' },
+  ],
+};
+
 /** Where each stack card's pill sits. */
 export const STACK_PLACE: Record<Layout, readonly [CSSProperties, CSSProperties]> = {
   wide: [

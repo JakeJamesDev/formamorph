@@ -27,4 +27,9 @@ for (const layout of layouts) {
     await renderStill({ composition, serveUrl, inputProps, output, imageFormat: 'png' });
     console.log(`wrote ${path.relative(root, output)}`);
   }
+  // The growing stack frame by frame, through every landing.
+  const stack = await selectComposition({ serveUrl, id: `Sheet-stack-${layout}` });
+  const output = path.join(outDir, `${layout}-stack.png`);
+  await renderStill({ composition: stack, serveUrl, output, imageFormat: 'png' });
+  console.log(`wrote ${path.relative(root, output)}`);
 }

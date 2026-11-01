@@ -4,6 +4,7 @@ import { Composition, Folder } from 'remotion';
 import { CANVAS, FPS, type Layout } from './layout';
 import type { CameraPath, CameraStop } from './parts/FrameCamera';
 import { Stage } from './parts/Stage';
+import { BuildStack, buildTiming, type BuildPane } from './scenes/BuildStack';
 import { FrameScene } from './scenes/FrameScene';
 import { KineticText } from './scenes/KineticText';
 import { StackScene } from './scenes/StackScene';
@@ -48,6 +49,11 @@ const joinEntry = (name: TransitionName): LibraryEntry => ({
     );
   },
 });
+
+const BUILD_SAMPLE: readonly BuildPane[] = [
+  { shot: SHOTS.canvas, camera: both(hold(stop(0.5, 0.5))), caption: ['Place locations on a map.'], dot: 'mint' },
+  { shot: SHOTS.travel, camera: both(hold(stop(0.5, 0.3, 1.6))), caption: ['Then travel there and meet them.'], dot: 'sky' },
+];
 
 /** Every scene type and transition, with sample copy from the storyboard. The studio lists each in both layouts. */
 const ENTRIES: LibraryEntry[] = [
@@ -126,6 +132,11 @@ const ENTRIES: LibraryEntry[] = [
         ]}
       />
     ),
+  },
+  {
+    id: 'BuildStack',
+    durationInFrames: buildTiming(BUILD_SAMPLE).durationInFrames,
+    render: (layout, durationInFrames) => <BuildStack layout={layout} durationInFrames={durationInFrames} panes={BUILD_SAMPLE} />,
   },
   {
     id: 'TypedTurn',

@@ -64,6 +64,7 @@ export const SHOTS = {
   chat: shot('chat'),
   canvas: shot('canvas'),
   travel: shot('travel'),
+  inventory: shot('inventory'),
   profile: shot('profile'),
   blueprints: shot('blueprints'),
   /** Plays once the card lands: she thinks, then turns to her idle look as the answer streams in. */
