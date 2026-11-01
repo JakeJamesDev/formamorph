@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { Connection, Entity, GameLocation } from '@/types';
 import {
-  ENTITY_MOVE_LABELS, entityMoveDestinations, entityMoveOffers, entityMoveOptions, entityMoveSubjects, joinEntityMoves, liveFollowers, movedPositions,
-  NO_ENTITY_MOVES,
+  ENTITY_MOVE_LABELS, entityMoveDestinations, entityMoveIntents, entityMoveOffers, entityMoveOptions, entityMoveRequests, entityMoveSubjects, joinEntityMoves,
+  liveFollowers, movedPositions, moveWithPlayer, NO_ENTITY_MOVES,
 } from './entityFollowing';
 import { defaultEntityLocationPrompt } from '@/components/game/GamePrompts';
 import { entitiesInPlay } from './entityPresence';
@@ -71,6 +71,30 @@ describe('a Moves Between entity', () => {
     const oneWay = [{ id: 'c1', a: 'keep', b: 'wall', aToB: {} }] as Connection[];
     expect(entityMoveDestinations(blackwell, 'wall', locations, oneWay).map((l) => l.id)).toEqual([]);
     expect(entityMoveDestinations(blackwell, 'keep', locations, oneWay).map((l) => l.id)).toEqual(['wall']);
+  });
+
+  describe('standing in play, where it lists its position only', () => {
+    const requestAt = (at: string) => {
+      const positions = { blackwell: at };
+      const cast = entitiesInPlay([blackwell], positions);
+      return entityMoveRequests(cast, [blackwell], { positions, followers: [] }, at, locations, connections)[0];
+    };
+
+    it('is still offered its own locations one hop away', () => {
+      expect(requestAt('wall').destinations.map((l) => l.id)).toEqual(['keep', 'tower']);
+    });
+
+    it('can walk back onto its route from where a script left it', () => {
+      expect(requestAt('barrow').destinations.map((l) => l.id)).toEqual(['tower']);
+    });
+
+    it('comes along into another of its locations, and no further', () => {
+      const state = { positions: { blackwell: 'keep' }, followers: [] };
+      const { comeOnce } = entityMoveIntents([{ entity: requestAt('keep').entity, move: 'comeAlong' }]);
+      const offer = { comeAlong: [], comeOnce };
+      expect(moveWithPlayer(state, offer, 'wall').positions.blackwell).toBe('wall');
+      expect(moveWithPlayer(state, offer, 'barrow').positions.blackwell).toBe('keep');
+    });
   });
 
   it('is offered stay, come along and its places, but walks nowhere while it follows', () => {
