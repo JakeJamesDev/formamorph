@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { blankItem } from '@/lib/items';
 import type { World } from '@/types';
 
 /**
@@ -203,6 +204,18 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
     expect(world.worldOverview.thumbnail).toBe(WEBP);
     expect(world.entities[0].images).toEqual([{ data: WEBP }, { data: WEBP }]);
     expect(world.locations[0].images?.[0]?.data).toBe(WEBP);
+  });
+
+  it('writes a converted item image back and clears its row', async () => {
+    const { ctx } = setup(benchEditorWorld({
+      items: [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: PNG }] }],
+    }));
+    const button = await openBench();
+
+    await act(async () => { fireEvent.click(button); });
+
+    expect(ctx().getWorldData().items?.[0].images).toEqual([{ data: WEBP }]);
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull());
   });
 
   it('counts every image it kept, however many that is', async () => {

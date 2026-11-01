@@ -3681,12 +3681,13 @@ const worldNoReadme: Rule = {
 const embeddedImageSlots = (world: RuleWorld): Array<{ item: FindingItem; url: string; cap: ImageCap; overBudget: boolean }> =>
   worldImageItems(world).map((media) => ({ item: imageOwner(media, world), url: media.value, cap: media.budget, overBudget: media.overBudget }));
 
-/** The row an image's finding opens: its entity or location, the world for the thumbnail, else its Media card. */
+/** The row an image's finding opens: its entity, location or item, the world for the thumbnail, else its Media card. */
 const imageOwner = (media: MediaItem, world: RuleWorld): FindingItem => {
   const { kind, id, name } = media.parent;
   const entity = kind === 'entity' ? world.entities?.find((e) => e.id === id) : undefined;
   if (entity) return { ...asItem(entity, world), section: 'entities' };
   if (kind === 'location') return namedItem(id, name, world, 'locations');
+  if (kind === 'item') return namedItem(id, name, world, 'items');
   if (kind === 'world') return worldItem(world);
   return { id: media.id, name, section: 'media' };
 };
@@ -3751,22 +3752,18 @@ const imageMislabeled: Rule = {
     const nextThumb = thumb ? relabelDataUrl(thumb) : thumb;
     let out = nextThumb === thumb ? world
       : { ...world, worldOverview: { ...world.worldOverview, thumbnail: nextThumb } };
-    out = withSlice(out, 'entities', mapChanged(world.entities ?? [], (entity) => {
-      const images = entityImages(entity);
-      const next = mapChanged(images, (img) => {
-        const data = relabelDataUrl(img.data);
-        return data === img.data ? img : { ...img, data };
+    const relabelGalleries = <T extends { images?: GalleryImage[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]): T[] =>
+      mapChanged(list, (record) => {
+        const images = imagesOf(record);
+        const next = mapChanged(images, (img) => {
+          const data = relabelDataUrl(img.data);
+          return data === img.data ? img : { ...img, data };
+        });
+        return next === images ? record : { ...record, images: next };
       });
-      return next === images ? entity : { ...entity, images: next };
-    }));
-    out = withSlice(out, 'locations', mapChanged(world.locations ?? [], (location) => {
-      const images = locationImages(location);
-      const next = mapChanged(images, (img) => {
-        const data = relabelDataUrl(img.data);
-        return data === img.data ? img : { ...img, data };
-      });
-      return next === images ? location : { ...location, images: next };
-    }));
+    out = withSlice(out, 'entities', relabelGalleries(world.entities ?? [], entityImages));
+    out = withSlice(out, 'locations', relabelGalleries(world.locations ?? [], locationImages));
+    out = withSlice(out, 'items', relabelGalleries(world.items ?? [], entityImages));
     return out;
   },
 };

@@ -60,6 +60,16 @@ describe('convertWorldImagesToWebp — correcting a lying format label', () => {
     ]);
   });
 
+  it('converts an item image and writes the items back', async () => {
+    const world = {
+      ...worldWithThumbnail(''),
+      items: [{ id: 'lantern', name: 'Tin Lantern', images: [{ data: dataUrl('image/png', PNG) }] }],
+    } as RuleWorld;
+    const run = await convertWorldImagesToWebp(world);
+    expect(run.world.items?.[0].images).toEqual([{ data: 'data:image/webp;base64,encoded' }]);
+    expect(run).toMatchObject({ converted: 1 });
+  });
+
   it('leaves an honestly labeled world untouched, by reference', async () => {
     const world = worldWithThumbnail(dataUrl('image/jpeg', JPEG));
     const run = await convertWorldImagesToWebp(world);

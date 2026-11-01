@@ -200,9 +200,10 @@ describe('downscaleWorldImages', () => {
       },
       dictionaries: [{ id: 'd1', name: 'Lore', entries: [], thumbnail: 'BIG-book' }],
       bodies: [{ id: 'b1', name: 'Imp', entries: [], aspect: 2, backdrop: { kind: 'image', image: { data: 'BIG-backdrop' } } }],
+      items: [{ id: 'i1', name: 'Lantern', images: [{ data: 'BIG-item', requires: WOUNDED }, { data: 'BIG-item-2' }] }],
     } as unknown as World;
     const listed = worldImageItems(everything);
-    expect(new Set(listed.map((i) => i.parent.kind))).toEqual(new Set(['world', 'map', 'entity', 'location', 'dictionary', 'body']));
+    expect(new Set(listed.map((i) => i.parent.kind))).toEqual(new Set(['world', 'map', 'entity', 'location', 'dictionary', 'body', 'item']));
 
     const out = await downscaleWorldImages(everything, capDeps);
     const after = worldImageItems(out);
@@ -210,6 +211,7 @@ describe('downscaleWorldImages', () => {
     expect(after.map((i) => i.value)).toEqual(listed.map((i) => `OPT:${i.value}`));
     expect(after.map((i) => i.rules)).toEqual(listed.map((i) => i.rules));
     for (const i of listed) expect(seen.get(i.value)).toEqual(i.budget);
+    expect(out.items?.[0].images).toEqual([{ data: 'OPT:BIG-item', requires: WOUNDED }, { data: 'OPT:BIG-item-2' }]);
   });
 
   it('shrinks a Body\'s Custom Image under the entity budget and leaves its aspect, boxes and outlines alone', async () => {

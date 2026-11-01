@@ -36,7 +36,7 @@ export function useMediaStep() {
  * cleared the way that panel clears it, as one History Step that keeps the Media tab as its Origin.
  */
 export function useMediaItemActions() {
-  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview, bodies, setBodies } = useGameData();
+  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies } = useGameData();
 
   const editor = useMemo<MediaEditor>(() => ({
     overview: (patch) => updateWorldOverview(patch(worldOverview)),
@@ -50,7 +50,11 @@ export function useMediaItemActions() {
       if (book) updateDictionary(edit(book));
     },
     body: (id, edit) => setBodies(bodies.map((b) => (b.id === id ? edit(b) : b))),
-  }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview, bodies, setBodies]);
+    item: (id, edit) => {
+      const item = items.find((i) => i.id === id);
+      if (item) updateItem(edit(item));
+    },
+  }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies]);
 
   const step = useMediaStep();
   const mounted = useMountedRef();
