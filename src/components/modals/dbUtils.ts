@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { cachedConnection, promisifyRequest } from '@/lib/idb';
+import { cachedConnection, promisifyRequest, transactionDone } from '@/lib/idb';
 import type { SaveRecord } from '@/types';
 
 export const DB_NAME = 'FORMAMORPH_DB';
@@ -24,8 +24,11 @@ export const initDB = cachedConnection(DB_NAME, DB_VERSION, [
 const store = async (name: string, mode: IDBTransactionMode) =>
   (await initDB()).transaction([name], mode).objectStore(name);
 
+/** Resolves at commit: a full disk aborts the transaction after the put request succeeded. */
 export const putSaveRecord = async (record: SaveRecord) => {
-  await promisifyRequest((await store(STORE_NAME, 'readwrite')).put(record));
+  const transaction = (await initDB()).transaction([STORE_NAME], 'readwrite');
+  transaction.objectStore(STORE_NAME).put(record);
+  await transactionDone(transaction);
 };
 
 export const getSaveRecord = async (id: string) =>

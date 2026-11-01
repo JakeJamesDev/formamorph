@@ -4,6 +4,7 @@ import { putSaveRecord, getSaveRecord, getAllSaveRecords, deleteSaveRecord } fro
 import { autosaveName, autosavesToTrim } from '../lib/autosave';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
+import { toastAutosaveFailure } from '@/lib/saveFailureToast';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
@@ -78,9 +79,13 @@ import type {
 } from '@/types';
 import { remapChosenVrm } from '../lib/legacyVrm';
 
+/** A save write's outcome; a failure carries what the write rejected with. */
+type SaveWriteResult = { ok: true } | { ok: false; error: unknown };
+
 // Frozen empties for the `view*` fallbacks: a literal `[]` there is a new identity per render, which
 // leaks into consumers' dependency arrays and can drive a render loop while viewing a past page.
 const EMPTY_IDS: string[] = [];
+
 const EMPTY_OWNED: OwnedTraitStates = {};
 const EMPTY_ENTITY_CHANGES: EntityStatChanges = {};
 const EMPTY_CHOICES: Choice[] = [];
@@ -501,7 +506,7 @@ function useProvideGameplay() {
   // Counts successful save loads, so the view settles traits against its world once per load.
   const [saveLoads, setSaveLoads] = useState(0);
 
-  const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean; includeSceneImages?: boolean }) => {
+  const writeSave = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean; includeSceneImages?: boolean }): Promise<SaveWriteResult> => {
     const isAutosave = opts?.isAutosave ?? false;
     // Scene images ride along only when the player asked for them on this save (autosave never carries
     // them): each is around a megabyte of base64, so a long illustrated session would otherwise write a
@@ -542,16 +547,18 @@ function useProvideGameplay() {
         setLastSaveName(saveName);
         addSystemLogEntry(`Game saved as "${saveName}"`);
       }
-      return true;
+      return { ok: true };
     } catch (error) {
       console.error('Error saving game:', error);
       if (!isAutosave) {
         toastError(error, { headline: 'Failed to save game' });
         addSystemLogEntry('Failed to save game');
       }
-      return false;
+      return { ok: false, error };
     }
   }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, openingAction, addSystemLogEntry]);
+
+  const saveGame = useCallback(async (...args: Parameters<typeof writeSave>) => (await writeSave(...args)).ok, [writeSave]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -561,16 +568,16 @@ function useProvideGameplay() {
    *  on success; toasts once per session on failure and keeps trying on later turns. */
   const autosaveGame = useCallback(async (worldName: string, worldId?: string, turn?: number, slots?: number) => {
     const trim = autosavesToTrim(await getAllSaveRecords(), worldName, worldId, slots, turn);
-    const ok = await saveGame(autosaveName(turn), worldName, worldId, undefined, { isAutosave: true });
-    if (ok) {
+    const result = await writeSave(autosaveName(turn), worldName, worldId, undefined, { isAutosave: true });
+    if (result.ok) {
       for (const id of trim) await deleteSaveRecord(id);
       autosaveFailedRef.current = false;
     } else if (!autosaveFailedRef.current) {
       autosaveFailedRef.current = true;
-      toast.error('Autosave failed — your manual saves still work.');
+      toastAutosaveFailure(result.error);
     }
-    return ok;
-  }, [saveGame]);
+    return result.ok;
+  }, [writeSave]);
 
   /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
