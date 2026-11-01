@@ -508,9 +508,9 @@ const WorldEditorInner = ({
       worldOverview, stats, statGroups, entities, entityGroups, locations, connections, traits, traitGroups, dictionaries, placeholders,
       placeholderGroups, items, scripts: worldScripts, tools: worldTools, updateWorldOverview, updateStat, updateStatGroup, updateEntity,
       updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry,
-      updatePlaceholder, updatePlaceholderGroup, updateItem, writeScripts, updateTool: updateWorldTool,
+      updatePlaceholder, updatePlaceholderGroup, updateItem, advanced, writeScripts, updateTool: updateWorldTool,
     }).filter((t) => reachable.has(t.tab));
-  }, [searching, visibleTabs, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, connections, traits,
+  }, [searching, visibleTabs, advanced, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, connections, traits,
       traitGroups, dictionaries, placeholders, placeholderGroups, items, worldScripts, worldTools, updateWorldOverview, updateStat,
       updateEntity, updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary,
       updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup, updateItem, writeScripts, updateWorldTool]);

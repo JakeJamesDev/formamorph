@@ -561,6 +561,29 @@ describe('Items, Scripts and Tools', () => {
     ]);
   });
 
+  describe('item scripts by editor mode', () => {
+    const itemHits = (query: string, advanced: boolean) => {
+      const { src } = logicSources();
+      return findMatches(collectSearchTargets({ ...src, advanced }), query, LOOSE)
+        .filter((m) => m.target.tab === 'items').map(({ target }) => [target.itemId, itemTabForField(target.fieldKey)]);
+    };
+    const scriptCode = ITEM.scripts?.[0]?.code ?? '';
+
+    it('drops a hit found only in an item script in Simple mode', () => {
+      expect(scriptCode).not.toBe('');
+      expect(itemHits(scriptCode, false)).toEqual([]);
+    });
+
+    it('opens the item’s Scripts panel tab for that hit in Advanced mode', () => {
+      expect(itemHits(scriptCode, true)).toEqual([['i1', 'scripts']]);
+    });
+
+    it('keeps an item’s name and description hits in Simple mode', () => {
+      expect(itemHits('hums near', false)).toEqual([['i1', 'descriptions']]);
+      expect(itemHits(ITEM.name, false).length).toBeGreaterThan(0);
+    });
+  });
+
   it('writes an item replace through its updater, scripts and other fields in one write', () => {
     const { src, items } = logicSources();
     replaceAll(findMatches(collectSearchTargets(src), 'Bell', LOOSE).filter((m) => m.target.tab === 'items'), () => 'Gong');

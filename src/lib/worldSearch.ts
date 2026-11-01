@@ -128,6 +128,8 @@ export interface SearchSources {
   /** The Items tab, when the host edits it. */
   items?: Item[];
   updateItem?: (item: Item) => void;
+  /** False in Simple mode, where the item panel hides its Scripts tab and item script hits drop. */
+  advanced?: boolean;
   /** The world's own scripts; the Scripts tab also lists every stat's and trait's. */
   scripts?: Script[];
   /** Applies script edits where each home stores its list, as the Scripts tab writes them. */
@@ -317,7 +319,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       add(text, 'unidentifiedDescription', 'Unidentified Description', item.unidentifiedDescription,
         (r, v) => ({ ...r, unidentifiedDescription: v }));
       // The item's own scripts, which the Scripts tab doesn't list; they open on the item panel's Scripts tab.
-      (item.scripts ?? []).forEach((script, i) => addScript(add, plain, script, { key: `scripts[${i}].`, caption: 'Script ' }));
+      if (src.advanced !== false) (item.scripts ?? []).forEach((script, i) => addScript(add, plain, script, { key: `scripts[${i}].`, caption: 'Script ' }));
     });
   }
 
