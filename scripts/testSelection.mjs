@@ -1,5 +1,6 @@
 // Which tests a ticket's change can affect, beyond what vitest's import walk sees (scripts/affectedTests.mjs).
 import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** Above this many characters of paths, a gate runs on everything: Windows caps a command line at 32,767. */
@@ -9,14 +10,23 @@ export const MAX_ARGS_LENGTH = 30000;
 export const gitFiles = (command, ...args) =>
   execFileSync('git', [command, '-z', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
 
+/** The paths in a `@<path>` change source: a file of newline-separated repo paths, in place of a git base. */
+const listedFiles = (source) => readFileSync(source.slice(1), 'utf8').split('\n').map((line) => line.trim()).filter(Boolean);
+
 /**
  * The files changed in the working tree since `base`, new files included, deleted files left out. The working tree
  * counts so the gates see uncommitted edits; in prepare the tree is clean, so this equals `base...HEAD`.
  */
-export const changedSince = (base) => [
+export const changedSince = (base) => (base.startsWith('@') ? listedFiles(base).filter((file) => existsSync(file)) : [
   ...gitFiles('diff', '--name-only', '--diff-filter=d', base),
   ...gitFiles('ls-files', '--others', '--exclude-standard'),
-];
+]);
+
+/** `changedSince` with deleted files kept. */
+export const touchedSince = (base) => (base.startsWith('@') ? listedFiles(base) : [
+  ...gitFiles('diff', '--name-only', base),
+  ...gitFiles('ls-files', '--others', '--exclude-standard'),
+]);
 
 /** Tests whose result depends on files they don't import. The ticket test gate runs them every time. */
 export const ALWAYS_RUN = {

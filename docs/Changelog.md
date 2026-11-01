@@ -98,6 +98,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The trailer stacks its cards: a five-card build stack, the turn with its stats, the entity with its chat.** Each card lands on the last and holds 2 s or its caption's reading time. A title card introduces the community; the traits title card is gone. The wide cut runs 83 s and the tall cut 67 s.
     - **The trailer render fails any text that leaves the frame's 4% margin, by shot and frame.** It measures headlines, caption pills, the typed panel and the end card on every frame. The captions it caught, like the chat caption below the frame, now sit inside.
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
+  - **`affectedTests`, `changedLint` and `buildGate` accept `@<file>` in place of a git base.** The file lists the paths to check, so a shared checkout can gate one session's files without a peer's edits.
 
 #### ➖ Removed
 

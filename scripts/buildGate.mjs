@@ -3,7 +3,7 @@
 // Usage: node scripts/buildGate.mjs <base>
 import { spawnSync } from 'node:child_process';
 import { classifyChange, describeSkip } from './buildDecision.mjs';
-import { gitFiles } from './testSelection.mjs';
+import { touchedSince } from './testSelection.mjs';
 
 const [base] = process.argv.slice(2);
 if (!base) {
@@ -12,7 +12,7 @@ if (!base) {
 }
 
 // Deleted files count: removing a doc or a source file changes the bundle.
-const changed = [...gitFiles('diff', '--name-only', base), ...gitFiles('ls-files', '--others', '--exclude-standard')];
+const changed = touchedSince(base);
 const { build, forcing } = classifyChange(changed);
 if (!build) {
   console.log(describeSkip(changed, base));
