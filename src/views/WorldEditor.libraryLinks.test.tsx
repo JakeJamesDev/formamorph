@@ -204,7 +204,7 @@ describe('Save to Library', () => {
     clickButton('Save to Library');
     await screen.findByRole('button', { name: 'Open in Library' });
 
-    await hoverRowMarker('Linked');
+    await hoverRowMarker('Link pending save');
     expect(await screen.findByText(`Link pending save · ${name}`, {}, { timeout: 3000 })).toBeTruthy();
 
     clickButton('Save');

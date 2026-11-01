@@ -9,6 +9,7 @@ import { APP_VERSION } from '@/lib/version';
 import { checkForUpdate, androidAssets, type AndroidDownloadUrls } from '@/services/UpdateService';
 import { initialUpdateState, updateReducer, type UpdateState } from '@/lib/updates/updateState';
 import { updateBridge } from '@/lib/updates/updateBridge';
+import { useMountedRef } from '@/lib/useMountedRef';
 import type { UpdateChannel } from '@/contexts/settingsDefaults';
 
 const CHECK_INTERVAL_MS = 3 * 60 * 60 * 1000; // ~3h
@@ -28,6 +29,7 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
   // Android downloads the release asset itself, so the URLs the check already found travel with the
   // download call. The desktop main process finds its own asset and ignores them.
   const assets = useRef<AndroidDownloadUrls | null>(null);
+  const mounted = useMountedRef();
 
   const runCheck = useCallback(async () => {
     dispatch({ type: 'CHECK_START' });
@@ -83,9 +85,9 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
     // arrives here too, which is why the Android plugin rejects rather than reporting a finished download.
     updateBridge()
       ?.download({ version: state.latestVersion, channel, ...assets.current })
-      .then((r) => { if (r?.openedInBrowser) dispatch({ type: 'DOWNLOAD_OPENED_IN_BROWSER' }); })
-      .catch((e) => dispatch({ type: 'ERROR', error: (e as Error)?.message ?? 'Update download failed' }));
-  }, [state.latestVersion, channel]);
+      .then((r) => { if (mounted.current && r?.openedInBrowser) dispatch({ type: 'DOWNLOAD_OPENED_IN_BROWSER' }); })
+      .catch((e) => { if (mounted.current) dispatch({ type: 'ERROR', error: (e as Error)?.message ?? 'Update download failed' }); });
+  }, [state.latestVersion, channel, mounted]);
 
   const applyUpdate = useCallback(() => {
     const bridge = updateBridge();

@@ -211,10 +211,10 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   function addScript<T extends { scripts?: Script[] }>(
     add: ReturnType<typeof bind<T>>['add'], where: Where, script: Script, at = { key: '', caption: '' },
   ) {
-    const set = (change: Partial<Script>) => (r: T): T =>
+    const set = (r: T, change: Partial<Script>): T =>
       ({ ...r, scripts: (r.scripts ?? []).map((s) => (s.id === script.id ? { ...s, ...change } : s)) });
-    add(where, `${at.key}name`, `${at.caption}Name`, script.name, (r, v) => set({ name: v })(r));
-    add(where, `${at.key}code`, `${at.caption}Code`, script.code, (r, v) => set({ code: v })(r));
+    add(where, `${at.key}name`, `${at.caption}Name`, script.name, (r, v) => set(r, { name: v }));
+    add(where, `${at.key}code`, `${at.caption}Code`, script.code, (r, v) => set(r, { code: v }));
   }
 
   // ── Overview ──────────────────────────────────────────────────────────────

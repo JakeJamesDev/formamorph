@@ -110,7 +110,7 @@ Updating on Android works like the desktop app, with one extra tap at the end fo
 
 - 🔐 The download is checked against the checksum published with the release. A file that does not match is erased and never reaches the installer.
 - 💾 A finished download survives closing the app. Reopen it and you get **Install**, not a second 90 MB download. If Android cleared the app's cache, you download it again.
-- 📴 An update check with no connection shows no error on the main menu. The update dialog reads **Couldn't check for updates**.
+- 📴 An update check with no connection shows no error on the main menu. The update dialog reads **Couldn't Check for Updates**.
 - 🗂️ Your saves, worlds, and settings survive updates.
 
 ### Beta Builds

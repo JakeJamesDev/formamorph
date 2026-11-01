@@ -163,7 +163,7 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
   );
 };
 
-/** The Bench-level lens every instrument reads: who is being played, and at which location. Its notes go
+/** The Bench-level lens: who is being played, and at which location, as far as the open instrument reads. Its notes go
  *  under it because both follow from the PC on the selector directly above them. */
 const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange, parts }: LensBarProps & {
   /** The lens parts the open instrument reads. */

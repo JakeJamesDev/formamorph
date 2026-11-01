@@ -1,7 +1,7 @@
 import { Link2 } from 'lucide-react';
 import { SplitButton, type SplitButtonAction } from '@/components/ui/split-button';
 import { Tip } from '@/components/ui/tooltip';
-import { CONTENT_LINK_LABELS, contentLinkState, contentLinkStatusLine } from '@/lib/contentLink';
+import { contentLinkStateLabel, contentLinkStatusLine } from '@/lib/contentLink';
 import type { ContentLink } from '@/types';
 
 /** The marker beside a World Editor row whose copy follows a source. Nothing at all for an independent
@@ -12,9 +12,8 @@ export function ContentLinkIcon({ link, pending }: {
   /** Library ids linked this session and not yet saved with the world. */
   pending?: readonly string[];
 }) {
-  const state = contentLinkState(link);
-  if (!state) return null;
-  const label = CONTENT_LINK_LABELS[state];
+  const label = contentLinkStateLabel(link, pending);
+  if (!label) return null;
   // The span, not the glyph, takes the tooltip's composed ref — a lucide icon is not ref-safe here.
   return (
     <Tip tip={contentLinkStatusLine(link, pending) ?? label} labelsChild={false}>
