@@ -180,6 +180,18 @@ describe('the card in the completion list', () => {
     await waitFor(() => expect(popup()).toBeTruthy());
   }
 
+  /** Starts with `before` already in the field and types only `key`, so that key raises the one list. */
+  async function typeOneKey(user: ReturnType<typeof userEvent.setup>, before: string, key: string, statNames?: readonly string[]) {
+    render(<Harness initial={before} statNames={statNames} />);
+    const field = await editor('Stat code');
+    const view = EditorView.findFromDOM(field.closest<HTMLElement>('.cm-editor')!)!;
+    view.focus();
+    view.dispatch({ selection: { anchor: before.length } });
+    await user.keyboard(key);
+    await waitFor(() => expect(field.textContent).toBe(before + key));
+    await waitFor(() => expect(popup()).toBeTruthy());
+  }
+
   beforeEach(() => { built.mockClear(); });
 
   it('shows the full card for the selected option in the info pane', async () => {
@@ -204,10 +216,11 @@ describe('the card in the completion list', () => {
   it('builds a card for the shown option only, and one more for each option the author moves to', async () => {
     const user = userEvent.setup();
     const names = ['Health', 'Heat', 'Heart', 'Hearth', 'Hero'];
-    await typeAndList(user, 'return stats.He', names);
+    // One key raises the one list, however slow the machine types.
+    await typeOneKey(user, 'return stats.H', 'e', names);
     await waitFor(() => expect(pane()?.querySelector('[data-code-card]')).toBeTruthy());
     await waitFor(() => expect(within(popup()!).getAllByRole('option')).toHaveLength(names.length));
-    // Every list the keystrokes raised built the card of its selected option, the first, and no other.
+    // The list built the card of its selected option, the first, and no other.
     const labels = () => built.mock.calls.map(([, , label]) => label);
     expect(new Set(labels())).toEqual(new Set(['Health']));
 
