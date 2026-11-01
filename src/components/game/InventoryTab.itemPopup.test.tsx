@@ -33,8 +33,9 @@ describe('InventoryTab item popup', () => {
     expect(dialog.getByRole('heading', { name: 'Ash Wand' })).toBeInTheDocument();
     expect(dialog.getByText('A wand of pale ash wood.')).toBeInTheDocument();
     expect(dialog.getByAltText('Ash Wand')).toHaveAttribute('src', IMAGE);
-    expect(dialog.getByText('3 of 3 uses')).toBeInTheDocument();
-    expect(dialog.getByText("Bound: you can't drop or give it")).toBeInTheDocument();
+    const header = within(dialog.getByRole('heading', { name: 'Ash Wand' }).parentElement!);
+    expect(header.getByText('3 of 3 uses')).toBeInTheDocument();
+    expect(header.getByText("Bound: you can't drop or give it")).toBeInTheDocument();
   });
 
   it('draws no picture for an item with no image', async () => {

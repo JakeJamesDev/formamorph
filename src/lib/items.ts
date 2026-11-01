@@ -265,7 +265,7 @@ export function itemTraitOptions(owners: readonly { id: string; name: string; tr
   });
 }
 
-/** What an item popup lists under the description: State, count, uses left. */
+/** What an item popup lists beside the name: State, count, uses left. */
 export const copyFacts = (copy: ItemCopy, item: Pick<Item, 'uses'> | undefined): string[] => {
   const state = copyState(copy);
   const uses = usesLine(copy, item);

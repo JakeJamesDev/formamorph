@@ -9,7 +9,7 @@ export function ItemModal({ id, name, image, description, facts, isOpen, onOpenC
   name: string;
   image?: string;
   description: string;
-  /** Short lines under the description: State, count, uses left. */
+  /** Short text beside the name: State, count, uses left. */
   facts: readonly string[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,13 +23,13 @@ export function ItemModal({ id, name, image, description, facts, isOpen, onOpenC
         className={image ? 'sm:max-w-[800px] lg:max-w-[1040px] h-[90dvh] flex flex-col' : 'sm:max-w-[520px] h-[40dvh] flex flex-col'}
       >
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>{name}</DialogTitle>
+          <div className="flex flex-wrap items-baseline justify-center gap-x-2 pr-6 sm:justify-start">
+            <DialogTitle>{name}</DialogTitle>
+            {facts.map((fact) => <Meta key={fact}>{fact}</Meta>)}
+          </div>
         </DialogHeader>
         <EntityCardBody entity={{ id, name, images: image ? [{ data: image }] : undefined }} sideBySide>
           <EntityDescription text={description} />
-          {facts.length > 0 && (
-            <ul>{facts.map((fact) => <li key={fact}><Meta>{fact}</Meta></li>)}</ul>
-          )}
         </EntityCardBody>
       </DialogContent>
     </Dialog>
