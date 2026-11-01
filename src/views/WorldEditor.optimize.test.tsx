@@ -43,7 +43,13 @@ vi.mock('@/lib/useDownscalePrompt', async (importOriginal) => {
         if (run.hold) { onProgress?.(2, 5); await run.hold; }
         return {
           ...world,
-          worldOverview: { ...world.worldOverview, thumbnail: WEBP },
+          worldOverview: {
+            ...world.worldOverview,
+            thumbnail: WEBP,
+            ...(world.worldOverview.mapBackground
+              ? { mapBackground: { ...world.worldOverview.mapBackground, images: [{ data: WEBP }] } }
+              : {}),
+          },
           entities: world.entities.map((e) => ({ ...e, images: [{ data: WEBP }] })),
           locations: world.locations.map((l) => ({ ...l, images: [{ data: WEBP }] })),
           dictionaries: world.dictionaries.map((d) => ({ ...d, thumbnail: WEBP })),
@@ -57,6 +63,7 @@ const WORLD = benchEditorWorld({
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: PNG, bgm: null,
     systemPrompt: '', tags: [],
+    mapBackground: { images: [{ data: PNG }], frame: { x: 0, y: 0, width: 10, height: 10 }, opacity: 0.5 },
   },
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: PNG }] }],
   entities: [{ id: 'resident', name: 'Odd Wick', images: [{ data: PNG }], locations: ['harbor'] }],
@@ -135,11 +142,13 @@ describe('Optimize Images', () => {
     fireEvent.click(optimizeButton());
     await waitFor(() => expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP));
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
+    expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(PNG);
+    expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: PNG }]);
     expect(ctx().entities[0].images).toEqual([{ data: PNG }]);
     expect(ctx().locations[0].images?.[0]?.data).toBe(PNG);
     expect(ctx().dictionaries[0].thumbnail).toBe(PNG);
@@ -151,6 +160,7 @@ describe('Optimize Images', () => {
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
     expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP);
+    expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
   });
 
   it('cancels when the editor closes mid-run and writes nothing', async () => {
