@@ -319,16 +319,28 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
           <ScrollArea className="flex-grow min-h-0">
             <div className="p-2">
               {personaEntity && (
-                <EntityListRow label={personaEntity.name} you onClick={() => openEntity(personaEntity, true)} />
+                <EntityListRow
+                  label={personaEntity.name}
+                  you
+                  selected={personaEntity.id === entityViewEntity?.id}
+                  onClick={() => openEntity(personaEntity, true)}
+                />
               )}
               {/* No pick falls back to the played side, which is what selecting You means. */}
-              {youRow && <EntityListRow label={PLAYED_SIDE.name} onClick={() => setSelectedEntityId(undefined)} />}
+              {youRow && (
+                <EntityListRow
+                  label={PLAYED_SIDE.name}
+                  selected={entityViewSubject?.kind === 'played'}
+                  onClick={() => setSelectedEntityId(undefined)}
+                />
+              )}
               {lookAround.length > 0 ? (
                 lookAround.map((row) => (
                   <EntityListRow
                     key={row.entity.id}
                     label={row.label ?? ''}
                     following={entityFollowers.includes(row.entity.id)}
+                    selected={row.entity.id === entityViewEntity?.id}
                     onClick={() => handleLookAroundClick(row)}
                     // Runtime characters are the story's; authored ones belong to the world and never delete from play.
                     onRemove={row.met && !authoredIds.has(row.entity.id) ? () => setPendingRemoval(row.entity.name) : undefined}
