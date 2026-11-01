@@ -31,6 +31,12 @@ describe('isLosslessImage', () => {
     expect(isLosslessImage(url('image/gif', GIF_1x1))).toBe(false);
   });
 
+  it('reads a chunk size as unsigned, so a corrupt size ends the walk instead of moving it backward', () => {
+    // 0xFFFFFFF0 read as signed points the walk at offset 4, where these bytes spell an image chunk.
+    const corrupt = btoa(`RIFFVP8LWEBPJUNK\xF0\xFF\xFF\xFF${'\0'.repeat(16)}`);
+    expect(isLosslessImage(url('image/webp', corrupt))).toBe(false);
+  });
+
   it('never counts an animated image, lossless frames or not', () => {
     expect(isLosslessImage(url('image/webp', WEBP_ANIMATED_LOSSLESS))).toBe(false);
     expect(isLosslessImage(url('image/png', APNG_4x3))).toBe(false);

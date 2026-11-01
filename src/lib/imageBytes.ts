@@ -152,7 +152,7 @@ function webpImageChunk(b: Uint8Array): string | null {
   for (let i = 12; i + 8 <= b.length; ) {
     const type = fourcc(b, i);
     if (type === 'VP8L' || type === 'VP8 ' || type === 'ANIM') return type;
-    const size = b[i + 4] | (b[i + 5] << 8) | (b[i + 6] << 16) | (b[i + 7] << 24);
+    const size = (b[i + 4] | (b[i + 5] << 8) | (b[i + 6] << 16) | (b[i + 7] << 24)) >>> 0;
     i += 8 + size + (size & 1);
   }
   return null;
