@@ -76,6 +76,8 @@ export function updateReducer(state: UpdateState, action: UpdateAction): UpdateS
     case 'DOWNLOAD_START':
       return { ...state, phase: 'downloading', downloadPct: 0, bytesReceived: 0, bytesTotal: undefined, openedInBrowser: undefined };
     case 'DOWNLOAD_OPENED_IN_BROWSER':
+      // A channel switch during the wait already moved on, so its answer is stale.
+      if (state.phase !== 'downloading') return state;
       // No progress follows a browser download, so Download shows again.
       return { ...state, phase: 'available', downloadPct: undefined, bytesReceived: undefined, bytesTotal: undefined, openedInBrowser: true };
     case 'DOWNLOAD_PROGRESS': {

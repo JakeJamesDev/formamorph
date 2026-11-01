@@ -20,6 +20,7 @@ const seed = vi.hoisted(() => ({
   notes: [] as MemoryNote[],
   edits: {} as Record<string, { text: string; source: 'player' }>,
   pins: {} as Record<string, 'keep' | 'drop'>,
+  deleted: [] as string[],
 }));
 const snapshot = vi.hoisted(() => ({ notes: [] as MemoryNote[], edits: {} as object, pins: {} as object }));
 
@@ -28,7 +29,7 @@ vi.mock('@/contexts/GameplayContext', () => ({
     const [memoryNotes, setMemoryNotes] = useState(seed.notes);
     const [memoryEdits, setMemoryEdits] = useState(seed.edits);
     const [memoryPins, setMemoryPins] = useState(seed.pins);
-    const [memoryDeleted, setMemoryDeleted] = useState<string[]>([]);
+    const [memoryDeleted, setMemoryDeleted] = useState(seed.deleted);
     Object.assign(snapshot, { notes: memoryNotes, edits: memoryEdits, pins: memoryPins });
     return {
       fullMessageHistory: history,
@@ -47,7 +48,10 @@ vi.mock('@/contexts/SettingsContext', () => ({
 }));
 vi.mock('@/components/HelpButton', () => ({ HelpButton: () => null }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  seed.deleted = [];
+});
 
 const resetButton = () => screen.getByRole('button', { name: 'Reset All My Changes' }) as HTMLButtonElement;
 
@@ -71,5 +75,15 @@ describe('Reset All My Changes in the Memory Manager', () => {
     seed.pins = {};
     render(<MemoryManagerModal isOpen onOpenChange={() => {}} />);
     expect(resetButton().disabled).toBe(true);
+  });
+
+  it.each([
+    ['an edit', { edits: { t1: { text: 'Rewritten dock scene.', source: 'player' as const } }, pins: {}, deleted: [] }],
+    ['a pin', { edits: {}, pins: { t1: 'keep' as const }, deleted: [] }],
+    ['a deletion', { edits: {}, pins: {}, deleted: ['t1'] }],
+  ])('enables with only %s', (_, changes) => {
+    Object.assign(seed, { notes: [] }, changes);
+    render(<MemoryManagerModal isOpen onOpenChange={() => {}} />);
+    expect(resetButton().disabled).toBe(false);
   });
 });
