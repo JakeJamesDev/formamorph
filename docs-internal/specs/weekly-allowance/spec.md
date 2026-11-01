@@ -75,15 +75,17 @@ The breakdown shows seven groups by share of cost. Any single prompt with a larg
 - The daily ceiling, the spend-versus-estimate report and the Supporter subject rules don't change.
 
 **Prompt type on usage rows**
-- The client sends each call's `AIRequestType` in a new request header on the proxy route. The header never goes upstream.
+- The client sends each call's `AIRequestType` as is in the `X-Formamorph-Prompt-Type` request header on the proxy route. The header never goes upstream.
 - A new nullable column on the usage table stores it. The server accepts only known values and stores null otherwise. It never refuses a call over this header.
 - One shared list of prompt types is checked by a test in each repo, as the refusal codes are.
 
 **Breakdown data**
 - The hosted-state route gains `breakdown`: each prompt type's share of the subject's spend this week, as a percent with one decimal, with no dollar amount. A null type comes back as `other`. It also gains `breakdownThreshold`.
-- `breakdownThreshold` is a server setting with a default of 10 (Q10).
+- `breakdown` is a map of type to percent, for example `{ "narration": 61.2, "other": 0.4 }`. It holds only types with cost above zero, and is `{}` for an empty week. A state with no usage figure returns null for `breakdown` and `breakdownThreshold`.
+- Each share is the type's cost over the week's total, including open rows, the same basis as the ring. The server rounds to one decimal and forces no total; the client's rollup makes the total 100.
+- `breakdownThreshold` is a server setting, a whole number from 1 to 100, with a default of 10 (Q10).
 - The `event: usage` payload doesn't change. The popover refetches the hosted state when it opens. A player with no Formamorph AI prompt never makes this read.
-- The admin spend read for a subject gains the same per-type shares (Q11). Staff tools get no changelog entry.
+- The admin spend read for a subject gains the same per-type shares (Q11), listing every type and `other`, zeros included. Staff tools get no changelog entry.
 
 **Breakdown rollup (client)**
 - One pure module turns the shares into rows. Input: `breakdown` and `breakdownThreshold`. Output: ordered group rows, each with its nested prompt rows.
