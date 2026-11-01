@@ -264,7 +264,7 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 
 1. In the right panel, open the **Inventory** tab. On mobile, open **Status** first.
 2. **Equipped** draws a figure with what you wear on it. **Carried** lists the rest below it. A second card, named for your location, lists the items lying there.
-3. Select a filled box on the figure to see the item's row. Hover over or select an empty box to see its slot's name.
+3. Select an item's row to see its image and description. Select a filled box on the figure to see the item's row. Hover over or select an empty box to see its slot's name.
 4. Use the buttons on an item's row:
 
 | Button | What it does |
@@ -310,6 +310,12 @@ Select a name in the **Entities** tab, then select it again to open the dialog. 
 The dialog shows the entity's image or 3D model, its player-facing description, and its sound. An entity the story invented also has **Edit** and **Regenerate** for its description. **Regenerate** shows a **New Description** to **Keep** or **Discard**.
 
 An **Equipped** list shows what the entity wears, when you can see it. What the entity carries stays private.
+
+## The Item Dialog
+<!-- keywords: item details, item picture, item image, item description, what does this item do, look at item -->
+<!-- route: item -->
+
+Select an item's row in the **Inventory** tab to open its dialog. The dialog shows the item's image and description, with its State, count and uses left. An unidentified item shows only its unidentified name and description.
 
 ## The Stranger Dialog
 <!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->

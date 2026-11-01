@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
+import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
@@ -15,6 +16,7 @@ import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import { ItemModal } from '../modals/ItemModal';
 import { BodyDoll } from './BodyDoll';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
@@ -50,6 +52,7 @@ export interface InventoryTabProps {
 }
 
 const YOU: ItemCopyWhere = { kind: 'you' };
+const BOUND_TIP = "Bound: you can't drop or give it";
 
 /** One small labeled icon button on an item row. */
 const ItemRowButton = forwardRef<HTMLButtonElement, ComponentProps<typeof Button> & { label: string; icon: typeof Shirt }>(
@@ -232,6 +235,30 @@ export function InventoryTab({
   const carried = shown.filter((c) => !boxed.has(c.id));
   const lyingHere = lying.filter((c) => c.visibility === 'visible');
   const here: ItemCopyWhere | null = locationId ? { kind: 'location', id: locationId } : null;
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const devRoute = useDevRoute();
+  const firstShown = shown[0]?.id;
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.modal === 'item' && firstShown) setViewingId(firstShown);
+  }, [devRoute?.modal, firstShown]);
+  // A copy that left the panel closes its popup.
+  const viewing = [...shown, ...lyingHere].find((c) => c.id === viewingId);
+  const descriptionOf = (copy: ItemCopy) => {
+    const item = itemOf(copy);
+    return (copy.item.kind === 'runtime'
+      ? runtimeById.get(copy.item.runtimeItemId)?.description : resolveText(item ? copyFace(item, copy).description ?? '' : '')) ?? '';
+  };
+  const factsOf = (copy: ItemCopy) => {
+    const item = itemOf(copy);
+    const state = copyState(copy);
+    const uses = lineFor(copy, item);
+    return [
+      ...(state ? [state] : []),
+      ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []),
+      ...(uses ? [uses] : []),
+      ...(item?.bound ? [BOUND_TIP] : []),
+    ];
+  };
 
   const row = (copy: ItemCopy, actions: ReactNode) => {
     const item = itemOf(copy);
@@ -240,7 +267,7 @@ export function InventoryTab({
     const line = copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : lineFor(copy, item);
     const image = imageOf?.(copy);
     return (
-      <li key={copy.id} className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
+      <li key={copy.id} className="relative flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
         {image && (
           <img
             src={image} alt="" {...THUMB_INTRINSIC.portrait}
@@ -249,12 +276,19 @@ export function InventoryTab({
         )}
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
-            <span className="truncate">{name}</span>
+            {/* The name's button covers the row, so the picture and the meta text open the popup too. */}
+            <button
+              type="button"
+              onClick={() => setViewingId(copy.id)}
+              className="truncate rounded-sm text-left after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"
+            >
+              {name}
+            </button>
             {state && <Meta className="shrink-0">{state}</Meta>}
             {copy.quantity > 1 && <Meta className="shrink-0">×{copy.quantity}</Meta>}
             {item?.bound && (
-              <Tip tip="Bound: you can't drop or give it">
-                <span role="img" aria-label="Bound" className="shrink-0">
+              <Tip tip={BOUND_TIP}>
+                <span role="img" aria-label="Bound" className="relative shrink-0">
                   <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                 </span>
               </Tip>
@@ -262,7 +296,7 @@ export function InventoryTab({
           </p>
           {line && <Meta as="p">{line}</Meta>}
         </div>
-        {actions}
+        <div className="relative shrink-0">{actions}</div>
       </li>
     );
   };
@@ -369,6 +403,17 @@ export function InventoryTab({
           </ul>
         )}
       </PanelOwnerCard>
+      {viewing && (
+        <ItemModal
+          id={viewing.id}
+          name={nameOf(viewing)}
+          image={imageOf?.(viewing)}
+          description={descriptionOf(viewing)}
+          facts={factsOf(viewing)}
+          isOpen
+          onOpenChange={(open) => { if (!open) setViewingId(null); }}
+        />
+      )}
     </ScrollArea>
   );
 }

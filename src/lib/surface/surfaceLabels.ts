@@ -59,6 +59,7 @@ const ENTRIES: [string, string][] = [
   ['editText', 'Edit Text'],
   ['entity', 'Entity'],
   ['stranger', 'Stranger'],
+  ['item', 'Item'],
   ['enterWorld', 'Enter World'],
   ['errorDetails', 'Error Details'],
   ['imageSetup', 'Image Setup'],
