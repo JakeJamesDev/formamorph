@@ -178,7 +178,7 @@ The story keeps your recent turns word for word and carries older turns as short
 
 **Edits and deletions can be undone.** The story's own summary is always kept under what you write. **Revert to the Original** restores one memory's wording.
 
-**Reset All My Changes** puts every memory back the way the story had it, and it deletes the memories you wrote. You can't undo a reset.
+**Reset All My Changes** puts every memory back the way the story had it. The memories you wrote stay. You can't undo a reset.
 
 Memories under the **Recent** line still go to the AI word for word. A pin on one of them matters only after it ages out.
 
