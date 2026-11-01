@@ -5,10 +5,12 @@ import { ChangelogBody, FullChangelogLink } from '@/components/ChangelogUi';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { UpdateChannel } from '@/contexts/settingsDefaults';
 import type { UpdateState } from '@/lib/updates/updateState';
+import { updateDialogTitle } from '@/lib/updates/updateDialogTitle';
 
 /** The update popout reached by clicking the footer version number. Shows the release channel selector plus,
- *  depending on state, either an available-update view (new version + notes + Download) or an up-to-date view
- *  (current notes + Check for updates). Download/apply are driven by the parent (per-platform). */
+ *  depending on phase, an available-update view (new version + notes + Download), a download view (same notes,
+ *  Close only) or an up-to-date view (current notes + Check for updates). Download/apply are driven by the
+ *  parent (per-platform). */
 export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -18,12 +20,9 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
 }) {
   const { setUpdateChannel } = useSettings();
   const available = state.phase === 'available';
+  const inFlight = state.phase === 'downloading' || state.phase === 'downloaded';
   const checking = state.phase === 'checking';
-  const title = available
-    ? `Update Available: ${state.latestVersion}`
-    : state.phase === 'error'
-      ? 'Couldn’t check for updates'
-      : 'You’re up to date';
+  const title = updateDialogTitle(state);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -48,7 +47,7 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
             text={state.changelog}
             placeholder="No release notes"
             currentVersion={state.currentVersion}
-            updateVersion={available ? state.latestVersion : undefined}
+            updateVersion={available || inFlight ? state.latestVersion : undefined}
           />
         )}
 
@@ -59,6 +58,8 @@ export function UpdateDialog({ open, onOpenChange, state, onCheck, onDownload }:
               <Button variant="outline" className="sm:ml-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button onClick={onDownload}>Download</Button>
             </>
+          ) : inFlight ? (
+            <Button variant="outline" className="sm:ml-auto" onClick={() => onOpenChange(false)}>Close</Button>
           ) : (
             <Button className="sm:ml-auto" onClick={onCheck} disabled={checking}>{checking ? 'Checking…' : 'Check for updates'}</Button>
           )}
