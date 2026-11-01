@@ -52,11 +52,17 @@ type GlassCardProps = {
   bobPhase?: number;
   /** The card stays to the scene's last frame instead of leaving, as on the end card. */
   holdsToEnd?: boolean;
+  /** Frame the card starts to dim to a depth card, as in a growing stack. */
+  dimFrom?: number;
   children: ReactNode;
 };
 
+/** Frames a card takes to dim, and how bright it ends. It stays opaque, so the cards under it never show through. */
+const DIM_FRAMES = 30;
+const DIM_BRIGHTNESS = 0.4;
+
 /** Ruling Q27: a tilted glass card that rises on an overshooting spring, floats on a slow bob, and fades as it drifts away on the scene's last frames. */
-export const GlassCard = ({ pose, durationInFrames, variant = 'shot', delay = 0, bobPhase = 0, holdsToEnd = false, children }: GlassCardProps) => {
+export const GlassCard = ({ pose, durationInFrames, variant = 'shot', delay = 0, bobPhase = 0, holdsToEnd = false, dimFrom, children }: GlassCardProps) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const look = LOOK[variant];
@@ -65,6 +71,7 @@ export const GlassCard = ({ pose, durationInFrames, variant = 'shot', delay = 0,
   const tilt = interpolate(frame, [0, durationInFrames - 1], pose.tilt, { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const x = pose.x + (1 - enter) * look.slide + (1 - out) * EXIT_DRIFT.x;
   const y = pose.y + (1 - enter) * look.rise + bob(frame, bobPhase) * look.bob + (1 - out) * EXIT_DRIFT.y;
+  const dim = dimFrom === undefined ? 0 : interpolate(frame, [dimFrom, dimFrom + DIM_FRAMES], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
     <AbsoluteFill style={{ perspective: 2200, justifyContent: 'center', alignItems: 'center' }}>
@@ -77,6 +84,7 @@ export const GlassCard = ({ pose, durationInFrames, variant = 'shot', delay = 0,
           borderRadius: RADIUS,
           overflow: 'hidden',
           ...look.style,
+          ...(dim > 0 ? { filter: `brightness(${1 - dim * (1 - DIM_BRIGHTNESS)})` } : undefined),
           opacity: Math.min(1, enter * 1.6) * out * look.opacity,
           transform: `translate(${x}px, ${y}px) rotateY(${tilt}deg) rotateX(${pose.lean + (1 - enter) * 10}deg)`,
         }}

@@ -1,4 +1,4 @@
-import { AbsoluteFill, Composition, Folder, Sequence } from 'remotion';
+import { AbsoluteFill, Composition, Folder, Sequence, Still } from 'remotion';
 import { CANVAS, FPS, type Layout } from './layout';
 import { sceneStarts } from './timeline';
 import { Trailer } from './Trailer';
@@ -17,6 +17,9 @@ const cellSize = (layout: Layout) => {
   return { width, height: (width * CANVAS[layout].height) / CANVAS[layout].width };
 };
 
+/** Rows of a stack sheet: one per card. */
+const STACK_SHEET_ROWS = 4;
+
 /** Pages a cut's sheet needs. */
 const sheetPages = (layout: Layout) => Math.ceil(sceneStarts(layout).length / ROWS_PER_PAGE[layout]);
 
@@ -25,30 +28,43 @@ type SheetProps = { layout: Layout; page: number; pages: number };
 
 /** A contact sheet: each shot of the cut is a row of five frames, so one still shows how every shot enters, holds and leaves. */
 const Sheet = ({ layout, page }: SheetProps) => {
+  const rows = sceneStarts(layout).slice(page * ROWS_PER_PAGE[layout], (page + 1) * ROWS_PER_PAGE[layout]);
+  return <SheetGrid layout={layout} cells={rows.flatMap((scene) => sampleFrames(scene.durationInFrames).map((offset) => ({ id: scene.id, from: scene.from, offset })))} />;
+};
+
+/** One still of the cut per cell, labeled with its scene, scene frame and time. */
+const SheetGrid = ({ layout, cells }: { layout: Layout; cells: { id: string; from: number; offset: number }[] }) => {
   const cell = cellSize(layout);
   const canvas = CANVAS[layout];
-  const rows = sceneStarts(layout).slice(page * ROWS_PER_PAGE[layout], (page + 1) * ROWS_PER_PAGE[layout]);
   return (
     <AbsoluteFill style={{ background: '#000', flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start' }}>
-      {rows.flatMap((scene) =>
-        sampleFrames(scene.durationInFrames).map((offset) => {
-          const at = scene.from + offset;
-          return (
-            <div key={`${scene.id}-${offset}`} style={{ ...cell, position: 'relative', overflow: 'hidden', outline: '1px solid #222' }}>
-              <div style={{ ...canvas, position: 'absolute', transform: `scale(${cell.width / canvas.width})`, transformOrigin: '0 0' }}>
-                <Sequence from={-at} layout="none">
-                  <Trailer layout={layout} reading={[]} dense={[]} camera={[]} />
-                </Sequence>
-              </div>
-              <div style={{ position: 'absolute', left: 6, top: 4, fontFamily: 'monospace', fontSize: 14, color: '#fff', background: 'rgba(0,0,0,.6)', padding: '1px 5px', borderRadius: 4 }}>
-                {scene.id} +{offset} · {(at / FPS).toFixed(2)}s
-              </div>
+      {cells.map(({ id, from, offset }) => {
+        const at = from + offset;
+        return (
+          <div key={`${id}-${offset}`} style={{ ...cell, position: 'relative', overflow: 'hidden', outline: '1px solid #222' }}>
+            <div style={{ ...canvas, position: 'absolute', transform: `scale(${cell.width / canvas.width})`, transformOrigin: '0 0' }}>
+              <Sequence from={-at} layout="none">
+                <Trailer layout={layout} reading={[]} dense={[]} stack={[]} camera={[]} />
+              </Sequence>
             </div>
-          );
-        }),
-      )}
+            <div style={{ position: 'absolute', left: 6, top: 4, fontFamily: 'monospace', fontSize: 14, color: '#fff', background: 'rgba(0,0,0,.6)', padding: '1px 5px', borderRadius: 4 }}>
+              {id} +{offset} · {(at / FPS).toFixed(2)}s
+            </div>
+          </div>
+        );
+      })}
     </AbsoluteFill>
   );
+};
+
+/** Frames of each landing a stack sheet row samples, from the card's rise. */
+const LANDING_FRAMES = [8, 20, 34, 50, 70];
+
+/** The growing stack frame by frame: each card is one row, through its landing. */
+const StackSheet = ({ layout }: { layout: Layout }) => {
+  const scene = sceneStarts(layout).find((item) => item.buildRises);
+  if (!scene?.buildRises) throw new Error(`The ${layout} cut has no growing stack`);
+  return <SheetGrid layout={layout} cells={scene.buildRises.flatMap((rise) => LANDING_FRAMES.map((frame) => ({ id: scene.id, from: scene.from, offset: rise + frame })))} />;
 };
 
 /** The studio's "Sheets" folder: one still per cut, with the page as a prop. `npm run sheet` renders every page. */
@@ -65,6 +81,9 @@ export const SheetCompositions = () => (
         width={SHEET_WIDTH}
         height={Math.ceil(cellSize(layout).height * ROWS_PER_PAGE[layout])}
       />
+    ))}
+    {(['wide', 'tall'] as const).map((layout) => (
+      <Still key={layout} id={`Sheet-stack-${layout}`} component={StackSheet} defaultProps={{ layout }} width={SHEET_WIDTH} height={Math.ceil(cellSize(layout).height * STACK_SHEET_ROWS)} />
     ))}
   </Folder>
 );

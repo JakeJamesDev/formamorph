@@ -1,6 +1,6 @@
 # 15: Build Stack
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 14
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -24,10 +24,25 @@ The user's seventh review. The authoring section shows each feature building on 
 
 ## Acceptance criteria
 
-- [ ] The wide cut shows the four-card stack after W09, each card landing on the last, earlier cards dimmed, the newest with its caption.
-- [ ] The tall cut shows the same stack as a column between T08 and T10a.
-- [ ] Every stack card holds at least 2 s, and at least its caption's reading time.
-- [ ] The subject check passes on the newest card of the stack and still runs unchanged on every other shot; the dense-card check skips the growing stack.
-- [ ] The map card shows Veilwood's Map Background under its authored locations.
-- [ ] The inventory capture is in `captures.json` with a subject region, and the contact sheet shows both candidates.
-- [ ] Both 6 s loops pass; the Steam checks pass; storyboard totals match the renders.
+- [x] The wide cut shows the four-card stack after W09, each card landing on the last, earlier cards dimmed, the newest with its caption. Seen on `wide-stack.png`.
+- [x] The tall cut shows the same stack as a column between T08 and T10a. Seen on `tall-stack.png`; T09 in the render report.
+- [x] Every stack card holds at least 2 s, and at least its caption's reading time. Render report: 2.10, 2.00, 2.67, 3.25 s. Cutting each beat by 30 frames printed FAIL on all four.
+- [x] The subject check passes on the newest card of the stack and still runs unchanged on every other shot; the dense-card check skips the growing stack. It failed the first inventory crops on its own. Marking W10 dense added no dense line.
+- [x] The map card shows Veilwood's Map Background under its authored locations. Seen on `candidates-all.png`, tile `canvas`.
+- [x] The inventory capture is in `captures.json` with a subject region, and the contact sheet shows both candidates. `candidates-at-card-crop.png`; `capture:diff` prints `same`.
+- [x] Both 6 s loops pass; the Steam checks pass; storyboard totals match the renders. Render exit 0: wide 83.50 s, 11,899 Kbps; tall 65.25 s.
+
+## Landed
+
+**Picks:** Maren for the profile (`.scratch/trailer-15/frames/candidates-at-card-crop.png`). The game's Inventory tab for inventory: the editor's Items tab is mostly an empty form at the crop, and this holds for Emberwatch's 32 items too. Drone's list for travel: Veilwood's map view repeats the first card.
+
+**Not verified:**
+
+- Nothing left unticked. The profile candidate on Drone's Tiamat never filmed, because Drone is not in the capture's library.
+- `travel` was not recaptured. `capture:diff` fails it with `Capture scene does not match the world`: Drone moved Tiamat out of Demon Frontier, so `site-game.json` no longer fits. Every shot on the demo scene shares this. The committed `travel.png` shows the older Drone list.
+
+**For you:**
+
+- Watch the stack at 27.92 s in `out/TrailerWide.mp4`, and at 25.25 s in `out/TrailerTall.mp4`. Sheets: `.scratch/trailer-15/frames/wide-stack.png`, `.scratch/trailer-15/frames/tall-stack.png`.
+- Dimmed cards stay opaque at 40% brightness, not the depth card's 45% opacity, since the see-through version mixed Maren into the travel card. Check that they still read as depth.
+- Maren's image is on a store trailer now. Check it against what the Steam page allows.

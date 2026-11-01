@@ -432,6 +432,14 @@ async function filmModel(page, context, shot, sink) {
   }
 }
 
+/** Puts a built world in the page's library, for an `editWorld` step to find. */
+async function storeWorld(page, world) {
+  await page.evaluate(async (data) => {
+    const { default: storage } = await import('/src/services/WorldStorageService.ts');
+    await storage.storeWorld({ id: 'capture-built-world', name: data.worldOverview.name, data });
+  }, world);
+}
+
 /** Runs a shot's `steps` after the screen is up. Each step is one key of captures.json's step list. */
 async function runSteps(page, steps) {
   for (const step of steps) {
@@ -510,6 +518,8 @@ async function capture(browser, shot, sink) {
       await input.fill('');
       await input.blur();
     }
+    // An editor shot opens a built world from the library, so the world goes there first.
+    if (shot.kind === 'page' && shot.world) await storeWorld(page, builtWorlds[shot.world]);
     if (shot.steps) await runSteps(page, shot.steps);
     if (shot.expect) await page.getByText(shot.expect, { exact: true }).first().waitFor({ timeout: 10000 });
     // Settle: fonts and images decoded, then the pointer parked where it hovers nothing.
