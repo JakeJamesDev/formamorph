@@ -131,6 +131,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor marks a Persona-Only entity's Others openings with a Never Draws badge and no draw chance.** Other rows' chances no longer count them. The entity's Openings tab now says only Self openings draw.
   - **A skipped Tool rename in Find and Replace now says why.** The notice names the reason, such as another Tool already using the name.
   - **World tiles on the Main Menu now appear faster each time it opens.** The bundled worlds load only when one is new or has changed.
+  - **The Openings checkbox and hint now count only openings that can draw.** Text only on a Custom Persona's Others rows leaves the default opening on.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

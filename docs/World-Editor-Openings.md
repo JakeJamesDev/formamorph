@@ -76,7 +76,7 @@ Every control works while the card is collapsed. You can drag cards and tune wei
 
 The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening. Off covers every opening in the world, including locations, entities and an entity the player picks at Enter World.
 
-**The box starts unchecked and is disabled until an opening with text exists.** Write one here, on a location or on an entity, and it checks itself. An empty opening doesn't count. A player who plays a library persona with Self openings also turns it on, unless you unchecked it. There is nothing to switch before that: a world with no openings plays the default opening either way.
+**The box starts unchecked and is disabled until an opening with text exists.** Write one here, on a location or on an entity, and it checks itself. An empty opening doesn't count. Neither does an Others opening on the Custom Persona or a Persona-Only entity, because it never draws. A player who plays a library persona with Self openings also turns it on, unless you unchecked it. There is nothing to switch before that: a world with no openings plays the default opening either way.
 
 > 💡 **The chances stay visible with the switch off.** They show the odds after you switch the list on. Tune the weights before you publish.
 
