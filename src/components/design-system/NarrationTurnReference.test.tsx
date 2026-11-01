@@ -14,18 +14,18 @@ describe('narration turn reference', () => {
     const user = userEvent.setup();
     renderReference();
 
-    await user.click(within(latest()).getByRole('button', { name: 'Re-generate Narration' }));
+    await user.click(within(latest()).getByRole('button', { name: 'Regenerate Narration' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Last action: Re-generate Narration');
+    expect(screen.getByRole('status')).toHaveTextContent('Last action: Regenerate Narration');
     expect(within(latest()).queryByRole('button', { name: 'Rewind to Here' })).toBeNull();
   });
 
-  it('gives the past card Rewind to Here and no re-generate action', () => {
+  it('gives the past card Rewind to Here and no regenerate action', () => {
     renderReference();
 
     expect(within(past()).getByRole('button', { name: 'Rewind to Here' })).toBeInTheDocument();
-    expect(within(past()).queryByRole('button', { name: 'Re-generate Narration' })).toBeNull();
-    expect(within(past()).queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    expect(within(past()).queryByRole('button', { name: 'Regenerate Narration' })).toBeNull();
+    expect(within(past()).queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
   });
 
   it('shows a plate only where the turn has an image, and deletes the image in view', async () => {
@@ -70,28 +70,28 @@ describe('narration turn reference', () => {
     const labels = within(screen.getByRole('menu')).getAllByRole('menuitem').map((item) => item.textContent);
     const playerLabels = playerBubbleActions({ live: false, busy: false }, { edit: () => {}, copy: () => {} }).map((a) => a.label);
     expect(labels).toEqual(playerLabels);
-    expect(labels).not.toContain('Re-generate Narration');
+    expect(labels).not.toContain('Regenerate Narration');
 
     await user.click(screen.getByRole('menuitem', { name: 'Copy Text' }));
     expect(screen.getByRole('status')).toHaveTextContent('Last action: Copy Text');
   });
 
-  it('enables Re-generate Stats on the latest turn and disables it on the past turn', async () => {
+  it('enables Regenerate Stats on the latest turn and disables it on the past turn', async () => {
     const user = userEvent.setup();
     renderReference();
-    const regenerate = within(latest()).getByRole('button', { name: 'Re-generate Stats' });
+    const regenerate = within(latest()).getByRole('button', { name: 'Regenerate Stats' });
 
     expect(regenerate).toBeEnabled();
-    expect(within(past()).getByRole('button', { name: 'Re-generate Stats' })).toBeDisabled();
+    expect(within(past()).getByRole('button', { name: 'Regenerate Stats' })).toBeDisabled();
 
     await user.click(regenerate);
-    expect(screen.getByRole('status')).toHaveTextContent('Last action: Re-generate Stats');
+    expect(screen.getByRole('status')).toHaveTextContent('Last action: Regenerate Stats');
     const edit = within(latest()).getByRole('button', { name: 'Edit Stats' });
     await user.click(edit);
     expect(edit).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it.each(['Edit Stats', 'Re-generate Stats'])('shows the %s tooltip', async (name) => {
+  it.each(['Edit Stats', 'Regenerate Stats'])('shows the %s tooltip', async (name) => {
     const user = userEvent.setup();
     renderReference();
 

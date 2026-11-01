@@ -207,12 +207,12 @@ class AuthService {
       const username = verdict.username;
 
       if (!password || password.length < 6) {
-        throw new Error('Password must be at least 6 characters long');
+        throw new Error('Use a password of at least 6 characters');
       }
 
       // Validate email format if provided
       if (email && !this.isValidEmail(email)) {
-        throw new Error('Invalid email format');
+        throw new Error('Enter a valid email address');
       }
 
       const requestBody: { username: string; password: string; email?: string } = { username, password };

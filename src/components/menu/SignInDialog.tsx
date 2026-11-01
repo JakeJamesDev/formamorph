@@ -237,15 +237,15 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
 
             <div className="space-y-2">
               <label htmlFor="username" className="text-label font-medium">Username</label>
+              {authMode === 'register' && (
+                <Hint>{USERNAME_RULE_HELP}</Hint>
+              )}
               <Input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
               />
-              {authMode === 'register' && (
-                <Hint>{USERNAME_RULE_HELP}</Hint>
-              )}
             </div>
 
             <div className="space-y-2">

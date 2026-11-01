@@ -290,7 +290,7 @@ describe('Steps that match intent', () => {
     const edit = vi.fn((e: Entity) => ({ ...e, aiDescription: 'A lamplighter.' }));
     await act1(() => ctx().editEntity('wick', edit));
     expect(edit).toHaveBeenCalledTimes(1);
-    expect(labels(history())).toEqual(['Edit Entity Wick: AI Description']);
+    expect(labels(history())).toEqual(['Edit Entity Wick: AI-Facing Description']);
   });
 
   it("records a typed run in a linked entity as one Step, the first write's mark included", async () => {
@@ -300,7 +300,7 @@ describe('Steps that match intent', () => {
       pause(200);
     }
     expect(ctx().entities[0].link?.localReplacement).toBe(true);
-    expect(labels(history())).toEqual(['Edit Entity Wick: Player Description']);
+    expect(labels(history())).toEqual(['Edit Entity Wick: Player-Facing Description']);
   });
 });
 

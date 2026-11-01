@@ -76,7 +76,7 @@ async function playOneTurn(world: World = WORLD, inventoryReply?: string) {
   const calls = stubEndpoint(inventoryReply);
   fireEvent.change(box, { target: { value: 'I look under the mat.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
   return calls;
 }
 
@@ -115,9 +115,9 @@ describe('the stats re-roll', () => {
   it("replays the pass and the After the AI script's item write once each", async () => {
     const calls = await playOneTurn();
     await waitFor(() => expect(vigorNow()).toBe(55));
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(calls.stats).toBe(2));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
     await waitFor(() => expect(vigorNow()).toBe(55));
     expect(held(gameplay().itemCopies)).toEqual(['key@you', 'lantern@location']);
     // The re-roll replays the saved operations; it sends no second Inventory request.
@@ -126,9 +126,9 @@ describe('the stats re-roll', () => {
 
   async function rerollAndSettle(calls: { stats: number }) {
     const asked = calls.stats;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(calls.stats).toBe(asked + 1));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
   }
 
   it('lands a give to an entity the turn discovered, as the live turn did', async () => {
@@ -151,7 +151,7 @@ describe('the stats re-roll', () => {
     fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I hand over my things and head for the pier.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(calls.stats).toBe(2));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
     await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));
     expect(placeOf('lantern')).toEqual({ kind: 'location', id: 'harbor' });
     // The Ferryman stays at the Harbor while the player walks to the Pier.

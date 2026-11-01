@@ -23,7 +23,7 @@
       "id": "achievements",
       "first": "How do I earn achievements?",
       "uncovered": "Is there a leaderboard for them?",
-      "covered": { "question": "Fine. How do I redo the last turn?", "section": "How-to-Play#how-to-re-generate-a-turn", "facts": ["Re-generate Narration"] }
+      "covered": { "question": "Fine. How do I redo the last turn?", "section": "How-to-Play#how-to-regenerate-a-turn", "facts": ["Regenerate Narration"] }
     },
     {
       "id": "lora",

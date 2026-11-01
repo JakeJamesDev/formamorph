@@ -8,7 +8,7 @@ export const USERNAME_TAKEN_MESSAGE = 'That username is taken';
 export const USERNAME_RENAME_FAILED_MESSAGE = 'Failed to change the username';
 
 /** First clause of the rename screens' intro. The caller adds the current name and the closing sentence. */
-export const USERNAME_RULE_INTRO = 'Usernames follow a new rule';
+export const USERNAME_RULE_INTRO = 'Usernames have a set format';
 
 // The server applies the same rule; `usernameRuleCases.json` is copied from its `tests/fixtures/usernameRuleCases.json`.
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]+(?: [A-Za-z0-9_-]+)*$/;

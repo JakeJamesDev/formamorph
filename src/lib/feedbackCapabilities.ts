@@ -13,8 +13,8 @@ export interface FeedbackCapabilities {
   staffControls: boolean;
   /** Whether unread threads are marked. */
   unreadBadge: boolean;
-  /** Whether filed threads can be followed under a profile tab. */
-  profileThreads: boolean;
+  /** Whether filed threads can be followed on their tab in Feedback. */
+  followThreads: boolean;
   /** Whether a failed write is said under its control; off sends it to `notify` alone. */
   inlineNotes: boolean;
   /** The boards `#` suggestions search, or null for every board the reader may read. */
@@ -27,7 +27,7 @@ export const APP_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   fileTypes: ['bug', 'suggestion', 'question'],
   staffControls: true,
   unreadBadge: true,
-  profileThreads: true,
+  followThreads: true,
   inlineNotes: false,
   threadSearchTypes: null,
 };
@@ -38,7 +38,7 @@ export const WEBSITE_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   fileTypes: ['suggestion', 'question'],
   staffControls: false,
   unreadBadge: false,
-  profileThreads: false,
+  followThreads: false,
   inlineNotes: true,
   threadSearchTypes: ['suggestion', 'question'],
 };

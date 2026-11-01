@@ -47,12 +47,12 @@ it('names each row by its full label, and an undone row as undone', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Reset Sample' }));
   open(desktop());
   // The current row also shows a Now marker, which the name leaves out.
-  expect(within(list(desktop())).getByRole('button', { name: `${MARA_LABEL}: Player Description` })).toHaveTextContent('Now');
+  expect(within(list(desktop())).getByRole('button', { name: `${MARA_LABEL}: Player-Facing Description` })).toHaveTextContent('Now');
   fireEvent.click(within(desktop()).getByRole('button', { name: 'Undo' }));
 
   const rows = within(list(desktop()));
   expect(rows.getByRole('button', { name: 'Edit Stat Hunger: Description' })).toBeInTheDocument();
-  const undone = rows.getByRole('button', { name: `${MARA_LABEL}: Player Description, undone` });
+  const undone = rows.getByRole('button', { name: `${MARA_LABEL}: Player-Facing Description, undone` });
   expect(undone).toHaveAttribute('data-undone', 'true');
   expect(rows.getByRole('button', { name: 'Edit Locations' })).toBeInTheDocument();
 });
@@ -60,9 +60,9 @@ it('names each row by its full label, and an undone row as undone', () => {
 it('shows a long name and its field as their own parts', () => {
   renderReference();
   open(desktop());
-  const row = within(within(list(desktop())).getByRole('button', { name: `${MARA_LABEL}: Player Description` }));
+  const row = within(within(list(desktop())).getByRole('button', { name: `${MARA_LABEL}: Player-Facing Description` }));
   expect(row.getByText('Mara Featherstonehaugh of the Lantern Docks')).toBeInTheDocument();
-  expect(row.getByText('Player Description')).toBeInTheDocument();
+  expect(row.getByText('Player-Facing Description')).toBeInTheDocument();
   expect(row.getByText('Edit')).toBeInTheDocument();
   expect(row.getByText('Entity')).toBeInTheDocument();
 });
@@ -161,7 +161,7 @@ describe('the row tip', () => {
     vi.restoreAllMocks();
   });
 
-  const maraRow = () => within(list(desktop())).getByRole('button', { name: `${MARA_LABEL}: Player Description` });
+  const maraRow = () => within(list(desktop())).getByRole('button', { name: `${MARA_LABEL}: Player-Facing Description` });
   /** The open tip's popup, found by the name it spells out in full. */
   const tip = async () => (await screen.findByText(MARA_NAME, { selector: '[data-step-tip] *' })).closest('[data-step-tip]') as HTMLElement;
 
@@ -172,7 +172,7 @@ describe('the row tip', () => {
     await userEvent.hover(maraRow());
 
     const popup = within(await tip());
-    expect(popup.getByText('Player Description')).toBeInTheDocument();
+    expect(popup.getByText('Player-Facing Description')).toBeInTheDocument();
     expect(popup.getByText('Edit')).toBeInTheDocument();
     expect(popup.getByText('Entity')).toBeInTheDocument();
   });

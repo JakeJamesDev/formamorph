@@ -256,6 +256,6 @@ Most PCs have one graphics card. A text model and an image model that run on one
 - A scene image starts after the turn's text is complete.
 - Your next action waits until the image is done.
 - An image you ask for from the scene panel during a turn starts when the turn ends.
-- A rewind or a re-generate stops the image in progress.
+- A rewind or a regenerate stops the image in progress.
 
 Each turn with **Scene Images** on takes as long as your image server needs.

@@ -74,7 +74,7 @@ function stubEndpoint() {
   return narration;
 }
 
-const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 
 async function playTurn(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
@@ -133,7 +133,7 @@ describe('lore writes in play', () => {
     await playTurn('I wait.');
     await waitFor(() => expect(lore).toEqual({ lore: { entries: { beacon: { constant: true } } } }));
     const asked = statCalls;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statCalls).toBe(asked + 1));
     await turnDone();
     // A re-roll over the post-turn state would flip it back off.

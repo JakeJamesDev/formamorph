@@ -240,6 +240,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
 
             <div className="space-y-2">
               <Label htmlFor="eventBanner">Banner Text</Label>
+              <Hint>Shows on the main menu and in Community Creations while the event runs</Hint>
               <Input
                 id="eventBanner"
                 value={bannerText}
@@ -247,7 +248,6 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                 onChange={(e) => setBannerText(e.target.value)}
                 placeholder="One line for the banner"
               />
-              <Hint>Shows on the main menu and in Community Creations while the event runs</Hint>
             </div>
 
             {/* Players read these rendered, so they are authored the way the world editor's prose is —
@@ -276,15 +276,20 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                   markdown
                   ariaLabel="Rules"
                   label="Rules"
+                  hint="Shows where authors enter the contest and where players browse its entries"
                   placeholder="What entrants agree to"
                   className="h-[260px]"
                 />
-                <Hint>Shows where authors enter the contest and where players browse its entries</Hint>
               </div>
             )}
 
             <div className="space-y-2">
               <Label>Poster</Label>
+              <Hint>
+                A color and an image are optional. Without them, the event uses the default band. Images
+                can be up to 2MB.
+                {previewImage && <> <strong>Reposition</strong> sets which part of the image the band shows.</>}
+              </Hint>
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="color"
@@ -318,11 +323,6 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                   onChange={(e) => takeImage(filesFrom(e)[0])}
                 />
               </div>
-              <Hint>
-                A color and an image are optional. Without them, the event uses the default band. Images
-                can be up to 2MB.
-                {previewImage && <> <strong>Reposition</strong> sets which part of the image the band shows.</>}
-              </Hint>
 
               {/* The same band players are shown, composed from what is in the form right now. Inert by
                   design: the framing is edited in its own dialog, so scrolling past this preview can
@@ -346,10 +346,10 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="eventStarts">Starts</Label>
-                <DateTimeField id="eventStarts" label="Starts" value={startsAt} onChange={setStartsAt} readOnly={started} />
                 {started && (
                   <Hint>The event has started, so its start can’t change</Hint>
                 )}
+                <DateTimeField id="eventStarts" label="Starts" value={startsAt} onChange={setStartsAt} readOnly={started} />
               </div>
 
               <div className="space-y-2">

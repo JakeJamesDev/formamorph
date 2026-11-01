@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryRow, type MemoryFilter } from '@/lib/memoryView';
+import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, memorySentTip, CLEAR_PIN_LABEL, type MemoryRow, type MemoryFilter } from '@/lib/memoryView';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/ui/search-field';
@@ -320,7 +320,7 @@ export const MemoryManagerModal = ({
                               accent it explains, which is hidden while editing. */}
                           <Tip
                             labelsChild={false}
-                            tip={row.asScene ? 'Sent to the AI as the full scene last turn' : row.inContext ? 'Sent to the AI last turn' : undefined}
+                            tip={memorySentTip(row)}
                           >
                             <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
                           </Tip>
@@ -370,7 +370,7 @@ export const MemoryManagerModal = ({
                                   </Tip>
                                 )}
                                 {!row.isNote && row.pin && (
-                                  <Tip tip="Clear the Pin and Let the Story Decide">
+                                  <Tip tip={CLEAR_PIN_LABEL}>
                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPin(row.id, null)}>
                                       <RotateCcw className="h-3.5 w-3.5" />
                                     </Button>

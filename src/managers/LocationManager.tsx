@@ -27,6 +27,7 @@ import PlacementsSection from './PlacementsSection';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
 import type { Entity, FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
 import { fieldFrame } from '@/lib/historyField';
+import { AI_SUMMARY_HINT } from './EntityFields';
 
 /**
  * Right-panel editor for one location: its fields split across Details, Presence, Media, Pins and Openings.
@@ -170,7 +171,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
                 onChange={(s) => handleChange('aiSummary', s)}
               />
             )}
-            hint="Sends the AI this short version where a full description doesn't fit. Keep it brief."
+            hint={AI_SUMMARY_HINT}
             value={editingLocation.aiSummary || ''}
             onChange={(v) => handleChange('aiSummary', v)}
             placeholders={placeholders}

@@ -313,7 +313,7 @@ interface DebugTurn {
   action: string;
   requests: AiRequestRecord[];
   turnId?: string; // ties this turn to its assistant message, so the viewer can show its memory digest
-  regenerated?: boolean; // this turn was superseded by a re-generate of the same action
+  regenerated?: boolean; // this turn was superseded by a regenerate of the same action
   pruned?: boolean; // this turn was discarded by a rollback to an earlier page
   aborted?: boolean; // this turn was stopped before any narration landed (its user message was dropped)
 }
@@ -367,7 +367,7 @@ const aiChoicesOf = (stored: AITurnResult): string[] => stored.aiChoices ?? stor
 const choicesPatch = (aiChoices: readonly string[], scripted: readonly string[] | undefined): Pick<AITurnResult, "choices" | "aiChoices"> =>
   (scripted ? { choices: [...scripted], aiChoices: [...aiChoices] } : { choices: [...aiChoices], aiChoices: undefined });
 
-/** What a Re-generate Choices rerun of the After the AI batch answers: not started, no change, or the scripts' list. */
+/** What a Regenerate Choices rerun of the After the AI batch answers: not started, no change, or the scripts' list. */
 type ChoicesRerun = { ran: false } | { ran: true; changed: false } | { ran: true; changed: true; choices: readonly string[] };
 
 /** Page one as stored. */
@@ -1338,7 +1338,7 @@ const GameViewer = ({
     })();
   }, [devRoute?.attach, fullMessageHistory, mounted, setPendingAttachments, setActionAttachments]);
   // Images, tells and script pins belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
-  // was re-generated. The controller marks a running turn at once: a regenerate starts inside an effect, and
+  // was regenerated. The controller marks a running turn at once: a regenerate starts inside an effect, and
   // its user message can commit before `isWaitingForAI` does.
   useEffect(() => {
     if (isWaitingForAI || abortControllerRef.current) return;
@@ -1388,7 +1388,7 @@ const GameViewer = ({
   const debugViewportRef = useRef<HTMLDivElement>(null);
   const debugSearchInputRef = useRef<HTMLInputElement>(null);
   const [collapsedDebug, setCollapsedDebug] = useState<Record<string | number, boolean>>({});
-  // When on (default), the viewer hides turns that aren't part of the live context — re-generated,
+  // When on (default), the viewer hides turns that aren't part of the live context — regenerated,
   // rolled-back (pruned), and aborted ones — leaving only the pages the AI currently sees.
   const [debugCurrentContextOnly, setDebugCurrentContextOnly] = useState(true);
   const visibleDebugTurns = useMemo(
@@ -1456,7 +1456,6 @@ const GameViewer = ({
   }, [isDebugOpen, debugFindTerms, syncDebugTicks]);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("game");
-  const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   /**
@@ -1504,7 +1503,7 @@ const GameViewer = ({
     rewindHistoryToPage(page);
     setUserPage(null); // the rolled-back turn is now the latest — resume following it
     // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
-    // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
+    // message, and keepLiveHistory skips the snapshot's notes) so a later regenerate/action uses them.
     // A turn that froze no notes (empty at finalize, or a stopped turn) falls back to the snapshot's
     // scratchpad — same resolution the paged view uses (viewNotes).
     setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(page, messagesPerPage)]?.content ?? '')?.notes ?? targetState.playerNotes ?? '');
@@ -1604,12 +1603,12 @@ const GameViewer = ({
     setIsExportModalOpen(false);
   };
 
-  // Re-generate the current turn: restore the snapshot from *before* it (which also rewinds the
+  // Regenerate the current turn: restore the snapshot from *before* it (which also rewinds the
   // message history past it), then re-send the same player action for a fresh response. The re-send is
   // deferred via `pendingTurnNonce` below — sendGameAction reads game state from its render's closure,
   // so it must run after loadGameState has committed, not synchronously alongside it.
   const pendingTurnRef = useRef<PendingTurn | null>(null);
-  // The real (editable) opening text last submitted, kept so re-generating the opening can re-fill the box
+  // The real (editable) opening text last submitted, kept so regenerating the opening can re-fill the box
   // with it — history stores only the "START GAME" proxy (parity), which would otherwise lose the edit.
   const openingActionRef = useRef<string>("");
   // A new game draws at seed; a loaded save draws on first need.
@@ -1644,7 +1643,7 @@ const GameViewer = ({
     if (openingTurnAction !== null) return openingTurnAction;
     return openingSessionRef.current.drawn?.opening.kind === "narration" ? "" : resolveDrawn(openingCue()).trim();
   };
-  // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
+  // Snapshot of the pre-game state (before the opening turn), so page 1 can also be regenerated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
   const initialStateRef = useRef<ReturnType<typeof saveCurrentGameState> | null>(null);
@@ -1687,10 +1686,10 @@ const GameViewer = ({
   const likeAsk = useLikePrompt(worldId ? String(worldId) : null, turnCommitNonce, fullMessageHistory);
   const [pendingTurnNonce, setPendingTurnNonce] = useState(0);
 
-  /** Re-generate the turn on `page`, which Chat passes as the latest page. */
+  /** Regenerate the turn on `page`, which Chat passes as the latest page. */
   const handleRegenerate = (page = currentPage) => {
     if (!canRegenerate(page, totalPages)) return;
-    // Re-generating the opening turn (page 1) restores the pre-game state, not a gameStates entry. On a
+    // Regenerating the opening turn (page 1) restores the pre-game state, not a gameStates entry. On a
     // loaded save that snapshot was never captured (initialStateRef is only set during a live first turn),
     // so reconstruct a pre-opening baseline from the current state with its history emptied — re-sending
     // START GAME from there re-captures initialStateRef and regenerates the opening.
@@ -1717,7 +1716,7 @@ const GameViewer = ({
     // re-seeding from the message here wiped the player's notes).
     // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
     setDebugTurns((prev) => markRegeneratedTurn(prev));
-    // Re-generating the opening (page 1) returns to the not-started state. An Opening Narration then starts
+    // Regenerating the opening (page 1) returns to the not-started state. An Opening Narration then starts
     // the game again on its own; an Opening Action fills the box for the player to edit and submit.
     if (redraw) {
       const priorOpening = session.drawn;
@@ -1742,11 +1741,11 @@ const GameViewer = ({
     setPendingTurnNonce((n) => n + 1);
   };
 
-  // Read the committed latest turn + its originating action, or null when a partial re-generate can't run
+  // Read the committed latest turn + its originating action, or null when a partial regenerate can't run
   // (busy, not on the latest page, or the turn can't be parsed).
   const partialRegenTarget = (page = currentPage) => {
     // A running scene render blocks these too: it holds the graphics card, and unlike rollback /
-    // re-generate these keep the turn, so its picture is still the correct one and must not be canceled.
+    // regenerate these keep the turn, so its picture is still the correct one and must not be canceled.
     if (isWaitingForAI || sceneImageJob !== null || !canRegenerate(page, totalPages)) return null;
     const last = fullMessageHistory[fullMessageHistory.length - 1];
     if (!last || last.role !== "assistant") return null;
@@ -1761,7 +1760,7 @@ const GameViewer = ({
     setFullMessageHistory((history) => withLatestTurnPatched(history, patch));
   };
 
-  // Shared busy/abort wrapper for a partial re-generate (one aux request against the existing narration).
+  // Shared busy/abort wrapper for a partial regenerate (one aux request against the existing narration).
   const runPartialRegen = async (run: (signal: AbortSignal) => Promise<void>) => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -2962,7 +2961,7 @@ const GameViewer = ({
   ) => {
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
     stopCommandPreview(); // a real turn supersedes any command preview
-    // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
+    // On the opening turn, snapshot the pre-game state so page 1 can be regenerated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
 
     // Places navigable from here. Nowhere to go means nothing to route: the router's reply is matched
@@ -2998,7 +2997,7 @@ const GameViewer = ({
     setIsWaitingForAI(true);
     // Not revealing yet — the narration stream flips this on. Until then the reveal view shows the
     // committed narration, never the stale last-turn text (which would otherwise animate all at once
-    // during setup, most visibly on re-generate). The live reasoning is cleared for the same reason: the
+    // during setup, most visibly on regenerate). The live reasoning is cleared for the same reason: the
     // last turn's thought would otherwise sit on this pending turn until its narration stream opens. The
     // committed turn keeps its own copy in its saved message.
     setIsRevealingNarration(false);
@@ -3643,7 +3642,7 @@ const GameViewer = ({
     setDisplayedMessages(fullMessageHistory.slice(startIndex, endIndex));
   }, [fullMessageHistory, currentPage, setDisplayedMessages]);
 
-  // Fires the re-send half of a re-generate, once the restored pre-turn state has committed. A new game
+  // Fires the re-send half of a regenerate, once the restored pre-turn state has committed. A new game
   // that drew an Opening Narration starts through here too, once its seeded state has committed.
   useEffect(() => {
     if (pendingTurnNonce === 0) return;
@@ -3919,7 +3918,7 @@ const GameViewer = ({
           // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
           const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
           // Onto the LATEST stats, not a blanket `setGlobalStats(result.stats)`: the run read the pre-`await`
-          // baseline, and anything applied in the meantime (starvation, a re-generate) must survive.
+          // baseline, and anything applied in the meantime (starvation, a regenerate) must survive.
           setGlobalStats((prev) => overlayStatCodeResult(prev, result, inForce));
           // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
           // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
@@ -4076,7 +4075,7 @@ const GameViewer = ({
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
   const applyStatChanges = useCallback(
-    // `base` is the pre-turn snapshot a stat re-generation starts from (defaults to the live state), so
+    // `base` is the pre-turn snapshot a stat regeneration starts from (defaults to the live state), so
     // repeated re-rolls don't stack on already-applied changes or Code Pins.
     async (
       response: StatResponse,
@@ -4188,7 +4187,7 @@ const GameViewer = ({
     if (userTurnAddedRef.current && last?.role === "assistant") {
       // Narration came through — keep this turn so the player can stop here and edit it manually. A kept
       // narration means the game is underway (covers aborting the opening turn). Save a snapshot so
-      // gameStates stays aligned with history (rollback / re-generate key off the page count). The
+      // gameStates stays aligned with history (rollback / regenerate key off the page count). The
       // userTurnAdded guard matters: without it, aborting during the up-front location request (before this
       // turn's user message is added, so the tail is still the *previous* turn's assistant) would land here
       // and overwrite that previous turn's snapshot with the current, choices-cleared state.
@@ -4647,7 +4646,7 @@ const GameViewer = ({
   /**
    * Draw one turn. `tags` skips the tag pass and renders that line verbatim — the path the editable tag
    * field under an image uses. Tag writes go through the turn-id apply-guard; the image write is guarded
-   * by the run's abort signal, which rollback / re-generate / load fire before discarding the turn.
+   * by the run's abort signal, which rollback / regenerate / load fire before discarding the turn.
    */
   const runSceneImage = async (args: {
     turnId: string;
@@ -6654,7 +6653,7 @@ const GameViewer = ({
                           {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
                         </span>
                         {currentTurn.regenerated ? (
-                          <span className="ml-2 font-medium text-warning">Re-generated</span>
+                          <span className="ml-2 font-medium text-warning">Regenerated</span>
                         ) : currentTurn.pruned ? (
                           <span className="ml-2 font-medium text-warning">Pruned</span>
                         ) : null}
@@ -6711,7 +6710,7 @@ const GameViewer = ({
                       {totalDebugPages === 0 ? (
                         <p className="text-muted-foreground">
                           {debugCurrentContextOnly && debugTurns.length > 0
-                            ? "Only re-generated, rolled-back, or aborted turns exist. Uncheck “Current context only” to see them."
+                            ? "Only regenerated, rolled-back, or aborted turns exist. Uncheck “Current context only” to see them."
                             : "No AI context captured yet. Take an action first, then reopen this."}
                         </p>
                       ) : (
@@ -6762,24 +6761,6 @@ const GameViewer = ({
           }} />
         </DialogContent>
       </Dialog>
-
-      {/* Potato PC Dialog */}
-      <ConfirmDialog
-        open={showPotatoPCDialog}
-        onOpenChange={setShowPotatoPCDialog}
-        title="Server is overwhelmed!"
-        description={
-          "By default the game uses the AI running on my potato PC and it is struggling with too many requests ☹️ I strongly recommend following my OpenRouter guide to setup a free account and use their free model that is 100 times more memory and 10x faster!"
-        }
-        onConfirm={() => {
-          window.open(
-            "https://fierylion.itch.io/formamorph/devlog/885513/quick-setup-guide-free-openrouter-setup",
-            "_blank",
-          );
-          setShowPotatoPCDialog(false);
-        }}
-        onCancel={() => setShowPotatoPCDialog(false)}
-      />
 
       {ttsRequested && (
         <Suspense fallback={null}>

@@ -86,14 +86,14 @@ describe('a stat descriptor in play', () => {
     stubEndpoint();
     fireEvent.change(input, { target: { value: 'I wait.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    const reRollReady = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+    const reRollReady = () => waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
     await waitFor(() => expect(statCalls).toBe(1));
     await reRollReady();
     await waitFor(() => expect(valueOf('mood')).toBe(60));
     expect(valueOf('check')).toBe(15);
 
     // The re-roll replays the turn from its pre-turn state, whose pins resolve `previous` the same way.
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statCalls).toBe(2));
     await reRollReady();
     await waitFor(() => expect(valueOf('mood')).toBe(60));

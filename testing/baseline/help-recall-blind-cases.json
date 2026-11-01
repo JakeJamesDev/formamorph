@@ -14,7 +14,7 @@
     { "id": "avatars-b2", "page": "Avatars", "question": "how do I change what my 3D body looks like?", "section": "Avatars#how-to-customize-your-avatar", "otherSections": ["Avatars#avatar-customization"] },
     { "id": "starting-b1", "page": "Starting-a-Game", "question": "I skipped the opening text too fast, can I see it again?", "section": "Starting-a-Game#how-to-read-the-introduction-again" },
     { "id": "starting-b2", "page": "Starting-a-Game", "question": "how do I choose where on the map my story begins?", "section": "Starting-a-Game#how-to-pick-a-starting-location", "otherSections": ["Starting-a-Game#starting-location"] },
-    { "id": "play-b1", "page": "How-to-Play", "question": "the AI wrote a reply I don't like, can I get a different one?", "section": "How-to-Play#how-to-re-generate-a-turn", "otherSections": ["How-to-Play#turn-actions"] },
+    { "id": "play-b1", "page": "How-to-Play", "question": "the AI wrote a reply I don't like, can I get a different one?", "section": "How-to-Play#how-to-regenerate-a-turn", "otherSections": ["How-to-Play#turn-actions"] },
     { "id": "play-b2", "page": "How-to-Play", "question": "can the game speak the text out loud to me?", "section": "How-to-Play#how-to-read-a-turn-aloud" },
     { "id": "play-b3", "page": "How-to-Play", "question": "I want to tell the narrator what should happen next without my character doing it", "section": "How-to-Play#how-to-direct-the-story" },
     { "id": "formaquestion-b1", "page": "Formaquestion", "question": "can I send a picture of what I see and ask what's wrong?", "section": "Formaquestion#how-to-ask-about-a-screenshot", "otherSections": ["Formaquestion#ask"] },

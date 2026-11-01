@@ -75,6 +75,9 @@ export function UsernameRenameDialog({ prompt, onClose }: UsernameRenameDialogPr
 
           <div className="space-y-2">
             <label htmlFor="username-rename-field" className="text-label font-medium">New Username</label>
+            {error
+              ? <FieldError id="username-rename-help" role="alert">{error}</FieldError>
+              : <Hint id="username-rename-help">{USERNAME_RULE_HELP}</Hint>}
             <Input
               id="username-rename-field"
               value={name}
@@ -84,9 +87,6 @@ export function UsernameRenameDialog({ prompt, onClose }: UsernameRenameDialogPr
               autoComplete="username"
               disabled={busy}
             />
-            {error
-              ? <FieldError id="username-rename-help" role="alert">{error}</FieldError>
-              : <Hint id="username-rename-help">{USERNAME_RULE_HELP}</Hint>}
           </div>
         </form>
 

@@ -241,7 +241,7 @@ To back up your worlds, saves, library entities and library dictionaries, use [B
 
 - Autosave starts after the opening scene.
 - Autosaves show under **Load Game** with an **Auto** tag.
-- **Re-generate** replaces the autosave of the turn it writes again.
+- **Regenerate** replaces the autosave of the turn it writes again.
 
 **Autosaves Kept** shows while **Autosave** is on. It sets how many autosaves each world keeps, from 1 to 20. The default is 1. A new turn replaces the oldest autosave.
 

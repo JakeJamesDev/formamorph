@@ -155,7 +155,7 @@ Loading a save draws nothing.
 
 ### Regenerating Page One
 
-**Re-generate Narration** on page one draws another opening. It doesn't repeat an opening you already saw this session until every opening has come up.
+**Regenerate Narration** on page one draws another opening. It doesn't repeat an opening you already saw this session until every opening has come up.
 
 | The new draw is | Result |
 |---|---|

@@ -103,7 +103,7 @@ beforeEach(async () => {
 });
 
 const box = () => screen.getByPlaceholderText(/Type your action/);
-const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 
 async function enter(world: World) {
   renderGameViewer(world, { inGameplay: <Probe /> });
@@ -158,7 +158,7 @@ describe('turn on a re-roll', () => {
     await send(OPENING);
     await send('I ring the bell.');
     const asked = statCalls;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statCalls).toBe(asked + 1));
     await turnDone();
     expect(seen).toMatchObject({ before: 2016, after: 2016 });
@@ -168,7 +168,7 @@ describe('turn on a re-roll', () => {
     await enter(worldWith());
     await send(OPENING);
     const asked = statCalls;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statCalls).toBe(asked + 1));
     await turnDone();
     expect(seen).toMatchObject({ before: 1000 + TRIMMED.length, after: 1000 + TRIMMED.length });
@@ -179,7 +179,7 @@ describe('turn on a re-roll', () => {
     await send(OPENING);
     await send('I ring the bell.');
     const before = calls;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Narration' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
     await waitFor(() => expect(calls).toBeGreaterThan(before));
     await turnDone();
     expect(seen).toMatchObject({ before: 2016, after: 2016 });
@@ -247,7 +247,7 @@ describe('turn.narration and turn.choices', () => {
     await send(OPENING);
     // Page one's re-roll starts from the pre-start stats, where every r_ stat is -1, so 11 is the re-roll's own write.
     const asked = statCalls;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statCalls).toBe(asked + 1));
     await turnDone();
     expect(replies).toMatchObject({ before: 0, after: 11 });
@@ -259,7 +259,7 @@ describe('turn.narration and turn.choices', () => {
     await send(OPENING);
     // Page one's re-roll restores Brave off and r_switch to -1, so 0 is the replayed switch's own read.
     const asked = statCalls;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statCalls).toBe(asked + 1));
     await turnDone();
     expect(replies.switch).toBe(0);
@@ -272,7 +272,7 @@ describe('turn.narration and turn.choices', () => {
     let release = () => {};
     statHeld = new Promise<void>((resolve) => { release = resolve; });
     const asked = statCalls;
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(statCalls).toBe(asked + 1));
     await clickBrave();
     await waitFor(() => expect(replies.switch).toBe(10));

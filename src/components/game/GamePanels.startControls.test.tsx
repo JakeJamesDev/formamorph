@@ -25,7 +25,7 @@ describe('Controls before the first narration', () => {
       s.setChoicesEnabled(true);
       s.setContinueChoiceMode('off');
     } });
-    const regen = () => screen.queryByRole('button', { name: 'Re-generate Choices' });
+    const regen = () => screen.queryByRole('button', { name: 'Regenerate Choices' });
     expect(regen()).toBeNull();
     act(() => {
       view.gameplay().setFullMessageHistory([opening[0]]);
@@ -44,7 +44,7 @@ describe('Controls before the first narration', () => {
       view.gameplay().setIsWaitingForAI(false);
       view.gameplay().setIsRevealingNarration(false);
     });
-    fireEvent.click(await screen.findByRole('button', { name: 'Re-generate Choices' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Regenerate Choices' }));
     expect(view.props.handleRegenerateChoices).toHaveBeenCalledOnce();
     act(() => {
       view.gameplay().setFullMessageHistory([]);

@@ -438,7 +438,7 @@ describe('RightPanel — editing entity and persona stats', () => {
     expect(valueOf(g.entityStats, 'w-you', 'trust')).toBe(75);
   });
 
-  it("is what a re-generate of the next turn starts from", () => {
+  it("is what a regenerate of the next turn starts from", () => {
     const view = renderRightPanel({}, ownersOnly);
     fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
     fireEvent.change(within(section()!).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '55' } });

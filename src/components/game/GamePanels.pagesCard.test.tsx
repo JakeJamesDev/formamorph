@@ -60,7 +60,7 @@ describe('Narration layout parity', () => {
     expect(pages.row).toEqual(chatted.row);
     expect(pages.menu).toEqual(chatted.menu);
     expect(pages.row).not.toContain('Generate Scene Image');
-    expect(pages.row).not.toContain('Re-generate Stats');
+    expect(pages.row).not.toContain('Regenerate Stats');
     expect(pages.menu).toContain('Generate Scene Image');
     // The menu lists the row's icons and the items behind its More icon.
     expect(pages.row.length).toBeGreaterThan(1);
@@ -151,13 +151,13 @@ describe('Pages: the Turn Card', () => {
     expect(screen.queryByText('START GAME')).toBeNull();
   });
 
-  it('has no pencil, Re-generate, or Rollback button, and the corner menu holds Export Story only', async () => {
+  it('has no pencil, Regenerate, or Rollback button, and the corner menu holds Export Story only', async () => {
     for (const page of [2, 3]) {
       renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS, page, settings: statsOn });
       await screen.findByTestId('narration');
       expect(screen.queryByRole('button', { name: 'Edit text' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Re-generate' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'More re-generate options' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Regenerate' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'More regenerate options' })).toBeNull();
       expect(screen.queryByRole('button', { name: /Rollback/ })).toBeNull();
       fireEvent.click(screen.getByRole('button', { name: 'More narration options' }));
       const menu = await screen.findByRole('dialog');
@@ -175,12 +175,12 @@ describe('Pages: the Turn Card', () => {
     expect(view.props.handleRollback).toHaveBeenCalledWith(2);
   });
 
-  it('re-generates the latest narration through its row and stats through its menu', async () => {
+  it('regenerates the latest narration through its row and stats through its menu', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: statsOn });
     const row = await screen.findByTestId('bubble-actions');
-    fireEvent.click(within(row).getByRole('button', { name: 'Re-generate Narration' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Regenerate Narration' }));
     fireEvent.click(within(row).getByRole('button', { name: 'More' }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Re-generate Stats' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Regenerate Stats' }));
     expect(view.props.handleRegenerate).toHaveBeenCalledWith(3);
     expect(view.props.handleRegenerateStats).toHaveBeenCalledWith(3);
   });
@@ -206,21 +206,21 @@ describe('Pages: the Turn Card', () => {
   it('disables the actions that start a request while a turn generates', async () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: statsOn, seed: (g) => g.setIsWaitingForAI(true) });
     const row = await screen.findByTestId('bubble-actions');
-    expect(within(row).getByRole('button', { name: 'Re-generate Narration' })).toBeDisabled();
+    expect(within(row).getByRole('button', { name: 'Regenerate Narration' })).toBeDisabled();
     expect(within(row).getByRole('button', { name: 'Copy Text' })).toBeEnabled();
     fireEvent.click(within(row).getByRole('button', { name: 'More' }));
-    expect(await screen.findByRole('menuitem', { name: 'Re-generate Stats' })).toHaveAttribute('aria-disabled', 'true');
+    expect(await screen.findByRole('menuitem', { name: 'Regenerate Stats' })).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('offers Re-generate Choices on the latest page only', async () => {
+  it('offers Regenerate Choices on the latest page only', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS });
     await screen.findByTestId('narration');
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Choices' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Choices' }));
     expect(view.props.handleRegenerateChoices).toHaveBeenCalledTimes(1);
     cleanup();
     renderMiddlePanel({}, { turns: TURNS, page: 2 });
     await screen.findByTestId('narration');
-    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
   });
 
   it('edits the viewed page from the row', async () => {

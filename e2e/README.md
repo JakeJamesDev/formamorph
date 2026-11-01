@@ -86,7 +86,7 @@ row-drawn ring. Desktop only for the editor guards; the mobile sheet has no flus
 > neighbor hands over instantly whatever that value is. What makes them one group is the shared provider,
 > so removing it is the mutation that turns this guard red.
 
-[chat-pin.spec.ts](e2e/chat-pin.spec.ts) — the Chat layout's scroll: a submit or Re-generate pins the turn to
+[chat-pin.spec.ts](e2e/chat-pin.spec.ts) — the Chat layout's scroll: a submit or Regenerate pins the turn to
 the viewport top, the view holds still through a long stream, and Jump to Latest shows, lands, and hides. A
 local server streams the reply in timed chunks, because `page.route` answers in one piece.
 

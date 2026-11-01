@@ -85,8 +85,8 @@ async function playOneTurn(held: ReadonlySet<'choices' | 'stats'>) {
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
   // The re-roll buttons wake once the reveal ends and the turn's passes are done.
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: 'Re-generate Choices' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Regenerate Choices' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled();
   });
   return endpoint;
 }
@@ -96,7 +96,7 @@ describe('the choices re-roll', () => {
     const endpoint = await playOneTurn(new Set(['choices']));
     expect(endpoint.calls.choices).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Choices' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Choices' }));
     await waitFor(() => expect(endpoint.calls.choices).toHaveLength(2));
     expect(await screen.findByText('Generating Choices…')).toBeInTheDocument();
 
@@ -114,7 +114,7 @@ describe('the stats re-roll', () => {
     const endpoint = await playOneTurn(new Set(['stats']));
     expect(endpoint.calls.stats).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     await waitFor(() => expect(endpoint.calls.stats).toHaveLength(2));
     expect(await screen.findByText('Generating Stat Updates…')).toBeInTheDocument();
 

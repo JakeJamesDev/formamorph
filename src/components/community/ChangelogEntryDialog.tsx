@@ -112,13 +112,13 @@ export function ChangelogEntryDialog({
 
             <div className="space-y-2">
               <Label htmlFor="changelogDate">Date</Label>
+              {/* The reason the field is here at all: a history written after the fact should carry the days
+                  it happened on, not the day it was typed up. */}
+              <Hint>Set an earlier date to record an update you made in the past</Hint>
               {/* The app's own calendar, not the browser's — which follows the operating system's theme and
                   cannot be styled. Day-only: an entry is dated to the day, and an hour on it would be a
                   control that changes nothing. */}
               <DateTimeField id="changelogDate" label="Date" value={date} onChange={setDate} dateOnly />
-              {/* The reason the field is here at all: a history written after the fact should carry the days
-                  it happened on, not the day it was typed up. */}
-              <Hint>Set an earlier date to record an update you made in the past</Hint>
             </div>
 
             {/* Lexical renders a div, so the caption names the field through `ariaLabel` rather than `htmlFor`. */}

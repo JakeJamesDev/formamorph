@@ -180,7 +180,7 @@ test('a submit pins its turn to the viewport top, and the view holds through a l
   expect(done.latestEnd).toBeGreaterThan(done.viewportHeight);
 });
 
-test('Re-generate pins the new reply to the viewport top', async ({ page }) => {
+test('Regenerate pins the new reply to the viewport top', async ({ page }) => {
   reply = SHORT_REPLY;
   await openChat(page);
   await submit(page, 'I tap the console.');
@@ -192,7 +192,7 @@ test('Re-generate pins the new reply to the viewport top', async ({ page }) => {
   await page.mouse.wheel(0, -150);
   await expect.poll(async () => (await geometry(page)).latestTop).toBeGreaterThan(100);
 
-  await page.locator('[data-chat-scroller] article').last().getByRole('button', { name: 'Re-generate Narration' }).click();
+  await page.locator('[data-chat-scroller] article').last().getByRole('button', { name: 'Regenerate Narration' }).click();
   await expect(send(page)).toBeEnabled({ timeout: 30_000 });
   await pinnedAtTop(page);
   expect((await geometry(page)).latestLabel).toBe('Turn 9');

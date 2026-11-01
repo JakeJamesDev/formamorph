@@ -71,7 +71,7 @@ describe('statsSnap', () => {
     expect(statsSnap(at(4, 9), at(9, 9), true)).toBe(true);
   });
 
-  it('does not snap a render that keeps the viewed turn, so a stats re-generate animates', () => {
+  it('does not snap a render that keeps the viewed turn, so a stats regenerate animates', () => {
     expect(statsSnap(at(9, 9), at(9, 9), true)).toBe(false);
   });
 

@@ -46,17 +46,17 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
         <WorldIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0 w-full space-y-2">
           <p className="text-label font-medium">Listing</p>
+          <Hint>
+            {unlisted
+              ? `Hides this ${noun} from Community Creations. Players get it only inside a world that requires it.`
+              : `Lists this ${noun} in Community Creations`}
+          </Hint>
           <OptionSwitcher
             value={visibility}
             onChange={onVisibilityChange}
             options={LISTING_OPTIONS}
             ariaLabel="Listing"
           />
-          <Hint>
-            {unlisted
-              ? `Hides this ${noun} from Community Creations. Players get it only inside a world that requires it.`
-              : `Lists this ${noun} in Community Creations`}
-          </Hint>
         </div>
       </div>
       )}

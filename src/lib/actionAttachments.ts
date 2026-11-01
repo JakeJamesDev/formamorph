@@ -114,7 +114,7 @@ export const pageTurnId = (history: ChatMessage[], page: number): string | undef
 const turnIdOf = (message: ChatMessage | undefined): string | undefined =>
   message?.role === 'assistant' ? parseTurnContent(message.content)?.turnId : undefined;
 
-/** Forget the images of turns no longer in the history: a failed, rolled-back or re-generated turn. */
+/** Forget the images of turns no longer in the history: a failed, rolled-back or regenerated turn. */
 export const pruneAttachments = (map: AttachmentMap, history: ChatMessage[]): AttachmentMap => pruneTurnMap(map, history);
 
 /** The map a save holds, read back. A save is a file the player can edit, so entries that are not image

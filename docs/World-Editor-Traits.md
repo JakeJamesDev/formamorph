@@ -127,6 +127,8 @@ Each row changes one stat while the trait is active. A row has a stat, a number,
 
 > ⚠️ **Each type adds to the stat. It doesn't set it.** `+20` on a stat that starts at 50 gives 70, not 20.
 
+The AI never reads Stat Changes. It reads that you're *Sickly*, not that the trait costs you 20 Vigor. The change shows only in the stat's value.
+
 | Type | Effect |
 |---|---|
 | **Starting Value** | Changes where the stat starts |
@@ -164,6 +166,12 @@ When two active traits set a Body, the one switched on last wins. When it switch
 **Advanced mode only.** A pin keeps a [placeholder](World-Editor-Placeholders#pins) at one value while the trait is active. For example, a *Redhead* trait pins Hair Color to *copper*. The playthrough keeps its own roll, and the roll comes back when the trait is switched off.
 
 You can type a value that isn't in the placeholder's list. The game uses it as written.
+
+A value that is one chip pins the part that chip holds. Pin a Wildcard to the value that holds *isAsian*, and every chip of that Wildcard reads that variant.
+
+[Pin a blueprint](World-Editor-Blueprints#pins-by-blueprint) to pin each owner's own copy of it. A link can replace this list for one owner.
+
+A stat descriptor's pin outranks a location's, and a location's outranks a trait's. See [Pins](World-Editor-Placeholders#pins) for the full order.
 
 ## Scripts
 <!-- keywords: trait script, script only while active, rule that follows a trait, switch script, add script, when a trait switches -->

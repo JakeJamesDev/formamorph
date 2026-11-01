@@ -70,7 +70,7 @@ beforeEach(async () => {
 });
 
 const box = () => screen.getByPlaceholderText(/Type your action/);
-const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 
 async function enter(world: World) {
   renderGameViewer(world, { inGameplay: <Probe /> });
@@ -88,7 +88,7 @@ async function send(action?: string) {
 
 async function rerollStats() {
   const asked = statCalls;
-  fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
   await waitFor(() => expect(statCalls).toBe(asked + 1));
   await turnDone();
 }
@@ -149,7 +149,7 @@ describe('a page-one re-roll reads the saved cue', () => {
     const world = actionWorld();
     await enter(world);
     await send(OPENING);
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Narration' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
     await waitFor(() => expect(closedTurns(history)).toBe(0));
     await send(WADE);
     expect(read).toBe(1000 + WADE.length);

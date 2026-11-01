@@ -149,10 +149,10 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 | **The world switch** | The **Openings** checkbox turns them off too. |
 | **With Self openings** | Location openings stay out of the draw while a persona with Self openings is played. |
 
-## Re-generate on page one
+## Regenerate on page one
 <!-- keywords: reroll, different start, another beginning, retry first page, cycle greetings, same page again -->
 
-**Re-generate Narration** on page one draws again. The game picks an opening it hasn't shown yet in this session. When every opening has been shown, the draw starts over.
+**Regenerate Narration** on page one draws again. The game picks an opening it hasn't shown yet in this session. When every opening has been shown, the draw starts over.
 
 - An Opening Narration replaces page one. When the draw comes back with the same page, it stays.
 - An Opening Action clears page one and fills the input box again, with your own edit when the same opening comes back. Send it to start the game.
@@ -208,7 +208,7 @@ The game looks for Self openings in this order. The first source that has one wi
 
 - **Self openings replace the whole pool.** A player never gets another persona's start.
 - **They draw by weight among themselves.** The chance on a Self row is its share of that persona's Self openings. It shows under every filter value.
-- **Re-generate draws again from the same Self openings.**
+- **Regenerate draws again from the same Self openings.**
 - **Self beats Library Additions.** Who the player plays decides the start before who they brought along.
 - **A library persona's Self openings work in any world.** They come with the persona.
 - **The world switch covers Self openings.** Off means the default opening.

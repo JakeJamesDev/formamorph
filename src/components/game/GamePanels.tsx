@@ -518,7 +518,7 @@ export const MiddlePanel = ({
   handleKeyPress: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** Rolls back to `page`, or to the viewed page. */
   handleRollback: (page?: number) => void;
-  /** Re-generates the turn on `page`, or on the viewed page. */
+  /** Regenerates the turn on `page`, or on the viewed page. */
   handleRegenerate: (page?: number) => void;
   handleRegenerateChoices: () => void;
   handleRegenerateStats: (page?: number) => void;
@@ -618,7 +618,7 @@ export const MiddlePanel = ({
   const revealOn = revealActive(revealSpec);
   const revealAnim = revealAnimName(revealSpec);
   const revealStyle = revealVars(revealSpec) as React.CSSProperties;
-  // Which partial re-generate actions to offer (mirrors the aux-request gates).
+  // Which partial regenerate actions to offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled && fullMessageHistory[fullMessageHistory.length - 1]?.role === 'assistant';
   const canRegenStats = statUpdatesEnabled && globalStats.length > 0;
   const [toolMenuOpen, setToolMenuOpen] = useState(false);

@@ -298,7 +298,7 @@ function useProvideGameplay() {
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
   // True only while the narration is actively streaming into the reveal — distinct from isWaitingForAI,
   // which is true across the whole turn (setup/thinking/aux). The reveal view keys on this so the stale
-  // last-turn text can't animate during setup (e.g. the re-generate flash).
+  // last-turn text can't animate during setup (e.g. the regenerate flash).
   const [isRevealingNarration, setIsRevealingNarration] = useState(false);
   // False from a turn's start until its narration's last word has faded in; the turn card's action row
   // opens then, ahead of the choices.
@@ -429,7 +429,7 @@ function useProvideGameplay() {
       setBodies(gameState.bodies ?? NO_BODIES);
       setRuntimeItems(gameState.runtimeItems ?? NO_RUNTIME_ITEMS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
-      // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
+      // Rollback / regenerate also keep the live discovered cast + suppressed names (they carry the
       // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
       // the cast to the surviving turns themselves.
       if (!opts?.keepLiveHistory) {
@@ -444,7 +444,7 @@ function useProvideGameplay() {
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);
       setStartHour(gameState.startHour ?? null);
-      // Rollback / re-generate keep the live narration + notes (they carry the player's post-turn edits) and
+      // Rollback / regenerate keep the live narration + notes (they carry the player's post-turn edits) and
       // rewind the flat history themselves; the snapshot's frozen copies would revert those edits.
       if (!opts?.keepLiveHistory) {
         setFullMessageHistory(gameState.fullMessageHistory ?? []);
@@ -871,9 +871,9 @@ function useProvideGameplay() {
   }, [currentPage, totalPages, messagesPerPage]);
 
   // A manual stat edit (the in-game slider) is authoritative post-turn state, so it must also update the
-  // current page's snapshot — the mechanical baseline a later re-generate of the *next* turn restores from
+  // current page's snapshot — the mechanical baseline a later regenerate of the *next* turn restores from
   // (regenerateState reads gameStates[nextPage - 2] = this page's snapshot). Without this the edit lives
-  // only in `globalStats` and gets reverted on the next re-generate. Editing is disabled while viewing the
+  // only in `globalStats` and gets reverted on the next regenerate. Editing is disabled while viewing the
   // past, so this always targets the latest snapshot; guarded so a not-yet-captured slot is left alone.
   const commitManualStatEdit = useCallback((newStats: PlayerStat[]) => {
     setGlobalStats(newStats);

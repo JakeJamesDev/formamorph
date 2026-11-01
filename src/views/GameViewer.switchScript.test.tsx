@@ -81,7 +81,7 @@ async function playTurn() {
   stubEndpoint();
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: 'I wait.' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 }
 
 describe('When a Trait Switches in play', () => {
@@ -248,7 +248,7 @@ describe('When a Trait Switches in play', () => {
     cleanup();
 
     renderGameViewer(world(), { inGameplay: <Probe />, initialSaveId: save.id });
-    await screen.findByRole('button', { name: 'Re-generate Narration' });
+    await screen.findByRole('button', { name: 'Regenerate Narration' });
     expect(vigorNow()).toBe(50);
   });
 });

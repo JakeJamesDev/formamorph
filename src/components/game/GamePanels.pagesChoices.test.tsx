@@ -88,7 +88,7 @@ describe('Pages: choice rows', () => {
     expect(other).toBeDisabled();
     expect(taken.getAttribute('aria-pressed')).toBe('true');
     expect(other.getAttribute('aria-pressed')).toBe('false');
-    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
   });
 
   it('marks the continue row on a past page where the player continued', async () => {

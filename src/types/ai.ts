@@ -187,7 +187,7 @@ export interface AITurnResult {
    *  AI's list. A stats re-roll starts the scripts' edits from it (Q18). */
   aiChoices?: string[];
   stat_changes: Array<Record<string, number>>;
-  /** The stat tracker's asks this turn, by owner and stat: the ones Re-generate Choices replays (Q28). Absent ⇒ none,
+  /** The stat tracker's asks this turn, by owner and stat: the ones Regenerate Choices replays (Q28). Absent ⇒ none,
    *  or a turn saved before the field, which replays `stat_changes`. */
   statAsks?: TurnStatAsk[];
   /** Stable per-turn id (`randomUUID()`); powers the digest async-apply guard. */

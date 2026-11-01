@@ -141,7 +141,7 @@ The game reads each page of narration to find which entities are present. It mat
 
 - Press Enter after each alias.
 - The **Aliases** field shows in Advanced mode only, but aliases work in both modes.
-- The AI reads them as *"also known as"*.
+- The AI reads them as *"also known as"*. It reads every alias of an entity in the scene, so give an entity the one or two names the narration uses.
 - The game counts the entity as present when the narration uses an alias.
 
 | Rule | Example |
@@ -170,7 +170,7 @@ Give an entity a **Stranger Name** to hide who it is until the player meets it. 
 
 **Before the player meets the entity:**
 
-- If the AI tracks the entity under another name while it plans the scene, such as "the tall woman", the player sees that name instead.
+- If the AI tracks the entity under another name, such as "the tall woman", the player sees that name instead.
 - The entity's popup in the **Entities** tab shows the **Stranger Description** in place of the **Player-Facing Description**. Leave the Stranger Description blank to show no description.
 - The Map doesn't show the entity. The Help window shows it only under that other name, with no description.
 
@@ -330,7 +330,7 @@ Import a SillyTavern PNG or JSON card, and it becomes an entity. The card's desc
 | The name macro, `{{char}}` | The **Entity Name** chip, in the entity's description and openings. In the card's lorebook, the entity's name as plain text. |
 | The user macro, `{{user}}` | The [Persona Name chip](Persona-Authoring#the-persona-name-chip) |
 
-When these openings are in the draw, **Re-generate Narration** on page one shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
+When these openings are in the draw, **Regenerate Narration** on page one shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
 
 > 💡 **The Entity Name chip shows the entity's name, and it follows a rename.** Rename the entity, and its description and openings use the new name.
 

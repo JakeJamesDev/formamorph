@@ -122,14 +122,14 @@ describe('Docs Index search', () => {
         Library: '# Library\n\n## How to Make a Folder\n\nPress **New**.',
         Saves: '# Saves\n\n## Backing Up\n\nPress **Save**.',
         Worlds: '# Worlds\n\n## How to Delete a World\n\nPress **Trash**.',
-        Play: '# Play\n\n## How to Re-generate a Turn\n\nPress **Again**.',
+        Play: '# Play\n\n## How to Regenerate a Turn\n\nPress **Again**.',
       },
     });
     const top = (query: string) => index.search(query)[0]?.id;
     expect(top('folders')).toBe('Library#how-to-make-a-folder');
     expect(top('backed')).toBe('Saves#backing-up');
     expect(top('deleting')).toBe('Worlds#how-to-delete-a-world');
-    expect(top('regenerating')).toBe('Play#how-to-re-generate-a-turn');
+    expect(top('regenerating')).toBe('Play#how-to-regenerate-a-turn');
   });
 });
 

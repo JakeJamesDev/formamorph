@@ -18,7 +18,7 @@ const textVariants = cva("", {
 })
 
 /** `as` swaps the tag without restating the styling — a hint sitting inline beside a checkbox wants a
- *  `span`, the same hint under a field wants the default `p`. */
+ *  `span`, the same hint under a field's label wants the default `p`. */
 type TextProps = React.HTMLAttributes<HTMLElement> & { as?: React.ElementType }
 
 function makeText(
@@ -34,7 +34,7 @@ function makeText(
   return Component
 }
 
-/** Secondary explanatory text beneath a control or heading. */
+/** Secondary explanatory text under a field's label or a heading, above the control it explains. */
 const Hint = makeText("p", "hint", "Hint")
 /** A validation message tied to the field above it. */
 const FieldError = makeText("p", "error", "FieldError")

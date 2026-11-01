@@ -26,6 +26,8 @@ import { Hint, Meta } from "@/components/ui/typography";
 import { HintInfo } from "@/components/SettingsRows";
 import VramReadout from "./VramReadout";
 import { useVramStats } from "@/lib/useVramStats";
+import { toastError } from "@/lib/linkToast";
+import { useMountedRef } from "@/lib/useMountedRef";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { splitForTTS, splitSentenceSegments, stripMarkdownForSpeech } from "@/lib/ttsChunks";
@@ -75,6 +77,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
     setTtsHighlight,
   } = useSettings();
   const { ttsPlayback } = useGameplay();
+  const mountedRef = useMountedRef();
   const vramStats = useVramStats(vramHelperUrl, { enabled: isOpen });
   const [freeBeforeLoad, setFreeBeforeLoad] = useState<number | null>(null);
   const [isUnloading, setIsUnloading] = useState(false);
@@ -334,6 +337,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 <span>Speed</span>
                 <span className="text-muted-foreground tabular-nums">{ttsSpeed.toFixed(1)}×</span>
               </label>
+              <Hint>Applies to new audio. Select ↻ to speak the current narration again at this speed.</Hint>
               <Slider
                 value={[ttsSpeed]}
                 min={0.5}
@@ -341,7 +345,6 @@ const TTSModal = forwardRef<TTSModalHandle, {
                 step={0.1}
                 onValueChange={(v) => setTtsSpeed(v[0])}
               />
-              <Hint>Applies to new audio. Select ↻ to speak the current narration again at this speed.</Hint>
             </div>
             <div className="flex items-start gap-2">
               <Checkbox
@@ -439,11 +442,13 @@ const TTSModal = forwardRef<TTSModalHandle, {
                       dtype: "fp32",
                       device: "webgpu"
                     });
+                    if (!mountedRef.current) return;
                     setTTS(model);
                     setIsLoading(false);
                   } catch (error) {
                     console.error("Failed to load TTS model:", error);
-                    setIsLoading(false);
+                    toastError(error, { headline: "Couldn't load the Text to Speech model. Try again." });
+                    if (mountedRef.current) setIsLoading(false);
                   }
                 }}
                 disabled={isLoading || !webGPUSupported}

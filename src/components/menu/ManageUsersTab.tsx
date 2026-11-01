@@ -688,7 +688,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap text-label font-medium">
                           <div className="flex flex-wrap gap-2">
-                            {/* Split button, as the in-game Re-generate one: the common action on the
+                            {/* Split button, as the in-game Regenerate one: the common action on the
                                 left, the rarer one behind the caret, for one button's worth of row width. */}
                             <div className="flex">
                               <Button

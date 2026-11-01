@@ -15,7 +15,7 @@ const SAMPLE_STEPS: StepLabelParts[] = [
   { verb: 'Edit', type: 'Locations', slice: 'locations' },
   { verb: 'Edit', type: 'World', slice: 'worldOverview', field: 'Thumbnail' },
   { verb: 'Remove', type: 'Trait', slice: 'traits', name: 'Brave' },
-  { verb: 'Edit', type: 'Entity', slice: 'entities', name: 'Mara Featherstonehaugh of the Lantern Docks', field: 'Player Description' },
+  { verb: 'Edit', type: 'Entity', slice: 'entities', name: 'Mara Featherstonehaugh of the Lantern Docks', field: 'Player-Facing Description' },
   { verb: 'Edit', type: 'Location', slice: 'locations', name: 'Docks', field: 'Travel Hint' },
   { verb: 'Import Lorebook' },
 ];

@@ -32,6 +32,9 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import ModelStorageService from '@/services/ModelStorageService';
 
 /** The fields an entity shares with an item, which the description and image editors read. */
+/** The AI-Facing Summary hint, shared by every record with a summary. */
+export const AI_SUMMARY_HINT = "Sends the AI this short version where a full description doesn't fit. Keep it brief.";
+
 export type DescribedRecord = Pick<Entity, 'id' | 'name' | 'playerDescription' | 'aiDescription' | 'aiSummary' | 'images' | 'imageTags'>;
 
 /** What a description or image editor needs: the record, a field writer, and the chip vocabulary to offer. */
@@ -296,7 +299,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
               onChange={(s) => onChange('aiSummary', s)}
             />
           )}
-          hint="Sends the AI this short version where a full description doesn't fit. Keep it brief."
+          hint={AI_SUMMARY_HINT}
           value={value.aiSummary || ''}
           onChange={(v) => onChange('aiSummary', v)}
           placeholders={placeholders}
