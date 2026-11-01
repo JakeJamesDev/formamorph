@@ -13,7 +13,14 @@ import { bodySlots, parseBodies } from '@/lib/bodies';
 import type { Body, Item, ItemCopy, Slot } from '@/types';
 
 const SLOTS: Slot[] = [{ id: 'hand', name: 'Main Hand' }, { id: 'off-hand', name: 'Off Hand' }, { id: 'ring', name: 'Ring' }];
-const BODIES: Body[] = parseBodies([{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'off-hand' }, { slotId: 'ring' }] }]);
+const BODIES: Body[] = parseBodies([{
+  id: 'humanoid', name: 'Humanoid', backdrop: { kind: 'humanoid' }, aspect: 0.5,
+  entries: [
+    { slotId: 'hand', boxes: [{ x: 0.02, y: 0.34, w: 0.26, h: 0.26 }] },
+    { slotId: 'off-hand', boxes: [{ x: 0.72, y: 0.34, w: 0.26, h: 0.26 }] },
+    { slotId: 'ring', capacity: 2, boxes: [{ x: 0.04, y: 0.44, w: 0.22, h: 0.09 }, { x: 0.74, y: 0.44, w: 0.22, h: 0.09 }] },
+  ],
+}]);
 const BODY_SLOTS = bodySlots(BODIES[0], SLOTS);
 const item = (id: string, name: string, over: Partial<Item>): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
@@ -23,12 +30,16 @@ const ITEMS: Item[] = [
   item('sword', 'Greatsword', { stackable: false, slotRule: { mode: 'all', slotIds: ['hand', 'off-hand'] } }),
   item('ring', 'Silver Ring', { stackable: false, slotRule: { mode: 'either', slotIds: ['ring'] } }),
 ];
+/** A sample image at its size in pixels. */
+const art = (width: number, height: number, fill: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${fill}"/></svg>`)}`;
+const ART: Record<string, string> = { sword: art(360, 720, '#8a9bb0'), ring: art(240, 720, '#c9b458') };
 const you = { kind: 'you' } as const;
 const START: ItemCopy[] = [
   { id: 's', item: { kind: 'item', itemId: 'sword' }, where: you, quantity: 1, visibility: 'visible', equipped: { slotId: 'hand', order: 1 } },
   { id: 't', item: { kind: 'item', itemId: 'tonic' }, where: you, quantity: 5, visibility: 'visible' },
   { id: 'w', item: { kind: 'item', itemId: 'wand' }, where: you, quantity: 1, visibility: 'visible', state: { uses: 2 } },
-  { id: 'r', item: { kind: 'item', itemId: 'ring' }, where: you, quantity: 1, visibility: 'visible' },
+  { id: 'r', item: { kind: 'item', itemId: 'ring' }, where: you, quantity: 1, visibility: 'visible', equipped: { slotId: 'ring', order: 2 } },
   { id: 'l', item: { kind: 'item', itemId: 'tonic' }, where: { kind: 'location', id: 'sample-room' }, quantity: 2, visibility: 'visible' },
 ];
 const TIMED: TimedEffectView[] = [
@@ -72,6 +83,10 @@ export function InventoryTabReference() {
           Shows the Status panel&apos;s Inventory tab on sample items. <strong>Equip</strong>, <strong>Unequip</strong>, <strong>Use</strong>, <strong>Drop</strong> and <strong>Give</strong> act at once.
         </CardDescription>
         <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li><strong>Equipped</strong> draws the figure. The Greatsword takes both hands, so its image shows in each.</li>
+          <li>The Silver Ring&apos;s tall image keeps its shape in a wide box. Selecting beside it opens the Greatsword under it.</li>
+          <li>Select a filled box for <strong>Use</strong> and <strong>Unequip</strong>. An empty box names its slot when you hover over it or select it.</li>
+          <li>Equip the Ash Wand to see an item with no image: its box shows its name.</li>
           <li><strong>Drop</strong> and <strong>Give</strong> on a stack ask how many.</li>
           <li><strong>Use</strong> spends one Healing Tonic or one Ash Wand use, and turns off at zero uses.</li>
           <li>The Ash Wand is Bound, so you can&apos;t drop or give it.</li>
@@ -91,7 +106,9 @@ export function InventoryTabReference() {
             copies={copies.filter((c) => c.where.kind === 'you')}
             lying={copies.filter((c) => c.where.kind === 'location')}
             items={ITEMS}
+            body={BODIES[0]}
             slots={BODY_SLOTS}
+            imageOf={(copy) => (copy.item.kind === 'item' ? ART[copy.item.itemId] : undefined)}
             present={PRESENT}
             locationId={HERE}
             locationName="Sample Room"

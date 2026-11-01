@@ -2222,7 +2222,9 @@ Editor detail panels, the game's side panels, the library editors' headers and t
 ### Composition
 
 - 🗂️ **Owner card.** The played Persona's `PanelOwnerCard`, with the You pill. Under None it reads **You** with no pill.
-- 🛡️ **Equipped.** One row per world slot. The slot name sits left in meta text, with "1 of 2" under it when the slot holds more than one. The equipped items sit right, each with an Unequip button. A free slot reads **Empty**.
+- 🛡️ **Equipped.** The [Body Layout](#pattern-body-layout) figure, with no labels, up to 320px tall and centered. Its width follows the Body's aspect, up to the panel's width.
+- 🖼️ **Filled box.** The image at its own aspect, in a frame that fits it. An All of item draws in each box it fills. No image, or one that fails, shows the name. The frame opens a popover with the item's row, and only the frame takes the pointer, so a tap on the margin reaches the box below.
+- ⬜ **Empty box.** A blank outline. Hover or tap shows the slot's name.
 - 🎒 **Carried.** One row per Item Copy: the name, ×count for a stack, a lock for Bound, and a uses line ("2 of 3 uses" for Uses 2+, "No uses left" for a spent Uses 1 copy). Icon buttons on the right: Use (only for an item with Uses, After Use effects or a When Used script), Equip (only for an item with a slot), Drop and Give.
 - ✨ **Use.** A sparkles icon button on carried and equipped rows. It spends one use, and turns off at zero uses.
 - ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
@@ -2235,6 +2237,7 @@ Editor detail panels, the game's side panels, the library editors' headers and t
 | Need | Component |
 | --- | --- |
 | The tab body | `InventoryTab` in [`InventoryTab.tsx`](../src/components/game/InventoryTab.tsx) |
+| The figure | `BodyDoll` in [`BodyDoll.tsx`](../src/components/game/BodyDoll.tsx) |
 | Its data and its one write | `useInventoryPanel` in [`useInventoryPanel.ts`](../src/components/game/useInventoryPanel.ts), through `applyInventoryOps` in [`inventory/index.ts`](../src/lib/inventory/index.ts) |
 | The measured tab strip | `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) |
 | The host | `RightPanel` in [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
@@ -2248,10 +2251,11 @@ The tab fills the right panel on desktop and the **Status** sheet on mobile. Row
 
 | State | Treatment |
 | --- | --- |
-| Turn running or past page | Every button is disabled, and an open count popover closes. |
+| Turn running or past page | Every action button is disabled, and an open count popover closes. A figure's boxes still open, with their actions disabled. |
 | Bound | Drop and Give disabled; Equip still works. |
-| Hidden Item Copy | Never shown. A hidden equipped item still counts in its slot's fill. |
-| Equipped row | Use (when it applies) and Unequip. Drop and Give act on carried rows. |
+| Hidden Item Copy | Never shown. A hidden equipped item takes capacity but draws in no box, so its box reads as empty. |
+| Equipped row | In a filled box's popover: Use (when it applies) and Unequip. Drop and Give act on carried rows. |
+| No boxes on the Body, or no Body | No **Equipped** section. An equipped item with no box lists under **Carried**, with Unequip. |
 | Zero uses | Use stays in place, disabled: "Use Ash Wand: no uses left". |
 | Nothing carried | "You carry nothing." |
 | No items in the world | No Inventory tab. |
