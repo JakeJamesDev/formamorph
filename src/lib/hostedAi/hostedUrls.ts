@@ -15,3 +15,6 @@ export const hostedAckUrl = (threshold: number): string =>
 
 /** The header that carries a turn's server-issued id, both ways. */
 export const TURN_HEADER = 'X-Formamorph-Turn';
+
+/** The header that names a call's `AIRequestType`, so the server records where the allowance went. */
+export const PROMPT_TYPE_HEADER = 'X-Formamorph-Prompt-Type';
