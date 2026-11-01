@@ -142,7 +142,7 @@ describe('parseDictionaryImport', () => {
   });
 
   it('throws a generic message for anything unrecognized', () => {
-    expect(() => parseDictionaryImport({ foo: 'bar' })).toThrow(/Unrecognized/);
+    expect(() => parseDictionaryImport({ foo: 'bar' })).toThrow(/not a dictionary/);
   });
 });
 

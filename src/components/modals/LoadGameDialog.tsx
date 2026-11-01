@@ -18,7 +18,7 @@ import {
 import { serializeJsonBlob, terminateWorker as terminateExportWorker } from '../../lib/jsonFileWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
-import { filesFrom, importSummaryToast } from "@/lib/importFiles";
+import { filesFrom, importReportToast, storageCause, type SkippedImport } from "@/lib/importFiles";
 import WorldStorageService from '../../services/WorldStorageService';
 import {
   formatSaveTimestamp, groupSaves, mergeOrder, mergeVisibleSaveOrder, folderRefFor, FOLDER_ORDER_KEY,
@@ -304,11 +304,20 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
   };
 
   const handleImport = async (files: File[]) => {
-    let ok = 0, skipped = 0;
+    const saveNoun = { one: 'save', many: 'saves' };
+    let ok = 0;
+    const skipped: SkippedImport[] = [];
     let lastKey: string | null = null;
     for (const file of files) {
       try {
-        const save = JSON.parse(await file.text()) as SaveRecord & { version?: string | number };
+        let text: string;
+        try { text = await file.text(); }
+        catch (error) {
+          console.error('Error reading save:', file.name, error);
+          skipped.push({ fileName: file.name, cause: 'Formamorph cannot read this file.', error });
+          continue;
+        }
+        const save = JSON.parse(text) as SaveRecord & { version?: string | number };
         if (isSaveEnvelope(save)) {
           // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
           // string-version saves, so run it for every envelope, not just numeric-legacy ones.
@@ -323,16 +332,21 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
           worldId: save.worldId ?? nameToId.get(worldName ?? ''),
           isAutosave: undefined, // an imported save is always a manual one, never the auto slot
         };
-        await putSaveRecord(record);
+        try { await putSaveRecord(record); }
+        catch (error) {
+          console.error('Error storing save:', file.name, error);
+          skipped.push({ fileName: file.name, cause: storageCause(error, saveNoun), error });
+          continue;
+        }
         lastKey = folderRefFor(recordToRow(record), nameToId, idToName).key;
         ok++;
       } catch (error) {
         console.error('Error uploading save:', file.name, error);
-        skipped++;
+        skipped.push({ fileName: file.name, cause: "This isn't a valid save file.", error });
       }
     }
     if (ok) { await loadData(); if (lastKey) setActiveKey(lastKey); }
-    if (ok || skipped) importSummaryToast(ok, skipped, { one: 'save', many: 'saves' });
+    if (ok || skipped.length) importReportToast(ok, skipped, saveNoun);
   };
 
   const busy = isLoading || isExporting;

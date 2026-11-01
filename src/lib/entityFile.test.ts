@@ -196,7 +196,7 @@ describe('parseEntityCardData', () => {
     expect(() => parseEntityCardData({ formamorphKind: 'world' })).toThrow(/world/i);
     expect(() => parseEntityCardData({ formamorphKind: 'save' })).toThrow(/save/i);
     expect(() => parseEntityCardData({ formamorphKind: 'dictionary' })).toThrow(/dictionary/i);
-    expect(() => parseEntityCardData({ foo: 1 })).toThrow(/not a character card/i);
+    expect(() => parseEntityCardData({ foo: 1 })).toThrow(/not an entity card/i);
     expect(() => parseEntityCardData(null)).toThrow();
   });
 

@@ -99,7 +99,8 @@ import { entityImageData, entityImages, primaryImage } from '@/lib/entityImages'
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
-import { filesFrom, importReportToast, importSummaryToast, storageCause, worldFileCause, type SkippedImport } from '@/lib/importFiles';
+import { filesFrom, importReportToast, storageCause, worldFileCause, type SkippedImport } from '@/lib/importFiles';
+import { dictionaryFileCause, writtenCause } from '@/lib/writtenImportError';
 import CommunityBrowserHost from './CommunityBrowserHost';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
@@ -1120,37 +1121,42 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const importDictionaryFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = filesFrom(event);
     if (!files.length) return;
-    const parsed: { book: Dictionary; links: ComponentFileLinks; libraryDetails?: { author?: string } }[] = [];
-    let ok = 0, skipped = 0;
+    const dictionaryNoun = { one: 'dictionary', many: 'dictionaries' };
+    const parsed: { book: Dictionary; links: ComponentFileLinks; libraryDetails?: { author?: string }; fileName: string }[] = [];
+    let ok = 0;
+    const skipped: SkippedImport[] = [];
     for (const file of files) {
       try {
         // Foreign lorebooks (ST / character cards) carry no internal name — fall back to the filename.
         const fallbackName = file.name.replace(/\.[^.]+$/, '');
         const raw = JSON.parse(await file.text());
-        parsed.push({ book: parseDictionaryImport(raw, fallbackName), links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) });
-      } catch (err) {
-        console.error('Error importing dictionary:', file.name, err);
-        skipped++;
+        parsed.push({ book: parseDictionaryImport(raw, fallbackName), links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw), fileName: file.name });
+      } catch (error) {
+        console.error('Error importing dictionary:', file.name, error);
+        skipped.push({ fileName: file.name, cause: dictionaryFileCause(error), error });
       }
     }
 
     // A lone file that carries relationships is reviewed; everything else goes straight to the library.
-    if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
+    if (parsed.length === 1 && !skipped.length && hasComponentLinks(parsed[0].links)) {
       await reviewComponentFile('dictionary', parsed[0].book, parsed[0].links, parsed[0].libraryDetails);
       return;
     }
 
-    for (const { book, links, libraryDetails } of parsed) {
+    for (const { book, links, libraryDetails, fileName } of parsed) {
       try {
         // Through the same store either way: a file naming a listing refreshes the copy of it the player
         // already holds, rather than leaving a batch import with two rows of one name.
         if (links.source?.sourceId) await storeComponentFile('dictionary', book, links, libraryDetails);
         else await addDictionaryToLibrary(book, libraryDetails);
         ok++;
-      } catch (err) { console.error('Error importing dictionary:', book.name, err); skipped++; }
+      } catch (error) {
+        console.error('Error importing dictionary:', book.name, error);
+        skipped.push({ fileName, cause: storageCause(error, dictionaryNoun), error });
+      }
     }
     await refreshDictionaries();
-    if (ok || skipped) importSummaryToast(ok, skipped, { one: 'dictionary', many: 'dictionaries' });
+    if (ok || skipped.length) importReportToast(ok, skipped, dictionaryNoun);
   };
 
   // Import one or more character images (our WebP cards or SillyTavern PNGs) into the library. One combined
@@ -1166,16 +1172,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       if (!files.length) return;
     }
 
-    const parsed: Awaited<ReturnType<typeof importCharacterFile>>[] = [];
-    let skipped = 0;
+    const entityNoun = { one: 'entity', many: 'entities' };
+    const parsed: (Awaited<ReturnType<typeof importCharacterFile>> & { fileName: string })[] = [];
+    const skipped: SkippedImport[] = [];
+    let lorebooks = 0;
     for (const file of files) {
-      try { parsed.push(await importCharacterFile(file)); }
-      catch (err) { console.error('Error importing character:', file.name, err); skipped++; }
+      try { parsed.push({ ...(await importCharacterFile(file)), fileName: file.name }); }
+      catch (error) {
+        console.error('Error importing character:', file.name, error);
+        skipped.push({ fileName: file.name, cause: writtenCause(error, 'Formamorph cannot read this file.'), error });
+      }
     }
 
     // A lone card that carries relationships is reviewed. Its portrait still goes through the downscale
     // offer first, so the review stores the same picture an ordinary import would.
-    if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
+    if (parsed.length === 1 && !skipped.length && hasComponentLinks(parsed[0].links)) {
       const mode = await promptImagesBatch(entityImageData(parsed[0].entity), IMAGE_CAPS.entity);
       const record = await applyEntityImagesOptimize(parsed[0].entity, mode, () => {});
       await reviewComponentFile('entity', record, parsed[0].links, parsed[0].libraryDetails);
@@ -1185,12 +1196,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (parsed.length) {
       const mode = await promptImagesBatch(parsed.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
       const now = new Date().toISOString();
-      let lorebooks = 0;
       let stored = 0;
       const total = mode === 'off' ? 0 : parsed.reduce((n, p) => n + entityImages(p.entity).length, 0);
       const storeAll = async (tick: (done: number) => void) => {
         let done = 0;
-        for (const { entity, book, links, libraryDetails } of parsed) {
+        for (const { entity, book, links, libraryDetails, fileName } of parsed) {
           // Guarded per card: a portrait can blow the storage quota mid-batch, and that must not drop the rest.
           try {
             const record = await applyEntityImagesOptimize(entity, mode, () => tick(++done));
@@ -1204,9 +1214,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now, tags: libraryDetails?.tags ?? record.tags, author: libraryDetails?.author, libraryDetails }]);
             }
             stored++;
-          } catch (err) {
-            console.error('Error storing character:', entity.name, err);
-            skipped++;
+          } catch (error) {
+            console.error('Error storing character:', entity.name, error);
+            skipped.push({ fileName, cause: storageCause(error, entityNoun), error });
             continue; // the card never landed, so its lorebook has nothing to attach to
           }
           if (book) {
@@ -1217,10 +1227,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       };
       if (total) await withOptimizeProgress(total, storeAll);
       else await storeAll(() => {});
-      importSummaryToast(stored, skipped, { one: 'entity', many: 'entities' },
-        lorebooks ? `, ${lorebooks} lorebook${lorebooks === 1 ? '' : 's'}` : '');
-    } else if (skipped) {
-      toast.error(`Couldn't import ${skipped} ${skipped === 1 ? 'entity' : 'entities'}.`);
+      importReportToast(stored, skipped, entityNoun, lorebooks ? `, ${lorebooks} lorebook${lorebooks === 1 ? '' : 's'}` : '');
+    } else if (skipped.length) {
+      importReportToast(0, skipped, entityNoun);
     }
   };
 
@@ -1289,24 +1298,23 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const files = filesFrom(event);
     if (!files.length) return;
 
+    const avatarNoun = { one: 'player avatar', many: 'player avatars' };
+    const skipped: SkippedImport[] = [];
     let stored = 0;
-    let skipped = 0;
     for (const file of files) {
       try {
         const duplicate = await ModelStorageService.findDuplicate(file);
-        if (duplicate && !window.confirm(`"${duplicate.name}" is already in your library, and this file is identical.\n\nAdd it again anyway?`)) {
-          skipped++;
-          continue;
-        }
+        // Declining a duplicate is the player's choice: the file is neither imported nor skipped.
+        if (duplicate && !window.confirm(`"${duplicate.name}" is already in your library, and this file is identical.\n\nAdd it again anyway?`)) continue;
         await ModelStorageService.addModel(file);
         stored++;
       } catch (error) {
         console.error('Error importing model:', file.name, error);
-        skipped++;
+        skipped.push({ fileName: file.name, cause: storageCause(error, avatarNoun), error });
       }
     }
     await refreshModels();
-    importSummaryToast(stored, skipped, { one: 'player avatar', many: 'player avatars' });
+    if (stored || skipped.length) importReportToast(stored, skipped, avatarNoun);
   };
 
   // Open the editor on a blank character DRAFT — nothing is stored until the user hits Save in the editor.
