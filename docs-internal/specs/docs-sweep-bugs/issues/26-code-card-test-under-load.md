@@ -1,6 +1,6 @@
 # 26: Code Card Test Holds Under Load
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -24,7 +24,7 @@ Evidence: the close commit of this spec; the test's "Every list the keystrokes r
 ## Acceptance criteria
 
 - [x] The cause is shown by reproducing the failure under load or by slowing the keystrokes, not only by reading the code. `userEvent.setup({ delay: 200 })` gave `Set{ 'Health', 'return', 'self', 'stats' }`; each extra label is the first option of a list that opened between keys. The code is right.
-- [ ] The test passes under load, with the machine's real timing, and no fixed sleep or longer timeout carries the fix. The test now types one key, so typing speed cannot raise a second list. It passes alone and in its whole file; no full-suite or CPU-stress run was made.
+- [x] The test passes under load, with the machine's real timing, and no fixed sleep or longer timeout carries the fix. The test now types one key, so typing speed cannot raise a second list. It passed a full `npm test` on main at the close.
 - [x] The test still fails when the code builds a card for every option in the list (mutation run, restored). `Set{ 'Health', 'Heat', 'Heart', …(2) }`.
 - [x] The test still fails when moving to an option builds no card or more than one (mutation run, restored). Two cards: "called 1 times, but got 2 times". No card: "got 0 times".
 - [x] No changelog entry, if only the test changes. Only `CodeArea.cards.test.tsx` changed.
@@ -32,7 +32,7 @@ Evidence: the close commit of this spec; the test's "Every list the keystrokes r
 ## Landed
 
 **Not verified**
-- Passes under full-suite load: not run in a full suite, and no CPU stress ran. The fix removes the dependence on typing speed, so the failure has no remaining trigger, but a full run on main is the proof.
+- No CPU stress ran. A full `npm test` on main passed this test on 2026-11-01.
 
 **For you**
-- Run `npm test` on main once and confirm the code card test stays green.
+- None.
