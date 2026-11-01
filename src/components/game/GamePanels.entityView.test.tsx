@@ -120,6 +120,28 @@ describe('LeftPanel — one entity view', () => {
     expect(onEntityClick).not.toHaveBeenCalled();
   });
 
+  it('marks the row of the entity the view shows, and moves the mark with a new selection', () => {
+    show({
+      cast: [heron, golem], scene: [{ name: 'Heron', revealed: true }, { name: 'Golem', revealed: true }],
+    });
+    const row = (name: string) => entityRow(name).closest('div');
+    expect(row('Heron')).toHaveAttribute('aria-current', 'true');
+    expect(row('Golem')).not.toHaveAttribute('aria-current');
+
+    fireEvent.click(entityRow('Golem'));
+    expect(row('Golem')).toHaveAttribute('aria-current', 'true');
+    expect(row('Heron')).not.toHaveAttribute('aria-current');
+  });
+
+  it('marks the persona row when the view falls back to the played entity', () => {
+    show({
+      cast: [heron, wren], scene: [{ name: 'Heron', revealed: true }],
+      seed: (g) => g.setPersonaRef({ source: 'world', entityId: 'wren' }),
+    });
+    expect(entityRow('Wren').closest('div[aria-current]')).not.toBeNull();
+    expect(entityRow('Heron').closest('div')).not.toHaveAttribute('aria-current');
+  });
+
   it("opens on the played entity's Avatar, in the save's customization with the player's stat morphs", async () => {
     show({
       cast: [heron, wren], scene: [{ name: 'Heron', revealed: true }],
