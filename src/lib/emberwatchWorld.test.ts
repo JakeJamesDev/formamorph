@@ -430,8 +430,20 @@ describe('the Emberwatch items', () => {
     it('splits hands into Main Hand and Off Hand on the Humanoid only', () => {
       expect(hands.map((slot) => slot.name)).toEqual(['Main Hand', 'Off Hand']);
       const entriesOf = (name: string) => world.bodies?.find((b) => b.name === name)?.entries ?? [];
-      expect(entriesOf('Humanoid').slice(0, 2)).toEqual(hands.map((slot) => ({ slotId: slot.id })));
+      const [mainHand, offHand] = entriesOf('Humanoid').slice(0, 2);
+      expect([mainHand, offHand].map((entry) => entry.slotId)).toEqual(hands.map((slot) => slot.id));
       expect(entriesOf('Hound').some((e) => hands.some((slot) => slot.id === e.slotId))).toBe(false);
+    });
+
+    it('lays every Body box on its outline, with the two hands mirrored around the midline', () => {
+      const bodies = world.bodies ?? [];
+      expect(bodies.map((body) => body.backdrop?.kind)).toEqual(['humanoid', 'quadruped']);
+      const defaultCenter = (box: { x: number; y: number; w: number; h: number }) =>
+        Math.abs(box.x + box.w / 2 - 0.5) < 1e-9 && Math.abs(box.y + box.h / 2 - 0.5) < 1e-9;
+      expect(bodies.flatMap((body) => body.entries.flatMap((entry) => entry.boxes)).some(defaultCenter)).toBe(false);
+      const [main, off] = bodies[0].entries.slice(0, 2).map((entry) => entry.boxes[0]);
+      expect(main.x + main.w / 2 + (off.x + off.w / 2)).toBeCloseTo(1, 9);
+      expect([off.y, off.w, off.h]).toEqual([main.y, main.w, main.h]);
     });
 
     it('takes both hands with the Spiral-Cut Staff, unequipping what they hold', () => {
