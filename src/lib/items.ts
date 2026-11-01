@@ -112,6 +112,10 @@ export const occupiedSlots = (copy: Pick<ItemCopy, 'equipped'>, item: Pick<Item,
   return item?.slotRule?.mode === 'all' ? item.slotRule.slotIds : [copy.equipped.slotId];
 };
 
+/** A Slot Rule as the prompt writes it: `A or B` for Either of, `A + B` for All of. Empty when no listed slot exists. */
+export const slotRuleMark = (rule: SlotRule | undefined, slots: readonly Slot[]): string =>
+  (rule?.slotIds ?? []).flatMap((id) => slots.find((s) => s.id === id)?.name ?? []).join(rule?.mode === 'all' ? ' + ' : ' or ');
+
 /** The rule's slots that keep a Body from holding the item: all of them for Either of, each missing one for All of. Empty = it fits. */
 export function ruleGaps(rule: SlotRule, held: (slotId: string) => boolean): string[] {
   const missing = rule.slotIds.filter((slotId) => !held(slotId));

@@ -24,6 +24,7 @@ const ITEMS = [
   item('pike', 'Long Pike', { slotRule: { mode: 'all', slotIds: ['hand', 'head'] }, aiSummary: 'A pike taller than a man.' }),
   item('coin', 'Copper Coin'),
   item('veil', 'Gray Veil', { slotRule: { mode: 'either', slotIds: ['head'] }, unidentifiedName: 'Strange Cloth' }),
+  item('knife', 'Stone Knife', { slotRule: { mode: 'either', slotIds: ['hand', 'head'] } }),
 ];
 /** Bodies and slots, with the Custom Persona entity on the Default and `picks` by entity id. */
 const equipment = (bodies: Body[], picks: Record<string, Body | 'none'> = {}): SceneEquipment => ({
@@ -57,17 +58,31 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
     ].join('\n'));
   });
 
-  it("names an equippable item's first slot on every face, in both modes", () => {
+  it("names an equippable item's Slot Rule on every face, and a one-slot item's single slot", () => {
     const out = render([
       copy('helm', { kind: 'you' }),
       copy('pike', { kind: 'you' }, { equipped: { slotId: 'hand', order: 1 } }),
       copy('veil', { kind: 'you' }, { state: { unidentified: true } }),
       copy('helm', { kind: 'location', id: 'landing' }),
     ], equipment([HUMANOID]));
-    expect(out).toContain('**equipped:** Long Pike (Hand): A pike taller than a man.');
+    expect(out).toContain('**equipped:** Long Pike (Hand + Head): A pike taller than a man.');
     expect(out).toContain('**carried:** Iron Helm (Head)');
     expect(out).toContain('**carried:** Strange Cloth (Head) (unknown to the player');
     expect(out).toContain('**lying here:** Iron Helm (Head)');
+  });
+
+  it.each([
+    ['<INVENTORY|markdown>', '**carried:** Stone Knife (Hand or Head), Iron Helm (Head)', '**equipped:** Long Pike (Hand + Head)'],
+    ['<INVENTORY|xml>', '<carried>Stone Knife (Hand or Head), Iron Helm (Head)</carried>', '<equipped>Long Pike (Hand + Head)'],
+    ['<INVENTORY>', '  carried: Stone Knife (Hand or Head), Iron Helm (Head)', '  equipped: Long Pike (Hand + Head)'],
+  ])('writes both modes in %s', (key, carried, equipped) => {
+    const out = render([
+      copy('knife', { kind: 'you' }),
+      copy('helm', { kind: 'you' }),
+      copy('pike', { kind: 'you' }, { equipped: { slotId: 'hand', order: 1 } }),
+    ], equipment([HUMANOID]), key);
+    expect(out).toContain(carried);
+    expect(out).toContain(equipped);
   });
 
   it('writes none for an owner under None, and never a Body name', () => {

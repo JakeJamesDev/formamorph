@@ -387,6 +387,84 @@ describe('the pass\'s use, after and change (Q6, Q7, Q10)', () => {
   });
 });
 
+describe("the pass's named slot (Q37, Q41, Q65)", () => {
+  const dagger = item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['main', 'off'] } });
+  const greatsword = item('greatsword', 'Greatsword', { stackable: false, slotRule: { mode: 'all', slotIds: ['main', 'off'] } });
+  const hands: Slot[] = [{ id: 'main', name: 'Main Hand' }, { id: 'off', name: 'Off Hand' }, hand];
+  const items = [dagger, greatsword, sword];
+  const equipOn = (name: string, slot?: string, quantity = 1, itemId = name.toLowerCase()) => applyInventoryPass(
+    [copy('c', itemId, you, { quantity })], [op('equip', name, { owner: 'you', quantity, ...(slot !== undefined && { slot }) })],
+    scene({ items, resolve: undefined }),
+    { world: { items, slots: hands, bodies: [{ id: 'b', name: 'B', entries: [{ slotId: 'main' }, { slotId: 'off' }] }] }, newId: ids() },
+  );
+  const slotsTaken = (result: ReturnType<typeof equipOn>) => result.copies.flatMap((c) => (c.equipped ? [c.equipped.slotId] : []));
+
+  it('reads the slot from the schema reply and the ninth text field, a filler word as none', () => {
+    const raw = JSON.stringify({ operations: [
+      { op: 'equip', item: 'Dagger', quantity: 1, owner: 'you', to: '', slot: 'Off Hand' },
+      { op: 'equip', item: 'Sword', quantity: 1, owner: 'you', to: '', slot: 'none' },
+    ] });
+    expect(followsResponseSchema(raw, inventoryPassSchema().schema)).toBe(true);
+    expect(parseInventoryReply(raw)).toEqual([
+      op('equip', 'Dagger', { owner: 'you', slot: 'Off Hand' }),
+      op('equip', 'Sword', { owner: 'you' }),
+    ]);
+    expect(parseInventoryLines('equip | Dagger | 1 | you | | | | | Off Hand')).toEqual([op('equip', 'Dagger', { owner: 'you', state: '', slot: 'Off Hand' })]);
+  });
+
+  it('lands in the named slot, past the first free one, ignoring case', () => {
+    expect(slotsTaken(equipOn('Dagger', 'off hand'))).toEqual(['off']);
+  });
+
+  it('takes the first free slot when the reply names none', () => {
+    expect(slotsTaken(equipOn('Dagger'))).toEqual(['main']);
+  });
+
+  it("reads two or more of the item's own slots, joined by anything, as no name", () => {
+    expect(slotsTaken(equipOn('Dagger', 'Main Hand or Off Hand'))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Dagger', 'off hand, main hand'))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Greatsword', 'main hand + off hand'))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Greatsword', 'Main Hand or Off Hand'))).toEqual(['main']);
+  });
+
+  it.each(['Main Hand or Left Paw', 'Main Hand, Off Hand, Left Paw', 'Main Hand or Off Handle'])("skips %s, which holds a name the item doesn't list", (slot) => {
+    const result = equipOn('Dagger', slot);
+    expect(slotsTaken(result)).toEqual([]);
+    expect(result.diagnostics).toEqual([`Inventory (pass) skipped equip "Dagger": no slot is named "${slot}"`]);
+  });
+
+  it('counts a shorter slot name inside a longer one only once', () => {
+    const glove = item('glove', 'Glove', { slotRule: { mode: 'either', slotIds: ['hand', 'off'] } });
+    const slotFor = (slot: string) => applyInventoryPass([copy('c', 'glove', you)], [op('equip', 'Glove', { owner: 'you', slot })], scene({ items: [glove], resolve: undefined }), {
+      world: { items: [glove], slots: hands, bodies: [{ id: 'b', name: 'B', entries: [{ slotId: 'hand' }, { slotId: 'off' }] }] }, newId: ids(),
+    }).copies[0].equipped?.slotId;
+    expect(slotFor('Off Hand')).toBe('off');
+    expect(slotFor('Off Hand or Hand')).toBe('hand');
+  });
+
+  it("skips a slot the item doesn't allow, with a diagnostic", () => {
+    const result = equipOn('Dagger', 'Hand');
+    expect(slotsTaken(result)).toEqual([]);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped equip: Item Copy c can\'t go in Hand']);
+  });
+
+  it('skips a name no slot has, with a diagnostic', () => {
+    const result = equipOn('Dagger', 'Left Paw');
+    expect(slotsTaken(result)).toEqual([]);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped equip "Dagger": no slot is named "Left Paw"']);
+  });
+
+  it('accepts a listed name on an All of item, which takes every slot', () => {
+    const result = equipOn('Greatsword', 'Off Hand');
+    expect(result.diagnostics).toEqual([]);
+    expect(result.copies[0].equipped).toBeDefined();
+  });
+
+  it('holds the name to one copy of a stack, the next taking the first free slot', () => {
+    expect(slotsTaken(equipOn('Dagger', 'Off Hand', 2)).sort()).toEqual(['main', 'off']);
+  });
+});
+
 describe('runtime Item Copy orphans', () => {
   it('drops a runtime Item Copy whose runtime item the save no longer lists, and keeps a listed one', () => {
     const kept: ItemCopy = { id: 'a', item: { kind: 'runtime', runtimeItemId: 'k' }, where: you, quantity: 1, visibility: 'visible' };

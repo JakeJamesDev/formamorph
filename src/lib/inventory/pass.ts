@@ -48,6 +48,7 @@ export const inventoryPassSchema = (): ResponseSchema => ({
             state: { type: 'string' },
             after: { type: 'string', enum: ['', ...PASS_AFTER_WORDS] },
             target: { type: 'string' },
+            slot: { type: 'string' },
           },
         },
       },
@@ -58,12 +59,16 @@ export const inventoryPassSchema = (): ResponseSchema => ({
 /** The text pass's reply format, which rides after the user message out of the author's reach. */
 export const INVENTORY_TEXT_FORMAT = `
 
-Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state, the after and the target, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item changed.`;
+Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state, the after, the target and the slot, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item changed.`;
 
 /** The schema request's reply format: what the text format's NONE is for the JSON reply. */
 export const INVENTORY_JSON_FORMAT = `
 
 Reply with one operation per change. Reply with an empty operations list when no item changed.`;
+
+/** What may join slot names in a value that names several; any other word or digit left over is another name. */
+const JOIN_WORDS = /\b(or|and|plus|then)\b/g;
+const JOIN_LEFTOVER = /[\p{L}\p{N}]/u;
 
 const isKind = (value: string): value is InventoryPassOpKind => (PASS_OP_KINDS as readonly string[]).includes(value);
 
@@ -89,10 +94,12 @@ const passOp = (raw: Record<string, unknown>): InventoryPassOp | null => {
   if (!isKind(op) || !item || NO_ITEM.test(item)) return null;
   const after = afterOf(raw.after);
   const target = text(raw.target);
+  const slot = text(raw.slot);
   return {
     op, item, quantity: quantityOf(raw.quantity), owner: text(raw.owner), to: text(raw.to),
     ...(raw.state !== undefined && { state: text(raw.state) }), ...(after && { after }),
     ...(target && !NO_ITEM.test(target) && { target }),
+    ...(slot && !NO_ITEM.test(slot) && { slot }),
   };
 };
 
@@ -110,11 +117,11 @@ const jsonOps = (raw: string): InventoryPassOp[] | null => {
   }
 };
 
-/** The text pass's lines: `op | item | quantity | owner | to | state | after | target`. A line that names no operation is skipped. */
+/** The text pass's lines: `op | item | quantity | owner | to | state | after | target | slot`. A line that names no operation is skipped. */
 export function parseInventoryLines(raw: string): InventoryPassOp[] {
   return raw.split('\n').flatMap((line) => {
-    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = '', target = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
-    const parsed = passOp({ op, item, quantity, owner, to, state, after, target });
+    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = '', target = '', slot = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
+    const parsed = passOp({ op, item, quantity, owner, to, state, after, target, slot });
     return parsed ? [parsed] : [];
   });
 }
@@ -253,6 +260,27 @@ export function applyInventoryPass(
     return null;
   };
 
+  /** The slot id a reply named: undefined for no name or two or more of the item's own slots joined (Q65), null for a name no slot has. */
+  const namedSlot = (copy: ItemCopy, name: string | undefined): string | undefined | null => {
+    const key = itemNameKey(name ?? '');
+    if (!key) return undefined;
+    const slots = call.world.slots ?? [];
+    const ref = copy.item;
+    const rule = ref.kind === 'item' ? authored.find((a) => a.item.id === ref.itemId)?.item.slotRule : undefined;
+    const own = slots.filter((s) => rule?.slotIds.includes(s.id)).map((s) => itemNameKey(s.name)).sort((a, b) => b.length - a.length);
+    // Longest first, so `hand` never counts inside `off hand`.
+    let rest = key;
+    let joined = 0;
+    for (const slotName of own) {
+      if (!rest.includes(slotName)) continue;
+      rest = rest.replace(slotName, ' ');
+      joined += 1;
+    }
+    if (joined >= 2 && !JOIN_LEFTOVER.test(rest.replace(JOIN_WORDS, ''))) return undefined;
+    const matches = slots.filter((s) => itemNameKey(s.name) === key);
+    return (matches.find((s) => rule?.slotIds.includes(s.id)) ?? matches[0])?.id ?? null;
+  };
+
   for (const named of passOps) {
     let op = { ...named, item: listedName(named.item) };
     const key = itemNameKey(op.item);
@@ -357,8 +385,15 @@ export function applyInventoryPass(
       // The item named as its own target is a plain use.
       const target = aimed && itemNameKey(listedName(aimed.replace(/^the\s+/i, ''))) !== key ? targetOf(aimed, where, copy.id) : undefined;
       if (target === null) skip(`target "${aimed}" of ${label}: none at "${op.owner}" or here`);
+      // The name holds one copy; a further one takes the first free slot.
+      const slotId = op.op === 'equip' && i === 0 ? namedSlot(copy, op.slot) : undefined;
+      if (slotId === null) {
+        skip(`${label}: no slot is named "${op.slot}"`);
+        break;
+      }
       run([op.op === 'change' ? { kind: 'change', copyId: copy.id, state: op.state ?? '' }
         : op.op === 'use' ? { kind: 'use', copyId: copy.id, ...(op.after && { after: op.after }), ...(target && { targetCopyId: target.id }) }
+        : op.op === 'equip' ? { kind: 'equip', copyId: copy.id, ...(slotId && { slotId }) }
         : { kind: op.op, copyId: copy.id }]);
     }
   }
