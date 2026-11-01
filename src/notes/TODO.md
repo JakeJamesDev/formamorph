@@ -56,3 +56,8 @@ World Info: key value
 allow delete stat changes from traits.
 
 fix slime stat update typo
+
+Rider actions: things that happen after narration and need to ride with the next player action
+- example: a refused buy or pay in the Inventory pass, so the narrator can correct the story next turn
+- complex pattern, needs multiple surfaces
+- does not block release
