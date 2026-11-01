@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ChangeEvent } from 'react';
-import { filesFrom, importPackFile, importSummaryToast } from './importFiles';
+import type { ChangeEvent, ReactElement } from 'react';
+import { fireEvent, render } from '@testing-library/react';
+import { getErrorDetailsState } from './errorDetails';
+import { filesFrom, importPackFile, importReportToast, importSummaryToast, storageCause } from './importFiles';
 
 vi.mock('react-toastify', () => ({
-  toast: { success: vi.fn(), warning: vi.fn() },
+  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
 }));
 const { toast } = await import('react-toastify');
 
@@ -105,5 +107,56 @@ describe('importSummaryToast', () => {
   it('appends extra before the skipped count', () => {
     importSummaryToast(1, 1, noun, ' and 2 dictionaries');
     expect(toast.warning).toHaveBeenCalledWith('Imported 1 world and 2 dictionaries (1 skipped).');
+  });
+});
+
+describe('importReportToast', () => {
+  const noun = { one: 'dictionary', many: 'dictionaries' };
+  beforeEach(() => vi.clearAllMocks());
+
+  /** The toast's lines, and the Error Details its link opens. */
+  const report = (level: typeof toast.error) => {
+    const toasted = render(vi.mocked(level).mock.calls[0][0] as ReactElement);
+    const lines = [...toasted.container.querySelectorAll('span')].map((line) => line.textContent);
+    fireEvent.click(toasted.getByRole('button'));
+    toasted.unmount();
+    return { lines, entry: getErrorDetailsState().entry };
+  };
+
+  it('keeps the plain summary when nothing was skipped', () => {
+    importReportToast(2, [], noun);
+    expect(toast.success).toHaveBeenCalledWith('Imported 2 dictionaries.');
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('shows a written cause on the line, with no raw failure to list', () => {
+    importReportToast(0, [{ fileName: 'a.json', cause: 'Import it from the Worlds tab.' }], noun);
+    const { lines, entry } = report(toast.error);
+    expect(lines).toEqual(["Couldn't import a.json.", 'Import it from the Worlds tab.']);
+    expect(entry?.details).toBe('a.json\nImport it from the Worlds tab.');
+  });
+
+  it('keeps the extra in the summary line of a partial import', () => {
+    importReportToast(1, [{ fileName: 'a.json', cause: 'Bad file.' }], noun, ', 2 lorebooks');
+    expect(report(toast.warning).lines).toEqual(['Imported 1 dictionary, 2 lorebooks.', "Couldn't import a.json.", 'Bad file.']);
+  });
+
+  it('keeps every raw failure out of the toast when several files were skipped', () => {
+    importReportToast(0, [
+      { fileName: 'a.json', cause: 'Bad file.', error: new Error('raw parser text') },
+      { fileName: 'b.json', cause: 'Full.', error: new Error('raw storage text') },
+    ], noun);
+    const { lines, entry } = report(toast.error);
+    expect(lines).toEqual(['Imported 0 dictionaries (2 skipped).']);
+    expect(entry?.details).toMatch(/^a\.json\nBad file\.\nError: raw parser text/);
+    expect(entry?.details).toMatch(/\n\nb\.json\nFull\.\nError: raw storage text/);
+  });
+});
+
+describe('storageCause', () => {
+  it('names full storage from the error name, and writes a general line for the rest', () => {
+    const full = Object.assign(new Error('raw'), { name: 'QuotaExceededError' });
+    expect(storageCause(full, { one: 'entity', many: 'entities' })).toBe('The storage is full.');
+    expect(storageCause(new Error('raw'), { one: 'entity', many: 'entities' })).toBe('Formamorph cannot save the entity.');
   });
 });

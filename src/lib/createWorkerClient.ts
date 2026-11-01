@@ -34,7 +34,7 @@ export function createWorkerClient(createWorker: () => Worker) {
         if (type === 'success') {
           pendingRequest.resolve(result);
         } else if (type === 'error') {
-          pendingRequest.reject(new Error(error.message));
+          pendingRequest.reject(Object.assign(new Error(error.message), error.name ? { name: error.name } : {}));
         }
         pendingRequests.delete(id);
       });

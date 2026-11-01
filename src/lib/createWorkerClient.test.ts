@@ -29,6 +29,14 @@ describe('createWorkerClient', () => {
     await expect(pending).resolves.toBe(42);
   });
 
+  it("rejects with the worker error's name and message", async () => {
+    let worker: FakeWorker | null = null;
+    const client = createWorkerClient(() => (worker = new FakeWorker()) as unknown as Worker);
+    const pending = client.run({ foo: 1 });
+    worker!.emit({ type: 'error', id: worker!.lastMessage!.id, error: { name: 'SyntaxError', message: 'Bad JSON' } });
+    await expect(pending).rejects.toMatchObject({ name: 'SyntaxError', message: 'Bad JSON' });
+  });
+
   it('passes progress messages to their request and still resolves after them', async () => {
     let worker: FakeWorker | null = null;
     const client = createWorkerClient(() => (worker = new FakeWorker()) as unknown as Worker);

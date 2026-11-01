@@ -1,14 +1,15 @@
 import { toast, type ToastOptions } from 'react-toastify';
 import { describeError, showErrorDetails, type ToastText } from './errorDetails';
 
-/** An error toast with a text link under its lines; it stays open on click so the link can be pressed. */
+/** A toast with a text link under its lines; it stays open on click so the link can be pressed. */
 export function linkToast(
   message: string | readonly string[], linkLabel: string, onLink: () => void, options: ToastOptions = {},
+  level: 'error' | 'warning' = 'error',
 ): void {
   const lines = typeof message === 'string' ? [message] : message;
-  toast.error(
+  toast[level](
     <div className="flex flex-col items-start gap-1">
-      {lines.map((line, i) => <span key={i}>{line}</span>)}
+      {lines.map((line, i) => <span key={i} className="[overflow-wrap:anywhere]">{line}</span>)}
       <button type="button" className="text-meta underline" onClick={onLink}>
         {linkLabel}
       </button>
