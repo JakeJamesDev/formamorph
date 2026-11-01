@@ -104,7 +104,7 @@ export function useTestBench({
   const {
     worldId, worldOverview, getWorldData, worldMetadata, updateWorldOverview,
     setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups,
-    setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders, setPlaceholderGroups,
+    setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders, setPlaceholderGroups, setItems,
   } = useGameData();
 
   const [benchOpen, setBenchOpen] = useState(false);
@@ -323,10 +323,11 @@ export function useTestBench({
     if (after.dictionaries !== before.dictionaries) setDictionaries(after.dictionaries);
     if (after.placeholders !== before.placeholders) setWorldPlaceholders(after.placeholders ?? []);
     if (after.placeholderGroups !== before.placeholderGroups) setPlaceholderGroups(after.placeholderGroups ?? []);
+    if (after.items !== before.items) setItems(after.items ?? []);
     noteFirstDownloadEdit();
   }, [updateWorldOverview, setStats, setStatGroups, setLocations, setConnections, setEntities,
       setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders,
-      setPlaceholderGroups, noteFirstDownloadEdit]);
+      setPlaceholderGroups, setItems, noteFirstDownloadEdit]);
   // The image conversion is the one repair the pure pass can't carry — it decodes and re-encodes every
   // convertible picture. So it runs like the script check: one at a time, and a result about a world the
   // author has since edited is dropped rather than written over the world they now have.

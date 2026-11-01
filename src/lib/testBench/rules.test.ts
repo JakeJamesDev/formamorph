@@ -6,6 +6,7 @@ import type {
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
+import { blankItem } from '@/lib/items';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   applyRuleFix, ownerWorldOf, runRules, groupFindings, isAdvancedRule, isRuleFixable, selectMatchingFindings,
@@ -4700,6 +4701,13 @@ describe('world-level rules', () => {
     expect(runRules(world([{ id: 'e1', name: 'Maren', images: [{ data: `data:image/webp;base64,${'A'.repeat(1_000)}` }] }]))).toEqual([]);
   });
 
+  it('budgets an item image against the entity cap, opening on the item', () => {
+    const big = `data:image/webp;base64,${'A'.repeat(Math.ceil((IMAGE_CAPS.entity.maxBytes * 4) / 3) + 8)}`;
+    const found = only(base({ items: [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: big }] }] }), 'world-oversized-images');
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0]).toMatchObject({ id: 'lantern', name: 'Tin Lantern', section: 'items' });
+  });
+
   it('leaves a linked image alone — it contributes no bytes to the world', () => {
     expect(only(
       world([{ id: 'e1', name: 'Maren', images: [{ data: 'https://example.com/a-very-large-portrait.png' }] }]),
@@ -4828,6 +4836,17 @@ describe('the mislabeled-image rule', () => {
     // The opaque payloads every other fixture uses — no signature, so no verdict to disagree with.
     const opaque = world([{ id: 'e1', name: 'Maren', images: [{ data: `data:image/png;base64,${'A'.repeat(80)}` }] }]);
     expect(only(opaque, 'image-mislabeled')).toEqual([]);
+  });
+
+  it('Fix relabels an item image and clears its row', () => {
+    const items = [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: withBytes('image/png', JPEG_BYTES), requires: MAREN_RULE }] }];
+    const flagged = base({ items });
+    expect(only(flagged, 'image-mislabeled')[0].items[0]).toMatchObject({ id: 'lantern', section: 'items' });
+
+    const fixed = applyRuleFix(flagged, 'image-mislabeled');
+    expect(fixed.items?.[0].images?.[0].data.startsWith('data:image/jpeg;')).toBe(true);
+    expect(fixed.items?.[0].images?.[0].requires).toEqual(MAREN_RULE);
+    expect(only(fixed, 'image-mislabeled')).toEqual([]);
   });
 
   it('Fix relabels the thumbnail, a gallery image and a background in one pass', () => {

@@ -29,6 +29,7 @@ function recorder() {
     location: (_id, edit) => { out.location = edit(location); },
     dictionary: (_id, edit) => { out.dictionary = edit(book); },
     body: (_id, edit) => { out.body = edit(body); },
+    item: () => {},
   };
   return { out, editor };
 }

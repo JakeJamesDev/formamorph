@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { fakeDataUrl } from '@/test/mediaFixture';
+import { blankItem } from '@/lib/items';
 import { formatMediaBytes, storedBytes } from '@/lib/mediaIndex';
 import type { World } from '@/types';
 
@@ -53,6 +54,7 @@ vi.mock('@/lib/useDownscalePrompt', async (importOriginal) => {
           entities: world.entities.map((e) => ({ ...e, images: [{ data: WEBP }] })),
           locations: world.locations.map((l) => ({ ...l, images: [{ data: WEBP }] })),
           dictionaries: world.dictionaries.map((d) => ({ ...d, thumbnail: WEBP })),
+          items: world.items?.map((i) => ({ ...i, images: [{ data: WEBP }] })),
         };
       },
     }),
@@ -68,6 +70,7 @@ const WORLD = benchEditorWorld({
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, images: [{ data: PNG }] }],
   entities: [{ id: 'resident', name: 'Odd Wick', images: [{ data: PNG }], locations: ['harbor'] }],
   dictionaries: [{ id: 'lore', name: 'Fen Lore', entries: [], thumbnail: PNG }],
+  items: [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: PNG }] }],
 } as Partial<World>);
 
 const renderMedia = (mode: 'simple' | 'advanced') => {
@@ -133,6 +136,7 @@ describe('Optimize Images', () => {
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
     expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP);
+    expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
     await waitFor(() => expect(screen.getByRole('region', { name: 'Dictionaries' })).toHaveTextContent(formatMediaBytes(storedBytes(WEBP))));
     expect(screen.getByRole('region', { name: 'Dictionaries' })).not.toHaveTextContent(formatMediaBytes(storedBytes(PNG)));
   });
@@ -145,6 +149,7 @@ describe('Optimize Images', () => {
     expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
     expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
+    expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(PNG);
@@ -152,6 +157,7 @@ describe('Optimize Images', () => {
     expect(ctx().entities[0].images).toEqual([{ data: PNG }]);
     expect(ctx().locations[0].images?.[0]?.data).toBe(PNG);
     expect(ctx().dictionaries[0].thumbnail).toBe(PNG);
+    expect(ctx().items[0].images).toEqual([{ data: PNG }]);
 
     // Nothing earlier is left to undo.
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
@@ -161,6 +167,12 @@ describe('Optimize Images', () => {
     expect(ctx().dictionaries[0].thumbnail).toBe(WEBP);
     expect(ctx().locations[0].images?.[0]?.data).toBe(WEBP);
     expect(ctx().worldOverview.mapBackground?.images).toEqual([{ data: WEBP }]);
+    expect(ctx().items[0].images).toEqual([{ data: WEBP }]);
+  });
+
+  it('shows no gallery card for an item image', () => {
+    renderMedia('simple');
+    expect(screen.queryByText('Tin Lantern')).toBeNull();
   });
 
   it('cancels when the editor closes mid-run and writes nothing', async () => {

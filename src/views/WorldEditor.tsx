@@ -197,7 +197,7 @@ const WorldEditorInner = ({
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools, worldScripts, items, updateItem, updateWorldTool,
+    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools, worldScripts, items, setItems, updateItem, updateWorldTool,
     addStat, addLocation, addEntity, addTrait, addDictionary,
     addPlaceholder,
     updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -231,6 +231,7 @@ const WorldEditorInner = ({
     setEntities(w.entities);
     setLocations(w.locations);
     setDictionaries(w.dictionaries);
+    if (w.items) setItems(w.items);
   };
   const [optimizeProgress, setOptimizeProgress] = useState<OptimizeControl['progress']>(null);
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);

@@ -15,7 +15,7 @@ import { mediaParentSpec } from './mediaParents';
 import { dataUrlBytes, isRemoteImage } from './imageBytes';
 
 export type MediaKind = 'image' | 'sound' | 'model' | 'avatar';
-export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body';
+export type MediaParentKind = 'world' | 'map' | 'entity' | 'location' | 'dictionary' | 'body' | 'item';
 
 /** What holds a media item. Its name is what copy calls it; world media has the world as its parent. */
 export interface MediaParent {
@@ -55,7 +55,7 @@ export interface MediaItem {
   blank?: true;
 }
 
-export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups' | 'bodies'>;
+export type MediaWorld = Pick<World, 'worldOverview' | 'entities' | 'locations' | 'dictionaries'> & Pick<Partial<World>, 'entityGroups' | 'bodies' | 'items'>;
 
 const WORLD_PARENT: MediaParent = { kind: 'world', id: 'world', name: 'World' };
 /** The Map Background's gallery, which cards name like an entity's. */
@@ -259,7 +259,7 @@ export const buildMediaIndex = (w: MediaWorld): MediaItem[] => mediaSections(w).
 
 export type ImageSlot = { url: string; cap: ImageCap; path: string };
 
-/** Every image item in a world with its budget: the optimize scan and walk read the same list as the gallery. */
+/** Every image item in a world with its budget: the gallery's list, then item galleries, which have no card. */
 export function worldImageItems(w: Partial<MediaWorld>): (MediaItem & { budget: ImageCap })[] {
   const index = buildMediaIndex({
     worldOverview: w.worldOverview ?? ({} as MediaWorld['worldOverview']),
@@ -269,7 +269,8 @@ export function worldImageItems(w: Partial<MediaWorld>): (MediaItem & { budget: 
     entityGroups: w.entityGroups,
     bodies: w.bodies,
   });
-  return index.filter((i): i is MediaItem & { budget: ImageCap } => i.kind === 'image' && !!i.budget);
+  const itemImages = (w.items ?? []).flatMap((item) => galleryMedia({ kind: 'item', id: item.id, name: item.name }, entityImages(item)));
+  return [...index, ...itemImages].filter((i): i is MediaItem & { budget: ImageCap } => i.kind === 'image' && !!i.budget);
 }
 
 /** Every image in a world as a scan slot: its data, budget and item id. */
