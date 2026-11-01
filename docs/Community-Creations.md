@@ -202,7 +202,18 @@ A download can stop partway. What already downloaded is kept.
 - When an add-on fails, **Some add-ons did not download** opens.
 - Select **Retry** or **Retry All** to get the rest.
 
-On formamorph.ai, the download button saves the file to your device instead. The website has no **Hidden** list and no Reports.
+On formamorph.ai, the download button saves the file to your device instead. It is the same file the app's own export writes, so the app imports it:
+
+| Kind | File |
+|---|---|
+| World | `<name>.json`, a world file |
+| Entity | `<name>.webp`, a character card |
+| Dictionary | `<name>.json`, a dictionary file |
+| Avatar | `<name>.vrm` |
+| Prompt | `<name>.preset.json`, a prompt preset file |
+| Mascot | `<name>.webp`, a Mascot card |
+
+The website has no **Hidden** list and no Reports.
 
 ### Supporter-Only Listings
 

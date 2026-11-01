@@ -15,13 +15,11 @@ import { cn } from '@/lib/utils';
 import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import { hasOverviewContent, type PresetOverview } from '@/lib/promptPresets';
 import {
-  serializeSharedJson, serializeSharedCode, parseSharedAny,
+  serializeSharedJson, serializeSharedCode, parseSharedAny, presetFileName,
   type SharedPreset, type ImportedPreset, type ParseResult,
 } from '@/lib/promptPresetShare';
 import { PRESET_SCRIPT_TOOL_WARNING, planPresetTools } from '@/lib/tools/toolPack';
 import type { Tool } from '@/types';
-
-const safeFile = (name: string) => (name.trim().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'preset');
 
 /** Export dialog: the share code (copy) plus a .json download, for the selected preset. */
 export function ExportPresetDialog({ open, onOpenChange, shared }: {
@@ -37,7 +35,7 @@ export function ExportPresetDialog({ open, onOpenChange, shared }: {
       else toast.error("Couldn't copy the share code");
     });
   };
-  const download = () => downloadBlob(new Blob([serializeSharedJson(shared)], { type: 'application/json' }), `${safeFile(shared.name)}.preset.json`);
+  const download = () => downloadBlob(new Blob([serializeSharedJson(shared)], { type: 'application/json' }), presetFileName(shared.name));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>

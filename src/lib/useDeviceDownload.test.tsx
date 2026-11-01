@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   serializeJsonBlob: vi.fn(async (value: unknown) => new Blob([JSON.stringify(value)])),
   exportEntityCard: vi.fn(async () => new Blob(['card'], { type: 'image/webp' })),
   fetchListingDetails: vi.fn(async () => null as { compatibleWorlds?: { id: string; name: string }[] } | null),
+  drawn: [] as string[][],
 }));
 
 vi.mock('./fetchCatalogContent', () => ({ fetchCatalogContent: mocks.fetchCatalogContent }));
@@ -19,10 +20,28 @@ vi.mock('./entityFile', () => ({ exportEntityCard: mocks.exportEntityCard }));
 vi.mock('@/services/WorldStorageService', () => ({
   default: { fetchListingDetails: mocks.fetchListingDetails },
 }));
+// jsdom has no canvas: the card's own render is swapped for one that records the layers it draws.
+vi.mock('./formaquestion/mascotCardFile', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./formaquestion/mascotCardFile')>();
+  return {
+    ...actual,
+    mascotCardFileFromData: (card: Parameters<typeof actual.mascotCardFileFromData>[0]) => actual.mascotCardFileFromData(card, {
+      render: async (layers) => {
+        mocks.drawn.push(await Promise.all(layers.map((layer) => blobText(layer))));
+        return { bytes: fakeWebp(), width: 4, height: 4 };
+      },
+    }),
+  };
+});
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import { toast } from 'react-toastify';
 import { toastTexts } from '@/test/toastText';
+import { PROMPT_TEXT_KEYS } from './promptPresets';
+import { FORMAT_VERSION, SHARE_KIND, parseSharedJson } from './promptPresetShare';
+import { DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotRig } from './formaquestion/mascot';
+import { buildMascotCardData } from './formaquestion/mascotCard';
+import { readMascotCard, storeMascotCard } from './formaquestion/mascotCardFile';
 import { useDeviceDownload } from './useDeviceDownload';
 
 const worldListing = {
@@ -31,6 +50,28 @@ const worldListing = {
 const entityListing = { _id: 'entity-listing', id: 'entity-listing', kind: 'entity', name: 'River Warden' };
 const dictionaryListing = { _id: 'dictionary-listing', id: 'dictionary-listing', kind: 'dictionary', name: 'Harbor Terms' };
 const modelListing = { _id: 'model-listing', id: 'model-listing', kind: 'model', name: 'Robot Girl' };
+const presetListing = { _id: 'preset-listing', id: 'preset-listing', kind: 'prompt', name: 'Harbor Voice' };
+const mascotListing = { _id: 'mascot-listing', id: 'mascot-listing', kind: 'mascot', name: 'Ferry Cat' };
+
+/** A preset as the listing serves it: the share artifact the app publishes unchanged. */
+const sharedPreset = {
+  kind: SHARE_KIND, formatVersion: FORMAT_VERSION, appVersion: '3.0.1', name: 'Harbor Voice: Night',
+  style: 'markdown', values: { [PROMPT_TEXT_KEYS[0]]: 'Speak like the tide.' },
+};
+
+const stored = (id: string): MascotImageRef => ({ kind: 'stored', id });
+/** A rig whose Initial pick draws the base and the wave layer, never the off-pick grin. */
+const mascotRig: MascotRig = {
+  ...DEFAULT_MASCOT_RIG,
+  base: stored('base'),
+  layers: [
+    { id: 'wave', name: 'Wave', kind: 'state', enabled: true, images: [stored('arm')] },
+    { id: 'grin', name: 'Grin', kind: 'expression', enabled: true, images: [stored('mouth')] },
+  ],
+  picks: { ...DEFAULT_MASCOT_RIG.picks, initial: { expression: null, state: 'wave' } },
+};
+/** A Mascot listing's content: the card data, each image a PNG data URL whose bytes spell its id. */
+const mascotContent = buildMascotCardData('Ferry Cat', mascotRig, (ref) => `data:image/png;base64,${btoa((ref as { id: string }).id)}`, '3.0.1');
 
 const blobText = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader();
@@ -70,6 +111,7 @@ describe('useDeviceDownload', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.drawn.length = 0;
   });
 
   it('writes a world JSON file with its published image links intact and no local-library action', async () => {
@@ -170,6 +212,75 @@ describe('useDeviceDownload', () => {
     expect(blob.type).toBe('model/gltf-binary');
     expect(Buffer.from(await blob.arrayBuffer()).toString()).toBe('vrm-bytes');
     expect(toast.success).toHaveBeenCalledWith('"Robot Girl" downloaded');
+  });
+
+  it('writes a prompt preset as the share file the app\'s preset import reads', async () => {
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'preset-content', ...sharedPreset });
+    const { result } = renderHook(() => useDeviceDownload());
+
+    await act(async () => { await result.current.download(presetListing); });
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'Harbor_Voice_Night.preset.json');
+    const parsed = parseSharedJson(await blobText(vi.mocked(mocks.downloadBlob).mock.calls[0][0]), '3.0.1');
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.preset).toMatchObject({ name: 'Harbor Voice: Night', values: { [PROMPT_TEXT_KEYS[0]]: 'Speak like the tide.' } });
+    expect(parsed.warnings).toEqual([]);
+    expect(toast.success).toHaveBeenCalledWith('"Harbor Voice" downloaded');
+  });
+
+  it('refuses listing content that is not a preset share file and saves nothing', async () => {
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'preset-content', name: 'Harbor Voice', entries: [] });
+    const { result } = renderHook(() => useDeviceDownload());
+
+    await act(async () => { await result.current.download(presetListing); });
+
+    expect(toastTexts(vi.mocked(toast.error))).toContain('This file is not a Formamorph prompt preset.View Details →');
+    expect(mocks.downloadBlob).not.toHaveBeenCalled();
+  });
+
+  it('writes a Mascot as a WebP of its Initial look that the Mascot card import reads', async () => {
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'mascot-content', ...mascotContent });
+    const { result } = renderHook(() => useDeviceDownload());
+
+    await act(async () => { await result.current.download(mascotListing); });
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'Ferry Cat.webp');
+    // The Initial look is the base under the picked wave, drawn from the card's own images.
+    expect(mocks.drawn).toEqual([['base', 'arm']]);
+    const file = vi.mocked(mocks.downloadBlob).mock.calls[0][0] as Blob;
+    expect(file.type).toBe('image/webp');
+    const card = await readMascotCard(file);
+    expect(card.name).toBe('Ferry Cat');
+    expect(card.images).toEqual(mascotContent.images);
+    const images: string[] = [];
+    const rig = await storeMascotCard(card, { add: async (blob) => String(images.push(await blobText(blob)) - 1), remove: async () => {} });
+    expect(images).toEqual(['base', 'arm', 'mouth']);
+    expect(rig.base).toEqual(stored('0'));
+    expect(rig.layers.map((layer) => [layer.id, layer.images])).toEqual([['wave', [stored('1')]], ['grin', [stored('2')]]]);
+    expect(rig.picks.initial).toEqual({ expression: null, state: 'wave' });
+    expect(toast.success).toHaveBeenCalledWith('"Ferry Cat" downloaded');
+  });
+
+  it.each([undefined, ''])('saves a listing with no kind (%j) as a world file', async (kind) => {
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'published-world-id', worldOverview: { name: 'Sedge Landing' } });
+    const { result } = renderHook(() => useDeviceDownload());
+
+    await act(async () => { await result.current.download({ ...worldListing, kind }); });
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'Sedge Landing.json');
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('fails a listing of a kind this build cannot save and saves no file', async () => {
+    const { result } = renderHook(() => useDeviceDownload());
+
+    await act(async () => { await result.current.download({ _id: 'odd-listing', id: 'odd-listing', kind: 'storyboard', name: 'Tide Tables' }); });
+
+    expect(toastTexts(vi.mocked(toast.error))).toContain("This kind of listing can't be saved to your device.View Details →");
+    expect(mocks.fetchCatalogContent).not.toHaveBeenCalled();
+    expect(mocks.downloadBlob).not.toHaveBeenCalled();
+    expect(mocks.serializeJsonBlob).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it('reports a failed portrait or serializer without falsely reporting a saved file', async () => {
