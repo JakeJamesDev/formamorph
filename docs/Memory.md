@@ -64,7 +64,7 @@ Memories you wrote have no pin button, because the story never lets them go.
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
 3. Select **Reset All My Changes**.
-4. Confirm in **Reset Every Memory Change?**. This also deletes the memories you wrote yourself, and it can't be undone.
+4. Confirm in **Reset Every Memory Change?**. This clears your edits, deletions and pins. The memories you wrote yourself stay. A reset can't be undone.
 
 To bring back one deleted memory instead, select the **Deleted** filter chip, then **Restore This Memory** on that memory.
 
@@ -126,7 +126,7 @@ Memories under the **Recent** divider still go to the AI word for word. A pin on
 **Search memories…** and the filter chips find a memory in a long story. The chips are **All · Verbatim · Summary · Held · Let Go · Edited · Custom · Deleted**. **Verbatim**, **Summary** and **Held** name the *form* the story holds a memory in, and a memory is only ever one of them.
 
 > [!TIP]
-> **Edits and deletions can be undone.** The story's own summary is always kept under whatever you write. **Reset All My Changes** puts the whole ledger back the way the story had it, and it deletes your hand-written memories. A reset can't be undone.
+> **Edits and deletions can be undone.** The story's own summary is always kept under whatever you write. **Reset All My Changes** puts every memory back the way the story had it. Your hand-written memories stay. A reset can't be undone.
 
 ## Kept vs Sent
 <!-- keywords: accent bar, colored stripe, which ones were used, difference, relevance ranking, held meaning, verbatim meaning, scene badge, left out this turn -->

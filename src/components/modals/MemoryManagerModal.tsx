@@ -87,7 +87,7 @@ export const MemoryManagerModal = ({
   const editedCount = ledger.rows.filter((r) => !r.deleted && r.edited === 'player').length;
   const mineCount = ledger.rows.filter((r) => !r.deleted && r.isNote).length;
   const hasChanges =
-    Object.keys(memoryEdits).length > 0 || memoryDeleted.length > 0 || memoryNotes.length > 0 || Object.keys(memoryPins).length > 0;
+    Object.keys(memoryEdits).length > 0 || memoryDeleted.length > 0 || Object.keys(memoryPins).length > 0;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -181,7 +181,6 @@ export const MemoryManagerModal = ({
   const resetAll = () => {
     setMemoryEdits({});
     setMemoryDeleted([]);
-    setMemoryNotes([]);
     setMemoryPins({});
     setConfirmReset(false);
   };
@@ -441,7 +440,7 @@ export const MemoryManagerModal = ({
         open={confirmReset}
         onOpenChange={(o) => !o && setConfirmReset(false)}
         title="Reset Every Memory Change?"
-        description="Your edits, deletions, pins and added memories are all removed. Only what the story remembered on its own stays. This can't be undone."
+        description="Your edits, deletions and pins are removed. The memories you wrote yourself stay. This can't be undone."
         onConfirm={resetAll}
       />
       <ConfirmDialog
