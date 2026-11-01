@@ -3,7 +3,7 @@
  * come from an injected maker, as the turn commit's do.
  */
 import {
-  byEquipOrder, isUnidentified, itemStackable, itemUsable, sameState, sameWhere, seededState, slotSizeOf, stateWord, usesLeft, whenEmptyOf,
+  byEquipOrder, isUnidentified, itemStackable, itemUsable, occupiedSlots, ruleGaps, sameState, sameWhere, seededState, stateWord, usesLeft, whenEmptyOf,
 } from '@/lib/items';
 import { slotsInForce, type BodyWorld } from '@/lib/bodies';
 import { inCast, playsAs } from '@/lib/owners';
@@ -137,7 +137,8 @@ export type InventoryOp =
   | { kind: 'gain'; itemId: string; quantity: number; to: ItemCopyWhere; /** Absent = visible. */ visibility?: ItemCopyVisibility }
   | { kind: 'lose'; copyId: string; quantity?: number }
   | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
-  | { kind: 'equip'; copyId: string }
+  /** `slotId` names one of the item's slots; absent = the first free one (Q37). */
+  | { kind: 'equip'; copyId: string; slotId?: string }
   | { kind: 'unequip'; copyId: string }
   /** `after` is read only for a runtime item; absent = used up (Q10, Q56). `targetCopyId` is the copy it is used on. */
   | { kind: 'use'; copyId: string; after?: InventoryUseAfter; targetCopyId?: string }
@@ -401,35 +402,45 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       case 'equip': {
         if (copy.equipped) return `equip: Item Copy ${copy.id} is already equipped`;
         if (copy.where.kind === 'location') return `equip: Item Copy ${copy.id} has no owner`;
-        const slot = item?.slotId ? slots.find((s) => s.id === item.slotId) : undefined;
-        if (!slot) return `equip: Item Copy ${copy.id} has no slot`;
-        // Capacity comes from the owner's Body in force; a slot that Body lacks refuses the equip (Q8).
-        const capacity = slotsInForce(call.world, copy.where, call.persona).find((s) => s.slot.id === slot.id)?.capacity;
-        if (capacity === undefined) return `equip: no ${slot.name} slot on ${whereText(copy.where)}`;
-        const size = slotSizeOf(item);
-        if (size > capacity) return `equip: Item Copy ${copy.id} takes ${size} of slot ${slot.name}'s ${capacity}`;
-        // The owner's items in this slot, longest equipped first (Q14, Q96).
-        const worn = list
-          .filter((c) => c.equipped?.slotId === slot.id && sameWhere(c.where, copy.where))
-          .sort(byEquipOrder);
-        const sizeOf = (c: ItemCopy) => slotSizeOf(c.item.kind === 'item' ? items.get(c.item.itemId) : undefined);
-        let used = worn.reduce((sum, c) => sum + sizeOf(c), 0);
-        let swapped = list;
-        for (const out of worn) {
-          if (used + size <= capacity) break;
-          swapped = put(swapped, unequipped(out));
-          used -= sizeOf(out);
+        const rule = item?.slotRule;
+        if (!rule) return `equip: Item Copy ${copy.id} has no slot`;
+        const slotName = (slotId: string) => slots.find((s) => s.id === slotId)?.name ?? slotId;
+        if (op.slotId !== undefined && !rule.slotIds.includes(op.slotId)) return `equip: Item Copy ${copy.id} can't go in ${slotName(op.slotId)}`;
+        // Capacity comes from the owner's Body in force; a slot that Body lacks refuses the equip (Q8, Q39).
+        const capacities = new Map(slotsInForce(call.world, copy.where, call.persona).map((s) => [s.slot.id, s.capacity]));
+        const held = rule.slotIds.filter((id) => capacities.has(id));
+        const lacks = op.slotId !== undefined && !capacities.has(op.slotId) ? op.slotId : ruleGaps(rule, (id) => capacities.has(id))[0];
+        if (lacks !== undefined) return `equip: no ${slotName(lacks)} slot on ${whereText(copy.where)}`;
+        // The owner's equipped items, longest equipped first (Q14, Q96).
+        const worn = list.filter((c) => c.equipped && sameWhere(c.where, copy.where)).sort(byEquipOrder);
+        const slotsOf = (c: ItemCopy) => occupiedSlots(c, itemOf(c));
+        const unitsLeft = (slotId: string, gone: readonly ItemCopy[]) => (capacities.get(slotId) ?? 0)
+          - worn.filter((c) => !gone.includes(c) && slotsOf(c).includes(slotId)).length;
+        const taken = rule.mode === 'all' ? rule.slotIds
+          : [op.slotId ?? held.find((id) => unitsLeft(id, []) > 0) ?? held[0]];
+        const leaving: ItemCopy[] = [];
+        for (const slotId of taken) {
+          while (unitsLeft(slotId, leaving) < 1) {
+            const next = worn.find((c) => !leaving.includes(c) && slotsOf(c).includes(slotId));
+            if (!next) break;
+            leaving.push(next);
+          }
         }
+        const full = taken.find((id) => unitsLeft(id, leaving) < 1);
+        if (full !== undefined) return `equip: no room in ${slotName(full)} on ${whereText(copy.where)}`;
+        // A later swap-out can free an earlier one's unit, so one that still fits stays on.
+        for (const out of [...leaving]) {
+          const without = leaving.filter((c) => c !== out);
+          if (slotsOf(out).every((id) => unitsLeft(id, without) >= (taken.includes(id) ? 1 : 0))) leaving.splice(leaving.indexOf(out), 1);
+        }
+        const swapped = leaving.reduce((next, out) => put(next, unequipped(out)), list);
         // The requirement reads the slot after the swap-out, so an item leaving it never counts.
         const refused = call.requirement?.(swapped.find((c) => c.id === copy.id) ?? copy, swapped);
         if (refused) return `equip: ${refused}`;
         list = swapped;
-        for (const out of worn) {
-          if (list.some((c) => c.id === out.id && c.equipped)) continue;
-          fire('unequipped', out.item, rowOf(unequipped(out)), out.where, out.quantity);
-        }
+        for (const out of leaving) fire('unequipped', out.item, rowOf(unequipped(out)), out.where, out.quantity);
         order += 1;
-        const equipped = { slotId: slot.id, order };
+        const equipped = { slotId: taken[0], order };
         // A swapped-out copy can merge into this stack, so read its quantity now. One splits off (Q65).
         if ((list.find((c) => c.id === copy.id)?.quantity ?? 1) > 1) {
           const split = call.newId();

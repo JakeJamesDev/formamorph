@@ -1,6 +1,6 @@
 # 01: Slot Rule
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,16 +23,27 @@ Fold the amends into the closed specs (inventory Q77; bodies Q8) and update CONT
 
 ## Acceptance criteria
 
-- [ ] An Either of equip takes the first free allowed slot in the item's order, or the named slot.
-- [ ] With every allowed slot full, it swaps out in the named slot, or in the first listed slot if none is named (Q38).
-- [ ] An All of equip is refused when the owner's Body lacks any of its slots (Q39).
-- [ ] An All of equip takes one unit in each slot and swaps out only what it needs, longest equipped first.
-- [ ] A Body change that removes any slot of an All of item takes the whole item off, and When Unequipped fires (Q40).
-- [ ] Capacity shrink still takes off the most recently equipped item (Bodies Q12).
-- [ ] An Either of copy keeps its slot across save and load.
-- [ ] The item editor's control writes the rule, and one slot reads the same in both modes.
-- [ ] The panel shows one Equip choice per allowed slot for an item with a choice, and one Equip button otherwise.
-- [ ] No reader of `slotSize` or `Item.slotId` remains.
-- [ ] Emberwatch loads with the new slots, and its two-handed item takes both hands.
+- [x] An Either of equip takes the first free allowed slot in the item's order, or the named slot. `slotRule.test.ts` "Either of"; live in the panel.
+- [x] With every allowed slot full, it swaps out in the named slot, or in the first listed slot if none is named (Q38). `slotRule.test.ts` "swaps out in…".
+- [x] An All of equip is refused when the owner's Body lacks any of its slots (Q39). `slotRule.test.ts` "refuses when the Body lacks…".
+- [x] An All of equip takes one unit in each slot and swaps out only what it needs, longest equipped first. `slotRule.test.ts` "All of", with the trim mutated red.
+- [x] A Body change that removes any slot of an All of item takes the whole item off, and When Unequipped fires (Q40). `settle.bodies.test.ts` "the Slot Rule in the Body settle".
+- [x] Capacity shrink still takes off the most recently equipped item (Bodies Q12). `settle.bodies.test.ts` "unequips the most recently equipped copy first", mutated red.
+- [x] An Either of copy keeps its slot across save and load. JSON round trip plus settle in `settle.bodies.test.ts`; no full save file was loaded.
+- [x] The item editor's control writes the rule, and one slot reads the same in both modes. `WorldEditor.itemsListEditor.test.tsx`; DOM read on the dev route.
+- [x] The panel shows one Equip choice per allowed slot for an item with a choice, and one Equip button otherwise. `GamePanels.inventory.test.tsx`; DOM read on `#dev?view=gameViewer&tab=inventory&fixture=items`.
+- [x] No reader of `slotSize` or `Item.slotId` remains. Types removed, typecheck green; grep over `src`, `testing` and `docs`.
+- [x] Emberwatch loads with the new slots, and its two-handed item takes both hands. `emberwatchWorld.test.ts` "Bodies and starting gear".
 
-For you: Emberwatch, Items list: does the Either of / All of control read clearly when you set a dagger and a greatsword?
+## Landed
+
+Spec session rulings Q54–Q59 settled this ticket's intent questions. The `slot` read names the first occupied slot. Ticket 03 owns listing an All of copy under each slot in the `body` read.
+
+**Not verified**
+
+- Every criterion is ticked. Reordering slot rows by a real pointer drag was not driven; it reuses the Body entries' sortable list, and jsdom has no layout.
+- The editor control was checked in the dark theme only. It adds no new colors.
+
+**For you**
+
+- Emberwatch, Items list: does the Either of / All of control read clearly when you set a dagger and a greatsword? Dark frame: `.scratch/body-layouts-and-slot-rules-01/frames/slot-rule-editor-dark-1440.jpg`

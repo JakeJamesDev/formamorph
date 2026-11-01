@@ -25,7 +25,7 @@ import { activeStatEnabled } from './traitEffects';
 import type { GateStats } from './traitGates';
 import type { RunTiming } from './statCodeTiming';
 import { isItemTiming } from './scripts';
-import { copyState, isUnidentified, usesLeft } from './items';
+import { copyState, isUnidentified, occupiedSlots, usesLeft } from './items';
 import type { ScriptPromptHost } from './scriptPrompts';
 import type { ResolveText, SandboxState, StatePlaces } from './statCodeTurn';
 
@@ -313,10 +313,11 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   const slotName = new Map((state.slots ?? []).map((slot) => [slot.id, slot.name]));
   const authoredItems = new Map((state.items ?? []).map((item) => [item.id, item]));
   const itemCopy = (copy: ItemCopy): SandboxItemCopy => {
-    const uses = usesLeft(copy, copy.item.kind === 'item' ? authoredItems.get(copy.item.itemId) : undefined);
+    const item = copy.item.kind === 'item' ? authoredItems.get(copy.item.itemId) : undefined;
+    const uses = usesLeft(copy, item);
     const word = copyState(copy);
     return {
-      id: copy.id, where: copy.where, quantity: copy.quantity, equipped: !!copy.equipped, slot: copy.equipped ? slotName.get(copy.equipped.slotId) ?? '' : '',
+      id: copy.id, where: copy.where, quantity: copy.quantity, equipped: !!copy.equipped, slot: slotName.get(occupiedSlots(copy, item)[0]) ?? '',
       hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }), ...(uses !== undefined && { uses }), ...(word && { state: word }),
     };
   };

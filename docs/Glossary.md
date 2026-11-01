@@ -171,7 +171,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Item Copy](World-Editor-Items) | One copy of an item in a game. An owner holds it, or it lies at a location. |
 | [Starting Items](World-Editor-Items#starting-items) | The Item Copies a new game starts with. Each one goes to the player, an entity or a location. |
 | [Slot](World-Editor-Items#slots) | A named place that an item equips into, such as Hand |
-| [Body](World-Editor-Items#bodies) | The slots an owner has, and how many item units each slot holds |
+| [Body](World-Editor-Items#bodies) | The slots an owner has, and how many items each slot holds |
 | [Owner](World-Editor-Traits#whose-trait-counts) | The entity or dictionary that has a trait, a stat or a placeholder, as its own or through a link or copy. The played persona is the owner **Persona**. An item with no owner is global. |
 | [Global Stat](World-Editor-Stats#how-the-ai-tracks-stat-changes) | A stat on the **Stats** tab, outside every entity. It has no owner. The AI reads it under **Global Stats**. |
 | [Global Trait](World-Editor-Traits#whose-trait-counts) | A trait outside every entity, such as one the player picks at the start. It has no owner. The AI reads the picked ones under **Global Traits**. |

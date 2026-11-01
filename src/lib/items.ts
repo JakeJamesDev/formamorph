@@ -2,7 +2,7 @@ import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import type { Item, ItemCopy, ItemCopyState, ItemRequirement, ItemWhenEmpty, Placement, PlacementWhere, Slot, Trait } from '@/types';
+import type { Item, ItemCopy, ItemCopyState, ItemRequirement, ItemWhenEmpty, Placement, PlacementWhere, Slot, SlotRule, Trait } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
@@ -103,8 +103,20 @@ export function seededState(item: Item): ItemCopyState | undefined {
 /** What a copy of `item` leaves on its last use (Q26). */
 export const whenEmptyOf = (item: Item): ItemWhenEmpty => item.whenEmpty ?? { kind: 'gone' };
 
-/** The slot capacity one Item Copy of `item` takes. A runtime item, which has no item, takes 1. */
-export const slotSizeOf = (item: Pick<Item, 'slotSize'> | undefined): number => item?.slotSize ?? 1;
+/**
+ * The slots an equipped Item Copy occupies, one unit in each: every listed slot under All of, else its stored one.
+ * Empty for a carried copy. The first is the slot a reader names when it names one.
+ */
+export const occupiedSlots = (copy: Pick<ItemCopy, 'equipped'>, item: Pick<Item, 'slotRule'> | undefined): readonly string[] => {
+  if (!copy.equipped) return [];
+  return item?.slotRule?.mode === 'all' ? item.slotRule.slotIds : [copy.equipped.slotId];
+};
+
+/** The rule's slots that keep a Body from holding the item: all of them for Either of, each missing one for All of. Empty = it fits. */
+export function ruleGaps(rule: SlotRule, held: (slotId: string) => boolean): string[] {
+  const missing = rule.slotIds.filter((slotId) => !held(slotId));
+  return rule.mode === 'all' || missing.length === rule.slotIds.length ? missing : [];
+}
 
 /** Sorts equipped Item Copies longest equipped first. */
 export const byEquipOrder = (a: ItemCopy, b: ItemCopy): number => (a.equipped?.order ?? 0) - (b.equipped?.order ?? 0);
@@ -117,15 +129,24 @@ const listOf = <T>(value: unknown): T[] => (Array.isArray(value) ? value : []);
 export function parseItems(raw: unknown): Item[] {
   return listOf<unknown>(raw).filter(hasId).map((value) => {
     // Hand-edited JSON: the guards above give the id, the spread keeps whatever else the record holds.
-    const item = value as Item;
+    const { slotRule, ...item } = value as Item;
+    const rule = parseSlotRule(slotRule);
     return {
       ...item,
       name: typeof item.name === 'string' ? item.name : '',
       statEffects: listOf(item.statEffects),
       traitEffects: listOf(item.traitEffects),
       equipRequires: listOf(item.equipRequires),
+      ...(rule && { slotRule: rule }),
     };
   });
+}
+
+/** A world file's Slot Rule: each slot once, in order. None when it lists no slot. */
+function parseSlotRule(raw: unknown): SlotRule | undefined {
+  if (!isRecord(raw)) return undefined;
+  const slotIds = [...new Set(listOf<unknown>(raw.slotIds).filter((id): id is string => typeof id === 'string'))];
+  return slotIds.length ? { mode: raw.mode === 'all' ? 'all' : 'either', slotIds } : undefined;
 }
 
 export const parseSlots = (raw: unknown): Slot[] => listOf<unknown>(raw).filter(hasId) as Slot[];
@@ -184,15 +205,16 @@ export function duplicateItem(items: readonly Item[], id: string): { items: Item
 
 /** How many items equip into the slot. */
 export const itemsInSlot = (items: readonly Item[], slotId: string): number =>
-  items.filter((i) => i.slotId === slotId).length;
+  items.filter((i) => i.slotRule?.slotIds.includes(slotId)).length;
 
-/** `items` with every reference to the slot cleared, and its slot size with it. */
+/** `items` with every reference to the slot cleared. A rule left with no slot goes too. */
 export function withoutSlotRefs(items: Item[], slotId: string): Item[] {
   if (!itemsInSlot(items, slotId)) return items;
   return items.map((item) => {
-    if (item.slotId !== slotId) return item;
-    const { slotId: _slot, slotSize: _size, ...rest } = item;
-    return rest;
+    if (!item.slotRule?.slotIds.includes(slotId)) return item;
+    const { slotRule, ...rest } = item;
+    const slotIds = slotRule.slotIds.filter((id) => id !== slotId);
+    return slotIds.length ? { ...rest, slotRule: { ...slotRule, slotIds } } : rest;
   });
 }
 

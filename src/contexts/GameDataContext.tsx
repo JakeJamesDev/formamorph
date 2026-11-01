@@ -43,7 +43,7 @@ import { parseWorldTools } from '@/lib/tools/worldTools';
 import {
   parseItems, parsePlacements, parseSlots, withoutItemPlacements, withoutPlacementsAt, withoutSlotRefs,
 } from '@/lib/items';
-import { parseBodies, withoutBodyRows, withoutEntityBodyRefs, withoutSlotEntries, withSlotSizesWithin } from '@/lib/bodies';
+import { parseBodies, withoutBodyRows, withoutEntityBodyRefs, withoutSlotEntries } from '@/lib/bodies';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
 import type { SliceName, WorldSlices } from '@/lib/editorHistory';
@@ -372,26 +372,20 @@ function useProvideGameData() {
     setPlacements(prev => withoutItemPlacements(prev, itemId));
   }, []);
 
-  // Items equipping into a removed slot lose the slot, and their slot size with it; Bodies lose its entries.
+  // Items equipping into a removed slot lose the slot; Bodies lose its entries.
   const removeSlot = useCallback((slotId: string) => {
     setSlots(prev => prev.filter(slot => slot.id !== slotId));
     setItems(prev => withoutSlotRefs(prev, slotId));
     setBodies(prev => withoutSlotEntries(prev, slotId));
   }, []);
 
-  // A Body edit cuts Slot Sizes down to the largest capacity left for their slot (Q44).
-  const writeBodies = useCallback((next: Body[]) => {
-    setBodies(next);
-    setItems(prev => withSlotSizesWithin(prev, next));
-  }, []);
-
   // Entities that picked a removed Body fall back to the Default, and trait Body rows naming it go blank.
   const removeBody = useCallback((bodyId: string) => {
     const next = latest.current.bodies.filter(body => body.id !== bodyId);
-    writeBodies(next);
+    setBodies(next);
     setEntities(prev => withoutEntityBodyRefs(prev, bodyId));
     setTraits(prev => withoutBodyRows(prev, bodyId));
-  }, [writeBodies]);
+  }, []);
 
   const loadWorldMetadata = useCallback(async () => {
     try {
@@ -791,7 +785,7 @@ function useProvideGameData() {
     addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
     setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
     setDictionaries, setWorldPlaceholders, setWorldScripts, updateWorldScript, setWorldTools, updateWorldTool,
-    setItems, updateItem, removeItem, setSlots, updateSlot, removeSlot, setBodies: writeBodies, removeBody, setPlacements,
+    setItems, updateItem, removeItem, setSlots, updateSlot, removeSlot, setBodies, removeBody, setPlacements,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
     updateWorldOverview, loadWorldMetadata,
@@ -806,7 +800,7 @@ function useProvideGameData() {
     addDictionary, updateDictionary, removeDictionary,
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
     addPlaceholder, updatePlaceholder, removePlaceholder,
-    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript, updateWorldTool, updateItem, removeItem, updateSlot, removeSlot, writeBodies, removeBody,
+    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript, updateWorldTool, updateItem, removeItem, updateSlot, removeSlot, removeBody,
     setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   ]);
 

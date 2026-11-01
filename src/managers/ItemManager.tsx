@@ -11,13 +11,13 @@ import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
 import { ItemEffectsFields, ItemTraitEffectsFields } from './ItemEffectsFields';
 import { ItemRequirementsField } from './ItemRequirementsField';
+import { ItemSlotRuleField } from './ItemSlotRuleField';
 import { ItemScripts } from './ItemScripts';
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useEditorMode } from '@/lib/editorMode';
 import { fieldFrame } from '@/lib/historyField';
-import { largestCapacity } from '@/lib/bodies';
 import { WHEN_EMPTY_LABEL, itemStackable, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { canBePlayer } from '@/lib/owners';
@@ -51,7 +51,7 @@ const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
 
 /** The item fields beyond its descriptions: value, stacking, uses, the lock, and equipping. */
 const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
-  const { playStats, entities, slots, bodies, placeholders, items } = useGameData();
+  const { playStats, entities, placeholders, items } = useGameData();
   const label = (name: string) => labelPlaceholders(name, placeholders);
   // The Global Stats, then each persona's own (Q75).
   const statGroups = useMemo(() => [
@@ -66,9 +66,6 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
         : { kind: 'stat', statId: value };
     apply({ valueUnit: next });
   };
-  const slot = slots.find((s) => s.id === item.slotId);
-  // An item fits no Body when its size passes every Body's capacity for the slot (Q33).
-  const maxSize = slot ? largestCapacity(bodies, slot.id) : 1;
   const multiUse = (item.uses ?? 1) > 1;
   const empty = item.uses === undefined ? undefined : whenEmptyOf(item);
   const others = items.filter((i) => i.id !== item.id);
@@ -207,42 +204,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
         onChange={(bound) => apply({ bound: bound || undefined })}
       />
 
-      <div className="space-y-2" {...fieldFrame('slotId')}>
-        <Label id={id('slot-label')}>Slot</Label>
-        <Hint>Picks the slot it equips into. Add slots on the <b>Overview</b> tab.</Hint>
-        <Select
-          value={slot ? slot.id : NO_UNIT}
-          onValueChange={(v) => apply(v === NO_UNIT ? { slotId: undefined, slotSize: undefined } : { slotId: v })}
-        >
-          <SelectTrigger className="w-48" aria-labelledby={id('slot-label')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_UNIT}>Not Equippable</SelectItem>
-            {slots.map((s) => <SelectItem key={s.id} value={s.id}>{label(s.name) || 'Unnamed Slot'}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      {slot && (
-        <div className="space-y-2" {...fieldFrame('slotSize')}>
-          <Label htmlFor={id('slot-size')}>Slot Size</Label>
-          <Hint>Sets how much of the slot&apos;s capacity it takes</Hint>
-          <WorldInput
-            id={id('slot-size')}
-            type="number"
-            min={1}
-            max={maxSize}
-            className="w-32"
-            value={item.slotSize ?? 1}
-            onChange={(e) => {
-              const size = wholeCount(e.target.value);
-              if (size === undefined) return;
-              const clamped = Math.min(Math.max(1, size), maxSize);
-              apply({ slotSize: clamped === 1 ? undefined : clamped });
-            }}
-          />
-        </div>
-      )}
+      <ItemSlotRuleField item={item} apply={apply} />
     </div>
   );
 };

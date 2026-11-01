@@ -29,7 +29,7 @@ const BODIES: Body[] = [
   { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] },
   { id: 'imp', name: 'Imp', entries: [{ slotId: 'hand' }] },
 ];
-const ITEMS: Item[] = [blankItem('lamp', 'Lamp'), { ...blankItem('sword', 'Greatsword'), slotId: 'hand', slotSize: 2 }];
+const ITEMS: Item[] = [blankItem('lamp', 'Lamp'), { ...blankItem('sword', 'Greatsword'), slotRule: { mode: 'either', slotIds: ['hand'] } }];
 const PLACEMENTS: Placement[] = [{ id: 'p-lamp', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } }];
 const ENTITIES = [
   { id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps lit.', locations: ['harbor'], body: { kind: 'body', id: 'imp' } },
@@ -169,32 +169,12 @@ describe('the Bodies section', () => {
     expect(ctx().bodies[1].name).toBe('humanoid ');
   });
 
-  it('cuts Slot Sizes down when the largest capacity for their slot drops', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
-    // Humanoid's Hand is the only capacity of 2; Imp keeps a Hand of 1.
-    fireEvent.change(screen.getAllByLabelText('Hand Capacity')[0], { target: { value: '1' } });
-    expect(ctx().items.find((i) => i.id === 'sword')).not.toHaveProperty('slotSize');
-  });
-
-  it('undoes a capacity drop and its Slot Size cut in one step', () => {
+  it('undoes a capacity drop', () => {
     const bench = renderWorldEditorBench(WORLD, 'simple');
     openEquipment();
     fireEvent.change(screen.getAllByLabelText('Hand Capacity')[0], { target: { value: '1' } });
     act(() => bench.history().undo());
     expect(bench.ctx().bodies[0].entries[0]).toEqual({ slotId: 'hand', capacity: 2 });
-    expect(bench.ctx().items.find((i) => i.id === 'sword')).toMatchObject({ slotSize: 2 });
-  });
-
-  it('keeps Slot Sizes another Body still fits', () => {
-    const world = benchEditorWorld({
-      items: ITEMS, slots: SLOTS, placements: PLACEMENTS, entities: ENTITIES,
-      bodies: [BODIES[0], { ...BODIES[1], entries: [{ slotId: 'hand', capacity: 2 }] }],
-    } as Partial<World>);
-    const { ctx } = renderWorldEditorBench(world, 'simple');
-    openEquipment();
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Hand from Humanoid' }));
-    expect(ctx().items.find((i) => i.id === 'sword')).toMatchObject({ slotSize: 2 });
   });
 
   it('counts the entities that pick a Body in use, then sets them back to Default', () => {
@@ -225,13 +205,12 @@ describe('the Bodies section', () => {
     expect(ctx().entities[0].traits?.[0].body).toEqual({});
   });
 
-  it('deletes a Body no entity picks at once, cutting Slot Sizes with it', () => {
+  it('deletes a Body no entity picks at once', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     openEquipment();
     fireEvent.click(screen.getByRole('button', { name: 'Delete Humanoid' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(ctx().bodies.map((b) => b.id)).toEqual(['imp']);
-    expect(ctx().items.find((i) => i.id === 'sword')).not.toHaveProperty('slotSize');
   });
 });
 

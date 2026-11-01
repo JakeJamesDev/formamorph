@@ -22,7 +22,7 @@ const bodies: Body[] = [
 const calm: PlayerStat = { id: 'calm', name: 'Calm', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
 const unequipScript: Script = { id: 'off', timing: 'unequipped', code: 'stats.Calm.value = 99;' };
 const helm: Item = {
-  id: 'helm', name: 'Helm', slotId: 'head', statEffects: [], traitEffects: [], equipRequires: [], scripts: [unequipScript],
+  id: 'helm', name: 'Helm', slotRule: { mode: 'either', slotIds: ['head'] }, statEffects: [], traitEffects: [], equipRequires: [], scripts: [unequipScript],
 };
 const placements: Placement[] = [{ id: 'p-helm', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'helm' } }];
 const howl: Trait = { id: 'howl', name: 'Howl', statChanges: [], playerToggle: true };
@@ -73,7 +73,7 @@ describe('a Body written by a script between turns', () => {
 
   it('settles at once when an item script writes the Body', async () => {
     const hand: Slot = { id: 'hand', name: 'Hand' };
-    const sword: Item = { id: 'sword', name: 'Sword', slotId: 'hand', statEffects: [], traitEffects: [], equipRequires: [] };
+    const sword: Item = { id: 'sword', name: 'Sword', slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [], traitEffects: [], equipRequires: [] };
     const wolfHelm: Item = { ...helm, scripts: [{ id: 'off', timing: 'unequipped', code: 'persona.body = "Wolf";' }] };
     const armed: Placement[] = [
       { id: 'p-helm', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'helm' } },

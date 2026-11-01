@@ -69,7 +69,7 @@ const whereOf = (where: string): ItemCopyWhere => (
 );
 const start: ItemCopy[] = fixture.copies.map((spec, i) => ({
   id: `c${i}`, item: { kind: 'item', itemId: spec.item }, where: whereOf(spec.where), quantity: spec.quantity ?? 1,
-  visibility: spec.hidden ? 'hidden' : 'visible', ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotId ?? 'hand', order: i } }),
+  visibility: spec.hidden ? 'hidden' : 'visible', ...(spec.equipped && { equipped: { slotId: items.find((it) => it.id === spec.item)?.slotRule?.slotIds[0] ?? 'hand', order: i } }),
 }));
 
 const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');

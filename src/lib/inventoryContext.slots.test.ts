@@ -20,10 +20,10 @@ const SLOTS: Slot[] = [{ id: 'head', name: 'Head' }, { id: 'hand', name: 'Hand' 
 const HUMANOID: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] };
 const BEAST: Body = { id: 'beast', name: 'Beast', entries: [{ slotId: 'collar' }] };
 const ITEMS = [
-  item('helm', 'Iron Helm', { slotId: 'head' }),
-  item('pike', 'Long Pike', { slotId: 'hand', slotSize: 2, aiSummary: 'A pike taller than a man.' }),
+  item('helm', 'Iron Helm', { slotRule: { mode: 'either', slotIds: ['head'] } }),
+  item('pike', 'Long Pike', { slotRule: { mode: 'all', slotIds: ['hand', 'head'] }, aiSummary: 'A pike taller than a man.' }),
   item('coin', 'Copper Coin'),
-  item('veil', 'Gray Veil', { slotId: 'head', unidentifiedName: 'Strange Cloth' }),
+  item('veil', 'Gray Veil', { slotRule: { mode: 'either', slotIds: ['head'] }, unidentifiedName: 'Strange Cloth' }),
 ];
 /** Bodies and slots, with the Custom Persona entity on the Default and `picks` by entity id. */
 const equipment = (bodies: Body[], picks: Record<string, Body | 'none'> = {}): SceneEquipment => ({
@@ -57,14 +57,14 @@ describe("the Inventory chip's slots (Q52, Q53)", () => {
     ].join('\n'));
   });
 
-  it("names an equippable item's slot, with its Slot Size above 1, on every face", () => {
+  it("names an equippable item's first slot on every face, in both modes", () => {
     const out = render([
       copy('helm', { kind: 'you' }),
       copy('pike', { kind: 'you' }, { equipped: { slotId: 'hand', order: 1 } }),
       copy('veil', { kind: 'you' }, { state: { unidentified: true } }),
       copy('helm', { kind: 'location', id: 'landing' }),
     ], equipment([HUMANOID]));
-    expect(out).toContain('**equipped:** Long Pike (Hand ×2): A pike taller than a man.');
+    expect(out).toContain('**equipped:** Long Pike (Hand): A pike taller than a man.');
     expect(out).toContain('**carried:** Iron Helm (Head)');
     expect(out).toContain('**carried:** Strange Cloth (Head) (unknown to the player');
     expect(out).toContain('**lying here:** Iron Helm (Head)');

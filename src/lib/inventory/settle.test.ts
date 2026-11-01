@@ -39,11 +39,11 @@ const charm = item('charm', 'Bold Charm', { traitEffects: [grant('bold', 'owned'
 const halo = item('halo', 'Halo', { traitEffects: [grant('blessed', 'owned')] });
 const relic = item('relic', 'Relic', { traitEffects: [grant('cursed', 'firstObtain')] });
 const fate = item('fate', 'Fate Coin', { traitEffects: [grant('fated', 'owned')] });
-const strongSword = item('strong', 'Strong Sword', { slotId: 'hand', equipRequires: needs('strength', 5), statEffects: [statRow('strength', 2)] });
-const weakSword = item('weak', 'Cursed Sword', { slotId: 'hand', equipRequires: needs('strength', 5), statEffects: [statRow('strength', -2)] });
-const band = item('band', 'Iron Band', { slotId: 'finger', statEffects: [statRow('strength', 2)] });
-const signet = item('signet', 'Signet', { slotId: 'finger', equipRequires: needs('strength', 5) });
-const gauntlet = item('gauntlet', 'Gauntlet', { slotId: 'body', equipRequires: needs('luck', 1), statEffects: [statRow('strength', 2)] });
+const strongSword = item('strong', 'Strong Sword', { slotRule: { mode: 'either', slotIds: ['hand'] }, equipRequires: needs('strength', 5), statEffects: [statRow('strength', 2)] });
+const weakSword = item('weak', 'Cursed Sword', { slotRule: { mode: 'either', slotIds: ['hand'] }, equipRequires: needs('strength', 5), statEffects: [statRow('strength', -2)] });
+const band = item('band', 'Iron Band', { slotRule: { mode: 'either', slotIds: ['finger'] }, statEffects: [statRow('strength', 2)] });
+const signet = item('signet', 'Signet', { slotRule: { mode: 'either', slotIds: ['finger'] }, equipRequires: needs('strength', 5) });
+const gauntlet = item('gauntlet', 'Gauntlet', { slotRule: { mode: 'either', slotIds: ['body'] }, equipRequires: needs('luck', 1), statEffects: [statRow('strength', 2)] });
 const veil = item('veil', 'Hex Veil', { unidentifiedName: 'Lace Veil', traitEffects: [grant('cursed', 'owned')] });
 const items = [ring, idol, charm, halo, relic, fate, strongSword, weakSword, gauntlet, band, signet, veil];
 

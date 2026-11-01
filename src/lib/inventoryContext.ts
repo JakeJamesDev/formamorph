@@ -1,6 +1,6 @@
 import type { BodySlot, SlotOwner } from './bodies';
 import { copiesAt } from './inventory';
-import { copyFace, copyState, isUnidentified, slotSizeOf, usesLeft } from './items';
+import { copyFace, copyState, isUnidentified, usesLeft } from './items';
 import type { ContextFormat } from './statContext';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { xmlEscape } from './utils';
@@ -28,7 +28,7 @@ export interface InventoryEquipment {
 }
 
 /** What the block reads of an item: an authored item, or a runtime item's name and description. */
-type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription' | 'uses' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription' | 'slotId' | 'slotSize'>
+type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription' | 'uses' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription' | 'slotRule'>
   & { runtimeDescription?: string };
 
 /** Uses left as the block reads them, as the Inventory tab shows them (Q30). Null when there is nothing to say. */
@@ -80,11 +80,8 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
     const item: Named | undefined = copy.item.kind === 'item' ? items.get(copy.item.itemId) : runtime.get(copy.item.runtimeItemId);
     return item ? [{ item, copy }] : [];
   });
-  /** The item's slot with its Slot Size; empty for an item with none or in a world with no Bodies. */
-  const slotMark = (item: Named) => {
-    const slot = item.slotId ? scene.equipment?.slots.find((s) => s.id === item.slotId) : undefined;
-    return slot ? slotText(slot.name, slotSizeOf(item)) : '';
-  };
+  /** The item's first slot; empty for an item with none or in a world with no Bodies. */
+  const slotMark = (item: Named) => scene.equipment?.slots.find((s) => s.id === item.slotRule?.slotIds[0])?.name ?? '';
   const nameOf = (item: Named, copy: ItemCopy) => copyName(item, copy, slotMark(item));
   const faceLine = (item: Named, copy: ItemCopy) => unidentifiedLine(item, copy, slotMark(item));
   const md = format === 'markdown';

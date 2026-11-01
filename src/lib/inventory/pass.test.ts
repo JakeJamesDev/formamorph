@@ -10,7 +10,7 @@ const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
 const ids = () => { let i = 0; return () => `n${i++}`; };
 
 const hand: Slot = { id: 'hand', name: 'Hand' };
-const sword = item('sword', 'Iron Sword', { stackable: false, slotId: 'hand' });
+const sword = item('sword', 'Iron Sword', { stackable: false, slotRule: { mode: 'either', slotIds: ['hand'] } });
 const tonic = item('tonic', 'Tonic', { uses: 1 });
 const ring = item('ring', '{Cursed} Ring');
 const you = { kind: 'you' } as const;

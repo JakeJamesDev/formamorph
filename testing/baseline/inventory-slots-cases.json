@@ -1,8 +1,8 @@
 {
   "items": [
-    { "id": "helm", "name": "Iron Helm", "slotId": "head", "stackable": false, "aiSummary": "A dented iron cap with a leather chin strap." },
-    { "id": "knife", "name": "Gutting Knife", "slotId": "hand" },
-    { "id": "collar", "name": "Studded Collar", "slotId": "neck", "stackable": false },
+    { "id": "helm", "name": "Iron Helm", "slotRule": { "mode": "either", "slotIds": ["head"] }, "stackable": false, "aiSummary": "A dented iron cap with a leather chin strap." },
+    { "id": "knife", "name": "Gutting Knife", "slotRule": { "mode": "either", "slotIds": ["hand"] } },
+    { "id": "collar", "name": "Studded Collar", "slotRule": { "mode": "either", "slotIds": ["neck"] }, "stackable": false },
     { "id": "eel", "name": "Smoked Eel", "uses": 1 }
   ],
   "slots": [

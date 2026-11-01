@@ -333,7 +333,7 @@ describe('authoredChipScene', () => {
 
   it("starts an Equipped placement equipped in its owner's Body (Q51)", () => {
     const scene = authoredChipScene(world({
-      items: [{ id: 'lamp', name: 'Lamp', slotId: 'hand', statEffects: [], traitEffects: [], equipRequires: [] }],
+      items: [{ id: 'lamp', name: 'Lamp', slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [], traitEffects: [], equipRequires: [] }],
       placements: [{ id: 'p1', where: { kind: 'entity', id: 'wren' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'lamp' } }],
       slots: [{ id: 'hand', name: 'Hand' }], bodies: [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] }],
     }));

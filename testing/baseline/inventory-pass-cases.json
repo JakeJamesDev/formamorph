@@ -16,7 +16,7 @@
     {
       "id": "cloak",
       "name": "Oilskin Cloak",
-      "slotId": "body",
+      "slotRule": { "mode": "either", "slotIds": ["body"] },
       "stackable": false
     },
     {
@@ -28,7 +28,7 @@
     {
       "id": "hook",
       "name": "Bone Hook",
-      "slotId": "hand",
+      "slotRule": { "mode": "either", "slotIds": ["hand"] },
       "aiSummary": "A hook carved from a pike's jaw, worn on a cord at the wrist."
     },
     {

@@ -12,16 +12,16 @@ import { randomUUID } from '@/lib/uuid';
 import { bodySlots } from '@/lib/bodies';
 import type { Body, Item, ItemCopy, Slot } from '@/types';
 
-const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'ring', name: 'Ring' }];
-const BODIES: Body[] = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'ring' }] }];
+const SLOTS: Slot[] = [{ id: 'hand', name: 'Main Hand' }, { id: 'off-hand', name: 'Off Hand' }, { id: 'ring', name: 'Ring' }];
+const BODIES: Body[] = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'off-hand' }, { slotId: 'ring' }] }];
 const BODY_SLOTS = bodySlots(BODIES[0], SLOTS);
 const item = (id: string, name: string, over: Partial<Item>): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 const ITEMS: Item[] = [
   item('tonic', 'Healing Tonic', { uses: 1 }),
-  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true, slotId: 'hand' }),
-  item('sword', 'Greatsword', { stackable: false, slotId: 'hand', slotSize: 2 }),
-  item('ring', 'Silver Ring', { stackable: false, slotId: 'ring' }),
+  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true, slotRule: { mode: 'either', slotIds: ['hand', 'off-hand'] } }),
+  item('sword', 'Greatsword', { stackable: false, slotRule: { mode: 'all', slotIds: ['hand', 'off-hand'] } }),
+  item('ring', 'Silver Ring', { stackable: false, slotRule: { mode: 'either', slotIds: ['ring'] } }),
 ];
 const you = { kind: 'you' } as const;
 const START: ItemCopy[] = [

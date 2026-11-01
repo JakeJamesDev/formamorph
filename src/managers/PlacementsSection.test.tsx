@@ -13,8 +13,10 @@ vi.mock('../services/WorldStorageService', () => ({
 
 const gear = (id: string, name: string, over: Partial<Item> = {}): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
-const helm = gear('helm', 'Helm', { slotId: 'head' });
-const gauntlets = gear('gauntlets', 'Gauntlets', { slotId: 'hand', slotSize: 2 });
+const helm = gear('helm', 'Helm', { slotRule: { mode: 'either', slotIds: ['head'] } });
+const gauntlets = gear('gauntlets', 'Gauntlets', { slotRule: { mode: 'all', slotIds: ['hand', 'head'] } });
+const circlet = gear('circlet', 'Circlet', { slotRule: { mode: 'either', slotIds: ['head', 'hand'] } });
+const crest = gear('crest', 'Crest', { slotRule: { mode: 'either', slotIds: ['head', 'tail'] } });
 const potion = gear('potion', 'Potion');
 const humanoid: Body = { id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }, { slotId: 'hand', capacity: 2 }] };
 const dog: Body = { id: 'dog', name: 'Dog', entries: [{ slotId: 'hand' }] };
@@ -28,7 +30,7 @@ function Harness({ where, placements, entities }: { where: PlacementWhere; place
   const { loadWorldData, placements: stored } = useGameData();
   useEffect(() => {
     loadWorldData(worldFixture({
-      items: [helm, gauntlets, potion], slots: [{ id: 'head', name: 'Head' }, { id: 'hand', name: 'Hand' }],
+      items: [helm, gauntlets, circlet, crest, potion], slots: [{ id: 'head', name: 'Head' }, { id: 'hand', name: 'Hand' }, { id: 'tail', name: 'Tail' }],
       bodies: [humanoid, dog], entities: entities ?? [], placements,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the props are fixed for a test's life
@@ -58,12 +60,18 @@ describe('PlacementsSection — Equipped', () => {
     expect(screen.queryByRole('checkbox', { name: 'Helm Equipped' })).toBeNull();
   });
 
-  it("warns when the owner's Body lacks the slot or holds less than the Slot Size", async () => {
+  it("warns when the owner's Body can't hold the rule: All of on any missing slot, Either of on none", async () => {
     const rex = entity('rex', { body: { kind: 'body', id: 'dog' } });
     const where = { kind: 'entity', id: 'rex' } as const;
-    show({ where, entities: [rex], placements: [place('p1', where, 'helm', { equipped: true }), place('p2', where, 'gauntlets', { equipped: true })] });
+    show({ where, entities: [rex], placements: [
+      place('p1', where, 'helm', { equipped: true }), place('p2', where, 'gauntlets', { equipped: true }),
+      place('p3', where, 'circlet', { equipped: true }), place('p4', where, 'crest', { equipped: true }),
+    ] });
     expect(await screen.findByText('Dog has no Head slot. Helm starts carried.')).toBeInTheDocument();
-    expect(screen.getByText('Dog holds 1 Hand. Gauntlets starts carried.')).toBeInTheDocument();
+    expect(screen.getByText('Dog has no Head slot. Gauntlets starts carried.')).toBeInTheDocument();
+    expect(screen.getByText('Dog has no Head or Tail slot. Crest starts carried.')).toBeInTheDocument();
+    // Circlet fits through Hand.
+    expect(screen.getAllByRole('status')).toHaveLength(3);
   });
 
   it('warns on a None Body, and stays quiet when the Body fits or the row is not Equipped', async () => {

@@ -5200,7 +5200,7 @@ const GameViewer = ({
     (result: GatedTraitResult) => {
       const n = result.items?.bodyUnequipped ?? 0;
       commitGatedTraits(result.items ? { ...result, items: { ...result.items, bodyLog: [], events: [] } } : result, 'changes to the world');
-      if (n) addSystemLogEntry(`Unequipped ${n} ${n === 1 ? 'item' : 'items'} their owner's Body no longer holds`);
+      if (n) addSystemLogEntry(`Unequipped ${n} ${n === 1 ? 'item' : 'items'} that no longer ${n === 1 ? 'fits' : 'fit'}`);
     },
     [commitGatedTraits, addSystemLogEntry],
   );

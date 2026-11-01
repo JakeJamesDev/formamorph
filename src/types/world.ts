@@ -600,16 +600,20 @@ export interface Item {
   state?: string;
   /** The player cannot drop or give its Item Copies. */
   bound?: boolean;
-  /** The world slot it equips into. Absent = not equippable. */
-  slotId?: string;
-  /** The slot capacity one Item Copy takes. Absent = 1. */
-  slotSize?: number;
+  /** The slots it equips into. Absent = not equippable. */
+  slotRule?: SlotRule;
   statEffects: ItemStatEffect[];
   traitEffects: ItemTraitEffect[];
   /** Any one row that holds lets an owner equip it. Empty = always. */
   equipRequires: TraitRequirementRow[];
   /** Runs on its Item Copies' events, only at the item timings. */
   scripts?: Script[];
+}
+
+/** Which slots an item equips into. `either` takes one of them, in this order; `all` takes one unit in each. Never empty. */
+export interface SlotRule {
+  mode: 'either' | 'all';
+  slotIds: string[];
 }
 
 /** One equipment slot of the world: a name only. Its capacity comes from each Body that holds it. */

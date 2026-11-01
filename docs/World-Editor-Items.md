@@ -36,7 +36,7 @@ The item panel works like the entity panel.
 |---|---|
 | **Profile** | The name, the images with their rules, and the image tags |
 | **Descriptions** | The player-facing and AI-facing descriptions, in Advanced mode the **AI-Facing Summary**, and the **Unidentified Name** and **Unidentified Description** |
-| **Properties** | Value, Stackable, Uses, State, When Empty, Bound, Slot and Slot Size |
+| **Properties** | Value, Stackable, Uses, State, When Empty, Bound and Slots |
 | **Effects** | The stat and trait effect rows: what the item does to its owner |
 | **Requirements** | The [Equip Requirements](#requirements) |
 | **Scripts** | The item's [scripts](#scripts) (Advanced mode only) |
@@ -76,8 +76,8 @@ An item can hide its true name and description until the story reveals them. A c
 | **When Empty** | What a copy's last use leaves: **Stays** (kept at zero uses), **Gone** (removed), **Becomes** (turns into another item you pick) or **Changes State** (kept at zero uses with the word you type). Shows once **Uses** is set; it starts at **Gone**. |
 | **State** | The word each Item Copy starts with, such as *sealed* or *unlit*. The story and scripts can change it. Leave it blank for none. |
 | **Bound** | The player can't drop the item or give it away. The player can still pick it up, and the story can still move it. |
-| **Slot** | The slot the item equips into. **Not Equippable** means it can't be worn or held. |
-| **Slot Size** | How much of the slot's capacity the item takes, such as 2 for a two-handed sword. |
+| **Slots** | The slots the item equips into, in the order it tries them. With no slots, it can't be worn or held. |
+| **Either of / All of** | Shows once **Slots** lists two. **Either of** takes one of them, such as a dagger in Main Hand or Off Hand. **All of** takes every one, such as a greatsword in both. |
 
 > ⚠️ An item with **Uses** 2 or more never stacks, because each copy counts its own. Setting it turns **Stackable** off. Clearing it leaves it off until you turn it on. **Uses** 1 still stacks.
 
@@ -204,7 +204,7 @@ Drag a slot by its grip to reorder the list.
 
 ### Bodies
 
-A Body is a name and a list of slots, each with a **Capacity**. A Humanoid can have Hand with Capacity 2 and Ring. A Dog can have only Collar.
+A Body is a name and a list of slots, each with a **Capacity**. A Humanoid can have Main Hand, Off Hand and Ring with Capacity 2. A Dog can have only Collar.
 
 1. Under **Bodies**, select **Add Body**.
 2. Expand it and type its **Name**.
@@ -212,7 +212,7 @@ A Body is a name and a list of slots, each with a **Capacity**. A Humanoid can h
 
 - 🥇 **The first Body is the Default.** Every entity without a pick uses it, and so do entities the AI adds. Drag a Body by its grip to change which one is first.
 - ⚠️ Two Bodies with one name get a warning. Scripts pick a Body by its name.
-- 📏 An item's **Slot Size** can't be larger than the biggest Capacity any Body gives its slot. Lower a Capacity, and Slot Sizes above it drop to match.
+- 💍 Each unit of Capacity holds one item. Use Capacity for slots that work alike, such as rings. Use two slots when the difference matters, such as hands.
 - 🚫 A world with no Bodies gives no one a slot.
 
 ### Each entity's Body
@@ -231,7 +231,7 @@ The **Custom Persona** entity's Body is also the player's when they pick **None*
 
 A slot or Body nothing uses deletes at once. One in use asks first, and says what changes:
 
-- **Slot:** its Body entries go, and the items that equip into it lose their slot.
+- **Slot:** its Body entries go, and items that equip into it drop it from their **Slots**.
 - **Body:** the entities that picked it go back to **Default**, and trait Body rows that named it go blank.
 
 ## Starting Items
@@ -261,7 +261,7 @@ On the player or an entity, a row whose item has a slot also shows **Equipped**.
 
 - Rows equip in list order. When a slot is full, a later row unequips the earlier item, which starts carried.
 - A row with a quantity equips each copy in turn. Three rings in a slot that holds two leave one carried.
-- An item that can't be equipped starts carried. The row warns you when its Body has no room for it.
+- An item that can't be equipped starts carried. The row warns you when its Body lacks the slots it needs.
 - An item whose [Requirements](#requirements) fail at the start also starts carried.
 - An Equipped item can also be **Hidden**. It fills its slot, but the player doesn't see it.
 

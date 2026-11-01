@@ -32,7 +32,7 @@ const BODIES: Body[] = [
 ];
 const ITEMS: Item[] = [
   { ...blankItem('lamp', 'Lamp'), playerDescription: 'A brass lamp.' },
-  { ...blankItem('sword', 'Greatsword'), slotId: 'hand', slotSize: 2 },
+  { ...blankItem('sword', 'Greatsword'), slotRule: { mode: 'all', slotIds: ['hand', 'ring'] } },
 ];
 const PLACEMENTS: Placement[] = [
   { id: 'p-lamp', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } },
@@ -258,29 +258,35 @@ describe('the item panel', () => {
     expect(ctx().items[0].valueUnit).toEqual({ kind: 'stat', statId: 'gold' });
   });
 
-  it('lists the world slots in its slot picker and caps the slot size at the largest Body capacity', () => {
+  it('adds slots from the world list and shows Either of / All of once it lists two', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);
     openItem('Lamp');
     itemFieldsTab('Properties');
-    expect(screen.queryByLabelText('Slot Size')).toBeNull();
-    openSelect('Slot');
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Not Equippable', 'Hand', 'Ring', 'Tail']);
+    expect(screen.queryByRole('combobox', { name: 'Slot Mode' })).toBeNull();
+    openSelect('Add a slot to Lamp');
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Hand', 'Ring', 'Tail']);
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Ring' }), { key: 'Enter' });
+    expect(ctx().items[0].slotRule).toEqual({ mode: 'either', slotIds: ['ring'] });
+    // One slot reads the same in both modes, so the mode shows only at two.
+    expect(screen.queryByRole('combobox', { name: 'Slot Mode' })).toBeNull();
+    openSelect('Add a slot to Lamp');
     fireEvent.keyDown(screen.getByRole('option', { name: 'Hand' }), { key: 'Enter' });
-    expect(ctx().items[0].slotId).toBe('hand');
-    fireEvent.change(screen.getByLabelText('Slot Size'), { target: { value: '5' } });
-    expect(ctx().items[0].slotSize).toBe(2);
+    expect(ctx().items[0].slotRule).toEqual({ mode: 'either', slotIds: ['ring', 'hand'] });
+    openSelect('Slot Mode');
+    fireEvent.keyDown(screen.getByRole('option', { name: 'All of' }), { key: 'Enter' });
+    expect(ctx().items[0].slotRule).toEqual({ mode: 'all', slotIds: ['ring', 'hand'] });
   });
 
-  it('caps the slot size at 1 for a slot no Body holds', () => {
+  it('clears the rule with its last slot, so the item is not equippable', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Items/);
-    openItem('Lamp');
+    openItem('Greatsword');
     itemFieldsTab('Properties');
-    openSelect('Slot');
-    fireEvent.keyDown(screen.getByRole('option', { name: 'Tail' }), { key: 'Enter' });
-    fireEvent.change(screen.getByLabelText('Slot Size'), { target: { value: '3' } });
-    expect(ctx().items[0].slotSize).toBeUndefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Hand from Greatsword' }));
+    expect(ctx().items[1].slotRule).toEqual({ mode: 'all', slotIds: ['ring'] });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Ring from Greatsword' }));
+    expect(ctx().items[1].slotRule).toBeUndefined();
   });
 });
 

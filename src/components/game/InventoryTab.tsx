@@ -9,7 +9,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
-import { byEquipOrder, copyFace, copyState, itemUsable, slotSizeOf, usesLeft, wholeCount } from '@/lib/items';
+import { byEquipOrder, copyFace, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
@@ -167,6 +167,39 @@ function UseButton({ copy, item, name, disabled, onOps }: {
   );
 }
 
+/** Equip: at once with no choice of slot, through a list of the slots when Either of leaves two or more (Q37). */
+function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: {
+  copy: ItemCopy; item: Item | undefined; name: string; slots: readonly BodySlot[]; disabled: boolean;
+  resolveText: (text: string) => string; onOps: InventoryTabProps['onOps'];
+}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
+  const rule = item?.slotRule;
+  if (copy.equipped || !rule || ruleGaps(rule, (slotId) => slots.some((s) => s.slot.id === slotId)).length) return null;
+  const choices = rule.mode === 'either' ? rule.slotIds.flatMap((slotId) => slots.filter((s) => s.slot.id === slotId)) : [];
+  const label = `Equip ${name}`;
+  if (choices.length < 2) {
+    return <ItemRowButton label={label} icon={Shirt} disabled={disabled} onClick={() => onOps([{ kind: 'equip', copyId: copy.id }])} />;
+  }
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <ItemRowButton label={label} icon={Shirt} disabled={disabled} />
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 space-y-2 p-3">
+        <p className="text-label font-medium">{label}</p>
+        <div role="list" aria-label="Equip in">
+          {choices.map(({ slot }) => (
+            <CompactSelectionRow key={slot.id} onClick={() => { onOps([{ kind: 'equip', copyId: copy.id, slotId: slot.id }]); setOpen(false); }}>
+              {resolveText(slot.name)}
+            </CompactSelectionRow>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** The game panel's Inventory tab: the played Persona's slots with their equipped items, then carried items,
  *  then a card for what lies at the location. */
 export function InventoryTab({
@@ -183,7 +216,8 @@ export function InventoryTab({
     return (copy.item.kind === 'runtime'
       ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
   };
-  const inBody = (c: ItemCopy) => slots.some((s) => s.slot.id === c.equipped?.slotId);
+  const occupies = (c: ItemCopy, slotId: string) => occupiedSlots(c, itemOf(c)).includes(slotId);
+  const inBody = (c: ItemCopy) => slots.some((s) => occupies(c, s.slot.id));
   const equipped = shown.filter(inBody).sort(byEquipOrder);
   // A copy equipped in a slot the Body lacks shows as carried, so it never hides (Q35).
   const carried = shown.filter((c) => !inBody(c));
@@ -234,15 +268,13 @@ export function InventoryTab({
             <PanelSubheader>Equipped</PanelSubheader>
             <ul className="space-y-0.5">
               {slots.map(({ slot, capacity }) => {
-                const inSlot = equipped.filter((c) => c.equipped?.slotId === slot.id);
                 // The count shows visible items only: a hidden equipped one takes capacity unseen (Q112).
-                const used = equipped.filter((c) => c.equipped?.slotId === slot.id)
-                  .reduce((sum, c) => sum + slotSizeOf(itemOf(c)), 0);
+                const inSlot = equipped.filter((c) => occupies(c, slot.id));
                 return (
                   <li key={slot.id} className="flex gap-2 rounded-md bg-background/40 px-1 py-0.5" aria-label={slot.name}>
-                    <div className="w-16 shrink-0 py-1.5 pl-1">
+                    <div className="w-20 shrink-0 py-1.5 pl-1">
                       <Meta as="p" className="truncate font-medium">{resolveText(slot.name)}</Meta>
-                      {capacity > 1 && <Meta as="p">{used} of {capacity}</Meta>}
+                      {capacity > 1 && <Meta as="p">{inSlot.length} of {capacity}</Meta>}
                     </div>
                     {inSlot.length === 0 ? (
                       <p className="flex-1 py-1.5 text-label text-muted-foreground">Empty</p>
@@ -274,7 +306,6 @@ export function InventoryTab({
               const item = itemOf(copy);
               const name = nameOf(copy);
               const bound = !!item?.bound;
-              const equippable = !!item?.slotId && slots.some((s) => s.slot.id === item.slotId);
               return row(copy, (
                 <div className="flex shrink-0 items-center">
                   <UseButton copy={copy} item={item} name={name} disabled={disabled} onOps={onOps} />
@@ -284,12 +315,7 @@ export function InventoryTab({
                       onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
                     />
                   )}
-                  {equippable && (
-                    <ItemRowButton
-                      label={`Equip ${name}`} icon={Shirt} disabled={disabled}
-                      onClick={() => onOps([{ kind: 'equip', copyId: copy.id }])}
-                    />
-                  )}
+                  <EquipButton copy={copy} item={item} name={name} slots={slots} disabled={disabled} resolveText={resolveText} onOps={onOps} />
                   {bound ? (
                     <>
                       <ItemRowButton label={`Drop ${name}: Bound`} icon={ArrowDownToLine} disabled />

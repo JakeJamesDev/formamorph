@@ -73,18 +73,21 @@ describe('duplicateItem', () => {
 });
 
 describe('slot references', () => {
-  const items = [item({ id: 'sword', slotId: 'hand', slotSize: 2 }), item({ id: 'ring', slotId: 'finger' })];
+  const items = [item({ id: 'sword', slotRule: { mode: 'all', slotIds: ['hand', 'off'] } }), item({ id: 'ring', slotRule: { mode: 'either', slotIds: ['finger'] } })];
 
   it('counts the items that equip into a slot', () => {
     expect(itemsInSlot(items, 'hand')).toBe(1);
     expect(itemsInSlot(items, 'head')).toBe(0);
   });
 
-  it('clears the slot and its size from the items that used it, and only those', () => {
+  it('takes the slot out of the rules that list it, and only those', () => {
     const next = withoutSlotRefs(items, 'hand');
-    expect(next[0]).not.toHaveProperty('slotId');
-    expect(next[0]).not.toHaveProperty('slotSize');
+    expect(next[0].slotRule).toEqual({ mode: 'all', slotIds: ['off'] });
     expect(next[1]).toBe(items[1]);
+  });
+
+  it('drops a rule left with no slot', () => {
+    expect(withoutSlotRefs(items, 'finger')[1]).not.toHaveProperty('slotRule');
   });
 
   it('keeps the list when no item uses the slot', () => {

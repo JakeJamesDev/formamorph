@@ -13,18 +13,23 @@ vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
 const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
-const slots: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }];
+const slots: Slot[] = [{ id: 'hand', name: 'Hand' }, { id: 'head', name: 'Head' }, { id: 'tail', name: 'Tail' }];
 const bodies: Body[] = [{ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'head' }] }];
 const items = [
-  item('dagger', 'Dagger', { slotId: 'hand' }),
-  item('helm', 'Iron Helm', { stackable: false, slotId: 'head' }),
-  item('crown', 'Old Crown', { stackable: false, slotId: 'head', bound: true }),
+  item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['hand'] } }),
+  item('helm', 'Iron Helm', { stackable: false, slotRule: { mode: 'either', slotIds: ['head'] } }),
+  item('crown', 'Old Crown', { stackable: false, slotRule: { mode: 'either', slotIds: ['head'] }, bound: true }),
   item('coin', 'Coin'),
+  item('torch', 'Torch', { stackable: false, slotRule: { mode: 'either', slotIds: ['head', 'hand'] } }),
+  item('whip', 'Whip', { stackable: false, slotRule: { mode: 'either', slotIds: ['tail', 'hand'] } }),
+  item('halberd', 'Halberd', { stackable: false, slotRule: { mode: 'all', slotIds: ['hand', 'head'] } }),
+  item('barb', 'Barb', { stackable: false, slotRule: { mode: 'all', slotIds: ['hand', 'tail'] } }),
+  item('spike', 'Spike', { stackable: false, slotRule: { mode: 'either', slotIds: ['tail'] } }),
   item('tonic', 'Tonic', { uses: 1 }),
-  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, slotId: 'hand' }),
+  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, slotRule: { mode: 'either', slotIds: ['hand'] } }),
   item('horn', 'War Horn', { statEffects: [{ id: 'h', statId: 'nerve', facet: 'value', timing: 'used', amount: 1, op: 'add' }] }),
   item('lamp', 'Oil Lamp', { uses: 1, whenEmpty: { kind: 'stays' } }),
-  item('ring', 'Ring of Curses', { unidentifiedName: 'Plain Ring', slotId: 'hand', statEffects: [{ id: 'r', statId: 'nerve', facet: 'value', timing: 'used', amount: -1, op: 'add' }] }),
+  item('ring', 'Ring of Curses', { unidentifiedName: 'Plain Ring', slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [{ id: 'r', statId: 'nerve', facet: 'value', timing: 'used', amount: -1, op: 'add' }] }),
 ];
 const yard = { id: 'yard', name: 'Yard' } as GameLocation;
 const hall = { id: 'hall', name: 'Hall' } as GameLocation;
@@ -54,6 +59,48 @@ const carried = () => screen.getByRole('region', { name: 'Your inventory' });
 const mine = (g: Gameplay) => g.itemCopies.filter((c) => c.where.kind === 'you');
 
 describe('RightPanel — Inventory tab', () => {
+  it('offers one Equip choice per allowed slot in the item order, and equips into the one picked', async () => {
+    const h = renderRightPanel({}, stage([copy('t', 'torch')]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Equip Torch' }));
+    const choices = within(await screen.findByRole('list', { name: 'Equip in' })).getAllByRole('button');
+    expect(choices.map((c) => c.textContent)).toEqual(['Head', 'Hand']);
+    await userEvent.click(choices[1]);
+    expect(mine(h.gameplay())[0].equipped?.slotId).toBe('hand');
+  });
+
+  it('equips at once when the Body leaves one allowed slot, and for All of', async () => {
+    const h = renderRightPanel({}, stage([copy('w', 'whip'), copy('a', 'halberd')]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Equip Whip' }));
+    expect(screen.queryByRole('list', { name: 'Equip in' })).toBeNull();
+    expect(mine(h.gameplay()).find((c) => c.id === 'w')?.equipped?.slotId).toBe('hand');
+    await userEvent.click(await screen.findByRole('button', { name: 'Equip Halberd' }));
+    expect(screen.queryByRole('list', { name: 'Equip in' })).toBeNull();
+    expect(mine(h.gameplay()).find((c) => c.id === 'a')?.equipped?.slotId).toBe('hand');
+  });
+
+  it('offers Unequip and no Equip on a copy whose stored slot the Body lacks', async () => {
+    renderRightPanel({}, stage([copy('w', 'whip', { equipped: { slotId: 'tail', order: 1 } })]));
+    await screen.findByRole('button', { name: 'Unequip Whip' });
+    expect(screen.queryByRole('button', { name: 'Equip Whip' })).toBeNull();
+  });
+
+  it("offers no Equip when the Body can't hold the rule", async () => {
+    renderRightPanel({}, stage([copy('b', 'barb'), copy('s', 'spike')]));
+    await screen.findByRole('button', { name: 'Drop Barb' });
+    expect(screen.queryByRole('button', { name: 'Equip Barb' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Equip Spike' })).toBeNull();
+  });
+
+  it('lists an All of item under every slot it occupies, and one Unequip takes it off whole', async () => {
+    const h = renderRightPanel({}, stage([copy('a', 'halberd', { equipped: { slotId: 'hand', order: 1 } })]));
+    const hand = await screen.findByRole('listitem', { name: 'Hand' });
+    expect(within(hand).getByText('Halberd')).toBeTruthy();
+    expect(within(hand).getByText('1 of 2')).toBeTruthy();
+    const head = screen.getByRole('listitem', { name: 'Head' });
+    await userEvent.click(within(head).getByRole('button', { name: 'Unequip Halberd' }));
+    expect(mine(h.gameplay())[0].equipped).toBeUndefined();
+  });
+
   it('equips one dagger from a stack of five at once and leaves four carried', async () => {
     const h = renderRightPanel({}, stage([copy('d', 'dagger', { quantity: 5 })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Equip Dagger' }));

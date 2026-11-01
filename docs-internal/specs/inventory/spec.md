@@ -101,7 +101,7 @@ Settled with the user on 2026-10-19 and 2026-10-28. The design discussion ruled 
 | Q74 | (ticket 01) 01 defines the effect, timing, duration and placement types in full, so 04, 05 and 06 add only editors and runtime. Durations are Permanent or a story-clock length stored in the clock's own elapsed unit |
 | Q75 | (ticket 01) The value unit's stat picker lists Global Stats and the Persona's stats, per Q32's "a global or player stat" |
 | Q76 | (ticket 01) Setting charges turns Stackable off and disables it. Clearing charges leaves Stackable off for the author to turn back on |
-| Q77 | (ticket 01) Slot Size shows only when a slot is picked, from 1 to that slot's capacity |
+| Q77 | (ticket 01) Slot Size shows only when a slot is picked, from 1 to that slot's capacity. **Superseded:** Slot Size retires (body-layouts-and-slot-rules Q35) |
 | Q78 | (ticket 01) Deleting a slot that items use asks for confirmation with the count, then clears those items' slot |
 | Q79 | (ticket 01) The Items tab shows in Simple and Advanced. AI Summary and item Placeholders are Advanced only, as on entities |
 | Q80 | (ticket 01) Item editor tabs: Profile, Descriptions, Properties, Placeholders. 04, 05 and 11 add Effects, Requirements and Scripts |

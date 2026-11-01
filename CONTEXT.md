@@ -159,7 +159,11 @@ An authored starting Item Copy: where it goes (the Persona, an entity or a locat
 _Avoid_: spawn, starting item
 
 **Slot**:
-A name in the world's slot list where an item is equipped, such as Hand or Ring. A slot has no capacity of its own: each Body that holds it gives it one, and an item's slot size says how many units it takes. One list serves every Body, so an item's slot works in any Body that has it.
+A name in the world's slot list where an item is equipped, such as Main Hand or Ring. A slot has no capacity of its own: each Body that holds it gives it one, and one capacity unit holds one Item Copy. One list serves every Body, so an item's slot works in any Body that has it.
+
+**Slot Rule**:
+An item's slots, in order, and a mode. **Either of** takes one of them, the first free or the one named. **All of** takes one unit in each, and the owner's Body must hold them all. An Item Copy stores the chosen slot, or the first listed under All of; the rule says which slots it occupies. An item without one can't be equipped.
+_Avoid_: slot size, two-handed flag
 
 **Body**:
 A named, ordered list of slot entries, each a slot and its capacity (absent = 1), such as Humanoid with Head and Hand ×2. The world holds an ordered Body list. An entity picks a Body, the Default, or None; None gives the owner no slots.

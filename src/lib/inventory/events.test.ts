@@ -6,7 +6,7 @@ const item = (id: string, over: Partial<Item> = {}): Item =>
   ({ id, name: id, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 
 const potion = item('potion', { uses: 1 });
-const ring = item('ring', { stackable: false, slotId: 'finger' });
+const ring = item('ring', { stackable: false, slotRule: { mode: 'either', slotIds: ['finger'] } });
 const wand = item('wand', { uses: 3, whenEmpty: { kind: 'stays' } });
 const you = { kind: 'you' } as const;
 const bram = { kind: 'entity', id: 'bram' } as const;

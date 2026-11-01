@@ -144,7 +144,7 @@ describe('openingStateOf', () => {
 
 describe('openingFold — Equipped placements', () => {
   const gear = (id: string, slotId: string, over: Partial<Item> = {}): Item =>
-    ({ id, name: id, slotId, statEffects: [], traitEffects: [], equipRequires: [], ...over });
+    ({ id, name: id, slotRule: { mode: 'either', slotIds: [slotId] }, statEffects: [], traitEffects: [], equipRequires: [], ...over });
   const place = (id: string, where: Placement['where'], itemId: string, over: Partial<Placement> = {}): Placement =>
     ({ id, where, quantity: 1, equipped: true, source: { kind: 'item', itemId }, ...over });
   const you = { kind: 'you' } as const;

@@ -663,7 +663,7 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 | `bundledFrom` | String | The copy came in an imported world file, and its library item is not on this machine |
 
 ## Items
-<!-- keywords: item object, item fields, effects array, equip requirements key, uses, when empty, stackable flag, bound flag, slot size, unidentified name, item scripts -->
+<!-- keywords: item object, item fields, effects array, equip requirements key, uses, when empty, stackable flag, bound flag, slot rule, either of, all of, unidentified name, item scripts -->
 
 An item is a kind of object. During the game, a save holds Item Copies of it. See [World Editor: Items](World-Editor-Items) for how items behave.
 
@@ -686,8 +686,7 @@ An item is a kind of object. During the game, a save holds Item Copies of it. Se
 | `whenEmpty` | | Object | What a copy's last use leaves: `{ "kind": "stays" }`, `{ "kind": "gone" }`, `{ "kind": "becomes", "itemId": "<item id>" }` or `{ "kind": "changesState", "state": "…" }`. Used only while `uses` is set. Absent = gone |
 | `state` | | String | The State word each Item Copy starts with. Absent = none |
 | `bound` | | Boolean | `true` = the player can't drop or give its copies |
-| `slotId` | | String | The [slot](#slots-and-bodies) it equips into. Absent = not equippable |
-| `slotSize` | | Number | The slot capacity one copy takes. Absent = 1 |
+| `slotRule` | | Object | The [slots](#slots-and-bodies) it equips into: `{ "mode": "either", "slotIds": ["<slot id>", …] }` takes one of them, the first free in this order. `"mode": "all"` takes all of them. Absent = not equippable |
 | `statEffects` | ✓ | Stat effect[] | Changes to the owner's own stats. See below |
 | `traitEffects` | ✓ | Trait effect[] | Traits the owner holds. See below |
 | `equipRequires` | ✓ | [Requirement row](#trait-requirements)[] | Any one row that holds lets an owner equip it. Empty = any owner can |
@@ -708,9 +707,9 @@ Each stat effect:
 Each trait effect has `id`, `traitId`, `timing` and `duration`, with the same meanings. The owner holds the trait with that `id` while the timing holds.
 
 ## Slots and Bodies
-<!-- keywords: equipment slots, capacity, hands, rings, body type, default body, none, wear, equip where, slot size -->
+<!-- keywords: equipment slots, capacity, hands, rings, body type, default body, none, wear, equip where, slot rule, two handed -->
 
-A **slot** is a name only. A **Body** lists the slots an owner has, and how many item units each one holds. Items equip into the slots of their owner's Body.
+A **slot** is a name only. A **Body** lists the slots an owner has, and how many items each one holds. Items equip into the slots of their owner's Body.
 
 | Slot field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -726,7 +725,7 @@ A **slot** is a name only. A **Body** lists the slots an owner has, and how many
 | Entry field | Req. | Type | Meaning |
 |---|---|---|---|
 | `slotId` | ✓ | String | The slot's `id` |
-| `capacity` | | Number | How many item units fit. Absent = 1 |
+| `capacity` | | Number | How many items fit. Absent = 1 |
 
 An entity's `body` picks its Body:
 
