@@ -629,14 +629,17 @@ const server = await startServer();
 const changed = [];
 const failed = [];
 let browser;
+let filmBrowser;
 try {
   browser = await chromium.launch();
+  // A reveal's fade layers flip text between LCD and gray antialiasing, so a whole paragraph repaints on one frame.
+  filmBrowser = await chromium.launch({ args: ['--disable-lcd-text'] });
   await buildWorlds(browser, [...new Set(shots.flatMap((shot) => (shot.world ? [shot.world] : [])))]);
   const encoder = await browser.newPage();
   for (const shot of shots) {
     let png;
     try {
-      png = await capture(browser, shot, shot.frames ? clipSink(frameDir(shot)) : null);
+      png = await capture(isReveal(shot) ? filmBrowser : browser, shot, shot.frames ? clipSink(frameDir(shot)) : null);
       if (isReveal(shot)) recordFirstWord(shot, png.firstWord);
     } catch (error) {
       failed.push(shot.id);
@@ -679,6 +682,7 @@ try {
   }
 } finally {
   await browser?.close();
+  await filmBrowser?.close();
   server.stop();
 }
 if (DIFF) console.log(changed.length ? `${changed.length} shot(s) changed. Fresh captures are in marketing/trailer/.capture-diff/.` : 'No shot changed.');

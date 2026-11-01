@@ -78,9 +78,10 @@ export async function verifyGame(page, scene) {
   }
   const tabs = page.getByRole('tab', { name: /^(Entities|Notes|Memory|Logs)/ });
   if (await tabs.count() !== 4) throw new Error('Gameplay capture rejected: missing side-panel tabs');
-  const badTabs = await tabs.evaluateAll((tabs) => tabs.filter((tab) => {
+  // The strip folds the other tabs to icons, so only the selected tab must show its label.
+  const badTabs = await tabs.evaluateAll((tabs) => tabs.filter((tab) => tab.getAttribute('aria-selected') === 'true').filter((tab) => {
     const icon = tab.querySelector('svg')?.getBoundingClientRect();
-    const label = tab.querySelector('span');
+    const label = tab.querySelector('span span');
     if (!icon || !label) return true;
     const range = document.createRange(); range.selectNodeContents(label);
     const lines = [...range.getClientRects()];
