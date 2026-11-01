@@ -28,7 +28,7 @@ const ITEMS: Item[] = [
   item('tonic', 'Healing Tonic', { uses: 1 }),
   item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true, slotRule: { mode: 'either', slotIds: ['hand', 'off-hand'] } }),
   item('sword', 'Greatsword', { stackable: false, slotRule: { mode: 'all', slotIds: ['hand', 'off-hand'] } }),
-  item('ring', 'Silver Ring', { stackable: false, slotRule: { mode: 'either', slotIds: ['ring'] } }),
+  item('ring', 'Silver Ring', { stackable: false, icon: 'none', slotRule: { mode: 'either', slotIds: ['ring'] } }),
 ];
 /** A sample image at its size in pixels. */
 const art = (width: number, height: number, fill: string) =>
@@ -83,10 +83,10 @@ export function InventoryTabReference() {
           Shows the Status panel&apos;s Inventory tab on sample items. <strong>Equip</strong>, <strong>Unequip</strong>, <strong>Use</strong>, <strong>Drop</strong> and <strong>Give</strong> act at once.
         </CardDescription>
         <Hint as="ul" className="list-disc space-y-1 pl-5">
-          <li><strong>Equipped</strong> draws the figure. The Greatsword takes both hands, so its image shows in each.</li>
-          <li>The Silver Ring&apos;s tall image keeps its shape in a wide box. Selecting beside it opens the Greatsword under it.</li>
+          <li><strong>Equipped</strong> draws the figure. The Greatsword takes both hands, so its icon shows in each, and its image doesn&apos;t show.</li>
+          <li>The Silver Ring&apos;s icon is set to None, so its tall image shows and keeps its shape in a wide box. Selecting beside it opens the Greatsword under it.</li>
           <li>Select a filled box for <strong>Use</strong> and <strong>Unequip</strong>. An empty box names its slot when you hover over it or select it.</li>
-          <li>Equip the Ash Wand to see an item with no image: its box shows its name.</li>
+          <li>Equip the Ash Wand to see an icon from an item&apos;s name. Hover over its box to see the name.</li>
           <li><strong>Drop</strong> and <strong>Give</strong> on a stack ask how many.</li>
           <li><strong>Use</strong> spends one Healing Tonic or one Ash Wand use, and turns off at zero uses.</li>
           <li>The Ash Wand is Bound, so you can&apos;t drop or give it.</li>
@@ -108,6 +108,7 @@ export function InventoryTabReference() {
             items={ITEMS}
             body={BODIES[0]}
             slots={BODY_SLOTS}
+            worldSlots={SLOTS}
             imageOf={(copy) => (copy.item.kind === 'item' ? ART[copy.item.itemId] : undefined)}
             present={PRESENT}
             locationId={HERE}

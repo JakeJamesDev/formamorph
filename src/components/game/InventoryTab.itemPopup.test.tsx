@@ -19,7 +19,7 @@ const copy = (id: string, itemId: string, over: Partial<ItemCopy> = {}): ItemCop
   ({ id, item: { kind: 'item', itemId }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', ...over });
 
 const props = (over: Partial<InventoryTabProps> = {}): InventoryTabProps => ({
-  ownerName: null, copies: [], lying: [], items, slots: [], present: [], locationId: 'yard', disabled: false,
+  ownerName: null, copies: [], lying: [], items, slots: [], worldSlots: [], present: [], locationId: 'yard', disabled: false,
   resolveText: (text) => text, onOps: vi.fn(), ...over,
 });
 const popup = () => screen.queryByRole('dialog');

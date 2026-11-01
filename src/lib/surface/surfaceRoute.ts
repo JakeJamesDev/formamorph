@@ -56,6 +56,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   feedbackHub: { host: 'mainMenu' },
   adminPanel: { host: 'mainMenu' },
   changelog: { ancestor: 'mainMenu' },
+  iconCredits: { ancestor: 'mainMenu' },
   entityEditor: { ancestor: 'mainMenu.entities' },
   dictionaryEditor: { ancestor: 'mainMenu.dictionaries' },
   modelDetails: { ancestor: 'mainMenu.models' },

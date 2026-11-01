@@ -585,6 +585,8 @@ export interface Item {
   images?: GalleryImage[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
+  /** What it shows on the doll and in rows: an icon id, or `'none'` for its image. Absent = Auto. */
+  icon?: string;
   /** Placeholders of this item's own, live beside the world's through the combined view. They resolve once
    *  per playthrough, shared by every Item Copy. */
   placeholders?: Placeholder[];

@@ -78,6 +78,7 @@ const ENTRIES: [string, string][] = [
   ['ageGate', 'Adult Content Ahead'],
   ['auth', 'Login'],
   ['privacyPolicy', 'Privacy Policy'],
+  ['iconCredits', 'Icon Credits'],
   ['usernameRename', 'Choose a New Username'],
   ['profile', 'User Profile'],
   ['deleteAccount', 'Delete Account'],

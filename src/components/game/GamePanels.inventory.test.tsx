@@ -207,8 +207,8 @@ describe('RightPanel — Inventory tab', () => {
     describe('with images', () => {
       const body: Body = { id: 'b', name: 'B', backdrop: { kind: 'plain' }, aspect: 1, entries: [{ slotId: 'hand', boxes: [{ x: 0, y: 0, w: 0.5, h: 0.5 }] }, { slotId: 'head', boxes: [{ x: 0.5, y: 0, w: 0.5, h: 0.25 }] }] };
       const tab = (imageOf: (c: ItemCopy) => string | undefined): InventoryTabProps => ({
-        ownerName: null, copies: [copy('a', 'halberd', { equipped: { slotId: 'hand', order: 1 } })], lying: [], items, body,
-        slots: [{ slot: slots[0], capacity: 1 }, { slot: slots[1], capacity: 1 }], present: [], locationId: 'yard', disabled: false, resolveText: (t) => t, imageOf, onOps: vi.fn(),
+        ownerName: null, copies: [copy('a', 'halberd', { equipped: { slotId: 'hand', order: 1 } })], lying: [], items: items.map((i) => (i.id === 'halberd' ? { ...i, icon: 'none' } : i)), body,
+        slots: [{ slot: slots[0], capacity: 1 }, { slot: slots[1], capacity: 1 }], worldSlots: slots, present: [], locationId: 'yard', disabled: false, resolveText: (t) => t, imageOf, onOps: vi.fn(),
       });
       const loaded = (img: Element, width: number, height: number) => {
         Object.defineProperty(img, 'naturalWidth', { value: width });
@@ -230,13 +230,13 @@ describe('RightPanel — Inventory tab', () => {
         expect(hand).not.toHaveTextContent('Halberd');
       });
 
-      it('shows the name when the image fails', async () => {
+      it('leaves a plain filled box when the image fails', async () => {
         renderInGame(<InventoryTab {...tab(() => 'gone.png')} />);
         fireEvent.error((await screen.findByRole('button', { name: 'Hand: Halberd' })).querySelector('img')!);
-        // With no tip left, the frame is a new element.
         const hand = screen.getByRole('button', { name: 'Hand: Halberd' });
-        expect(hand).toHaveTextContent('Halberd');
+        expect(hand).toHaveTextContent('');
         expect(hand.querySelector('img')).toBeNull();
+        expect(hand.querySelector('svg')).toBeNull();
         expect(hand.style.width).toBe('100%');
       });
     });

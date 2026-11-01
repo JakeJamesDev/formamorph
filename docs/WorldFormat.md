@@ -678,6 +678,7 @@ An item is a kind of object. During the game, a save holds Item Copies of it. Se
 | `unidentifiedDescription` | | String | The description an unidentified Item Copy shows. Blank = `playerDescription` |
 | `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. A condition with no `owner` reads the Item Copy's owner |
 | `imageTags` | | String | Comma-separated tags for image generation |
+| `icon` | | String | What the Inventory panel shows: an icon id, or `"none"` for the item's image. Absent, or an id the game doesn't know, derives an icon from the name, then the slot |
 | `placeholders` | | [Placeholder](#placeholders)[] | Placeholders the item owns. They roll once per game, and every Item Copy shows the same value |
 | `value` | | Number | What the item is worth |
 | `valueUnit` | | Object | The unit of `value`: `{ "kind": "stat", "statId": "<stat id>" }` or `{ "kind": "text", "text": "…" }` |

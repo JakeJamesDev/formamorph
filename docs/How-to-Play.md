@@ -263,8 +263,8 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 <!-- route: gameViewer.inventory -->
 
 1. In the right panel, open the **Inventory** tab. On mobile, open **Status** first.
-2. **Equipped** draws a figure with what you wear on it. **Carried** lists the rest below it. A second card, named for your location, lists the items lying there.
-3. Select an item's row to see its image and description. Select a filled box on the figure to see the item's row. Hover over or select an empty box to see its slot's name.
+2. **Equipped** draws a figure with an icon for each item you wear. **Carried** lists the rest below it. A second card, named for your location, lists the items lying there.
+3. Select an item's row to see its image and description. Hover over a filled box on the figure to see the item's name, or select the box to see the item's row. Hover over or select an empty box to see its slot's name.
 4. Use the buttons on an item's row:
 
 | Button | What it does |
@@ -284,7 +284,7 @@ Changes apply at once, and the next turn's narration sees them.
 - An item with uses shows how many are left under its name.
 - An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack.
 - An unidentified item shows only its unidentified name and description until the story reveals what it is.
-- An item with an image shows it small on its row and larger on the figure. An item with no image shows its name there.
+- Each item shows an icon on its row and on the figure. The icon comes from the item's name, or from its slot when the name doesn't suggest one. A world's author can show the item's image instead, or nothing.
 - An item that takes two slots shows in both boxes. When a slot holds several items, the rest move up after you take one off.
 - The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it.
 - On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
@@ -316,6 +316,12 @@ An **Equipped** list shows what the entity wears, when you can see it. What the 
 <!-- route: item -->
 
 Select an item's row in the **Inventory** tab, or an item in an entity's **Equipped** list, to open its dialog. The dialog shows the item's image and description, with its State, count and uses left beside its name. An unidentified item shows only its unidentified name and description.
+
+## Icon Credits
+<!-- keywords: icon credits, who made the icons, game icons, icon license, item icon artists -->
+<!-- route: iconCredits -->
+
+The line that starts **Icons by** at the bottom of the Main Menu names the artists of the item icons. Select it to see the full credit and the license. On mobile, it's in the **⋯** menu.
 
 ## The Stranger Dialog
 <!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->

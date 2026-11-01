@@ -117,13 +117,16 @@ const devItems = (valueStatId: string | undefined): Item[] => [
   devItem('dev-item-belt', 'Sword Belt', 'dev-slot-waist'),
   devItem('dev-item-breeches', 'Travel-Worn Breeches', 'dev-slot-legs'),
   devItem('dev-item-boots', 'Hobnailed Boots', 'dev-slot-feet'),
-  devItem('dev-item-signet', 'Signet of Lord Vane', 'dev-slot-ring'),
+  // None with an image.
+  devItem('dev-item-signet', 'Signet of Lord Vane', 'dev-slot-ring', { icon: 'none', images: [{ data: portrait('#b08d57') }] }),
   // Names no word list matches, and one that is unidentified.
   devItem('dev-item-stormcaller', 'Stormcaller', 'dev-slot-hand'),
-  devItem('dev-item-whisper', 'Whisper', 'dev-slot-neck'),
-  devItem('dev-item-elixir', 'Sunfire Elixir', 'dev-slot-ring', { slotRule: undefined, unidentifiedName: 'Cloudy Vial' }),
+  // A specific icon.
+  devItem('dev-item-whisper', 'Whisper', 'dev-slot-neck', { icon: 'gem' }),
+  devItem('dev-item-elixir', 'Sunfire Elixir', 'dev-slot-ring', { slotRule: undefined, unidentifiedName: 'Cloudy Vial', icon: 'crown' }),
   devItem('dev-item-fish', 'Swordfish', 'dev-slot-ring', { slotRule: undefined, stackable: true }),
-  devItem('dev-item-trinket', 'Strange Trinket', 'dev-slot-ring', { slotRule: undefined }),
+  // None with no image.
+  devItem('dev-item-trinket', 'Strange Trinket', 'dev-slot-ring', { slotRule: undefined, icon: 'none' }),
 ];
 /** The `items` fixture's starting Item Copies, on the player. The equipped ones fill the doll. */
 const DEV_PLACEMENTS = ([

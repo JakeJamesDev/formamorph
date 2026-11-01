@@ -1,8 +1,10 @@
 import { forwardRef, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { BodyBackdropArt } from '@/components/BodyBackdropArt';
+import { ItemIconArt } from '@/components/ItemIconArt';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FlashTip, Tip } from '@/components/ui/tooltip';
 import { boxKey, boxLabel, boxStyle, frameInBox, stackOrder } from '@/lib/bodyLayout';
+import type { ShownItemIcon } from '@/lib/itemIcons';
 import { cn } from '@/lib/utils';
 import type { Body, SlotBox } from '@/types';
 
@@ -15,7 +17,7 @@ const BOX_BUTTON = 'rounded-sm border border-foreground/50 focus-visible:outline
 export interface DollFill {
   id: string;
   name: string;
-  image?: string;
+  icon: ShownItemIcon;
   detail: ReactNode;
 }
 
@@ -24,30 +26,29 @@ const FrameButton = forwardRef<HTMLButtonElement, ComponentProps<'button'> & { t
 ));
 FrameButton.displayName = 'FrameButton';
 
-/** A filled box: the frame fits the image, and only the frame takes the pointer (Q7, Q48). No image draws the name (Q10). */
+/** A filled box: the frame fits an image, and only the frame takes the pointer (Q7, Q48). It never draws the name (Q10). */
 function FilledBox({ fill, label, box, aspect }: { fill: DollFill; label: string; box: SlotBox; aspect: number }) {
   const [imageAspect, setImageAspect] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
-  const image = failed ? undefined : fill.image;
+  const image = fill.icon.kind === 'image' && !failed ? fill.icon.src : undefined;
   const frame = image && imageAspect ? frameInBox(box, aspect, imageAspect) : { w: 1, h: 1 };
   return (
     <Popover>
       <PopoverTrigger asChild>
         <FrameButton
-          tip={image ? fill.name : undefined}
+          tip={fill.name}
           aria-label={`${label}: ${fill.name}`}
-          className={cn(BOX_BUTTON, 'pointer-events-auto flex items-center justify-center overflow-hidden bg-card/70 text-center text-helper leading-tight hover:border-primary')}
+          className={cn(BOX_BUTTON, 'pointer-events-auto flex items-center justify-center overflow-hidden bg-card/70 hover:border-primary')}
           style={{ width: `${frame.w * 100}%`, height: `${frame.h * 100}%` }}
         >
-          {image ? (
+          {image && (
             <img
               src={image} alt="" className="h-full w-full object-contain"
               onLoad={(e) => setImageAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight || null)}
               onError={() => setFailed(true)}
             />
-          ) : (
-            <span className="line-clamp-2 overflow-hidden break-words px-0.5">{fill.name}</span>
           )}
+          {fill.icon.kind === 'icon' && <ItemIconArt id={fill.icon.id} className="h-full w-full" />}
         </FrameButton>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-1"><ul>{fill.detail}</ul></PopoverContent>
@@ -99,7 +100,7 @@ export function BodyDoll({ body, slotName, fills }: {
           <div key={key} data-doll-box={label} className="pointer-events-none absolute flex items-center justify-center" style={boxStyle(box, order.get(key))}>
             {fill
               // A new copy or image starts closed and measures again, so a reflow never leaves the last copy's popover open.
-              ? <FilledBox key={`${fill.id}|${fill.image}`} fill={fill} label={label} box={box} aspect={body.aspect} />
+              ? <FilledBox key={`${fill.id}|${fill.icon.kind === 'image' ? fill.icon.src : ''}`} fill={fill} label={label} box={box} aspect={body.aspect} />
               : <EmptyBox slotName={name} label={label} />}
           </div>
         );
