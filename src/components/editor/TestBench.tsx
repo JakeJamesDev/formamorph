@@ -35,6 +35,7 @@ export function TestBench({
   tab, onTabChange, onClose, onFixRule, issues, lens, triggers, aiContext, opening, placementControl,
 }: TestBenchProps) {
   const toggle = placementControl && PLACEMENT_TOGGLE[placementControl.placement];
+  const parts = BENCH_TABS.find((t) => t.value === tab)?.lens;
   return (
     // Embedded renders inside the editor's CardContent, which already pads — its own padding would stack, and
     // the Bench's chrome would no longer start where the tab strip it replaced did.
@@ -82,7 +83,7 @@ export function TestBench({
         </TabsList>
         {/* Below the strip, and only on the instruments that read it — the selection itself is Bench-level
             state, so it survives visits to a tab that hides the bar. */}
-        {BENCH_TABS.find((t) => t.value === tab)?.usesLens && <LensBar {...lens} />}
+        {parts && (parts.pc || parts.location) && <LensBar {...lens} parts={parts} />}
         {/* One panel per trigger so every `aria-controls` resolves. */}
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
@@ -164,27 +165,38 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
 
 /** The Bench-level lens every instrument reads: who is being played, and at which location. Its notes go
  *  under it because both follow from the PC on the selector directly above them. */
-const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange }: LensBarProps) => (
+const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange, parts }: LensBarProps & {
+  /** The lens parts the open instrument reads. */
+  parts: { pc: boolean; location: boolean };
+}) => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center gap-1.5">
-      <Meta className="shrink-0">Testing as</Meta>
-      <LensSelect
-        icon={EntityIcon}
-        label="Testing as"
-        none="Anyone"
-        value={lens.state.pcTraitId}
-        options={pcOptions}
-        onChange={onPcChange}
-      />
-      <Meta className="shrink-0">at</Meta>
-      <LensSelect
-        icon={LocationIcon}
-        label="Testing at"
-        none="Nowhere"
-        value={lens.state.locationId}
-        options={locationOptions}
-        onChange={onLocationChange}
-      />
+      {parts.pc && (
+        <>
+          <Meta className="shrink-0">Testing as</Meta>
+          <LensSelect
+            icon={EntityIcon}
+            label="Testing as"
+            none="Anyone"
+            value={lens.state.pcTraitId}
+            options={pcOptions}
+            onChange={onPcChange}
+          />
+        </>
+      )}
+      {parts.location && (
+        <>
+          <Meta className="shrink-0">at</Meta>
+          <LensSelect
+            icon={LocationIcon}
+            label="Testing at"
+            none="Nowhere"
+            value={lens.state.locationId}
+            options={locationOptions}
+            onChange={onLocationChange}
+          />
+        </>
+      )}
     </div>
     {lens.brokenPins.map((pin) => (
       <p key={`${pin.placeholderId}:${pin.value}`} className="flex items-start gap-1 text-meta text-destructive">

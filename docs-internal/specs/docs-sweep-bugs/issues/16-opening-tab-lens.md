@@ -1,6 +1,6 @@
 # 16: Hide the At Pick on the Opening Tab
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,7 +15,15 @@ Spec: Q6, Implementation Decisions "Opening lens". Evidence: docs-sweep ticket 1
 
 ## Acceptance criteria
 
-- [ ] A Test Bench test on the Opening tab fails today (a **Testing at** picker shows), then passes with only **Testing as**
-- [ ] The tabs that read the location still show **at** (test)
-- [ ] The Test-Bench page's Opening sentence matches; the docs tests are green
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A Test Bench test on the Opening tab fails today (a **Testing at** picker shows), then passes with only **Testing as** (`shows only Testing as on Opening`: red before the fix, green after)
+- [x] The tabs that read the location still show **at** (test) (`keeps Testing at on %s` for Triggers and AI Context)
+- [x] The Test-Bench page's Opening sentence matches; the docs tests are green (`docs/Test-Bench.md` already read right; no docs edit needed; the gates and prepare run the docs tests)
+- [x] A changelog fragment under Minor / Fixed / 👤 (`docs-internal/changelog.d/docs-sweep-bugs-16-opening-tab-lens.md`)
+
+## Landed
+
+**Not verified**
+- None. No visual check was made; the DOM tests cover the bar.
+
+**For you**
+- Open the Test Bench Opening tab: only **Testing as** shows, and Triggers / AI Context still show **at**.
