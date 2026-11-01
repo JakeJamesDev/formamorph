@@ -26,6 +26,36 @@ describe('updateReducer', () => {
     expect(s.changelog).toBe('current notes');
   });
 
+  describe('a browser download', () => {
+    const opened = (): UpdateState => {
+      let s = updateReducer(base(), { type: 'CHECK_RESULT', available: true, latestVersion: '2.2.0', changelog: 'n', at: 1 });
+      s = updateReducer(s, { type: 'DOWNLOAD_START' });
+      return updateReducer(s, { type: 'DOWNLOAD_OPENED_IN_BROWSER' });
+    };
+
+    it('returns to available with the flag set and no progress left over', () => {
+      const s = opened();
+      expect(s.phase).toBe('available');
+      expect(s.openedInBrowser).toBe(true);
+      expect(s.downloadPct).toBeUndefined();
+      expect(s.latestVersion).toBe('2.2.0');
+    });
+
+    it('keeps the flag when a later check finds the same version', () => {
+      const s = updateReducer(opened(), { type: 'CHECK_RESULT', available: true, latestVersion: '2.2.0', changelog: 'n', at: 2 });
+      expect(s.openedInBrowser).toBe(true);
+    });
+
+    it.each([
+      ['a check finds a different version', { type: 'CHECK_RESULT', available: true, latestVersion: '2.3.0', changelog: 'n', at: 2 }],
+      ['a check finds nothing newer', { type: 'CHECK_RESULT', available: false, changelog: 'n', at: 2 }],
+      ['another download starts', { type: 'DOWNLOAD_START' }],
+      ['the channel changes', { type: 'SET_CHANNEL', channel: 'prerelease' }],
+    ] as const)('clears the flag when %s', (_, action) => {
+      expect(updateReducer(opened(), action).openedInBrowser).toBeUndefined();
+    });
+  });
+
   it('accumulates download progress then completes', () => {
     let s = updateReducer(base(), { type: 'DOWNLOAD_START' });
     expect(s.phase).toBe('downloading');

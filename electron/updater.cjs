@@ -50,13 +50,14 @@ function findRelease(releases, version) {
   );
 }
 
-/** macOS notifier: open the matching release's .dmg download in the default browser. */
+/** macOS notifier: open the release's .dmg in the browser. No progress follows, so the result says so. */
 async function macDownload(version) {
   const releases = await fetchReleases();
   const rel = findRelease(releases, version);
   const dmg = rel && rel.assets.find((a) => a.name.toLowerCase().endsWith('.dmg'));
   if (!dmg) throw new Error('No .dmg asset found for this release');
   await shell.openExternal(dmg.browser_download_url);
+  return { openedInBrowser: true };
 }
 
 /** Windows launcher swap: find the release's `/app` payload zip + its .sha512 sidecar, download + verify it,

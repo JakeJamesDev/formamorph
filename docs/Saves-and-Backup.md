@@ -82,7 +82,7 @@ Restore adds to what you have. It never erases an item that is not in the backup
 3. Select the **Download** button. A progress bar shows under the version number.
 4. Select **Update & Restart**.
 
-On a Mac, **Download** opens the new `.dmg` file in your browser. Open the file and copy the new app over the old one. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
+On a Mac, **Download** opens the new `.dmg` file in your browser. Once the browser opens it, the progress bar goes away and the version number shows **Update Available** again. The update dialog says the download opened in your browser. Open the file and copy the new app over the old one. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
 
 ---
 
@@ -221,6 +221,7 @@ The desktop and Android apps check for updates on start, then every few hours. S
 |---|---|
 | Title | Says where the update stands. See the list below. |
 | **Release channel** | **Stable** gets finished releases. **Pre-release** also gets beta builds. |
+| Browser note | On a Mac, says the download opened in your browser. Shows after you select **Download**. |
 | Release notes | What changed in the new version |
 | **Full changelog →** | Opens the full changelog |
 | **Download** | Downloads the update. Shows when an update is available. |

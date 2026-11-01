@@ -177,6 +177,54 @@ describe('the update checker over the Android bridge', () => {
   });
 });
 
+/** The fake desktop bridge, planted where the preload script injects the real one. */
+function plantDesktop(download: () => Promise<unknown>) {
+  const listeners: { progress?: (p: { received: number; total: number }) => void; done?: () => void } = {};
+  const update = {
+    pending: vi.fn(async () => null),
+    download: vi.fn(download),
+    apply: vi.fn(async () => {}),
+    onProgress: vi.fn((cb: (p: { received: number; total: number }) => void) => { listeners.progress = cb; return () => {}; }),
+    onDownloaded: vi.fn((cb: () => void) => { listeners.done = cb; return () => {}; }),
+  };
+  (window as DesktopShell).formamorphDesktop = { update };
+  return { update, listeners };
+}
+
+type DesktopShell = { formamorphDesktop?: unknown };
+
+describe('the update checker over the desktop bridge', () => {
+  afterEach(() => { delete (window as DesktopShell).formamorphDesktop; });
+
+  it('returns to available when the download opened in the browser', async () => {
+    // The Mac path: the main process opens the .dmg and sends no progress.
+    plantDesktop(async () => ({ openedInBrowser: true }));
+    const { result } = renderHook(() => useUpdateChecker('stable'));
+    await waitFor(() => expect(result.current.state.phase).toBe('available'));
+
+    act(() => result.current.download());
+
+    await waitFor(() => expect(result.current.state.phase).toBe('available'));
+    expect(result.current.state.openedInBrowser).toBe(true);
+    expect(result.current.state.latestVersion).toBe('v9.9.9');
+  });
+
+  it('stays downloading through progress to downloaded when the download streams', async () => {
+    const { listeners } = plantDesktop(async () => undefined);
+    const { result } = renderHook(() => useUpdateChecker('stable'));
+    await waitFor(() => expect(result.current.state.phase).toBe('available'));
+
+    await act(async () => { result.current.download(); });
+    expect(result.current.state.phase).toBe('downloading');
+
+    act(() => listeners.progress!({ received: 30, total: 60 }));
+    expect(result.current.state.downloadPct).toBe(50);
+    act(() => listeners.done!());
+    expect(result.current.state.phase).toBe('downloaded');
+    expect(result.current.state.openedInBrowser).toBeUndefined();
+  });
+});
+
 describe('the update checker with no bridge', () => {
   it('still checks, and download and apply do nothing', async () => {
     const { result } = renderHook(() => useUpdateChecker('stable'));

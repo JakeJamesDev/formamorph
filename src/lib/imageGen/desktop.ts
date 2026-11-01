@@ -247,7 +247,7 @@ declare global {
         /** A previously downloaded update still staged on disk (survives a restart), or null. */
         pending: () => Promise<{ version: string } | null>;
         /** Start the platform download for the given target release (channel drives the Linux updater). */
-        download: (opts: { version?: string; channel?: 'stable' | 'prerelease' }) => Promise<void>;
+        download: (opts: { version?: string; channel?: 'stable' | 'prerelease' }) => Promise<{ openedInBrowser?: boolean } | void>;
         /** Apply a downloaded update and relaunch (Windows launcher swap / Linux quitAndInstall). */
         apply: () => Promise<void>;
         /** An update became available (main-detected, e.g. electron-updater); returns an unsubscribe fn. */
