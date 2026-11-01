@@ -173,7 +173,7 @@ _Avoid_: body type, form, paperdoll
 A Body's figure: its Backdrop and one Slot Box per capacity unit. It is display only: scripts and prompts don't see it.
 
 **Backdrop**:
-What a Body Layout's boxes sit on: Humanoid, Quadruped or Plain. Its size is an aspect ratio.
+What a Body Layout's boxes sit on: Humanoid, Quadruped, Plain or a Custom Image. Its size is an aspect ratio.
 
 **Slot Box**:
 Where one capacity unit of a Body entry sits on the Backdrop, stored as fractions of the Backdrop. A smaller box draws above a larger one.
