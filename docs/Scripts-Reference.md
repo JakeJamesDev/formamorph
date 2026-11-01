@@ -731,7 +731,7 @@ Each Item Copy has these members. They are read-only.
 | `owner` | Code name of the entity that owns it, the persona included. It is `''` while the Item Copy lies at a location, or when the persona has no code name |
 | `location` | Code name of the location it lies at, or `''` while an entity owns it |
 | `quantity` | How many it holds |
-| `equipped` and `slot` | Whether it is equipped, and the slot's name |
+| `equipped` and `slot` | Whether it is equipped, and the slot's name. An **All of** item reads its first listed slot |
 | `hidden` | True when the player cannot see it |
 | `unidentified` | True when the player sees the item's unidentified face |
 | `uses` | Uses left, or `null` when the item has no **Uses** |
@@ -751,7 +751,7 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 | `items.<Item>.give(to, n?)` | Gives `to` a new Item Copy, or `n` of them. `n` is 1 when left out |
 | `copy.lose(n?)` | Removes the Item Copy, or `n` of it |
 | `copy.moveTo(to, n?)` | Moves the Item Copy, or `n` of it, to `to` |
-| `copy.equip()` and `copy.unequip()` | Equips or unequips it, as the panel does |
+| `copy.equip(slot?)` and `copy.unequip()` | Equips or unequips it, as the panel does. `slot` is a slot's name from the item's list; left out, the first free one |
 | `copy.use()` | Uses it once, as **Use** does |
 | `copy.reveal(n?)` | Makes a hidden Item Copy visible. On a visible unidentified one, identifies it |
 | `copy.setUses(n)` | Sets its uses left, from 0 up to the item's **Uses** |
@@ -778,7 +778,7 @@ if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item 
 | `name` | The Body's name. Read-only |
 | `slots` | The Body's slots, in the Body's order. A list. Read-only |
 
-Each slot has `name`, `capacity` and `items`: the Item Copies equipped in it. They have the [members of an Item Copy](#items).
+Each slot has `name`, `capacity` and `items`: the Item Copies equipped in it. An **All of** item is listed under every slot it takes. They have the [members of an Item Copy](#items).
 
 ```javascript
 // A curse turns the player into a wolf for good.

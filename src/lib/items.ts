@@ -156,10 +156,9 @@ export const parsePlacements = (raw: unknown): Placement[] => listOf<unknown>(ra
   const source = (p as { source?: unknown }).source;
   return isRecord(source) && source.kind === 'item' && typeof source.itemId === 'string';
 }).map((p) => {
-  const placement = p as Placement;
-  if (placement.equipped === undefined || (placement.equipped === true && placement.where?.kind !== 'location')) return placement;
-  const { equipped: _drop, ...rest } = placement;
-  return rest;
+  const { equipped, slotId, ...rest } = p as Placement;
+  if (equipped !== true || rest.where?.kind === 'location') return rest;
+  return { ...rest, equipped, ...(typeof slotId === 'string' && { slotId }) };
 });
 
 /** A whole number typed into an input, or undefined for a blank or non-numeric one. */

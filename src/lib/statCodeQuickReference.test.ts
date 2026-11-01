@@ -84,7 +84,7 @@ const world = {
   owner: { id: 'owner', name: 'Owner', traits: [trait()], stats: { stats } },
   dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns, entries: [entry] }],
   places: { locations: [{ id: 'location', name: 'Location' }], location: { id: 'location', name: 'Location' } },
-  items: [{ id: 'item', name: 'Item', copies: [{ id: 'copy', where: { kind: 'you' as const }, quantity: 1, equipped: false, slot: '', hidden: false }] }],
+  items: [{ id: 'item', name: 'Item', copies: [{ id: 'copy', where: { kind: 'you' as const }, quantity: 1, equipped: false, slot: '', occupies: [], allowed: [], hidden: false }] }],
 };
 const run = (code: string, options: StatCodeRunOptions = {}) => executeStatCode(code, stats, stats[0], { ...world, ...options });
 

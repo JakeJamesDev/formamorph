@@ -110,3 +110,32 @@ describe('PlacementsSection — Equipped', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
+
+describe('PlacementsSection — starting slot', () => {
+  const slotSelect = (item: string) => screen.queryByRole('combobox', { name: `${item} Slot` });
+  const where = { kind: 'you' } as const;
+
+  it('shows the slot select only on an Equipped Either of row with 2+ slots', async () => {
+    show({ where, placements: [
+      place('p1', where, 'circlet', { equipped: true }), place('p2', where, 'circlet'), place('p3', where, 'helm', { equipped: true }),
+      place('p4', where, 'gauntlets', { equipped: true }),
+    ] });
+    await screen.findByRole('combobox', { name: 'Circlet Slot' });
+    expect(screen.getAllByRole('combobox', { name: 'Circlet Slot' })).toHaveLength(1);
+    expect(slotSelect('Helm')).toBeNull();
+    expect(slotSelect('Gauntlets')).toBeNull();
+  });
+
+  it('shows the chosen slot, and unticking Equipped clears it', async () => {
+    show({ where, placements: [place('p1', where, 'circlet', { equipped: true, slotId: 'hand' })] });
+    expect(await screen.findByRole('combobox', { name: 'Circlet Slot' })).toHaveTextContent('Hand');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Circlet Equipped' }));
+    expect(stored()[0].slotId).toBeUndefined();
+    expect(slotSelect('Circlet')).toBeNull();
+  });
+
+  it('shows First Free Slot when no slot is chosen', async () => {
+    show({ where, placements: [place('p1', where, 'circlet', { equipped: true })] });
+    expect(await screen.findByRole('combobox', { name: 'Circlet Slot' })).toHaveTextContent('First Free Slot');
+  });
+});

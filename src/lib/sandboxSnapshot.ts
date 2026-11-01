@@ -315,9 +315,11 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
   const itemCopy = (copy: ItemCopy): SandboxItemCopy => {
     const item = copy.item.kind === 'item' ? authoredItems.get(copy.item.itemId) : undefined;
     const uses = usesLeft(copy, item);
+    const occupies = occupiedSlots(copy, item).map((id) => slotName.get(id) ?? '');
     const word = copyState(copy);
     return {
-      id: copy.id, where: copy.where, quantity: copy.quantity, equipped: !!copy.equipped, slot: slotName.get(occupiedSlots(copy, item)[0]) ?? '',
+      id: copy.id, where: copy.where, quantity: copy.quantity, equipped: !!copy.equipped, slot: occupies[0] ?? '', occupies,
+      allowed: (item?.slotRule?.slotIds ?? []).map((id) => ({ id, name: slotName.get(id) ?? '' })),
       hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }), ...(uses !== undefined && { uses }), ...(word && { state: word }),
     };
   };

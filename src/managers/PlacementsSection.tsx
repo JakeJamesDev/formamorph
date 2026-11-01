@@ -16,6 +16,9 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { randomUUID } from '@/lib/uuid';
 import type { Item, Placement, PlacementWhere } from '@/types';
 
+/** The select value for no chosen slot. */
+const FIRST_FREE = 'first-free';
+
 interface PlacementsSectionProps {
   where: PlacementWhere;
   label: string;
@@ -30,10 +33,17 @@ const gapText = (gap: StartingEquipGap, item: string, slotName: (slotId: string)
   }
 };
 
-/** `p` with the optional flag on, or without it. */
+/** `p` with its starting slot set, or back to the first free one when `slotId` is absent. */
+const withSlot = (p: Placement, slotId: string | undefined): Placement => {
+  const { slotId: _drop, ...rest } = p;
+  return slotId ? { ...rest, slotId } : rest;
+};
+
+/** `p` with the optional flag on, or without it. Unticking Equipped also clears the starting slot. */
 const withFlag = (p: Placement, flag: 'hidden' | 'equipped', on: boolean): Placement => {
   const { [flag]: _drop, ...rest } = p;
-  return on ? { ...rest, [flag]: true } : rest;
+  if (on) return { ...rest, [flag]: true };
+  return flag === 'equipped' ? withSlot(rest, undefined) : rest;
 };
 
 /** The starting Item Copies placed at one place: item, quantity, Hidden and, on an owner, Equipped per row. */
@@ -71,7 +81,7 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                   <Select
                     value={p.source.itemId}
                     onValueChange={(itemId) => update({
-                      ...withFlag(p, 'equipped', !!p.equipped && !!ruleOf(itemOf(itemId))), source: { kind: 'item', itemId },
+                      ...withSlot(withFlag(p, 'equipped', !!p.equipped && !!ruleOf(itemOf(itemId))), undefined), source: { kind: 'item', itemId },
                     })}
                   >
                     <SelectTrigger className="min-w-0 flex-1" aria-label="Item">
@@ -109,6 +119,17 @@ const PlacementsSection = ({ where, label, hint }: PlacementsSectionProps) => {
                       />
                       Equipped
                     </Label>
+                  )}
+                  {p.equipped && rule?.mode === 'either' && rule.slotIds.length >= 2 && (
+                    <Select value={p.slotId && rule.slotIds.includes(p.slotId) ? p.slotId : FIRST_FREE} onValueChange={(slotId) => update(withSlot(p, slotId === FIRST_FREE ? undefined : slotId))}>
+                      <SelectTrigger className="w-40" aria-label={`${name(p.source.itemId)} Slot`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={FIRST_FREE}>First Free Slot</SelectItem>
+                        {rule.slotIds.map((id) => <SelectItem key={id} value={id}>{slotName(id) || 'Unnamed Slot'}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   )}
                   <Tip tip="Delete">
                     <Button variant="ghost" size="icon" className={DESTRUCTIVE_ROW_ACTION_HOVER} aria-label={`Delete ${name(p.source.itemId)}`} onClick={() => remove(p.id)}>
