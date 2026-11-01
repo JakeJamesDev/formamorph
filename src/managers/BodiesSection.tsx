@@ -254,6 +254,13 @@ function SortableEntry({ entry, name, bodyLabel, selected, onSelect, onCapacity,
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, ...drag } = useSortable({ id: entry.id });
+  // The typed text applies when the edit ends, so backspacing through a value drops no boxes (Q79).
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    const typed = draft === null ? undefined : wholeCount(draft);
+    setDraft(null);
+    if (typed !== undefined) onCapacity(Math.min(MAX_CAPACITY, Math.max(1, typed)));
+  };
   return (
     <EditorRow
       setNodeRef={setNodeRef}
@@ -273,11 +280,10 @@ function SortableEntry({ entry, name, bodyLabel, selected, onSelect, onCapacity,
             min={1}
             max={MAX_CAPACITY}
             className="h-6 w-14 px-1.5 text-helper text-foreground"
-            value={entryCapacity(entry)}
-            onChange={(e) => {
-              const typed = wholeCount(e.target.value);
-              if (typed !== undefined) onCapacity(Math.min(MAX_CAPACITY, Math.max(1, typed)));
-            }}
+            value={draft ?? entryCapacity(entry)}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
           />
         </span>
       }

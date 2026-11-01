@@ -244,6 +244,8 @@ export function BodyLayoutEditor({ body, onChange, labelOf, selected, onSelect, 
     const outline = OUTLINES.find((o) => o.kind === kind);
     if (!outline) return;
     setAsking(false);
+    // The outline the Body already has changes nothing, so a dragged aspect stays (Q77).
+    if (body.backdrop.kind === outline.kind) return;
     onChange(withOutline(body, outline.kind));
   };
 

@@ -94,9 +94,13 @@ export type StartingEquipGap =
 
 /** The editor's read of a starting equip under `rule` (Q2, Q57), or null when it fits. The played Persona reads
  *  the Custom Persona entity's pick. */
-export function startingEquipGap(world: BodyWorld, owner: SlotOwner, rule: SlotRule): StartingEquipGap | null {
+export function startingEquipGap(world: BodyWorld, owner: SlotOwner, rule: SlotRule, namedSlotId?: string): StartingEquipGap | null {
   const body = bodyInForce(world, owner, undefined);
   if (!body) return { kind: 'noBody' };
+  // A named slot the Body lacks is a gap whatever else the rule could use (Q76).
+  if (namedSlotId && rule.slotIds.includes(namedSlotId) && !body.entries.some((e) => e.slotId === namedSlotId)) {
+    return { kind: 'noSlot', body, slotIds: [namedSlotId] };
+  }
   const slotIds = ruleGaps(rule, (slotId) => body.entries.some((e) => e.slotId === slotId));
   return slotIds.length ? { kind: 'noSlot', body, slotIds } : null;
 }

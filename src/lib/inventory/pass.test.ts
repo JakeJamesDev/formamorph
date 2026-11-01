@@ -428,7 +428,12 @@ describe("the pass's named slot (Q37, Q41, Q65)", () => {
     expect(slotsTaken(equipOn('Greatsword', 'Main Hand or Off Hand'))).toEqual(['main']);
   });
 
-  it.each(['Main Hand or Left Paw', 'Main Hand, Off Hand, Left Paw', 'Main Hand or Off Handle'])("skips %s, which holds a name the item doesn't list", (slot) => {
+  it.each(['both Main Hand and Off Hand', 'Main Hand with Off Hand', 'Main Hand, Off Hand, Left Paw'])('reads %s as no name, whatever joins the two (Q65)', (slot) => {
+    expect(slotsTaken(equipOn('Dagger', slot))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Greatsword', slot))).toEqual(['main']);
+  });
+
+  it.each(['Main Hand or Left Paw', 'Left Paw'])("skips %s, which holds a name the item doesn't list", (slot) => {
     const result = equipOn('Dagger', slot);
     expect(slotsTaken(result)).toEqual([]);
     expect(result.diagnostics).toEqual([`Inventory (pass) skipped equip "Dagger": no slot is named "${slot}"`]);

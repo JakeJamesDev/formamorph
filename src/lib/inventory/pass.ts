@@ -66,10 +66,6 @@ export const INVENTORY_JSON_FORMAT = `
 
 Reply with one operation per change. Reply with an empty operations list when no item changed.`;
 
-/** What may join slot names in a value that names several; any other word or digit left over is another name. */
-const JOIN_WORDS = /\b(or|and|plus|then)\b/g;
-const JOIN_LEFTOVER = /[\p{L}\p{N}]/u;
-
 const isKind = (value: string): value is InventoryPassOpKind => (PASS_OP_KINDS as readonly string[]).includes(value);
 
 const quantityOf = (value: unknown): number => {
@@ -276,7 +272,7 @@ export function applyInventoryPass(
       rest = rest.replace(slotName, ' ');
       joined += 1;
     }
-    if (joined >= 2 && !JOIN_LEFTOVER.test(rest.replace(JOIN_WORDS, ''))) return undefined;
+    if (joined >= 2) return undefined;
     const matches = slots.filter((s) => itemNameKey(s.name) === key);
     return (matches.find((s) => rule?.slotIds.includes(s.id)) ?? matches[0])?.id ?? null;
   };

@@ -155,8 +155,10 @@ describe('the Bodies section', () => {
     expect(ctx().bodies[2]).toEqual({ id: expect.any(String), name: 'Dog', entries: [], backdrop: { kind: 'humanoid' }, aspect: 0.5 });
     pickOption(screen.getByRole('combobox', { name: 'Add a slot to Dog' }), 'Tail');
     fireEvent.change(screen.getAllByLabelText('Tail Capacity')[0], { target: { value: '3' } });
+    fireEvent.blur(screen.getAllByLabelText('Tail Capacity')[0]);
     expect(ctx().bodies[2].entries).toEqual([{ slotId: 'tail', capacity: 3, boxes: [centerBox(0.5), centerBox(0.5), centerBox(0.5)] }]);
     fireEvent.change(screen.getAllByLabelText('Tail Capacity')[0], { target: { value: '1' } });
+    fireEvent.blur(screen.getAllByLabelText('Tail Capacity')[0]);
     expect(ctx().bodies[2].entries).toEqual([{ slotId: 'tail', boxes: [centerBox(0.5)] }]);
   });
 
@@ -224,6 +226,35 @@ describe('the Bodies section', () => {
       expect(ctx().bodies[0].entries[1].boxes[0].x).toBeCloseTo(start.x + KEY_STEP);
     });
 
+    it('applies a typed capacity when the edit ends, not on each keystroke (Q79)', () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      const before = ctx().bodies[0].entries[0];
+      const field = within(humanoidFields()).getByLabelText('Hand Capacity');
+      fireEvent.change(field, { target: { value: '' } });
+      fireEvent.change(field, { target: { value: '1' } });
+      expect(ctx().bodies[0].entries[0]).toEqual(before);
+      fireEvent.change(field, { target: { value: '12' } });
+      expect(ctx().bodies[0].entries[0]).toEqual(before);
+      fireEvent.keyDown(field, { key: 'Enter' });
+      expect(ctx().bodies[0].entries[0].capacity).toBe(12);
+      expect(ctx().bodies[0].entries[0].boxes).toHaveLength(12);
+      expect(ctx().bodies[0].entries[0].boxes.slice(0, 2)).toEqual(before.boxes);
+    });
+
+    it('keeps the aspect and boxes when the current outline is picked again, also through Custom Image (Q77)', () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      openEquipment();
+      fireEvent.keyDown(within(humanoidFields()).getByRole('slider', { name: 'Backdrop Height' }), { key: 'ArrowDown' });
+      const dragged = ctx().bodies[0];
+      const backdrop = () => within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' });
+      pickOption(backdrop(), 'Humanoid');
+      expect(ctx().bodies[0]).toEqual(dragged);
+      pickOption(backdrop(), 'Custom Image');
+      pickOption(backdrop(), 'Humanoid');
+      expect(ctx().bodies[0]).toEqual(dragged);
+    });
+
     it('drops the last box when capacity falls, and clears a selection on it', () => {
       const { ctx } = renderWorldEditorBench(WORLD, 'simple');
       openEquipment();
@@ -231,6 +262,7 @@ describe('the Bodies section', () => {
       const kept = ctx().bodies[0].entries[0].boxes[0];
       fireEvent.focus(boxButton('Hand 2'));
       fireEvent.change(within(humanoidFields()).getByLabelText('Hand Capacity'), { target: { value: '1' } });
+      fireEvent.blur(within(humanoidFields()).getByLabelText('Hand Capacity'));
       expect(ctx().bodies[0].entries[0].boxes).toEqual([kept]);
       expect(within(humanoidFields()).queryAllByRole('button', { pressed: true })).toEqual([]);
       expect(humanoidFields().querySelector('[data-editor-row-selected]')).toBeNull();
@@ -375,6 +407,7 @@ describe('the Bodies section', () => {
     const bench = renderWorldEditorBench(WORLD, 'simple');
     openEquipment();
     fireEvent.change(screen.getAllByLabelText('Hand Capacity')[0], { target: { value: '1' } });
+    fireEvent.blur(screen.getAllByLabelText('Hand Capacity')[0]);
     act(() => bench.history().undo());
     expect(bench.ctx().bodies[0].entries[0]).toEqual({ slotId: 'hand', capacity: 2, boxes: [centerBox(0.5), centerBox(0.5)] });
   });

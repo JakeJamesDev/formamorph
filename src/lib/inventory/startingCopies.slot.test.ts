@@ -40,6 +40,10 @@ describe('startingCopies with a placement slot', () => {
     expect(startingCopies(wide, undefined, ids()).map((c) => c.equipped?.slotId)).toEqual(['off', 'off']);
   });
 
+  it('sends the first unit of a quantity-2 placement to the named slot and the next to the first free one (Q78)', () => {
+    expect(slots([place({ slotId: 'off', quantity: 2 })])).toEqual(['off', 'main']);
+  });
+
   it('keeps both when each names its own slot', () => {
     expect(slots([place({ slotId: 'off' }), place({ id: 'q', slotId: 'main' })])).toEqual(['off', 'main']);
   });
