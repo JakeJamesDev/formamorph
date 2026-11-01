@@ -125,7 +125,7 @@ The breakdown shows seven groups by share of cost. Any single prompt with a larg
 - Desktop widths keep Help and the ring visible while typing.
 
 **Copy and docs**
-- Every monthly string becomes weekly: the state reason, the usage help line, the warning text, the server's refusal message, the site profile, help topics, and the wiki pages. The reset date format moves from a UTC calendar date to a local weekday and time.
+- Every monthly string becomes weekly: the state reason, the usage help line, the warning text, the server's refusal message, the site profile, help topics, and the wiki pages. The reset date format moves from a UTC calendar date to a local weekday and time ("Monday at 5:00 PM"), with no zone name. Fixed copy never names a weekday, because Monday 00:00 UTC falls on Sunday in the Americas.
 - Before writing any copy, follow the Writing Guide's "Before you write". The Supporter tier names ruling applies: an allowance reads as a thank-you, never as a plan.
 - The glossary's Formamorph AI and subject entries lose their monthly wording. It gains **Allowance Ring**.
 - No world or save export shape changes.
