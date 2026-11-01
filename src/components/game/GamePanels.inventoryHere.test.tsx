@@ -28,6 +28,7 @@ const items = [
   item('crown', 'Old Crown', { stackable: false, bound: true }),
   // Shows the cursed art while the owner also owns the Coin.
   item('ring', 'Silver Ring', {
+    icon: 'none',
     images: [{ data: CURSED, requires: [{ all: [{ kind: 'item', id: 'coin', status: 'owned' }] }] }, { data: PLAIN }],
   }),
 ];

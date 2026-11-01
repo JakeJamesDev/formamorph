@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { ArrowDownToLine, ArrowUpFromLine, Gift, Lock, Shirt, Sparkles, Undo2 } from 'lucide-react';
+import { ItemIconArt } from '@/components/ItemIconArt';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
@@ -11,11 +12,12 @@ import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
-import { byEquipOrder, copyFace, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
+import { resolveItemIcon } from '@/lib/itemIcons';
+import { byEquipOrder, copyFace, copyFacts, copyState, isUnidentified, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
-import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
 import { BodyDoll } from './BodyDoll';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
@@ -34,6 +36,8 @@ export interface InventoryTabProps {
   body?: Body;
   /** The played Persona's Body slots, in entry order. Empty = no Body. */
   slots: readonly BodySlot[];
+  /** Every slot of the world, so an item's icon never changes with the Body. */
+  worldSlots: readonly Slot[];
   /** The In Scene entities Give can pick, each under its label (Q59). */
   present: readonly { id: string; name: string }[];
   locationId: string | null | undefined;
@@ -204,7 +208,7 @@ function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: 
 /** The game panel's Inventory tab: the played Persona's figure with their equipped items, then carried items,
  *  then a card for what lies at the location. */
 export function InventoryTab({
-  ownerName, copies, lying, items, runtimeItems = [], body, slots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
+  ownerName, copies, lying, items, runtimeItems = [], body, slots, worldSlots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
@@ -216,6 +220,19 @@ export function InventoryTab({
     const item = itemOf(copy);
     return (copy.item.kind === 'runtime'
       ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
+  };
+  const iconOf = (copy: ItemCopy) => {
+    const item = itemOf(copy);
+    return resolveItemIcon({
+      icon: item?.icon,
+      name: nameOf(copy),
+      slotNames: (item?.slotRule?.slotIds ?? []).flatMap((id) => {
+        const slot = worldSlots.find((s) => s.id === id);
+        return slot ? [resolveText(slot.name)] : [];
+      }),
+      unidentified: isUnidentified(copy),
+      image: imageOf?.(copy),
+    });
   };
   const occupies = (c: ItemCopy, slotId: string) => occupiedSlots(c, itemOf(c)).includes(slotId);
   const equipped = shown.filter((c) => slots.some((s) => occupies(c, s.slot.id))).sort(byEquipOrder);
@@ -250,15 +267,16 @@ export function InventoryTab({
     const name = nameOf(copy);
     const state = copyState(copy);
     const line = copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item);
-    const image = imageOf?.(copy);
+    const icon = iconOf(copy);
     return (
       <li key={copy.id} className="relative flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
-        {image && (
+        {icon.kind === 'image' && (
           <img
-            src={image} alt="" {...THUMB_INTRINSIC.portrait}
+            src={icon.src} alt="" {...THUMB_INTRINSIC.portrait}
             className={cn('w-6 shrink-0 rounded', THUMB_FRAME.portrait, thumbFit('portrait'))}
           />
         )}
+        {icon.kind === 'icon' && <ItemIconArt id={icon.id} className="h-6 w-6 shrink-0" />}
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
             {/* The name's button covers the row, so the picture and the meta text open the popup too. */}
@@ -300,7 +318,7 @@ export function InventoryTab({
               fills={new Map([...inBoxes].map(([key, copy]) => [key, {
                 id: copy.id,
                 name: nameOf(copy),
-                image: imageOf?.(copy),
+                icon: iconOf(copy),
                 detail: row(copy, (
                   <div className="flex shrink-0 items-center">
                     <UseButton copy={copy} item={itemOf(copy)} name={nameOf(copy)} disabled={disabled} onOps={onOps} />
