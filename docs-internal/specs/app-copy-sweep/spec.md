@@ -1,6 +1,7 @@
 # Spec: App Copy Sweep
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-01. Tickets 01–12, last landing ec8796616. Review: two gaps fixed before the close (stale quotes, the site age gate's decline line). Gates green on 2026-11-01.
 Spec session: app-copy-sweep — spec
 
 ## Problem Statement
