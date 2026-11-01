@@ -66,6 +66,10 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q73 | (ticket 06) Visible copies fill units from unit 1. A hidden equipped copy draws in no box, and the spare box reads as empty (inventory Q112) |
 | Q74 | (ticket 06) A Body with no drawable slots, or None, shows no figure and no Equipped subheader. A visible copy that gets no box lists under Carried with Unequip (Bodies Q35) |
 | Q75 | (ticket 06) The tap popover holds today's row: thumbnail, name, state, count, uses line, Use and Unequip. It stays open after Use. A filled box with an image shows the item's name in a hover tooltip. A failed image load falls back to the name |
+| Q76 | (close review, ticket 08) The placement warning reads the placement's named slot. The select lists only allowed slots the owner's Body holds |
+| Q77 | (close review, ticket 08) Picking the Backdrop the Body already has changes nothing, so a dragged aspect stays |
+| Q78 | (close review, ticket 08) A placement with quantity 2+ and a named slot sends the first unit there. The rest take the first free slot, as the Inventory pass does |
+| Q79 | (close review, ticket 08) A Body entry's Capacity field changes boxes only when the edit ends, on blur or Enter |
 | Q50 | (ticket 04) Q46 settles variant B's structure. The approval step covers the two outlines. Frames of variant B in both themes go with that request, for the user to see, never to reopen Q46 |
 | Q51 | (ticket 04) A Body row gets a Duplicate action, named "\<name\> (Copy)" as elsewhere. It copies entries, Backdrop, aspect and boxes (Q32) |
 | Q52 | (ticket 04) A row click selects unit 1. Another click on the same row moves to the next unit and wraps. This also reaches a box hidden behind another |
