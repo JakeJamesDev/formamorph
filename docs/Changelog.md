@@ -86,6 +86,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **When the story puts an item in a certain slot, your Inventory now shows it equipped in that slot.** The AI sees every slot an item fits, such as either hand for a dagger or both for a greatsword.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
+  - **The game's Send and Stop buttons are now narrower on larger screens, leaving more room to type.**
   - **The entity popup shows the picture beside the text on large screens.** The text scrolls on its own, so long descriptions and Equipped have more room. Smaller screens keep the picture above the text.
 - **🛠️ Developer tooling**
   - **Inventory:**

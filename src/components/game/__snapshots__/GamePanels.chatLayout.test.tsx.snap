@@ -444,7 +444,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
               </button>
               <button
                 aria-label="Send"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12"
                 data-base-ui-tooltip-trigger=""
                 id="base-ui-_r_1d_"
               >
@@ -1058,7 +1058,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               </button>
               <button
                 aria-label="Send"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12"
                 data-base-ui-tooltip-trigger=""
                 id="base-ui-_r_g_"
               >
