@@ -136,6 +136,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **World tiles on the Main Menu now appear faster each time it opens.** The bundled worlds load only when one is new or has changed.
   - **A failed publish or a too-short password now shows the reason the server gives.** Before, both showed a generic "Failed" line. Several reasons show together on one line.
   - **A failed autosave now says why, and a full disk now reports the failed save.** The message says when the storage is full. Other failures show their cause under View Details.
+  - **A failed world import on the Main Menu now names the file and the cause.** Full storage shows as the cause. With several skipped files the count stays, and **View Details** lists each file and its cause.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.

@@ -74,7 +74,7 @@ import type { UpdateRow } from '@/lib/componentUpdates';
 import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldFlow, { type EnterWorldFlowHandle, type StartGame } from './EnterWorldFlow';
 import { clearDefaultPersona, readDefaultPersona, setDefaultPersona } from '@/lib/personaPick';
-import WorldStorageService from '../services/WorldStorageService';
+import WorldStorageService, { assertWorldFields } from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
 import ModelStorageService from '../services/ModelStorageService';
@@ -99,7 +99,7 @@ import { entityImageData, entityImages, primaryImage } from '@/lib/entityImages'
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
-import { filesFrom, importSummaryToast } from '@/lib/importFiles';
+import { filesFrom, importReportToast, importSummaryToast, storageCause, worldFileCause, type SkippedImport } from '@/lib/importFiles';
 import CommunityBrowserHost from './CommunityBrowserHost';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
@@ -1053,21 +1053,24 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const files = filesFrom(event);
     if (!files.length) return;
 
-    const parsed: { world: World; id: string }[] = [];
-    let skipped = 0;
+    const worldNoun = { one: 'world', many: 'worlds' };
+    const parsed: { world: World; id: string; fileName: string }[] = [];
+    const skipped: SkippedImport[] = [];
     let stored = 0;
     for (const file of files) {
       try {
         // Sanitize at the import boundary: the worker reads, parses and migrates the file to the current
         // version (off-thread: an image-heavy world is tens of MB), then we settle what its bundled content follows.
-        const { world, warning } = withImportedWorldTools(await resolveImportedWorld(await parseWorldFile(file)));
+        const migrated = await parseWorldFile(file);
+        assertWorldFields(migrated);
+        const { world, warning } = withImportedWorldTools(await resolveImportedWorld(migrated));
         if (warning) toast.warning(warning);
         const id = `uploaded-${randomUUID()}`;
         world.id = id;
-        parsed.push({ world, id });
+        parsed.push({ world, id, fileName: file.name });
       } catch (error) {
         console.error('Error parsing world file:', file.name, error);
-        skipped++;
+        skipped.push({ fileName: file.name, cause: worldFileCause(error), error });
       }
     }
 
@@ -1080,9 +1083,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const storeAll = async (tick: (done: number) => void) => {
         let last: { id: string; data: World } | null = null;
         let base = 0;
-        for (const [i, { world, id }] of parsed.entries()) {
-          // Storing is guarded per world: `storeWorld` rejects a shape `migrateWorld` can't complete (no
-          // `statUpdates`, say), and one such file must not abort the rest of the batch.
+        for (const [i, { world, id, fileName }] of parsed.entries()) {
+          // Storing is guarded per world: one failed store must not abort the rest of the batch.
           try {
             const data = mode === 'off' ? world : await applyWorldOptimize(world, mode, (done) => tick(base + done));
             data.id = id;
@@ -1094,7 +1096,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             last = { id, data };
           } catch (error) {
             console.error('Error storing world:', world.worldOverview?.name, error);
-            skipped++;
+            skipped.push({ fileName, cause: storageCause(error, worldNoun), error });
           }
           base += totals[i];
         }
@@ -1110,7 +1112,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       }
     }
     // A lone success needs no toast — the details modal above already shows what landed.
-    if (files.length > 1 || skipped) importSummaryToast(stored, skipped, { one: 'world', many: 'worlds' });
+    if (files.length > 1 || skipped.length) importReportToast(stored, skipped, worldNoun);
   };
 
   // Import one or more standalone dictionary `.json` files. Bad files are skipped. `parseDictionaryImport`

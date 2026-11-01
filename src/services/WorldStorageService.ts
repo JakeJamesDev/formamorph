@@ -122,6 +122,20 @@ export const CONTEST_NOT_ACTIVE = 'CONTEST_NOT_ACTIVE';
 /** The withdrawal was refused because this entry is on the contest's podium. */
 export const CONTEST_PLACED = 'CONTEST_PLACED';
 
+/** World data that lacks a field `storeWorld` requires. */
+export class InvalidWorldDataError extends Error {
+  override name = 'InvalidWorldDataError';
+  constructor() { super('Invalid world data: missing required fields'); }
+}
+
+/** Throws unless `data` has the fields `storeWorld` requires of a world. */
+export function assertWorldFields(data: StoredWorldRecord['data'] | null | undefined): void {
+  if (!data || !data.worldOverview || !data.stats || !data.locations ||
+      !data.entities || !data.traits || !data.statUpdates) {
+    throw new InvalidWorldDataError();
+  }
+}
+
 /** A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
  *  they round-trip through IndexedDB/JSON and aren't read field-by-field here. */
 export interface StoredWorldRecord {
@@ -475,13 +489,8 @@ class WorldStorageService {
     // world.id = `world-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     //  console.log('Generated new world ID:', world.id);
 
-    // Validate world data structure
-    if (!world.name || !world.data ||
-        !world.data.worldOverview || !world.data.stats ||
-        !world.data.locations || !world.data.entities ||
-        !world.data.traits || !world.data.statUpdates) {
-      throw new Error('Invalid world data: missing required fields');
-    }
+    if (!world.name) throw new InvalidWorldDataError();
+    assertWorldFields(world.data);
 
     const transaction = libraryTransaction(this.db!, 'readwrite');
     // Read-merge so the download link survives saves: sourceId is sticky (inherited unless the

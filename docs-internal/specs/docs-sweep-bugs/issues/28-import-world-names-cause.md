@@ -1,6 +1,6 @@
 # 28: World Import Names the File and the Cause
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -17,9 +17,21 @@ Spec: Q23. Evidence: the error audit after this spec's close.
 
 ## Acceptance criteria
 
-- [ ] A test that imports one bad world file fails today (only the count), then passes with the file name and the cause
-- [ ] Several skipped files show the count, and View Details lists each file and cause (test)
-- [ ] A storage failure on one world names the file, and its raw message is only in View Details (test)
-- [ ] A clean import of several files keeps today's summary, and a lone success still shows no toast (test)
-- [ ] The new copy follows the Writing Guide; the copy sweep ran on it
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A test that imports one bad world file fails today (only the count), then passes with the file name and the cause: `names a lone malformed file and its cause`, red before the build, and a real worker read in the preview
+- [x] Several skipped files show the count, and View Details lists each file and cause (test): `keeps the count for several skipped files`, and the Error Details text in the preview
+- [x] A storage failure on one world names the file, and its raw message is only in View Details (test): `names the file when storage is full`; a real `DOMException` thrown from `storeWorld` in the preview; reinstating the raw line turned three tests red
+- [x] A clean import of several files keeps today's summary, and a lone success still shows no toast (test): `keeps the summary for a clean batch`, `shows no toast for a lone success`
+- [x] The new copy follows the Writing Guide; the copy sweep ran on it: 0 notices on `importFiles.ts` and the fragment, plus a hand read
+- [x] A changelog fragment under Minor / Fixed / 👤: `docs-internal/changelog.d/docs-sweep-bugs-28.md`
+
+## Landed
+
+**Not verified**
+
+- A real full disk. The quota failure was a real `DOMException` thrown from `storeWorld` in the preview, not IndexedDB running out of space.
+
+**For you**
+
+- Read the toast when importing a bad `.json` from **Import World**: `.scratch/docs-sweep-bugs-28/frames/world-import-toasts.jpg`.
+- A world import where nothing was imported now raises a red error toast. A partial import stays a yellow warning. Say if you want both yellow.
+- A long file name breaks mid-word inside the toast (same frame). Say if you want it shortened instead.
