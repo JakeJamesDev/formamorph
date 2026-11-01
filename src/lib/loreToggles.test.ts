@@ -11,6 +11,15 @@ describe('namedEntries (Q9)', () => {
     ];
     expect([...namedEntries(entries).keys()]).toEqual(['Old King']);
   });
+
+  it('treats a space-only name as unnamed and keeps the exact key of a name with spaces and text', () => {
+    const entries = [
+      { name: '   ', enabled: true, id: 'a' },
+      { name: ' \t\n', enabled: true, id: 'b' },
+      { name: ' Old King ', enabled: true, id: 'c' },
+    ];
+    expect([...namedEntries(entries).keys()]).toEqual([' Old King ']);
+  });
 });
 
 const book = (id: string, over: Partial<Dictionary> = {}): Dictionary =>

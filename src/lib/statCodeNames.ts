@@ -49,5 +49,5 @@ export function statsByCodeName<T>(stats: readonly T[], codeNameOf: (stat: T) =>
   return new Map([...stats.filter((stat) => !isOn(stat)), ...stats.filter(isOn)].map((stat) => [codeNameOf(stat), stat]));
 }
 
-/** Whether `entities` keys an entity by this code name: only a named one gets a key. */
-export const hasEntityKey = (name: string): boolean => name !== '';
+/** Whether `entities` keys an entity by this code name: only a named one gets a key. A name of only whitespace is blank. */
+export const hasEntityKey = (name: string): boolean => name.trim() !== '';
