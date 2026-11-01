@@ -44,6 +44,20 @@ export const isGroupId = (org: LibraryTabOrganization, id: string): boolean => i
 export const groupOf = (org: LibraryTabOrganization, itemId: string): LibraryGroup | undefined =>
   Object.values(org.groups).find((group) => group.members.includes(itemId));
 
+/** True when another folder already carries the name, compared trimmed and case-insensitive. */
+export const isGroupNameTaken = (groups: LibraryGroup[], name: string, exceptId?: string): boolean => {
+  const wanted = name.trim().toLowerCase();
+  return groups.some((group) => group.id !== exceptId && group.name.trim().toLowerCase() === wanted);
+};
+
+/** The first free name in the series New Group, New Group 2, New Group 3. */
+const nextFreeGroupName = (org: LibraryTabOrganization): string => {
+  for (let n = 1; ; n += 1) {
+    const candidate = n === 1 ? NEW_GROUP_NAME : `${NEW_GROUP_NAME} ${n}`;
+    if (!isGroupNameTaken(Object.values(org.groups), candidate)) return candidate;
+  }
+};
+
 /** The size a tile renders at; anything never resized is medium. */
 export const tileSize = (org: LibraryTabOrganization, id: string): LibraryTileSize =>
   org.sizes[id] ?? 'medium';
@@ -70,7 +84,8 @@ const detach = (
 /**
  * Put one tile into a new folder of its own, standing where the tile stood.
  *
- * The context menu's New Group action starts a folder this way.
+ * The context menu's New Group action starts a folder this way, with the name the player typed. Without
+ * a name the folder takes the first free name in the New Group series.
  *
  * @param groupId - The id to mint the folder under; the caller owns id generation
  */
@@ -80,9 +95,7 @@ export function createGroupFromItem(
 ): LibraryTabOrganization {
   if (isGroupId(org, itemId)) return org;
   const trimmedName = name?.trim();
-  if (name !== undefined && (!trimmedName || Object.values(org.groups).some(
-    (group) => group.name.trim().toLowerCase() === trimmedName.toLowerCase(),
-  ))) return org;
+  if (name !== undefined && (!trimmedName || isGroupNameTaken(Object.values(org.groups), trimmedName))) return org;
 
   const groups = detach(org.groups, itemId);
   const slot = org.order.indexOf(itemId);
@@ -93,7 +106,7 @@ export function createGroupFromItem(
     order: slot === -1 ? [...org.order, groupId] : spliced(org.order, slot, 1, groupId),
     groups: {
       ...groups,
-      [groupId]: { id: groupId, name: trimmedName ?? NEW_GROUP_NAME, members: [itemId], settings: {} },
+      [groupId]: { id: groupId, name: trimmedName ?? nextFreeGroupName(org), members: [itemId], settings: {} },
     },
     sizes: size ? { ...org.sizes, [groupId]: size } : org.sizes,
     // The folder inherits the tile's cell, so the board looks the same the moment the folder appears.
@@ -172,7 +185,10 @@ export function disbandGroup(org: LibraryTabOrganization, groupId: string): Libr
   };
 }
 
-/** Rename a folder. A blank name is ignored, so an emptied field leaves the folder named as it was. */
+/**
+ * Rename a folder. A blank name or a name another folder holds is ignored, so the folder keeps the
+ * name it had.
+ */
 export function renameGroup(
   org: LibraryTabOrganization,
   groupId: string,
@@ -180,7 +196,7 @@ export function renameGroup(
 ): LibraryTabOrganization {
   const group = org.groups[groupId];
   const trimmed = name.trim();
-  if (!group || !trimmed) return org;
+  if (!group || !trimmed || isGroupNameTaken(Object.values(org.groups), trimmed, groupId)) return org;
 
   return { ...org, groups: { ...org.groups, [groupId]: { ...group, name: trimmed } } };
 }

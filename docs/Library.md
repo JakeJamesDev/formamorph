@@ -69,7 +69,7 @@ To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-impo
 
 The Group takes the tile's place, at the same size, and holds the tile.
 
-In the grid view, you can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles join a new Group named *New Group*.
+In the grid view, you can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles join a new Group named *New Group*. If a Group already has that name, the new Group is named *New Group 2*, then *New Group 3*, and so on.
 
 ## How to Add a Tile to a Group
 <!-- keywords: folder, put in, move into, organize, sort, collection, drop onto, file away, assign, include in, place inside -->
@@ -115,6 +115,8 @@ A **Small** tile hides its name. Point to it to see the name. **Tile Size** show
 1. Select the Group to open it.
 2. Select its name at the top, and type a new one.
 3. Press **Enter** to keep the name, or **Escape** to cancel.
+
+Each Group needs its own name. If another Group has the name you type, the Group keeps its old name.
 
 ## How to Delete a Group
 <!-- keywords: folder, remove, ungroup, get rid of, disband, dissolve, erase, break apart, trash, lose contents -->

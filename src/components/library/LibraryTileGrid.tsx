@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   filteredPlacements,
+  isGroupNameTaken,
   readGesture,
   resolvePlacements,
   rowMajor,
@@ -188,12 +189,13 @@ const rowsFor = (
 );
 
 /** The header of the folder view: back out and rename in place. Taking a tile out is a menu item. */
-function FolderHeader({ name, settings, onBack, onRename }: {
+function FolderHeader({ name, settings, onBack, onRename, isNameTaken }: {
   name: string;
   settings?: React.ReactNode;
   onBack: () => void;
   /** Absent in a filtered view, which shows the name without an editor. */
   onRename?: (name: string) => void;
+  isNameTaken: (name: string) => boolean;
 }) {
   const [draft, setDraft] = useState(name);
   useEffect(() => setDraft(name), [name]);
@@ -209,8 +211,8 @@ function FolderHeader({ name, settings, onBack, onRename }: {
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
           onRename(draft);
-          // A blank name is refused, so the field goes back to the name the folder kept.
-          setDraft((current) => current.trim() || name);
+          // A blank or taken name is refused, so the field goes back to the name the folder kept.
+          setDraft((current) => (current.trim() && !isNameTaken(current) ? current : name));
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
@@ -1001,6 +1003,7 @@ export function LibraryTileGrid<T>({
             settings={groupSettings?.(openGroup.id)}
             onBack={closeGroup}
             onRename={locked ? undefined : (name) => tiles.rename(openGroup.id, name)}
+            isNameTaken={(name) => isGroupNameTaken(Object.values(tiles.organization.groups), name, openGroup.id)}
           />
         </div>
       )}

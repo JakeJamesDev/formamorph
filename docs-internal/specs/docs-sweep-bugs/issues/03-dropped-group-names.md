@@ -1,6 +1,6 @@
 # 03: Unique Names for Dropped Groups
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,9 +15,17 @@ Spec: Q10, Implementation Decisions "Group names". Evidence: docs-sweep ticket 0
 
 ## Acceptance criteria
 
-- [ ] A test that makes two Groups by drop fails today (two Groups named New Group), then passes with New Group and New Group 2
-- [ ] Rename to a taken name is refused, compared trimmed and case-insensitive (pure test)
-- [ ] The Group picker uses the shared check and still shows its duplicate-name error (existing test green)
-- [ ] The Library page says what a drop names its Group; the docs tests are green
-- [ ] The library-drag-parity spec gets a one-line note under its R10 that a tile drop makes a Group
-- [ ] A changelog fragment under Minor / Fixed / 👤
+- [x] A test that makes two Groups by drop fails today (two Groups named New Group), then passes with New Group and New Group 2 (`operations.test.ts` "names each dropped folder…": red before the fix, green after)
+- [x] Rename to a taken name is refused, compared trimmed and case-insensitive (pure test) (`renameGroup` it.each and `isGroupNameTaken` tests)
+- [x] The Group picker uses the shared check and still shows its duplicate-name error (existing test green) (`LibraryGroupFlow.test.tsx` green)
+- [x] The Library page says what a drop names its Group; the docs tests are green (`docs/Library.md`; `src/lib/docs` tests green)
+- [x] The library-drag-parity spec gets a one-line note under its R10 that a tile drop makes a Group
+- [x] A changelog fragment under Minor / Fixed / 👤
+
+## Landed
+
+**Not verified**
+- None. The Group header's refused-rename revert has a component test (`LibraryTileGrid.filter.test.tsx`), proved red by removing the check.
+
+**For you**
+- Rename a Group to another Group's name in the open Group view (Library, any tab). The field should snap back to the old name with no message. Say if you want an error line there too.
