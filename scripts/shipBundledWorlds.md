@@ -26,6 +26,18 @@ The encode runs in Node, through the app's own libwebp (`wasm-webp`) and a fixed
 
 `npm run fingerprints` records each world's shipped form next to its source form, so the publish check knows both. A world carries a shipped form as it stood at `cd6fe508c` (the last commit before this step), at every later commit that changed it, and in the working tree. A test fails when the list misses a shipped fingerprint: run `npm run fingerprints` after any world edit.
 
+## Launch hashes
+
+The Main Menu checks each bundled world against its stored copy on every open. To avoid loading 34 MB (307 MB in dev) for that check, `bundledWorldHashes.mjs` serves each world's hash as its own small module, `<world>.json?raw&world-hash`.
+
+| Build | The hash covers |
+|---|---|
+| Production | Shipped text |
+| `FORMAMORPH_LOSSLESS_WORLDS=1`, dev server | Source file |
+| Tests | Image-stripped text |
+
+The hash must always match the text the same build's `?raw` import serves. A mismatch reseeds every unedited default on each launch. `src/lib/bundledWorldText.test.ts` checks the pair.
+
 ## Cache
 
 Shipped copies are cached in `node_modules/.cache/formamorph-shipped-worlds/`. The key covers the source text, the code that decides the shipped bytes, and the codec packages' versions. Delete the folder to force a fresh encode.

@@ -15,7 +15,7 @@ import {
 import { contentHash } from '@/lib/contentHash';
 import { announceWorldDeleted, announceWorldSaved } from '@/lib/worldChangeSignal';
 import {
-  forgetDeletedDefaultWorld, readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type DefaultWorldSeed,
+  forgetDeletedDefaultWorld, readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type BundledWorlds, type DefaultWorldSeed,
 } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
@@ -518,11 +518,11 @@ class WorldStorageService {
    *  the player has edited it (`dirty`), since that diverges from the bundled default (git-dirty model), or if
    *  they deleted it — absent alone can't be trusted to mean "never seeded", so a deleted default carries a
    *  tombstone and stays gone even when the bundled copy changes.
-   *  `readBundled` is `readBundledWorld`, passed in so this module never bundles the worlds.
+   *  `bundled` is `bundledWorlds`, passed in so this module never bundles the worlds.
    *  Returns the ids that failed to load plus the display names auto-updated in place. */
   async loadDefaultWorlds(
     defaultWorlds: DefaultWorldSeed[],
-    readBundled: (id: string) => Promise<string>,
+    bundled: BundledWorlds,
   ): Promise<DefaultWorldSyncResult> {
     await this.ensureInitialized();
     const deleted = readDeletedDefaultWorlds();
@@ -546,9 +546,6 @@ class WorldStorageService {
       defaultWorlds.map(async world => {
         try {
           const existing = byId.get(world.id);
-          // Hash the raw text, then parse it — one read, and no re-serializing a multi-MB parsed world.
-          const raw = await readBundled(world.id);
-          const hash = contentHash(raw);
           // A copy seeded before hashing existed has no hash to compare; reseed once to adopt the current
           // bundle (its content may genuinely differ), then it converges like any other.
           const backfill = existing !== undefined && existing.sourceHash === undefined;
@@ -557,9 +554,12 @@ class WorldStorageService {
             // Replace only an unedited copy whose content differs from the bundle. An edited world (`dirty`)
             // is always left alone (git-dirty model). Comparing the *content* — not a version — is what makes
             // this converge: after a reseed the hashes match, so it can't re-fire on every launch.
-            if (existing.dirty || existing.sourceHash === hash) return;
+            if (existing.dirty || existing.sourceHash === await bundled.hashOf(world.id)) return;
           }
 
+          // Hash the raw text, then parse it — one read, and no re-serializing a multi-MB parsed world.
+          const raw = await bundled.read(world.id);
+          const hash = contentHash(raw);
           // storeWorld keeps sticky local fields (createdAt, sourceId) and a false `dirty` on this update.
           const data = seedWorldData(JSON.parse(raw), world);
           const fullWorld = {

@@ -28,6 +28,9 @@ describe('shipBundledWorlds', () => {
       const shipped = await shippedWorldText(readFileSync(rampage, 'utf8'));
       expect(shipped).not.toBe(readFileSync(rampage, 'utf8'));
       expect(await load(plugin, `${rampage}?raw`)).toBe(`export default ${JSON.stringify(shipped)}`);
+      const { shippedText } = plugin.api as { shippedText: (file: string) => Promise<string> };
+      expect(shippedText(rampage)).toBe(shippedText(rampage));
+      expect(await shippedText(rampage)).toBe(shipped);
     } finally {
       await end(plugin);
     }

@@ -93,7 +93,7 @@ import WorldStorageService from '@/services/WorldStorageService';
 import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
-import { readBundledWorld } from '@/lib/bundledWorldText';
+import { bundledWorlds } from '@/lib/bundledWorldText';
 import { PresetNameDialog } from './PresetNameDialog';
 import { workflowOwnModels } from '@/lib/imageGen/comfyui';
 import { DEFAULT_IMAGE_FILE_NAME } from '@/lib/imageGen/fileName';
@@ -347,7 +347,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const restoreDefaultWorlds = async () => {
     clearDeletedDefaultWorlds();
     try {
-      const { failed, errors } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, readBundledWorld);
+      const { failed, errors } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, bundledWorlds);
       if (failed.length) {
         toastError(
           new AggregateError(errors, 'Default worlds failed to restore'),

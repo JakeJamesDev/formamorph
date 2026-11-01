@@ -7,10 +7,17 @@
 import type { World } from '@/types';
 import { migrateWorld } from '@/lib/version';
 
-/** A built-in world to seed on first run; `readBundledWorld` reads its JSON by `id`. */
+/** A built-in world to seed on first run; `bundledWorlds` reads its JSON by `id`. */
 export interface DefaultWorldSeed {
   id: string;
   defaultName: string;
+}
+
+/** The bundled worlds' text and hashes, by world id. */
+export interface BundledWorlds {
+  /** The `contentHash` of what `read` returns, without loading the world. */
+  hashOf(id: string): Promise<string>;
+  read(id: string): Promise<string>;
 }
 
 /** The bundled defaults. Shared so the seeder, the delete path, and the UI all agree on what "default" means. */

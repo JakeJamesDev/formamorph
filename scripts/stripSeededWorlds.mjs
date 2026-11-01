@@ -7,6 +7,9 @@ const WORLD = /[\\/]defaultworlds[\\/][^\\/?]+\.json(\?raw)?$/
 const AS_TEXT = { suffix: '?raw&stripped', render: (text) => `export default ${JSON.stringify(text)}` }
 const AS_JSON = { suffix: '?raw&stripped-json', render: (text) => `export default JSON.parse(${JSON.stringify(text)})` }
 
+/** A bundled world's text with every image stripped, as a test's seeder reads it. */
+export const strippedWorldText = (source) => JSON.stringify(stripValue(JSON.parse(source)))
+
 /** @returns {import('vite').Plugin} */
 export function stripSeededWorlds() {
   return {

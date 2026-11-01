@@ -15,7 +15,7 @@ import { promisifyRequest } from '@/lib/idb';
 import {
   WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, putWorldRecords, worldMetaOf, type WorldMetaRecord,
 } from './worldLibrary';
-import { readBundledWorld } from '@/lib/bundledWorldText';
+import { bundledWorlds } from '@/lib/bundledWorldText';
 
 /** Open the library database the way a version 1 build did. */
 function openVersion1(): Promise<IDBDatabase> {
@@ -237,7 +237,7 @@ describe('every write keeps metadata in step', () => {
   });
 
   it('default seeding', async () => {
-    const { failed } = await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
+    const { failed } = await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], bundledWorlds);
 
     expect(failed).toEqual([]);
     await expectMetaInSync();
@@ -345,7 +345,7 @@ describe('a library with unreadable rows', () => {
     await seedLibrary([edited], state === 'missing' ? ['rampage'] : []);
     const restore = state === 'unreadable' ? unreadable(WORLD_META_STORE, ['rampage']) : () => {};
 
-    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
+    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], bundledWorlds);
 
     restore();
     expect(await readStore<StoredWorldRecord>(WORLD_STORE)).toEqual([edited]);

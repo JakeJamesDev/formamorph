@@ -8,6 +8,7 @@ import { createRequire } from 'module'
 import { releasedMinorChangelog } from './src/lib/docs/changelogSlice'
 import { shipBundledWorlds } from './scripts/shipBundledWorlds.mjs'
 import { stripSeededWorlds } from './scripts/stripSeededWorlds.mjs'
+import { bundledWorldHashes } from './scripts/bundledWorldHashes.mjs'
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
 // The ONNX runtime's dist folder, which its package exports do not expose (src/lib/embeddingWorker.ts).
@@ -99,8 +100,10 @@ const cacheTypesCjs = {
   },
 }
 
+const shippedWorlds = shipBundledWorlds(__dirname)
+
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shipBundledWorlds(__dirname), stripSeededWorlds()],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText)],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(__dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
@@ -181,6 +184,8 @@ export default defineConfig({
       'src/lib/docs/changelogSlice.ts',
       'scripts/shipBundledWorlds.mjs',
       'scripts/stripSeededWorlds.mjs',
+      'scripts/bundledWorldHashes.mjs',
+      'src/lib/contentHash.ts',
       'scripts/stripWorldImages.mjs',
       'tsconfig*.json',
       '.env*',
