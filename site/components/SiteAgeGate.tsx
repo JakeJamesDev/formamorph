@@ -158,6 +158,7 @@ export function SiteAgeGate({ children }: { children: ReactNode }) {
       // landing page rather than returning the reader to a link they have already said no to. The purge
       // finishes first: leaving would cancel a chunk still loading.
       onDecline={() => { void purgeCommunityCaches().finally(() => leaveTo('/')); }}
+      declineNote="If you decline, you'll go back to the home page and be asked again next time."
       busy={saving}
       error={writeError}
       acceptLabel={writeError ? 'Retry' : 'Accept'}

@@ -396,6 +396,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
           open={gateOpen}
           onAccept={() => { void handleAccept(); }}
           onDecline={handleDecline}
+          declineNote="If you decline, you'll be signed out and asked again next time. Your library and your worlds stay as they are."
           busy={saving}
           error={state === 'failed' ? readError : writeError}
           acceptLabel={state === 'failed' || writeError ? 'Retry' : 'Accept'}
