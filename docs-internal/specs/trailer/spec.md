@@ -99,6 +99,9 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q64 | Stack captures are picked by what looks best on the card, not by world. The Brinewell entity's image (Q42) is a candidate for the profile card. The inventory card is new: the game's Inventory tab (`gameViewer`, tab `inventory`, `fixture=items`) or the editor's Items tab, whichever reads better at the card's crop. The ticket session shows both on a contact sheet and picks. |
 | Q65 | Inventory caption, proposed by the spec session, user may change: "Give them items to carry, wear and use." |
 | Q66 | Ticket 15 intent. The stack takes the tall cut to about 66 s. Accepted: Q16 makes the tall length the storyboard's, not a bar, and cutting approved shots to stay under 60 s is the worse trade. Storyboard §4 states the measured total in place of the "under 60 s" sentence. The wide cut stays under 90 s. |
+| Q67 | The four play shots become two two-card stacks under the stack rules (Q61, Q62): the turn card (W05) with the stats clip (W06) landing on it, then the entity card (W07) with the chat shot (W08) landing on it, with a section join between the stacks. The tall cut gets the same two column stacks in place of T05 and T06; the old pairing of stats with the entity card was mismatched. |
+| Q68 | The Blueprint card (W12) joins the build stack as its fourth card: map, profile, travel, traits, inventory. Inventory stays last. The traits title card (W12a, T10a) is cut. |
+| Q69 | A title card "Join the community." sits before the world grid (W14, T11) in both cuts. |
 
 ### Facts the design rests on
 
@@ -165,3 +168,4 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 13 | Fifth review fixes | 12 | Contest hold and dense-card rule (Q48), goo wordmark on the end card (Q49), varied community authors (Q50). |
 | 14 | Sixth review fixes | 13 | Typed panel timing (Q54), goo moves to the opening and dissolves into the letters (Q55), three copy changes (Q56 to Q58). |
 | 15 | Build stack | 14 | The authoring section as a stack of four cards under the hold and subject rules (Q61, Q62), the map with its Map Background (Q63), a new inventory capture and caption (Q64, Q65). |
+| 16 | Seventh review fixes | 15 | Two play stacks, turn with stats and entity with chat (Q67), traits inside the build stack (Q68), a community title card (Q69). |
