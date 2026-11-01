@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,10 +12,14 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function extract(markdown, args = []) {
   const dir = mkdtempSync(path.join(tmpdir(), 'changelog-'));
   const file = path.join(dir, 'Changelog.md');
-  writeFileSync(file, markdown);
-  return execFileSync('node', [path.join(ROOT, 'scripts', 'extractReleaseNotes.mjs'), '--file', file, ...args], {
-    encoding: 'utf8',
-  });
+  try {
+    writeFileSync(file, markdown);
+    return execFileSync('node', [path.join(ROOT, 'scripts', 'extractReleaseNotes.mjs'), '--file', file, ...args], {
+      encoding: 'utf8',
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 const section = (body) => `## 🚧 In Progress\n\n### Minor Changes\n\n#### ➕ Added\n\n${body}\n\n---\n`;
