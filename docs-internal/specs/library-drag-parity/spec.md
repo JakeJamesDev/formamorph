@@ -27,6 +27,7 @@ The old grid was stock dnd-kit: `closestCenter` collision, `rectSortingStrategy`
 - **R8 — Persistent.** The committed order per tab survives reload.
 - **R9 — Same activation.** Mouse drags start after a small movement threshold; touch drags start after a long press, so a tap still selects and a swipe still scrolls.
 - **R10 — Never a group.** (New, but the old grid trivially satisfied it.) No drag gesture creates a folder, adds to a folder, or shows any group affordance.
+  - Note: a tile drop now makes a Group, named with the first free name in the New Group series (docs-sweep-bugs, Q10).
 
 ## User Stories
 

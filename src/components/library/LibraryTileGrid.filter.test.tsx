@@ -64,6 +64,19 @@ describe('the Personas filter', () => {
     expect(screen.queryByRole('textbox', { name: 'Group name' })).toBeNull();
   });
 
+  it('puts a refused rename back to the name the folder kept', async () => {
+    const user = userEvent.setup();
+    render(<Grid personas={false} />);
+    await user.click(screen.getAllByRole('button').find((b) => b.textContent?.includes('Mixed Folder'))!);
+    const field = screen.getByRole('textbox', { name: 'Group name' });
+    await user.clear(field);
+    await user.type(field, ' plain folder {Enter}');
+    expect(field).toHaveValue('Mixed Folder');
+    expect(loadTabOrganization('entities').groups.gA.name).toBe('Mixed Folder');
+    await user.type(field, ' Renamed{Enter}');
+    expect(field).toHaveValue('Mixed Folder Renamed');
+  });
+
   it('offers the item’s own actions but no size or folder edits', () => {
     render(<Grid personas />);
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Loose Persona' }));

@@ -101,6 +101,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Help text across Formamorph now says what each control does, in plain words.** The rewrite covers Settings, the World Editor, the game screen, Community, Formaquestion and the help topics. Scene Images points at the turn's More menu, Face Fix lists SD2, and confirm buttons name their action.
   - **The update dialog no longer says "You're up to date" while an update downloads.** It names the version, keeps the new-version notes marker, and offers Close instead of Check for updates.
   - **Reset All My Changes in the Memories dialog no longer deletes the memories you wrote.** It clears your edits, deletions and pins only.
+  - **Dragging a tile onto another tile now gives the new Group its own name.** A drop names it *New Group*, then *New Group 2*, and so on. Rename also refuses a name another Group has.
 - **🛠️ Developer tooling**
   - **Scene Presence:**
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.
