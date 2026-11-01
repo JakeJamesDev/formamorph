@@ -93,6 +93,11 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q58 | The AI-model card gets a second line in the wide cut only: "Run it fully local, with no extra software to install." The tall cut keeps "Use any AI model." alone, since the line does not hold on mobile. |
 | Q59 | The end card's wordmark gets an emphasis pop after it enters: F, o, r, m, a each grow then shrink back in turn, one beat each, then "morph" grows and shrinks as one unit on the same beat, slightly larger than the single letters did. Every glyph settles back to its normal size; the pop is emphasis, not a size change. This replaces Q55's "plain entrance" for the end card: plain entrance, then the pop, then the tagline, then the call to action; nothing rises under the pop. |
 | Q60 | The avatar shot (W18) is cut from the wide cut. On review it read as out of place beside the other features. Q10's "3D avatars stay" is reopened on that evidence. The avatar clip capture stays in the list as deferred. |
+| Q61 | The authoring section becomes a stack. After "Build your own world." four cards land in turn, each offset on the one before: the map, the entity profile, the travel dialog, then a new inventory card. Earlier cards dim to depth cards and stay in frame; the newest card carries the caption. Each card holds 2 s or its caption's reading time (Q17, Q25), whichever is longer. In the tall cut the stack is a column. The traits title card and the Blueprint card follow the stack as before (Q43). |
+| Q62 | In a stack the subject check (Q38) applies to the newest card only. A card whose hold has ended becomes a depth card and may be covered. The dense-card hold (Q48) does not apply to a stack while it grows, since the eye follows the newest card. |
+| Q63 | The map card shows the Map Background. C05 captures Veilwood's authored layout with its map image behind the locations, not Auto Arrange All on the plain canvas. The travel-rule labels stay hidden. |
+| Q64 | Stack captures are picked by what looks best on the card, not by world. The Brinewell entity's image (Q42) is a candidate for the profile card. The inventory card is new: the game's Inventory tab (`gameViewer`, tab `inventory`, `fixture=items`) or the editor's Items tab, whichever reads better at the card's crop. The ticket session shows both on a contact sheet and picks. |
+| Q65 | Inventory caption, proposed by the spec session, user may change: "Give them items to carry, wear and use." |
 
 ### Facts the design rests on
 
@@ -158,3 +163,4 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 12 | Fourth review fixes | 11 | Title card opening and loop (Q40), smooth reveal recapture (Q41), chat shot world (Q42), authoring order with two title cards (Q43 to Q45), Morphie caption and animated clip (Q46, Q47). |
 | 13 | Fifth review fixes | 12 | Contest hold and dense-card rule (Q48), goo wordmark on the end card (Q49), varied community authors (Q50). |
 | 14 | Sixth review fixes | 13 | Typed panel timing (Q54), goo moves to the opening and dissolves into the letters (Q55), three copy changes (Q56 to Q58). |
+| 15 | Build stack | 14 | The authoring section as a stack of four cards under the hold and subject rules (Q61, Q62), the map with its Map Background (Q63), a new inventory capture and caption (Q64, Q65). |
