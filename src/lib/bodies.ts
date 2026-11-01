@@ -3,7 +3,7 @@
  * every slot reader takes.
  */
 import { boxLabel, parseAspect, parseBackdrop, parseEntryLayout, type BoxRef } from '@/lib/bodyLayout';
-import { itemsInSlot, occupiedSlots, ruleGaps } from '@/lib/items';
+import { itemsInSlot, occupiedSlots, ruleGaps, ruleKeeps } from '@/lib/items';
 import { usedByText } from '@/lib/usedByText';
 import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, SlotRule, Trait, TraitBodyRow } from '@/types';
 
@@ -252,7 +252,7 @@ export function bodyMisfits(
   for (const { copy, owner, stored } of worn.sort((a, b) => (b.copy.equipped?.order ?? 0) - (a.copy.equipped?.order ?? 0))) {
     const item = itemOf(copy);
     const taken = occupiedSlots(copy, item);
-    const allowed = !item || item.slotRule?.mode === 'all' || !!item.slotRule?.slotIds.includes(stored);
+    const allowed = !item || ruleKeeps(item.slotRule, stored);
     if (allowed && taken.every((slotId) => (used.get(ownerSlotKey(owner, slotId)) ?? 0) <= capacityOf(owner, slotId))) continue;
     out.push(copy);
     for (const slotId of taken) count(owner, slotId, -1);
