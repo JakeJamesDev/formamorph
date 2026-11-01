@@ -58,6 +58,10 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q47 | A smaller box draws above a larger one, in the editor and in play. Equal areas follow entry order, then unit order. Selection doesn't reorder boxes, and only its handles draw above them |
 | Q48 | In play, a filled box with an image takes taps only on its drawn frame. Its margin falls through to the box below |
 | Q49 | The in-game doll caps its height so Carried stays reachable, about 320 px for a Humanoid. Its width follows the aspect, up to the panel's width. This narrows Q11's "scales to the panel's width" |
+| Q50 | (ticket 04) Q46 settles variant B's structure. The approval step covers the two outlines. Frames of variant B in both themes go with that request, for the user to see, never to reopen Q46 |
+| Q51 | (ticket 04) A Body row gets a Duplicate action, named "\<name\> (Copy)" as elsewhere. It copies entries, Backdrop, aspect and boxes (Q32) |
+| Q52 | (ticket 04) A row click selects unit 1. Another click on the same row moves to the next unit and wraps. This also reaches a box hidden behind another |
+| Q53 | (ticket 04) Picking Humanoid sets the aspect to 0.5 and Quadruped to 1.6. Plain keeps the current aspect. Boxes keep their fractions in all three (Q16) |
 
 ### Slot Rule
 
@@ -77,6 +81,12 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q43 | An Equipped placement of an Either of item with 2+ slots gets a slot select. It defaults to the first free slot |
 | Q44 | Emberwatch moves to Main Hand + Off Hand, and its Slot Size 2 item becomes All of |
 | Q45 | The Bodies Q55 "can't fit" mark follows the validator: Either of fits when any slot exists; All of fits only when all exist |
+| Q54 | (ticket 01) The validator keeps refusing an equip on an equipped copy. Moving hands is unequip, then equip, and both item scripts fire (Q28) |
+| Q55 | (ticket 01) A copy whose stored slot leaves its item's rule, or whose rule goes away, comes off through the Body settle. A load settle follows Bodies Q42: effects reverse, nothing fires, no log line. A changed All of order only changes which slot reads first |
+| Q56 | (ticket 01) The item's slot control is reorderable rows plus an Add Slot select, the Body entries' pattern. No rows = not equippable. The mode select shows only at 2+ slots, and a new rule stores `either` |
+| Q57 | (ticket 01) Ticket 01 moves the placement warning onto the rule. Ticket 03 adds only the select and the Placement field |
+| Q58 | (ticket 01) Emberwatch: Hands becomes Main Hand (same id) plus a new Off Hand, capacity 1 each on Humanoid. All of Main + Off: Spiral-Cut Staff. Either of Main, Off: swords, daggers, walking staves. Either of Off, Main: Hooded Lantern, shields, Grimoire, Spyglass |
+| Q59 | (ticket 01) An unnamed Either of equip with every slot full swaps in the first listed slot the Body holds. A named slot on an All of item is accepted if listed. The panel offers a choice only for 2+ allowed slots the Body holds, and an All of item shows Equip only when the Body has every slot. A list row shows an All of item in each slot row, and the entity list joins the slot names. Bodies Q44 retires with Slot Size |
 
 ## User Stories
 
