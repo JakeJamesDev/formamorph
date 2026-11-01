@@ -303,6 +303,7 @@ describe('TestBench lens bar', () => {
     rerender(<TestBench {...props} tab="opening" />);
     expect(screen.getByRole('tab', { name: 'Opening' })).toHaveAttribute('aria-selected', 'true');
     expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    rerender(<TestBench {...props} tab="aiContext" />);
     expect(locationSelector()).toHaveTextContent('The Long Market');
   });
 
@@ -320,6 +321,34 @@ describe('TestBench lens bar', () => {
     rerender(<TestBench {...props} tab="issues" />);
     expect(screen.queryByRole('combobox', { name: 'Testing as' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Testing at' })).toBeNull();
+  });
+
+  it('shows only Testing as on Opening, which starts at its own Starting Location', () => {
+    const props = benchProps(groupFindings(runRules(lensWorld)), {
+      tab: 'opening',
+      lens: {
+        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
+        pcOptions: lensPcOptions(lensWorld),
+        locationOptions: lensLocationOptions(lensWorld),
+      },
+    });
+    render(<TestBench {...props} />);
+    expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    expect(screen.queryByRole('combobox', { name: 'Testing at' })).toBeNull();
+  });
+
+  it.each(['triggers', 'aiContext'] as const)('keeps Testing at on %s, which reads the location', (tab) => {
+    const props = benchProps(groupFindings(runRules(lensWorld)), {
+      tab,
+      lens: {
+        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
+        pcOptions: lensPcOptions(lensWorld),
+        locationOptions: lensLocationOptions(lensWorld),
+      },
+    });
+    render(<TestBench {...props} />);
+    expect(pcSelector()).toBeInTheDocument();
+    expect(locationSelector()).toHaveTextContent('The Long Market');
   });
 
   /** The bench as `pinned` would show it, with the PC pinning through `placeholderId`. */
