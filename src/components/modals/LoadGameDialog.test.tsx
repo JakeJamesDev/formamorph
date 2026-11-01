@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { SaveRecord } from '@/types';
 import { toastTexts, openLatestDetails } from '@/test/toastText';
 
-const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn(), warn: vi.fn() }));
+const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn(), warn: vi.fn(), warning: vi.fn() }));
 vi.mock('react-toastify', () => ({ toast, ToastContainer: () => null }));
 
 const db = vi.hoisted(() => ({
@@ -44,6 +44,31 @@ const expectToast = (headline: string, cause: string) => {
   expect(toastTexts(toast.error)).toEqual([`${headline}View Details →`]);
   expect(openLatestDetails(toast.error)?.details).toContain(cause);
 };
+
+describe('importing saves', () => {
+  const importSave = async (...files: File[]) => {
+    await renderDialog();
+    fireEvent.change(document.getElementById('save-upload')!, { target: { files } });
+  };
+
+  it('names a file that is not JSON, and keeps the parser text in View Details', async () => {
+    await importSave(new File(['{"currentState":'], 'cut.json', { type: 'application/json' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    expect(toastTexts(toast.error)).toEqual(["Couldn't import cut.json.This isn't a valid save file.View Details →"]);
+    expect(openLatestDetails(toast.error)?.details).toMatch(/JSON/);
+    expect(db.putSaveRecord).not.toHaveBeenCalled();
+  });
+
+  it('names the file when storage is full', async () => {
+    db.putSaveRecord.mockRejectedValue(Object.assign(new Error('Encountered full disk'), { name: 'QuotaExceededError' }));
+    await importSave(new File([JSON.stringify(save)], 'harbor.json', { type: 'application/json' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    expect(toastTexts(toast.error)).toEqual(["Couldn't import harbor.json.The storage is full.View Details →"]);
+    expect(openLatestDetails(toast.error)?.details).toContain('Encountered full disk');
+  });
+});
 
 describe('save failures', () => {
   it('toasts a failed load and ends the busy state', async () => {

@@ -7,6 +7,7 @@ import type {
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
 import { migrateEntityScriptText } from './scriptTextMigration';
+import { WrittenImportError } from './writtenImportError';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, conditionWithOwnerKey, globalRowTarget, migrateCarriedPlaceholders, migrateEntityStatFields, migrateEntityStatScripts } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import type { WorldAssociation } from './compatibleWorlds';
@@ -158,13 +159,13 @@ export const adoptCardVrm = (entity: Entity, fields: CardVrmFields): Promise<Ent
  * the gallery holds only the carried extras. Rejects world/save/dictionary payloads with a targeted message.
  */
 export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
-  if (!raw || typeof raw !== 'object') throw new Error('Not a valid character card.');
+  if (!raw || typeof raw !== 'object') throw new WrittenImportError('This file is not an entity card.');
   const obj = raw as Record<string, unknown>;
   const kind = obj.formamorphKind;
-  if (kind === WORLD_FILE_KIND) throw new Error("That's a world file — import it from the Worlds tab.");
-  if (kind === SAVE_FILE_KIND) throw new Error("That's a save file, not a character.");
-  if (kind === DICTIONARY_FILE_KIND) throw new Error("That's a dictionary, not a character.");
-  if (kind !== ENTITY_FILE_KIND) throw new Error('This file is not a character card.');
+  if (kind === WORLD_FILE_KIND) throw new WrittenImportError("That's a world file. Import it from the Worlds tab.");
+  if (kind === SAVE_FILE_KIND) throw new WrittenImportError("That's a save file, not an entity.");
+  if (kind === DICTIONARY_FILE_KIND) throw new WrittenImportError("That's a dictionary, not an entity.");
+  if (kind !== ENTITY_FILE_KIND) throw new WrittenImportError('This file is not an entity card.');
   const aliases = Array.isArray(obj.aliases)
     ? (obj.aliases as unknown[]).filter((a): a is string => typeof a === 'string' && !!a.trim())
     : [];
@@ -441,12 +442,12 @@ export async function exportEntityCard(
 export async function importEntityCard(file: File): Promise<Entity> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const json = readEntityCard(bytes);
-  if (!json) throw new Error("This image isn't a Formamorph character card.");
+  if (!json) throw new WrittenImportError("This image isn't a Formamorph entity card.");
   let raw: unknown;
   try {
     raw = JSON.parse(json);
   } catch {
-    throw new Error('This character card is corrupted.');
+    throw new WrittenImportError('This entity card is corrupted.');
   }
   return adoptCardVrm(parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp')), cardVrmFields(raw));
 }
@@ -462,7 +463,7 @@ export async function importCharacterFile(
 ): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks; libraryDetails?: LibraryDetails; vrm?: CardVrmFields }> {
   if (file.type === 'application/json' || /\.json$/i.test(file.name)) {
     const tavern = readTavernJson(await file.text());
-    if (!tavern) throw new Error("This JSON isn't a SillyTavern character card.");
+    if (!tavern) throw new WrittenImportError("This JSON isn't a SillyTavern character card.");
     return { ...tavern, links: {} };
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -473,7 +474,7 @@ export async function importCharacterFile(
     try {
       raw = JSON.parse(cardJson);
     } catch {
-      throw new Error('This character card is corrupted.');
+      throw new WrittenImportError('This entity card is corrupted.');
     }
     const parsed = parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp'));
     const read = { book: null, links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) };
@@ -490,5 +491,5 @@ export async function importCharacterFile(
     return { ...tavern, links: {} };
   }
 
-  throw new Error("This image isn't a Formamorph character card or a SillyTavern character.");
+  throw new WrittenImportError("This image isn't a Formamorph entity card or a SillyTavern character card.");
 }
