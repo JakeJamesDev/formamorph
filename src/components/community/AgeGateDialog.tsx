@@ -15,6 +15,8 @@ interface AgeGateDialogProps {
   open: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  /** What Decline does on this surface, shown above the buttons. */
+  declineNote: string;
   busy?: boolean;
   error?: string | null;
   acceptLabel?: string;
@@ -33,6 +35,7 @@ export function AgeGateDialog({
   open,
   onAccept,
   onDecline,
+  declineNote,
   busy = false,
   error = null,
   acceptLabel = 'Accept',
@@ -64,10 +67,7 @@ export function AgeGateDialog({
               adult content where you live.
             </p>
 
-            <Hint>
-              If you decline, you&apos;ll be signed out and asked again next time. Your library and your
-              worlds stay as they are.
-            </Hint>
+            <Hint>{declineNote}</Hint>
 
             {error && <FieldError role="alert">{error}</FieldError>}
           </div>
