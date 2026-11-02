@@ -25,7 +25,9 @@ The panel shows **Sign In**, **Review Policy** or **Confirm Age** for each step 
 
 The first time a device sees your support, Formamorph selects **Formamorph AI** for you. It does this once on each device. After that, your choice stays.
 
-To see your allowance, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your support, the percent used, about how many turns are left, and when it resets, in your local time. The numbers update after each turn.
+While you play, the ring beside **Send** shows your allowance. See [How to Check Your Formamorph AI Allowance](How-to-Play#how-to-check-your-formamorph-ai-allowance).
+
+To see your allowance in settings, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your support, the percent used, about how many turns are left, and when it resets, in your local time. The numbers update after each turn.
 
 - Each turn on any device counts against one shared allowance.
 - The allowance resets every week. The panel shows the day and time in your local time.

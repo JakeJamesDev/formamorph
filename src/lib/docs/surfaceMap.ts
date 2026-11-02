@@ -38,7 +38,7 @@ export const SURFACE_EXCLUSIONS: Partial<Record<SurfaceId, SurfaceExclusionReaso
       ...tabsOf('adminPanelModeration')],
     'staff',
   ),
-  ...excludeAll(['designSystem', 'scriptPrompt', ...tabsOf('scriptPrompt'), ...tabsOf('gameViewerAttach'), ...tabsOf('worldEditorHistory')], 'dev'),
+  ...excludeAll(['designSystem', 'scriptPrompt', ...tabsOf('scriptPrompt'), ...tabsOf('gameViewerAttach'), ...tabsOf('gameViewerAllowance'), ...tabsOf('worldEditorHistory')], 'dev'),
   ...excludeAll(DEV_PANE_MODALS, 'dev'),
 };
 

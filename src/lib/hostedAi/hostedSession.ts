@@ -13,6 +13,8 @@ export interface HostedSnapshot {
   presetState: HostedPresetState;
   /** The served model's capability record; unknown with no model read yet. */
   capability: ReasoningCapability;
+  /** Counts the finished reads of the hosted state, which a usage event never does. */
+  readCount: number;
 }
 
 interface HostedSessionOptions {
@@ -38,6 +40,7 @@ export class HostedSession {
   /** A refusal's state, which holds until the next successful read. */
   private refused: HostedPresetState | null = null;
   private reading: Promise<void> | null = null;
+  private readCount = 0;
   private snapshot: HostedSnapshot;
   /** Capability records by served model id, so a model the server switches to reads its own. */
   private readonly capabilities = new Map<string, ReasoningCapability>();
@@ -106,7 +109,7 @@ export class HostedSession {
       capability = hostedReasoningCapability(model.capabilities);
       this.capabilities.set(model.id, capability);
     }
-    return { hosted: this.hosted, presetState, capability: capability ?? hostedReasoningCapability(undefined) };
+    return { hosted: this.hosted, presetState, capability: capability ?? hostedReasoningCapability(undefined), readCount: this.readCount };
   }
 
   private changed() {
@@ -152,6 +155,7 @@ export class HostedSession {
     } catch {
       this.stale = true;
     }
+    this.readCount += 1;
     this.changed();
   }
 

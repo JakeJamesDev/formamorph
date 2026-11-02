@@ -118,7 +118,9 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
 
 **Success isn't guaranteed.** The narrator decides how your attempt goes, and your stats shape it.
 
-Press **Enter** to send your action. **Shift+Enter** starts a new line.`,
+Press **Enter** to send your action. **Shift+Enter** starts a new line.
+
+On Formamorph AI, a ring beside **Send** shows how much of this week's allowance you've used. Select it to see what's left and where your use went.`,
       },
       {
         label: 'Choices',

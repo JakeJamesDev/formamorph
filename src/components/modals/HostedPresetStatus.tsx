@@ -7,6 +7,7 @@ import { requestClientUpdate } from '@/components/modals/UpdateRequiredDialog';
 import { useAgeGate } from '@/contexts/AgeGateContext';
 import { usePrivacyPolicy } from '@/contexts/PrivacyPolicyContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { DEV_HOSTED_SAMPLES, type DevHostedSample } from '@/lib/hostedAi/devHostedSamples';
 import { hostedStateCopy, hostedUsageCopy, HOSTED_USAGE_HELP, type HostedAction } from '@/lib/hostedAi/hostedCopy';
 import type { HostedState } from '@/lib/hostedAi/hostedState';
 import type { HostedPresetState } from '@/lib/hostedAi/refusals';
@@ -14,25 +15,14 @@ import { openExternal } from '@/lib/openExternal';
 import { requestSignIn } from '@/lib/signInStore';
 import { flairTier } from '@/lib/supporterFlair';
 import { useTierName } from '@/lib/tierNames';
+import { cn } from '@/lib/utils';
 
-/** The dev route's canned usage, so `fixture=fai-<state>` shows the allowance lines without a server. */
-const DEV_SAMPLE: Partial<Record<HostedPresetState, Pick<HostedState, 'tier' | 'percentUsed' | 'turnsLeft' | 'resetAt' | 'breakdown' | 'breakdownThreshold'>>> = {
-  ready: {
-    tier: 'supporter_plus', percentUsed: 32, turnsLeft: 41, resetAt: '2026-11-09T00:00:00.000Z', breakdownThreshold: 10,
-    breakdown: { narration: 48.3, thinking: 11.6, director: 3.1, choices: 8.4, statUpdates: 12.2, timePassed: 1.5, inventory: 4.9, summary: 6.7, help: 3.0, other: 1.8 },
-  },
-  warned: {
-    tier: 'supporter_plus', percentUsed: 78, turnsLeft: 9, resetAt: '2026-11-09T00:00:00.000Z', breakdownThreshold: 10,
-    breakdown: { narration: 52.0, thinking: 14.0, choices: 9.0, statUpdates: 16.5, inventory: 3.5, summary: 5.0 },
-  },
-  exhausted: {
-    tier: 'supporter_plus', percentUsed: 100, turnsLeft: 0, resetAt: '2026-11-09T00:00:00.000Z', breakdownThreshold: 10,
-    breakdown: { narration: 60.0, thinking: 20.0, choices: 20.0 },
-  },
-};
-
-/** Formamorph AI's state in place of the connection fields: its allowance, its reason and its actions. `state` overrides the live one. */
-export function HostedPresetStatus({ state }: { state?: HostedPresetState }) {
+/** Formamorph AI's state: its allowance, its reason and its actions. `state` overrides the live one, with `sample` as its usage. */
+export function HostedPresetStatus({ state, sample: givenSample, className }: {
+  state?: HostedPresetState;
+  sample?: DevHostedSample;
+  className?: string;
+}) {
   const { hostedAi, refreshHostedState, switchBackFromHostedAi } = useSettings();
   const { requireAttestation } = useAgeGate();
   const { checkNow } = usePrivacyPolicy();
@@ -43,7 +33,7 @@ export function HostedPresetStatus({ state }: { state?: HostedPresetState }) {
   useEffect(() => {
     if (!state) void refreshHostedState();
   }, [state, refreshHostedState]);
-  const sample = import.meta.env.DEV && state ? DEV_SAMPLE[state] : undefined;
+  const sample = import.meta.env.DEV && state ? givenSample ?? DEV_HOSTED_SAMPLES[state] : undefined;
   const hosted = sample ? ({ ...hostedAi.hosted, ...sample } as HostedState) : hostedAi.hosted;
   const copy = hostedStateCopy(shown, hosted?.resetAt);
   const knownTier = flairTier(hosted?.tier ? { tier: hosted.tier } : null);
@@ -61,7 +51,7 @@ export function HostedPresetStatus({ state }: { state?: HostedPresetState }) {
   };
 
   return (
-    <div className="flex flex-col items-start gap-3 py-4" data-hosted-state={shown}>
+    <div className={cn('flex flex-col items-start gap-3 py-4', className)} data-hosted-state={shown}>
       {usage && (
         <div className="flex flex-col gap-1" data-hosted-usage>
           <Meta>{[usage.tier, usage.used, usage.turnsLeft, usage.resets].filter(Boolean).join(' · ')}</Meta>

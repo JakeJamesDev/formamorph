@@ -1067,6 +1067,38 @@ The live reference draws the World Editor's registry as the rail beside sample p
 - **Collapse** and **Expand** are labels in Title Case.
 - **Unverified:** the reference's tab bodies, description, and option labels have terminology review only; vocabulary and grammar evidence is not recorded.
 
+## Pattern: Allowance Ring
+
+**Approved by the user on 2026-11-02.** A small ring between Help and Send fills as the week's Formamorph AI allowance is used. Selecting it opens a popover with the usage lines and the breakdown, or the state's reason and actions.
+
+**Density:** Compact. A 40px outline icon button holding a 24px ring. Help and the ring share the plain outline. Help's icon and Send's icon are 20px in this row.
+
+**Breakdown bars:** Approved by the user on 2026-11-02. Each group in `HostedBreakdown` has a 4px primary bar over a muted track, as wide as its percent. Nested prompt rows have no bar.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The ring and its popover | `AllowanceRing` in [`AllowanceRing.tsx`](../src/components/game/AllowanceRing.tsx), with `AllowanceRingGlyph` in [`AllowanceRingGlyph.tsx`](../src/components/game/AllowanceRingGlyph.tsx) |
+| The figure, its hold and its color | [`allowanceFigure.ts`](../src/lib/hostedAi/allowanceFigure.ts) |
+| Popover content | `HostedPresetStatus` in [`HostedPresetStatus.tsx`](../src/components/modals/HostedPresetStatus.tsx) |
+| Breakdown rows and bars | `HostedBreakdown` in [`HostedBreakdown.tsx`](../src/components/modals/HostedBreakdown.tsx) |
+| Isolated reference | [`AllowanceRingReference.tsx`](../src/components/design-system/AllowanceRingReference.tsx) |
+
+### Responsive behavior
+
+The ring keeps its size at every width. The popover opens above the input, aligned to the ring's end, and scrolls when the height runs out.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Below the first threshold | Primary arc over a muted track. |
+| From a lower threshold | Warning arc. |
+| From the highest threshold, and at 100% | Destructive arc. |
+| No usage figure (paused, locked, app-derived) | The track alone. The accessible name holds no percent. |
+| During a turn | The figure holds, and moves when the turn ends. |
+
 ## Pattern: Surface App Bar
 
 **Purpose:** Put a surface's identity, its everyday tools and its whole-surface actions in one row above everything they act on.

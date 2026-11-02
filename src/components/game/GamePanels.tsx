@@ -77,6 +77,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
+import { AllowanceRing } from './AllowanceRing';
 import { EditTextModal } from '../modals/EditTextModal';
 import { visibleItemImage } from '@/lib/imageVisibility';
 import type { Entity, ItemCopy, PersonaRef, Stat, StatGroup, Trait } from '@/types';
@@ -1175,6 +1176,8 @@ export const MiddlePanel = ({
               <HelpButton
                 topicId="game.howToPlay"
                 className="mr-2"
+                iconClassName="h-5 w-5"
+                skipFirstTimeTint
                 tabExtras={{
                   Choices: (
                     <label className="flex items-center gap-3 rounded-md border p-3 text-label flex-shrink-0 cursor-pointer">
@@ -1196,14 +1199,15 @@ export const MiddlePanel = ({
                   ),
                 }}
               />
+              <AllowanceRing busy={isWaitingForAI} className="mr-2" />
               {isWaitingForAI ? (
                 <Button
                   onClick={abortGeneration}
                   variant="destructive"
                   aria-label="Stop generating"
-                  className="border-dashed border-2 w-12"
+                  className="border-dashed border-2 w-12 px-0"
                 >
-                  <Square className="h-4 w-4" />
+                  <Square className="h-5 w-5" />
                 </Button>
               ) : (
                 // The narration's endpoint: the turn's other passes may route elsewhere, and their buttons name theirs.
@@ -1212,9 +1216,9 @@ export const MiddlePanel = ({
                     onClick={handleSendAction}
                     disabled={disabled}
                     aria-label="Send"
-                    className="border-dashed border-2 w-12"
+                    className="border-dashed border-2 w-12 px-0"
                   >
-                    <Send className="h-4 w-4" />
+                    <Send className="h-5 w-5" />
                   </Button>
                 </Tip>
               )}
