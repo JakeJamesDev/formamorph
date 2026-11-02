@@ -118,7 +118,7 @@ export default defineConfig({
     // redirect keys off the runtime PORTABLE_EXECUTABLE_DIR/APPIMAGE vars, not this — but 'android' also
     // decides the platform the client header reports, because the desktop bridge is absent in the WebView.
     __BUILD_TARGET__: JSON.stringify(process.env.FORMAMORPH_BUILD ?? ''),
-    // Which Avatar files the build holds: 'nsfw' from the release steps that copy them in, unset for the tracked default alone.
+    // Which Avatar files the build holds: 'nsfw' from the release steps that copy them in, 'none' for no file, unset for the tracked default alone.
     __AVATAR_SET__: JSON.stringify(process.env.FORMAMORPH_AVATARS ?? ''),
   },
   resolve: {

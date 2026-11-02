@@ -1,15 +1,14 @@
 import { createStoredString } from './keyedStorage';
 
-/** The bundled default player avatar. Single source of truth for VRMViewer's fallback avatar, the headless
- *  morph-name loader, and the copy seeded into the avatar library, so they all read the same file. */
+/** The path of the bundled default Avatar. `BUNDLED_DEFAULT_URL` says whether this build holds it. */
 export const DEFAULT_AVATAR_URL = './default-avatar.vrm';
 
 /**
  * Library id of the seeded copy of the bundled avatar. Fixed rather than random so saves can name it and
  * `migrateSave` can fold the two older values onto it.
  *
- * It is an ordinary library record once seeded: deletable like any other, protected only by the library's
- * "never fewer than one avatar" rule.
+ * It is an ordinary library record once seeded: deletable like any other, protected only by the "never fewer
+ * than one avatar" rule of a library on a build that holds a bundled file.
  */
 export const DEFAULT_AVATAR_ID = 'default-avatar';
 
@@ -42,9 +41,12 @@ const PRALINE_ENTRY: BundledAvatar = {
 /** The Avatars a build holds by its `FORMAMORPH_AVATARS` value, in seed order. The library lists newest first,
  *  so the default seeds last and heads a new install's list. */
 export const bundledAvatarsFor = (avatarSet: string): readonly BundledAvatar[] =>
-  avatarSet === 'nsfw' ? [PRALINE_ENTRY, DEFAULT_ENTRY] : [DEFAULT_ENTRY];
+  avatarSet === 'none' ? [] : avatarSet === 'nsfw' ? [PRALINE_ENTRY, DEFAULT_ENTRY] : [DEFAULT_ENTRY];
 
 export const BUNDLED_AVATARS = bundledAvatarsFor(__AVATAR_SET__);
+
+/** The build's default Avatar file. A build that holds none has no model to fall back on. */
+export const BUNDLED_DEFAULT_URL = BUNDLED_AVATARS.find(({ id }) => id === DEFAULT_AVATAR_ID)?.url;
 
 /** Pre-library saves picked the bundled avatar by this sentinel; `migrateSave` rewrites it to the id above. */
 export const LEGACY_DEFAULT_AVATAR_SENTINEL = 'default';

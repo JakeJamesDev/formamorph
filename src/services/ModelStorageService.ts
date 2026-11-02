@@ -4,7 +4,7 @@ import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
-import { BUNDLED_AVATARS, DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, type BundledAvatar } from '@/lib/defaultAvatar';
+import { BUNDLED_AVATARS, BUNDLED_DEFAULT_URL, DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, type BundledAvatar } from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { AvatarThumbnailSource, ModelMetadata, VrmData, VrmLicense } from '@/types';
 
@@ -457,9 +457,9 @@ class ModelStorageService {
   }
 
   /**
-   * Remove a model from the library by `id`, unless it's the only one left — the player must always have a
-   * model to be. The rule is "at least one", not "keep the bundled default": once another model exists, the
-   * default is as deletable as anything else.
+   * Remove a model from the library by `id`. On a build that holds a bundled default, the last one stays. The rule
+   * is "at least one", not "keep the bundled default": once another model exists, the default is as deletable as
+   * anything else. A build with no bundled default plays without a model, so its library can reach zero.
    */
   async deleteModel(id: string): Promise<void> {
     await this.ensureMigrated();
@@ -471,7 +471,7 @@ class ModelStorageService {
     // Requests in one transaction run in order, so the count has its result when the get's arrives.
     const count = store.count();
     return writeAfterRead(store.transaction, store.get(id), (record) => {
-      if (count.result <= 1 && record) {
+      if (BUNDLED_DEFAULT_URL && count.result <= 1 && record) {
         throw new Error('Cannot delete the last player avatar: the library must always have at least one.');
       }
       store.delete(id);

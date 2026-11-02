@@ -5,7 +5,7 @@ import type { VrmSource } from '@/lib/vrmResolver';
 
 /**
  * An Avatar source as a URL for `VRMViewer.modelUrl`: a library Avatar's object URL, a store entry's embedded
- * file, or `undefined` for the bundled file. A library Avatar that fails to load falls back to the bundled file.
+ * file, or `undefined` for the build's bundled file, if any. A library Avatar that fails to load falls back the same way.
  * `resolving` holds while a library Avatar loads, so a caller can hold a loader instead of the bundled file.
  * It clears when the load settles, failed or not, so a deleted Avatar never leaves the loader spinning.
  */
@@ -25,7 +25,7 @@ export function useVrmSourceUrl(source: VrmSource | undefined): { url: string | 
     let cancelled = false;
     let url: string | undefined;
     setResolving(true);
-    // A deleted or malformed model rejects; swallow it so the caller falls back to the bundled default.
+    // A deleted or malformed model rejects; swallow it so the caller falls back to the bundled default, if any.
     ModelStorageService.getModelData(libraryId).catch(() => null).then((model) => {
       if (cancelled) return;
       if (model) {

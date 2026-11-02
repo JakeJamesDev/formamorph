@@ -8,7 +8,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { HairTypeDef } from '@/types';
-import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
+import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
 import { resolveMorphAlias } from '@/lib/bodyMorphs';
 import { medianOpaqueRGB, tintFactors, tintSeedRGB } from '@/lib/textureMedian';
 
@@ -135,7 +135,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   skinColor,
   currentHairStyle,
   hairLength,
-  modelUrl = DEFAULT_AVATAR_URL,
+  modelUrl = BUNDLED_DEFAULT_URL,
   animationFiles = ['./idle.fbx', './bashful.fbx', './idle_dwarf.fbx'],
   extraColors,
   onCapabilities,
@@ -452,7 +452,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
 
-    loader.load(
+    // No URL on a build with no bundled default: the scene stays empty.
+    if (modelUrl) loader.load(
       modelUrl,
       (gltf) => {
         if (cancelled) return;
@@ -775,7 +776,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
-      {!ready && (
+      {modelUrl && !ready && (
         <div style={{
           position: 'absolute',
           top: '50%',

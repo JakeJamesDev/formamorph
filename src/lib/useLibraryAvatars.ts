@@ -3,7 +3,7 @@ import ModelStorageService from '@/services/ModelStorageService';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { seededCharacterData } from '@/lib/legacyVrm';
-import { playVrmContext, resolvePlayedVrm } from '@/lib/vrmResolver';
+import { playedVrmPick, playVrmContext, resolvePlayedVrm } from '@/lib/vrmResolver';
 import type { ResolvedPersona } from '@/lib/persona';
 
 /** The ids in the Avatar library, read once per mount. `undefined` until the read settles. */
@@ -33,10 +33,11 @@ export function useSeedAvatarOnSaveLoad(loads: number, ready: boolean, persona: 
   useEffect(() => {
     if (!ready || loads === seededLoads.current) return;
     seededLoads.current = loads;
-    const shows = !!resolvePlayedVrm(playVrmContext({
+    const ctx = playVrmContext({
       persona, entities, overview: worldOverview, characterData, libraryIds: NO_LIBRARY, deviceDefault: undefined,
-    }));
-    const seeded = seededCharacterData(characterData, shows);
+    });
+    // The pick counts on its own: with no bundled file, an empty library list resolves it to no model.
+    const seeded = seededCharacterData(characterData, !!resolvePlayedVrm(ctx) || !!playedVrmPick(ctx));
     if (seeded !== characterData) setCharacterData(seeded);
   }, [loads, ready, persona, entities, worldOverview, characterData, setCharacterData]);
 }

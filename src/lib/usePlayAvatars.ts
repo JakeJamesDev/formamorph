@@ -8,8 +8,9 @@ import { playedEntityId, playVrmContext, resolveEntityVrm, resolvePlayedVrm } fr
 import { hasEntityVisual } from '@/lib/entityVisual';
 import type { Entity } from '@/types';
 
-/** Each entity's Avatar in this playthrough. Whether an entity shows one never waits on the library list: a
- *  library id that is not there resolves to the bundled file. Only which file waits, while `resolving`. */
+/** Each entity's Avatar in this playthrough. A library id that is not there resolves to the bundled file, so on a
+ *  build that holds one, whether an entity shows one never waits on the library list. Only which file waits, while
+ *  `resolving`. */
 export function usePlayAvatars() {
   const { entities, worldOverview } = useGameData();
   const { persona } = useResolvedWorld();

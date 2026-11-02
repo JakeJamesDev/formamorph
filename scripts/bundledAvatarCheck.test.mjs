@@ -16,7 +16,10 @@ async function buildWith(avatarSet, files) {
   const root = mkdtempSync(path.join(tmpdir(), 'avatar-check-'));
   roots.push(root);
   mkdirSync(path.join(root, 'public'));
-  for (const file of files) writeFileSync(path.join(root, 'public', file), 'vrm');
+  for (const file of files) {
+    mkdirSync(path.dirname(path.join(root, 'public', file)), { recursive: true });
+    writeFileSync(path.join(root, 'public', file), 'vrm');
+  }
   writeFileSync(path.join(root, 'index.html'), '<!doctype html><title>t</title>');
   await build({ root, configFile: false, logLevel: 'silent', plugins: [bundledAvatarCheck(avatarSet)] });
   return path.join(root, 'dist');
@@ -45,6 +48,24 @@ describe('the bundled Avatar build check', () => {
 
   it('refuses an unknown avatar set', async () => {
     await expect(buildWith('sfw', ['default-avatar.vrm'])).rejects.toThrow(/FORMAMORPH_AVATARS must be/);
+  });
+
+  it('leaves the tracked default out of a Steam build', async () => {
+    const dist = await buildWith('none', ['default-avatar.vrm', 'icon.png']);
+    expect(existsSync(path.join(dist, 'default-avatar.vrm'))).toBe(false);
+    expect(existsSync(path.join(dist, 'icon.png'))).toBe(true);
+  });
+
+  it('refuses a Steam build that holds Praline', async () => {
+    await expect(buildWith('none', ['default-avatar.vrm', 'praline-avatar.vrm'])).rejects.toThrow(/praline-avatar\.vrm is in the output/);
+  });
+
+  it('refuses a Steam build with a .vrm of any other name', async () => {
+    await expect(buildWith('none', ['someone.VRM'])).rejects.toThrow(/someone\.VRM is in the output/);
+  });
+
+  it('refuses a Steam build with a .vrm in a nested output folder', async () => {
+    await expect(buildWith('none', ['models/deep/default-avatar.vrm'])).rejects.toThrow(/models\/deep\/default-avatar\.vrm is in the output/);
   });
 
   it('runs on the app build', () => {

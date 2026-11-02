@@ -1,7 +1,7 @@
 import type { CharacterData, ChosenVrm, Entity, VrmPick, WorldOverview, WorldVrmStore } from '@/types';
 import type { ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
-import { DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
+import { BUNDLED_DEFAULT_URL, DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
 
 /** A pick that names one Avatar: a world store entry or a library record. */
 type NamedVrm = Exclude<VrmPick, { kind: 'default' }>;
@@ -31,9 +31,12 @@ export interface VrmContext {
   legacyFallback?: VrmPick;
 }
 
-/** With no pick to honor: the seeded copy, which stays the player's across builds, else the build's file. */
-const missingDefault = ({ libraryIds }: Pick<VrmContext, 'libraryIds'>): VrmSource =>
-  libraryIds.has(DEFAULT_AVATAR_ID) ? { kind: 'library', id: DEFAULT_AVATAR_ID } : { kind: 'bundled' };
+/** With no pick to honor: the seeded copy, which stays the player's across builds, else the build's file, if it
+ *  holds one. */
+const missingDefault = ({ libraryIds }: Pick<VrmContext, 'libraryIds'>): VrmSource | undefined => {
+  if (libraryIds.has(DEFAULT_AVATAR_ID)) return { kind: 'library', id: DEFAULT_AVATAR_ID };
+  return BUNDLED_DEFAULT_URL ? { kind: 'bundled' } : undefined;
+};
 
 /** A library id that is gone resolves like a missing default; a store id that is gone resolves to none. */
 export function namedVrmSource(pick: NamedVrm, ctx: Pick<VrmContext, 'store' | 'libraryIds'>): VrmSource | undefined {
@@ -41,16 +44,16 @@ export function namedVrmSource(pick: NamedVrm, ctx: Pick<VrmContext, 'store' | '
   return ctx.libraryIds.has(pick.id) ? { kind: 'library', id: pick.id } : missingDefault(ctx);
 }
 
-function resolvePick(pick: VrmPick | undefined, ctx: VrmContext, userDefault: () => VrmSource): VrmSource | undefined {
+function resolvePick(pick: VrmPick | undefined, ctx: VrmContext, userDefault: () => VrmSource | undefined): VrmSource | undefined {
   if (!pick) return undefined;
   return pick.kind === 'default' ? userDefault() : namedVrmSource(pick, ctx);
 }
 
-const deviceDefault = (ctx: VrmContext): VrmSource =>
+const deviceDefault = (ctx: VrmContext): VrmSource | undefined =>
   ctx.deviceDefault && ctx.libraryIds.has(ctx.deviceDefault) ? { kind: 'library', id: ctx.deviceDefault } : missingDefault(ctx);
 
 /** User's Default for the played entity: the save's chosen Avatar, else the device default. */
-const playedDefault = (ctx: VrmContext): VrmSource =>
+const playedDefault = (ctx: VrmContext): VrmSource | undefined =>
   (ctx.chosen && resolvePick(ctx.chosen.pick, ctx, () => deviceDefault(ctx))) ?? deviceDefault(ctx);
 
 /** The played entity's id: the persona's, or the Custom Persona's under None. */
