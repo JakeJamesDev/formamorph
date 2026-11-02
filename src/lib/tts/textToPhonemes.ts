@@ -182,7 +182,9 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
         const shouted = word.length > 1 && word === word.toUpperCase();
         // A capital "Will" is a name or a question, so only lowercase "will" reduces.
         const fullWill = /^will$/i.test(word) && (word !== "will" || BEFORE_NOUN_WILL.test(previous));
-        const reduced = strong || shouted || fullWill ? undefined : weak.get(word.toLowerCase());
+        // A weak "you" at the start of a phrase sounds cut off.
+        const fullYou = previous === "" && /^you$/i.test(word);
+        const reduced = strong || shouted || fullWill || fullYou ? undefined : weak.get(word.toLowerCase());
         const listed = accent === "b" && reduced === undefined ? fromBritishList(word.toLowerCase()) ?? britishCapitals(word) : undefined;
         const start = matches[i].index + token.indexOf(word);
         const pick = table.has(word.toLowerCase()) ? undefined : picks.get(start);

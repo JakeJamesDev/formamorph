@@ -61,6 +61,7 @@ British voices keep British pronunciation, through rules applied to this America
 | Q22 | The owner accepted a 24-word sample for the British fantasy bar, at 22 of 24, because 97 clips are too many to rate. The final pass at Ticket 06 stays. |
 | Q23 | Spoken numbers follow the owner's ear: tens and ones run together, -teen words take one main stress, and "ninety" takes a soft t in American. |
 | Q24 | "they" and lowercase "will" join the weak forms. "will" stays strong after a determiner, a possessive, or words such as "free", because there it is the noun. |
+| Q25 | By the owner's ear: "I" never reduces, "you" stays strong at the start of a phrase, and "with" reduces inside one. |
 
 ## Measurements
 

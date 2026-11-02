@@ -137,10 +137,24 @@ describe("regular endings", () => {
 });
 
 describe("function words", () => {
-  it("keeps shouted words strong and the pronoun I weak", async () => {
+  it("keeps you strong at the start of a phrase and weak after a word", async () => {
+    const { say } = setup();
+    expect(await say("You must go")).toBe(`${cmu("you")} ${cmu("must")} ${cmu("go")}`);
+    expect(await say("yes, you must go")).toBe(`${cmu("yes")}, ${cmu("you")} ${cmu("must")} ${cmu("go")}`);
+    expect(await say("as you said it")).toBe(`æz ju ${cmu("said")} ${cmu("it")}`);
+  });
+
+  it("reduces with inside a phrase and keeps it strong at the end", async () => {
+    const { say } = setup();
+    expect(await say("come with you")).toBe(`${cmu("come")} wɪð ${cmu("you")}`);
+    expect(await say("who I came with.")).toBe(`hˈu ${cmu("i")} ${cmu("came")} ${cmu("with")}.`);
+  });
+
+  it("keeps shouted words strong and the pronoun I strong", async () => {
     const { say } = setup();
     expect(await say("IT WAS TO BE")).toBe(`${cmu("it")} ${cmu("was")} ${cmu("to")} ${cmu("be")}`);
-    expect(await say("I went")).toBe(`I ${cmu("went")}`);
+    expect(await say("I went")).toBe(`${cmu("i")} ${cmu("went")}`);
+    expect(await say("because I would go")).toBe(`${cmu("because")} ${cmu("i")} wʊd ${cmu("go")}`);
   });
 
   it("stays strong before a closing quote and weak before an opening one", async () => {
@@ -168,7 +182,7 @@ describe("function words", () => {
     expect(await say("of free will and more")).toBe(`əv ${cmu("free")} ${will} ənd ${cmu("more")}`);
     expect(await say("Will went home")).toBe(`${will} ${cmu("went")} ${cmu("home")}`);
     expect(await say("Will you go")).toBe(`${will} ju ${cmu("go")}`);
-    expect(await say("yes, I will.")).toBe(`${cmu("yes")}, I ${will}.`);
+    expect(await say("yes, I will.")).toBe(`${cmu("yes")}, ${cmu("i")} ${will}.`);
   });
 
   it("stays strong at a phrase end and alone", async () => {

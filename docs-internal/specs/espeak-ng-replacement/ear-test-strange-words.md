@@ -317,4 +317,10 @@ Rated blind by the owner on 20 American sentences, against the old phoneme step.
 
 Both rejected sentences of ours say the homograph correctly, so another word in each is the likely fault. `wˈɪl` and `ðˈA` both carry full stress.
 
-"they" and "will" then took weak forms (Q24). The five changed sentences wait for the owner.
+"they" and "will" then took weak forms (Q24).
+
+## First Words
+
+The owner compared weak and strong first words, blind, on 9 sentences. Weak "I" sounded cut off, and weak "you" was rejected. Strong forms of both passed. "they", "he", "she", "it", and "we" passed either way. In "You should have told me…", the owner named "because I" and "come with you" as the faults. "They lead the way to the keep." was rejected in both forms because the sentence reads ambiguously alone, so no fix applies.
+
+"I" now stays strong, "you" stays strong at a phrase start, and "with" reduces (Q25). Six sentences wait for the owner.
