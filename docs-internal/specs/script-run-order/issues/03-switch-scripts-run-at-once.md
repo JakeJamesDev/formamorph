@@ -19,5 +19,6 @@ Ruling: Q5.
 - [ ] A test proves a chain past the depth cap stops firing and reports as it does today.
 - [ ] A test proves a trait that two scripts switch on and off in one timing fires what each switch fires, in order.
 - [ ] A test proves a re-roll fires the switches again from its clean start, with nothing counted twice.
+- [ ] A test proves the final `gateStats` applies no penalty to a stat a script moved, across a nested switch run (Q29). A nested run's timing starts at its firing, so ticket 02 left this gap.
 - [ ] Each new guard fails when switch runs move back to the end of the batch.
 - [ ] Scripts Reference's Order of Effects and When a Trait Switches sections describe this, and the changelog entry from ticket 02 covers it.

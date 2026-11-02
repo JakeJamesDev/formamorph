@@ -52,6 +52,10 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q23 | (ticket 01) A link override is its own tab row per owner, and its unit runs at that row's place, not at the Blueprint row's |
 | Q24 | (ticket 01) Timings become start, before, output, after, switch in the shared list. The Formaquestion help tool's schema and code-rider prompt read a separate list in the old order, pinned by a byte test |
 | Q25 | (ticket 01) Add Script and Code Insert number that timing's rows in the tab's current order, as a drag does, and give the new script the last number. A new script reads everything above it. A world with no add or drag stores no `order`. This amends Q10, whose two clauses couldn't both hold |
+| Q26 | (ticket 02) Check Scripts walks each timing in the Scripts tab's order, with each script over a fresh snapshot of the earlier writes. It still runs every filled script so it can check them all, but a script that play wouldn't run, such as one on an off trait, adds nothing to the chain. A failed script adds nothing. Test Code and the help code test run one script, so they don't change |
+| Q27 | (ticket 02) During AI Output's `previous` is the value at the reply's start, for every sentence. A switch run or item event begins when it fires, so its `previous` is the value at that firing |
+| Q28 | (ticket 02) Tests that assert one snapshot flip to the chain result, including the two in the entity stats and output test files, and the five ticket 02 reported: a hub's write hidden from the target's box, the capped ask, the switch landing after the run, two stats switching one trait, and a trait script on two owners. Any other failing test still goes to the spec session first |
+| Q29 | (ticket 02) Penalties stay gate-view only. Each step's gate view applies a penalty to a stat not moved since the timing began, computed from the unpenalized value so it never stacks. The final `gateStats` is exact, so an early gate can read a penalty on a stat a later script moves |
 
 ## User Stories
 
