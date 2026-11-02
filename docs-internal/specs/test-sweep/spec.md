@@ -52,6 +52,16 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 | Q25 | The Reference Run step fixes repeat CI failures and sends CI through the logged test runner. |
 | Q26 | Test seams: the Test Ledger, the affected-test listing scored by a replay harness, the test runner and slow-test reporter, and ESLint rule tests. |
 | Q27 | The earlier test-suite-efficiency spec closes as not started. This effort does not carry its findings over or depend on them. |
+| Q28 | The trial runs Vitest 5.0.5 on Vite 8.3.5 with plugin-react 6. A Vite 6.4.5 arm runs only if Vite 8 can't run the suite or build inside the time box. |
+| Q29 | The trial's time box is one working session plus one AFK window. It fixes config and tooling breaks. Tests still failing go on a list as migration cost. |
+| Q30 | Before AFK, the trial runs only the install, a small smoke subset, builds and `--list` reads. All timing and recording runs wait for AFK. Each arm gets three alternating runs. |
+| Q31 | The trial recommends adopt only if a full-suite or affected-gate median improves at least 10% and by more than the run spread. A product bug or a build break blocks adopt. Other failures count as migration cost. This bar sets the recommendation, and the owner decides. |
+| Q32 | The `recordDependencies` comparison uses three recent landings of different kinds, replayed on the current tree. It reports added and dropped test files against the current selection. |
+| Q33 | One module holds the pinned commits, and CI fetches from it. Full clones are rejected for cost. A guard fails if a literal pin returns to CI. New pins elsewhere are caught by a lint rule where one can express it. |
+| Q34 | Rerun records are JSONL, one line per retried test, untracked. Local records sit in the git common directory. CI uploads one artifact per shard. |
+| Q35 | A run with an unhandled error or a crashed worker never reruns. Only Vitest's own timeout messages and the existing `waitFor` marks can trigger a rerun. |
+| Q36 | Repeat offenders that have not failed since the shard change are named with last-seen dates and not fixed. Rerun records watch them from now on. |
+| Q37 | The owner adopted Vitest 5 on Vite 8. The Reference Run measures this toolchain and records one affected gate in a fresh ticket worktree, cold then warm, because the trial did not measure that case. |
 
 ## User Stories
 
@@ -163,4 +173,4 @@ The effort changes no world or save export shape and never changes `APP_VERSION`
 
 - Measured Oct 2026 and Nov 2026, against the tree at those times. The Reference Run replaces all numbers in this spec.
 - The 20% and 71% selection figures come from a regex estimate over commits, not from a run.
-- The Vitest benefit is unverified. Installed is 3.2.6, latest is 5.0.5, and Vitest 5 needs Vite 6.4 or later, where we have 5.4.0.
+- The trial's numbers and the adoption checks are in [vitest-trial.md](vitest-trial.md).
