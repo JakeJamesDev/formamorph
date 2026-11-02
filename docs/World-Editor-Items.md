@@ -200,7 +200,7 @@ The [Scripts Guide](Scripts-Reference#items) lists what an item script can read 
 <!-- keywords: money, currency, currencies, credits, gold, price, worth, wallet, default currency, stat money, no currency -->
 <!-- route: worldEditor.items -->
 
-**Currencies** sits at the top of the **Items** list, below **Equipment Settings**. It lists the money your world uses.
+**Currencies** sits at the top of the **Items** list, below **Equipment Settings**. It lists the money your world uses. Each Currency is a row. Open it to set its name, its type and, for **Items**, its item rows.
 
 | Type | What it does |
 |---|---|
@@ -213,7 +213,7 @@ With **Items**, pick **Add Item** to add a row. Each row is an item and its wort
 - 1️⃣ One item is worth 1. The first row you add takes it. Later rows start at ten times the largest worth.
 - 🔢 Each worth is a whole number, and no two items share one.
 - 🧱 Every row is a Stackable item, and an item backs one Currency at most.
-- ↕️ The arrows move a row. The player always reads items from largest to smallest.
+- ↕️ Drag a row by its grip to move it. The player always reads items from largest to smallest.
 
 An item priced in an Items Currency shows one **Value** field per item. Type 1 in **Gold** and 5 in **Copper** to store 105. The fields tidy up when you leave them, so 15 Copper becomes 1 Silver and 5 Copper. If you change an item's worth, each priced item keeps its total, and its fields change to match.
 

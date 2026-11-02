@@ -470,11 +470,31 @@ describe('Items Currencies', () => {
     expect(itemsOf(ctx)[1]).toEqual({ itemId: 'silver', worth: 25 });
   });
 
-  it('reorders and removes rows', () => {
+  it('reorders rows by keyboard drag inside their Currency, and never moves the Currency', async () => {
+    // jsdom lays nothing out; stack siblings 100px apart so the keyboard sensor can find a neighbor.
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const row = this.closest<HTMLElement>('[data-sortable-row]') ?? this.closest<HTMLElement>('li');
+      const i = row?.parentElement ? [...row.parentElement.children].indexOf(row) : 0;
+      return DOMRect.fromRect({ x: 0, y: i * 100, width: 300, height: 90 });
+    });
+    const rows = [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }];
+    const world = itemWorld(rows);
+    const { ctx } = renderWorldEditorBench({ ...world, currencies: [...world.currencies, { id: 'goats', name: 'Goats', backing: { kind: 'name' } }] }, 'advanced');
+    openCurrencies();
+    const user = userEvent.setup();
+    within(screen.getByTestId('item-rows-crowns')).getAllByRole('button', { name: /reorder/i })[1].focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowUp]');
+    await user.keyboard('[Space]');
+    rect.mockRestore();
+    expect(itemsOf(ctx)).toEqual([{ itemId: 'silver', worth: 10 }, { itemId: 'copper', worth: 1 }]);
+    expect(ctx().currencies.map((c) => c.id)).toEqual(['crowns', 'goats']);
+  });
+
+  it('removes rows, and has no arrow buttons', () => {
     const { ctx } = renderWorldEditorBench(itemWorld([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]), 'advanced');
     openCurrencies();
-    fireEvent.click(screen.getByRole('button', { name: 'Move Silver Up' }));
-    expect(itemsOf(ctx).map((row) => row.itemId)).toEqual(['silver', 'copper']);
+    expect(screen.queryByRole('button', { name: /^Move .* (Up|Down)$/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Silver' }));
     expect(itemsOf(ctx)).toEqual([{ itemId: 'copper', worth: 1 }]);
     fireEvent.click(screen.getByRole('button', { name: 'Remove Copper' }));

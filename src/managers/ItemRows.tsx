@@ -1,6 +1,11 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { X } from 'lucide-react';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
+import { dragStyle, droppedMove } from '@/lib/sortableDrag';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorldInput } from '@/components/editor/WorldField';
@@ -33,6 +38,9 @@ function WorthInput({ worth, onCommit }: { worth: number; onCommit: (worth: numb
   );
 }
 
+// The rows are their own drag boundary, so an item row never leaves its Currency.
+const ROW_LIST_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
+
 /** The Currency Item rows of one Currency: each an item and its worth in the base unit. */
 export default function ItemRows({ currency, rows, items, currencies, label, onChange }: {
   currency: Currency;
@@ -42,49 +50,40 @@ export default function ItemRows({ currency, rows, items, currencies, label, onC
   label: (name: string) => string;
   onChange: (rows: CurrencyItem[]) => void;
 }) {
-  const nameOf = (itemId: string) => items.find((item) => item.id === itemId)?.name;
   const choices = currencyItemChoices(items, currencies);
-  const move = (at: number, to: number) => {
-    const next = [...rows];
-    [next[at], next[to]] = [next[to], next[at]];
-    onChange(next);
+  const sortable = rows.map((row) => ({ ...row, id: row.itemId }));
+  const onDragEnd = (event: DragEndEvent) => {
+    const move = droppedMove(sortable, event);
+    if (move) onChange(arrayMove([...rows], ...move));
   };
 
   return (
-    <div className="w-full space-y-2" data-testid={`item-rows-${currency.id}`}>
+    <div className="grid gap-2" data-testid={`item-rows-${currency.id}`}>
       {lacksBaseItem(rows, items) && <Hint>Add an item worth 1, the smallest one</Hint>}
-      {rows.map((row, at) => {
-        const item = items.find((other) => other.id === row.itemId);
-        return (
-          <div key={row.itemId} className="flex flex-wrap items-center gap-2">
-            <Select value={row.itemId} onValueChange={(itemId) => onChange(rows.map((other, index) => (index === at ? { ...other, itemId } : other)))}>
-              <SelectTrigger className="h-8 w-48" aria-label="Item">
-                <SelectValue placeholder="Select item" />
-              </SelectTrigger>
-              <SelectContent>
-                {currencyItemChoices(items, currencies, row.itemId).map((choice) => (
-                  <SelectItem key={choice.id} value={choice.id}>{label(choice.name)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <WorthInput key={row.worth} worth={row.worth} onCommit={(worth) => {
-              const next = setItemWorth(rows, at, worth);
-              if (next) onChange(next);
-              return !!next;
-            }} />
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Move ${nameOf(row.itemId) ?? 'Item'} Up`} disabled={at === 0} onClick={() => move(at, at - 1)}>
-              <ArrowUp className="h-4 w-4" aria-hidden />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Move ${nameOf(row.itemId) ?? 'Item'} Down`} disabled={at === rows.length - 1} onClick={() => move(at, at + 1)}>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Remove ${nameOf(row.itemId) ?? 'Item'}`} onClick={() => onChange(rows.filter((_, index) => index !== at))}>
-              <X className="h-4 w-4" aria-hidden />
-            </Button>
-            {item && !itemStackable(item) && <Hint>{label(item.name)} isn&apos;t Stackable</Hint>}
-          </div>
-        );
-      })}
+      {rows.length > 0 && (
+        <EditorDndContext modifiers={ROW_LIST_MODIFIERS} onDragEnd={onDragEnd}>
+          <StableSortableContext items={sortable} strategy={verticalListSortingStrategy}>
+            <EditorRowList className="min-w-0" aria-label={`${currency.name || 'Currency'} Items`}>
+              {rows.map((row, at) => (
+                <SortableItemRow
+                  key={row.itemId}
+                  row={row}
+                  item={items.find((other) => other.id === row.itemId)}
+                  choices={currencyItemChoices(items, currencies, row.itemId)}
+                  label={label}
+                  onItem={(itemId) => onChange(rows.map((other, index) => (index === at ? { ...other, itemId } : other)))}
+                  onWorth={(worth) => {
+                    const next = setItemWorth(rows, at, worth);
+                    if (next) onChange(next);
+                    return !!next;
+                  }}
+                  onRemove={() => onChange(rows.filter((_, index) => index !== at))}
+                />
+              ))}
+            </EditorRowList>
+          </StableSortableContext>
+        </EditorDndContext>
+      )}
       <Select value="" onValueChange={(itemId) => onChange(addCurrencyItem(rows, itemId, items))} disabled={choices.length === 0}>
         <SelectTrigger className="h-8 w-48" aria-label="Add Item">
           <SelectValue placeholder={choices.length === 0 ? 'No Stackable items left' : 'Add Item'} />
@@ -94,5 +93,45 @@ export default function ItemRows({ currency, rows, items, currencies, label, onC
         </SelectContent>
       </Select>
     </div>
+  );
+}
+
+/** One item row: a grip, the item, its worth and Remove. */
+function SortableItemRow({ row, item, choices, label, onItem, onWorth, onRemove }: {
+  row: CurrencyItem;
+  item: Item | undefined;
+  choices: readonly Item[];
+  label: (name: string) => string;
+  onItem: (itemId: string) => void;
+  onWorth: (worth: number) => boolean;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, ...drag } = useSortable({ id: row.itemId });
+  const name = item?.name ?? 'Item';
+  return (
+    <EditorRow
+      setNodeRef={setNodeRef}
+      style={dragStyle(drag)}
+      gripProps={{ ...attributes, ...listeners }}
+      selected={false}
+      onSelect={() => undefined}
+      label={(
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={row.itemId} onValueChange={onItem}>
+            <SelectTrigger className="h-8 w-48" aria-label="Item">
+              <SelectValue placeholder="Select item" />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((choice) => (
+                <SelectItem key={choice.id} value={choice.id}>{label(choice.name)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <WorthInput key={row.worth} worth={row.worth} onCommit={onWorth} />
+          {item && !itemStackable(item) && <Hint>{label(item.name)} isn&apos;t Stackable</Hint>}
+        </div>
+      )}
+      actions={[{ icon: <X className="h-4 w-4" />, destructive: true, title: `Remove ${name}`, onClick: onRemove }]}
+    />
   );
 }

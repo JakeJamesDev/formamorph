@@ -10,6 +10,7 @@ import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorldInput } from '@/components/editor/WorldField';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { useCardCollapse } from '@/lib/cardCollapse';
 import { currencyStatGroups, type CurrencyStatGroup } from '@/lib/currency';
 import { currencyUsedBy } from '@/lib/currencyDeletes';
 import { fieldFrame } from '@/lib/historyField';
@@ -29,6 +30,7 @@ const KIND_LABEL: Record<CurrencyBacking['kind'], string> = { stat: 'Stat', item
 const CurrenciesEditor = () => {
   const { currencies, setCurrencies, updateCurrency, removeCurrency, stats, statGroups, entities, placeholders, items } = useGameData();
   const groups = useMemo(() => currencyStatGroups({ stats, statGroups, entities }), [stats, statGroups, entities]);
+  const collapse = useCardCollapse(currencies.map((c) => c.id));
   const [pending, setPending] = useState<{ currency: Currency; text: string } | null>(null);
   // A Currency no item is priced in goes at once; one in use asks first.
   const askRemove = (currency: Currency) => {
@@ -53,10 +55,13 @@ const CurrenciesEditor = () => {
           <EditorDndContext onDragEnd={onDragEnd}>
             <StableSortableContext items={currencies} strategy={verticalListSortingStrategy}>
               <EditorRowList aria-labelledby="world-currencies-label">
-                {currencies.map((currency) => (
+                {currencies.map((currency, index) => (
                   <SortableCurrency
                     key={currency.id}
                     currency={currency}
+                    isDefault={index === 0}
+                    expanded={collapse.isOpen(currency.id)}
+                    onToggle={() => collapse.toggle(currency.id)}
                     currencies={currencies}
                     items={items}
                     groups={groups}
@@ -89,12 +94,15 @@ const CurrenciesEditor = () => {
   );
 };
 
-/** One Currency: a grip, its name, what holds it, and Delete. */
-function SortableCurrency({ currency, currencies, items, groups, label, onChange, onRemove }: {
+/** A Currency's row: its name, its Default mark and type, and its fields below while expanded. */
+function SortableCurrency({ currency, currencies, items, groups, isDefault, expanded, onToggle, label, onChange, onRemove }: {
   currency: Currency;
   currencies: readonly Currency[];
   items: readonly Item[];
   groups: readonly CurrencyStatGroup[];
+  isDefault: boolean;
+  expanded: boolean;
+  onToggle: () => void;
   label: (name: string) => string;
   onChange: (currency: Currency) => void;
   onRemove: () => void;
@@ -102,6 +110,7 @@ function SortableCurrency({ currency, currencies, items, groups, label, onChange
   const { attributes, listeners, setNodeRef, ...drag } = useSortable({ id: currency.id });
   const { backing } = currency;
   const firstStat = groups[0]?.stats[0];
+  const title = label(currency.name) || 'Currency';
   const pickKind = (kind: string) => {
     if (kind === backing.kind) return;
     if (kind === 'name') onChange({ ...currency, backing: { kind: 'name' } });
@@ -109,45 +118,56 @@ function SortableCurrency({ currency, currencies, items, groups, label, onChange
     else if (kind === 'items') onChange({ ...currency, backing: { kind: 'items', items: [] } });
   };
   return (
-    <EditorRow
-      setNodeRef={setNodeRef}
-      style={dragStyle(drag)}
-      gripProps={{ ...attributes, ...listeners }}
-      selected={false}
-      onSelect={() => undefined}
-      label={(
-        <div className="flex flex-wrap items-center gap-2">
-          <WorldInput
-            aria-label="Currency Name"
-            className="h-8 w-40"
-            value={currency.name}
-            onChange={(e) => onChange({ ...currency, name: e.target.value })}
-          />
-          <Select value={backing.kind} onValueChange={pickKind}>
-            <SelectTrigger className="h-8 w-32" aria-label="Currency Type">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="stat" disabled={!firstStat}>{KIND_LABEL.stat}</SelectItem>
-              <SelectItem value="name">{KIND_LABEL.name}</SelectItem>
-              <SelectItem value="items">{KIND_LABEL.items}</SelectItem>
-            </SelectContent>
-          </Select>
-          {backing.kind === 'stat' && (
-            <Select value={backing.statId} onValueChange={(statId) => onChange({ ...currency, backing: { kind: 'stat', statId } })}>
-              <SelectTrigger className="h-8 w-48" aria-label="Currency Stat">
-                <SelectValue placeholder="Select stat" />
+    // The node wraps the row and its fields, so an expanded Currency moves as one piece.
+    <div ref={setNodeRef} style={dragStyle(drag)}>
+      <EditorRow
+        gripProps={{ ...attributes, ...listeners }}
+        selected={false}
+        onSelect={onToggle}
+        selectionLabel={`${expanded ? 'Collapse' : 'Expand'} ${title}`}
+        lead="chevron"
+        collapsed={!expanded}
+        onToggleCollapse={onToggle}
+        attached={expanded}
+        label={title}
+        meta={<span className="block truncate max-sm:max-w-20">{[isDefault ? 'Default' : '', KIND_LABEL[backing.kind]].filter(Boolean).join(' · ')}</span>}
+        actions={[{ icon: <X className="h-4 w-4" />, destructive: true, title: `Delete ${currency.name || 'Currency'}`, onClick: onRemove }]}
+      />
+      {expanded && (
+        <div className="grid gap-3 rounded-b-md border border-t-0 border-border p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <WorldInput
+              aria-label="Currency Name"
+              className="h-8 w-40"
+              value={currency.name}
+              onChange={(e) => onChange({ ...currency, name: e.target.value })}
+            />
+            <Select value={backing.kind} onValueChange={pickKind}>
+              <SelectTrigger className="h-8 w-32" aria-label="Currency Type">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {groups.map((group) => (
-                  <SelectGroup key={group.kind === 'persona' ? group.persona.id : group.kind}>
-                    <SelectLabel>{label(groupHeading(group))}</SelectLabel>
-                    {group.stats.map((stat) => <SelectItem key={stat.id} value={stat.id}>{label(stat.name)}</SelectItem>)}
-                  </SelectGroup>
-                ))}
+                <SelectItem value="stat" disabled={!firstStat}>{KIND_LABEL.stat}</SelectItem>
+                <SelectItem value="name">{KIND_LABEL.name}</SelectItem>
+                <SelectItem value="items">{KIND_LABEL.items}</SelectItem>
               </SelectContent>
             </Select>
-          )}
+            {backing.kind === 'stat' && (
+              <Select value={backing.statId} onValueChange={(statId) => onChange({ ...currency, backing: { kind: 'stat', statId } })}>
+                <SelectTrigger className="h-8 w-48" aria-label="Currency Stat">
+                  <SelectValue placeholder="Select stat" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((group) => (
+                    <SelectGroup key={group.kind === 'persona' ? group.persona.id : group.kind}>
+                      <SelectLabel>{label(groupHeading(group))}</SelectLabel>
+                      {group.stats.map((stat) => <SelectItem key={stat.id} value={stat.id}>{label(stat.name)}</SelectItem>)}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           {backing.kind === 'items' && (
             <ItemRows
               currency={currency}
@@ -160,8 +180,7 @@ function SortableCurrency({ currency, currencies, items, groups, label, onChange
           )}
         </div>
       )}
-      actions={[{ icon: <X className="h-4 w-4" />, destructive: true, title: `Delete ${currency.name || 'Currency'}`, onClick: onRemove }]}
-    />
+    </div>
   );
 }
 
