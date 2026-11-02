@@ -4,19 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { ModelDetailsPanel } from './ModelDetailsPanel';
 import { useAvatarDetailsOpen } from '@/lib/useAvatarDetailsOpen';
 import type { VrmLicense } from '@/types';
+import { PASSING_LICENSE } from '@/test/avatarLicenseFixtures';
 
 // The real viewer needs a WebGL context jsdom doesn't have; this suite is about the license verdict shown
 // beside it, not the 3D preview.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 
-/** A license that clears every Permissive License requirement, matching the bundled avatars. */
-const PERMISSIVE: VrmLicense = {
-  metaVersion: '1',
-  avatarPermission: 'everyone',
-  allowRedistribution: true,
-  modification: 'allowModificationRedistribution',
-  commercialUse: 'corporation',
-};
+const PERMISSIVE: VrmLicense = PASSING_LICENSE;
 
 const KEY = 'fm-avatar-details-open';
 
@@ -46,7 +40,13 @@ describe('ModelDetailsPanel Permissive License verdict', () => {
     expect(reasons).toHaveTextContent('permission for everyone to use it');
     expect(reasons).toHaveTextContent('redistribution allowed');
     expect(reasons).toHaveTextContent('modification and redistribution allowed');
-    expect(reasons).toHaveTextContent('commercial use allowed');
+    expect(reasons).toHaveTextContent('commercial use by companies allowed');
+    expect(reasons).toHaveTextContent('sexual use allowed');
+    expect(reasons).toHaveTextContent('violent use allowed');
+    expect(reasons).toHaveTextContent('political or religious use allowed');
+    expect(reasons).toHaveTextContent('antisocial or hateful use allowed');
+    expect(reasons).toHaveTextContent('no credit required');
+    expect(reasons).toHaveTextContent('the VRM Public License 1.0 as its only license');
   });
 
   it('names every failed requirement for a plain glTF with no VRM metadata', () => {

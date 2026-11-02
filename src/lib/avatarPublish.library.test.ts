@@ -4,6 +4,7 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ModelStorageService from '@/services/ModelStorageService';
 import { makeVrm1 } from '@/test/glbFixture';
+import { PASSING_META } from '@/test/avatarLicenseFixtures';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
 import { buildAvatarPublish } from './avatarPublish';
 
@@ -43,10 +44,7 @@ describe('buildAvatarPublish against the library', () => {
 
   it('publishes the thumbnail the player chose', async () => {
     serve(await vrmFile('Default Avatar'));
-    const permissive = {
-      name: 'Sedge', avatarPermission: 'everyone', allowRedistribution: true,
-      modification: 'allowModificationRedistribution', commercialUsage: 'corporation',
-    };
+    const permissive = { name: 'Sedge', ...PASSING_META };
     const file = new File([await makeVrm1(permissive, true)], 'Sedge.vrm', { type: 'model/vrm' });
     const other = await ModelStorageService.addModel(file);
     vi.mocked(renderVrmThumbnail).mockResolvedValueOnce('data:image/webp;base64,GENERATED');

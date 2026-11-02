@@ -125,6 +125,12 @@ describe('VRM 0.0', () => {
       allowRedistribution: undefined,
       commercialUse: undefined,
       creditRequired: undefined,
+      creditNotation: undefined,
+      otherLicenseUrl: undefined,
+      allowExcessivelySexualUsage: undefined,
+      allowExcessivelyViolentUsage: undefined,
+      allowPoliticalOrReligiousUsage: undefined,
+      allowAntisocialOrHateUsage: undefined,
       avatarPermission: undefined,
       modification: undefined,
     });
@@ -166,6 +172,42 @@ describe('VRM 1.0', () => {
       commercialUse: 'corporation',
       creditRequired: true,
     });
+  });
+
+  it('reads the four expression flags, the credit field and otherLicenseUrl as written', async () => {
+    const { license } = await readVrmMeta(v1({
+      allowExcessivelySexualUsage: true,
+      allowExcessivelyViolentUsage: false,
+      allowPoliticalOrReligiousUsage: true,
+      allowAntisocialOrHateUsage: false,
+      creditNotation: 'unnecessary',
+      otherLicenseUrl: 'https://example.com/terms',
+    }));
+    expect(license).toMatchObject({
+      allowExcessivelySexualUsage: true,
+      allowExcessivelyViolentUsage: false,
+      allowPoliticalOrReligiousUsage: true,
+      allowAntisocialOrHateUsage: false,
+      creditNotation: 'unnecessary',
+      otherLicenseUrl: 'https://example.com/terms',
+    });
+  });
+
+  it('keeps every new key present on a file that omits them, so it reads as current-shape', async () => {
+    const { license } = await readVrmMeta(v1({}));
+    for (const key of ['allowExcessivelySexualUsage', 'creditNotation', 'otherLicenseUrl']) {
+      expect(license).toHaveProperty(key, undefined);
+    }
+  });
+
+  it('treats an empty otherLicenseUrl as absent but keeps null as read', async () => {
+    expect((await readVrmMeta(v1({ otherLicenseUrl: '' }))).license.otherLicenseUrl).toBeUndefined();
+    expect((await readVrmMeta(v1({ otherLicenseUrl: null }))).license.otherLicenseUrl).toBeNull();
+  });
+
+  it('ignores a non-boolean expression flag rather than guessing', async () => {
+    const { license } = await readVrmMeta(v1({ allowExcessivelySexualUsage: 'yes' }));
+    expect(license.allowExcessivelySexualUsage).toBeUndefined();
   });
 
   it('maps creditNotation unnecessary to false', async () => {

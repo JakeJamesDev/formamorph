@@ -1,0 +1,672 @@
+{
+  "passing": {
+    "name": "Vector Model",
+    "authors": [
+      "Vector Author"
+    ],
+    "avatarPermission": "everyone",
+    "allowRedistribution": true,
+    "modification": "allowModificationRedistribution",
+    "commercialUsage": "corporation",
+    "allowExcessivelySexualUsage": true,
+    "allowExcessivelyViolentUsage": true,
+    "allowPoliticalOrReligiousUsage": true,
+    "allowAntisocialOrHateUsage": true,
+    "creditNotation": "unnecessary",
+    "licenseUrl": "https://vrm.dev/licenses/1.0/"
+  },
+  "cases": [
+    {
+      "name": "meets every requirement",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": []
+    },
+    {
+      "name": "empty otherLicenseUrl passes",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/",
+        "otherLicenseUrl": ""
+      },
+      "failed": []
+    },
+    {
+      "name": "avatarPermission fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "onlyAuthor",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "avatarPermission"
+      ]
+    },
+    {
+      "name": "allowRedistribution fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": false,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowRedistribution"
+      ]
+    },
+    {
+      "name": "modification fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModification",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "modification"
+      ]
+    },
+    {
+      "name": "commercialUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "personalNonProfit",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "commercialUsage"
+      ]
+    },
+    {
+      "name": "allowExcessivelySexualUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": false,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowExcessivelySexualUsage"
+      ]
+    },
+    {
+      "name": "allowExcessivelyViolentUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": false,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowExcessivelyViolentUsage"
+      ]
+    },
+    {
+      "name": "allowPoliticalOrReligiousUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": false,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowPoliticalOrReligiousUsage"
+      ]
+    },
+    {
+      "name": "allowAntisocialOrHateUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": false,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowAntisocialOrHateUsage"
+      ]
+    },
+    {
+      "name": "creditNotation fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "required",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "creditNotation"
+      ]
+    },
+    {
+      "name": "licenseUrl fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://example.com/custom-license"
+      },
+      "failed": [
+        "licenseUrl"
+      ]
+    },
+    {
+      "name": "otherLicenseUrl fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/",
+        "otherLicenseUrl": "https://example.com/extra-terms"
+      },
+      "failed": [
+        "otherLicenseUrl"
+      ]
+    },
+    {
+      "name": "commercialUsage personalProfit fails",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "personalProfit",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "commercialUsage"
+      ]
+    },
+    {
+      "name": "licenseUrl without trailing slash fails",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0"
+      },
+      "failed": [
+        "licenseUrl"
+      ]
+    },
+    {
+      "name": "otherLicenseUrl null fails",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/",
+        "otherLicenseUrl": null
+      },
+      "failed": [
+        "otherLicenseUrl"
+      ]
+    },
+    {
+      "name": "missing avatarPermission fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "avatarPermission"
+      ]
+    },
+    {
+      "name": "missing allowRedistribution fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowRedistribution"
+      ]
+    },
+    {
+      "name": "missing modification fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "modification"
+      ]
+    },
+    {
+      "name": "missing commercialUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "commercialUsage"
+      ]
+    },
+    {
+      "name": "missing allowExcessivelySexualUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowExcessivelySexualUsage"
+      ]
+    },
+    {
+      "name": "missing allowExcessivelyViolentUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowExcessivelyViolentUsage"
+      ]
+    },
+    {
+      "name": "missing allowPoliticalOrReligiousUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowPoliticalOrReligiousUsage"
+      ]
+    },
+    {
+      "name": "missing allowAntisocialOrHateUsage fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "creditNotation": "unnecessary",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "allowAntisocialOrHateUsage"
+      ]
+    },
+    {
+      "name": "missing creditNotation fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "creditNotation"
+      ]
+    },
+    {
+      "name": "missing licenseUrl fails alone",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "corporation",
+        "allowExcessivelySexualUsage": true,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "unnecessary"
+      },
+      "failed": [
+        "licenseUrl"
+      ]
+    },
+    {
+      "name": "several failures keep gate order",
+      "kind": "vrm1",
+      "meta": {
+        "name": "Vector Model",
+        "authors": [
+          "Vector Author"
+        ],
+        "avatarPermission": "everyone",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "commercialUsage": "personalProfit",
+        "allowExcessivelySexualUsage": false,
+        "allowExcessivelyViolentUsage": true,
+        "allowPoliticalOrReligiousUsage": true,
+        "allowAntisocialOrHateUsage": true,
+        "creditNotation": "required",
+        "licenseUrl": "https://vrm.dev/licenses/1.0/"
+      },
+      "failed": [
+        "commercialUsage",
+        "allowExcessivelySexualUsage",
+        "creditNotation"
+      ]
+    },
+    {
+      "name": "VRM 0.0 file",
+      "kind": "vrm0",
+      "meta": {
+        "title": "Zero",
+        "author": "A",
+        "licenseName": "CC0",
+        "commercialUssageName": "Allow"
+      },
+      "failed": [
+        "metaVersion",
+        "avatarPermission",
+        "allowRedistribution",
+        "modification",
+        "commercialUsage",
+        "allowExcessivelySexualUsage",
+        "allowExcessivelyViolentUsage",
+        "allowPoliticalOrReligiousUsage",
+        "allowAntisocialOrHateUsage",
+        "creditNotation",
+        "licenseUrl"
+      ]
+    },
+    {
+      "name": "plain glTF",
+      "kind": "plain",
+      "failed": [
+        "metaVersion",
+        "avatarPermission",
+        "allowRedistribution",
+        "modification",
+        "commercialUsage",
+        "allowExcessivelySexualUsage",
+        "allowExcessivelyViolentUsage",
+        "allowPoliticalOrReligiousUsage",
+        "allowAntisocialOrHateUsage",
+        "creditNotation",
+        "licenseUrl"
+      ]
+    }
+  ]
+}

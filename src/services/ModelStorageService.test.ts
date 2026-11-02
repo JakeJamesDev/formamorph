@@ -9,6 +9,7 @@ import { makeVrm1, THUMB_DATA_URL } from '@/test/glbFixture';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
 import type { VrmLicense } from '@/types';
+import { PASSING_LICENSE } from '@/test/avatarLicenseFixtures';
 
 // Wraps the real reader so every existing test still exercises real GLB parsing; only the stale-license test
 // below overrides it once, to avoid re-parsing a Blob that fake-indexeddb's structured clone has stripped
@@ -332,7 +333,8 @@ describe('ensureThumbnail', () => {
   });
 
   it('re-reads a record whose license predates the Permissive License gate fields, and keeps its thumbnail', async () => {
-    const staleLicense = { metaVersion: '1' } as VrmLicense; // no `avatarPermission` key at all — the pre-gate shape
+    // The shape the first gate wrote: it has `avatarPermission` but none of the four expression flags.
+    const staleLicense = { metaVersion: '1', avatarPermission: 'everyone' } as VrmLicense;
     const existingThumbnail = 'data:image/webp;base64,EXISTING';
     await putRaw({
       id: 'stale',
@@ -342,13 +344,7 @@ describe('ensureThumbnail', () => {
       data: { type: 'model/vrm', blob: blob(), size: 9, hash: 'already-hashed', license: staleLicense, thumbnail: existingThumbnail },
     } satisfies StoredModelRecord);
 
-    const freshLicense: VrmLicense = {
-      metaVersion: '1',
-      avatarPermission: 'everyone',
-      allowRedistribution: true,
-      modification: 'allowModificationRedistribution',
-      commercialUse: 'corporation',
-    };
+    const freshLicense: VrmLicense = { ...PASSING_LICENSE, allowExcessivelySexualUsage: false };
     vi.mocked(readVrmMeta).mockResolvedValueOnce({ license: freshLicense });
 
     await expect(ModelStorageService.ensureThumbnail('stale')).resolves.toBe(existingThumbnail);
@@ -357,11 +353,26 @@ describe('ensureThumbnail', () => {
     expect((raw.data as { license: VrmLicense }).license).toEqual(freshLicense);
     expect((raw.data as { hash: string }).hash).toBe('already-hashed'); // an existing hash is not redone
   });
+
+  it('does not re-read a record whose license already carries the expression flags', async () => {
+    const existingThumbnail = 'data:image/webp;base64,EXISTING';
+    await putRaw({
+      id: 'current',
+      name: 'Current',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      lastAccessed: '2025-01-01T00:00:00.000Z',
+      data: { type: 'model/vrm', blob: blob(), size: 9, hash: 'h', fileThumbnail: null, license: PASSING_LICENSE, thumbnail: existingThumbnail },
+    } satisfies StoredModelRecord);
+    vi.mocked(readVrmMeta).mockClear();
+
+    await expect(ModelStorageService.ensureThumbnail('current')).resolves.toBe(existingThumbnail);
+    expect(readVrmMeta).not.toHaveBeenCalled();
+  });
 });
 
 describe('thumbnail source', () => {
   const GENERATED = 'data:image/webp;base64,GENERATED';
-  const FRESH_LICENSE: VrmLicense = { metaVersion: '1', avatarPermission: 'everyone' };
+  const FRESH_LICENSE: VrmLicense = PASSING_LICENSE;
   const addThumbed = async (name = 'Thumbed') =>
     ModelStorageService.addModel(new File([await makeVrm1({ name }, true).arrayBuffer()], `${name}.vrm`, { type: 'model/vrm' }));
   const metaOf = async (id: string) => (await ModelStorageService.getModelMetadata()).find((m) => m.id === id);

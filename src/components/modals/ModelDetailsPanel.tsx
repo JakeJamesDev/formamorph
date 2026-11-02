@@ -23,7 +23,14 @@ const REQUIREMENT_LABELS: Record<AvatarLicenseRequirement, string> = {
   avatarPermission: 'permission for everyone to use it',
   allowRedistribution: 'redistribution allowed',
   modification: 'modification and redistribution allowed',
-  commercialUsage: 'commercial use allowed',
+  commercialUsage: 'commercial use by companies allowed',
+  allowExcessivelySexualUsage: 'sexual use allowed',
+  allowExcessivelyViolentUsage: 'violent use allowed',
+  allowPoliticalOrReligiousUsage: 'political or religious use allowed',
+  allowAntisocialOrHateUsage: 'antisocial or hateful use allowed',
+  creditNotation: 'no credit required',
+  licenseUrl: 'the VRM Public License 1.0 as its only license',
+  otherLicenseUrl: 'no extra license terms',
 };
 
 /**

@@ -16,7 +16,14 @@ const DENIALS: Record<AvatarLicenseRequirement, string> = {
   avatarPermission: 'everyone to use it',
   allowRedistribution: 'redistribution',
   modification: 'modification',
-  commercialUsage: 'commercial use',
+  commercialUsage: 'commercial use by companies',
+  allowExcessivelySexualUsage: 'sexual use',
+  allowExcessivelyViolentUsage: 'violent use',
+  allowPoliticalOrReligiousUsage: 'political or religious use',
+  allowAntisocialOrHateUsage: 'antisocial or hateful use',
+  creditNotation: 'use without credit',
+  licenseUrl: 'use under the VRM Public License 1.0 alone',
+  otherLicenseUrl: 'use without extra license terms',
 };
 
 /** "a, b, or c" — the reading of a list of things none of which is permitted. */
@@ -29,7 +36,7 @@ const orList = (items: string[]): string => (
 /**
  * Why a model cannot be published, in one sentence naming the requirements its file fails.
  *
- * A file with no VRM 1.0 metadata fails all five at once, and reciting them would suggest five separate
+ * A file with no VRM 1.0 metadata fails every requirement at once, and reciting them would suggest many separate
  * problems rather than the one the player can act on: the export is the wrong format.
  *
  * @param failed - The requirements the gate reported, in its own order

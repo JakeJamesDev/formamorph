@@ -139,6 +139,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The tabs now have icons and a sliding highlight.** When the panel is narrow, they fold down to the selected tab's label, then to icons.
   - **Scene Presence:**
     - **The Traits tab shows a stranger's traits under the name you know.** Trait names and descriptions use that name, and strangers who share one get numbers.
+  - **Community Creations:**
+    - **Avatars with added license restrictions can't be published.** A model that limits sexual, violent, political, hateful, credited or commercial use is refused, and the Model Library lists each reason.
   - **Entities set to Moves Between Its Locations now walk between those locations and come along with you into them.** Before, they stayed where the new game placed them.
   - **The Entities tab now highlights the selected entity, and its rows work from the keyboard.** The first click selects any entity you've met, even one with no art, and the next opens its details.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.

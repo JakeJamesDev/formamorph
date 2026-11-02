@@ -55,9 +55,9 @@ const shownThumbnail = (data: VrmData): string | undefined =>
     ? data.generatedThumbnail ?? data.fileThumbnail ?? undefined
     : data.fileThumbnail ?? data.generatedThumbnail;
 
-/** A license predates the Permissive License gate's fields if it lacks the `avatarPermission` key entirely — `readVrmMeta` always sets that key now, even to `undefined` for VRM 0.0. */
+/** A license predates the Permissive License gate's fields if it lacks the `allowExcessivelySexualUsage` key entirely — `readVrmMeta` always sets that key now, even to `undefined` for VRM 0.0. */
 const isLicenseStale = (license: VrmLicense | undefined): boolean =>
-  !license || !('avatarPermission' in license);
+  !license || !('allowExcessivelySexualUsage' in license);
 
 /** Shared by the store's grid listing and the lookups that read raw records. */
 const toMetadata = (record: StoredModelRecord): ModelMetadata => ({

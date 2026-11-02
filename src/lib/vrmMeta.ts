@@ -62,6 +62,11 @@ interface Vrm1MetaRaw {
   creditNotation?: string;
   avatarPermission?: string;
   modification?: string;
+  otherLicenseUrl?: string | null;
+  allowExcessivelySexualUsage?: boolean;
+  allowExcessivelyViolentUsage?: boolean;
+  allowPoliticalOrReligiousUsage?: boolean;
+  allowAntisocialOrHateUsage?: boolean;
 }
 
 interface GltfJson {
@@ -100,6 +105,14 @@ function pickKnown<T extends string>(value: string | undefined, allowed: readonl
 const COMMERCIAL_USES = ['personalNonProfit', 'personalProfit', 'corporation'] as const;
 const AVATAR_PERMISSIONS = ['onlyAuthor', 'explicitlyLicensedPerson', 'everyone'] as const;
 const MODIFICATIONS = ['prohibited', 'allowModification', 'allowModificationRedistribution'] as const;
+const CREDIT_NOTATIONS = ['required', 'unnecessary'] as const;
+
+const pickBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
+
+/** An empty string is the same as no field; any other non-string value stays as read so the gate can refuse it. */
+function pickOtherLicenseUrl(value: string | null | undefined): string | null | undefined {
+  return value === '' ? undefined : value;
+}
 
 function normalizeV0(meta: Vrm0MetaRaw): VrmLicense {
   const commercial = meta.commercialUssageName;
@@ -114,7 +127,13 @@ function normalizeV0(meta: Vrm0MetaRaw): VrmLicense {
     // VRM 0.0 has no credit-notation field; CC_BY implies attribution but saying so would be our inference.
     creditRequired: undefined,
     // VRM 0.0 has no equivalent concept; the keys are still set (to `undefined`) so a license this function
-    // produced reads as current-shape, not as a pre-license-gate record needing a re-read — see `avatarLicenseGate.ts`.
+    // produced reads as current-shape, not as a pre-license-gate record needing a re-read — see `isLicenseStale`.
+    creditNotation: undefined,
+    otherLicenseUrl: undefined,
+    allowExcessivelySexualUsage: undefined,
+    allowExcessivelyViolentUsage: undefined,
+    allowPoliticalOrReligiousUsage: undefined,
+    allowAntisocialOrHateUsage: undefined,
     avatarPermission: undefined,
     modification: undefined,
   };
@@ -131,6 +150,12 @@ function normalizeV1(meta: Vrm1MetaRaw): VrmLicense {
     allowRedistribution: meta.allowRedistribution,
     commercialUse: pickKnown(meta.commercialUsage, COMMERCIAL_USES),
     creditRequired: meta.creditNotation === 'required' ? true : meta.creditNotation === 'unnecessary' ? false : undefined,
+    creditNotation: pickKnown(meta.creditNotation, CREDIT_NOTATIONS),
+    otherLicenseUrl: pickOtherLicenseUrl(meta.otherLicenseUrl),
+    allowExcessivelySexualUsage: pickBoolean(meta.allowExcessivelySexualUsage),
+    allowExcessivelyViolentUsage: pickBoolean(meta.allowExcessivelyViolentUsage),
+    allowPoliticalOrReligiousUsage: pickBoolean(meta.allowPoliticalOrReligiousUsage),
+    allowAntisocialOrHateUsage: pickBoolean(meta.allowAntisocialOrHateUsage),
     avatarPermission: pickKnown(meta.avatarPermission, AVATAR_PERMISSIONS),
     modification: pickKnown(meta.modification, MODIFICATIONS),
   };

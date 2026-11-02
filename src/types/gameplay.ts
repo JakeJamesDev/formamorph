@@ -189,8 +189,17 @@ export interface VrmLicense {
   allowRedistribution?: boolean;
   commercialUse?: 'allow' | 'disallow' | 'personalNonProfit' | 'personalProfit' | 'corporation';
   creditRequired?: boolean;
-  /** VRM 1.0 only, read from `avatarPermission`. Always present (even as `undefined`) once normalized by
-   *  current code, so a record missing the key entirely predates these fields — see `avatarLicenseGate.ts`. */
+  /** VRM 1.0 only, read from `creditNotation`. */
+  creditNotation?: 'required' | 'unnecessary';
+  /** VRM 1.0 only, read from `otherLicenseUrl`. `null` is kept as read: it is not an absent field, and the gate refuses it. */
+  otherLicenseUrl?: string | null;
+  /** VRM 1.0 only: the four expression flags. Always present (even as `undefined`) once normalized by current
+   *  code, so a record missing `allowExcessivelySexualUsage` entirely predates them — see `ModelStorageService`. */
+  allowExcessivelySexualUsage?: boolean;
+  allowExcessivelyViolentUsage?: boolean;
+  allowPoliticalOrReligiousUsage?: boolean;
+  allowAntisocialOrHateUsage?: boolean;
+  /** VRM 1.0 only, read from `avatarPermission`. */
   avatarPermission?: 'onlyAuthor' | 'explicitlyLicensedPerson' | 'everyone';
   /** VRM 1.0 only, read from `modification`. Unset for VRM 0.0, which has no equivalent concept. */
   modification?: 'prohibited' | 'allowModification' | 'allowModificationRedistribution';

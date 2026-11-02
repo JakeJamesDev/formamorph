@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ModelDetailsModal } from './ModelDetailsModal';
 import type { VrmLicense } from '@/types';
+import { PASSING_LICENSE } from '@/test/avatarLicenseFixtures';
 
 // A shell that renders only what this suite checks — the license the modal resolved and handed down — same
 // approach WorldOverviewManager.avatar.test.tsx uses to keep the real 3D viewer out of this suite entirely.
@@ -21,14 +22,8 @@ vi.mock('@/services/ModelStorageService', () => ({
   },
 }));
 
-const STALE_LICENSE = { metaVersion: '1' } as VrmLicense; // no `avatarPermission` key — the pre-gate shape
-const FRESH_LICENSE: VrmLicense = {
-  metaVersion: '1',
-  avatarPermission: 'everyone',
-  allowRedistribution: true,
-  modification: 'allowModificationRedistribution',
-  commercialUse: 'corporation',
-};
+const STALE_LICENSE = { metaVersion: '1' } as VrmLicense; // no `allowExcessivelySexualUsage` key — the pre-gate shape
+const FRESH_LICENSE: VrmLicense = PASSING_LICENSE;
 
 beforeEach(() => {
   vi.clearAllMocks();
