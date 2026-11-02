@@ -46,13 +46,15 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 | Q22 | Our reading of the sample ban on a character creation service: it targets redistributing models made by a tool like VRoid Studio. Body sliders change local render state, and any model output returns the imported file unchanged, so we hold ourselves clean. pixiv could read it differently. Its guidelines title the section "character creation tools" and allow commissions. |
 | Q23 | The user confirmed that all three models read as adults. |
 | Q24 | Generated thumbnails get a white background. Sei gets a recaptured embedded thumbnail. |
+| Q25 | Existing NSFW players don't receive Sei. Q6 stands. |
+| Q26 | Sei and Praline default to hair and eye colors that match each model's source look as closely as the pickers allow. |
+| Q27 | The user reads VRoid Hub's terms from the page and pastes them. An agent reads them before the Sei file lands. |
 
 **Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is.
 
 **Open before the file lands:**
 
-- VRoid Hub's terms for downloaded models.
-- The default hair and eye colors for Sei and Praline.
+- VRoid Hub's terms for downloaded models (Q27).
 
 **Evidence on A:** a fresh AvatarSample_A export matches the tracked default's face and body geometry and every texture except the thumbnail.
 
@@ -227,7 +229,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **UNVERIFIED**
 
-- VRoid Hub's own terms for downloaded models. A browser read on 2026-11-02 was denied or failed, so they are still unread. Read them before the file lands.
+- VRoid Hub's own terms for downloaded models. A browser read on 2026-11-02 was denied or failed, so they are still unread (Q27).
 - How the keys behave in the app. The user tested the file in the app. No agent has driven the sliders there.
 - Whether Hub flags are accurate. They are the uploader's claim.
 - Elaina's provenance, and whether it contains preset or sample content. pixiv's sample terms ban selling a sample's data and using it in character creation.
@@ -240,7 +242,3 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - [VRoid Studio Guidelines](https://vroid.com/en/studio/guidelines)
 - [pixiv terms, VRoid Studio section](https://policies.pixiv.net/en.html#vroidstudio)
 - [VRoid sample model conditions](https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z)
-
-**Follow-up**
-
-- An old `readheadedit.vrm` has author `fierylion`, `personalProfit` commercial use, and `allowRedistribution: false`. The Steam checklist clears a file of that name as a pixiv sample. Whether this copy is what early releases shipped is unchecked.
