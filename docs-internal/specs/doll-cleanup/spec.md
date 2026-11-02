@@ -1,6 +1,7 @@
 # Spec: Doll Cleanup
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-02. Tickets 01–04; last landing 78c97c86f, follow-ups b077463ed, ef266f266 and 685936016. Review: spec text corrected. Gates green on 2026-11-02.
 Spec session: doll-cleanup — spec
 
 ## Problem Statement
@@ -48,7 +49,7 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q12 | Layout C holds at every width, mobile included: the doll and list stay side by side. |
 | Q15 | Replaced after play: the popover repeated the row. Pressing an Equipped row opens the item popup in one press, like Carried rows. The unequip button stays separate. The doll's Slot Box keeps its popover. |
 | Q18 | After play: the default outlines sit centered on the Backdrop. Humanoid moves down 6.5 of 200 and Quadruped 1 of 125. Slot Boxes in bundled worlds and the design system's samples move with them. Stored boxes in an author's unreleased draft do not. |
-| V1 | Prototype verdict: layout C. The doll takes `clamp(120px, 33%, its full width)`. A Body wider than tall always stacks, doll over list, at every width. A square Body takes columns. |
+| V1 | Prototype verdict: layout C. The doll takes `clamp(min(120px, its full width), 33%, its full width)`. A Body wider than tall always stacks, doll over list, at every width. A square Body takes columns. |
 
 ### Backdrop Opacity and effort
 
@@ -65,7 +66,7 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 4. As a player, I want to still click a Slot Box, so that the doll stays usable.
 5. As a player, I want one row per Item Copy with its slot names, so that a two-slot item doesn't appear twice.
 6. As a player, I want a clipped name's full text in a tooltip, so that I can read it on desktop.
-7. As a mobile player, I want to tap a row's name for the same popover as the Slot Box, so that I can read the full name.
+7. As a mobile player, I want to tap a row for the item popup, so that I can read the full name.
 8. As a mobile player, I want the unequip button in the list, so that I don't have to hit a 14px box.
 9. As a player, I want Carried rows to show icons, so that an item looks the same in every list.
 10. As a player, I want an item the AI created to get a sensible icon, so that it doesn't look broken next to authored items.
@@ -83,17 +84,17 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 
 ## Implementation Decisions
 
-- **Icon resolver.** One new deep, pure module decides what an Item Copy shows. Input: the Item (or a runtime item's name), the Item Copy's identity and its slots. Output: an icon id, the Item image, or nothing. Every surface calls it: doll, Equipped rows, Carried rows, the Here card and the editor's Auto preview.
+- **Icon resolver.** One new deep, pure module decides what an Item Copy shows. Input: the Item (or a runtime item's name), the Item Copy's identity and its slots. Output: an icon id, the Item image, or nothing. Every play surface calls it: doll, Equipped rows, Carried rows, the Here card, the entity popup's rows and the item popup's header. The editor's Auto preview calls its derivation.
 - **Resolution order.** Unidentified: derive only. Otherwise a specific icon, then None's image or nothing, then Auto's derivation.
 - **Derivation.** Take the head noun before of, from, with or for, else read from the last word back. Container words skip to the tail, so "Vial of Antidote" reads the contents. Then the slot's name, then the generic icon. This came from the prototype's `iconFromName` and `iconFromSlots`.
 - **Catalog.** A generated module holds each icon's id, group, SVG body and words. Ids are our own, not Game Icons names, so an art swap never touches a world. The prototype's generated data is the starting point, and its lucide column goes.
 - **Containers.** Vial, phial, bottle and flask are container words: the tail reads first, then the container's own icon. The generic icon's words are bag, sack and pouch. Every catalog icon records its author.
-- **Item details.** The popup a row opens keeps the Item image under every Icon choice. Q3 and Q9 cover the doll and rows only.
+- **Item details.** The popup's body keeps the Item image under every Icon choice. Q3 and Q9 cover the doll and rows only. For an unidentified copy the body still follows image rules (Item Use and Identity Q44), so Q11 does not hide it there.
 - **Unknown id.** An id missing from the catalog reads as Auto.
 - **Item shape.** `Item.icon?` holds an icon id or `'none'`. Absent means Auto. No migration: absent already means the right thing. **Export-shape change, additive.**
 - **Backdrop shape.** The Custom Image Backdrop gets `opacity?`, 0 to 1, absent means 1. The Backdrop parser rebuilds the object on load, so it must keep and clamp this field, and replacing the image must keep it too. **Export-shape change, additive.** The save shape does not change.
 - **Visibility.** The Icon field is display only. Scripts and prompts don't see it.
-- **Popover.** The Slot Box popover and the row-name popover show the same content, with the full name unclipped. Row-name press and the row's buttons don't trigger each other.
+- **Popover.** The Slot Box popover shows the row with the full name unclipped. A row press and the row's buttons don't trigger each other.
 - **Panel layout.** The doll takes `fit` sizing as in the prototype. The list is the existing row with the slot names, joined with ", ", as its second line. That replaces the uses line or runtime description in the Equipped list only; both stay in the popover and the popup. Tooltips for clipped names go on Equipped rows only.
 - **Popover name.** The name inside the Slot Box popover wraps and still opens the item popup.
 - **Icon field.** It sits on the Profile tab under Name, in Simple and Advanced, as a Select-style trigger that opens a Popover. Icon names are the first catalog word in Title Case. The Auto preview derives from Name and slots with placeholder labels, so it can differ from a rolled name in play, and it never reads the Unidentified Name. The grid is a new visual pattern, so the user approves frames before it lands, and it then gets a Design System entry.
@@ -107,7 +108,7 @@ A good test calls the module's public interface and checks what the player or au
 
 - **Icon resolver (new seam).** Table tests: Auto, specific and None, each with and without an image. Unidentified with each choice, including a named Unidentified Name. Unknown id. Head noun, container words, slot fallback, generic fallback. A non-English name. An item with no name.
 - **Catalog.** Every word maps to one icon, and every icon has a body and at least one word.
-- **Inventory panel (existing tests).** Filled Slot Boxes show the resolver's result and no long text. One row per Item Copy, with an All of item once. One-click unequip. Row name and Slot Box open the same popover. Carried rows show icons. An unidentified copy shows no authored icon or image.
+- **Inventory panel (existing tests).** Filled Slot Boxes show the resolver's result and no long text. One row per Item Copy, with an All of item once. One-click unequip. A row name opens the item popup, and a Slot Box opens its popover. Carried rows show icons. An unidentified copy shows no authored icon or image.
 - **Body Layout (existing tests).** Opacity survives parse, is clamped and survives an image change. Absent reads as 100%.
 - **Item editor.** Auto shows the derived preview, and picking an icon or None writes the right value. Export and import keep both shapes.
 - **Verification.** DOM reads through the dev route at 375, 1366 and 1920, plus name clip counts and static frames. Both themes for the icons and the Backdrop fade.
