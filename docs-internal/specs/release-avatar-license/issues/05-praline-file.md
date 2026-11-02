@@ -15,7 +15,7 @@ The spec's `tools/build-praline.py` already does the hair, iris and stocking wor
 
 For default colors, use the spec's factor method from ticket 04, which restores the source look without narrowing the pickers.
 
-Keep all generation in the script, so the file rebuilds from its source. Regenerate the client fingerprints in this landing, adding her file to the fingerprint and bundled-avatar lists. Add her to the provenance record that ticket 04 starts.
+Keep all generation in the script, so the file rebuilds from its source. Regenerate the client fingerprints in this landing, adding her file to the fingerprint and bundled-avatar lists. `npm run fingerprints` crashes on old world revisions when the shipped-world cache is cold. If that is still true, add her hash to the list directly as ticket 04 did, and still add her file to the generator's list. Add her to the provenance record that ticket 04 starts.
 
 No build ships her until ticket 07.
 
