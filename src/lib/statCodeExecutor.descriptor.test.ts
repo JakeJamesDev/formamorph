@@ -33,6 +33,7 @@ const aiStatus = (s: PlayerStat) => buildStatContext([s], { values: false, statu
 /** `expr` as the stat's own script reads it, as text. */
 async function readSelf(s: PlayerStat, expr: string, enabled: Record<string, boolean> = {}) {
   const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  log.mockClear();
   const res = await executeStatCode(`console.log(JSON.stringify(${expr}));`, [s], s, { enabled });
   expect(res.error).toBeNull();
   return JSON.parse(String(log.mock.calls[0]?.[0])) as unknown;

@@ -50,7 +50,7 @@ const rowButton = (name: string) => within(treeRow(name)).getByText(name, { exac
 const statNames = (ctx: () => { stats: { name: string }[] }) => ctx().stats.map((s) => s.name);
 
 /** One author action, then the event loop moves on as it does between two presses. */
-const step = (action: () => void) => act(async () => { action(); });
+const step = async (action: () => void) => { await act(async () => { action(); }); await new Promise((r) => setTimeout(r, 5)); };
 /** Lets the event loop move on, so the next write is a new Step and does not fold into the last one. */
 const apart = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
 const removeStat = (name: string) => step(() => {

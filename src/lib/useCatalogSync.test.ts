@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { useCatalogSync } from './useCatalogSync';
 import { acceptAgeGate } from './ageGate';
 import { installId } from './anonymousLikes';
@@ -16,7 +17,7 @@ const cache = vi.hoisted(() => ({
   items: [] as Record<string, unknown>[],
   tag: null as { tag: string; reader: string } | null,
   anonymousLikes: false,
-  replace: null as null | ReturnType<typeof vi.fn>,
+  replace: null as null | Mock<(...args: unknown[]) => void>,
 }));
 vi.mock('@/lib/worldCatalog', () => ({
   getCatalog: async () => cache.items,

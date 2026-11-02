@@ -6,7 +6,7 @@ import autoprefixer from 'autoprefixer'
 import path from 'path'
 import { readFileSync } from 'fs'
 
-const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
+const pkg = JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8'))
 const appProxy = process.env.E2E_APP_PROXY_URL
 
 const landingPreview = {
@@ -22,7 +22,7 @@ const landingPreview = {
         : pathname === '/privacy' || pathname === '/privacy/' ? 'hosting/privacy/index.html' : null
       if (!file) return next()
       try {
-        const html = await server.transformIndexHtml(request.url, readFileSync(path.resolve(__dirname, file), 'utf-8'))
+        const html = await server.transformIndexHtml(request.url, readFileSync(path.resolve(import.meta.dirname, file), 'utf-8'))
         response.setHeader('Content-Type', 'text/html; charset=utf-8')
         response.end(html)
       } catch (error) { next(error) }
@@ -41,9 +41,9 @@ const landingPreview = {
 export default defineConfig(({ command }) => ({
   plugins: [react(), landingPreview],
   root: 'site',
-  cacheDir: path.resolve(__dirname, 'node_modules/.vite-site'),
+  cacheDir: path.resolve(import.meta.dirname, 'node_modules/.vite-site'),
   // The shared API endpoints live beside both Vite configs, not under the site entry's root.
-  envDir: path.resolve(__dirname),
+  envDir: path.resolve(import.meta.dirname),
   // Absolute for the build, because a nested route such as /u/<username> is served the same index.html
   // and a relative asset URL would resolve one level too deep. The dev server keeps '/' so the routes
   // are reachable at the paths they ship at.
@@ -51,14 +51,14 @@ export default defineConfig(({ command }) => ({
   // The tracked hosting directory holds the site's public files. The deploy lays it over the build, so
   // the build must copy none of it — but the dev server serves it, so /site/icon.png and the landing
   // page itself resolve locally exactly as they do live.
-  publicDir: command === 'build' ? false : path.resolve(__dirname, 'hosting'),
+  publicDir: command === 'build' ? false : path.resolve(import.meta.dirname, 'hosting'),
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_TARGET__: JSON.stringify(process.env.FORMAMORPH_BUILD ?? ''),
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   // Its own Tailwind config, scanned over the site entry rather than all of `src/`. The root
@@ -66,7 +66,7 @@ export default defineConfig(({ command }) => ({
   css: {
     postcss: {
       plugins: [
-        tailwindcss({ config: path.resolve(__dirname, 'tailwind.site.config.js') }),
+        tailwindcss({ config: path.resolve(import.meta.dirname, 'tailwind.site.config.js') }),
         autoprefixer(),
       ],
     },
@@ -78,10 +78,10 @@ export default defineConfig(({ command }) => ({
     ...(appProxy ? { proxy: { '/play': { target: appProxy, changeOrigin: true, ws: true } } } : {}),
   },
   build: {
-    outDir: path.resolve(__dirname, 'site-dist'),
+    outDir: path.resolve(import.meta.dirname, 'site-dist'),
     emptyOutDir: true,
-    rollupOptions: {
-      input: { main: path.resolve(__dirname, 'site/index.html'), header: path.resolve(__dirname, 'site/header.tsx') },
+    rolldownOptions: {
+      input: { main: path.resolve(import.meta.dirname, 'site/index.html'), header: path.resolve(import.meta.dirname, 'site/header.tsx') },
       output: { entryFileNames: chunk => chunk.name === 'header' ? 'header.js' : 'assets/[name]-[hash].js' },
     },
   },

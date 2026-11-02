@@ -25,7 +25,7 @@ npm install
 npm run dev      # Vite dev server on :5173
 ```
 
-Requires **Node ≥ 20.19** (see `.nvmrc`).
+Requires **Node 24 (or 22.12+)** (see `.nvmrc`).
 
 ## ✅ Before you open a PR — "Done = green"
 
