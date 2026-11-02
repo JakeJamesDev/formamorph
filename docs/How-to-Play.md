@@ -168,7 +168,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 ## How to Read a Turn Aloud
 <!-- keywords: tts, text to speech, voice, speak, audio, narrator voice, listen, kokoro, sound, narrate, spoken, hear, audiobook, out loud, voice acting, webgpu, playback speed, blind -->
-<!-- route: gameViewer -->
+<!-- route: tts -->
 
 1. On the latest turn's action row, select **Text to Speech**. The **Text to Speech** dialog opens.
 2. Select **Load Model**. The voice model runs in your browser and needs WebGPU.

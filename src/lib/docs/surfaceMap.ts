@@ -88,6 +88,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   worldUpdate: { page: 'LinkedContent', anchor: 'update-this-world' },
 
   aiContext: { page: 'How-to-Play', anchor: 'the-ai-context-inspector' },
+  tts: { page: 'How-to-Play', anchor: 'how-to-read-a-turn-aloud' },
   demoAI: { page: 'How-to-Play', anchor: 'the-demo-ai-notice' },
   editText: { page: 'How-to-Play', anchor: 'how-to-edit-narration' },
   entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },

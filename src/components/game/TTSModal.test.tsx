@@ -6,7 +6,10 @@ const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn(
 vi.mock('react-toastify', () => ({ toast, ToastContainer: () => null }));
 
 const fromPretrained = vi.hoisted(() => vi.fn());
-vi.mock('kokoro-js', () => ({ KokoroTTS: { from_pretrained: fromPretrained } }));
+vi.mock('@/lib/tts/kokoroClient', () => ({
+  KokoroClient: { from_pretrained: fromPretrained },
+  KOKORO_VOICES: ['af_heart'],
+}));
 
 vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({

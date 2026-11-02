@@ -70,7 +70,7 @@ import { useScriptPromptListener } from "@/lib/useScriptPromptListener";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
 import type { TTSModalHandle, TTSProgress } from "../components/game/TTSModal";
-// Loaded on first TTS open: kokoro-js initializes espeak at module evaluation, so it stays out of startup.
+// Loaded on first TTS open: the Kokoro client and its phoneme step stay out of the startup chunk.
 const TTSModal = lazy(() => import("../components/game/TTSModal"));
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
@@ -1287,6 +1287,7 @@ const GameViewer = ({
       case 'export': setIsExportModalOpen(true); break;
       case 'location': setIsLocationModalOpen(true); break;
       case 'aiContext': setIsDebugOpen(true); break;
+      case 'tts': setIsTTSModalOpen(true); break;
       case 'demoAI': demoAINoticeRef.current?.open(); break;
     }
   }, [devRoute?.modal]);

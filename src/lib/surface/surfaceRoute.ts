@@ -86,6 +86,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   export: { host: 'gameViewer' },
   location: { host: 'gameViewer' },
   aiContext: { host: 'gameViewer' },
+  tts: { host: 'gameViewer' },
   demoAI: { host: 'gameViewer' },
   entity: { ancestor: 'gameViewer.entities' },
   stranger: { ancestor: 'gameViewer.entities' },
