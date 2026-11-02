@@ -13,6 +13,8 @@ A finished Praline file exists in `build-assets`, ready for ticket 07 to ship. I
 
 The spec's `tools/build-praline.py` already does the hair, iris and stocking work on `D:\Downloads\AvatarSample_F.vrm`. The stockings are a separate cutout `CLOTH` material offset along normals. Add `Waist`, `Bust` and `Thickness` using the method in `tools/build-release-avatar.py`, with every `Body` primitive receiving the morph. The stocking layer must move with the skin, or skin shows through. Tune the tail so it doesn't tear.
 
+For default colors, use the spec's factor method from ticket 04, which restores the source look without narrowing the pickers.
+
 Keep all generation in the script, so the file rebuilds from its source. Regenerate the client fingerprints in this landing, adding her file to the fingerprint and bundled-avatar lists. Add her to the provenance record that ticket 04 starts.
 
 No build ships her until ticket 07.
