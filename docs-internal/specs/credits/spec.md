@@ -62,6 +62,12 @@ Settled in the grill on 2026-11-02. A settled ruling reopens on new evidence, ne
 | Q15 | Each entry is a collapsed row, with a filter by name. Bundled assets come first, then software. |
 | Q9 | This effort repairs the notices, with a generator and a drift guard. The Bundled assets section stays hand-kept. |
 | Q18 | The notices name eSpeak NG and carry the GPL-3.0 text now. |
+| T03-1 | Avatars get one entry each, for the files that exist: the VRoid sample (dev and Pages dev builds) and Elaina by TronSpectra (releases). The Release Avatar License effort updates its entry when a new model lands. |
+| T03-2 | eSpeak NG is a Bundled assets entry with the full GPL-3.0 text, naming `phonemizer` and the Text to Speech chunk. `phonemizer`'s generated entry keeps its declared license and its own file. The eSpeak NG effort updates both if it replaces the package. |
+| T03-3 | Fonts appear twice: generated package entries with their own license files, and one hand-kept Webfonts entry with the 12 families, their copyright and the OFL text. A test fails if a family in the build is missing from it. |
+| T03-4 | The guard requires fenced license text on every generated entry and non-empty text on hand-kept entries. Avatars, Mixamo, world art and the Danbooru list stay as attribution with a link. Hand-kept entries marked "Needed" in the table below carry full text. |
+| T03-5 | Ticket 03 owns the pure notices parser, returning `{ name, section, text }[]`. Ticket 04 imports it. |
+| T03-6 | The site footer's link reads **Licenses**. |
 | Q19 | New evidence: the account site's build bundles third-party packages and ships no notices file. The site build now ships the same file, with a footer link to it. It doesn't fetch the file from GitHub, because `main` can differ from the deployed site. |
 
 ### Set elsewhere

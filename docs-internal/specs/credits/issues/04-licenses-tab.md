@@ -11,13 +11,13 @@ A pure parser and a list, with one cross-platform fetch to prove.
 
 The Credits dialog gains a **Licenses** tab. It reads the shipped notices file when the tab first opens, relative to the build's base path, so it works offline on web, desktop and the APK. Entries show as collapsed rows, with Bundled assets first, then software, and a filter by name. Only an expanded row mounts its text.
 
-A pure parser turns the file into ordered entries of name, section and text, using the format ticket 03 owns. The Vite plugin also serves the file in dev, so the dev route and preview work.
+Import the pure notices parser that ticket 03 owns (ruling T03-5), and build no second parser. The Vite plugin also serves the file in dev, so the dev route and preview work.
 
 Rulings: Q8, Q15.
 
 ## Acceptance criteria
 
-- [ ] The parser runs on the real file: sections in order, every entry named and non-empty, Game Icons and eSpeak NG present.
+- [ ] A test runs the imported parser on the real file: sections in order, every entry named and non-empty, Game Icons and eSpeak NG present.
 - [ ] The file loads only when the tab first opens, tested by counting fetches.
 - [ ] Filtering by a package name finds it, and a name with no match shows an empty message.
 - [ ] A row expands to its full license text, and collapsed rows mount no text. Measured by a DOM read on the real file.
