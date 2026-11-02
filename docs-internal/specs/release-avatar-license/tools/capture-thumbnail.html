@@ -1,0 +1,19 @@
+<!doctype html><script type="module">
+import { renderVrmThumbnail } from '/src/lib/vrmThumbnail.ts';
+
+// Renders a .vrm with the app's framing; returns a PNG data URL.
+window.capture = async (url, metaVersion, w, h) => {
+  const blob = await (await fetch(url)).blob();
+  const webp = await renderVrmThumbnail(blob, metaVersion, w, h);
+  if (!webp) return null;
+  const img = new Image();
+  img.src = webp;
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return c.toDataURL('image/png');
+};
+window.ready = true;
+</script>
