@@ -1,5 +1,6 @@
 import { arpabetToKokoro, parseCmudictLine } from "./arpabet";
 import { toBritish } from "./britishRules";
+import { isHomograph, pickHomographs } from "./homographs";
 import { cleanText } from "./textCleanup";
 import compoundWords from "./g2p/compoundWords.json";
 import britishWords from "./g2p/britishWords.json";
@@ -31,12 +32,14 @@ const british = new Map<string, string>(Object.entries(britishWords));
 const weak = new Map(Object.entries(weakForms).map(([word, form]) => [word, arpabetToKokoro(form)]));
 const commonShort = new Set<string>(compoundWords);
 
-/** Reads the text of `cmudict.dict` into each word's first pronunciation. */
+/** Reads the text of `cmudict.dict` into each word's first pronunciation, plus the `word(n)` entries of homographs. */
 export function parseDictionary(text: string): Map<string, string> {
   const primary = new Map<string, string>();
   for (const line of text.split("\n")) {
     const entry = parseCmudictLine(line);
-    if (entry && !entry[0].endsWith(")")) primary.set(entry[0], entry[1]);
+    if (!entry) continue;
+    const variantOf = /^(.+)\(\d+\)$/.exec(entry[0])?.[1];
+    if (!variantOf || isHomograph(variantOf)) primary.set(entry[0], entry[1]);
   }
   return primary;
 }
@@ -57,7 +60,7 @@ function fromBritishList(lower: string): string | undefined {
 
 /**
  * Builds the text-to-phoneme call. Each word takes the first source that has it:
- * word table, CMUdict, compound split, a regular ending on one of those, then the model.
+ * word table, CMUdict with its homograph picks, compound split, a regular ending on one of those, then the model.
  * British rules apply to every source's result, so word table entries stay American.
  */
 export function createTextToPhonemes({ dictionary: primary, predict }: TextToPhonemesSources) {
@@ -144,7 +147,10 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
 
   return async function textToPhonemes(text: string, accent: Accent = "a"): Promise<string> {
     const inAccent = (word: string, american: string) => (accent === "b" ? toBritish(word, american) : american);
-    const tokens = cleanText(text).match(TOKEN) ?? [];
+    const cleaned = cleanText(text);
+    const picks = pickHomographs(cleaned);
+    const matches = [...cleaned.matchAll(TOKEN)];
+    const tokens = matches.map((match) => match[0]);
     let out = "";
     let afterWord = false;
     let insideQuote = false;
@@ -170,7 +176,9 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
         const shouted = word.length > 1 && word === word.toUpperCase();
         const reduced = strong || shouted ? undefined : weak.get(word.toLowerCase());
         const listed = accent === "b" && reduced === undefined ? fromBritishList(word.toLowerCase()) ?? britishCapitals(word) : undefined;
-        out += listed ?? inAccent(word, reduced ?? await sayWord(word));
+        const start = matches[i].index + token.indexOf(word);
+        const pick = table.has(word.toLowerCase()) ? undefined : picks.get(start);
+        out += listed ?? inAccent(word, reduced ?? (pick && fromDictionary(pick)) ?? await sayWord(word));
       }
     }
     return out.replace(/ +/g, " ").trim();

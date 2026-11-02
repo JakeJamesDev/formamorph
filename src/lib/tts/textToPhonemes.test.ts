@@ -67,7 +67,8 @@ describe("lookup order", () => {
   });
 
   it("uses the first CMUdict variant for a word with several", async () => {
-    expect(await setup().say("read")).toBe(cmu("read"));
+    expect(dict.has("either(2)")).toBe(true);
+    expect(await setup().say("either")).toBe(cmu("either"));
   });
 });
 

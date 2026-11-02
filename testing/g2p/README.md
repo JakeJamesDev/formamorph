@@ -68,6 +68,7 @@ npx vite-node testing/g2p/ratingPage.ts tally fantasy new=.scratch/g2p/pred/pipe
 ```
 
 - [`sentences`](sets/sentences.json) checks weak forms in whole sentences. It has no carrier and no bar.
+- [`homographs`](sets/homographs.json) checks words such as read and wound in contrasting sentences. It has no carrier and no bar.
 - `britishWords` is the hand-written [British word list](../../src/lib/tts/g2p/britishWords.json). Each entry goes on this rating page.
 
 - `build` makes a page of blind clips. Pass several `arm=file` pairs to compare, and the page never says which arm said what.
