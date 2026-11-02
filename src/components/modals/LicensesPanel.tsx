@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { parseNotices, SUMMARY_SECTION, type NoticeEntry } from '@/lib/noticesFormat';
-import { useMountedRef } from '@/lib/useMountedRef';
+import { Hint } from '@/components/ui/typography';
+import { PACKAGES_SECTION, parseNotices, type NoticeEntry } from '@/lib/noticesFormat';
 
 type State =
   | { status: 'loading' }
@@ -16,13 +16,13 @@ type State =
 const HEADINGS: Record<string, string> = {
   'Bundled assets': 'Bundled Assets',
   'Standards & specifications': 'Standards & Specifications',
-  'Components and license texts': 'Software',
+  [PACKAGES_SECTION]: 'Software',
 };
 
-async function readNotices(): Promise<NoticeEntry[]> {
-  const response = await fetch(`${import.meta.env.BASE_URL}THIRD-PARTY-NOTICES.md`);
+async function readNotices(signal: AbortSignal): Promise<NoticeEntry[]> {
+  const response = await fetch(`${import.meta.env.BASE_URL}THIRD-PARTY-NOTICES.md`, { signal });
   if (!response.ok) throw new Error(`Notices read failed: ${response.status}`);
-  return parseNotices(await response.text()).filter((entry) => entry.section !== SUMMARY_SECTION);
+  return parseNotices(await response.text());
 }
 
 /**
@@ -32,14 +32,15 @@ async function readNotices(): Promise<NoticeEntry[]> {
 export function useNotices(wanted: boolean) {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const mounted = useMountedRef();
 
   useEffect(() => {
     if (!wanted) return;
-    readNotices()
-      .then((entries) => { if (mounted.current) setState({ status: 'ready', entries }); })
-      .catch(() => { if (mounted.current) setState({ status: 'failed' }); });
-  }, [wanted, attempt, mounted]);
+    const controller = new AbortController();
+    readNotices(controller.signal)
+      .then((entries) => { if (!controller.signal.aborted) setState({ status: 'ready', entries }); })
+      .catch(() => { if (!controller.signal.aborted) setState({ status: 'failed' }); });
+    return () => controller.abort();
+  }, [wanted, attempt]);
 
   const retry = () => {
     setState({ status: 'loading' });
@@ -85,7 +86,7 @@ export function LicensesPanel({ state, retry }: ReturnType<typeof useNotices>) {
   }, [entries, filter]);
 
   if (state.status === 'loading') {
-    return <p className="text-helper text-muted-foreground">Loading licenses…</p>;
+    return <Hint>Loading licenses…</Hint>;
   }
 
   if (state.status === 'failed') {
@@ -99,20 +100,23 @@ export function LicensesPanel({ state, retry }: ReturnType<typeof useNotices>) {
 
   return (
     <div className="space-y-3">
-      <SearchField value={filter} onChange={setFilter} placeholder="Filter by Name" aria-label="Filter Licenses" />
+      <SearchField value={filter} onChange={setFilter} placeholder="Filter by Name" aria-label="Filter by Name" />
       {groups.length === 0 ? (
         <p className="text-body text-muted-foreground">No license has that name.</p>
       ) : (
         <ScrollArea className="max-h-[50dvh]">
           <div className="space-y-4 pr-3">
-            {groups.map(({ section, rows }) => (
-              <section key={section} aria-labelledby={`licenses-${HEADINGS[section].replace(/\W+/g, '-')}`} className="space-y-1">
-                <h2 id={`licenses-${HEADINGS[section].replace(/\W+/g, '-')}`} className="text-title font-semibold">{HEADINGS[section]}</h2>
-                <div>
-                  {rows.map(({ entry, at }) => <LicenseRow key={at} entry={entry} />)}
-                </div>
-              </section>
-            ))}
+            {groups.map(({ section, rows }) => {
+              const headingId = `licenses-${HEADINGS[section].replace(/\W+/g, '-')}`;
+              return (
+                <section key={section} aria-labelledby={headingId} className="space-y-1">
+                  <h2 id={headingId} className="text-title font-semibold">{HEADINGS[section]}</h2>
+                  <div>
+                    {rows.map(({ entry, at }) => <LicenseRow key={at} entry={entry} />)}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </ScrollArea>
       )}

@@ -3,9 +3,9 @@ import { PATREON_PAGE_URL } from '@/components/PatreonSection';
 import { SupporterBadge } from '@/components/SupporterBadge';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/ui/button';
+import { Hint } from '@/components/ui/typography';
 import { SUPPORTER_NAME_STYLES } from '@/lib/supporterFlair';
 import { useTierName } from '@/lib/tierNames';
-import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
 import { PatreonService, type Supporter } from '@/services/PatreonService';
 import type { SupporterTier } from '@/types';
@@ -37,19 +37,20 @@ interface SupportersWallProps {
 export function SupportersWall({ renderName, load = PatreonService.getSupporters }: SupportersWallProps) {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const mounted = useMountedRef();
   const tierNameOf = useTierName();
 
   useEffect(() => {
+    let canceled = false;
     load()
-      .then((supporters) => { if (mounted.current) setState({ status: 'ready', supporters }); })
+      .then((supporters) => { if (!canceled) setState({ status: 'ready', supporters }); })
       .catch((error: unknown) => {
-        if (mounted.current) setState({ status: 'failed', error: error instanceof Error ? error.message : String(error) });
+        if (!canceled) setState({ status: 'failed', error: error instanceof Error ? error.message : String(error) });
       });
-  }, [attempt, load, mounted]);
+    return () => { canceled = true; };
+  }, [attempt, load]);
 
   if (state.status === 'loading') {
-    return <p className="text-helper text-muted-foreground">Loading supporters…</p>;
+    return <Hint>Loading supporters…</Hint>;
   }
 
   if (state.status === 'failed') {
