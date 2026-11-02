@@ -106,7 +106,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Credits window has a Supporters tab that lists the game's Patreon supporters.** It shows once you've accepted the adult content warning. Select a name to open that profile.
     - **The Credits window has a Licenses tab that lists the license text of everything the game ships with.** Select an entry to read it, or type in Filter by Name. It works offline.
   - **Text to Speech:**
-    - **American Text to Speech voices now pronounce fantasy words such as wyvern and place names such as Emberwatch correctly.** They also read numbers and abbreviations aloud. British voices do not change yet.
+    - **American Text to Speech voices now pronounce fantasy words such as wyvern and place names such as Emberwatch correctly.** They also read numbers and abbreviations aloud.
     - **British Text to Speech voices now pronounce fantasy words such as wyvern and place names such as Emberwatch correctly.** They keep their British pronunciation.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
