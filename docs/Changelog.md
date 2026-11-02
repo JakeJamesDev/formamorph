@@ -134,6 +134,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Test Bench:**
+    - **Testing As now picks a persona instead of a trait.** It starts on the persona a new game would, and it replaces the Persona pick on the Opening tab. Picking a persona moves **at** to its start until you pick a location yourself.
+    - **The tabs now have icons and a sliding highlight.** When the panel is narrow, they fold down to the selected tab's label, then to icons.
   - **Scene Presence:**
     - **The Traits tab shows a stranger's traits under the name you know.** Trait names and descriptions use that name, and strangers who share one get numbers.
   - **Entities set to Moves Between Its Locations now walk between those locations and come along with you into them.** Before, they stayed where the new game placed them.

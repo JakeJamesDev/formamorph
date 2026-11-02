@@ -25,7 +25,7 @@ import { loadLastTurn, type LastTurn } from './lastTurn';
 import { openingPersonaOf } from '@/lib/openingState';
 import { checkedScriptCount, checkScripts } from './scriptCheck';
 import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
-import { lensStatOverrides } from './lens';
+import { lensPersonaRef, lensStatOverrides } from './lens';
 import { useBenchFindings } from './useBenchFindings';
 import { useBenchLens } from './useBenchLens';
 import { useBenchTab } from './useBenchTab';
@@ -119,6 +119,12 @@ export function useTestBench({
   // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
+  // The lens every instrument reads. It seeds from whatever location the author has open in the editor, so
+  // opening the Bench mid-edit opens on the place they were already looking at.
+  const benchLens = useBenchLens(worldId, benchWorld, {
+    open: panelShown,
+    selectedLocationId,
+  });
   // Null until the first pass finishes: the list holds every row till then, so it never reads as clean.
   const pass = useBenchPass(benchWorld);
   const publishBytes = pass.bytes;
@@ -136,18 +142,18 @@ export function useTestBench({
     setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
     closeCodePrompts();
   }, [benchWorld, closeCodePrompts]);
-  // Which start, persona and opening the author is looking at: view state, never stored.
+  // Which start and opening the author is looking at: view state, never stored.
   const [openingChoice, setOpeningChoice] = useState<OpeningChoice>({});
+  const lensPersona = benchLens.lens.persona?.id;
   const runScriptCheck = useCallback(async () => {
     const stillCurrent = beginCodeRun();
     const prompts = openCodePrompts();
     setCodeCheckStatus('running');
     try {
       const world = getWorldData();
-      // The persona the Opening instrument shows, so `met` reads the start rule under it.
-      const played = world.entities?.find((e) => e.persona && e.id === openingChoice.personaId);
+      // The lens persona, so `met` reads the start rule under it.
       const found = await checkScripts(world, {
-        prompts: prompts.host, persona: openingPersonaOf(played && { source: 'world', entityId: played.id }),
+        prompts: prompts.host, persona: openingPersonaOf(lensPersona ? lensPersonaRef(lensPersona) : undefined),
       });
       if (!stillCurrent()) return;
       setCodeFindings(found);
@@ -160,7 +166,7 @@ export function useTestBench({
     } finally {
       if (isCurrentCodeRun(prompts)) closeCodePrompts();
     }
-  }, [getWorldData, openingChoice.personaId, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
+  }, [getWorldData, lensPersona, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
   const scriptCount = useMemo(() => checkedScriptCount(benchWorld), [benchWorld]);
   // Out of the rule catalog, since its input is the measured byte count rather than the world.
   // Kept while it says the same thing: a keystroke in an over-limit world must not re-mark every finding.
@@ -183,12 +189,6 @@ export function useTestBench({
   const semantics = useTriggerSemantics(
     panelShown && benchTab === 'triggers', semanticOn, benchWorld, triggerText,
   );
-  // The lens every instrument reads. It seeds from whatever location the author has open in the editor, so
-  // opening the Bench mid-edit opens on the place they were already looking at.
-  const benchLens = useBenchLens(worldId, benchWorld, {
-    open: panelShown,
-    selectedLocationId,
-  });
   const statOverrides = useMemo(
     () => lensStatOverrides(benchWorld, benchLens.lens),
     [benchWorld, benchLens.lens],
@@ -218,10 +218,6 @@ export function useTestBench({
   );
   const chooseOpeningStart = useCallback(
     (startLocationId: string) => setOpeningChoice((prev) => ({ ...prev, startLocationId })),
-    [],
-  );
-  const chooseOpeningPersona = useCallback(
-    (personaId: string | null) => setOpeningChoice((prev) => ({ ...prev, personaId })),
     [],
   );
   const chooseOpening = useCallback(
@@ -450,10 +446,11 @@ export function useTestBench({
       issues,
       lens: {
         lens: benchLens.lens,
-        pcOptions: benchLens.pcOptions,
+        personaOptions: benchLens.personaOptions,
+        noneLabel: benchLens.noneLabel,
         locationOptions: benchLens.locationOptions,
         statOverrides,
-        onPcChange: benchLens.setPc,
+        onPersonaChange: benchLens.setPersona,
         onLocationChange: benchLens.setLocation,
       },
       triggers: {
@@ -473,7 +470,6 @@ export function useTestBench({
         data: opening,
         onReroll: rerollOpening,
         onStartChange: chooseOpeningStart,
-        onPersonaChange: chooseOpeningPersona,
         onOpeningChange: chooseOpening,
       },
     },

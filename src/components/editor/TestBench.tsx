@@ -6,13 +6,12 @@
  * renders identically embedded in the editor's list panel, docked beside it, and inside the mobile sheet.
  */
 import { CircleX, FlaskConical, PanelLeft, PanelRight, X, type LucideIcon } from 'lucide-react';
-import { EntityIcon, LocationIcon } from '@/lib/elementIcons';
+import { LocationIcon, PersonaIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { describeBrokenPin, type LensOption } from '@/lib/testBench/lens';
 import { BENCH_TABS, type BenchTab } from '@/lib/testBench/benchTabs';
@@ -71,19 +70,18 @@ export function TestBench({
         onValueChange={(v) => onTabChange(v as BenchTab)}
         className="flex min-h-0 flex-grow flex-col gap-2"
       >
-        <TabsList className="grid h-auto w-full grid-cols-4">
-          {BENCH_TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value} className="px-1">
-              {t.label}
-              {t.value === 'issues' && issues.groups.length > 0 && (
-                <span className="ml-1 rounded-full bg-warning/20 px-1 text-meta text-warning">{issues.groups.length}</span>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <CollapsingTabsList
+          aria-label="Test Bench"
+          value={tab}
+          tabs={BENCH_TABS.map((t) => ({
+            value: t.value,
+            icon: t.icon,
+            label: t.value === 'issues' && issues.groups.length > 0 ? `${t.label} (${issues.groups.length})` : t.label,
+          }))}
+        />
         {/* Below the strip, and only on the instruments that read it — the selection itself is Bench-level
             state, so it survives visits to a tab that hides the bar. */}
-        {parts && (parts.pc || parts.location) && <LensBar {...lens} parts={parts} />}
+        {parts && (parts.persona || parts.location) && <LensBar {...lens} parts={parts} />}
         {/* One panel per trigger so every `aria-controls` resolves. */}
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
@@ -125,62 +123,48 @@ const NO_SELECTION = '__none__';
 const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
   icon: LucideIcon;
   label: string;
-  /** What the no-selection row reads as — also what the trigger shows while nothing is picked. */
-  none: string;
+  /** What the no-selection row reads as — also what the trigger shows while nothing is picked. Null drops the row. */
+  none: string | null;
   value: string | null;
   options: LensOption[];
   onChange: (id: string | null) => void;
-}) => {
-  // Consecutive options sharing a heading become one labeled group; ungrouped options (locations) stay flat.
-  const groups: Array<{ name?: string; options: LensOption[] }> = [];
-  for (const option of options) {
-    const last = groups[groups.length - 1];
-    if (last && last.name === option.groupName) last.options.push(option);
-    else groups.push({ name: option.groupName, options: [option] });
-  }
-  return (
-    <Select
-      value={value ?? NO_SELECTION}
-      onValueChange={(next) => onChange(next === NO_SELECTION ? null : next)}
-      disabled={options.length === 0}
-    >
-      <SelectTrigger size="sm" aria-label={label} className="min-w-0 flex-grow gap-1">
-        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-        <SelectValue placeholder={none} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={NO_SELECTION}>{none}</SelectItem>
-        {groups.map((group, index) => (
-          <SelectGroup key={group.name ?? index}>
-            {group.name && <SelectLabel>{group.name}</SelectLabel>}
-            {group.options.map((option) => (
-              <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
+}) => (
+  <Select
+    value={value ?? NO_SELECTION}
+    onValueChange={(next) => onChange(next === NO_SELECTION ? null : next)}
+    disabled={options.length === 0}
+  >
+    <SelectTrigger size="sm" aria-label={label} className="min-w-0 flex-grow gap-1">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      <SelectValue placeholder={none ?? undefined} />
+    </SelectTrigger>
+    <SelectContent>
+      {none !== null && <SelectItem value={NO_SELECTION}>{none}</SelectItem>}
+      {options.map((option) => (
+        <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+);
 
 /** The Bench-level lens: who is being played, and at which location, as far as the open instrument reads. Its notes go
- *  under it because both follow from the PC on the selector directly above them. */
-const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange, parts }: LensBarProps & {
+ *  under it because both follow from the picks directly above them. */
+const LensBar = ({ lens, personaOptions, noneLabel, locationOptions, statOverrides, onPersonaChange, onLocationChange, parts }: LensBarProps & {
   /** The lens parts the open instrument reads. */
-  parts: { pc: boolean; location: boolean };
+  parts: { persona: boolean; location: boolean };
 }) => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center gap-1.5">
-      {parts.pc && (
+      {parts.persona && (
         <>
           <Meta className="shrink-0">Testing as</Meta>
           <LensSelect
-            icon={EntityIcon}
+            icon={PersonaIcon}
             label="Testing as"
-            none="Anyone"
-            value={lens.state.pcTraitId}
-            options={pcOptions}
-            onChange={onPcChange}
+            none={noneLabel}
+            value={lens.persona?.id ?? null}
+            options={personaOptions}
+            onChange={onPersonaChange}
           />
         </>
       )}

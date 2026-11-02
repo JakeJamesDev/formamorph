@@ -2,7 +2,7 @@ import { flattenEnabledBookEntries } from '../dictionaryUtils';
 import { ownerStatParts, statPlacementOf } from '../statContext';
 import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
-import { playsAs, resolveOwners, type Owner } from '../owners';
+import { inCast, playsAs, resolveOwners, type Owner } from '../owners';
 import { characterAsPlayer } from '../builtinPlaceholders';
 import { resolvePersona } from '../persona';
 import { copyLookup, readerFor, type CopyLookup, type CopyReader } from '../blueprints';
@@ -63,7 +63,7 @@ export interface AuthoredSceneOptions {
   /** An entity's own trait text under that trait's pins over the entity's. Absent, a given `resolveEntity`
    *  reads it, else the trait's own pins do. */
   resolveOwned?: ResolveOwnedTraitText;
-  /** The persona the preview holds, for the start rule that leaves a stranger unmet. Absent is None. */
+  /** The persona the preview plays. Absent is None. */
   persona?: OpeningPersona;
 }
 
@@ -72,7 +72,7 @@ export interface AuthoredSceneOptions {
  * The world being edited as a Chip Scene: its own opening. The scene is at the starting location with the
  * cast the author placed there, every stat seeded as a new game opens it, the traits the author marked
  * default, and every enabled lore entry (nothing has been typed yet, so no keyword has fired to narrow
- * them). No persona is picked, so the Custom Persona entity is the persona, as under None. There are no
+ * them). With no persona given, the Custom Persona entity is the persona, as under None. There are no
  * notes and no clock: a world has none until a player enters it.
  */
 export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOptions = {}): ChipScene {
@@ -92,13 +92,14 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const resolveEntity = options.resolveEntity ?? (options.resolve
     ? undefined
     : (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls: {} }));
-  // Every tree with no persona picked: global scope's, and each entity's with its links expanded.
-  const { global, owners: trees } = resolveOwners({ traits, traitGroups, entities }, undefined);
+  const personaRef = options.persona?.ref;
+  // Every tree under the persona: global scope's, and each entity's with its links expanded.
+  const { global, owners: trees } = resolveOwners({ traits, traitGroups, entities }, personaRef);
   const treeOf = new Map(trees.map((b) => [b.id, b]));
   const blueprints = { placeholders: world.placeholders ?? [], entities };
-  const readerOf = (tree: Owner) => readerFor(undefined, tree.entity, tree.isPlayer);
-  // Global traits read through the Custom Persona entity's copies, as play reads them with no persona picked.
-  const globalReader = readerFor(undefined, null, true);
+  const readerOf = (tree: Owner) => readerFor(personaRef, tree.entity, tree.isPlayer);
+  // Global traits read through the persona's copies, as play reads them.
+  const globalReader = readerFor(personaRef, trees.find((t) => t.isPlayer && personaRef?.source === 'world')?.entity ?? null, true);
   const ownPins = (trait: Trait, reader: CopyReader | undefined) => traitScopedPins(
     reader ? bindBlueprintPins(trait, blueprints, reader) : trait, {}, placeholders,
   );
@@ -116,7 +117,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const cast = resolveEntity
     ? resolveOwnedTraitTexts(resolveEntityTexts(withLinks, resolveEntity), resolveOwned, resolveEntity)
     : withLinks;
-  const presentIds = entityIdsAt(location?.id, entities);
+  const presentIds = entityIdsAt(location?.id, personaRef?.source === 'world' ? entities.filter((e) => inCast(e, personaRef)) : entities);
   const defaultsOf = (tree: Pick<Owner, 'traits' | 'groups'>) =>
     defaultPicks(tree.traits, tree.groups);
   const activeIds = new Set(options.activeTraitIds ?? defaultsOf(global));
@@ -126,7 +127,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     ? options.resolve(characterAsPlayer(text), globalCopies)
     : resolveOwnerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, globalReader), copies: globalCopies }));
 
-  const played = entities.filter((entity) => playsAs(entity, undefined));
+  const played = entities.filter((entity) => playsAs(entity, personaRef));
   // Each entity's default traits switch its stats on and off.
   const ownedStats = enabledOwnerStats(withTraitToggles(
     Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])])),
@@ -140,7 +141,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     // Stats open as a playthrough's do.
     stats: options.stats ?? seedNewGameStats(stats),
     statPlacement: statPlacementOf(world),
-    // With no persona picked, the Custom Persona entity's stats are the player's, as its traits are.
+    // The played entity's stats are the player's, as its traits are.
     playedStats: ownerStatParts(played, ownedStats),
     playedEntities: cast.filter((entity) => played.some((e) => e.id === entity.id)),
     // The global traits, where global scope's tree places them: never Blueprints.
@@ -154,8 +155,8 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     })),
     ownedStats,
     // Under None the Custom Persona entity is the persona, as play resolves it.
-    persona: resolvePersona(undefined, cast, []).persona,
-    // Under None the Custom Persona entity plays, so its name is the Persona Name.
+    persona: resolvePersona(personaRef, cast, []).persona,
+    // The played entity's name is the Persona Name.
     playerName: played[0]?.name ?? null,
     location,
     locations,
@@ -174,9 +175,9 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     currencies: world.currencies,
     placements: world.placements,
     // The Item Copies a new game would start with, ids numbered since nothing keeps them.
-    itemCopies: startingCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
-    // No persona is picked, so the played Body is the Custom Persona entity's.
-    equipment: { world: { bodies: world.bodies, slots: world.slots, entities } },
+    itemCopies: startingCopies({ ...world, entities }, personaRef, () => `preview-copy-${copyCount++}`),
+    // The played Body is the persona's, else the Custom Persona entity's.
+    equipment: { world: { bodies: world.bodies, slots: world.slots, entities }, persona: personaRef },
     // Turn one's labels: nobody is met in play yet, so the start rule alone leaves a stranger unmet.
     strangerLabels: strangersInPlay(entities, (entity) => startsMet(entity, openingPlayed, locations), {}).labels,
   };

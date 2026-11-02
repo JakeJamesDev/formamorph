@@ -27,7 +27,9 @@ import type { ValueLookup } from '@/lib/promptValues';
 import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
-import { lensActiveTraits, lensOwnerScopes, resolveLensEntityText, resolveLensText, type BenchLens } from './lens';
+import { inCast } from '@/lib/owners';
+import { openingPersonaOf } from '@/lib/openingState';
+import { lensActiveTraits, lensOwnerScopes, lensPersonaRef, resolveLensEntityText, resolveLensText, type BenchLens } from './lens';
 import type { RuleWorld } from './rules';
 
 /** The slices of the authored world this instrument reads. */
@@ -183,7 +185,7 @@ const ROSTERS: { scope: RosterScope; label: string; block: ContextBlockId }[] = 
 const activeTraitIds = (world: AiContextWorld, lens: BenchLens): string[] =>
   lensActiveTraits(world, lens).map((t) => t.id);
 
-/** The world's stats at their authored starting values, minus the ones this PC switches off. */
+/** The world's stats at their authored starting values, minus the ones this lens switches off. */
 function lensStats(world: AiContextWorld, lens: BenchLens): PlayerStat[] {
   const stats = (world.stats ?? []).map((stat) => ({
     ...stat,
@@ -192,7 +194,7 @@ function lensStats(world: AiContextWorld, lens: BenchLens): PlayerStat[] {
   return enabledStats(stats, lens.statEnabled);
 }
 
-/** The world's opening as the lens PC meets it: its location, traits and stats, every chip read through its pins. */
+/** The world's opening under the lens: its location, traits and stats, every chip read through its pins. */
 function lensScene(world: AiContextWorld, lens: BenchLens) {
   const placeholders = allPlaceholders(world);
   const scopeOf = lensOwnerScopes(world, lens);
@@ -200,6 +202,7 @@ function lensScene(world: AiContextWorld, lens: BenchLens) {
     location: lens.location,
     activeTraitIds: activeTraitIds(world, lens),
     stats: lensStats(world, lens),
+    persona: lens.persona ? openingPersonaOf(lensPersonaRef(lens.persona.id)) : undefined,
     resolve: (text: string, copies?: CopyLookup) => resolveLensText(text, placeholders, lens.pins, copies),
     // Each entity's text reads its own scope, and its trait's text that trait's pins over it, as play reads them.
     resolveEntity: (entity, text) => resolveLensEntityText(entity, text, placeholders, scopeOf(entity.id)),
@@ -214,7 +217,7 @@ function lensScene(world: AiContextWorld, lens: BenchLens) {
 
 /**
  * Everything the AI Context instrument shows for `lens`. The location is the lens's, and every chip resolves
- * through the lens PC's pins, so a world whose text is placeholder-driven reads as that character sees it.
+ * through the lens's pins, so a world whose text is placeholder-driven reads as that persona sees it.
  *
  * The dictionary block is the ceiling rather than a turn's actual pull: no scene text exists here to fire
  * keywords, so it renders every enabled entry — the most lore a turn from this place could inject.
@@ -222,7 +225,8 @@ function lensScene(world: AiContextWorld, lens: BenchLens) {
 export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContextData {
   const locations = world.locations ?? [];
   const connections = world.connections ?? [];
-  const entities = world.entities ?? [];
+  // The played persona is no one's neighbor, so it stays off every roster.
+  const entities = (world.entities ?? []).filter((e) => !lens.persona || inCast(e, lensPersonaRef(lens.persona.id)));
   const location = lens.location;
   const scene = lensScene(world, lens);
   const values = chipValues(scene);

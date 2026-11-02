@@ -72,12 +72,12 @@ On desktop, the panel can sit inside the editor's list panel or beside it. Selec
 
 ### Testing As and At
 
-**Triggers** and **AI Context** read the bar under the tabs: **Testing as** a trait pick, **at** a location. **Opening** reads **Testing as** only, and starts at its own **Starting Location** pick.
+**Triggers** and **AI Context** read the bar under the tabs: **Testing as** a persona, **at** a location. **Opening** reads **Testing as** only, and starts at its own **Starting Location** pick.
 
-- **Testing as** lists the traits in groups where the player picks one. **Anyone** tests with no pick.
-- **at** lists every location. **Nowhere** tests with no location.
+- **Testing as** lists the personas this world offers, plus **None** or your Custom Persona. It starts on the persona a new game would start on.
+- **at** lists every location. **Nowhere** tests with no location. Picking a persona moves it to that persona's start, until you pick a location yourself.
 
-Your pick stays when you switch tabs. A broken pin on an active trait, the **at** location or a starting stat shows in red under the bar. The bar also names the stats your pick adds or removes.
+Your pick stays when you switch tabs. A broken pin on an active trait, the **at** location or a starting stat shows in red under the bar. The bar also names the stats your persona adds or removes.
 
 ## Issues
 <!-- keywords: ignore a warning, suppress, silence a finding, bring back hidden warning, world too large, file size meter, linter, simple mode hides findings -->
@@ -135,7 +135,6 @@ The **AI Context** tab shows what the AI gets from the location in the **at** li
 
 The **Opening** tab shows turn one of a new game for your **Testing as** pick.
 
-- **Persona** picks who you play, when the world has persona choices.
 - **Opening Pool** lists every opening a new game here can draw, with its chance.
 - **Stats at Game Start** shows each stat's starting value. Drag a slider to see which descriptor the AI gets at other values. Dragging never changes the world. When traits change a stat, the row shows by how much.
 - **Active Traits** lists the traits that are on at the start, with their pins and the stats they add or remove.

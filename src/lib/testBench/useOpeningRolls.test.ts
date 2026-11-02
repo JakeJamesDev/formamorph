@@ -50,7 +50,7 @@ describe('useOpeningRolls', () => {
 
   it('rerolls the unpinned placements on demand', () => {
     const { result } = renderHook(() => useOpeningRolls(oneChip, true));
-    act(() => result.current.reroll(buildLens(oneChip, { pcTraitId: null, locationId: null })));
+    act(() => result.current.reroll(buildLens(oneChip, { personaId: null, pickedTraitId: null, locationId: null })));
     // The draw is random, but the placement set it covers is not.
     expect(Object.keys(result.current.rolls.world ?? {})).toEqual(['ph-a']);
   });

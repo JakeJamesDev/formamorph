@@ -68,14 +68,16 @@ export interface IssuesProps {
   sources: SourceCheckProps;
 }
 
-/** The Bench-level `Testing as [PC] · at [location]` selection, resolved against the world. */
+/** The Bench-level `Testing as [Persona] · at [location]` selection, resolved against the world. */
 export interface LensBarProps {
   lens: BenchLens;
-  pcOptions: LensOption[];
+  personaOptions: LensOption[];
+  /** What the None row reads as. Null when the world does not offer it. */
+  noneLabel: string | null;
   locationOptions: LensOption[];
-  /** The stats the lens PC switches away from the world's defaults. */
+  /** The stats the lens switches away from the world's defaults. */
   statOverrides: StatOverride[];
-  onPcChange: (traitId: string | null) => void;
+  onPersonaChange: (personaId: string | null) => void;
   onLocationChange: (locationId: string | null) => void;
 }
 
@@ -103,8 +105,6 @@ export interface OpeningProps {
   onReroll: () => void;
   /** Show the fresh game at another member of the start pool. */
   onStartChange: (startLocationId: string) => void;
-  /** Show the fresh game as another world persona, or as None with null. */
-  onPersonaChange: (personaId: string | null) => void;
   /** Show another row of the opening pool, by its key. */
   onOpeningChange: (openingKey: string) => void;
 }

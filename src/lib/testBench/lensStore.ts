@@ -16,8 +16,8 @@ const asId = (value: unknown): string | null => (typeof value === 'string' && va
 export function readLensState(worldId: string): LensState | null {
   const stored = store.read(worldId);
   if (!stored || typeof stored !== 'object') return null;
-  const { pcTraitId, locationId } = stored as Partial<LensState>;
-  return { ...EMPTY_LENS, pcTraitId: asId(pcTraitId), locationId: asId(locationId) };
+  const { personaId, locationId, locationChosen } = stored as Partial<LensState>;
+  return { ...EMPTY_LENS, personaId: asId(personaId), locationId: asId(locationId), ...(locationChosen === true ? { locationChosen } : {}) };
 }
 
 export function writeLensState(worldId: string, state: LensState): void {

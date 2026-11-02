@@ -16,7 +16,10 @@ const locations: GameLocation[] = [
   { id: 'loc-harbor', name: 'Harbor Steps', isStarting: true },
 ];
 
-const world: LensWorld = { traits, traitGroups, locations, placeholders: [], stats: [] };
+const world: LensWorld = {
+  traits, traitGroups, locations, placeholders: [], stats: [],
+  entities: [{ id: 'e-wren', name: 'Wren', persona: true, locations: ['loc-market'] }],
+};
 
 const mount = (props: { open: boolean; selectedLocationId: string | null }) =>
   renderHook(({ open, selectedLocationId }) => useBenchLens('w1', world, { open, selectedLocationId }), {
@@ -56,13 +59,23 @@ describe('useBenchLens', () => {
 
   it('carries a selection across a close and re-open, over the editor’s own', () => {
     const first = mount({ open: true, selectedLocationId: 'loc-market' });
-    act(() => { first.result.current.setPc('t-reach'); });
+    act(() => { first.result.current.setPersona('e-wren'); });
     act(() => { first.result.current.setLocation('loc-harbor'); });
     first.unmount();
 
     const second = mount({ open: true, selectedLocationId: 'loc-market' });
-    expect(second.result.current.lens.pc?.id).toBe('t-reach');
+    expect(second.result.current.lens.persona?.id).toBe('e-wren');
     expect(second.result.current.lens.location?.id).toBe('loc-harbor');
+  });
+
+  it('moves the location with a persona pick until the author picks a location', () => {
+    const { result } = mount({ open: true, selectedLocationId: 'loc-harbor' });
+    act(() => { result.current.setPersona('e-wren'); });
+    expect(result.current.lens.location?.id).toBe('loc-market');
+    act(() => { result.current.setPersona(null); });
+    act(() => { result.current.setLocation('loc-harbor'); });
+    act(() => { result.current.setPersona('e-wren'); });
+    expect(result.current.lens.location?.id).toBe('loc-harbor');
   });
 
   it('records nothing until the author picks something, so a seed is not a choice', () => {
@@ -84,7 +97,7 @@ describe('useBenchLens', () => {
   it('never writes the world it reads', () => {
     const snapshot = JSON.stringify(world);
     const { result } = mount({ open: true, selectedLocationId: 'loc-market' });
-    act(() => { result.current.setPc('t-sedge'); });
+    act(() => { result.current.setPersona('e-wren'); });
     expect(JSON.stringify(world)).toBe(snapshot);
   });
 });

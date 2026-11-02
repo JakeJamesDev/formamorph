@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { buildAiContext, type AiContextData } from '@/lib/testBench/aiContext';
-import { buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState } from '@/lib/testBench/lens';
+import { buildLens, EMPTY_LENS, lensLocationOptions, lensPersonaOptions, type LensState } from '@/lib/testBench/lens';
 import { buildOpening, EMPTY_OPENING, primeOpeningRolls } from '@/lib/testBench/opening';
 import { groupFindings, runRules, RULES, type FindingGroup, type RuleWorld } from '@/lib/testBench/rules';
 import { partitionFindings, withDismissed, withSeen, EMPTY_BENCH_STATE } from '@/lib/testBench/seenState';
@@ -80,10 +80,11 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
   },
   lens: {
     lens: buildLens(defective, EMPTY_LENS),
-    pcOptions: [],
+    personaOptions: [],
+    noneLabel: 'None',
     locationOptions: lensLocationOptions(defective),
     statOverrides: [],
-    onPcChange: vi.fn(),
+    onPersonaChange: vi.fn(),
     onLocationChange: vi.fn(),
     ...over.lens,
   },
@@ -100,7 +101,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     ...over.triggers,
   },
   aiContext: over.aiContext ?? buildAiContext(defective, buildLens(defective, EMPTY_LENS)),
-  opening: { data: EMPTY_OPENING, onReroll: vi.fn(), onStartChange: vi.fn(), onPersonaChange: vi.fn(), onOpeningChange: vi.fn(), ...over.opening },
+  opening: { data: EMPTY_OPENING, onReroll: vi.fn(), onStartChange: vi.fn(), onOpeningChange: vi.fn(), ...over.opening },
 });
 
 const renderBench = (from: RuleWorld, over: BenchOver = {}, placementControl?: PlacementControl) => {
@@ -175,7 +176,7 @@ describe('TestBench panel', () => {
   });
 
   it('shows the AI Context instrument its cost, its blocks and the travel caveat', () => {
-    const lens = buildLens(defective, { pcTraitId: null, locationId: 'harbor' });
+    const lens = buildLens(defective, { personaId: null, pickedTraitId: null, locationId: 'harbor' });
     renderBench(defective, { tab: 'aiContext', lens: { lens }, aiContext: buildAiContext(defective, lens) });
     expect(screen.getByText(/A turn from here ≈ ~\d/)).toBeInTheDocument();
     expect(screen.getByText('Entities Here')).toBeInTheDocument();
@@ -232,6 +233,7 @@ describe('TestBench lens bar', () => {
       { id: 't-reach', name: 'Reach-Born', groupId: 'g-origin', statChanges: [], order: 1 },
     ],
     placeholders: [{ id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper']) }],
+    entities: [{ id: 'e-wren', name: 'Wren', persona: true }, { id: 'e-sable', name: 'Sable', persona: true }],
   };
 
   // On a lens tab: Issues is the one instrument that reads nothing from the lens, so the bar isn't there.
@@ -239,7 +241,7 @@ describe('TestBench lens bar', () => {
     tab: 'triggers',
     lens: {
       lens: buildLens(lensWorld, state),
-      pcOptions: lensPcOptions(lensWorld),
+      personaOptions: lensPersonaOptions(lensWorld),
       locationOptions: lensLocationOptions(lensWorld),
       ...over,
     },
@@ -249,43 +251,50 @@ describe('TestBench lens bar', () => {
   const locationSelector = () => screen.getByRole('combobox', { name: 'Testing at' });
 
   it('shows the selection on both selectors', () => {
-    renderLens({ pcTraitId: 't-sedge', locationId: 'market' });
-    expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    renderLens({ personaId: 'e-wren', locationId: 'market' });
+    expect(pcSelector()).toHaveTextContent('Wren');
     expect(locationSelector()).toHaveTextContent('The Long Market');
   });
 
   it('says who and where it is testing as when nothing is picked', () => {
     renderLens(EMPTY_LENS);
-    expect(pcSelector()).toHaveTextContent('Anyone');
+    expect(pcSelector()).toHaveTextContent('None');
     expect(locationSelector()).toHaveTextContent('Nowhere');
   });
 
-  it('offers every exclusive-group trait under its group heading', async () => {
+  it('offers the world’s personas and no traits', async () => {
     renderLens(EMPTY_LENS);
     await userEvent.click(pcSelector());
-    expect(screen.getByRole('option', { name: 'Sedge-Born' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Reach-Born' })).toBeInTheDocument();
-    expect(screen.getByText('Origin')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Wren' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Sable' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Sedge-Born' })).toBeNull();
+  });
+
+  it('drops the None row when the world does not offer it', async () => {
+    renderLens({ personaId: 'e-wren', locationId: null }, { noneLabel: null });
+    await userEvent.click(pcSelector());
+    expect(screen.queryByRole('option', { name: 'None' })).toBeNull();
+    expect(screen.getByRole('option', { name: 'Wren' })).toBeInTheDocument();
   });
 
   it('reports a pick as the id of the thing picked', async () => {
     const { lens } = renderLens(EMPTY_LENS);
     await userEvent.click(pcSelector());
-    await userEvent.click(screen.getByRole('option', { name: 'Reach-Born' }));
-    expect(lens.onPcChange).toHaveBeenCalledWith('t-reach');
+    await userEvent.click(screen.getByRole('option', { name: 'Sable' }));
+    expect(lens.onPersonaChange).toHaveBeenCalledWith('e-sable');
   });
 
-  it('clears back to no PC', async () => {
-    const { lens } = renderLens({ pcTraitId: 't-sedge', locationId: null });
+  it('clears back to None', async () => {
+    const { lens } = renderLens({ personaId: 'e-wren', locationId: null });
     await userEvent.click(pcSelector());
-    await userEvent.click(screen.getByRole('option', { name: 'Anyone' }));
-    expect(lens.onPcChange).toHaveBeenCalledWith(null);
+    await userEvent.click(screen.getByRole('option', { name: 'None' }));
+    expect(lens.onPersonaChange).toHaveBeenCalledWith(null);
   });
 
-  it('has no PC to offer in a world with no exclusive group', () => {
+  it('has no persona to offer in a world with none', () => {
     renderBench(defective, {
       tab: 'triggers',
-      lens: { pcOptions: [], locationOptions: lensLocationOptions(defective) },
+      lens: { personaOptions: [], locationOptions: lensLocationOptions(defective) },
     });
     expect(pcSelector()).toBeDisabled();
   });
@@ -294,15 +303,15 @@ describe('TestBench lens bar', () => {
     const props = benchProps(groupFindings(runRules(lensWorld)), {
       tab: 'triggers',
       lens: {
-        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
-        pcOptions: lensPcOptions(lensWorld),
+        lens: buildLens(lensWorld, { personaId: 'e-wren', locationId: 'market' }),
+        personaOptions: lensPersonaOptions(lensWorld),
         locationOptions: lensLocationOptions(lensWorld),
       },
     });
     const { rerender } = render(<TestBench {...props} />);
     rerender(<TestBench {...props} tab="opening" />);
     expect(screen.getByRole('tab', { name: 'Opening' })).toHaveAttribute('aria-selected', 'true');
-    expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    expect(pcSelector()).toHaveTextContent('Wren');
     rerender(<TestBench {...props} tab="aiContext" />);
     expect(locationSelector()).toHaveTextContent('The Long Market');
   });
@@ -311,8 +320,8 @@ describe('TestBench lens bar', () => {
     const props = benchProps(groupFindings(runRules(lensWorld)), {
       tab: 'triggers',
       lens: {
-        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
-        pcOptions: lensPcOptions(lensWorld),
+        lens: buildLens(lensWorld, { personaId: null, pickedTraitId: 't-sedge', locationId: 'market' }),
+        personaOptions: lensPersonaOptions(lensWorld),
         locationOptions: lensLocationOptions(lensWorld),
       },
     });
@@ -327,13 +336,13 @@ describe('TestBench lens bar', () => {
     const props = benchProps(groupFindings(runRules(lensWorld)), {
       tab: 'opening',
       lens: {
-        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
-        pcOptions: lensPcOptions(lensWorld),
+        lens: buildLens(lensWorld, { personaId: 'e-wren', locationId: 'market' }),
+        personaOptions: lensPersonaOptions(lensWorld),
         locationOptions: lensLocationOptions(lensWorld),
       },
     });
     render(<TestBench {...props} />);
-    expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    expect(pcSelector()).toHaveTextContent('Wren');
     expect(screen.queryByRole('combobox', { name: 'Testing at' })).toBeNull();
   });
 
@@ -341,8 +350,8 @@ describe('TestBench lens bar', () => {
     const props = benchProps(groupFindings(runRules(lensWorld)), {
       tab,
       lens: {
-        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
-        pcOptions: lensPcOptions(lensWorld),
+        lens: buildLens(lensWorld, { personaId: null, pickedTraitId: 't-sedge', locationId: 'market' }),
+        personaOptions: lensPersonaOptions(lensWorld),
         locationOptions: lensLocationOptions(lensWorld),
       },
     });
@@ -360,8 +369,8 @@ describe('TestBench lens bar', () => {
     renderBench(pinned, {
       tab: 'triggers',
       lens: {
-        lens: buildLens(pinned, { pcTraitId: 't-sedge', locationId: null }),
-        pcOptions: lensPcOptions(pinned),
+        lens: buildLens(pinned, { personaId: null, pickedTraitId: 't-sedge', locationId: null }),
+        personaOptions: lensPersonaOptions(pinned),
         locationOptions: lensLocationOptions(pinned),
       },
     });
@@ -380,12 +389,12 @@ describe('TestBench lens bar', () => {
   });
 
   it('is silent about pins the world honors', () => {
-    renderLens({ pcTraitId: 't-sedge', locationId: null });
+    renderLens({ personaId: null, pickedTraitId: 't-sedge', locationId: null });
     expect(screen.queryByText(/pins a placeholder/i)).toBeNull();
   });
 
   it('names the stats the PC switches away from the world’s defaults', () => {
-    renderLens({ pcTraitId: 't-sedge', locationId: null }, {
+    renderLens({ personaId: null, pickedTraitId: 't-sedge', locationId: null }, {
       statOverrides: [{ stat: 'Tide Sense', enabled: true }],
     });
     expect(screen.getByText('Adds Tide Sense')).toBeInTheDocument();
@@ -693,17 +702,6 @@ describe('TestBench Opening instrument', () => {
     expect(screen.getByText('gull')).toBeInTheDocument();
   });
 
-  it('marks the lens pick among the Active Traits', () => {
-    const picked: RuleWorld = {
-      ...openingWorld,
-      traitGroups: [{ id: 'g-origin', name: 'Origin', parentId: null, maxPicks: 1 }],
-      traits: [{ id: 't-sedge', name: 'Sedge-Born', groupId: 'g-origin', statChanges: [], order: 0 }],
-    };
-    const data = buildOpening(picked, buildLens(picked, { pcTraitId: 't-sedge', locationId: null }), {});
-    renderBench(picked, { tab: 'opening', opening: { data } });
-    expect(screen.getByText('Testing As')).toBeInTheDocument();
-    expect(screen.getByText('the defaults and the “Testing as” pick')).toBeInTheDocument();
-  });
 
   it('re-bands live as the slider scrubs, without touching the world', async () => {
     // The instrument has no world-writing prop at all — scrubbing is structurally unable to edit anything.
@@ -802,20 +800,13 @@ describe('TestBench Opening instrument', () => {
     }],
   };
   const personaData = (personaId?: string) => buildOpening(
-    personaWorld, buildLens(personaWorld, EMPTY_LENS), {}, { personaId },
+    personaWorld, buildLens(personaWorld, { personaId: personaId ?? null, locationId: null }), {},
   );
 
-  it('offers the world’s personas and hands a pick to the editor', async () => {
-    const { opening } = renderBench(personaWorld, { tab: 'opening', opening: { data: personaData() } });
-    await userEvent.click(screen.getByRole('combobox', { name: 'Persona' }));
-    await userEvent.click(screen.getByRole('option', { name: 'Wren' }));
-    expect(opening.onPersonaChange).toHaveBeenCalledWith('e-wren');
-  });
 
   it('names the picked persona in the preview line', () => {
     renderBench(personaWorld, { tab: 'opening', opening: { data: personaData('e-wren') } });
     expect(screen.getByText(/^Turn one as Wren/)).toBeInTheDocument();
-    expect(screen.getByText('Picks the persona you play')).toBeInTheDocument();
   });
 
   it('says no persona in the preview line under None', () => {
@@ -823,12 +814,6 @@ describe('TestBench Opening instrument', () => {
     expect(screen.getByText(/^Turn one with no persona/)).toBeInTheDocument();
   });
 
-  it('hands None back as null', async () => {
-    const { opening } = renderBench(personaWorld, { tab: 'opening', opening: { data: personaData('e-wren') } });
-    await userEvent.click(screen.getByRole('combobox', { name: 'Persona' }));
-    await userEvent.click(screen.getByRole('option', { name: 'None' }));
-    expect(opening.onPersonaChange).toHaveBeenCalledWith(null);
-  });
 
   it('marks a location’s row with its location', () => {
     renderBench(personaWorld, { tab: 'opening', opening: { data: personaData() } });
@@ -840,8 +825,8 @@ describe('TestBench Opening instrument', () => {
     expect(screen.getByRole('button', { name: /Wren.*Narration \(Self\).*You are Wren\./ })).toBeInTheDocument();
   });
 
-  it('shows no persona picker in a world without personas', () => {
-    renderOpening();
+  it('leaves the persona pick to the lens bar', () => {
+    renderBench(personaWorld, { tab: 'opening', opening: { data: personaData() } });
     expect(screen.queryByRole('combobox', { name: 'Persona' })).toBeNull();
   });
 

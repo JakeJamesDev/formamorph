@@ -3,8 +3,8 @@ import { encodePlaceholderToken, resolvePlaceholders } from '@/lib/placeholders'
 import type { Entity, GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
-  buildLens, describeBrokenPin, lensActiveTraits, lensLocationOptions, lensPcOptions, lensStatOverrides, resolveLensText,
-  seedLens, type LensWorld,
+  buildLens, describeBrokenPin, lensActiveTraits, lensLocationOptions, lensNoneLabel, lensPersonaOptions, lensStatOverrides, lensWithPersona, resolveLensText,
+  EMPTY_LENS, seedLens, type LensWorld,
 } from './lens';
 import { settledOpeningStats, type OpeningWorld } from './opening';
 
@@ -45,17 +45,26 @@ const world = (over: Partial<LensWorld> = {}): LensWorld => ({
 });
 
 describe('lens options', () => {
-  it('offers only the traits of an exclusive group as PCs', () => {
-    expect(lensPcOptions(world()).map((o) => o.id)).toEqual(['t-sedge', 't-reach']);
+  const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true };
+  const sable: Entity = { id: 'e-sable', name: 'Sable', persona: true };
+  const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true };
+  const bystander: Entity = { id: 'e-maren', name: 'Maren' };
+
+  it('offers the world’s marked entities as personas, never the Custom Persona or the cast', () => {
+    const w = world({ entities: [bystander, wren, newcomer, sable] });
+    expect(lensPersonaOptions(w).map((o) => o.id)).toEqual(['e-wren', 'e-sable']);
   });
 
-  it('files each PC under the group it belongs to', () => {
-    expect(lensPcOptions(world())[0].groupName).toBe('Origin');
+  it('has no personas to offer in a world with none', () => {
+    expect(lensPersonaOptions(world())).toEqual([]);
   });
 
-  it('has no PCs at all in a world with no exclusive group', () => {
-    const flat = world({ traitGroups: groups.map(({ maxPicks: _max, ...g }) => g) });
-    expect(lensPcOptions(flat)).toEqual([]);
+  it('reads the None row as None, as the Custom Persona in its place, or not at all under World Only', () => {
+    expect(lensNoneLabel(world({ entities: [wren] }))).toBe('None');
+    expect(lensNoneLabel(world({ entities: [wren, newcomer] }))).toBe('Newcomer');
+    const worldOnly = { allowedPersonas: 'world' } as LensWorld['worldOverview'];
+    expect(lensNoneLabel(world({ entities: [wren], worldOverview: worldOnly }))).toBeNull();
+    expect(lensNoneLabel(world({ entities: [wren, newcomer], worldOverview: worldOnly }))).toBe('Newcomer');
   });
 
   it('lists every location', () => {
@@ -77,18 +86,34 @@ describe('seedLens', () => {
     expect(seedLens(noStart, null, null).locationId).toBe('loc-market');
   });
 
+  const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true, locations: ['loc-market'] };
+  const sable: Entity = { id: 'e-sable', name: 'Sable', persona: true };
+
   it('keeps a stored selection over both the editor and the starting location', () => {
-    const stored = { pcTraitId: 't-reach', locationId: 'loc-market' };
-    expect(seedLens(world(), stored, 'loc-harbor')).toEqual(stored);
+    const stored = { personaId: 'e-wren', locationId: 'loc-market', locationChosen: true };
+    expect(seedLens(world({ entities: [wren] }), stored, 'loc-harbor')).toEqual(stored);
+  });
+
+  it('keeps a stored None over the world’s Starts On', () => {
+    const w = world({ entities: [wren], worldOverview: { startPersona: { source: 'world', entityId: 'e-wren' } } as LensWorld['worldOverview'] });
+    expect(seedLens(w, { personaId: null, locationId: null }, null).personaId).toBeNull();
   });
 
   it('re-seeds only the half the world no longer has', () => {
-    const stored = { pcTraitId: 't-reach', locationId: 'loc-gone' };
-    expect(seedLens(world(), stored, null)).toEqual({ pcTraitId: 't-reach', locationId: 'loc-harbor' });
+    const stored = { personaId: 'e-wren', locationId: 'loc-gone', locationChosen: true };
+    expect(seedLens(world({ entities: [wren] }), stored, null)).toEqual({ personaId: 'e-wren', locationId: 'loc-harbor' });
   });
 
-  it('drops a stored PC that is no longer an exclusive-group trait', () => {
-    expect(seedLens(world(), { pcTraitId: 't-keen', locationId: null }, null).pcTraitId).toBeNull();
+  it('drops a stored persona the world no longer offers', () => {
+    expect(seedLens(world({ entities: [sable] }), { personaId: 'e-wren', locationId: null }, null).personaId).toBeNull();
+  });
+
+  it('starts a fresh lens on the world’s Starts On, then the first persona under World Only, then None', () => {
+    const startsOn = { startPersona: { source: 'world', entityId: 'e-sable' } } as LensWorld['worldOverview'];
+    const worldOnly = { allowedPersonas: 'world' } as LensWorld['worldOverview'];
+    expect(seedLens(world({ entities: [wren, sable], worldOverview: startsOn }), null, null).personaId).toBe('e-sable');
+    expect(seedLens(world({ entities: [wren, sable], worldOverview: worldOnly }), null, null).personaId).toBe('e-wren');
+    expect(seedLens(world({ entities: [wren, sable] }), null, null).personaId).toBeNull();
   });
 
   it('has nowhere to stand in a world with no locations', () => {
@@ -96,27 +121,82 @@ describe('seedLens', () => {
   });
 });
 
+describe('lensWithPersona', () => {
+  const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true, locations: ['loc-market'] };
+  const sable: Entity = { id: 'e-sable', name: 'Sable', persona: true };
+  const w = world({ entities: [wren, sable] });
+
+  it('moves the location to the persona’s start', () => {
+    expect(lensWithPersona(w, { personaId: null, locationId: 'loc-harbor' }, 'e-wren').locationId).toBe('loc-market');
+  });
+
+  it('leaves a location the author picked by hand', () => {
+    const state = { personaId: null, locationId: 'loc-harbor', locationChosen: true };
+    expect(lensWithPersona(w, state, 'e-wren')).toEqual({ ...state, personaId: 'e-wren' });
+  });
+
+  it('stays put for a persona with no location, and for None', () => {
+    expect(lensWithPersona(w, { personaId: null, locationId: 'loc-harbor' }, 'e-sable').locationId).toBe('loc-harbor');
+    expect(lensWithPersona(w, { personaId: 'e-wren', locationId: 'loc-market' }, null)).toEqual({ personaId: null, locationId: 'loc-market' });
+  });
+});
+
+describe('buildLens under a persona', () => {
+  const hardy: Trait = { id: 't-hardy', name: 'Hardy', isDefault: true, statChanges: [], placeholderPins: [{ placeholderId: 'ph-hair', value: 'jet' }] };
+  const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true, traits: [hardy] };
+  const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traits: [{ ...hardy, id: 't-new', placeholderPins: [{ placeholderId: 'ph-hair', value: 'ash' }] }] };
+  const w = () => world({ entities: [wren, newcomer] });
+
+  it('plays the persona’s default traits, and the Custom Persona’s only under None', () => {
+    const as = buildLens(w(), { personaId: 'e-wren', locationId: null });
+    expect(as.persona?.id).toBe('e-wren');
+    expect(lensActiveTraits(w(), as).map((t) => t.id)).toContain('t-hardy');
+    expect(lensActiveTraits(w(), as).map((t) => t.id)).not.toContain('t-new');
+    const none = buildLens(w(), EMPTY_LENS);
+    expect(lensActiveTraits(w(), none).map((t) => t.id)).toContain('t-new');
+    expect(lensActiveTraits(w(), none).map((t) => t.id)).not.toContain('t-hardy');
+  });
+
+  it('pins through the played persona’s traits', () => {
+    expect(buildLens(w(), { personaId: 'e-wren', locationId: null }).pins['ph-hair']).toBe('jet');
+    expect(buildLens(w(), EMPTY_LENS).pins['ph-hair']).toBe('ash');
+  });
+
+  it('names a stat the persona’s default trait switches on', () => {
+    const gate = { id: 's-gate', name: 'Gate', type: 'number', value: 1, min: 0, max: 5, enabled: false } as LensWorld['stats'][number];
+    const opener: Entity = { ...wren, traits: [{ ...hardy, placeholderPins: [], statToggles: [{ statId: 's-gate', enabled: true }] }] };
+    const gated = world({ entities: [opener], stats: [gate] });
+    expect(lensStatOverrides(gated, buildLens(gated, { personaId: 'e-wren', locationId: null }))).toEqual([{ stat: 'Gate', enabled: true }]);
+  });
+
+  it('reads a persona that is gone as None, and an entity without the mark too', () => {
+    expect(buildLens(w(), { personaId: 'e-gone', locationId: null }).persona).toBeNull();
+    const cast = world({ entities: [{ id: 'e-maren', name: 'Maren' }] });
+    expect(buildLens(cast, { personaId: 'e-maren', locationId: null }).persona).toBeNull();
+  });
+});
+
 describe('buildLens', () => {
   it('carries the selected PC and location', () => {
-    const lens = buildLens(world(), { pcTraitId: 't-sedge', locationId: 'loc-market' });
-    expect(lens.pc?.name).toBe('Sedge-Born');
+    const lens = buildLens(world(), { personaId: null, pickedTraitId: 't-sedge', locationId: 'loc-market' });
+    expect(lens.pickedTrait?.name).toBe('Sedge-Born');
     expect(lens.location?.name).toBe('The Long Market');
   });
 
   it('resolves a PC the world has since lost to none rather than a stale trait', () => {
-    expect(buildLens(world(), { pcTraitId: 't-gone', locationId: null }).pc).toBeNull();
+    expect(buildLens(world(), { personaId: null, pickedTraitId: 't-gone', locationId: null }).pickedTrait).toBeNull();
   });
 
   it('pins what the PC pins, and nothing when there is no PC', () => {
-    expect(buildLens(world(), { pcTraitId: 't-sedge', locationId: null }).pins).toEqual({ 'ph-hair': 'copper' });
-    expect(buildLens(world(), { pcTraitId: 't-reach', locationId: null }).pins).toEqual({});
-    expect(buildLens(world(), { pcTraitId: null, locationId: null }).pins).toEqual({});
+    expect(buildLens(world(), { personaId: null, pickedTraitId: 't-sedge', locationId: null }).pins).toEqual({ 'ph-hair': 'copper' });
+    expect(buildLens(world(), { personaId: null, pickedTraitId: 't-reach', locationId: null }).pins).toEqual({});
+    expect(buildLens(world(), { personaId: null, pickedTraitId: null, locationId: null }).pins).toEqual({});
   });
 
   it('applies the PC’s stat toggles over the world’s defaults', () => {
-    const off = buildLens(world(), { pcTraitId: 't-reach', locationId: null });
+    const off = buildLens(world(), { personaId: null, pickedTraitId: 't-reach', locationId: null });
     expect(off.statEnabled).toEqual({ 's-tide': false, 's-nerve': true });
-    const on = buildLens(world(), { pcTraitId: 't-sedge', locationId: null });
+    const on = buildLens(world(), { personaId: null, pickedTraitId: 't-sedge', locationId: null });
     expect(on.statEnabled['s-tide']).toBe(true);
     expect(lensStatOverrides(world(), on)).toEqual([{ stat: 'Tide Sense', enabled: true }]);
     expect(lensStatOverrides(world(), off)).toEqual([]);
@@ -138,7 +218,7 @@ describe('pins from every source', () => {
   });
 
   it('layers the PC, the location and the starting band, and marks the band’s pin as the one in force', () => {
-    const lens = buildLens(layered(), { pcTraitId: 't-sedge', locationId: 'loc-market' });
+    const lens = buildLens(layered(), { personaId: null, pickedTraitId: 't-sedge', locationId: 'loc-market' });
     expect(lens.pins).toEqual({ 'ph-hair': 'ash' });
     expect(lens.pinLayers.map((l) => [l.label, l.value, l.wins])).toEqual([
       ['Trait: Sedge-Born', 'copper', false],
@@ -153,7 +233,7 @@ describe('pins from every source', () => {
         { id: 'd-low', threshold: 10, description: 'Rattled', placeholderPins: [{ placeholderId: 'ph-hair', value: 'ash' }] },
       ] }] as LensWorld['stats'],
     });
-    const lens = buildLens(calm, { pcTraitId: 't-sedge', locationId: 'loc-market' });
+    const lens = buildLens(calm, { personaId: null, pickedTraitId: 't-sedge', locationId: 'loc-market' });
     expect(lens.pins).toEqual({ 'ph-hair': 'jet' });
     expect(lens.pinLayers.find((l) => l.wins)?.label).toBe('Location: The Long Market');
   });
@@ -166,13 +246,13 @@ describe('pins from every source', () => {
       ] }] as LensWorld['stats'],
     });
     // 5 + 40 = 45 leaves the ≤ 10 band, so the band pins nothing and the PC's own pin stands.
-    expect(buildLens(shaken, { pcTraitId: 't-sedge', locationId: null }).pins).toEqual({ 'ph-hair': 'copper' });
+    expect(buildLens(shaken, { personaId: null, pickedTraitId: 't-sedge', locationId: null }).pins).toEqual({ 'ph-hair': 'copper' });
   });
 
   it('applies a default trait’s pin with no PC picked, since every playthrough carries it', () => {
     const w = world({ traits: [...traits, { id: 't-fen', name: 'Fen Blood', isDefault: true, statChanges: [],
       placeholderPins: [{ placeholderId: 'ph-home', value: 'the Fen' }] }] });
-    expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({ 'ph-home': 'the Fen' });
+    expect(buildLens(w, { personaId: null, pickedTraitId: null, locationId: null }).pins).toEqual({ 'ph-home': 'the Fen' });
   });
 });
 
@@ -189,9 +269,9 @@ describe('pins from owned traits', () => {
   }];
 
   it('keeps a cast entity’s owned default out of the world-level pins', () => {
-    const lens = buildLens(world({ entities: ash() }), { pcTraitId: null, locationId: null });
+    const lens = buildLens(world({ entities: ash() }), { personaId: null, pickedTraitId: null, locationId: null });
     expect(lens.pins).toEqual({});
-    expect(buildLens(world({ entities: ash() }), { pcTraitId: 't-sedge', locationId: null }).pinLayers.map((l) => [l.label, l.wins]))
+    expect(buildLens(world({ entities: ash() }), { personaId: null, pickedTraitId: 't-sedge', locationId: null }).pinLayers.map((l) => [l.label, l.wins]))
       .toEqual([['Trait: Sedge-Born', true]]);
   });
 
@@ -204,7 +284,7 @@ describe('pins from owned traits', () => {
     };
     const owner = (over: Partial<Entity>): Entity => ({ id: 'cp', name: 'Newcomer', placeholders: [copy], ...over });
     const w = (entities: Entity[]) => world({ traits: [{ ...traits[0], placeholderPins: [byId] }, ...traits.slice(1)], entities });
-    const lens = (entities: Entity[]) => buildLens(w(entities), { pcTraitId: 't-sedge', locationId: null });
+    const lens = (entities: Entity[]) => buildLens(w(entities), { personaId: null, pickedTraitId: 't-sedge', locationId: null });
 
     it('traces to the Custom Persona entity’s copy under None, valued as the copy rewords it, labeled with the trait', () => {
       const traced = lens([owner({ customPersona: true })]);
@@ -246,8 +326,8 @@ describe('the player owner', () => {
     ({ id, originalId, kind, originalName: originalId, groupId: null, ...extra });
   const withBlueprints = (over: Partial<LensWorld> = {}) =>
     world({ traits: [...traits, ...blueprinted], traitGroups: [...groups, ...blueprints], ...over });
-  const active = (w: LensWorld, pcTraitId: string | null = null) =>
-    lensActiveTraits(w, buildLens(w, { pcTraitId, locationId: null })).map((t) => t.id);
+  const active = (w: LensWorld, pickedTraitId: string | null = null) =>
+    lensActiveTraits(w, buildLens(w, { personaId: null, pickedTraitId, locationId: null })).map((t) => t.id);
 
   it('caps the defaults at each group’s max, first in authored order, as a new game does', () => {
     const twoGifts = groups.map((g) => (g.id === 'g-gifts' ? { ...g, maxPicks: 2 } : g));
@@ -257,9 +337,8 @@ describe('the player owner', () => {
 
   it('leaves Blueprints out: no PC from its groups, no default, no pin', () => {
     const w = withBlueprints();
-    expect(lensPcOptions(w).map((o) => o.id)).toEqual(['t-sedge', 't-reach']);
     expect(active(w)).toEqual([]);
-    expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({});
+    expect(buildLens(w, { personaId: null, pickedTraitId: null, locationId: null }).pins).toEqual({});
   });
 
   it('adds the Custom Persona entity’s links as the None player: their PCs, defaults and pins', () => {
@@ -270,9 +349,8 @@ describe('the player owner', () => {
       link('cp-warded', 't-warded', 'trait'),
     ] };
     const w = withBlueprints({ entities: [newcomer] });
-    expect(lensPcOptions(w).map((o) => o.id)).toEqual(['t-sedge', 't-reach', 't-paladin', 't-wizard']);
     expect(active(w)).toEqual(['t-paladin', 't-warded']);
-    expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({ 'ph-hair': 'jet', 'ph-home': 'the Reach' });
+    expect(buildLens(w, { personaId: null, pickedTraitId: null, locationId: null }).pins).toEqual({ 'ph-hair': 'jet', 'ph-home': 'the Reach' });
     // Picking Wizard retires Paladin, its exclusive sibling in the linked group.
     expect(active(w, 't-wizard')).toEqual(['t-wizard', 't-warded']);
   });
@@ -302,12 +380,8 @@ describe('a persona trait picked as the lens PC (Q33)', () => {
       traitGroups: [{ id: 'cg', name: 'Class', parentId: null, maxPicks: 1 }], traits: [knight, envoy, warden],
     } as Entity],
   });
-  const asPc = (w: LensWorld, id: string) => buildLens(w, { pcTraitId: id, locationId: null });
+  const asPc = (w: LensWorld, id: string) => buildLens(w, { personaId: null, pickedTraitId: id, locationId: null });
   const hpOf = (w: LensWorld, id: string) => settledOpeningStats(w as OpeningWorld, asPc(w, id)).find((s) => s.id === 's-hp')?.value;
-
-  it('is still offered as a PC', () => {
-    expect(lensPcOptions(personaWorld([])).map((o) => o.id)).toContain('t-knight');
-  });
 
   it('moves the persona’s own stat, not the global stat with the same id', () => {
     expect(hpOf(personaWorld([stat('s-hp', { value: 20 })]), 't-knight')).toBe(10);
@@ -334,26 +408,26 @@ describe('broken pins', () => {
 
   it('surfaces a broken pin on the lens location, naming the source', () => {
     const w = world({ locations: [{ ...locations[0], placeholderPins: [{ placeholderId: 'ph-gone', value: 'jet' }] }, locations[1]] });
-    const [broken] = buildLens(w, { pcTraitId: null, locationId: 'loc-market' }).brokenPins;
+    const [broken] = buildLens(w, { personaId: null, pickedTraitId: null, locationId: 'loc-market' }).brokenPins;
     expect(broken).toMatchObject({ placeholderId: 'ph-gone', value: 'jet', source: 'Location: The Long Market' });
     expect(describeBrokenPin(broken)).toBe('“Location: The Long Market” pins a placeholder that doesn’t exist, so “jet” is never applied.');
-    expect(buildLens(w, { pcTraitId: null, locationId: 'loc-harbor' }).brokenPins).toEqual([]);
+    expect(buildLens(w, { personaId: null, pickedTraitId: null, locationId: 'loc-harbor' }).brokenPins).toEqual([]);
   });
 
   it('says nothing about a pin the placeholder offers', () => {
-    expect(buildLens(pinning('ash'), { pcTraitId: 't-sedge', locationId: null }).brokenPins).toEqual([]);
+    expect(buildLens(pinning('ash'), { personaId: null, pickedTraitId: 't-sedge', locationId: null }).brokenPins).toEqual([]);
   });
 
   // An off-list pin is the feature — a trait forcing a shade nobody else rolls — so the lens applies it
   // exactly as play does and stays quiet.
   it('says nothing about a pin naming a value the placeholder does not offer', () => {
-    const lens = buildLens(pinning('teal'), { pcTraitId: 't-sedge', locationId: null });
+    const lens = buildLens(pinning('teal'), { personaId: null, pickedTraitId: 't-sedge', locationId: null });
     expect(lens.brokenPins).toEqual([]);
     expect(lens.pins).toEqual({ 'ph-hair': 'teal' });
   });
 
   it('surfaces a pin naming a placeholder that is gone', () => {
-    const [broken] = buildLens(pinning('copper', 'ph-deleted'), { pcTraitId: 't-sedge', locationId: null })
+    const [broken] = buildLens(pinning('copper', 'ph-deleted'), { personaId: null, pickedTraitId: 't-sedge', locationId: null })
       .brokenPins;
     expect(broken).toMatchObject({ placeholderId: 'ph-deleted', value: 'copper' });
     expect(describeBrokenPin(broken)).toContain('doesn’t exist');
@@ -365,7 +439,7 @@ describe('resolveLensText', () => {
   const placeholders = [hairColor, homeland];
 
   it('uses the pinned value', () => {
-    const pins = buildLens(world(), { pcTraitId: 't-sedge', locationId: null }).pins;
+    const pins = buildLens(world(), { personaId: null, pickedTraitId: 't-sedge', locationId: null }).pins;
     expect(resolveLensText(`Her ${chip('ph-hair')} hair.`, placeholders, pins)).toBe('Her copper hair.');
   });
 
@@ -378,7 +452,7 @@ describe('resolveLensText', () => {
   });
 
   it('resolves a Unique chip through the pin too — a pin is a fact about the character', () => {
-    const pins = buildLens(world(), { pcTraitId: 't-sedge', locationId: null }).pins;
+    const pins = buildLens(world(), { personaId: null, pickedTraitId: 't-sedge', locationId: null }).pins;
     expect(resolveLensText(chip('ph-hair', 'unique'), placeholders, pins)).toBe('copper');
   });
 
@@ -389,7 +463,7 @@ describe('resolveLensText', () => {
   // The bar the whole lens is measured against: what an author is shown must be what that character's turn
   // would render. Both sides run the game's own resolver, so a divergence here is a real divergence.
   it('matches what a playthrough as that PC renders', () => {
-    const pins = buildLens(world(), { pcTraitId: 't-sedge', locationId: null }).pins;
+    const pins = buildLens(world(), { personaId: null, pickedTraitId: 't-sedge', locationId: null }).pins;
     const text = `Her ${chip('ph-hair')} hair, from ${chip('ph-home')}.`;
     const played = resolvePlaceholders(text, {
       placeholders,
@@ -405,7 +479,7 @@ describe('resolveLensText', () => {
     const rolled = resolvePlaceholders(`Her ${chip('ph-hair')} hair.`, {
       placeholders,
       rolls: { world: {}, unique: {} },
-      pins: buildLens(world(), { pcTraitId: 't-reach', locationId: null }).pins,
+      pins: buildLens(world(), { personaId: null, pickedTraitId: 't-reach', locationId: null }).pins,
       pick: () => 'jet',
     });
     expect(rolled).toBe('Her jet hair.');
@@ -433,12 +507,10 @@ describe('lens option names', () => {
 
   it('names a PC by its chip rather than under its own pins, and labels its group heading', () => {
     const w = world({
-      traits: [{ ...traits[0], name: `${chipHair} Sedge-Born` }, ...traits.slice(1)],
-      traitGroups: [{ ...groups[0], name: `${chipHome} Origins` }, groups[1]],
+      entities: [{ id: 'e-wren', name: `${chipHair} Wren`, persona: true }, { id: 'cp', name: `${chipHome} Newcomer`, customPersona: true }],
     });
-    const [sedge] = lensPcOptions(w);
-    expect(sedge.name).toBe('{Hair Color} Sedge-Born');
-    expect(sedge.groupName).toBe('{Homeland} Origins');
+    expect(lensPersonaOptions(w)[0].name).toBe('{Hair Color} Wren');
+    expect(lensNoneLabel(w)).toBe('{Homeland} Newcomer');
   });
 
   it('marks a chip whose placeholder is gone, as the editor list does, rather than reading as untitled', () => {
@@ -457,7 +529,7 @@ describe('broken pin text', () => {
         ...traits.slice(1),
       ],
     });
-    const [pin] = buildLens(w, { pcTraitId: 't-sedge', locationId: null }).brokenPins;
+    const [pin] = buildLens(w, { personaId: null, pickedTraitId: 't-sedge', locationId: null }).brokenPins;
     expect(pin.value).toBe(`${chipHome} born`);
     expect(describeBrokenPin(pin)).toContain('“the Reach born”');
   });

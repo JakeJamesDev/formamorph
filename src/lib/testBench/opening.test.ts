@@ -8,8 +8,7 @@ import type { PlaceholderPick } from '@/lib/placeholders';
 import { buildLens, type LensState } from './lens';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
-  buildOpening, EMPTY_OPENING, primeOpeningRolls, rerollOpeningRolls, type OpeningWorld,
-} from './opening';
+  buildOpening, EMPTY_OPENING, primeOpeningRolls, rerollOpeningRolls, type OpeningWorld, type OpeningChoice } from './opening';
 
 // Chip tokens, spelled as the editor inserts them.
 const chip = (id: string, mode: 'world' | 'unique', placement: string) => `{{ph:${id}:${mode}:${placement}}}`;
@@ -91,16 +90,16 @@ const world = (over: Partial<OpeningWorld> = {}): OpeningWorld => ({
 });
 
 const lensAt = (w: OpeningWorld, state: Partial<LensState> = {}) =>
-  buildLens(w, { pcTraitId: null, locationId: null, ...state });
+  buildLens(w, { personaId: null, pickedTraitId: null, locationId: null, ...state });
 
 // A deterministic chooser: always the first value, so a re-mint is observable against a `pick` that
 // chose the last.
 const pickFirst: PlaceholderPick = (values) => values[0].text;
 const pickLast: PlaceholderPick = (values) => values[values.length - 1].text;
 
-const openingFor = (w: OpeningWorld, pcTraitId: string | null = null) => {
+const openingFor = (w: OpeningWorld, pickedTraitId: string | null = null) => {
   const rolls = primeOpeningRolls(w, {}, pickFirst);
-  return buildOpening(w, lensAt(w, { pcTraitId }), rolls);
+  return buildOpening(w, lensAt(w, { pickedTraitId }), rolls);
 };
 
 describe('activeDescriptor band edges', () => {
@@ -179,7 +178,6 @@ describe('buildOpening traits', () => {
   it('substitutes the PC for its exclusive-group default, in authored order', () => {
     const opening = openingFor(world(), 't-reach');
     expect(opening.traits.map((t) => t.id)).toEqual(['t-reach', 't-base']);
-    expect(opening.traits.find((t) => t.id === 't-reach')?.isPc).toBe(true);
   });
 
   it('names each trait’s pins and stat toggles', () => {
@@ -272,7 +270,7 @@ describe('opening rolls', () => {
   it('rerolls only the unpinned placeholders', () => {
     const w = world();
     const before = primeOpeningRolls(w, {}, pickFirst);
-    const after = rerollOpeningRolls(w, lensAt(w, { pcTraitId: 't-reach' }), before, pickLast);
+    const after = rerollOpeningRolls(w, lensAt(w, { personaId: null, pickedTraitId: 't-reach' }), before, pickLast);
     // Pinned (ph-hair by the PC, ph-coin by the default) keep their frozen roll underneath the pin…
     expect(after.world?.['ph-hair']).toBe('ash');
     expect(after.world?.['ph-coin']).toBe('gull');
@@ -380,7 +378,8 @@ describe('the stranger label on turn one', () => {
   const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true, locations: ['market'] };
   const first = (entity: Entity, personaId: string | null) => {
     const w = world({ entities: [entity, wren] });
-    return buildOpening(w, lensAt(w), primeOpeningRolls(w, {}, pickFirst), { personaId }).system;
+    // Wren starts at the market on its own; the author picks the harbor, where the stranger stands.
+    return buildOpening(w, lensAt(w, { personaId }), primeOpeningRolls(w, {}, pickFirst), { startLocationId: 'harbor' }).system;
   };
 
   it('prints an unmet stranger under its label in the first prompt', () => {
@@ -493,14 +492,14 @@ describe('safety', () => {
     const w = world();
     const snapshot = JSON.stringify(w);
     const rolls = primeOpeningRolls(w, {}, pickFirst);
-    buildOpening(w, lensAt(w, { pcTraitId: 't-reach' }), rolls);
-    rerollOpeningRolls(w, lensAt(w, { pcTraitId: 't-reach' }), rolls, pickLast);
+    buildOpening(w, lensAt(w, { personaId: null, pickedTraitId: 't-reach' }), rolls);
+    rerollOpeningRolls(w, lensAt(w, { personaId: null, pickedTraitId: 't-reach' }), rolls, pickLast);
     expect(JSON.stringify(w)).toBe(snapshot);
   });
 
   it('survives a malformed world', () => {
     const bare = {} as OpeningWorld;
-    expect(() => buildOpening(bare, buildLens(bare, { pcTraitId: null, locationId: null }), {})).not.toThrow();
+    expect(() => buildOpening(bare, buildLens(bare, { personaId: null, pickedTraitId: null, locationId: null }), {})).not.toThrow();
   });
 
   it('has an empty shape for the closed tab', () => {
@@ -636,7 +635,6 @@ describe('a blueprint chip in the PC’s trait text', () => {
   it('names the PC’s traits through the player’s copy', () => {
     const opening = openingFor(garbed(), 't-sedge');
     expect(opening.traits.find((t) => t.id === 't-sedge')?.name).toBe('{rags|robe} Sedge-Born');
-    expect(opening.pcName).toBe('{rags|robe} Sedge-Born');
   });
 });
 
@@ -665,8 +663,8 @@ describe('the persona pick', () => {
     entities: cast(),
     ...over,
   });
-  const at = (w: OpeningWorld, choice: Parameters<typeof buildOpening>[3]) =>
-    buildOpening(w, lensAt(w), primeOpeningRolls(w, {}, pickFirst), { startLocationId: 'harbor', ...choice });
+  const at = (w: OpeningWorld, { personaId = null, ...choice }: OpeningChoice & { personaId?: string | null }) =>
+    buildOpening(w, lensAt(w, { personaId }), primeOpeningRolls(w, {}, pickFirst), { startLocationId: 'harbor', ...choice });
   const texts = (o: ReturnType<typeof at>) => o.pool.map((r) => r.text);
 
   it('replaces the pool with the persona’s Self rows, owned by the persona', () => {
@@ -705,16 +703,22 @@ describe('the persona pick', () => {
     expect(texts(at(staged(), { personaId: 'e-wren', startLocationId: 'market' }))).toEqual(['You are Wren.']);
   });
 
-  it('lists the world’s personas, with the pick resolved', () => {
-    const opening = at(staged({ entities: [...cast(), custom()] }), { personaId: 'e-sable' });
-    expect(opening.personas).toEqual([{ id: 'e-wren', name: 'Wren' }, { id: 'e-sable', name: 'Sable' }]);
-    expect(opening.personaId).toBe('e-sable');
+  it('names the lens persona', () => {
+    expect(at(staged({ entities: [...cast(), custom()] }), { personaId: 'e-sable' }).personaName).toBe('Sable');
+  });
+
+  it('adds the persona’s own locations to the start pool and starts on the first it finds', () => {
+    const entities = cast().map((e) => (e.id === 'e-wren' ? { ...e, locations: ['harbor', 'market'] } : e));
+    const w = staged({ entities, locations: locations.map((l) => ({ ...l, isStarting: l.id === 'market' })) });
+    const opening = buildOpening(w, lensAt(w, { personaId: 'e-wren' }), primeOpeningRolls(w, {}, pickFirst));
+    expect(opening.starts.map((s) => s.id)).toEqual(['harbor', 'market']);
+    expect(opening.location?.id).toBe('market');
   });
 
   it('reads a pick that names no persona as None', () => {
     const w = staged({ entities: [...cast(), custom()] });
     const opening = at(w, { personaId: 'e-gone' });
-    expect(opening.personaId).toBeNull();
+    expect(buildLens(w, { personaId: 'e-gone', locationId: null }).persona).toBeNull();
     expect(texts(opening)).toEqual(['You arrive as yourself.']);
   });
 
@@ -881,7 +885,7 @@ describe('entity stats at game start', () => {
   const only = () => maren({ persona: true, personaOnly: true });
   const custom = () => maren({ id: 'e-custom', name: 'Newcomer', customPersona: true, personaOnly: true });
   const atPersona = (w: OpeningWorld, personaId: string | null) =>
-    buildOpening(w, lensAt(w), primeOpeningRolls(w, {}, pickFirst), { personaId });
+    buildOpening(w, lensAt(w, { personaId }), primeOpeningRolls(w, {}, pickFirst));
 
   it('leaves out a persona-only entity while nobody plays it', () => {
     expect(openingFor(staged([only()])).entityStats).toEqual([]);
@@ -913,7 +917,7 @@ describe('entity stats at game start', () => {
 
   it('names the entity through the active pins, as the rest of the instrument does', () => {
     const w = staged([maren({ name: chip('ph-hair', 'world', 'pl-e1') })]);
-    const opening = buildOpening(w, lensAt(w, { pcTraitId: 't-reach' }), primeOpeningRolls(w, {}, pickFirst));
+    const opening = buildOpening(w, lensAt(w, { personaId: null, pickedTraitId: 't-reach' }), primeOpeningRolls(w, {}, pickFirst));
     expect(opening.entityStats[0].name).toBe('copper');
   });
 

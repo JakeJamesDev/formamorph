@@ -42,11 +42,11 @@ import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPi
 import { enabledStats } from '@/lib/traitEffects';
 import { seedNewGameStats } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
-import { startingLocations } from '@/lib/startingLocation';
 import type {
   Entity, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
-import { lensActiveTraits, lensPersonaPicks, lensPinTraits, lensStartingStats, resolveLensText, type BenchLens } from './lens';
+import { offeredStartLocations, personaStartLocation } from '@/lib/personaPick';
+import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinTraits, lensStartingStats, resolveLensText, type BenchLens } from './lens';
 import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
 
@@ -91,7 +91,6 @@ export interface OpeningEntityStats {
 export interface OpeningTrait {
   id: string;
   name: string;
-  isPc: boolean;
   pins: { placeholder: string; value: string }[];
   toggles: { stat: string; enabled: boolean }[];
 }
@@ -144,17 +143,14 @@ export interface OpeningPoolRow {
 
 /** Everything the Opening instrument shows for one lens. */
 export interface OpeningData {
-  pcName: string | null;
   location: GameLocation | null;
   locationName: string;
   /** How many places the fresh game might start at — above 1, play picks one at random. */
   startPool: number;
   /** The places the fresh game might start at, for the author to pick one. */
   starts: { id: string; name: string }[];
-  /** The world's personas the author can play as; None is always there. */
-  personas: { id: string; name: string }[];
-  /** The persona shown, or null for None. */
-  personaId: string | null;
+  /** The played entity's name. Null when nothing plays. */
+  personaName: string | null;
   /** The rows a fresh game at `location` draws from, in pool order. */
   pool: OpeningPoolRow[];
   /** The pool row shown, or null when the pool is empty and play opens on the default. */
@@ -180,12 +176,12 @@ export interface OpeningData {
 
 /** What the instrument reads while it has nothing to assemble — a Bench closed, or closed on another tab. */
 export const EMPTY_OPENING: OpeningData = {
-  pcName: null, location: null, locationName: '', startPool: 0, starts: [], personas: [], personaId: null, pool: [], selectedKey: null,
+  location: null, locationName: '', startPool: 0, starts: [], personaName: null, pool: [], selectedKey: null,
   opening: { kind: DEFAULT_OPENING.kind, text: '' }, openingsEnabled: true,
   stats: [], disabledStats: [], entityStats: [], traits: [], rolls: [], system: '', user: '', totalTokens: 0,
 };
 
-/** What a fresh game as the lens PC has at turn one: the traits that apply, the stats they settle, and
+/** What a fresh game under the lens has at turn one: the traits that apply, the stats they settle, and
  *  the starting location — the three sources the opening pins come from. */
 interface OpeningStart {
   active: Trait[];
@@ -194,27 +190,31 @@ interface OpeningStart {
   settled: PlayerStat[];
   /** The random pool play draws the start from. */
   pool: GameLocation[];
-  /** The author's chosen member of `pool`, or its first. */
+  /** The author's chosen member of `pool`, else the persona's own start, else its first. */
   location: GameLocation | null;
+  /** The world persona played. Null under None. */
+  personaId: string | null;
 }
 
-function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: string | null, persona: PersonaRef = { source: 'none' }): OpeningStart {
+function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: string | null): OpeningStart {
   const active = lensActiveTraits(world, lens);
+  const persona = lensPersonaRef(lens.persona?.id ?? null);
   const locations = world.locations ?? [];
-  const flagged = startingLocations(locations);
-  const pool = flagged.length > 0 ? flagged : locations;
-  const location = pool.find((l) => l.id === startLocationId) ?? pool[0] ?? null;
+  const offered = offeredStartLocations(persona, { worldEntities: world.entities ?? [], locations });
+  const pool = offered.length > 0 ? offered : locations;
+  const own = lens.persona ? personaStartLocation(lens.persona, locations) : null;
+  const location = pool.find((l) => l.id === startLocationId) ?? pool.find((l) => l.id === own) ?? pool[0] ?? null;
   const state = openingStateOf(world, openingPicks(world, active, persona), openingPersonaOf(persona));
-  return { active, state, settled: [...state.stats], pool, location };
+  return { active, state, settled: [...state.stats], pool, location, personaId: lens.persona?.id ?? null };
 }
 
-/** The picks Enter World starts from under `persona`: the lens PC's traits, and each owner's default picks.
- *  The Custom Persona entity holds the lens PC when it is the persona's (Q33). */
+/** The picks Enter World starts from under `persona`: the lens's traits, and each owner's default picks.
+ *  The played entity holds its own picks among them (Q33). */
 function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: PersonaRef): OpeningPicks {
   const { gate: ownerGate } = resolveOwners(ownerWorldOf(world), persona);
   // Stat Conditions read the authored start, as Enter World's do (Q23).
   const gate = { ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
-  const custom = lensPersonaPicks(world, active);
+  const custom = lensPersonaPicks(world, active, persona.source === 'world' ? persona.entityId : null);
   const defaults = settleDefaults(gate).active;
   const owned = settle({
     ...gate,
@@ -229,11 +229,11 @@ function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: Pe
 }
 
 /** The pins the fresh game opens under, from every source — the active traits (a default trait's pin binds
- *  every playthrough, not just the lens PC's) and the cast's owned defaults, the starting location, the band each settled stat is in,
+ *  every playthrough) and the cast's owned defaults, the starting location, the band each settled stat is in,
  *  and the value pins those and `rolls` settle — through the same collector Enter World runs. */
 const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: PlaceholderRolls): Record<string, string> =>
   collectPins({
-    traits: lensPinTraits(world, start.active), location: start.location, stats: start.settled,
+    traits: lensPinTraits(world, start.active, start.personaId), location: start.location, stats: start.settled,
     placeholders: allPlaceholders(world), rolls,
   });
 
@@ -313,20 +313,17 @@ function collisionChance(chances: number[], draws: number): number {
 
 /** Every stat a fresh game as the lens PC starts with, settled, including any the PC switches off. */
 export function settledOpeningStats(world: OpeningWorld, lens: BenchLens): PlayerStat[] {
-  return lensStartingStats(world, globalStatsOf(world.stats ?? [], world.statGroups ?? []), lensActiveTraits(world, lens));
+  return lensStartingStats(world, globalStatsOf(world.stats ?? [], world.statGroups ?? []), lensActiveTraits(world, lens), lens.persona?.id ?? null);
 }
 
-/** What the author picked to look at: the persona, a start from the start pool and a row from its opening
- *  pool. */
+/** What the author picked to look at: a start from the start pool and a row from its opening pool. */
 export interface OpeningChoice {
-  /** A world persona's id. Absent or unknown reads as None. */
-  personaId?: string | null;
   startLocationId?: string | null;
   openingKey?: string | null;
 }
 
 /**
- * Everything the Opening instrument shows for `lens` and the frozen `rolls`. Only the lens PC matters here —
+ * Everything the Opening instrument shows for `lens` and the frozen `rolls`. Only the lens persona matters here —
  * a fresh game begins at a starting location, wherever the lens is standing. `choice` picks the start and
  * the opening; each falls back to the first.
  */
@@ -338,10 +335,8 @@ export function buildOpening(
 ): OpeningData {
   const placeholders = allPlaceholders(world);
   const worldEntities = world.entities ?? [];
-  const personas = worldEntities.filter((e) => e.persona && !e.customPersona);
-  const personaId = personas.find((e) => e.id === choice.personaId)?.id ?? null;
-  const personaRef: PersonaRef = personaId ? { source: 'world', entityId: personaId } : { source: 'none' };
-  const start = openingStart(world, lens, choice.startLocationId, personaRef);
+  const personaRef = lensPersonaRef(lens.persona?.id ?? null);
+  const start = openingStart(world, lens, choice.startLocationId);
   const { active, settled, location } = start;
   const pins = openingPins(world, start, rolls);
   const resolve = (text: string, copies?: CopyLookup) => resolvePlaceholders(text, { placeholders, rolls, pins, copies });
@@ -394,7 +389,6 @@ export function buildOpening(
   const traits = active.map((trait): OpeningTrait => ({
     id: trait.id,
     name: resolveLensText(trait.name, placeholders, pins, lens.copies),
-    isPc: trait.id === lens.pc?.id,
     // A pin's text is chip-capable, so it reads through the same rolls as everything else here.
     pins: (trait.placeholderPins ?? [])
       .filter((pin) => pin.placeholderId && pin.value)
@@ -502,13 +496,11 @@ export function buildOpening(
   const user = narrated ? '' : renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': cue });
 
   return {
-    pcName: lens.pc ? resolveLensText(lens.pc.name, placeholders, pins, lens.copies) : null,
     location,
     locationName: location ? resolve(location.name) : '',
     startPool: start.pool.length,
     starts: start.pool.map((l) => ({ id: l.id, name: resolve(l.name) })),
-    personas: personas.map((e) => ({ id: e.id, name: resolve(e.name) })),
-    personaId,
+    personaName: persona ? resolve(persona.entity.name) : null,
     pool,
     selectedKey: chosen?.key ?? null,
     opening,

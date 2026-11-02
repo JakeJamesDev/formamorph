@@ -295,7 +295,8 @@ export function computeInPlay(
   let lens: BenchLens | null = null;
   const lensHere = () => lens ??= buildLens(world, {
     ...seedLens(world, null, sceneId ?? items.location ?? null),
-    pcTraitId: spec.picksTrait ? liveTourItem(world, items, 'trait') : null,
+    personaId: null,
+    pickedTraitId: spec.picksTrait ? liveTourItem(world, items, 'trait') : null,
   });
   const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'statsChip' && r.reads !== 'testLine');
   const context = needsContext ? buildAiContext(world, lensHere()) : null;

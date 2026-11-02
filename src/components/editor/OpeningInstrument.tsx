@@ -110,12 +110,7 @@ const StatList = ({ stats, disabled }: { stats: OpeningStat[]; disabled: string[
 /** One trait that applies at game start, with its pins and stat changes under it. */
 const TraitRow = ({ trait }: { trait: OpeningTrait }) => (
   <div className="rounded-md border p-1.5">
-    <div className="flex items-baseline gap-1.5">
-      <span className="min-w-0 flex-grow truncate text-label">{trait.name}</span>
-      {trait.isPc && (
-        <Meta className="shrink-0 rounded bg-muted px-1">Testing As</Meta>
-      )}
-    </div>
+    <span className="block min-w-0 truncate text-label">{trait.name}</span>
     {(trait.pins.length > 0 || trait.toggles.length > 0) && (
       <Meta as="p" className="mt-0.5">
         {[
@@ -199,9 +194,6 @@ const PromptBlock = ({ label, text, open, onToggle }: {
   </div>
 );
 
-/** The picker's value for None: a Select item cannot hold an empty value. */
-const NO_PERSONA = 'none';
-
 const KIND_LABEL: Record<OpeningPoolRow['kind'], string> = { action: 'Player Action', narration: 'Narration' };
 
 /** One drawable opening: its owner, kind, text and chance. Selecting it shows what it sends on turn one. */
@@ -228,7 +220,7 @@ export interface OpeningInstrumentProps extends OpeningProps {
   data: OpeningData;
 }
 
-export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChange, onOpeningChange }: OpeningInstrumentProps) {
+export function OpeningInstrument({ data, onReroll, onStartChange, onOpeningChange }: OpeningInstrumentProps) {
   const [openBlocks, setOpenBlocks] = useState<Set<string>>(new Set());
   const toggle = (id: string) => setOpenBlocks((current) => {
     const next = new Set(current);
@@ -237,7 +229,6 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
   });
 
   const narrated = data.opening.kind === 'narration';
-  const personaName = data.personas.find((persona) => persona.id === data.personaId)?.name;
 
   if (!data.location) {
     return (
@@ -250,25 +241,9 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
       <div className="space-y-2 pr-2">
         <div className="rounded-md border bg-muted/30 p-2">
           <p className="text-label font-medium">
-            {personaName ? `Turn one as ${personaName}` : 'Turn one with no persona'}
+            {data.personaName ? `Turn one as ${data.personaName}` : 'Turn one with no persona'}
             {narrated ? ', opening on a written page one' : ` ≈ ${tokenLabel(data.totalTokens)} tokens`}
           </p>
-          {data.personas.length > 0 && (
-            <div className="mt-1 flex items-center gap-2">
-              <Select value={data.personaId ?? NO_PERSONA} onValueChange={(id) => onPersonaChange(id === NO_PERSONA ? null : id)}>
-                <SelectTrigger className="h-6 w-auto min-w-0 max-w-[50%] px-2 text-meta" aria-label="Persona">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_PERSONA}>None</SelectItem>
-                  {data.personas.map((persona) => (
-                    <SelectItem key={persona.id} value={persona.id}>{persona.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Meta as="p" className="min-w-0 truncate">Picks the persona you play</Meta>
-            </div>
-          )}
           {data.starts.length > 1 ? (
             <div className="mt-1 flex items-center gap-2">
               <Select value={data.location.id} onValueChange={onStartChange}>
@@ -322,7 +297,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
           </div>
         ))}
 
-        <SectionHeading label="Active Traits" note={data.pcName ? 'the defaults and the “Testing as” pick' : 'the defaults'} />
+        <SectionHeading label="Active Traits" note="the defaults" />
         {data.traits.length === 0 ? (
           <Meta as="p">No traits are active at game start</Meta>
         ) : (
