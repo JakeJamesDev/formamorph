@@ -152,7 +152,7 @@ describe('a saved world script template', () => {
     });
     await user.click(await screen.findByLabelText('Import templates'));
     expect(await screen.findByRole('button', { name: 'Mine' })).toBeInTheDocument();
-    expect(fresh.library).toEqual([expect.objectContaining({ kind: 'worldScript', timings: ['after', 'start'] })]);
+    expect(fresh.library).toEqual([expect.objectContaining({ kind: 'worldScript', timings: ['start', 'after'] })]);
     second.unmount();
 
     // The stat box runs After the AI, one of the template's timings, so only its kind keeps it out.

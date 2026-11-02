@@ -225,7 +225,7 @@ describe('the Scripts section', () => {
     renderManager('code');
     await user.click(within(rowOf('Rockets · Before the AI')).getByRole('combobox', { name: 'Timing' }));
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
-      'Before the AI', 'After the AI', 'During AI Output', 'At Game Start', 'When a Trait Switches',
+      'At Game Start', 'Before the AI', 'During AI Output', 'After the AI', 'When a Trait Switches',
     ]);
     await user.click(screen.getByRole('option', { name: 'At Game Start' }));
     expect(store.stat.scripts).toEqual([{ id: 'before', timing: 'start', code: 'return 1;' }]);

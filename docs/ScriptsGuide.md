@@ -223,10 +223,10 @@ To save your own, select **New Template** or **Duplicate** in a world script's m
 <!-- route: worldEditor.scripts -->
 
 1. In the World Editor, select **Advanced** in the mode switch. Open the **Scripts** tab in the **Logic** group.
-2. Read the tree. It has one group for each timing. Each script is a row, in run order.
+2. Read the tree. It has one group for each timing, in the order a turn reaches them: At Game Start, Before the AI, During AI Output, After the AI, When a Trait Switches. Each script is a row. A row's place is where it runs. A Blueprint script is one row that runs for each owner that uses it.
 3. Select a row to edit its script, in the same box its owner shows. **Open** followed by the owner's name opens the owner's **Scripts** tab. A world script has no owner to open.
 4. To change when a script runs in its timing, drag its row. A drop sets the **order** of the scripts in that timing. The tree refuses a drag to another timing. To change a script's timing, use its **Timing** menu.
-5. To add a world script, select **Add Script** and pick a timing. The script belongs to the world. The text in the search box becomes its name.
+5. To add a world script, select **Add Script** and pick a timing. The script belongs to the world and goes to the bottom of its timing. The text in the search box becomes its name.
 
 ## How to Debug Scripts
 <!-- keywords: error, console, log, fix, broken, not working, test, script, print values, devtools, f12, trace, inspect, wrong number, canceled prompt -->
@@ -395,13 +395,17 @@ An item's scripts use five timings of their own. Each one runs once for each eve
 
 ### Run Order
 
-Within one timing, scripts run in this order:
+Within one timing, scripts run in the order the world's **Scripts** tab lists them, from the top row down:
 
-1. Scripts with an **order**, from the lowest. To set it, drag a row in the world's **Scripts** tab.
+1. Scripts with an **order**, from the lowest. To set it, drag a row in the **Scripts** tab.
 2. Scripts with no order:
-   - World scripts first, then each owner's scripts.
-   - Global stats and traits come first, then each entity.
-   - Inside one owner, its stats' scripts run in stat order. Then its active traits' scripts run in the order of the **Traits** tab.
+   - World scripts first.
+   - Global stats, then global traits.
+   - Each entity in turn. Its stats' scripts run in stat order. Then its active traits' scripts run in the order of the **Traits** tab.
+   - Blueprint stats, then Blueprint traits.
+3. Scripts of library entities, which you add at Enter World. They run after every row, in the order you picked them. They ignore any **order** they carry.
+
+A Blueprint script is one row. It runs once for each owner that uses it, one owner after another, at the row's place in the list.
 
 A later write to a field overwrites an earlier one, so the order decides which write wins. When a world script is ordered before a stat script, the stat script overwrites the world script's write. Swap their orders, and the world script wins. See [Writing to Other Stats](Scripts-Reference#writing-to-other-stats).
 

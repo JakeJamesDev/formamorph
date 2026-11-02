@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { SANDBOX_GLOBALS } from '@/lib/statCodeSurface';
-import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
+import { SCRIPT_TIMING_LABEL, HELP_SCRIPT_TIMINGS } from '@/lib/scripts';
 import {
   CODE_RIDER_LANGUAGE, DEFAULT_CODE_RIDER, hasCodeWords, isCodeTurn, SANDBOX_GLOBAL_NAMES, SCRIPT_TAB, scriptHomeLine, TRAIT_SCRIPT_TAB, withCodeRider, WORLD_SCRIPT_TAB,
 } from './helpCodeRider';
@@ -94,22 +94,30 @@ describe('the rider', () => {
 
   it('names each of the five boxes, and ends one line with each fence opener, its timing first after the language', () => {
     const lines = DEFAULT_CODE_RIDER.split('\n');
-    expect(SCRIPT_TIMINGS).toHaveLength(5);
-    for (const timing of SCRIPT_TIMINGS) {
+    expect(HELP_SCRIPT_TIMINGS).toHaveLength(5);
+    for (const timing of HELP_SCRIPT_TIMINGS) {
       expect(DEFAULT_CODE_RIDER).toContain(`**${SCRIPT_TIMING_LABEL[timing]}**`);
       expect(lines.filter((line) => line.endsWith(`\`\`\`${CODE_RIDER_LANGUAGE} ${timing}`)), timing).toHaveLength(1);
     }
-    expect(DEFAULT_CODE_RIDER.match(/```/g)).toHaveLength(SCRIPT_TIMINGS.length);
+    expect(DEFAULT_CODE_RIDER.match(/```/g)).toHaveLength(HELP_SCRIPT_TIMINGS.length);
   });
 
   it('says, above the fence lines, that the app reads the word after the language to pick each box', () => {
     const lines = DEFAULT_CODE_RIDER.split('\n');
     const purpose = lines.findIndex((l) => l.includes(`reads the word after \`${CODE_RIDER_LANGUAGE}\` on the opening line`));
     expect(purpose).toBeGreaterThanOrEqual(0);
-    for (const timing of SCRIPT_TIMINGS) {
+    for (const timing of HELP_SCRIPT_TIMINGS) {
       expect(lines[purpose], timing).toContain(`\`${timing}\` for **${SCRIPT_TIMING_LABEL[timing]}**`);
       expect(lines.findIndex((l) => l.endsWith(`\`\`\`${CODE_RIDER_LANGUAGE} ${timing}`)), timing).toBeGreaterThan(purpose);
     }
+  });
+
+  it('lists the boxes in its own order, whatever order the editor lists the timings in', () => {
+    const labels = ['Before the AI', 'After the AI', 'During AI Output', 'At Game Start', 'When a Trait Switches'];
+    const line = DEFAULT_CODE_RIDER.split('\n').find((l) => l.includes('Pick the box by when it runs: **')) ?? '';
+    expect(labels.map((label) => line.indexOf(`**${label}**`)).every((at, i, all) => at >= 0 && (i === 0 || at > all[i - 1]))).toBe(true);
+    const openers = DEFAULT_CODE_RIDER.split('\n').filter((l) => l.includes(`\`\`\`${CODE_RIDER_LANGUAGE} `));
+    expect(openers.map((l) => l.slice(l.lastIndexOf(' ') + 1))).toEqual(['before', 'after', 'output', 'start', 'switch']);
   });
 
   it('carries no example code', () => {
@@ -118,9 +126,9 @@ describe('the rider', () => {
 
   it('says when each box runs, every box with its own run time, before it asks for the box name', () => {
     const line = DEFAULT_CODE_RIDER.split('\n').find((l) => l.includes('Pick the box by when it runs: **')) ?? '';
-    const runTimes = SCRIPT_TIMINGS.map((timing) => new RegExp(`\\*\\*${SCRIPT_TIMING_LABEL[timing]}\\*\\* ([a-z][^,*.]+)`).exec(line)?.[1]);
+    const runTimes = HELP_SCRIPT_TIMINGS.map((timing) => new RegExp(`\\*\\*${SCRIPT_TIMING_LABEL[timing]}\\*\\* ([a-z][^,*.]+)`).exec(line)?.[1]);
     expect(runTimes.every(Boolean), String(runTimes)).toBe(true);
-    expect(new Set(runTimes).size).toBe(SCRIPT_TIMINGS.length);
+    expect(new Set(runTimes).size).toBe(HELP_SCRIPT_TIMINGS.length);
     expect(line.indexOf('Name the box in one sentence.')).toBeGreaterThan(line.lastIndexOf('**'));
   });
 

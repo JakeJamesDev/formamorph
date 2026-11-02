@@ -120,7 +120,7 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
   /** True while the Scripts tab shows: the help window's Insert targets the world then. */
   active?: boolean;
 }): ListEditorAdapter {
-  const { worldScripts, stats, statGroups, traits, traitGroups, entities, placeholders, setWorldScripts } = useGameData();
+  const { worldScripts, stats, statGroups, traits, traitGroups, entities, placeholders } = useGameData();
   const write = useScriptWrites();
   const [refused, setRefused] = useState<ScriptEntry | null>(null);
   const [focusKey, setFocusKey] = useState<string | null>(null);
@@ -132,12 +132,15 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
   const byKey = useMemo(() => new Map(entries.map((entry) => [entry.key, entry])), [entries]);
 
   const add = useCallback((timing: ScriptTiming, name: string, code = '') => {
-    const script: Script = { ...newScript(timing, code), ...(name && { name }) };
-    setWorldScripts([...worldScripts, script]);
+    // The timing's rows take their places in the list, and the new script the last, so it reads everything above it.
+    const rows = byTiming[timing];
+    const script: Script = { ...newScript(timing, code), ...(name && { name }), order: rows.length };
+    const places = rows.flatMap((entry, order) => (entry.script.order === order ? [] : [{ entry, order }]));
+    write([...orderEdits(places), { home: { kind: 'world' }, edit: (scripts) => [...scripts, script] }]);
     const key = scriptEntryKey({ kind: 'world' }, script.id);
     setFocusKey(key);
     onSelect(key);
-  }, [worldScripts, setWorldScripts, onSelect]);
+  }, [byTiming, write, onSelect]);
 
   // Read at insert time, so the registration does not change with each keystroke.
   const latestAdd = useRef(add);

@@ -90,9 +90,9 @@ describe('the Scripts tab', () => {
     openScripts();
     const rows = tree!.getVisible(new Set()).map((row) => row.id.split('|')[0]);
     expect(rows).toEqual([
-      'timing:before', 'stat/warmth',
+      'timing:start', 'timing:before', 'stat/warmth', 'timing:output',
       'timing:after', 'world', 'stat/warmth', 'trait/brave', 'entity/resident/rage',
-      'timing:output', 'timing:start', 'timing:switch',
+      'timing:switch',
     ]);
     expect(screen.getByText('World · After the AI')).toBeInTheDocument();
     expect(screen.getByText('Temper')).toBeInTheDocument();
@@ -206,6 +206,9 @@ describe('the Scripts tab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Script' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'After the AI' }).find((el) => !el.closest('div.cursor-pointer'))!);
     expect(group('After the AI')?.textContent).toBe('After the AI5');
+    // The new script takes the last place in its timing, and the rows above it take theirs.
+    expect(bench.ctx().worldScripts.at(-1)!.order).toBe(4);
+    expect(bench.ctx().worldScripts[0].order).toBe(0);
     act(() => bench.history().undo());
 
     act(() => bench.history().undo());

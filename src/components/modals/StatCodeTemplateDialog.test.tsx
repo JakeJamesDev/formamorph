@@ -686,7 +686,7 @@ describe('which templates a box offers', () => {
     await user.click(await screen.findByRole('option', { name: /At Game Start/ }));
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: 'Save Template' }));
-    await waitFor(() => expect(library).toEqual([expect.objectContaining({ name: 'Twice', timings: ['before', 'start'] })]));
+    await waitFor(() => expect(library).toEqual([expect.objectContaining({ name: 'Twice', timings: ['start', 'before'] })]));
     unmount();
 
     for (const timing of ['before', 'start'] as const) {

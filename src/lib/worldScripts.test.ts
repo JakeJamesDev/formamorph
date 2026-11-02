@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, Script, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import {
-  editScripts, orderEdits, reorderWrites, scriptsByTiming, worldScriptEntries, worldScriptList, type ScriptEntry,
+  editScripts, orderEdits, reorderWrites, rowKeyOf, runRowKeys, scriptsByTiming, worldScriptEntries, worldScriptList, type ScriptEntry,
   type ScriptSlices, type ScriptTreeWorld,
 } from './worldScripts';
-import { patchScript, scriptsOf } from './scripts';
+import { patchScript, SCRIPT_TIMINGS, scriptsOf } from './scripts';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
@@ -115,6 +115,21 @@ describe('worldScriptEntries', () => {
     expect(rows.map((row) => row.script.id)).toEqual(['inner-after', 'brave-after']);
   });
 
+  it('lists the timings in the order a turn reaches them', () => {
+    expect(Object.keys(scriptsByTiming(worldScriptEntries(world)))).toEqual(['start', 'before', 'output', 'after', 'switch']);
+    expect(SCRIPT_TIMINGS).toEqual(['start', 'before', 'output', 'after', 'switch']);
+  });
+
+  it('gives the turn the same row keys the tab lists, a Blueprint row once', () => {
+    const tab = scriptsByTiming(worldScriptEntries(world)).after.map((entry) => entry.key);
+    expect(runRowKeys(world, 'after')).toEqual(tab);
+    expect(tab.filter((key) => key === 'stat/howl|howl-after')).toHaveLength(1);
+  });
+
+  it('names no row for an item timing, which the tab does not list', () => {
+    expect(runRowKeys(world, 'gained')).toEqual([]);
+  });
+
   it('files each script under its own timing', () => {
     const byTiming = scriptsByTiming(worldScriptEntries(world));
     expect(ids(byTiming.before)).toEqual(['stat:h-before']);
@@ -149,6 +164,38 @@ describe('worldScriptEntries', () => {
   it('gives each row a key no other row shares, a link’s copy of a Blueprint script included', () => {
     const keys = worldScriptEntries(world).map((entry) => entry.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('rowKeyOf', () => {
+  const entities = new Map(world.entities.map((entity) => [entity.id, entity]));
+  const keyOf = (home: Parameters<typeof rowKeyOf>[0], scriptId: string) => rowKeyOf(home, scriptId, entities);
+  const rows = new Set(worldScriptEntries(world).map((entry) => entry.key));
+
+  it('names the tab row of a script on every home, each one a row the tab lists', () => {
+    const keys = [
+      keyOf({ kind: 'world' }, 'w-after'),
+      keyOf({ kind: 'globalStat', stat: health as never }, 'h-after'),
+      keyOf({ kind: 'trait', trait: brave, entityId: null }, 'brave-after'),
+      keyOf({ kind: 'entityStat', entityId: 'ann', stat: rage as never }, 'rage-after'),
+      keyOf({ kind: 'trait', trait: calm, entityId: 'ann' }, 'calm-after'),
+      keyOf({ kind: 'entityStat', entityId: 'bob', stat: howl as never }, 'howl-after'),
+      keyOf({ kind: 'trait', trait: fury, entityId: 'bob' }, 'fury-after'),
+      // Ann's links leave the Blueprints' scripts alone, so they share the Blueprints' rows.
+      keyOf({ kind: 'entityStat', entityId: 'ann', stat: howl as never }, 'howl-after'),
+      keyOf({ kind: 'trait', trait: fury, entityId: 'ann' }, 'fury-after'),
+    ];
+    expect(keys).toEqual([
+      'world|w-after', 'stat/health|h-after', 'trait/brave|brave-after', 'entity/ann/rage|rage-after', 'entityTrait/ann/calm|calm-after',
+      'link/bob/bob-howl/howl|howl-after', 'traitLink/bob/bob-fury/fury|fury-after', 'stat/howl|howl-after', 'trait/fury|fury-after',
+    ]);
+    for (const key of keys) expect(rows.has(key!), String(key)).toBe(true);
+  });
+
+  it('names no row for an item script or an owner the world lacks', () => {
+    expect(keyOf({ kind: 'tool' }, 't')).toBeNull();
+    expect(keyOf({ kind: 'entityStat', entityId: 'ghost', stat: rage as never }, 'rage-after')).toBeNull();
+    expect(keyOf({ kind: 'trait', trait: calm, entityId: 'ghost' }, 'calm-after')).toBeNull();
   });
 });
 

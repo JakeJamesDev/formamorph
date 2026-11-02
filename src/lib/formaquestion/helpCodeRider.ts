@@ -5,7 +5,7 @@
  */
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
-import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
+import { SCRIPT_TIMING_LABEL, HELP_SCRIPT_TIMINGS } from '@/lib/scripts';
 import type { ScriptTiming } from '@/types';
 
 /** The language the rider asks for, as the Scripts guide writes its fences. */
@@ -16,7 +16,7 @@ export const SCRIPT_TAB: SurfaceId = 'worldEditorStat.code';
 
 const boxName = (timing: ScriptTiming) => SCRIPT_TIMING_LABEL[timing];
 /** When each box runs, so a small model picks the box by the task's moment, not by its label. */
-const RUNS_WHEN: Record<(typeof SCRIPT_TIMINGS)[number], string> = {
+const RUNS_WHEN: Record<(typeof HELP_SCRIPT_TIMINGS)[number], string> = {
   before: 'at the start of each turn',
   after: 'at the end of each turn',
   output: 'once for each narration sentence',
@@ -32,10 +32,10 @@ const RUNS_WHEN: Record<(typeof SCRIPT_TIMINGS)[number], string> = {
 export const DEFAULT_CODE_RIDER = [
   'The player wants a script. Answer with a fenced block of working JavaScript that does the whole task:',
   '- Write the code yourself from the rules in the guide sections. The guide has no script for most tasks.',
-  `- Write the whole contents of the box the task needs. Pick the box by when it runs: ${SCRIPT_TIMINGS.map((timing) => `**${boxName(timing)}** ${RUNS_WHEN[timing]}`).join(', ')}. Name the box in one sentence. Then give the block.`,
+  `- Write the whole contents of the box the task needs. Pick the box by when it runs: ${HELP_SCRIPT_TIMINGS.map((timing) => `**${boxName(timing)}** ${RUNS_WHEN[timing]}`).join(', ')}. Name the box in one sentence. Then give the block.`,
   '- Read the script\'s home as `self`, the world\'s stats through `stats`, traits through `traits`, placeholders through `placeholders`, and the time through `clock`.',
-  `- The app reads the word after \`${CODE_RIDER_LANGUAGE}\` on the opening line to put the code in the right box: ${SCRIPT_TIMINGS.map((timing) => `\`${timing}\` for **${boxName(timing)}**`).join(', ')}.`,
-  ...SCRIPT_TIMINGS.map((timing) => `- Start the block of the **${boxName(timing)}** box with this line: \`\`\`${CODE_RIDER_LANGUAGE} ${timing}`),
+  `- The app reads the word after \`${CODE_RIDER_LANGUAGE}\` on the opening line to put the code in the right box: ${HELP_SCRIPT_TIMINGS.map((timing) => `\`${timing}\` for **${boxName(timing)}**`).join(', ')}.`,
+  ...HELP_SCRIPT_TIMINGS.map((timing) => `- Start the block of the **${boxName(timing)}** box with this line: \`\`\`${CODE_RIDER_LANGUAGE} ${timing}`),
   '- After the block, write at most three short steps.',
 ].join('\n');
 
@@ -56,7 +56,7 @@ const GLOBALS = SANDBOX_GLOBAL_NAMES.join('|');
  */
 const CODE_WORDS: readonly RegExp[] = [
   /\b(?:code|scripts?|javascript)\b/i,
-  new RegExp(`\\b(?:${SCRIPT_TIMINGS.map((timing) => boxName(timing).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|')})\\b`, 'i'),
+  new RegExp(`\\b(?:${HELP_SCRIPT_TIMINGS.map((timing) => boxName(timing).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|')})\\b`, 'i'),
   new RegExp(`\\b(?:${GLOBALS})(?:\\.[A-Za-z_$]|\\[)`),
   new RegExp(`\\breturn\\s+(?:-?\\d|(?:${GLOBALS}|Math)\\b|[A-Za-z_$][\\w$]*\\s*[.[(;])`),
   /\bfunction\s*\(|=>/,

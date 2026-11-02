@@ -6,8 +6,11 @@
 
 import type { ItemScriptTiming, Script, ScriptTiming } from '@/types';
 
-/** Every timing of a stat, a trait or the world, in the order a playthrough first reaches them. */
-export const SCRIPT_TIMINGS = ['before', 'after', 'output', 'start', 'switch'] as const satisfies readonly ScriptTiming[];
+/** Every timing of a stat, a trait or the world, in the order a turn reaches them: the lists and menus an author reads. */
+export const SCRIPT_TIMINGS = ['start', 'before', 'output', 'after', 'switch'] as const satisfies readonly ScriptTiming[];
+
+/** The timings in the order the AI prompt text and the help tool's schema list them, which a byte test pins. */
+export const HELP_SCRIPT_TIMINGS = ['before', 'after', 'output', 'start', 'switch'] as const satisfies readonly ScriptTiming[];
 
 /** The timings an item's scripts run at, one per Item Copy event (Q33). */
 export const ITEM_SCRIPT_TIMINGS = ['gained', 'lost', 'equipped', 'unequipped', 'used'] as const satisfies readonly ItemScriptTiming[];
@@ -96,6 +99,16 @@ export function inRunOrder<T extends { script: Pick<Script, 'order'> }>(units: r
   const ordered = units.filter((unit) => typeof unit.script.order === 'number')
     .sort((a, b) => (a.script.order as number) - (b.script.order as number));
   return [...ordered, ...units.filter((unit) => typeof unit.script.order !== 'number')];
+}
+
+/**
+ * The one run order. `rows` are the script rows in the order given, each row holding the units it runs back to
+ * back (a Blueprint row holds one per owner); `last` are the units that run after every row and ignore any
+ * `order`. A row sorts by its first unit's script, which its units share.
+ */
+export function inRowOrder<T extends { script: Pick<Script, 'order'> }>(rows: readonly (readonly T[])[], last: readonly T[] = []): T[] {
+  const placed = inRunOrder(rows.filter((row) => row.length).map((row) => ({ script: row[0].script, row })));
+  return [...placed.flatMap(({ row }) => row), ...last];
 }
 
 // ---- Migration from the two code boxes ----

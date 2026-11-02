@@ -24,7 +24,8 @@ import {
 } from './sandboxSnapshot';
 import type { GateStats } from './traitGates';
 import { readsTurnStart, type RunTiming } from './statCodeTiming';
-import { filledScriptsAt, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from './scripts';
+import { filledScriptsAt, inRowOrder, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from './scripts';
+import { rowKeyOf } from './worldScripts';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { clamp } from './utils';
 import type { OwnerId, Scoped } from './scope';
@@ -121,8 +122,7 @@ export interface OwnerTurn extends Pick<StatCodeTurn, 'previous' | 'regenApplied
 /** Everything one turn hands to stat code: the state, and what this turn alone brings. The forward turn and
  *  the re-roll both build one of these; a turn with no stat response builds one with no asks. Every script
  *  reads one snapshot: the global stats as `stats`, its owner's as `owner.stats`, and each one's as
- *  `entities[x].stats`. Writes land in run order: scripts with an `order` ascending, then the world's, then
- *  owner order and stat order; the later write wins a field. */
+ *  `entities[x].stats`. Writes land in run order, the Scripts tab's (see `rowOrder`); the later write wins a field. */
 export interface StatCodeTurn {
   state: SandboxState;
   /** Which timing's scripts run. `before`, `start` and `output` run over the turn's starting state, reading every
@@ -139,6 +139,9 @@ export interface StatCodeTurn {
   switchedFrom?: TraitWorld;
   /** The world's own scripts, which run with no `self` and no `owner`. Absent ⇒ none. */
   worldScripts?: readonly Script[];
+  /** The Scripts tab's row keys at this timing in run order (`runRowKeys`). The turn runs each row's scripts at
+   *  its place, and the library entities' after every row. Absent ⇒ owner order, scripts with an `order` first. */
+  rowOrder?: readonly string[];
   /** The global stats as they stood at the start of the turn, matched by id. A stat missing here reads its
    *  `previous` as a copy of its own current entry. */
   previous: readonly PlayerStat[];
@@ -474,6 +477,33 @@ function ownerRun<O extends RunOwner>(
       .map((script): ScriptUnit => ({ home: { kind: 'trait', trait, entityId: owner.id }, stat: null, trait, script }))),
   ];
   return { owner, named, inputs, units };
+}
+
+/**
+ * `units` in the order they run. With `rowOrder`, the Scripts tab's row keys, each row's units run back to back at
+ * the row's place and the library entities' run after every row (Q8, Q9); the units no row names follow the rows,
+ * in the order given. Without it, the owners' order: scripts with an `order` first.
+ */
+function rowedUnits<T extends { unit: ScriptUnit; run: OwnerRun; script: Script }>(
+  units: readonly T[], rowOrder: readonly string[] | undefined, owners: StatCodeOwners,
+): T[] {
+  if (!rowOrder) return inRunOrder(units);
+  const entities = new Map([...owners.entities ?? [], ...owners.library ?? []].map((entity) => [entity.id, entity]));
+  const libraryIds = new Set((owners.library ?? []).map((entity) => entity.id));
+  const rows = new Set(rowOrder);
+  const byRow = new Map<string, T[]>();
+  const loose: T[] = [];
+  const library: T[] = [];
+  for (const entry of units) {
+    if (libraryIds.has(entry.run.owner.id ?? '')) {
+      library.push(entry);
+      continue;
+    }
+    const key = rowKeyOf(entry.unit.home, entry.script.id, entities);
+    if (key !== null && rows.has(key)) byRow.set(key, [...byRow.get(key) ?? [], entry]);
+    else loose.push(entry);
+  }
+  return inRowOrder(rowOrder.map((key) => byRow.get(key) ?? []), [...loose, ...library]);
 }
 
 /** Nested rounds of switch runs one action fires before a further switch stops firing scripts (Q47). */
@@ -819,10 +849,10 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const whoRan = ({ stat, trait, itemName, script, args }: ScriptUnit) => (stat ? `Stat ${stat.name}`
     : trait ? `Trait ${trait.name}` : itemName !== undefined ? `Item ${itemName}` : `${args ? 'Tool' : 'Script'} ${scriptLabel(script, WORLD_OWNER)}`);
   const switchInput = timing === 'switch' && turn.switched ? { switched: { event: turn.switched, world: switchWorld } } : {};
-  // Run order: the replayed writes, the triggers, then ordered scripts, then owner order and stat order, so the
-  // later write wins.
+  // Run order: the replayed writes, the triggers, then the Scripts tab's rows, so the later write wins.
   const ordered: { unit: ScriptUnit; run: OwnerRun }[] = [
-    ...replayed, ...triggers, ...inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script })))),
+    ...replayed, ...triggers,
+    ...rowedUnits(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script }))), turn.rowOrder, state.ownerTraits),
   ];
   // The sentence a During AI Output run hands from one script to the next.
   let sentence = timing === 'output' ? turn.narration?.sentence : undefined;

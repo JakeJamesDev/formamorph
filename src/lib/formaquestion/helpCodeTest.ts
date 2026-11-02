@@ -5,7 +5,7 @@
  */
 import type { ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
-import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
+import { SCRIPT_TIMING_LABEL, HELP_SCRIPT_TIMINGS } from '@/lib/scripts';
 import { parseToolArgs, type ToolCallResult } from '@/lib/tools/toolRunner';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
 import type { ScriptTiming } from '@/types';
@@ -30,8 +30,8 @@ export const HELP_CODE_TEST: OfferedFunction = {
   params: [
     { name: 'code', type: 'string', description: 'The whole contents of the script.', required: true, options: [] },
     {
-      name: 'timing', type: 'enum', required: true, options: [...SCRIPT_TIMINGS],
-      description: `When the script runs: ${SCRIPT_TIMINGS.map((timing) => `${timing} is ${SCRIPT_TIMING_LABEL[timing]}`).join(', ')}.`,
+      name: 'timing', type: 'enum', required: true, options: [...HELP_SCRIPT_TIMINGS],
+      description: `When the script runs: ${HELP_SCRIPT_TIMINGS.map((timing) => `${timing} is ${SCRIPT_TIMING_LABEL[timing]}`).join(', ')}.`,
     },
     { name: 'owner', type: 'enum', description: 'What the script sits on.', required: false, options: [...CODE_TEST_OWNERS] },
     { name: 'name', type: 'string', description: 'The name of the stat or trait the script sits on.', required: false, options: [] },

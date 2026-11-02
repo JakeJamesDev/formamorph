@@ -65,7 +65,7 @@ describe('StatTemplateStorageService', () => {
 
   it('keeps every timing a template was saved with', async () => {
     const saved = await saveUserTemplate(template({ name: 'Setup', timings: ['before', 'start'] }));
-    expect((await listUserTemplates()).find(t => t.id === saved.id)?.timings).toEqual(['before', 'start']);
+    expect((await listUserTemplates()).find(t => t.id === saved.id)?.timings).toEqual(['start', 'before']);
     await deleteUserTemplate(saved.id);
   });
 

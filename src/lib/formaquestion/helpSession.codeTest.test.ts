@@ -4,7 +4,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { SCRIPT_TIMINGS } from '@/lib/scripts';
+import { HELP_SCRIPT_TIMINGS } from '@/lib/scripts';
 import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
@@ -350,14 +350,22 @@ describe('a code test call in every timing and on every owner', () => {
 
   it('offers all five timings and a stat, trait or world owner', () => {
     const options = (name: string) => HELP_CODE_TEST.params.find((param) => param.name === name)?.options;
-    expect(options('timing')).toEqual([...SCRIPT_TIMINGS]);
+    expect(options('timing')).toEqual([...HELP_SCRIPT_TIMINGS]);
     expect(options('owner')).toEqual(['stat', 'trait', 'world']);
   });
 
+  it('keeps the timing schema’s order and text, whatever order the editor lists the timings in', () => {
+    const timing = HELP_CODE_TEST.params.find((param) => param.name === 'timing');
+    expect(timing?.options).toEqual(['before', 'after', 'output', 'start', 'switch']);
+    expect(timing?.description).toBe(
+      'When the script runs: before is Before the AI, after is After the AI, output is During AI Output, start is At Game Start, switch is When a Trait Switches.',
+    );
+  });
+
   it('runs a stat script in each timing', async () => {
-    const fetchImpl = script(testFrames(...SCRIPT_TIMINGS.map((timing) => ({ code: 'stats.Int.value = 9;', timing }))), sseReply('Done.'));
-    await collect(ask(fetchImpl, { codeTestCallLimit: SCRIPT_TIMINGS.length }, { world: openWorld(undefined, cast) }));
-    expect(results(fetchImpl)).toEqual(SCRIPT_TIMINGS.map((timing) =>
+    const fetchImpl = script(testFrames(...HELP_SCRIPT_TIMINGS.map((timing) => ({ code: 'stats.Int.value = 9;', timing }))), sseReply('Done.'));
+    await collect(ask(fetchImpl, { codeTestCallLimit: HELP_SCRIPT_TIMINGS.length }, { world: openWorld(undefined, cast) }));
+    expect(results(fetchImpl)).toEqual(HELP_SCRIPT_TIMINGS.map((timing) =>
       ran(['stats.Int.value = 9'], timing === 'output' ? { sentence: SAMPLE_SENTENCE } : {})));
   });
 

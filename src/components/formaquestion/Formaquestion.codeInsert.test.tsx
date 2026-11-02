@@ -83,7 +83,7 @@ describe('Insert on a help answer', () => {
     const menu = await screen.findByRole('menu', { name: 'Insert into Warmth' });
     expect(menu).toHaveTextContent('Warmth');
     expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Before the AI', 'After the AI', 'During AI Output', 'At Game Start', 'When a Trait Switches',
+      'At Game Start', 'Before the AI', 'During AI Output', 'After the AI', 'When a Trait Switches',
     ]);
     // An untagged fence preselects neither box.
     expect(within(menu).getAllByRole('menuitem').some((item) => item === document.activeElement)).toBe(false);
@@ -116,11 +116,11 @@ describe('Insert on a help answer', () => {
     await userEvent.click(insertButtons()[0]);
     const menu = await screen.findByRole('menu', { name: 'Insert into Warmth' });
     await userEvent.keyboard('{ArrowDown}');
-    expect(within(menu).getByRole('menuitem', { name: 'Before the AI' })).toHaveFocus();
+    expect(within(menu).getByRole('menuitem', { name: 'At Game Start' })).toHaveFocus();
     await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
     expect(within(menu).getByRole('menuitem', { name: 'When a Trait Switches' })).toHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
-    expect(within(menu).getByRole('menuitem', { name: 'Before the AI' })).toHaveFocus();
+    expect(within(menu).getByRole('menuitem', { name: 'At Game Start' })).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}{Enter}');
     expect(stat.insert).toHaveBeenCalledExactlyOnceWith('switch', 'return 1;');
   });
