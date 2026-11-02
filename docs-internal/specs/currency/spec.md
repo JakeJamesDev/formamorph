@@ -74,6 +74,15 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q47 | (ticket 03) Balance rows sit in the player's card under a Money subheader. The Inventory tab also shows in a world with Currencies and no items when the player has a row |
 | Q48 | (ticket 03) Trading without limit applies to entities (Q8). An untracked player can't pay |
 | Q49 | (ticket 03) The chip carries no sentence explaining worth or balance. Probes show a sentence doesn't stop a sale to a broke player, and it costs about 35 words per turn. Affordability rests on ticket 05's refusal |
+| Q50 | (ticket 05) `price` is a string in the Breakdown form, read loosely. A bare number is base units, unless `currency` names a coin, then it counts that coin. A coin name beats a Currency name. Coins of two Currencies, a conflict with `currency`, or an unknown `currency` is refused. A blank `currency` with a bare number uses the Default |
+| Q51 | (ticket 05) An unresolved `to` reads as blank, and an unresolved `owner` reads as blank. "here" reads as blank on either side. Blank on both sides is refused. Names of the player resolve the way the pass already resolves them |
+| Q52 | (ticket 05) A payment that takes the payer below a stat's min is refused. A payee at its max clamps and the payer still pays. A locked payee refuses, income included. Income to an untracked player is refused |
+| Q53 | (ticket 05) A settled stat payment joins the bar's held deltas, not `stat_changes`, because replay would charge it twice. History reads value diffs, so it still shows the move. A refusal shows nothing |
+| Q54 | (ticket 05) Coins settle net per coin kind, so a kind that returns as change fires no script. Change comes from a tracked payee's visible, identified coins, and the rest is created. An untracked entity holds no money: coins paid to it leave the world, and coins it pays are created |
+| Q55 | (ticket 05) Refines Q28: a name-only Currency doesn't make the Inventory pass due, because it settles nothing |
+| Q56 | (ticket 05) Pays land first in a reply. A pay is the reply's only statement about its Currency's money: settled or refused, it skips any gain, lose or transfer of that Currency's coins in the same reply, with a diagnostic. The skip also matches the Currency's own name. A coin op in a reply with no pay runs as an ordinary item op, except Q57 |
+| Q57 | (ticket 05) A coin `gain` repeated word for word in one reply counts once, because the cloud model repeats bounties and a repeat creates free money. A repeated `lose` or `transfer` runs as ruled. Two real equal gains in one reply count once, which is the safe direction |
+| Q58 | (ticket 05) Money named with no `price` reads through `item` or `currency` only when `quantity` is above 1. A blank price with quantity 1 is refused, so code never invents an amount |
 
 ## User Stories
 
