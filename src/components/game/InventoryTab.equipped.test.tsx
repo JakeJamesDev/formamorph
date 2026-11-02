@@ -117,6 +117,16 @@ describe('Equipped rows', () => {
     expect(await screen.findByText(LONG, { selector: 'div' })).toBeVisible();
   });
 
+  it.each([
+    ['Carried', { copies: [{ ...worn('s', 'sword'), equipped: undefined }] }],
+    ['Here', { lying: [{ ...worn('s', 'sword'), equipped: undefined, where: { kind: 'location' as const, id: 'yard' } }] }],
+  ])('shows a cut %s name in full in a tooltip', async (_where, over) => {
+    setWidths(300, 120);
+    render(<TooltipProvider><InventoryTab {...props(over)} /></TooltipProvider>);
+    await userEvent.hover(screen.getByRole('button', { name: LONG }));
+    expect(await screen.findByText(LONG, { selector: 'div' })).toBeVisible();
+  });
+
   it('shows no tooltip for a name that fits', async () => {
     setWidths(120, 120);
     render(<TooltipProvider><InventoryTab {...props({ copies: [worn('s', 'sword')] })} /></TooltipProvider>);

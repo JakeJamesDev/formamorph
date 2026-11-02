@@ -1,9 +1,31 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GENERIC_ITEM_ICON, ITEM_ICONS, ITEM_ICON_AUTHORS, ITEM_ICON_NONE, deriveItemIcon, itemIconById, itemIconName, resolveItemIcon, searchItemIcons } from './itemIcons';
+import { GENERIC_ITEM_ICON, ITEM_ICONS, ITEM_ICON_AUTHORS, ITEM_ICON_NONE, copyItemIcon, deriveItemIcon, itemIconById, itemIconName, resolveItemIcon, searchItemIcons } from './itemIcons';
 
 const IMAGE = 'data:image/png;base64,AAAA';
 const icon = (id: string) => ({ kind: 'icon', id });
+
+describe('copyItemIcon', () => {
+  const slots = [{ id: 'head', name: 'Head' }];
+  const item = { icon: 'crown', slotRule: { mode: 'either' as const, slotIds: ['head'] } };
+  const face = { name: 'Stormcaller', slots, readText: (text: string) => text, image: IMAGE };
+
+  it('uses the item\'s icon on an identified copy', () => {
+    expect(copyItemIcon({}, item, face)).toEqual(icon('crown'));
+  });
+
+  it('derives from the name and the item\'s slots on an unidentified copy', () => {
+    expect(copyItemIcon({ state: { unidentified: true } }, item, face)).toEqual(icon('helmet'));
+  });
+
+  it('reads slot names through readText', () => {
+    expect(copyItemIcon({}, { slotRule: item.slotRule }, { ...face, readText: () => 'Neck' })).toEqual(icon('necklace'));
+  });
+
+  it('derives with no item, as for a runtime item', () => {
+    expect(copyItemIcon({}, undefined, face)).toEqual(icon(GENERIC_ITEM_ICON));
+  });
+});
 
 describe('resolveItemIcon', () => {
   it.each([
@@ -90,11 +112,19 @@ describe('deriveItemIcon', () => {
   });
 
   it('reads the slots in order, past one with no word', () => {
-    expect(deriveItemIcon('Stormcaller', ['Main Hand', 'Neck', 'Head'])).toBe('necklace');
+    expect(deriveItemIcon('Stormcaller', ['Hip', 'Neck', 'Head'])).toBe('necklace');
   });
 
   it('falls back to the generic icon', () => {
-    expect(deriveItemIcon('Stormcaller', ['Main Hand'])).toBe(GENERIC_ITEM_ICON);
+    expect(deriveItemIcon('Stormcaller', ['Hip'])).toBe(GENERIC_ITEM_ICON);
+  });
+
+  it.each([['Hand', 'sword'], ['Main Hand', 'sword'], ['Off Hand', 'sword'], ['Hands', 'gloves']])('derives from the %s slot as %s', (slot, id) => {
+    expect(deriveItemIcon('Stormcaller', [slot])).toBe(id);
+  });
+
+  it('lets a held item with a matching name keep its own icon', () => {
+    expect(deriveItemIcon('Old Torch', ['Main Hand'])).toBe('torch');
   });
 
   it('a non-English name falls through to the slot, then the generic icon', () => {
