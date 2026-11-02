@@ -1,0 +1,60 @@
+{
+  "readOn": "2026-11-02",
+  "source": "https://hub.vroid.com/api/character_models/7688062894575397999",
+  "modelId": "7688062894575397999",
+  "modelName": "明都セイ_メイドver(VRM 1.0)",
+  "isDownloadable": true,
+  "isOtherUsersAvailable": true,
+  "ageLimit": {
+    "is_r18": false,
+    "is_r15": false,
+    "is_adult": false
+  },
+  "tags": [
+    "VRoidStudio",
+    "オリジナル",
+    "ロングヘア",
+    "黒髪ロング",
+    "赤目"
+  ],
+  "character": {
+    "id": "3917238075852400462",
+    "name": "明都セイ",
+    "description": null
+  },
+  "version": {
+    "id": "3177962906604105714",
+    "spec_version": "1.0",
+    "created_at": "2023-03-18T17:44:43.000+09:00",
+    "original_file_size": 15069648,
+    "is_vendor_forbidden_use_by_others": false,
+    "is_vendor_protected_download": false,
+    "vendor_specified_license": {
+      "modification": "default",
+      "redistribution": "default",
+      "credit": "default",
+      "characterization_allowed_user": "default",
+      "sexual_expression": "default",
+      "violent_expression": "default",
+      "corporate_commercial_use": "default",
+      "personal_commercial_use": "default"
+    },
+    "vrm_meta": {
+      "name": "明都セイ",
+      "authors": [
+        "乙幡皇斗羽"
+      ],
+      "licenseUrl": "https://vrm.dev/licenses/1.0/",
+      "modification": "allowModificationRedistribution",
+      "creditNotation": "unnecessary",
+      "thumbnailImage": 21,
+      "commercialUsage": "corporation",
+      "avatarPermission": "everyone",
+      "allowRedistribution": true,
+      "allowAntisocialOrHateUsage": true,
+      "allowExcessivelySexualUsage": true,
+      "allowExcessivelyViolentUsage": true,
+      "allowPoliticalOrReligiousUsage": true
+    }
+  }
+}
