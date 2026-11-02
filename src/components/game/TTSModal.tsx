@@ -1,4 +1,4 @@
-import { KokoroTTS, type GenerateOptions } from "kokoro-js";
+import { KokoroClient, KOKORO_VOICES } from "@/lib/tts/kokoroClient";
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { getGameplayText } from "@/lib/gameplayTextStore";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
   onLoadedChange?: (loaded: boolean) => void;
 }>(function TTSModal({ isOpen, onOpenChange, onLoadedChange }, ref) {
   const [isLoading, setIsLoading] = useState(false);
-  const [tts, setTTS] = useState<KokoroTTS | null>(null);
+  const [tts, setTTS] = useState<KokoroClient | null>(null);
   const [voices, setVoices] = useState<string[]>([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -132,8 +132,8 @@ const TTSModal = forwardRef<TTSModalHandle, {
   // The single point all TTS text passes through on its way to the engine. Strip Markdown here so Kokoro
   // speaks the words, not the syntax (e.g. a stray "*" read aloud as "asterisk").
   const synthesizeSpeech = useCallback(
-    (model: KokoroTTS, text: string, voice: string, speed: number) =>
-      model.generate(stripMarkdownForSpeech(text), { voice: voice as GenerateOptions['voice'], speed }),
+    (model: KokoroClient, text: string, voice: string, speed: number) =>
+      model.generate(stripMarkdownForSpeech(text), { voice, speed }),
     [],
   );
 
@@ -281,15 +281,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
 
   useEffect(() => {
     if (tts) {
-      // Voice data is available directly from the model
-      const voiceList = [
-        "af_heart", "af_alloy", "af_aoede", "af_bella", "af_jessica",
-        "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah",
-        "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir",
-        "am_liam", "am_michael", "am_onyx", "am_puck", "am_santa",
-        "bf_emma", "bf_isabella", "bm_george", "bm_lewis", "bf_alice",
-        "bf_lily", "bm_daniel", "bm_fable"
-      ];
+      const voiceList = [...KOKORO_VOICES];
       setVoices(voiceList);
       setSelectedVoice(voiceList[0]); // Default to first voice
     }
@@ -297,7 +289,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px]">
+      <DialogContent surface="tts" className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>Text to Speech</DialogTitle>
           <DialogDescription>
@@ -438,7 +430,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
                   try {
                     setFreeBeforeLoad(minFreeMB);
                     setIsLoading(true);
-                    const model = await KokoroTTS.from_pretrained("onnx-community/Kokoro-82M-v1.0-ONNX", {
+                    const model = await KokoroClient.from_pretrained("onnx-community/Kokoro-82M-v1.0-ONNX", {
                       dtype: "fp32",
                       device: "webgpu"
                     });

@@ -55,6 +55,7 @@ const ENTRIES: [string, string][] = [
   ['worldEditor', 'World Editor'],
   ['worldUpdate', 'Update This World'],
   ['aiContext', 'AI Context'],
+  ['tts', 'Text to Speech'],
   ['demoAI', "You're Playing on the Demo AI"],
   ['editText', 'Edit Text'],
   ['entity', 'Entity'],
