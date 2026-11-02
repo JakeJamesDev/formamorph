@@ -1,6 +1,7 @@
 # Spec: Credits
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-02. Tickets 01–04; last landing 8469140eb. Review: spec text corrected. Gates green on 2026-11-02.
 Spec session: credits — spec
 
 ## Problem Statement
@@ -92,7 +93,7 @@ From the sweep on 2026-11-02.
 | eSpeak NG (through `phonemizer`) | GPL-3.0 | See its own effort | Needed |
 | animate-ui | MIT + Commons Clause | No | Needed |
 | Capacitor | MIT | No | Needed |
-| AndroidX | Apache-2.0, UNVERIFIED | No | Check in the ticket |
+| AndroidX | Apache-2.0, from the published POMs | No | Listed |
 | Electron, Chromium | Various | No | `electron-builder` writes them |
 | VRoid and Elaina avatars | VRM 1.0, credit unnecessary | No | Listed |
 | Kokoro, all-MiniLM-L6-v2 | Apache-2.0, downloaded at run time | Optional, not shown | Not bundled |
@@ -160,7 +161,7 @@ From the sweep on 2026-11-02.
 ### Shared wall component
 
 - One **wall component** in `src/components/` fetches through `PatreonService.getSupporters` and renders the loading, failed, empty and ready states and the tier sections. The server's order stands.
-- It takes the name's behavior from its host, as a prop. The site passes the `/u/<name>` link. The game passes `openProfile`. The component therefore imports no context, and the `@/contexts/` ban in the bundle boundary still passes.
+- It takes the name's rendering from its host, as a `renderName` prop. The site renders the `/u/<name>` link. The game renders a button that calls `openProfile`. A `load` prop lets the dev fixture supply rows. The component therefore imports no context, and the `@/contexts/` ban in the bundle boundary still passes.
 - The site's page keeps `SiteLayout` and its subtitle, and renders the component. The failed state's try-again action lives in the component, so the site gets it too.
 - The component joins the boundary's allow list and the site's Tailwind scan list. The reachable-module ceiling rises deliberately, with its comment.
 - It fetches on mount and writes through `useMountedRef`, so closing the dialog cancels the write. No server change is needed: the route is public and allows any origin.
@@ -168,16 +169,16 @@ From the sweep on 2026-11-02.
 ### Licenses tab
 
 - A pure parser turns the notices text into ordered entries: `{ name, section, text }`. The file's format rule is that every entry is a `###` heading under a `##` section. The Bundled assets bullets move to that form.
-- The tab fetches the file once, relative to the build's base path, when the tab first opens. This reaches `dist/` on the web, `app://local` on desktop and the APK's web root.
+- The tab fetches the file relative to the build's base path, once per dialog open, when the tab first opens. This reaches `dist/` on the web, `app://local` on desktop and the APK's web root.
 - The Vite plugin also serves the file in dev, so the dev route and preview work.
 - A row expands to show its text as plain preformatted text. Only an expanded row mounts its text. The filter matches entry names.
 
 ### Notices generator
 
 - A generator script, on an npm command beside `gen-item-icons`, writes the package list and the license summary. It keeps the hand-kept section and the Standards section as they are.
-- The source of truth is the production build's module graph, not `npm ls`. Most runtime packages are `devDependencies` here, so a dependency walk misses them. Electron's main-process packages and Capacitor's are added from their own list.
-- A small hand-kept map supplies license text for packages that ship none, such as the 51 entries today, and corrects a wrong declared license, such as `khroma`.
-- The **drift guard** runs inside the app build and the site build. It fails if a package in that bundle has no entry, or if an entry has no license text. Version differences count as drift. The generator lists the union of both builds' packages, so one file serves both.
+- The source of truth is the production build's module graph, not `npm ls`. Most runtime packages are `devDependencies` here, so a dependency walk misses them. The desktop app's production `dependencies` tree, Capacitor and packages a dist inlines are added through a hand-kept map.
+- The same map supplies license text for packages that ship none, such as the 51 entries at the start, and corrects a wrong declared license.
+- The **drift guard** runs inside the app build and the site build. It fails if a package in that bundle or on the map's list has no entry, or if an entry has no license text. Version differences count as drift. The generator lists the union of both builds' packages, so one file serves both.
 - `shipNotices` runs in the site build too (Q19). The site's footer links to the file through the build's base path.
 - Fonts come through the module graph with the full OFL text. Roboto's license follows its package, which now says OFL.
 
