@@ -1,7 +1,7 @@
 # 04: Sei And Aki Files
 
 Status: ready-for-agent
-Blocked by: 01, 02, 03
+Blocked by: 02, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
 
@@ -17,7 +17,7 @@ A release build's default Avatar is Sei, and a local or Pages build's default is
 - **Fingerprints:** regenerate the client list in this landing. The fingerprint test fails without it.
 - **Provenance:** a record beside the spec holds source URL, author, download date and the metadata as downloaded for each model. Sei's Hub conditions are already saved in `evidence`.
 
-The existing gate still applies here. Ticket 06 holds the files to the stricter gate, so check them against the spec's requirements by script in this ticket.
+The existing gate still applies here. Tickets 01 and 06 hold the files to the stricter gate, and ticket 01 waits to land until this ticket has. Check the files against the spec's requirements by script in this ticket, and send ticket 01's session one message after the landing.
 
 Rulings: Q1, Q14, Q17, Q19, Q23, Q24, Q26.
 
