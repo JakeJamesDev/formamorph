@@ -66,7 +66,7 @@ import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import { isWorldOptimizing, useOptimizingWorldIds } from '@/lib/worldOptimizeProgress';
 import { onWorldSavedHere } from '@/lib/worldChangeSignal';
 import { useComponentUpdates } from '@/lib/useComponentUpdates';
-import { ICON_CREDIT_LINE, IconCreditsDialog } from '@/components/modals/IconCreditsDialog';
+import { CreditsDialog } from '@/components/modals/CreditsDialog';
 import { UpdateAvailableDialog } from '@/components/modals/UpdateAvailableDialog';
 import { WorldUpdateReviewDialog } from '@/components/modals/WorldUpdateReviewDialog';
 import type { WorldUpdateReview } from '@/lib/useDownloadCoordinator';
@@ -302,7 +302,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { promptWorld, promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
-  const [showIconCredits, setShowIconCredits] = useState(false);
+  const [showCredits, setShowCredits] = useState(false);
   // DEV only: a canned override the prompt viewer falls back to, so its dev route is reachable on a
   // library holding no world that rewrites a prompt. Never set in prod.
   const [devPromptSample, setDevPromptSample] = useState<WorldOverview | null>(null);
@@ -451,7 +451,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (['worldEditor', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar'].includes(devRoute?.modal ?? '')) setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
-    if (devRoute?.modal === 'iconCredits') setShowIconCredits(true);
+    if (devRoute?.modal === 'credits') setShowCredits(true);
     // The prompt viewer reads a world's overrides, so it opens on a canned one rather than on whatever the
     // library happens to hold — a world really selected from a card still wins over it.
     if (devRoute?.modal === 'worldPrompts') {
@@ -2434,7 +2434,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 Formamorph by FieryLionite
               </a>
               <div>
-                <button type="button" onClick={() => setShowIconCredits(true)} className="whitespace-normal hover:underline">{ICON_CREDIT_LINE}</button>
+                <button type="button" onClick={() => setShowCredits(true)} className="whitespace-normal hover:underline">Credits</button>
               </div>
             </div>
           )}
@@ -2480,10 +2480,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </a>
                 <button
                   type="button"
-                  onClick={() => setShowIconCredits(true)}
+                  onClick={() => setShowCredits(true)}
                   className="rounded px-2 py-1.5 text-left text-meta text-muted-foreground hover:bg-accent"
                 >
-                  {ICON_CREDIT_LINE}
+                  Credits
                 </button>
               </PopoverContent>
             </Popover>
@@ -2896,7 +2896,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         </DialogContent>
       </Dialog>
 
-      <IconCreditsDialog open={showIconCredits} onOpenChange={setShowIconCredits} />
+      <CreditsDialog open={showCredits} onOpenChange={setShowCredits} />
 
       {/* DEV only: the component update review on canned worlds. Its worlds are in memory, so Apply writes
           nothing; `devUpdates` is never set in prod. */}
