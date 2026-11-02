@@ -614,7 +614,7 @@ The player sees an entity with a **Stranger Name** under that name until the pla
 - It works on any entity in the game, at the player's location or not.
 - On an entity whose `met` is already true, the call is ignored.
 
-- A later read of `met` in the same run returns true.
+- A later read of `met` in the same run returns true, in this script and in the scripts below it.
 - The change applies when the turn ends.
 - A user Tool script can read `met` but has no `meet()`.
 
@@ -934,7 +934,10 @@ A bound that a stat writes applies at the written number, after that script's tr
 - **During AI Output scripts read each other's writes on each sentence.** The writes still land with After the AI, and a stopped turn applies none.
 - **A World Tool's writes come first.** On a re-roll, its saved writes apply before the list, and every script reads them.
 - **When a Trait Switches scripts run after the timing's scripts.** So do item events.
-- **Some writes apply after the timing's scripts.** These are writes to items, Bodies, the location, the clock, memories, diaries and discoveries. A later script doesn't read them yet.
+- **A later script reads the earlier scripts' Body, location, clock, memory, discovery and entity writes.** `location` with its `present` and `exits`, `clock`, `memories`, `entities` and `body` read as the earlier scripts left them.
+- **Where a write applies does not change.** A script that fails adds nothing to what later scripts read.
+- **A diary line has no read.** A later script can write to the diary of an entity that an earlier script discovered.
+- **Some writes apply after the timing's scripts.** These are writes to items. A later script doesn't read them yet.
 
 The timings run in order against each other. Everything a Before the AI script wrote is in place when an After the AI script reads. On the opening turn, an At Game Start script's writes are in place when Before the AI reads.
 
@@ -967,7 +970,7 @@ The timings run in order against each other. Everything a Before the AI script w
 `clock.advance(<n>)` sets how long the turn takes, in story minutes. It replaces what the AI measured, or the Time Per Turn when the clock is off.
 
 - **Calls add up.** Two scripts that each call `clock.advance(30)` make the turn take one hour.
-- **The clock reads the same for the rest of the run.** A call changes the turn, not the `clock` your script reads.
+- **Later scripts read the new time.** After a call, the scripts below it read the later `clock.day`, `clock.hour` and `clock.elapsedHours`. `clock.previous` keeps the turn's start. The rest of the same script reads the clock as it was.
 - **The number must be 0 or more.** A negative or non-finite number stops the script with an error, and its writes are discarded.
 
 ```js
@@ -1052,7 +1055,7 @@ const exit = location.exits[Math.floor(Math.random() * location.exits.length)];
 if (exit) location.move(exit.name);
 ```
 
-`location` and its `exits` keep reading the location where the turn started, even after `location.move` in the same script.
+`location` and its `exits` keep reading the location where the script started, even after `location.move` in the same script. The scripts below it read the new location, with its `present` and `exits`.
 
 In **Test Code** and the **Test Bench**, no entity has a position. Each entity is in `present` at every location it lists, and the persona is at the starting location.
 
@@ -1074,7 +1077,7 @@ if (stats.Energy.value <= 0) location.move("Camp");
 `discover(<text>)` adds a new entity to the turn, as if the AI had introduced it.
 
 - **`discover("<Name>")`** adds the name to the entities in the turn's scene. The AI then describes the entity, as it does for an entity the narration invents. With **Describe New Characters** off, nothing more happens. See [How to Get Descriptions for New Entities](Entities#how-to-get-descriptions-for-new-entities).
-- **`discover("<Name>", "<Description>")`** creates the entity at once with that description, with no AI call.
+- **`discover("<Name>", "<Description>")`** creates the entity at once with that description, with no AI call. The scripts below it read the entity in `entities`, and can write its `diary`.
 - **A name that an entity already has is skipped.**
 - **A blank name or a blank description throws a TypeError.** Both are trimmed.
 - **The entity clears with its turn.** A regenerate or a stopped turn discards it.
@@ -1111,7 +1114,7 @@ Each memory in the list has these fields. All are read-only.
 | `pinned` | True when the memory is pinned to stay |
 | `forgotten` | True when the memory is pinned to go |
 
-Four calls on a memory write the Memory panel's verdicts. The writes apply when the turn ends. A later call in the same turn overwrites an earlier one.
+Four calls on a memory write the Memory panel's verdicts. The writes apply when the turn ends. A later call in the same turn overwrites an earlier one. A line that `memories.add` made reads in the scripts below it as the turn's own memory, and a line that `memories.pin` made reads as a Custom memory. A verdict or an edit on either one applies to it when the turn ends.
 
 | Call | What it does |
 | --- | --- |

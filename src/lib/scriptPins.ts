@@ -7,7 +7,11 @@ import { survivingTurnIds } from './turnDigest';
 
 const PREFIX = 'script:';
 
-const pinId = (turnId: string, index: number) => `${PREFIX}${turnId}:${index}`;
+/** The id the turn's `index`th script pin takes as a Memory Manager note. */
+export const pinId = (turnId: string, index: number) => `${PREFIX}${turnId}:${index}`;
+
+/** Whether a note or row id is one of the turn's script pins. */
+export const isScriptPinOf = (id: string, turnId: string): boolean => id.startsWith(`${PREFIX}${turnId}:`);
 
 /** The turn id a script pin's note id names, or null for a note the player wrote. */
 const pinTurn = (note: MemoryNote): string | null =>

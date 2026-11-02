@@ -1,3 +1,4 @@
+import type { BodyPick } from '@/types';
 import type { DiscoverWrite, WorldWrites } from './statCodeExecutor';
 
 /** Story hours the turn's prompts and scripts read: `turnStart` plus every advance `writes` holds (Q45).
@@ -38,4 +39,10 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
     ...(inventory.length ? { inventory } : {}),
     ...(bodies.length ? { bodies } : {}),
   };
+}
+
+/** The base Bodies `writes` set, by owner key; the last write to an owner wins. Undefined when it sets none. */
+export function baseWritesOf(writes: WorldWrites | undefined): Record<string, BodyPick> | undefined {
+  if (!writes?.bodies?.length) return undefined;
+  return Object.fromEntries(writes.bodies.map(({ owner, pick }) => [owner, pick]));
 }

@@ -1813,7 +1813,8 @@ const GameViewer = ({
         return null;
       }
     };
-    turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current), ...EMPTY_REPLY };
+    const rerolledId = latestTurnId(fullMessageHistoryRef.current);
+    turnReadRef.current = { action: rerolledAction(action), number: closedTurns(fullMessageHistoryRef.current), ...(rerolledId && { id: rerolledId }), ...EMPTY_REPLY };
     const clock = { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar };
     const stats = preTurn.globalStats ?? [];
     const opening = page === 1 && newPlaythroughRef.current;
@@ -3114,7 +3115,7 @@ const GameViewer = ({
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
       scriptLocationRef.current = turnLocation;
       turnMemoriesRef.current = scriptMemoriesRef.current;
-      turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1, ...EMPTY_REPLY };
+      turnReadRef.current = { action: scriptActionFor(planInput), number: closedTurns(fullMessageHistory) + 1, id: turnId, ...EMPTY_REPLY };
       if (isOpeningTurn) setOpeningTurnAction(turnReadRef.current.action);
       const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,

@@ -28,6 +28,8 @@ export interface StatClock {
   /** Total story hours at the end of this turn. Defaults to one turn's worth, so a clock-less caller reads
    *  as the opening turn having just closed rather than as no time having passed at all. */
   elapsedHours?: number;
+  /** Story hours earlier scripts of the run advanced, which replace the turn's own duration. Absent ⇒ none. */
+  advancedHours?: number;
   calendar?: WorldCalendar;
 }
 
@@ -354,6 +356,8 @@ export interface SandboxStats {
 export interface SandboxTurn {
   action: string;
   number: number;
+  /** The turn's id, which its digest row and script pins carry in `memories`. Absent in the editor. */
+  id?: string;
   narration: string;
   choices: readonly string[];
   /** The player has choices off: `choices` reads empty and takes no write (Q11). */

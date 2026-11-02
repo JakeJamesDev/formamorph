@@ -1,6 +1,6 @@
 import type {
   CascadeOffTraitIds, CodeBounds, CodePins, Connection, Currency, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, Item, ItemCopy, LoreToggles,
-  BodyPick, OwnedTraitStates, Placeholder, Placement, PersonaRef, PlayerStat, Script, Slot, Trait,
+  OwnedTraitStates, Placeholder, Placement, PersonaRef, PlayerStat, Script, Slot, Trait,
 } from '@/types';
 import type { BodyWorld } from './bodies';
 import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
@@ -9,6 +9,7 @@ import {
   type StatTurnInputs, type StatWrite, type SandboxTurn, type TraitWrite, type ValueAndMax, type SandboxMemory, type SandboxPlace, type WorldWrites,
 } from './statCodeExecutor';
 import { mergeWorldWrites } from './worldWrites';
+import { withWorldWrites } from './chainedWorld';
 import type { ItemUse, InventoryOp, InventoryResult, ItemScriptEvent } from './inventory';
 import { faceName, isUnidentified } from './items';
 import { statCodeNamed } from './statCodeNames';
@@ -642,11 +643,7 @@ export function withoutBodies(writes: WorldWrites | undefined): WorldWrites | un
   return Object.keys(rest).length ? rest : undefined;
 }
 
-/** The base Bodies `writes` set, by owner key; the last write to an owner wins. Undefined when it sets none. */
-export function baseWritesOf(writes: WorldWrites | undefined): Record<string, BodyPick> | undefined {
-  if (!writes?.bodies?.length) return undefined;
-  return Object.fromEntries(writes.bodies.map(({ owner, pick }) => [owner, pick]));
-}
+export { baseWritesOf } from './worldWrites';
 
 /** One switch run per event, over `turn`, the state the switches left (Q12, Q47). */
 export const runSwitchScripts = (turn: StatCodeTurn, events: readonly TraitSwitchEvent[]): Promise<StatCodeTurnResult | null> =>
@@ -693,7 +690,7 @@ const forceStateOf = ({ state: { ownerTraits } }: StatCodeTurn): TraitForceState
 /** `turn` as the next run finds it after `result`: the stats, traits and pins the run left. */
 export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCodeTurn {
   const { traits } = result;
-  const { state } = turn;
+  const state = withWorldWrites(turn.state, result.worldWrites);
   const ownerTraits = !traits ? state.ownerTraits : {
     ...state.ownerTraits,
     acquired: traits.acquired,
