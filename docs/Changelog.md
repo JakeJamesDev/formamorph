@@ -31,7 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The player and each entity now have a Body setting their equipment slots, with a figure you lay out.** Traits and scripts can change a Body; items it has no slot for stay carried. In Equipment Settings, pick Humanoid, Quadruped, Plain or your own picture, then drag a box for each slot.
     - **Optimize Images now shrinks item images, and the Test Bench flags oversized ones.** One undo reverts them with the rest of the run.
   - **Currencies:**
-    - **World authors can define Currencies on the Items tab and price each item in one.** A Currency is a stat or a name only. A new item takes the first Currency, and the item popup shows its worth.
+    - **World authors can define Currencies on the Items tab and price each item in one.** A Currency is a stat, items or a name only. A new item takes the first Currency, and the item popup shows its worth.
     - **Bribes, fees and bounties in the story now move your money when the turn ends.** The game makes exact change, and a payment you can't afford changes nothing.
   - **Scripts:**
     - **Scripts now run one by one, and each script reads what the scripts above it wrote.** Two scripts that each take 5 Health now take 10, so worlds with stacking writes play differently. To check a world, read the rows on the Test Bench's **Issues** tab in Advanced mode.

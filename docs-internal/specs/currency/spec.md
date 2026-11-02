@@ -1,6 +1,7 @@
 # Spec: Currency
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-02. Tickets 01 to 09 landed, last landing 7a6889b62, with fixes 9f39ee67f, cd4573219 and 6d26d884e. Review: spec text corrected. Gates green on 2026-11-02.
 Spec session: currency — spec
 
 ## Problem Statement
@@ -64,7 +65,7 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q37 | (ticket 02) The coin picker lists Stackable items that aren't a coin in any Currency, plus the row's own item. A coin that later stops being Stackable keeps its row, with a warning |
 | Q38 | (ticket 02) Coin Value fields normalize when focus leaves the group of fields, not on each field. A blank Value shows blank fields, and all blank clears the Value. A Value of 0 shows zeros and reads "0 Copper". A coin Currency's fields take whole non-negative numbers, and the top coin has no cap |
 | Q39 | (ticket 02) The Breakdown is largest first with zero coins omitted, and ends in the worth-1 coin, so no remainder is lost |
-| Q40 | (ticket 04) Q22's stat rule covers every delete that removes a backing stat's id: a world stat, a Persona's own stat, a Persona, and Blueprints removal. Unlinking a Blueprint stat from its last Persona is not a delete: the Currency keeps it, the picker still shows it, and it has no Balance |
+| Q40 | (ticket 04) Q22's stat rule covers every delete that removes a backing stat's id: a world stat, a Persona's own stat, a Persona, and Blueprints removal. A Persona delete names the Currency only in a confirm it already shows, and adds no dialog of its own. Unlinking a Blueprint stat from its last Persona is not a delete: the Currency keeps it, the picker still shows it, and it has no Balance |
 | Q41 | (ticket 04) Deleting the base coin drops its row and leaves a coin Currency with ticket 02's hint. Only deleting the last coin makes it name only |
 | Q42 | (ticket 04) A confirm for Currency reasons shows only when a Currency uses the stat or coin, or when items point at the Currency |
 | Q43 | (ticket 03) An entity is tracked in a coin Currency when the world has a Placement of one of its coins at that entity, hidden or not. It stays tracked at 0 once spent down, and coins received in play don't make an untracked entity tracked. A stat-backed Currency tracks whoever has the stat |
@@ -84,7 +85,7 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q57 | (ticket 05) A coin `gain` repeated word for word in one reply counts once, because the cloud model repeats bounties and a repeat creates free money. A repeated `lose` or `transfer` runs as ruled. Two real equal gains in one reply count once, which is the safe direction |
 | Q58 | (ticket 05) Money named with no `price` reads through `item` or `currency` only when `quantity` is above 1. A blank price with quantity 1 is refused, so code never invents an amount |
 | Q59 | (ticket 07) A script's `pay` plans through a synchronous sandbox host function and returns `{ paid, reason }` in the run. Scripts never re-run for a payment, because a re-run would repeat Script Prompts and draw new random values |
-| Q60 | (ticket 07) The surface is `currencies.Name.balance(owner)` and `currencies.Name.pay(payer, payee, amount)`. `balance` returns a number, or null for an untracked owner or a name-only Currency. A null payer is income and a null payee leaves the world, and both null is refused. A location is refused. `amount` is base units or a Breakdown string (Q50) |
+| Q60 | (ticket 07) The surface is `currencies.Name.balance(owner)` and `currencies.Name.pay(payer, payee, amount)`. `balance` returns a number, or null for an untracked owner or a name-only Currency. A null payer is income and a null payee leaves the world, and both null is refused. A location stops the script with an error, like any unknown party. `amount` is base units or a Breakdown string (Q50) |
 | Q61 | (ticket 07, amended by Script Run Order Q15) A balance read reflects every earlier write in the chain, including direct stat writes and `give`, and the run's own. Until Script Run Order ticket 04 lands, the code reads that run's settled pays over the start-of-run state |
 | Q62 | (ticket 07) A script's settled pay lands like a direct stat write or `give`, joins the held deltas (Q53) and replays on re-roll. Q56 applies to pass replies only, so a script's pay and a pass's pay in one turn both count. A name-only `pay` returns `{ paid: true }` and moves nothing |
 | Q63 | (ticket 06) The new-copy rule covers entity and blank sellers. A player seller must hold the full quantity in visible copies, or the sale is refused. Bound and equipped copies can sell |
@@ -99,7 +100,7 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q72 | (ticket 06) Every pay of a buy's sum that shares a party is dropped, not one per buy. A real second equal pay in that reply counts once |
 | Q74 | (ticket 08) Emberwatch's Rogue and Halfling bonuses are At Game Start scripts on their Blueprint traits, because no trait field grants items. Rogue gives 2 Gold and Halfling 5 Silver. Jory Pike alone holds a tracked purse of about 30 Gold; the other shopkeepers stay untracked. The Currency is named Coin, and Old King's Coin stays a priced non-money item |
 | Q73 | (ticket 06) A stated coin price beats Q64: a name-only item priced "12 Copper" charges 12 Copper. A Value of 0 moves alone only with a Currency that settles. With no Currency it stays priceless and refused (Q13) |
-| Q76 | (after ticket 09) Narrows Q56: a pay with no price or no one on either side says nothing, so a gain, lose or transfer beside it runs. A pay with no price still blocks them when the player is its payer. A pay with a price it can't read, or one refused for funds or a lock, still blocks them. Probes showed Q56 losing a correct bounty in 5 of 15 runs |
+| Q76 | (after ticket 09) Narrows Q56: a pay with no `price`, or with a readable price and no one on either side, says nothing, so a gain, lose or transfer beside it runs. A pay with no price still blocks them when the player is its payer. A pay with a price it can't read, or one refused for funds or a lock, still blocks them. Probes showed Q56 losing a correct bounty in 5 of 15 runs |
 | Q75 | (ticket 09) "Coin" leaves the product and the code. The backing is `{ kind: 'items', items: [{ itemId, worth }] }`, the label is **Items**, and a row is a **Currency Item**, because they are plain items and the author names the Currency. Earlier rulings keep "coin" as history and mean a Currency Item |
 
 ## User Stories
@@ -182,19 +183,19 @@ The plan is the one place that holds Q8, Q11, Q18, Q21, Q26 and Q29. The Invento
 
 - `PASS_OP_KINDS` gains `buy` and `pay`. The schema gains optional `price` and `currency` fields.
 - **buy** reads as a transfer: `item`, `quantity`, `owner` (the seller) and `to` (the buyer). The money moves the other way. Selling is the same op with the player as `owner`.
-- **pay** reads `owner` (the payer), `to` (the payee), `price` and `currency`, with a blank `item`. A blank `owner` is income. A blank `to` means the money leaves the world.
+- **pay** reads `owner` (the payer), `to` (the payee), `price` and `currency`. Its `item` is blank or a money word (Q58, Q70). A blank `owner` is income. A blank `to` means the money leaves the world.
 - A buy's price is the stated `price`, else the item's Value times the quantity. A stated `currency` applies only to a stated price, and it defaults to the item's Currency, then the Default.
 - A buy of an authored item the seller doesn't hold gains a new Item Copy for the buyer, because Q8 doesn't make shops list stock. A buy with no price and no Value is refused.
-- A name-only Currency settles nothing: the buy moves the item alone.
+- A name-only Currency settles nothing: the buy moves the item alone, unless a stated price names money that settles (Q73).
 - A refusal leaves everything unchanged. It logs a diagnostic in the existing Inventory form and shows no UI (Q15).
 - Coin movement uses the ordinary lose, transfer and gain ops, so coins' item scripts fire like any other item's.
-- The stat pass's writable set omits backing stats while the Inventory pass is due (Q9, Q27). `inventoryDue` also holds when the world has Currencies (Q28).
+- The stat pass's writable set omits backing stats while the Inventory pass is due (Q9, Q27). `inventoryDue` also holds when the world has a stat-backed or item-backed Currency (Q28, Q55).
 - The Inventory pass's default prompt teaches buy and pay. It follows the prompt writing guide, with no example values a small model can parrot.
 
 ### Chip and surfaces
 
 - `<INVENTORY>` adds worth to each listed item and a balance to each owner block. Untracked owners show none.
-- The Inventory tab shows one balance row per Currency the player has, stat-backed included, and name-only excluded.
+- The Inventory tab shows one balance row per Currency the player has, stat-backed included, and name-only and hidden stats excluded (Q45).
 - The item popup shows worth through the Breakdown.
 - Formaquestion's player view and world index read `currencyId` and the Breakdown in place of the old unit.
 
@@ -220,7 +221,7 @@ The plan is the one place that holds Q8, Q11, Q18, Q21, Q26 and Q29. The Invento
 
 ### Glossary and docs
 
-- `CONTEXT.md` gains Currency, Backing, Coin and Balance, and Item's entry drops the unit wording.
+- `CONTEXT.md` gains Currency, Backing, Currency Item and Balance, and Item's entry drops the unit wording.
 - The user-facing help and wiki describe Currencies. Copy starts from a facts list under the Writing Guide, not from this spec.
 - ⚠️ Export shape: world `.json` gains `currencies`, and items swap `valueUnit` for `currencyId`.
 
