@@ -1,6 +1,6 @@
 # 04: Licenses Tab
 
-Status: ready-for-human
+Status: done
 Blocked by: 01, 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
