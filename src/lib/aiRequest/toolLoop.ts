@@ -9,8 +9,17 @@ import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { followsResponseSchema } from './responseSchema';
 import {
   ABORTED_FINISH_REASON, cutThoughtFailure, LENGTH_FINISH_REASON, streamAiRequest,
-  type AiReasoningField, type AiStreamEvent, type AiStreamOptions, type AiStreamResult, type AiStreamSpec, type AiToolCall,
+  type AiReasoningField, type AiStreamEvent, type AiStreamOptions, type AiStreamOutput, type AiStreamResult, type AiStreamSpec, type AiToolCall,
 } from './aiStream';
+
+/** The rounds of one request as one output. A count missing from any round leaves the total unknown. */
+const sumOutput = (rounds: readonly AiStreamOutput[]): AiStreamOutput => ({
+  frames: rounds.reduce((sum, round) => sum + round.frames, 0),
+  reportedTokens: rounds.every((round) => round.reportedTokens !== null)
+    ? rounds.reduce((sum, round) => sum + (round.reportedTokens ?? 0), 0)
+    : null,
+  generatingMs: rounds.reduce((sum, round) => sum + round.generatingMs, 0),
+});
 
 /**
  * The tool loop: one request that offers Tools, run to completion below the Turn Pipeline.
@@ -177,6 +186,7 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
   const { response_format: schemaFormat, ...offeringBody } = spec.body;
   const callsMade = new Map<string, number>();
   const reasoningByRound: string[] = [];
+  const outputByRound: AiStreamOutput[] = [];
   let reasoningField: AiReasoningField | null = null;
   let startedAt: number | null = null;
   let firstTokenAt: number | null = null;
@@ -201,6 +211,7 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
       firstContentAt: round.timings.firstContentAt,
       endedAt: round.timings.endedAt,
     },
+    output: sumOutput(outputByRound),
   });
 
   /** One call: the Tool it names, its limit, then the executor. Every outcome is text the model can read. */
@@ -256,6 +267,7 @@ export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
     }
     // The stream ends with `done` or throws; nothing else leaves the loop above.
     if (!result) return;
+    outputByRound.push(result.output);
     startedAt ??= result.timings.startedAt;
     firstTokenAt ??= result.timings.firstTokenAt;
     reasoningField ??= result.reasoningField;

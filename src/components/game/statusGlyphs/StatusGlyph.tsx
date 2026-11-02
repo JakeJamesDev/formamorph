@@ -18,23 +18,32 @@ const GLYPH_LOOP_DELAY_MS = 400;
 
 const LOOP = { animate: true, loop: true, loopDelay: GLYPH_LOOP_DELAY_MS, size: 16 } as const;
 
-const GLYPHS: Record<StatusGlyphKey, () => ReactElement> = {
-  compass: () => <Compass {...LOOP} animation="default-loop" />,
-  chartColumnIncreasing: () => <ChartColumnIncreasing {...LOOP} animation="default-loop" />,
-  bookOpen: () => <BookOpen {...LOOP} animation="default" />,
-  scroll: () => <Scroll {...LOOP} animation="default" />,
-  mapPin: () => <MapPin {...LOOP} animation="default" />,
-  hourglass: () => <Hourglass {...LOOP} animation="default" />,
-  sparkles: () => <Sparkles {...LOOP} animation="default" />,
-  hammer: () => <Hammer {...LOOP} animation="default" />,
-  quill: () => <Quill {...LOOP} animation="default" />,
-  masks: () => <Masks {...LOOP} animation="default" />,
-  split: () => <Split {...LOOP} animation="default" />,
+const STILL = { size: 14 } as const;
+
+type GlyphProps = typeof LOOP | typeof STILL;
+
+const GLYPHS: Record<StatusGlyphKey, (props: GlyphProps) => ReactElement> = {
+  compass: (props) => <Compass {...props} animation="default-loop" />,
+  chartColumnIncreasing: (props) => <ChartColumnIncreasing {...props} animation="default-loop" />,
+  bookOpen: (props) => <BookOpen {...props} animation="default" />,
+  scroll: (props) => <Scroll {...props} animation="default" />,
+  mapPin: (props) => <MapPin {...props} animation="default" />,
+  hourglass: (props) => <Hourglass {...props} animation="default" />,
+  sparkles: (props) => <Sparkles {...props} animation="default" />,
+  hammer: (props) => <Hammer {...props} animation="default" />,
+  quill: (props) => <Quill {...props} animation="default" />,
+  masks: (props) => <Masks {...props} animation="default" />,
+  split: (props) => <Split {...props} animation="default" />,
 };
 
 /** One looping status glyph at the label's size. */
 export function StatusGlyph({ glyph }: { glyph: StatusGlyphKey }) {
-  return GLYPHS[glyph]();
+  return GLYPHS[glyph](LOOP);
+}
+
+/** The same glyph at rest, for a title that names the request. */
+export function StillGlyph({ glyph }: { glyph: StatusGlyphKey }) {
+  return GLYPHS[glyph](STILL);
 }
 
 /** The Thinking header's looping thought cloud, at the header's size. */

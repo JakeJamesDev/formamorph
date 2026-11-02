@@ -46,6 +46,7 @@ import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { CommunityCardReference } from '@/components/design-system/CommunityCardReference';
 import { FindBarReference } from '@/components/design-system/FindBarReference';
+import { RequestLineReference } from '@/components/design-system/RequestLineReference';
 import { SearchFieldReference } from '@/components/design-system/SearchFieldReference';
 import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
@@ -305,6 +306,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Find',
     description: 'Compact editor search and replacement',
     Component: FindBarReference,
+  },
+  {
+    id: 'request-line',
+    label: 'Request Line',
+    description: 'One AI request: what it sent and how the reply went',
+    Component: RequestLineReference,
   },
   {
     id: 'search-field',

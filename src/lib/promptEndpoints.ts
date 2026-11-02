@@ -182,6 +182,32 @@ export interface DebugEndpointInfo {
   reasoningFields: ReasoningWireField[];
   /** The `max_tokens` the request sent. Absent where it sent none. */
   maxTokens?: number;
+  /** The samplers the request carried under their wire names, temperature first. */
+  samplers: DebugSampler[];
+}
+
+/** One sampler a request carried. */
+export interface DebugSampler {
+  name: string;
+  value: number;
+}
+
+interface SamplerBodyFields {
+  temperature?: number;
+  repetition_penalty?: number;
+  repeat_penalty?: number;
+  top_p?: number;
+  top_k?: number;
+  min_p?: number;
+}
+
+/** The samplers a body sent. The engine spells the penalty `repeat_penalty`, and the app can send both spellings. */
+function samplersOf(body: SamplerBodyFields): DebugSampler[] {
+  const penalty = body.repetition_penalty === undefined ? 'repeat_penalty' : 'repetition_penalty';
+  return (['temperature', penalty, 'top_p', 'top_k', 'min_p'] as const).flatMap((name) => {
+    const value = body[name];
+    return value === undefined ? [] : [{ name, value }];
+  });
 }
 
 /**
@@ -200,7 +226,7 @@ export function toDebugEndpoint(
     url: string;
     apiToken: string;
   },
-  body: ReasoningBodyFields & { max_tokens?: number },
+  body: ReasoningBodyFields & SamplerBodyFields & { max_tokens?: number },
   dialect: ReasoningDialect,
 ): DebugEndpointInfo {
   return {
@@ -210,6 +236,7 @@ export function toDebugEndpoint(
     url: target.url,
     reasoningFields: reasoningWireFields(dialect, body),
     ...(body.max_tokens !== undefined && { maxTokens: body.max_tokens }),
+    samplers: samplersOf(body),
   };
 }
 

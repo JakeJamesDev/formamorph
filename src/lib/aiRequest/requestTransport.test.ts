@@ -120,6 +120,15 @@ describe('a plain reply', () => {
     expect(events.at(-1)).toMatchObject({ type: 'done', text: 'The gulls cry.', raw: '<think>hm</think>The gulls cry.' });
   });
 
+  it('captures how the reply went with the response', async () => {
+    const fetchImpl = scripted([() => sseResponse(sseTokens(['The gulls ', 'cry.']))]);
+    const { events } = await send(request(), context(fetchImpl));
+    const answered = events.find((e) => e.type === 'responseCaptured');
+    if (answered?.type !== 'responseCaptured') throw new Error('A capture expected');
+    expect(answered.response.stats).toMatchObject({ tokens: 2, tokensEstimated: true });
+    expect(answered.response.stats?.totalMs).toBeGreaterThanOrEqual(0);
+  });
+
   it('captures the wire body with the request and the raw reply with the response', async () => {
     const fetchImpl = scripted([() => sseResponse(sseTokens(['<think>hm</think>', 'Rain.']))]);
     const { events } = await send(request(), context(fetchImpl));
