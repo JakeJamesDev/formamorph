@@ -254,7 +254,7 @@ What a Supporter shows to other people: a badge, a tier name color, a Profile Im
 _Avoid_: perks, rewards, supporter status
 
 **Supporters wall**:
-The page on formamorph.ai that lists linked accounts with a tier, Supporter+ first and longer tenure first. It never lists a Patreon member who did not link.
+The list of linked accounts with a tier, Supporter+ first and longer tenure first. It is a page on formamorph.ai and a tab of the Credits dialog, and both render one component. It never lists a Patreon member who did not link.
 _Avoid_: hall of fame, donor list, credits
 
 **Patreon link**:

@@ -138,6 +138,7 @@ const ENTRIES: [string, string][] = [
   ['profile.terms', 'Terms'],
   ['profile.settings', 'Settings'],
   ['credits.credits', 'Credits'],
+  ['credits.supporters', 'Supporters'],
   ['eventAck.start', 'Event Start'],
   ['eventAck.end', 'Event End'],
   ['gameViewer.entities', 'Entities'],
