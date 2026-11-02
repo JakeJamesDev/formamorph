@@ -66,6 +66,16 @@ describe('Avatar Customization with no Avatar in the library', () => {
     await waitFor(() => expect(screen.queryByText(/No Avatars yet/)).toBeNull());
     expect((await screen.findByTestId('preview')).dataset.url).toBe('blob:avatar');
   });
+
+  it('keeps the Player Avatar dropdown disabled until an Avatar is added, with Add .vrm beside it', async () => {
+    mount();
+    await screen.findByText(/No Avatars yet/);
+    expect(screen.getByRole('combobox')).toBeDisabled();
+    expect(screen.getByText('Add .vrm')).toBeInTheDocument();
+
+    fireEvent.change(document.getElementById('model-upload') as HTMLInputElement, { target: { files: [new File(['vrm'], 'Wren.vrm')] } });
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeEnabled());
+  });
 });
 
 describe("a locked world pick on a build with no bundled Avatar", () => {

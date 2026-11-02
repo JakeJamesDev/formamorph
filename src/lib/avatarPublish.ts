@@ -22,8 +22,8 @@ const DENIALS: Record<AvatarLicenseRequirement, string> = {
   allowPoliticalOrReligiousUsage: 'political or religious use',
   allowAntisocialOrHateUsage: 'antisocial or hateful use',
   creditNotation: 'use without credit',
-  licenseUrl: 'use under the VRM Public License 1.0 alone',
-  otherLicenseUrl: 'use without extra license terms',
+  licenseUrl: 'use under the standard VRM license',
+  otherLicenseUrl: 'use without added license terms',
 };
 
 /** "a, b, or c" — the reading of a list of things none of which is permitted. */
