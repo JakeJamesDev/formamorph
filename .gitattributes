@@ -8,6 +8,7 @@
 *.webp binary
 *.vrm binary
 *.fbx binary
+*.onnx binary
 *.gguf binary
 
 # The Gradle wrapper's Windows launcher is read by cmd.exe, which wants CRLF.
