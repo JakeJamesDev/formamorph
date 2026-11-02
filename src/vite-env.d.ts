@@ -6,6 +6,8 @@ declare const __APP_VERSION__: string;
 // Injected by Vite (see vite.config.js `define`) from the FORMAMORPH_BUILD env: build-type class
 // ('portable' | 'installed' | 'web'), empty for a local/dev build.
 declare const __BUILD_TARGET__: string;
+/** The build's `FORMAMORPH_AVATARS` value. */
+declare const __AVATAR_SET__: string;
 
 /**
  * The community server's address, in each build mode.

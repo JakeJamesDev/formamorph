@@ -17,7 +17,7 @@ vi.mock('./VRMViewer', async () => {
 vi.mock('@/services/ModelStorageService', () => ({
   default: {
     initialize: vi.fn(async () => {}),
-    seedDefaultModel: vi.fn(async () => {}),
+    seedBundledAvatars: vi.fn(async () => {}),
     getModelMetadata: vi.fn(async () => []),
     ensureThumbnail: vi.fn(async () => null),
     getModelData: vi.fn(async () => null),

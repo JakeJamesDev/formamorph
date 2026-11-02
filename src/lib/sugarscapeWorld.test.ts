@@ -11,10 +11,43 @@ import { DAYPARTS } from './gameClock';
 import { canvasRects } from './locationCanvas';
 import { isDescendantLocation } from './locationTree';
 import { bundledWorldHarness, withValues, type StatValues } from '@/test/bundledWorldHarness';
-import type { Daypart } from '@/types';
+import { buildEnterFlow, entryVrmPick } from './enterFlow';
+import { playVrmContext, resolvePlayedVrm } from './vrmResolver';
+import { DEFAULT_AVATAR_ID, PRALINE_AVATAR_ID } from './defaultAvatar';
+import type { CharacterData, ChosenVrm, Daypart } from '@/types';
 
 const { world, persona: cursed, gate, idOf, activeNames: activeOf, build, personaStats, turn, personaStatsOut, statAt, atDaypart, entitySlots, locationSlots,
 } = bundledWorldHarness(raw);
+
+describe('the Player Avatar', () => {
+  const none = { persona: { source: 'none' as const }, libraryPersona: undefined, entities: world.entities, overview: world.worldOverview };
+  const context = (chosenVrm: ChosenVrm | undefined, deviceDefault?: string) => playVrmContext({
+    persona: null,
+    entities: world.entities,
+    overview: world.worldOverview,
+    characterData: chosenVrm ? { chosenVrm } as CharacterData : null,
+    libraryIds: new Set([DEFAULT_AVATAR_ID, PRALINE_AVATAR_ID]),
+    deviceDefault,
+  });
+
+  it("offers the library picker on User's Default when starting as the Custom Persona", () => {
+    expect(entryVrmPick(none)).toEqual({ kind: 'default' });
+    const steps = buildEnterFlow({
+      introReadme: undefined, traitCount: world.traits.length, startingLocationCount: 1, hasLibraryAdditions: false,
+      hasWorldPersonas: false, hasCustomPersona: true, showsAvatar: !!entryVrmPick(none),
+    }, 'newGame');
+    expect(steps).toContain('avatar');
+  });
+
+  it('plays Praline once picked', () => {
+    expect(resolvePlayedVrm(context({ pick: { kind: 'library', id: PRALINE_AVATAR_ID } })))
+      .toEqual({ kind: 'library', id: PRALINE_AVATAR_ID });
+  });
+
+  it('plays the device default in a save with no pick', () => {
+    expect(resolvePlayedVrm(context(undefined, DEFAULT_AVATAR_ID))).toEqual({ kind: 'library', id: DEFAULT_AVATAR_ID });
+  });
+});
 
 describe('the cursed build', () => {
   it('starts as a Nimble Grazer with no Pantry Tricks', () => {

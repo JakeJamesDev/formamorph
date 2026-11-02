@@ -4,7 +4,7 @@ import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
-import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL, LEGACY_DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
+import { BUNDLED_AVATARS, DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, type BundledAvatar } from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { AvatarThumbnailSource, ModelMetadata, VrmData, VrmLicense } from '@/types';
 
@@ -24,9 +24,12 @@ interface FlatModelRecord {
   addedAt?: string;
 }
 
-/** Set once the bundled avatar has been offered; a later delete is the player's business, not a gap to refill.
- *  The key keeps its pre-rename spelling: rewording it would read as never-seeded and refill that delete. */
-const SEEDED_KEY = 'FORMAMORPH_defaultModelSeeded';
+/** A bundled file's bytes. A status that isn't ok throws, so a host's 404 page never reads as a model. */
+const fetchBundledFile = async (url: string): Promise<Blob> => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Bundled Avatar fetch failed: ${response.status}`);
+  return response.blob();
+};
 
 const isFlat = (record: unknown): record is FlatModelRecord =>
   !!record && typeof record === 'object' && !('data' in record) && 'blob' in record;
@@ -101,8 +104,8 @@ class ModelStorageService {
   /** Runs once per session; later calls await the same pass rather than rescanning. */
   private migration: Promise<void> | null = null;
 
-  /** The running build's bundled default file hash, read once per session; a failed read clears it. */
-  private bundledDefaultHash: Promise<string | null> | null = null;
+  /** Each bundled file's hash by url, read once per session; a failed read clears its entry. */
+  private bundledHashes = new Map<string, Promise<string | null>>();
 
   /** The latest pending thumbnail switch per Avatar id. */
   private readonly thumbnailSwitches = new Map<string, Promise<ModelMetadata | null>>();
@@ -224,29 +227,34 @@ class ModelStorageService {
   }
 
   /**
-   * Put the bundled model in the library, once ever. Fetches it only when it hasn't been seeded before, so a
-   * normal launch costs a localStorage read rather than an 18MB read.
+   * Put each of the build's bundled models in the library, once ever. Fetches one only when it hasn't been seeded
+   * before, so a normal launch costs localStorage reads rather than an 18MB read. A model the build doesn't hold
+   * has no entry, so its flag stays unset and a later build that holds it still seeds it.
    *
    * Seeding is one-shot rather than a per-launch reconcile: once seeded, the copy is the player's, and
    * deleting it means it's gone. That's the whole point of it being an ordinary record — unlike the bundled
    * worlds, which re-seed on content change and so need tombstones to respect a delete.
    */
-  async seedDefaultModel(url: string): Promise<void> {
+  async seedBundledAvatars(avatars: readonly BundledAvatar[] = BUNDLED_AVATARS): Promise<void> {
     await this.ensureMigrated();
+    for (const avatar of avatars) await this.seedBundledAvatar(avatar);
+  }
+
+  private async seedBundledAvatar({ id, url, seededKey, fallbackName }: BundledAvatar): Promise<void> {
     try {
-      if (localStorage.getItem(SEEDED_KEY)) return;
+      if (localStorage.getItem(seededKey)) return;
       // Already present (flag lost, or a prior run seeded then the flag was cleared): mark it and stop, no
       // needless re-fetch. The flag is only ever set once the record is known to exist — see below.
-      if (await this.getRecord(DEFAULT_AVATAR_ID)) {
-        localStorage.setItem(SEEDED_KEY, '1');
+      if (await this.getRecord(id)) {
+        localStorage.setItem(seededKey, '1');
         return;
       }
 
-      const blob = await (await fetch(url)).blob();
+      const blob = await fetchBundledFile(url);
       const [hash, { license, thumbnail }] = await Promise.all([blobHash(blob), readVrmMeta(blob)]);
       await this.store.store({
-        id: DEFAULT_AVATAR_ID,
-        name: license.title?.trim() || 'Default Avatar',
+        id,
+        name: license.title?.trim() || fallbackName,
         data: {
           type: blob.type || 'model/vrm',
           blob,
@@ -257,11 +265,11 @@ class ModelStorageService {
         },
       });
       // Only mark seeded once the store has actually landed. A transient fetch/store failure leaves the flag
-      // unset so the next launch retries, rather than locking the default out forever. The fetch is a bundled
+      // unset so the next launch retries, rather than locking the model out forever. The fetch is a bundled
       // same-origin file (browser-cached), so re-attempting on failure is cheap.
-      localStorage.setItem(SEEDED_KEY, '1');
+      localStorage.setItem(seededKey, '1');
     } catch (error) {
-      console.error('Failed to seed the default model:', error);
+      console.error(`Failed to seed the bundled model ${id}:`, error);
     }
   }
 
@@ -302,23 +310,31 @@ class ModelStorageService {
   }
 
   /**
-   * Hashes that mark a model as the default Avatar: the seeded library record's, and the running build's
-   * bundled file's. They differ when an older build seeded the library, and either can be missing.
+   * Hashes that mark a model as a bundled Avatar: each seeded library record's, and the running build's bundled
+   * file's. They differ when an older build seeded the library, and either can be missing.
    */
-  async defaultAvatarHashes(): Promise<string[]> {
+  async defaultAvatarHashes(avatars: readonly BundledAvatar[] = BUNDLED_AVATARS): Promise<string[]> {
     await this.ensureMigrated();
-    this.bundledDefaultHash ??= fetch(DEFAULT_AVATAR_URL)
-      .then((response) => {
-        if (!response.ok) throw new Error(`Default Avatar fetch failed: ${response.status}`);
-        return response.blob();
-      })
-      .then(blobHash)
-      .catch(() => {
-        this.bundledDefaultHash = null;
-        return null;
-      });
-    const [seeded, bundled] = await Promise.all([this.getRecord(DEFAULT_AVATAR_ID), this.bundledDefaultHash]);
-    return [seeded?.data?.hash, bundled].filter((hash): hash is string => !!hash);
+    const hashes = await Promise.all(avatars.flatMap(({ id, url }) => [
+      this.getRecord(id).then((seeded) => seeded?.data?.hash),
+      this.bundledHash(url),
+    ]));
+    return hashes.filter((hash): hash is string => !!hash);
+  }
+
+  /** A bundled file's hash, read once per session. A failed read is tried again next time. */
+  private bundledHash(url: string): Promise<string | null> {
+    let hash = this.bundledHashes.get(url);
+    if (!hash) {
+      hash = fetchBundledFile(url)
+        .then(blobHash)
+        .catch(() => {
+          this.bundledHashes.delete(url);
+          return null;
+        });
+      this.bundledHashes.set(url, hash);
+    }
+    return hash;
   }
 
   /** List stored models as grid metadata, newest first. */

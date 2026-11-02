@@ -57,6 +57,7 @@ export default defineConfig(({ command }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_TARGET__: JSON.stringify(process.env.FORMAMORPH_BUILD ?? ''),
+    __AVATAR_SET__: JSON.stringify(process.env.FORMAMORPH_AVATARS ?? ''),
   },
   resolve: {
     alias: {

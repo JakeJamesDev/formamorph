@@ -16,7 +16,7 @@ import { MEASURE_LAYER } from '@/lib/measureLayer';
 import { KIND_BY_CARD_TYPE, KIND_LABELS } from '@/lib/catalogKinds';
 import { MAIN_MENU_CARD_OPTIONS, MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { clearLibraryModelPicks, deleteModelDescription, findModelUsage, type ModelUsage } from '@/lib/libraryVrmDelete';
-import { DEFAULT_AVATAR_URL, clearUserDefaultAvatar, readUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
+import { clearUserDefaultAvatar, readUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { withImportedWorldTools } from '@/lib/tools/worldTools';
@@ -931,7 +931,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const refreshModels = useCallback(async () => {
     try {
       await ModelStorageService.initialize();
-      await ModelStorageService.seedDefaultModel(DEFAULT_AVATAR_URL);
+      await ModelStorageService.seedBundledAvatars();
       const metadata = await ModelStorageService.getModelMetadata();
       setModels(metadata);
     } catch (error) {

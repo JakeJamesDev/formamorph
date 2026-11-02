@@ -93,6 +93,7 @@ export const GRAPH_COVERED = {
   'scripts/shipBundledWorlds.mjs': 'reads only the world file its caller names; a change to it runs the full suite',
   'scripts/stripSeededWorlds.mjs': 'reads only the world file an import names; a change to it runs the full suite',
   'scripts/shipNotices.mjs': 'reads the notices file its caller names and the package.json of each module; a change to it runs the full suite',
+  'scripts/bundledAvatarCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
   'scripts/noticesList.mjs': 'reads only the folders its caller names',
   'scripts/noticesList.test.ts': 'reads only its own temp folders',
   'scripts/bundledWorldHashes.mjs': 'reads only the world file an import names; a change to it runs the full suite',
@@ -138,11 +139,13 @@ export const PATH_TRIGGERS = {
   'scripts/llamaServerPin.json': ['electron/fakeLlamaServer.mjs'],
   // The pin load test runs the generator as a child process.
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
-  'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
+  'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts'],
   'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
-  'build-assets/praline-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
+  'build-assets/praline-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts'],
   'package-lock.json': ['src/components/ui/radixSingleCopy.test.ts'],
   '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
+  '.github/workflows/release.yml': ['scripts/bundledAvatarCheck.test.mjs'],
+  '.github/workflows/pages.yml': ['scripts/bundledAvatarCheck.test.mjs'],
   // The runner test loads this reporter by path through real vitest.
   'scripts/runOutcomeReporter.mjs': ['scripts/runTests.test.mjs'],
 };

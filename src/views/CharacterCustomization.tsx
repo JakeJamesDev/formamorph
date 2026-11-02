@@ -16,7 +16,7 @@ import { filesFrom } from '@/lib/importFiles';
 import { useVrmSourceUrl } from '@/lib/useVrmSourceUrl';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
-import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL, pickerStart, readUserDefaultAvatar } from '@/lib/defaultAvatar';
+import { DEFAULT_AVATAR_ID, pickerStart, readUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { namedVrmSource } from '@/lib/vrmResolver';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -58,7 +58,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
   // MainMenu has seeded. Seeding is idempotent — a no-op once done. The controls wait for this first list,
   // so the start pick never overwrites one the player made.
   useEffect(() => {
-    void ModelStorageService.seedDefaultModel(DEFAULT_AVATAR_URL).catch(() => undefined).then(refreshLibrary)
+    void ModelStorageService.seedBundledAvatars().catch(() => undefined).then(refreshLibrary)
       .catch((err: unknown) => {
         console.error('Failed to list the Avatar library', err);
         return [];

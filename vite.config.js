@@ -10,6 +10,7 @@ import { shipBundledWorlds } from './scripts/shipBundledWorlds.mjs'
 import { stripSeededWorlds } from './scripts/stripSeededWorlds.mjs'
 import { bundledWorldHashes } from './scripts/bundledWorldHashes.mjs'
 import { shipNotices } from './scripts/shipNotices.mjs'
+import { bundledAvatarCheck } from './scripts/bundledAvatarCheck.mjs'
 
 const pkg = JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8'))
 // The ONNX runtime's dist folder, which its package exports do not expose (src/lib/embeddingWorker.ts).
@@ -106,7 +107,7 @@ const shippedWorlds = shipBundledWorlds(import.meta.dirname)
 const notices = shipNotices(import.meta.dirname)
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, bundledAvatarCheck()],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
@@ -117,6 +118,8 @@ export default defineConfig({
     // redirect keys off the runtime PORTABLE_EXECUTABLE_DIR/APPIMAGE vars, not this — but 'android' also
     // decides the platform the client header reports, because the desktop bridge is absent in the WebView.
     __BUILD_TARGET__: JSON.stringify(process.env.FORMAMORPH_BUILD ?? ''),
+    // Which Avatar files the build holds: 'nsfw' from the release steps that copy them in, unset for the tracked default alone.
+    __AVATAR_SET__: JSON.stringify(process.env.FORMAMORPH_AVATARS ?? ''),
   },
   resolve: {
     // Modal menus and dialogs must share the body pointer-lock registry.
@@ -186,6 +189,7 @@ export default defineConfig({
       'package-lock.json',
       'vite.config.js',
       'src/lib/docs/changelogSlice.ts',
+      'scripts/bundledAvatarCheck.mjs',
       'scripts/shipBundledWorlds.mjs',
       'scripts/stripSeededWorlds.mjs',
       'scripts/shipNotices.mjs',

@@ -75,3 +75,5 @@ testing/open-speed/results.json
 testing/editor-speed/.out/
 testing/editor-speed/.build/
 build-assets/llama-server/
+# Copied in by the release steps; a tracked copy would ship on SFW builds.
+public/praline-avatar.vrm

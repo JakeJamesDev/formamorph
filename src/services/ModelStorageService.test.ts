@@ -209,52 +209,51 @@ describe('deleteModel', () => {
   });
 });
 
-describe('seedDefaultModel', () => {
-  const vrmUrl = './default-avatar.vrm';
-  const serve = (blob: Blob) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ blob: async () => blob }));
+describe('seedBundledAvatars', () => {
+  const serve = (blob: Blob) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, blob: async () => blob }));
 
   afterEach(() => vi.unstubAllGlobals());
 
   it('seeds the bundled model under a stable id, named from its own title', async () => {
     serve(await makeVrm1({ name: 'Default Avatar' }));
-    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.seedBundledAvatars();
     const [meta] = await ModelStorageService.getModelMetadata();
     expect(meta).toMatchObject({ id: 'default-avatar', name: 'Default Avatar' });
   });
 
   it('only seeds once, so a deleted default stays deleted', async () => {
     serve(await makeVrm1({ name: 'Default Avatar' }));
-    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.seedBundledAvatars();
     await ModelStorageService.addModel(new File([blob('other')], 'Other.vrm', { type: 'model/vrm' }));
     await ModelStorageService.deleteModel('default-avatar');
 
-    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.seedBundledAvatars();
     const names = (await ModelStorageService.getModelMetadata()).map((m) => m.id);
     expect(names).not.toContain('default-avatar');
   });
 
   it('does not re-fetch on a later launch', async () => {
     serve(await makeVrm1({ name: 'Default Avatar' }));
-    await ModelStorageService.seedDefaultModel(vrmUrl);
-    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.seedBundledAvatars();
+    await ModelStorageService.seedBundledAvatars();
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 
   it('survives a fetch failure rather than breaking the library', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-    await expect(ModelStorageService.seedDefaultModel(vrmUrl)).resolves.toBeUndefined();
+    await expect(ModelStorageService.seedBundledAvatars()).resolves.toBeUndefined();
     await expect(ModelStorageService.getModelMetadata()).resolves.toEqual([]);
   });
 
   it('retries on the next launch after a failure, rather than locking the default out forever', async () => {
     // A transient failure must not set the seeded flag, or the default could never appear.
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('offline')));
-    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.seedBundledAvatars();
     expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).not.toContain('default-avatar');
 
     // Next launch: fetch works, and because the flag was never set, it seeds now.
     serve(await makeVrm1({ name: 'Default Avatar' }));
-    await ModelStorageService.seedDefaultModel(vrmUrl);
+    await ModelStorageService.seedBundledAvatars();
     expect((await ModelStorageService.getModelMetadata()).map((m) => m.id)).toContain('default-avatar');
   });
 });
@@ -528,7 +527,7 @@ describe('defaultAvatarHashes', () => {
 
   beforeEach(() => {
     // The bundled file's hash memoizes per instance; reset it so each test's served file is actually read.
-    (ModelStorageService as unknown as { bundledDefaultHash: unknown }).bundledDefaultHash = null;
+    (ModelStorageService as unknown as { bundledHashes: Map<string, unknown> }).bundledHashes.clear();
   });
   afterEach(() => vi.unstubAllGlobals());
 

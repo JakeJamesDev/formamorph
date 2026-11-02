@@ -14,7 +14,7 @@ vi.mock('@/services/ModelStorageService', () => ({
   },
 }));
 
-const DEFAULT_REFUSAL = 'This is the default avatar. Upload your own VRM.';
+const DEFAULT_REFUSAL = 'This Avatar comes with Formamorph. Upload your own VRM.';
 
 
 /** The library's stored payload for one model. */

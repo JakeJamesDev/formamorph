@@ -439,6 +439,9 @@
       "aiDescription": "{{char}} is cursed with an unending hunger and trapped in the Sugarscape, a realm built entirely of dessert.",
       "aiSummary": "A hungry castaway in a world of dessert.",
       "customPersona": true,
+      "vrmPick": {
+        "kind": "default"
+      },
       "traits": [
         {
           "id": "grazer",

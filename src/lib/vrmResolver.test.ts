@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, VrmPick, WorldVrm } from '@/types';
+import { DEFAULT_AVATAR_ID, PRALINE_AVATAR_ID } from './defaultAvatar';
 import { resolveEntityVrm, resolvePlayedVrm, type VrmContext } from './vrmResolver';
 
 const file = { name: 'a.vrm', type: 'model/gltf-binary', data: 'data:' };
@@ -13,6 +14,34 @@ const userDefault = { kind: 'default' } as const;
 
 const ctx = (over: Partial<VrmContext> = {}): VrmContext => ({
   store, libraryIds: library, deviceDefault: 'lib-default', played: { source: 'none' }, customPersona: undefined, ...over,
+});
+
+describe('the missing default, for a played entity on User\'s Default', () => {
+  const played = (libraryIds: string[], deviceDefault?: string) => resolvePlayedVrm(ctx({
+    libraryIds: new Set(libraryIds), deviceDefault, customPersona: entity('custom', userDefault),
+  }));
+
+  it('plays the seeded record on an existing library, which an older build seeded', () => {
+    expect(played([DEFAULT_AVATAR_ID, PRALINE_AVATAR_ID, 'lib-a'])).toEqual(lib(DEFAULT_AVATAR_ID));
+  });
+
+  it('plays the seeded record on a new install, whose copy is the build\'s own default', () => {
+    expect(played([PRALINE_AVATAR_ID, DEFAULT_AVATAR_ID])).toEqual(lib(DEFAULT_AVATAR_ID));
+  });
+
+  it('falls back to the file after the seeded record is deleted', () => {
+    expect(played([PRALINE_AVATAR_ID, 'lib-a'])).toEqual({ kind: 'bundled' });
+  });
+
+  it('lets a set device default win', () => {
+    expect(played([DEFAULT_AVATAR_ID, 'lib-a'], 'lib-a')).toEqual(lib('lib-a'));
+  });
+
+  it('treats a picked id that is gone the same way', () => {
+    const libraryIds = new Set([DEFAULT_AVATAR_ID]);
+    expect(resolveEntityVrm(entity('npc', lib('gone')), ctx({ libraryIds }))).toEqual(lib(DEFAULT_AVATAR_ID));
+    expect(resolveEntityVrm(entity('npc', lib('gone')), ctx({ libraryIds: new Set() }))).toEqual({ kind: 'bundled' });
+  });
 });
 
 describe('resolvePlayedVrm precedence', () => {

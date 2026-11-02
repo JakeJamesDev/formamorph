@@ -21,7 +21,8 @@ const vrmFile = async (title: string) => new File([await makeVrm1({ name: title 
 const serve = (body: Blob) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, blob: async () => body }));
 
 beforeEach(() => {
-  (ModelStorageService as unknown as { bundledDefaultHash: unknown }).bundledDefaultHash = null;
+  // The bundled file hashes memoize per instance; reset them so each test's served file is read.
+  (ModelStorageService as unknown as { bundledHashes: Map<string, unknown> }).bundledHashes.clear();
   localStorage.clear();
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -30,7 +31,7 @@ describe('buildAvatarPublish against the library', () => {
   it('refuses the seeded default, and a re-import of its file under a new name after the seed is deleted', async () => {
     const bundled = await vrmFile('Default Avatar');
     serve(bundled);
-    await ModelStorageService.seedDefaultModel('./default-avatar.vrm');
+    await ModelStorageService.seedBundledAvatars();
 
     await expect(buildAvatarPublish({ id: 'default-avatar', name: 'Default Avatar' }))
       .resolves.toMatchObject({ allowed: false, reason: 'defaultAvatar' });

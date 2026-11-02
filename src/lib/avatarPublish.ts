@@ -50,7 +50,7 @@ export function avatarPublishRefusal(failed: AvatarLicenseRequirement[]): string
 }
 
 /** Why the default Avatar can't be published, whatever its license says. */
-const DEFAULT_AVATAR_REFUSAL = 'This is the default avatar. Upload your own VRM.';
+const DEFAULT_AVATAR_REFUSAL = 'This Avatar comes with Formamorph. Upload your own VRM.';
 
 /** A model that may be published, with the payload ready, or one that may not, with the reason to show. */
 export type AvatarPublishAttempt =

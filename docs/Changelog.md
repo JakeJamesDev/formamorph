@@ -111,6 +111,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The game's Send and Stop buttons are now narrower on larger screens, leaving more room to type.**
   - **The entity popup shows the picture beside the text on large screens.** The text scrolls on its own, so long descriptions and Equipped have more room. Smaller screens keep the picture above the text.
   - **New installs now start with Sei as the bundled Avatar.** If you already play, your current Avatars stay in your library.
+  - **The Avatar library now includes Praline on the desktop, web and Android builds.** If you already play, she joins your library and your default stays the same. Sugarscape now shows a Player Avatar dropdown when you start a new game.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

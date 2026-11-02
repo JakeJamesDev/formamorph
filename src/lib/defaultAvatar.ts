@@ -13,6 +13,39 @@ export const DEFAULT_AVATAR_URL = './default-avatar.vrm';
  */
 export const DEFAULT_AVATAR_ID = 'default-avatar';
 
+/** Library id of the seeded Praline, the second Avatar on builds that hold her. */
+export const PRALINE_AVATAR_ID = 'praline-avatar';
+
+/** A file the library seeds once: its record id and its own one-shot flag. */
+export interface BundledAvatar {
+  id: string;
+  url: string;
+  seededKey: string;
+  fallbackName: string;
+}
+
+const DEFAULT_ENTRY: BundledAvatar = {
+  id: DEFAULT_AVATAR_ID,
+  url: DEFAULT_AVATAR_URL,
+  // Keeps its pre-rename spelling: rewording it would read as never-seeded and refill a delete.
+  seededKey: 'FORMAMORPH_defaultModelSeeded',
+  fallbackName: 'Default Avatar',
+};
+
+const PRALINE_ENTRY: BundledAvatar = {
+  id: PRALINE_AVATAR_ID,
+  url: './praline-avatar.vrm',
+  seededKey: 'FORMAMORPH_pralineAvatarSeeded',
+  fallbackName: 'Praline',
+};
+
+/** The Avatars a build holds by its `FORMAMORPH_AVATARS` value, in seed order. The library lists newest first,
+ *  so the default seeds last and heads a new install's list. */
+export const bundledAvatarsFor = (avatarSet: string): readonly BundledAvatar[] =>
+  avatarSet === 'nsfw' ? [PRALINE_ENTRY, DEFAULT_ENTRY] : [DEFAULT_ENTRY];
+
+export const BUNDLED_AVATARS = bundledAvatarsFor(__AVATAR_SET__);
+
 /** Pre-library saves picked the bundled avatar by this sentinel; `migrateSave` rewrites it to the id above. */
 export const LEGACY_DEFAULT_AVATAR_SENTINEL = 'default';
 
@@ -27,6 +60,8 @@ export const readUserDefaultAvatar = (): string | undefined => userDefaultAvatar
 export const setUserDefaultAvatar = (modelId: string): void => userDefaultAvatar.write(modelId);
 export const clearUserDefaultAvatar = (): void => userDefaultAvatar.clear();
 
-/** The library Avatar a picker opens on: the device default, else the bundled copy, else the first. */
+/** The library Avatar a picker opens on: the device default, else the bundled copy, else the first. Praline sorts
+ *  after the player's own Avatars, because she is often the newest record. */
 export const pickerStart = (libraryIds: readonly string[], deviceDefault: string | undefined): string =>
-  [deviceDefault, DEFAULT_AVATAR_ID].find((id) => id && libraryIds.includes(id)) ?? libraryIds[0] ?? DEFAULT_AVATAR_ID;
+  [deviceDefault, DEFAULT_AVATAR_ID].find((id) => id && libraryIds.includes(id))
+    ?? libraryIds.find((id) => id !== PRALINE_AVATAR_ID) ?? libraryIds[0] ?? DEFAULT_AVATAR_ID;

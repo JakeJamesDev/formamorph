@@ -85,13 +85,16 @@ jobs:
             exit 1
           fi
       - run: npm ci
-      # Releases ship the alternate avatar. The tracked default stays on the Pages dev build and local dev.
-      - name: Swap in the release avatar
+      # Releases ship the alternate avatar and Praline. The tracked default stays on the Pages dev build and local dev.
+      - name: Swap in the release avatars
         shell: bash
-        run: cp build-assets/alternate-avatar.vrm public/default-avatar.vrm
+        run: |
+          cp build-assets/alternate-avatar.vrm public/default-avatar.vrm
+          cp build-assets/praline-avatar.vrm public/praline-avatar.vrm
       - run: npm run ${{ matrix.script }}
         env:
           FORMAMORPH_BUILD: ${{ matrix.build }}
+          FORMAMORPH_AVATARS: nsfw
           # Only the Linux --publish step consumes this; the Windows/mac --publish never scripts ignore it.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Windows: build the Go launcher, then assemble the distributable — launcher at the clean root + the
@@ -142,14 +145,17 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
-      # Releases ship the alternate avatar. The tracked default stays on the Pages dev build and local dev.
-      - name: Swap in the release avatar
-        run: cp build-assets/alternate-avatar.vrm public/default-avatar.vrm
+      # Releases ship the alternate avatar and Praline. The tracked default stays on the Pages dev build and local dev.
+      - name: Swap in the release avatars
+        run: |
+          cp build-assets/alternate-avatar.vrm public/default-avatar.vrm
+          cp build-assets/praline-avatar.vrm public/praline-avatar.vrm
       # No env overrides → full build (community on, full tag data), unlike the Pages demo build.
       # FORMAMORPH_BUILD=web keeps the footer bare (no build tag) for the browser build.
       - run: npm run build
         env:
           FORMAMORPH_BUILD: web
+          FORMAMORPH_AVATARS: nsfw
       # Zip from inside dist so index.html sits at the zip root (itch.io requires this to serve it). Named
       # from package.json version (== the tag, per the guard) so every artifact shares one version string.
       - name: Zip web build
@@ -195,13 +201,17 @@ jobs:
         with:
           packages: platform-tools
       - run: npm ci
-      # Releases ship the alternate avatar. The tracked default stays on the Pages dev build and local dev.
-      - name: Swap in the release avatar
-        run: cp build-assets/alternate-avatar.vrm public/default-avatar.vrm
+      # Releases ship the alternate avatar and Praline. The tracked default stays on the Pages dev build and local dev.
+      - name: Swap in the release avatars
+        run: |
+          cp build-assets/alternate-avatar.vrm public/default-avatar.vrm
+          cp build-assets/praline-avatar.vrm public/praline-avatar.vrm
       # buildAndroid.mjs sets FORMAMORPH_BUILD=android before the Vite build; sync copies dist/ into the
       # native project and regenerates its plugin list.
       - name: Build the web app with the android build class
         run: node scripts/buildAndroid.mjs
+        env:
+          FORMAMORPH_AVATARS: nsfw
       - run: npx cap sync android
       # The keystore never touches the checkout: it is decoded into the runner's temp dir and the Gradle
       # signing config reads it from ANDROID_KEYSTORE_PATH. An empty secret fails here, not on a phone.
