@@ -64,6 +64,16 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q37 | (ticket 02) The coin picker lists Stackable items that aren't a coin in any Currency, plus the row's own item. A coin that later stops being Stackable keeps its row, with a warning |
 | Q38 | (ticket 02) Coin Value fields normalize when focus leaves the group of fields, not on each field. A blank Value shows blank fields, and all blank clears the Value. A Value of 0 shows zeros and reads "0 Copper". A coin Currency's fields take whole non-negative numbers, and the top coin has no cap |
 | Q39 | (ticket 02) The Breakdown is largest first with zero coins omitted, and ends in the worth-1 coin, so no remainder is lost |
+| Q40 | (ticket 04) Q22's stat rule covers every delete that removes a backing stat's id: a world stat, a Persona's own stat, a Persona, and Blueprints removal. Unlinking a Blueprint stat from its last Persona is not a delete: the Currency keeps it, the picker still shows it, and it has no Balance |
+| Q41 | (ticket 04) Deleting the base coin drops its row and leaves a coin Currency with ticket 02's hint. Only deleting the last coin makes it name only |
+| Q42 | (ticket 04) A confirm for Currency reasons shows only when a Currency uses the stat or coin, or when items point at the Currency |
+| Q43 | (ticket 03) An entity is tracked in a coin Currency when the world has a Placement of one of its coins at that entity, hidden or not. It stays tracked at 0 once spent down, and coins received in play don't make an untracked entity tracked. A stat-backed Currency tracks whoever has the stat |
+| Q44 | (ticket 03) The player is always tracked in a coin Currency, so no coins reads as 0. A Persona without a backing stat is untracked and has no row. A Global Stat wallet reads for the player only |
+| Q45 | (ticket 03) A switched-off backing stat reads as untracked. A hidden backing stat stays in the chip and has no Inventory tab row, so the row can't reveal it |
+| Q46 | (ticket 03) The chip gives an unidentified copy's worth inside its "unknown to the player" part. A stack of 2 or more reads per unit, as "each" |
+| Q47 | (ticket 03) Balance rows sit in the player's card under a Money subheader. The Inventory tab also shows in a world with Currencies and no items when the player has a row |
+| Q48 | (ticket 03) Trading without limit applies to entities (Q8). An untracked player can't pay |
+| Q49 | (ticket 03) The chip carries no sentence explaining worth or balance. Probes show a sentence doesn't stop a sale to a broke player, and it costs about 35 words per turn. Affordability rests on ticket 05's refusal |
 
 ## User Stories
 
@@ -211,7 +221,7 @@ Tests assert behavior at a seam: inputs in, state out. They never mirror the cod
 
 ## Further Notes
 
-- The refused-buy gap is known and accepted: one turn's narration can read as a sale that code refused. The chip's balances should make it rare.
+- The refused-buy gap is known and accepted: one turn's narration can read as a sale that code refused. Ticket 03's probes show the chip doesn't make it rarer: the cloud narrator gave a broke player the sale in 6 of 30 runs with the chip, and 7 of 30 without.
 - Payment moves money after narration, so the narrator's own sums can disagree with the settled balance for that turn.
 - Emberwatch's new coins need no generated art for tickets to land, unless the user asks for it.
 - The rulings in this spec amend Inventory Q32 and Q75 and remove "buying and selling" from that effort's out-of-scope hook.

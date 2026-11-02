@@ -15,7 +15,7 @@ The stat pass can no longer charge the same money twice. It omits backing stats 
 
 This ticket owns the Payment plan in the Currency module. Tickets 06 and 07 call it.
 
-Rulings: Q7, Q8, Q9, Q11, Q15, Q18, Q21, Q26, Q27, Q28, Q29.
+Rulings: Q7, Q8, Q9, Q11, Q15, Q18, Q21, Q26, Q27, Q28, Q29, Q43, Q44, Q45, Q48.
 
 ## Acceptance criteria
 
