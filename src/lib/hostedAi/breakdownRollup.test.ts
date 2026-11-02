@@ -40,6 +40,18 @@ describe('rollupBreakdown', () => {
     expect(group(at, 'tracking').prompts.map((p) => p.type)).toEqual(['statUpdates']);
   });
 
+  it('never shows a nested row above its group', () => {
+    const rollup = rollupBreakdown({ narration: 41.8, choices: 20.9, statUpdates: 16.6, inventory: 20.7 }, 10);
+    expect(group(rollup, 'tracking').percent).toBe(16);
+    expect(group(rollup, 'tracking').prompts[0].percent).toBe(16);
+  });
+
+  it('never lets a group\'s nested rows total more than the group', () => {
+    const rollup = rollupBreakdown({ narration: 75, thinking: 12.5, director: 12.5 }, 10);
+    expect(group(rollup, 'planning').percent).toBe(25);
+    expect(group(rollup, 'planning').prompts.map((p) => p.percent)).toEqual([13, 12]);
+  });
+
   it('nests nothing without a threshold', () => {
     expect(group(rollupBreakdown({ thinking: 50, narration: 50 }, null), 'planning').prompts).toEqual([]);
   });

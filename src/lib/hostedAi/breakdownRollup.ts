@@ -59,10 +59,10 @@ export interface BreakdownRollup {
   groups: BreakdownGroupRow[];
 }
 
-/** Whole percents that total 100: each floors, then the largest remainders take the spare points. */
-function largestRemainder(exact: number[]): number[] {
+/** Whole numbers that total `target`: each floors, then the largest remainders take the spare points. */
+function largestRemainder(exact: number[], target = 100): number[] {
   const floors = exact.map(Math.floor);
-  let spare = 100 - floors.reduce((sum, n) => sum + n, 0);
+  let spare = target - floors.reduce((sum, n) => sum + n, 0);
   const order = exact.map((value, index) => ({ index, rest: value - floors[index] })).sort((a, b) => b.rest - a.rest || a.index - b.index);
   for (const { index } of order) {
     if (spare <= 0) break;
@@ -90,14 +90,21 @@ export function rollupBreakdown(breakdown: Record<string, number>, threshold: nu
   const raws = [...rows.map((row) => row.raw), ...(other > 0 ? [other] : [])];
   const percents = largestRemainder(raws.map((raw) => (raw / total) * 100));
 
-  const groups: BreakdownGroupRow[] = rows.map(({ group }, i) => ({
-    id: group.id,
-    label: group.label,
-    percent: percents[i],
-    prompts: group.types.length < 2 || threshold === null ? [] : group.types
-      .filter((type) => (breakdown[type] ?? 0) >= threshold)
-      .map((type) => ({ type, label: breakdownPromptLabel(type), percent: Math.round((breakdown[type] / total) * 100) })),
-  }));
+  const groups: BreakdownGroupRow[] = rows.map(({ group, raw }, i) => {
+    // The group's shown percent is split among its prompts, so nested rows never read above it.
+    const split = largestRemainder(
+      group.types.map((type) => (raw > 0 && breakdown[type] > 0 ? (breakdown[type] / raw) * percents[i] : 0)),
+      percents[i],
+    );
+    return {
+      id: group.id,
+      label: group.label,
+      percent: percents[i],
+      prompts: group.types.length < 2 || threshold === null ? [] : group.types
+        .map((type, t) => ({ type, label: breakdownPromptLabel(type), percent: split[t] }))
+        .filter(({ type }) => (breakdown[type] ?? 0) >= threshold),
+    };
+  });
   if (other > 0) groups.push({ id: OTHER_TYPE, label: OTHER_LABEL, percent: percents[rows.length], prompts: [] });
   return { empty: false, groups };
 }
