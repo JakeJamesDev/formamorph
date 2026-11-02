@@ -250,8 +250,11 @@ export function applyInventoryPass(
   /** The words of a pay's sum. A reply can name the money as the item or the currency alone, with how many as a quantity above 1. */
   const payPrice = (op: InventoryPassOp) => op.price || op.item || (op.currency && op.quantity > 1 ? String(op.quantity) : '');
 
+  /** The money word a bare price counts: the `currency` cell, else the money in `item` (Q80). */
+  const payNamed = (op: InventoryPassOp) => op.currency?.trim() || (op.price ? op.item : '');
+
   const statedPay = (op: InventoryPassOp) =>
-    readStatedPrice(payPrice(op), op.currency ?? '', moneyCurrencies, moneyNames, op.quantity > 1 ? op.quantity : undefined);
+    readStatedPrice(payPrice(op), payNamed(op), moneyCurrencies, moneyNames, op.quantity > 1 ? op.quantity : undefined);
 
   /** Settles one pay and answers the Currencies it governs (Q56, Q76). */
   const settlePay = (op: InventoryPassOp): readonly Currency[] => {

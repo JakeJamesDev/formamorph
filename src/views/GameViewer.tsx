@@ -79,7 +79,7 @@ import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type Drawn
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
-import { worldEntitiesOf, type PersonaPick } from "@/lib/persona";
+import { playedNames, worldEntitiesOf, type PersonaPick } from "@/lib/persona";
 import { resolveWorldPrompt, appliedWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { statTextFor } from "@/lib/statTextPrompts";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
@@ -5426,7 +5426,7 @@ const GameViewer = ({
     const entityStatsBefore = traitsBefore.entityStats ?? {};
     const inForce = entityInForceUnder(traitsBefore.ownedTraits ?? {});
     const result = applyInventoryPass(from.copies, ops, {
-      items: worldItems, runtimeItems: from.runtimeItems, playerNames, owners,
+      items: worldItems, runtimeItems: from.runtimeItems, playerNames: [...new Set([...playerNames, ...playedNames(playedEntities)])], owners,
       location: location && { id: location.id, name: location.name }, resolve: resolvePH,
       money: {
         currencies: worldCurrencies, placements: worldPlacements,

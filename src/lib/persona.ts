@@ -41,6 +41,9 @@ export function withPersonaEntry(entities: readonly Entity[], ref: PersonaRef | 
 
 const namesOf = (entity: Entity): string[] => [entity.name, ...(entity.aliases ?? [])].map((n) => n.trim()).filter(Boolean);
 
+/** The names and aliases of every played entity, each once. */
+export const playedNames = (played: readonly Entity[]): string[] => [...new Set(played.flatMap(namesOf))];
+
 export interface PersonaResolution {
   /** Null for no reference, an explicit None, or a reference that no longer resolves. */
   persona: ResolvedPersona | null;

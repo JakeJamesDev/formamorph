@@ -137,6 +137,19 @@ describe('a stat Currency', () => {
     await waitFor(() => expect(statNow('funds')).toBe(20));
   });
 
+  it('charges every played entity by name: a library persona plays beside the Custom Persona entity (Q81)', async () => {
+    const ash = { id: 'ash', name: 'Ash', customPersona: true, stats: [stat('funds', 'Funds', 50)] } as Entity;
+    const wren = { id: 'l-wren', name: 'Wren', persona: true } as Entity;
+    renderGameViewer(
+      { ...harborWorld({ stats: [vigor], entities: [ash] }), currencies: [CREDITS] },
+      { inGameplay: <Probe />, initialPersona: { ref: { source: 'library', entityId: wren.id }, libraryEntity: wren } },
+    );
+    await screen.findByPlaceholderText(/Type your action/);
+    stubEndpoint(pay('Ash', 'the harbor guard', '30'));
+    await sendTurn();
+    await waitFor(() => expect(gameplay().entityStats.ash?.find((s) => s.id === 'funds')?.value).toBe(20));
+  });
+
   it('refuses what the player cannot afford: state unchanged, a diagnostic, and no toast', async () => {
     await playOneTurn(statWorld(), pay('you', '', '51'));
     await waitFor(() => expect(JSON.stringify(gameplay().logEntries)).toContain('skipped pay'));

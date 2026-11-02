@@ -335,6 +335,23 @@ describe('where a bought item comes from (Q66)', () => {
   });
 });
 
+describe('a pay that names money in item beside a price (Q80)', () => {
+  const start = [copy('g', 'gold', you, 6)];
+  const named = (item: string, price: string): InventoryPassOp => ({ ...pay('you', '', price), item });
+
+  it('counts a bare price in the item named: item Gold and price 5 is 5 Gold', () => {
+    const { copies, diagnostics } = settle(start, [named('Gold', '5')]);
+    expect(diagnostics).toEqual([]);
+    expect(counts(copies, you)).toEqual({ gold: 1 });
+  });
+
+  it('refuses a price that names another Currency than the item', () => {
+    const { copies, diagnostics } = settle([...start, copy('s', 'shell', you, 9)], [named('Gold', '5 Shell')]);
+    expect(counts(copies, you)).toEqual({ gold: 6, shell: 9 });
+    expect(diagnostics).toEqual([expect.stringContaining('skipped pay')]);
+  });
+});
+
 describe('a pay that names an item (Q70)', () => {
   const namingPay = (name: string): InventoryPassOp => ({ ...pay('Mara', 'you', '25'), item: name });
 

@@ -139,6 +139,44 @@ describe('deleting a backing stat', () => {
   });
 });
 
+describe('deleting an entity from the Entities tab (Q79)', () => {
+  const owner = (id: string, name: string, stats: unknown[]) => ({ id, name, persona: true, groupId: null, order: 0, stats });
+  const deleteEntity = (name: string) => {
+    fireEvent.change(screen.getByPlaceholderText('Filter Entities'), { target: { value: name } });
+    const row = screen.getByRole('button', { name: `Select ${name}` }).parentElement as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  };
+  const open = (entities: unknown[]) => {
+    const bench = renderWorldEditorBench(benchEditorWorld({ stats: [], currencies: [CREDITS], entities } as Partial<World>), 'advanced');
+    openEditorTab(/Entities/);
+    return bench;
+  };
+
+  it('asks for a plain Persona whose own stat backs a Currency, naming it, and cancel keeps both', () => {
+    const { ctx } = open([owner('ada', 'Ada', [stat('purse', 'Purse')])]);
+    deleteEntity('Ada');
+    expect(dialog()).toHaveTextContent('This also makes Credits Name Only.');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+    expect(ctx().entities.map((e) => e.id)).toEqual(['ada']);
+    expect(ctx().currencies).toEqual([CREDITS]);
+  });
+
+  it('makes the Currency name only on confirm', () => {
+    const { ctx } = open([owner('ada', 'Ada', [stat('purse', 'Purse')])]);
+    deleteEntity('Ada');
+    confirm();
+    expect(ctx().entities).toEqual([]);
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'name' });
+  });
+
+  it('deletes at once when no Currency is affected', () => {
+    const { ctx } = open([owner('ada', 'Ada', [stat('warmth', 'Warmth')])]);
+    deleteEntity('Ada');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(ctx().entities).toEqual([]);
+  });
+});
+
 describe('deleting a Currency Item', () => {
   const MONEY: Item[] = [blankItem('copper', 'Copper'), blankItem('silver', 'Silver'), priced('pouch', 'Pouch', 'crowns')];
   const crowns = (rows: { itemId: string; worth: number }[]): Currency => ({ id: 'crowns', name: 'Crowns', backing: { kind: 'items', items: rows } });

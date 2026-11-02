@@ -231,7 +231,7 @@ The bundled world **Emberwatch** pays in Copper, Silver and Gold. To see a full 
 
 A delete is never blocked. When something uses what you delete, a confirm names what changes. Nothing else asks.
 
-- 📊 Delete a stat that backs a Currency, or the Persona who owns it, and that Currency becomes **Name Only**. Deleting Blueprints does the same when it removes the stat's last copy.
+- 📊 Delete a stat that backs a Currency, or the Persona or entity who owns it, and a confirm names the Currency. If you confirm, that Currency becomes **Name Only**. Deleting Blueprints does the same when it removes the stat's last copy.
 - 🪙 Delete an item that backs a Currency and its row leaves the Currency. If it was the last row, the Currency becomes **Name Only**. If it was the item worth 1, the other rows stay, and the Currency shows a hint until an item is worth 1.
 - 🗑️ Delete a Currency and its items lose their **Currency**. The confirm gives the item count.
 - 🏷️ Every item keeps its **Value**. A delete clears the Currency and leaves each price in place.
