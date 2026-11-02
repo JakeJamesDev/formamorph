@@ -305,3 +305,14 @@ The owner rejected an even reading of 1999 in American, then accepted a joined o
 "nineteen", "thirteen", "fourteen", "seventeen", and "ninety" joined the word table for this. Only 1999 was heard.
 
 The sentence "You should have told me you were going, because I would have come with you." is still rejected in both accents, with the schwa in "have". The fault is not named yet.
+
+## Homographs
+
+Rated blind by the owner on 20 American sentences, against the old phoneme step. No bar applies.
+
+| Arm | Accepted | Rejected |
+|---|---|---|
+| Our picks | 18 of 20 | "I will read the letter tonight." and "They lead the way to the keep." |
+| Old phoneme step | 15 of 20 | "She read the letter last night.", "They lead the way to the keep.", "The pipe was made of lead.", "He wound the rope around the post.", and "Please close the door." |
+
+Both rejected sentences of ours say the homograph correctly, so another word in each is the likely fault. `wˈɪl` and `ðˈA` both carry full stress.

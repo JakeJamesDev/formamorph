@@ -64,3 +64,7 @@ Our table is `src/lib/tts/g2p/homographs.json`: word, sense, and CMUdict variant
 **For you**
 
 - Rate `.scratch/espeak-ng-replacement-04/frames/rating-homographs/index.html`. It compares our picks with the old phoneme step on 20 sentences, blind. No bar applies.
+
+## Owner's Ratings
+
+Our picks 18 of 20, against the old phoneme step's 15 of 20, rated blind. No bar applies.
