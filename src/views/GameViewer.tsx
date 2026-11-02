@@ -3846,6 +3846,7 @@ const GameViewer = ({
           turn: currentTurnRead(),
           loreToggles: baseLore,
           itemCopies: liveItemsRef.current.copies, items: worldItems, slots: worldSlots,
+          ...(worldCurrencies.length ? { money: { currencies: worldCurrencies, placements: worldPlacements } } : {}),
           bodies: {
             world: {
               ...inventoryWorld, traitPicks: traitPicksInPlay(liveItemsRef.current.bodies, liveTraitStateRef.current, world),

@@ -9,8 +9,9 @@ import { phMap } from '@/test/sandboxPlaceholders';
 import { phValues } from '@/test/placeholderValues';
 import { codeDiagnostics, statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
 import { executeStatCode, type StatCodeResult, type StatCodeRunOptions } from './statCodeExecutor';
+import { scriptMoney } from './scriptMoney';
 import {
-  CLOCK_MEMBERS, ITEM_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
+  CLOCK_MEMBERS, CURRENCY_FIELDS, ITEM_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
   STAT_CODE_SURFACE, TRAIT_ENTRY_FIELDS, scriptSurface,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
@@ -86,7 +87,16 @@ const world = {
   places: { locations: [{ id: 'location', name: 'Location' }], location: { id: 'location', name: 'Location' } },
   items: [{ id: 'item', name: 'Item', copies: [{ id: 'copy', where: { kind: 'you' as const }, quantity: 1, equipped: false, slot: '', occupies: [], allowed: [], hidden: false }] }],
 };
-const run = (code: string, options: StatCodeRunOptions = {}) => executeStatCode(code, stats, stats[0], { ...world, ...options });
+// One stat-backed Currency on the persona's own stat, so a pay in the guide's form lands as that stat's write.
+const currency = { id: 'currency', name: 'Currency', backing: { kind: 'stat' as const, statId: 'hero-stat' } };
+const money = () => scriptMoney({
+  currencies: [currency], items: [], itemNames: [], slots: [], placements: [], copies: [],
+  stats: { globalStats: [], entityStats: { hero: world.persona.stats.stats.map((s) => ({ ...s, value: 50 })) } },
+  playedIds: ['hero'], statsOn: (_id, list) => list,
+});
+const run = (code: string, options: StatCodeRunOptions = {}) => executeStatCode(code, stats, stats[0], {
+  ...world, currencies: [{ id: 'currency', name: 'Currency', kind: 'stat' }], money: money(), ...options,
+});
 
 /** The objects whose write a box takes at After the AI only, where the guide's form runs and is checked. */
 const AFTER_THE_AI_WRITES = new Set(['turn']);
@@ -147,6 +157,7 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   placeholders: placeholderEntryFields('Wildcard'),
   dictionaries: DICTIONARY_FIELDS,
   items: ITEM_FIELDS,
+  currencies: CURRENCY_FIELDS,
 };
 
 const rows = quickReferenceRows();

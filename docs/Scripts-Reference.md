@@ -26,6 +26,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
+| `currencies` | `id`, `name`, `kind`, `balance()`, `pay()` | `currencies.<Currency>.balance(persona)` | `currencies.<Currency>.pay(persona, null, <n>)` |
 | `console` | `log()` | — | `console.log(<text>)` |
 
 A timing adds one name to those objects. A script reads only the name its own timing adds:
@@ -767,6 +768,34 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 // Resting at the shrine refills every wand the player carries.
 if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item === 'Wand') copy.setUses(3);
 ```
+
+### Currencies
+<!-- keywords: currencies, money, balance, pay, toll, gold, coins, price, afford, fee, bribe, income, change, refuse -->
+
+`currencies` holds every Currency of the world by code name. Each entry has `id`, `name`, `kind` (`"stat"`, `"coins"` or `"name"`) and two calls. The world's **Currencies** entry on the **Items** tab sets them up.
+
+| Call | What it does |
+| --- | --- |
+| `currencies.<Currency>.balance(owner)` | What an entity or the persona holds. A coin Currency counts visible, identified coins as one number. It is `null` when the owner has no balance, and for a name-only Currency |
+| `currencies.<Currency>.pay(payer, payee, amount)` | Moves money as a payment in the game does, and answers `{ paid, reason }` at once |
+
+The `owner`, `payer` and `payee` are an entity or the persona, as an entry or by name. A `payer` of `null` is income. A `payee` of `null` takes the money out of the world. The `amount` is a whole number of the Currency's smallest unit, or text such as `"1 Gold, 5 Copper"`.
+
+```javascript
+// The toll gate takes 5 coins, or says why not.
+const toll = currencies.Coin.pay(persona, "Gatekeeper", 5);
+if (!toll.paid) player.toast("You can't pay the toll.");
+```
+
+- **A payment follows the game's rules.** It spends the smallest coins first, makes change in the fewest coins, and refuses what the payer can't afford. A stat with **No Decrease** or **No Increase** refuses it too.
+- **A refused payment changes nothing.** `paid` is `false` and `reason` says why.
+- **The result is in the run.** The script can read `paid` and the next `balance`. The money lands when the script ends.
+- **`balance` leaves out the script's own `give` calls and stat writes.** It counts the starting state and the payments this script made.
+- **A payment adds to your own write of the same stat.** After `stats.Funds.value = 100`, a payment of 30 leaves 70.
+- **A later payment can't spend change an earlier one made.** It refuses instead.
+- **Stat writes and `give` still work** on a stat or coin that backs a Currency.
+- **An unknown Currency or party stops the script with an error.**
+- **A user Tool has no `currencies`.**
 
 ### Bodies
 <!-- keywords: body, bodies, transform, wolf form, change slots, set body from code, body in force, base body, unequip on transform, unknown body name -->

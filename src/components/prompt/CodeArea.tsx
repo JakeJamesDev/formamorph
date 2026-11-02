@@ -89,6 +89,8 @@ interface CodeAreaProps {
   locations?: readonly string[];
   /** The world's items by code name, listed by the Variable menu. */
   items?: readonly { id: string; name: string }[];
+  /** The world's Currencies by code name, listed by the Variable menu. */
+  currencies?: readonly { id: string; name: string }[];
   /** The Variable menu's tree where the surface has no stat maps, built on each open. Absent there, no menu. With stat
    *  maps, these groups come before the stat tree's. */
   variables?: () => readonly VariableNode[];
@@ -308,12 +310,12 @@ export function CodeArea(props: CodeAreaProps) {
 
   // A template has no world, so its tree types over each name.
   const variableTree = useCallback(() => {
-    const { slots: template, statNames, owner, placeholders, traits, entities, locations, items, surface, variables } = latest.current;
+    const { slots: template, statNames, owner, placeholders, traits, entities, locations, items, currencies, surface, variables } = latest.current;
     if (!surface.statMaps) return variables?.() ?? [];
     // A box that gives a menu beside stat maps, such as a World Tool's arguments, lists it first.
     const tree = [
       ...variables?.() ?? [],
-      ...buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities, locations, items }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface)),
+      ...buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities, locations, items, currencies }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface)),
     ];
     return surface.readOnly ? readOnlyTree(tree) : tree;
   }, []);

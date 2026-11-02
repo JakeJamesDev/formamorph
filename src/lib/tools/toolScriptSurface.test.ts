@@ -37,10 +37,10 @@ describe('the Tool script surface matches the sandbox', () => {
 
   it('leaves out every name a world script has that the Tool surface lacks, and the sandbox lacks each too', async () => {
     const absent = WORLD_SCRIPT_SURFACE.globals.map((g) => g.name).filter((name) => !surface.globals.some((g) => g.name === name));
-    expect(absent.sort()).toEqual(['discover', 'owner', 'self']);
+    expect(absent.sort()).toEqual(['currencies', 'discover', 'owner', 'self']);
     const probe = `return [${[...absent, 'player', 'world', 'scene'].map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, {}, snapshot);
-    expect(JSON.parse((result as { text: string }).text)).toEqual(['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']);
+    expect(JSON.parse((result as { text: string }).text)).toEqual(Array(7).fill('undefined'));
   });
 });
 
