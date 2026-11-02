@@ -168,6 +168,14 @@ export interface AiToolCall {
 /** The field a native reasoning model streams its scratchpad in. A reply echoes it back under the same name. */
 export type AiReasoningField = 'reasoning' | 'reasoning_content';
 
+/** How much one stream produced. `reportedTokens` is the endpoint's own count, where it sends one. */
+export interface AiStreamOutput {
+  frames: number;
+  reportedTokens: number | null;
+  /** From the first token to the end of the stream. */
+  generatingMs: number;
+}
+
 export interface AiStreamResult {
   content: string;
   reasoningText: string;
@@ -178,6 +186,7 @@ export interface AiStreamResult {
   /** The calls the model made this response, in index order. Empty for a plain reply. */
   toolCalls: AiToolCall[];
   timings: AiStreamTimings;
+  output: AiStreamOutput;
 }
 
 export type AiStreamDebug =
@@ -223,6 +232,7 @@ interface FrameDelta {
   reasoningField: AiReasoningField | null;
   toolCalls: ToolCallPiece[];
   finishReason: string | null;
+  reportedTokens: number | null;
 }
 
 /** Live-reasoning cadence. Exported because a consumer driving its own reasoning source (an inline
@@ -266,6 +276,7 @@ function parseFrame(line: string): FrameDelta | null {
       }];
     }),
     finishReason: choice?.finish_reason ?? null,
+    reportedTokens: typeof parsed.usage?.completion_tokens === 'number' ? parsed.usage.completion_tokens : null,
   };
 }
 
@@ -305,6 +316,8 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   let content = '';
   let reasoningText = '';
   let reasoningFrames = 0;
+  let outputFrames = 0;
+  let reportedTokens: number | null = null;
   let reasoningField: AiReasoningField | null = null;
   let finishReason: string | null = null;
   const toolCalls: AiToolCall[] = [];
@@ -314,6 +327,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   let lastReasoningTick = -Infinity;
 
   const done = (): AiStreamEvent => {
+    const endedAt = now();
     return {
       type: 'done',
       result: {
@@ -322,7 +336,8 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
         reasoningField,
         finishReason,
         toolCalls,
-        timings: { startedAt, firstTokenAt, firstContentAt, endedAt: now() },
+        timings: { startedAt, firstTokenAt, firstContentAt, endedAt },
+        output: { frames: outputFrames, reportedTokens, generatingMs: firstTokenAt === null ? 0 : endedAt - firstTokenAt },
       },
     };
   };
@@ -442,6 +457,8 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     reasoningField ??= frame.reasoningField;
     if (frame.content) content += frame.content;
     for (const piece of frame.toolCalls) foldToolCall(toolCalls, callsByIndex, piece);
+    if (frame.content || frame.reasoning || frame.toolCalls.length) outputFrames += 1;
+    reportedTokens = frame.reportedTokens ?? reportedTokens;
     const tick = now();
     if (firstTokenAt === null && (frame.content || frame.reasoning || frame.toolCalls.length)) firstTokenAt = tick;
     // Visible content, not merely a content frame: models routinely lead with a newline or a space, and

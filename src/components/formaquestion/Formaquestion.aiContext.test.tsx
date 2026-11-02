@@ -106,11 +106,11 @@ describe('AI Context in Formaquestion', () => {
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
     expect(within(question).getByText('Search')).toBeInTheDocument();
     expect(within(question).getByText(`Sources on: ${AI_CONTEXT_COPY.sources.keyword}, ${AI_CONTEXT_COPY.sources.aiPicks}`)).toBeInTheDocument();
-    expect(within(question).getByText('Request 1: AI Search')).toBeInTheDocument();
-    expect(within(question).getByText('Request 2: Answer')).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^AI Search · #1/ })).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^Answer · #2/ })).toBeInTheDocument();
     // The endpoint, the samplers and the reasoning of each request show on its card.
     expect(within(question).getAllByText('cloud · m')).toHaveLength(2);
-    expect(within(question).getAllByText('Temp 0.2 · Rep 1')).toHaveLength(2);
+    expect(within(question).getAllByText('0.2')).toHaveLength(2);
     expect(within(question).getByText('Traits first.')).toBeInTheDocument();
     expect(within(question).getByText('Select **Add Trait**.')).toBeInTheDocument();
     expect(within(question).queryByText(AI_CONTEXT_COPY.customPrompt.label)).toBeNull();
@@ -147,8 +147,8 @@ describe('AI Context in Formaquestion', () => {
 
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
     expect(within(question).getByText(`${AI_CONTEXT_COPY.intent}: Help`)).toBeInTheDocument();
-    expect(within(question).getByText('Request 1: Sorting')).toBeInTheDocument();
-    expect(within(question).getByText('Request 3: Answer')).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^Sorting · #1/ })).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^Answer · #3/ })).toBeInTheDocument();
     expect(answers).toHaveBeenCalledTimes(1);
   });
 
@@ -165,7 +165,7 @@ describe('AI Context in Formaquestion', () => {
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
     const marks = within(question).getAllByText(AI_CONTEXT_COPY.customPrompt.label);
     expect(marks).toHaveLength(1);
-    expect(marks[0].closest('button')?.textContent).toContain('Request 2: Answer');
+    expect(marks[0].closest('button')?.textContent).toContain('Answer · #2');
     expect(within(question).getByText(/Preset: /)).toHaveTextContent('Preset: Mine');
   });
 
@@ -261,7 +261,7 @@ describe('AI Context in Formaquestion', () => {
     await screen.findByRole('button', { name: 'Stop' });
     const dialog = await openAiContext();
     // The trace arrives once the answer request is built, while its reply is still open.
-    await within(dialog).findByText('Request 1: AI Search');
+    await within(dialog).findByRole('button', { name: /^AI Search · #1/ });
 
     // The unmount ends the request; the stream's reader closes it, so nothing writes to the gone state.
     view.unmount();

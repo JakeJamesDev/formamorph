@@ -37,28 +37,9 @@ export interface HelpQueryTrace {
   merged: HelpTraceSource[];
 }
 
-/** The sampler values one request carried, in the settings' names. Absent where the body sent none. */
-export interface HelpSamplers {
-  temperature?: number;
-  repetitionPenalty?: number;
-  topP?: number;
-  topK?: number;
-  minP?: number;
-}
-
-/** Each sampler: its name here, the wire field the session reads it from, and the label the chip shows. */
-export const HELP_SAMPLER_FIELDS: readonly { key: keyof HelpSamplers; wire: string; label: string }[] = [
-  { key: 'temperature', wire: 'temperature', label: 'Temp' },
-  { key: 'repetitionPenalty', wire: 'repetition_penalty', label: 'Rep' },
-  { key: 'topP', wire: 'top_p', label: 'Top P' },
-  { key: 'topK', wire: 'top_k', label: 'Top K' },
-  { key: 'minP', wire: 'min_p', label: 'Min P' },
-];
-
 /** One request of a help question: the shared record, plus what the help card marks beside its endpoint. */
 export interface HelpRequestTrace {
   record: AiRequestRecord;
-  samplers: HelpSamplers;
   /** The prompt this request carried differs from the default text. */
   customPrompt: boolean;
 }

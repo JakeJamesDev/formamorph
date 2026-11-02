@@ -207,6 +207,26 @@ describe('streamAiToolLoop: one lookup, then prose', () => {
     await run(transport);
     expect(assistantOf(transport.sent[1])[0].content).toBeNull();
   });
+
+  it('counts the output of every round, and leaves out the time between them', async () => {
+    const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('Bram ', 'nods.')]);
+    let clock = 0;
+    const events = await run(transport, { now: () => (clock += 10) });
+    const { output, timings } = doneOf(events);
+    expect(output.frames).toBe(3);
+    expect(output.reportedTokens).toBeNull();
+    expect(output.generatingMs).toBeGreaterThan(0);
+    expect(output.generatingMs).toBeLessThan(timings.endedAt - (timings.firstTokenAt as number));
+  });
+
+  it('adds up the counts the endpoint reports, and drops the total when a round reports none', async () => {
+    const usage = (completion_tokens: number) => `data: ${JSON.stringify({ choices: [], usage: { completion_tokens } })}\n\n`;
+    const calls = callFrames(['get_entity', { name: 'Bram' }]);
+    const both = await run(scripted([[...calls, usage(5)], [...proseFrames('x'), usage(9)]]));
+    expect(doneOf(both).output.reportedTokens).toBe(14);
+    const one = await run(scripted([calls, [...proseFrames('x'), usage(9)]]));
+    expect(doneOf(one).output.reportedTokens).toBeNull();
+  });
 });
 
 describe('streamAiToolLoop: what reaches the reply', () => {

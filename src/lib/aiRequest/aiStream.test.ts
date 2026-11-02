@@ -357,6 +357,32 @@ describe('streamAiRequest', () => {
       .toEqual(['pre', 'prestill thinking']);
   });
 
+  it('counts the frames that carried output, and times them from the first token', async () => {
+    let clock = 1000;
+    const events = await collect(streamAiRequest(spec, {
+      now: () => (clock += 10),
+      fetchImpl: fetchOf(streamingResponse([frame({ reasoning: 'hm' }), frame({ content: 'a' }), frame({}), frame({ content: 'b' }, 'stop')])),
+    }));
+    const { output, timings } = doneOf(events).result;
+    expect(output.frames).toBe(3);
+    expect(output.reportedTokens).toBeNull();
+    expect(output.generatingMs).toBe(timings.endedAt - (timings.firstTokenAt as number));
+    expect(output.generatingMs).toBeGreaterThan(0);
+  });
+
+  it("keeps the endpoint's own count from a usage frame that has no choices", async () => {
+    const usage = `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 40, completion_tokens: 7 } })}\n\n`;
+    const events = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([frame({ content: 'a' }, 'stop'), usage])),
+    }));
+    expect(doneOf(events).result.output).toMatchObject({ frames: 1, reportedTokens: 7 });
+  });
+
+  it('times nothing when no token arrived', async () => {
+    const events = await collect(streamAiRequest(spec, { fetchImpl: fetchOf(streamingResponse([frame({}, 'stop')])) }));
+    expect(doneOf(events).result.output).toEqual({ frames: 0, reportedTokens: null, generatingMs: 0 });
+  });
+
   it('stamps the first content time at the first visible character, not at leading whitespace', async () => {
     let clock = 1000;
     const events = await collect(streamAiRequest(spec, {

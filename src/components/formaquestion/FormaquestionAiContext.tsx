@@ -2,13 +2,12 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronsDownUp, ChevronsUpDown, ScrollText } from 'lucide-react';
 import { AiContextExportButton } from '@/components/aiContext/AiContextExportButton';
 import { AiContextRequestCard, AiContextSection, type AiContextCardSection } from '@/components/aiContext/AiContextRequestCard';
-import { DebugChip } from '@/components/game/DebugChip';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, dialogFullHeightMobile } from '@/components/ui/dialog';
 import { Pager } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
-import { HELP_SAMPLER_FIELDS, type HelpQueryTrace, type HelpRequestTrace, type HelpSamplers, type HelpTrace, type HelpTraceSource } from '@/lib/formaquestion/helpTrace';
+import type { HelpQueryTrace, HelpRequestTrace, HelpTrace, HelpTraceSource } from '@/lib/formaquestion/helpTrace';
 import { isWorldSource, sourceKey } from '@/lib/formaquestion/helpWorldSource';
 import { cn } from '@/lib/utils';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
@@ -29,25 +28,13 @@ type TracedExchange = HelpExchange & { trace: HelpTrace };
 
 const hasTrace = (exchange: HelpExchange): exchange is TracedExchange => exchange.trace !== undefined;
 
-/** The sampler chip's words: the settings' names on the chip, the wire names in the tip. */
-function samplersChip(samplers: HelpSamplers): { label: string; tip: string } | null {
-  const sent = HELP_SAMPLER_FIELDS.flatMap((field) => (samplers[field.key] === undefined ? [] : [{ ...field, value: samplers[field.key] }]));
-  if (sent.length === 0) return null;
-  return { label: sent.map(({ label, value }) => `${label} ${value}`).join(' · '), tip: sent.map(({ wire, value }) => `${wire}: ${value}`).join(' · ') };
-}
-
-/** The chips the help card adds after the endpoint chips: the samplers, and the custom-prompt mark. */
+/** The chip the help card adds after the endpoint's settings: the custom-prompt mark. */
 function HelpChips({ request }: { request: HelpRequestTrace }) {
-  const samplers = samplersChip(request.samplers);
+  if (!request.customPrompt) return null;
   return (
-    <>
-      {samplers && <DebugChip label={samplers.label} tip={samplers.tip} />}
-      {request.customPrompt && (
-        <Tip tip={AI_CONTEXT_COPY.customPrompt.tip} labelsChild={false}>
-          <span className="rounded border border-primary/60 bg-primary/15 px-1.5 py-0.5 text-meta font-normal text-foreground">{AI_CONTEXT_COPY.customPrompt.label}</span>
-        </Tip>
-      )}
-    </>
+    <Tip tip={AI_CONTEXT_COPY.customPrompt.tip} labelsChild={false}>
+      <span className="rounded border border-primary/60 bg-primary/15 px-1.5 py-0.5 text-meta font-normal text-foreground">{AI_CONTEXT_COPY.customPrompt.label}</span>
+    </Tip>
   );
 }
 

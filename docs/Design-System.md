@@ -334,6 +334,43 @@ The live Find reference uses the production bar and matching code against local 
 
 The new description states the reference purpose. Action labels use the production Find and Replace terminology, and dynamic status text reports the selected field or the completed local action. Sample names and prose are authored content and keep their own voice. Accessible names receive the same role review as visible controls. Standalone label-fragment grammar remains unverified under the Writing Guide, and reuse here does not certify the existing production Find, replacement, confirmation, or notice copy as fully ASD-STE100 compliant.
 
+## Pattern: Request Line
+
+**Purpose:** Show what one AI request sent and how its reply went, on one line a reader can scan down a list.
+
+**Density:** Compact. Every value uses the `meta` size.
+
+### Composition
+
+- 🏷️ **Title first.** The request's status glyph at rest, its prompt name, then its number in muted text.
+- 🧱 **One block.** Only the endpoint keeps a chip, so a routed endpoint stands out. A routed chip adds the tinted border and the route icon.
+- 📤 **What it sent.** Plain icon and value pairs follow the endpoint: reasoning, Max Output, samplers. A tooltip spells out each value.
+- 📥 **How it went.** Speed, total time, and first token sit at the right edge in fixed columns, so values line up from card to card.
+- ℹ️ **Reached Max Output** is information, so it stays muted and sits before the columns.
+
+### Production mapping
+
+| Part | Component |
+|---|---|
+| Whole line | [`AiContextRequestCard`](../src/components/aiContext/AiContextRequestCard.tsx) |
+| One value | [`RequestStat`](../src/components/aiContext/RequestStat.tsx) |
+| Words on the line | [`requestLineText`](../src/components/aiContext/requestLineText.ts) |
+
+### Responsive behavior
+
+Desktop keeps one line. On mobile, the results wrap to their own right-aligned row and the columns give up their fixed width.
+
+### State reference
+
+Open `#dev?modal=designSystem&tab=request-line`. The reference draws the production card over sample records.
+
+| State | Line shows |
+|---|---|
+| Reply still running, or stopped | No results |
+| Speed counted from the stream | `~` before the speed |
+| Speed reported by the endpoint | The speed alone |
+| Reply too short to measure | No speed |
+
 ## Pattern: Search Field
 
 **Purpose:** Give every search, find, and filter box the same look and the same one-step clear.

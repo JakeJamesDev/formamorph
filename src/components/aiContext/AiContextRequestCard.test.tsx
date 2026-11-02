@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from './AiContextRequestCard';
+import { LENGTH_FINISH_REASON } from '@/lib/aiRequest/aiStream';
+import { REQUEST_LABELS } from '@/lib/promptGroups';
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
+import type { AiRequestStats } from '@/lib/aiContext/requestStats';
 
 /** A record with none of the game-only fields: what a Formaquestion request would carry. */
 const record: AiRequestRecord = {
@@ -16,17 +19,21 @@ const record: AiRequestRecord = {
     index: 1, messages: [], reasoning: '', content: '', finishReason: 'tool_calls',
     calls: [{ id: 'c1', name: 'lookup_guide', arguments: '{}', result: 'Saving: open the menu.' }],
   }],
-  endpoint: { preset: 'Cloud', routed: true, model: 'big-24b', url: 'https://api.example.com/v1', reasoningFields: [], maxTokens: 800 },
+  endpoint: { preset: 'Cloud', routed: true, model: 'big-24b', url: 'https://api.example.com/v1', reasoningFields: [], maxTokens: 800, samplers: [{ name: 'temperature', value: 0.2 }] },
 };
+
+const stats: AiRequestStats = { totalMs: 6200, firstTokenMs: 800, generatingMs: 5400, tokens: 205, tokensEstimated: true, finishReason: 'stop' };
 
 const allOpen = () => true;
 
 describe('AiContextRequestCard', () => {
   it('draws every section of a record that has no game-only field', () => {
     render(<AiContextRequestCard record={record} index={0} isOpen={allOpen} onOpenChange={() => {}} />);
-    expect(screen.getByText('Request 1: answer')).toBeTruthy();
-    expect(screen.getByText('→ Cloud · big-24b')).toBeTruthy();
-    expect(screen.getByText('Max Tokens 800')).toBeTruthy();
+    expect(screen.getByText('answer')).toBeTruthy();
+    expect(screen.getByText('· #1')).toBeTruthy();
+    expect(screen.getByText('Cloud · big-24b')).toBeTruthy();
+    expect(screen.getByText('800')).toBeTruthy();
+    expect(screen.getByText('0.2')).toBeTruthy();
     for (const title of ['Raw Input', 'Tool Rounds', 'Raw Reasoning', 'Raw Output']) {
       expect(screen.getByText(title)).toBeTruthy();
     }
@@ -59,7 +66,8 @@ describe('AiContextRequestCard', () => {
   it('leaves out the sections the record does not carry', () => {
     const bare: AiRequestRecord = { type: 'pick', messages: [{ role: 'user', content: 'Which section?' }] };
     render(<AiContextRequestCard record={bare} index={2} isOpen={allOpen} onOpenChange={() => {}} />);
-    expect(screen.getByText('Request 3: pick')).toBeTruthy();
+    expect(screen.getByText('pick')).toBeTruthy();
+    expect(screen.getByText('· #3')).toBeTruthy();
     expect(screen.getByText('Raw Input')).toBeTruthy();
     expect(screen.queryByText('Tool Rounds')).toBeNull();
     expect(screen.queryByText('Raw Reasoning')).toBeNull();
@@ -75,7 +83,7 @@ describe('AiContextRequestCard', () => {
     expect(onOpenChange).toHaveBeenLastCalledWith('output', true);
     fireEvent.click(screen.getByText('Raw Reasoning'));
     expect(onOpenChange).toHaveBeenLastCalledWith('reasoning', false);
-    fireEvent.click(screen.getByText('Request 1: answer'));
+    fireEvent.click(screen.getByText('answer'));
     expect(onOpenChange).toHaveBeenLastCalledWith('group', false);
   });
 
@@ -92,15 +100,44 @@ describe('AiContextRequestCard', () => {
     expect(screen.getByText('Open the menu and choose Save.').tagName).toBe('MARK');
   });
 
-  it("draws the caller's chips after the endpoint chips", () => {
-    render(<AiContextRequestCard record={record} index={0} isOpen={allOpen} onOpenChange={() => {}} chips={<span>Custom Prompt</span>} />);
-    const header = screen.getByText('Request 1: answer').parentElement!;
-    const texts = [...header.querySelectorAll('span')].map((span) => span.textContent);
-    expect(texts.indexOf('Custom Prompt')).toBeGreaterThan(texts.indexOf('Max Tokens 800'));
+  it("draws the caller's chips after what the request sent, before how the reply went", () => {
+    render(<AiContextRequestCard record={{ ...record, stats }} index={0} isOpen={allOpen} onOpenChange={() => {}} chips={<span>Custom Prompt</span>} />);
+    const header = screen.getByText('answer').closest('button')!.textContent!;
+    expect(header.indexOf('Custom Prompt')).toBeGreaterThan(header.indexOf('800'));
+    expect(header.indexOf('Custom Prompt')).toBeLessThan(header.indexOf('t/s'));
   });
 
   it('says so when a search folds the card', () => {
     render(<AiContextRequestCard record={record} index={0} folded isOpen={() => false} onOpenChange={() => {}} />);
     expect(screen.getByText('· no matches')).toBeTruthy();
+  });
+
+  it('titles a request kind by its prompt name', () => {
+    render(<AiContextRequestCard record={{ ...record, type: 'statUpdates' }} index={2} isOpen={() => false} onOpenChange={() => {}} />);
+    expect(screen.getByText(REQUEST_LABELS.statUpdates)).toBeTruthy();
+    expect(screen.queryByText('statUpdates')).toBeNull();
+  });
+
+  it('draws speed, total time and first token once a reply finishes', () => {
+    const { rerender } = render(<AiContextRequestCard record={record} index={0} isOpen={() => false} onOpenChange={() => {}} />);
+    expect(screen.queryByText('~38 t/s')).toBeNull();
+    rerender(<AiContextRequestCard record={{ ...record, stats }} index={0} isOpen={() => false} onOpenChange={() => {}} />);
+    expect(screen.getByText('~38 t/s')).toBeTruthy();
+    expect(screen.getByText('6.2s')).toBeTruthy();
+    expect(screen.getByText('0.8s')).toBeTruthy();
+  });
+
+  it('notes a reply that reached its Max Output, and no other', () => {
+    const { rerender } = render(<AiContextRequestCard record={{ ...record, stats }} index={0} isOpen={() => false} onOpenChange={() => {}} />);
+    expect(screen.queryByText('Reached Max Output')).toBeNull();
+    rerender(<AiContextRequestCard record={{ ...record, stats: { ...stats, finishReason: LENGTH_FINISH_REASON } }} index={0} isOpen={() => false} onOpenChange={() => {}} />);
+    expect(screen.getByText('Reached Max Output')).toBeTruthy();
+  });
+
+  it('leaves out first token where none arrived', () => {
+    render(<AiContextRequestCard record={{ ...record, stats: { ...stats, firstTokenMs: null, generatingMs: 0, tokens: 0 } }} index={0} isOpen={() => false} onOpenChange={() => {}} />);
+    expect(screen.getByText('6.2s')).toBeTruthy();
+    expect(screen.queryByText(/t\/s/)).toBeNull();
+    expect(screen.queryByText('First Token:')).toBeNull();
   });
 });

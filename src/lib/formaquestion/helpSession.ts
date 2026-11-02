@@ -2,7 +2,7 @@
  * The help session: one question in, one streamed answer and its sources out. It has no React and reads no
  * world or save. It sends through the AI Request Spec and the tool loop, the same path as every other call.
  */
-import { buildAiRequestSpec, type AiRequestBody, type AiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import { buildAiRequestSpec, type AiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { ABORTED_FINISH_REASON, type AiStreamResult } from '@/lib/aiRequest/aiStream';
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import { HostedTurn } from '@/lib/hostedAi/hostedTurn';
@@ -40,9 +40,10 @@ import { codeHelpPlan, fullHelpPlan, intentHelpPlan, turnLead } from './helpRequ
 import { entityAddNote } from './entityBlock';
 import { createContextOf, createUserMessage } from './helpCreate';
 import {
-  emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection, traceSource,
-  type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
+  emptySearchRecord, recordQuery, searchTraceOf, traceSection, traceSource,
+  type HelpRequestTrace, type HelpSearchRecord, type HelpSource, type HelpTrace,
 } from './helpTrace';
+import { requestStatsOf } from '@/lib/aiContext/requestStats';
 import { isWorldSource, sourceKey, type AnswerSource, type WorldSource } from './helpWorldSource';
 import { worldIndexOf, type WorldIndex } from './worldIndex';
 import type { HelpFocus } from './helpFocus';
@@ -180,12 +181,6 @@ function helpSnapshot(snapshot: AiSettingsSnapshot, routes: readonly string[], r
 /** The reasoning parts that came in, as one text. */
 const joinReasoning = (...parts: string[]): string => parts.filter(Boolean).join('\n\n');
 
-/** The sampler values a request body carried, in the settings' names. The engine spells the penalty `repeat_penalty`. */
-function samplersOf(body: AiRequestBody): HelpSamplers {
-  const sent: Record<string, unknown> = { ...body, repetition_penalty: body.repetition_penalty ?? body.repeat_penalty };
-  return Object.fromEntries(HELP_SAMPLER_FIELDS.flatMap(({ key, wire }) => (typeof sent[wire] === 'number' ? [[key, sent[wire]]] : [])));
-}
-
 /** One request as the trace records it: the wire messages and the endpoint, and the reply once it came. */
 function requestTrace(type: string, { target, body }: AiRequestSpec, customPrompt: boolean, result?: AiStreamResult, toolRounds?: readonly AiToolRound[]): HelpRequestTrace {
   const endpoint = { presetId: target.presetId ?? null, presetName: target.presetName ?? target.endpointId, model: target.model, url: target.url, apiToken: target.apiToken };
@@ -195,9 +190,8 @@ function requestTrace(type: string, { target, body }: AiRequestSpec, customPromp
       messages: body.messages,
       endpoint: toDebugEndpoint(endpoint, body, target.reasoning.dialect),
       ...(toolRounds?.length && { toolRounds: [...toolRounds] }),
-      ...(result && { response: result.content, reasoning: result.reasoningText }),
+      ...(result && { response: result.content, reasoning: result.reasoningText, stats: requestStatsOf(result) }),
     },
-    samplers: samplersOf(body),
     customPrompt,
   };
 }

@@ -1,6 +1,7 @@
 import { randomUUID } from '@/lib/uuid';
 import type { AIRequestType, RequestMessage, Tool, ToolEnabledMap } from '@/types';
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
+import { requestStatsOf, type AiRequestStats } from '@/lib/aiContext/requestStats';
 import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
 import { toDebugEndpoint } from '@/lib/promptEndpoints';
@@ -108,7 +109,7 @@ export type TransportEvent =
     type: 'responseCaptured';
     id: string;
     attachTo: string | null;
-    response: Pick<AiRequestRecord, 'response' | 'reasoning' | 'toolRounds' | 'statDiagnostics'>;
+    response: Pick<AiRequestRecord, 'response' | 'reasoning' | 'toolRounds' | 'statDiagnostics' | 'stats'>;
   }
   | { type: 'failure'; failure: TransportFailure }
   /** `text` is the final reply; `raw` is the reply as streamed. */
@@ -180,6 +181,7 @@ async function sendOnce(request: TransportRequest, context: TransportContext, si
     let content = '';
     let reasoningText = '';
     let finishReason: string | null = null;
+    let stats: AiRequestStats | undefined;
     let opened = false;
     const toolRounds: AiToolRound[] = [];
     const events = streamAiToolLoop(spec, {
@@ -208,6 +210,7 @@ async function sendOnce(request: TransportRequest, context: TransportContext, si
         content = event.result.content;
         reasoningText = event.result.reasoningText;
         finishReason = event.result.finishReason;
+        stats = requestStatsOf(event.result);
         break;
       }
       if (event.type === 'reasoning') { reasoningText = event.text; emit({ type: 'reasoning', text: reasoningText }); }
@@ -235,6 +238,7 @@ async function sendOnce(request: TransportRequest, context: TransportContext, si
         response: raw,
         ...(reasoningText.trim() ? { reasoning: reasoningText } : {}),
         ...(toolRounds.length ? { toolRounds } : {}),
+        stats,
         statDiagnostics: statRequest ? readStatResponse(text, statRequest).diagnostics : undefined,
       },
     });
