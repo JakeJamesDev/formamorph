@@ -99,7 +99,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - **Keys:** each is a generated per-vertex offset, built from bone positions and skin weights. All `Body` primitives share one vertex buffer, so clothing moves with the same offsets. `Waist` peaks near 12 cm, `Bust` near 5.6 cm and `Thickness` near 3.6 cm.
 - **Waist limit:** the apron and skirt have few vertices, so at the top value the apron looks faceted and stands off the skirt. A cleaner result needs more mesh detail. The user accepted this file.
 - **Textures:** the Hub file's hair is flat black and its iris has no green or blue, so multiply tinting can't move them. The script writes a neutral mid-tone hair and an iris with all three channels above zero.
-- **Default look (Q26):** color factors in the file restore the source look until a picker is touched, and a touch overwrites them. The picker seed reads texture median times factor, so a picker opens on the color shown, and factors of 1 change nothing.
+- **Default look (Q26):** color factors in the file restore the source look until a picker is touched, and a touch overwrites them. The picker seed reads texture median times factor, so a picker opens on the color shown when factors are 0 or 1, and factors of 1 change nothing. At mid factors, such as Praline's hair, the swatch opens darker than the render, and picking it still restores the factor. The linear tint fix stays out of this effort, because it changes how saved tints render.
+- **Praline's stockings:** the stocking picker is the material's existing row in Other Colors. There is no new channel.
 - **Provenance:** one record at `provenance.md` beside this spec. Aki's raw export carried the user's name as author, so her record keeps that metadata as exported, notes the author edit, and cites pixiv's sample page as source.
 
 **Bundled Avatars by build (Q19–Q21)**
