@@ -237,7 +237,7 @@ export interface RuntimeItem {
   description?: string;
 }
 
-export type InventoryPassOpKind = 'gain' | 'lose' | 'transfer' | 'equip' | 'unequip' | 'use' | 'change' | 'reveal' | 'pay';
+export type InventoryPassOpKind = 'gain' | 'lose' | 'transfer' | 'equip' | 'unequip' | 'use' | 'change' | 'reveal' | 'pay' | 'buy';
 
 /** What a use leaves of a runtime item (Q10). */
 export type InventoryUseAfter = 'kept' | 'used up';
@@ -245,8 +245,8 @@ export type InventoryUseAfter = 'kept' | 'used up';
 /** One operation as the Inventory pass names it. `owner` holds the item now; `to` receives it (gain, transfer).
  *  `state` is the new State (change), absent when the reply named none; `after` is what a use leaves, absent when
  *  the reply named neither word. `target` is the other item a use acts on, absent when it named none. `slot` is the
- *  slot name an equip goes in, absent when it named none. `price` and `currency` are the money a pay moves, as the
- *  reply stated them; a pay names no item. */
+ *  slot name an equip goes in, absent when it named none. `price` and `currency` are the money a pay or buy moves, as
+ *  the reply stated them; a pay names no item. On a buy, `owner` is the seller and `to` the buyer. */
 export interface InventoryPassOp {
   op: InventoryPassOpKind;
   item: string;

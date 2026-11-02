@@ -75,9 +75,14 @@ describe('executeStatCode currencies', () => {
       if (currencies.Coin.balance(persona) !== 95) throw new Error('balance ' + currencies.Coin.balance(persona));
     `);
     expect(res.error).toBeNull();
-    // 1 Gold in, 95 back as 9 Silver and 5 Copper, 5 Copper to the Keeper from the Gold's change.
+    // 1 Gold goes, 95 back as 9 Silver and 5 Copper. The Keeper's 3 Copper give way to 8 new ones, so it ends up by exactly 5.
+    const keeper = { kind: 'entity', id: 'e-keeper' };
     expect(res.worldWrites?.inventory).toEqual(expect.arrayContaining([
-      { kind: 'transfer', copyId: 'c-gold', to: { kind: 'entity', id: 'e-keeper' }, quantity: 1 },
+      { kind: 'lose', copyId: 'c-gold', quantity: 1 },
+      { kind: 'transfer', copyId: 'c-copper', to: { kind: 'you' }, quantity: 3 },
+      { kind: 'gain', itemId: 'copper', quantity: 2, to: { kind: 'you' } },
+      { kind: 'gain', itemId: 'silver', quantity: 9, to: { kind: 'you' } },
+      { kind: 'gain', itemId: 'copper', quantity: 8, to: keeper },
     ]));
   });
 

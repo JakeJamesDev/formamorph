@@ -352,8 +352,11 @@ After each turn's narration, the **Inventory** prompt reads the turn and records
 - 🎒 The step runs only while the world has items, the game holds any, or the world has a **Stat** or **Coin Items** Currency.
 - ⚖️ The story can take a **Bound** item. Only the player's buttons can't.
 - 💰 The same step moves money when the story pays a bribe or a bounty, in any world with a **Stat** or **Coin Items** Currency. The game works out the amounts: smallest coins first, then change in the fewest coins.
-- 🚫 A payment the player can't afford moves nothing, and so does one that would break a stat's lock or take it below its minimum. The story isn't told.
+- 🛒 Buying and selling move the item and the money together. The price is the one the story states, or else the item's **Value** times how many. A price that names no coin or Currency uses the item's own Currency, then the first in your **Currencies** list.
+- 🚫 A payment the player can't afford moves nothing, and so does one that would break a stat's lock or take it below its minimum. The story isn't told. A trade that fails moves neither the item nor the money.
+- 🏷️ A trade fails when the item has no price: no price in the story, and no **Value** or no Currency on the item. A **Value** of 0 and a **Name Only** Currency move the item with no money. So does any trade in a world with no **Stat** or **Coin Items** Currency.
+- 🛍️ A seller doesn't need the item in stock. The game takes it from the seller, then from what lies at the location, then makes a new one. Hidden copies never sell. The player can sell only what they hold.
 - 🧾 While this step runs, the stats step can't change a stat that backs a Currency, so a payment counts once.
-- 🏪 An entity with no coins or stat of its own keeps nothing it is paid, and what it pays out is new money. A name the world doesn't know works the same way.
+- 🏪 An entity with no coins or stat of its own keeps nothing it is paid, and what it pays out is new money. A name the world doesn't know works the same way. Between two entities with money, the payer loses and the payee gains the exact amount, even when one lacks change.
 
 The step's prompt is on the **Prompts** tab in Settings, under **Inventory**. That tab shows in Advanced mode.

@@ -203,3 +203,54 @@ describe('a coin Currency', () => {
     expect(Object.keys((await getAllSaveRecords())[0]).sort()).toEqual(keys);
   });
 });
+
+describe('a buy at the turn commit', () => {
+  const sword: Item = { ...coinItem('sword', 'Iron Sword'), stackable: false, value: 150, currencyId: 'coin' };
+  const tonic: Item = { ...coinItem('tonic', 'Tonic'), value: 30, currencyId: 'credits' };
+  const merchant = { id: 'merchant', name: 'Merchant', description: 'A shrewd merchant.', locations: ['harbor'] } as Entity;
+  const stock = (itemId: string): Placement => ({ id: `stock-${itemId}`, source: { kind: 'item', itemId }, where: { kind: 'entity', id: 'merchant' }, quantity: 1 });
+  const shop = (quantity: number): World => ({
+    ...harborWorld({ stats: [vigor], entities: [merchant] }), items: [gold, copper, sword], currencies: [COINS], placements: [purse(quantity), stock('sword')],
+  });
+  const buy = (over: Record<string, unknown> = {}) => JSON.stringify({ operations: [{ op: 'buy', item: 'Iron Sword', quantity: 1, owner: 'Merchant', to: 'you', ...over }] });
+
+  it('moves coins and item together, and the coins fire their When Lost script', async () => {
+    await playOneTurn(shop(2), buy());
+    await waitFor(() => expect(coins('you')).toEqual({ sword: 1, copper: 50 }));
+    expect(coins('merchant')).toEqual({});
+    await waitFor(() => expect(statNow('vigor')).toBeLessThan(50));
+  });
+
+  it('counts a stated price over Value', async () => {
+    await playOneTurn(shop(1), buy({ price: '40 Copper' }));
+    await waitFor(() => expect(coins('you')).toEqual({ sword: 1, copper: 60 }));
+  });
+
+  it('refuses what the player cannot afford: neither moves, a diagnostic, and no toast', async () => {
+    await playOneTurn(shop(1), buy());
+    await waitFor(() => expect(JSON.stringify(gameplay().logEntries)).toContain('skipped buy'));
+    expect(coins('you')).toEqual({ gold: 1 });
+    expect(coins('merchant')).toEqual({ sword: 1 });
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('moves a stat and the item once, across a stats re-roll', async () => {
+    const world: World = { ...harborWorld({ stats: [funds, vigor], entities: [merchant] }), items: [tonic], currencies: [CREDITS], placements: [stock('tonic')] };
+    const calls = await playOneTurn(world, JSON.stringify({ operations: [{ op: 'buy', item: 'Tonic', quantity: 1, owner: 'Merchant', to: 'you' }] }));
+    await waitFor(() => expect(statNow('funds')).toBe(20));
+    expect(coins('you')).toEqual({ tonic: 1 });
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
+    await waitFor(() => expect(calls.stats).toBe(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
+    expect(statNow('funds')).toBe(20);
+    expect(coins('you')).toEqual({ tonic: 1 });
+  });
+
+  it('pays the player for a sale', async () => {
+    const world: World = { ...shop(0), placements: [{ id: 'mine', source: { kind: 'item', itemId: 'sword' }, where: { kind: 'you' }, quantity: 1 }] };
+    await playOneTurn(world, buy({ owner: 'you', to: 'Merchant' }));
+    await waitFor(() => expect(coins('you')).toEqual({ gold: 1, copper: 50 }));
+    expect(coins('merchant')).toEqual({ sword: 1 });
+  });
+});
