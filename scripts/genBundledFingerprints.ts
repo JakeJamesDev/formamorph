@@ -7,8 +7,7 @@ import path from 'node:path';
 import { sha256Hex, worldFingerprint } from '@/lib/bundledFingerprint';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
 import { worldPublishPayload } from '@/lib/publishPayload';
-import { shippedWorldText } from '@/lib/shippedWorld';
-import { git, historyRevisions, onDisk, worldRevisions } from './bundledRevisions';
+import { git, historyRevisions, onDisk, shippedRevisionText, worldRevisions } from './bundledRevisions';
 
 const AVATAR_FILES = ['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm', 'build-assets/praline-avatar.vrm'];
 const OUT = 'src/lib/bundledFingerprints.json';
@@ -28,7 +27,7 @@ async function worldFingerprints(): Promise<string[]> {
   };
   for (const revision of revisions) await add(revision.label, revision.path, revision.read().toString('utf8'));
   for (const revision of shippable) {
-    await add(`shipped ${revision.label}`, revision.path, await shippedWorldText(revision.read().toString('utf8')));
+    await add(`shipped ${revision.label}`, revision.path, await shippedRevisionText(revision.read().toString('utf8')));
   }
   if (mismatches.length) {
     throw new Error(`Publishing changes the fingerprint of ${mismatches.length} revision(s):\n${mismatches.join('\n')}`);

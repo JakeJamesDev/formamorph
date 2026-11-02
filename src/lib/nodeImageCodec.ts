@@ -7,8 +7,16 @@ import { bytesToDataUrl, dataUrlBytes, dataUrlImageSize, fitWithin, sniffDataUrl
 import { QUALITY } from './imageEncode';
 import type { ImageCodec } from './imageOptimCore';
 
+/** wasm-webp never frees a decode's pixels and its heap stops at 2 GB, so a long run starts over at half that. */
+const HEAP_RENEWAL_BYTES = 2 ** 30;
+
 let gluePromise: ReturnType<typeof factory> | null = null;
-const glue = () => (gluePromise ??= factory());
+async function glue() {
+  const webp = await (gluePromise ??= factory());
+  if (webp.HEAP8.buffer.byteLength < HEAP_RENEWAL_BYTES) return webp;
+  gluePromise = factory();
+  return gluePromise;
+}
 
 const payload = (url: string): Uint8Array => Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { worldFingerprint } from '@/lib/bundledFingerprint';
 import list from '@/lib/bundledFingerprints.json';
 import { shippedWorldText } from '@/lib/shippedWorld';
-import { SHIPPED_SINCE, WORLDS_DIR, git, isWorldFile, treeRevisions, worldRevisions, type Revision } from './bundledRevisions';
+import { SHIPPED_SINCE, WORLDS_DIR, git, isWorldFile, shippedRevisionText, treeRevisions, worldRevisions, type Revision } from './bundledRevisions';
 
 const atStart = treeRevisions(SHIPPED_SINCE, WORLDS_DIR, isWorldFile);
 
@@ -23,4 +23,20 @@ describe('worldRevisions', () => {
     }
     expect(missing).toEqual([]);
   }, 300_000);
+});
+
+describe('shippedRevisionText', () => {
+  const longText = 'A Body from an old revision, with text long enough to count toward the fingerprint.';
+
+  it('ships a Body with no Backdrop and keeps its fingerprint', async () => {
+    const source = JSON.stringify({ bodies: [{ id: 'old', aiDescription: longText }, { id: 'new', backdrop: { kind: 'plain' } }] });
+    const shipped = await shippedRevisionText(source);
+    expect(await worldFingerprint(JSON.parse(shipped))).toBe(await worldFingerprint(JSON.parse(source)));
+    expect(JSON.parse(shipped).bodies.map((body: { backdrop: unknown }) => body.backdrop)).toEqual([{ kind: 'humanoid' }, { kind: 'plain' }]);
+  });
+
+  it('leaves a world with complete Bodies as the same text', async () => {
+    const source = JSON.stringify({ bodies: [{ id: 'new', aiDescription: longText, backdrop: { kind: 'plain' } }] });
+    expect(await shippedRevisionText(source)).toBe(source);
+  });
 });
