@@ -1021,7 +1021,7 @@ const WorldEditorInner = ({
   const toolsAdapter = useWorldToolsAdapter({ selectedId: selections.tools ?? null, onSelect: selectTool, snapshot: editorToolWorld });
   const toolsParts = useListEditor(toolsAdapter, { selectedId: selections.tools ?? null, onSelect: selectTool, search });
   const selectItem = useCallback((id: string | null) => select('items', id), [select]);
-  const itemsAdapter = useWorldItemsAdapter({
+  const { adapter: itemsAdapter, dialog: removeItemDialog } = useWorldItemsAdapter({
     selectedId: selections.items ?? null,
     onSelect: selectItem,
     tab: shownItemTab,
@@ -1187,6 +1187,7 @@ const WorldEditorInner = ({
       {listEditorParts?.list}
       {removeWorldTraitDialog}
       {removeWorldStatDialog}
+      {removeItemDialog}
       {placeholdersEditor.dialog}
       {entitiesEditor.dialog}
       {dictionaryEditor.dialog}

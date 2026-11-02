@@ -225,6 +225,16 @@ An item priced in a coin Currency shows one **Value** field per coin. Type 1 in 
 - 🏪 To limit how much an entity can pay, place one of the coins on it, or give it the stat. An entity with neither has no money to run out of. A Global Stat is the player's money only.
 - 🚫 An item with **No Currency** shows no worth, even with a **Value**.
 
+### Deleting money
+
+A delete is never blocked. When something uses what you delete, a confirm names what changes. Nothing else asks.
+
+- 📊 Delete a stat that backs a Currency, or the Persona who owns it, and that Currency becomes **Name Only**. Deleting Blueprints does the same when it removes the stat's last copy.
+- 🪙 Delete a coin item and its row leaves the Currency. If it was the last coin, the Currency becomes **Name Only**. If it was the coin worth 1, the other coins stay, and the Currency shows a hint until a coin is worth 1.
+- 🗑️ Delete a Currency and its items lose their **Currency**. The confirm gives the item count.
+- 🏷️ Every item keeps its **Value**. A delete clears the Currency and leaves each price in place.
+- ↩️ Each delete is one undo step.
+
 ## Equipment Settings
 <!-- keywords: equipment, equipment settings, slots, bodies, body, hand, ring, head, armor slot, capacity, two handed, dog, creature, default body -->
 <!-- route: worldEditor.items -->

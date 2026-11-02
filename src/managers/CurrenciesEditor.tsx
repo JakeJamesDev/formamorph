@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Plus, X } from 'lucide-react';
@@ -9,7 +9,9 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorldInput } from '@/components/editor/WorldField';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { currencyStatGroups, type CurrencyStatGroup } from '@/lib/currency';
+import { currencyUsedBy } from '@/lib/currencyDeletes';
 import { fieldFrame } from '@/lib/historyField';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { dragStyle, droppedMove } from '@/lib/sortableDrag';
@@ -25,8 +27,15 @@ const KIND_LABEL: Record<CurrencyBacking['kind'], string> = { stat: 'Stat', coin
 
 /** The Items tab's Currencies entry: the world's money, in order. The first is the one a new item takes. */
 const CurrenciesEditor = () => {
-  const { currencies, setCurrencies, updateCurrency, stats, statGroups, entities, placeholders, items } = useGameData();
+  const { currencies, setCurrencies, updateCurrency, removeCurrency, stats, statGroups, entities, placeholders, items } = useGameData();
   const groups = useMemo(() => currencyStatGroups({ stats, statGroups, entities }), [stats, statGroups, entities]);
+  const [pending, setPending] = useState<{ currency: Currency; text: string } | null>(null);
+  // A Currency no item is priced in goes at once; one in use asks first.
+  const askRemove = (currency: Currency) => {
+    const text = currencyUsedBy(items, currency.id);
+    if (text) setPending({ currency, text });
+    else removeCurrency(currency.id);
+  };
   const add = () => setCurrencies([...currencies, { id: randomUUID(), name: 'New Currency', backing: { kind: 'name' } }]);
   const onDragEnd = (event: DragEndEvent) => {
     const move = droppedMove(currencies, event);
@@ -53,7 +62,7 @@ const CurrenciesEditor = () => {
                     groups={groups}
                     label={(name) => labelPlaceholders(name, placeholders)}
                     onChange={updateCurrency}
-                    onRemove={() => setCurrencies(currencies.filter((other) => other.id !== currency.id))}
+                    onRemove={() => askRemove(currency)}
                   />
                 ))}
               </EditorRowList>
@@ -64,6 +73,18 @@ const CurrenciesEditor = () => {
           <Plus className="mr-1 h-4 w-4" aria-hidden />Add Currency
         </Button>
       </div>
+      <ConfirmDialog
+        open={!!pending}
+        onOpenChange={(open) => { if (!open) setPending(null); }}
+        title={`Delete ${labelPlaceholders(pending?.currency.name ?? '', placeholders) || 'Currency'}?`}
+        description={pending?.text ?? ''}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (pending) removeCurrency(pending.currency.id);
+          setPending(null);
+        }}
+      />
     </div>
   );
 };

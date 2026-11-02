@@ -5,10 +5,12 @@ export interface ReferenceKind {
   many: string;
   /** What the delete does to references it keeps, given the counted noun ("3 items"). Absent = they are deleted. */
   clause?: (counted: string) => string;
+  /** Names the references in place of the count ("Gold and Silver"). */
+  named?: string;
 }
 
 const joined = (parts: readonly string[]) => (parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
-const counted = (k: ReferenceKind) => `${k.count} ${k.count === 1 ? k.one : k.many}`;
+const counted = (k: ReferenceKind) => k.named ?? `${k.count} ${k.count === 1 ? k.one : k.many}`;
 
 /** The in-use delete confirm line: "This also deletes its link." or "This also deletes its 2 Body entries and
  *  clears the slot on 3 items." A lone deleted kind with one reference drops the number. Null when nothing
