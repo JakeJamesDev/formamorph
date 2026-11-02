@@ -155,7 +155,7 @@ export const DEV_MODAL_TABS = {
   // header button rather than a tab, so it is not routable.
   profile: ['messages', 'notifications', 'terms', 'settings'],
   // `tab=supporters` needs the age gate accepted. Add `fixture=supporters` for a canned wall (`devSupportersSample.ts`).
-  credits: ['credits', 'supporters'],
+  credits: ['credits', 'supporters', 'licenses'],
   // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch. Add
   // `fixture=feedback` to serve a canned board (`devFeedbackStub.ts`); the admin feedback route takes it too.
   feedbackHub: ['bugs', 'suggestions', 'questions'],

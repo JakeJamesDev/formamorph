@@ -44,7 +44,21 @@ describe('shipNotices', () => {
     const [asset] = ctx.emitFile.mock.calls[0];
     expect(asset.fileName).toBe('THIRD-PARTY-NOTICES.md');
     expect(asset.source === readFileSync('THIRD-PARTY-NOTICES.md', 'utf8')).toBe(true);
-    expect(plugin.apply).toBe('build');
+  });
+
+  it('serves the same file in dev, and passes other requests on', () => {
+    const plugin = shipNotices('.');
+    let handler!: (req: { url: string }, res: { setHeader: () => void; end: (body: Buffer) => void }, next: () => void) => void;
+    (plugin.configureServer as (server: unknown) => void)({ middlewares: { use: (fn: typeof handler) => { handler = fn; } } });
+
+    let served: Buffer | undefined;
+    const next = vi.fn();
+    handler({ url: '/THIRD-PARTY-NOTICES.md?t=1' }, { setHeader: () => {}, end: (body) => { served = body; } }, next);
+    expect(served?.toString('utf8')).toBe(readFileSync('THIRD-PARTY-NOTICES.md', 'utf8'));
+    expect(next).not.toHaveBeenCalled();
+
+    handler({ url: '/src/main.tsx' }, { setHeader: () => {}, end: () => { throw new Error('served'); } }, next);
+    expect(next).toHaveBeenCalledTimes(1);
   });
 
   it('fails the build on a bundled package with no entry, naming the package and the command', () => {

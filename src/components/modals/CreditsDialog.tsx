@@ -10,6 +10,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { ITEM_ICON_AUTHORS } from '@/lib/itemIcons';
+import { LicensesPanel, useNotices } from './LicensesPanel';
 
 const AUTHORS = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(ITEM_ICON_AUTHORS);
 
@@ -32,17 +33,27 @@ function CreditsTabs() {
   const { openProfile } = useUserProfile();
   const devRoute = useDevRoute();
   const devSupporters = import.meta.env.DEV && devRoute?.modal === 'credits' && devRoute.tab === 'supporters';
-  const [tab, setTab] = useState(devSupporters ? 'supporters' : 'credits');
+  const devLicenses = import.meta.env.DEV && devRoute?.modal === 'credits' && devRoute.tab === 'licenses';
+  const [tab, setTab] = useState(devSupporters ? 'supporters' : devLicenses ? 'licenses' : 'credits');
+
+  // The notices file is read the first time the Licenses tab opens, then kept for this open.
+  const [licensesOpened, setLicensesOpened] = useState(devLicenses);
+  const notices = useNotices(licensesOpened);
+  const selectTab = (next: string) => {
+    if (next === 'licenses') setLicensesOpened(true);
+    setTab(next);
+  };
 
   // `attested` is always true with community off, so both checks are needed.
   const showSupporters = COMMUNITY_ENABLED && attested;
   if (tab === 'supporters' && !showSupporters) setTab('credits');
 
   return (
-    <Tabs surfaceTabs="credits" value={tab} onValueChange={setTab} className="w-full min-w-0">
+    <Tabs surfaceTabs="credits" value={tab} onValueChange={selectTab} className="w-full min-w-0">
       <TabsList>
         <TabsTrigger value="credits">Credits</TabsTrigger>
         {showSupporters && <TabsTrigger value="supporters">Supporters</TabsTrigger>}
+        <TabsTrigger value="licenses">Licenses</TabsTrigger>
       </TabsList>
       <TabsContent value="credits" className="space-y-4">
         <ul className="space-y-3">
@@ -93,6 +104,9 @@ function CreditsTabs() {
           </ScrollArea>
         </TabsContent>
       )}
+      <TabsContent value="licenses">
+        <LicensesPanel {...notices} />
+      </TabsContent>
     </Tabs>
   );
 }

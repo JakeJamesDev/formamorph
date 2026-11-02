@@ -70,6 +70,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   credits: { page: 'How-to-Play', anchor: 'credits' },
   'credits.credits': { page: 'How-to-Play', anchor: 'credits' },
   'credits.supporters': { page: 'How-to-Play', anchor: 'credits' },
+  'credits.licenses': { page: 'How-to-Play', anchor: 'credits' },
   exitApp: { page: 'Install-on-Android', anchor: '\u{FE0F}-the-back-button' },
   importComponent: { page: 'LinkedContent', anchor: 'importing-an-entity-or-dictionary-file' },
   manageAddons: { page: 'LinkedContent', anchor: 'manage-add-ons' },

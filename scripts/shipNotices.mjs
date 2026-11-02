@@ -52,7 +52,14 @@ export function shipNotices(root) {
   }
   return {
     name: 'ship-notices',
-    apply: 'build',
+    // Dev serves the file the build emits, so the Licenses tab reads it on both.
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url || new URL(req.url, 'http://localhost').pathname !== `/${NOTICES}`) return next()
+        res.setHeader('Content-Type', 'text/markdown; charset=utf-8')
+        res.end(readFileSync(join(root, NOTICES)))
+      })
+    },
     api: {
       workerPlugin: () => ({
         name: 'ship-notices-worker',
