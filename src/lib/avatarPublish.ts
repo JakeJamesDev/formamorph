@@ -49,7 +49,7 @@ export function avatarPublishRefusal(failed: AvatarLicenseRequirement[]): string
   return `This Avatar can’t be published: its file doesn’t allow ${orList(failed.map((id) => DENIALS[id]))}.`;
 }
 
-/** Why the default Avatar can't be published, whatever its license says. */
+/** Why a bundled Avatar can't be published, whatever its license says. */
 const DEFAULT_AVATAR_REFUSAL = 'This Avatar comes with Formamorph. Upload your own VRM.';
 
 /** A model that may be published, with the payload ready, or one that may not, with the reason to show. */

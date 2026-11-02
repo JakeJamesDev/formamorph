@@ -10,7 +10,7 @@ import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { HairTypeDef } from '@/types';
 import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
 import { resolveMorphAlias } from '@/lib/bodyMorphs';
-import { medianOpaqueRGB, tintFactors, tintSeedRGB } from '@/lib/textureMedian';
+import { medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -200,19 +200,19 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   const getMedianRGB = (material: VrmMaterial): [number, number, number] | null => {
     if (material.userData.__medianRGB !== undefined) return material.userData.__medianRGB;
     const src = getOriginalImageData(material);
-    const avg = src ? medianOpaqueRGB(src.data) : null;
-    material.userData.__medianRGB = avg;
-    return avg;
+    const median = src ? medianOpaqueRGB(src.data) : null;
+    material.userData.__medianRGB = median;
+    return median;
   };
 
   // A material's untinted color (to seed a picker): texture median under the original color factor, else that factor.
   const untintedColor = (material: VrmMaterial) => {
-    const avg = getMedianRGB(material);
+    const median = getMedianRGB(material);
     const color: THREE.Color | null | undefined = material.userData.__origColor ?? material.color;
     const factor: [number, number, number] | null = color?.isColor ? [color.r, color.g, color.b] : null;
-    const rgb = avg ? tintSeedRGB(avg, factor ?? [1, 1, 1]) : factor;
+    const rgb = median ? tintSeedRGB(median, factor ?? [1, 1, 1]) : factor;
     if (!rgb) return null;
-    return '#' + rgb.map(x => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0')).join('');
+    return '#' + rgb.map(x => toByte(x).toString(16).padStart(2, '0')).join('');
   };
 
   // GPU tint (no per-pixel work). Textured material: scale the color factor so the texture's median shifts to
@@ -348,7 +348,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     m.needsUpdate = true;
   });
 
-  // Calculated representative color of a target (its first material's average) — for seeding a picker.
+  // Calculated representative color of a target (its first material's median) — for seeding a picker.
   const calcColor = (target: string) => {
     let c: string | null = null;
     forEachTargetMaterial(target, (m) => { if (!c) c = untintedColor(m); });

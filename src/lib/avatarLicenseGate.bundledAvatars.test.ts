@@ -4,8 +4,8 @@ import { readVrmMeta } from './vrmMeta';
 import { gateAvatarLicense } from './avatarLicenseGate';
 
 /**
- * Both avatars Formamorph ships must clear the Permissive License gate — one is swapped for the other at
- * build time (see `docs-internal/specs/community-avatar-uploads/spec.md`), and either must be publishable.
+ * Every Avatar Formamorph ships must clear the Permissive License gate (see
+ * `docs-internal/specs/release-avatar-license/spec.md`), and each must be publishable once edited.
  * Reads the real shipped files rather than a fixture, so a re-export that drops a required flag is caught here
  * instead of surfacing as "Not shareable" on the player's own player-avatar model. The gate is fully
  * permissive: a file that adds any restriction fails here.

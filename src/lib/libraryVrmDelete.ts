@@ -34,7 +34,7 @@ export async function findModelUsage(modelId: string): Promise<ModelUsage> {
 export function deleteModelDescription(usage: ModelUsage | null, hasBundledDefault = !!BUNDLED_DEFAULT_URL): string {
   if (!usage) return 'Checking what uses this Avatar…';
   const { saves, entities } = usage;
-  const instead = hasBundledDefault ? 'the Default Avatar' : "your default Avatar, or show none if you haven't set one";
+  const instead = hasBundledDefault ? 'the Default Avatar' : "your Default Avatar, or show none if you haven't set one";
   const parts = [
     'This Avatar is deleted from your library.',
     ...(entities.length ? [`${listNames(entities)} will show no Avatar.`] : []),

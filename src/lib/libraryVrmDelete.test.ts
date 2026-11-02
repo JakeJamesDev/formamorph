@@ -45,7 +45,7 @@ describe('deleteModelDescription', () => {
   it('sends saves to the device default, or to none, on a build with no bundled Avatar', () => {
     const usage = { entities: ['Wren'], saves: ['Night One', 'Two'] };
     expect(deleteModelDescription(usage, false)).toBe(
-      "This Avatar is deleted from your library. \"Wren\" will show no Avatar. 2 saves use this Avatar: \"Night One\" and \"Two\". They'll use your default Avatar, or show none if you haven't set one. You can't undo this.",
+      "This Avatar is deleted from your library. \"Wren\" will show no Avatar. 2 saves use this Avatar: \"Night One\" and \"Two\". They'll use your Default Avatar, or show none if you haven't set one. You can't undo this.",
     );
     expect(deleteModelDescription(usage, true)).toContain("They'll use the Default Avatar instead.");
   });

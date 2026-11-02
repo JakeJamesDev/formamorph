@@ -2,7 +2,8 @@ const MIN_ALPHA = 10;
 const MAX_FACTOR = 4;
 const MIN_MEDIAN = 0.01;
 
-const toByte = (x: number) => Math.round(Math.max(0, Math.min(1, x)) * 255);
+/** A 0..1 channel as a clamped 0..255 byte. */
+export const toByte = (x: number) => Math.round(Math.max(0, Math.min(1, x)) * 255);
 
 /** The picker's start color: the texture median under the untinted color factor. Tinting to it restores that factor. */
 export function tintSeedRGB(
