@@ -99,6 +99,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `scripts` | | [Script](#scripts)[] | Scripts no stat or trait owns. They run with no `self` |
 | `tools` | | [Tool](#world-tools)[] | The World Tools, in **Tools** tab order. Absent = none |
 | `items` | | [Item](#items)[] | The world's items, in **Items** tab order. Absent = none |
+| `currencies` | | [Currency](#currencies)[] | The world's money, in order. The first is the **Default**. Absent = none |
 | `slots` | | [Slot](#slots-and-bodies)[] | Where items equip, such as Hand. Absent = none |
 | `bodies` | | [Body](#slots-and-bodies)[] | Which slots each owner has. The first is the **Default**. Absent = no owner has slots |
 | `placements` | | [Placement](#starting-items)[] | The Starting Items. Absent = none |
@@ -680,8 +681,8 @@ An item is a kind of object. During the game, a save holds Item Copies of it. Se
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `icon` | | String | What the Inventory panel shows: an icon id, or `"none"` for the item's image. Absent, or an id the game doesn't know, derives an icon from the name, then the slot |
 | `placeholders` | | [Placeholder](#placeholders)[] | Placeholders the item owns. They roll once per game, and every Item Copy shows the same value |
-| `value` | | Number | What the item is worth |
-| `valueUnit` | | Object | The unit of `value`: `{ "kind": "stat", "statId": "<stat id>" }` or `{ "kind": "text", "text": "…" }` |
+| `value` | | Number | What the item is worth, in the base unit of its Currency |
+| `currencyId` | | String | The id of the [Currency](#currencies) it is priced in. Absent, or an id the world doesn't have = no price |
 | `stackable` | | Boolean | `false` = copies never group into one row. Absent = stackable. Ignored while `uses` is 2 or more |
 | `uses` | | Number | The uses each Item Copy starts with, from 1. Absent = unlimited |
 | `whenEmpty` | | Object | What a copy's last use leaves: `{ "kind": "stays" }`, `{ "kind": "gone" }`, `{ "kind": "becomes", "itemId": "<item id>" }` or `{ "kind": "changesState", "state": "…" }`. Used only while `uses` is set. Absent = gone |
@@ -706,6 +707,26 @@ Each stat effect:
 | `op` | ✓ | `"add"` | Write `"add"` |
 
 Each trait effect has `id`, `traitId`, `timing` and `duration`, with the same meanings. The owner holds the trait with that `id` while the timing holds.
+
+## Currencies
+
+A Currency is a kind of money. See [World Editor: Items](World-Editor-Items) for how to set one up.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The name the player reads after a price, such as Credits |
+| `backing` | ✓ | Object | What holds the money. See below |
+
+Each `backing` is one of these:
+
+| Backing | Meaning |
+|---|---|
+| `{ "kind": "stat", "statId": "<stat id>" }` | A number on a stat: a global stat, a stat a Persona links, or a Persona's own stat |
+| `{ "kind": "coins", "coins": [{ "itemId": "<item id>", "worth": 1 }, …] }` | Coin items, each with its worth in the base unit |
+| `{ "kind": "name" }` | A name only, with no tracking |
+
+The game drops a Currency with no `id`, no `name` or an unknown `backing`.
 
 ## Slots and Bodies
 <!-- keywords: equipment slots, capacity, hands, rings, body type, default body, none, wear, equip where, slot rule, two handed -->

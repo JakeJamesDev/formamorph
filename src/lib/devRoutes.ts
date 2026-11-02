@@ -181,7 +181,7 @@ export const DEV_MODAL_TABS = {
   worldEditorEntity: ['profile', 'descriptions', 'items', 'traits', 'stats', 'placeholders', 'openings'],
   // The item panel's own tabs, in the same `subtab=…` slot over the Items tab
   // (`#dev?modal=worldEditor&tab=items&subtab=properties`). `fixture=items` gives a world with items and slots.
-  // `subtab=equipment` opens the pinned Equipment Settings entry instead of an item.
+  // `subtab=equipment` and `subtab=currencies` open their pinned entries instead of an item.
   worldEditorItem: ['profile', 'descriptions', 'properties', 'effects', 'requirements', 'scripts', 'placeholders'],
   // The library entity editor (`#dev?modal=entityEditor&tab=placeholders`). It opens on a blank draft and is
   // never in Simple mode, so every tab is reachable. `fixture=gallery` opens it on an entity whose images carry

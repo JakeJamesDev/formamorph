@@ -560,8 +560,21 @@ export interface ItemTraitEffect {
   duration?: ItemEffectDuration;
 }
 
-/** What an item's value counts in: a stat (such as Gold), or free text. */
-export type ItemValueUnit = { kind: 'stat'; statId: string } | { kind: 'text'; text: string };
+/** One coin of a coin-backed Currency: an item and its worth in the base unit. The smallest coin is worth 1. */
+export interface CurrencyCoin {
+  itemId: string;
+  worth: number;
+}
+
+/** What holds a Currency: one stat, coin items, or nothing, for a name only. */
+export type CurrencyBacking = { kind: 'stat'; statId: string } | { kind: 'coins'; coins: CurrencyCoin[] } | { kind: 'name' };
+
+/** A kind of money in the world. The world's first is the Default, which a new item takes. */
+export interface Currency {
+  id: string;
+  name: string;
+  backing: CurrencyBacking;
+}
 
 /** What a copy's last use leaves: the copy at zero uses, nothing, one copy of another authored item, or the copy
  *  at zero uses with a new State. */
@@ -590,8 +603,10 @@ export interface Item {
   /** Placeholders of this item's own, live beside the world's through the combined view. They resolve once
    *  per playthrough, shared by every Item Copy. */
   placeholders?: Placeholder[];
+  /** What it's worth, in its Currency's base unit. */
   value?: number;
-  valueUnit?: ItemValueUnit;
+  /** Absent = no price, whatever `value` holds. */
+  currencyId?: string;
   /** Absent = stackable. Never read while `uses` is 2 or more. */
   stackable?: boolean;
   /** The uses each Item Copy starts with, from 1. Absent = unlimited. */
@@ -984,6 +999,8 @@ export interface World {
   tools?: Tool[];
   /** Authored items, in Items-tab order. Absent = none. */
   items?: Item[];
+  /** The world's money, in order. The first is the Default. Absent = none. */
+  currencies?: Currency[];
   /** Equipment slots. Absent = none. */
   slots?: Slot[];
   /** Bodies, in order. The first is the Default. Absent = none, so no owner has a slot. */

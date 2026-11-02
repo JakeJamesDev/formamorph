@@ -86,6 +86,14 @@ describe('the World Index', () => {
     expect(top.markdown).not.toContain('Ashford');
   });
 
+  it('states an item’s Value with its Currency, and a bare Value with none', () => {
+    const item = (patch: Partial<Item>): Item => ({ id: 'draught', name: 'Healing Draught', value: 10, statEffects: [], traitEffects: [], equipRequires: [], ...patch });
+    const section = (draught: Item) => buildWorldIndex(world({ items: [draught], currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }] })).docs.search('draught', 1)[0].markdown;
+    expect(section(item({ currencyId: 'goats' }))).toContain('Value: 10 Goats');
+    expect(section(item({}))).toMatch(/Value: 10(?! Goats)/);
+    expect(section(item({ currencyId: 'gone' }))).toMatch(/Value: 10(?! Goats)/);
+  });
+
   it('states an item’s Uses and When Empty, and names a Becomes target only when the world holds it', () => {
     const item = (id: string, name: string, patch: Partial<Item> = {}): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...patch });
     const section = (items: Item[]) => buildWorldIndex(world({ items })).docs.search('draught', 1)[0].markdown;

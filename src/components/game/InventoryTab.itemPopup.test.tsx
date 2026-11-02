@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { bodyFixture } from '@/test/bodyFixture';
 import { bodySlots } from '@/lib/bodies';
 import { InventoryTab, type InventoryTabProps } from './InventoryTab';
-import type { Item, ItemCopy, Slot } from '@/types';
+import type { Currency, Item, ItemCopy, Slot } from '@/types';
 
 const IMAGE = 'data:image/webp;base64,AAAA';
 const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
@@ -23,6 +23,33 @@ const props = (over: Partial<InventoryTabProps> = {}): InventoryTabProps => ({
   resolveText: (text) => text, onOps: vi.fn(), ...over,
 });
 const popup = () => screen.queryByRole('dialog');
+
+describe('InventoryTab item popup worth', () => {
+  const currencies: Currency[] = [{ id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } }];
+  const priced = (over: Partial<Item> = {}) => item('sword', 'Greatsword', { value: 40, currencyId: 'credits', ...over });
+  const openOn = async (shown: Item, copyOver: Partial<ItemCopy> = {}) => {
+    render(<InventoryTab {...props({ items: [shown], currencies, copies: [copy('s', 'sword', copyOver)] })} />);
+    await userEvent.click(screen.getByRole('button', { name: shown.name }));
+    return within(screen.getByRole('dialog'));
+  };
+
+  it('shows the Value with the Currency’s name', async () => {
+    expect((await openOn(priced())).getByText('Worth 40 Credits')).toBeInTheDocument();
+  });
+
+  it('shows no worth on an item with no Currency, even with a Value', async () => {
+    expect((await openOn(priced({ currencyId: undefined }))).queryByText(/Worth/)).toBeNull();
+  });
+
+  it('shows no worth on an item whose Currency is gone', async () => {
+    expect((await openOn(priced({ currencyId: 'gone' }))).queryByText(/Worth/)).toBeNull();
+  });
+
+  it('shows no worth on an unidentified copy', async () => {
+    const dialog = await openOn(priced({ unidentifiedName: 'Dull Blade', name: 'Dull Blade' }), { state: { unidentified: true } });
+    expect(dialog.queryByText(/Worth/)).toBeNull();
+  });
+});
 
 describe('InventoryTab item popup', () => {
   it('shows a carried item’s description, image, uses and Bound when its row is selected', async () => {

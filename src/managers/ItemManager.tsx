@@ -1,10 +1,10 @@
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { WorldInput } from '@/components/editor/WorldField';
 import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
@@ -21,15 +21,14 @@ import { useEditorMode } from '@/lib/editorMode';
 import { fieldFrame } from '@/lib/historyField';
 import { WHEN_EMPTY_LABEL, itemStackable, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { canBePlayer } from '@/lib/owners';
+import { currencyOf } from '@/lib/currency';
 import { itemPanelTabsFor, itemTabForField, type ItemPanelTab } from '@/views/itemPanelTabs';
-import type { FocusFieldHint, Item, ItemValueUnit, ItemWhenEmpty } from '@/types';
+import type { FocusFieldHint, Item, ItemWhenEmpty } from '@/types';
 
 const WHEN_EMPTY_KINDS = ['stays', 'gone', 'becomes', 'changesState'] as const satisfies readonly ItemWhenEmpty['kind'][];
 const isWhenEmptyKind = (value: string): value is ItemWhenEmpty['kind'] => (WHEN_EMPTY_KINDS as readonly string[]).includes(value);
 
-const NO_UNIT = 'none';
-const TEXT_UNIT = 'text';
+const NO_CURRENCY = 'none';
 
 /** One switch with its label and help line. */
 const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
@@ -52,21 +51,8 @@ const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
 
 /** The item fields beyond its descriptions: value, stacking, uses, the lock, and equipping. */
 const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
-  const { playStats, entities, placeholders, items } = useGameData();
+  const { currencies, placeholders, items } = useGameData();
   const label = (name: string) => labelPlaceholders(name, placeholders);
-  // The Global Stats, then each persona's own (Q75).
-  const statGroups = useMemo(() => [
-    { name: 'Global', stats: playStats },
-    ...entities.filter(canBePlayer).map((e) => ({ name: e.name, stats: e.stats ?? [] })),
-  ].filter((g) => g.stats.length), [playStats, entities]);
-  const unit = item.valueUnit;
-  const unitValue = !unit ? NO_UNIT : unit.kind === 'text' ? TEXT_UNIT : unit.statId;
-  const pickUnit = (value: string) => {
-    const next: ItemValueUnit | undefined = value === NO_UNIT ? undefined
-      : value === TEXT_UNIT ? { kind: 'text', text: unit?.kind === 'text' ? unit.text : '' }
-        : { kind: 'stat', statId: value };
-    apply({ valueUnit: next });
-  };
   const multiUse = (item.uses ?? 1) > 1;
   const empty = item.uses === undefined ? undefined : whenEmptyOf(item);
   const others = items.filter((i) => i.id !== item.id);
@@ -81,7 +67,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
     <div className="space-y-5">
       <div className="space-y-2" {...fieldFrame('value')}>
         <Label htmlFor={id('value')}>Value</Label>
-        <Hint>Tells the AI and the player what it&apos;s worth</Hint>
+        <Hint>Sets what the item is worth. Add currencies in <b>Currencies</b>.</Hint>
         <div className="flex flex-wrap items-center gap-2">
           <WorldInput
             id={id('value')}
@@ -94,30 +80,18 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
               else if (Number.isFinite(value)) apply({ value });
             }}
           />
-          <Select value={unitValue} onValueChange={pickUnit}>
-            <SelectTrigger className="w-48" aria-label="Value Unit">
+          <Select
+            value={currencyOf(item, currencies)?.id ?? NO_CURRENCY}
+            onValueChange={(picked) => apply({ currencyId: picked === NO_CURRENCY ? undefined : picked })}
+          >
+            <SelectTrigger className="w-48" aria-label="Currency" {...fieldFrame('currencyId')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NO_UNIT}>No Unit</SelectItem>
-              <SelectItem value={TEXT_UNIT}>Text</SelectItem>
-              {statGroups.map((g) => (
-                <SelectGroup key={g.name}>
-                  <SelectLabel>{label(g.name)}</SelectLabel>
-                  {g.stats.map((s) => <SelectItem key={s.id} value={s.id}>{label(s.name)}</SelectItem>)}
-                </SelectGroup>
-              ))}
+              <SelectItem value={NO_CURRENCY}>No Currency</SelectItem>
+              {currencies.map((currency) => <SelectItem key={currency.id} value={currency.id}>{label(currency.name)}</SelectItem>)}
             </SelectContent>
           </Select>
-          {unit?.kind === 'text' && (
-            <WorldInput
-              aria-label="Unit Text"
-              className="w-40"
-              placeholder="gold coins"
-              value={unit.text}
-              onChange={(e) => apply({ valueUnit: { kind: 'text', text: e.target.value } })}
-            />
-          )}
         </div>
       </div>
 

@@ -1,19 +1,23 @@
 import { useMemo } from 'react';
-import { Copy, Shield, X } from 'lucide-react';
+import { Coins, Copy, Shield, X } from 'lucide-react';
 import { Hint } from '@/components/ui/typography';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import { arrayMove } from '@dnd-kit/sortable';
+import { defaultCurrencyPatch } from '@/lib/currency';
 import { blankItem, duplicateItem } from '@/lib/items';
 import { randomUUID } from '@/lib/uuid';
 import type { ItemPanelTab } from '@/views/itemPanelTabs';
 import { focusFieldForItem } from '@/views/findFocus';
 import type { FocusFieldHint } from '@/types';
 import ItemManager from './ItemManager';
+import CurrenciesEditor from './CurrenciesEditor';
 import EquipmentEditor from './EquipmentEditor';
 
 /** The selection id of the pinned Equipment Settings entry; item ids are UUIDs, so it never meets one. */
 export const EQUIPMENT_ID = 'equipment';
+/** The selection id of the pinned Currencies entry. */
+export const CURRENCIES_ID = 'currencies';
 
 /**
  * The World Editor's Items tab as a List Editor adapter: a flat list in authored order (Q71), drag to
@@ -31,12 +35,12 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
   /** The search target the find bar just navigated to. */
   focusField?: FocusFieldHint | null;
 }): ListEditorAdapter {
-  const { items, setItems, removeItem, placeholders, placementLetters, placeholderOwners } = useGameData();
+  const { items, setItems, removeItem, currencies, placeholders, placementLetters, placeholderOwners } = useGameData();
   const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
   const add = (typed: string) => {
     const id = randomUUID();
-    setItems([...items, blankItem(id, typed || undefined)]);
+    setItems([...items, { ...blankItem(id, typed || undefined), ...defaultCurrencyPatch(currencies) }]);
     onSelect(id);
   };
   const duplicate = (id: string) => {
@@ -51,6 +55,7 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
 
   const detail = (id: string | null) => {
     if (id === EQUIPMENT_ID) return <EquipmentEditor />;
+    if (id === CURRENCIES_ID) return <CurrenciesEditor />;
     const item = id ? byId.get(id) : undefined;
     if (item) {
       return (
@@ -75,7 +80,10 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
   };
 
   return {
-    pinned: [{ id: EQUIPMENT_ID, name: 'Equipment Settings', icon: <Shield className="h-4 w-4" aria-hidden /> }],
+    pinned: [
+      { id: EQUIPMENT_ID, name: 'Equipment Settings', icon: <Shield className="h-4 w-4" aria-hidden /> },
+      { id: CURRENCIES_ID, name: 'Currencies', icon: <Coins className="h-4 w-4" aria-hidden /> },
+    ],
     rows: () => items.map((item) => ({
       id: item.id,
       name: item.name,
@@ -97,7 +105,7 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
     },
     add: { label: 'Add Item', onAdd: add },
     placeholder: 'Filter Items',
-    holds: (id) => id === EQUIPMENT_ID || byId.has(id),
+    holds: (id) => id === EQUIPMENT_ID || id === CURRENCIES_ID || byId.has(id),
     isEmpty: items.length === 0,
     emptyHint: <Hint className="p-3">Add an item the player or an entity can own</Hint>,
   };

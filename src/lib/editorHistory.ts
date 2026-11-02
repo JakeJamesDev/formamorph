@@ -1,5 +1,5 @@
 import type {
-  Body, Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, PlaceholderGroup, Placement, Script, Slot, Stat, StatGroup,
+  Body, Connection, Currency, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, PlaceholderGroup, Placement, Script, Slot, Stat, StatGroup,
   StatUpdate, Tool, Trait, TraitGroup, WorldOverview,
 } from "@/types";
 import { canonicalEqual } from "@/lib/canonicalStringify";
@@ -35,6 +35,7 @@ export interface WorldSlices {
   slots: Slot[];
   bodies: Body[];
   placements: Placement[];
+  currencies: Currency[];
 }
 
 export type SliceName = keyof WorldSlices;
@@ -42,7 +43,7 @@ export type RecordSliceName = Exclude<SliceName, "worldOverview">;
 
 export const WORLD_SLICES: readonly SliceName[] = [
   "worldOverview", "stats", "statGroups", "locations", "connections", "entities", "entityGroups", "traits", "traitGroups",
-  "statUpdates", "dictionaries", "placeholders", "placeholderGroups", "scripts", "tools", "items", "slots", "bodies", "placements",
+  "statUpdates", "dictionaries", "placeholders", "placeholderGroups", "scripts", "tools", "items", "slots", "bodies", "placements", "currencies",
 ];
 
 /** One record slice's change: only the touched records, absent on a side where the record did not exist. */

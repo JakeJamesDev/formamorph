@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
 import { screen, fireEvent, within, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { $createParagraphNode, $createTextNode, $getRoot, getNearestEditorFromDOMNode } from 'lexical';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { blankItem } from '@/lib/items';
-import type { Body, Item, Placement, Slot, World } from '@/types';
+import { migrateWorld } from '@/lib/version';
+import type { Body, Currency, Item, Placement, Slot, World } from '@/types';
 
 /** The Items tab: a flat list beside Entities and the item panel. */
 
@@ -38,6 +40,11 @@ const ITEMS: Item[] = [
 const PLACEMENTS: Placement[] = [
   { id: 'p-lamp', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } },
   { id: 'p-sword', where: { kind: 'location', id: 'harbor' }, quantity: 1, hidden: true, source: { kind: 'item', itemId: 'sword' } },
+];
+
+const CURRENCIES: Currency[] = [
+  { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'gold' } },
+  { id: 'goats', name: 'Goats', backing: { kind: 'name' } },
 ];
 
 const WORLD: World = benchEditorWorld({
@@ -239,24 +246,27 @@ describe('the item panel', () => {
     expect(ctx().items[0]).toMatchObject({ bound: true });
   });
 
-  it('takes a value with a free-text unit', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+  it('prices an item in a Currency, and clears it back to priceless with its Value kept', () => {
+    const { ctx } = renderWorldEditorBench({ ...WORLD, currencies: CURRENCIES }, 'advanced');
     openEditorTab(/Items/);
     openItem('Lamp');
     itemFieldsTab('Properties');
+    expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveTextContent('No Currency');
     fireEvent.change(screen.getByLabelText('Value'), { target: { value: '12' } });
-    pickOption('Value Unit', 'Text');
-    fireEvent.change(screen.getByLabelText('Unit Text'), { target: { value: 'silver' } });
-    expect(ctx().items[0]).toMatchObject({ value: 12, valueUnit: { kind: 'text', text: 'silver' } });
+    pickOption('Currency', 'Goats');
+    expect(ctx().items[0]).toMatchObject({ value: 12, currencyId: 'goats' });
+    pickOption('Currency', 'No Currency');
+    expect(ctx().items[0].currencyId).toBeUndefined();
+    expect(ctx().items[0].value).toBe(12);
   });
 
-  it('points the value unit at a stat', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+  it('reads an item whose Currency is gone as No Currency', () => {
+    const world = { ...WORLD, items: [{ ...ITEMS[0], value: 3, currencyId: 'gone' }, ITEMS[1]] };
+    renderWorldEditorBench({ ...world, currencies: CURRENCIES }, 'advanced');
     openEditorTab(/Items/);
     openItem('Lamp');
     itemFieldsTab('Properties');
-    pickOption('Value Unit', 'Gold');
-    expect(ctx().items[0].valueUnit).toEqual({ kind: 'stat', statId: 'gold' });
+    expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveTextContent('No Currency');
   });
 
   it('adds slots from the world list and shows Either of / All of once it lists two', () => {
@@ -288,6 +298,101 @@ describe('the item panel', () => {
     expect(ctx().items[1].slotRule).toEqual({ mode: 'all', slotIds: ['ring'] });
     fireEvent.click(screen.getByRole('button', { name: 'Remove Ring from Greatsword' }));
     expect(ctx().items[1].slotRule).toBeUndefined();
+  });
+});
+
+describe('the Currencies entry', () => {
+  const openCurrencies = () => {
+    openEditorTab(/Items/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Currencies' }));
+  };
+
+  it('sits beside Equipment Settings, and adds a name-only Currency that a stat can then back', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    openCurrencies();
+    fireEvent.click(screen.getByRole('button', { name: 'Add Currency' }));
+    expect(ctx().currencies).toEqual([expect.objectContaining({ name: 'New Currency', backing: { kind: 'name' } })]);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Currency Name' }), { target: { value: 'Credits' } });
+    pickOption('Currency Type', 'Stat');
+    expect(ctx().currencies[0]).toMatchObject({ name: 'Credits', backing: { kind: 'stat', statId: 'gold' } });
+    pickOption('Currency Type', 'Name Only');
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'name' });
+  });
+
+  it('lists a linked Blueprint stat once and a Persona’s own stat in the stat picker', () => {
+    const blueprint = { id: 'bp', name: 'Blueprints', system: 'blueprints' as const, parentId: null };
+    const stat = (id: string, name: string, groupId?: string) => ({ id, name, type: 'number' as const, description: '', min: 0, max: 9, regen: 0, descriptors: [], ...(groupId && { groupId }) });
+    const link = { id: 'link', originalId: 'purse', kind: 'stat' as const, originalName: 'Purse', groupId: null };
+    const persona = (id: string, name: string, extra: object) => ({ id, name, persona: true, ...extra });
+    renderWorldEditorBench(benchEditorWorld({
+      stats: [stat('treasury', 'Treasury'), stat('purse', 'Purse', 'bp'), stat('unlinked', 'Unlinked', 'bp')],
+      statGroups: [blueprint],
+      entities: [persona('a', 'Ada', { statLinks: [link] }), persona('b', 'Bo', { statLinks: [{ ...link, id: 'link-b' }], stats: [stat('credits', 'Credits')] })],
+      currencies: [{ id: 'c', name: 'Coin', backing: { kind: 'stat', statId: 'purse' } }],
+    } as Partial<World>), 'advanced');
+    openCurrencies();
+    openSelect('Currency Stat');
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Treasury', 'Purse', 'Credits']);
+  });
+
+  it('reorders by keyboard drag, so the Default changes', async () => {
+    // jsdom lays nothing out; stack the rows 100px apart so the keyboard sensor can find a neighbor.
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const row = this.closest<HTMLElement>('[data-sortable-row]') ?? this.closest<HTMLElement>('li');
+      const i = row?.parentElement ? [...row.parentElement.children].indexOf(row) : 0;
+      return DOMRect.fromRect({ x: 0, y: i * 100, width: 300, height: 90 });
+    });
+    const { ctx } = renderWorldEditorBench({ ...WORLD, currencies: CURRENCIES }, 'advanced');
+    openCurrencies();
+    const user = userEvent.setup();
+    within(screen.getByTestId('currencies-editor')).getAllByRole('button', { name: /reorder/i })[1].focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowUp]');
+    await user.keyboard('[Space]');
+    rect.mockRestore();
+    expect(ctx().currencies.map((c) => c.id)).toEqual(['goats', 'credits']);
+  });
+
+  it('removes a Currency, and the next one becomes the Default', () => {
+    const { ctx } = renderWorldEditorBench({ ...WORLD, currencies: CURRENCIES }, 'advanced');
+    openCurrencies();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Credits' }));
+    expect(ctx().currencies.map((c) => c.id)).toEqual(['goats']);
+    search('Rope');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+    expect(ctx().items.find((i) => i.name === 'Rope')?.currencyId).toBe('goats');
+  });
+
+  it('drops a malformed Currency on load', () => {
+    const { ctx } = renderWorldEditorBench({ ...WORLD, currencies: [CURRENCIES[0], { id: 'bad', name: 'Bad' }, CURRENCIES[1]] as Currency[] }, 'advanced');
+    expect(ctx().currencies).toEqual(CURRENCIES);
+  });
+
+  it('leaves a new item priceless in a world with no Currency', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Items/);
+    search('Rope');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+    expect(ctx().items.every((i) => i.currencyId === undefined)).toBe(true);
+  });
+
+  it('gives a new item the first Currency', () => {
+    const { ctx } = renderWorldEditorBench({ ...WORLD, currencies: CURRENCIES }, 'advanced');
+    openEditorTab(/Items/);
+    search('Rope');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+    expect(ctx().items.find((i) => i.name === 'Rope')?.currencyId).toBe('credits');
+    expect(ctx().items.find((i) => i.id === 'lamp')?.currencyId).toBeUndefined();
+  });
+
+  it('keeps Currencies and an item’s Currency through an export and an import', () => {
+    const priced = { ...WORLD, items: [{ ...ITEMS[0], value: 3, currencyId: 'goats' }, ITEMS[1]], currencies: CURRENCIES };
+    const { ctx } = renderWorldEditorBench(priced, 'advanced');
+    expect(ctx().isWorldDirty).toBe(false);
+    const exported = JSON.parse(JSON.stringify(ctx().getWorldData())) as World;
+    act(() => { ctx().loadWorldData(migrateWorld(exported)); });
+    expect(ctx().currencies).toEqual(CURRENCIES);
+    expect(ctx().items[0]).toMatchObject({ value: 3, currencyId: 'goats' });
   });
 });
 

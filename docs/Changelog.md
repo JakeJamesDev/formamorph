@@ -30,6 +30,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items can now be unidentified, showing the player only an Unidentified Name and Description until the story reveals them.** The narrator sees both faces. Effects still apply. Scripts read both faces and can reveal.
     - **The player and each entity now have a Body setting their equipment slots, with a figure you lay out.** Traits and scripts can change a Body; items it has no slot for stay carried. In Equipment Settings, pick Humanoid, Quadruped, Plain or your own picture, then drag a box for each slot.
     - **Optimize Images now shrinks item images, and the Test Bench flags oversized ones.** One undo reverts them with the rest of the run.
+  - **Currencies:**
+    - **World authors can define Currencies on the Items tab and price each item in one.** A Currency is a stat or a name only. A new item takes the first Currency, and the item popup shows its worth.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
   - **World files now list Bodies, and each entity equips into the slots of its own Body.** A slot is a name only; each Body entry gives it a capacity. An entity picks a Body, the first one, or None. See World Format.

@@ -4,6 +4,7 @@ import { ItemRowArt } from '@/components/ItemIconArt';
 import { Meta } from '@/components/ui/typography';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { visibleItemImage } from '@/lib/imageVisibility';
+import { copyWorthFacts } from '@/lib/currency';
 import { copyItemIcon } from '@/lib/itemIcons';
 import { copyFace, copyFacts, occupiedSlots } from '@/lib/items';
 import { visibleWorn } from '@/lib/inventory';
@@ -69,7 +70,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
           icon={shownIconOf(viewing)}
           image={imageOf(viewing)}
           description={resolveText(viewingItem ? copyFace(viewingItem, viewing).description ?? '' : '')}
-          facts={copyFacts(viewing, viewingItem)}
+          facts={[...copyFacts(viewing, viewingItem), ...copyWorthFacts(viewing, viewingItem, data?.currencies ?? [], resolveText)]}
           isOpen
           onOpenChange={(open) => { if (!open) setViewingId(null); }}
         />

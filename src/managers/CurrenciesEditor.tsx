@@ -1,0 +1,131 @@
+import { useMemo } from 'react';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Plus, X } from 'lucide-react';
+import { useGameData } from '@/contexts/GameDataContext';
+import { Button } from '@/components/ui/button';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
+import { Hint } from '@/components/ui/typography';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { WorldInput } from '@/components/editor/WorldField';
+import { currencyStatGroups, type CurrencyStatGroup } from '@/lib/currency';
+import { fieldFrame } from '@/lib/historyField';
+import { labelPlaceholders } from '@/lib/placementLetters';
+import { dragStyle, droppedMove } from '@/lib/sortableDrag';
+import { randomUUID } from '@/lib/uuid';
+import type { Currency, CurrencyBacking } from '@/types';
+
+const GROUP_HEADING = { global: 'Global Stats', linked: 'Linked to Personas' };
+
+const groupHeading = (group: CurrencyStatGroup): string => (group.kind === 'persona' ? group.persona.name : GROUP_HEADING[group.kind]);
+
+const KIND_LABEL: Record<CurrencyBacking['kind'], string> = { stat: 'Stat', coins: 'Coin Items', name: 'Name Only' };
+
+/** The Items tab's Currencies entry: the world's money, in order. The first is the one a new item takes. */
+const CurrenciesEditor = () => {
+  const { currencies, setCurrencies, updateCurrency, stats, statGroups, entities, placeholders } = useGameData();
+  const groups = useMemo(() => currencyStatGroups({ stats, statGroups, entities }), [stats, statGroups, entities]);
+  const add = () => setCurrencies([...currencies, { id: randomUUID(), name: 'New Currency', backing: { kind: 'name' } }]);
+  const onDragEnd = (event: DragEndEvent) => {
+    const move = droppedMove(currencies, event);
+    if (move) setCurrencies(arrayMove(currencies, ...move));
+  };
+
+  return (
+    <div className="space-y-6" data-testid="currencies-editor">
+      <div className="space-y-2">
+        <h2 id="world-currencies-label" className="font-medium">Currencies</h2>
+        <Hint>Lists the money in your world. New items take the first one.</Hint>
+      </div>
+      <div className="space-y-2" {...fieldFrame('currencies')}>
+        {currencies.length > 0 && (
+          <EditorDndContext onDragEnd={onDragEnd}>
+            <StableSortableContext items={currencies} strategy={verticalListSortingStrategy}>
+              <EditorRowList aria-labelledby="world-currencies-label">
+                {currencies.map((currency) => (
+                  <SortableCurrency
+                    key={currency.id}
+                    currency={currency}
+                    groups={groups}
+                    label={(name) => labelPlaceholders(name, placeholders)}
+                    onChange={updateCurrency}
+                    onRemove={() => setCurrencies(currencies.filter((other) => other.id !== currency.id))}
+                  />
+                ))}
+              </EditorRowList>
+            </StableSortableContext>
+          </EditorDndContext>
+        )}
+        <Button variant="outline" size="sm" onClick={add}>
+          <Plus className="mr-1 h-4 w-4" aria-hidden />Add Currency
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+/** One Currency: a grip, its name, what holds it, and Delete. */
+function SortableCurrency({ currency, groups, label, onChange, onRemove }: {
+  currency: Currency;
+  groups: readonly CurrencyStatGroup[];
+  label: (name: string) => string;
+  onChange: (currency: Currency) => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, ...drag } = useSortable({ id: currency.id });
+  const { backing } = currency;
+  const firstStat = groups[0]?.stats[0];
+  const pickKind = (kind: string) => {
+    if (kind === backing.kind) return;
+    if (kind === 'name') onChange({ ...currency, backing: { kind: 'name' } });
+    else if (kind === 'stat' && firstStat) onChange({ ...currency, backing: { kind: 'stat', statId: firstStat.id } });
+  };
+  return (
+    <EditorRow
+      setNodeRef={setNodeRef}
+      style={dragStyle(drag)}
+      gripProps={{ ...attributes, ...listeners }}
+      selected={false}
+      onSelect={() => undefined}
+      label={(
+        <div className="flex flex-wrap items-center gap-2">
+          <WorldInput
+            aria-label="Currency Name"
+            className="h-8 w-40"
+            value={currency.name}
+            onChange={(e) => onChange({ ...currency, name: e.target.value })}
+          />
+          <Select value={backing.kind} onValueChange={pickKind}>
+            <SelectTrigger className="h-8 w-32" aria-label="Currency Type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="stat" disabled={!firstStat}>{KIND_LABEL.stat}</SelectItem>
+              <SelectItem value="name">{KIND_LABEL.name}</SelectItem>
+              {backing.kind === 'coins' && <SelectItem value="coins">{KIND_LABEL.coins}</SelectItem>}
+            </SelectContent>
+          </Select>
+          {backing.kind === 'stat' && (
+            <Select value={backing.statId} onValueChange={(statId) => onChange({ ...currency, backing: { kind: 'stat', statId } })}>
+              <SelectTrigger className="h-8 w-48" aria-label="Currency Stat">
+                <SelectValue placeholder="Select stat" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((group) => (
+                  <SelectGroup key={group.kind === 'persona' ? group.persona.id : group.kind}>
+                    <SelectLabel>{label(groupHeading(group))}</SelectLabel>
+                    {group.stats.map((stat) => <SelectItem key={stat.id} value={stat.id}>{label(stat.name)}</SelectItem>)}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
+      actions={[{ icon: <X className="h-4 w-4" />, destructive: true, title: `Delete ${currency.name || 'Currency'}`, onClick: onRemove }]}
+    />
+  );
+}
+
+export default CurrenciesEditor;

@@ -53,6 +53,20 @@ const stage = (copies: ItemCopy[]) => ({
 const region = () => screen.getByRole('region', { name: 'Your inventory' });
 
 describe('Inventory tab — Here', () => {
+  it('shows a carried item’s worth from the world’s Currencies in its popup', async () => {
+    const base = stage([copy('a', 'dagger')]);
+    renderRightPanel({}, {
+      ...base,
+      world: {
+        ...base.world,
+        items: items.map((i) => (i.id === 'dagger' ? { ...i, value: 12, currencyId: 'goats' } : i)),
+        currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }],
+      },
+    });
+    await userEvent.click(await within(region()).findByRole('button', { name: 'Dagger' }));
+    expect(within(await screen.findByRole('dialog')).getByText('Worth 12 Goats')).toBeInTheDocument();
+  });
+
   it('lists the visible Item Copies lying at the location and omits hidden ones and other places', async () => {
     renderRightPanel({}, stage([
       copy('a', 'coin', { where: at('yard'), quantity: 4 }),
@@ -157,6 +171,18 @@ describe('Entity Equipped', () => {
     expect(dialog.getByRole('heading', { name: 'Dagger' })).toBeInTheDocument();
     expect(dialog.getByText('A short blade.')).toBeInTheDocument();
     expect(dialog.queryByText('Coin')).not.toBeInTheDocument();
+  });
+
+  it('shows a worn item’s worth in its popup', async () => {
+    renderInGame(<EntityEquipped entity={bram} />, {
+      world: {
+        items: items.map((i) => (i.id === 'dagger' ? { ...i, value: 12, currencyId: 'goats' } : i)), slots, entities: [bram], locations: [yard],
+        currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }],
+      },
+      seed: (g) => g.setItemCopies([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } })]),
+    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Dagger' }));
+    expect(within(await screen.findByRole('dialog')).getByText('Worth 12 Goats')).toBeInTheDocument();
   });
 
   it('keeps a worn unidentified item on its unidentified face in the popup', async () => {

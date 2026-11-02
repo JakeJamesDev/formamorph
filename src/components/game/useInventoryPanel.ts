@@ -71,7 +71,7 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     ownerName: persona?.entity.name ?? null,
     copies: useMemo(() => copiesAt(itemCopies, YOU), [itemCopies]),
     lying: useMemo(() => (locationId ? copiesAt(itemCopies, { kind: 'location', id: locationId }) : NONE), [itemCopies, locationId]),
-    items, ...(runtimeItems?.length && { runtimeItems }), body: bodyOfYou, slots: bodySlotsOfYou, worldSlots: slots, present, locationId,
+    items, ...(data?.currencies?.length && { currencies: data.currencies }), ...(runtimeItems?.length && { runtimeItems }), body: bodyOfYou, slots: bodySlotsOfYou, worldSlots: slots, present, locationId,
     locationName: currentLocation ? resolveText(currentLocation.name) : null, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
   };
 }

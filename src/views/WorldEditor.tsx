@@ -92,7 +92,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
 import { useScriptWrites, useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
 import { useWorldToolsAdapter } from '../managers/useWorldToolsAdapter';
-import { EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
+import { CURRENCIES_ID, EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
 import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPanelTabs';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
@@ -426,9 +426,9 @@ const WorldEditorInner = ({
   const select = useCallback((tab: string, id: string | null) => {
     setSelections((held) => (held[tab] === id ? held : { ...held, [tab]: id }));
   }, []);
-  // And over the Items tab, where `equipment` opens the pinned Equipment Settings entry.
+  // And over the Items tab, where `equipment` and `currencies` open their pinned entries.
   useEffect(() => {
-    if (import.meta.env.DEV && devRoute?.tab === 'items' && devSubtab === EQUIPMENT_ID) select('items', EQUIPMENT_ID);
+    if (import.meta.env.DEV && devRoute?.tab === 'items' && (devSubtab === EQUIPMENT_ID || devSubtab === CURRENCIES_ID)) select('items', devSubtab);
   }, [devRoute?.tab, devSubtab, select]);
 
   // ── Find & replace ────────────────────────────────────────────────────────

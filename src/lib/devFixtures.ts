@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Body, Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
+import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
@@ -92,10 +92,17 @@ const devBodies = (): Body[] => [
 const devItem = (id: string, name: string, slotId: string, extra: Partial<Item> = {}): Item => ({
   id, name, stackable: false, slotRule: { mode: 'either', slotIds: [slotId] }, statEffects: [], traitEffects: [], equipRequires: [], ...extra,
 });
+const DEV_NAME_CURRENCY = 'dev-currency-silver';
+const DEV_STAT_CURRENCY = 'dev-currency-credits';
+/** A stat-backed Currency on the world's first stat, then a name-only one. */
+const devCurrencies = (statId: string | undefined): Currency[] => [
+  ...(statId ? [{ id: DEV_STAT_CURRENCY, name: 'Credits', backing: { kind: 'stat' as const, statId } }] : []),
+  { id: DEV_NAME_CURRENCY, name: 'Silver', backing: { kind: 'name' } },
+];
 const devItems = (valueStatId: string | undefined): Item[] => [
   {
     id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', uses: 1,
-    value: 5, valueUnit: { kind: 'text', text: 'silver' }, traitEffects: [], equipRequires: [],
+    value: 5, currencyId: DEV_NAME_CURRENCY, traitEffects: [], equipRequires: [],
     statEffects: [{ id: 'dev-effect-tonic', statId: 'dev-vigor', facet: 'value', timing: 'used', duration: { kind: 'time', hours: 2 }, amount: 2, op: 'add' }],
   },
   {
@@ -104,7 +111,7 @@ const devItems = (valueStatId: string | undefined): Item[] => [
   },
   {
     id: 'dev-item-sword', name: 'Greatsword of the Ashen Vigil', playerDescription: 'A long two-handed blade.', images: [{ data: portrait('#6b7a8f') }], slotRule: { mode: 'all', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] },
-    ...(valueStatId ? { value: 40, valueUnit: { kind: 'stat' as const, statId: valueStatId } } : {}),
+    ...(valueStatId ? { value: 40, currencyId: DEV_STAT_CURRENCY } : {}),
     statEffects: [], traitEffects: [], equipRequires: [],
   },
   {
@@ -252,6 +259,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           slots: DEV_SLOTS,
           bodies: devBodies(),
           items: devItems(base.stats[0]?.id),
+          currencies: devCurrencies(base.stats[0]?.id),
           entities: [...base.entities, ...ENTITY_STATS_CAST.map((e) => (here.has(e.id) ? { ...e, locations: [WHITE_ROOM_ID] } : e))],
         },
         save: {
@@ -342,7 +350,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       return {
         world: {
-          ...world, slots: DEV_SLOTS, bodies: devBodies(), items: devItems(world.stats[0]?.id), placements: DEV_PLACEMENTS,
+          ...world, slots: DEV_SLOTS, bodies: devBodies(), items: devItems(world.stats[0]?.id), currencies: devCurrencies(world.stats[0]?.id), placements: DEV_PLACEMENTS,
           // Starts in the White Room, so Give has its two entities.
           locations: world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, isStarting: true } : l)),
           entities: [...world.entities, ...DEV_ITEM_CAST],

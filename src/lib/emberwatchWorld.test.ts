@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { bundledWorldText } from '@/test/bundledWorldFiles';
+import { currencyStatGroups, worthText } from './currency';
 import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
@@ -342,13 +343,22 @@ describe('the Emberwatch items', () => {
   };
   const copiesOf = (copies: readonly ItemCopy[], name: string) => copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemNamed(name).id);
 
+  it('prices its items in a Gold stat that the stat picker lists once', () => {
+    const groups = currencyStatGroups({ stats: world.stats, statGroups: world.statGroups ?? [], entities: world.entities });
+    const ids = groups.flatMap((group) => group.stats.map((stat) => stat.id));
+    expect(ids.filter((id) => id === 'gold')).toEqual(['gold']);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(world.currencies?.map((currency) => currency.backing)).toEqual([{ kind: 'stat', statId: 'gold' }]);
+    expect(worthText(itemNamed('Cold Iron Sword'), world.currencies ?? [])).toBe(`${itemNamed('Cold Iron Sword').value} Gold`);
+  });
+
   it('points every effect, requirement, slot and placement at something the world has', () => {
     const slotIds = new Set((world.slots ?? []).map((slot) => slot.id));
     const statIds = new Set(world.stats.map((stat) => stat.id));
     const traitIds = new Set(world.traits.map((trait) => trait.id));
     for (const item of items) {
       for (const slotId of item.slotRule?.slotIds ?? []) expect(slotIds).toContain(slotId);
-      if (item.valueUnit?.kind === 'stat') expect(statIds).toContain(item.valueUnit.statId);
+      if (item.currencyId !== undefined) expect((world.currencies ?? []).map((currency) => currency.id)).toContain(item.currencyId);
       for (const row of item.statEffects) expect(statIds).toContain(row.statId);
       for (const row of item.traitEffects) expect(traitIds).toContain(row.traitId);
       for (const row of item.equipRequires) for (const condition of row.all) expect(traitIds).toContain(condition.id);

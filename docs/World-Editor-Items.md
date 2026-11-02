@@ -86,7 +86,7 @@ An item can hide its true name and description until the story reveals them. A c
 
 | Property | What it does |
 |---|---|
-| **Value** | What the item is worth. The unit is a stat, such as Gold, or your own text. |
+| **Value** | What the item is worth, and the [Currency](#currencies) it is priced in. With **No Currency**, the item has no price. |
 | **Stackable** | Item Copies group into one row with a quantity. On by default. |
 | **Uses** | How many times each Item Copy can be used. Leave it blank for unlimited. |
 | **When Empty** | What a copy's last use leaves: **Stays** (kept at zero uses), **Gone** (removed), **Becomes** (turns into another item you pick) or **Changes State** (kept at zero uses with the word you type). Shows once **Uses** is set; it starts at **Gone**. |
@@ -195,6 +195,22 @@ The **Scripts** tab runs code on the item's events. It shows in Advanced mode.
 - 🌱 Starting items run no script.
 
 The [Scripts Guide](Scripts-Reference#items) lists what an item script can read and write.
+
+## Currencies
+<!-- keywords: money, currency, currencies, credits, gold, price, worth, wallet, default currency, stat money, no currency -->
+<!-- route: worldEditor.items -->
+
+**Currencies** sits at the top of the **Items** list, below **Equipment Settings**. It lists the money your world uses.
+
+| Type | What it does |
+|---|---|
+| 📊 **Stat** | The money is a number on a stat you pick. |
+| 🏷️ **Name Only** | The money is only a name, such as goats. Nothing tracks it. |
+
+- 🥇 A new item takes the first Currency in the list. Drag a row to change which one comes first.
+- 🔗 The stat list holds your global stats, the stats your Personas link, and each Persona's own stats. A stat that many Personas link shows once.
+- 💰 The player sees an item's worth in its popup, such as "Worth 40 Credits". An unidentified copy shows no worth.
+- 🚫 An item with **No Currency** shows no worth, even with a **Value**.
 
 ## Equipment Settings
 <!-- keywords: equipment, equipment settings, slots, bodies, body, hand, ring, head, armor slot, capacity, two handed, dog, creature, default body -->

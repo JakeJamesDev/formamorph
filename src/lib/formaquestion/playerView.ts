@@ -3,9 +3,10 @@
  * Formaquestion reads (ADR-0014). No row type has an AI field; AI text written in play counts as player text.
  */
 import type {
-  ChatMessage, DiscoveredEntity, Entity, GameState, Item, ItemCopy, PlayerStat, RuntimeItem, Trait, World,
+  ChatMessage, Currency, DiscoveredEntity, Entity, GameState, Item, ItemCopy, PlayerStat, RuntimeItem, Trait, World,
 } from '@/types';
 import { activeDescriptor } from '@/lib/statContext';
+import { copyWorthText } from '@/lib/currency';
 import { copyFace, copyState, isUnidentified, stateKey } from '@/lib/items';
 import { resolveEntityByName } from '@/lib/entityMatch';
 import { parseTurnContent } from '@/lib/turnDigest';
@@ -43,6 +44,8 @@ export interface PlayerViewItem {
   description: string;
   /** The State word of the copies this row stands for. Absent = none. */
   state?: string;
+  /** What the item is worth, such as "40 Gold". Absent on an item with no price and on an unidentified face. */
+  worth?: string;
 }
 
 export interface PlayerViewStat {
@@ -76,7 +79,7 @@ export interface PlayerView {
 }
 
 export interface PlayerViewInput {
-  world: Pick<World, 'entities' | 'locations' | 'traits'> & Partial<Pick<World, 'items' | 'connections'>>;
+  world: Pick<World, 'entities' | 'locations' | 'traits'> & Partial<Pick<World, 'items' | 'currencies' | 'connections'>>;
   /** The snapshots from the first to the current, oldest first. The last is the current one. */
   chain: readonly GameState[];
   /** The message history as the current snapshot holds it. */
@@ -227,14 +230,15 @@ export const playerItemId = (copy: ItemCopy): string => (copy.item.kind === 'run
 
 /** The item a copy is of as the player knows it, with its player text; undefined when the item is gone. */
 function copiedItem(
-  copy: ItemCopy, authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>,
-): { id: string; name: string; text?: string } | undefined {
+  copy: ItemCopy, authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>, currencies: readonly Currency[],
+): { id: string; name: string; text?: string; worth?: string } | undefined {
   const ref = copy.item;
   if (ref.kind === 'item') {
     const item = authored.get(ref.itemId);
     if (!item) return undefined;
     const face = copyFace(item, copy);
-    return { id: playerItemId(copy), name: face.name, text: face.description };
+    const worth = copyWorthText(copy, item, currencies);
+    return { id: playerItemId(copy), name: face.name, text: face.description, ...(worth && { worth }) };
   }
   // A runtime item's description is text the AI wrote in play, which counts as player text.
   const item = runtime.get(ref.runtimeItemId);
@@ -246,12 +250,12 @@ function copiedItem(
 function viewItems(input: PlayerViewInput): PlayerViewItem[] {
   const authored = new Map((input.world.items ?? []).map((item) => [item.id, item]));
   const runtime = new Map<string, RuntimeItem>();
-  const met = new Map<string, { item: { id: string; name: string; text?: string }; at: number; states: Map<string, string | undefined> }>();
+  const met = new Map<string, { item: { id: string; name: string; text?: string; worth?: string }; at: number; states: Map<string, string | undefined> }>();
   input.chain.forEach((snapshot, at) => {
     for (const item of snapshot.runtimeItems ?? []) runtime.set(item.id, item);
     for (const copy of snapshot.itemCopies ?? []) {
       if (!metCopy(copy, snapshot)) continue;
-      const item = copiedItem(copy, authored, runtime);
+      const item = copiedItem(copy, authored, runtime, input.world.currencies ?? []);
       if (!item) continue;
       const key = `${copy.item.kind}:${item.id}`;
       const row = met.get(key);
@@ -263,6 +267,7 @@ function viewItems(input: PlayerViewInput): PlayerViewItem[] {
   });
   return [...met.values()].flatMap(({ item, states }) => [...states.values()].map((state) => ({
     kind: 'item' as const, id: item.id, name: input.resolve(item.name), description: textOf(input.resolve, item.text), ...(state && { state }),
+    ...(item.worth && { worth: input.resolve(item.worth) }),
   })));
 }
 
