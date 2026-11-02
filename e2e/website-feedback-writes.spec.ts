@@ -104,7 +104,7 @@ test.describe('website feedback writes', () => {
     await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm' }).click();
     await expect(page.getByText('Mine, reworded.')).toHaveCount(0);
 
-    await page.getByRole('button', { name: /Edit this report/ }).click();
+    await page.getByRole('button', { name: /Edit this thread/ }).click();
     await page.getByLabel('Title').fill('Add a world map');
     await page.getByRole('button', { name: /^Save/ }).click();
     await expect(page.getByRole('heading', { name: /Add a world map/ })).toBeVisible();

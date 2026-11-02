@@ -58,7 +58,7 @@ export function LoginPage() {
     setError('');
 
     if (!username || !password) {
-      setError('Username and password are required');
+      setError('Enter your username and password');
       return;
     }
 

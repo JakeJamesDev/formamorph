@@ -23,6 +23,7 @@ import { IssuesInstrument } from './IssuesInstrument';
 import { OpeningInstrument } from './OpeningInstrument';
 import { TriggersInstrument } from './TriggersInstrument';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 
 /** The toggle names the placement it would move to, not the one it is in — it is an action, not a label. */
 const PLACEMENT_TOGGLE: Record<BenchPlacement, { label: string; icon: typeof PanelLeft }> = {
@@ -34,8 +35,9 @@ export function TestBench({
   tab, onTabChange, onClose, onFixRule, issues, lens, triggers, aiContext, opening, placementControl,
 }: TestBenchProps) {
   const toggle = placementControl && PLACEMENT_TOGGLE[placementControl.placement];
+  const parts = BENCH_TABS.find((t) => t.value === tab)?.lens;
   return (
-    // Embedded sits inside the editor's CardContent, which already pads — its own padding would stack, and
+    // Embedded renders inside the editor's CardContent, which already pads — its own padding would stack, and
     // the Bench's chrome would no longer start where the tab strip it replaced did.
     <div className={cn('flex h-full flex-col gap-2', placementControl?.placement !== 'embedded' && 'p-3')}>
       <div className="flex items-center gap-2">
@@ -81,7 +83,7 @@ export function TestBench({
         </TabsList>
         {/* Below the strip, and only on the instruments that read it — the selection itself is Bench-level
             state, so it survives visits to a tab that hides the bar. */}
-        {BENCH_TABS.find((t) => t.value === tab)?.usesLens && <LensBar {...lens} />}
+        {parts && (parts.pc || parts.location) && <LensBar {...lens} parts={parts} />}
         {/* One panel per trigger so every `aria-controls` resolves. */}
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
@@ -161,29 +163,40 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
   );
 };
 
-/** The Bench-level lens every instrument reads: who is being played, and where they are standing. Its notes
- *  sit under it because both are consequences of the PC on the selector directly above them. */
-const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange }: LensBarProps) => (
+/** The Bench-level lens: who is being played, and at which location, as far as the open instrument reads. Its notes go
+ *  under it because both follow from the PC on the selector directly above them. */
+const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange, parts }: LensBarProps & {
+  /** The lens parts the open instrument reads. */
+  parts: { pc: boolean; location: boolean };
+}) => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center gap-1.5">
-      <span className="shrink-0 text-meta text-muted-foreground">Testing as</span>
-      <LensSelect
-        icon={EntityIcon}
-        label="Test as character"
-        none="Anyone"
-        value={lens.state.pcTraitId}
-        options={pcOptions}
-        onChange={onPcChange}
-      />
-      <span className="shrink-0 text-meta text-muted-foreground">at</span>
-      <LensSelect
-        icon={LocationIcon}
-        label="Test at location"
-        none="Nowhere"
-        value={lens.state.locationId}
-        options={locationOptions}
-        onChange={onLocationChange}
-      />
+      {parts.pc && (
+        <>
+          <Meta className="shrink-0">Testing as</Meta>
+          <LensSelect
+            icon={EntityIcon}
+            label="Testing as"
+            none="Anyone"
+            value={lens.state.pcTraitId}
+            options={pcOptions}
+            onChange={onPcChange}
+          />
+        </>
+      )}
+      {parts.location && (
+        <>
+          <Meta className="shrink-0">at</Meta>
+          <LensSelect
+            icon={LocationIcon}
+            label="Testing at"
+            none="Nowhere"
+            value={lens.state.locationId}
+            options={locationOptions}
+            onChange={onLocationChange}
+          />
+        </>
+      )}
     </div>
     {lens.brokenPins.map((pin) => (
       <p key={`${pin.placeholderId}:${pin.value}`} className="flex items-start gap-1 text-meta text-destructive">
@@ -192,9 +205,9 @@ const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, 
       </p>
     ))}
     {statOverrides.length > 0 && (
-      <p className="text-meta text-muted-foreground">
+      <Meta as="p">
         {statOverrides.map((o) => `${o.enabled ? 'Adds' : 'Removes'} ${o.stat}`).join(' · ')}
-      </p>
+      </Meta>
     )}
   </div>
 );

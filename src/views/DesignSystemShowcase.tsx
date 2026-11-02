@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
 import { OwnerFlyoutReference } from '@/components/design-system/OwnerFlyoutReference';
 import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
+import { ItemIconPickerReference } from '@/components/design-system/ItemIconPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
@@ -13,6 +14,7 @@ import { ChipOptionsReference } from '@/components/design-system/ChipOptionsRefe
 import { CodeCardReference } from '@/components/design-system/CodeCardReference';
 import { VariableMenuReference } from '@/components/design-system/VariableMenuReference';
 import { YouMarkReference } from '@/components/design-system/YouMarkReference';
+import { BodyLayoutReference } from '@/components/design-system/BodyLayoutReference';
 import { InventoryTabReference } from '@/components/design-system/InventoryTabReference';
 import { SegmentedMultiSelectReference } from '@/components/design-system/SegmentedMultiSelectReference';
 import { CollapsingSegmentedReference } from '@/components/design-system/CollapsingSegmentedReference';
@@ -44,6 +46,7 @@ import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { CommunityCardReference } from '@/components/design-system/CommunityCardReference';
 import { FindBarReference } from '@/components/design-system/FindBarReference';
+import { RequestLineReference } from '@/components/design-system/RequestLineReference';
 import { SearchFieldReference } from '@/components/design-system/SearchFieldReference';
 import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
@@ -53,8 +56,10 @@ import { NarrationTurnReference } from '@/components/design-system/NarrationTurn
 import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
 import { RequestStatusStripReference } from '@/components/design-system/RequestStatusStripReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
+import { EntityPopupReference } from '@/components/design-system/EntityPopupReference';
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
+import { AllowanceRingReference } from '@/components/design-system/AllowanceRingReference';
 import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
 import { HistoryControlsReference } from '@/components/design-system/HistoryControlsReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
@@ -106,7 +111,7 @@ function LiveSample({ source }: { source: SettingsSource }) {
     <Card role="region" aria-labelledby="live-sample-title">
       <CardHeader>
         <CardTitle id="live-sample-title" className="text-heading">Live Sample</CardTitle>
-        <CardDescription>This sample shows the reference theme, palette, and font.</CardDescription>
+        <CardDescription>Shows the selected theme, theme color and font</CardDescription>
       </CardHeader>
       <CardContent>
         <div
@@ -116,7 +121,7 @@ function LiveSample({ source }: { source: SettingsSource }) {
           style={{ fontFamily: previewFont, fontSizeAdjust: String(fontSizeAdjust(source.fontFamily)) }}
         >
           <p className="text-label font-semibold">The lanterns wake along the harbor.</p>
-          <p className="text-helper text-muted-foreground">This sample shows the selected theme and font.</p>
+          <Hint>Shows a help line in the selected theme and font</Hint>
         </div>
       </CardContent>
     </Card>
@@ -134,7 +139,7 @@ function StateReference() {
     <Card role="region" aria-labelledby="control-states-title">
       <CardHeader>
         <CardTitle id="control-states-title" className="text-heading">Control States</CardTitle>
-        <CardDescription>These examples show the control states.</CardDescription>
+        <CardDescription>Shows each control state on a sample settings row</CardDescription>
       </CardHeader>
       <CardContent>
         <Section title="Reference States">
@@ -158,13 +163,13 @@ function StateReference() {
               resetLabel="Reset to Theme"
             />
           </Row>
-          <Row label="Keyboard Focus" hint="The selected theme controls the focus ring color.">
+          <Row label="Keyboard Focus" hint="Uses the selected theme color for the focus ring">
             <Button autoFocus variant="outline">Focused Action</Button>
           </Row>
           <Row label="Unavailable Option" muted>
             <label htmlFor="reference-disabled" className="flex items-center gap-2">
               <Checkbox id="reference-disabled" aria-label="Scene Images" checked disabled />
-              <Hint as="span">This example has no image endpoint.</Hint>
+              <Hint as="span">Needs an image endpoint</Hint>
             </label>
           </Row>
           <Row top label="Context Window" htmlFor="reference-context-window">
@@ -178,11 +183,11 @@ function StateReference() {
                 className={invalidContext ? 'border-destructive' : undefined}
               />
               {invalidContext && (
-                <FieldError id="reference-context-error">The value is more than 65,536 tokens.</FieldError>
+                <FieldError id="reference-context-error">This value is over 65,536 tokens. Enter 65,536 or less.</FieldError>
               )}
             </div>
           </Row>
-          <Row label="Endpoint Profile" hint="The control shows long values on one line.">
+          <Row label="Endpoint Profile" hint="Shortens a long name to fit one line">
             <Select value={LONG_ENDPOINT} onValueChange={() => {}}>
               <SelectTrigger aria-label="Endpoint Profile" title={LONG_ENDPOINT}>
                 <SelectValue />
@@ -199,7 +204,7 @@ function StateReference() {
 }
 
 function SettingsReference() {
-  const [status, setStatus] = useState('This line shows the effects that the reference skips.');
+  const [status, setStatus] = useState('The reference has not skipped an effect yet.');
   const source = useLocalSettingsSource(setStatus);
   const [mode, setMode] = useState<SettingsMode>('advanced');
   const nativeReasoningRuledOut = reasoningRuledOut(source.reasoningCapability);
@@ -222,7 +227,7 @@ function SettingsReference() {
         <Card role="region" aria-labelledby="display-reference-title">
           <CardHeader>
             <CardTitle id="display-reference-title" className="text-heading">Display Reference</CardTitle>
-            <CardDescription>This reference shows the production Display section with local values.</CardDescription>
+            <CardDescription>Shows the production Display section with local values</CardDescription>
           </CardHeader>
           <CardContent>
             <DisplaySettingsSection source={source} mode={mode} />
@@ -231,7 +236,7 @@ function SettingsReference() {
         <Card role="region" aria-labelledby="output-reference-title">
           <CardHeader>
             <CardTitle id="output-reference-title" className="text-heading">Output Reference</CardTitle>
-            <CardDescription>This reference shows the production Output section with local values.</CardDescription>
+            <CardDescription>Shows the production Output section with local values</CardDescription>
           </CardHeader>
           <CardContent>
             <OutputSettingsSection source={source} mode={mode} nativeReasoningRuledOut={nativeReasoningRuledOut} />
@@ -252,7 +257,7 @@ function MarkdownReference() {
       <CardHeader>
         <CardTitle id="markdown-reference-title" className="text-heading">Markdown Editing Reference</CardTitle>
         <CardDescription>
-          This editor shows the world introduction.
+          Shows the World Introduction field with Markdown formatting
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -303,6 +308,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     Component: FindBarReference,
   },
   {
+    id: 'request-line',
+    label: 'Request Line',
+    description: 'One AI request: what it sent and how the reply went',
+    Component: RequestLineReference,
+  },
+  {
     id: 'search-field',
     label: 'Search Field',
     description: 'Search icon, text box, and a Clear Search X',
@@ -339,6 +350,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     Component: FooterActionOrderReference,
   },
   {
+    id: 'entity-popup',
+    label: 'Entity Popup',
+    description: 'Picture beside the text on large screens',
+    Component: EntityPopupReference,
+  },
+  {
     id: 'panel-tabs',
     label: 'Panel Tabs',
     description: 'Editor detail panel tab strips',
@@ -347,7 +364,7 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
     id: 'sections-bar',
     label: 'Sections Bar',
-    description: 'Grouped tabs folded behind one bar on mobile',
+    description: 'Grouped tabs behind one bar on mobile',
     Component: SectionsBarReference,
   },
   {
@@ -355,6 +372,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Nav Rail',
     description: 'Grouped tabs on a collapsible rail inside the surface',
     Component: NavRailReference,
+  },
+  {
+    id: 'allowance-ring',
+    label: 'Allowance Ring',
+    description: 'A filling ring beside Send, and its breakdown bars',
+    Component: AllowanceRingReference,
   },
   {
     id: 'surface-app-bar',
@@ -389,7 +412,7 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
     id: 'status-strip',
     label: 'Request Status Strip',
-    description: 'The running request’s row, floated over the narration',
+    description: 'The running request’s row, over the narration',
     Component: RequestStatusStripReference,
   },
   {
@@ -403,6 +426,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Breadcrumb Picker',
     description: 'Searchable single-select popover over world content',
     Component: BreadcrumbPickerReference,
+  },
+  {
+    id: 'icon-grid-picker',
+    label: 'Icon Grid Picker',
+    description: 'Searchable popover grid of item icons',
+    Component: ItemIconPickerReference,
   },
   {
     id: 'travel-hints',
@@ -437,7 +466,7 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
     id: 'landing-pulse',
     label: 'Landing Pulse',
-    description: 'One ring pulse on the row a Take Me There landing points at',
+    description: 'One ring pulse on the target row of a Take Me There link',
     Component: LandingPulseReference,
   },
   {
@@ -479,14 +508,20 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
     id: 'collapsing-segmented',
     label: 'Collapsing Segmented',
-    description: 'A pick-one segmented control that folds the other options to icons when its labels don’t fit',
+    description: 'A pick-one segmented control that shows the other options as icons when its labels don’t fit',
     Component: CollapsingSegmentedReference,
   },
   {
     id: 'inventory-tab',
     label: 'Inventory Tab',
-    description: 'The game panel’s slots and carried items, and the side panel tab strip that drops to icons',
+    description: 'The Status panel’s slots and carried items, and its tab strip at narrow widths',
     Component: InventoryTabReference,
+  },
+  {
+    id: 'body-layout',
+    label: 'Body Layout',
+    description: 'A figure with movable, sizable boxes beside the rows they belong to',
+    Component: BodyLayoutReference,
   },
 ];
 
@@ -511,7 +546,7 @@ export function DesignSystemShowcase() {
               </Meta>
               <h1 className="text-display font-semibold">Formamorph Design System</h1>
               <Hint className="max-w-3xl">
-                Select a reference.
+                Select a reference
               </Hint>
             </div>
             <div className="flex items-center gap-2 text-meta text-muted-foreground">

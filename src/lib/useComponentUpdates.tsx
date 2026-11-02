@@ -40,7 +40,7 @@ export function useComponentUpdates(live?: LiveWorld[]) {
     try {
       const item = (await libraryItems(kind)).find((row) => row.id === libraryId);
       if (!item) {
-        toast.error('The library item this copy follows was deleted. There is nothing to check.');
+        toast.error("The library item this copy follows was deleted, so there's nothing to check.");
         return;
       }
       const rows = await affectedCopies(item, liveRef.current);
@@ -50,7 +50,7 @@ export function useComponentUpdates(live?: LiveWorld[]) {
       }
       setReview({ source: item, sourceData: await libraryItemData(kind, libraryId), rows });
     } catch (error) {
-      toastError(error, 'Formamorph could not check for updates.');
+      toastError(error, "Couldn't check for updates.");
     }
   }, []);
 

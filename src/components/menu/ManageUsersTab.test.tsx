@@ -181,7 +181,7 @@ describe('status changes update the row in place', () => {
     await screen.findByText('alice');
     await suspendWithDefaults();
 
-    expect(await screen.findByText(/alice has been suspended/)).toBeTruthy();
+    expect(await screen.findByText(/alice is suspended/)).toBeTruthy();
   });
 
   it('does not offer a notice when activating', async () => {
@@ -191,7 +191,7 @@ describe('status changes update the row in place', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Activate' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Suspend' })).toBeTruthy());
-    expect(screen.queryByText(/has been suspended\?/)).toBeNull();
+    expect(screen.queryByText(/is suspended\. You can send/)).toBeNull();
   });
 });
 
@@ -350,7 +350,7 @@ describe('timed suspensions', () => {
     const suspendAndAccept = async () => {
       const dialog = await openDialog();
       fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Write Message' }));
       await waitFor(() => expect(dialogProps.composer).not.toBeNull());
     };
 
@@ -423,7 +423,7 @@ describe('the terms column', () => {
 
     render(<ManageUsersTab active />);
     fireEvent.click(await screen.findByRole('button', { name: 'Reset terms for alice' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset Terms' }));
 
     // Nothing left to reset, so the button must stop offering it.
     await waitFor(() =>

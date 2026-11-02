@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Entity, EntityStatValues, PlayerStat, SceneEntity } from '@/types';
+import type { Entity, PlayerStat, SceneEntity } from '@/types';
 import { shownEntityStats, statPanelOptions, statPanelSelection, firstShowableEntity } from './statPanelEntities';
 
 const entity = (name: string, overrides: Partial<Entity> = {}): Entity =>
@@ -12,96 +12,51 @@ const bram = entity('Bram');
 const odette = entity('Odette');
 const wick = entity('Wick');
 const you = entity('Sera');
-const values: EntityStatValues = { bram: [stat('Trust')], odette: [stat('Stock')], wick: [stat('Nerve')] };
 
-// An earlier scene where the player met all three, so an absent entity reads by name unless a case says otherwise.
-const met = [[seen('Bram'), seen('Odette'), seen('Wick')]];
-const options = (over: Partial<Parameters<typeof statPanelOptions>[0]> = {}) =>
-  statPanelOptions({ entities: [bram, odette, wick], persona: null, scene: [], history: met, values, ...over });
+const inScene = (...rows: [Entity, string | null][]) => rows.map(([e, label]) => ({ entity: e, label }));
 
 describe('statPanelOptions', () => {
-  it('lists present entities first, in scene order, then absent entities that own stats', () => {
-    const list = options({ scene: [seen('Wick'), seen('Bram')] });
-    expect(list.map((o) => [o.label, o.present])).toEqual([['Wick', true], ['Bram', true], ['Odette', false]]);
+  it('lists the In Scene entities in order, under their labels', () => {
+    const list = statPanelOptions({ persona: null, scene: inScene([wick, 'Wick'], [bram, 'Bram']) });
+    expect(list.map((o) => o.label)).toEqual(['Wick', 'Bram']);
   });
 
-  it('leaves out an absent entity that owns no stats', () => {
-    const list = options({ entities: [bram, entity('Mute')], values: { bram: [stat('Trust')] } });
-    expect(list.map((o) => o.label)).toEqual(['Bram']);
+  it('never lists an entity that is not in scene, whatever stats it owns', () => {
+    const list = statPanelOptions({ persona: null, scene: inScene([bram, 'Bram']) });
+    expect(list.map((o) => o.id)).toEqual(['bram']);
   });
 
-  it('leaves out an absent entity whose stats are all hidden or switched off', () => {
-    const list = options({
-      values: { ...values, odette: [stat('Secret', { hidden: true })], wick: [stat('Dormant', { enabled: false })] },
-    });
-    expect(list.map((o) => o.label)).toEqual(['Bram']);
-  });
-
-  it('lists a present entity that owns no stats', () => {
-    const list = options({ entities: [bram, entity('Mute')], scene: [seen('Mute')], values: { bram: [stat('Trust')] } });
-    expect(list.map((o) => o.label)).toEqual(['Mute', 'Bram']);
+  it('lists an In Scene entity that owns no stats', () => {
+    expect(statPanelOptions({ persona: null, scene: inScene([entity('Mute'), 'Mute']) }).map((o) => o.label)).toEqual(['Mute']);
   });
 
   it('puts the played persona first and marks it as the player’s, with its bare name', () => {
-    const list = options({ persona: you, scene: [seen('Bram')] });
-    expect(list.map((o) => o.label)).toEqual(['Sera', 'Bram', 'Odette', 'Wick']);
-    expect(list.map((o) => o.you ?? false)).toEqual([true, false, false, false]);
-    expect(list[0].present).toBe(true);
+    const list = statPanelOptions({ persona: you, scene: inScene([bram, 'Bram']) });
+    expect(list.map((o) => o.label)).toEqual(['Sera', 'Bram']);
+    expect(list.map((o) => o.you ?? false)).toEqual([true, false]);
   });
 
-  it('labels an unrevealed present entity by its alias, never its name', () => {
-    const list = options({ scene: [{ name: 'Bram', alias: 'the ferryman', revealed: false }] });
-    expect(list[0].label).toBe('the ferryman');
-    expect(list.some((o) => o.label === 'Bram')).toBe(false);
-  });
-
-  it('labels an unrevealed present entity with no alias Unknown', () => {
-    expect(options({ scene: [{ name: 'Bram', revealed: false }] })[0].label).toBe('Unknown');
-  });
-
-  it('lists an absent entity only once some turn revealed its name', () => {
-    const list = options({ history: [[seen('Odette')], [{ name: 'Wick', alias: 'a thin runner', revealed: false }]] });
-    expect(list.map((o) => o.label)).toEqual(['Odette']);
-  });
-
-  it('keeps a picked absent entity that never got a name, by its last alias', () => {
-    const list = options({
-      entities: [bram],
-      keep: 'bram',
-      history: [[{ name: 'Bram', alias: 'a hooded man', revealed: false }], [{ name: 'Bram', alias: 'the ferryman', revealed: false }]],
-    });
+  it('shows a stranger by its label, never its name', () => {
+    const list = statPanelOptions({ persona: null, scene: inScene([bram, 'the ferryman']) });
     expect(list.map((o) => o.label)).toEqual(['the ferryman']);
   });
 
-  it('keeps the name once revealed even when a later scene shows it unrevealed', () => {
-    const list = options({ entities: [bram], history: [[seen('Bram')], [{ name: 'Bram', alias: 'the ferryman', revealed: false }]] });
-    expect(list[0].label).toBe('Bram');
+  it('leaves out an entity with no label', () => {
+    expect(statPanelOptions({ persona: null, scene: inScene([bram, null], [odette, 'Odette']) }).map((o) => o.id)).toEqual(['odette']);
   });
 
   it('numbers labels only when two collide', () => {
-    const list = options({ scene: [{ name: 'Bram', revealed: false }, { name: 'Wick', revealed: false }, seen('Odette')] });
-    expect(list.map((o) => o.label)).toEqual(['Unknown', 'Unknown (2)', 'Odette']);
+    const list = statPanelOptions({ persona: null, scene: inScene([bram, 'a gate guard'], [wick, 'a gate guard'], [odette, 'Odette']) });
+    expect(list.map((o) => o.label)).toEqual(['a gate guard', 'a gate guard (2)', 'Odette']);
   });
 
-  it('lists an entity once when the scene names it twice', () => {
-    const list = options({ scene: [seen('Bram'), seen('Bram')] });
-    expect(list.filter((o) => o.id === 'bram')).toHaveLength(1);
-  });
-
-  it('skips a scene name that matches no entity', () => {
-    const list = options({ scene: [seen('A Stranger'), seen('Bram')] });
-    expect(list.map((o) => o.label)).toEqual(['Bram', 'Odette', 'Wick']);
-  });
-
-  it('keeps the selected entity listed when it is absent and owns no stats', () => {
-    const mute = entity('Mute');
-    const list = options({ entities: [bram, mute], values: { bram: [stat('Trust')] }, keep: 'mute', history: [[seen('Mute'), seen('Bram')]] });
-    expect(list.map((o) => o.label)).toEqual(['Bram', 'Mute']);
+  it('lists an entity once when the scene holds it twice', () => {
+    expect(statPanelOptions({ persona: null, scene: inScene([bram, 'Bram'], [bram, 'Bram']) })).toHaveLength(1);
   });
 });
 
 describe('statPanelSelection', () => {
-  const list = options({ scene: [seen('Bram')] });
+  const list = statPanelOptions({ persona: null, scene: inScene([bram, 'Bram'], [odette, 'Odette']) });
 
   it('reads no pick as the fallback entity', () => {
     expect(statPanelSelection(undefined, list, 'bram')).toBe('bram');

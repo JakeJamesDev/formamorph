@@ -4,7 +4,7 @@
 //   npm run sheet           both cuts
 //   npm run sheet -- tall   one cut
 import { bundle } from '@remotion/bundler';
-import { renderStill, selectComposition } from '@remotion/renderer';
+import { getCompositions, renderStill, selectComposition } from '@remotion/renderer';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ mkdirSync(outDir, { recursive: true });
 
 console.log('Bundling…');
 const serveUrl = await bundle({ entryPoint: path.join(root, 'src/index.ts'), publicDir: path.join(root, 'public') });
+const compositions = await getCompositions(serveUrl);
 
 for (const layout of layouts) {
   const id = `Sheet-${layout}`;
@@ -25,6 +26,13 @@ for (const layout of layouts) {
     const composition = await selectComposition({ serveUrl, id, inputProps });
     const output = path.join(outDir, `${layout}-${page + 1}.png`);
     await renderStill({ composition, serveUrl, inputProps, output, imageFormat: 'png' });
+    console.log(`wrote ${path.relative(root, output)}`);
+  }
+  // Each growing stack frame by frame, through every landing.
+  const prefix = `Sheet-stack-${layout}-`;
+  for (const composition of compositions.filter((item) => item.id.startsWith(prefix))) {
+    const output = path.join(outDir, `${layout}-stack-${composition.id.slice(prefix.length)}.png`);
+    await renderStill({ composition, serveUrl, output, imageFormat: 'png' });
     console.log(`wrote ${path.relative(root, output)}`);
   }
 }

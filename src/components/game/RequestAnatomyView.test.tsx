@@ -36,8 +36,8 @@ const region = (name: string) => screen.getByRole('heading', { name }).closest('
 describe('RequestAnatomyView', () => {
   it('splits the request into its two regions, each saying what it is', () => {
     render(<RequestAnatomyView blocks={BLOCKS} mode="resolved" />);
-    expect(screen.getByText('one block, sent first, sets the rules')).toBeInTheDocument();
-    expect(screen.getByText('the conversation the AI continues')).toBeInTheDocument();
+    expect(screen.getByText("Sent first, as one block that sets the AI's rules")).toBeInTheDocument();
+    expect(screen.getByText('The conversation the AI continues')).toBeInTheDocument();
     // The system prompt is its own region — never a message in the conversation.
     expect(within(region('System Prompt')).getByText(/You are the narrator/)).toBeInTheDocument();
     expect(within(region('Messages')).queryByText(/You are the narrator/)).toBeNull();

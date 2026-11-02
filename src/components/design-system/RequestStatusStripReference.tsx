@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Pager } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Hint } from '@/components/ui/typography';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { RequestStatusRow, RequestStatusStrip } from '@/components/game/RequestStatusRow';
 import {
@@ -71,9 +72,12 @@ export function RequestStatusStripReference() {
     <Card role="region" aria-labelledby="status-strip-title">
       <CardHeader>
         <CardTitle id="status-strip-title" className="text-heading">Request Status Strip</CardTitle>
-        <CardDescription>
-          The production status row in its strip over a sample narration frame. Pick a row to show it. The footer stays still. Each request type loops its own glyph. The Turn row steps through the requests of one turn.
-        </CardDescription>
+        <CardDescription>Shows the production status row over a sample narration. Pick a row to show it.</CardDescription>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li>The footer doesn’t move.</li>
+          <li>Each request type repeats its own glyph.</li>
+          <li>The Turn row steps through the requests of one turn.</li>
+        </Hint>
       </CardHeader>
       <CardContent className="grid gap-4">
         <ToggleGroup

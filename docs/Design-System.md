@@ -44,6 +44,7 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 | Need | Component |
 | --- | --- |
 | Section heading and divider | `Section` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
+| Section heading with a help button | `SectionHeading` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx), as in `EntityListSection` |
 | Label/control alignment | `Row` and `RowLabel` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Checkbox plus description | `CheckRow` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Segmented desktop / select mobile | `OptionSwitcher` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
@@ -170,7 +171,7 @@ Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Promp
 
 ### Built-in Placeholder chips
 
-Built-in Placeholders (**Persona Name**, **Character Name**) keep the chip shape and accent. Each carries a leading `Sparkles` icon from [`BuiltinMark`](../src/components/prompt/BuiltinMark.tsx) in the palette, the `{` menu, and the field.
+Built-in Placeholders (**Persona Name**, **Entity Name**) keep the chip shape and accent. Each carries a leading `Sparkles` icon from [`BuiltinMark`](../src/components/prompt/BuiltinMark.tsx) in the palette, the `{` menu, and the field.
 
 A blueprint chip keeps the chip shape and its placeholder's accent. It carries a leading `LayoutTemplate` icon, the Blueprint element icon, from [`BlueprintMark`](../src/components/prompt/BlueprintMark.tsx) in the same three places. `Link2` keeps the linked-copy meaning. The showcase's **Blueprint Chips** card shows it.
 
@@ -182,11 +183,11 @@ Preview reads each Built-in chip by one rule:
 
 | Chip | Preview shows |
 | --- | --- |
-| **Character Name** | The owning entity's name |
-| **Character Name**, blank owner name or no owner | Its label |
+| **Entity Name** | The owning entity's name |
+| **Entity Name**, blank owner name or no owner | Its label |
 | **Persona Name** | Its label |
 
-The Prompt Chips reference's placeholder palette sits over a sample entity, Oren, so it lists both Built-in chips. Its Entity Description field belongs to Oren, and its Preview shows Character Name as Oren. Description and Notes are world text, so Character Name stays dimmed while one of them holds focus.
+The Prompt Chips reference's placeholder palette sits over a sample entity, Oren, so it lists both Built-in chips. Its Entity Description field belongs to Oren, and its Preview shows Entity Name as Oren. Description and Notes are world text, so Entity Name stays dimmed while one of them holds focus.
 
 ### Shared chip insertion and movement
 
@@ -332,6 +333,43 @@ The live Find reference uses the production bar and matching code against local 
 ### Writing review
 
 The new description states the reference purpose. Action labels use the production Find and Replace terminology, and dynamic status text reports the selected field or the completed local action. Sample names and prose are authored content and keep their own voice. Accessible names receive the same role review as visible controls. Standalone label-fragment grammar remains unverified under the Writing Guide, and reuse here does not certify the existing production Find, replacement, confirmation, or notice copy as fully ASD-STE100 compliant.
+
+## Pattern: Request Line
+
+**Purpose:** Show what one AI request sent and how its reply went, on one line a reader can scan down a list.
+
+**Density:** Compact. Every value uses the `meta` size.
+
+### Composition
+
+- 🏷️ **Title first.** The request's status glyph at rest, its prompt name, then its number in muted text.
+- 🧱 **One block.** Only the endpoint keeps a chip, so a routed endpoint stands out. A routed chip adds the tinted border and the route icon.
+- 📤 **What it sent.** Plain icon and value pairs follow the endpoint: reasoning, Max Output, samplers. A tooltip spells out each value.
+- 📥 **How it went.** Speed, total time, and first token sit at the right edge in fixed columns, so values line up from card to card.
+- ℹ️ **Reached Max Output** is information, so it stays muted and sits before the columns.
+
+### Production mapping
+
+| Part | Component |
+|---|---|
+| Whole line | [`AiContextRequestCard`](../src/components/aiContext/AiContextRequestCard.tsx) |
+| One value | [`RequestStat`](../src/components/aiContext/RequestStat.tsx) |
+| Words on the line | [`requestLineText`](../src/components/aiContext/requestLineText.ts) |
+
+### Responsive behavior
+
+Desktop keeps one line. On mobile, the results wrap to their own right-aligned row and the columns give up their fixed width.
+
+### State reference
+
+Open `#dev?modal=designSystem&tab=request-line`. The reference draws the production card over sample records.
+
+| State | Line shows |
+|---|---|
+| Reply still running, or stopped | No results |
+| Speed counted from the stream | `~` before the speed |
+| Speed reported by the endpoint | The speed alone |
+| Reply too short to measure | No speed |
 
 ## Pattern: Search Field
 
@@ -533,7 +571,7 @@ The live reference uses the production menu against the production entity card f
 - **Unverified:** status cases are “The tile size is small/medium/large.”, “The sample group is {Group name}.” or “The sample is not in a group.”, “Check for Updates has not run.” or “Check for Updates ran on the local sample.”, “The sample is/is not the default persona.”, and “The local sample is available/deleted.” Each is one statement in the present or past simple tense. Vocabulary and grammar evidence is not recorded; interpolated Group names are user-authored fixtures and retain their own voice.
 - **Unverified:** the accessible label “Sample entity: Mara Venn” has terminology and formatting review only; standalone label-fragment grammar is outside the listed evidence. “Mara Venn” is a fixture name and keeps its own voice.
 
-Tile Size, Add To Group, Create New Group, Remove From Group, Check for Updates, Set as Default Persona, Clear Default Persona, Default, Delete, Delete Character, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. The confirmation says “character” where the terminology rule says “entity”; the reference keeps it for parity. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
+Tile Size, Add To Group, Create New Group, Remove From Group, Check for Updates, Set as Default Persona, Clear Default Persona, Default, Delete, Delete Entity, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant.
 
 ### Item detail line
 
@@ -557,7 +595,7 @@ Tile Size, Add To Group, Create New Group, Remove From Group, Check for Updates,
 | The endpoint each request kind resolves to | `useEndpointTip` in [`useEndpointTip.ts`](../src/lib/useEndpointTip.ts) |
 | Isolated reference, on the Context Menu tab's Item Detail Line view | [`MenuDetailLineReference.tsx`](../src/components/design-system/MenuDetailLineReference.tsx) |
 
-Re-generate Narration, Re-generate Stats, Re-generate Choices, and Write Scene Tags carry the line, in the turn's More menu and its right-click menu.
+Regenerate Narration, Regenerate Stats, Regenerate Choices, and Write Scene Tags carry the line, in the turn's More menu and its right-click menu.
 
 **States:**
 
@@ -679,6 +717,35 @@ Open `#dev?modal=designSystem&tab=breadcrumb-picker`. The reference uses sample 
 
 Prompts such as "Pick a trait…" and the "Nothing to pick" and "No matches" lines are functional copy with no period. Sample names are authored content and keep their own voice. This review is local. It does not certify STE compliance.
 
+## Pattern: Icon Grid Picker
+
+**Purpose:** Pick one icon when the picture matters more than its name.
+
+**When to use it:** Only for the item icon catalog today. Lists of world content use the [Breadcrumb Picker](#pattern-breadcrumb-picker).
+
+### Composition
+
+| Part | Treatment |
+| --- | --- |
+| 🔽 Trigger | Looks like a Select trigger: the current icon, then its name, **Auto** or **None** |
+| 🔎 Search | A small `SearchField`, focused on open. It matches any word of the catalog, so "blade" finds the sword. |
+| 🔘 Auto and None | Two labeled tiles above the grid. They stay while a search runs. Auto's tile shows the icon the name gives. |
+| 🗂️ Grid | Six columns of 40px ghost tiles under the catalog's group headings. It scrolls in a `ScrollArea`. A tooltip names each icon. |
+| ✅ Picked | The picked tile uses the default button fill and `aria-pressed`. |
+| 🚫 No matches | The grid says "No matches". |
+
+A pick closes the popover. Escape closes it with no change. Each opening starts with an empty search.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Trigger, popover and grid | `ItemIconPicker` in [`ItemIconPicker.tsx`](../src/components/ItemIconPicker.tsx) |
+| The Item panel's Icon field | `ItemIconField` in [`ItemIconField.tsx`](../src/managers/ItemIconField.tsx) |
+| Isolated reference | [`ItemIconPickerReference.tsx`](../src/components/design-system/ItemIconPickerReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=icon-grid-picker`. The reference uses local state. It never reads or writes a world.
+
 ## Pattern: Lists With Controls or Metadata
 
 **Purpose:** Preserve the information and actions needed to identify, edit, order, and manage complex items.
@@ -691,6 +758,8 @@ Prompts such as "Pick a trait…" and the "Nothing to pick" and "No matches" lin
 | --- | --- |
 | Choose one simple destination | Use `CompactSelectionRow`. Do not reserve absent control columns or add sorting. |
 | Edit or order authored items | Use `SortableList`, `SortableRow`, and `EditorRow`; preserve selection, metadata, duplicate/delete controls, and the detail editor. |
+| Open settings for a whole list | Pin one `EditorRow` above the list, with no grip, no actions and a divider under it, through the List Editor adapter's `pinned` rows. It never drags, stays under any search, and shows when the list is empty. The Items tab's **Equipment Settings** uses it. |
+| Edit records that hold their own ordered rows | Use an expandable `EditorRow` (chevron, grip, name, meta summary, delete) with an attached bordered body below it. The body holds the record's fields and a nested `EditorRowList` that is its own drag boundary. Morphie's layers and the World Editor's Bodies use it. |
 | Choose and manage saved progress | Use `SaveList`; preserve the save name, timestamp, game time, Auto state, ordering, load/select action, export, and delete. |
 
 Keep controls that change the collection outside its scrolling pane when they must remain reachable. The live Save/Load reference keeps Save Name and Save above the list; the World Editor reference keeps the selected item's editor beside or below the list. Do not nest a second vertical scroller merely to imitate a scrollbar.
@@ -804,7 +873,7 @@ Closing through Cancel, Escape, or the close control changes no data and returns
 | Destructive | Delete keeps the destructive fill and confirmation semantics in the affirmative position. |
 | Overflow | The pair stacks before labels force horizontal page overflow; controls remain reachable with enlarged text. |
 
-The live Footer Actions reference demonstrates Cancel | Create Group and Cancel | Delete with production dialogs and footer controls. A constrained example uses the established Download and Embed — Works Offline label to demonstrate wrapping. Create Group starts disabled, keyboard focus moves through the negative-first action order, and the destructive example preserves its semantic treatment.
+The live Footer Actions reference demonstrates Cancel | Create Group and Cancel | Delete with production dialogs and footer controls. A constrained example uses the production Download and Embed label to demonstrate wrapping. Create Group starts disabled, keyboard focus moves through the negative-first action order, and the destructive example preserves its semantic treatment.
 
 ### Writing review
 
@@ -812,11 +881,11 @@ The reference descriptions and local status messages were reviewed by copy role 
 
 ## Functional writing
 
-Keep setting descriptions verb-first or in second person, no more than 12 words, with no period on a one-sentence line. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide).
+The wording of every label, hint, tooltip, and ⓘ follows the [Writing Guide](Writing-Guide). This section covers only where copy sits. Put necessary additional detail behind `HintInfo`.
 
 ### Field help order
 
-A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line, using only labels and registered terms as the [Writing Guide's help-line test](Writing-Guide) requires. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
+A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line, as the [Writing Guide's help-line test](Writing-Guide) sets out. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
 
 Two placements sit beside a control instead of above it:
 
@@ -833,9 +902,9 @@ The foundation's [review record](../docs-internal/designs/design-system/workflow
 
 **Rule:**
 
-- The strip is one row of equal columns. Every tab gets the same width, whatever its label's length.
+- The strip fills its row. Each tab takes its own width, and the spare room is shared evenly between them.
 - Each tab carries an icon and a name. The name is always on `aria-label`, so it reaches assistive technology and role queries whether or not it is drawn.
-- The label gives way to its icon wherever the pane is narrow. The icon never shrinks.
+- Labels fold by the strip's own room, as in the [Collapsing Segmented Control](#pattern-collapsing-segmented-control): every label, then the selected tab's, then icons. The icon never shrinks.
 - The strip is named, because the editor's own strip is on the same screen and can carry a tab of the same name.
 - The strip is a fixed header row. Only the tab's body scrolls, below it, so the tabs never leave the panel.
 - Mode-only tabs are filtered out of the registry before the strip renders, not disabled in place.
@@ -1035,6 +1104,38 @@ The live reference draws the World Editor's registry as the rail beside sample p
 - **Collapse** and **Expand** are labels in Title Case.
 - **Unverified:** the reference's tab bodies, description, and option labels have terminology review only; vocabulary and grammar evidence is not recorded.
 
+## Pattern: Allowance Ring
+
+**Approved by the user on 2026-11-02.** A small ring between Help and Send fills as the week's Formamorph AI allowance is used. Selecting it opens a popover with the usage lines and the breakdown, or the state's reason and actions.
+
+**Density:** Compact. A 40px outline icon button holding a 24px ring. Help and the ring share the plain outline. Help's icon and Send's icon are 20px in this row.
+
+**Breakdown bars:** Approved by the user on 2026-11-02. Each group in `HostedBreakdown` has a 4px primary bar over a muted track, as wide as its percent. Nested prompt rows have no bar.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The ring and its popover | `AllowanceRing` in [`AllowanceRing.tsx`](../src/components/game/AllowanceRing.tsx), with `AllowanceRingGlyph` in [`AllowanceRingGlyph.tsx`](../src/components/game/AllowanceRingGlyph.tsx) |
+| The figure, its hold and its color | [`allowanceFigure.ts`](../src/lib/hostedAi/allowanceFigure.ts) |
+| Popover content | `HostedPresetStatus` in [`HostedPresetStatus.tsx`](../src/components/modals/HostedPresetStatus.tsx) |
+| Breakdown rows and bars | `HostedBreakdown` in [`HostedBreakdown.tsx`](../src/components/modals/HostedBreakdown.tsx) |
+| Isolated reference | [`AllowanceRingReference.tsx`](../src/components/design-system/AllowanceRingReference.tsx) |
+
+### Responsive behavior
+
+The ring keeps its size at every width. The popover opens above the input, aligned to the ring's end, and scrolls when the height runs out.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Below the first threshold | Primary arc over a muted track. |
+| From a lower threshold | Warning arc. |
+| From the highest threshold, and at 100% | Destructive arc. |
+| No usage figure (paused, locked, app-derived) | The track alone. The accessible name holds no percent. |
+| During a turn | The figure holds, and moves when the turn ends. |
+
 ## Pattern: Surface App Bar
 
 **Purpose:** Put a surface's identity, its everyday tools and its whole-surface actions in one row above everything they act on.
@@ -1126,7 +1227,7 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 - Only the name truncates. The verb, the type and the chip always show in full.
 - Mute the verb and type with opacity, not a gray color. Opacity stacks with an undone row's dimming, so a muted part never looks brighter than its row.
 - **A row with no name has one line:** the verb, the type and the field chip, not muted. A labeled batch shows its label.
-- The row's accessible name is the whole label in its natural order, such as "Edit Entity Mara: Player Description".
+- The row's accessible name is the whole label in its natural order, such as "Edit Entity Mara: Player-Facing Description".
 - **A cut-off row has its own tip,** not the shared `Tip`. It opens on the left on hover and on keyboard focus, and shows the same parts in the same order. The name wraps and the chip wraps under it, 18rem wide at most. A row that shows in full opens none. The tip adds nothing to the accessible name.
 - The popover is 20rem wide, at most 90% of the window.
 - Mark the current row with the accent fill and a **Now** tag. Mark the head with the fill only.
@@ -1175,9 +1276,9 @@ The live reference draws both layouts over one sample history, with buttons to a
 - One card renders a turn's narration in both layouts. The card owns its surface, its right-click menu, and its action row.
 - One action list feeds the row and the menu. Every row icon is also a menu item, and **More** opens that menu for the menu-only actions. **Generate Scene Image** is available only in **More** and the context menu in Pages and Chat.
 - The row is absent while the turn streams and when the list is empty. It does not show disabled icons in place of a live turn.
-- **Re-generate Stats** sits to the right of **Edit Stats** in the Stats panel, with a tooltip on each button. It also remains in the narration menus. The panel disables regeneration on past turns and while a reply or scene render is running.
+- **Regenerate Stats** sits to the right of **Edit Stats** in the Stats panel, with a tooltip on each button. It also remains in the narration menus. The panel disables regeneration on past turns and while a reply or scene render is running.
 - A turn with no scene image shows no plate. There is no empty box.
-- Choices in Pages are unnumbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers. **Re-generate Choices** waits for the latest turn to have narration; it remains available after a turn returns no choices. **Jump to Latest** stays hidden before the opening narration.
+- Choices in Pages are unnumbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers. **Regenerate Choices** waits for the latest turn to have narration; it remains available after a turn returns no choices. **Jump to Latest** stays hidden before the opening narration.
 
 **Density:** Comfortable. The card uses the narration text size the player sets. The action row and the plate controls are compact icon buttons with tooltips.
 
@@ -1189,7 +1290,7 @@ The three parts, in reading order for Pages:
 | --- | --- | --- |
 | **Turn Card** | The plate, the action line, the reasoning block, the narration, then the action row | The caller supplies the body. Chat puts the plate under the narration and keeps the action bubble outside the card. |
 | **Scene Plate** | One turn's images, newest in view | A click zooms. Hover or focus within shows previous, the count, next, and delete. One image shows delete only. |
-| **Choice rows** | Unnumbered choices, then a Continue action; an inset muted line with centered, muted “or” separates them | Continue and **Re-generate Choices** share a segmented row with a muted vertical divider and no separate icon-button border. Re-generate sits below the choices when Continue is hidden. No rule appears when Continue is the only choice. |
+| **Choice rows** | Unnumbered choices, then a Continue action; an inset muted line with centered, muted “or” separates them | Continue and **Regenerate Choices** share a segmented row with a muted vertical divider and no separate icon-button border. Regenerate sits below the choices when Continue is hidden. No rule appears when Continue is the only choice. |
 
 - The action row starts with the turn number, then the icon actions, then **More** for the menu-only actions.
 - The action line in Pages is the player's text with a left rule in the primary color and the muted foreground. It is upright, so the player's italics and quote color show. It has its own right-click menu, and that event does not reach the card's menu.
@@ -1207,7 +1308,7 @@ The three parts, in reading order for Pages:
 | Choice rows | `ChoiceRows` in [`ChoiceRows.tsx`](../src/components/game/ChoiceRows.tsx) |
 | Chat's bubble choices and the shared choice text | `ChatChoices` and `ChoiceText` in [`ChatChoices.tsx`](../src/components/game/ChatChoices.tsx) |
 | Pages action line with its own menu | `ActionLine` in [`ActionLine.tsx`](../src/components/game/ActionLine.tsx) |
-| Stats panel's **Edit Stats** and **Re-generate Stats** pair | `StatsActions` in [`StatsActions.tsx`](../src/components/game/StatsActions.tsx) |
+| Stats panel's **Edit Stats** and **Regenerate Stats** pair | `StatsActions` in [`StatsActions.tsx`](../src/components/game/StatsActions.tsx) |
 | Pages host | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
 | Chat host | [`ChatNarration.tsx`](../src/components/game/ChatNarration.tsx) |
 | Layout parity guard | [`GamePanels.pagesCard.test.tsx`](../src/components/game/GamePanels.pagesCard.test.tsx) |
@@ -1471,7 +1572,7 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 ### Composition
 
 - 🏷️ **Help tab.** A launcher that stays flat against one of the four screen edges and is round on its inner side. Its label reads top to bottom on the right edge, bottom to top on the left edge, and left to right on the top and the bottom. It is never upside down. A press opens or closes the window. A drag, or an arrow key while the tab has focus, moves it. The tab shows the accent fill while the window is open.
-- 🪟 **Floating window.** A title bar with the name, **Wide View**, **Open Guide**, a **⋮** menu and **Close**. **Wide View** keeps one icon and stays lit while on. **Open Guide** shows the Guide full screen: the rail with the search field and the contents beside the reader. The window waits under it, and both share one view, so the open section carries both ways. The menu holds **Clear Conversation**, the **Chat Style** radio items (**Auto**, **Bubble**, **Minimal**, **Full**), the **Mascot Position** radio items (**Beside**, **Below**, **Auto**), **Open Guide**, **Open Wiki**, **AI Context** and **Settings**, in that order in every chrome. **Open Wiki** asks first in a small dialog, with a **Don't Ask Again** checkbox, then opens the wiki page of the section the reader shows, or the wiki home. The full-screen Guide has the same **Open Wiki** button in its header. Only the framed window has the title bar button. The mobile-size sheet and the bubble chrome leave out **Mascot Position**: the sheet draws no mascot, and Bubble places the mascot itself. It renders in the window's layer, and hangs from the corner of the button that has room, so it always comes from the button. **Close** is a bare X in the dialog style. A dialog opened from the menu closes the window and reopens it on close. The title bar moves the window. A grip at the bottom right corner resizes it. The window stays whole on the screen. Only the tab snaps to an edge.
+- 🪟 **Floating window.** A title bar with the name, **Wide View**, **Open Guide**, a **⋮** menu and **Close**. **Wide View** keeps one icon and stays lit while on. **Open Guide** shows the Guide full screen: the rail with the search field and the contents beside the reader. The window waits under it, and both share one view, so the open section carries both ways. The menu holds **Clear Conversation**, the **Chat Style** radio items (**Auto**, **Minimal**, **Full**), the **Mascot Position** radio items (**Above**, **Below**, **Inside**, **Outside**), **Open Guide**, **Open Wiki**, **AI Context** and **Settings**, in that order in every chrome. **Open Wiki** asks first in a small dialog, with a **Don't Ask Again** checkbox, then opens the wiki page of the section the reader shows, or the wiki home. The full-screen Guide has the same **Open Wiki** button in its header. Only the framed window has the title bar button. The mobile-size sheet leaves out **Mascot Position**, because it draws no mascot. Under Bubble, the menu offers only **Inside** and **Outside**. It renders in the window's layer, and hangs from the corner of the button that has room, so it always comes from the button. **Close** is a bare X in the dialog style. A dialog opened from the menu closes the window and reopens it on close. The title bar moves the window. A grip at the bottom right corner resizes it. The window stays whole on the screen. Only the tab snaps to an edge.
 - ↔️ **Two widths.** Narrow (400px) shows one part at a time behind three tabs: **Ask**, **Search** and **Guide**. Wide (720px) shows a rail with search and contents beside the conversation or the reader. **Wide View** swaps them, and the grip crosses the same line at 560px. The conversation, the search text and the open section carry over.
 - 💬 **Conversation.** A scrolling log of questions and answers above the question field. It stays at its end while an answer comes in, unless the player scrolled up. The question field is one line and grows with its text while focused, as the game's action box does.
 - 🙋 **Question bubble.** The player's question, right-aligned on `muted`, with an 8-unit left margin so it never spans the full width.
@@ -1702,7 +1803,7 @@ Open `#dev?modal=designSystem&tab=supporter-flair` for the light and dark panels
 
 ### Writing review
 
-The badge labels are **Supporter**, **Supporter+**, and the top tier's working label **Supporter++**. Copy says Profile Image, never avatar.
+Each badge shows its tier's Patreon name, or **Member** when no name is known. Copy says Profile Image, never avatar.
 
 ## Pattern: Preset Header
 
@@ -2141,12 +2242,73 @@ The Selected step is sized for the widest label, so a new pick never changes the
 - 🧩 **Component.** `CollapsingToggleGroup` in [`collapsing-toggle-group.tsx`](../src/components/ui/collapsing-toggle-group.tsx), built on `ToggleGroup` at its `h-10` size. The production use is the main menu's top bar in [`MainMenu.tsx`](../src/views/MainMenu.tsx).
 - 📏 **Room, not viewport.** It fills its parent and folds by that width. It never takes less than its icons-only width, so it can't overlap the controls beside it.
 - 💊 **One pill.** A single pill slides and resizes to the selected option. Labels open and close on the same 200 ms `cubic-bezier(0.2, 0, 0, 1)` as the Nav Rail. With reduced motion, both change at once.
+- 🎞️ **One motion.** Every strip takes its pill, label and width motion from [`segmentMotion.ts`](../src/components/ui/segmentMotion.ts). That curve is Material 3's Standard; Carbon, Fluent 2, Material 3 Emphasized Decelerate and spring curves were tried against it and lost.
 - 💬 **Tips.** An option that shows only its icon shows its name in a `Tip` on hover or focus. An option whose label shows has no tip.
 - 🎨 **Icons.** Options use the app's shared icons for each type, such as `KIND_TAB_ICONS` for library types.
 - 📱 **Mobile.** Below `md`, the main menu uses its bottom tab bar instead.
 - 🔊 **Name.** The group carries an `aria-label`. Each option keeps its label text, so a screen reader reads it when the label is folded.
 
 Open `#dev?modal=designSystem&tab=collapsing-segmented` for the library tabs in a wide and a narrow cell, with local state.
+
+### In the main menu top bar
+
+✅ Approved by the user on 2026-10-30.
+
+The top bar folds its parts together, in a fixed order, by whether its three cells fit side by side. No part folds by its own leftover room.
+
+| Order | Part | Steps |
+|---|---|---|
+| 1 | Library tabs | Every label → selected label → icons |
+| 2 | Action buttons | A row → one menu button. The right menu joins that menu. |
+| 3 | Event badges | One chip per event → one chip with a count, which opens the chips in a list |
+
+- 🎯 **Center drifts first.** The action buttons sit at the bar's center while there is room. They slide toward the side with free space before anything folds.
+- 📏 **Widest labels.** The action buttons are measured at the library tab with the longest button labels, so a new pick never changes a step.
+- 🧩 **Component.** `useHeaderFold` in [`useHeaderFold.ts`](../src/lib/useHeaderFold.ts) measures hidden copies of every step. `headerFold` in [`headerFold.ts`](../src/lib/headerFold.ts) holds the order. `EventBannerCount` in [`EventBanner.tsx`](../src/components/events/EventBanner.tsx) is the badges' count step.
+
+### As a tab strip
+
+Editor detail panels, the game's side panels, the library editors' headers and the narrow Formaquestion window use the same three steps on a strip of tabs. The editor reaches it through `PanelTabsList` (see [Panel Tab Strip](#pattern-panel-tab-strip)); the library editors through `EditorModalShell`.
+
+- 🧩 **Component.** `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) keeps the tab and panel roles. It shares its measuring with the segmented control through `useCollapsingSegments`.
+- ↔️ **Fills its row.** Unlike the segmented control, the tabs stretch to the strip's full width.
+- 🎯 **Or hugs its tabs.** With `hug`, the strip keeps its full-label width and stays centered. In the library editor header, the title truncates to 128px first, then the strip folds.
+- 🆕 **New tabs land.** A tab that arrives or renames after mount, such as the game's Inventory tab or the log count, snaps to its step without a slide.
+
+## Pattern: Body Layout
+
+**Purpose:** Place boxes on a figure, next to the list rows they belong to.
+
+> ✅ **Approved.** The user chose variant B of the prototype on 2026-11-01 (Body Layouts Q46), and approved the Humanoid and fox-like Quadruped outlines the same day (Body Layouts ticket 04).
+
+**Density:** A 260px figure beside rows that keep their usual height. Below that room, the figure sits above the rows.
+
+### Composition
+
+- 🧍 **Figure.** A bordered stage at the Body's aspect, with a theme-colored outline that stretches with it. Plain draws no outline.
+- ⬜ **Boxes.** A hairline frame on a translucent card fill, with the slot and unit centered. A smaller box always draws above a larger one, and selection never reorders them.
+- ⚪ **Handles.** The selected box has four corner dots that draw above every box. A coarse pointer gets a larger target than the dot.
+- ➖ **Bottom edge.** A pill on the stage's bottom edge sets the aspect. A drag shows on a local copy and writes once on release, so it is one History step.
+- 🧲 **Snap guides.** A primary hairline across the stage shows the line a drag snapped to.
+- 🔗 **Row link.** A selected box selects its row. A row click selects its first box, then each next one.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The editor | `BodyLayoutEditor` in [`BodyLayoutEditor.tsx`](../src/managers/BodyLayoutEditor.tsx) |
+| The outlines | `BodyBackdropArt` in [`BodyBackdropArt.tsx`](../src/components/BodyBackdropArt.tsx) |
+| Sync, stacking, snap and clamps | [`bodyLayout.ts`](../src/lib/bodyLayout.ts) |
+| Isolated reference | [`BodyLayoutReference.tsx`](../src/components/design-system/BodyLayoutReference.tsx) |
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Selected | Primary border and a primary/25 fill, plus handles |
+| Hover | Primary border |
+| Focus | Shared inset ring. Arrow keys move the box, and Shift + arrow keys resize it |
+| Touch | Boxes and handles take touch drags. The stage around them still scrolls the page |
 
 ## Pattern: Inventory Tab
 
@@ -2159,45 +2321,131 @@ Open `#dev?modal=designSystem&tab=collapsing-segmented` for the library tabs in 
 ### Composition
 
 - 🗂️ **Owner card.** The played Persona's `PanelOwnerCard`, with the You pill. Under None it reads **You** with no pill.
-- 🛡️ **Equipped.** One row per world slot. The slot name sits left in meta text, with "1 of 2" under it when the slot holds more than one. The equipped items sit right, each with an Unequip button. A free slot reads **Empty**.
-- 🎒 **Carried.** One row per Item Copy: the name, ×count for a stack, a lock for Bound, and a uses line ("2 of 3 uses" for Uses 2+, "No uses left" for a spent Uses 1 copy). Icon buttons on the right: Use (only for an item with Uses, After Use effects or a When Used script), Equip (only for an item with a slot), Drop and Give.
+- 🛡️ **Equipped.** The [Body Layout](#pattern-body-layout) figure, with no labels, up to 320px tall. It takes a third of the width, between 120px and its full width, with the Equipped list beside it at every panel width. A Body wider than tall stacks: the figure centered, up to the panel's width, over the list.
+- 📋 **Equipped list.** One row per Item Copy in a box: the same icon or image as the box, the name on one line with its full text in a tooltip while cut, and the slot names as the second line. Use (when it applies) and Unequip act in one click. The name's button covers the row and opens the item popup. With nothing equipped it reads "Nothing is equipped."
+- 🖼️ **Filled box.** The item's icon, with its name in the tooltip. An item set to None shows its image at its own aspect, in a frame that fits it. With no image, or one that fails, None is a plain filled box. An All of item draws in each box it fills. The frame opens a popover with the item's row, and only the frame takes the pointer, so a tap on the margin reaches the box below.
+- ⬜ **Empty box.** A blank outline. Hover or tap shows the slot's name.
+- 🎒 **Carried.** One row per Item Copy: the same icon or image as the box, the name, ×count for a stack, a lock for Bound, and a uses line ("2 of 3 uses" for Uses 2+, "No uses left" for a spent Uses 1 copy). Icon buttons on the right: Use (only for an item with Uses, After Use effects or a When Used script), Equip (only for an item with a slot), Drop and Give.
 - ✨ **Use.** A sparkles icon button on carried and equipped rows. It spends one use, and turns off at zero uses.
+- 💰 **Money.** Above Carried, while the played Persona has a Currency with coins or a visible stat. One row per Currency, built like an Effects row: the Currency's name, and its amount in meta text at the end.
 - ⏳ **Effects.** Between Carried and Here, only while an effect runs. One row per running After Use effect, soonest end first: the item name, the effect under it in meta text ("Strength +2", or the trait's name), and "1 h 20 min left" on the right. A hidden Item Copy's effect reads **An item**.
-- 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the present entities as `CompactSelectionRow`s, or "Nobody is here."
+- 🔢 **Count.** Drop on one Item Copy acts at once. Drop on a stack and Give open a popover. It holds a number field that starts at 1, an **All** button and "of N". Give adds the entities in the scene, each under its label, as `CompactSelectionRow`s, or "Nobody is in the scene."
 - 🔒 **Bound.** Drop and Give stay in place, disabled, with the reason in their tooltips.
-- 🏷️ **Tab strip.** The side panels' strips show labels only while every label fits its cell. Otherwise each tab shows its icon, and the tooltip names it.
+- 🔍 **Item popup.** The name's button covers the row, and the row's buttons sit above it. It opens an [Entity Popup](#pattern-entity-popup)'s layout with the item's image, description, with State, count and uses beside its name. With no image it is a short 520px window.
+- 🏷️ **Tab strip.** The side panels' strips are [collapsing tab strips](#as-a-tab-strip): every label, then only the selected tab's, then icons alone. A folded tab's tooltip names it.
 
 ### Production mapping
 
 | Need | Component |
 | --- | --- |
 | The tab body | `InventoryTab` in [`InventoryTab.tsx`](../src/components/game/InventoryTab.tsx) |
+| The figure | `BodyDoll` in [`BodyDoll.tsx`](../src/components/game/BodyDoll.tsx) |
 | Its data and its one write | `useInventoryPanel` in [`useInventoryPanel.ts`](../src/components/game/useInventoryPanel.ts), through `applyInventoryOps` in [`inventory/index.ts`](../src/lib/inventory/index.ts) |
-| The measured tab strip | `PanelTabList` and `PanelTab` in [`PanelTabList.tsx`](../src/components/game/PanelTabList.tsx) |
+| The measured tab strip | `CollapsingTabsList` in [`collapsing-tabs-list.tsx`](../src/components/ui/collapsing-tabs-list.tsx) |
 | The host | `RightPanel` in [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| The item popup, also opened from `EntityEquipped` in [`EntityEquipped.tsx`](../src/components/game/EntityEquipped.tsx) | `ItemModal` in [`ItemModal.tsx`](../src/components/modals/ItemModal.tsx) |
 | Isolated reference | [`InventoryTabReference.tsx`](../src/components/design-system/InventoryTabReference.tsx) |
 
 ### Responsive behavior
 
-The tab fills the right panel on desktop and the **Status** sheet on mobile. Rows keep their buttons; long names truncate first. Popovers align to the button's end and stay in the viewport. At 1280px and on a 390px phone the four-tab strip shows icons; at 1920px it shows labels.
+The tab fills the right panel on desktop and the **Status** sheet on mobile. Rows keep their buttons; long names truncate first. Popovers align to the button's end and stay in the viewport. At 1920px the four-tab strip shows every label. From 1600px to 1100px it shows the selected tab's label only, and at 1024px icons alone.
 
 ### State reference
 
 | State | Treatment |
 | --- | --- |
-| Turn running or past page | Every button is disabled, and an open count popover closes. |
+| Turn running or past page | Every action button is disabled, and an open count popover closes. A figure's boxes still open, with their actions disabled. |
 | Bound | Drop and Give disabled; Equip still works. |
-| Hidden Item Copy | Never shown. A hidden equipped item still counts in its slot's fill. |
-| Equipped row | Use (when it applies) and Unequip. Drop and Give act on carried rows. |
+| Hidden Item Copy | Never shown. A hidden equipped item takes capacity but draws in no box, so its box reads as empty. |
+| Equipped row | In the list and in the popover: Use (when it applies) and Unequip. Drop and Give act on carried rows. The popover's row wraps its name, keeps the uses line, and its name opens the item popup. |
+| No boxes on the Body, or no Body | No **Equipped** section. An equipped item with no box lists under **Carried**, with Unequip. |
 | Zero uses | Use stays in place, disabled: "Use Ash Wand: no uses left". |
 | Nothing carried | "You carry nothing." |
-| No items in the world | No Inventory tab. |
+| No items and no **Money** rows in the world | No Inventory tab. |
 
 ### Writing review
 
 Button names are verb-first and name the item: "Equip Greatsword", "Drop Ash Wand: Bound". Status lines are short sentences. Item names are authored and keep their own voice.
 
 Open `#dev?modal=designSystem&tab=inventory-tab`, or `#dev?view=gameViewer&fixture=items&tab=inventory` for the tab in a game.
+
+## Pattern: License Rows
+
+**Purpose:** Let a player scan hundreds of named texts and read one.
+
+> ✅ **Approved.** The user approved the row on 2026-11-02 from frames of the Licenses tab.
+
+- 📄 **Row.** A full-width button with the name on the left and a chevron on the right, with a bottom border between rows.
+- 📖 **Open.** The text renders as markdown under the row. A closed row mounts no text.
+- 🔎 **Filter.** A search field above the list matches names, and each section heading stays only while it has rows.
+- 🧩 **Component.** `LicensesPanel` in [`LicensesPanel.tsx`](../src/components/modals/LicensesPanel.tsx). Use the collapsible section for a short list with heavier titles.
+
+Open `#dev?view=mainMenu&modal=credits&tab=licenses`.
+
+## Pattern: Entity Popup
+
+**Purpose:** Show an entity's picture and everything the player can read about it at once, in game.
+
+> ✅ **Approved.** The user approved the layout on 2026-11-01 from a mock on `prototype/entity-popup-layout`.
+
+**Density:** The picture leads. The text column holds the description, its actions, Equipped and the sound.
+
+### Composition
+
+- 🖼️ **Picture.** The left 3/5, at its own aspect and top-aligned. Its corner buttons and gallery controls stay on it.
+- 📝 **Text.** The right 2/5. It starts level with the picture and scrolls on its own.
+- 📐 **Dialog.** 1040px wide at most, and 90% of the screen tall.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The body | `EntityCardBody` with `sideBySide` in [`EntityCard.tsx`](../src/components/game/EntityCard.tsx) |
+| Met entities | `EntityModal` in [`EntityModal.tsx`](../src/components/modals/EntityModal.tsx) |
+| Strangers | `StrangerModal` in [`StrangerModal.tsx`](../src/components/modals/StrangerModal.tsx) |
+| Items | `ItemModal` in [`ItemModal.tsx`](../src/components/modals/ItemModal.tsx) |
+| Isolated reference | [`EntityPopupReference.tsx`](../src/components/design-system/EntityPopupReference.tsx) |
+
+### Responsive behavior
+
+Two columns start at the `lg` breakpoint (1024px). Below it the picture sits above the text and takes 3/4 of the height. The tour's In Play pane has no fixed height, so it leaves `sideBySide` off and always stacks.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Portrait art | Fills the column's height. |
+| Landscape art | Fills the column's width, with empty space below it. |
+| Avatar or 3D model | Fills the column. |
+| No picture | The text takes the full width. |
+| Long text | The text column scrolls and the picture stays in place. |
+
+Open `#dev?modal=designSystem&tab=entity-popup`, or `#dev?view=gameViewer&fixture=entityStats&tab=entities` and select an entity's name twice.
+
+## Standard: In-Use Delete
+
+**Purpose:** Make every editor delete behave the same way, whether or not other records use the thing.
+
+### The three cases
+
+| The record is... | Delete does... |
+| --- | --- |
+| 🟢 **Used by nothing** | Deletes at once. No confirm. |
+| 🔗 **Hard-referenced** by picks, links or slot references | Opens a `ConfirmDialog` that counts the references (or names them), then clears them on confirm. |
+| 🔴 **Soft-referenced** by requirement rows, scripts or text chips | Deletes. The references stay, turn red, and the Test Bench reports them. |
+
+A record with both kinds follows the hard case. The confirm counts only the hard references.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The confirm text | `usedByText` in [`usedByText.ts`](../src/lib/usedByText.ts). It takes counted reference kinds and returns `null` at zero uses |
+| The dialog | `ConfirmDialog` in [`ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx) |
+
+### Writing review
+
+The line reads "This also deletes its link." for one reference and "This also deletes its 2 links and 1 pick." for several kinds. Zero uses has no line, and no dialog opens.
 
 ## UI and prototype workflow
 

@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-Stats are the numbers your world tracks: health, coin, reputation, or anything your world needs. Each stat has a value between a **Min** and a **Max**. The AI reads your stats on every turn. A stat on the **Stats** tab is a *global stat*: no one owns it. A persona or an entity can own stats of its own.
+Stats are the numbers your world tracks: health, coin, reputation, or anything your world needs. Each stat has a value between a **Min** and a **Max**. The AI reads your stats on every turn. A stat on the **Stats** tab is a *global stat*: no entity owns it. A persona or an entity can own stats of its own.
 
 ## Why it exists
 <!-- keywords: point of meters, do numbers affect story, narrator ignores values, consequences, low energy effects, narrator lists numbers -->
@@ -16,7 +16,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 ## How the AI Tracks Stat Changes
 <!-- keywords: stat updates, stat tracker, who owns a stat, owner blocks, player character block, in scene block, global stats, persona stats, reply keys, json reply, global stat, city stat, faction meter, wrong character stat moved, text fallback -->
 
-After each narration, a separate request reads the turn and records which stats changed. The request shows the stats in blocks, one block for each owner. The global stats come first, so the persona's block is the most recent.
+After each narration, a separate request reads the turn and records which stats changed. The request shows the stats in blocks, one block for each owner. The global stats come first, then the persona's block, then the entities in the scene.
 
 | Block | Holds | Reply key |
 |---|---|---|
@@ -34,7 +34,7 @@ After each narration, a separate request reads the turn and records which stats 
 
 On an endpoint that can't take that format, the request falls back to stat-change lines. The fallback covers the persona's stats and the global stats. Stats of other entities don't update there. A custom preset is sent as written. A world's own **Stats** prompt is sent as written too, with your preset's user message.
 
-> 💡 A saved world prompt for **Stats** or your own **Stat Updates** preset keeps its own layout. To get entity stats back in it, see [How to Get Entity Stats Into a Custom Stat Prompt](Prompts#how-to-get-entity-stats-into-a-custom-stat-prompt).
+> 💡 A saved world prompt for **Stats** or your own **Stat Updates** preset keeps its own layout. To get entity stats back in it, see [How to Get Entity Stats Into a Custom Stat Prompt](Prompt-Chips#how-to-get-entity-stats-into-a-custom-stat-prompt).
 
 ## How to Add a Stat
 <!-- keywords: attribute, health, hp, meter, number, bar, create, new, variable, gauge, mana, counter, currency, gold, score, hunger, resource, skill level, track money -->
@@ -42,12 +42,18 @@ On an endpoint that can't take that format, the request falls back to stat-chang
 
 1. Open the **Stats** tab.
 2. Type the stat's name in the **Filter Stats** box.
-3. Select the **+** button (**Add to Stats**). In Advanced mode, choose **Add Stat** from its menu. The new stat opens in the panel.
+3. Select the **Add to Stats** icon button (+). In Advanced mode, select **Add Stat** in its menu. The new stat opens in the panel.
 4. Set **Base Value**, **Min** and **Max**.
 5. Write its **Description**.
 6. Select **Save**.
 
-> 💡 With the box empty, the new stat is named "New Stat". A new stat starts at 0 on a 0–100 range, with three descriptors: low, medium and high.
+A new stat starts like this:
+
+- With the box empty, it is named "New Stat".
+- It starts at 0 on a 0–100 range.
+- It has three descriptors: "*Name* is low" up to 30, "*Name* is medium" up to 60 and "*Name* is high" up to 100. Rename the stat, and the descriptors you haven't edited follow the new name.
+
+Use the row's buttons to duplicate or delete a stat.
 
 ## How to Make a Stat a Percentage
 <!-- keywords: percent, 0 to 100, ratio, show as %, fraction, out of hundred, completion meter, locked range -->
@@ -74,13 +80,16 @@ The player no longer sees the stat. The AI still reads it, and its Regen and cod
 **Advanced mode only.**
 
 1. Open the **Stats** tab.
-2. Select the **+** button (**Add to Stats**), then **Add Group**.
-3. Name the group. Add an **AI-Facing Description** if you want one.
+2. Select the **Add to Stats** icon button (+), then **Add Group**.
+3. Name the group. Optional: add an **AI-Facing Description**.
 4. Drag a stat onto the group. Drag a group right to nest it in the group above.
 
-The same steps work on an entity's own **Stats** tab, for the stats that entity owns.
+The same steps work on an entity's own **Stats** tab, for the stats that entity owns. There the icon button is **Add to** *entity name*.
 
-Groups only organize your stats. A group has no pick count, mode or gate. In the game, the stat panel shows each group as a heading that collapses. A group with no visible stat is left out.
+Groups only organize your stats. A group has no pick count, mode or gate.
+
+- In the game, the stat panel shows each group as a heading that collapses.
+- A group with no visible stat is left out.
 
 To group stats only for yourself, clear **Show Heading to AI** on the group. The AI then reads the group's stats as if they had no group, and a group inside it moves up one level. The stat panel still shows the group.
 
@@ -95,12 +104,12 @@ To group stats only for yourself, clear **Show Heading to AI** on the group. The
 1. Select the stat, then open its **Descriptors** tab.
 2. In the empty row at the bottom, type the top of the band in **Up to**.
 3. Type the word or phrase in **New Description**.
-4. Select the **+** button (**Add Descriptor**).
+4. Select the **Add Descriptor** icon button (+).
 
 ## What the AI sees
 <!-- keywords: what gets sent, ai sees exact number, send only words, too many meters, context budget, token cost, hide numbers from ai -->
 
-Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompts#the-chip-editor) decides what is sent with it:
+Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompt-Chips#the-chip-editor) decides what is sent with it:
 
 | Piece | Adds |
 |---|---|
@@ -108,7 +117,7 @@ Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompts#the
 | **Descriptor** | The matching Stat Descriptor, a word for the current level |
 | **Description** | The stat's **Description** |
 
-Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options](Prompts#chip-options). At least one stays checked. The **Entities** and **Persona** chips have the same row for the stats they send.
+Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options](Prompt-Chips#chip-options). At least one stays checked. The **Entities** and **Persona** chips have the same row for the stats they send.
 
 > ⚠️ **Every active stat is sent on every turn.** Stats use your context budget all the time. Three stats that matter are better than twelve that don't.
 
@@ -167,7 +176,13 @@ A percentage stat shows only the first two, because its Max is always 100.
 
 A descriptor turns a number into a word, such as `Winded` or `Exhausted`. The AI gets that word when the chip's **Descriptor** piece is on. A descriptor takes placeholder chips, so a band can name the rolled town or the rolled rival.
 
-Each descriptor has a **threshold** and a **Description**. The coverage bar above the rows shows each band from Min to Max, and it marks where the stat starts. It shows when the stat has one descriptor at least. The range above your top band shows in red with the label "no status". In that range the AI gets no status. Each row says what it covers.
+Each descriptor has a **threshold** and a **Description**. Each row says what it covers.
+
+The coverage bar above the rows shows each band from Min to Max:
+
+- It shows when the stat has at least one descriptor.
+- It marks where the stat starts.
+- The range above your top band shows in red with the label "no status". In that range the AI gets no status.
 
 > ⚠️ **A threshold is the top of its band, and the lowest band that fits the value wins.** The game reads descriptors from low to high, in any list order. So `30 → Barren` covers Min to 30, and a `60` row covers the values above 30, up to 60. Give your highest descriptor a threshold of your **Max**, or a value above it gets no descriptor.
 
@@ -191,7 +206,7 @@ When you switch, your numbers convert, so no band moves. The choice only changes
 <!-- keywords: scripts tab, stat code, dynamic value calculation, javascript, script, formula, derived from another, automatic math, custom logic, programming, ai change overwritten, code box, computed, add script, timing -->
 <!-- route: worldEditorStat.code -->
 
-The **Scripts** tab lists the stat's scripts. A script is one box of JavaScript with a timing. Select **Add Script** to add one. Pick its timing in the **Timing** menu, and give it a name if you like. Each box has its own **Test Code** and **Templates** buttons. **Templates** opens a list of code shapes to insert.
+The **Scripts** tab lists the stat's scripts. A script is one box of JavaScript with a timing. Select **Add Script** to add one. Pick its timing in the **Timing** menu. Optional: give it a name. Each box has its own **Test Code** and **Templates** buttons. **Templates** opens a list of code shapes to insert.
 
 | Timing | Runs |
 |---|---|
@@ -201,7 +216,15 @@ The **Scripts** tab lists the stat's scripts. A script is one box of JavaScript 
 | **At Game Start** | Once on the opening turn of a new game |
 | **When a Trait Switches** | Each time a trait turns on or off in play |
 
-The turn order is: At Game Start on the opening turn, Before the AI, the AI's stat changes, Regen, After the AI. During AI Output runs while the narration streams. When a Trait Switches runs right after any step that switches a trait. An empty script is skipped, and the manual value stays.
+A turn runs in this order:
+
+1. At Game Start, on the opening turn only
+2. Before the AI
+3. The AI's stat changes
+4. Regen
+5. After the AI
+
+During AI Output runs while the narration streams. When a Trait Switches runs right after any step that switches a trait. An empty script is skipped, and the manual value stays.
 
 A script can do these things:
 
@@ -216,5 +239,21 @@ The code runs in an isolated sandbox with no page and no network. The editor sug
 
 > ⚠️ **A script that sets the value overwrites the AI.** The value is set again on every turn, so the AI's change to it is lost. The AI still reads the value and the description.
 
-> 📘 Full reference: [Scripts Guide](ScriptsGuide).
+> 📘 Full reference: [Scripts Reference](Scripts-Reference).
+
+## Blueprint Stats and Links
+<!-- keywords: stat blueprint, link stat, link to, share a stat, same stat on many npcs, entity stat nodes, detach stat, remove link, reset to blueprint, template stat -->
+<!-- route: worldEditor.stats -->
+
+The **Stats** tab shows a node for each entity that owns stats. Select a stat under a node to edit it there. Drag stats and groups between owners.
+
+**Advanced mode only.** A link gives a blueprint stat to an entity without a copy. Stat links follow the same model as [trait links](World-Editor-Blueprints#links).
+
+- **Make a Blueprints group.** Select the **Add to Stats** icon button (+), then **Add Blueprints Group**, and drag a stat or group into it. A blueprint stat isn't a global stat. It reaches play only through links.
+- **Link from the blueprint.** Select a blueprint stat or group, then select **Link To…** in the footer. Check each entity that gets it.
+- **Link from the entity.** On the entity's **Stats** tab, select the **Add to** *entity name* icon button (+), then **Link Stat**, and pick the blueprint. Or drag a blueprint onto an entity's node.
+- **Change it for one entity.** Select the link row, which shows a link icon, and change a field. **Reset** returns one field to the blueprint. **Reset to Blueprint** in the footer returns them all.
+- **Make it the entity's own.** Select **Detach** on the link row. The stat keeps the link's current values.
+- **Remove the link.** Select **Remove Link** on the link row. The blueprint stays.
+- **Remove the Blueprints group.** Each link becomes its entity's own stat. The linked blueprints are deleted, and the other stats move to the top level as global stats. When the group holds anything, a confirmation asks first.
 

@@ -86,7 +86,7 @@ export function LandingPulseReference() {
     <Card role="region" aria-labelledby="landing-pulse-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="landing-pulse-reference-title" className="text-heading">Landing Pulse Reference</CardTitle>
-        <CardDescription>This reference shows the ring that points at a row after a Take Me There landing.</CardDescription>
+        <CardDescription>Shows the ring that pulses on the target row of a Take Me There link</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">

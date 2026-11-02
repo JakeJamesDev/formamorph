@@ -32,9 +32,9 @@ describe('ImageSetupGuide', () => {
   it('tells a NovelAI user where the token lives, and what Stop does to Anlas', () => {
     render(<ImageSetupGuide provider="novelai" open onOpenChange={() => {}} />);
     expect(screen.getByText(/Get Persistent API Token/)).toBeInTheDocument();
-    expect(screen.getByText(/may still cost Anlas/)).toBeInTheDocument();
-    // Nothing to install — the "assumes it's already installed" line is for the local providers.
-    expect(screen.queryByText(/already installed/)).not.toBeInTheDocument();
+    expect(screen.getByText(/can still cost Anlas/)).toBeInTheDocument();
+    // Nothing to install: the "install and start it first" line is for the local providers.
+    expect(screen.queryByText(/Install and start it first/)).not.toBeInTheDocument();
   });
 
   it('renders nothing when closed', () => {

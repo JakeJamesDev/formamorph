@@ -46,7 +46,7 @@ const rows = () => treeRows().map((r) => r.textContent!);
 const row = (name: string) => treeRows().find((r) => within(r).queryByText(name, { exact: true }))!;
 
 /** One author action, then the event loop moves on as it does between two presses. */
-const step = (action: () => void) => act(async () => { action(); });
+const step = async (action: () => void) => { await act(async () => { action(); }); await new Promise((r) => setTimeout(r, 5)); };
 const removeStat = (name: string) => step(() => {
   fireEvent.click(within(row(name)).getByRole('button', { name: 'Delete' }));
 });
@@ -313,13 +313,13 @@ describe('the History popover (desktop)', () => {
     await chord('z');
     await openHistory();
 
-    expect(listRows()).toEqual(['World opened', 'Remove Stat Damp', 'Remove Stat Dread (undone)']);
+    expect(listRows()).toEqual(['World opened', 'Remove Stat Damp', 'Remove Stat Dread, undone']);
     // Each row is named by its full label, and an undone row says so.
     expect(listRow('Remove Stat Damp')).toHaveAttribute('aria-current', 'step');
     expect(listRow('Remove Stat Damp')).toHaveTextContent('Now');
     // The record's name is its own part of the row.
-    expect(within(listRow('Remove Stat Dread (undone)')).getByText('Dread')).toBeInTheDocument();
-    expect(listRow('Remove Stat Dread (undone)')).toHaveAttribute('data-undone', 'true');
+    expect(within(listRow('Remove Stat Dread, undone')).getByText('Dread')).toBeInTheDocument();
+    expect(listRow('Remove Stat Dread, undone')).toHaveAttribute('data-undone', 'true');
     expect(listRow('Remove Stat Damp')).not.toHaveAttribute('data-undone');
     expect(listRow('World opened')).not.toHaveAttribute('aria-current');
   });

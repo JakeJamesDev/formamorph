@@ -1,0 +1,76 @@
+{
+ "phonemizer": "1.2.1",
+ "wikipron": {
+  "repo": "CUNY-CL/wikipron",
+  "commit": "d282e848a211ea31cfd730f0ced8bc8cdab9e83d"
+ },
+ "method": {
+  "call": "phonemize(word, voice) from the phonemizer package, one word at a time. voice is en-us for us and en for uk, the same value Text to Speech passes for British voices.",
+  "us.unknown, us.strange, us.fantasy": "Word lowercased. Output spaces removed, then these replacements in order: ʲ>j, r>ɹ, x>k, ɬ>l, ɚ>əɹ, ɜː>ɜɹ, ː removed, eɪ>A, aɪ>I, oʊ>O, aʊ>W, ɔɪ>Y, dʒ>ʤ, tʃ>ʧ, ɐ>ə, ʔ removed.",
+  "us.known": "Word keeps its case from the set. Output is scored as it comes, with parts joined by a space.",
+  "uk": "Word keeps its case from the set. Output spaces removed, then ʲ>j, r>ɹ, x>k, ɬ>l.",
+  "scoring": "scoreCli.mjs --predictions over these strings. The strings are not stored."
+ },
+ "results": {
+  "us": {
+   "unknown": {
+    "words": 1500,
+    "tokens": 1500,
+    "coverage": 100,
+    "exact": 35.8,
+    "error": 16
+   },
+   "known": {
+    "words": 4524,
+    "tokens": 30856,
+    "coverage": 77.1,
+    "exact": 92.6,
+    "error": 1.9
+   },
+   "strange": {
+    "words": 14,
+    "tokens": 14,
+    "coverage": 35,
+    "exact": 71.4,
+    "error": 12.1
+   },
+   "fantasy": {
+    "words": 89,
+    "tokens": 89,
+    "coverage": 91.8,
+    "exact": 65.2,
+    "error": 9.3
+   }
+  },
+  "uk": {
+   "unknown": {
+    "words": 1332,
+    "tokens": 1332,
+    "coverage": 88.8,
+    "exact": 42.4,
+    "error": 14.4
+   },
+   "known": {
+    "words": 4452,
+    "tokens": 30583,
+    "coverage": 76.4,
+    "exact": 91.7,
+    "error": 2.2
+   },
+   "strange": {
+    "words": 14,
+    "tokens": 14,
+    "coverage": 35,
+    "exact": 71.4,
+    "error": 12.6
+   },
+   "fantasy": {
+    "words": 87,
+    "tokens": 87,
+    "coverage": 89.7,
+    "exact": 64.4,
+    "error": 8.7
+   }
+  }
+ }
+}

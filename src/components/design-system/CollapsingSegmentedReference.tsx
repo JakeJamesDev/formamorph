@@ -6,8 +6,8 @@ import { MAIN_MENU_CARD_OPTIONS, type MainMenuCardTab } from '@/views/mainMenuTa
 
 const FRAMES = [
   { width: 480, note: 'Room for every label' },
-  { width: 280, note: 'Room for the widest label alone: only the selected tab keeps its label' },
-  { width: 200, note: 'Narrower still: icons only' },
+  { width: 280, note: 'Room for the widest label only, so only the selected tab keeps its label' },
+  { width: 200, note: 'Icons only' },
 ];
 
 /** The collapsing segmented control, through the main menu's library tabs, in a wide and a narrow cell. */
@@ -17,7 +17,7 @@ export function CollapsingSegmentedReference() {
     <Card role="region" aria-labelledby="collapsing-segmented-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="collapsing-segmented-title" className="text-heading">Collapsing Segmented Control Reference</CardTitle>
-        <CardDescription>Every label shows while they fit, then only the selected label, then icons only. The pill slides to the selection.</CardDescription>
+        <CardDescription>Shows every label while they fit, then the selected label only, then icons only. The pill moves to the selection.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {FRAMES.map(({ width, note }) => (

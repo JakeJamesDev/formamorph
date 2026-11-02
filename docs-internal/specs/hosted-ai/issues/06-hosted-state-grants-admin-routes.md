@@ -1,6 +1,6 @@
 # 06: Hosted State, Grants and Admin Routes
 
-Status: ready-for-human
+Status: done
 Base: 23a02ed
 Blocked by: 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

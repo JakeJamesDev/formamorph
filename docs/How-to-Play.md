@@ -9,13 +9,23 @@ You play by writing what you do. The AI narrator writes what happens next. The s
 <!-- keywords: play, type, write, do something, move, respond, reply, input, send, enter, talk, say, message box, text field, submit, stop generating, cancel response, interrupt, new line, chat with npc, command -->
 <!-- route: gameViewer#action-box -->
 
-1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
+1. Select the action box under the story. Its placeholder reads *Type your action. Text in [square brackets] directs the story as the author.*
 2. Write what you do, in the first person: *I ask her where the road leads.*
 3. Press **Enter**, or select the **Send** button. **Shift+Enter** starts a new line.
 
 While the AI writes, the **Send** button turns red and becomes **Stop generating**. Select it to stop the turn.
 
 > 💡 Success isn't guaranteed. The narrator decides how your attempt goes, and your stats shape it.
+
+## How to Check Your Formamorph AI Allowance
+<!-- keywords: ring, circle, allowance, usage, how much left, turns left, percent used, weekly, reset, breakdown, where did it go, formamorph ai, ran out -->
+<!-- route: gameViewer#action-box -->
+
+When any prompt uses **Formamorph AI**, a ring sits beside **Send**. It fills as you use this week's allowance, and it turns amber and then red as the allowance runs low. The ring updates when a turn ends.
+
+Select the ring to see the percent used, about how many turns are left, when the allowance resets, and where this week's use went.
+
+If Formamorph AI can't serve you right now, the ring stays empty. Select it to see why and what to do.
 
 ## How to Use a Choice
 <!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine, suggested actions, multiple choice, quick replies, prewritten, ctrl click, append, long press, tap answer -->
@@ -72,16 +82,16 @@ Each action takes up to 4 images. They go with that turn only. Select a thumbnai
 
 The attach button shows after the game starts, not on the opening turn.
 
-## How to Re-generate a Turn
+## How to Regenerate a Turn
 <!-- keywords: redo, retry, reroll, try again, different answer, last, swipe, did not like, regen, new response, another version, bad output, refresh, alternate, new options, do over -->
 <!-- route: gameViewer -->
 
 1. Find the latest turn's action row, under its narration.
-2. Select **Re-generate Narration**.
+2. Select **Regenerate Narration**.
 
 The game goes back to the state before the turn and sends the same action again, with the same images. On page one, it draws another opening. See [Regenerating Page One](Entities#regenerating-page-one).
 
-To re-roll only the choices, select **Re-generate Choices** beside them.
+To re-roll only the choices, select **Regenerate Choices** beside them.
 
 ## How to Edit Narration
 <!-- keywords: change, fix, rewrite, correct, ai text, response, reply, typo, modify story text, alter output, retcon, amend, wrong detail, what ai wrote, bot message, manually adjust -->
@@ -91,7 +101,9 @@ To re-roll only the choices, select **Re-generate Choices** beside them.
 2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
 3. Select **Save**.
 
-Saving rewrites the turn's narration. The game reads the edited text again to find who is in the turn, and that page's **Entities** tab updates to match. A new name you write in becomes an entity. It also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
+Saving rewrites the turn's narration. The game reads the edited text again to find who is in the turn, and that page's **Entities** tab updates to match. A new name you write in becomes an entity.
+
+Saving also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
 
 ## How to Edit Your Action
 <!-- keywords: change, fix, typo, rewrite, my message, input, correct, what i typed, my post, sent by mistake, amend, own line, user turn, remove picture, after sending -->
@@ -110,7 +122,7 @@ Only the action text and its images change. The narration stays as it is.
 
 1. Go back to the turn you want to keep. In Pages, use the page buttons. In Chat, scroll up.
 2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
-3. Select **Confirm** in the **Confirm Rollback** dialog.
+3. Select **Confirm** in the **Rewind to Here?** dialog.
 
 > ⚠️ You can't undo a rewind. It removes every later turn, with its stats, its location, the entities the story invented in it, and its scene images. Your notes go back to that turn's notes.
 
@@ -122,7 +134,7 @@ Only the action text and its images change. The narration stays as it is.
 2. To jump far back, select the current page number, type a page in the box, and select **Go**.
 3. Select **Next** or the last page to come back to the live turn.
 
-An earlier page is read-only. The side panel shows a banner, *Viewing turn n of total*, and the turn's notes, stats and location. In Chat, scroll up. **Jump to Latest** takes you back down.
+An earlier page is read-only. The side panel shows a banner, *Viewing turn n of total — history*, and the turn's notes, stats and location. In Chat, scroll up. **Jump to Latest** takes you back down.
 
 ## How to Change Location
 <!-- keywords: travel, move, go somewhere, map, place, teleport, walk, leave, fast travel, navigate, room, area, zone, relocate, wrong scene, visit -->
@@ -156,14 +168,17 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 ## How to Read a Turn Aloud
 <!-- keywords: tts, text to speech, voice, speak, audio, narrator voice, listen, kokoro, sound, narrate, spoken, hear, audiobook, out loud, voice acting, webgpu, playback speed, blind -->
-<!-- route: gameViewer -->
+<!-- route: tts -->
 
 1. On the latest turn's action row, select **Text to Speech**. The **Text to Speech** dialog opens.
 2. Select **Load Model**. The voice model runs in your browser and needs WebGPU.
 3. Pick a voice under **Voice Selection**, and set the **Speed**.
 4. Select **Start**.
 
-**Stream narration audio** starts speaking each sentence as it arrives. **Highlight while speaking** marks the sentence you hear. **Unload Model** frees the memory the model uses. After the model loads, **Regenerate Audio** is under the turn's **More** button.
+- **Stream Narration Audio** starts to speak each sentence as it arrives.
+- **Highlight While Speaking** marks the sentence you hear.
+- **Unload Model** frees the memory the model uses.
+- After the model loads, **Regenerate Audio** is under the turn's **More** button.
 
 ## How to Report an Error
 <!-- keywords: bug, crash, problem, failed, copy, details, send feedback, broken, something went wrong, issue, not working, glitch, support, tell developers, stack trace, contact -->
@@ -184,14 +199,14 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 | Area | What it holds |
 |---|---|
-| The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the request that is running, such as *Generating Narration…*, next to a small animated icon for that request |
+| The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the running request, such as *Generating Narration…*. A small animated icon for that request shows beside it. |
 | The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. The entity view shows the selected entity's Avatar, 3D model or image. See [In the Game](Avatars#in-the-game). |
-| The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits** and **Location** tabs |
+| The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits**, **Inventory** and **Location** tabs |
 | Top left | The music button and the AI Context button |
 | Top right | **Edit World** and the **Menu** |
 | Bottom left | **Hide UI**, which hides the panels so only the story shows |
 
-On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). The **Character** tab also has a **View** tab that holds the entity view. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
+On mobile, three tabs at the top switch between **Story** (the left panel), **Game** (the story) and **Status** (the right panel). The **Story** tab also has a **View** tab that holds the entity view. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
 
 ## Turn Actions
 <!-- keywords: buttons under text, more menu, copy to clipboard, message options, toolbar, icons below, three dots, long press -->
@@ -200,8 +215,8 @@ Each turn has an action row under its narration. Some actions sit under its **Mo
 
 | Action | Shows on |
 |---|---|
-| **Re-generate Narration** | The latest turn |
-| **Re-generate Stats** | The latest turn, under **More**, when stat updates are on |
+| **Regenerate Narration** | The latest turn |
+| **Regenerate Stats** | The latest turn, under **More**, when stat updates are on |
 | **Generate Scene Image** | Under **More**, when [image generation](Image-Generation#how-to-make-an-image-of-one-turn) is on and the turn has no image |
 | **Write Scene Tags** | Under **More**, when image generation is on |
 | **Edit** | Every turn |
@@ -218,16 +233,16 @@ No actions show while the AI writes a turn.
 
 | Tab | What it is |
 |---|---|
-| **Entities** | Who the story counts as present. See [Entities in Game](Entities). |
+| **Entities** | Every entity at your location, with those in the scene first. A stranger shows under the name you know. When you move, only your followers stay in the scene. See [Entities in Game](Entities). |
 | **Notes** | Your standing notes for the AI. See [Notes](#notes). |
 | **Memory** | What the story remembers. See [Story Memory](Memory#the-memory-tab). |
 | **Logs** | A record of what changed. See [Logs](#logs). |
 
-When a tab strip has no room for every label, its tabs show icons only. Hover an icon to read its name.
+When a tab strip has no room for every label, only the selected tab keeps its label. With less room, the tabs show icons only. Hover an icon to read its name.
 
 ### Notes
 
-The **Notes** tab is one free-text box. Its text goes to the AI with every action, so standing facts belong here: who you pretend to be, what you carry, the goal you work toward.
+The **Notes** tab is one free-text box. Its text goes to the AI with every action. Standing facts belong here: who you pretend to be, what you carry, the goal you work toward.
 
 Notes are part of your save, and each turn keeps its own copy. An earlier page shows that turn's notes, and **Rewind to Here** restores them.
 
@@ -236,7 +251,7 @@ Notes are part of your save, and each turn keeps its own copy. An earlier page s
 
 ### Logs
 
-The **Logs** tab lists what the game changed: your starting traits and location, traits that switched on or off, moves, rewinds and saves. The tab label counts the entries, such as **Logs (12)**.
+The **Logs** tab lists what the game changed. That includes your starting traits and location, traits that switched on or off, moves, rewinds and saves. The tab label counts the entries, such as **Logs (12)**.
 
 - A story event starts with the in-game time, such as *[Day 1, 08:00]*.
 - An app event, such as a save or a failed load, shows in italic with no time.
@@ -248,9 +263,9 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 |---|---|
 | Language box | Sets the language or style the AI writes in, the same as **AI Language** in **Settings** |
 | Persona row | Shows who you play. **Change** opens **Change Persona**. See [Change It in Game](Personas#change-it-in-game). |
-| **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Re-generate Stats** asks the AI again. Shows only when the world has stats you can see. |
-| **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Filter them, or switch one on or off. |
-| **Inventory** | What you wear and what you carry. See [How to Use Your Inventory](#how-to-use-your-inventory). Shows only when the world has items. |
+| **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Regenerate Stats** asks the AI again. A picker shows the stats of one entity in the scene. Shows only when the world has stats you can see. |
+| **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Entities in the scene follow. Filter them, or switch one on or off. |
+| **Inventory** | What you wear and what you carry. See [How to Use Your Inventory](#how-to-use-your-inventory). Shows only when the world has items or money. |
 | **Location** | Where you are, its description and the places it connects to |
 
 ## How to Use Your Inventory
@@ -258,45 +273,84 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 <!-- route: gameViewer.inventory -->
 
 1. In the right panel, open the **Inventory** tab. On mobile, open **Status** first.
-2. **Equipped** lists each slot with what you wear there. **Carried** lists the rest. A second card, named for your location, lists the items lying there.
-3. Use the buttons on an item's row:
+2. **Equipped** draws a figure with an icon for each item you wear. A list beside it names each item and its slots. A figure wider than tall sits above the list instead. **Carried** lists the rest below. A second card, named for your location, lists the items lying there.
+3. Select an item's row to see its image and description. Select the item's box on the figure to see its full name and buttons, then select the name to see its image and description. Hover over a filled box to see the item's name. Hover over or select an empty box to see its slot's name.
+4. Use the buttons on an item's row:
 
 | Button | What it does |
 |---|---|
 | **Use** | Uses the item once and starts its effects. Off when no uses are left. |
-| **Equip** | Wears the item in its slot. A full slot takes off the item you equipped there first. From a stack, you equip one. |
+| **Equip** | Wears the item. When it fits more than one slot, you pick the slot. A full slot takes off the item you equipped there first. An item that takes two slots fills both. From a stack, you equip one. To change hands, unequip it and equip it again. |
 | **Unequip** | Takes the item off. You keep it. |
 | **Drop** | Leaves the item here, at your location. |
-| **Give** | Hands the item to someone here. People in the scene come first, then everyone else at your location. |
+| **Give** | Hands the item to an entity in the scene. |
 | **Pick Up** | Takes an item lying at your location into your inventory. |
 
-**Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack. An item with uses shows how many are left under its name.
+The buttons are icons. Their tooltips name the item, such as *Use Healing Potion*.
 
-Items with art show a small image on their row. The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it. Changes apply at once. The next turn's narration sees them. On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
+Changes apply at once, and the next turn's narration sees them.
+
+- **Money** lists how much you have of each kind of money in the world, such as *1 Gold, 5 Copper*. Hidden and unidentified coins don't count.
+- **Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack.
+- An item with uses shows how many are left under its name.
+- An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack.
+- An unidentified item shows only its unidentified name and description until the story reveals what it is.
+- Each item shows an icon on its row, on the figure and in its popup. The icon comes from the item's name, or from its slot when the name doesn't suggest one. A world's author can show the item's image instead, or nothing.
+- An item that takes two slots shows in both boxes. When a slot holds several items, the rest move up after you take one off.
+- The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it.
+- On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.
 
 > [!NOTE]
-> The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but the story can still take it.
+> The buttons are off while a turn runs and on an earlier page. A lock marks a **Bound** item: you can't drop it or give it away, but you can pick it up, and the story can still take it.
 
 ### When the story changes your items
 <!-- keywords: pick up, picked up, found an item, item appeared, item vanished, stolen, story took my item, inventory pass, new item -->
 
-After each turn's narration, the **Inventory** prompt reads what happened and updates the inventory. Pick up a key in the story and it lands in **Carried**. Hand a knife over and it leaves. Drink a potion and it's used up, with its effects. Search a room and a hidden item can show up under **Here**.
+After each turn's narration, the **Inventory** prompt reads what happened and updates the inventory. Pick up a key in the story and it lands in **Carried**. Hand a knife over and it leaves. Drink a potion and it's used up, with its effects. Search a room and a hidden item can show up on the location card.
 
 - An item the world doesn't define gets a plain entry with no effects. You can still **Use** it.
 - The item's own effects come from the item, so the stat changes never count a potion twice.
-- Worlds with no items skip this step.
+- 💰 Paying works the same way. Pay a bribe or collect a bounty in the story, and your money changes once the turn ends. You hand over your smallest coins first and get change back.
+- 🛒 To buy or sell, type it: "I buy the sword" or "I sell the ring to the blacksmith". The item and the money move together once the turn ends. If the story settles on a price, that price counts. If not, the item goes at its full worth.
+- 🚫 If you can't afford a payment or a purchase, your money stays as it was, even when the story says you paid. You don't get the item either.
+- 🎒 You can only sell what you hold.
+- Worlds with no items and no money skip this step.
 
 ## The Entity Dialog
 <!-- keywords: npc profile, character sheet, portrait, bio, unknown name, who is this, click a name, cast details -->
 <!-- route: entity -->
 
-Select a name in the **Entities** tab to open it. The first select shows that entity's Avatar, 3D model or image in the entity view.
+Select a name in the **Entities** tab, then select it again to open the dialog. The first select shows that entity's Avatar, 3D model or image in the entity view. If the entity is under **In Scene**, the **Stats**, **Traits** and **Inventory** tabs show it too. On mobile, one select does both.
 
 The dialog shows the entity's image or 3D model, its player-facing description, and its sound. An entity the story invented also has **Edit** and **Regenerate** for its description. **Regenerate** shows a **New Description** to **Keep** or **Discard**.
 
 An **Equipped** list shows what the entity wears, when you can see it. What the entity carries stays private.
 
-An entity the story hasn't revealed yet shows as its alias or *Unknown*, and doesn't open.
+## The Item Dialog
+<!-- keywords: item details, item picture, item image, item description, what does this item do, look at item -->
+<!-- route: item -->
+
+Select an item's row in the **Inventory** tab, or an item in an entity's **Equipped** list, to open its popup. The popup shows the item's image and description, with its State, count and uses left beside its name. An unidentified item shows only its unidentified name and description.
+
+## Credits
+<!-- keywords: credits, who made the game, who made the icons, icon credits, game icons, icon license, item icon artists, llama.cpp, supporters, supporters list, patreon supporters, licenses, license text, third-party notices, open source licenses -->
+<!-- route: credits -->
+
+Select **Credits** at the bottom of the Main Menu to see who made Formamorph. It names Jake James, FieryLionite, the artists of the item icons with their license, and, on desktop, llama.cpp. On mobile, it's in the **⋯** menu.
+
+If you've accepted the [adult content warning](Community-Creations#the-adult-content-warning), the **Supporters** tab lists the people who support the game on Patreon. Select a name to open that profile. The tab needs a connection.
+
+The **Licenses** tab lists the license text of everything the game ships with. Each entry is collapsed; select one to read it. Type in **Filter by Name** to find a package. The tab works offline.
+
+## The Stranger Dialog
+<!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->
+<!-- route: stranger -->
+
+A stranger is an entity you haven't met yet. It shows in the **Entities** tab under the name you know, such as "a hooded figure".
+
+Select it to open the stranger dialog. The dialog shows that name, the image, and a short description when the world has one.
+
+You meet a stranger when the story says its real name. After that, the full entity dialog opens instead.
 
 ## The Change Location Dialog
 <!-- keywords: world map, zoom, pan, places tree, sub areas, pin marker, minimap, overview of places -->
@@ -345,9 +399,9 @@ The inspector shows exactly what the game sent to the AI each turn, and what cam
 
 | Control | What it does |
 |---|---|
-| Search box | Finds terms in the turn. **Enter** goes to the next match, **Shift+Enter** to the previous one. |
+| Search box | Finds terms in the turn. A counter shows the match you are on, such as *2 of 5*. **Enter** or **Next match** goes to the next match, **Shift+Enter** or **Previous match** to the previous one. |
 | **Dictionary** / **Hydrations** | Picks what the text highlights. **Dictionary** marks the dictionary entries. Select a legend chip to hide its highlights. |
-| **Current context only** | Hides turns that were re-generated, rewound or stopped. On by default. |
+| **Current context only** | Hides turns that were regenerated, rewound or stopped. On by default. |
 | **Collapse all** / **Expand all** | Collapses or expands every section |
 | **Export** | Downloads the full turn history as a `.json` file |
 
@@ -394,7 +448,7 @@ After either button, the card doesn't show again for that world on this device. 
 ## Related
 
 - [🚪 Starting a Game](Starting-a-Game): everything before page one
-- [🎭 Entities in Game](Entities): the cast, and how a game opens
+- [🎭 Entities in Game](Entities): who is in the scene, and how a game opens
 - [🧠 Story Memory](Memory): what the story remembers
 - [🪪 Personas](Personas): who you are in the story
 - [🔌 Connect Your Own AI](Connect-Your-Own-AI): moving past the Demo AI

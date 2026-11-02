@@ -75,7 +75,7 @@ const personaPicks = (player: LensPlayer, active: readonly Trait[]): OwnedTraitP
 const lensEntityStats = (world: LensWorld): EntityStatValues =>
   seedWorldEntityStats({ stats: [...(world.stats ?? [])], statGroups: world.statGroups ?? [], entities: [...(world.entities ?? [])] });
 
-/** The traits in force on the global stats: the global picks, and the global rows of the persona's picks (Q30). */
+/** The traits that apply on the global stats: the global picks, and the global rows of the persona's picks (Q30). */
 export function lensStatTraits(world: LensWorld, active: readonly Trait[]): Trait[] {
   const player = lensPlayer(world);
   const ownedTraits = ownedTraitStatesFrom(personaPicks(player, active));
@@ -107,7 +107,7 @@ export const EMPTY_LENS: LensState = { pcTraitId: null, locationId: null };
 export interface LensOption {
   id: string;
   name: string;
-  /** The exclusive group this PC belongs to — the heading its options sit under. Absent for locations. */
+  /** The exclusive group this PC belongs to — the heading its options go under. Absent for locations. */
   groupName?: string;
 }
 
@@ -133,12 +133,12 @@ export interface BenchLens {
   state: LensState;
   pc: Trait | null;
   location: GameLocation | null;
-  /** Placeholder id → the value in force, from every source a fresh game as this PC standing here would
-   *  have: the active traits, the location, the band each starting stat lands in, and the value pins those
+  /** Placeholder id → the value that applies, from every source a fresh game as this PC at this location would
+   *  have: the active traits, the location, the band each starting stat is in, and the value pins those
    *  settle. Broken pins are in here too when play would apply them, so what the Bench shows is what a turn
    *  would show. */
   pins: Record<string, string>;
-  /** Every pin behind `pins`, in the order play lays them, the one in force per placeholder marked. */
+  /** Every pin behind `pins`, in the order play lays them, the one that applies per placeholder marked. */
   pinLayers: LensPinLayer[];
   brokenPins: BrokenPin[];
   /** Stat id → whether it is live under this PC — the world's defaults with the PC's toggles over them. */
@@ -225,7 +225,7 @@ function brokenPinsOf(layers: LensPinLayer[], placeholders: Placeholder[]): Brok
 /**
  * The lens as every instrument reads it. A PC the world no longer has resolves to none rather than to a
  * stale trait, so an id outliving its trait costs the selection and nothing else. Pins come from the game's
- * own collector over what a fresh game as this PC would have in force: the active traits, the lens location,
+ * own collector over what a fresh game as this PC would apply: the active traits, the lens location,
  * and each stat's band at the value the traits leave it starting on. No roll is drawn at design time, so a
  * Wildcard's value pins wait for a source above them to fix its value.
  *
@@ -383,7 +383,7 @@ export function lensOwnerScopes(world: LensWorld, lens: BenchLens): (ownerId: st
   };
 }
 
-/** An entity's own text as the lens reads it, with the entity's described name as the Character Name. */
+/** An entity's own text as the lens reads it, with the entity's described name as the Entity Name. */
 export function resolveLensEntityText(
   entity: { name: string },
   text: string,
@@ -391,7 +391,7 @@ export function resolveLensEntityText(
   scope: Pick<LensOwnerScope, 'pins' | 'copies'>,
 ): string {
   const all = placeholders ?? [];
-  // The name has no owner, so a Character Name inside it reads as nothing, as play reads it.
+  // The name has no owner, so a Entity Name inside it reads as nothing, as play reads it.
   const character = describePlaceholders(entity.name, all, scope.pins, scope.copies, '');
   return describePlaceholders(text, all, scope.pins, scope.copies, character);
 }

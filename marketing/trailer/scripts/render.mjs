@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Renders each trailer composition (default: both) to out/<id>.mp4, then checks every file against its composition,
-// every line of copy against the reading bar, every camera move, and proves its 6 s loop. The wide cut is also checked against the
+// every line of copy against the reading bar, every text element against the frame's margin, every camera move, and proves its 6 s loop. The wide cut is also checked against the
 // Steam spec and writes its poster frame.
 //
 //   npm run render                 both cuts
 //   npm run render -- TrailerWide  one cut
-//   npm run check                  the copy and camera checks alone, with no render
+//   npm run check                  the copy, on-screen and camera checks alone, with no render
 import { bundle } from '@remotion/bundler';
 import { parseMedia } from '@remotion/media-parser';
 import { nodeReader } from '@remotion/media-parser/node';
@@ -88,7 +88,19 @@ const report = (ok, line, details = []) => {
   for (const detail of details) console.log(`      ${detail}`);
 };
 
-/** Rulings Q17, Q25, Q32, Q38 and Q48: the copy, dense hold and camera checks, measured by the timeline the composition plays. */
+/** Ruling Q70: a text element's line, and where it leaves the margin by shot and frame. */
+const reportOnScreen = ({ shot, text, margin, gap, clipped, offense, ok }) => {
+  const details = [];
+  if (gap === null) details.push('never on screen');
+  if (offense) {
+    const { edge, pixels, worstFrame, firstFrame, lastFrame, cutFrom } = offense;
+    details.push(`${pixels.toFixed(0)} px past the ${edge} margin at scene frame ${worstFrame} (cut frame ${cutFrom + worstFrame}); out on scene frames ${firstFrame} to ${lastFrame}`);
+  }
+  if (clipped > 0) details.push(`its panel cuts off ${clipped} px of its text`);
+  report(ok, `${shot.padEnd(4)} on screen, ${(gap?.toFixed(0) ?? '-').padStart(4)} px from the edge (${margin.toFixed(0)} px minimum)  "${text}"`, details);
+};
+
+/** Rulings Q17, Q25, Q32, Q38, Q48, Q61, Q62 and Q70: the copy, on-screen, dense hold, stack hold and camera checks, measured by the timeline the composition plays. */
 const reportCopyAndCamera = (composition) => {
   // Each line's enter, legible and exit seconds and its characters per second.
   for (const line of composition.props.reading) {
@@ -97,9 +109,17 @@ const reportCopyAndCamera = (composition) => {
     report(line.ok, `${line.shot.padEnd(4)} enter ${line.enterSeconds.toFixed(2)} s  hold ${line.seconds.toFixed(2).padStart(5)} s  ${exit.padEnd(12)}  ${cps.padStart(4)} cps  "${line.text}"`);
   }
 
+  // Every text element stays whole inside the frame's margin on every frame it shows.
+  composition.props.onScreen.forEach(reportOnScreen);
+
   // A dense card holds at least 5 s after it lands.
   for (const card of composition.props.dense) {
     report(card.ok, `${card.shot.padEnd(4)} dense card holds ${card.seconds.toFixed(2)} s after it lands at frame ${card.landFrame} (${card.minSeconds} s minimum)`);
+  }
+
+  // A growing stack's card holds 2 s or its caption's reading time from the frame it lands, before the next rises.
+  for (const card of composition.props.stack) {
+    report(card.ok, `${`${card.shot}/${card.pane}`.padEnd(6)} stack card holds ${card.seconds.toFixed(2)} s after it lands at frame ${card.landFrame} (${card.minSeconds.toFixed(2)} s minimum)`);
   }
 
   // Every card holds one crop, and its subject region stays whole in the card's visible area on every frame.

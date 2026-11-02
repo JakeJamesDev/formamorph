@@ -30,10 +30,10 @@ describe('Chat bubble actions', () => {
   beforeAll(() => { restore = stubChatLayout(); });
   afterAll(() => restore());
 
-  it('gives the latest bubble the re-generate actions and a past bubble Rewind to Here', async () => {
+  it('gives the latest bubble the regenerate actions and a past bubble Rewind to Here', async () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: chat });
     expect(names(await row(3))).toEqual([
-      'Re-generate Narration', 'Edit', 'Text to Speech', 'Copy Text', 'More',
+      'Regenerate Narration', 'Edit', 'Text to Speech', 'Copy Text', 'More',
     ]);
     expect(names(await row(2))).toEqual(['Edit', 'Copy Text', 'Rewind to Here', 'More']);
   });
@@ -44,12 +44,12 @@ describe('Chat bubble actions', () => {
     expect(screen.getAllByRole('article').map((a) => a.getAttribute('aria-label'))).toEqual(['Turn 1', 'Turn 2', 'Turn 3']);
   });
 
-  it('re-generates the latest turn, not the viewed one', async () => {
+  it('regenerates the latest turn, not the viewed one', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: chat, page: 1 });
     const latest = await row(3);
-    fireEvent.click(within(latest).getByRole('button', { name: 'Re-generate Narration' }));
+    fireEvent.click(within(latest).getByRole('button', { name: 'Regenerate Narration' }));
     fireEvent.click(within(latest).getByRole('button', { name: 'More' }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Re-generate Stats' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Regenerate Stats' }));
     expect(view.props.handleRegenerate).toHaveBeenCalledWith(3);
     expect(view.props.handleRegenerateStats).toHaveBeenCalledWith(3);
   });
@@ -122,9 +122,9 @@ describe('Chat bubble actions', () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
     const disabled = (el: HTMLElement, name: string) => (within(el).getByRole('button', { name }) as HTMLButtonElement).disabled;
     const latest = await row(3);
-    expect(disabled(latest, 'Re-generate Narration')).toBe(true);
+    expect(disabled(latest, 'Regenerate Narration')).toBe(true);
     fireEvent.click(within(latest).getByRole('button', { name: 'More' }));
-    expect(await screen.findByRole('menuitem', { name: 'Re-generate Stats' })).toHaveAttribute('aria-disabled', 'true');
+    expect(await screen.findByRole('menuitem', { name: 'Regenerate Stats' })).toHaveAttribute('aria-disabled', 'true');
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
     expect(disabled(latest, 'Copy Text')).toBe(false);
@@ -190,7 +190,7 @@ describe('Chat bubble menus', () => {
       rightClick(await narrationBubble(turn));
       const rows = menuRows();
       const menuOnly = ['Generate Scene Image', 'Write Scene Tags', 'Regenerate Audio'];
-      if (turn === 3) menuOnly.push('Re-generate Stats');
+      if (turn === 3) menuOnly.push('Regenerate Stats');
       expect(rows.filter((r) => r !== '|').sort()).toEqual([...icons, ...menuOnly].sort());
       fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
       await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
@@ -274,12 +274,12 @@ describe('Chat bubble menus', () => {
     }
   });
 
-  it('offers Re-generate Choices in the choices menu', async () => {
+  it('offers Regenerate Choices in the choices menu', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS, settings: chat });
     const turns = await screen.findAllByRole('article');
     rightClick(within(turns[2]).getByTestId('chat-choices'));
-    expect(menuRows()).toEqual(['Re-generate Choices']);
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Re-generate Choices' }));
+    expect(menuRows()).toEqual(['Regenerate Choices']);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Regenerate Choices' }));
     expect(view.props.handleRegenerateChoices).toHaveBeenCalledTimes(1);
   });
 });

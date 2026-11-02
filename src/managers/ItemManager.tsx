@@ -1,33 +1,35 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { WorldInput } from '@/components/editor/WorldField';
 import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
 import { ItemEffectsFields, ItemTraitEffectsFields } from './ItemEffectsFields';
+import { ItemIconField } from './ItemIconField';
 import { ItemRequirementsField } from './ItemRequirementsField';
+import { ItemSlotRuleField } from './ItemSlotRuleField';
 import { ItemScripts } from './ItemScripts';
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useEditorMode } from '@/lib/editorMode';
 import { fieldFrame } from '@/lib/historyField';
-import { WHEN_EMPTY_LABEL, itemStackable, slotCapacity, whenEmptyOf, wholeCount } from '@/lib/items';
+import { WHEN_EMPTY_LABEL, itemStackable, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { canBePlayer } from '@/lib/owners';
-import { itemPanelTabsFor, type ItemPanelTab } from '@/views/itemPanelTabs';
-import type { Item, ItemValueUnit, ItemWhenEmpty } from '@/types';
+import { coinFields, currencyOf } from '@/lib/currency';
+import CoinValueFields from './CoinValueFields';
+import { itemPanelTabsFor, itemTabForField, type ItemPanelTab } from '@/views/itemPanelTabs';
+import type { FocusFieldHint, Item, ItemWhenEmpty } from '@/types';
 
 const WHEN_EMPTY_KINDS = ['stays', 'gone', 'becomes', 'changesState'] as const satisfies readonly ItemWhenEmpty['kind'][];
 const isWhenEmptyKind = (value: string): value is ItemWhenEmpty['kind'] => (WHEN_EMPTY_KINDS as readonly string[]).includes(value);
 
-const NO_UNIT = 'none';
-const TEXT_UNIT = 'text';
+const NO_CURRENCY = 'none';
 
 /** One switch with its label and help line. */
 const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
@@ -50,22 +52,8 @@ const CheckRow = ({ id, field, label, hint, checked, disabled, onChange }: {
 
 /** The item fields beyond its descriptions: value, stacking, uses, the lock, and equipping. */
 const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Partial<Item>) => void }) => {
-  const { playStats, entities, slots, placeholders, items } = useGameData();
+  const { currencies, placeholders, items } = useGameData();
   const label = (name: string) => labelPlaceholders(name, placeholders);
-  // The Global Stats, then each persona's own (Q75).
-  const statGroups = useMemo(() => [
-    { name: 'Global', stats: playStats },
-    ...entities.filter(canBePlayer).map((e) => ({ name: e.name, stats: e.stats ?? [] })),
-  ].filter((g) => g.stats.length), [playStats, entities]);
-  const unit = item.valueUnit;
-  const unitValue = !unit ? NO_UNIT : unit.kind === 'text' ? TEXT_UNIT : unit.statId;
-  const pickUnit = (value: string) => {
-    const next: ItemValueUnit | undefined = value === NO_UNIT ? undefined
-      : value === TEXT_UNIT ? { kind: 'text', text: unit?.kind === 'text' ? unit.text : '' }
-        : { kind: 'stat', statId: value };
-    apply({ valueUnit: next });
-  };
-  const slot = slots.find((s) => s.id === item.slotId);
   const multiUse = (item.uses ?? 1) > 1;
   const empty = item.uses === undefined ? undefined : whenEmptyOf(item);
   const others = items.filter((i) => i.id !== item.id);
@@ -75,48 +63,43 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
         : { kind },
   });
   const id = (field: string) => `item-${field}-${item.id}`;
+  const currency = currencyOf(item, currencies);
+  // A blank Value splits as zero; a Value with no Breakdown keeps the single plain field.
+  const coinSplit = currency ? coinFields(item.value ?? 0, currency, items) : null;
 
   return (
     <div className="space-y-5">
       <div className="space-y-2" {...fieldFrame('value')}>
         <Label htmlFor={id('value')}>Value</Label>
-        <Hint>Tells the AI and the player what it&apos;s worth</Hint>
+        <Hint>Sets what the item is worth. Add currencies in <b>Currencies</b>.</Hint>
         <div className="flex flex-wrap items-center gap-2">
-          <WorldInput
-            id={id('value')}
-            type="number"
-            className="w-32"
-            value={item.value ?? ''}
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              if (e.target.value.trim() === '') apply({ value: undefined });
-              else if (Number.isFinite(value)) apply({ value });
-            }}
-          />
-          <Select value={unitValue} onValueChange={pickUnit}>
-            <SelectTrigger className="w-48" aria-label="Value Unit">
+          {coinSplit ? (
+            <CoinValueFields key={coinSplit.map((coin) => `${coin.itemId}:${coin.worth}`).join()} id={id('value')} fields={coinSplit} hasValue={item.value !== undefined} label={label} onChange={(value) => apply({ value })} />
+          ) : (
+            <WorldInput
+              id={id('value')}
+              type="number"
+              className="w-32"
+              value={item.value ?? ''}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                if (e.target.value.trim() === '') apply({ value: undefined });
+                else if (Number.isFinite(value)) apply({ value });
+              }}
+            />
+          )}
+          <Select
+            value={currencyOf(item, currencies)?.id ?? NO_CURRENCY}
+            onValueChange={(picked) => apply({ currencyId: picked === NO_CURRENCY ? undefined : picked })}
+          >
+            <SelectTrigger className="w-48" aria-label="Currency" {...fieldFrame('currencyId')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NO_UNIT}>No Unit</SelectItem>
-              <SelectItem value={TEXT_UNIT}>Text</SelectItem>
-              {statGroups.map((g) => (
-                <SelectGroup key={g.name}>
-                  <SelectLabel>{label(g.name)}</SelectLabel>
-                  {g.stats.map((s) => <SelectItem key={s.id} value={s.id}>{label(s.name)}</SelectItem>)}
-                </SelectGroup>
-              ))}
+              <SelectItem value={NO_CURRENCY}>No Currency</SelectItem>
+              {currencies.map((currency) => <SelectItem key={currency.id} value={currency.id}>{label(currency.name)}</SelectItem>)}
             </SelectContent>
           </Select>
-          {unit?.kind === 'text' && (
-            <WorldInput
-              aria-label="Unit Text"
-              className="w-40"
-              placeholder="gold coins"
-              value={unit.text}
-              onChange={(e) => apply({ valueUnit: { kind: 'text', text: e.target.value } })}
-            />
-          )}
         </div>
       </div>
 
@@ -131,7 +114,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
       />
       <div className="space-y-2" {...fieldFrame('uses')}>
         <Label htmlFor={id('uses')}>Uses</Label>
-        <Hint>Sets how many times each Item Copy can be used. Blank means unlimited.</Hint>
+        <Hint>Sets how many times each copy of this item can be used. Leave it blank for unlimited uses.</Hint>
         <WorldInput
           id={id('uses')}
           type="number"
@@ -149,7 +132,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
       </div>
       <div className="space-y-2" {...fieldFrame('state')}>
         <Label htmlFor={id('state')}>State</Label>
-        <Hint>Sets the word each Item Copy starts with, such as sealed</Hint>
+        <Hint>Sets the state each copy of this item starts in, such as sealed</Hint>
         <WorldInput
           id={id('state')}
           className="w-48"
@@ -160,7 +143,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
       {empty && (
         <div className="space-y-2" {...fieldFrame('whenEmpty')}>
           <Label id={id('when-empty-label')}>When Empty</Label>
-          <Hint>Picks what happens to an Item Copy after its last use</Hint>
+          <Hint>Picks what happens to a copy of this item after its last use</Hint>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={empty.kind} onValueChange={(kind) => { if (isWhenEmptyKind(kind)) pickEmpty(kind); }}>
               <SelectTrigger className="w-48" aria-labelledby={id('when-empty-label')}>
@@ -204,42 +187,7 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
         onChange={(bound) => apply({ bound: bound || undefined })}
       />
 
-      <div className="space-y-2" {...fieldFrame('slotId')}>
-        <Label id={id('slot-label')}>Slot</Label>
-        <Hint>Picks the slot it equips into. Add slots on the <b>Overview</b> tab.</Hint>
-        <Select
-          value={slot ? slot.id : NO_UNIT}
-          onValueChange={(v) => apply(v === NO_UNIT ? { slotId: undefined, slotSize: undefined } : { slotId: v })}
-        >
-          <SelectTrigger className="w-48" aria-labelledby={id('slot-label')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_UNIT}>Not Equippable</SelectItem>
-            {slots.map((s) => <SelectItem key={s.id} value={s.id}>{label(s.name) || 'Unnamed Slot'}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      {slot && (
-        <div className="space-y-2" {...fieldFrame('slotSize')}>
-          <Label htmlFor={id('slot-size')}>Slot Size</Label>
-          <Hint>Sets how much of the slot&apos;s capacity it takes</Hint>
-          <WorldInput
-            id={id('slot-size')}
-            type="number"
-            min={1}
-            max={slotCapacity(slot)}
-            className="w-32"
-            value={item.slotSize ?? 1}
-            onChange={(e) => {
-              const size = wholeCount(e.target.value);
-              if (size === undefined) return;
-              const clamped = Math.min(Math.max(1, size), slotCapacity(slot));
-              apply({ slotSize: clamped === 1 ? undefined : clamped });
-            }}
-          />
-        </div>
-      )}
+      <ItemSlotRuleField item={item} apply={apply} />
     </div>
   );
 };
@@ -248,19 +196,28 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
  * Right-panel editor for one item: Profile, Descriptions, Properties, Effects and, in Advanced mode, its own
  * Placeholders. The panel remounts per item, so the tab and the open placeholder arrive as props.
  */
-const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder }: {
+const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder, focusField }: {
   item: Item;
   tab: ItemPanelTab;
   onTabChange: (tab: ItemPanelTab) => void;
   placeholderId: string | null;
   onPlaceholderIdChange: (id: string | null) => void;
   onOpenWorldPlaceholder: (id: string) => void;
+  /** The search target the find bar just navigated to; its field's tab opens. */
+  focusField?: FocusFieldHint | null;
 }) => {
   const { updateItem, placeholders } = useGameData();
   const { advanced } = useEditorMode();
   const { draft, apply, setField } = useEditingDraft<Item>(item, updateItem);
   const ruleHost = useItemRuleHost(item.id);
   const groupProps = { value: draft, onChange: setField, placeholders, ownerId: item.id };
+
+  // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by then.
+  // A key no tab claims leaves the panel where the author put it.
+  useEffect(() => {
+    const owning = focusField ? itemTabForField(focusField.fieldKey) : null;
+    if (owning) onTabChange(owning);
+  }, [focusField, onTabChange]);
 
   return (
     <PanelTabs
@@ -285,6 +242,7 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
                   ariaLabel="Name"
                 />
               </div>
+              <ItemIconField item={draft} apply={apply} />
               <ImageTags />
             </div>
           </div>
@@ -296,7 +254,7 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
         <div className="space-y-2" {...fieldFrame('unidentifiedName')}>
           <Label>Unidentified Name</Label>
           <Hint id={`item-unidentified-name-hint-${item.id}`}>
-            Shows this name to the player until the story identifies the item. Blank shows the normal name.
+            Shows this name to the player until the narration identifies the item. Leave it blank to show its Name.
           </Hint>
           <PlaceholderNameField
             value={draft.unidentifiedName ?? ''}
@@ -311,7 +269,7 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
           label="Unidentified Description"
           ariaLabel="Unidentified Description"
           historyField="unidentifiedDescription"
-          hint="Shows this description to the player until the story identifies the item. Blank shows the Player-Facing Description."
+          hint="Replaces the Player-Facing Description until the narration identifies the item. Leave it blank to show the Player-Facing Description."
           value={draft.unidentifiedDescription ?? ''}
           onChange={(v) => setField('unidentifiedDescription', v || undefined)}
           placeholders={placeholders}

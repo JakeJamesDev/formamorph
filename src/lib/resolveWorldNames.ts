@@ -38,10 +38,10 @@ export function resolveEntityNames(entities: Entity[], resolve: (text: string, e
   });
 }
 
-/** Resolves one entity's own text with that entity as the Character Name. */
+/** Resolves one entity's own text with that entity as the Entity Name. */
 export type ResolveEntityText = (entity: Entity, text: string) => string;
 
-/** Each entity's descriptions, summary, pronouns and relationship labels, resolved with that entity as their
+/** Each entity's descriptions, summary, pronouns, stranger texts and relationship labels, resolved with that entity as their
  *  owner. Names stay as they are. */
 export function resolveEntityTexts(entities: readonly Entity[], resolve: ResolveEntityText): Entity[] {
   return mapPreservingIdentity(entities, (e) => {
@@ -50,18 +50,28 @@ export function resolveEntityTexts(entities: readonly Entity[], resolve: Resolve
     const aiDescription = one(e.aiDescription, own);
     const aiSummary = one(e.aiSummary, own);
     const pronouns = one(e.pronouns, own);
+    // An authored blank Stranger Name reads as none, so the entity starts met; one that resolves blank stays.
+    const authoredStranger = e.strangerName?.trim() ? e.strangerName : undefined;
+    const strangerName = one(authoredStranger, own);
+    const strangerDescription = one(e.strangerDescription, own);
     const relationships = e.relationships && mapPreservingIdentity(e.relationships, (r) => {
       const label = one(r.label, own) ?? r.label;
       return label === r.label ? r : { ...r, label };
     });
-    return playerDescription === e.playerDescription && aiDescription === e.aiDescription && aiSummary === e.aiSummary
-      && pronouns === e.pronouns && relationships === e.relationships
-      ? e
-      : { ...e, playerDescription, aiDescription, aiSummary, pronouns, ...(relationships ? { relationships } : {}) };
+    if (playerDescription === e.playerDescription && aiDescription === e.aiDescription && aiSummary === e.aiSummary
+      && pronouns === e.pronouns && strangerName === e.strangerName && strangerDescription === e.strangerDescription
+      && relationships === e.relationships) return e;
+    const { strangerName: _authored, ...rest } = e;
+    return {
+      ...rest, playerDescription, aiDescription, aiSummary, pronouns,
+      ...(strangerName !== undefined ? { strangerName } : {}),
+      ...(strangerDescription !== undefined ? { strangerDescription } : {}),
+      ...(relationships ? { relationships } : {}),
+    };
   });
 }
 
-/** Resolves an owned trait's own text: its own pins, with its owner as the Character Name. */
+/** Resolves an owned trait's own text: its own pins, with its owner as the Entity Name. */
 export type ResolveOwnedTraitText = (trait: Trait, text: string, owner: Entity) => string;
 
 /** Each item's name and AI description under `resolve`, keeping the list when none held a chip. */
@@ -76,7 +86,7 @@ function resolveAiTexts<T extends { name: string; aiDescription?: string }>(
   });
 }
 
-/** Each entity's trait and group names and AI descriptions, with the entity as their Character Name. */
+/** Each entity's trait and group names and AI descriptions, with the entity as their Entity Name. */
 export function resolveOwnedTraitTexts(
   entities: readonly Entity[], resolveTrait: ResolveOwnedTraitText, resolveEntity: ResolveEntityText,
 ): Entity[] {

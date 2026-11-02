@@ -85,7 +85,7 @@ describe('filing from the website', () => {
     const tabs = within(dialog).getAllByRole('tab').map((tab) => tab.textContent);
     expect(tabs).toEqual(['Suggestion', 'Question']);
     expect(within(dialog).getByRole('link', { name: 'open the app' })).toHaveAttribute('href', '/play/');
-    expect(within(dialog).queryByText(/in your profile/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/in Feedback/)).not.toBeInTheDocument();
   });
 
   it('files a suggestion without diagnostics and lands on the new thread', async () => {

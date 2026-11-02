@@ -1,5 +1,7 @@
+import { Hint } from '@/components/ui/typography';
+
 /** Shared empty-state hint for the World Editor's list/tree tabs (stats, entities, locations, traits,
- *  dictionaries). Reads "No NOUN yet — use the + button to ACTION." One place so every tab reads the same. */
+ *  dictionaries). Reads "No NOUN yet. Use the + button to ACTION." One place so every tab reads the same. */
 export function EmptyListHint({ noun, action = 'add one' }: { noun: string; action?: string }) {
-  return <p className="text-helper text-muted-foreground p-2">No {noun} yet — use the + button to {action}.</p>;
+  return <Hint className="p-2">No {noun} yet. Use the + button to {action}.</Hint>;
 }

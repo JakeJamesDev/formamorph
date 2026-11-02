@@ -3,12 +3,15 @@
  * named operations it returns into the validator's id-form operations (Q23, Q24, Q56). Pure.
  */
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
+import { slotOwnerKey, type SlotOwner } from '@/lib/bodies';
+import { applyPaymentStats, currenciesSettle, currencyOf, namesMoney, planPayment, readStatedPrice, type PaymentStats } from '@/lib/currency';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { isUnidentified, sameState, sameWhere, stateWord, usesLeft } from '@/lib/items';
-import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import { escapeRegExp } from '@/lib/utils';
+import type { Currency, InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, Item, ItemCopy, ItemCopyWhere, Placement, PlayerStat, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
-export const PASS_OP_KINDS = ['gain', 'lose', 'transfer', 'equip', 'unequip', 'use', 'change', 'reveal'] as const satisfies readonly InventoryPassOpKind[];
+export const PASS_OP_KINDS = ['gain', 'lose', 'transfer', 'equip', 'unequip', 'use', 'change', 'reveal', 'pay', 'buy'] as const satisfies readonly InventoryPassOpKind[];
 // Fails to compile when the union gains an operation the list lacks.
 const _everyOpListed: Exclude<InventoryPassOpKind, (typeof PASS_OP_KINDS)[number]> extends never ? true : never = true;
 void _everyOpListed;
@@ -47,6 +50,10 @@ export const inventoryPassSchema = (): ResponseSchema => ({
             to: { type: 'string' },
             state: { type: 'string' },
             after: { type: 'string', enum: ['', ...PASS_AFTER_WORDS] },
+            target: { type: 'string' },
+            slot: { type: 'string' },
+            price: { type: 'string' },
+            currency: { type: 'string' },
           },
         },
       },
@@ -57,12 +64,12 @@ export const inventoryPassSchema = (): ResponseSchema => ({
 /** The text pass's reply format, which rides after the user message out of the author's reach. */
 export const INVENTORY_TEXT_FORMAT = `
 
-Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state and the after, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item changed.`;
+Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state, the after, the target, the slot, the price and the currency, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item or money changed.`;
 
 /** The schema request's reply format: what the text format's NONE is for the JSON reply. */
 export const INVENTORY_JSON_FORMAT = `
 
-Reply with one operation per change. Reply with an empty operations list when no item changed.`;
+Reply with one operation per change. Reply with an empty operations list when no item or money changed.`;
 
 const isKind = (value: string): value is InventoryPassOpKind => (PASS_OP_KINDS as readonly string[]).includes(value);
 
@@ -85,11 +92,23 @@ const afterOf = (value: unknown): InventoryUseAfter | undefined => {
 const passOp = (raw: Record<string, unknown>): InventoryPassOp | null => {
   const op = text(raw.op).toLowerCase();
   const item = text(raw.item);
-  if (!isKind(op) || !item || NO_ITEM.test(item)) return null;
+  // A pay moves money with no item.
+  if (!isKind(op) || (op !== 'pay' && (!item || NO_ITEM.test(item)))) return null;
   const after = afterOf(raw.after);
+  const target = text(raw.target);
+  const slot = text(raw.slot);
+  // A model can answer a price with a bare number, or put a pay's sum in the quantity cell of a text line.
+  const quantityText = text(raw.quantity);
+  const price = typeof raw.price === 'number' ? String(raw.price)
+    : text(raw.price) || (op === 'pay' && quantityText && !/^\d+$/.test(quantityText) ? quantityText : '');
+  const currency = text(raw.currency);
   return {
     op, item, quantity: quantityOf(raw.quantity), owner: text(raw.owner), to: text(raw.to),
     ...(raw.state !== undefined && { state: text(raw.state) }), ...(after && { after }),
+    ...(target && !NO_ITEM.test(target) && { target }),
+    ...(slot && !NO_ITEM.test(slot) && { slot }),
+    ...(price && !NO_ITEM.test(price) && { price }),
+    ...(currency && !NO_ITEM.test(currency) && { currency }),
   };
 };
 
@@ -107,11 +126,14 @@ const jsonOps = (raw: string): InventoryPassOp[] | null => {
   }
 };
 
-/** The text pass's lines: `op | item | quantity | owner | to | state | after`. A line that names no operation is skipped. */
+/** A cell a reply labeled with its field's name, as in `item: Rope`. */
+const FIELD_LABEL = /^(op|operation|item|quantity|owner|to|receiver|state|after|target|slot|price|currency):\s*/i;
+
+/** The text pass's lines: `op | item | quantity | owner | to | state | after | target | slot | price | currency`. A line that names no operation is skipped. */
 export function parseInventoryLines(raw: string): InventoryPassOp[] {
   return raw.split('\n').flatMap((line) => {
-    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
-    const parsed = passOp({ op, item, quantity, owner, to, state, after });
+    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = '', target = '', slot = '', price = '', currency = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim().replace(FIELD_LABEL, ''));
+    const parsed = passOp({ op, item, quantity, owner, to, state, after, target, slot, price, currency });
     return parsed ? [parsed] : [];
   });
 }
@@ -132,12 +154,30 @@ export interface PassScene {
   owners: readonly { id: string; name: string }[];
   location: { id: string; name: string } | null;
   resolve?: (text: string) => string;
+  /** What a pay settles against. Absent, every pay is skipped. */
+  money?: PassMoney;
+}
+
+/** The world's money and the stats that can hold it. */
+export interface PassMoney {
+  currencies: readonly Currency[];
+  placements: readonly Placement[];
+  stats: PaymentStats;
+  /** The entities the player plays as, whose stats are the player's. */
+  playedIds: readonly string[];
+  /** Which of `stats`, an owner's or the world's on null, are switched on. */
+  statsOn: (ownerId: string | null, stats: readonly PlayerStat[]) => readonly PlayerStat[];
 }
 
 export interface InventoryPassResult extends InventoryResult {
   /** Every runtime item: the scene's, and the ones this reply made. */
   runtimeItems: RuntimeItem[];
+  /** The stats after this reply's payments. Absent when the scene has no money. */
+  stats?: PaymentStats;
 }
+
+/** What a buy's money comes to before anything moves. */
+type BuyQuote = { kind: 'alone'; currency?: Currency } | { kind: 'priced'; currency: Currency; amount: number } | { kind: 'refused'; reason: string };
 
 /** One whole reply through the validator, in order (Q22). Presence comes from `scene` unless `call` sets it. */
 export function applyInventoryPass(
@@ -174,6 +214,65 @@ export function applyInventoryPass(
     if (exact) return { kind: 'entity', id: exact.id };
     const loose = scene.owners.filter((o) => sameCharacterName(o.name, name));
     return loose.length === 1 ? { kind: 'entity', id: loose[0].id } : null;
+  };
+
+  /** Who a pay or buy names. A name no one present answers to, or this place, holds no money and reads as no one (Q51). */
+  const partyOf = (name: string): SlotOwner | null => {
+    const where = ownerOf(name);
+    if (where) return where.kind === 'location' ? null : where;
+    return name.trim() && scene.playerNames.some((player) => sameCharacterName(player, name)) ? { kind: 'you' } : null;
+  };
+
+  let moneyStats = scene.money?.stats;
+
+  const moneyNames = scene.items.map((item) => ({ id: item.id, name: resolve(item.name) }));
+  const moneyCurrencies = (scene.money?.currencies ?? []).map((currency) => ({ ...currency, name: resolve(currency.name) }));
+
+  /** Moves the money, or answers why it can't move. */
+  const movePayment = (currency: Currency, payer: SlotOwner | null, payee: SlotOwner | null, amount: number): string | null => {
+    if (!scene.money || !moneyStats) return 'the world has no Currency';
+    const { money } = scene;
+    const stats = moneyStats;
+    const onFor = (id: string) => money.statsOn(id, stats.entityStats[id] ?? []);
+    const plan = planPayment(currency, payer, payee, amount, {
+      copies: list, placements: money.placements, globalStats: money.statsOn(null, stats.globalStats),
+      statsOf: (owner) => (owner.kind === 'entity' ? onFor(owner.id) : money.playedIds.flatMap(onFor)),
+    }, moneyNames);
+    if (!plan.settled) return plan.reason;
+    if (plan.ops.length) run(plan.ops);
+    // A switched-off stat reads as untracked, so the charge lands on the played entity whose stat was read.
+    moneyStats = applyPaymentStats(stats, plan.stats, (statId) => money.playedIds.find((id) => onFor(id).some((stat) => stat.id === statId)));
+    return null;
+  };
+
+  const payLabel = (op: InventoryPassOp) => `pay "${op.price ?? ''}"`;
+
+  /** The sum a pay states. A reply can name the money as the item or the currency alone, with how many as a quantity above 1. */
+  const statedPay = (op: InventoryPassOp) => {
+    const count = op.quantity > 1 ? op.quantity : undefined;
+    const price = op.price || op.item || (op.currency && count ? String(count) : '');
+    return readStatedPrice(price, op.currency ?? '', moneyCurrencies, moneyNames, count);
+  };
+
+  /** Settles one pay and answers the Currencies it governs: all of them when its money can't be read. */
+  const settlePay = (op: InventoryPassOp): readonly Currency[] => {
+    if (!scene.money) {
+      skip(`${payLabel(op)}: the world has no Currency`);
+      return [];
+    }
+    // A pay names no item, so one that names a thing that isn't money is talk about a price (Q70).
+    if (op.item && known(itemNameKey(listedName(op.item))) && !namesMoney(listedName(op.item), moneyCurrencies, moneyNames)) {
+      skip(`${payLabel(op)}: "${op.item}" isn't money`);
+      return moneyCurrencies;
+    }
+    const stated = statedPay(op);
+    if ('refused' in stated) {
+      skip(`${payLabel(op)}: ${stated.refused}`);
+      return moneyCurrencies;
+    }
+    const refused = movePayment(stated.currency, partyOf(op.owner), partyOf(op.to), stated.amount);
+    if (refused) skip(`${payLabel(op)}: ${refused}`);
+    return [stated.currency];
   };
 
   /** `key` is the item's Unidentified Name. */
@@ -232,11 +331,203 @@ export function applyInventoryPass(
 
   const known = (key: string) => authored.some((a) => a.key === key || isFace(a, key)) || !!runtimeNamed(key);
 
+  /** A name copied with the Items Here summary or marks after it reads as the name before the colon or " (". */
+  const listedName = (name: string): string => {
+    const cut = [name.indexOf(':'), name.indexOf(' (')].filter((at) => at > 0)
+      .find((at) => !known(itemNameKey(name)) && known(itemNameKey(name.slice(0, at))));
+    return cut !== undefined ? name.slice(0, cut) : name;
+  };
+
+  /** The visible copy a use acts on: one `where` holds, else one lying here; never the used copy itself. */
+  const targetOf = (name: string, where: ItemCopyWhere, usedId: string): ItemCopy | null => {
+    const key = itemNameKey(listedName(name.replace(/^the\s+/i, '')));
+    const places = [where, ...(scene.location ? [{ kind: 'location' as const, id: scene.location.id }] : [])];
+    for (const place of places) {
+      const [hit] = candidates(key, place, 'transfer').filter((c) => c.id !== usedId && c.visibility === 'visible');
+      if (hit) return hit;
+    }
+    return null;
+  };
+
+  /** The slot id a reply named: undefined for no name or two or more of the item's own slots joined (Q65), null for a name no slot has. */
+  const namedSlot = (copy: ItemCopy, name: string | undefined): string | undefined | null => {
+    const key = itemNameKey(name ?? '');
+    if (!key) return undefined;
+    const slots = call.world.slots ?? [];
+    const ref = copy.item;
+    const rule = ref.kind === 'item' ? authored.find((a) => a.item.id === ref.itemId)?.item.slotRule : undefined;
+    const own = slots.filter((s) => rule?.slotIds.includes(s.id)).map((s) => itemNameKey(s.name)).sort((a, b) => b.length - a.length);
+    // Longest first, so `hand` never counts inside `off hand`. Whole names only, so `off handle` holds no `off hand`.
+    let rest = key;
+    let joined = 0;
+    for (const slotName of own) {
+      const whole = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(slotName)}(?![\\p{L}\\p{N}])`, 'u');
+      if (!whole.test(rest)) continue;
+      rest = rest.replace(whole, ' ');
+      joined += 1;
+    }
+    if (joined >= 2) return undefined;
+    const matches = slots.filter((s) => itemNameKey(s.name) === key);
+    return (matches.find((s) => rule?.slotIds.includes(s.id)) ?? matches[0])?.id ?? null;
+  };
+
+  const authoredNamed = (name: string) => {
+    const key = itemNameKey(listedName(name));
+    return (authored.find((a) => a.key === key) ?? byFace(key))?.item;
+  };
+
+  /** What a name means across a reply: the authored item it names, else the name itself. */
+  const itemIdentity = (name: string): string => authoredNamed(name)?.id ?? itemNameKey(listedName(name));
+
+  /** What a buy costs. `alone` moves the item with no money (Q64); a stated price beats Value (Q65). */
+  const quoteBuy = (op: InventoryPassOp): BuyQuote => {
+    if (!scene.money || !currenciesSettle(scene.money.currencies)) return { kind: 'alone' };
+    const item = authoredNamed(op.item);
+    const own = item && currencyOf(item, moneyCurrencies);
+    if (op.price) {
+      // A bare number reads in the first Currency listed, so the item's own goes first.
+      const order = own ? [own, ...moneyCurrencies.filter((currency) => currency !== own)] : moneyCurrencies;
+      const stated = readStatedPrice(op.price, op.currency ?? '', order, moneyNames);
+      return 'refused' in stated ? { kind: 'refused', reason: stated.refused } : { kind: 'priced', ...stated };
+    }
+    if (!own) return { kind: 'refused', reason: 'it has no price' };
+    if (own.backing.kind === 'name' || item?.value === 0) return { kind: 'alone', currency: own };
+    if (item?.value === undefined) return { kind: 'refused', reason: 'it has no price' };
+    const amount = item.value * op.quantity;
+    if (own.backing.kind === 'coins' && !Number.isInteger(amount)) return { kind: 'refused', reason: `${amount} is no whole number of coins` };
+    return { kind: 'priced', currency: own, amount };
+  };
+
+  /** Settles one buy: the money and the item apply together, or nothing changes and it logs why (Q69). */
+  const settleBuy = (op: InventoryPassOp, quote: BuyQuote) => {
+    const label = `buy "${op.item}"`;
+    if (quote.kind === 'refused') {
+      skip(`${label}: ${quote.reason}`);
+      return;
+    }
+    const seller = partyOf(op.owner);
+    const buyer = partyOf(op.to);
+    const sold = seller?.kind === 'you';
+    if (!buyer && !sold) {
+      skip(`${label}: nothing present is named "${op.to}" to buy it`);
+      return;
+    }
+    if (buyer && seller && slotOwnerKey(buyer) === slotOwnerKey(seller)) {
+      skip(`${label}: "${op.owner}" sells it to itself`);
+      return;
+    }
+    const before = { list, runtimeItems, moneyStats, lines: diagnostics.length, uses: itemUses.length, fired: events.length };
+    const refuse = (why: string) => {
+      ({ list, runtimeItems, moneyStats } = before);
+      diagnostics.length = before.lines;
+      itemUses.length = before.uses;
+      events.length = before.fired;
+      skip(`${label}: ${why}`);
+    };
+    const key = itemNameKey(listedName(op.item));
+    const visibleAt = (where: ItemCopyWhere) => candidates(key, where, 'transfer').filter((copy) => copy.visibility === 'visible');
+    const sellerPlace = seller ?? ownerOf(op.owner);
+    const held = sellerPlace ? visibleAt(sellerPlace) : [];
+    // The new-copy rule stocks shops, so a player sells only what they hold (Q63).
+    if (sold && held.reduce((sum, copy) => sum + copy.quantity, 0) < op.quantity) {
+      refuse(`none or too few at "${op.owner}"`);
+      return;
+    }
+    if (quote.kind === 'priced') {
+      const unpaid = movePayment(quote.currency, buyer, seller, quote.amount);
+      if (unpaid) {
+        refuse(unpaid);
+        return;
+      }
+    }
+    let left = op.quantity;
+    const takeFrom = (copies: readonly ItemCopy[]) => distribute(copies, left, (copy, quantity) => {
+      left -= quantity;
+      run([buyer ? { kind: 'transfer', copyId: copy.id, to: buyer, quantity } : { kind: 'lose', copyId: copy.id, quantity }]);
+    });
+    takeFrom(held);
+    if (left > 0 && scene.location) takeFrom(visibleAt({ kind: 'location', id: scene.location.id }));
+    if (left > 0 && buyer) {
+      const itemId = gainId(op.item, key);
+      if (!itemId) {
+        refuse('the world has no item of that name');
+        return;
+      }
+      run([{ kind: 'gain', itemId, quantity: left, to: buyer }]);
+    }
+    if (diagnostics.length > before.lines) refuse(diagnostics[diagnostics.length - 1]);
+  };
+
+  const buyWords = (op: InventoryPassOp) => [itemIdentity(op.item), op.quantity, itemNameKey(op.owner), itemNameKey(op.to), op.price ?? '', itemNameKey(op.currency ?? '')];
+  // A reply that repeats a buy word for word states one buy (Q68).
+  const saidBuys = new Set<string>();
+  const buys = new Map(passOps.flatMap((named) => {
+    if (named.op !== 'buy') return [];
+    const said = JSON.stringify(buyWords(named));
+    if (saidBuys.has(said)) return [];
+    saidBuys.add(said);
+    return [[named, quoteBuy(named)] as const];
+  }));
+  const partyKey = (name: string) => { const party = partyOf(name); return party && slotOwnerKey(party); };
+  const pricedByPay = new Set<InventoryPassOp>();
+  /** A pay of a buy's sum is that buy said again, in any direction, unless both its sides name other people (Q68). Beside a buy with no price, it states the price (Q71). */
+  const repeatsBuy = (pay: InventoryPassOp): boolean => {
+    const stated = statedPay(pay);
+    if ('refused' in stated) return false;
+    const sides = [partyKey(pay.owner), partyKey(pay.to)];
+    const shares = (buy: InventoryPassOp) => sides.some((side) => !side || side === partyKey(buy.owner) || side === partyKey(buy.to));
+    const sameSum = [...buys].some(([buy, quote]) => quote.kind === 'priced' && quote.currency === stated.currency && quote.amount === stated.amount && shares(buy));
+    if (!sameSum) {
+      const unpriced = [...buys.keys()].find((buy) => {
+        const item = authoredNamed(buy.item);
+        const own = item && currencyOf(item, moneyCurrencies);
+        return !buy.price && !pricedByPay.has(buy) && (!own || own === stated.currency) && shares(buy);
+      });
+      if (!unpriced) return false;
+      pricedByPay.add(unpriced);
+      buys.set(unpriced, { kind: 'priced', ...stated });
+    }
+    skip(`${payLabel(pay)}: a buy in the reply is the same sum`);
+    return true;
+  };
+
+  // Pays settle first. A pay or buy is the reply's only statement about its Currency's money, settled or refused (Q56, Q68).
+  const paidIn = [
+    ...passOps.filter((named) => named.op === 'pay' && !repeatsBuy(named)).flatMap(settlePay),
+    ...[...buys.values()].flatMap((quote) => (quote.kind === 'refused' ? moneyCurrencies : quote.currency ? [quote.currency] : [])),
+  ];
+  const boughtItems = new Set([...buys.keys()].map((buy) => itemIdentity(buy.item)));
+  const handMoves = new Set<string>();
+  const movesHands = (op: InventoryPassOp) => op.op === 'gain' || op.op === 'lose' || op.op === 'transfer';
+  const movesMoney = (op: InventoryPassOp, currencies: readonly Currency[]) =>
+    movesHands(op) && namesMoney(listedName(op.item), currencies, moneyNames);
   for (const named of passOps) {
-    // A name copied with the Items Here summary or marks after it reads as the name before the colon or " (".
-    const cut = [named.item.indexOf(':'), named.item.indexOf(' (')].filter((at) => at > 0)
-      .find((at) => !known(itemNameKey(named.item)) && known(itemNameKey(named.item.slice(0, at))));
-    let op = cut !== undefined ? { ...named, item: named.item.slice(0, cut) } : named;
+    if (named.op === 'pay') continue;
+    if (named.op === 'buy') {
+      const quote = buys.get(named);
+      if (quote) settleBuy(named, quote);
+      else skip(`buy "${named.item}": the reply repeats it`);
+      buys.delete(named);
+      continue;
+    }
+    if (movesHands(named) && boughtItems.has(itemIdentity(named.item))) {
+      skip(`${named.op} "${named.item}": a buy in the reply covers this item`);
+      continue;
+    }
+    if (movesMoney(named, paidIn)) {
+      skip(`${named.op} "${named.item}": a pay in the reply covers this money`);
+      continue;
+    }
+    // A reply that repeats a gain of money, by item, quantity and receiver, states one gain (Q56).
+    if (named.op === 'gain' && movesMoney(named, moneyCurrencies)) {
+      const said = JSON.stringify([itemNameKey(named.item), named.quantity, itemNameKey(named.to || named.owner)]);
+      if (handMoves.has(said)) {
+        skip(`${named.op} "${named.item}": the reply repeats it`);
+        continue;
+      }
+      handMoves.add(said);
+    }
+    let op = { ...named, item: listedName(named.item) } as InventoryPassOp & { op: Exclude<InventoryPassOpKind, 'pay' | 'buy'> };
     const key = itemNameKey(op.item);
     // Taking from this place an item it never listed is finding a new one.
     const from = op.op === 'transfer' ? ownerOf(op.owner) : null;
@@ -245,7 +536,7 @@ export function applyInventoryPass(
     if (op.op === 'gain') {
       const to = ownerOf(op.to || op.owner);
       if (!to) {
-        skip(`${label}: no one present is "${op.to || op.owner}"`);
+        skip(`${label}: nothing present is named "${op.to || op.owner}"`);
         continue;
       }
       // A gain from someone who holds the item is them handing it over.
@@ -284,7 +575,7 @@ export function applyInventoryPass(
       }
       // An item already lying here is the scene as listed, not a new one.
       if (to.kind === 'location' && candidates(key, to, 'transfer').some((c) => c.visibility === 'visible')) {
-        skip(`${label}: it already lies at "${op.to || op.owner}"`);
+        skip(`${label}: it is already at "${op.to || op.owner}"`);
         continue;
       }
       const itemId = gainId(op.item, key);
@@ -298,11 +589,11 @@ export function applyInventoryPass(
 
     const where = ownerOf(op.owner);
     if (!where) {
-      skip(`${label}: no one present is "${op.owner}"`);
+      skip(`${label}: nothing present is named "${op.owner}"`);
       continue;
     }
     if (op.op === 'transfer' && !ownerOf(op.to)) {
-      skip(`${label}: no one present is "${op.to}"`);
+      skip(`${label}: nothing present is named "${op.to}"`);
       continue;
     }
     // A change needs any copy here; its State check follows.
@@ -334,13 +625,25 @@ export function applyInventoryPass(
     for (let i = 0; i < op.quantity; i += 1) {
       const [copy] = candidates(key, where, op.op, op.state);
       if (!copy) break;
+      // A use's `to` names no receiver, so an item named there is the target the reply misplaced.
+      const aimed = op.op !== 'use' ? '' : op.target || (op.to && !ownerOf(op.to) ? op.to : '');
+      // The item named as its own target is a plain use.
+      const target = aimed && itemNameKey(listedName(aimed.replace(/^the\s+/i, ''))) !== key ? targetOf(aimed, where, copy.id) : undefined;
+      if (target === null) skip(`target "${aimed}" of ${label}: none at "${op.owner}" or here`);
+      // The name holds one copy; a further one takes the first free slot.
+      const slotId = op.op === 'equip' && i === 0 ? namedSlot(copy, op.slot) : undefined;
+      if (slotId === null) {
+        skip(`${label}: no slot is named "${op.slot}"`);
+        break;
+      }
       run([op.op === 'change' ? { kind: 'change', copyId: copy.id, state: op.state ?? '' }
-        : op.op === 'use' ? { kind: 'use', copyId: copy.id, ...(op.after && { after: op.after }) }
+        : op.op === 'use' ? { kind: 'use', copyId: copy.id, ...(op.after && { after: op.after }), ...(target && { targetCopyId: target.id }) }
+        : op.op === 'equip' ? { kind: 'equip', copyId: copy.id, ...(slotId && { slotId }) }
         : { kind: op.op, copyId: copy.id }]);
     }
   }
 
-  return { copies: list, itemUses, diagnostics, events, runtimeItems };
+  return { copies: list, itemUses, diagnostics, events, runtimeItems, ...(moneyStats && { stats: moneyStats }) };
 }
 
 /** Splits `quantity` over `copies` in order, each taking what it holds. */

@@ -1,5 +1,6 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Hint, Meta } from '@/components/ui/typography';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import type { CompatibleWorldRow, ReviewState } from '@/lib/compatibleWorlds';
 import { LISTING_OPTIONS, type ListingVisibility } from '@/lib/publishLinks';
@@ -45,17 +46,17 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
         <WorldIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0 w-full space-y-2">
           <p className="text-label font-medium">Listing</p>
+          <Hint>
+            {unlisted
+              ? `Hides this ${noun} from Community Creations. Players get it only inside a world that requires it.`
+              : `Lists this ${noun} in Community Creations`}
+          </Hint>
           <OptionSwitcher
             value={visibility}
             onChange={onVisibilityChange}
             options={LISTING_OPTIONS}
             ariaLabel="Listing"
           />
-          <p className="text-meta text-muted-foreground">
-            {unlisted
-              ? `Unlisted hides this ${noun} from Community Creations. Players receive it only inside a world that requires it.`
-              : `Public lists this ${noun} in Community Creations`}
-          </p>
         </div>
       </div>
       )}
@@ -63,7 +64,7 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
       <div className={declared ? 'space-y-2' : 'space-y-2 border-t pt-3'}>
         <p className="text-label font-medium">Compatible Worlds</p>
         {/* One line, not two: the empty state already says what the list would have held. */}
-        <p className="text-meta text-muted-foreground">
+        <Hint>
           {unlisted
             ? `An unlisted ${noun} can't be an add-on`
             : declared
@@ -73,7 +74,7 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
               : rows.length === 0
                 ? `No world has a linked copy of this ${noun} and a listing of its own`
                 : `Each world here has a linked copy of this ${noun} and its own listing. The world's author reviews each offer.`}
-        </p>
+        </Hint>
 
         {/* The checkbox caption, said once for the list rather than on every row. Hidden with the list
             itself, and while an unlisted listing offers nothing. */}
@@ -98,11 +99,11 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
                   </span>
                   <div className="min-w-0">
                     <Label htmlFor={boxId} className="block truncate">{row.name}</Label>
-                    <p className="text-meta text-muted-foreground">
+                    <Meta as="p">
                       {row.linked
                         ? (row.reviewState ? REVIEW_LABELS[row.reviewState] : 'Not offered yet')
                         : 'Pending removal. This world no longer has a linked copy.'}
-                    </p>
+                    </Meta>
                   </div>
                 </li>
               );

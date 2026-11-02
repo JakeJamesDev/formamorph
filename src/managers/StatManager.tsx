@@ -42,9 +42,9 @@ import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
 
-export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and Code don't run.
+export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and scripts don't run.
 
-**Hidden** hides the stat from the player. It's still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
+**Hidden** hides the stat from the player. It's still sent to the AI, and its Regen and scripts run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
 
 /** What the stat editor reads and writes besides the world: the stats beside the open one, and its write. */
 export interface StatEditorStore {

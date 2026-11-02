@@ -142,7 +142,7 @@ test('the Code Templates reference validates and inserts into its local target',
   await page.goto('/#dev?modal=designSystem');
   await page.getByRole('tab', { name: 'Code Templates', exact: true }).click();
 
-  const reference = page.getByRole('region', { name: 'Stat Code Templates' });
+  const reference = page.getByRole('region', { name: 'Code Templates', exact: true });
   const opener = reference.getByRole('button', { name: 'Open Code Templates' });
   await opener.focus();
   await page.keyboard.press('Enter');
@@ -171,7 +171,7 @@ test('the Code Templates reference validates and inserts into its local target',
 
   await expect(dialog).toBeHidden();
   await expect(reference).toContainText('const weight = 0.25;');
-  await expect(reference.getByText('The local sample stat code is updated.')).toBeVisible();
+  await expect(reference.getByText('The sample code box holds the inserted code.')).toBeVisible();
 });
 
 test('the Find reference exposes local search states and keyboard focus', async ({ page }) => {

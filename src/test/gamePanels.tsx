@@ -74,10 +74,14 @@ export interface TurnFixture {
   stats?: PlayerStat[];
   /** Who stood in this turn's scene, with each name's reveal state. */
   scene?: SceneEntity[];
+  /** Where the player stood when the turn ended. */
+  locationId?: string;
   /** Each entity's stat values as this turn left them. */
   entityStats?: EntityStatValues;
   /** What this turn moved each entity stat. */
   entityStatChanges?: EntityStatChanges;
+  /** The owned traits each entity held when this turn ended. */
+  ownedTraits?: GameState['ownedTraits'];
 }
 
 export interface PanelHarnessOptions {
@@ -156,9 +160,11 @@ function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
   return {
     globalStats: turn.stats ?? stats,
     globalTraits: turn.traits ?? [],
+    ...(turn.ownedTraits ? { ownedTraits: turn.ownedTraits } : {}),
     ...(turn.entityStats ? { entityStats: turn.entityStats } : {}),
     ...(turn.entityStatChanges ? { entityStatChanges: turn.entityStatChanges } : {}),
     visibleEntities: turn.scene ?? [],
+    ...(turn.locationId ? { locationId: turn.locationId } : {}),
     logEntries: [],
     gameplayText: turn.narration,
     gameTime: 0,
@@ -352,7 +358,7 @@ export function renderLeftPanel(
   overrides: Partial<LeftPanelProps> = {},
   options: PanelHarnessOptions = {},
 ): PanelHarness<LeftPanelProps> {
-  const defaults: LeftPanelProps = { entities: [], onEntityClick: vi.fn(), narrationPrompt: defaultSystemPrompt };
+  const defaults: LeftPanelProps = { entities: [], onEntityClick: vi.fn(), onStrangerClick: vi.fn(), narrationPrompt: defaultSystemPrompt };
   return renderPanel(defaults, overrides, options, (props) => <LeftPanel {...props} />);
 }
 

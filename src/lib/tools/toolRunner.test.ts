@@ -390,7 +390,7 @@ describe('runToolCall: Script', () => {
 
   it.each([
     ['memories.add("A line.")'], ['memories.pin("A line.")'], ['location.move("Far Bank")'], ['entities.Bram.move("Far Bank")'],
-    ['entities.Bram.follow()'], ['entities.Bram.diary("A line.")'], ['clock.advance(30)'], ['placeholders.Anything.pin("x")'],
+    ['entities.Bram.follow()'], ['entities.Bram.meet()'], ['entities.Bram.diary("A line.")'], ['clock.advance(30)'], ['placeholders.Anything.pin("x")'],
   ])('has no verb: %s fails as not a function', async (call) => {
     const result = await runToolCall(script(`${call}; return "ran";`, []), '{}', s);
     expect(result.failure).toBe('script');

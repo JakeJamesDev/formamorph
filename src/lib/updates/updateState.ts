@@ -27,6 +27,8 @@ export interface UpdateState {
   bytesTotal?: number;
   error?: string;
   lastCheckedAt?: number;
+  /** The download for `latestVersion` went to the browser (the Mac `.dmg`), not to the app. */
+  openedInBrowser?: boolean;
 }
 
 export type UpdateAction =
@@ -36,6 +38,7 @@ export type UpdateAction =
   | { type: 'DOWNLOAD_START' }
   | { type: 'DOWNLOAD_PROGRESS'; received: number; total: number }
   | { type: 'DOWNLOAD_DONE' }
+  | { type: 'DOWNLOAD_OPENED_IN_BROWSER' }
   | { type: 'ERROR'; error: string }
   | { type: 'SET_CHANNEL'; channel: UpdateChannel };
 
@@ -56,6 +59,8 @@ export function updateReducer(state: UpdateState, action: UpdateAction): UpdateS
           changelog: action.changelog,
           lastCheckedAt: action.at,
           error: undefined,
+          // A browser download stays true only for the version it fetched.
+          openedInBrowser: action.latestVersion === state.latestVersion ? state.openedInBrowser : undefined,
         };
       }
       // Up to date: keep the current release's notes (for the "you're up to date" dialog), drop any prior target.
@@ -66,9 +71,15 @@ export function updateReducer(state: UpdateState, action: UpdateAction): UpdateS
         changelog: action.changelog,
         lastCheckedAt: action.at,
         error: undefined,
+        openedInBrowser: undefined,
       };
     case 'DOWNLOAD_START':
-      return { ...state, phase: 'downloading', downloadPct: 0, bytesReceived: 0, bytesTotal: undefined };
+      return { ...state, phase: 'downloading', downloadPct: 0, bytesReceived: 0, bytesTotal: undefined, openedInBrowser: undefined };
+    case 'DOWNLOAD_OPENED_IN_BROWSER':
+      // A channel switch during the wait already moved on, so its answer is stale.
+      if (state.phase !== 'downloading') return state;
+      // No progress follows a browser download, so Download shows again.
+      return { ...state, phase: 'available', downloadPct: undefined, bytesReceived: undefined, bytesTotal: undefined, openedInBrowser: true };
     case 'DOWNLOAD_PROGRESS': {
       const pct = action.total > 0 ? Math.min(100, Math.round((action.received / action.total) * 100)) : state.downloadPct;
       return { ...state, phase: 'downloading', downloadPct: pct, bytesReceived: action.received, bytesTotal: action.total };

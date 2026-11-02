@@ -31,6 +31,9 @@ export interface HelpSources {
 /** The Search Endpoint choice that sends the search request where answers go. */
 export const SAME_AS_ANSWER = 'same-as-answer';
 
+/** The Sorting Endpoint choice that sends the Intent Classifier request where the search request goes. */
+export const SAME_AS_SEARCH = 'same-as-search';
+
 /** Whether the player has answered the Semantic Search offer card. A flip of the switch answers it too. */
 export type SemanticOffer = 'undecided' | 'decided';
 const isSemanticOffer = (value: unknown): value is SemanticOffer => value === 'undecided' || value === 'decided';
@@ -45,6 +48,12 @@ export interface HelpSettings {
   readonly answerEndpoint: string | null;
   /** The preset picks go to, `SAME_AS_ANSWER`, or null to follow the active endpoint. */
   readonly pickEndpoint: string | null;
+  /** The Intent Classifier gives each question an Intent first, and the answer request carries that Intent's plan. */
+  readonly intentClassifier: boolean;
+  /** The preset Intent Classifier requests go to, `SAME_AS_SEARCH`, or null to follow the active endpoint. */
+  readonly intentEndpoint: string | null;
+  /** The preset Create requests go to, `SAME_AS_ANSWER`, or null to follow the active endpoint. */
+  readonly createEndpoint: string | null;
   /** Lookup mode: the model reads more sections through the guide lookup, where the endpoint takes function calls (ADR-0009). */
   readonly lookup: boolean;
   /** The most guide lookup calls one help question runs. */
@@ -61,6 +70,8 @@ export interface HelpSettings {
   readonly openScreen: boolean;
   /** A request carries the open world's text and the world rules of its lean. */
   readonly readWorld: boolean;
+  /** In a World Editor, Create questions and the full request ask for entities in entity blocks, which reply cards add to the world. */
+  readonly creation: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
   readonly historyLength: number;
   /** The answer request's reasoning switch and strength. The pick request never reasons. */
@@ -73,7 +84,7 @@ export interface HelpSettings {
   readonly thinkingOpen: boolean;
   /** How an answer reveals as it streams: the Answer Reveal dialog's values. */
   readonly reveal: HelpReveal;
-  /** The help prompt presets and the active one. The session sends the active preset's three texts. */
+  /** The help prompt presets and the active one. The session sends the active preset's texts. */
   readonly presets: HelpPresetStore;
   /** The player's Formaquestion Tools: a list of their own, apart from the gameplay Tools (ADR-0010). */
   readonly tools: readonly Tool[];
@@ -111,6 +122,10 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   semanticOffer: 'undecided',
   answerEndpoint: null,
   pickEndpoint: SAME_AS_ANSWER,
+  // Off until the Intent probe passes its bar (Q43).
+  intentClassifier: false,
+  intentEndpoint: SAME_AS_SEARCH,
+  createEndpoint: SAME_AS_ANSWER,
   lookup: false,
   lookupCallLimit: DOCS_LOOKUP_CALL_LIMIT,
   roll: false,
@@ -120,6 +135,8 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   codeTestCallLimit: HELP_CODE_TEST_CALL_LIMIT,
   openScreen: true,
   readWorld: true,
+  // Off until the hand grade of the Create probe passes its bar (Q43).
+  creation: false,
   historyLength: 4,
   reasoning: defaultPromptReasoningSetting('help'),
   reasoningBudget: defaultReasoningBudgetPct('help'),
@@ -159,7 +176,7 @@ const isBetween = (min: number, max: number): Check => (value) => Number.isInteg
 const isCount = (max: number): Check => isBetween(0, max);
 
 /** A preset id, or null for Follow Active. */
-const isPresetId: Check = (value) => value === null || (typeof value === 'string' && value !== '' && value !== SAME_AS_ANSWER);
+const isPresetId: Check = (value) => value === null || (typeof value === 'string' && value !== '' && value !== SAME_AS_ANSWER && value !== SAME_AS_SEARCH);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -179,6 +196,9 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       semanticOffer: isSemanticOffer,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
+      intentClassifier: isBool,
+      intentEndpoint: (value) => value === SAME_AS_SEARCH || isPresetId(value),
+      createEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
       lookup: isBool,
       lookupCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       roll: isBool,
@@ -187,6 +207,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       codeTestCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       openScreen: isBool,
       readWorld: isBool,
+      creation: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,
       reasoningBudget: isBetween(MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT),

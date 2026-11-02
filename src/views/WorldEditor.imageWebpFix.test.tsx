@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { blankItem } from '@/lib/items';
 import type { World } from '@/types';
 
 /**
@@ -89,7 +90,7 @@ describe('WorldEditor — converting a world’s images to lossless WebP', () =>
   it('flags the convertible image and offers the repair on its row', async () => {
     setup();
     expect(await openBench()).toBeInTheDocument();
-    expect(screen.getByText(/PNG — converting it to lossless WebP/)).toBeInTheDocument();
+    expect(screen.getByText(/PNG\. Lossless WebP makes it smaller/)).toBeInTheDocument();
     // Nothing runs until the author asks: the encode is the expensive half.
     expect(encodeInWorker).not.toHaveBeenCalled();
   });
@@ -205,6 +206,18 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
     expect(world.locations[0].images?.[0]?.data).toBe(WEBP);
   });
 
+  it('writes a converted item image back and clears its row', async () => {
+    const { ctx } = setup(benchEditorWorld({
+      items: [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: PNG }] }],
+    }));
+    const button = await openBench();
+
+    await act(async () => { fireEvent.click(button); });
+
+    expect(ctx().getWorldData().items?.[0].images).toEqual([{ data: WEBP }]);
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull());
+  });
+
   it('counts every image it kept, however many that is', async () => {
     setup(SPREAD);
     const button = await openBench();
@@ -243,7 +256,7 @@ describe('WorldEditor — converting a GIF the browser can’t re-encode as anim
     // Said as the reason it actually is: this GIF isn't one WebP couldn't shrink, it is one this browser
     // can't convert without costing the author the animation.
     expect(toast.info).toHaveBeenCalledWith(
-      'Left 1 GIF alone — converting it in this browser would flatten its animation.',
+      'Skipped 1 GIF, because converting it in this browser removes its animation.',
     );
   });
 

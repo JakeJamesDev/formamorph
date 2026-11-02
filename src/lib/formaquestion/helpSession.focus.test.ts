@@ -22,7 +22,7 @@ const index = createDocsIndex({
   pages: {
     'World-Editor-Stats': '# World Editor: Stats\n\nStats hold numbers.\n\n## The Fields\n\nA stat has a name.\n\n## Scripts\n\nCode sets a stat.\n',
     'World-Editor-Traits': '# World Editor: Traits\n\nTraits change stats.\n\n## The Panel\n\nA trait has a name.\n',
-    ScriptsGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n',
+    'Scripts-Reference': '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n',
   },
 });
 

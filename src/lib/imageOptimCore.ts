@@ -154,6 +154,8 @@ function worldEditor(get: () => World, set: (next: World) => void): MediaEditor 
     entity: (id, edit) => set({ ...get(), entities: swap(get().entities, id, edit) }),
     location: (id, edit) => set({ ...get(), locations: swap(get().locations, id, edit) }),
     dictionary: (id, edit) => set({ ...get(), dictionaries: swap(get().dictionaries, id, edit) }),
+    body: (id, edit) => set({ ...get(), bodies: swap(get().bodies, id, edit) }),
+    item: (id, edit) => set({ ...get(), items: swap(get().items, id, edit) }),
   };
 }
 

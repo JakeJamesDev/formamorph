@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { entityTraitNames, sandboxTraits, savedTraits, worldTraitPlaces } from './statCodeTraits';
+import { codeEntities, entityTraitNames, sandboxTraits, savedTraits, worldTraitPlaces } from './statCodeTraits';
 import { applyCodeTraitSwitches, type TraitWorld } from './traitRuntime';
 import type { Entity, EntityGroup, Placeholder, Trait, TraitGroup } from '@/types';
 
@@ -185,5 +185,25 @@ describe('worldTraitPlaces', () => {
       { id: 'touched', name: 'Touched', path: ['Lineage', 'Sky Storms'] },
       { id: 'plain', name: 'Plain', path: [] },
     ]);
+  });
+});
+
+describe('codeEntities met', () => {
+  const entity = (id: string, over: Partial<Entity> = {}): Entity => ({ id, name: id, type: '', pronouns: '', traits: [], ...over }) as Entity;
+  const world: TraitWorld = { traits: [], groups: [], entities: [], persona: { source: 'world', entityId: 'hero' }, global: { traits: [], groups: [] }, owners: [] };
+  const owners = (over: Partial<Parameters<typeof codeEntities>[0]>) => ({
+    acquired: [], disabledTraitIds: [], appliedValues: {}, world,
+    entities: [entity('hero'), entity('guard', { strangerName: 'a guard' }), entity('smith')], ...over,
+  });
+  const metOf = (over: Partial<Parameters<typeof codeEntities>[0]>) =>
+    Object.fromEntries(codeEntities(owners(over), []).entities.map((e) => [e.id, e.met]));
+
+  it('reads the met list, and the persona as met', () => {
+    expect(metOf({ metIds: ['smith'] })).toEqual({ hero: true, guard: false, smith: true });
+    expect(metOf({ metIds: ['guard'] })).toEqual({ hero: true, guard: true, smith: false });
+  });
+
+  it('reads an entity with no Stranger Name as met when the run has no met list', () => {
+    expect(metOf({})).toEqual({ hero: true, guard: false, smith: true });
   });
 });

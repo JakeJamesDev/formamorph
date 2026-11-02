@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { LeftPanel, RightPanel } from './GamePanels';
 import { defaultSystemPrompt } from './GamePrompts';
-import { renderInGame, renderRightPanel, statFixture, type Gameplay, type TurnFixture } from '@/test/gamePanels';
+import { renderInGame, renderRightPanel, statFixture, turnHistory, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import type { EntityStatValues, SceneEntity } from '@/types';
 import { NO_DELTAS } from '@/lib/useStatDeltas';
 import { regenerateState } from '@/lib/turnHistory';
@@ -13,35 +13,40 @@ vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
 const PICTURE = 'data:image/png;base64,AAAA';
-const bram = { id: 'bram', name: 'Bram', image: PICTURE };
-const odette = { id: 'odette', name: 'Odette', image: PICTURE };
-const wick = { id: 'wick', name: 'Wick', image: PICTURE };
-const world = { entities: [bram, odette, wick] } as never;
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
+const bram = { id: 'bram', name: 'Bram', image: PICTURE, locations: ['yard'] };
+const odette = { id: 'odette', name: 'Odette', image: PICTURE, locations: ['yard'] };
+const wick = { id: 'wick', name: 'Wick', image: PICTURE, locations: ['yard'], strangerName: 'a thin runner' };
+// Mara stands here too but takes no part, so she is quiet: here, and not in scene.
+const mara = { id: 'mara', name: 'Mara', image: PICTURE, locations: ['yard'] };
+const world = { entities: [bram, odette, wick, mara], locations: [YARD] } as never;
 
 const values: EntityStatValues = {
   bram: [statFixture('Trust', 40), statFixture('Secret', 9, { hidden: true }), statFixture('Dormant', 3, { enabled: false })],
   odette: [statFixture('Stock', 12)],
   wick: [statFixture('Nerve', 7)],
+  mara: [statFixture('Poise', 2)],
 };
 
-// Turn one: Odette and Bram are met by name. Turn two, the live scene: Bram by name, Wick only by alias.
+// Turn one: Odette and Bram take part. Turn two, the live scene: Bram, Odette and Wick, who shows by his Stranger Name.
 const met: SceneEntity[] = [{ name: 'Odette', revealed: true }, { name: 'Bram', revealed: true }];
 const now: SceneEntity[] = [{ name: 'Bram', revealed: true }, { name: 'Wick', alias: 'a thin runner', revealed: false }];
+const takingPart = ['Bram', 'Odette', 'Wick'];
 const turns: TurnFixture[] = [
-  { narration: 'You meet Odette and Bram.', turnId: 't1', scene: met, entityStats: values },
-  { narration: 'A runner joins Bram.', turnId: 't2', scene: now, entityStats: values },
+  { narration: 'You meet Odette and Bram.', turnId: 't1', scene: met, entities: ['Odette', 'Bram'], locationId: 'yard', entityStats: values },
+  { narration: 'A runner joins Bram.', turnId: 't2', scene: now, entities: takingPart, locationId: 'yard', entityStats: values },
 ];
 const stage = {
   world, turns, stats: [statFixture('Vigor', 50)],
-  seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(now); },
+  seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(now); g.setCurrentLocation(YARD as never); },
 };
 
 const choose = async (label: string) => {
-  await userEvent.click(screen.getByRole('combobox', { name: 'Entity stats' }));
+  await userEvent.click(screen.getByRole('combobox', { name: 'Selected entity' }));
   await userEvent.click(await screen.findByRole('option', { name: label }));
 };
 const optionLabels = async () => {
-  await userEvent.click(screen.getByRole('combobox', { name: 'Entity stats' }));
+  await userEvent.click(screen.getByRole('combobox', { name: 'Selected entity' }));
   return (await screen.findAllByRole('option')).map((o) => o.textContent);
 };
 const section = () => screen.queryByTestId('entity-stats');
@@ -79,12 +84,12 @@ describe('RightPanel — entity stats', () => {
     expect(within(section()!).queryByText('Dormant')).not.toBeInTheDocument();
   });
 
-  it('lists present entities, then absent ones, then (None)', async () => {
+  it('lists the In Scene entities in cast order, then (None)', async () => {
     renderRightPanel({}, stage);
-    expect(await optionLabels()).toEqual(['Bram', 'a thin runner', 'Odette', '(None)']);
+    expect(await optionLabels()).toEqual(['Bram', 'Odette', 'a thin runner', '(None)']);
   });
 
-  it('lists an unrevealed entity by its alias and never by its name', async () => {
+  it('lists a stranger by its label and never by its name', async () => {
     renderRightPanel({}, stage);
     await choose('a thin runner');
     expect(within(section()!).getByText('Nerve')).toBeInTheDocument();
@@ -92,17 +97,18 @@ describe('RightPanel — entity stats', () => {
     expect(screen.queryByText('Wick')).not.toBeInTheDocument();
   });
 
-  it('lists an absent entity by name once an earlier turn revealed it', async () => {
+  it('leaves out a quiet entity that owns stats', async () => {
     renderRightPanel({}, stage);
-    expect(await optionLabels()).toContain('Odette');
+    expect(await optionLabels()).not.toContain('Mara');
   });
 
-  it('leaves out an absent entity no turn revealed', async () => {
-    renderRightPanel({}, { ...stage, turns: [{ ...turns[1] }, { ...turns[1], turnId: 't3' }] });
+  it('leaves out an entity that took part but stands elsewhere', async () => {
+    const away = { ...odette, locations: ['barn'] };
+    renderRightPanel({}, { ...stage, world: { entities: [bram, away, wick], locations: [YARD, { id: 'barn', name: 'Barn' }] } as never });
     expect(await optionLabels()).toEqual(['Bram', 'a thin runner', '(None)']);
   });
 
-  it('shows a picked absent entity with its stats', async () => {
+  it('shows a picked entity with its stats', async () => {
     renderRightPanel({}, stage);
     await choose('Odette');
     expect(within(section()!).getByText('Stock')).toBeInTheDocument();
@@ -125,7 +131,7 @@ describe('RightPanel — entity stats', () => {
 
   it('opens on the entity the entity view falls back to when nothing was picked', () => {
     renderRightPanel({}, stage);
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Bram');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Bram');
     expect(within(section()!).getByText('Trust')).toBeInTheDocument();
   });
 
@@ -141,14 +147,14 @@ describe('RightPanel — entity stats', () => {
       world, turns, stats: [statFixture('Vigor', 50)],
       seed: (g) => { g.setEntityStats(secret); g.setVisibleEntities(now); },
     });
-    expect(screen.queryByRole('combobox', { name: 'Entity stats' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Selected entity' })).not.toBeInTheDocument();
     expect(section()).toBeNull();
   });
 
   it('opens the Stats tab for a world whose only visible stats belong to entities', () => {
     renderRightPanel({}, { ...stage, stats: [statFixture('Vigor', 50, { hidden: true })] });
     expect(screen.getByRole('tab', { name: /Stats/ })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toBeInTheDocument();
   });
 
   it('drops the pick when a save loads, but keeps it through a rollback', () => {
@@ -195,7 +201,9 @@ describe('RightPanel — entity stats', () => {
     });
     act(() => { view.gameplay().statDeltas.show(null,{ vigor: -3 }); });
     expect(screen.getByText('-3')).toBeInTheDocument();
-    act(() => { view.gameplay().loadGameState(view.gameplay().gameStates[1], []); });
+    // A real save carries its history, which the scene window reads.
+    const save = { ...view.gameplay().gameStates[1], fullMessageHistory: turnHistory(turns) };
+    act(() => { view.gameplay().loadGameState(save, [YARD as never]); });
     act(() => { view.gameplay().setSelectedEntityId('bram'); });
     expect(screen.queryByText('-3')).not.toBeInTheDocument();
     expect(within(section()!).queryByText('+6')).not.toBeInTheDocument();
@@ -236,7 +244,7 @@ describe('the entity view and the stat panel', () => {
   it('shows the same entity in both places before anyone picks', () => {
     both();
     expect(shownInView()).toContain('Bram');
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Bram');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Bram');
   });
 
   it('moves the entity view when the dropdown picks', async () => {
@@ -249,9 +257,37 @@ describe('the entity view and the stat panel', () => {
   it('moves the dropdown when the entity list picks', async () => {
     both();
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    fireEvent.click(await screen.findByText('a thin runner'));
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('a thin runner');
-    expect(within(section()!).getByText('Nerve')).toBeInTheDocument();
+    fireEvent.click(await screen.findByText('Odette'));
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Odette');
+    expect(within(section()!).getByText('Stock')).toBeInTheDocument();
+  });
+
+  it('moves the dropdown when the entity list picks an entity with nothing to show', async () => {
+    const plainOdette = { ...odette, image: undefined };
+    renderInGame(
+      <>
+        <LeftPanel entities={[bram, plainOdette, wick] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />
+        <RightPanel
+          onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
+          onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null} language="" setLanguage={vi.fn()}
+        />
+      </>,
+      { ...stage, world: { entities: [bram, plainOdette, wick, mara], locations: [YARD] } as never },
+    );
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    fireEvent.click(await screen.findByText('Odette'));
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Odette');
+    expect(within(section()!).getByText('Stock')).toBeInTheDocument();
+    expect(shownInView()).toContain('Bram');
+  });
+
+  it('leaves the dropdown on its fallback when the entity list picks an Also Here entity', async () => {
+    both();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    const quiet = within(await screen.findByRole('region', { name: 'Also Here' })).getByText('Mara');
+    fireEvent.click(quiet);
+    expect(quiet.closest('button')).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent('Bram');
   });
 
   it('leaves the entity view on its fallback while the dropdown reads (None)', async () => {
@@ -266,10 +302,11 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
   const mira = { id: 'mira', name: 'Mira', persona: true, image: PICTURE };
   const played = { ...values, mira: [statFixture('Trust', 60), statFixture('Calm', 5)] };
   const asMira = (pick?: string) => ({
-    world: { entities: [bram, odette, wick, mira] } as never, turns, stats: [statFixture('Vigor', 50), statFixture('Trust', 10)],
+    world: { entities: [bram, odette, wick, mira], locations: [YARD] } as never, turns, stats: [statFixture('Vigor', 50), statFixture('Trust', 10)],
     seed: (g: Gameplay) => {
       g.setEntityStats(played);
       g.setVisibleEntities(now);
+      g.setCurrentLocation(YARD as never);
       g.setPersonaRef({ source: 'world', entityId: 'mira' });
       if (pick) g.setSelectedEntityId(pick);
     },
@@ -303,7 +340,7 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
   it('lists the persona with the You mark and shows no entity section when it is picked', async () => {
     renderRightPanel({}, asMira('bram'));
     await choose('Mira You');
-    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent(/^MiraYou$/);
+    expect(screen.getByRole('combobox', { name: 'Selected entity' })).toHaveTextContent(/^MiraYou$/);
     expect(section()).toBeNull();
     expect(within(personaSection('Mira')).getByText('60 / 100')).toBeInTheDocument();
   });
@@ -314,7 +351,7 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
       seed: (g) => { g.setEntityStats({ mira: played.mira }); g.setPersonaRef({ source: 'world', entityId: 'mira' }); },
     });
     expect(screen.getByRole('tab', { name: /Stats/ })).toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: 'Entity stats' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Selected entity' })).toBeNull();
     expect(within(personaSection('Mira')).getByText('Calm')).toBeInTheDocument();
   });
 
@@ -346,10 +383,11 @@ describe('RightPanel — editing entity and persona stats', () => {
   const mira = { id: 'mira', name: 'Mira', persona: true, image: PICTURE };
   /** A world whose only visible stats belong to entities: Vigor is hidden. */
   const ownersOnly = {
-    world: { entities: [bram, odette, wick, mira] } as never, turns, stats: [statFixture('Vigor', 50, { hidden: true })],
+    world: { entities: [bram, odette, wick, mira], locations: [YARD] } as never, turns, stats: [statFixture('Vigor', 50, { hidden: true })],
     seed: (g: Gameplay) => {
       g.resetEntityStats({ ...values, mira: [statFixture('Calm', 5)] });
       g.setVisibleEntities(now);
+      g.setCurrentLocation(YARD as never);
       g.setPersonaRef({ source: 'world', entityId: 'mira' });
       g.setSelectedEntityId('bram');
     },
@@ -397,7 +435,7 @@ describe('RightPanel — editing entity and persona stats', () => {
     expect(valueOf(g.gameStates[g.currentPage - 1].entityStats, 'bram', 'trust')).toBe(70);
   });
 
-  it('edits a picked entity that is not in the scene', async () => {
+  it('edits a picked entity', async () => {
     const view = renderRightPanel({}, ownersOnly);
     await choose('Odette');
     fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
@@ -428,7 +466,7 @@ describe('RightPanel — editing entity and persona stats', () => {
     expect(valueOf(g.entityStats, 'w-you', 'trust')).toBe(75);
   });
 
-  it("is what a re-generate of the next turn starts from", () => {
+  it("is what a regenerate of the next turn starts from", () => {
     const view = renderRightPanel({}, ownersOnly);
     fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
     fireEvent.change(within(section()!).getByRole('spinbutton', { name: 'Trust' }), { target: { value: '55' } });

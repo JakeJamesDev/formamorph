@@ -213,6 +213,7 @@ export function ScriptBox({ script, label, onChange, context, reveal, autoFocus,
           entities={analysis.entities}
           locations={analysis.locations}
           items={names.items}
+          currencies={names.currencies}
           lookup={analysis.lookup}
           navigation={navigation}
           revealLine={reveal?.line}

@@ -35,7 +35,7 @@ const STARTS_LINES: Record<StartsAt, string> = {
 const STATE_LINES: Record<Exclude<ReaderState, 'reads' | 'neverReads'>, string> = {
   notInScene: 'The AI never reads an entity with no location',
   noKeyword: 'Nothing reaches the AI on this line',
-  noValue: 'The entry fires, but adds nothing until it has a Value',
+  noValue: 'The entry activates, but adds nothing until it has a Value',
 };
 
 /** The reader text with each of the author's own runs marked. */
@@ -58,9 +58,7 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
   </section>
 );
 
-const Muted = ({ children }: { children: ReactNode }) => (
-  <p className="text-helper text-muted-foreground">{children}</p>
-);
+const Muted = ({ children }: { children: ReactNode }) => <Hint>{children}</Hint>;
 
 /** The tour entity's row in the Entities tab, its card, or both, as players will meet it. */
 function EntitySurface({ surface }: { surface: Extract<PlayerSurface, { entity: unknown }> }) {
@@ -135,7 +133,7 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
     case 'locationTab':
       return (
         <div className="space-y-2">
-          {/* The location's picture sits behind the tab the way it sits behind the story, under the same fade. */}
+          {/* The location's image is the tab's backdrop, with the same fade as in the story. */}
           <div className="relative isolate overflow-hidden rounded-md border">
             <LocationBackdrop image={locationImages(surface.location)[0]?.data} overlay={0.7} overlayHidden={false} />
             <LocationTabBody location={surface.location} locations={surface.locations} connections={surface.connections} />
@@ -196,20 +194,20 @@ const Reader = ({ reader, field }: { reader: InPlayReader; field: string }) => (
 export interface TestLineInput {
   value: string;
   onChange: (value: string) => void;
-  /** A line that fires the entry and one that misses, for the try button. Blank hit line: no keyword yet. */
+  /** A line that activates the entry and one that misses, for the try button. Blank hit line: no keyword yet. */
   samples: { hit: string; miss: string };
 }
 
 const quote = (text: string) => `“${text}”`;
 
-/** One line on whether the entry fires, and on which keyword. */
+/** One line on whether the entry activates, and on which keyword. */
 function scanStatus(scan: TestLineScan): string {
   if (scan.fired) {
-    return scan.hitKeywords.length ? `Fires on ${scan.hitKeywords.map(quote).join(', ')}` : 'Fires on every line';
+    return scan.hitKeywords.length ? `Activates on ${scan.hitKeywords.map(quote).join(', ')}` : 'Activates on every line';
   }
-  if (scan.reason) return `Doesn't fire: ${scan.reason}`;
-  if (!scan.keywords.length) return "Doesn't fire: the entry has no keywords yet";
-  return "Doesn't fire: the line has none of this entry's keywords";
+  if (scan.reason) return `Doesn’t activate: ${scan.reason}`;
+  if (!scan.keywords.length) return 'Doesn’t activate: the entry has no keywords yet';
+  return 'Doesn’t activate: the line has none of this entry’s keywords';
 }
 
 function TestLine({ value, onChange, samples, scan }: TestLineInput & { scan?: TestLineScan }) {
@@ -218,7 +216,7 @@ function TestLine({ value, onChange, samples, scan }: TestLineInput & { scan?: T
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>Test Line</Label>
-      <Hint>Type a player message to see when the entry loads</Hint>
+      <Hint>Type a player message to test whether the entry activates</Hint>
       <div className="flex gap-2">
         <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
         {tryLine && (

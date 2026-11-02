@@ -29,7 +29,7 @@ interface MyFeedbackSectionProps {
   onOpenThread?: (id: string, number: number) => void;
 }
 
-/** The profile dialog's Feedback tab. Every branch under one tab, the same shape the Admin Panel uses —
+/** The Feedback window's lists. Every branch under one tab, the same shape the Admin Panel uses —
  *  they are the same surface with different vocabularies, and side by side they would cost the strip three slots. */
 export function MyFeedbackSection({
   active, initialTab: requestedTab = 'bugs', requestKey, onChanged, notify, capabilities = APP_FEEDBACK_CAPABILITIES, onGuestWrite,

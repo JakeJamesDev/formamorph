@@ -1,19 +1,12 @@
 import { useEffect, useState } from 'react';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
-import { SUPPORTER_LABELS } from '@/lib/supporterFlair';
+import { formatResetTime } from '@/lib/resetTime';
+import { useTierName } from '@/lib/tierNames';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { fetchHostedAllowance, type HostedAllowance } from '@/services/HostedStateService';
 
 /** `undefined` while the read is out, `null` when it failed. */
 type Reading = HostedAllowance | null | undefined;
-
-/** The reset moment as a UTC calendar date, since the server resets at 00:00 UTC. */
-const resetDate = (resetAt: string | null): string | null => {
-  const date = resetAt ? new Date(resetAt) : null;
-  if (!date || Number.isNaN(date.getTime())) return null;
-
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
-};
 
 function PatreonLink({ children }: { children: string }) {
   return (
@@ -38,9 +31,11 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function Figures({ reading, reset }: { reading: HostedAllowance; reset: string | null }) {
+  const tierNameOf = useTierName();
+
   return (
     <dl className="space-y-1 text-body">
-      {reading.tier && <Row label="Tier" value={SUPPORTER_LABELS[reading.tier]} />}
+      {reading.tier && <Row label="Support" value={tierNameOf(reading.tier)} />}
       {reading.percentUsed !== null && <Row label="Used" value={`${reading.percentUsed}%`} />}
       {reading.turnsLeft !== null && <Row label="Turns left" value={`About ${reading.turnsLeft}`} />}
       {reset && <Row label="Resets" value={reset} />}
@@ -49,7 +44,7 @@ function Figures({ reading, reset }: { reading: HostedAllowance; reset: string |
 }
 
 /**
- * The reader's Formamorph AI allowance: tier, percent used, about how many turns are left and the reset date.
+ * The reader's Formamorph AI allowance: tier, percent used, about how many turns are left and the local reset time.
  *
  * It reads the server's hosted state once. It writes nothing and shows no dollar amounts.
  */
@@ -69,16 +64,16 @@ export function AllowanceSection() {
     return <p className="text-helper text-muted-foreground">Couldn’t load your Formamorph AI allowance.</p>;
   }
 
-  const reset = resetDate(reading.resetAt);
+  const reset = formatResetTime(reading.resetAt);
 
   switch (reading.state) {
     case 'locked':
       return (
         <div className="space-y-2">
           <p className="text-helper text-muted-foreground">
-            Formamorph AI gives Supporters hosted AI with no key and no setup.
+            Formamorph AI thanks Patreon Supporters with hosted AI that needs no key and no setup.
           </p>
-          <PatreonLink>Join on Patreon</PatreonLink>
+          <PatreonLink>Support on Patreon</PatreonLink>
         </div>
       );
     case 'age-gate':
@@ -95,9 +90,9 @@ export function AllowanceSection() {
       return (
         <div className="space-y-2">
           <p className="text-helper text-muted-foreground">
-            You’ve used this month’s Formamorph AI{reset ? `. It comes back on ${reset}.` : '.'}
+            You’ve used this week’s Formamorph AI allowance{reset ? `. It comes back ${reset}.` : '.'}
           </p>
-          <PatreonLink>Upgrade on Patreon</PatreonLink>
+          <PatreonLink>Support on Patreon</PatreonLink>
         </div>
       );
     default:

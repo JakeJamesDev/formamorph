@@ -10,8 +10,9 @@
 //   switching it off must give back nothing. Each switch stores what actually moved and the next switch of
 //   that trait reverses it, rather than the authored number.
 
+import type { ItemScriptEvent } from './inventory';
 import type {
-  CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemCopy, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
+  BodyRuntime, CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, Daypart, EntityStatValues, ItemCopy, ItemEffectLedger, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
   PlayerStat, Stat, StatChange, Trait, TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
@@ -944,8 +945,17 @@ export interface GatedTraitResult {
   log: string[];
   cascade: Trait[];
   cascadeNames: string[];
-  /** The Item Copies and item ledger a settle that ran the inventory settle left. Absent ⇒ unchanged. */
-  items?: { copies: readonly ItemCopy[]; ledger: ItemEffectLedger };
+  /** What a settle that ran the inventory settle left. Absent ⇒ unchanged. */
+  items?: {
+    copies: readonly ItemCopy[];
+    ledger: ItemEffectLedger;
+    bodies: BodyRuntime;
+    /** The Body change lines, apart from `log` (Q41, Q42). */
+    bodyLog: readonly string[];
+    bodyUnequipped: number;
+    /** The When Unequipped events of the copies it unequipped. */
+    events: readonly ItemScriptEvent[];
+  };
 }
 
 /** A settle of every owner's traits: {@link settleTraits}, or one that also settles the inventory. */

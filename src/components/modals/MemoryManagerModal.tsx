@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryRow, type MemoryFilter } from '@/lib/memoryView';
+import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, memorySentTip, CLEAR_PIN_LABEL, type MemoryRow, type MemoryFilter } from '@/lib/memoryView';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/ui/search-field';
@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { HelpButton } from '@/components/HelpButton';
 import { Pin, PinOff, RotateCcw, Trash2, Undo2, Pencil, RefreshCw, Plus, Loader2, Check, X } from 'lucide-react';
@@ -86,7 +87,7 @@ export const MemoryManagerModal = ({
   const editedCount = ledger.rows.filter((r) => !r.deleted && r.edited === 'player').length;
   const mineCount = ledger.rows.filter((r) => !r.deleted && r.isNote).length;
   const hasChanges =
-    Object.keys(memoryEdits).length > 0 || memoryDeleted.length > 0 || memoryNotes.length > 0 || Object.keys(memoryPins).length > 0;
+    Object.keys(memoryEdits).length > 0 || memoryDeleted.length > 0 || Object.keys(memoryPins).length > 0;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -180,7 +181,6 @@ export const MemoryManagerModal = ({
   const resetAll = () => {
     setMemoryEdits({});
     setMemoryDeleted([]);
-    setMemoryNotes([]);
     setMemoryPins({});
     setConfirmReset(false);
   };
@@ -188,7 +188,7 @@ export const MemoryManagerModal = ({
   const counter = (
     <span className={cn('text-[10px]', draft.length > MEMORY_SOFT_LIMIT ? 'text-amber-500' : 'text-muted-foreground')}>
       {draft.length}
-      {draft.length > MEMORY_SOFT_LIMIT && ' — long memories crowd out the rest'}
+      {draft.length > MEMORY_SOFT_LIMIT && ' · Long memories leave less room for the others'}
     </span>
   );
 
@@ -210,17 +210,17 @@ export const MemoryManagerModal = ({
         </DialogHeader>
 
         {!memoryDigests && (
-          <p className="rounded border border-border bg-muted/40 p-2 text-meta text-muted-foreground">
-            Memory Summaries are off, so the story isn&apos;t building its own memories — but anything you
-            write here still rides with the story.
-          </p>
+          <Meta as="p" className="rounded border border-border bg-muted/40 p-2">
+            <strong>Memory Summaries</strong> is off, so the story writes no memories of its own. Memories you add or edit
+            here still go to the AI.
+          </Meta>
         )}
 
         <div className="flex flex-wrap items-center gap-2">
           <SearchField
             value={query}
             onChange={setQuery}
-            placeholder="Search memories…"
+            placeholder="Search memories"
             size="sm"
             className="flex-grow min-w-[140px]"
           />
@@ -248,7 +248,7 @@ export const MemoryManagerModal = ({
               autoFocus
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Something the story should remember…"
+              placeholder="Write something the story should remember"
               className="min-h-[80px] text-meta"
             />
             <div className="flex items-center justify-between">
@@ -264,11 +264,11 @@ export const MemoryManagerModal = ({
         <ScrollArea className="flex-grow min-h-0 -mx-1 px-1">
           <div className="space-y-1 pb-2">
             {visible.length === 0 && (
-              <p className="p-2 text-meta text-muted-foreground">
+              <Meta as="p" className="p-2">
                 {ledger.totalCount === 0
-                  ? 'Nothing here yet — memories appear as each turn is summarized.'
+                  ? 'No memories yet. A memory appears when a turn is summarized.'
                   : 'No memories match that.'}
-              </p>
+              </Meta>
             )}
             {visible.map((row, i) => {
               // The Recent divider only means anything against the full chronological list.
@@ -315,12 +315,12 @@ export const MemoryManagerModal = ({
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
-                          {/* The tip rides the text rather than the row: a row-wide trigger would also fire
-                              under the action buttons, which carry tips of their own. It reaches exactly as
-                              far as the accent it explains, which is hidden while editing. */}
+                          {/* The tip is on the text, not the row: a row-wide trigger would also fire under
+                              the action buttons, which have tips of their own. It covers the same span as the
+                              accent it explains, which is hidden while editing. */}
                           <Tip
                             labelsChild={false}
-                            tip={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
+                            tip={memorySentTip(row)}
                           >
                             <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
                           </Tip>
@@ -370,7 +370,7 @@ export const MemoryManagerModal = ({
                                   </Tip>
                                 )}
                                 {!row.isNote && row.pin && (
-                                  <Tip tip="Clear Pin (Let the Story Decide)">
+                                  <Tip tip={CLEAR_PIN_LABEL}>
                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPin(row.id, null)}>
                                       <RotateCcw className="h-3.5 w-3.5" />
                                     </Button>
@@ -440,14 +440,14 @@ export const MemoryManagerModal = ({
         open={confirmReset}
         onOpenChange={(o) => !o && setConfirmReset(false)}
         title="Reset Every Memory Change?"
-        description="Your edits, deletions, pins and hand-written memories all go away, leaving only what the story remembered on its own. This can't be undone."
+        description="Your edits, deletions and pins are removed. The memories you wrote yourself stay. This can't be undone."
         onConfirm={resetAll}
       />
       <ConfirmDialog
         open={confirmOldest !== null}
         onOpenChange={(o) => !o && setConfirmOldest(null)}
         title="Delete the Story's Opening Memory?"
-        description="This is the earliest thing the story remembers, and it's what keeps later scenes anchored to how everything began. Without it the story may re-establish the scene from scratch."
+        description="It's the earliest thing the story remembers, and it keeps later scenes consistent with how the story began. Without it, the AI may set up the scene again from the start."
         onConfirm={() => {
           if (confirmOldest) setMemoryDeleted((prev) => (prev.includes(confirmOldest) ? prev : [...prev, confirmOldest]));
           setConfirmOldest(null);

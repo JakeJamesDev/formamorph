@@ -40,15 +40,15 @@ const TURNS = [
 
 const STATS = [statFixture('Vigor', 50)];
 
-/** The latest page's partial re-generates, including the stats action in its menu. */
+/** The latest page's partial regenerates, including the stats action in its menu. */
 const partialRegens = () => {
-  const choices = screen.getByRole('button', { name: 'Re-generate Choices' });
+  const choices = screen.getByRole('button', { name: 'Regenerate Choices' });
   fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
-  return { stats: screen.getByRole('menuitem', { name: 'Re-generate Stats' }), choices };
+  return { stats: screen.getByRole('menuitem', { name: 'Regenerate Stats' }), choices };
 };
 
-describe('MiddlePanel — partial re-generate against a scene render', () => {
-  it('holds both partial re-generates while a scene image is being drawn', () => {
+describe('MiddlePanel — partial regenerate against a scene render', () => {
+  it('holds both partial regenerates while a scene image is being drawn', () => {
     const view = renderMiddlePanel({ sceneImageJob: 'image' }, { turns: TURNS, stats: STATS });
     const items = partialRegens();
 
@@ -61,7 +61,7 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
     expect(view.props.handleRegenerateStats).not.toHaveBeenCalled();
     expect(view.props.handleRegenerateChoices).not.toHaveBeenCalled();
     // These two keep the turn, so the picture being drawn is still the right one for it — holding them must
-    // not mean killing the render, the way rollback and a full re-generate do.
+    // not mean killing the render, the way rollback and a full regenerate do.
     expect(view.props.onCancelSceneImage).not.toHaveBeenCalled();
     expect(view.props.abortGeneration).not.toHaveBeenCalled();
   });
@@ -73,23 +73,23 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
     expect(items.choices).toBeDisabled();
   });
 
-  it('offers only the partial re-generates their aux requests are switched on for', () => {
+  it('offers only the partial regenerates their aux requests are switched on for', () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: (s) => s.setChoicesEnabled(false) });
 
-    // Re-generating choices that are switched off would fire a request whose result nothing displays.
-    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    // Regenerating choices that are switched off would fire a request whose result nothing displays.
+    expect(screen.queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
     fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
-    expect(screen.getByRole('menuitem', { name: 'Re-generate Stats' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Regenerate Stats' })).toBeInTheDocument();
   });
 
-  it('offers neither when neither is available, and keeps the full re-generate', () => {
+  it('offers neither when neither is available, and keeps the full regenerate', () => {
     // No stats in this world and choices off.
     renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setChoicesEnabled(false) });
-    expect(screen.queryByRole('button', { name: 'Re-generate Stats' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Regenerate Stats' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Regenerate Choices' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Regenerate Narration' })).toBeInTheDocument();
     fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
-    expect(screen.queryByRole('menuitem', { name: 'Re-generate Stats' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Regenerate Stats' })).toBeNull();
   });
 
   it('offers them again with nothing in flight', () => {
@@ -151,7 +151,7 @@ describe('MiddlePanel — the audio row', () => {
     setTtsPlayback({ duration: 12 });
     const view = renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Regenerate audio for current text' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate the audio for this narration' }));
     expect(view.props.onRegenerateTTS).toHaveBeenCalled();
     // The card's row offers the audio entries under Chat's conditions; the corner menu holds the whole-story item only.
     expect(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Text to Speech' })).toBeInTheDocument();
@@ -181,64 +181,184 @@ describe('LeftPanel', () => {
   ])('shows no missing-notes warning under %s', (_name, prompt) => {
     expect(prompt).toMatch(/<NOTES\|/);
     renderLeftPanel({ narrationPrompt: prompt });
-    expect(screen.getByPlaceholderText(/Add notes here/)).toBeInTheDocument();
-    expect(screen.queryByText(/does not include the <NOTES> placeholder/)).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Write notes the AI reads/)).toBeInTheDocument();
+    expect(screen.queryByText(/so the AI doesn't read these notes/)).not.toBeInTheDocument();
   });
 
   it('warns when the narration prompt places no notes chip', () => {
     renderLeftPanel({ narrationPrompt: 'Narrate the scene. <LOCATION>' });
-    expect(screen.getByText(/does not include the <NOTES> placeholder/)).toBeInTheDocument();
+    expect(screen.getByText(/so the AI doesn't read these notes/)).toBeInTheDocument();
   });
 
   it('keeps the notes the player types for the turn', () => {
     const view = renderLeftPanel();
-    fireEvent.change(screen.getByPlaceholderText(/Add notes here/), { target: { value: 'the dock is rotten' } });
+    fireEvent.change(screen.getByPlaceholderText(/Write notes the AI reads/), { target: { value: 'the dock is rotten' } });
     expect(view.gameplay().playerNotes).toBe('the dock is rotten');
   });
 
   // The bug this guards: the list resolved a scene name to an entity by bare substring, either way round,
   // so "Wolf" and "Direwolf" were interchangeable — the row label came from whichever was authored first.
-  it('labels two present entities whose names share a word with their own names', () => {
-    const cast = [{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }];
-    renderLeftPanel({ entities: cast as never }, {
-      world: { entities: cast } as never,
-      seed: (gameplay) => gameplay.setVisibleEntities([
-        { name: 'Wolf', revealed: true },
-        { name: 'Direwolf', revealed: true },
-      ]),
+  // The cast stands at the one location the player is at; `at` places entities elsewhere.
+  const HERE_ID = 'yard';
+  const LOOK_WORLD = (cast: object[]) => ({
+    entities: cast.map((e) => ({ locations: [HERE_ID], ...e })),
+    locations: [{ id: HERE_ID, name: 'Gate Yard', isStarting: true }, { id: 'smithy', name: 'Smithy' }],
+  });
+  const stageYard = (gameplay: Gameplay) => gameplay.setCurrentLocation({ id: HERE_ID, name: 'Gate Yard', isStarting: true } as never);
+  const openEntitiesTab = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+  const rowNames = () => Array.from(screen.getByRole('tabpanel').querySelectorAll('.truncate')).map((n) => n.textContent);
+
+  it('lists the In Scene entities first, then the quiet ones, in cast order within each', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Hesk' }, { id: 'e2', name: 'Bram' }, { id: 'e3', name: 'Mara' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [{ narration: 'Mara waves.', entities: ['Mara'] }],
+      seed: stageYard,
     });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    expect(screen.getByText('Wolf')).toBeInTheDocument();
-    expect(screen.getByText('Direwolf')).toBeInTheDocument();
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Mara', 'Hesk', 'Bram']);
+    const inScene = screen.getByRole('region', { name: 'In Scene' });
+    const alsoHere = screen.getByRole('region', { name: 'Also Here' });
+    expect(within(inScene).getByText('Mara')).toBeInTheDocument();
+    expect(within(inScene).queryByText('Hesk')).toBeNull();
+    expect(within(alsoHere).getByText('Hesk')).toBeInTheDocument();
+    expect(within(alsoHere).getByText('Bram')).toBeInTheDocument();
+    expect(within(alsoHere).queryByText('Mara')).toBeNull();
+  });
+
+  it('gives each label its own help topic', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Hesk' }, { id: 'e2', name: 'Mara' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [{ narration: 'Mara waves.', entities: ['Mara'] }],
+      seed: stageYard,
+    });
+
+    openEntitiesTab();
+    for (const title of ['In Scene', 'Also Here']) {
+      fireEvent.click(within(screen.getByRole('region', { name: title })).getByRole('button', { name: `About ${title}` }));
+      expect(screen.getByRole('dialog', { name: title })).toBeInTheDocument();
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    }
+  });
+
+  it('says nobody is in the scene and keeps its help when everyone here is quiet', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Hesk' }]);
+    renderLeftPanel({ entities: world.entities as never }, { world: world as never, seed: stageYard });
+
+    openEntitiesTab();
+    const inScene = screen.getByRole('region', { name: 'In Scene' });
+    expect(within(inScene).getByText('No entities are in the scene.')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Also Here' })).getByText('Hesk')).toBeInTheDocument();
+  });
+
+  it('hides Also Here when everyone here is in the scene', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Mara' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [{ narration: 'Mara waves.', entities: ['Mara'] }],
+      seed: stageYard,
+    });
+
+    openEntitiesTab();
+    expect(screen.queryByRole('region', { name: 'Also Here' })).toBeNull();
+    expect(screen.queryByText('No entities are in the scene.')).toBeNull();
+  });
+
+  it('labels two present entities whose names share a word with their own names', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }]);
+    renderLeftPanel({ entities: world.entities as never }, { world: world as never, seed: stageYard });
+
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Wolf', 'Direwolf']);
+  });
+
+  it('lists nobody who stands elsewhere', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk', locations: ['smithy'] }]);
+    renderLeftPanel({ entities: world.entities as never }, { world: world as never, seed: stageYard });
+
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Bram']);
   });
 
   it('marks the entities following the player, and no one else', () => {
-    const cast = [{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }];
-    renderLeftPanel({ entities: cast as never }, {
-      world: { entities: cast } as never,
-      seed: (gameplay) => {
-        gameplay.setVisibleEntities([{ name: 'Bram', revealed: true }, { name: 'Hesk', revealed: true }]);
-        gameplay.setEntityFollowers(['e1']);
-      },
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      seed: (gameplay) => { stageYard(gameplay); gameplay.setEntityFollowers(['e1']); },
     });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    openEntitiesTab();
     const mark = screen.getByRole('img', { name: 'Following you' });
     expect(screen.getByText('Bram').closest('div')!.contains(mark)).toBe(true);
     expect(screen.getAllByRole('img', { name: 'Following you' })).toHaveLength(1);
   });
 
-  it('labels a lone longer-named entity as itself, not as the shorter name it contains', () => {
-    const cast = [{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }];
-    renderLeftPanel({ entities: cast as never }, {
-      world: { entities: cast } as never,
-      seed: (gameplay) => gameplay.setVisibleEntities([{ name: 'Direwolf', revealed: true }]),
+  describe('a stranger', () => {
+    const SYLVIE = { id: 'e1', name: 'Sylvie Thornwhistle', strangerName: 'a hooded figure', strangerDescription: 'Face hidden.' };
+    const WORLD = LOOK_WORLD([SYLVIE, { id: 'e2', name: 'Bram' }]);
+
+    it('shows by its label and never by its true name', () => {
+      renderLeftPanel({ entities: WORLD.entities as never }, { world: WORLD as never, seed: stageYard });
+
+      openEntitiesTab();
+      expect(rowNames()).toEqual(['a hooded figure', 'Bram']);
+      expect(screen.queryByText('Sylvie Thornwhistle')).toBeNull();
     });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    expect(screen.getByText('Direwolf')).toBeInTheDocument();
-    expect(screen.queryByText('Wolf')).not.toBeInTheDocument();
+    it('is not listed with no label at all', () => {
+      // A Stranger Name whose placeholders resolved blank.
+      const unlabeled = LOOK_WORLD([{ ...SYLVIE, strangerName: ' ' }, { id: 'e2', name: 'Bram' }]);
+      renderLeftPanel({ entities: unlabeled.entities as never }, { world: unlabeled as never, seed: stageYard });
+
+      openEntitiesTab();
+      expect(rowNames()).toEqual(['Bram']);
+    });
+
+    it('opens the stranger popup by id and label, and never the full popup', () => {
+      const view = renderLeftPanel({ entities: WORLD.entities as never }, { world: WORLD as never, seed: stageYard });
+
+      openEntitiesTab();
+      fireEvent.click(screen.getByText('a hooded figure'));
+      expect(view.props.onStrangerClick).toHaveBeenCalledWith('e1', 'a hooded figure');
+      expect(view.props.onEntityClick).not.toHaveBeenCalled();
+      expect(view.gameplay().selectedEntityId).toBeUndefined();
+    });
+
+    it('opens the full popup once the story has named it', () => {
+      const view = renderLeftPanel({ entities: WORLD.entities as never }, {
+        world: WORLD as never,
+        seed: (gameplay) => { stageYard(gameplay); gameplay.setMetEntities(['e1']); },
+      });
+
+      openEntitiesTab();
+      fireEvent.click(screen.getByText('Sylvie Thornwhistle'));
+      expect(view.props.onEntityClick).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText('Sylvie Thornwhistle'));
+      expect(view.props.onEntityClick).toHaveBeenCalledWith('Sylvie Thornwhistle');
+    });
+  });
+
+  it('shows who stood here on a past page, not who stands here now', () => {
+    const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }]);
+    renderLeftPanel({ entities: world.entities as never }, {
+      world: world as never,
+      turns: [
+        { narration: 'Bram nods.', entities: ['Bram'] },
+        { narration: 'Hesk leaves.', entities: ['Hesk'] },
+      ],
+      page: 1,
+      seed: (gameplay) => {
+        stageYard(gameplay);
+        // Live: Bram has gone to the smithy. On page 1 he still stood here.
+        gameplay.setEntityPositions({ e1: 'smithy' });
+        gameplay.setGameStates((states) => states.map((s) => ({ ...s, locationId: HERE_ID })));
+      },
+    });
+
+    openEntitiesTab();
+    expect(rowNames()).toEqual(['Bram', 'Hesk']);
   });
 
   it('lists the persona first in every scene, marked as the player, and opens it like any entity', () => {
@@ -252,7 +372,10 @@ describe('LeftPanel', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
     const name = screen.getByText('Kira');
     expect(name.parentElement).toHaveTextContent(/^KiraYou$/);
-    expect(screen.queryByText('No entity visible.')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'In Scene' })).not.toContainElement(name);
+    expect(name.compareDocumentPosition(screen.getByRole('region', { name: 'In Scene' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(name);
+    expect(onEntityClick).not.toHaveBeenCalled();
     fireEvent.click(name);
     expect(onEntityClick).toHaveBeenCalledWith('Kira');
   });
@@ -265,7 +388,7 @@ describe('LeftPanel', () => {
     });
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
-    expect(screen.getByText('No entity visible.')).toBeInTheDocument();
+    expect(screen.getByText('No entities are in the scene.')).toBeInTheDocument();
     expect(screen.queryByText('You')).toBeNull();
   });
 });

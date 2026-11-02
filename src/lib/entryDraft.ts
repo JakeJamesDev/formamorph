@@ -5,9 +5,10 @@ import { startingGateStats } from './gateStats';
 import { settle, settleDefaults, type GateInput, type SettleResult } from './traitGates';
 import { cascadeOffInput, settledCascadeOff } from './traitRuntime';
 import { scoped } from './scope';
-import { seedItemCopies } from './inventory';
+import { startingCopies } from './inventory';
 import type {
-  CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, Stat, StatGroup, Trait, TraitGroup,
+  Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, Slot, Stat, StatGroup, Trait,
+  TraitGroup,
 } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
@@ -57,13 +58,16 @@ export interface EntryTraitWorld {
   /** The authored items and their starting placements: item Conditions read the copies the new game seeds. */
   items?: readonly Item[];
   placements?: readonly Placement[];
+  /** The slots and Bodies that starting equips fill. */
+  slots?: readonly Slot[];
+  bodies?: readonly Body[];
   locations?: readonly Pick<GameLocation, 'id'>[];
 }
 
 /** The Item Copies a new game would hold under `persona`, so an item Condition reads the start. The ids only tell copies apart. */
 function seededCopies(world: EntryTraitWorld, persona: PersonaRef) {
   let n = 0;
-  return seedItemCopies({ ...world, entities: [...world.entities, ...world.library] }, persona, () => `seed-${n++}`);
+  return startingCopies({ ...world, entities: [...world.entities, ...world.library] }, persona, () => `seed-${n++}`);
 }
 
 /** The gate input over every present owner under `persona`, without the active sets. */

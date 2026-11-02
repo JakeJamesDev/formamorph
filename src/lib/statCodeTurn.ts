@@ -1,7 +1,8 @@
 import type {
-  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, Item, ItemCopy, LoreToggles,
-  OwnedTraitStates, Placeholder, PlayerStat, Script, Slot, Trait,
+  CascadeOffTraitIds, CodeBounds, CodePins, Connection, Currency, Dictionary, Entity, EntityPositions, EntityStatValues, GameLocation, Item, ItemCopy, LoreToggles,
+  BodyPick, OwnedTraitStates, Placeholder, Placement, PersonaRef, PlayerStat, Script, Slot, Trait,
 } from '@/types';
+import type { BodyWorld } from './bodies';
 import { bareLoreWrite, withLoreWrites, type LoreWrite } from './loreToggles';
 import {
   CODE_BOUND_FIELDS, type EntityTraitWrites, type NarrationInput, type PlaceholderWrite, type StatClock, type StatCodeResult,
@@ -98,6 +99,11 @@ export interface SandboxState {
   items?: readonly Item[];
   /** The world's slots, which an equipped Item Copy names. Absent ⇒ none. */
   slots?: readonly Slot[];
+  /** The world's Currencies and the Placements that track a shopkeeper's coins, which `currencies` reads and pays
+   *  over. Absent ⇒ no Currency. */
+  money?: { currencies: readonly Currency[]; placements: readonly Placement[] };
+  /** The Bodies `body` reads, with the picks that decide which is in force. Absent ⇒ no Bodies. */
+  bodies?: { world: BodyWorld & { slots?: readonly Slot[] }; persona: PersonaRef | undefined };
 }
 
 /** One entity owner's stats in the state, in the same terms as the global ones. */
@@ -158,7 +164,7 @@ export interface StatCodeTurn {
   triggers?: readonly ScriptTrigger[];
   /** Runs `triggers` and `replayed` alone, as an On Call Tool does. */
   triggersOnly?: boolean;
-  /** Runs the scripts alone, as Re-generate Choices does: `choices` is the one thing the result carries, and every
+  /** Runs the scripts alone, as Regenerate Choices does: `choices` is the one thing the result carries, and every
    *  `player` call answers through {@link silentPrompts} (Q10, Q20). */
   choicesOnly?: boolean;
   /** Saved World Tool writes laid on ahead of `triggers`, in this order, with no script run (Q41). */
@@ -587,6 +593,19 @@ export function withoutInventory(writes: WorldWrites | undefined): WorldWrites |
   return Object.keys(rest).length ? rest : undefined;
 }
 
+/** `writes` without their Body writes; undefined when nothing else is left. */
+export function withoutBodies(writes: WorldWrites | undefined): WorldWrites | undefined {
+  if (!writes) return writes;
+  const { bodies: _landed, ...rest } = writes;
+  return Object.keys(rest).length ? rest : undefined;
+}
+
+/** The base Bodies `writes` set, by owner key; the last write to an owner wins. Undefined when it sets none. */
+export function baseWritesOf(writes: WorldWrites | undefined): Record<string, BodyPick> | undefined {
+  if (!writes?.bodies?.length) return undefined;
+  return Object.fromEntries(writes.bodies.map(({ owner, pick }) => [owner, pick]));
+}
+
 /** One switch run per event, over `turn`, the state the switches left (Q12, Q47). */
 export const runSwitchScripts = (turn: StatCodeTurn, events: readonly TraitSwitchEvent[]): Promise<StatCodeTurnResult | null> =>
   chainSwitchRuns(turn, [], turn, events);
@@ -818,7 +837,10 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const result = await snapshot.run({
       home: unit.home, timing, code: script.code, ...switchInput, ...(args && { args }), ...(prompts && { prompts }),
       ...(itemEvent && {
-        itemEvent: { copyId: itemEvent.event.copyId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }) },
+        itemEvent: {
+          copyId: itemEvent.event.copyId, quantity: itemEvent.event.quantity, ...(itemEvent.event.was && { was: itemEvent.event.was }),
+          ...(itemEvent.event.target && { targetCopyId: itemEvent.event.target.id }),
+        },
       }),
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
       ...(choices && { choices }),

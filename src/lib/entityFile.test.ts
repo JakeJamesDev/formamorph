@@ -196,7 +196,7 @@ describe('parseEntityCardData', () => {
     expect(() => parseEntityCardData({ formamorphKind: 'world' })).toThrow(/world/i);
     expect(() => parseEntityCardData({ formamorphKind: 'save' })).toThrow(/save/i);
     expect(() => parseEntityCardData({ formamorphKind: 'dictionary' })).toThrow(/dictionary/i);
-    expect(() => parseEntityCardData({ foo: 1 })).toThrow(/not a character card/i);
+    expect(() => parseEntityCardData({ foo: 1 })).toThrow(/not an entity card/i);
     expect(() => parseEntityCardData(null)).toThrow();
   });
 
@@ -328,6 +328,24 @@ describe('a character card’s openings', () => {
     expect(openings.map((o) => o.id)).not.toContain('o1');
     expect(openings.map((o) => o.id)).not.toContain('o2');
     expect(parsed.openingWeights).toEqual({ [openings[1].id]: 3 });
+  });
+
+  it('keep each opening’s Self mark through a card round trip', () => {
+    const entity: Entity = {
+      id: 'w',
+      name: 'Wren',
+      openings: [
+        { id: 'o1', text: 'I wake on the jetty.', kind: 'narration', self: true },
+        { id: 'o2', text: 'Wren waves.', kind: 'narration' },
+      ],
+    };
+    const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(entity)), { w: 4, h: 4 });
+    const openings = parseEntityCardData(JSON.parse(readEntityCard(bytes) as string)).openings ?? [];
+    expect(openings.map((o) => [o.text, o.self === true])).toEqual([
+      ['I wake on the jetty.', true],
+      ['Wren waves.', false],
+    ]);
+    expect(openings[1]).not.toHaveProperty('self');
   });
 
   it('keep the stored user macro through a card round trip', () => {

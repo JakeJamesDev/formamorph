@@ -15,7 +15,7 @@ import { semanticIndexKeys, type SemanticInput } from './semantic';
 import { scannedEntries, type TriggerWorld } from './triggers';
 
 /** How still things go before a cache probe or an embed is worth starting — the tracer's own debounce, so
- *  the scores land with the run they belong to rather than one keystroke behind it. */
+ *  the scores arrive with the run they belong to rather than one keystroke behind it. */
 const SEMANTIC_DEBOUNCE_MS = 250;
 
 /** Vector keys are `model:hash`, so a newline is the one thing that can't appear inside one. */

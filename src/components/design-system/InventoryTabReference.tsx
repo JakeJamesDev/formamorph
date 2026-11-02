@@ -3,29 +3,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tabs } from '@/components/ui/tabs';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { InventoryTab } from '@/components/game/InventoryTab';
-import { PanelTab, PanelTabList } from '@/components/game/PanelTabList';
+import type { BalanceRow } from '@/lib/currency';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
 import { ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { randomUUID } from '@/lib/uuid';
-import type { Item, ItemCopy, Slot } from '@/types';
+import { bodySlots, parseBodies } from '@/lib/bodies';
+import type { Body, Item, ItemCopy, Slot } from '@/types';
 
-const SLOTS: Slot[] = [{ id: 'hand', name: 'Hand', capacity: 2 }, { id: 'ring', name: 'Ring' }];
+const SLOTS: Slot[] = [{ id: 'hand', name: 'Main Hand' }, { id: 'off-hand', name: 'Off Hand' }, { id: 'ring', name: 'Ring' }];
+const BODIES: Body[] = parseBodies([{
+  id: 'humanoid', name: 'Humanoid', backdrop: { kind: 'humanoid' }, aspect: 0.5,
+  entries: [
+    { slotId: 'hand', boxes: [{ x: 0.02, y: 0.3725, w: 0.26, h: 0.26 }] },
+    { slotId: 'off-hand', boxes: [{ x: 0.72, y: 0.3725, w: 0.26, h: 0.26 }] },
+    { slotId: 'ring', capacity: 2, boxes: [{ x: 0.04, y: 0.4725, w: 0.22, h: 0.09 }, { x: 0.74, y: 0.4725, w: 0.22, h: 0.09 }] },
+  ],
+}]);
+const BODY_SLOTS = bodySlots(BODIES[0], SLOTS);
 const item = (id: string, name: string, over: Partial<Item>): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 const ITEMS: Item[] = [
   item('tonic', 'Healing Tonic', { uses: 1 }),
-  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true, slotId: 'hand' }),
-  item('sword', 'Greatsword', { stackable: false, slotId: 'hand', slotSize: 2 }),
-  item('ring', 'Silver Ring', { stackable: false, slotId: 'ring' }),
+  item('wand', 'Ash Wand', { uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true, slotRule: { mode: 'either', slotIds: ['hand', 'off-hand'] } }),
+  item('sword', 'Greatsword', { stackable: false, slotRule: { mode: 'all', slotIds: ['hand', 'off-hand'] } }),
+  item('ring', 'Silver Ring', { stackable: false, icon: 'none', slotRule: { mode: 'either', slotIds: ['ring'] } }),
 ];
+/** A sample image at its size in pixels. */
+const art = (width: number, height: number, fill: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${fill}"/></svg>`)}`;
+const ART: Record<string, string> = { sword: art(360, 720, '#8a9bb0'), ring: art(240, 720, '#c9b458') };
 const you = { kind: 'you' } as const;
 const START: ItemCopy[] = [
   { id: 's', item: { kind: 'item', itemId: 'sword' }, where: you, quantity: 1, visibility: 'visible', equipped: { slotId: 'hand', order: 1 } },
   { id: 't', item: { kind: 'item', itemId: 'tonic' }, where: you, quantity: 5, visibility: 'visible' },
   { id: 'w', item: { kind: 'item', itemId: 'wand' }, where: you, quantity: 1, visibility: 'visible', state: { uses: 2 } },
-  { id: 'r', item: { kind: 'item', itemId: 'ring' }, where: you, quantity: 1, visibility: 'visible' },
+  { id: 'r', item: { kind: 'item', itemId: 'ring' }, where: you, quantity: 1, visibility: 'visible', equipped: { slotId: 'ring', order: 2 } },
   { id: 'l', item: { kind: 'item', itemId: 'tonic' }, where: { kind: 'location', id: 'sample-room' }, quantity: 2, visibility: 'visible' },
 ];
 const TIMED: TimedEffectView[] = [
@@ -33,20 +48,25 @@ const TIMED: TimedEffectView[] = [
   { key: 'tonic-ward', itemName: 'Healing Tonic', effect: 'Warded', hoursLeft: 26 },
   { key: 'hidden', itemName: null, effect: 'Max Health -5', hoursLeft: 0.25 },
 ];
-const PRESENT = [{ id: 'courier', name: 'Courier', inScene: true }, { id: 'archivist', name: 'Archivist' }];
+const BALANCES: BalanceRow[] = [
+  { currencyId: 'crowns', name: 'Crowns', amount: '1 Gold, 5 Copper' },
+  { currencyId: 'credits', name: 'Credits', amount: '40' },
+];
+const PRESENT = [{ id: 'courier', name: 'Courier' }, { id: 'archivist', name: 'Archivist' }];
 const HERE = 'sample-room';
+const STATUS_TABS = [
+  { value: 'stats', icon: StatIcon, label: 'Stats' },
+  { value: 'traits', icon: TraitIcon, label: 'Traits' },
+  { value: 'inventory', icon: ItemIcon, label: 'Inventory' },
+  { value: 'location', icon: LocationIcon, label: 'Location' },
+];
 
-/** The side panel's tab strip at one width: labels while all four fit, icons alone below that. */
+/** The side panel's tab strip at one width: every label, then the selected tab's, then icons alone. */
 const Strip = ({ width }: { width: number }) => (
   <div style={{ width }} className="space-y-1">
     <Meta>{width}px</Meta>
     <Tabs value="inventory">
-      <PanelTabList>
-        <PanelTab value="stats" icon={StatIcon} label="Stats" />
-        <PanelTab value="traits" icon={TraitIcon} label="Traits" />
-        <PanelTab value="inventory" icon={ItemIcon} label="Inventory" />
-        <PanelTab value="location" icon={LocationIcon} label="Location" />
-      </PanelTabList>
+      <CollapsingTabsList aria-label="Status" value="inventory" tabs={STATUS_TABS} />
     </Tabs>
   </div>
 );
@@ -57,7 +77,7 @@ export function InventoryTabReference() {
   const [copies, setCopies] = useState(START);
   const [busy, setBusy] = useState(false);
   const onOps = (ops: InventoryOp[]) => setCopies((now) => applyInventoryOps(now, ops, {
-    world: { items: ITEMS, slots: SLOTS }, source: 'panel', newId: randomUUID,
+    world: { items: ITEMS, slots: SLOTS, bodies: BODIES }, source: 'panel', newId: randomUUID,
     presence: { locationId: HERE, entityIds: new Set(PRESENT.map((e) => e.id)) },
   }).copies);
   return (
@@ -65,8 +85,21 @@ export function InventoryTabReference() {
       <CardHeader>
         <CardTitle>Inventory Tab</CardTitle>
         <CardDescription>
-          Equip, Unequip, Use, Drop and Give act at once. Drop and Give on a stack ask how many. Use spends one Healing Tonic or one Ash Wand use, and turns off at zero uses. The Ash Wand is Bound. Effects lists the After Use effects running, with time left. Give lists the entities in the scene above the rest at the location. A card named for the location lists the visible items lying there, each with Pick Up.
+          Shows the Status panel&apos;s Inventory tab on sample items. <strong>Equip</strong>, <strong>Unequip</strong>, <strong>Use</strong>, <strong>Drop</strong> and <strong>Give</strong> act at once.
         </CardDescription>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li><strong>Equipped</strong> draws the figure, with a list beside it. The Greatsword takes both hands, so its icon shows in each, its image doesn&apos;t show, and the list gives it one row with both slot names.</li>
+          <li>The Silver Ring&apos;s icon is set to None, so its tall image shows and keeps its shape in a wide box. Selecting beside it opens the Greatsword under it.</li>
+          <li>Select a filled box or a list row&apos;s name for the item&apos;s full name, <strong>Use</strong> and <strong>Unequip</strong>. <strong>Unequip</strong> on the row acts at once. An empty box names its slot when you hover over it or select it.</li>
+          <li>Equip the Ash Wand to see an icon from an item&apos;s name. Hover over its box to see the name.</li>
+          <li><strong>Drop</strong> and <strong>Give</strong> on a stack ask how many.</li>
+          <li><strong>Use</strong> spends one Healing Tonic or one Ash Wand use, and turns off at zero uses.</li>
+          <li>The Ash Wand is Bound, so you can&apos;t drop or give it.</li>
+          <li><strong>Money</strong> lists one row per kind of money, with coins as their largest pieces first.</li>
+          <li><strong>Effects</strong> lists the After Use effects running, with the time left.</li>
+          <li><strong>Give</strong> lists the entities in the scene first, then the rest at the location.</li>
+          <li>A card named for the location lists the visible items there, each with <strong>Pick Up</strong>.</li>
+        </Hint>
       </CardHeader>
       <CardContent className="flex flex-wrap items-start gap-6">
         <div className="h-[36rem] w-full max-w-[19rem] space-y-2">
@@ -79,7 +112,11 @@ export function InventoryTabReference() {
             copies={copies.filter((c) => c.where.kind === 'you')}
             lying={copies.filter((c) => c.where.kind === 'location')}
             items={ITEMS}
-            slots={SLOTS}
+            balances={BALANCES}
+            body={BODIES[0]}
+            slots={BODY_SLOTS}
+            worldSlots={SLOTS}
+            imageOf={(copy) => (copy.item.kind === 'item' ? ART[copy.item.itemId] : undefined)}
             present={PRESENT}
             locationId={HERE}
             locationName="Sample Room"

@@ -85,12 +85,15 @@ describe('ListDetail', () => {
     </PanelTabs>
   );
 
+  /** The strip's measuring box, which is what sits in the row beside the arrow. */
+  const stripBox = (name: string) => screen.getByRole('tablist', { name }).closest<HTMLElement>('[data-collapsing-root]')!;
+
   it("a tabbed detail leads its strip with the arrow, in the strip's own row, and places it once", () => {
     mockMatchMedia(true);
     const nested = <PanelTabs tabs={TABS} value="a" onValueChange={() => {}} stripLabel="Inner Fields">{null}</PanelTabs>;
     render(<ListDetail {...base} detail={tabbed(<><ListDetailBack />{nested}</>)} showDetail backLabel="Entities" />);
     const strip = screen.getByRole('tablist', { name: 'Outer Fields' });
-    const row = strip.parentElement!;
+    const row = stripBox('Outer Fields').parentElement!;
     const arrow = within(row).getByRole('button', { name: 'Back to Entities' });
     expect(row.firstElementChild).toBe(arrow);
     // It takes the strip's fill, so the row reads as one bar.
@@ -98,8 +101,7 @@ describe('ListDetail', () => {
     expect(arrow).toHaveClass('bg-muted');
     expect(screen.getAllByRole('button', { name: /^Back to / })).toHaveLength(1);
     // A nested strip keeps its plain form.
-    expect(screen.getByRole('tablist', { name: 'Inner Fields' }).parentElement!.firstElementChild)
-      .toBe(screen.getByRole('tablist', { name: 'Inner Fields' }));
+    expect(stripBox('Inner Fields').parentElement!.firstElementChild).toBe(stripBox('Inner Fields'));
   });
 
   it('a stacked push inside a push gets its own arrow, and each leads its own strip', () => {
@@ -108,7 +110,7 @@ describe('ListDetail', () => {
       <ListDetail {...base} detail={<PanelTabs tabs={TABS} value="a" onValueChange={() => {}} stripLabel="Inner Fields">{null}</PanelTabs>} stacked showDetail backLabel="Traits" />
     );
     render(<ListDetail {...base} detail={tabbed(inner)} showDetail backLabel="Entities" />);
-    const lead = (strip: string) => screen.getByRole('tablist', { name: strip }).parentElement!.firstElementChild;
+    const lead = (strip: string) => stripBox(strip).parentElement!.firstElementChild;
     expect(lead('Outer Fields')).toHaveAccessibleName('Back to Entities');
     expect(lead('Inner Fields')).toHaveAccessibleName('Back to Traits');
   });

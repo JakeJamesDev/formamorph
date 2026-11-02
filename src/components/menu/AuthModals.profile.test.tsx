@@ -110,7 +110,7 @@ describe('the profile shell', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Delete Account/ }));
 
-    expect(await screen.findByText(/cannot be deleted from here/i)).toBeTruthy();
+    expect(await screen.findByText(/can't delete it here/i)).toBeTruthy();
     expect(screen.queryByLabelText('Password')).toBeNull();
     expect(sent).not.toHaveBeenCalled();
   });
@@ -273,7 +273,7 @@ describe('the password popup', () => {
     fireEvent.change(screen.getByLabelText('Current Password'), { target: { value: 'old-one' } });
     fireEvent.click(screen.getByRole('button', { name: 'Update Password' }));
 
-    expect(await screen.findByText(/Both current and new passwords are required/)).toBeTruthy();
+    expect(await screen.findByText(/Enter your current password and a new password/)).toBeTruthy();
     expect(change).not.toHaveBeenCalled();
   });
 
@@ -283,7 +283,7 @@ describe('the password popup', () => {
 
     await openPopup();
 
-    expect(screen.getByText(/Your password can’t be changed while your account is suspended/)).toBeTruthy();
+    expect(screen.getByText(/You can’t change your password while your account is suspended/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Update Password' }).hasAttribute('disabled')).toBe(true);
   });
 });
@@ -467,7 +467,7 @@ describe('the settings tab', () => {
     fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'new@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
 
-    expect(await screen.findByText(/Try Resend Verification Email in a moment/)).toBeTruthy();
+    expect(await screen.findByText(/Select “Resend Verification Email” in a moment/)).toBeTruthy();
   });
 
   it('fills the address from the server read when the cached account has none', async () => {

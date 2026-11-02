@@ -1,9 +1,10 @@
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { pinConflict, type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceRef } from '@/lib/placeholderPins';
+import { Meta } from '@/components/ui/typography';
 
 const KIND_RULE = 'A stat band outranks a location, a location a trait, and a trait a value pin';
-/** The tie-break inside one kind, phrased for the kind being edited. Two locations are never in force
- *  together, so a location never reaches this and has no entry. */
+/** The tie-break inside one kind, phrased for the kind being edited. Two locations never apply together,
+ *  so a location has no entry. */
 const ORDER_RULE: Partial<Record<PinSourceKind, string>> = {
   trait: 'The lowest in the trait list wins',
   descriptor: 'The lowest stat in the list wins',
@@ -48,11 +49,11 @@ export function PinConflictNote({ world, placeholderId, source, onOpenTrait }: {
   };
   const rule = (conflict.rule === 'order' && ORDER_RULE[source.kind]) || KIND_RULE;
   return (
-    <p className="text-meta text-muted-foreground pl-1">
+    <Meta as="p" className="pl-1">
       Also pinned by {conflict.rivals.map((r, i) => (
         <span key={i}>{i > 0 && ', '}{name(r)}</span>
       ))}. {rule}: {conflict.winner ? name(conflict.winner) : SELF[source.kind]}.
-    </p>
+    </Meta>
   );
 }
 

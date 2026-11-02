@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { presentEntityIds } from '@/lib/entityPresence';
+import { bodyInForce, bodyPickEntities, bodySlots, type TraitBodyPicks } from '@/lib/bodies';
 import { applyInventoryOps, copiesAt, type ItemUse, type InventoryOp, type ItemScriptEvent, type TimedEffectView } from '@/lib/inventory';
-import { entityNamed, scenePresentHere } from '@/lib/locationContext';
-import { discoveredAsEntities } from '@/lib/runtimeCharacters';
+import { usePresence } from '@/lib/usePresence';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { randomUUID } from '@/lib/uuid';
@@ -23,8 +22,10 @@ export interface InventoryPanelSettle {
     copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], itemUses: readonly ItemUse[], events: readonly ItemScriptEvent[],
   ) => void;
   timed?: readonly TimedEffectView[];
-  /** The names who took part in recent turns, the chip scene's In Scene source. Absent = nobody in scene. */
-  participants?: readonly string[];
+  /** Each owner's winning trait Body pick. Absent = none. */
+  traitPicks?: TraitBodyPicks;
+  /** Each owner's base Body a script wrote. Absent = none. */
+  basePicks?: TraitBodyPicks;
 }
 
 /** The Inventory tab's data and its one write: panel operations through the Inventory module (Q17), then the
@@ -33,26 +34,28 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   const data = useGameDataOptional();
   const items = data?.items ?? NONE;
   const slots = data?.slots ?? NONE;
+  const bodies = data?.bodies ?? NONE;
   const {
-    itemCopies, setItemCopies, runtimeItems, entityPositions, discoveredEntities, addLogEntry, isWaitingForAI, isViewingPast,
+    itemCopies, setItemCopies, runtimeItems, addLogEntry, isWaitingForAI, isViewingPast, personaRef,
   } = useGameplay();
-  const { entities, currentLocation, persona } = useResolvedWorld();
+  const { currentLocation, persona, entities: cast, worldPersonas, customPersona } = useResolvedWorld();
+  const entities = useMemo(() => bodyPickEntities(cast, worldPersonas, customPersona), [cast, worldPersonas, customPersona]);
+  const traitPicks = settle?.traitPicks;
+  const basePicks = settle?.basePicks;
+  const bodyOfYou = useMemo(
+    () => bodyInForce({ bodies, entities, traitPicks, basePicks }, YOU, personaRef), [bodies, entities, personaRef, traitPicks, basePicks],
+  );
+  const bodySlotsOfYou = useMemo(() => bodySlots(bodyOfYou, slots), [bodyOfYou, slots]);
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
   const disabled = isWaitingForAI || isViewingPast;
-  const participants = settle?.participants ?? NONE;
-  // Q62: the cast as it stands in play, runtime characters included, each marked when it is In Scene.
-  const present = useMemo(() => {
-    const cast = [...entities, ...discoveredAsEntities(discoveredEntities)];
-    const hereIds = presentEntityIds(cast, entityPositions, locationId);
-    const here = new Set(hereIds);
-    const inScene = new Set(scenePresentHere([...participants], cast, hereIds).flatMap((name) => entityNamed(cast, name)?.id ?? []));
-    return cast.filter((e) => here.has(e.id)).map((e) => ({ id: e.id, name: e.name, inScene: inScene.has(e.id) }));
-  }, [entities, discoveredEntities, entityPositions, locationId, participants]);
+  const { inScene } = usePresence();
+  // Q54, Q56: Give and the panel writes take the In Scene set, each under its label.
+  const present = useMemo(() => inScene.flatMap((p) => p.label === null ? [] : [{ id: p.entity.id, name: p.label }]), [inScene]);
 
   const onOps = useCallback((ops: InventoryOp[]) => {
     const result = applyInventoryOps(itemCopies, ops, {
-      world: { items, slots }, source: 'panel', newId: randomUUID,
+      world: { items, slots, bodies, entities, traitPicks, basePicks }, source: 'panel', newId: randomUUID, persona: personaRef,
       presence: { locationId, entityIds: new Set(present.map((e) => e.id)) },
       ...(settle && { requirement: settle.requirement }),
     });
@@ -62,13 +65,13 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     }
     setItemCopies(result.copies);
     for (const line of result.diagnostics) addLogEntry(line);
-  }, [itemCopies, items, slots, locationId, present, settle, setItemCopies, addLogEntry]);
+  }, [itemCopies, items, slots, bodies, entities, traitPicks, basePicks, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
 
   return {
     ownerName: persona?.entity.name ?? null,
     copies: useMemo(() => copiesAt(itemCopies, YOU), [itemCopies]),
     lying: useMemo(() => (locationId ? copiesAt(itemCopies, { kind: 'location', id: locationId }) : NONE), [itemCopies, locationId]),
-    items, ...(runtimeItems?.length && { runtimeItems }), slots, present, locationId,
+    items, ...(data?.currencies?.length && { currencies: data.currencies }), ...(runtimeItems?.length && { runtimeItems }), body: bodyOfYou, slots: bodySlotsOfYou, worldSlots: slots, present, locationId,
     locationName: currentLocation ? resolveText(currentLocation.name) : null, disabled, resolveText, ...(imageOf && { imageOf }), ...(settle?.timed && { timed: settle.timed }), onOps,
   };
 }

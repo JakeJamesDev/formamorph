@@ -50,33 +50,41 @@ const SCRIPTS_TOPIC: HelpTopic = {
   tabs: [
     {
       label: 'Overview',
-      body: `A script is one box of JavaScript with a timing. It belongs to a stat, a trait, or the world. A returned number replaces the stat's value. A script with no return can still set \`self\`, write another stat, pin a placeholder, or switch a trait. Leave a script empty and the manual value stands.
+      body: `A script is one box of JavaScript with a timing. A stat, a trait, an item or the world holds any number of them.
 
-**Whose script it is.** A stat's script runs with the stat as \`self\`. A trait's script runs only while the trait is active, with the trait as \`self\`. A world script has an empty \`self\`. The world's **Scripts** tab lists every script by timing, in run order. Drag a script to change when it runs in its timing.
+\`return <number>\` sets the stat's value, clamped to its range. A script with no return can still set \`self\`, write another stat, pin a placeholder or switch a trait. An empty script changes nothing.
 
-**Test Code** under each box runs that box alone. It runs the code, and the editor underlines are static analysis only. A script that throws or times out changes nothing. **Templates** inserts common code shapes for the box's timing.`,
+**The home of a script.** A stat's script runs with the stat as \`self\`. A trait's script runs only while the trait is active, with the trait as \`self\`, read-only. An item's script runs on the events of its Item Copies, with the item as \`self\`, read-only. A world script has an empty \`self\`.
+
+The world's **Scripts** tab lists every script by timing, in run order. Drag a row to set its order within its timing.
+
+**Test Code** under each box runs that box alone. The editor's underlines check the code without running it. **Templates** inserts common code for the box's timing.
+
+A script that throws or times out changes nothing.`,
     },
     {
       label: 'Timings',
-      body: `Each script has one timing, and a script runs only at its timing:
+      body: `Each script has one timing, and it runs only at that timing:
 
-| Timing | Runs |
+| Timing | When it runs |
 |---|---|
-| **Before the AI** | At the start of the turn, before the prompt is built. Its writes are in the prompt. |
+| **Before the AI** | At the start of a turn, before the prompt is built. The prompt holds its writes. |
 | **After the AI** | After the AI's changes and Regen apply. It reads what the AI asked for. |
 | **During AI Output** | Once for each narration sentence, when it completes. It can rewrite the sentence. |
 | **At Game Start** | Once, on the opening turn of a new game, before the Before the AI scripts. |
-| **When a Trait Switches** | Each time a trait turns on or off in play. |
+| **When a Trait Switches** | Each time a trait turns on or off during a game. |
 
-Turn order: At Game Start, Before the AI, the AI's stat changes, Regen, After the AI. **During AI Output** runs while the narration streams.`,
+Turn order: At Game Start, Before the AI, the AI's stat changes, Regen, After the AI. **During AI Output** runs while the narration streams.
+
+An item's scripts use five timings of their own: **When Gained**, **When Lost**, **When Equipped**, **When Unequipped** and **When Used**.`,
     },
     {
       label: 'Variables',
-      body: `A script gets a copy of every stat, the world's placeholders and traits, the entities, the dictionaries and the clock. Each timing adds one name:
+      body: `A script reads every stat and the story clock. It also reads the world's placeholders and traits, and the entities, locations, dictionaries, items, memories and notes in the game. Some timings add a name:
 
 - \`narration\` in **During AI Output**. Assign \`narration.sentence\`, or return a string, to rewrite the sentence.
-- \`trait\` in **When a Trait Switches**. It is the trait that switched, and \`trait.enabled\` is its new state.
-- \`player\` in every other timing. \`player.tell\`, \`player.toast\`, \`player.confirm\`, \`player.ask\` and \`player.input\` show the player a message or a question. The script waits for the answer, with no \`await\`. Closing a question fails the script.
+- \`trait\` in **When a Trait Switches**. It's the trait that switched, and \`trait.enabled\` is its new state.
+- \`player\` in **Before the AI**, **After the AI**, **At Game Start** and **When a Trait Switches**. \`player.tell\`, \`player.toast\`, \`player.confirm\`, \`player.ask\` and \`player.input\` show the player a message or a question. The script waits for the answer, with no \`await\`, and closing a question fails the script.
 
 \`\`\`js
 const health = stats.Health.value;
@@ -87,9 +95,9 @@ A name with a space needs brackets: \`stats["Hit Points"]\`. \`stats\` is the gl
     },
     {
       label: 'Stat Writes',
-      body: `Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. Write \`value\`, \`min\`, \`max\` or \`regen\` on any stat to move it from this script.
+      body: `Set \`self.value\`, \`self.min\`, \`self.max\`, \`self.regen\` or \`self.hidden\` to write this stat. Set \`value\`, \`min\`, \`max\` or \`regen\` on any other stat to write that stat. Writes apply after the run.
 
-Two writes to one field land in run order, and the later write wins.`,
+A later write to a field overwrites an earlier one, so the run order decides which write wins.`,
     },
   ],
 };
@@ -102,182 +110,271 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     tabs: [
       {
         label: 'Actions',
-        body: `Type what your character does, in the first person: *I ask her where the road leads. I draw my knife. I hand him the coin and wait.*
+        body: `Write what you do, in the first person: *I ask her where the road leads. I draw my knife. I hand him the coin and wait.*
 
-**The suggested choices are only suggestions.** You can always type anything instead — the story responds to whatever you write.
+**The choices are suggestions.** You can type any action instead, and the story answers it.
 
-**Speak in your own words.** When you talk to someone, say what your character says — *I tell her the truth about the fire* lands better than *I respond*.
+**Say it in your own words.** When you talk to someone, write what you say. *I tell her the truth about the fire* works better than *I respond*.
 
-**Success isn't guaranteed.** The narrator decides how your attempt goes, and your stats shape it — a drained character struggles where a strong one breezes through.
+**Success isn't guaranteed.** The narrator decides how your attempt goes, and your stats shape it.
 
-**Enter** sends your action; **Shift+Enter** starts a new line.`,
+Press **Enter** to send your action. **Shift+Enter** starts a new line.
+
+On Formamorph AI, a ring beside **Send** shows how much of this week's allowance you've used. Select it to see what's left and where your use went.`,
       },
       {
         label: 'Choices',
-        body: `The choices under the story are ready-made actions: **click one to put it in the action box**, edit it if you like, then send.
+        body: `The choices under the story are ready-made actions. Select a choice, and its text replaces what's in the action box. Edit the text if you like, then send it.
 
-**Ctrl+click** (Cmd+click on Mac) *adds* a choice to the box as an extra sentence instead of replacing what's there — stack two choices together, or add your own twist before sending.
+To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on Mac). The choice joins the box as a new sentence, so you can stack two choices.
 
-And you never need them at all: type anything, the story answers. Prefer pure freeform play? The checkbox below turns choice generation off entirely.`,
-        mobileBody: `The choices under the story are ready-made actions: **tap one to put it in the action box**, edit it if you like, then send.
+You never need the choices: type any action, and the story answers it. Clear the **Choices** checkbox below to turn them off. With choices off, you write every action yourself.`,
+        mobileBody: `The choices under the story are ready-made actions. Tap a choice, and its text replaces what's in the action box. Edit the text if you like, then send it.
 
-**Press and hold** a choice to *add* it to the box as an extra sentence instead of replacing what's there — stack two choices together, or add your own twist before sending.
+To add a choice to what you already typed, press and hold it. The choice joins the box as a new sentence, so you can stack two choices.
 
-And you never need them at all: type anything, the story answers. Prefer pure freeform play? The checkbox below turns choice generation off entirely.`,
+You never need the choices: type any action, and the story answers it. Clear the **Choices** checkbox below to turn them off. With choices off, you write every action yourself.`,
       },
       {
         label: 'Directing',
-        body: `Square brackets in your action speak to the AI as the **author**, not your character. Everything outside the brackets is what your character does; everything inside is stage direction for how the turn should go.
+        body: `The AI reads text in square brackets as direction from the author, not as something you do. Everything outside the brackets is your action.
 
-*I climb on behind her. [She stops hesitating — she agrees, and they ride off.]*
+*I climb on behind her. [She agrees, and they ride off.]*
 
-Use it to steer an outcome, skip ahead, or hold a tone:
+Use it to decide an outcome, skip ahead, or keep a tone:
 
-- *[Skip ahead — the scene picks up when we reach the harbor at dusk.]*
-- *[Keep this scene light — nothing goes wrong tonight.]*
+- *[Skip ahead to the harbor at dusk.]*
+- *[Keep this scene light. Nothing goes wrong tonight.]*
 
-The direction itself never enters the story: your character doesn't say it, the prose won't quote it, and the story's memory records only what actually happened. Brackets direct *this turn* — for a standing fact the AI should always keep in mind, use your Notes instead.`,
+The narration doesn't quote the bracketed text, and the story's memory leaves it out. Brackets direct one turn. For a fact the AI should read every turn, use the **Notes** tab.`,
       },
       {
         label: 'Memory & Notes',
-        body: `The story remembers your most recent turns word-for-word. As it grows, older turns are carried as short memory notes instead — open the **Memory** tab in the side panel to see exactly what's kept, pin a memory to keep it for good, or let one go.
+        body: `The story sends your recent turns to the AI word for word. It carries older turns as short memories.
 
-Memory notes need **Memory Summaries** (the checkbox below; on unless you've turned it off). Without it, the oldest turns simply drop off as the story outgrows its context.
+Open the **Memory** tab in the side panel to see what the story keeps. Pin a memory to keep it, or forget one to let it go.
 
-**Notes travel with every turn.** Anything you write in the **Notes** tab is sent to the AI alongside each action, so standing facts belong there: who you're pretending to be, what you're carrying, the goal you're working toward.
+Memories need **Memory Summaries**, the checkbox below. With it off, the oldest turns are dropped once the story is longer than the context. Memories you wrote still go to the AI.
 
-The rule of thumb: **[brackets] direct this one turn; Notes persist until you change them.** If the story keeps forgetting something that matters, put it in Notes.`,
+**Notes go with every action.** The text in the **Notes** tab goes to the AI with every action. Standing facts belong there: who you pretend to be, what you carry, the goal you work toward.
+
+**Brackets direct one turn. Notes stay until you change them.** If the story keeps forgetting something that should always hold, put it in **Notes**.`,
       },
     ],
   },
   'game.memoryManager': {
     title: 'Memories',
-    body: `Everything the story remembers about what's already happened, and the place to change it.
+    body: `What the story remembers about earlier turns, and the place to change it.
 
-As the story grows, older turns stop riding word-for-word and are carried as short memories instead. The story picks which ones are worth keeping — faded, struck-through lines are the ones it let go.
+The story keeps your recent turns word for word and carries older turns as short memories. It prunes memories on purpose. Faded, struck-through lines are the ones it let go.
 
 **What you can do to a memory**
 
 | | |
 |---|---|
-| **Edit This Memory** | Rewrite it in your own words. An edited memory is always kept. You wrote it, so the story can't drop it. |
-| **Have the Story Write This Memory Again** | The story summarizes that turn again, in case the first attempt missed the point. |
-| **Pin This Memory** / **Forget This Memory** | Force a memory to stay, or let one go, without changing its words. **Clear Pin (Let the Story Decide)** gives the decision back to the story. |
-| **Delete This Memory** | Remove it entirely. Nothing is really lost. Select the **Deleted** chip, then **Restore This Memory**. |
-| **Add Memory** | Write something the story should remember that never happened in a turn. Yours are always kept. |
+| **Edit This Memory** | Rewrite a memory in your own words. The story always keeps your version. |
+| **Have the Story Write This Memory Again** | The story summarizes that turn again. The new text carries a **Rewritten** badge. |
+| **Pin This Memory** / **Forget This Memory** | Keep a memory the story let go, or let go of one it kept. **Clear the Pin and Let the Story Decide** gives the decision back to the story. |
+| **Delete This Memory** | Removes a memory. Select the **Deleted** chip, then **Restore This Memory**, to bring it back. |
+| **Add Memory** | Writes a memory for something that never happened in a turn. The story never judges yours. |
 
-**Nothing you do here is permanent.** The story's own version is always kept underneath, so **Revert to the Original** restores the original wording and **Reset All My Changes** puts everything back the way the story had it.
+**Edits and deletions can be undone.** The story's own summary is always kept under what you write. **Revert to the Original** restores one memory's wording.
 
-Memories under the **Recent** line are still fresh enough that the story has them word-for-word — your changes to them start mattering once they age out.
+**Reset All My Changes** puts every memory back the way the story had it. The memories you wrote stay. You can't undo a reset.
 
-**Kept isn't the same as sent.** A memory the story keeps still has to earn its place each turn — with **Semantic Memory** on, only the handful most relevant to what you just did actually rides. Rows with a **left accent bar** reached the story last turn; plain rows are remembered but sat this one out; struck-through rows are the ones it let go. A memory sent back as a full scene is marked **Scene**. The filter chips sort by the form the story has a memory in: **Verbatim** (its real text — a recent turn, or one recalled as a scene), **Summary** (the compressed line, sent last turn), **Held** (remembered, but not sent this turn).
+Memories under the **Recent** line still go to the AI word for word. A pin on one of them matters only after it ages out.
 
-**When it happened.** With **Measured Clock** on, each memory carries its place in the story's time — *"Day 3, evening — two days ago"* — the same stamp the story itself reads. Without that setting every turn costs a flat hour whatever happened in it, so nothing is dated rather than dating it wrongly. **Measured Clock** is in **Settings** → **Output** → **Time**, in **Advanced** mode.`,
+**Kept isn't the same as sent.** A kept memory is one the story judged worth carrying, or one you pinned. With **Semantic Memory** on, only the kept memories most relevant to your action go to the AI.
+
+| Row | Means |
+|---|---|
+| **Left accent bar** | Sent to the AI last turn |
+| Plain | Kept, but not sent this turn |
+| Struck through | The story let this one go |
+| **Scene** badge | **Scene Recall** sent the memory as its full original prose |
+
+The **Verbatim**, **Summary** and **Held** chips name the form the story has a memory in:
+
+- **Verbatim**: the real text, a recent turn or one that **Scene Recall** sent back whole
+- **Summary**: the compressed line, and nothing more
+- **Held**: nothing this turn, but it's still kept until it's relevant again
+
+**When it happened.** With **Measured Clock** on, each memory carries its place in the story's time, such as *Day 3, evening — two days ago*. The AI reads the same stamp when **Time in Memory** is on.
+
+With **Measured Clock** off, every turn costs the same **Time Per Turn**, so the list dates nothing. Both settings are in **Settings** → **Output** → **Time**, in **Advanced** mode.`,
     wikiPage: 'Memory',
     wikiAnchor: 'the-memory-manager',
   },
-  // For a player mid-story wondering who a name in their scene list is.
-  'game.entities': {
-    title: 'Entities in Game',
+  'game.entities.alsoHere': {
+    title: 'Also Here',
     wikiPage: 'Entities',
     wikiAnchor: '-entities-in-game',
-    body: `Who the story counts as being here with you right now. The list changes as the scene does. Your persona always heads the list, marked **You**.
+    body: `The entities at your location that haven't taken part in the story in the last 3 turns.
 
-Most of these are entities the world's author wrote. Some you added from your library under **Library Additions** at Enter World. Some the story **invented on the spot**: ask a shopkeeper for directions and it may answer with a name nobody wrote down. Those are remembered from the moment they're named, so the story can keep them consistent and offer you things to do with them.
+When the story shows one, it moves to **In Scene**. An entity moves back here after 3 turns without taking part.`,
+  },
+  // For a player mid-story wondering who a name in their scene list is.
+  'game.entities.inScene': {
+    title: 'In Scene',
+    wikiPage: 'Entities',
+    wikiAnchor: '-entities-in-game',
+    body: `The entities at your location that took part in the story in the last 3 turns. Your persona sits above this list, marked **You**.
 
-Someone only *talked about* isn't added. The story has to show them in the scene. Someone who introduces themselves ("I'm Freya") counts as shown.
+The entities come from three places: the world's author, your library, and the story itself. You add entities from your library under **Library Additions** at **Enter World**.
 
-**When something isn't a person**
+**Entities the story invents**
 
-Names come out of the story's own prose, so once in a while it capitalizes a café or a street and that ends up here. Select the trash button beside the entry, then **Confirm**. The story stops picking that name up for the rest of this playthrough, and the prose stays exactly as written.
+Ask a shopkeeper for directions, and the story might answer with a name no author wrote. That entity joins the scene as soon as the story names it. It then counts as present, and the story considers it when it offers you choices.
 
-Only story-invented entries and Library Additions can be removed. The world's own cast belongs to the world, so you change it in the World Editor.
+The game adds a name only when it acts like a person in the narration: it speaks, gestures, or is introduced. An entity that's only talked about isn't added. An entity that introduces itself (*"I'm Freya"*) counts as shown.
+
+**When an entry isn't a person**
+
+Sometimes the story capitalizes something that isn't a person, such as a café, and the game adds it. Select the **Remove** button (trash icon) beside the entry, then **Confirm**. The game doesn't add that name again in this playthrough, and the story's text stays as it is.
+
+Only story-invented entities and Library Additions have **Remove**. The world's authored entities belong to the world, so you change them in the World Editor.
 
 **Descriptions**
 
-**Settings** → **Output** → **Characters** → **Describe New Characters** gives each invented entity a written description you can open from here. The **Characters** section shows in **Advanced** mode. Everything else on this list works whether that's on or off.`,
+**Settings** → **Output** → **Characters** → **Describe New Characters** gives each invented entity a written description you can open from here. The **Characters** section shows in **Advanced** mode only. Everything else on this list works with the setting on or off.`,
   },
   'worldEditor.aliases': {
     title: 'Aliases',
     wikiPage: 'World-Editor-Entities',
     wikiAnchor: 'names-and-aliases',
-    body: `Other names an entity goes by: a nickname, a title, an epithet. "Rosalind" answers to "Roz", and to her title, "Warden". List as many as you like.
+    body: `Other names an entity uses: a title, a nickname, an epithet. Press **Enter** after each alias.
 
-Aliases keep the story recognizing an entity even when it doesn't use the full name. Given only the name, the narrator writes "the Warden" and Rosalind is no longer detected in the scene. She drops off the cast, out of the choices, off the Entities tab. An alias closes that gap, and the AI is told the nickname too so it can use it naturally.
+Aliases let the game detect an entity when the narration doesn't use its name. With only the name *Rosalind*, narration about "the Warden" doesn't count her as present. The alias *Warden* does.
 
 **What an alias does**
 
-- **Detection.** When an alias appears in the narration, the entity counts as present that turn, exactly as if its name had appeared. This decides who shows in the Entities tab, who the choices consider, and which entities travel with the scene.
-- **Told to the AI.** Aliases are sent alongside the name as *also known as*, so the narrator knows Rosalind and the Warden are one person and can use either
+- The game counts the entity as present when the narration uses an alias. Presence decides who shows in the **Entities** tab and who the choices consider.
+- The AI reads aliases with the name, as *"also known as"*.
 
 **How matching works**
 
-- **Case-sensitive**, unlike the name. Write an alias with the capitalization it'll appear in. *Cat* matches *Cat*, not *cat*. This is deliberate: short nicknames would otherwise fire inside ordinary words (*Cat* inside *category*, *scatter*).
-- **Whole words only**, and **plurals match**. An alias *Wolf* is found in *Wolves*.
-- **Skip a leading "the"/"a".** Write *Gray One*, not *the Gray One*. An article inside the alias, matched case-sensitively, would miss *The Gray One* at the start of a sentence.
+- **Case-sensitive.** *Matron* matches "the Matron" and doesn't match "the matron". Add each form the narration can write.
+- **Plurals match.** *wolf* also matches "wolves".
+- **Whole words only.** *Em* doesn't match inside "System".
+- **Never start an alias with "the".** Narration often puts a title at the start of a sentence, and "The alpha…" doesn't match *the alpha*. Write *alpha*, which matches in both positions.
 
-Aliases apply in every mode, and they travel with the world and with an exported character card.
+**What to avoid**
 
-Give an entity the one or two names the story will actually use. Each alias is also a line the AI reads whenever the entity is in scene, so a long list is extra prompt for no gain.`,
+- **General job titles.** *knight* or *alchemist* match every person of that trade, and the wrong entity joins the scene.
+- **A role the story gives to someone absent.** Quoted dialogue is ignored, but plain narration isn't. In *"she was sent by the Warchief"*, the alias *Warchief* marks the Warchief as present.
+
+The **Aliases** field shows in **Advanced** mode only, but aliases work in both modes. They go with the world and with an exported entity card.
+
+Give an entity the one or two names the narration uses. The AI reads every alias of an entity in the scene, so a long list adds prompt text for no gain.`,
+  },
+  'worldEditor.strangerName': {
+    title: 'Stranger Name',
+    wikiPage: 'World-Editor-Entities',
+    wikiAnchor: 'strangers',
+    body: `Hides who an entity is until the player meets it. Until then, the player sees the **Stranger Name**, such as "a hooded figure", in place of the **Name**. The AI narrator uses the Stranger Name too.
+
+**How the player meets the entity**
+
+- The narration uses the entity's Name, or a distinctive part of it such as a first name, while the entity is at the player's location. Dialogue counts. Entries in **Aliases** don't.
+- A script calls \`meet()\` on the entity.
+
+Once met, the player sees the Name for the rest of the game.
+
+**Before the player meets the entity**
+
+- If the AI tracks the entity under another name, such as "the tall woman", the player sees that name instead.
+- The entity's popup in the **Entities** tab shows the **Stranger Description** in place of the **Player-Facing Description**. Leave the Stranger Description blank to show no description.
+- The Map doesn't show the entity. The Help window shows it only under that other name, with no description.
+
+**Entities the player has already met**
+
+The player has met an entity from the start when it has no Stranger Name, or when either of these is true:
+
+- It has a relationship with the persona, in either direction.
+- One of its **Known In** picks is one of the persona's **Locations**, or contains one. The **Nearby** default doesn't count.
+
+Both stranger fields take placeholders and rolls.`,
   },
   'worldEditor.statChanges': {
     title: 'Stat Changes',
     wikiPage: 'World-Editor-Traits',
     wikiAnchor: 'stat-changes',
-    body: `Adjusts a stat when this trait is taken. Each row is a stat, a number, and which of the stat's properties to change.
+    body: `Changes a stat while this trait is active. Each row has a stat, a number, and the field to change.
 
-**They're all adjustments, not settings.** \`+20\` on a stat that starts at 50 gives you 70, not 20.
+**Each type adds to the stat. It doesn't set it.** \`+20\` on a stat that starts at 50 gives 70, not 20.
 
-- **Starting Value** shifts where the stat begins
-- **Min** raises the stat's floor, pulling the value up with it if it's below. Negative changes can only take back what other traits added. The stat's own Min is the true bottom.
-- **Max** moves the ceiling either way. Lowering it below the current value drags the value down too.
-- **Regen** adds to what the stat recovers each turn. Negative drains it.
+- **Starting Value** changes where the stat starts.
+- **Min** raises the Min. A value below the new Min rises with it. A negative number only cancels another trait's raise, and it never goes below the Min you wrote on the stat.
+- **Max** raises or lowers the Max. A value above the new Max drops with it.
+- **Regen** adds to the stat's Regen. A negative number drains.
 
-**Stat Changes are invisible to the AI.** It's told you're *Sickly*. It's never told that cost you 20 Vigor. The number does its work through the stat itself.`,
+On an entity's trait, the rows change that entity's own stats.
+
+**The AI never reads Stat Changes.** It reads that you're *Sickly*, not that the trait costs you 20 Vigor. The change shows only in the stat's value.`,
   },
   'worldEditor.statAvailability': {
     title: 'Stat Availability',
     wikiPage: 'World-Editor-Traits',
     wikiAnchor: 'stat-availability',
-    body: `Switches a stat on or off while this trait is active, overriding the stat's own default. Each row names a stat and whether taking the trait enables or disables it.
+    body: `Turns a stat on or off while this trait is active. Each row names a stat and picks **Enable** or **Disable**. The row overrides the stat's own **Enabled** checkbox.
 
-A stat that is off is gone, not just hidden: the player doesn't see it, the AI isn't told about it, and its regen and scripts pause until something turns it back on. The stat's own **Enabled** checkbox sets the default. A trait's switch overrides it only while the trait is active.
+A disabled stat isn't shown to the player or sent to the AI. Its Regen and scripts don't run.
 
-When two active traits switch the same stat, the one lower in the trait list wins. The row says so whenever that applies.`,
+When two active traits change the same stat, the trait lower in the trait list wins. The row says when this applies, and it links to the other trait.`,
+  },
+  'worldEditor.traitBody': {
+    title: 'Body',
+    wikiPage: 'World-Editor-Traits',
+    wikiAnchor: 'body',
+    body: `Changes which equipment slots the trait's owner has while the trait is active. For example, a *Wolf Form* trait sets the Body to *Wolf*, which has no hand slots.
+
+- A world trait changes the player. An entity's own trait changes that entity.
+- **None** leaves no slots at all.
+- Items in a slot the new Body lacks come off and stay in the inventory. Where a slot holds fewer items, the item equipped last comes off first.
+
+When two active traits set a Body, the one switched on last wins. When it switches off, the one before it takes over. With none left, the Body goes back to the one the owner started with.`,
   },
   'worldEditor.placeholderPins': {
     title: 'Placeholder Pins',
     wikiPage: 'World-Editor-Traits',
     wikiAnchor: 'placeholder-pins',
-    body: `Holds a placeholder at a fixed value while this trait is active, like a *Redhead* trait pinning Hair Color to *copper*. The playthrough's own roll is kept underneath and returns if the trait is switched off.
+    body: `Keeps a placeholder at one value while this trait is active. For example, a *Redhead* trait pins Hair Color to *copper*. The playthrough keeps its own roll, and the roll comes back when the trait switches off.
 
-The pinned value doesn't have to come from the placeholder's own list. The box suggests the authored values, but anything you type is used as written, so a trait can force a value nobody else rolls.
+You can type a value that isn't in the placeholder's list. The box suggests the authored values, and the game uses any text as written.
 
-A value that is a chip pins that part. Pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box names such a value after the part it holds, exactly as the Values list does, so you pick by the thing rather than by the words it joins to. A chip inside a longer value is prose, so that one reads as what it will resolve to.
+A value that is one chip pins the part that chip holds. Pin a Wildcard to the value that holds *isAsian*, and every chip of that Wildcard reads that variant.
 
-**Pin a blueprint** to reach every owner's own copy of it. Albus's *Paladin* pins his copy of *Class Garb*, and nobody else's. A link can replace this list for one owner.
+The box names such a value after the part it holds, as the **Values** list does. A chip inside a longer value is text, so the box shows what it resolves to.
 
-When two active traits pin the same placeholder, the one lower in the trait list wins. The row says so whenever that applies. A location's pin outranks a trait's, and a stat band's outranks both. A placeholder value's pin ranks under all three.`,
+**Pin a blueprint** to pin each owner's own copy of it. Albus's *Paladin* pins his copy of *Class Garb*, and no other copy. A link can replace this list for one owner.
+
+When two active traits pin the same placeholder, the trait lower in the trait list wins. The row says when this applies.
+
+A stat descriptor's pin outranks a location's, and a location's outranks a trait's. A placeholder value's pin ranks below all three. A script pin outranks all four.`,
   },
   'worldEditor.locationPins': {
     title: 'Placeholder Pins',
     wikiPage: 'World-Editor-Locations',
     wikiAnchor: 'placeholder-pins',
-    body: `Holds a placeholder at a fixed value while the player is here, like the *Fen* pinning Weather to *fog*. The pin releases the moment the player leaves, and the playthrough's own roll shows again. A sub-location doesn't inherit its parent's pins.
+    body: `Keeps a placeholder at one value while the player is here. For example, the *Fen* pins Weather to *fog*. When the player leaves, the playthrough's own roll shows again.
 
-The pinned value doesn't have to come from the placeholder's own list. The box suggests the authored values, but anything you type is used as written.
+A sub-location doesn't get its parent's pins. You can type a value that isn't in the placeholder's list, and the game uses it as written.
 
-A stat band's pin outranks a location's. A location's outranks a trait's and a placeholder value's. Two locations never compete, since only one is current at a time. The row says who wins whenever another source pins the same placeholder.`,
+A stat descriptor's pin outranks a location's. A location's outranks a trait's and a placeholder value's. A script pin outranks all four.
+
+Only one location is current at a time, so two locations never pin together. The row says which source wins when another one pins the same placeholder.`,
   },
   'worldEditor.pinsOnPlaceholder': {
     title: 'Placeholder Pins',
     wikiPage: 'World-Editor-Placeholders',
     wikiAnchor: 'pins',
-    body: `Every pin aimed at this placeholder, from any source: a trait, a location, a stat band, or another placeholder's value. The pins live on those sources, and this list only gathers them, so a change here is a change on that trait, location, stat or placeholder, and shows there too.
+    body: `Every pin aimed at this placeholder, from a stat descriptor, a location, a trait or another placeholder's value. Each pin is stored on its source. A change here is a change on the source, and it shows there too.
 
-Rows are in the order the game settles them: a stat band outranks a location, a location a trait, and a trait a placeholder value. Within one kind the lower in its own list wins, and each row says who else claims the placeholder and which one the rules pick.
+Rows are in rank order: a stat descriptor outranks a location, a location a trait, and a trait a placeholder value. A script pin outranks all four.
 
-The **Add Pin** button picks the kind of source, then the source, and writes an empty pin there for you to fill in. A row's first box re-aims its pin at another source of the same kind. The value box suggests this placeholder's values, but anything you type is used as written.`,
+Within one kind, the source lower in its own list wins. Each row names the other sources that pin this placeholder, and which one wins.
+
+**Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in. A row's first box moves its pin to another source of the same kind. The value box suggests this placeholder's values, and the game uses any text as written.`,
   },
   // One topic for the stat, trait and world Scripts tabs. A saved help link to `worldEditor.statCode` still opens it.
   'worldEditor.scriptBox': SCRIPTS_TOPIC,
@@ -292,13 +389,21 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
     tabs: [
       {
         label: 'Linked Copies',
-        body: `An entity or a dictionary in a world becomes a **linked copy** when it follows a **library item**. When you save the library item, every linked copy of it receives the change the next time you open its world. A copy that follows nothing is an **independent copy**.
+        body: `A **linked copy** is an entity or a dictionary in a world that follows a **library item**. When you save the library item, every linked copy of it receives the change the next time you open its world. A copy that follows nothing is an **independent copy**.
 
-**Who owns the item decides what an edit does.** If the library item is your own, an edit to the copy stays **Linked**. Saving the world writes the edit to the library item, and every other world holding a copy receives it the next time you open that world. If the item is another author's, the first edit makes the copy a **Local replacement**: your change is kept, and their updates still reach you for review.
+**Who owns the library item decides what an edit does.**
 
-**How a copy becomes linked.** **Save to Library** links the copy it saved. **Add From Library…** in the **+** menu on **Entities** and **Dictionary** adds a copy from your library and offers **Link to Library**, on by default. **Import Entity…** and **Import Dictionary…** in the same menu offer the same choice for a file. An independent copy's menu holds **Link to Library Item…**. All of these make the same link.
+- If the item is yours, the copy stays **Linked**, and saving the world writes your edit to the item.
+- If the item is another author's, your first edit makes the copy a **Local replacement**. Their updates still reach you for review.
 
-**The three link states.** A linked row carries a 🔗 marker in the list, and the footer button reads **Open in Library**. Point at either one to read the state and the name of what the copy follows.
+**How a copy becomes linked**
+
+- **Save to Library** saves the copy as a library item and links the copy to it.
+- **Add From Library…** adds a copy with **Link to Library** on by default. It's in the menu of the **Add to Entities** or **Add to Dictionary** icon button (+).
+- **Import Entity…** and **Import Dictionary…**, in the same menus, add a copy from a file with the same choice.
+- **Link to Library Item…**, in an independent copy's menu, links the copy to a library item you pick.
+
+**The three link states.** A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Hover either one to read the state and the name of what the copy follows.
 
 | | |
 |---|---|
@@ -306,42 +411,51 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
 | **Local replacement** | You edited a copy of another author's item. No update overwrites it. **Keep Mine** is its default in every review. |
 | **Link pending save** | You linked the copy in this editing session. The link is written when you save the world. |
 
-**Open in Library** opens the library item. **Unlink** turns the copy into an independent copy. The content stays exactly as it is, and the copy follows nothing.
+**Open in Library** opens the library item. **Unlink** turns the copy into an independent copy, and its content stays as it is.
 
-**Connect World References.** A library item names the Placeholder or location it needs by an id from its own world. When this world doesn't already answer that reference, a step asks what each one means here. **Save Connections…** in the copy's menu reopens the step, so you can point a reference somewhere else after you remove a Placeholder.`,
+**Connect World References.** A library item names the Placeholder or location it needs by an id from its own world. When this world doesn't answer that reference yet, a step asks what each one means here. **Save Connections…** in the copy's menu reopens the step, so you can connect the reference to another one.`,
       },
       {
         label: 'Updates',
         body: `**Check for Updates** is on a library tile and in a linked copy's menu. It compares the library item against every world that holds a copy. If no world is behind it, nothing opens.
 
-**Update Available** lists one row per world, with the copy's state and an action. A copy you edited is a **local replacement**.
+**Update Available** lists one row per world, with the copy's state and an action.
 
 | | |
 |---|---|
-| **Update** | Replace the copy with the library item. The default for a **Linked** copy. |
-| **Use Author's** | Replace a **Local replacement** with the library item. Your edits go. |
-| **Keep Mine** | Keep the copy as it is. The default for a local replacement. |
-| **Unlink** | Keep the copy as it is and stop following the library item. |
+| **Update** | Replaces the copy with the library item. The default for a **Linked** copy. |
+| **Use Author's** | Replaces a **Local replacement** with the library item. Your edits go. |
+| **Keep Mine** | Keeps the copy as it is. The default for a local replacement. |
+| **Unlink** | Keeps the copy as it is and stops following the library item. |
 
-**View Changes** shows each changed field with your value and the author's. Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it.
+**View Changes** shows each changed field twice, under **This world** and **Library**. For an imported file, the file's name replaces **Library**.
+
+Choosing an action changes nothing until **Apply Updates**. **Cancel** applies none of it. If one world fails, it keeps the content it had and offers **Retry**.
 
 **Keep Mine remembers the revision you answered for.** That revision doesn't come back. The next revision asks again.
 
-**Update This World** opens when you choose **Update an existing copy** for a community world. It lists the linked copies the update would change, with the same four actions. A local replacement starts on **Keep Mine**, so your edits survive the update. **New Required Content** lists sources the author now requires, which download and link when you apply. **No Longer Required** lists copies the author stopped requiring, which stay in your world as independent copies. **Cancel** applies none of it.`,
+**Update This World** opens when you choose **Update an existing copy** for a community world. It lists the linked copies the update would change, with the same four actions. A local replacement starts on **Keep Mine**, so the update keeps your edits.
+
+- **New Required Content** lists sources the author now requires. Each one downloads and links when you apply.
+- **No Longer Required** lists copies the author stopped requiring. Each one stays in your world as an independent copy.`,
       },
       {
         label: 'Publishing',
-        body: `**Publishing a world.** The publish dialog lists every library item the world's copies follow under **Linked Content**. **Include as required** makes that item download and link with the world. An unchecked item is published inside the world with no source to follow. A source of yours with no listing yet reads **Will publish with this world** and publishes first, as **Unlisted** unless you choose **Public**. If one source is refused, the world stays unpublished and **Retry** finishes the rest.
+        body: `**Publishing a world.** The publish dialog lists every library item the world's copies follow under **Linked Content**. **Include as required** makes that item download and link with the world. An unchecked item is published inside the world with no source to follow.
 
-**Publishing an entity or a dictionary.** **Listing** is **Public** or **Unlisted**. An unlisted listing reaches players only inside a world that requires it. **Compatible Worlds** lists your published worlds that hold a linked copy. Check **Offer as add-on** for a world and the world's author reviews the offer. The review state shows beside each world you offered it for.
+A source of yours with no listing yet reads **Will publish with this world**. It publishes first, as **Unlisted** unless you choose **Public**. If one source is refused, the world stays unpublished, and **Retry** continues from where it stopped.
 
-**Manage Add-ons** on your own world card opens the offers other authors made for your world. Each offer is **Approved**, **Unreviewed**, or **Declined**.
+**Publishing an entity or a dictionary.** **Listing** is **Public** or **Unlisted**. An unlisted listing reaches players only inside a world that requires it.
+
+**Compatible Worlds** lists your published worlds that hold a linked copy. Check **Offer as add-on** for a world, and the world's author reviews the offer. The review state shows beside each world you offered it for.
+
+**Manage Add-ons** on your own world card opens the offers other authors made for your world. Each offer is **Approved**, **Unreviewed** or **Declined**.
 
 | | |
 |---|---|
 | **Approved** | The add-on is listed under **Approved Add-ons** on your world's download. |
 | **Unreviewed** | The add-on is listed under **Community Add-ons**. |
-| **Declined** | The add-on leaves both tabs. It stays downloadable from its own listing. |
+| **Declined** | The add-on is in neither tab. It stays downloadable from its own listing. |
 
 A source that changed after your answer keeps that answer and gains **Updated since review**. **Mark Reviewed** accepts the change. Nothing changes until **Save Changes**.`,
       },
@@ -353,35 +467,39 @@ A source that changed after your answer keeps that answer and gains **Updated si
 |---|---|
 | **Required** | Comes with the world. You don't choose it. |
 | **Approved Add-ons** | Optional. The world's author approved it. |
-| **Community Add-ons** | Optional. Offered by its author and not reviewed by the world's author. |
+| **Community Add-ons** | Optional. Its own author offered it, and the world's author hasn't reviewed it. |
 
-The download button counts what it installs, so it reads **Download World + 3 Items**. Downloading places each item in your library and links the world's copies to it. Each copy opens in the World Editor as **Linked** with its source named.
+The download button counts what it downloads, so it reads **Download World + 3 Items**. Downloading places each item in your library and links the world's copies to it. Each copy opens in the World Editor as **Linked** with its source named.
 
 A required item that doesn't download leaves the world out of your library, and **Retry** finishes it. An add-on that doesn't download leaves the world ready and gets its own **Retry**.
 
-**Compatible Worlds** on an entity's or a dictionary's listing shows the worlds it is offered for. Downloading the entity or dictionary installs it alone.
+**Compatible Worlds** on an entity's or a dictionary's listing shows the worlds it's offered for. Downloading the entity or dictionary gets only that item.
 
-**Importing a world file.** The file carries what each copy follows. On the machine that wrote it, every link is restored. Elsewhere, **Link bundled content to my library** saves each bundled item as a library item of yours, and the world's copies follow it. Unchecked, the copies follow nothing. If you already have a copy's source, the copy follows your item as a **local replacement**, which no update overwrites, because the file's content always wins.`,
+**Importing a world file.** The file records what each copy follows. On the machine that wrote it, every link is restored.
+
+Elsewhere, **Link bundled content to my library** saves each bundled item as a library item of yours, and the world's copies follow it. Unchecked, the copies follow nothing.
+
+If you already have a copy's source, the copy follows your item. When the file's copy differs from your item, it arrives as a **local replacement**, which no update overwrites.`,
       },
       {
         label: 'Repairs',
-        body: `**Check Sources** in the Test Bench's **Issues** list asks the server about every library item this world's copies follow. It asks only when you press it, so an installed world stays playable with no connection.
+        body: `**Check Sources** in the Test Bench's **Issues** list asks the server about every published source this world's copies follow. It asks only when you press it, so a downloaded world stays playable with no connection.
 
 A source the server reports as deleted reads as a source its author removed. Any other failure reads as a source that couldn't be checked, with **Retry Check**.
 
-Each copy with a missing source gets one repair and its own **Apply**.
+Each copy with a missing source gets its own repair and its own **Apply**.
 
 | | |
 |---|---|
-| **Replace from Library** | Follow a different library item. |
-| **Unlink and Keep Content** | Keep the copy as an independent copy. |
-| **Remove from World** | Delete the copy from this world. |
+| **Replace from Library** | The copy follows a different library item. |
+| **Unlink and Keep Content** | The copy becomes an independent copy. |
+| **Remove from World** | The copy is deleted from this world. |
 
-**A republished source is a new listing.** It never reconnects on its own. Replace from Library is how to reconnect to it.
+**A republished source is a new listing.** It never reconnects on its own. Use **Replace from Library** to follow it.
 
-While a required source reads as removed, **Enter World**, **Quick Start**, and **Publish World** are off for that world. The reason names the source and carries **Repair Sources** to the editor. **Edit World** and **Load Game** stay open.
+While a required source reads as removed, **Enter World**, **Quick Start** and **Publish World** are off for that world. The reason names the source and has **Repair Sources**, which opens the editor. **Edit World** and **Load Game** stay open.
 
-**Removing a library item** leaves every copy that followed it as an independent copy with its content untouched. No world breaks.`,
+**Removing a library item** leaves every copy that followed it as an independent copy, with its content untouched. No world breaks.`,
       },
     ],
   },

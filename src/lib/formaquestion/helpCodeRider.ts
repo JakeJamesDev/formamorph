@@ -44,7 +44,7 @@ export const DEFAULT_CODE_RIDER = [
  * drift test holds it to the sandbox's own list.
  */
 export const SANDBOX_GLOBAL_NAMES = [
-  'self', 'owner', 'stats', 'clock', 'turn', 'locations', 'location', 'discover', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'console',
+  'self', 'owner', 'stats', 'clock', 'turn', 'locations', 'location', 'discover', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'console',
 ] as const;
 
 const GLOBALS = SANDBOX_GLOBAL_NAMES.join('|');
@@ -65,8 +65,8 @@ const CODE_WORDS: readonly RegExp[] = [
 /** True when the question uses a code word. */
 export const hasCodeWords = (question: string): boolean => CODE_WORDS.some((word) => word.test(question));
 
-/** The Scripts Guide section that lists the whole sandbox API. Every code turn sends it. */
-export const QUICK_REFERENCE_SECTION = 'ScriptsGuide#quick-reference';
+/** The Scripts Reference section that lists the whole sandbox API. Every code turn sends it. */
+export const QUICK_REFERENCE_SECTION = 'Scripts-Reference#quick-reference';
 
 /** A trait's Scripts tab, as the surface registry reports it. */
 export const TRAIT_SCRIPT_TAB: SurfaceId = 'worldEditorTrait.scripts';

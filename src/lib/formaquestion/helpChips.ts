@@ -19,6 +19,7 @@ export const HELP_CHIP = {
   lookupFunction: '<LOOKUP_FUNCTION>',
   pickLimit: '<PICK_LIMIT>',
   replyFormat: '<REPLY_FORMAT>',
+  intentFormat: '<INTENT_FORMAT>',
   voice: '<VOICE>',
 } as const;
 
@@ -34,9 +35,9 @@ export interface HelpChipValues {
 
 const NO_VALUES: HelpChipValues = { voice: '', name: '' };
 
-/** The chip values a prompt's request sends: the active mascot's name and Voice, trimmed, while the mascot is on; the pick request sends none. */
+/** The chip values a prompt's request sends: the active mascot's name and Voice, trimmed, while the mascot is on; the pick and Intent Classifier requests send none. */
 export function helpChipValues(prompt: HelpPromptKey, { mascot, mascotPresets }: Pick<HelpSettings, 'mascot' | 'mascotPresets'>): HelpChipValues {
-  if (prompt === 'pick' || !mascot) return NO_VALUES;
+  if (prompt === 'pick' || prompt === 'intent' || !mascot) return NO_VALUES;
   const { name, rig } = activeMascotPreset(mascotPresets);
   return { voice: rig.voice.trim(), name: name.trim() };
 }
@@ -52,7 +53,7 @@ export const frameVoice = (voice: string, name: string): string =>
 export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
   [HELP_CHIP.marker]: {
     label: 'Not in Guide Marker',
-    hint: 'Marks an answer as general knowledge when the guide does not cover the question, so the notice shows',
+    hint: 'Marks an answer the guide doesn’t cover, so the notice shows',
     text: GENERAL_KNOWLEDGE_MARKER,
   },
   [HELP_CHIP.lookupFunction]: {
@@ -62,13 +63,18 @@ export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
   },
   [HELP_CHIP.pickLimit]: {
     label: 'Search Limit',
-    hint: 'Caps how many sections one search reply names',
+    hint: 'Sets the most sections one search reply can name',
     text: String(HELP_PICK_LIMIT),
   },
   [HELP_CHIP.replyFormat]: {
     label: 'Reply Format',
     hint: 'Sets how the search reply is written, so the app can read it',
     text: '- Reply with the lines of your picks alone, one on each line, each copied as the list writes it.',
+  },
+  [HELP_CHIP.intentFormat]: {
+    label: 'Sorting Format',
+    hint: 'Sets how the reply names the kind of help, so the app can read it',
+    text: '- Reply with two lines: "Intent:" and the kind, then "Second ask:" and yes or no.',
   },
   [HELP_CHIP.voice]: {
     label: 'Mascot Voice',

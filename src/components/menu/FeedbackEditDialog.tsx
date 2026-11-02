@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FieldError, Meta } from "@/components/ui/typography";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PromptField from "@/components/prompt/PromptField";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
@@ -100,13 +101,13 @@ export function FeedbackEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px] max-h-[90dvh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Pencil className="h-4 w-4" /> Edit This Report</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Pencil className="h-4 w-4" /> Edit This Thread</DialogTitle>
           <DialogDescription>
             {mayEditProse && mayRefile
-              ? 'Rewrite it, or file it somewhere else.'
+              ? 'Edit the text, or change its “Kind” or “Category”.'
               : mayEditProse
-                ? 'Fix what you wrote. Everyone reading the thread sees that it was edited.'
-                : 'Re-file it. The wording stays as its author wrote it.'}
+                ? 'Edit your text. Readers see that it was edited.'
+                : 'Change its “Kind” or “Category”. Its text stays as its author wrote it.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -127,7 +128,7 @@ export function FeedbackEditDialog({
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-between">
                     <span className="text-label font-medium">Description</span>
-                    <span className="text-meta text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
+                    <Meta>{draft.body.length} / {BODY_MAX}</Meta>
                   </div>
                   <PromptField
                     value={draft.body}
@@ -177,16 +178,16 @@ export function FeedbackEditDialog({
             {/* Said before it happens, not discovered after: a move costs the reporter's machine details
                 and puts the thread back at the start of triage. */}
             {draft.type !== thread.type && (
-              <p className="rounded-md border border-warning/40 bg-warning/5 p-3 text-meta text-muted-foreground">
+              <Meta as="p" className="rounded-md border border-warning/40 bg-warning/5 p-3">
                 Moving this to a {FEEDBACK_TYPE_LABELS[draft.type as FeedbackType].one.toLowerCase()} sets its status
-                back to Open{thread.acceptedAnswer ? ' and clears the accepted answer' : ''}{thread.type === 'bug' ? ', and deletes the version and platform it was filed with' : ''}.
+                back to Open{thread.acceptedAnswer ? ' and clears the accepted answer' : ''}{thread.type === 'bug' ? ', and deletes the Version, Platform and System it was filed with' : ''}.
                 Its replies and votes stay.{draft.type === 'bug' && ' Only the reporter and staff can reply to a bug.'}
-              </p>
+              </Meta>
             )}
           </div>
         </ScrollArea>
 
-        {failure && <p role="alert" className="text-helper text-destructive">{failure}</p>}
+        {failure && <FieldError role="alert">{failure}</FieldError>}
 
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>

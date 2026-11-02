@@ -3,11 +3,11 @@ import { EditorModeContext, readEditorMode, writeEditorMode, type EditorMode } f
 
 /** Wraps the World Editor. `forcedMode` overrides the stored preference (the dev-router's `mode` param, or
  *  a surface request for a tab only Advanced shows) and re-applies whenever it is handed over again, so a
- *  `goto` or a request lands in that mode even after a click moved the switch. */
+ *  `goto` or a request opens in that mode even after a click moved the switch. */
 export function EditorModeProvider({ children, forcedMode, forcedNonce, lockedMode }: {
   children: ReactNode;
   forcedMode?: EditorMode;
-  /** Bumped per dev-route change and per surface request, so asking again for the mode in force re-applies. */
+  /** Bumped per dev-route change and per surface request, so asking again for the current mode re-applies. */
   forcedNonce?: number;
   /** Shown in place of the author's mode while set. The author's mode is kept and returns when it clears. */
   lockedMode?: EditorMode;

@@ -80,7 +80,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
       setSelectedModelId(model.id);
     } catch (err) {
       console.error('Failed to add model', err);
-      toastError(err, { headline: 'Could not save that player avatar (storage may be full).' });
+      toastError(err, { headline: "Couldn't save that Avatar. Storage may be full." });
     }
   };
 
@@ -89,13 +89,13 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
   };
 
   // Portrait/narrow: the controls move into a bottom drawer that hovers over the viewer, so the model gets the
-  // full width and the panel no longer truncates. Desktop keeps the side-by-side split.
+  // full width and the panel doesn't truncate. Desktop keeps the side-by-side split.
   const isMobile = useIsMobile();
 
   const viewer = (
     <Card className={cn('m-4 bg-secondary overflow-hidden', isMobile ? 'flex-1 min-h-0' : 'w-2/3')}>
       <CardHeader>
-        <CardTitle>Character Viewer</CardTitle>
+        <CardTitle>Avatar Preview</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center h-full">
         {/* Adjust the VRMViewer container */}
@@ -123,7 +123,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
               ? <Button onClick={onBack} variant="outline" className="flex-1">Back</Button>
               : <Button onClick={onAbort} variant="destructive" className="flex-1">Abort</Button>}
             <Button onClick={handleFinalize} disabled={listing} className="flex-1" {...targetAttribute('avatar', 'finalize-character')}>
-              Finalize Character
+              Finalize Avatar
             </Button>
           </div>
 
@@ -161,7 +161,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
       <div className="relative flex app-viewport flex-col pt-[env(safe-area-inset-top)]">
         <SurfaceLayer id="avatar" />
         {viewer}
-        <MobileControlsDrawer title="Character Customization">{panel}</MobileControlsDrawer>
+        <MobileControlsDrawer title="Avatar Customization">{panel}</MobileControlsDrawer>
       </div>
     );
   }
@@ -173,7 +173,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
       <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 min-h-0">
           <CardHeader>
-            <CardTitle>Character Customization</CardTitle>
+            <CardTitle>Avatar Customization</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">{panel}</CardContent>
         </ScrollArea>

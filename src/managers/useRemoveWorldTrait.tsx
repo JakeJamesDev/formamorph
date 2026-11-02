@@ -4,16 +4,13 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { linksTo, removeBlueprints, type BlueprintsRemoval } from '@/lib/traitLinks';
 import { groupHoldsItems } from '@/lib/traitTree';
-
-/** The line a removal's confirmation adds for the links that go with it. */
-export const alsoDeletesLinks = (links: number): string =>
-  `This also deletes ${links === 1 ? 'its link' : `its ${links} links`}.`;
+import { linksKind, usedByText } from '@/lib/usedByText';
 
 /** What removing Blueprints does: the detached links, and the items that move up. */
 function blueprintsLine(removal: BlueprintsRemoval): string {
   const { detached, movedUp } = removal;
   const lines = [
-    detached ? `${detached === 1 ? "Its link becomes that entity's own trait" : `Its ${detached} links become each entity's own trait`}, and the linked originals are deleted.` : '',
+    detached ? `${detached === 1 ? "Its link becomes that entity's own trait" : `Its ${detached} links become each entity's own trait`}, and this deletes the linked originals.` : '',
     movedUp ? `${detached ? 'The other traits move' : 'Its traits move'} to the top level, where the player can pick them.` : '',
   ];
   return lines.filter(Boolean).join(' ');
@@ -42,7 +39,7 @@ export function useRemoveWorldTrait(): { ask: (id: string, isGroup: boolean) => 
     : `Delete ${labelPlaceholders(pending?.name ?? '', placeholders)}?`;
   const description = pending?.blueprints
     ? blueprintsLine(pending.blueprints)
-    : alsoDeletesLinks(pending?.links ?? 0);
+    : usedByText([linksKind(pending?.links ?? 0)]) ?? '';
   const dialog = (
     <ConfirmDialog
       open={!!pending}

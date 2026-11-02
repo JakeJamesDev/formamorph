@@ -28,7 +28,7 @@ const copy = (id: string, itemId: string, where: ItemCopy['where'], visibility: 
 const WARDEN = entity('warden', 'Warden', {
   aliases: ['The Butcher'], stats: [stat('w-grit'), stat('w-rage', { hidden: true })], traits: [trait('w-oath')],
 });
-const STRANGER = entity('stranger', 'Stranger');
+const STRANGER = entity('stranger', 'Stranger', { strangerName: 'a passer-by' });
 const LOCATIONS: GameLocation[] = [
   { id: 'gate', name: 'Gate', playerDescription: 'Gate player text.', aiDescription: 'Gate AI secret.' },
   { id: 'hall', name: 'Hall', playerDescription: 'Hall player text.', aiDescription: 'Hall AI secret.', parentId: 'vault' },
@@ -108,6 +108,11 @@ describe('playerViewScene', () => {
     const counted = { ...item('key'), uses: 2, whenEmpty: { kind: 'stays' } as const, state: ' rusty ' };
     const kept = playerViewScene({ ...scene, items: [counted, item('gem')] }, reach());
     expect(kept.items).toEqual([expect.objectContaining({ id: 'key', uses: 2, whenEmpty: { kind: 'stays' }, state: 'rusty' })]);
+  });
+
+  it('keeps a met item’s Value and Currency', () => {
+    const kept = playerViewScene({ ...scene, items: [{ ...item('key'), value: 4, currencyId: 'goats' }] }, reach());
+    expect(kept.items).toEqual([expect.objectContaining({ id: 'key', value: 4, currencyId: 'goats' })]);
   });
 
   it('drops the world overview and the lore, and keeps the notes', () => {

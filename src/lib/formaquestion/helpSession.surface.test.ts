@@ -11,10 +11,11 @@ import { helpSettingsOf } from './helpSettings';
 import { surfaceHint } from './surfaceHint';
 
 const PAGES = {
-  Settings: '# ⚙️ Settings\n\nSettings hold your options.\n\n## Display\n\nDisplay holds the theme and text size.\n\n## Output\n\nOutput holds the narration length.\n\n## Tag Prompt\n\nThe tag prompt writes image tags.\n',
+  Settings: '# ⚙️ Settings\n\nSettings hold your options.\n\n## Display\n\nDisplay holds the theme and text size.\n\n## Output\n\nOutput holds the narration length.\n',
+  'Endpoint-Settings': '# 🔌 Endpoint Settings\n\nEndpoints connect the AI.\n\n## Tag Prompt\n\nThe tag prompt writes image tags.\n',
   Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n',
 };
-const index = createDocsIndex({ pages: PAGES, sidebar: '- [Settings](Settings)\n- [Traits](Traits)\n' });
+const index = createDocsIndex({ pages: PAGES, sidebar: '- [Settings](Settings)\n- [Endpoint Settings](Endpoint-Settings)\n- [Traits](Traits)\n' });
 
 const surface = (screen: SurfaceId | null, dialog: SurfaceId | null = null, tabs: SurfaceId[] = []): Surface => ({ screen, dialog, tabs });
 const SETTINGS_DISPLAY = surface('mainMenu', 'settings', ['settings.display']);

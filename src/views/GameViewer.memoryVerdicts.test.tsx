@@ -117,7 +117,7 @@ async function sendTurn(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
-const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+const turnDone = () => waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 async function playTurn(action: string) {
   await sendTurn(action);
   await turnDone();
@@ -144,8 +144,8 @@ describe('memory verdicts in play', () => {
     expect(within(dialog).getByText('The harbor burned.')).toBeInTheDocument();
     expect(within(dialog).getByText('Originally: s3')).toBeInTheDocument();
     expect(within(dialog).queryByText('s4')).not.toBeInTheDocument();
-    // Each verdict row offers Clear Pin; the dropped row offers Pin, the kept ones Forget.
-    expect(within(dialog).getAllByRole('button', { name: 'Clear Pin (Let the Story Decide)' })).toHaveLength(3);
+    // Each verdict row offers Clear the Pin; the dropped row offers Pin, the kept ones Forget.
+    expect(within(dialog).getAllByRole('button', { name: 'Clear the Pin and Let the Story Decide' })).toHaveLength(3);
     expect(within(dialog).getAllByRole('button', { name: 'Pin This Memory' })).toHaveLength(1);
   });
 

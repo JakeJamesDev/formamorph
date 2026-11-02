@@ -13,6 +13,7 @@ import { useEntityGallery } from "@/lib/useEntityGallery";
 import { useEntityStatMorphs } from "@/lib/useEntityStatMorphs";
 import type { Entity } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from '@/components/ui/typography';
 
 /** Editing hooks for a runtime-discovered character, whose description lives in the save rather than the
  *  authored world. Absent for authored entities, which the modal renders read-only. */
@@ -116,11 +117,12 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent surface="entity" aria-describedby={undefined} className="sm:max-w-[800px] h-[90dvh] flex flex-col">
+      <DialogContent surface="entity" aria-describedby={undefined} className="sm:max-w-[800px] lg:max-w-[1040px] h-[90dvh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{entity.name}</DialogTitle>
         </DialogHeader>
         <EntityCardBody
+          sideBySide
           entity={entity}
           images={images}
           avatar={avatarSource && (
@@ -160,7 +162,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                   {editing && (
                     <div className="flex gap-2 justify-end items-center">
                       {regenError && (
-                        <span className="text-meta text-muted-foreground mr-auto">Nothing usable came back. Try again.</span>
+                        <Meta className="mr-auto">Couldn&apos;t write a new description. Try again.</Meta>
                       )}
                       <Button variant="ghost" size="sm" onClick={startEdit} disabled={regenerating}>
                         <Pencil className="h-4 w-4 mr-1" /> Edit

@@ -55,7 +55,7 @@ async function playTurn(action: string) {
   const before = assistantTurns;
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(assistantTurns).toBe(before + 1), { timeout: 15_000 });
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeEnabled(), { timeout: 15_000 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Narration' })).toBeEnabled(), { timeout: 15_000 });
 }
 
 beforeEach(async () => {
@@ -93,7 +93,7 @@ async function playSaveAcross(before: World, after: World) {
   renderGameViewer(after, { inGameplay: <Probe />, initialSaveId: save.id });
   stubEndpoint();
   await closeReadme(after);
-  await screen.findByRole('button', { name: 'Re-generate Narration' });
+  await screen.findByRole('button', { name: 'Regenerate Narration' });
   expect(assistantTurns).toBe(savedTurns);
   await playTurn('I keep going.');
   // Wait for this turn's autosave too, so it can't land after the next test clears the store.

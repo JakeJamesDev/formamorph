@@ -3,7 +3,7 @@ import { PATREON_PAGE_URL } from '@/components/PatreonSection';
 import { hostedSession, type HostedSession } from '@/lib/hostedAi/hostedSession';
 import { isSpent, pendingWarning } from '@/lib/hostedAi/hostedAllowance';
 import {
-  hostedStateCopy, hostedWarningText, HOSTED_SWITCH_BACK_LABEL, HOSTED_UPGRADE_LABEL,
+  hostedStateCopy, hostedWarningText, HOSTED_SWITCH_BACK_LABEL, HOSTED_SUPPORT_LABEL,
 } from '@/lib/hostedAi/hostedCopy';
 import type { HostedState } from '@/lib/hostedAi/hostedState';
 import { openExternal } from '@/lib/openExternal';
@@ -23,18 +23,18 @@ function NoticeBody({ text, actions }: { text: string; actions: { label: string;
   );
 }
 
-const upgrade = { label: HOSTED_UPGRADE_LABEL, run: () => openExternal(PATREON_PAGE_URL) };
+const support = { label: HOSTED_SUPPORT_LABEL, run: () => openExternal(PATREON_PAGE_URL) };
 
-/** Toasts the 75% or 90% notice. */
+/** Toasts the notice for a crossed threshold. */
 export function showWarningNotice(threshold: number, hosted: HostedState | null): void {
-  toast.info(<NoticeBody text={hostedWarningText(threshold, hosted)} actions={[upgrade]} />, { ...OPTIONS, toastId: `hosted-warning-${threshold}` });
+  toast.info(<NoticeBody text={hostedWarningText(threshold, hosted)} actions={[support]} />, { ...OPTIONS, toastId: `hosted-warning-${threshold}` });
 }
 
 /** Toasts the end-of-allowance notice with its two actions. */
 export function showExhaustedNotice(hosted: HostedState | null, switchBack: () => void): void {
   const reason = hostedStateCopy('exhausted', hosted?.resetAt)?.reason ?? '';
   toast.warn(
-    <NoticeBody text={reason} actions={[{ label: HOSTED_SWITCH_BACK_LABEL, run: switchBack }, upgrade]} />,
+    <NoticeBody text={reason} actions={[{ label: HOSTED_SWITCH_BACK_LABEL, run: switchBack }, support]} />,
     { ...OPTIONS, autoClose: false, toastId: 'hosted-exhausted' },
   );
 }

@@ -4,6 +4,9 @@ import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { namedBySlot, type MediaItem } from '@/lib/mediaIndex';
 import { mediaParentSpec, writeMediaSlot, type MediaEditor, type MediaWrite } from '@/lib/mediaParents';
 import { withImageRule } from '@/lib/entityImages';
+import { withBackdropImage } from '@/lib/bodyLayout';
+import { readImageAspect } from '@/lib/imageAspect';
+import { useMountedRef } from '@/lib/useMountedRef';
 import type { MediaAsset, TraitRequirementRow } from '@/types';
 
 /** "Remove Ambient Sound: Lamp Room", or "Replace Background Music" for world media. */
@@ -33,7 +36,7 @@ export function useMediaStep() {
  * cleared the way that panel clears it, as one History Step that keeps the Media tab as its Origin.
  */
 export function useMediaItemActions() {
-  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview } = useGameData();
+  const { editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies } = useGameData();
 
   const editor = useMemo<MediaEditor>(() => ({
     overview: (patch) => updateWorldOverview(patch(worldOverview)),
@@ -46,16 +49,29 @@ export function useMediaItemActions() {
       const book = dictionaries.find((d) => d.id === id);
       if (book) updateDictionary(edit(book));
     },
-  }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, worldOverview, updateWorldOverview]);
+    body: (id, edit) => setBodies(bodies.map((b) => (b.id === id ? edit(b) : b))),
+    item: (id, edit) => {
+      const item = items.find((i) => i.id === id);
+      if (item) updateItem(edit(item));
+    },
+  }), [editEntity, locations, updateLocation, dictionaries, updateDictionary, items, updateItem, worldOverview, updateWorldOverview, bodies, setBodies]);
 
   const step = useMediaStep();
+  const mounted = useMountedRef();
 
-  const run = useCallback((verb: string, item: MediaItem, next: MediaWrite) => {
+  const run = useCallback((verb: string, item: MediaItem, next: MediaWrite, write?: () => void) => {
     const label = mediaParentSpec(item.parent.kind).stepLabel?.(item, worldOverview, next) ?? mediaStepLabel(verb, item);
-    return step(label, () => writeMediaSlot(editor, item, next));
+    return step(label, write ?? (() => writeMediaSlot(editor, item, next)));
   }, [editor, step, worldOverview]);
 
-  const replace = useCallback((item: MediaItem, media: MediaAsset) => run(item.blank ? 'Add' : 'Replace', item, media), [run]);
+  const replace = useCallback(async (item: MediaItem, media: MediaAsset) => {
+    const verb = item.blank ? 'Add' : 'Replace';
+    if (item.parent.kind !== 'body') return run(verb, item, media);
+    // A Custom Image sets the Backdrop's aspect (Q15), in the same step as the file.
+    const aspect = await readImageAspect(media.data, null);
+    if (!mounted.current) return;
+    return run(verb, item, media, () => editor.body(item.parent.id, (b) => withBackdropImage(b, media.data, aspect ?? undefined)));
+  }, [run, editor, mounted]);
   const remove = useCallback((item: MediaItem) => run('Remove', item, null), [run]);
   /** Sets a gallery image's Visibility rule rows, an ordinary edit with no step of its own. */
   const setRules = useCallback((item: MediaItem, rows: TraitRequirementRow[]) => {

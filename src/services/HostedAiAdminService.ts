@@ -28,7 +28,7 @@ export interface HostedModel {
   capabilities?: HostedCapabilities | null;
 }
 
-/** One tier's window, monthly budget and fallback cost per turn, all dollars where money. */
+/** One tier's window, weekly budget and fallback cost per turn, all dollars where money. */
 export interface HostedTier {
   window: number;
   budget: number;

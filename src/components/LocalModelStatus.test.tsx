@@ -111,7 +111,7 @@ describe('EngineStatusLine', () => {
     const { container } = render(<EngineStatusLine engine={engine({
       status: 'loading', modelId: 'big-model.gguf', loadProgress: 42,
     })} />);
-    expect(container.textContent).toContain('loading big-model.gguf — 42%');
+    expect(container.textContent).toContain('loading big-model.gguf, 42%');
   });
 
   it('names the model without a percentage before the first progress report', () => {
@@ -153,7 +153,7 @@ describe('EngineStatusLine', () => {
     const { container } = render(<EngineStatusLine engine={engine({
       status: 'ready', modelId: 'big-model.gguf', loadProgress: null,
     })} />);
-    expect(container.textContent).toContain('ready — big-model.gguf');
+    expect(container.textContent).toContain('ready, big-model.gguf');
     expect(container.textContent).not.toContain('%');
   });
 });

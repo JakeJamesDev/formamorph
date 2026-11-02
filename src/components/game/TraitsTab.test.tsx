@@ -21,24 +21,39 @@ const G = (id: string, name: string, extra: Partial<TraitGroup> = {}): TraitGrou
   id, name, parentId: null, ...extra,
 });
 
-/** Mount the right panel on the Traits tab, holding `held` of the world's traits. */
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
+
+/** Mount the right panel on the Traits tab, holding `held` of the world's traits. Each world entity stands in
+ *  the yard unless it names a place, and took part in the last turn, so it is in scene unless `quiet` names it. */
 const renderTraits = (
   traits: Trait[],
   traitGroups: TraitGroup[],
   held: string[],
-  options: PanelHarnessOptions = {},
-) =>
-  renderRightPanel({}, {
-    turns: TURNS,
+  options: PanelHarnessOptions & { quiet?: string[] } = {},
+) => {
+  const { quiet = [], ...harness } = options;
+  const cast = ((harness.world?.entities ?? []) as { name: string; locations?: string[] }[])
+    .map((entity) => ({ ...entity, locations: entity.locations ?? ['yard'] }));
+  return renderRightPanel({}, {
+    turns: TURNS.map((turn) => ({
+      ...turn, locationId: 'yard', entities: cast.map((e) => e.name).filter((name) => !quiet.includes(name)),
+    })),
     stats: STATS,
-    ...options,
-    world: { traits, traitGroups, ...options.world },
+    ...harness,
+    world: { traits, traitGroups, locations: [YARD], ...harness.world, entities: cast as never },
     seed: (gameplay) => {
       gameplay.setGlobalTraits(traits.filter((t) => held.includes(t.id)));
+      gameplay.setCurrentLocation(YARD as never);
       gameplay.setActiveTab('traits');
-      options.seed?.(gameplay);
+      harness.seed?.(gameplay);
     },
   });
+};
+
+const pick = async (label: string) => {
+  await userEvent.click(screen.getByRole('combobox', { name: 'Selected entity' }));
+  await userEvent.click(await screen.findByRole('option', { name: label }));
+};
 
 /** The traits with a control on screen right now, in render order. */
 const shown = () =>
@@ -390,7 +405,7 @@ describe('entity nodes in the traits tab', () => {
     ],
   };
   const PALADIN = T('t-paladin', 'Paladin');
-  const withAsh = (options: PanelHarnessOptions = {}) => renderTraits([PALADIN], [], [], {
+  const withAsh = (options: PanelHarnessOptions & { quiet?: string[] } = {}) => renderTraits([PALADIN], [], [], {
     ...options,
     world: { entities: [ash] },
     seed: (gameplay) => {
@@ -421,6 +436,103 @@ describe('entity nodes in the traits tab', () => {
     expect(screen.getByText('Requires Paladin')).toBeTruthy();
   });
 
+  it('leaves out the node of an entity that is here but took no part lately', () => {
+    withAsh({ quiet: ['Ash'] });
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+    expect(screen.queryByText('Tamed')).toBeNull();
+  });
+
+  it('leaves out the node of an entity that took part but stands elsewhere', () => {
+    renderTraits([PALADIN], [], [], {
+      world: { entities: [{ ...ash, locations: ['barn'] }], locations: [YARD, { id: 'barn', name: 'Barn' }] },
+      seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } }),
+    });
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+  });
+
+  it('draws a stranger in scene under its label and never its name', () => {
+    renderTraits([PALADIN], [], [], {
+      world: { entities: [{ ...ash, strangerName: 'a hooded man' }] },
+      seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } }),
+    });
+    expect(within(section('a hooded man')).getByRole('checkbox', { name: 'Switch off Tamed' })).toBeEnabled();
+    expect(screen.queryByText('Ash')).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Switch off Ash’s Tamed' })).toBeNull();
+  });
+
+  describe('on a past page', () => {
+    const hooded = { strangerName: 'a hooded man' };
+    const bond = T('t-bond', '{{char}} Bond', { playerDescription: '{{char}} watches you.' });
+    /** Two pages, both with `names` in scene; the view sits on page 1. */
+    const pastTraits = (entities: { id: string; name: string }[]) => {
+      const names = entities.map((e) => e.name);
+      const ownedTraits = Object.fromEntries(entities.map((e) => [e.id, { chosen: ['t-bond'] }]));
+      renderTraits([PALADIN], [], [], {
+        world: { entities: entities.map((e) => ({ ...e, ...hooded, traits: [bond] })) as never },
+        page: 1,
+        turns: [
+          { ...TURNS[0], locationId: 'yard', entities: names, ownedTraits },
+          { ...TURNS[0], turnId: 't2', locationId: 'yard', entities: names, ownedTraits },
+        ],
+      });
+    };
+
+    it('reads a stranger’s trait text with its label as the Entity Name, never its name', () => {
+      pastTraits([{ id: 'e-ash', name: 'Ash' }]);
+      const node = section('a hooded man');
+      expect(within(node).getByRole('checkbox', { name: 'Switch off a hooded man Bond' })).toBeDisabled();
+      expect(within(node).getByText('a hooded man watches you.')).toBeTruthy();
+      expect(screen.queryByText(/Ash/)).toBeNull();
+    });
+
+    it('names a stranger’s own trait group with its label, never its name', () => {
+      const kinBond = { ...bond, groupId: 'g-kin' };
+      const ownedTraits = { 'e-ash': { chosen: ['t-bond'] } };
+      renderTraits([PALADIN], [], [], {
+        world: { entities: [{ id: 'e-ash', name: 'Ash', ...hooded, traits: [kinBond], traitGroups: [G('g-kin', '{{char}} Kin')] }] as never },
+        page: 1,
+        turns: [
+          { ...TURNS[0], locationId: 'yard', entities: ['Ash'], ownedTraits },
+          { ...TURNS[0], turnId: 't2', locationId: 'yard', entities: ['Ash'], ownedTraits },
+        ],
+      });
+      expect(within(section('a hooded man')).getByText('a hooded man Kin')).toBeTruthy();
+      expect(screen.queryByText(/Ash/)).toBeNull();
+    });
+
+    it('reads a stranger’s linked world trait with its label, never its name', () => {
+      const blueprints = G('g-blueprints', 'Blueprints', { system: 'blueprints', order: 0 });
+      const oath = T('t-oath', '{{char}} Oath', { groupId: 'g-blueprints', playerDescription: '{{char}} swore it.' });
+      const link = { id: 'l-oath', originalId: 't-oath', kind: 'trait', originalName: 't-oath', groupId: null, order: 0 };
+      const ownedTraits = { 'e-ash': { chosen: ['t-oath'] } };
+      renderTraits([PALADIN, oath], [blueprints], [], {
+        world: { entities: [{ id: 'e-ash', name: 'Ash', ...hooded, traitLinks: [link] }] as never },
+        page: 1,
+        turns: [
+          { ...TURNS[0], locationId: 'yard', entities: ['Ash'], ownedTraits },
+          { ...TURNS[0], turnId: 't2', locationId: 'yard', entities: ['Ash'], ownedTraits },
+        ],
+      });
+      const node = section('a hooded man');
+      expect(within(node).getByRole('checkbox', { name: 'Switch off a hooded man Oath' })).toBeDisabled();
+      expect(within(node).getByText('a hooded man swore it.')).toBeTruthy();
+      expect(screen.queryByText(/Ash/)).toBeNull();
+    });
+
+    it('numbers strangers who share a label as distinct nodes', async () => {
+      pastTraits([{ id: 'e-ash', name: 'Ash' }, { id: 'e-bo', name: 'Bo' }]);
+      expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['a hooded man']);
+      await pick('a hooded man (2)');
+      expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['a hooded man (2)']);
+      expect(screen.queryByText(/Ash|Bo\b/)).toBeNull();
+    });
+  });
+
+  it('keeps the played entity’s node when it took no part', () => {
+    withAsh({ quiet: ['Ash'], seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
+    expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
+  });
+
   it('marks the entity the player plays with the You pill after its name, and reads it out as You', () => {
     withAsh({ seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
     const heading = screen.getByRole('button', { name: 'Ash, You, 1 enabled' });
@@ -443,7 +555,7 @@ describe('entity nodes in the traits tab', () => {
     expect(subheading).toHaveTextContent(/^AshYou$/);
   });
 
-  it("reads an owned trait's Character Name as its owner", () => {
+  it("reads an owned trait's Entity Name as its owner", () => {
     renderTraits([PALADIN], [], [], {
       world: { entities: [{ ...ash, traits: [T('t-tamed', 'Tamed', { playerDescription: '{{char}} heels at a word.' })] }] },
       seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } }),
@@ -481,14 +593,56 @@ describe('linked traits in the traits tab', () => {
     openDisabled(name);
   };
 
-  it('lists a linked original once per owner, under each owner’s node, and never at the top level', () => {
+  it('lists a linked original once per owner, under each owner’s node, and never at the top level', async () => {
     withLinks();
     expect(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' })).toBeEnabled();
+    await pick('Bo');
     unfold('Bo');
     expect(within(section('Bo')).getByRole('checkbox', { name: 'Switch on Paladin' })).toBeEnabled();
-    expect(screen.getAllByText('Paladin')).toHaveLength(2);
     expect(screen.queryByRole('group', { name: 'Blueprints' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Classes' })).toBeNull();
+  });
+
+  it('draws the selected entity’s node alone, and keeps the player’s own through every pick', async () => {
+    withLinks();
+    expect(screen.queryByRole('group', { name: 'Bo' })).toBeNull();
+    expect(section('Wanderer')).toBeInTheDocument();
+    await pick('Bo');
+    expect(section('Bo')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+    expect(section('Wanderer')).toBeInTheDocument();
+    await pick('(None)');
+    expect(screen.queryByRole('group', { name: 'Ash' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Bo' })).toBeNull();
+    expect(section('Wanderer')).toBeInTheDocument();
+  });
+
+  it('counts only the drawn owners in the active line', async () => {
+    withLinks();
+    expect(screen.getByText(/1 active:/)).toBeInTheDocument();
+    await pick('Bo');
+    expect(screen.queryByText(/1 active:/)).toBeNull();
+  });
+
+  it('keeps a node’s fold when a pick hides it and brings it back', async () => {
+    withLinks();
+    fireEvent.click(within(section('Ash')).getByRole('button', { name: /^Ash,/ }));
+    expect(within(section('Ash')).queryByRole('radio', { name: 'Switch off Paladin' })).toBeNull();
+    await pick('Bo');
+    await pick('Ash');
+    expect(within(section('Ash')).queryByRole('radio', { name: 'Switch off Paladin' })).toBeNull();
+  });
+
+  it('says so when the selected entity has no traits', async () => {
+    renderTraits([PALADIN, WIZARD], GROUPS, [], { world: { entities: [ash, bo, { id: 'e-cy', name: 'Cy' }] } });
+    await pick('Cy');
+    expect(screen.getByRole('status')).toHaveTextContent('No traits to show.');
+    expect(screen.getByRole('button', { name: 'Cy' })).toBeInTheDocument();
+  });
+
+  it('adds no picker when no other entity owns traits', () => {
+    renderTraits([PALADIN], [], [], { world: { entities: [{ id: 'e-cy', name: 'Cy' }] } });
+    expect(screen.queryByRole('combobox', { name: 'Selected entity' })).toBeNull();
   });
 
   it('hands a linked trait’s switch to the runtime with the owner whose row it is', () => {
@@ -503,12 +657,12 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getByRole('button', { name: 'Wanderer, You, 0 enabled' })).toBeTruthy();
     unfold('Wanderer');
     expect(within(section('Wanderer')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
-    // The Character Name chip resolves to the marked entity, never to another owner.
+    // The Entity Name chip resolves to the marked entity, never to another owner.
     expect(within(section('Wanderer')).getByText(/studies\.$/).textContent).toBe('Wanderer studies.');
     expect(screen.getByText("Ash's Paladin")).toBeTruthy();
   });
 
-  it("names the Custom Persona entity's node and its Character Name after the player's entered name", () => {
+  it("names the Custom Persona entity's node and its Entity Name after the player's entered name", () => {
     withLinks({ seed: (gameplay) => {
       gameplay.setPersonaRef({ source: 'none', name: 'Ash Vale' });
       gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-paladin'] }, 'e-you': { chosen: ['t-wizard'] } });
@@ -532,7 +686,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Bo', 'Ash']);
   });
 
-  it("reads a linked trait's Character Name as its owner", () => {
+  it("reads a linked trait's Entity Name as its owner", () => {
     withLinks({ seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-wizard'] } }) });
     expect(within(section('Ash')).getByText('Ash studies.')).toBeTruthy();
   });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { bundledWorldText } from '@/test/bundledWorldFiles';
+import { currencyStatGroups, worthText } from './currency';
 import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
@@ -17,7 +18,8 @@ import { personaStartLocation } from './personaPick';
 import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
-import { seedItemCopies } from './inventory';
+import { applyInventoryOps, seedItemCopies } from './inventory';
+import { openingFold } from './openingState';
 import { wantedGrants } from './inventory/grants';
 import type { Entity, ItemCopy, PersonaRef, World } from '@/types';
 
@@ -341,13 +343,22 @@ describe('the Emberwatch items', () => {
   };
   const copiesOf = (copies: readonly ItemCopy[], name: string) => copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemNamed(name).id);
 
+  it('prices its items in a Gold stat that the stat picker lists once', () => {
+    const groups = currencyStatGroups({ stats: world.stats, statGroups: world.statGroups ?? [], entities: world.entities });
+    const ids = groups.flatMap((group) => group.stats.map((stat) => stat.id));
+    expect(ids.filter((id) => id === 'gold')).toEqual(['gold']);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(world.currencies?.map((currency) => currency.backing)).toEqual([{ kind: 'stat', statId: 'gold' }]);
+    expect(worthText(itemNamed('Cold Iron Sword'), world.currencies ?? [], world.items ?? [])).toBe(`${itemNamed('Cold Iron Sword').value} Gold`);
+  });
+
   it('points every effect, requirement, slot and placement at something the world has', () => {
     const slotIds = new Set((world.slots ?? []).map((slot) => slot.id));
     const statIds = new Set(world.stats.map((stat) => stat.id));
     const traitIds = new Set(world.traits.map((trait) => trait.id));
     for (const item of items) {
-      if (item.slotId) expect(slotIds).toContain(item.slotId);
-      if (item.valueUnit?.kind === 'stat') expect(statIds).toContain(item.valueUnit.statId);
+      for (const slotId of item.slotRule?.slotIds ?? []) expect(slotIds).toContain(slotId);
+      if (item.currencyId !== undefined) expect((world.currencies ?? []).map((currency) => currency.id)).toContain(item.currencyId);
       for (const row of item.statEffects) expect(statIds).toContain(row.statId);
       for (const row of item.traitEffects) expect(traitIds).toContain(row.traitId);
       for (const row of item.equipRequires) for (const condition of row.all) expect(traitIds).toContain(condition.id);
@@ -419,8 +430,95 @@ describe('the Emberwatch items', () => {
     };
     const darkvision = traitId(world, 'Darkvision');
     const albus = entityNamed(world, 'Albus').id;
-    const equipped = { ...lantern, equipped: { slotId: itemNamed('Hooded Lantern').slotId!, order: 1 } };
+    const equipped = { ...lantern, equipped: { slotId: itemNamed('Hooded Lantern').slotRule!.slotIds[0], order: 1 } };
     expect(wantedGrants([lantern], grantWorld).held[albus] ?? []).not.toContain(darkvision);
     expect(wantedGrants([equipped], grantWorld).held[albus]).toContain(darkvision);
+  });
+
+  describe('Bodies and starting gear', () => {
+    const hands = (world.slots ?? []).filter((slot) => slot.name.endsWith('Hand'));
+    it('splits hands into Main Hand and Off Hand on the Humanoid only', () => {
+      expect(hands.map((slot) => slot.name)).toEqual(['Main Hand', 'Off Hand']);
+      const entriesOf = (name: string) => world.bodies?.find((b) => b.name === name)?.entries ?? [];
+      const [mainHand, offHand] = entriesOf('Humanoid').slice(0, 2);
+      expect([mainHand, offHand].map((entry) => entry.slotId)).toEqual(hands.map((slot) => slot.id));
+      expect(entriesOf('Hound').some((e) => hands.some((slot) => slot.id === e.slotId))).toBe(false);
+    });
+
+    it('lays every Body box on its outline, with the two hands mirrored around the midline', () => {
+      const bodies = world.bodies ?? [];
+      expect(bodies.map((body) => body.backdrop?.kind)).toEqual(['humanoid', 'quadruped']);
+      const defaultCenter = (box: { x: number; y: number; w: number; h: number }) =>
+        Math.abs(box.x + box.w / 2 - 0.5) < 1e-9 && Math.abs(box.y + box.h / 2 - 0.5) < 1e-9;
+      expect(bodies.flatMap((body) => body.entries.flatMap((entry) => entry.boxes)).some(defaultCenter)).toBe(false);
+      const [main, off] = bodies[0].entries.slice(0, 2).map((entry) => entry.boxes[0]);
+      expect(main.x + main.w / 2 + (off.x + off.w / 2)).toBeCloseTo(1, 9);
+      expect([off.y, off.w, off.h]).toEqual([main.y, main.w, main.h]);
+    });
+
+    it('takes both hands with the Spiral-Cut Staff, unequipping what they hold', () => {
+      const staff = itemNamed('Spiral-Cut Staff');
+      expect(staff.slotRule).toEqual({ mode: 'all', slotIds: hands.map((slot) => slot.id) });
+      const owner = { kind: 'entity', id: entityNamed(world, 'Albus').id } as const;
+      const copyOf = (id: string, itemId: string) => ({ id, item: { kind: 'item', itemId } as const, where: owner, quantity: 1, visibility: 'visible' as const });
+      const { copies, diagnostics } = applyInventoryOps(
+        [copyOf('sword', itemNamed('Steel Longsword').id), copyOf('shield', itemNamed("Oath-Keeper's Shield").id), copyOf('staff', staff.id)],
+        [{ kind: 'equip', copyId: 'sword' }, { kind: 'equip', copyId: 'shield' }, { kind: 'equip', copyId: 'staff' }],
+        { world: { items, slots: world.slots, bodies: world.bodies, entities: world.entities }, source: 'panel', newId: () => 'new' },
+      );
+      expect(diagnostics).toEqual([]);
+      expect(copies.filter((c) => c.equipped).map((c) => c.id)).toEqual(['staff']);
+    });
+
+    it('prefers the off hand for a held light or shield, and the main hand for a blade', () => {
+      const first = (name: string) => (world.slots ?? []).find((slot) => slot.id === itemNamed(name).slotRule?.slotIds[0])?.name;
+      expect(first('Hooded Lantern')).toBe('Off Hand');
+      expect(first("Oath-Keeper's Shield")).toBe('Off Hand');
+      expect(first('Steel Longsword')).toBe('Main Hand');
+    });
+
+    /** A new game as Enter World leaves it: every owner on its settled default traits. */
+    const opened = (persona: PersonaRef) => {
+      const owned = Object.fromEntries(world.entities.map((entity) => [entity.id, settledDefaults(world, entity.id, persona)]));
+      return openingFold(world, { traits: [], owned }, { ref: persona }).state.itemCopies ?? [];
+    };
+    /** What one owner wears; 'You' is the played persona, whose own gear lands on the player. */
+    const wornBy = (copies: readonly ItemCopy[], ownerName: string) => copies
+      .filter((copy) => copy.equipped && (ownerName === 'You'
+        ? copy.where.kind === 'you'
+        : copy.where.kind === 'entity' && copy.where.id === entityNamed(world, ownerName).id))
+      .map((copy) => items.find((item) => copy.item.kind === 'item' && item.id === copy.item.itemId)!.name)
+      .sort();
+
+    it('gives the Grave Hounds the Hound Body and every other entity the Default', () => {
+      const bodies = world.bodies ?? [];
+      const hound = bodies.find((body) => body.name === 'Hound')!;
+      expect(bodies[0].name).toBe('Humanoid');
+      expect(hound.entries.map((entry) => world.slots!.find((slot) => slot.id === entry.slotId)!.name)).toEqual(['Neck', 'Body']);
+      expect(entityNamed(world, 'Grave Hounds').body).toEqual({ kind: 'body', id: hound.id });
+      expect(world.entities.filter((entity) => entity.body).map((entity) => entity.name)).toEqual(['Grave Hounds']);
+    });
+
+    it('opens with every marked placement worn, none refused, under Albus', () => {
+      const copies = opened(asEntity(world, 'Albus'));
+      expect(wornBy(copies, 'You')).toEqual(['Ember Holy Symbol', "Oath-Keeper's Shield", 'Steel Longsword']);
+      expect(wornBy(copies, 'Mother Hesk')).toEqual(['Ember Holy Symbol']);
+      expect(wornBy(copies, 'Corvin Vale')).toEqual(['Folding Cane-Staff']);
+      expect(wornBy(copies, 'Sylvie Thornwhistle')).toEqual(['Elf-Steel Dagger']);
+      expect(wornBy(copies, 'The Barrow Wight')).toEqual(["Haldren's Crown, Upper Half"]);
+      // Every Equipped placement on a cast member ends up worn: the opening refused none.
+      const marked = (world.placements ?? []).filter((placement) => placement.equipped && placement.where.kind === 'entity');
+      for (const placement of marked) {
+        const owner = world.entities.find((entity) => placement.where.kind === 'entity' && entity.id === placement.where.id)!;
+        if (owner.name === 'Wanderer' || owner.name === 'Albus') continue;
+        expect(wornBy(copies, owner.name), owner.name).toContain(items.find((item) => item.id === placement.source.itemId)!.name);
+      }
+    });
+
+    it('opens the Wanderer in its staff and cloak, and leaves Bram Oakes carrying his stock', () => {
+      const copies = opened(NONE);
+      expect(wornBy(copies, 'You')).toEqual(['Oilskin Cloak', 'Walking Staff']);
+      expect(wornBy(copies, 'Bram Oakes')).toEqual([]);
+    });
   });
 });

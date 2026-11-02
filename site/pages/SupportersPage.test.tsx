@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { SupportersPage } from './SupportersPage';
 import { res, resetAccountPage } from '../test/support';
 
@@ -91,5 +91,41 @@ describe('SupportersPage', () => {
     render(<SupportersPage />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Server down');
+  });
+
+  it('reads the wall again on Try Again', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError('offline'));
+    render(<SupportersPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the list of supporters.');
+
+    wallIs([row('1', 'Ada', 'supporter')]);
+    fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
+
+    expect(screen.getByText('Loading supporters…')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Ada' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps its layout and its thank-you line', async () => {
+    wallIs([]);
+    render(<SupportersPage />);
+
+    await screen.findByText(/No supporters are listed yet/);
+    expect(screen.getByRole('heading', { level: 1, name: 'Supporters' })).toBeInTheDocument();
+    expect(screen.getByText(/only possible thanks to the generous users below/)).toBeInTheDocument();
+  });
+
+  it('leaves no unhandled error when the read fails after it unmounts', async () => {
+    let fail!: (error: Error) => void;
+    vi.mocked(fetch).mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    const { unmount, container } = render(<SupportersPage />);
+
+    unmount();
+    // Vitest fails the run on an unhandled rejection.
+    await act(async () => { fail(new TypeError('offline')); await Promise.resolve(); });
+
+    expect(container).toBeEmptyDOMElement();
   });
 });

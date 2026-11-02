@@ -1,3 +1,4 @@
+import { toast } from 'react-toastify';
 import type { World } from '@/types';
 import { downloadBlob } from './downloadBlob';
 import { linkToast, toastError } from './linkToast';
@@ -12,6 +13,9 @@ export const EXPORT_TO_KEEP = 'Select “Export World” to keep your changes.';
 export function isQuotaError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'QuotaExceededError';
 }
+
+export const AUTOSAVE_FAILED = 'Formamorph cannot autosave the game.';
+export const AUTOSAVE_STORAGE_FULL = `${AUTOSAVE_FAILED} The storage is full. Delete saves you no longer need to free space.`;
 
 /** The used and available space, or null when the browser gives no estimate. */
 async function spaceLine(): Promise<string | null> {
@@ -32,6 +36,17 @@ async function exportUnsaved(world: World): Promise<void> {
   } catch (error) {
     toastError(error, { headline: 'Formamorph cannot export the world.' });
   }
+}
+
+/**
+ * Tell the player an autosave failed. Full storage says so and names the fix; any other failure shows the
+ * general message with View Details.
+ *
+ * @param error - What the autosave rejected with
+ */
+export function toastAutosaveFailure(error: unknown): void {
+  if (isQuotaError(error)) toast.error(AUTOSAVE_STORAGE_FULL, { autoClose: false });
+  else toastError(error, { headline: AUTOSAVE_FAILED });
 }
 
 /**

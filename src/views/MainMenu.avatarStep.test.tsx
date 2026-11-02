@@ -91,28 +91,28 @@ describe('the avatar step follows the persona pick', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(startedWith(onStartGame)).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Finalize Character' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Finalize Avatar' })).not.toBeInTheDocument();
   });
 
   it("offers the library picker on User's Default, starting on the device default", async () => {
     setUserDefaultAvatar('reed');
     const onStartGame = await enterAs('Scout');
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    await screen.findByRole('button', { name: 'Finalize Character' });
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
     const picker = screen.getByRole('combobox');
     await waitFor(() => expect(picker).toHaveTextContent('Reed'));
     fireEvent.click(picker);
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Heron', 'Reed']);
     fireEvent.click(screen.getByRole('option', { name: 'Heron' }));
     expect(screen.getByText('Add .vrm')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Finalize Character' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Finalize Avatar' }));
     expect(startedWith(onStartGame)?.chosenVrm).toEqual({ pick: { kind: 'library', id: 'heron' } });
   });
 
   it("hides the picker on the author's Avatar, previews it, and starts with no choice", async () => {
     const onStartGame = await enterAs('Hero');
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    const finalize = await screen.findByRole('button', { name: 'Finalize Character' });
+    const finalize = await screen.findByRole('button', { name: 'Finalize Avatar' });
     expect(await screen.findByTestId('preview')).toHaveAttribute('data-url', 'data:,knight');
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.queryByText('Add .vrm')).not.toBeInTheDocument();

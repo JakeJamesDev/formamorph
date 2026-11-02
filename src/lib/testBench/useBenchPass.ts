@@ -26,6 +26,8 @@ function createBenchRunner(): BenchRunner {
   );
   const patcher = createWorldPatcher();
   let failed = false;
+  // Set at teardown: a pass the teardown rejected must not rerun on the main thread.
+  let disposed = false;
   // The worker's last findings. Every reply arrives in order, so a reply without findings means these.
   let last: Pick<BenchPassResult, 'findings' | 'keys'> = { findings: [], keys: [] };
   return {
@@ -39,20 +41,21 @@ function createBenchRunner(): BenchRunner {
         }
         return { ...last, bytes: reply.bytes };
       } catch (error) {
+        if (disposed) throw error;
         console.error('Test Bench worker failed; checking on the main thread:', error);
         failed = true;
         client.terminate();
         return runLocal(world);
       }
     },
-    terminate: () => { client.terminate(); patcher.reset(); },
+    terminate: () => { disposed = true; client.terminate(); patcher.reset(); },
   };
 }
 
 export interface BenchCheck {
-  /** The rule findings, null until the first pass lands. */
+  /** The rule findings, null until the first pass finishes. */
   findings: Finding[] | null;
-  /** The world's publish size in bytes, null until the first pass lands. */
+  /** The world's publish size in bytes, null until the first pass finishes. */
   bytes: number | null;
 }
 
@@ -66,7 +69,7 @@ export function useBenchPass(world: RuleWorld, delayMs = PASS_DEBOUNCE_MS): Benc
   const [result, setResult] = useState<BenchCheck>({ findings: null, bytes: null });
   const mounted = useMountedRef();
   const runner = useRef<BenchRunner | null>(null);
-  // Only the newest pass may land; a slow one for an older world must not overwrite it.
+  // Only the newest pass may apply; a slow one for an older world must not overwrite it.
   const newest = useRef(0);
   const ran = useRef(false);
 

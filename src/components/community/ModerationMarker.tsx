@@ -49,7 +49,7 @@ export function ModerationMarker({ listing, showStaffQuarantine = true, titleOnl
       </p>
       {deadline && !titleOnly && (
         <p className="text-muted-foreground">
-          Deleted on {deadline}{daysLeft !== null && ` — ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
+          Deleted on {deadline}{daysLeft !== null && ` · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
         </p>
       )}
     </div>

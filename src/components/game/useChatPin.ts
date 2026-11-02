@@ -128,7 +128,7 @@ export function useChatPin({ scroller, virtualizer, history, gameKey, lastIndex 
     };
   }, [scroller, measure, endProgrammatic, yieldToPlayer]);
 
-  // A submit and a Re-generate Narration both end the history on a new action message.
+  // A submit and a Regenerate Narration both end the history on a new action message.
   const lastMessage = history[history.length - 1];
   const seen = useRef({ lastMessage, gameKey });
   useLayoutEffect(() => {

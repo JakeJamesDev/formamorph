@@ -92,7 +92,7 @@ describe('the optional address at signup', () => {
 
     submitRegistration('not-an-address');
 
-    expect(await screen.findByText('Invalid email format')).toBeTruthy();
+    expect(await screen.findByText('Enter a valid email address')).toBeTruthy();
     expect(policy).not.toHaveBeenCalled();
     expect(register).not.toHaveBeenCalled();
   });

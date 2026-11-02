@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Hint } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { FLOATING } from './floatingPieces';
+import { GENERAL_COPY } from './formaquestionSettingsTabs';
 import { ModelDownloadBar } from './ModelDownloadBar';
 import type { SemanticSearch } from './useSemanticSearch';
 
@@ -28,7 +29,7 @@ export function SemanticOfferCard({ semantic, variant, className }: { semantic: 
             <span className="font-medium">Semantic Search</span>
             <Badge variant="secondary">Recommended</Badge>
           </div>
-          <Hint>Improves help by finding sections by meaning. Downloads a small model once.</Hint>
+          <Hint>{GENERAL_COPY.semantic.hint}</Hint>
           <div className="flex gap-2">
             <Button size="sm" onClick={semantic.turnOn}>Turn On</Button>
             <Button size="sm" variant="ghost" onClick={semantic.noThanks}>No Thanks</Button>

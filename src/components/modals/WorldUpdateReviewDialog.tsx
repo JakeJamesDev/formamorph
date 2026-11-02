@@ -56,6 +56,7 @@ function ComponentRow({ row, action, onChoose }: {
 
       {choices.length > 0 && (
         <>
+          {row.state === 'local-replacement' && <Hint><b>Keep Mine</b> keeps this world&apos;s edits</Hint>}
           <Select value={action} onValueChange={(next) => onChoose(next as UpdateAction)}>
             <SelectTrigger className="w-full" aria-label={`Action for ${row.name}`}>
               <SelectValue />
@@ -66,7 +67,6 @@ function ComponentRow({ row, action, onChoose }: {
               ))}
             </SelectContent>
           </Select>
-          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world&apos;s edits.</Hint>}
         </>
       )}
     </li>

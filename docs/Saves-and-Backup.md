@@ -13,7 +13,7 @@ A save keeps one game's progress. A backup keeps your worlds, saves, library ent
 2. Select **Save Game**.
 3. Type a name in the box. The box shows the name of the save you loaded or saved last.
 4. Select the **Save** button, or press Enter.
-5. If a save with that name is in this world, select **Overwrite** to replace it, or **Keep both** to add a second save.
+5. If a save with that name is in this world, **Save already exists** opens. Select **Overwrite** to replace it, or **Keep both** to add a second save.
 
 The **Logs** tab records *Game saved as …*. To keep scene images in the save, select their checkbox. See [The Save Game Dialog](#the-save-game-dialog).
 
@@ -24,7 +24,7 @@ The **Logs** tab records *Game saved as …*. To keep scene images in the save, 
 1. Open **Load Game**:
    - In the game, select **Menu**, then **Load Game**.
    - On the main menu, select the **Menu** button at the top right, then **Load Game**. On a narrow screen, the item is in the **Menu** button at the top center.
-2. Select the folder of the world.
+2. Select the folder of the world. In the game, the dialog opens on the current world's folder; select **Back** to see the others.
 3. Select a save. The game opens at the turn you saved.
 
 A save from a world that is not on this device does not load from the main menu. Import or download that world first. See [Loading from Another World](#loading-from-another-world).
@@ -34,7 +34,7 @@ A save from a world that is not on this device does not load from the main menu.
 <!-- route: menu -->
 
 1. Open **Load Game**.
-2. Select the world's folder.
+2. Select the world's folder, if the dialog isn't on it already.
 3. On the save's row, select the **Export save** button.
 
 You get a `.json` file with the save's name. On Android, choose a folder in the **Save As** sheet. See [Save Exports to a Folder](Install-on-Android#-save-exports-to-a-folder).
@@ -47,7 +47,7 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 2. Select the **Import** button.
 3. Select one or more save `.json` files.
 
-Each save goes into the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
+Each save joins the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
 
 ## How to Make a Backup
 <!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, archive, snapshot, switch browser, before clearing cache, format pc, full dump, bulk, sync devices, protect data -->
@@ -77,12 +77,12 @@ Restore adds to what you have. It never erases an item that is not in the backup
 <!-- keywords: new version, upgrade, latest, download, patch, install, mac, windows, out of date, outdated, auto updater, newer release, dmg, pc client, linux -->
 <!-- route: mainMenu#app-version -->
 
-1. On the main menu, look at the version number at the bottom left. It shows **— Update Available!** when a newer release is out.
+1. On the main menu, look at the version number at the bottom left. It shows **Update Available** when a newer release is out.
 2. Select the version number. The update dialog opens.
 3. Select the **Download** button. A progress bar shows under the version number.
 4. Select **Update & Restart**.
 
-On a Mac, **Download** opens the new `.dmg` file in your browser. Open the file and copy the new app over the old one. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
+On a Mac, **Download** opens the new `.dmg` file in your browser. Once the browser opens it, the progress bar goes away and the version number shows **Update Available** again. The update dialog says the download opened in your browser. Open the file and copy the new app over the old one. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
 
 ---
 
@@ -96,7 +96,7 @@ On a Mac, **Download** opens the new `.dmg` file in your browser. Open the file 
 | Name box | The name of the new save. An empty name saves nothing. |
 | **Save** | Saves the game under the name |
 | **Import** | Imports save files. See [How to Import a Save](#how-to-import-a-save). |
-| A save in the list | Puts its name in the name box, so **Save** replaces it |
+| A save in the list | Puts its name in the name box. **Save** then asks whether to overwrite it. |
 | Scene images checkbox | Shows when the game has scene images. Select it to keep them in the save. The checkbox shows how much the images add. |
 
 A save holds the full story and a copy of each turn, so **Rewind to Here** still works after you load it. It also holds your notes, memories, persona, the game's dictionaries and the images you attached to actions.
@@ -140,18 +140,22 @@ Unsaved progress is lost each time a game closes.
 
 Saves from older versions of Formamorph load too. Formamorph converts a save in the oldest format when you load it. A message shows while that runs. If the conversion fails, the game still loads what it can, and the **Logs** tab says *(with conversion errors)*.
 
+A save the browser can't read stays stored but doesn't show in the list. Your other saves load and autosave as usual.
+
 ## Autosave
 <!-- keywords: automatic, forgot, crash, closed tab, lost progress, recover, disable, auto tag, browser closed -->
 
-**Autosave** saves your game after every turn, named by turn, such as **Autosave · Turn 12**. **Autosaves Kept** sets how many each world keeps; it starts at one. A new turn adds an autosave until the world has that many, then replaces the oldest. If you lower it, the world's oldest extra autosaves are deleted on its next autosave.
+**Autosave** saves your game after every turn, named by turn, such as **Autosave · Turn 12**. It is on by default.
 
-- It starts after the opening scene. After **Re-generate**, it replaces that turn's autosave.
+**Autosaves Kept** sets how many autosaves each world keeps, from 1 to 20. It starts at 1. A new turn adds an autosave until the world has that many, then replaces the oldest. If you lower it, the world's oldest extra autosaves are deleted on its next autosave.
+
+- It starts after the opening scene. After **Regenerate**, it replaces that turn's autosave.
 - It never changes your own saves.
 - It never keeps scene images.
 - It shows under **Load Game** with an **Auto** tag. You can load, export or delete it.
 - If an autosave fails, a message shows once. Your own saves still work.
 
-To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Settings#saves) **Data** tab. **Autosaves Kept** is in the same section.
+To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Settings#saves) **Data** tab. **Autosaves Kept** is in the same section and shows only while **Autosave** is on. When you lower it, a warning says the oldest autosaves past the new number get deleted.
 
 ## Quick Start
 <!-- keywords: continue button, not a resume, new run instantly, lightning icon -->
@@ -198,7 +202,7 @@ Formamorph stores your data in the app's browser storage on your device. Nothing
 |---|---|
 | 🌐 Web | The browser's storage for the site. Each browser and each site address keeps its own copy. Clearing the site's data in the browser erases it. |
 | 🪟 Windows desktop | The `userdata` folder beside `Formamorph.exe`. AI models are in the `models` folder beside it, unless you choose a different folder. An update never changes either folder. |
-| 🐧 Linux AppImage | The `userdata` folder beside the AppImage file |
+| 🐧 Linux AppImage | The `userdata` folder beside the AppImage file. AI models are in the `models` folder beside it, unless you choose a different folder. |
 | 🍎 macOS | The app's default data folder for your user account |
 | 📱 Android | The app's own storage. When you remove the app from the device, Android erases this data. |
 
@@ -215,14 +219,33 @@ The desktop and Android apps check for updates on start, then every few hours. S
 
 | Part | What it does |
 |---|---|
-| Title | **Update available —** and the version, **You're up to date**, or **Couldn't check for updates** |
+| Title | Says where the update stands. See the list below. |
 | **Release channel** | **Stable** gets finished releases. **Pre-release** also gets beta builds. |
+| Browser note | On a Mac, says the download opened in your browser. Shows after you select **Download**. |
 | Release notes | What changed in the new version |
 | **Full changelog →** | Opens the full changelog |
 | **Download** | Downloads the update. Shows when an update is available. |
-| **Check for updates** | Checks again. Shows when no update is available. |
+| **Cancel** | Closes the dialog. Shows when an update is available. |
+| **Close** | Closes the dialog. Shows while the update downloads and after it downloads. |
+| **Check for updates** | Checks again. Shows when no update is available or the last check failed. |
 
-After the download, **Update & Restart** shows under the version number on desktop. On Windows, the app checks the download before it uses it. If the new Windows version fails to start, the app starts the old version again. The web version updates when you reload the page.
+The title is one of these:
+
+- **App Updates** before the first check
+- **Checking for Updates** while a check runs
+- **You're Up to Date** when no update is available
+- **Couldn't Check for Updates** when the check fails
+- **Update Available:** and the version
+- **Downloading Update:** and the version
+- **Update Downloaded:** and the version
+
+While the update downloads and after, the release notes keep the new version marked.
+
+- After the download, **Update & Restart** shows under the version number on desktop.
+- On Windows, **Update & Restart** still shows after you close and reopen the app, with no second download.
+- The app checks the download against the release's checksum before it uses it. A download that fails the check is erased, and an error shows.
+- If the new Windows version fails to start, the app starts the old version again.
+- The web version updates when you reload the page.
 
 Your saves, worlds and settings stay the same through an update.
 

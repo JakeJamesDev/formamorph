@@ -25,6 +25,7 @@ import {
 } from "@/types";
 import { DetailedError } from "@/lib/errorDetails";
 import { Tip } from "@/components/ui/tooltip";
+import { FieldError, Meta } from "@/components/ui/typography";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadChipHref } from "@/lib/feedbackLinks";
 import { useUserProfile } from "@/contexts/userProfileStore";
@@ -91,14 +92,14 @@ function Diagnostics({ diagnostics }: { diagnostics: BugDiagnostics }) {
 /** Who wrote a reply and when. Shared by the thread's replies and the pinned accepted answer. */
 function ReplyByline({ comment }: { comment: FeedbackComment }) {
   return (
-    <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
+    <Meta as="p" className="flex items-center gap-1.5">
       {/* Everyone signs with their own name and face; the badge says who they answer for. */}
       <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} supporter={comment.author.supporter} size="xs" />
       <UserName userId={comment.author.id} username={comment.author.username} role={comment.author.role} supporter={comment.author.supporter} />
       {' · '}{formatFeedbackDate(comment.createdAt)}
       {/* Said plainly, so the other reader can tell a reply changed after they read it. */}
       {comment.editedAt && <span className="italic"> · edited</span>}
-    </p>
+    </Meta>
   );
 }
 
@@ -190,7 +191,7 @@ function ThreadPane({
         onUnavailable();
         return;
       }
-      notify('Failed to load this', 'error', error);
+      notify('Failed to load the thread', 'error', error);
     } finally {
       if (mounted.current) setIsLoading(false);
     }
@@ -209,7 +210,7 @@ function ThreadPane({
     notify(message, 'error', error);
   };
   const noteAt = (at: string) => (controlNote?.at === at
-    ? <p role="alert" className="text-helper text-destructive">{controlNote.text}</p>
+    ? <FieldError role="alert">{controlNote.text}</FieldError>
     : null);
 
   const send = async () => {
@@ -300,7 +301,7 @@ function ThreadPane({
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      if (mounted.current) notify('Failed to lock the thread', 'error', error);
+      if (mounted.current) notify(locked ? 'Failed to lock the thread' : 'Failed to unlock the thread', 'error', error);
     }
   };
 
@@ -329,11 +330,11 @@ function ThreadPane({
   const remove = async () => {
     try {
       await FeedbackService.remove(uuid);
-      notify('Deleted', 'success');
+      notify('Thread deleted', 'success');
       onChanged?.();
       onDeleted?.();
     } catch (error) {
-      if (mounted.current) notify('Failed to delete this', 'error', error);
+      if (mounted.current) notify('Failed to delete the thread', 'error', error);
     }
   };
 
@@ -350,7 +351,7 @@ function ThreadPane({
     return (
       <div className="py-4 space-y-3">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
-        <p className="text-helper text-muted-foreground">This could not be loaded.</p>
+        <Meta as="p">This thread didn’t load.</Meta>
       </div>
     );
   }
@@ -372,8 +373,8 @@ function ThreadPane({
 
   /** Why the reply box is absent, in the reader's terms. */
   const closedReason = thread.locked
-    ? 'This thread has been locked. It stays here to read.'
-    : 'You’re reading somebody else’s report. Replies are between the reporter and the team.';
+    ? 'This thread is locked. You can still read it.'
+    : 'Only the reporter and staff can reply to a bug.';
 
   return (
     <div className="py-4 space-y-4 min-w-0">
@@ -399,7 +400,7 @@ function ThreadPane({
               </SelectContent>
             </Select>
             <Tip
-              tip={thread.locked ? 'Open it to replies again' : 'Close it to further replies'}
+              tip={thread.locked ? 'Allows replies again' : 'Stops replies from everyone but staff'}
               labelsChild={false}
             >
               <Button
@@ -431,9 +432,9 @@ function ThreadPane({
           </h3>
           <div className="flex items-center gap-2">
             {thread.locked && (
-              <span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
+              <Meta className="inline-flex items-center gap-1">
                 <Lock className="h-3 w-3" /> Locked
-              </span>
+              </Meta>
             )}
             <span className={cn('px-2 inline-flex text-meta leading-5 font-semibold rounded-full', status.badge)}>
               {status.label}
@@ -441,7 +442,7 @@ function ThreadPane({
             {/* Only when there is something this reader may change: an inert control reads as a
                 permission they have lost rather than as one they never had. */}
             {(canEditProse || canRefile) && (
-              <Tip tip="Edit this report">
+              <Tip tip="Edit this thread">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -454,13 +455,13 @@ function ThreadPane({
             )}
           </div>
         </div>
-        <p className="text-meta text-muted-foreground">
+        <Meta as="p">
           {FEEDBACK_CATEGORY_LABELS[thread.category]} ·{' '}
           <UserName userId={thread.reporter.id} username={thread.reporter.username} role={thread.reporter.role} supporter={thread.reporter.supporter} /> ·{' '}
           {formatFeedbackDate(thread.createdAt)}
           {/* Said plainly: somebody may already have read the earlier wording. */}
           {thread.editedAt && <span className="italic"> · edited</span>}
-        </p>
+        </Meta>
         <div className="text-label min-w-0"><FeedbackMarkdown text={thread.body} targets={thread.targets} /></div>
 
         {/* Votable boards only, and votable even when locked: closing a discussion doesn't make it less
@@ -495,7 +496,7 @@ function ThreadPane({
 
       <div className="space-y-2 min-w-0">
         {comments.length === 0 ? (
-          <p className="py-4 text-center text-helper text-muted-foreground">No replies yet.</p>
+          <Meta as="p" className="py-4 text-center">No replies yet.</Meta>
         ) : (
           comments.map((comment) => {
             // Admins may remove anyone's comment — the only lever there is when an open thread goes bad
@@ -582,9 +583,9 @@ function ThreadPane({
                       <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
                         <X className="mr-2 h-4 w-4" /> Cancel
                       </Button>
-                      <span className="ml-auto text-meta text-muted-foreground">
+                      <Meta className="ml-auto">
                         {editDraft.length} / {COMMENT_MAX}
-                      </span>
+                      </Meta>
                     </div>
                   </div>
                 ) : (
@@ -604,14 +605,14 @@ function ThreadPane({
       ) : !canWrite ? (
         // The server refuses the post either way, so an empty box here would just be an error waiting
         // to happen.
-        <p className="rounded-md border border-dashed p-3 text-center text-helper text-muted-foreground">
+        <Meta as="p" className="rounded-md border border-dashed p-3 text-center">
           {closedReason}
-        </p>
+        </Meta>
       ) : (
       <div className="space-y-2 min-w-0">
         <div className="flex items-baseline justify-between">
           <span className="text-label font-medium">Reply</span>
-          <span className="text-meta text-muted-foreground">{reply.length} / {COMMENT_MAX}</span>
+          <Meta>{reply.length} / {COMMENT_MAX}</Meta>
         </div>
         <PromptField
           value={reply}
@@ -619,7 +620,7 @@ function ThreadPane({
           vocabulary={plainVocab}
           markdown
           ariaLabel="Reply"
-          placeholder="Add to the thread"
+          placeholder="Write a reply"
           className="h-[280px]"
         >
           <FeedbackSuggestPlugin thread={thread.id} threadTypes={capabilities.threadSearchTypes} />
@@ -635,7 +636,8 @@ function ThreadPane({
         open={!!pendingCommentDelete}
         onOpenChange={(isOpen) => { if (!isOpen) setPendingCommentDelete(null); }}
         title="Delete this comment?"
-        description="It goes for good, and the rest of the thread stays as it is."
+        description="This deletes the comment. The rest of the thread stays."
+        confirmLabel="Delete"
         onConfirm={() => {
           const commentId = pendingCommentDelete;
           setPendingCommentDelete(null);
@@ -666,8 +668,9 @@ function ThreadPane({
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={(isOpen) => { if (!isOpen) setConfirmDelete(false); }}
-        title="Delete this?"
-        description="It and its whole thread go for good. The person who filed it is not told."
+        title="Delete this thread?"
+        description="This deletes the thread and all its replies. Its author isn’t told."
+        confirmLabel="Delete"
         onConfirm={() => { remove(); setConfirmDelete(false); }}
         onCancel={() => setConfirmDelete(false)}
       />

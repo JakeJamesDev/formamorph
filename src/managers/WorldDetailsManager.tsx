@@ -70,7 +70,7 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
 }) => {
   const {
     worldOverview, updateWorldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries,
-    placeholders, items, placements,
+    placeholders, items, placements, slots, bodies, currencies,
   } = useGameData();
   const {
     paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
@@ -86,7 +86,7 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
       // A world has no notes or clock, so the pool's sample turn supplies both, as it does the per-turn chips.
       const authored = omitValues(chipValues(authoredChipScene({
         worldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
-        items, placements,
+        items, placements, slots, bodies, currencies,
       })), (key) => key === '<NOTES>' || key === '<TIME>');
       return composePreviewValues(
         {
@@ -100,7 +100,7 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
       paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
       language,
       worldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
-      items, placements,
+      items, placements, slots, bodies, currencies,
     ],
   );
   const { advanced } = useEditorMode();
@@ -315,7 +315,7 @@ const ReadmeSection = ({ focusField, fieldReveal }: {
           onChange={(introReadme) => updateWorldOverview({ introReadme })}
           placeholders={placeholders}
           markdown
-          ariaLabel="Readme (Introduction)"
+          ariaLabel="Introduction Readme"
           resizable
         />
       </TabsContent>
@@ -327,7 +327,7 @@ const ReadmeSection = ({ focusField, fieldReveal }: {
           onChange={(readme) => updateWorldOverview({ readme })}
           placeholders={placeholders}
           markdown
-          ariaLabel="Readme (Gameplay)"
+          ariaLabel="Gameplay Readme"
           resizable
         />
       </TabsContent>

@@ -25,6 +25,7 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
   const entities = [...earlier.entities ?? [], ...later.entities ?? []];
   const memoryWrites = [...earlier.memoryWrites ?? [], ...later.memoryWrites ?? []];
   const inventory = [...earlier.inventory ?? [], ...later.inventory ?? []];
+  const bodies = [...earlier.bodies ?? [], ...later.bodies ?? []];
   return {
     ...(location === undefined ? {} : { location }),
     ...(minutes === undefined ? {} : { minutes }),
@@ -35,5 +36,6 @@ export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldW
     ...(entities.length ? { entities } : {}),
     ...(memoryWrites.length ? { memoryWrites } : {}),
     ...(inventory.length ? { inventory } : {}),
+    ...(bodies.length ? { bodies } : {}),
   };
 }

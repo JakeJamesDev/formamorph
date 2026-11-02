@@ -105,7 +105,7 @@ describe('an Avatar listing’s license terms', () => {
 
     show();
 
-    expect(await screen.findByText(/asks to be credited wherever it appears/i)).toBeInTheDocument();
+    expect(await screen.findByText(/asks for credit wherever this model appears/i)).toBeInTheDocument();
   });
 
   it('shows nothing at all for a kind that carries no license', async () => {

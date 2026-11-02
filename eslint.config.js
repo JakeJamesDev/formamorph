@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint'
 import tsdoc from 'eslint-plugin-tsdoc'
 import { composedForwardRefRule } from './eslint.composed-forwardref.js'
 import { noNativeTitleRule } from './eslint.no-native-title.js'
+import { noPinnedCommitRule } from './eslint.no-pinned-commit.js'
 
 // Raw Tailwind size utilities say how big text is, never what it is — so `text-xs` reads the same on a
 // hint and on a deliberately compact control, and the two can't be told apart or retuned separately.
@@ -31,6 +32,7 @@ const formamorph = {
   rules: {
     'composed-forwardref': composedForwardRefRule,
     'no-native-title': noNativeTitleRule,
+    'no-pinned-commit': noPinnedCommitRule,
   },
 }
 
@@ -105,6 +107,11 @@ export default tseslint.config(
     files: ['src/**/*.tsx', 'site/**/*.tsx'],
     plugins: { formamorph },
     rules: { 'formamorph/no-native-title': 'error' },
+  },
+  {
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+    plugins: { formamorph },
+    rules: { 'formamorph/no-pinned-commit': 'error' },
   },
   {
     // animate-ui's registry source, copied as is. Its icons take `ref` as a React 19 prop and spread it on

@@ -12,7 +12,7 @@ export const QUALITY = 0.82;
 
 // Lazy WASM lossless/animated-WebP encoder — only fetched when actually encoding. Kept dynamic (not a static
 // import) so this module stays evaluable in non-browser contexts (vitest) that can't load the CJS glue, and so
-// wasm-webp lands in its own chunk. The worker bundles it inline via `worker.rollupOptions` in vite.config.
+// wasm-webp lands in its own chunk. The worker bundles it inline via `worker.rolldownOptions` in vite.config.
 let webpPromise: Promise<typeof import('wasm-webp')> | null = null;
 const loadWebp = () => (webpPromise ??= import('wasm-webp'));
 

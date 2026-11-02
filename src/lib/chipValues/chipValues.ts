@@ -6,6 +6,8 @@ import {
   knownEntityIds, knownEntityRuns, reachableEntityIds, reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
 } from '../locationContext';
 import { relatedIds, relationshipCast, relationshipLines } from '../entityRelationships';
+import { slotsInForce } from '../bodies';
+import { balanceOf, type BalanceState } from '../currency';
 import { buildInventoryContext, type InventoryScene } from '../inventoryContext';
 import { joinRuns, mark, textOf, type MarkedText } from '../markedText';
 import { personaContextValues } from '../personaContext';
@@ -139,18 +141,31 @@ export function chipValues(scene: ChipScene): ValueLookup {
 
 /** The scene as the inventory block reads it; played entities own through the `you` owner (Q54). */
 function inventoryScene(scene: ChipScene): InventoryScene {
+  const { equipment } = scene;
   const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
   const owners = scene.presentIds.flatMap((id) => {
     const entity = played.has(id) ? undefined : scene.entities.find((e) => e.id === id);
     return entity ? [{ id, name: entity.name }] : [];
   });
+  const balances: BalanceState = {
+    copies: scene.itemCopies ?? [],
+    placements: scene.placements ?? [],
+    globalStats: scene.stats,
+    // Played entities own through `you`.
+    statsOf: (owner) => (owner.kind === 'you' ? (scene.playedStats ?? []).flatMap((part) => part.stats) : scene.ownedStats?.[owner.id] ?? []),
+  };
   return {
     items: scene.items ?? [],
     copies: scene.itemCopies ?? [],
+    currencies: scene.currencies,
+    balanceOf: (currency, owner) => balanceOf(currency, owner, balances),
     runtimeItems: scene.runtimeItems,
     playerName: scene.playerName == null ? NO_PLAYER : scene.playerName.trim(),
     owners,
     location: scene.location,
+    ...(equipment?.world.bodies?.length && {
+      equipment: { slots: equipment.world.slots ?? [], slotsOf: (owner) => slotsInForce(equipment.world, owner, equipment.persona) },
+    }),
   };
 }
 
@@ -195,7 +210,7 @@ export function sceneRosterIds(scene: ChipScene): string[] {
 
 /** The Entities chip's scope builders over one scene and its relationship ends. */
 function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Record<string, (opts: ContextOpts) => MarkedText> {
-  const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;
+  const { location, locations, connections, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats, strangerLabels } = scene;
   const outer = scene.outerScopeEntities ?? entities;
   // Roster precedence: here > sub-location > reachable > known. A character shows only in the highest scope
   // it belongs to, so the lower scopes drop the ids the higher ones list.
@@ -209,7 +224,7 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
   const inSceneLines = relationshipLines(cast, inSceneIds, personaId);
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
-  const roster = (opts: ContextOpts, lines = chainLines) => ({ ...opts, ownedTraits, ownedStats, relationshipLines: lines });
+  const roster = (opts: ContextOpts, lines = chainLines) => ({ ...opts, ownedTraits, ownedStats, relationshipLines: lines, strangerLabels });
   // Here and In Scene list stats unless the chip switches them off; the lower scopes only when it switches them on.
   const lowerOpts = (opts: ContextOpts) => ({ ...roster(opts), noStats: !opts.statsOn });
   return {

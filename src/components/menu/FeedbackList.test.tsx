@@ -176,7 +176,7 @@ describe('the list', () => {
 
     render(<PagedList notify={notify} type="suggestion" active onOpen={() => {}} emptyLabel="Nothing here." />);
 
-    expect(await screen.findByText('Formamorph couldn’t load these threads.')).toBeTruthy();
+    expect(await screen.findByText('These threads didn’t load.')).toBeTruthy();
     expect(screen.queryByText('Nothing here.')).toBeNull();
     expect(notify).toHaveBeenCalledWith('Failed to load these', 'error', expect.any(Error));
   });
@@ -191,7 +191,7 @@ describe('the list', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Try Again' }));
 
     expect(await screen.findByText('Add a map')).toBeTruthy();
-    expect(screen.queryByText('Formamorph couldn’t load these threads.')).toBeNull();
+    expect(screen.queryByText('These threads didn’t load.')).toBeNull();
     expect(list).toHaveBeenCalledTimes(2);
   });
 

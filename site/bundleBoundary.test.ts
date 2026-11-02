@@ -53,7 +53,10 @@ const ALLOWED = [
   '@/components/PatreonSection',
   '@/components/RoleBadge',
   '@/components/SupporterBadge',
+  '@/components/SupportersWall',
   '@/lib/supporterFlair',
+  '@/lib/tierNames',
+  '@/lib/resetTime',
   '@/components/community/AgeGateDialog',
   '@/components/community/ProfileStats',
   '@/components/community/UserCreationsTab',
@@ -193,7 +196,11 @@ describe('the site entry stays out of the game bundle', () => {
     // 69: `refusalWatch` and the `fetchTarget` leaf it reads, so the rename page can watch for the rename refusal.
     // 70: `useRenameSubmit`, the rename flow the game dialog and the rename page share; it reads only the service and the rule.
     // 71: `HostedStateService`, the read-only hosted-state call the allowance section makes; it reads only the auth leaves.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(71);
+    // 72: `tierNames`, the one place a tier's name comes from; it reads only `apiBase` and `supporterFlair`.
+    // 73: `typography`, the text roles the age gate, creations list, Patreon section and delete-account dialog read; it reads only `utils`.
+    // 74: `resetTime`, the pure leaf that formats the local reset weekday and time for the allowance section.
+    // 75: `SupportersWall`, the wall the page and the game's Credits dialog share; it reads only leaves already listed.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(75);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {
@@ -287,7 +294,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 95: the listing chip's kind labels and icons (`catalogKinds` and the element icons it wears).
     // 101: the editors' @ and # suggestions (the plugin, its query rule, the shared suggestion list and its
     // wheel hook, the caret anchor).
-    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(101);
+    // 102: `tierNames`, read by the Supporter badge on the profile cards.
+    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(102);
   });
 
   it('scans every shared component the lazy feedback route reaches', () => {

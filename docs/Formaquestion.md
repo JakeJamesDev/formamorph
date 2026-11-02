@@ -5,6 +5,12 @@ Formaquestion is the help window. You can ask it a question, search this guide a
 
 > 📱 On a mobile-size screen, Formaquestion opens as a full-screen sheet. See [On Mobile](#on-mobile).
 
+The steps on this page use the **Full** chat style, the framed window with tabs.
+
+- **More Actions** is the ⋮ icon button in the title bar. Its tooltip reads "More Actions".
+- The **Bubble** and **Minimal** styles have **More Actions** in the pill. They reach **Search** and **Guide** through **More Actions**, then **Open Guide**. See [How to Change the Chat Style](#how-to-change-the-chat-style).
+- To set up the AI behind help, see [Formaquestion Settings](Formaquestion-Settings). To make your own mascot, see [Formaquestion Mascot](Formaquestion-Mascot).
+
 ## How to Open Formaquestion
 <!-- keywords: help, assistant, f1, faq, support, guide window, question mark, get assistance, shortcut key, hotkey, side tab, stuck, dismiss -->
 <!-- route: formaquestion -->
@@ -34,7 +40,7 @@ Your AI writes the answer from the guide sections that match your question. To e
 2. After the answer, type your next question in **Ask a Question**, such as "and then?".
 3. Select **Send**.
 
-The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear Conversation** in the title bar's **⋮** menu.
+The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear Conversation** in the **More Actions** menu.
 
 ## How to Ask About Your World
 <!-- keywords: my world, explain my world, why does my tool not fire, my script, my stat code, my entity, lorebook entry, world prompt, unsaved edits, world sources, read the world -->
@@ -49,6 +55,25 @@ In the World Editor, your AI gets the parts of your world that match your questi
 - The world sections have a size limit of their own, so they never push a guide section out of the request.
 - To keep your world out of help requests, turn off **Read the World** in Formaquestion Settings → **General**. A question then sends the guide alone.
 
+## How to Add an Entity From an Answer
+<!-- keywords: make an entity, create a character, draft an npc, generate an entity, entity card, add to world, creation, new entity from help, add button on answer -->
+<!-- route: formaquestionSettings.general -->
+
+1. Select **More Actions**, then **Settings**.
+2. On the **General** tab, turn on **Creation**.
+3. Open a world in the World Editor.
+4. Ask for an entity, such as "Make me a gate guard for this town".
+5. On the card in the answer, select **Add**.
+
+Each entity in the answer shows as a card with its name and AI description. **Add** puts the entity in the world you have open, ungrouped, and selects it on the **Entities** tab. Every other field starts blank, so you edit the rest in the World Editor. Undo removes the entity.
+
+- **Copy** copies the card's text.
+- A warning icon next to the name means your world already has an entity with that name. **Add** still adds a second one.
+- **Add** works in the World Editor only, including the World Editor you open from a game. On any other screen it's unavailable.
+- Your next question tells your AI which entities you added.
+- With **Sort Questions** on, a request to make an entity sends your world's name, description and entity names, and two of your entities as samples, with no guide. On any other screen, your mascot tells you to ask again in the World Editor.
+- A card that has fields other than the name and the AI description, or an AI description longer than four sentences, shows as a code block with **Copy** instead.
+
 ## How to Ask About Your Story
 <!-- keywords: in game, who is, who was, what happened, story so far, recap, lore, characters i met, places i visited, my items, my stats, spoilers, what should i do next, stuck, hint -->
 <!-- route: formaquestion.ask#question-field -->
@@ -58,13 +83,20 @@ In the World Editor, your AI gets the parts of your world that match your questi
 
 In the game, your AI gets only what you have met, together with the guide sections:
 
-- 📖 **The story so far.** The memories and the recent turns, as the narrator gets them. With **Memory Digests** off, the recent turns only.
-- 🧭 **What you have met.** The characters, places and items you have met, with the descriptions the game shows you. Your visible stats and your own traits.
+- 📖 **The story so far.** The memories and the recent turns, as the narrator gets them. With **Memory Summaries** off, the recent turns only.
+- 🧭 **What you have met.** The entities, locations and items you have met, with the descriptions the game shows you. Your visible stats and your own traits.
 - 📚 **Lore.** The dictionary entries whose keywords are in your question, the story so far or what you have met. With **Semantic Lore** on, an entry close in meaning to your question also counts.
 
-Your AI never gets an AI description, a diary, a hidden stat or a hidden trait. It gets only the characters, places and items you have met, plus the world's lore entries that your question or the story brings up. A lore entry can name something you have not met yet. When you undo a turn, it forgets what that turn showed. When you ask what to do next, it gives what it would try as its own opinion, not the solution. The names under **Sources** do not open the editor, so selecting one can't show you spoilers.
+Your AI never gets an AI description, a diary, a hidden stat or a hidden trait.
 
-The story so far has a size limit of its own. **Read the World** turns all of this off too. Open Chat worlds follow the same rules.
+- The one exception is an entity that the narrator made up during the game. Its description is AI text, and it counts as what you have met.
+- Your AI gets only the entities, locations and items you have met, plus the world's lore entries that your question or the story brings up. A lore entry can name something you have not met yet.
+- When you undo a turn, your AI forgets what that turn showed.
+- When you ask what to do next, your AI gives what it would try as its own opinion, not the solution.
+- The names under **Sources** do not open the editor, so selecting one can't show you spoilers.
+- The story so far has a size limit of its own.
+- **Read the World** turns all of this off too.
+- Open Chat worlds follow the same rules.
 
 ## How to Go to the Screen an Answer Describes
 <!-- keywords: take me there, jump, go there, open the screen, open the tab, navigate, link, shortcut, show me where, find the control, button under the answer, open settings from help, direct me, takes me to the dialog -->
@@ -73,8 +105,11 @@ The story so far has a size limit of its own. **Read the World** turns all of th
 1. Ask a question.
 2. Under the answer, select **Take Me There**.
 
-The button opens the screen, dialog or tab that the top source under **Sources** describes. The top source is the one whose steps the answer copies. When the answer copies none, it's the first one that is not the guide section of the screen you have open. The button sits next to **Sources**. On a desktop screen, the window stays open, so you can read the steps while you work. On a mobile-size screen, the sheet closes.
+The button sits next to **Sources**. It opens the screen, dialog or tab that the top source under **Sources** describes.
 
+- The top source is the one whose steps the answer copies. When the answer copies none, it's the first one that is not the guide section of the screen you have open.
+- On a desktop screen, the window stays open, so you can read the steps while you work. On a mobile-size screen, the sheet closes.
+- When the source names a control, the button scrolls to it, puts focus on it and pulses a ring around it once. With reduced motion, the ring stays still. When the control is not on the screen, the button opens its tab with no ring.
 - When the button needs you to leave a game in progress, the app asks first. Select **Cancel** to stay. The game does not change.
 - When the button needs you to close a World Editor that has unsaved changes, the editor asks first, as it does when you close it. A jump to **Settings** opens over the editor and does not ask.
 - The button does not show when the answer is not from the guide, when the top source has no screen, or when the answer stopped or failed.
@@ -114,7 +149,7 @@ Your model must read images. The screenshot goes with that question only. A foll
 3. Type two or more letters in **Search the Guide**.
 4. Select a result to read its section.
 
-The best matches are first. Each result shows the section, its page and the start of its text.
+The best matches are first. Each result shows the section, its page and the start of its text. In the wide layout and the full-screen Guide, a result leaves out the start of its text.
 
 ## How to Read a Guide Page
 <!-- keywords: docs, wiki, manual, browse, contents, table of contents, help, chapters, topic list, article, index, all topics, back to list, documentation pages -->
@@ -132,19 +167,21 @@ To go back to the list of pages, select **Contents** above the section.
 <!-- route: formaquestion -->
 
 1. Open Formaquestion.
-2. Select **Open Guide** in the title bar. Or select **⋮**, then **Open Guide**.
+2. Select **Open Guide** in the title bar. Or select **More Actions**, then **Open Guide**.
 3. Type in **Search the Guide**, or select a page in the contents on the left.
 4. Select a section. It shows on the right.
-5. To go back to the small window, select **Close Guide**, or press Escape.
+5. To go back to the small window, select **Close**, or press Escape.
 
-The **Open Guide** button is in the title bar of the **Full** style, next to **Wide View**. The **Minimal** and **Bubble** styles have **Open Guide** in the **⋮** menu only. The full screen and the small window share one Guide view. They have the same search text, open pages and section, so you keep your place both ways. See [Guide](#guide).
+- The **Open Guide** button is in the title bar of the **Full** style, next to **Wide View**.
+- The **Minimal** and **Bubble** styles have **Open Guide** in the **More Actions** menu only.
+- The full screen and the small window share one Guide view. They have the same search text, open pages and section, so you keep your place both ways. See [Guide](#guide).
 
 ## How to Open the Wiki
 <!-- keywords: wiki, browser, website, online docs, github wiki, read outside the app, external docs, same page in the browser, open docs in my browser, leave the app, confirm, don't ask again, stop the question -->
 <!-- route: formaquestion -->
 
 1. Open Formaquestion, and open the section that you want to read in the wiki.
-2. Select **⋮**, then **Open Wiki**. In the full-screen Guide, select **Open Wiki** in the header.
+2. Select **More Actions**, then **Open Wiki**. In the full-screen Guide, select **Open Wiki** in the header.
 3. In the confirm, select **Open**.
 
 Your browser opens the wiki on the page and heading of the section that shows. With no section open, it opens the wiki home page. See [The Wiki Confirm](#the-wiki-confirm).
@@ -158,7 +195,7 @@ The confirm shows before your browser opens the wiki. It names the wiki page tha
 - **Open** opens the page in your browser.
 - **Cancel** closes the confirm, and the app stays as it is. The confirm stays on, also with the box checked.
 - **Don’t Ask Again**, checked when you select **Open**, skips the confirm next time.
-- To turn the confirm back on, select the **Confirm Before Opening the Wiki** checkbox in the **Window** group of the **General** tab. See [General](#general).
+- To turn the confirm back on, select the **Confirm Before Opening the Wiki** checkbox in the **Window** group of the **General** tab. See [General](Formaquestion-Settings#general).
 
 ## How to Go Back and Forward in the Guide
 <!-- keywords: previous section, next section, history, return to the last page, undo a link, browser buttons, arrows, alt left, alt right, mouse side buttons, retrace, where was I, step back, step forward -->
@@ -168,7 +205,10 @@ The confirm shows before your browser opens the wiki. It names the wiki page tha
 2. Open a few sections.
 3. Select **Back** or **Forward**, next to the title.
 
-You can also press Alt+Left for Back and Alt+Right for Forward while the cursor is in the window. The mouse back and forward buttons do the same while the pointer is over it. They never change the screen of the app. A button is off when there is no section in its direction. See [The Window](#the-window).
+- While the cursor is in the window, Alt+Left goes back and Alt+Right goes forward.
+- While the pointer is over the window, the mouse back and forward buttons do the same. They never change the screen of the app.
+- A button is off when there is no step in its direction.
+- In **Wide View**, a change to the conversation is a step too. See [The Window](#the-window).
 
 ## How to Get Help for the Screen You Have Open
 <!-- keywords: this page, current, where am i, context, here, contextual, this dialog, this menu, relevant section, what am i seeing, explain this tab, suggested topic -->
@@ -178,14 +218,23 @@ You can also press Alt+Left for Back and Alt+Right for Forward while the cursor 
 2. Open Formaquestion.
 3. Select the row under **Help for This Screen**.
 
-The row is the first item on the **Search** tab and on the **Guide** tab. It names the guide section for the screen, the dialog and the tab that you have open. It changes when you open a different one. A screen with no guide section shows no row. The row does not show while you search.
+The row names the guide section for the screen, the dialog and the tab that you have open. It changes when you open a different one.
+
+- The row is on the **Search** tab, under **Search the Guide**, and first on the **Guide** tab. The wide layout and the full-screen Guide show it under the search field too.
+- A screen with no guide section shows no row.
+- The row does not show while you search.
 
 ## How to Move and Resize the Window
 <!-- keywords: drag, bigger, smaller, size, position, wide view, layout, title bar, corner handle, in the way, covers the screen, side by side, split, enlarge, relocate -->
 <!-- route: formaquestion -->
 
 1. Drag the title bar to move the window. In the minimal chat, drag the grip on the pill.
-2. Move your pointer near any side or corner of the window and drag the handle that shows there. A side changes one dimension, a corner changes both. Each chat style keeps its own size.
+2. To resize, move your pointer near any side or corner of the window. Drag the handle that shows there.
+
+- A side changes one dimension. A corner changes both.
+- On a touch screen, only the corners show handles.
+- Each chat style keeps its own size.
+- In **Bubble**, the side handles are not there. Drag the corner grip on the speech bubble to change the chat's width and height. Drag the grip on the mascot to change its size.
 
 To see the contents and a section side by side, select **Wide View** in the title bar. Select it again to go back.
 
@@ -201,14 +250,16 @@ With the keyboard, press Tab until the **Help** tab has focus. Then press the ar
 <!-- keywords: window style, bubble, speech bubble, minimal, full, auto, framed window, bare column, no title bar, switch chrome, pill, frame, title bar back, bring back the frame, unframed, chat log, old style -->
 <!-- route: formaquestionSettings.general#chat-style -->
 
-1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column or over the mascot.
+1. Select **More Actions** in the title bar, or in the pill above a bare column or over the mascot.
 2. Under **Chat Style**, select **Auto**, **Minimal** or **Full**.
 
 You can also set it in the **Window** group of the **General** tab. Both places change the same setting.
 
 - **Auto** is **Bubble** while the mascot is on, and **Full** while it's off.
 - **Bubble** shows the mascot speaking the newest answer from a speech bubble. It needs the mascot, so **Auto** is the only way to it.
-- In **Bubble**, drag the mascot to move the window. The pill and the mascot's grip show when the window opens and hide after one second, and the speech bubble's box fades with them. The chat's grip stays in view, on the chat corner with the most free screen beyond the window. They come back when your pointer is over the mascot or a piece, when keyboard focus is on a piece, and while the **⋮** menu is open. On a touch screen they stay up. With reduced motion, they show and hide with no fade.
+- In **Bubble**, drag the mascot to move the window.
+- In **Bubble**, the pill and the mascot's grip show when the window opens and hide after one second. They come back when your pointer is over the mascot or a piece, when keyboard focus is on a piece, and while the **More Actions** menu is open. On a touch screen, they stay up. With reduced motion, they show and hide with no fade.
+- In **Bubble**, the chat's grip stays in view, on the chat corner with the most free screen beyond the window.
 - **Minimal** is a bare chat column. **Full** is the framed window.
 - **Full** with the mascot on keeps the mascot beside the frame.
 - The window stays where it was, and your conversation stays. Each style keeps its own size. See [The Window](#the-window).
@@ -217,10 +268,14 @@ You can also set it in the **Window** group of the **General** tab. Both places 
 <!-- keywords: hard to read, text over my screen, busy background, see through, transparent, backdrop, panel behind the chat, contrast, readability, scrim, opacity, dim, minimal chat text -->
 <!-- route: formaquestionSettings.general#backdrop -->
 
-1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
-2. Under **Window**, move **Backdrop**.
+1. Select **More Actions**, then **Settings**. The **General** tab opens first.
+2. Under **Window**, move the **Backdrop** slider.
 
-The backdrop is a panel behind the bare chat column, in the color of the app. A higher value hides more of the screen behind the text. The setting runs from 0 to 100% in steps of 5, and starts at 60%. Set 0 to draw no panel. The panel shows behind the **Bubble** and **Minimal** styles.
+The backdrop is a panel behind the bare chat column, in the color of the app. It shows behind the **Bubble** and **Minimal** styles.
+
+- A higher value hides more of the screen behind the text.
+- The setting runs from 0 to 100% in steps of 5, and starts at 60%.
+- Set 0 to draw no panel.
 
 ## How to Return to the Newest Answer
 <!-- keywords: scroll down, jump to the end, long conversation, old messages, bottom, latest answer, down arrow, scroll to end, lost my place, newest message -->
@@ -229,13 +284,15 @@ The backdrop is a panel behind the bare chat column, in the color of the app. A 
 1. Scroll up in the conversation to read an earlier answer.
 2. Select **Scroll to End**, the round arrow above the question field.
 
-The arrow shows when the end of the conversation is more than half a window height away. It goes away when you get near the end. After you select it, new text keeps scrolling into view as it arrives. The framed window and the bare column both have the arrow. See [Ask](#ask).
+- The arrow shows when the end of the conversation is more than half a window height away. It goes away when you get near the end.
+- After you select it, new text keeps scrolling into view as it arrives.
+- The framed window, the bare column and the speech bubble all have the arrow. See [Ask](#ask).
 
 ## How to Put the Mascot Under the Chat
 <!-- keywords: mascot below, mascot under the chat, mascot beside, mascot position, move the mascot, short chat, tall chat, mascot stands, beside or below -->
 <!-- route: formaquestionSettings.general#mascot-position -->
 
-1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column.
+1. Select **More Actions** in the title bar, or in the pill above a bare column.
 2. Under **Mascot Position**, select **Above**, **Below**, **Inside** or **Outside**.
 
 You can also set it in the **Mascot Position** dropdown in the **Window** group of the **General** tab. Both places change the same setting, and this device keeps it.
@@ -244,151 +301,31 @@ You can also set it in the **Mascot Position** dropdown in the **Window** group 
 - **Inside** stands the mascot beside the chat, toward the middle of the screen. **Outside** stands it beside the chat, toward the nearer edge of the screen.
 - The side flips only when the piece you drag crosses the middle of the screen. Drag the pill and the chat crosses to the mascot's other side; drag the mascot and the chat crosses to hers.
 - The reader stays beside the chat.
-- Under **Bubble**, only **Inside** and **Outside** apply, so the dropdown and the **⋮** menu offer those two. Without the mascot, there is nothing to place, so they are hidden.
-- The **⋮** menu of the mobile-size sheet has no **Mascot Position** choices, since the sheet shows no mascot.
+- Under **Bubble**, only **Inside** and **Outside** apply, so the dropdown and the **More Actions** menu offer those two. Without the mascot, there is nothing to place, so they are hidden.
+- The **More Actions** menu of the mobile-size sheet has no **Mascot Position** choices, since the sheet shows no mascot.
 
 ## How to Change the Size of the Mascot
 <!-- keywords: bigger mascot, smaller mascot, scale, resize mascot, mascot too big, mascot too small, size slider, auto size, fit the chat, percent -->
 <!-- route: formaquestionSettings.general#mascot-scale -->
 
-1. Select **⋮** in the Formaquestion title bar, then **Settings**.
-2. On the **General** tab, move **Mascot Scale** in the **Window** group.
+1. Select **More Actions**, then **Settings**.
+2. On the **General** tab, move the **Mascot Scale** slider in the **Window** group.
 
-The first stop is **Auto**. **Auto** fits the mascot to the height of the chat, and follows the chat when you resize it. Any other stop is a percent of the base image's size in pixels, from 25% to 150%. A percent mascot stays level with the bottom of the chat column and rises above it. It never grows past the room on the screen.
-
-The **Mascot** tab's preview does not change with **Mascot Scale**. The window does. This device keeps the setting, outside your mascot card. It is hidden while the mascot is off. See [Mascot](#mascot).
-
-## How to Set the Head View With the Mask
-<!-- keywords: crop, mask handles, head only, face crop, resize the box, move the box, trim, drag the edges, corners, arrow keys, head view box, face box, keyboard -->
-<!-- route: formaquestionSettings.mascot#mask -->
-
-1. Open the **Mascot** tab in **Formaquestion Settings**.
-2. Point at the preview. The Mask box shows eight handles and a center grip.
-3. Drag a handle to move one edge, or a corner to move two. Drag inside the box to move the whole box.
-4. Watch **Head View**, next to the preview. It shows the result as you drag.
-
-To draw a new box, drag on the preview outside the current one. With the keyboard, press Tab to a handle, then press an arrow key to move it one pixel. Shift with an arrow key moves it ten pixels. The handles fade while your pointer is away, unless one has focus or you are dragging. On a touch screen they stay drawn. See [The Mask](#the-mask).
-
-## How to Use a Different AI for Help
-<!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, search endpoint, small model -->
-<!-- route: formaquestionSettings.endpoint#answer-endpoint -->
-
-1. Select **⋮** in the Formaquestion title bar, then **Settings**.
-2. Select the **Endpoint** tab.
-3. In the editor, select **Add New Preset**. The new preset is a copy of the one under the heading, and **Answer Endpoint** moves to it.
-4. Enter the endpoint, token and model of the other AI.
-
-Your game keeps its own AI. The editor always edits the preset that **Answer Endpoint** uses. To edit another preset, set **Answer Endpoint** to it first. To send the **AI Search** request to a small, fast model, set **Search Endpoint** to a preset. See [Endpoint](#endpoint).
-
-## How to Edit the Preset That Help Uses
-<!-- keywords: change the endpoint settings, edit the model, edit the url, change the token, which preset am I editing, endpoint editor heading, answer preset, copy a preset, tune a variant, delete a preset, follow active, editor has no list -->
-<!-- route: formaquestionSettings.endpoint#answer-endpoint -->
-
-1. Open the **Endpoint** tab in **Formaquestion Settings**.
-2. Read the heading above the editor. It says **Edit** and the name of the preset that **Answer Endpoint** uses.
-3. To edit another preset, set **Answer Endpoint** to it. The heading and the editor change with it.
-4. To try a variant, select **Add New Preset**. The copy opens in the editor, and **Answer Endpoint** moves to it. The first preset stays as it was.
-
-While **Answer Endpoint** is **Use Active Endpoint**, the heading names the active preset and says **Active Endpoint**. A delete of the preset in use moves **Answer Endpoint** back to **Use Active Endpoint**. A change to a preset applies to the game too. See [Endpoint](#endpoint).
-
-## How to Turn On Reasoning for Help
-<!-- keywords: thinking, think harder, reasoning model, hard question, effort, reasoning level, show thinking, think before answering, better answers, deep answer, slow answers, thinking block -->
-<!-- route: formaquestionSettings.general#reasoning -->
-
-1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
-2. Select the **Reasoning** checkbox.
-3. Pick a level in the list that appears.
-4. Ask a question. The **Thinking** block above the answer shows how the AI reasoned.
-
-Answers take longer with reasoning on. The row shows a note instead of the checkbox when your model cannot reason. See [General](#general).
-
-## How to Turn On Semantic Search
-<!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download, recommended, offer, card, turn on, no thanks, dismiss -->
-<!-- route: formaquestionSettings.general#semantic-search -->
-
-1. Select **Turn On** on the **Semantic Search** card at the top of the window. See [The Semantic Search Card](#the-semantic-search-card).
-2. Wait while the app downloads the small model. The card shows a progress bar.
-3. Ask a question, or type in the **Search** tab. When the download is done, both also find sections by meaning.
-
-If no card shows, use the setting instead:
-
-1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
-2. Select the **Semantic Search** checkbox. A progress bar shows on the row.
-
-If the download fails, the checkbox clears and **Retry** shows. The card has **Retry** too. Until the model is ready, questions use the other sources.
-
-## How to Write Your Own Help Prompt
-<!-- keywords: change how answers read, custom prompt, edit the help prompt, answer style, shorter answers, tone of help, duplicate default, rewrite instructions, reset prompt, compare to default, prompt chips -->
-<!-- route: formaquestionSettings.prompts#preset -->
-
-1. Select **⋮** in the Formaquestion title bar, then **Settings**.
-2. Select the **Prompts** tab.
-3. Select **Duplicate & Edit**, or **Add New Preset…** in the preset list.
-4. Select **Answer**, **Search**, **Lookup** or **Code**, and edit the text. Keep the chips that the app reads back.
-5. Close the dialog and ask a question. The next request uses your text.
-
-**Default** is read-only, so your copy is the one you edit. Select **Compare** to see what a new release changed, or **Reset** to start again. Select **Preview** above a prompt to read it as your AI gets it. See [Prompts](#prompts).
-
-## How to Change the Length of a Help Reply
-<!-- keywords: tokens, token limit, temperature, repetition penalty, shorter replies, longer answers, creative, sampler, search options, lookup options, custom checkbox, reply length, cut off answer -->
-<!-- route: formaquestionSettings.prompts#preset -->
-
-1. Open the **Prompts** tab in **Formaquestion Settings**.
-2. Select a custom preset. **Default** shows its options read-only.
-3. Select **Options** under **Answer**, **Search** or **Lookup**.
-4. Check **Max Output**, **Custom Temperature** or **Custom Repetition Penalty**, then set a value.
-
-Each prompt has its own options for its own request. **Code** has none: it goes out with the answer request. Clear a box to return that field to the value of **Default**. The preset file carries the options. See [Prompts](#prompts).
-
-## How to Add a Tool to Formaquestion
-<!-- keywords: custom tool, own tool, new function, chat assistant, world lookup, create a tool, tool for help, function call, my tools, script tool, give the ai a function, extend the assistant -->
-<!-- route: formaquestionSettings.tools#new-tool -->
-
-1. Select **⋮** in the Formaquestion title bar, then **Settings**.
-2. Select the **Tools** tab.
-3. Under **My Tools**, select **New Tool**.
-4. Fill in **Definition**, **Parameters** and **Handler**.
-5. Select **Save Tool**. The new Tool is on.
-6. Open a world in the game or the editor.
-7. Ask a question that needs the Tool.
-
-Your AI calls the Tool when the question needs what it returns. The endpoint must take function calls. See [Tools](#tools).
-
-## How to Move a Custom Preset to Another Device
-<!-- keywords: export preset, import preset, back up help prompts, share my prompts, copy to a new pc, transfer, preset file, help-preset.json, send to a friend, sync prompts, new computer -->
-<!-- route: formaquestionSettings.prompts#preset -->
-
-1. On the first device, open the **Prompts** tab.
-2. Select your custom preset.
-3. Select **Export**. On a narrow screen, open the **Preset Actions** menu first. Formamorph saves a `.help-preset.json` file.
-4. Copy the file to the other device.
-5. On the other device, open the **Prompts** tab.
-6. Select **Import** and choose the file.
-
-The import adds the preset and selects it. See [The Preset File](#the-preset-file).
+- The first stop is **Auto**. **Auto** fits the mascot to the height of the chat, and follows the chat when you resize it.
+- Any other stop is a percent of the base image's size in pixels, from 25% to 150%. A percent mascot stays level with the bottom of the chat column and rises above it. It never grows past the room on the screen.
+- The **Mascot** tab's preview does not change with **Mascot Scale**. The window does.
+- This device keeps the setting, outside your mascot card.
+- The slider is hidden while the mascot is off. See [Formaquestion Mascot](Formaquestion-Mascot).
 
 ## How to See What the App Sent for a Question
 <!-- keywords: debug a question, wrong answer, why this answer, inspect the request, see the prompt, trace, missing section, request log, export json, bug report, what was sent to the ai -->
 <!-- route: formaquestionAiContext -->
 
 1. Ask a question.
-2. Select **⋮** in the Formaquestion title bar, then **AI Context**.
+2. Select **More Actions**, then **AI Context**.
 
 The dialog shows one question per page, the newest first, with its request cards. See [AI Context](#ai-context).
 
-## How to Use Formaquestion as a Plain Chat
-<!-- keywords: chat assistant, no guide, ordinary chat, talk to the ai, turn off search, no sources, bare question, general chatbot, roleplay assistant, stop the guide, only my question -->
-<!-- route: formaquestionSettings.general#keyword-search -->
-
-1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
-2. Clear **Keyword Search**.
-3. Clear **AI Search**.
-4. Clear **Semantic Search**.
-5. Clear **Use the Open Screen**.
-6. Select the **Tools** tab and check that **read_guide** is off.
-7. Ask a question.
-
-The request now holds your question alone. The answer has no note that it is not from the guide. To give the chat a purpose, write your own prompt and add Tools. Set **History Length** to the number of earlier exchanges you want it to keep.
 
 ---
 
@@ -404,7 +341,7 @@ Formaquestion is one window for the whole app. It shows above every dialog, and 
 | **Back** and **Forward** | Move through the sections you opened. They show next to the title while **Wide View** is on. See [How to Go Back and Forward in the Guide](#how-to-go-back-and-forward-in-the-guide). |
 | **Wide View** | Changes between the narrow and the wide layout. It stays lit while the wide view is on |
 | **Open Guide** | Shows the Guide full screen. The **Full** style has it in the title bar. See [Guide](#guide). |
-| **⋮** | Opens a menu with **Clear Conversation**, the **Chat Style** choices, the **Mascot Position** choices, **Open Guide**, **Open Wiki**, **AI Context** and **Settings**. The mobile-size sheet has no **Mascot Position** choices. |
+| **More Actions** | The ⋮ icon button. Opens a menu with **Clear Conversation**, the **Chat Style** choices, the **Mascot Position** choices, **Open Guide**, **Open Wiki**, **AI Context** and **Settings**. The mobile-size sheet has no **Mascot Position** choices. |
 | **Close** | Closes the window |
 | Bottom right corner | Drag it to change the size of the window |
 
@@ -417,13 +354,45 @@ F1 does one of three things:
 | The cursor is in the window | The window closes |
 
 - The window stays whole on the screen. When the browser window gets smaller, Formaquestion moves back inside it.
-- This device keeps the place of the window and a size for **Minimal** and **Full**, and the mascot's own place for **Bubble**. A change between **Minimal** and **Full** keeps the place. They are not in a backup or an export.
+- This device keeps the place of the window and a size for **Minimal** and **Full**. It keeps the mascot's own place for **Bubble**. A change between **Minimal** and **Full** keeps the place. These are not in a backup or an export.
 - The narrow layout shows one tab at a time. The wide layout shows the search field and the contents on the left, and the conversation or a section on the right. **Back to Conversation**, above a section, shows the conversation again. The layout changes at a width of 560 pixels, so the corner changes it too.
-- The Back and Forward history holds the last 50 steps. Each section you open is a step, and so is a change from a section to the conversation in **Wide View**. **Back** returns you to the place you had in that section. The history stays when you close the window or change the layout, and a reload clears it. A section you open after **Back** replaces the steps ahead of it.
+- The Back and Forward history holds the last 50 steps. Each section you open is a step. In **Wide View**, a change from a section to the conversation is a step too. **Back** returns you to the place you had in that section.
+- The history stays when you close the window or change the layout. A reload clears it. A section you open after **Back** replaces the steps ahead of it.
 - The **Minimal** and **Bubble** styles read in a separate reader beside the chat. That reader adds no steps and has no **Back** or **Forward**. Alt+Left, Alt+Right and the mouse buttons work there only in the full-screen Guide, which has **Back** and **Forward** in every style.
 - In the full screen, **Back** and **Forward** skip the conversation. They go to the closest section in their direction.
 - While the welcome animation plays, the **Help** tab does not show and F1 does nothing.
-- The **Chat Style** sets how the window looks. **Full** is this window. **Minimal** is a bare chat column with no title bar, no tabs and no **Wide View**. **Bubble** shows the mascot speaking the newest answer. **Auto** is **Bubble** while the mascot is on and **Full** while it's off. Pick a style in the **⋮** menu or on the **General** tab. See [Mascot](#mascot).
+### Chat Styles
+
+The **Chat Style** sets how the window looks. Pick a style in the **More Actions** menu or on the **General** tab. See [How to Change the Chat Style](#how-to-change-the-chat-style).
+
+- **Full** is the framed window this page describes.
+- **Minimal** is a bare chat column with no title bar, no tabs and no **Wide View**.
+- **Bubble** shows the mascot speaking the newest answer.
+- **Auto** is **Bubble** while the mascot is on, and **Full** while it's off.
+
+To make your own mascot, see [Formaquestion Mascot](Formaquestion-Mascot).
+
+**Bubble.** With the mascot on and the **Chat Style** at **Auto** or **Bubble**, the mascot speaks the newest answer from a speech bubble that points at its head.
+
+- A long answer grows up to the top of the screen, then scrolls inside the bubble.
+- Under the bubble, a strip holds **Previous Answer** and **Next Answer** at its ends. Between them are the answer's **Thinking** toggle, **Sources** and **Take Me There**.
+- The open **Thinking** text shows inside the bubble.
+- **Sources** opens a list of the guide sections the answer used. Select one to open it in the reader.
+- Your question and the ask field stand at the mascot's feet. Before your first question, only the mascot and the ask field show.
+- Drag the mascot, or the pill over its head, to move the window.
+- The bubble stands on the side of the mascot with more room. It moves to the other side when you drag the mascot past the middle of the screen.
+- Drag the corner grip on the bubble to change the chat's width and height. The **Backdrop** fills the size you set. A short answer's bubble stays small inside it, as in the minimal column.
+- Drag the grip on the mascot's top corner to change its size. It sets the same **Mascot Scale** as the **General** tab.
+- In the head view, the bubble, the head with the pill, the strip, your question and the ask field stand in one column.
+
+**Minimal.** With the **Chat Style** at **Minimal**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot beside it.
+
+- The mascot stands on the side of the column that has more room on the screen. It moves to the other side when you drag the column past the middle of the screen. The head on the pill moves to the same end.
+- Select a source name under an answer to open the guide section in a reader on the other side of the column. Close the reader with **Close Reader**. The column and the mascot stay.
+- The pill above the column holds the grip, the **More Actions** menu and **Close**. The grip moves all three pieces.
+- Drag the corner under the ask field to change the column's size.
+
+**Full.** With the **Chat Style** at **Full**, the whole mascot stands beside the framed window, on the same side rule. Its height follows the frame while **Mascot Scale** is **Auto**. A mobile-size screen shows no mascot with the framed sheet.
 
 ## Ask
 <!-- keywords: privacy, what is sent, reads my saves, hallucinate, inaccurate, general knowledge note, history lost, send disabled, which model answers, reload -->
@@ -431,19 +400,36 @@ F1 does one of three things:
 
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
-Until the answer starts, a line under your question says what it waits on: **Checking your AI…** for a connection check, **Searching with your AI…** for the **AI Search** request, **Searching the guide…** for **Semantic Search**, **Waiting for your AI…** for the answer request, and **Looking up…** while the AI reads more of the guide. While the model reasons, the **Thinking** header shows the wait instead. With the mascot on, these lines say its name: **Morphie is getting ready…**, **Morphie is choosing guide sections…**, **Morphie is thinking…**, **Morphie is reading the guide…**, **Morphie did not answer**, and the empty conversation asks you to **Ask Morphie how to do something in Formamorph**. A custom mascot's lines use its own name.
+Until the answer starts, a line under your question says what it waits on:
 
-- **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
+| Line | What it waits on |
+|---|---|
+| **Checking your AI…** | A connection check |
+| **Searching with your AI…** | The **AI Search** request |
+| **Searching the guide…** | **Semantic Search** |
+| **Waiting for your AI…** | The answer request |
+| **Looking up…** | The AI reads more of the guide |
+
+While the model reasons, the **Thinking** header shows the wait instead.
+
+With the mascot on, these lines say its name. A custom mascot's lines use its own name. For Morphie:
+
+- **Morphie is getting ready…**, **Morphie is choosing guide sections…**, **Morphie is thinking…** and **Morphie is reading the guide…**
+- **Morphie did not answer**, and **Morphie did not finish** for an answer that stopped partway
+- The empty conversation asks you to **Ask Morphie how to do something in Formamorph**.
+
+- **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it. Select **Sources** to fold the list to **Sources (N)**. Later answers start the same way.
+- A code block in an answer has **Copy**. It also has **Insert**, which adds the code as a new script of the timing you pick, on the stat, trait or world whose **Scripts** tab is open. With no **Scripts** tab open, **Insert** is off.
 - **Take Me There**, next to **Sources**, opens the screen that the top source describes. See [How to Go to the Screen an Answer Describes](#how-to-go-to-the-screen-an-answer-describes).
 - **Ask the Community**, under a finished answer, opens a new community question with your question as its title. See [How to Ask the Community](#how-to-ask-the-community).
 - **Thinking**, above an answer, shows how the AI reasoned, when your model reasons. It starts closed. Open or close one, and later answers start the same way.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
-- The request holds your question and those guide sections. While **Read the World** is on, it also holds parts of the world you have open: see [How to Ask About Your World](#how-to-ask-about-your-world) and [How to Ask About Your Story](#how-to-ask-about-your-story). **test_script** and your **My Tools** can read that world too. See [Tools](#tools).
+- The request holds your question and those guide sections. While **Read the World** is on, it also holds parts of the world you have open: see [How to Ask About Your World](#how-to-ask-about-your-world) and [How to Ask About Your Story](#how-to-ask-about-your-story). **test_script** and your **My Tools** can read that world too. See [Tools](Formaquestion-Settings#tools).
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again. **History Length** sets how many.
 - Before the answer, the app sends one more short request, while **AI Search** is on. In it, your AI gets the list of every guide heading and chooses the sections that answer your question. The answer then uses those sections together with the sections that the other searches find. When that request fails or chooses no section, the answer uses the other searches alone.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
 - With **Image Attachments** on, a question can carry up to 4 images, the same as an action. **Attach images** shows next to the field, and a paste or a drop on the field adds an image. The images go with that question only, and the app does not store them.
-- **Clear Conversation**, in the **⋮** menu, removes every question and answer, and ends an answer that is coming in.
+- **Clear Conversation**, in the **More Actions** menu, removes every question and answer, and ends an answer that is coming in.
 - While a game turn generates, **Send** waits. **Search** and **Guide** still work.
 - The answer is in your **AI Language**. Control names stay as the guide writes them, and names from your world stay as the world writes them. See [Settings](Settings).
 - Enter sends the question. Shift+Enter starts a new line.
@@ -452,7 +438,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 - With no AI connected, **Send** shows the guide sections that match your question. The Demo AI always counts as connected.
 - When the AI does not answer, an error message shows, and the guide sections that match your question show in place of the answer. Text that came before the failure stays.
 - The conversation stays while the app is open, also when you close the window or go to a different screen. The app does not store it, so a reload or a restart empties it.
-- The answer comes from the **Answer Endpoint**, with the **Reasoning** setting. See [Formaquestion Settings](#formaquestion-settings).
+- The answer comes from the **Answer Endpoint**, with the **Reasoning** setting. See [Formaquestion Settings](Formaquestion-Settings).
 
 An answer can be wrong. Use **Sources** to check it against the guide.
 
@@ -462,7 +448,7 @@ An answer can be wrong. Use **Sources** to check it against the guide.
 
 The **Search** tab finds sections by the words you type. It needs no network and no AI.
 
-With [Semantic Search](#how-to-turn-on-semantic-search) on, it also finds sections by meaning. The word matches show at once. The meaning matches join them when you stop typing. Until the model is on your device, the tab uses words alone.
+With [Semantic Search](Formaquestion-Settings#how-to-turn-on-semantic-search) on, it also finds sections by meaning. The word matches show at once. The meaning matches join them when you stop typing. Until the model is on your device, the tab uses words alone.
 
 - A search starts at two letters.
 - A word in a section's heading counts more than a word in its text.
@@ -490,13 +476,18 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - A link to a website opens in your browser.
 - **Open Guide** shows the Guide full screen. See [How to Open the Guide Full Screen](#how-to-open-the-guide-full-screen).
 
-The full screen has the search field and the contents on the left, and the section on the right. With no section open, the right side says **Select a section to read**. The header holds **Back** and **Forward**, **Open Wiki** and **Close Guide**. Escape closes the full screen too, and the window shows the section you ended on. A mobile-size screen shows one part at a time. It shows the contents, or a section with **Contents** above it.
+The full screen has the search field and the contents on the left, and the section on the right.
+
+- With no section open, the right side says **Select a section to read**.
+- The header holds **Back** and **Forward**, **Open Wiki** and **Close Guide**.
+- Escape closes the full screen too, and the window shows the section you ended on.
+- A mobile-size screen shows one part at a time. It shows the contents, or a section with **Contents** above it.
 
 ## The Semantic Search Card
 <!-- keywords: first open, ask me to turn on, search by meaning prompt, download once, card won't go away, card gone, decide later, failed download -->
 <!-- route: formaquestion -->
 
-The card offers [Semantic Search](#how-to-turn-on-semantic-search) at the top of the window. It says **Recommended** and that the app downloads a small model once. It shows in each chat style. You can ask a question while it shows.
+The card offers [Semantic Search](Formaquestion-Settings#how-to-turn-on-semantic-search) at the top of the window. It says **Recommended** and that the app downloads a small model once. It shows in each chat style. You can ask a question while it shows.
 
 | Button | What it does |
 |---|---|
@@ -511,302 +502,28 @@ The card offers [Semantic Search](#how-to-turn-on-semantic-search) at the top of
 - The card does not show when the model is already on your device. Semantic Search turns on with no card.
 - After a reload, a failed download shows no card. Use **Retry** on the **Semantic Search** row.
 
-## Formaquestion Settings
-<!-- keywords: gear, options, configure help, help settings, turn off search, plain chat -->
-<!-- route: formaquestionSettings -->
-
-**Formaquestion Settings** opens from **Settings** in the **⋮** menu of the Formaquestion title bar. The window closes while the settings are open and opens again when you close them. It has five tabs: **General**, **Endpoint**, **Prompts**, **Tools** and **Mascot**.
-
-- The Formaquestion window stays above the settings, so you can change a setting and ask a question to see the effect.
-- This device keeps each setting. The settings are not in a backup or an export.
-
-### General
-<!-- keywords: mascot switch, turn off the mascot, turn on the mascot, chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
-<!-- route: formaquestionSettings.general -->
-
-The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Mascot**, **Chat Style**, **Mascot Position**, **Mascot Scale**, **Backdrop** and **Confirm Before Opening the Wiki** are in **Window**.
-
-| Setting | Default | What it does |
-|---|---|---|
-| **Mascot** | On | Shows the mascot with a bare chat column. It takes effect at once, with no **Save**. With it off, the **Mascot** tab disables every control and shows a link back to this row. |
-| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Bubble** with the **Mascot** on. The **⋮** menu has the same three choices. |
-| **Mascot Position** | Outside | Sets where the mascot stands around the chat: **Above**, **Below**, **Inside** or **Outside**. The **⋮** menu has the same choices. Under **Bubble**, only **Inside** and **Outside** show. Hidden while the mascot is off. |
-| **Mascot Scale** | 25% | Sizes the mascot beside the chat. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. Hidden while the mascot is off. |
-| **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Bubble** and **Minimal** styles. Set 0 for none. |
-| **Confirm Before Opening the Wiki** | On | Asks before **Open Wiki** opens your browser. **Don’t Ask Again** in the confirm clears it. See [How to Open the Wiki](#how-to-open-the-wiki). |
-| **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |
-| **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
-| **Keyword Search** | On | Finds the guide sections that have the words of your question |
-| **AI Search** | On | Sends one more request for each question, in which your AI chooses guide sections from the list of headings |
-| **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. A card at the top of the window offers it first. See [The Semantic Search Card](#the-semantic-search-card). |
-| **Use the Open Screen** | On | Sends the open screen, your selected item, and its guide section |
-| **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
-
-The selected item is a stat, trait, entity, location or dictionary entry open in the World Editor, or the entity open in the Entity Editor. Its name goes with the screen, such as "Scripts tab of the stat Courage".
-
-A question about code always sends the **Quick Reference** of the Scripts Guide. On a stat's **Scripts** tab, it comes second, after the tab's own section. From any other screen, it comes first, and the answer request does not name the screen.
-
-With **Keyword Search**, **AI Search** and **Use the Open Screen** all off, no other guide section can reach your AI. A question that is not about code then goes alone, and the answer has no note that it is not from the guide.
-
-When a search runs and finds no section, the answer still gets that note.
-
-### Endpoint
-<!-- keywords: different model, other endpoint, separate ai, small model for search, help endpoint, answer endpoint, search endpoint, follow active, same as answer -->
-<!-- route: formaquestionSettings.endpoint -->
-
-The **Endpoint** tab sets where help questions go. Help can use a different AI than your game.
-
-| Setting | Default | What it does |
-|---|---|---|
-| **Answer Endpoint** | **Use Active Endpoint** | Sends your questions to this endpoint for answers |
-| **Search Endpoint** | **Same as Answer** | Sends the **AI Search** request to this endpoint. A small, fast model works well here. |
-
-- **Use Active Endpoint** follows the endpoint you pick in **Settings** → **AI Endpoints**.
-- A preset you choose shows whether it answers. Select **Recheck** to check again.
-- If you delete a preset that a setting names, that setting goes back to its default.
-- The **Ask** tab says when your AI is not connected. It checks the **Answer Endpoint**.
-
-The two settings share one row. Under them is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
-
-- The editor has no preset list. It always edits the preset that **Answer Endpoint** uses. Its heading, **Edit** and the preset's name, changes when you change **Answer Endpoint**. While **Answer Endpoint** follows the active endpoint, the heading names that preset and says **Active Endpoint**.
-- **Add New Preset** adds a copy of the preset you are editing, moves **Answer Endpoint** to the copy, and opens the copy in the editor.
-- Delete the preset that **Answer Endpoint** uses, and **Answer Endpoint** goes back to **Use Active Endpoint**.
-- A change to a preset applies everywhere that preset is used, the game included.
-
-### Prompts
-<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, search prompt, lookup prompt, code prompt, code rider, stat code answers, read-only, export preset, import preset, preset file, move preset, another device -->
-<!-- route: formaquestionSettings.prompts -->
-
-The **Prompts** tab holds the help prompts: the text that tells your AI how to answer. The prompts are in a preset, apart from the prompt presets of your game. A change to the game's preset never changes help.
-
-| Prompt | What it does |
-|---|---|
-| **Answer** | Tells your AI how to answer from the guide sections in the request |
-| **Search** | Tells your AI how to choose guide sections from the list of headings, for the **AI Search** request |
-| **Lookup** | Tells your AI how to answer when it can read more sections through the lookup function |
-| **Code** | Tells your AI how to write scripts. It goes after a question about code, and after any question from a stat's **Scripts** tab while **Use the Open Screen** is on |
-
-- **Default** is read-only. Its text comes from the app, so each release updates it.
-- **Duplicate & Edit** in the notice above a Default prompt makes a copy of the preset and opens it for edits. The **Duplicate** button beside the preset list does the same. **Add New Preset…** in the list asks for a name first.
-- A custom preset has **Rename**, **Reset** and **Delete** beside the list. On a narrow screen, they are in the **Preset Actions** menu. **Reset** returns every prompt and its options to the text of this release, after it asks. When you delete the preset in use, help goes back to **Default**.
-- **Reset** at the bottom right of a custom prompt returns that one prompt to the text of this release, after it asks. A custom preset does not get the updates of a release on its own.
-- **Compare**, beside **Reset**, opens a diff of your text against the text of this release. Text you added is tinted. Text you removed is struck through. **Raw** shows your text as it is. The button is off for a prompt that equals the default.
-- This device keeps the presets, with the other Formaquestion settings.
-- **Export** beside the list saves the preset to a file, with your **My Tools** and the switches of the **Tools** tab. **Default** exports too, and importing that file adds a custom preset.
-- **Import** beside the list adds the preset from a file and makes it the one in use.
-
-Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chips are the parts the app reads back or names elsewhere:
-
-| Chip | In | What it sends |
-|---|---|---|
-| **Not in Guide Marker** | Answer, Lookup | The line your AI writes first when the guide does not cover the question. The app reads that line and shows the notice above the answer. |
-| **Lookup Function** | Lookup | The name of the function your AI calls to read more guide sections |
-| **Search Limit** | Search | The most sections one search reply names. The app reads that many sections at most, whatever the prompt says. |
-| **Reply Format** | Search | The rule for how the search reply is written, so the app can read it |
-| **Mascot Voice** | Answer, Lookup | Your mascot's name and Voice: "You are Morphie." for the mascot that comes with the app, then the Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
-
-A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
-
-Each prompt editor has an **Edit** tab and a **Preview** tab. **Preview** shows the prompt as your AI gets it, with each chip replaced by its text. **Mascot Voice** shows your mascot's Voice while the mascot is on.
-
-Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Search** to the **AI Search** request, and **Lookup** to the answer request when your AI can call **read_guide**.
-
-| Option | Default | What it does |
-|---|---|---|
-| **Max Output** | 800 tokens for **Answer** and **Lookup**, 150 for **Search** | Sets how long the reply can run |
-| **Custom Temperature** | 0.2 | Sets how freely the reply is worded |
-| **Custom Repetition Penalty** | 1 | Sets how hard the reply avoids repeated words |
-
-Each preset has its own options, and a copy of a preset takes them. **Default** shows them read-only, so each release updates them. A box that is off uses the default.
-
-#### The Preset File
-
-See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset-to-another-device) for the steps. The file holds the three prompts, the options of each prompt, your **My Tools**, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
-
-- If you already have a preset with that name, the import adds a number to the new name.
-- If you already have a Tool with that name, the import skips that Tool and names it. Your Tool keeps its own switch.
-- The switches in the file apply to its Tools and to the built-in functions, such as **read_guide**.
-- A file with a Script Tool that is on shows a warning, because a script runs code when the AI calls it.
-- A file from a different version, or a file that is not complete, is refused. Nothing changes.
-
-### Tools
-<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text, dice, roll, random number, test stat code, check code, test_script, code test, broken code -->
-<!-- route: formaquestionSettings.tools -->
-
-
-The **Tools** tab lists the functions your AI can call while it answers. It uses the layout of **Settings** → **Tools**: the list on the left, and the selected function on the right. **Built-In** holds the functions that ship with the app. **My Tools** holds the Tools you make for help questions.
-
-| Function | Default | What it does |
-|---|---|---|
-| **read_guide** | Off | The guide lookup. It starts off, and it runs only while the **Answer Endpoint** takes function calls. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. It roughly quadruples the input tokens of a question. |
-| **roll** | Off | A dice roll. Ask your AI to roll, such as "roll two six-sided dice", and it rolls and gives you the total. |
-| **test_script** | On | The code test. On a question about scripts, your AI checks its code and runs it once before it answers, as **Test Code** does. It tests a script in any timing, on a stat, a trait or the world. A During AI Output script rewrites a sample sentence, and a When a Trait Switches script fires on a sample trait. It reads the world you have open, so the names of its stats, traits, entities, placeholders and dictionaries can go to your **Answer Endpoint**. When your AI names no stat or trait, it tests the stat you have selected. It never changes the world. With no world open, it checks the code without the names and does not run it. Your AI is told to fix what the test finds, and to give its best code and name the error that remains after its last call. |
-
-- **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
-- **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default: 3 for **read_guide**, 4 for **roll**, 3 for **test_script**.
-- The panel also shows the text your AI reads about the function, and its parameters.
-- **read_guide**, **roll** and **test_script** are part of the app. You can't edit, copy or delete them.
-- The **Tools** switch under **Settings** → **Output** does not apply to Formaquestion.
-
-A function goes out only when the **Answer Endpoint** takes function calls. If it doesn't, or the app hasn't confirmed it yet, the tab shows a note, and each question goes out as one request with no function.
-
-#### How to Let Your AI Read More of the Guide
-<!-- keywords: lookup mode, read more sections, local model, function calls, read_guide, deeper answers, search the guide itself, tool calls, bigger context -->
-
-1. Set **Answer Endpoint** to a model that takes function calls, such as a local model.
-2. Open the **Tools** tab, select **read_guide**, and turn on **Enabled**. It starts off.
-3. Ask a question. Your AI reads more sections when it needs them, and the answer lists them under **Sources**.
-
-Turn **Enabled** off to skip the extra input tokens. Each question then goes out as one request with the matching sections in it.
-
-**My Tools.** Make your own Tools for help questions, and Formaquestion can work as a chat assistant for the world you have open. They are a list of their own: a Tool you make here never goes to a game prompt, and a Tool from **Settings** → **Tools** does not show here.
-
-- **New Tool** opens the same editor as **Settings** → **Tools**. See [The Tool Editor](Tools#the-tool-editor). A Tool can't take the name of a built-in function: **read_guide** or **roll**.
-- **Enabled** turns a Tool on or off. A Tool you save here starts on, and a Tool from a Tool pack is off until you turn it on. A help preset file sets the switches of its own Tools. This device keeps the switches.
-- **Max Calls per Request** caps the calls for one question. Leave it blank for the default of 4. There is no **Offered To**, because one request takes every Tool that is on.
-- **Edit** and **Delete** act on the selected Tool. **Delete** can't be undone.
-- **Try It** runs the Tool on the world you have open in the game or the World Editor, else on a sample world.
-
-A Tool that's on reads the world you have open, so text from that world can go to your **Answer Endpoint**. The tab says so under the list. In the game, a Tool reads the playthrough as a game Tool does. In the World Editor, it reads the world as you have it, unsaved edits included. With the World Editor open from the game, a Tool reads the editor's world until you close it. On the Main Menu, a Tool reads no world and returns its empty result.
-
-#### How to Share Tools With the Game's List
-<!-- keywords: tool pack, tools.json, import tools, export tools, move a tool, gameplay tool, copy a tool, share a tool, pack file -->
-
-1. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
-2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
-
-### Mascot
-<!-- keywords: morphie, mascot name, who is the mascot, character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot, mascot full screen, supporter mascot, exclusive mascot, locked mascot, patreon mascot -->
-<!-- route: formaquestionSettings.mascot -->
-
-The **Mascot** tab edits the mascot's rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions. The mascot's name is its preset's name. Your AI answers as that name, and a screen reader reads it on the mascot. The **Mascot** switch is in the **Window** group on the **General** tab. With the mascot off, this tab disables every control and shows "The Mascot is off. Select “General” to turn it on." Select **General** in that line to open the **General** tab.
-
-You can keep more than one mascot. The **Preset** list at the top of the tab picks the one Formaquestion shows. **Morphie** is the mascot that comes with the app. She is read-only, and she updates with each release. To change her, select **Duplicate** and edit the copy.
-
-| Button | What it does |
-|---|---|
-| **Duplicate** | Copies the mascot you see into one you can edit, and selects it |
-| **Rename** | Renames this mascot |
-| **Delete** | Deletes this mascot and the images no other mascot uses. It asks first. |
-| **Reset** | Puts Morphie's rig in place of this mascot's. **Cancel** takes it back. |
-| **Import** | Adds a mascot from a card file, and selects it. See [The Mascot Card](#the-mascot-card). |
-| **Export** | Saves this mascot as a card |
-| **Publish** | Shares this mascot in Community Creations. It shows when you're signed in, and never on Morphie. See [Publish a Mascot](#publish-a-mascot). |
-| **View full screen** | Opens the whole tab full screen. **Exit full screen** or Escape returns it. |
-
-Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Morphie** is selected. Only **Import** and **View full screen** show while a Supporter Mascot is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
-
-**Supporter Mascots** are for Patreon Supporter and Supporter+ accounts. One you don't have shows in the **Preset** list with its thumbnail and a lock. Select it to open its listing in Community Creations. If your account is a Supporter, selecting it installs it and selects it. A Supporter Mascot is read-only: you can't edit, duplicate, export or publish it. When your pledge ends, the app removes it and Formaquestion shows Morphie again.
-
-Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
-
-With the mascot on and the **Chat Style** at **Auto** or **Bubble**, the mascot speaks the newest answer from a speech bubble that points at its head. A long answer grows up to the top of the screen, then scrolls inside the bubble. Under the bubble, a strip holds **Previous Answer** and **Next Answer** at its ends. Between them are the answer's **Thinking** toggle, **Sources** and **Take Me There**. The open **Thinking** text shows inside the bubble. **Sources** opens a list of the guide sections the answer used; select one to open it in the reader. Your question and the ask field stand at the mascot's feet. Before your first question, only the mascot and the ask field show. Drag the mascot, or the pill over its head, to move the window. The bubble stands on the side of the mascot with more room. It moves to the other side when you drag the mascot past the middle of the screen. Drag the corner grip on the bubble to change the chat's width and height. The **Backdrop** fills the size you set, and a short answer's bubble stays small inside it, as in the minimal column. Drag the grip on the mascot's top corner to change its size; it sets the same **Mascot Scale** as the **General** tab. In the head view, the bubble, the head with the pill, the strip, your question and the ask field stand in one column.
-
-With the **Chat Style** at **Minimal**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot beside it. The mascot stands on the side of the column that has more room on the screen. It moves to the other side when you drag the column past the middle of the screen, and the head on the pill moves to the same end. Select a source name under an answer to open the guide section in a reader on the other side of the column. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
-
-With the **Chat Style** at **Full**, the whole mascot stands beside the framed window, on the same side rule. Its height follows the frame while **Mascot Scale** is **Auto**. A mobile-size screen shows no mascot with the framed sheet.
-
-The tab has two columns on a wide dialog. The preview stays in view on the left, and the other rows scroll on the right. On a narrower dialog, the preview comes first and the whole tab scrolls.
-
-| Row | What it does |
-|---|---|
-| **Mascot** | Shows the mascot with a bare chat column. On by default. |
-| **Voice** | Tells your AI how help answers sound while the mascot is on. The **Mascot Voice** chip sends this text. |
-| **Preview** | Shows the Idle look, or what you select. Select a layer to see the base with all of that layer's overlays. Select one overlay to see the base with that overlay alone. Drag the Mask on it to set the head view. The **Transition** rows and **Play** are in the same box. |
-| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. **Show Full Mascot** goes back. With a percent **Mascot Scale**, the head draws at that share of its size, and never taller than the chat. |
-| **Base Image** | Draws under every layer. Upload your own image, or remove yours to go back to the default. |
-| **Layers** | Lists every layer in draw order, with its name, its kind and its **Enabled** checkbox |
-| **Initial Look**, **Idle Look**, **Thinking Look** | Set the face and the state that the mascot shows at each moment. See [The Looks](#the-looks). |
-| **Transition** | Sets how the mascot moves when its look changes: **None**, **Dissolve** or **Jelly**. **Play** shows it on the preview. |
-
-- Drag a layer by its grip to change the draw order. A layer lower in the list draws on top.
-- Select a layer to expand it and show it on the preview. Collapse it, and the preview goes back to the Idle look.
-- Expand a layer to change its name and its kind. An **Expression** is a face your AI can pick. A **State** stacks with the face, such as the arms.
-- Each layer holds overlay images, drawn in order and stretched to the base size. Drag an overlay to move it, or upload more.
-- The slots take image files only, not links. This device keeps your images, outside the settings.
-- When you save, the app deletes each image you removed that no layer of any mascot uses. **Cancel** deletes the images you added since your last save.
-
-#### The Looks
-
-A look is one expression and one state. Each look row has two lists, one for the expression and one for the state. The lists show only layers that are on, and each list has **None**.
-
-| Look | When the mascot shows it |
-|---|---|
-| **Initial Look** | The first time the mascot appears after the app starts. It stays until you send your first question. Morphie waves. |
-| **Thinking Look** | From the moment you send a question until the answer starts. It stays while your AI reasons. |
-| **Idle Look** | When the answer starts. Its state shows with every answer. Its expression shows when your AI picked no face. |
-
-- Your AI can pick a face for its answer when the **Answer Endpoint** takes function calls. It picks from the expressions that are on. The face shows when the answer starts, and it stays until your next question.
-- On an endpoint with no function calls, the mascot still waves, thinks and rests. Your AI picks no face.
-- A look that names a layer you turned off draws nothing for that layer. The tab shows a warning that names the look.
-- Each face call shows in **AI Context** with the other tool rounds.
-
-#### The Mask
-
-The Mask is the box that sets the head view. It has eight handles, one on each corner and one on each edge, and a grip in the center. **Head View** shows the result while you drag.
-
-- Drag an edge handle to move that edge. Drag a corner handle to move two edges. Drag inside the box to move all of it.
-- The box stays inside the base image and above a small minimum size.
-- Drag outside the box to draw a new one. A drag under 16 pixels of the base image counts as a press and keeps the Mask.
-- Press Tab to a handle, then an arrow key. A side handle moves along its own axis, and a corner or the center grip moves both ways. One press moves one pixel of the base image, and Shift moves ten. Each key press saves at once.
-- The handles fade while your pointer is away from the box. On a touch screen they stay drawn. With reduced motion, they show and hide with no fade.
-- **Head View** sits in a fixed slot. A wide Mask shows a shorter head, so the slot does not move while you drag.
-
-**Reset** restores Morphie's Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
-
-#### The Transition
-
-The mascot plays its transition each time its look changes: from the Initial Look to the Thinking Look, from the Thinking Look to a face, from a face to the Thinking Look on your next question, and when your AI picks a face. A change during a transition restarts it from the frame on the screen.
-
-| Mode | What it does |
-|---|---|
-| **None** | Swaps the look at once |
-| **Dissolve** | Fades the new look in over **Duration** |
-| **Jelly** | Squashes the mascot, stretches it past full height as the new look appears, then bounces it back to rest. **Duration**, **Squash**, **Overshoot** and **Settle Count** tune it. |
-
-- **Jelly** is the default. **Reset** returns the transition to the Default's.
-- Your system's reduced-motion setting turns the transition off. The tab says so while it applies.
-- **Play** changes the preview between the look it shows and the Thinking Look. Each press plays the transition one way, and the next press plays it back.
-
-#### The Mascot Card
-
-**Export** saves the mascot you see as a `.webp` card, with your changes not saved yet. The card shows the Initial Look, and it holds the mascot's name and the whole rig: every layer and image, the three looks, the Mask, the transition and the Voice. Send the file to a friend. **Import** reads a `.webp` card and adds it as a new mascot. Your other mascots stay as they are. It does not change the **Mascot** switch.
-
-- The new mascot takes the name in the card, and your AI answers as that name. A card with no name takes the file's name. A name already in use gets a number, such as "Captain 2".
-
-- A card with a bad field, or one from a different version, is refused. The error names the field, and your mascot stays as it was.
-- The card is an image file with your art inside it. Share it only with people you want to see that art.
-
-#### Publish a Mascot
-<!-- keywords: publish mascot, share mascot, upload mascot, mascot listing, mascot thumbnail, mascot too big, mascot size limit, 10 MB, update my mascot listing, delete my mascot listing, mascot changelog, community mascot -->
-
-**Publish** puts your mascot in the **Mascots** section of Community Creations, where other players download it as their own mascot. Sign in first.
-
-1. Open the **Mascot** tab and select your mascot.
-2. Select **Publish**. If you have unsaved changes, the app asks you to save or discard them first.
-3. Choose **Publish as new mascot**, or pick one of your listings to update it.
-4. Select **Publish**.
-
-- The thumbnail shows the Initial Look. To use your own image, upload it in **Thumbnail**. **Use Initial Look** puts the default back.
-- To update a listing, pick it in step 3. You can add a **Changelog Entry** for players who hold a copy. To delete a listing, select the trash button on your card in the **Mascots** section of Community Creations.
-- A mascot can hold up to 10 MB of images. If yours is larger, the app shows its size and sends nothing. Compress the layers, then publish again.
-- A mascot that uses art that comes with Formamorph can't be published. The message names the layers to replace. Morphie has no **Publish**.
-- After you publish, your mascot follows its listing, as your other published items do.
-
 ## AI Context
-<!-- keywords: debug a question, see the request, inspect help, wrong section, trace, export json, bug report, search block, samplers, request card -->
+<!-- keywords: debug a question, see the request, inspect help, sorted as, wrong section, trace, export json, bug report, search block, samplers, request card -->
 <!-- route: formaquestionAiContext -->
 
 **AI Context** shows what each question of the conversation sent to your AI, and what came back. Use it to find why an answer went wrong: a section the search missed, or a prompt you changed.
 
-1. Select **⋮** in the title bar, then **AI Context**.
+1. Select **More Actions**, then **AI Context**.
 
-The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-ai-context-inspector). Each question of the conversation is one page, and the dialog opens on the newest. The line above the blocks says **Question N of M** and quotes the question. The pager at the bottom turns to another question. The window closes while the dialog is open and opens again when you close it.
+The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-ai-context-inspector).
+
+- Each question of the conversation is one page, and the dialog opens on the newest.
+- The line above the blocks says **Question N of M** and quotes the question.
+- The pager at the bottom turns to another question.
+- The window closes while the dialog is open and opens again when you close it.
 
 | Block | What it shows |
 |---|---|
-| **Search** | The screen you had open, the item you had selected, and whether **Use the Open Screen** was on, the help preset, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
+| **Search** | The screen you had open, the item you had selected, and whether **Use the Open Screen** was on, the help preset, how **Sort Questions** sorted the question while it was on, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. It also names the searches that were on, the lead section, and the **Take Me There** target. |
+| **Request N: Sorting** | The sorting request of **Sort Questions**, and the reply your AI wrote |
 | **Request N: AI Search** | The **AI Search** request, and the lines your AI chose |
+| **Request N: AI World Search** | The request in which your AI chose the parts of your world to send, while **Read the World** and **AI Search** are on with a world open |
+| **Request N: Creating** | A request to make an entity, in place of the answer request, and the reply your AI wrote |
 | **Request N: Answer** | The answer request, its **Tool Rounds** when the lookup ran, its reasoning, and the answer as your AI wrote it |
 
 - A request card has the same blocks as a request in the game's inspector. Its header names the endpoint that served it, its reasoning fields, its **Max Tokens**, and its sampler values. A **Custom Prompt** mark shows when the prompt of that request differs from the default text.
@@ -824,7 +541,7 @@ On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the
 - The keyboard does not open until you select a field. With the keyboard open, the sheet fits the space above it.
 - The sheet has no **Wide View**, and you cannot move it or change its size.
 - **Open Guide** in the title bar shows the Guide full screen. See [Guide](#guide).
-- With the mascot on, the sheet shows the mascot's head at the left of the pill, over a dimmed backdrop. A source name opens its section on the wiki in your browser, not in a reader. See [Mascot](#mascot).
+- With the mascot on, the sheet shows the mascot's head at the left of the pill, over a dimmed backdrop. A source name opens its section on the wiki in your browser, not in a reader. See [Mascot](Formaquestion-Mascot).
 - **Formaquestion Settings** and **AI Context** fill the screen, so the sheet hides while one is open. When you close it, the sheet shows again as you left it, and an answer that was coming in continues.
 - On Android, the back action closes the sheet first, before a dialog under it.
 

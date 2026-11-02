@@ -147,8 +147,9 @@ describe('the main menu and a session from another tab', () => {
 });
 
 describe('a session arriving while the age gate already stands', () => {
+  // `hidden: true` reaches past the gate's aria-hidden, and so also into the top bar's measuring copies.
   const openCommunity = () =>
-    fireEvent.click(screen.getByRole('button', { name: /Community Creations/, hidden: true }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Community Creations/, hidden: true }).find((b) => !b.closest('[data-fold-measure-layer]'))!);
 
   it('still opens what raised the gate, and takes the session up', async () => {
     localStorage.removeItem('FORMAMORPH_ageGate');

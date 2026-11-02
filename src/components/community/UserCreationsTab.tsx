@@ -12,6 +12,7 @@ import UserService from "@/services/UserService";
 import { API_BASE_URL } from "@/lib/apiBase";
 import type { ProfileCreation } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Hint } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 import { thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { parseServerDate } from "@/lib/serverDate";
@@ -118,9 +119,9 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
   // asked to click through three empty filters to find that out.
   if (creations.length === 0) {
     return (
-      <p className="py-6 text-center text-helper text-muted-foreground">
-        {username || 'They'} hasn&apos;t published anything yet.
-      </p>
+      <Hint className="py-6 text-center">
+        {username || 'This account'} hasn&apos;t published anything yet.
+      </Hint>
     );
   }
 

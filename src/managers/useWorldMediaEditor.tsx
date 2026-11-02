@@ -34,10 +34,10 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   /** The Optimize Images run: its progress, and the click that starts it. */
   optimize: OptimizeControl;
 }): ListEditorParts {
-  const { worldOverview, entities, entityGroups, locations, dictionaries, placeholders } = useGameData();
+  const { worldOverview, entities, entityGroups, locations, dictionaries, bodies, placeholders } = useGameData();
   const allSections = useMemo(
-    () => mediaSections({ worldOverview, entities, entityGroups, locations, dictionaries }),
-    [worldOverview, entities, entityGroups, locations, dictionaries],
+    () => mediaSections({ worldOverview, entities, entityGroups, locations, dictionaries, bodies }),
+    [worldOverview, entities, entityGroups, locations, dictionaries, bodies],
   );
   const { grouping, setGrouping, largestFirst, setLargestFirst } = useMediaViewPrefs();
   // The filter lasts while the editor is open.
@@ -45,8 +45,8 @@ export function useWorldMediaEditor({ selectedId, onSelect, search, onGoTo, publ
   // Blank cards show under No Images and nowhere else.
   const blankOnly = filter === 'noImages';
   const blankSource = useMemo(
-    () => (blankOnly ? blankSections({ worldOverview, entities, entityGroups, locations, dictionaries }) : []),
-    [blankOnly, worldOverview, entities, entityGroups, locations, dictionaries],
+    () => (blankOnly ? blankSections({ worldOverview, entities, entityGroups, locations, dictionaries, bodies }) : []),
+    [blankOnly, worldOverview, entities, entityGroups, locations, dictionaries, bodies],
   );
   // What the gallery lays out, before the search narrows it.
   const shownSections = useMemo(() => {

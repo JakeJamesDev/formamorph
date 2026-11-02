@@ -20,13 +20,13 @@ const hero: SandboxEntity = { id: 'e-hero', name: 'Hero', traits: [] };
 
 const key: SandboxItem = {
   id: 'i-key', name: 'Brass Key', copies: [
-    { id: 'c-1', where: { kind: 'you' }, quantity: 1, equipped: false, slot: '', hidden: false },
-    { id: 'c-2', where: { kind: 'location', id: 'loc-vault' }, quantity: 2, equipped: false, slot: '', hidden: true },
+    { id: 'c-1', where: { kind: 'you' }, quantity: 1, equipped: false, slot: '', occupies: [], allowed: [], hidden: false },
+    { id: 'c-2', where: { kind: 'location', id: 'loc-vault' }, quantity: 2, equipped: false, slot: '', occupies: [], allowed: [], hidden: true },
   ],
 };
 const wand: SandboxItem = {
   id: 'i-wand', name: 'Wand', copies: [
-    { id: 'c-3', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', hidden: false, uses: 1, state: 'charged' },
+    { id: 'c-3', where: { kind: 'entity', id: 'e-keeper' }, quantity: 1, equipped: true, slot: 'Hand', occupies: ['Hand'], allowed: [], hidden: false, uses: 1, state: 'charged' },
   ],
 };
 
@@ -105,7 +105,7 @@ describe('executeStatCode items', () => {
   it('reads both faces of an item and the unidentified flag, and records reveal() as the validator op (Q19)', async () => {
     const ring: SandboxItem = {
       id: 'i-ring', name: 'Ring of Curses', unidentifiedName: 'Plain Ring', unidentifiedDescription: 'A dull band.',
-      copies: [{ id: 'c-9', where: { kind: 'you' }, quantity: 1, equipped: false, slot: '', hidden: false, unidentified: true }],
+      copies: [{ id: 'c-9', where: { kind: 'you' }, quantity: 1, equipped: false, slot: '', occupies: [], allowed: [], hidden: false, unidentified: true }],
     };
     const res = await run(`
       const ring = items["Ring of Curses"];
@@ -140,7 +140,7 @@ describe('executeStatCode items', () => {
   });
 
   it('reads a gone event copy as it stood before the event, listed at no owner', async () => {
-    const was = { id: 'gone', where: { kind: 'you' as const }, quantity: 2, equipped: false, slot: '', hidden: false, uses: 1 };
+    const was = { id: 'gone', where: { kind: 'you' as const }, quantity: 2, equipped: false, slot: '', occupies: [], allowed: [], hidden: false, uses: 1 };
     const res = await run(`
       const copy = self.event.copy;
       if (copy.id !== 'gone' || copy.quantity !== 2 || copy.owner !== 'Hero' || copy.uses !== 1) throw new Error('copy');

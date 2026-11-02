@@ -179,12 +179,12 @@ describe('TestBench panel', () => {
     renderBench(defective, { tab: 'aiContext', lens: { lens }, aiContext: buildAiContext(defective, lens) });
     expect(screen.getByText(/A turn from here ≈ ~\d/)).toBeInTheDocument();
     expect(screen.getByText('Entities Here')).toBeInTheDocument();
-    expect(screen.getByText(/can never be traveled to from here/)).toBeInTheDocument();
+    expect(screen.getByText(/can’t be reached from this one/)).toBeInTheDocument();
   });
 
   it('asks the AI Context instrument for a location when the lens stands nowhere', () => {
     renderBench(defective, { tab: 'aiContext' });
-    expect(screen.getByText(/Pick a location in the lens/)).toBeInTheDocument();
+    expect(screen.getByText(/Pick a location in the “at” list/)).toBeInTheDocument();
   });
 
   it('stands on the instrument it was handed', () => {
@@ -196,7 +196,7 @@ describe('TestBench panel', () => {
   it('renders an error group ahead of the rest', () => {
     renderBench({ ...world([]), locations: [{ id: 'l1', name: 'The Long Pier' }] });
     expect(screen.getByText('Errors')).toBeInTheDocument();
-    expect(screen.getByText(/No location is flagged as a starting location/)).toBeInTheDocument();
+    expect(screen.getByText(/No location is a starting location/)).toBeInTheDocument();
   });
 
   it('opens a finding item on its own tab when it overrides the rule’s section', async () => {
@@ -245,8 +245,8 @@ describe('TestBench lens bar', () => {
     },
   });
 
-  const pcSelector = () => screen.getByRole('combobox', { name: 'Test as character' });
-  const locationSelector = () => screen.getByRole('combobox', { name: 'Test at location' });
+  const pcSelector = () => screen.getByRole('combobox', { name: 'Testing as' });
+  const locationSelector = () => screen.getByRole('combobox', { name: 'Testing at' });
 
   it('shows the selection on both selectors', () => {
     renderLens({ pcTraitId: 't-sedge', locationId: 'market' });
@@ -303,6 +303,7 @@ describe('TestBench lens bar', () => {
     rerender(<TestBench {...props} tab="opening" />);
     expect(screen.getByRole('tab', { name: 'Opening' })).toHaveAttribute('aria-selected', 'true');
     expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    rerender(<TestBench {...props} tab="aiContext" />);
     expect(locationSelector()).toHaveTextContent('The Long Market');
   });
 
@@ -318,8 +319,36 @@ describe('TestBench lens bar', () => {
     const { rerender } = render(<TestBench {...props} />);
     expect(pcSelector()).toBeInTheDocument();
     rerender(<TestBench {...props} tab="issues" />);
-    expect(screen.queryByRole('combobox', { name: 'Test as character' })).toBeNull();
-    expect(screen.queryByRole('combobox', { name: 'Test at location' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Testing as' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Testing at' })).toBeNull();
+  });
+
+  it('shows only Testing as on Opening, which starts at its own Starting Location', () => {
+    const props = benchProps(groupFindings(runRules(lensWorld)), {
+      tab: 'opening',
+      lens: {
+        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
+        pcOptions: lensPcOptions(lensWorld),
+        locationOptions: lensLocationOptions(lensWorld),
+      },
+    });
+    render(<TestBench {...props} />);
+    expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    expect(screen.queryByRole('combobox', { name: 'Testing at' })).toBeNull();
+  });
+
+  it.each(['triggers', 'aiContext'] as const)('keeps Testing at on %s, which reads the location', (tab) => {
+    const props = benchProps(groupFindings(runRules(lensWorld)), {
+      tab,
+      lens: {
+        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
+        pcOptions: lensPcOptions(lensWorld),
+        locationOptions: lensLocationOptions(lensWorld),
+      },
+    });
+    render(<TestBench {...props} />);
+    expect(pcSelector()).toBeInTheDocument();
+    expect(locationSelector()).toHaveTextContent('The Long Market');
   });
 
   /** The bench as `pinned` would show it, with the PC pinning through `placeholderId`. */
@@ -405,7 +434,7 @@ describe('TestBench script check', () => {
 
   it('runs the check on demand and never on its own', async () => {
     const { issues } = renderBench(world([]), { issues: { scriptCount: 2 } });
-    expect(screen.getByText('2 scripts run separately')).toBeInTheDocument();
+    expect(screen.getByText('2 scripts, checked only when you ask')).toBeInTheDocument();
     // Rendering alone must not have run anything — a VM per stat is exactly what the badge can't afford.
     expect(issues.onCheckScripts).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', CHECK));
@@ -419,7 +448,7 @@ describe('TestBench script check', () => {
 
   it('says what it checked once a run has finished, and offers another', () => {
     renderBench(world([]), { issues: { scriptCount: 1 } });
-    expect(screen.getByText('1 script runs separately')).toBeInTheDocument();
+    expect(screen.getByText('1 script, checked only when you ask')).toBeInTheDocument();
     cleanup();
     renderBench(world([]), { issues: { scriptCount: 1, codeCheckStatus: 'done' } });
     expect(screen.getByText('Checked 1 script')).toBeInTheDocument();
@@ -431,7 +460,7 @@ describe('TestBench script check', () => {
     // whole result disappears into the fold is a button that reads as broken.
     renderBench(world([]), { issues: { scriptCount: 2, advanced: false } });
     expect(screen.queryByRole('button', { name: /Check Scripts|Check Again/ })).toBeNull();
-    expect(screen.queryByText(/scripts run separately/)).toBeNull();
+    expect(screen.queryByText(/scripts, checked only when you ask/)).toBeNull();
   });
 });
 
@@ -498,7 +527,7 @@ describe('TestBench quick fixes', () => {
   it('offers no Fix on a row whose repair is a judgment call', () => {
     // No location is flagged as starting: which one should be is the author's decision, so the row is Open only.
     renderBench({ ...world([]), locations: [{ id: 'l1', name: 'The Long Pier' }] });
-    expect(screen.getByText(/No location is flagged as a starting location/)).toBeInTheDocument();
+    expect(screen.getByText(/No location is a starting location/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull();
   });
 });
@@ -576,7 +605,7 @@ describe('TestBench Simple-mode fold', () => {
     const fold = screen.getByRole('button', FOLD);
     expect(fold).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(fold);
-    expect(screen.getByText(/Switch the editor to Advanced/)).toBeInTheDocument();
+    expect(screen.getByText(/switch to Advanced beside the World Editor title/)).toBeInTheDocument();
     // Expanding names no item and offers no repair — one click must not rewrite a field never seen.
     expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Open|^Dismiss: / })).toBeNull();
@@ -672,8 +701,8 @@ describe('TestBench Opening instrument', () => {
     };
     const data = buildOpening(picked, buildLens(picked, { pcTraitId: 't-sedge', locationId: null }), {});
     renderBench(picked, { tab: 'opening', opening: { data } });
-    expect(screen.getByText('Lens Pick')).toBeInTheDocument();
-    expect(screen.getByText('defaults plus the lens pick')).toBeInTheDocument();
+    expect(screen.getByText('Testing As')).toBeInTheDocument();
+    expect(screen.getByText('the defaults and the “Testing as” pick')).toBeInTheDocument();
   });
 
   it('re-bands live as the slider scrubs, without touching the world', async () => {
@@ -706,7 +735,7 @@ describe('TestBench Opening instrument', () => {
     expect(screen.getByText('Trust')).toBeInTheDocument();
     expect(screen.getByText('Wary')).toBeInTheDocument();
     expect(screen.getByText('Min 5 · Regen +2')).toBeInTheDocument();
-    expect(screen.getByText('Off at game start: Doubt.')).toBeInTheDocument();
+    expect(screen.getByText('Off at game start: Doubt')).toBeInTheDocument();
     // The player's row says the zeros too, so an absent field is never mistaken for a hidden one.
     expect(screen.getByText('Min 0 · Regen 0')).toBeInTheDocument();
     screen.getByRole('slider', { name: 'Scrub Trust' }).focus();
@@ -753,14 +782,14 @@ describe('TestBench Opening instrument', () => {
     const data = pooledData(pooledData().pool[1].key);
     renderBench(pooledWorld, { tab: 'opening', opening: { data } });
     expect(screen.getByText('Page One')).toBeInTheDocument();
-    expect(screen.getByText(/no narration request goes out/)).toBeInTheDocument();
+    expect(screen.getByText(/turn one sends no narration request/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /System Prompt/ })).toBeNull();
   });
 
   it('says a switched-off list opens on the default Opening Action', () => {
     const off: RuleWorld = { ...pooledWorld, worldOverview: { ...pooledWorld.worldOverview, openingsEnabled: false } };
     renderBench(off, { tab: 'opening', opening: { data: buildOpening(off, buildLens(off, EMPTY_LENS), {}) } });
-    expect(screen.getByText(/openings list is off/)).toBeInTheDocument();
+    expect(screen.getByText(/“Openings” is off/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Prompt/ })).toBeInTheDocument();
   });
 
@@ -786,7 +815,7 @@ describe('TestBench Opening instrument', () => {
   it('names the picked persona in the preview line', () => {
     renderBench(personaWorld, { tab: 'opening', opening: { data: personaData('e-wren') } });
     expect(screen.getByText(/^Turn one as Wren/)).toBeInTheDocument();
-    expect(screen.getByText('Sets the persona')).toBeInTheDocument();
+    expect(screen.getByText('Picks the persona you play')).toBeInTheDocument();
   });
 
   it('says no persona in the preview line under None', () => {

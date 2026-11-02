@@ -9,11 +9,14 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FieldError, Hint } from '@/components/ui/typography';
 
 interface AgeGateDialogProps {
   open: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  /** What Decline does on this surface, shown above the buttons. */
+  declineNote: string;
   busy?: boolean;
   error?: string | null;
   acceptLabel?: string;
@@ -32,6 +35,7 @@ export function AgeGateDialog({
   open,
   onAccept,
   onDecline,
+  declineNote,
   busy = false,
   error = null,
   acceptLabel = 'Accept',
@@ -51,8 +55,8 @@ export function AgeGateDialog({
             Adult Content Ahead
           </DialogTitle>
           <DialogDescription>
-            Community Creations carries worlds, characters, and dictionaries written by other players.
-            Some of what they write is adult.
+            Community Creations holds worlds, entities, dictionaries, avatars, mascots and prompts that other
+            players publish. Some of it is adult content.
           </DialogDescription>
         </DialogHeader>
 
@@ -63,12 +67,9 @@ export function AgeGateDialog({
               adult content where you live.
             </p>
 
-            <p className="text-helper text-muted-foreground">
-              If you decline, nothing else changes. Your library, your worlds, and everything you have made
-              stay yours.
-            </p>
+            <Hint>{declineNote}</Hint>
 
-            {error && <p role="alert" className="text-helper text-destructive">{error}</p>}
+            {error && <FieldError role="alert">{error}</FieldError>}
           </div>
         </ScrollArea>
 

@@ -33,19 +33,25 @@ const plainWren = { ...wren, vrmPick: undefined } as Entity;
 const custom: CharacterData = { bodyMorphs: { Belly: 0.1 }, currentHairStyle: 'long', hairLength: 0.5, hairColor: '#ff0000' };
 const golemStats = (value: number): EntityStatValues => ({ golem: [{ ...cracks, value }] });
 
-const show = ({ cast, scene, overview = {}, seed }: {
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
+/** Everyone stands in the one place the player is. */
+const hereAll = (cast: Entity[]) => cast.map((e) => ({ ...e, locations: ['yard'] })) as Entity[];
+
+const show = ({ cast: authored, scene, overview = {}, seed }: {
   cast: Entity[];
   scene: SceneEntity[];
   overview?: Record<string, unknown>;
   seed?: (g: Gameplay) => void;
 }) => {
   const onEntityClick = vi.fn();
+  const cast = hereAll(authored);
   const view = renderInGame(
     <LeftPanel entities={cast} onEntityClick={onEntityClick} narrationPrompt={defaultSystemPrompt} />,
     {
-      world: { entities: cast, worldOverview: { ...worldFixture().worldOverview, vrmStore: store, ...overview } } as never,
+      world: { entities: cast, locations: [YARD], worldOverview: { ...worldFixture().worldOverview, vrmStore: store, ...overview } } as never,
       seed: (g) => {
         g.setVisibleEntities(scene);
+        g.setCurrentLocation(YARD as never);
         g.setCharacterData(custom);
         g.setBodyMorphValues({ Belly: 0.3 });
         g.setEntityStats(golemStats(40));
@@ -82,6 +88,16 @@ describe('LeftPanel — one entity view', () => {
     expect(screen.queryByTestId('vrm-viewer')).toBeNull();
   });
 
+  it('opens on the first met entity, never on a stranger listed before it', async () => {
+    const stranger = { ...heron, id: 'shade', name: 'The Shade', images: [{ data: PICTURE }], strangerName: 'a hooded figure' } as Entity;
+    show({
+      cast: [stranger, golem],
+      scene: [{ name: 'The Shade', alias: 'a hooded figure', revealed: false }, { name: 'Golem', revealed: true }],
+    });
+    await waitFor(() => expect(lastAvatarUrl()).toBe(store.golem.file.data));
+    expect(screen.queryByAltText('The Shade')).toBeNull();
+  });
+
   it('lets the stored preference override the order', () => {
     show({
       cast: [golem], scene: [{ name: 'Golem', revealed: true }],
@@ -102,6 +118,71 @@ describe('LeftPanel — one entity view', () => {
     expect(screen.queryByAltText('Heron')).toBeNull();
     expect(await screen.findByTestId('vrm-viewer')).toBeInTheDocument();
     expect(onEntityClick).not.toHaveBeenCalled();
+  });
+
+  it('marks the row of the entity the view shows, and moves the mark with a new selection', () => {
+    show({
+      cast: [heron, golem], scene: [{ name: 'Heron', revealed: true }, { name: 'Golem', revealed: true }],
+    });
+    const row = (name: string) => entityRow(name).closest('button');
+    expect(row('Heron')).toHaveAttribute('aria-current', 'true');
+    expect(row('Golem')).not.toHaveAttribute('aria-current');
+
+    fireEvent.click(entityRow('Golem'));
+    expect(row('Golem')).toHaveAttribute('aria-current', 'true');
+    expect(row('Heron')).not.toHaveAttribute('aria-current');
+  });
+
+  it('selects an entity with nothing to show first, keeps the view on its fallback, then opens the popup', () => {
+    const plain = { id: 'plain', name: 'Plain', locations: [] } as unknown as Entity;
+    const { onEntityClick } = show({
+      cast: [heron, plain], scene: [{ name: 'Heron', revealed: true }, { name: 'Plain', revealed: true }],
+    });
+    fireEvent.click(entityRow('Plain'));
+    expect(onEntityClick).not.toHaveBeenCalled();
+    expect(entityRow('Plain').closest('button')).toHaveAttribute('aria-current', 'true');
+    expect(entityRow('Heron').closest('button')).not.toHaveAttribute('aria-current');
+    expect(screen.getByAltText('Heron')).toBeInTheDocument();
+
+    fireEvent.click(entityRow('Plain'));
+    expect(onEntityClick).toHaveBeenCalledWith('Plain');
+  });
+
+  it('selects first with the entity view hidden, then opens the popup', () => {
+    const { onEntityClick } = show({
+      cast: [heron, golem], scene: [{ name: 'Heron', revealed: true }, { name: 'Golem', revealed: true }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Hide Entity View' }));
+    fireEvent.click(entityRow('Golem'));
+    expect(onEntityClick).not.toHaveBeenCalled();
+    expect(entityRow('Golem').closest('button')).toHaveAttribute('aria-current', 'true');
+
+    fireEvent.click(entityRow('Golem'));
+    expect(onEntityClick).toHaveBeenCalledWith('Golem');
+  });
+
+  it('opens the popup at once on the entity the view already shows', () => {
+    const { onEntityClick } = show({ cast: [heron], scene: [{ name: 'Heron', revealed: true }] });
+    fireEvent.click(entityRow('Heron'));
+    expect(onEntityClick).toHaveBeenCalledWith('Heron');
+  });
+
+  it('selects and opens the popup together on mobile, even with nothing to show', () => {
+    mobile.value = true;
+    const plain = { id: 'plain', name: 'Plain', locations: [] } as unknown as Entity;
+    const { onEntityClick } = show({ cast: [plain], scene: [{ name: 'Plain', revealed: true }] });
+    fireEvent.click(entityRow('Plain'));
+    expect(onEntityClick).toHaveBeenCalledWith('Plain');
+    expect(entityRow('Plain').closest('button')).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('marks the persona row when the view falls back to the played entity', () => {
+    show({
+      cast: [heron, wren], scene: [{ name: 'Heron', revealed: true }],
+      seed: (g) => g.setPersonaRef({ source: 'world', entityId: 'wren' }),
+    });
+    expect(entityRow('Wren').closest('button')).toHaveAttribute('aria-current', 'true');
+    expect(entityRow('Heron').closest('button')).not.toHaveAttribute('aria-current');
   });
 
   it("opens on the played entity's Avatar, in the save's customization with the player's stat morphs", async () => {

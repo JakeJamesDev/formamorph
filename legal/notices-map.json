@@ -1,0 +1,53 @@
+{
+  "withDependencies": [
+    "@capacitor/android",
+    "@capacitor/app",
+    "@capacitor/filesystem",
+    "@capacitor/share",
+    "phonemizer",
+    "@huggingface/jinja",
+    "@preact/signals-core",
+    "@lexical/internal",
+    "@pixiv/three-vrm-core",
+    "@pixiv/three-vrm-materials-hdr-emissive-multiplier",
+    "@pixiv/three-vrm-materials-mtoon",
+    "@pixiv/three-vrm-materials-v0compat",
+    "@pixiv/three-vrm-node-constraint",
+    "@pixiv/three-vrm-springbone",
+    "flatbuffers",
+    "guid-typescript",
+    "long",
+    "platform",
+    "protobufjs"
+  ],
+  "packageOnly": [
+    "tailwindcss",
+    "tailwindcss-animate"
+  ],
+  "overrides": {
+    "@capacitor/synapse": {
+      "license": "MIT"
+    },
+    "class-variance-authority": {
+      "textFile": "package-licenses/class-variance-authority.txt"
+    },
+    "guid-typescript": {
+      "textFile": "package-licenses/guid-typescript.txt"
+    },
+    "lazy-val": {
+      "textFile": "package-licenses/lazy-val.txt"
+    },
+    "onnxruntime-common": {
+      "textFile": "package-licenses/onnxruntime.txt"
+    },
+    "onnxruntime-web": {
+      "textFile": "package-licenses/onnxruntime.txt"
+    },
+    "react-remove-scroll-bar": {
+      "textFile": "package-licenses/react-remove-scroll-bar.txt"
+    },
+    "wordlist-english": {
+      "textFile": "package-licenses/wordlist-english.txt"
+    }
+  }
+}

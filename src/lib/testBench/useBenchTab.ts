@@ -1,5 +1,5 @@
 /**
- * Which Instrument the Bench stands on, surviving the panel unmounting: one sessionStorage record keyed by
+ * Which Instrument the Bench shows, surviving the panel unmounting: one sessionStorage record keyed by
  * world id, on the same lifetime rationale as the lens — a test setup is worth surviving a tab switch or the
  * mobile sheet closing, and not worth greeting the author with next week.
  */
@@ -33,7 +33,7 @@ export function useBenchTab(worldId: string | null | undefined, { open }: { open
   const [tab, setTabState] = useState<BenchTab>(DEFAULT_BENCH_TAB);
   const routed = useRef<BenchTab | null>(null);
 
-  // Opening the Bench is the only thing that seeds, so switching worlds mid-session lands each on its own tab.
+  // Opening the Bench is the only thing that seeds, so switching worlds mid-session opens each on its own tab.
   useEffect(() => {
     if (!open) return;
     if (routed.current) {

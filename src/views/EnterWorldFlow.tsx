@@ -92,13 +92,14 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, statGroups: rawStatGroups, locations: rawLocations, placeholders,
     dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups, worldOverview, items: worldItems, placements: worldPlacements,
+    slots: worldSlots, bodies: worldBodies,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
 
   const [showSetupWorkspace, setShowSetupWorkspace] = useState(false);
   // The workspace stays mounted for one exit animation after it closes, so the dialog can fade out.
   const workspaceMounted = useLingeringMount(showSetupWorkspace, 250);
-  // Set only when the Introduction has no setup screen to sit over: the traits to start with once the
+  // Set only when the Introduction has no setup screen behind it: the traits to start with once the
   // player closes it. A world with nothing to choose would otherwise flash the overlay and enter anyway.
   const [enterAfterIntro, setEnterAfterIntro] = useState<EntryDraft | null>(null);
   const [entryDraft, setEntryDraft] = useState<EntryDraft>(emptyEntryDraft);
@@ -153,7 +154,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     });
     return () => { cancelled = true; };
   }, [castKey, libraryCastData, isMountedRef]);
-  // Where the persona's Avatar lands. A library persona reads its pick from the loaded record.
+  // The persona's Avatar pick. A library persona reads its pick from the loaded record.
   const entryVrm = (persona: PersonaRef, libraryPersona?: Entity) => entryVrmPick({
     persona,
     libraryPersona: libraryPersona ?? (persona.source === 'library' ? libraryCastData.get(persona.entityId) : undefined),
@@ -207,9 +208,9 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const entryWorld = useMemo<EntryTraitWorld>(
     () => ({
       traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
-      items: worldItems, placements: worldPlacements, locations: rawLocations,
+      items: worldItems, placements: worldPlacements, slots: worldSlots, bodies: worldBodies, locations: rawLocations,
     }),
-    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, rawLocations],
+    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups, worldItems, worldPlacements, worldSlots, worldBodies, rawLocations],
   );
   const rawEntryWorld: EntryTraitWorld = {
     traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
@@ -286,7 +287,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       }),
     [resolvedWorldEntities, resolveEntityText, locations],
   );
-  /** The Custom Persona entity, which stands in None's place. */
+  /** The Custom Persona entity, which replaces None. */
   const customPersonaOption = useMemo<PersonaOption | undefined>(() => {
     const marked = customPersonaEntity(resolvedWorldEntities);
     return marked && personaOption(resolveEntityText)(marked);
@@ -320,7 +321,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       custom: !!customPersonaOption,
     },
   });
-  // Reads a library persona for page one. One deleted since the pick lands as None.
+  // Reads a library persona for page one. One deleted since the pick resolves to None.
   const loadPersonaPick = async (ref: PersonaRef): Promise<PersonaPick> => {
     if (ref.source !== 'library') return { ref };
     try {
@@ -390,7 +391,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       if (entryRequest.current === request) {
         entryStarted.current = false;
         console.error('Could not finalize enter-world library additions', error);
-        toastError(error, { headline: 'Formamorph could not prepare those library additions. Try again.' });
+        toastError(error, { headline: "Couldn't prepare those library additions. Try again." });
       }
     } finally {
       if (entryRequest.current === request) cancelEntryResolution();
@@ -425,6 +426,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,
+    hasCustomPersona: !!customPersonaOption,
     showsAvatar: showsDraftVrm,
   }, mode);
   const showEnterStep = (step: NavigableStep) => {
@@ -508,7 +510,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       (error: unknown) => {
         entryStarted.current = false;
         console.error('Could not read the Quick Start persona', error);
-        toastError(error, { headline: 'Formamorph could not read that persona. Try again.' });
+        toastError(error, { headline: "Couldn't read that persona. Try again." });
       },
     );
   };
@@ -596,7 +598,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
               saveWorldAdditionDefaults(selectedWorld.id, entryDraft);
               return true;
             } catch (error) {
-              toastError(error, { headline: 'Formamorph could not save these additions. Try again.' });
+              toastError(error, { headline: "Couldn't save these additions. Try again." });
               return false;
             }
           }}

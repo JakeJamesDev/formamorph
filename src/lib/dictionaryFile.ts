@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry, Placeholder, LibraryDetails } from '@/types';
+import { WrittenImportError } from './writtenImportError';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
 import type { WorldAssociation } from './compatibleWorlds';
@@ -73,10 +74,10 @@ export function buildDictionaryFile(
  * are migrated on the way in.
  */
 export function parseDictionaryFile(raw: unknown): Dictionary {
-  if (!raw || typeof raw !== 'object') throw new Error('Not a valid dictionary file.');
+  if (!raw || typeof raw !== 'object') throw new WrittenImportError('Not a valid dictionary file.');
   const obj = raw as Record<string, unknown>;
   if (obj.formamorphKind !== DICTIONARY_FILE_KIND) {
-    throw new Error('This file is not a dictionary. Import worlds from the main menu.');
+    throw new WrittenImportError('This file is not a dictionary. Import worlds from the main menu.');
   }
   const entries = Array.isArray(obj.entries) ? (obj.entries as DictionaryEntry[]) : [];
   const tags = Array.isArray(obj.tags)
@@ -107,10 +108,10 @@ export function parseDictionaryImport(raw: unknown, fallbackName?: string): Dict
   if (raw && typeof raw === 'object') {
     const kind = (raw as Record<string, unknown>).formamorphKind;
     if (kind === DICTIONARY_FILE_KIND) return parseDictionaryFile(raw);
-    if (kind === WORLD_FILE_KIND) throw new Error("That's a world file — import it from the Worlds tab.");
-    if (kind === SAVE_FILE_KIND) throw new Error("That's a save file, not a dictionary.");
+    if (kind === WORLD_FILE_KIND) throw new WrittenImportError("That's a world file. Import it from the Worlds tab.");
+    if (kind === SAVE_FILE_KIND) throw new WrittenImportError("That's a save file, not a dictionary.");
   }
   const converted = convertLorebook(raw, { fallbackName });
   if (converted) return converted;
-  throw new Error('Unrecognized file — import a Formamorph dictionary or a SillyTavern / character-card lorebook.');
+  throw new WrittenImportError('This file is not a dictionary. Import a Formamorph dictionary or a SillyTavern lorebook.');
 }

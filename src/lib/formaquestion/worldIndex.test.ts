@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { encodePlaceholderToken } from '@/lib/placeholders';
+import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
-import type { Dictionary, Entity, Item, Stat, Tool, World } from '@/types';
-import { buildWorldIndex, worldIndexOf, type WorldIndexInput } from './worldIndex';
+import type { Currency, Dictionary, Entity, Item, Stat, Tool, World } from '@/types';
+import { buildWorldIndex, chipsFromText, worldIndexOf, worldTextOf, type WorldIndexInput } from './worldIndex';
 
 const stat = (patch: Partial<Stat> = {}): Stat => ({ id: 'grit', name: 'Grit', type: 'number', description: 'How long you hold on.', min: 0, max: 100, value: 40, regen: 0, descriptors: [], ...patch });
 
@@ -86,6 +86,22 @@ describe('the World Index', () => {
     expect(top.markdown).not.toContain('Ashford');
   });
 
+  it('states an item’s Value with its Currency, and a bare Value with none', () => {
+    const item = (patch: Partial<Item>): Item => ({ id: 'draught', name: 'Healing Draught', value: 10, statEffects: [], traitEffects: [], equipRequires: [], ...patch });
+    const section = (draught: Item) => buildWorldIndex(world({ items: [draught], currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }] })).docs.search('draught', 1)[0].markdown;
+    expect(section(item({ currencyId: 'goats' }))).toContain('Value: 10 Goats');
+    expect(section(item({}))).toMatch(/Value: 10(?! Goats)/);
+    expect(section(item({ currencyId: 'gone' }))).toMatch(/Value: 10(?! Goats)/);
+  });
+
+  it('states a coin Currency’s Value as its Breakdown', () => {
+    const coin = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [] });
+    const draught: Item = { id: 'draught', name: 'Healing Draught', value: 105, currencyId: 'crowns', statEffects: [], traitEffects: [], equipRequires: [] };
+    const currencies: Currency[] = [{ id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } }];
+    const index = buildWorldIndex(world({ items: [draught, coin('copper', 'Copper'), coin('gold', 'Gold')], currencies }));
+    expect(index.docs.search('draught', 1)[0].markdown).toContain('Value: 1 Gold, 5 Copper');
+  });
+
   it('states an item’s Uses and When Empty, and names a Becomes target only when the world holds it', () => {
     const item = (id: string, name: string, patch: Partial<Item> = {}): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...patch });
     const section = (items: Item[]) => buildWorldIndex(world({ items })).docs.search('draught', 1)[0].markdown;
@@ -147,5 +163,35 @@ describe('a rebuild on the bundled worlds', () => {
     const median = runs.sort((a, b) => a - b)[2];
     console.info(`World Index rebuild on ${largest.path} (${size(largest.world)} chars): median ${median.toFixed(1)} ms`);
     expect(median).toBeLessThan(REBUILD_BAR_MS);
+  });
+});
+
+describe('chipsFromText', () => {
+  const town = { id: 'ph-town', name: 'Town', values: [{ id: 'v1', text: 'Ashford' }, { id: 'v2', text: 'Bryn' }] };
+  const read = (text: string, patch: Partial<WorldIndexInput> = {}) => chipsFromText(world({ placeholders: [town], ...patch }))(text);
+
+  it('turns a chip the World Index showed back into that placeholder, with a placement of its own', () => {
+    const authored = `Born in ${encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p1' })}.`;
+    const shown = worldTextOf(world({ placeholders: [town] }))(authored);
+
+    const drafted = read(shown);
+
+    const [, token] = drafted.match(/^Born in (\{\{ph:[^}]+\}\})\.$/)!;
+    expect(decodePlaceholderToken(token)).toMatchObject({ id: 'ph-town', mode: 'world' });
+    expect(decodePlaceholderToken(token)!.placementId).not.toBe('p1');
+    expect(worldTextOf(world({ placeholders: [town] }))(drafted)).toBe(shown);
+  });
+
+  it('matches the name in any case, and turns Built-in labels into their tokens', () => {
+    expect(read('{town} greets {Persona Name}.')).toMatch(/^\{\{ph:ph-town:world:[^}]+\}\} greets \{\{user\}\}\.$/);
+  });
+
+  it('leaves braces that name nothing, or more than one placeholder, as written', () => {
+    const twin = { ...town, id: 'ph-town-2' };
+    expect(read('{Harbor} and {Town}', { placeholders: [town, twin] })).toBe('{Harbor} and {Town}');
+  });
+
+  it('leaves a stored token alone', () => {
+    expect(read('{{user}} and {{Town}}', { placeholders: [{ ...town, name: 'user' }] })).toBe('{{user}} and {{Town}}');
   });
 });

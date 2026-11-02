@@ -27,13 +27,12 @@ const AccountDeletionContext = createContext<AccountDeletionValue | null>(null);
 /**
  * Ending your own account, held above the view switch.
  *
- * One flow with two doors into it: the profile dialog, and the Privacy Policy prompt's third button. The
- * second is why this cannot live inside the menu — that prompt stands above every screen, and an account
- * that will not accept the policy still deserves the way out.
+ * One flow with two entry points: the profile dialog, and the Privacy Policy prompt's third button. The
+ * second is why this cannot live inside the menu: that prompt renders above every screen, and an account
+ * that will not accept the policy can still delete itself.
  *
- * It also carries the other half of the same story. A sign-in inside the grace period cancels the
- * deletion, and the server says so in the login reply; that notice is raised from here because this is
- * where the deletion is spoken about.
+ * It also raises the cancellation notice. A sign-in inside the grace period cancels the deletion, and the
+ * server says so in the login reply.
  */
 export function AccountDeletionProvider({ children }: { children: ReactNode }) {
   const [flowOpen, setFlowOpen] = useState(false);
@@ -89,12 +88,12 @@ export function AccountDeletionProvider({ children }: { children: ReactNode }) {
       <Dialog open={cancelledOpen} onOpenChange={setCancelledOpen}>
         <DialogContent surface="deletionCancelled" className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Deletion Cancelled</DialogTitle>
-            <DialogDescription>Your account deletion was cancelled.</DialogDescription>
+            <DialogTitle>Deletion Canceled</DialogTitle>
+            <DialogDescription>Signing in canceled your account deletion.</DialogDescription>
           </DialogHeader>
 
           <p className="text-label text-muted-foreground">
-            Signing in called it off. Your account and everything in it are as they were.
+            Your account and everything in it are unchanged.
           </p>
 
           <DialogFooter>

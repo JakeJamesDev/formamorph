@@ -140,7 +140,7 @@ describe('the Code rider in the Prompts tab', () => {
   it('sits in the rail after Lookup with no Options row, and shows the Default rider read-only', async () => {
     renderTab();
     const rows = within(rail()).getAllByRole('button').map((row) => row.getAttribute('aria-label') ?? row.textContent);
-    expect(rows).toEqual(['Answer', 'Answer Options', 'Search', 'Search Options', 'Lookup', 'Lookup Options', 'Code', 'Editor World', 'Game World']);
+    expect(rows).toEqual(['Answer', 'Answer Options', 'Search', 'Search Options', 'Sorting', 'Sorting Options', 'Creating', 'Creating Options', 'Lookup', 'Lookup Options', 'Code', 'Editor World', 'Game World']);
     await userEvent.setup().click(within(rail()).getByRole('button', { name: 'Code' }));
     expect(editor('Code Prompt')).toHaveAttribute('contenteditable', 'false');
     expect(editor('Code Prompt')).toHaveTextContent('Before the AI');

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, type InventoryCall, type InventoryOp } from '.';
 import type { Item, ItemCopy } from '@/types';
 
@@ -6,7 +7,7 @@ const item = (id: string, over: Partial<Item> = {}): Item =>
   ({ id, name: id, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 
 const potion = item('potion', { uses: 1 });
-const ring = item('ring', { stackable: false, slotId: 'finger' });
+const ring = item('ring', { stackable: false, slotRule: { mode: 'either', slotIds: ['finger'] } });
 const wand = item('wand', { uses: 3, whenEmpty: { kind: 'stays' } });
 const you = { kind: 'you' } as const;
 const bram = { kind: 'entity', id: 'bram' } as const;
@@ -17,7 +18,7 @@ const copy = (id: string, itemId: string, over: Partial<ItemCopy> = {}): ItemCop
 
 const call = (source: InventoryCall['source'] = 'script'): InventoryCall => {
   let i = 0;
-  return { world: { items: [potion, ring, wand], slots: [{ id: 'finger', name: 'Finger' }] }, source, newId: () => `n${i++}` };
+  return { world: { items: [potion, ring, wand], slots: [{ id: 'finger', name: 'Finger' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'finger' }] })] }, source, newId: () => `n${i++}` };
 };
 const events = (copies: ItemCopy[], ops: InventoryOp[], source?: InventoryCall['source']) =>
   applyInventoryOps(copies, ops, call(source)).events.map(({ timing, copyId, where, quantity }) => [timing, copyId, where, quantity]);

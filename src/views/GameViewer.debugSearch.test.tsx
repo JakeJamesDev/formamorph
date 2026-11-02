@@ -38,7 +38,7 @@ describe('the AI Context search box', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
     await waitFor(() => expect(registry.get().dialog).toBeNull());
     requester.send('aiContext');
-    const box = await screen.findByPlaceholderText('Search (space-separated terms)…');
+    const box = await screen.findByPlaceholderText('Search terms, separated by spaces');
 
     expect(screen.queryByRole('button', { name: 'Clear Search' })).toBeNull();
     // Whitespace is text too: the X shows before any term parses.

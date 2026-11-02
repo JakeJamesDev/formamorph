@@ -48,11 +48,11 @@ const open = (host: 'world' | 'library') => render(
 describe('the book panel’s own Placeholders section', () => {
   it('shows in a world host', () => {
     open('world');
-    expect(screen.getByText(/Placeholders of this dictionary/)).toBeInTheDocument();
+    expect(screen.getByText(/These placeholders belong to this dictionary/)).toBeInTheDocument();
   });
 
   it('stays out of a library book’s own store', () => {
     open('library');
-    expect(screen.queryByText(/Placeholders of this dictionary/)).toBeNull();
+    expect(screen.queryByText(/These placeholders belong to this dictionary/)).toBeNull();
   });
 });

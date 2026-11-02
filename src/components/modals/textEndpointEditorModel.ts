@@ -37,7 +37,7 @@ export interface TextEndpointEditorModel {
   onReset: (id: string) => void;
 }
 
-/** The editor on the active preset, as Settings → AI Endpoints uses it: a pick changes the active endpoint. */
+/** The editor on the active preset, as Settings → Endpoints uses it: a pick changes the active endpoint. */
 export function activePresetEditor(s: TextEndpointSource): TextEndpointEditorModel {
   return {
     presets: { builtIn: s.builtinTextEndpointPresets, user: s.textEndpointPresets },

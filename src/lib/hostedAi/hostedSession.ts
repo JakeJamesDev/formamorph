@@ -2,7 +2,6 @@ import AuthService from '@/services/AuthService';
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
 import { hostedReasoningCapability, parseHostedState, recordOf, type HostedState, type HostedUsage } from './hostedState';
 import { HOSTED_STATE_URL, hostedAckUrl } from './hostedUrls';
-import { WARN_THRESHOLDS } from './hostedAllowance';
 import { hostedStateSends, readHostedRefusal, type HostedPresetState, type HostedRefusal } from './refusals';
 import { HostedTurn, HostedTurnRegistry } from './hostedTurn';
 
@@ -14,6 +13,8 @@ export interface HostedSnapshot {
   presetState: HostedPresetState;
   /** The served model's capability record; unknown with no model read yet. */
   capability: ReasoningCapability;
+  /** Counts the finished reads of the hosted state, which a usage event never does. */
+  readCount: number;
 }
 
 interface HostedSessionOptions {
@@ -39,6 +40,7 @@ export class HostedSession {
   /** A refusal's state, which holds until the next successful read. */
   private refused: HostedPresetState | null = null;
   private reading: Promise<void> | null = null;
+  private readCount = 0;
   private snapshot: HostedSnapshot;
   /** Capability records by served model id, so a model the server switches to reads its own. */
   private readonly capabilities = new Map<string, ReasoningCapability>();
@@ -107,12 +109,17 @@ export class HostedSession {
       capability = hostedReasoningCapability(model.capabilities);
       this.capabilities.set(model.id, capability);
     }
-    return { hosted: this.hosted, presetState, capability: capability ?? hostedReasoningCapability(undefined) };
+    return { hosted: this.hosted, presetState, capability: capability ?? hostedReasoningCapability(undefined), readCount: this.readCount };
   }
 
   private changed() {
     this.snapshot = this.build();
     this.listeners.forEach((listener) => listener());
+  }
+
+  /** Drops the old account's state and tells subscribers, when the token changed since the last snapshot. Reads nothing. */
+  accountChanged() {
+    if (this.credential() !== this.builtFor) this.reset();
   }
 
   /** Forgets everything account-bound. */
@@ -148,6 +155,7 @@ export class HostedSession {
     } catch {
       this.stale = true;
     }
+    this.readCount += 1;
     this.changed();
   }
 
@@ -176,7 +184,7 @@ export class HostedSession {
     const hosted = this.hosted;
     if (!hosted || (hosted.state !== 'ready' && hosted.state !== 'warned') || hosted.percentUsed === null) return;
     const state = hosted.percentUsed >= 100 ? 'exhausted'
-      : hosted.percentUsed >= WARN_THRESHOLDS[0] ? 'warned' : hosted.state;
+      : hosted.warnThresholds && hosted.percentUsed >= hosted.warnThresholds[0] ? 'warned' : hosted.state;
     if (state === hosted.state) return;
     this.hosted = { ...hosted, state };
     this.changed();
@@ -194,7 +202,7 @@ export class HostedSession {
     return this.shown;
   }
 
-  /** True once per reset date, so the exhausted notice shows once per month. */
+  /** True once per reset date, so the exhausted notice shows once per week. */
   claimExhaustedNotice(): boolean {
     const key = this.hosted?.resetAt ?? 'unknown';
     if (this.exhaustedShownFor === key) return false;
@@ -204,11 +212,11 @@ export class HostedSession {
 
   /**
    * Marks a warning as shown and acknowledges it, and every lower one, on the server so no device shows it
-   * again this month. A refusal of the ack keeps the warning hidden for this session only.
+   * again this week. A refusal of the ack keeps the warning hidden for this session only.
    */
   async acknowledgeWarning(threshold: number): Promise<void> {
     const token = this.credential();
-    const crossed = [...WARN_THRESHOLDS].filter((t) => t <= threshold);
+    const crossed = (this.hosted?.warnThresholds ?? []).filter((t) => t <= threshold);
     crossed.forEach((t) => this.shown.add(t));
     if (!token) return;
     for (const t of crossed) {

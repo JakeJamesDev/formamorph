@@ -10,7 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Hint, Meta } from "@/components/ui/typography";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { REASONING_DIALECTS, isReasoningDialect, type ReasoningDialect } from "@/lib/reasoningDialect";
-import { SUPPORTER_LABELS, SUPPORTER_TIERS } from "@/lib/supporterFlair";
+import { SUPPORTER_TIERS } from "@/lib/supporterFlair";
+import { useTierName } from "@/lib/tierNames";
 import type { SupporterTier } from "@/types/supporter";
 import type {
   HostedAiAdminApi, HostedAiSettings, HostedGrant, HostedModel, HostedPause, HostedSpendDay, HostedTier,
@@ -141,7 +142,8 @@ function modelOf(draft: ModelDraft): { entry: HostedModel } | { error: string } 
 /** One tier's three fields. */
 function TierRows({ tier, value, onChange }: { tier: SupporterTier; value: HostedTier | undefined; onChange: (next: HostedTier) => void }) {
   const current: HostedTier = value ?? { window: 0, budget: 0, turnCost: null };
-  const name = SUPPORTER_LABELS[tier];
+  const tierNameOf = useTierName();
+  const name = tierNameOf(tier);
 
   return (
     <>
@@ -149,7 +151,7 @@ function TierRows({ tier, value, onChange }: { tier: SupporterTier; value: Hoste
         <NumberField id={`hosted-${tier}-window`} label={`${name} Window`} value={current.window || null}
           onChange={(window) => onChange({ ...current, window: window ?? 0 })} />
       </Row>
-      <Row label={`${name} Budget`} htmlFor={`hosted-${tier}-budget`} hint="Dollars per month">
+      <Row label={`${name} Budget`} htmlFor={`hosted-${tier}-budget`} hint="Dollars per week">
         <NumberField id={`hosted-${tier}-budget`} label={`${name} Budget`} value={value ? current.budget : null} step={0.01}
           onChange={(budget) => onChange({ ...current, budget: budget ?? 0 })} />
       </Row>
@@ -187,6 +189,7 @@ const LIMITS: readonly { key: LimitKey; label: string; hint: string; step?: numb
 /** Formamorph AI for administrators: tiers, limits, models, grants, the pause and the spend report. */
 export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiAdminApi }) {
   const mounted = useMountedRef();
+  const tierNameOf = useTierName();
   const [stored, setStored] = useState<HostedAiSettings | null>(null);
   const [draft, setDraft] = useState<HostedAiSettings | null>(null);
   const [unreadable, setUnreadable] = useState(false);
@@ -225,7 +228,7 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
     if (!draft) return;
     const unset = SUPPORTER_TIERS.find((tier) => draft.tiers[tier] && !draft.tiers[tier]?.window);
     if (unset) {
-      setSaveError(`Set a window for ${SUPPORTER_LABELS[unset]}`);
+      setSaveError(`Set a window for ${tierNameOf(unset)}`);
       return;
     }
     setSaving(true);
@@ -332,7 +335,7 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
           label="Warning Percents"
           htmlFor="hosted-warn"
           hint="Whole percents, lowest first, separated by commas"
-          info={<HintInfo>Each percent of a tier’s allowance shows one notice per month.</HintInfo>}
+          info={<HintInfo>Only the highest percent raises a notice, once per week.</HintInfo>}
         >
           <Input
             id="hosted-warn"
@@ -407,7 +410,7 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
           <Select value={grantTier} onValueChange={(value) => { const tier = SUPPORTER_TIERS.find((id) => id === value); if (tier) setGrantTier(tier); }}>
             <SelectTrigger id="hosted-grant-tier" aria-label="Grant Tier"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {SUPPORTER_TIERS.map((tier) => <SelectItem key={tier} value={tier}>{SUPPORTER_LABELS[tier]}</SelectItem>)}
+              {SUPPORTER_TIERS.map((tier) => <SelectItem key={tier} value={tier}>{tierNameOf(tier)}</SelectItem>)}
             </SelectContent>
           </Select>
         </Row>
@@ -422,7 +425,7 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
             {grants.map((grant) => (
               <li key={grant.id} className="flex flex-wrap items-center gap-2">
                 <span className="mr-auto">
-                  {grant.username} · {SUPPORTER_LABELS[grant.tier]} · {grant.revokedAt ? 'Revoked' : `Ends ${grant.endsAt.slice(0, 10)}`}
+                  {grant.username} · {tierNameOf(grant.tier)} · {grant.revokedAt ? 'Revoked' : `Ends ${grant.endsAt.slice(0, 10)}`}
                 </span>
                 {grantLive(grant) && (
                   <Button type="button" size="sm" variant="outline" disabled={busy} aria-label={`Revoke grant for ${grant.username}`}

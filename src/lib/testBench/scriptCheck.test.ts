@@ -56,14 +56,14 @@ describe('the on-demand script check', () => {
     expect(await checkScripts(world('memories.add("The gate fell."); memories.pin("Tor lied."); entities.Tor.diary("I lied.");'))).toEqual([]);
     const rows = async (code: string) => (await checkScripts(world(code))).map((f) => [f.ruleId, f.message]);
     expect(await rows('entities.Mira.diary("Hello.");')).toEqual([[
-      SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, a name the cast lacks. Play may discover it.',
+      SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, a name no entity has yet. An entity with that name can appear during play.',
     ]]);
     expect(await rows('entities.Mira.diary("Hello."); entities.Bo.diary("Hi.");')).toEqual([[
-      SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, “Bo”, names the cast lacks. Play may discover them.',
+      SCRIPT_UNKNOWN_NAME.id, '“World · After the AI” writes a diary for “Mira”, “Bo”, names no entity has yet. Entities with those names can appear during play.',
     ]]);
     expect(await rows('entities.Mira.diary("Hello."); traits.Bold.enabled = true;')).toEqual([[
       SCRIPT_UNKNOWN_NAME.id,
-      '“World · After the AI” writes to unknown names. Writes ignored: no trait is named “Bold”. It also writes a diary for “Mira”, a name the cast lacks. Play may discover it.',
+      '“World · After the AI” writes to unknown names. Writes ignored: no trait is named “Bold”. It also writes a diary for “Mira”, a name no entity has yet. An entity with that name can appear during play.',
     ]]);
   });
 
@@ -73,7 +73,7 @@ describe('the on-demand script check', () => {
       traits: [{ id: 'sly', name: 'Sly', statChanges: [], scripts: [{ id: 's', timing: 'after', code: 'if (owner.name !== "" || self.enabled) throw new Error("cast");\nentities.Albus.diary("Hm.");' }] }],
     };
     expect((await checkScripts({ ...base([]), entities: [albus] })).map((f) => [f.ruleId, f.message])).toEqual([[
-      SCRIPT_UNKNOWN_NAME.id, '“Sly · After the AI” of “Albus” writes a diary for “Albus”, a name the cast lacks. Play may discover it.',
+      SCRIPT_UNKNOWN_NAME.id, '“Sly · After the AI” of “Albus” writes a diary for “Albus”, a name no entity has yet. An entity with that name can appear during play.',
     ]]);
   });
 
@@ -426,9 +426,9 @@ describe('the on-demand script check', () => {
       ] };
       const found = await checkScripts(world);
       expect(found.map((f) => [f.message, f.items])).toEqual([
-        ['“World · After the AI” throws when it runs, so the run changes nothing',
+        ['“World · After the AI” throws when it runs, so the run’s writes are ignored',
           [{ id: 'world|w1', name: 'World · After the AI', section: 'scripts' }]],
-        ['“Tide” (At Game Start) on the world times out — it never finishes, so the run changes nothing',
+        ['“Tide” (At Game Start) on the world times out and never finishes, so the run’s writes are ignored',
           [{ id: 'world|w2', name: 'Tide', section: 'scripts' }]],
       ]);
     });
@@ -438,7 +438,7 @@ describe('the on-demand script check', () => {
       expect(await at('if (self.name !== "Brave" || self.acquired) throw new Error("self"); return 3;')).toEqual([]);
       const found = await at('throw new Error("nope");');
       expect(found.map((f) => [f.message, f.items])).toEqual([[
-        '“Brave · After the AI” throws when it runs, so the run changes nothing', [{ id: 'brave', name: 'Brave', section: 'traits' }],
+        '“Brave · After the AI” throws when it runs, so the run’s writes are ignored', [{ id: 'brave', name: 'Brave', section: 'traits' }],
       ]]);
     });
 
@@ -448,7 +448,7 @@ describe('the on-demand script check', () => {
       entity.traits = [brave([{ id: 't', timing: 'after', code: 'throw new Error("nope");' }])];
       const found = await checkScripts({ ...base([]), entities: [entity] });
       expect(found.map((f) => [f.message, f.items])).toEqual([[
-        '“Brave · After the AI” of “Mira” throws when it runs, so the run changes nothing', [{ id: 'mira', name: 'Mira', section: 'entities' }],
+        '“Brave · After the AI” of “Mira” throws when it runs, so the run’s writes are ignored', [{ id: 'mira', name: 'Mira', section: 'entities' }],
       ]]);
     });
 
@@ -479,7 +479,7 @@ describe('the on-demand script check', () => {
       const prompts = editorPromptRun();
       const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'if (player.confirm("Drink?")) throw new Error("drank");' }) }),
-      ]), prompts.host);
+      ]), { prompts: prompts.host });
       await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1), { timeout: 10_000 });
       prompts.store.answer(prompts.store.pending()[0].id, true);
       expect((await checking).map((f) => f.message)).toEqual(['“Mood · After the AI” throws when it runs, so the stat keeps its manual value']);
@@ -495,7 +495,7 @@ describe('the on-demand script check', () => {
         ]),
         scripts: [ask({ id: 'c', timing: 'start', code: '' })],
         entities: [{ id: 'mira', name: 'Mira', traits: [brave([ask({ id: 'd', timing: 'after', code: '' })])] }],
-      }, prompts.host);
+      }, { prompts: prompts.host });
       // The sandbox runs one prompting script at a time, so each prompt opens after the last is answered.
       const askers: (string | undefined)[] = [];
       for (let asked = 0; asked < 4; asked += 1) {
@@ -512,11 +512,11 @@ describe('the on-demand script check', () => {
       const prompts = editorPromptRun();
       const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'player.confirm("Drink?"); return 1;' }) }),
-      ]), prompts.host);
+      ]), { prompts: prompts.host });
       await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1), { timeout: 10_000 });
       prompts.store.cancel(prompts.store.pending()[0].id);
       expect((await checking).map((f) => f.message)).toEqual([
-        '“Mood · After the AI” asked the player and the prompt was closed, so the run changes nothing',
+        '“Mood · After the AI” asked the player and the prompt was closed, so the run’s writes are ignored',
       ]);
     });
 

@@ -1,5 +1,6 @@
 // Which tests a ticket's change can affect, beyond what vitest's import walk sees (scripts/affectedTests.mjs).
 import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** Above this many characters of paths, a gate runs on everything: Windows caps a command line at 32,767. */
@@ -9,14 +10,23 @@ export const MAX_ARGS_LENGTH = 30000;
 export const gitFiles = (command, ...args) =>
   execFileSync('git', [command, '-z', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
 
+/** The paths in a `@<path>` change source: a file of newline-separated repo paths, in place of a git base. */
+const listedFiles = (source) => readFileSync(source.slice(1), 'utf8').split('\n').map((line) => line.trim()).filter(Boolean);
+
 /**
  * The files changed in the working tree since `base`, new files included, deleted files left out. The working tree
  * counts so the gates see uncommitted edits; in prepare the tree is clean, so this equals `base...HEAD`.
  */
-export const changedSince = (base) => [
+export const changedSince = (base) => (base.startsWith('@') ? listedFiles(base).filter((file) => existsSync(file)) : [
   ...gitFiles('diff', '--name-only', '--diff-filter=d', base),
   ...gitFiles('ls-files', '--others', '--exclude-standard'),
-];
+]);
+
+/** `changedSince` with deleted files kept. */
+export const touchedSince = (base) => (base.startsWith('@') ? listedFiles(base) : [
+  ...gitFiles('diff', '--name-only', base),
+  ...gitFiles('ls-files', '--others', '--exclude-standard'),
+]);
 
 /** Tests whose result depends on files they don't import. The ticket test gate runs them every time. */
 export const ALWAYS_RUN = {
@@ -75,9 +85,17 @@ export const GRAPH_COVERED = {
   'scripts/copySweep.mjs': 'reads files only in its command-line sweep, which no test calls',
   'scripts/moveReach.mjs': 'reads only the probe file its caller passes; the compiler walks the files the probe names',
   'scripts/testSelection.mjs': 'runs git only in the helpers the gate scripts call',
+  'scripts/runTests.mjs': 'reads only its own temp reports and runs vitest and git in the folder its caller passes',
+  'scripts/runTests.test.mjs': 'reads only its own temp folder',
+  'scripts/runOutcomeReporter.mjs': 'writes only the file its runner names; a test of it runs real vitest',
+  'scripts/fetchPinnedCommits.mjs': 'runs git only in its command-line run, which no test calls',
   'vite.config.js': 'a change to it runs the full suite',
   'scripts/shipBundledWorlds.mjs': 'reads only the world file its caller names; a change to it runs the full suite',
   'scripts/stripSeededWorlds.mjs': 'reads only the world file an import names; a change to it runs the full suite',
+  'scripts/shipNotices.mjs': 'reads the notices file its caller names and the package.json of each module; a change to it runs the full suite',
+  'scripts/noticesList.mjs': 'reads only the folders its caller names',
+  'scripts/noticesList.test.ts': 'reads only its own temp folders',
+  'scripts/bundledWorldHashes.mjs': 'reads only the world file an import names; a change to it runs the full suite',
   'scripts/stripWorldImages.mjs': 'reads files only in its command-line run, which no test calls; a change to it runs the full suite',
   'src/lib/shippedWorld.ts': 'reads its own import graph and its cache in node_modules/.cache',
   'scripts/bundledRevisions.ts': 'reads src/defaultworlds and its git history, which change only with a world file; the world trigger runs its test',
@@ -91,9 +109,15 @@ export const GRAPH_COVERED = {
 export const PATH_TRIGGERS = {
   'docs/*.md': ['src/lib/docs/bundledDocsIndex.ts', 'src/lib/docs/docsCoverage.test.ts', 'src/lib/docs/bundledDocsIndex.test.ts', 'src/lib/codeGuideLinks.test.ts'],
   'src/index.css': ['src/lib/landingPulse.test.ts'],
+  'THIRD-PARTY-NOTICES.md': ['src/lib/itemIcons.test.ts', 'scripts/shipNotices.test.ts', 'src/lib/noticesFormat.test.ts', 'src/components/modals/LicensesPanel.test.tsx'],
   'index.html': ['src/components/themeBootstrap.test.ts'],
-  'src/defaultworlds/*.json': ['src/lib/bundledWorldText.ts', 'src/test/bundledWorldFiles.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledWorlds.test.ts', 'src/views/GameViewer.bundledSaves.test.tsx', 'src/lib/ownerTreeParity.test.ts', 'src/lib/seedRule.bundled.test.ts', 'src/lib/shippedWorld.test.ts', 'scripts/shipBundledWorlds.test.ts', 'scripts/bundledRevisions.test.ts', 'testing/baseline/harness/world-question-cases.ts', 'testing/baseline/harness/world-question-cases.test.ts'],
+  'src/lib/tts/g2p/cmudict.dict': ['src/lib/tts/arpabet.test.ts'],
+  'testing/g2p/pins.json': ['src/lib/tts/arpabet.test.ts'],
+  'testing/g2p/sets/*.json': ['testing/g2p/score.mjs', 'testing/g2p/score.test.ts'],
+  'testing/g2p/espeak-reference.json': ['testing/g2p/score.test.ts'],
+  'src/defaultworlds/*.json': ['src/lib/bundledWorldText.ts', 'src/test/bundledWorldFiles.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledWorlds.test.ts', 'src/views/GameViewer.bundledSaves.test.tsx', 'src/lib/ownerTreeParity.test.ts', 'src/lib/seedRule.bundled.test.ts', 'src/lib/shippedWorld.test.ts', 'scripts/shipBundledWorlds.test.ts', 'scripts/bundledWorldHashes.test.ts', 'scripts/bundledRevisions.test.ts', 'testing/baseline/harness/world-question-cases.ts', 'testing/baseline/harness/world-question-cases.test.ts'],
   'src/lib/__parity__/*.json': ['src/lib/ownerTreeParity.test.ts'],
+  'src/lib/formaquestion/__bodies__/*.json': ['src/lib/formaquestion/helpSession.parity.test.ts'],
   'src/defaultworlds/drone.json': ['src/lib/droneWorld.test.ts', 'testing/art-harness/artHarness.test.ts'],
   'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/lib/emberwatchWorld.scripts.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/slime.json': ['src/lib/slimeWorld.test.ts'],
@@ -106,6 +130,7 @@ export const PATH_TRIGGERS = {
   'testing/parity/turn-pipeline-parity.json': ['src/lib/turnPipeline/parityFixture.test.ts', 'src/lib/turnPipeline/parityTestInputs.ts'],
   'testing/baseline/help-baseline-cases.json': ['testing/baseline/harness/help-baseline-cases.ts'],
   'testing/baseline/help-recall-blind-cases.json': ['testing/baseline/harness/help-recall-cases.ts'],
+  'testing/baseline/help-intent-cases.json': ['testing/baseline/harness/help-intent-score.ts'],
   // The proxy forks the host as a child process instead of importing it.
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
   // The fake llama-server replays the run recorded at the pinned tag; the stream parser test reads the same files.
@@ -116,6 +141,9 @@ export const PATH_TRIGGERS = {
   'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'package-lock.json': ['src/components/ui/radixSingleCopy.test.ts'],
+  '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
+  // The runner test loads this reporter by path through real vitest.
+  'scripts/runOutcomeReporter.mjs': ['scripts/runTests.test.mjs'],
 };
 
 const REQUIRE_CALL = /\brequire\(\s*([^)]*?)\s*\)/g;

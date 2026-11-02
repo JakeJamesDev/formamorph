@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Hint } from '@/components/ui/typography';
 import { DeleteAccountDialog } from '@/components/menu/DeleteAccountDialog';
 import { ProfileAvatarEditor } from '@/components/menu/ProfileAvatarEditor';
 import { PatreonSection, type PatreonReturn } from '@/components/PatreonSection';
@@ -126,7 +127,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
         setNote({ kind: 'success', text: `Verification email sent to ${address}. Open the link in it to finish.` });
       } else {
         // Saved either way, so the sentence says so before it says what failed.
-        setNote({ kind: 'error', text: 'Address saved, but the verification email could not be sent. Try Resend in a moment.' });
+        setNote({ kind: 'error', text: "Address saved, but the verification email couldn't be sent. Select “Resend Verification Email” in a moment." });
       }
     } catch (failure) {
       setNote({ kind: 'error', text: (failure as Error).message || 'Failed to save the email address' });
@@ -147,7 +148,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       } else if (mailSent) {
         setNote({ kind: 'success', text: 'Verification email sent. Open the link in it to finish.' });
       } else {
-        setNote({ kind: 'error', text: 'The verification email could not be sent. Try again in a moment.' });
+        setNote({ kind: 'error', text: "The verification email couldn't be sent. Try again in a moment." });
       }
     } catch (failure) {
       setNote({ kind: 'error', text: (failure as Error).message || 'Failed to send the verification email' });
@@ -172,9 +173,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       </p>
 
       {suspended && (
-        <p className="text-helper text-muted-foreground">
-          Your email address can&rsquo;t be changed while your account is suspended.
-        </p>
+        <Hint>You can&rsquo;t change your email address while your account is suspended.</Hint>
       )}
 
       <form onSubmit={(event) => { void save(event); }} noValidate className="space-y-4">
@@ -184,7 +183,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
           type="email"
           autoComplete="email"
           disabled={suspended}
-          hint="Changing your address means confirming the new one."
+          hint="You'll get a link to confirm the new address"
           value={typed}
           onChange={setTyped}
         />
@@ -221,7 +220,7 @@ function PasswordSection({ suspended }: { suspended: boolean }) {
     setNote(null);
 
     if (!current || !next) {
-      setNote({ kind: 'error', text: 'Both current and new passwords are required' });
+      setNote({ kind: 'error', text: 'Enter your current password and a new password' });
       return;
     }
 
@@ -231,7 +230,7 @@ function PasswordSection({ suspended }: { suspended: boolean }) {
       // Emptied on success only: a refusal leaves what they typed so they can fix one box of it.
       setCurrent('');
       setNext('');
-      setNote({ kind: 'success', text: 'Password changed successfully' });
+      setNote({ kind: 'success', text: 'Password changed' });
     } catch (failure) {
       setNote({ kind: 'error', text: (failure as Error).message || 'Failed to change password' });
     } finally {
@@ -244,9 +243,7 @@ function PasswordSection({ suspended }: { suspended: boolean }) {
       {/* Said before the boxes rather than after a submit: the server refuses this write, and finding
           that out by filling the form in and being turned away is the worse way to learn it. */}
       {suspended && (
-        <p className="text-helper text-muted-foreground">
-          Your password can&rsquo;t be changed while your account is suspended.
-        </p>
+        <Hint>You can&rsquo;t change your password while your account is suspended.</Hint>
       )}
 
       <form onSubmit={(event) => { void submit(event); }} noValidate className="space-y-4">
@@ -298,9 +295,7 @@ function DeleteSection({ suspended, open, onOpenChange }: {
 
   return (
     <Section title="Delete Account">
-      <p className="text-helper text-muted-foreground">
-        Your account is erased seven days after you ask. Signing in during those seven days calls it off.
-      </p>
+      <Hint>Erases your account seven days after you ask. Signing in before then cancels it.</Hint>
       {/* Offered to a suspended account too: the flow's first step is where it learns the team does
           this one, rather than a control that is missing without explanation. */}
       <Button variant="destructive" onClick={() => onOpenChange(true)}>Delete Account</Button>

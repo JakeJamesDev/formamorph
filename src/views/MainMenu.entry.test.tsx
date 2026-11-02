@@ -37,9 +37,9 @@ vi.mock('@/components/library/LibraryTileGrid', async (importOriginal) => {
   return { ...real, LibraryTileGrid };
 });
 
-/** Click Finalize Character once the library's models load: the button stays disabled until then. */
+/** Click Finalize Avatar once the library's models load: the button stays disabled until then. */
 async function finalize() {
-  const button = await screen.findByRole('button', { name: 'Finalize Character' });
+  const button = await screen.findByRole('button', { name: 'Finalize Avatar' });
   await waitFor(() => expect(button).toBeEnabled());
   fireEvent.click(button);
 }
@@ -262,7 +262,7 @@ describe('the retained entry draft', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     expect(screen.queryByRole('button', { name: 'Remembered' })).not.toBeInTheDocument();
-    expect(toastTexts(vi.mocked(toast.error))).toContain('Formamorph could not save these additions. Try again.View Details →');
+    expect(toastTexts(vi.mocked(toast.error))).toContain("Couldn't save these additions. Try again.View Details →");
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
     write.mockRestore();
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
@@ -292,7 +292,7 @@ describe('the retained entry draft', () => {
     const intro = await screen.findByRole('dialog', { name: 'Introduction' });
     expect(within(intro).getByRole('heading', { name: 'Welcome' })).toBeInTheDocument();
     expect(onStartGame).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Finalize Character' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Finalize Avatar' })).not.toBeInTheDocument();
     fireEvent.click(within(intro).getByRole('button', { name: 'Close' }));
     if (avatar) await finalize();
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
@@ -442,14 +442,14 @@ describe('the retained entry draft', () => {
       .getAllByRole('listitem').map((item) => item.textContent);
     expect(order()[0]).toContain('Library book');
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    await screen.findByRole('button', { name: 'Finalize Character' });
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(order()[0]).toContain('Library book');
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).toBeChecked();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from World' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    await screen.findByRole('button', { name: 'Finalize Character' });
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
@@ -542,7 +542,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
     expect(screen.getByText('Here: Hill town')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
-    await screen.findByRole('button', { name: 'Finalize Character' });
+    await screen.findByRole('button', { name: 'Finalize Avatar' });
     vi.mocked(Math.random).mockReturnValue(0.9);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     fireEvent.click(screen.getByRole('radio', { name: /Random/ }));
@@ -643,7 +643,7 @@ describe('the retained entry draft', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
     await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain(
-      'Formamorph could not prepare those library additions. Try again.View Details →',
+      "Couldn't prepare those library additions. Try again.View Details →",
     ));
     expect(consoleError).toHaveBeenCalledWith(
       'Could not finalize enter-world library additions',
@@ -800,6 +800,58 @@ describe('the persona at world entry', () => {
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][6].ref).toEqual(libraryRef('self'));
     expect(readWorldPersona('entry-world')).toBeUndefined();
+  });
+});
+
+describe('a world with nothing else to choose at world entry', () => {
+  // One starting location, no traits, no dictionaries, and a player whose library holds nothing to add.
+  const bareWorld = (entities: StoredWorldRecord['data']['entities']): StoredWorldRecord => {
+    const record = world();
+    return {
+      ...record,
+      data: {
+        ...record.data, entities, traits: [], traitGroups: [], dictionaries: [],
+        locations: [{ id: 'harbor', name: 'Harbor', isStarting: true }],
+      },
+    };
+  };
+  const emptyLibrary = async () => {
+    // Earlier cases in this file leave records behind, and the store outlives each case.
+    for (const { id } of await EntityStorageService.getEntityMetadata()) await EntityStorageService.deleteEntity(id);
+    for (const { id } of await DictionaryStorageService.getDictionaryMetadata()) await DictionaryStorageService.deleteDictionary(id);
+  };
+  const selectEnterWorld = async () => {
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
+  };
+
+  it('opens the dialog for a Custom Persona and starts the game with the entered name', async () => {
+    await emptyLibrary();
+    await WorldStorageService.storeWorld(bareWorld([{
+      id: 'you', name: 'Wanderer', playerDescription: '', aiDescription: '', aiSummary: '', customPersona: true,
+    }]));
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await selectEnterWorld();
+    await screen.findByRole('dialog', { name: 'Enter Entry World' });
+    expect(onStartGame).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Ash' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start Game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual({ ref: { source: 'none', name: 'Ash' } });
+  });
+
+  it('skips the dialog with no Custom Persona', async () => {
+    await emptyLibrary();
+    await WorldStorageService.storeWorld(bareWorld([{
+      id: 'npc', name: 'Innkeeper', playerDescription: '', aiDescription: '', aiSummary: '',
+    }]));
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await selectEnterWorld();
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(screen.queryByRole('dialog', { name: 'Enter Entry World' })).not.toBeInTheDocument();
+    expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
   });
 });
 

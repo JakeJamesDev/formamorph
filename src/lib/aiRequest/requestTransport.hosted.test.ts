@@ -3,7 +3,7 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { HostedSession } from '@/lib/hostedAi/hostedSession';
 import { HostedTurn } from '@/lib/hostedAi/hostedTurn';
-import { HOSTED_CHAT_URL, HOSTED_STATE_URL, TURN_HEADER } from '@/lib/hostedAi/hostedUrls';
+import { HOSTED_CHAT_URL, HOSTED_STATE_URL, PROMPT_TYPE_HEADER, TURN_HEADER } from '@/lib/hostedAi/hostedUrls';
 import { HOSTED_REFUSALS } from '@/lib/hostedAi/refusals';
 import { AiStreamError } from './aiStream';
 import {
@@ -15,7 +15,7 @@ import {
 const READY_STATE = {
   tier: 'supporter', state: 'ready', window: 20000, maxTokens: 800, tokenMargin: 500,
   model: { id: 'entry-1', capabilities: { tools: true, reasoning: null } },
-  percentUsed: 10, turnsLeft: 90, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [],
+  percentUsed: 10, turnsLeft: 90, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [], warnThresholds: [75, 90],
 };
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -120,6 +120,38 @@ describe('Formamorph AI through the Request Transport', () => {
     const calls = proxy.chatCalls();
     expect(calls.map((c) => c.headers.Authorization)).toEqual(['Bearer token-a', 'Bearer token-a', 'Bearer token-a']);
     expect(calls.map((c) => c.headers[TURN_HEADER])).toEqual([undefined, 'turn-1', 'turn-1']);
+  });
+
+  it('names each pass\'s prompt type on every call', async () => {
+    const proxy = fakeProxy([() => proxyReply('One.', 'turn-1'), () => proxyReply('Two.', 'turn-1'), () => proxyReply('Three.', 'turn-1'), () => proxyReply('Four.', 'turn-1')]);
+    const { session } = await signedIn(proxy.fetchImpl);
+    const ctx = context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() });
+
+    await send(request(), ctx);
+    await Promise.all([
+      send(request({ type: 'choices' }), ctx), send(request({ type: 'statUpdates', silent: true }), ctx), send(request({ type: 'help' }), ctx),
+    ]);
+
+    expect(proxy.chatCalls().map((c) => c.headers[PROMPT_TYPE_HEADER])).toEqual(['narration', 'choices', 'statUpdates', 'help']);
+  });
+
+  it('sends no prompt type to another endpoint', async () => {
+    const other: TransportTarget = {
+      ...textTarget({ endpointId: 'own', url: 'http://localhost:1234/v1/chat/completions', apiToken: 'k', model: 'm', maxTokens: 800, reasoning: UNKNOWN_REASONING_CAPABILITY }),
+      presetId: null,
+      presetName: 'Own',
+    };
+    const sent: Record<string, string>[] = [];
+    const fetchImpl = (async (_url: string, init?: RequestInit) => {
+      sent.push({ ...(init?.headers as Record<string, string>) });
+      return sseResponse([sseFrame({ content: 'Hi.' }), sseFrame({}, 'stop'), 'data: [DONE]\n\n']);
+    }) as unknown as typeof fetch;
+    const { session } = await signedIn(fakeProxy([]).fetchImpl);
+
+    await send(request(), context(fetchImpl, session, { settings: textSnapshot(other), resolveEndpoint: () => other }));
+
+    expect(sent).toHaveLength(1);
+    expect(Object.keys(sent[0])).not.toContain(PROMPT_TYPE_HEADER);
   });
 
   it('hands the turn to the next call when the first is refused, so the turn still opens once', async () => {

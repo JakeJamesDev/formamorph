@@ -163,7 +163,7 @@ export function ReplaceAllConfirm({ open, onOpenChange, count, fields, skipped, 
           <AlertDialogTitle>Replace All</AlertDialogTitle>
           <AlertDialogDescription>
             {`Replace ${count} match${count === 1 ? '' : 'es'} across ${fields} field${fields === 1 ? '' : 's'}?`
-              + (skipped ? ` ${skipped} in fields that can't hold ${missingChip} will be skipped.` : '')
+              + (skipped ? ` ${skipped} in fields that can’t hold ${missingChip} will be skipped.` : '')
               + ' The replacement is one Step, so Undo or History takes it back.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -311,19 +311,25 @@ export default function EditorFindBar({
   const replaceCurrent = () => {
     if (!current) return;
     if (current.chip) {
-      // The hit is a chip. Text cannot stand in for one; its Chip Options is where it changes.
-      setNotice('That match is a chip — change it in its Chip Options. Skipped.');
+      // The hit is a chip. Text cannot replace one; its Chip Options is where it changes.
+      setNotice('Skipped a chip. Change a chip in its “Chip Options”.');
       step(1);
       return;
     }
     const insert = insertFor(current.target);
     if (insert === null) {
       // Stepping past in silence reads as a dead button, and with a single match nothing moves at all.
-      setNotice(`${current.target.fieldLabel} can't hold ${missingChip} — skipped.`);
+      setNotice(`Skipped: ${current.target.fieldLabel} can’t hold ${missingChip}`);
       step(1);
       return;
     }
     const next = spliceText(current.target.value, current.start, current.end, insert);
+    const reason = current.target.refuses?.(next);
+    if (reason) {
+      setNotice(`Skipped: ${current.target.itemLabel} can’t take that ${current.target.fieldLabel.toLowerCase()}. ${reason}.`);
+      step(1);
+      return;
+    }
     current.target.write(next);
     noteRename(current.target, next);
     // The rescan runs off the rewritten world; holding the index leaves the cursor on what is now next.
@@ -333,12 +339,15 @@ export default function EditorFindBar({
     const summary = replaceAll(matches, insertFor, noteRename);
     setConfirmAll(false);
     const skipped = summary.skipped
-      ? ` ${summary.skipped} skipped in ${summary.skippedFields.length} field${summary.skippedFields.length === 1 ? '' : 's'} that can't hold ${missingChip}.`
+      ? ` ${summary.skipped} skipped in ${summary.skippedFields.length} field${summary.skippedFields.length === 1 ? '' : 's'} that can’t hold ${missingChip}.`
       : '';
     const chips = summary.chips
-      ? ` ${summary.chips} chip${summary.chips === 1 ? '' : 's'} left as ${summary.chips === 1 ? 'it is' : 'they are'} — a chip changes in its Chip Options.`
+      ? ` Skipped ${summary.chips} chip${summary.chips === 1 ? '' : 's'}. Change a chip in its “Chip Options”.`
       : '';
-    setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}${chips}`);
+    const refused = summary.refused
+      ? ` Skipped ${summary.refused} match${summary.refused === 1 ? '' : 'es'} where the new text isn’t valid.`
+      : '';
+    setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}${refused}${chips}`);
   };
   useEffect(() => { if (notice) { const t = setTimeout(() => setNotice(null), 6000); return () => clearTimeout(t); } }, [notice]);
 

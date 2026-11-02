@@ -1,6 +1,9 @@
 import { Megaphone, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { Meta } from '@/components/ui/typography';
 import { formatServerDate } from '@/lib/serverDate';
 import { eventChipMarker, eventPhase, firstPlaceOf, isContestEvent, resultsAnnounced } from '@/lib/serverEvents';
 import { tiedForFirstLine } from '@/lib/placeLabels';
@@ -45,7 +48,7 @@ function EventBannerCard(
     ? tiedForFirstLine(first.length)
     : (first[0] ? `${first[0].worldName} by ${first[0].authorName}` : '');
   const line = eventPhase(event) === 'end' && resultsAnnounced(event)
-    ? `Results announced${winner ? ` — ${winner}` : ''}`
+    ? `Results announced${winner ? `: ${winner}` : ''}`
     : `${dateRange} · ${event.bannerText}`;
 
   // The whole card leads where its own action does: a contest's entries. An announcement has nowhere to
@@ -64,7 +67,7 @@ function EventBannerCard(
         </span>
         <span className="flex-1 min-w-0">
           <span className="block text-label font-semibold truncate">{event.title}</span>
-          <span className="block text-meta text-muted-foreground truncate">{line}</span>
+          <Meta className="block truncate">{line}</Meta>
         </span>
       </button>
       <div className="flex shrink-0 gap-2">
@@ -144,5 +147,35 @@ export function EventBannerChips({ banners, onOpenEvent, className }: SurfacePro
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * The dismissed banners folded into one chip with their count, for a row with no room for each chip.
+ * It opens the chips in a list.
+ */
+export function EventBannerCount({ banners, onOpenEvent, className }: SurfaceProps) {
+  const count = banners.chips.length;
+  if (count === 0) return null;
+  const Icon = banners.chips.some(isContestEvent) ? Trophy : Megaphone;
+
+  return (
+    <Popover>
+      <Tip tip="Events">
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Events, ${count}`}
+            className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-label font-medium shadow-sm hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset', className)}
+          >
+            <Icon className={cn('h-4 w-4 shrink-0', Icon === Trophy ? 'text-warning' : 'text-info')} aria-hidden />
+            {count}
+          </button>
+        </PopoverTrigger>
+      </Tip>
+      <PopoverContent align="end" className="w-auto max-w-sm p-2">
+        <EventBannerChips banners={banners} onOpenEvent={onOpenEvent} className="flex-col items-start" />
+      </PopoverContent>
+    </Popover>
   );
 }

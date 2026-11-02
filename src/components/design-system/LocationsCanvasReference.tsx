@@ -34,11 +34,11 @@ function noop() { /* the sample has no such slice */ }
 // The sample is a world of two slices; the recorder reads the others as empty and never writes them.
 const NO_SLICES = {
   worldOverview: {} as WorldOverview, stats: [], statGroups: [], entities: [], entityGroups: [], traits: [], traitGroups: [],
-  statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [], tools: [], items: [], slots: [], placements: [],
+  statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [], tools: [], items: [], slots: [], bodies: [], placements: [], currencies: [],
 };
 const NO_WRITES = { worldOverview: noop, stats: noop, statGroups: noop, entities: noop, entityGroups: noop, traits: noop, traitGroups: noop,
-  statUpdates: noop, dictionaries: noop, placeholders: noop, placeholderGroups: noop, scripts: noop, tools: noop, items: noop, slots: noop,
-  placements: noop };
+  statUpdates: noop, dictionaries: noop, placeholders: noop, placeholderGroups: noop, scripts: noop, tools: noop, items: noop, slots: noop, bodies: noop,
+  placements: noop, currencies: noop };
 
 export function LocationsCanvasReference() {
   const [locations, setLocations] = useState(() => structuredClone(SAMPLE_LOCATIONS));
@@ -59,7 +59,7 @@ export function LocationsCanvasReference() {
     <Card role="region" aria-labelledby="locations-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="locations-reference-title" className="text-heading">Locations Canvas Reference</CardTitle>
-        <CardDescription>Select “Edit Full Screen”.</CardDescription>
+        <CardDescription>Shows the production canvas on sample locations. Select <strong>Edit Full Screen</strong> to open it full screen.</CardDescription>
       </CardHeader>
       <CardContent className="min-w-0 space-y-3">
         <div ref={canvasRef} className="h-[34rem] min-w-0 overflow-hidden rounded-md border border-border">

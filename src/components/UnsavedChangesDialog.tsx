@@ -34,8 +34,8 @@ export function UnsavedChangesDialog({
           <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
           <AlertDialogDescription>
             {autoSaved
-              ? 'You have unsaved changes. “Exit Without Saving” drops only the changes since the last save. Autosave kept the rest.'
-              : 'You have unsaved changes. Save them before leaving, exit without saving, or keep editing.'}
+              ? 'You have unsaved changes. “Exit Without Saving” discards only the changes since the last save. Autosave kept the rest.'
+              : 'You have unsaved changes. “Exit Without Saving” discards them.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

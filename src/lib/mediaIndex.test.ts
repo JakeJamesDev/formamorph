@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { World } from '@/types';
 import {
-  blankSections, buildMediaIndex, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaAspect, mediaFileName, mediaHolds, mediaSections,
+  blankSections, buildMediaIndex, countWorldImages, filterSections, formatMediaBytes, groupSections, kindBreakdown, largestItems, mediaAspect, mediaFileName, mediaHolds, mediaSections,
   sectionCards, sectionSelection, sortSectionsLargestFirst, storedBytes, totalBytes, withAvatarsSection, worldImageSlots, type MediaFilter,
 } from './mediaIndex';
+import { blankItem } from './items';
 import { IMAGE_CAPS } from './imageSlots';
 import { dataUrlBytes } from './imageBytes';
 import { scanItem, type ImageCodec } from './imageOptimCore';
@@ -497,6 +498,19 @@ describe('the slot budgets', () => {
     ]);
     expect(Object.fromEntries(Object.entries(IMAGE_CAPS).map(([slot, cap]) => [slot, cap.maxBytes])))
       .toEqual({ thumbnail: 204_800, entity: 256_000, background: 921_600, map: 1_572_864 });
+  });
+
+  it('counts item images for the optimize scan under the entity cap, with no gallery card', () => {
+    const world = mediaFixtureWorld();
+    const before = countWorldImages(world);
+    world.items = [{ ...blankItem('lantern', 'Tin Lantern'), images: [{ data: exactly(1_000, 'i') }, { data: exactly(2_000, 'j') }] }];
+
+    expect(countWorldImages(world)).toBe(before + 2);
+    expect(worldImageSlots(world).filter((s) => s.path.startsWith('item:'))).toEqual([
+      expect.objectContaining({ cap: IMAGE_CAPS.entity, path: 'item:lantern:image:0' }),
+      expect.objectContaining({ cap: IMAGE_CAPS.entity, path: 'item:lantern:image:1' }),
+    ]);
+    expect(buildMediaIndex(world).filter((i) => i.parent.kind === 'item')).toEqual([]);
   });
 
   it('agrees with the Over Size Budget filter, the Test Bench size rule and the scan', async () => {

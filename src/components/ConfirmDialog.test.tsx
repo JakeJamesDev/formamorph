@@ -5,14 +5,14 @@ import { ConfirmDialog } from './ConfirmDialog';
 describe('ConfirmDialog', () => {
   it('calls onConfirm when Confirm is clicked', () => {
     const onConfirm = vi.fn();
-    render(<ConfirmDialog open onOpenChange={() => {}} onConfirm={onConfirm} title="Sure?" />);
+    render(<ConfirmDialog open onOpenChange={() => {}} onConfirm={onConfirm} title="Sure?" description="It goes for good." />);
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it('calls onCancel when Cancel is clicked', () => {
     const onCancel = vi.fn();
-    render(<ConfirmDialog open onOpenChange={() => {}} onCancel={onCancel} title="Sure?" />);
+    render(<ConfirmDialog open onOpenChange={() => {}} onCancel={onCancel} title="Sure?" description="It goes for good." />);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });

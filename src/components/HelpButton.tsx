@@ -68,9 +68,12 @@ export function HelpTopicModal({ topicId, open, onOpenChange, tabExtras, initial
  * showing a dead button. Until its topic has been opened once the button carries an accent tint — the
  * features here are easy to miss, and a silent `?` is missed by exactly the people who need it.
  */
-export function HelpButton({ topicId, className, tabExtras, initialTab }: {
+export function HelpButton({ topicId, className, iconClassName = 'h-4 w-4', skipFirstTimeTint = false, tabExtras, initialTab }: {
   topicId: string;
   className?: string;
+  iconClassName?: string;
+  /** For a row where the button must match its neighbors. */
+  skipFirstTimeTint?: boolean;
   tabExtras?: Record<string, ReactNode>;
   initialTab?: string;
 }) {
@@ -93,9 +96,9 @@ export function HelpButton({ topicId, className, tabExtras, initialTab }: {
         size="icon"
         onClick={openHelp}
         aria-label={`About ${topic.title}`}
-        className={cn('flex-shrink-0', !seen && 'border-primary text-primary', className)}
+        className={cn('flex-shrink-0', !seen && !skipFirstTimeTint && 'border-primary text-primary', className)}
       >
-        <HelpCircle className="h-4 w-4" />
+        <HelpCircle className={iconClassName} />
       </Button>
       <HelpTopicModal topicId={topicId} open={open} onOpenChange={setOpen} tabExtras={tabExtras} initialTab={initialTab} />
     </>

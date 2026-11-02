@@ -2,7 +2,8 @@
  * One entry per media parent kind: its image cap, how its slots are written, which rule host its rows use, where
  * Go to lands and how a step is labeled. DOM-free, so the editor and the Optimize walk read the same table.
  */
-import type { Dictionary, Entity, GalleryImage, GameLocation, MediaAsset, WorldOverview } from '@/types';
+import type { Body, Dictionary, Entity, GalleryImage, GameLocation, Item, MediaAsset, WorldOverview } from '@/types';
+import { withBackdropImage, withOutline } from './bodyLayout';
 import { entityImages } from './entityImages';
 import { locationImages } from './locationImages';
 import { mapGalleryStepLabel, mapImages, withMapImages } from './mapBackground';
@@ -18,13 +19,16 @@ export interface MediaEditor {
   entity: (id: string, edit: (e: Entity) => Entity) => void;
   location: (id: string, edit: (l: GameLocation) => GameLocation) => void;
   dictionary: (id: string, edit: (d: Dictionary) => Dictionary) => void;
+  body: (id: string, edit: (b: Body) => Body) => void;
+  item: (id: string, edit: (i: Item) => Item) => void;
 }
 
-/** Where Go to lands: a tab, the Locations canvas, or a parent's own item on its bench tab. */
+/** Where Go to lands: a tab, the Locations canvas, Equipment Settings, or a parent's own item on its bench tab. */
 export type MediaGoTo =
   | { to: 'overview' }
   | { to: 'canvas' }
-  | { to: 'bench'; tab: 'entities' | 'locations' | 'dictionary' };
+  | { to: 'equipment' }
+  | { to: 'bench'; tab: 'entities' | 'locations' | 'dictionary' | 'items' };
 
 export interface MediaParentSpec {
   /** The size budget of this parent's images. */
@@ -66,6 +70,9 @@ const ENTITY_GALLERY: GalleryWriter = {
 };
 const LOCATION_GALLERY: GalleryWriter = {
   write: (editor, parent, edit) => editor.location(parent.id, (l) => ({ ...l, images: edit(locationImages(l)) })),
+};
+const ITEM_GALLERY: GalleryWriter = {
+  write: (editor, parent, edit) => editor.item(parent.id, (i) => ({ ...i, images: edit(entityImages(i)) })),
 };
 
 const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
@@ -124,6 +131,24 @@ const MEDIA_PARENTS: Record<MediaParentKind, MediaParentSpec> = {
     write: (editor, { parent, key }, next) => {
       if (key === 'thumbnail') editor.dictionary(parent.id, (d) => ({ ...d, thumbnail: next?.data ?? '' }));
     },
+  },
+  body: {
+    cap: IMAGE_CAPS.entity,
+    stacks: false,
+    goTo: { to: 'equipment' },
+    goToLabel: 'Go to Equipment Settings',
+    // A removed file leaves the Humanoid outline (Q72).
+    write: (editor, { parent, key }, next) => {
+      if (key !== 'backdrop') return;
+      editor.body(parent.id, (b) => (next ? withBackdropImage(b, next.data) : withOutline(b, 'humanoid')));
+    },
+  },
+  item: {
+    cap: IMAGE_CAPS.entity,
+    stacks: true,
+    goTo: { to: 'bench', tab: 'items' },
+    gallery: ITEM_GALLERY,
+    write: (editor, item, next) => writeGallerySlot(ITEM_GALLERY, editor, item, next),
   },
 };
 

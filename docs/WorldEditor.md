@@ -2,11 +2,17 @@
 <!-- keywords: build my own game, worldbuilding, scenario maker, create a setting, campaign creator, write own adventure -->
 <!-- route: worldEditor -->
 
-A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
+This guide covers each tab in the World Editor. Each page says what the tab does, why it exists, and which settings the screen doesn't explain.
 
-On desktop, pick a tab from the rail on the left side of the list. **Overview** and **Media** stand at the top. Lines split Entities, Items, Locations, Traits and Stats from Dictionary and Placeholders.
+On desktop, pick a tab from the rail on the left side of the list:
 
-- Select **Collapse** at the foot of the rail to show only icons. Point at an icon to see its tab's name. The editor remembers your choice on this device.
+- **Overview** and **Media** are at the top.
+- A line separates Entities, Items, Locations, Traits and Stats from Dictionary and Placeholders.
+- In Advanced mode, Scripts and Tools follow after one more line.
+
+More about the rail:
+
+- Select **Collapse** at the foot of the rail to show only icons, and **Expand** to show the names again. Hover over an icon to see its tab's name. The editor remembers your choice on this device.
 - When the list is narrow, in a small window or after you drag the divider, the rail shows only icons until there's room again.
 - While the Test Bench is in the list's place, the rail's tabs are unavailable.
 
@@ -18,9 +24,16 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 | Center | The **Search World** box |
 | Right | The **Undo**, **Redo** and **History** controls, the mode select, the Test Bench, and **Save** |
 
-**Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Autosave** checkbox, in both modes. The arrow works when **Save** is dim. **Optimize Images** lives in the header of the **Media** tab, in both modes. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
+- **Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Autosave** checkbox, in both modes. The arrow works when **Save** is dim.
+- **Optimize Images** is in the header of the **Media** tab, in both modes.
+- The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** and **Media**, then Entities, Items, Locations, Traits and Stats, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right is the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
+On mobile:
+
+- The header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**.
+- Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** and **Media**, then Entities, Items, Locations, Traits and Stats, then Dictionary and Placeholders. Scripts and Tools follow in Advanced mode.
+- The footer holds **Save to Library** on Entities and Dictionary. When the selected entity or dictionary is already in your library, it reads **Open in Library**.
+- At the right of the footer is the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
 
 Each tab has its own page.
 
@@ -29,13 +42,15 @@ Each tab has its own page.
 | [🌍 Overview](World-Editor-Overview) | The world's name, card, music and AI-facing text |
 | [📦 Media](World-Editor-Media) | Every image, sound, 3D Model and Avatar in the world, with sizes |
 | [🎬 Openings](World-Editor-Openings) | The ways a playthrough can start, on the world, each location and each entity |
-| [📊 Stats](World-Editor-Stats) | The numbers that describe the player |
-| [🎭 Entities](World-Editor-Entities) | The people, creatures and things in your world |
+| [📊 Stats](World-Editor-Stats) | The numbers that describe the player and the entities |
+| [🎭 Entities](World-Editor-Entities) | Each person, creature, object or fixture in your world |
 | [🎒 Items](World-Editor-Items) | The objects someone can own, and the world's equipment slots |
 | [🗺️ Locations](World-Editor-Locations) | The places, and how the story moves between them |
-| [🧬 Traits](World-Editor-Traits) | The choices a player makes before the story starts |
+| [🧬 Traits](World-Editor-Traits) | The choices a player makes before the story starts, and states that switch on or off during a game |
 | [📖 Dictionary](World-Editor-Dictionary) | Lore that reaches the AI only when a keyword brings it up |
 | [🧩 Placeholders](World-Editor-Placeholders) | Reusable text that can change with each playthrough |
+| [📜 Scripts](ScriptsGuide) | Code that runs at set moments in play. Advanced mode only |
+| [🧰 Tools](Tools#how-to-add-a-tool-to-a-world) | The world's own Tools, which the AI can call during a request. Advanced mode only |
 
 To check a world before you play it, see [🧪 Test Bench](Test-Bench).
 
@@ -57,6 +72,8 @@ The app remembers your pick for every world. You can't switch while the Authorin
 3. To narrow the search or to replace, select **Show options and replace** at the end of the box, or press **Ctrl+H**. On mobile, open the replace row.
 4. Select **Match case** or **Match whole word** to narrow the search. Type the new text in the **Replace** box.
 5. Select **Replace** for this match, or **Replace all** for every match.
+
+The search reads an item's scripts in Advanced mode only.
 
 ## How to Restart the Authoring Tour
 <!-- keywords: tutorial, guide, walkthrough, help, intro, learn, onboarding, show me around, beginner lesson -->
@@ -148,17 +165,19 @@ History works while the editor is open during play. It clears when you close the
 
 The World Editor has two modes. **Simple** is the default.
 
-- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the **Scripts** tab, and the placeholder bar.
+- **Simple** shows the fields a new world needs. It hides the **Placeholders**, **Scripts** and **Tools** tabs, and the placeholder bar.
 - **Advanced** shows every field.
 
 Simple mode also hides these panel tabs:
 
 | Panel | Hidden tabs |
 |---|---|
-| Entity | **Traits**, **Placeholders**, **Openings** |
+| Entity | **Traits**, **Stats**, **Placeholders**, **Openings** |
+| Item | **Scripts**, **Placeholders** |
 | Location | **Pins**, **Openings** |
 | Stat | **Descriptors**, **Scripts** |
 | Trait | **Pins**, **Scripts** |
+| Placeholder | **Pins** |
 | Dictionary entry | **Matching** |
 | Dictionary book | **Placeholders** |
 
@@ -170,7 +189,7 @@ Switching to Simple mode doesn't remove anything. The hidden fields keep their v
 <!-- keywords: swap text for chip, keyboard shortcuts, skip to next result, turn word into variable, undo a swap, confirm bulk change, shift+enter -->
 <!-- route: replaceAll -->
 
-A search covers the whole world, on every tab the current mode shows. It matches chips by their label, name or values.
+A search covers the **Overview**, **Entities**, **Items**, **Locations**, **Traits**, **Stats**, **Dictionary**, **Placeholders**, **Scripts** and **Tools** tabs, on each one the current mode shows. The **Media** tab holds no text of its own, so a search skips it. A search matches chips by their label, name or values.
 
 - **Enter** goes to the next match. **Shift+Enter** goes to the previous one. **Esc** clears the search, or closes the bar on mobile.
 - On desktop, **Show options and replace** opens the full bar over the top of the editor. **Collapse to search** folds it back and keeps your search. **Close Search** clears your search and folds the bar back.
@@ -179,6 +198,7 @@ A search covers the whole world, on every tab the current mode shows. It matches
 - **Replace all** asks first, and says how many matches and fields it changes.
 - A chip can't be replaced as text. Change it in its Chip Options.
 - A field that can't hold a chip is skipped when you replace text with a placeholder.
+- A Tool's name is skipped when the new name isn't one **Save Tool** accepts. That includes a name another Tool already has, or just took in the same **Replace all**.
 
 In Advanced mode, the replace row can put a placeholder chip in place of text. Select the swap button, then pick a placeholder in **Choose Placeholder**.
 
@@ -192,7 +212,7 @@ The Authoring Tour builds a new world with you, one field at a time. It runs in 
 
 The tour first shows as an offer: **Take the Authoring Tour?** Select **Start Tour** or **No Thanks**.
 
-Each step points at one field. Fill it, or select **Use Example**, then select **Next**. **Next** waits until the field has a value. On desktop, the **In Game** pane shows where the field appears in the game and what each prompt reads from it.
+Each step is about one field. Fill it, or select **Use Example**, then select **Next**. **Next** waits until the field has a value. **Previous** goes back a step, and the note counts the steps. On desktop, the **In Game** pane shows where the field appears in the game and what each prompt reads from it. On mobile, **Show Effect** opens it.
 
 The tour goes through the tabs in order: **Overview**, **Locations**, **Entities**, **Stats**, **Traits** and **Dictionary**. Its last steps show the mode control and the Test Bench. Then select **Finish**, or **Play** to enter your world.
 
@@ -236,7 +256,7 @@ When you leave with unsaved changes, the **Unsaved changes** dialog asks what to
 <!-- keywords: two tabs, other tab, another window, saved elsewhere, deleted elsewhere, overwrite, reload, keep mine, lost changes, conflicting copies, world came back -->
 <!-- route: savedElsewhere -->
 
-When you save a world in one browser tab, every other tab with that world open in the editor stops auto saving. The **World Saved in Another Tab** dialog asks which copy to keep. A tab where you play that world, or picked it on the Main Menu, asks when you open the editor.
+When you save a world in one browser tab, every other tab with that world open in the editor stops autosaving. The **World Saved in Another Tab** dialog asks which copy to keep. A tab where you play that world, or picked it on the Main Menu, asks when you open the editor.
 
 - **Reload** opens the other tab's save. It discards your unsaved changes in this tab, and **History** starts over.
 - **Keep Mine** keeps this tab's copy and turns autosave back on. Your next save replaces the other tab's copy.
@@ -277,19 +297,19 @@ An opening is one way a playthrough can start. The world, each location and each
 
 ## Stats
 
-The numbers that describe your player. The AI sees them on every turn.
+The numbers that describe the player and the entities. The AI receives the player's stats on every turn. [Entity Stats](World-Editor-Entities#entity-stats) says when the AI receives entity stats.
 
 ➡️ [World Editor: Stats](World-Editor-Stats)
 
 ## Entities
 
-The people, creatures and things that populate your world.
+Each person, creature, object or fixture in your world.
 
 ➡️ [World Editor: Entities](World-Editor-Entities)
 
 ## Items
 
-The objects someone can own: weapons, potions, keys. Set the world's equipment **Slots** on the Overview tab.
+The objects someone can own: weapons, potions, keys. **Equipment Settings**, at the top of the list, sets the world's slots, its Bodies and the player's starting items.
 
 ➡️ [World Editor: Items](World-Editor-Items)
 
@@ -301,7 +321,7 @@ The places your story happens, and where the story can take the player.
 
 ## Traits
 
-The choices that make one playthrough different from the next.
+The choices a player makes before the story starts, and states that switch on or off during a game. They make one playthrough different from the next.
 
 ➡️ [World Editor: Traits](World-Editor-Traits)
 
@@ -313,6 +333,6 @@ Your world's lorebook. An entry reaches the AI when one of its keywords appears.
 
 ## Placeholders
 
-Reusable bits of world text you define once and place as chips.
+Reusable world text that you define once and place as chips.
 
 ➡️ [World Editor: Placeholders](World-Editor-Placeholders)

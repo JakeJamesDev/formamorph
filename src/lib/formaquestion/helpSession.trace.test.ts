@@ -70,7 +70,7 @@ describe('the trace of a help question', () => {
     expect(answer.record.messages.at(-1)?.content).toContain(TRAIT);
     expect(answer.record.response).toBeUndefined();
     expect(answer.record.endpoint).toMatchObject({ model: 'm', maxTokens: 800 });
-    expect(answer.samplers).toEqual({ temperature: 0.2, repetitionPenalty: 1 });
+    expect(answer.record.endpoint?.samplers).toEqual([{ name: 'temperature', value: 0.2 }, { name: 'repetition_penalty', value: 1 }]);
     expect(answer.customPrompt).toBe(false);
     expect(trace.preset).toBe('Default');
   });

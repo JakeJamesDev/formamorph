@@ -308,7 +308,7 @@ function locationDetails({ location, present }: CodeLocationRecord): Pick<CodeCa
   };
 }
 
-const LIBRARY_PERSONA_NOTE = 'Under a library persona, reach the Custom Persona through entities[...]';
+const LIBRARY_PERSONA_NOTE = 'Under a library persona, read the Custom Persona through entities[...]';
 
 /** `self`, `owner` and `persona` as the lookup's world holds them, laid over their surface card. */
 function boxGlobal(card: CodeCard, lookup: CodeWorldLookup, options: SurfaceAnalysisOptions): CodeCard {
@@ -340,7 +340,7 @@ function boxGlobal(card: CodeCard, lookup: CodeWorldLookup, options: SurfaceAnal
 function ownerCard(card: CodeCard, owner: CodeOwnerRecord | null): CodeCard {
   switch (owner?.kind) {
     case undefined: return card;
-    case 'empty': return { ...card, description: 'Holds nothing in a global stat’s code. Writing through it changes nothing.' };
+    case 'empty': return { ...card, description: 'Empty in a global stat’s script. Writes through it are ignored.' };
     case 'blueprint': return { ...card, rows: [ownersRow(owner.owners)] };
     // The entity is a world name, so its own description replaces the global's line (T16-1).
     case 'entity': return { ...card, ...entityDetails(owner.entity) };
@@ -381,7 +381,7 @@ export function completionCard(
 const slotTypeText = (slot: { type: string; options?: string[] }) =>
   slot.options?.length ? `${slot.type}(${slot.options.join('|')})` : slot.type;
 
-/** How the code declared the name at `at`, read from where the declaration sits in the tree. */
+/** How the code declared the name at `at`, read from where the declaration is in the tree. */
 function declarationKind(code: string, at: number): DeclarationKind {
   for (let node: SyntaxNode | null = parseCode(code).resolveInner(at, 1); node; node = node.parent) {
     switch (node.name) {

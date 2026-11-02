@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { chipValues } from './chipValues';
+import { labelsInPlay } from '../presence';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import type { Entity, GameLocation, Stat, Trait, TraitGroup, TraitLink, WorldOverview } from '@/types';
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -33,7 +35,7 @@ const world = (over: Partial<AuthoredWorld> = {}): AuthoredWorld => ({
   ...over,
 });
 
-describe('authoredChipScene and the Character Name chip', () => {
+describe('authoredChipScene and the Entity Name chip', () => {
   const keeper: Entity = { ...wren, aiDescription: '{{char}} keeps the lamps.' };
 
   it("resolves each entity's text with that entity as its owner", () => {
@@ -52,6 +54,49 @@ describe('authoredChipScene and the Character Name chip', () => {
   it("leaves entity text to a caller's resolve that brings no entity resolution", () => {
     const scene = authoredChipScene(world({ entities: [keeper, harrow] }), { resolve: (text) => text });
     expect(scene.entities[0]).toBe(keeper);
+  });
+});
+
+describe('authoredChipScene and stranger labels', () => {
+  const drifter: Entity = { ...harrow, strangerName: 'the map seller', knownIn: ['landing'] };
+  const kin: Entity = { ...wren, id: 'kin', name: 'Kin', persona: true, locations: ['landing'] };
+  const peddler: Entity = { ...drifter, id: 'peddler', name: 'Peddler', knownIn: [] };
+
+  it('labels an entity with a Stranger Name that the start rule leaves unmet', () => {
+    expect(authoredChipScene(world({ entities: [wren, peddler] })).strangerLabels).toEqual({ peddler: 'the map seller' });
+  });
+
+  it('prints the label beside the true name in the roster, as turn one does', () => {
+    const at = { location: landing, resolve: (text: string) => text };
+    const text = chipValues(authoredChipScene(world({ entities: [wren, peddler] }), at))('<ENTITIES>');
+    expect(text).toContain('Peddler');
+    expect(text).toContain('stranger name: the map seller');
+  });
+
+  it('leaves a met entity and one without a Stranger Name unlabeled', () => {
+    const tied: Entity = { ...peddler, relationships: [{ targetId: 'kin', label: 'owes' }] };
+    const scene = authoredChipScene(world({ entities: [wren, tied, kin] }), { persona: { ref: { source: 'world', entityId: 'kin' } } });
+    expect(scene.strangerLabels).toEqual({});
+  });
+
+  it('gives the same labels as play on turn one, for every persona', () => {
+    const tied: Entity = { ...peddler, id: 'tied', name: 'Tied', relationships: [{ targetId: 'kin', label: 'owes' }] };
+    const plain: Entity = { ...harrow, id: 'plain', name: 'Plain' };
+    const entities = [wren, drifter, peddler, tied, plain, kin];
+    const w = world({ entities });
+    for (const played of [null, kin]) {
+      const persona = played ? { ref: { source: 'world' as const, entityId: played.id } } : undefined;
+      // Turn one in play: nobody on the met-in-play list, no runtime characters, no story aliases yet.
+      const turnOne = labelsInPlay(entities, [], played, w.locations, new Set(), {});
+      expect(authoredChipScene(w, { persona }).strangerLabels).toEqual(turnOne);
+    }
+  });
+
+  it("meets the entity the persona's place covers", () => {
+    const labelsFor = (persona?: { ref: { source: 'world'; entityId: string } }) =>
+      authoredChipScene(world({ entities: [drifter, kin] }), { persona }).strangerLabels;
+    expect(labelsFor({ ref: { source: 'world', entityId: 'kin' } })).toEqual({});
+    expect(labelsFor()).toEqual({ harrow: 'the map seller' });
   });
 });
 
@@ -285,5 +330,14 @@ describe('authoredChipScene', () => {
 
   it('treats a null location override as nowhere, not as a missing field', () => {
     expect(authoredChipScene(world(), { location: null }).location).toBeNull();
+  });
+
+  it("starts an Equipped placement equipped in its owner's Body (Q51)", () => {
+    const scene = authoredChipScene(world({
+      items: [{ id: 'lamp', name: 'Lamp', slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [], traitEffects: [], equipRequires: [] }],
+      placements: [{ id: 'p1', where: { kind: 'entity', id: 'wren' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'lamp' } }],
+      slots: [{ id: 'hand', name: 'Hand' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })],
+    }));
+    expect(scene.itemCopies?.[0]).toMatchObject({ where: { kind: 'entity', id: 'wren' }, equipped: { slotId: 'hand' } });
   });
 });

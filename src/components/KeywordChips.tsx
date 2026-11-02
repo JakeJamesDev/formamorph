@@ -226,7 +226,7 @@ export function KeywordChips({
             trigger={PLACEHOLDER_TRIGGER}
             onSubmit={() => { addKeyword(inputValue); setInputValue(''); }}
             onBlur={() => { if (inputValue.trim()) { addKeyword(inputValue); setInputValue(''); } }}
-            placeholder={placeholderHint(keywords.length === 0 ? placeholder : 'Add keyword...', true)}
+            placeholder={placeholderHint(keywords.length === 0 ? placeholder : 'Add keyword', true)}
             ariaLabel={keywords.length === 0 ? placeholder : 'Add keyword'}
             // Sits inside the chip box, so it drops the bordered-input shell; the width comes from the wrapper.
             className="min-h-0 w-full border-0 bg-transparent px-0 py-0 focus-visible:ring-0"
@@ -245,7 +245,7 @@ export function KeywordChips({
               }
             }}
             enterKeyHint="enter"
-            placeholder={keywords.length === 0 ? placeholder : 'Add keyword...'}
+            placeholder={keywords.length === 0 ? placeholder : 'Add keyword'}
             className="flex-grow min-w-[8rem] bg-transparent text-label outline-none"
           />
         )}

@@ -35,7 +35,7 @@ const ContextMenuTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Trigger>
 >(({ onKeyDown, onPointerDown, onPointerMove, ...props }, ref) => {
   const { open, close } = React.useContext(OpenState)
-  // Where the finger landed. A touch pointer stays captured by the element it went down on, so its moves
+  // Where the touch started. A touch pointer stays captured by the element it went down on, so its moves
   // keep arriving here even once the menu has put the rest of the page behind a modal layer.
   const downAt = React.useRef<{ x: number; y: number } | null>(null)
   return (
@@ -81,9 +81,9 @@ const ContextMenuTrigger = React.forwardRef<
 ContextMenuTrigger.displayName = ContextMenuPrimitive.Trigger.displayName
 
 /**
- * Eat the click that ends the press now closing the menu. Radix closes on the pointer-down, which
- * restores the page's pointer events in time for that press's click to land on whatever sat under it.
- * Native menus on every desktop eat that click too.
+ * Cancel the click that ends the press now closing the menu. Radix closes on the pointer-down, which
+ * restores the page's pointer events in time for that press's click to go to whatever was under it.
+ * Native menus on every desktop cancel that click too.
  */
 function swallowNextClick() {
   const swallow = (event: MouseEvent) => {

@@ -75,6 +75,54 @@ describe('executeStatCode entity writes', () => {
     expect(res.error).toMatch(/The persona moves with the player/);
   });
 
+  describe('met and meet()', () => {
+    const stranger: SandboxEntity = { ...albus, met: false };
+    const known: SandboxEntity = { ...wight, met: true };
+    const cast = { entities: [stranger, known, hero], persona: hero };
+    const read = (code: string, over: Partial<StatCodeRunOptions> = cast) =>
+      executeStatCode(code, [health], null, { places, ...over });
+    // Packs booleans into Health, one bit per expression, so a run's reads come back through a stat write.
+    const bits = (...exprs: string[]) => `stats.Health.value = ${exprs.map((e, i) => `(${e} ? ${1 << i} : 0)`).join(' + ')};`;
+    const packed = (res: Awaited<ReturnType<typeof read>>) => (res.statWrites?.[0] as { value: number } | undefined)?.value;
+
+    it('reads met per entity, true for the persona and false for a blank entry', async () => {
+      const res = await read(bits('entities.Albus.met', 'entities.Wight.met', 'persona.met', 'entities.Nobody.met'));
+      expect(res.error).toBeNull();
+      expect(packed(res)).toBe(0b0110);
+    });
+
+    it('records meet and lets a later read in the same run see it', async () => {
+      const res = await read(`const before = entities.Albus.met; entities.Albus.meet(); ${bits('before', 'entities.Albus.met', 'entities.Wight.met')}`);
+      expect(res.error).toBeNull();
+      expect(packed(res)).toBe(0b110);
+      expect(res.worldWrites?.entities).toEqual([{ entity: 'e-albus', kind: 'meet' }]);
+    });
+
+    it('leaves another entity unmet when one is met', async () => {
+      const other: SandboxEntity = { ...wight, met: false };
+      const res = await read(`entities.Albus.meet(); ${bits('entities.Albus.met', 'entities.Wight.met')}`, { entities: [stranger, other, hero], persona: hero });
+      expect(packed(res)).toBe(0b01);
+    });
+
+    it('reaches the entity through owner', async () => {
+      const res = await read(`owner.meet(); ${bits('owner.met')}`, { entities: [stranger, hero], persona: hero, owner: stranger });
+      expect(packed(res)).toBe(1);
+      expect(res.worldWrites?.entities).toEqual([{ entity: 'e-albus', kind: 'meet' }]);
+    });
+
+    it('fails the script on an unknown entity', async () => {
+      const res = await read('entities.Nobody.meet();');
+      expect(res.error).toMatch(/The game has no entity named "Nobody"/);
+    });
+
+    it('does nothing when the persona meets, since the persona is always met', async () => {
+      const res = await read(`persona.meet(); ${bits('persona.met')}`);
+      expect(res.error).toBeNull();
+      expect(packed(res)).toBe(1);
+      expect(res.worldWrites).toBeUndefined();
+    });
+  });
+
   it('reports an assignment over a write as read-only', async () => {
     const res = await run('entities.Wight.move = 1;');
     expect(res.error).toBeNull();

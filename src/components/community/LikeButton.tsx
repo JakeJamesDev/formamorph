@@ -58,7 +58,7 @@ export function LikeButton({ count, liked, onToggle, onOpenLikers, size = 'sm', 
   const body = <><Heart className={iconClass} /> {shown}</>;
   // A count others can't see says so after whatever the tip already says.
   const withWhy = (tip: string) => (why ? `${tip}. ${why}.` : tip);
-  const pressTip = withWhy(liked ? 'You like this' : 'Like this');
+  const pressTip = withWhy(liked ? 'Remove your like' : 'Like this listing');
 
   const toggle = async () => {
     if (!onToggle) return;
@@ -67,7 +67,7 @@ export function LikeButton({ count, liked, onToggle, onOpenLikers, size = 'sm', 
     try {
       await onToggle(!liked);
     } catch (error) {
-      toastError(error, 'Failed to change that');
+      toastError(error, 'Failed to update your like');
     } finally {
       setIsBusy(false);
     }

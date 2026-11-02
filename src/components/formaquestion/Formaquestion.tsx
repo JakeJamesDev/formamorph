@@ -484,6 +484,12 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     void import('@/lib/devHelpTraceSample').then(({ devHelpTraceSample }) => { if (mountedRef.current) setDevTrace([devHelpTraceSample(index), devHelpTraceSample(index, 'And how do I remove one?', 'dev-trace-2')]); });
   }, [devRoute, index, mountedRef]);
   const tracedExchanges = devTrace ?? chat.exchanges;
+  // `#dev?modal=formaquestion&fixture=entityCards` opens the window on a canned answer with entity blocks.
+  const { seed } = chat;
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestion' || devRoute.fixture !== 'entityCards') return;
+    void import('@/lib/devEntityCardSample').then(({ devEntityCardSample }) => { if (mountedRef.current) seed?.([devEntityCardSample()]); });
+  }, [devRoute, seed, mountedRef]);
   // `#dev?modal=formaquestionWikiConfirm`: waits for the guide, so its load cannot reopen a canceled confirm.
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestionWikiConfirm') return;

@@ -20,9 +20,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `feedbackThread` opens the answered question from the feedback fixture (add `fixture=feedback`); `tab=staff`
  *  reads it as staff, with the triage controls. `pendingUpdate` shows the author's Pending Update section of the
  *  details modal on a canned update (`devPendingUpdate`); `tab=compare` opens its Compare view. Add
- *  `fixture=review` so the held thumbnail and the listing names load.
+ *  `fixture=review` so the held thumbnail and the listing names load. `bodyLayout` mounts the Body Layout editor
+ *  on a sample Body; the real rows are at `modal=worldEditor&tab=items&subtab=equipment&fixture=items`.
  *  Players never navigate to these. */
-export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate'] as const;
+export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate', 'bodyLayout'] as const;
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,
@@ -30,7 +31,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  `worldEditor` is an in-place modal on MainMenu (not a top-level view). `intro` replays the first-run
  *  welcome overlay on MainMenu. `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
- *  MainMenu's Character Customization step directly (a MainMenu sub-state, like `worldEditor`).
+ *  MainMenu's Avatar Customization step directly (a MainMenu sub-state, like `worldEditor`).
  *  `aiSetup` opens the AI setup gate on MainMenu in its skippable (first-run) form. `entityEditor` and
  *  `dictionaryEditor` are the *library* editors (MainMenu), distinct from the in-game `entity` modal; both
  *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to
@@ -57,6 +58,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  MainMenu's read-only Custom Prompts viewer; with no world selected it renders a canned sample
  *  override, so it's reachable on an empty library. `aiContext` is in game (GameViewer) and opens the
  *  AI Context inspector — empty before any turn, so pair it with `fixture=…` for real captured turns.
+ *  `tts` is in game (GameViewer) and opens Text to Speech on its Load Model screen.
  *  `ageGate` raises the community age attestation on demand, so its copy stays checkable on a profile
  *  that has already accepted it. `likers` opens Community Creations, its first listing's details, and the
  *  staff-only likers list on top — the same "first row in the library" trick `modelDetails` uses, since
@@ -111,12 +113,13 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  edit of the answer prompt. `formaquestionAiContext` opens the window and its AI Context under it, on two
  *  canned questions with traces, so the popup has pages to show without an AI. `formaquestionWikiConfirm` opens the
  *  window and the Open Wiki confirm, named for the section `subtab=…` gives or for the wiki home, whatever the
- *  Confirm Before Opening the Wiki setting says. `settingsCompare` opens Settings
+ *  Confirm Before Opening the Wiki setting says. `formaquestion` with `fixture=entityCards` opens the window on a
+ *  canned answer with entity blocks (`devEntityCardSample.ts`): open a World Editor first for a live Add. `settingsCompare` opens Settings
  *  and the compare view over it, on a canned edit of the Narration prompt. `chipOptions` opens Settings and
  *  Chip Options over it, on a canned Entities chip. `scriptPrompt` is in game (GameViewer) and fires one
  *  canned `player.*` request through the live prompt store once the game has a turn; `tab=…` picks the shape
- *  (`devScriptPromptSamples.ts`). Pair it with `fixture=…`. `DEV_PANE_MODALS` follow. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'gameEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'usernameRename', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', ...DEV_PANE_MODALS] as const;
+ *  (`devScriptPromptSamples.ts`). Pair it with `fixture=…`. `item` opens the first Item Copy's popup; pair it with `fixture=items&tab=inventory`. `DEV_PANE_MODALS` follow. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'gameEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'usernameRename', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', 'stranger', 'item', 'credits', 'tts', ...DEV_PANE_MODALS] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** The `attach=…` value that stages sample attachments on the game view. */
@@ -156,6 +159,8 @@ export const DEV_MODAL_TABS = {
   // The account dialog: admin messages, the follow feed, the terms, and the account settings. Log Out is a
   // header button rather than a tab, so it is not routable.
   profile: ['messages', 'notifications', 'terms', 'settings'],
+  // `tab=supporters` needs the age gate accepted. Add `fixture=supporters` for a canned wall (`devSupportersSample.ts`).
+  credits: ['credits', 'supporters', 'licenses'],
   // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch. Add
   // `fixture=feedback` to serve a canned board (`devFeedbackStub.ts`); the admin feedback route takes it too.
   feedbackHub: ['bugs', 'suggestions', 'questions'],
@@ -183,6 +188,7 @@ export const DEV_MODAL_TABS = {
   worldEditorEntity: ['profile', 'descriptions', 'items', 'traits', 'stats', 'placeholders', 'openings'],
   // The item panel's own tabs, in the same `subtab=…` slot over the Items tab
   // (`#dev?modal=worldEditor&tab=items&subtab=properties`). `fixture=items` gives a world with items and slots.
+  // `subtab=equipment` and `subtab=currencies` open their pinned entries instead of an item.
   worldEditorItem: ['profile', 'descriptions', 'properties', 'effects', 'requirements', 'scripts', 'placeholders'],
   // The library entity editor (`#dev?modal=entityEditor&tab=placeholders`). It opens on a blank draft and is
   // never in Simple mode, so every tab is reachable. `fixture=gallery` opens it on an entity whose images carry
@@ -277,6 +283,9 @@ export const DEV_MODAL_TABS = {
   // `sample` turns Image Attachments on, then runs sample images through the attach path: two wait in the
   // action box and two ride the latest turn's action.
   gameViewerAttach: [DEV_ATTACH_SAMPLE],
+  // The Allowance Ring in one state, reached with `allowance=…` (`#dev?view=gameViewer&fixture=whiteRoom&allowance=warned`).
+  // `warned` sits past the lower threshold and `warned-high` past the highest. Nothing is read or saved.
+  gameViewerAllowance: ['ready', 'warned', 'warned-high', 'exhausted', 'paused', 'locked', 'signed-out', 'privacy-required', 'suspended', 'age-gate', 'outdated', 'unavailable'],
   // The Formaquestion window's parts (`#dev?modal=formaquestion&tab=guide`). `subtab=…` takes a docs
   // section id and opens it in the reader. `mode=wide` or `mode=narrow` picks the layout. `fullscreen=1`
   // opens the Guide full screen over the window.

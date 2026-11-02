@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type MutableRefObject, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type MutableRefObject, type ReactNode } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMoves } from '@/contexts/worldRecorder';
@@ -6,7 +6,6 @@ import { useHistoryChords } from '@/components/editor/useHistoryChords';
 import { DevEditorPrompts } from '@/components/editor/DevEditorPrompts';
 import { HistoryPill } from '@/components/editor/HistoryPill';
 import { useDevRoute } from '@/lib/devRouter';
-import { filesFrom } from '@/lib/importFiles';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
@@ -23,8 +22,11 @@ import {
   useTutorialSeen,
 } from '@/lib/tutorials';
 import {
-  entityRootCount, newBlankWorld,
+  entityRootCount, newBlankWorld, newEntity,
 } from '@/lib/blankWorld';
+import { randomUUID } from '@/lib/uuid';
+import type { EntityDraft } from '@/lib/formaquestion/entityBlock';
+import { chipsFromText } from '@/lib/formaquestion/worldIndex';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
 } from '@/lib/authoringTour/steps';
@@ -42,7 +44,6 @@ import { useListEditor, type ListEditorParts } from '@/components/listEditorHook
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { NavRail } from '@/components/NavRail';
@@ -89,9 +90,9 @@ import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
-import { useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
+import { useScriptWrites, useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
 import { useWorldToolsAdapter } from '../managers/useWorldToolsAdapter';
-import { useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
+import { CURRENCIES_ID, EQUIPMENT_ID, useWorldItemsAdapter } from '../managers/useWorldItemsAdapter';
 import { ITEM_PANEL_TABS, itemPanelTabsFor, type ItemPanelTab } from './itemPanelTabs';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
@@ -115,12 +116,11 @@ import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { exportedComponentLinks } from '@/lib/componentExportLinks';
-import { resolveImportedWorld } from '@/lib/worldBundleRun';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { toastSaveFailure } from '@/lib/saveFailureToast';
 import { useWorldExport } from '@/lib/useWorldExport';
-import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
+import { terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
@@ -171,7 +171,7 @@ const WorldEditorInner = ({
   initialTab?: string;
   /** A Test Bench instrument an outside request opens. */
   initialBenchTab?: string;
-  /** The route text of the control a Take Me There request lands on. */
+  /** The route text of the control a Take Me There request opens. */
   initialTarget?: string;
   /** Changes with each outside request, so a repeat request selects its tab again. */
   requestKey?: string;
@@ -197,7 +197,7 @@ const WorldEditorInner = ({
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools,
+    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools, worldScripts, items, setItems, setBodies, updateItem, updateWorldTool,
     addStat, addLocation, addEntity, addTrait, addDictionary,
     addPlaceholder,
     updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -224,10 +224,15 @@ const WorldEditorInner = ({
   });
   // Apply a downscaled world back to the editor's state (marks dirty for the user to Save).
   const applyDownscaled = (w: World) => {
-    updateWorldOverview({ thumbnail: w.worldOverview.thumbnail });
+    updateWorldOverview({
+      thumbnail: w.worldOverview.thumbnail,
+      ...(w.worldOverview.mapBackground ? { mapBackground: w.worldOverview.mapBackground } : {}),
+    });
     setEntities(w.entities);
     setLocations(w.locations);
     setDictionaries(w.dictionaries);
+    if (w.items) setItems(w.items);
+    if (w.bodies) setBodies(w.bodies);
   };
   const [optimizeProgress, setOptimizeProgress] = useState<OptimizeControl['progress']>(null);
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
@@ -408,7 +413,7 @@ const WorldEditorInner = ({
     }
   }, [devSubtab]);
   // And over the book panel, which shares the Dictionary tab's slot. Only one of the two panels shows at a
-  // time, so `details` landing on both is the same request to each.
+  // time, so `details` reaching both is the same request to each.
   useEffect(() => {
     if (import.meta.env.DEV && DICTIONARY_BOOK_PANEL_TABS.some((t) => t.value === devSubtab)) {
       setBookTab(devSubtab as DictionaryBookPanelTab);
@@ -421,6 +426,10 @@ const WorldEditorInner = ({
   const select = useCallback((tab: string, id: string | null) => {
     setSelections((held) => (held[tab] === id ? held : { ...held, [tab]: id }));
   }, []);
+  // And over the Items tab, where `equipment` and `currencies` open their pinned entries.
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.tab === 'items' && (devSubtab === EQUIPMENT_ID || devSubtab === CURRENCIES_ID)) select('items', devSubtab);
+  }, [devRoute?.tab, devSubtab, select]);
 
   // ── Find & replace ────────────────────────────────────────────────────────
   const isMobile = useIsMobile();
@@ -493,18 +502,20 @@ const WorldEditorInner = ({
   // A hit on a tab this mode hides has nowhere to navigate to, so it isn't a hit.
   // Collected only while a search runs, so an idle field costs nothing on world edits.
   const searching = isMobile ? findOpen : dockedSearching;
+  const writeScripts = useScriptWrites();
   const searchTargets = useMemo(() => {
     if (!searching) return [];
     const reachable = new Set<string>(visibleTabs.map((t) => t.value));
     return collectSearchTargets({
       worldOverview, stats, statGroups, entities, entityGroups, locations, connections, traits, traitGroups, dictionaries, placeholders,
-      placeholderGroups, updateWorldOverview, updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation,
-      updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
+      placeholderGroups, items, scripts: worldScripts, tools: worldTools, updateWorldOverview, updateStat, updateStatGroup, updateEntity,
+      updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry,
+      updatePlaceholder, updatePlaceholderGroup, updateItem, advanced, writeScripts, updateTool: updateWorldTool,
     }).filter((t) => reachable.has(t.tab));
-  }, [searching, visibleTabs, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, connections, traits,
-      traitGroups, dictionaries, placeholders, placeholderGroups, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
-      updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
-      updatePlaceholderGroup]);
+  }, [searching, visibleTabs, advanced, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, connections, traits,
+      traitGroups, dictionaries, placeholders, placeholderGroups, items, worldScripts, worldTools, updateWorldOverview, updateStat,
+      updateEntity, updateEntityGroup, updateLocation, updateConnection, updateTrait, updateTraitGroup, updateDictionary,
+      updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup, updateItem, writeScripts, updateWorldTool]);
   // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.
   // `itemId` says which item the hit belongs to — null for Overview's own fields, which sit in no item.
@@ -569,7 +580,7 @@ const WorldEditorInner = ({
   const [resumePicker, setResumePicker] = useState(false);
 
   // ── Test Bench ────────────────────────────────────────────────────────────
-  // A finding's item is a place in the editor: land on its tab with it selected, and scroll the list to it
+  // A finding's item is a place in the editor: open its tab with it selected, and scroll the list to it
   // the same way a search hit does. A filter left in the list box would hide the very row being navigated to.
   // `entityTab` is for a caller that means one of the entity panel's own tabs — the Placeholders tab's owner
   // node opens the entity where its placeholders are. A finding names none and keeps the author's tab.
@@ -612,7 +623,15 @@ const WorldEditorInner = ({
       case 'prompt': return setActiveTab('overview');
     }
   }, [getWorldData, openCodeCardItem, navigateToBenchItem]);
-  useHelpWorldSource(editorToolWorld, getWorldData, { lean: 'editor', world: getWorldData, open: openWorldSource });
+  // An entity card's Add: a blank entity at the root with the block's two fields, shown on the Entities tab.
+  const addEntityDraft = useCallback(({ name, aiDescription }: EntityDraft) => {
+    const world = getWorldData();
+    const chips = chipsFromText(world);
+    const entity = { ...newEntity(randomUUID(), entityRootCount(world), chips(name)), aiDescription: chips(aiDescription) };
+    addEntity(entity);
+    navigateToBenchItem('entities', entity.id);
+  }, [getWorldData, addEntity, navigateToBenchItem]);
+  useHelpWorldSource(editorToolWorld, getWorldData, { lean: 'editor', world: getWorldData, open: openWorldSource, addEntity: addEntityDraft });
   // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
   const goToCodeUse = useCallback(({ entityId, rowId, trait, world, tool, timing, scriptId, line }: CodeUse) => {
     requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), ...(tool && { tool }), timing, scriptId, line });
@@ -670,7 +689,7 @@ const WorldEditorInner = ({
     }
   };
 
-  // Arriving content lands ungrouped at the root — the folder id it carried names one this world lacks.
+  // Arriving content goes ungrouped at the root — the folder id it carried names one this world lacks.
   // Its placeholders and its location membership are already resolved by the reference step above it.
   const addEntityToWorld = (entity: Entity) => {
     const placed = { ...entity, groupId: null, order: entityRootSiblingCount() };
@@ -680,7 +699,7 @@ const WorldEditorInner = ({
     if (hasAuthoredOpenings(placed) && !openingsEnabled(worldOverview, [...entities, ...locations])) {
       updateWorldOverview(setOpeningsEnabled(true));
       const named = labelPlaceholders(placed.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
-      toast.info(`${named || 'This entity'} has openings, so Openings is switched on.`);
+      toast.info(`${named || 'This entity'} has openings, so “Openings” is now on.`);
     }
     select('entities', placed.id);
   };
@@ -737,11 +756,11 @@ const WorldEditorInner = ({
   const reloadSavedElsewhere = () => {
     reloadWorld().then((loaded) => {
       if (loaded && mounted.current) linking.clearPendingLinks();
-    }, (error: unknown) => { toastError(error, { headline: 'Formamorph cannot reload the world.' }); });
+    }, (error: unknown) => { toastError(error, { headline: 'Formamorph can’t reload the world.' }); });
   };
   // The managers write edits straight into the store as you type, so leaving has to actively roll them
   // back — closing alone would keep them live for the next time this world is opened. The links made
-  // this session roll back with them; the library items they named stay. A running save lands first, so
+  // this session roll back with them; the library items they named stay. A running save finishes first, so
   // the rollback reaches the world it wrote and the store still matches disk when the editor closes.
   const discardAfterSaves = (then: () => void) => autoSave.afterSaves(() => {
     discardChanges();
@@ -933,7 +952,7 @@ const WorldEditorInner = ({
       setDevStart({ step: devTour, items: replay.items });
     });
   }, [devTour, worldId, touring, getWorldData, loadWorldData]);
-  // Starts a render after the replayed world lands, so no tour item reads as deleted.
+  // Starts a render after the replayed world loads, so no tour item reads as deleted.
   useEffect(() => {
     if (!devStart) return;
     setDevStart(null);
@@ -956,22 +975,7 @@ const WorldEditorInner = ({
   };
   const takeTourOffer = () => (newWorld ? startTour() : leaveWorld(startTourOnNewWorld));
 
-  const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(e);
-    if (!file) return;
-    try {
-      // Parsed off-thread — an image-heavy world file is multi-MB and JSON.parse can't be chunked.
-      const loadedWorld = await parseJsonText(await file.text());
-      // The same import boundary the main menu uses: what the file's copies follow is settled here, or
-      // the editor would show links to a library this machine has not got.
-      loadWorldData(await resolveImportedWorld(loadedWorld as World), false);
-    } catch (error) {
-      console.error('Error parsing JSON:', error);
-      toastError(error, { headline: 'Error loading world data. Please check the file format.' });
-    }
-  };
-
-  // A library entity lands at the root, after every root sibling.
+  // A library entity goes at the root, after every root sibling.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
   const selectedEntity = entities.find(e => e.id === selections.entities);
@@ -1017,7 +1021,7 @@ const WorldEditorInner = ({
   const toolsAdapter = useWorldToolsAdapter({ selectedId: selections.tools ?? null, onSelect: selectTool, snapshot: editorToolWorld });
   const toolsParts = useListEditor(toolsAdapter, { selectedId: selections.tools ?? null, onSelect: selectTool, search });
   const selectItem = useCallback((id: string | null) => select('items', id), [select]);
-  const itemsAdapter = useWorldItemsAdapter({
+  const { adapter: itemsAdapter, dialog: removeItemDialog } = useWorldItemsAdapter({
     selectedId: selections.items ?? null,
     onSelect: selectItem,
     tab: shownItemTab,
@@ -1025,6 +1029,7 @@ const WorldEditorInner = ({
     placeholderId: itemPlaceholderId,
     onPlaceholderIdChange: setItemPlaceholderId,
     onOpenWorldPlaceholder: openWorldPlaceholder,
+    focusField: findField,
   });
   const itemsParts = useListEditor(itemsAdapter, { selectedId: selections.items ?? null, onSelect: selectItem, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.
@@ -1043,6 +1048,7 @@ const WorldEditorInner = ({
     onOpenWorldPlaceholder: openWorldPlaceholder,
     focusField: findField,
     library: { onAddFromLibrary: () => setShowAddEntity(true), onImport: () => linking.openImportFile('entity') },
+    pendingLinks: linking.pendingLinks,
   });
   const entitiesParts = useListEditor(entitiesEditor.adapter, {
     selectedId: selections.entities ?? null, onSelect: selectEntity, search,
@@ -1079,6 +1085,7 @@ const WorldEditorInner = ({
     onEntryTabChange: setEntryTab,
     focusField: findField,
     library: { onAddFromLibrary: () => setShowAddDictionary(true), onImport: () => linking.openImportFile('dictionary') },
+    pendingLinks: linking.pendingLinks,
   });
   const dictionaryParts = useListEditor(dictionaryEditor.adapter, {
     selectedId: selections.dictionary ?? null, onSelect: selectDictionaryItem, search,
@@ -1087,11 +1094,14 @@ const WorldEditorInner = ({
   const goToMediaParent = useCallback((parent: MediaParent) => {
     const target = mediaParentSpec(parent.kind).goTo;
     if (target.to === 'overview') setActiveTab('overview');
-    else if (target.to === 'canvas') {
+    else if (target.to === 'equipment') {
+      setActiveTab('items');
+      select('items', EQUIPMENT_ID);
+    } else if (target.to === 'canvas') {
       setActiveTab('locations');
       setLocationView('canvas');
     } else navigateToBenchItem(target.tab, parent.id);
-  }, [navigateToBenchItem]);
+  }, [navigateToBenchItem, select]);
   const mediaParts = useWorldMediaEditor({
     selectedId: selections.media ?? null, onSelect: selectMediaItem, search, onGoTo: goToMediaParent,
     publishBytes: bench.publishBytes,
@@ -1147,7 +1157,7 @@ const WorldEditorInner = ({
   useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   const detailFills = !!listEditorParts?.fills;
-  // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
+  // Whose panel the palette covers: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
     activeTab === 'entities' ? selectedEntity?.id
@@ -1177,6 +1187,7 @@ const WorldEditorInner = ({
       {listEditorParts?.list}
       {removeWorldTraitDialog}
       {removeWorldStatDialog}
+      {removeItemDialog}
       {placeholdersEditor.dialog}
       {entitiesEditor.dialog}
       {dictionaryEditor.dialog}
@@ -1439,7 +1450,7 @@ const WorldEditorInner = ({
       <div
         className={cn('relative flex-grow flex overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset', !isMobile && 'flex-col')}
         ref={editorRootRef}
-        // Focusable only as Find's fallback landing spot, never in the tab order — and it shows a ring there,
+        // Focusable only as Find's fallback target, never in the tab order — and it shows a ring there,
         // so a keyboard author who closed Find can see where focus went.
         tabIndex={-1}
       >
@@ -1631,7 +1642,6 @@ const WorldEditorInner = ({
       <ChangedElsewhereDialog change={worldChangedElsewhere} {...changedElsewhereProps} />
       {worldExportDialog}
       {downscaleDialog}
-      <Input type="file" accept=".json" onChange={loadWorld} className="hidden" id="load-world" />
       <AddDictionaryModal
         open={showAddDictionary}
         resume={resumePicker}
@@ -1685,7 +1695,7 @@ const WorldEditorInner = ({
 };
 
 /** Wraps the editor in its Simple/Advanced mode preference. The DEV dev-router's `mode` param seeds it,
- *  so verification can land in either mode without touching localStorage first. */
+ *  so verification can open in either mode without touching localStorage first. */
 const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
   const devRoute = useDevRoute();
   // The Authoring Tour shows Simple while it runs on this world, without touching the stored preference.

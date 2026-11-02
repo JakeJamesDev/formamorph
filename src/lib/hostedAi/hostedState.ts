@@ -29,6 +29,12 @@ export interface HostedState {
   turnsLeft: number | null;
   resetAt: string | null;
   acknowledged: number[];
+  /** The percents that raise a warning, ascending; null when the server sent none or a malformed list. */
+  warnThresholds: number[] | null;
+  /** This week's share of spend per prompt type, in percent; null when the server sent none or a malformed map. */
+  breakdown: Record<string, number> | null;
+  /** The percent at which a single prompt is named under its group; null with no breakdown. */
+  breakdownThreshold: number | null;
 }
 
 /** What the proxy reports after a call settles. */
@@ -43,6 +49,23 @@ const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 export const recordOf = (v: unknown): Record<string, unknown> | null =>
   v !== null && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : null;
 
+/** A non-empty, strictly ascending list of positive integers; anything else is null. */
+function parseWarnThresholds(v: unknown): number[] | null {
+  if (!Array.isArray(v) || v.length === 0) return null;
+  const ascending = v.every((n, i) => Number.isInteger(n) && n >= 1 && (i === 0 || n > v[i - 1]));
+  return ascending ? [...v] : null;
+}
+
+/** A map of prompt type to a finite non-negative percent; anything else is null. */
+function parseBreakdown(v: unknown): Record<string, number> | null {
+  const map = recordOf(v);
+  if (!map) return null;
+  const entries = Object.entries(map);
+  return entries.every(([, share]) => typeof share === 'number' && Number.isFinite(share) && share >= 0)
+    ? Object.fromEntries(entries) as Record<string, number>
+    : null;
+}
+
 /** Reads the route's `data`; null when it is not a hosted state. */
 export function parseHostedState(raw: unknown): HostedState | null {
   const data = recordOf(raw);
@@ -50,6 +73,10 @@ export function parseHostedState(raw: unknown): HostedState | null {
   if (!data || !SERVER_STATES.includes(state as ServerState)) return null;
   const model = recordOf(data.model);
   const id = str(model?.id);
+  const breakdown = parseBreakdown(data.breakdown);
+  const threshold = num(data.breakdownThreshold);
+  // The two travel together: a map with no usable threshold, or the reverse, shows no breakdown.
+  const usable = breakdown && threshold !== null && Number.isInteger(threshold) && threshold >= 1 && threshold <= 100;
   return {
     tier: str(data.tier),
     state: state as ServerState,
@@ -61,6 +88,9 @@ export function parseHostedState(raw: unknown): HostedState | null {
     turnsLeft: num(data.turnsLeft),
     resetAt: str(data.resetAt),
     acknowledged: Array.isArray(data.acknowledged) ? data.acknowledged.filter((n): n is number => typeof n === 'number') : [],
+    warnThresholds: parseWarnThresholds(data.warnThresholds),
+    breakdown: usable ? breakdown : null,
+    breakdownThreshold: usable ? threshold : null,
   };
 }
 

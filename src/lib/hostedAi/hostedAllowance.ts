@@ -1,34 +1,20 @@
 import type { HostedState } from './hostedState';
 
-/**
- * The percents that raise a warning. The server holds the same list in its settings and rejects an ack for
- * any other value; its hosted state does not carry the list yet.
- */
-export const WARN_THRESHOLDS: readonly number[] = [75, 90];
-
-/** The highest threshold the account has crossed and not yet acknowledged this month, or null. */
+/** The highest threshold, when crossed and not yet acknowledged this week; a lower one raises no notice. Else null. */
 export function pendingWarning(
   hosted: HostedState | null,
   alsoSeen: ReadonlySet<number> = new Set(),
-  thresholds: readonly number[] = WARN_THRESHOLDS,
 ): number | null {
-  if (hosted?.percentUsed == null) return null;
+  if (hosted?.percentUsed == null || !hosted.warnThresholds) return null;
   const percent = hosted.percentUsed;
-  const open = thresholds.filter((t) => percent >= t && percent < 100 && !hosted.acknowledged.includes(t) && !alsoSeen.has(t));
-  return open.length > 0 ? Math.max(...open) : null;
+  const top = Math.max(...hosted.warnThresholds);
+  const open = percent >= top && percent < 100 && !hosted.acknowledged.includes(top) && !alsoSeen.has(top);
+  return open ? top : null;
 }
 
-/** Whether the month's allowance is spent. */
+/** Whether the week's allowance is spent. */
 export const isSpent = (hosted: HostedState | null): boolean =>
   hosted?.state === 'exhausted' || (hosted?.percentUsed ?? 0) >= 100;
-
-/** The reset instant as a calendar date, in UTC because the allowance resets on the 1st (UTC). */
-export function formatResetDate(resetAt: string | null): string | null {
-  if (!resetAt) return null;
-  const date = new Date(resetAt);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
-}
 
 /** What the device remembers about Formamorph AI, kept apart from the preset list. */
 export interface HostedDeviceRecord {

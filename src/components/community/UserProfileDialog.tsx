@@ -22,6 +22,7 @@ import { canModerate, isStaff } from "@/lib/roles";
 import UserService from "@/services/UserService";
 import AuthService from "@/services/AuthService";
 import type { PublicProfile } from "@/types";
+import { FieldError, Hint } from "@/components/ui/typography";
 
 interface UserProfileDialogProps {
   /** Whose profile to show. Null closes it. */
@@ -91,7 +92,7 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
       // disagree about what just happened.
       setProfile({ ...profile, ...next });
     } catch (e) {
-      toastError(e, 'Failed to change that');
+      toastError(e, profile.following ? 'Failed to unfollow' : 'Failed to follow');
     } finally {
       setIsFollowBusy(false);
     }
@@ -138,9 +139,9 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
             </div>
 
             {error ? (
-              <p className="text-label text-destructive">{error}</p>
+              <FieldError>{error}</FieldError>
             ) : memberSince ? (
-              <p className="text-helper text-muted-foreground">Member since {memberSince}</p>
+              <Hint>Member since {memberSince}</Hint>
             ) : (
               <Skeleton className="mx-auto h-5 w-32" />
             )}

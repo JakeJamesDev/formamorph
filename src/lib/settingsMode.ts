@@ -17,8 +17,8 @@ export const SETTINGS_MODE_DESCRIPTIONS: Record<SettingsMode, string> = {
 
 /** The dot's accessible name and tooltip while Simple hides a setting that is off its default. */
 export const SETTINGS_HIDDEN_NOTICE = {
-  label: 'Hidden settings are off their defaults',
-  tip: 'Some hidden settings are off their defaults. Switch to Advanced to see them.',
+  label: 'Hidden settings differ from their defaults',
+  tip: 'Some hidden settings differ from their defaults. Switch to Advanced to see them.',
 };
 
 const STORAGE_KEY = 'formamorph.settingsMode';

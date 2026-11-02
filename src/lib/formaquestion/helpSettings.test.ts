@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Tool } from '@/types';
-import { chatChrome, CHAT_STYLES, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
+import { chatChrome, CHAT_STYLES, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, SAME_AS_SEARCH, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { DEFAULT_MASCOT_RIG } from './mascot';
@@ -16,6 +16,10 @@ describe('the default help settings', () => {
       semanticOffer: 'undecided',
       answerEndpoint: null,
       pickEndpoint: SAME_AS_ANSWER,
+      // Off, so every question gets the full request the bar run measured.
+      intentClassifier: false,
+      intentEndpoint: SAME_AS_SEARCH,
+      createEndpoint: SAME_AS_ANSWER,
       lookup: false,
       lookupCallLimit: 3,
       roll: false,
@@ -25,6 +29,7 @@ describe('the default help settings', () => {
       codeTestCallLimit: 3,
       openScreen: true,
       readWorld: true,
+      creation: false,
       historyLength: 4,
       reasoning: { enabled: false, level: 'global' },
       reasoningBudget: 75,
@@ -93,6 +98,11 @@ describe('the stored help settings', () => {
   it('keep the Read the World switch, and take on for anything else', () => {
     expect(stored({ readWorld: false }).readWorld).toBe(false);
     expect(stored({ readWorld: 'no' }).readWorld).toBe(true);
+  });
+
+  it('keep the Creation switch, and take off for anything else', () => {
+    expect(stored({ creation: true }).creation).toBe(true);
+    expect(stored({ creation: 'yes' }).creation).toBe(false);
   });
 
   it('keep the code test switch, and take on for anything else', () => {

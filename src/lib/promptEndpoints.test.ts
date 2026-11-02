@@ -196,7 +196,19 @@ describe('toDebugEndpoint', () => {
     const debug = toDebugEndpoint(target, { thinking_budget_tokens: 400, reasoning_effort: 'high' }, 'lmstudio');
     expect(JSON.stringify(debug)).not.toContain('sk-super-secret-value');
     expect(Object.keys(debug).sort())
-      .toEqual(['model', 'preset', 'reasoningFields', 'routed', 'url']);
+      .toEqual(['model', 'preset', 'reasoningFields', 'routed', 'samplers', 'url']);
+  });
+
+  it('records the samplers the request carried, temperature first', () => {
+    const debug = toDebugEndpoint(target, { top_p: 0.95, temperature: 0.8, min_p: 0.05 }, 'lmstudio');
+    expect(debug.samplers).toEqual([{ name: 'temperature', value: 0.8 }, { name: 'top_p', value: 0.95 }, { name: 'min_p', value: 0.05 }]);
+  });
+
+  it('records a zero sampler, and one penalty under the spelling the request carried', () => {
+    expect(toDebugEndpoint(target, { temperature: 0, repeat_penalty: 1.1 }, 'lmstudio').samplers)
+      .toEqual([{ name: 'temperature', value: 0 }, { name: 'repeat_penalty', value: 1.1 }]);
+    expect(toDebugEndpoint(target, { repetition_penalty: 1, repeat_penalty: 1 }, 'lmstudio').samplers)
+      .toEqual([{ name: 'repetition_penalty', value: 1 }]);
   });
 
   it('records the reasoning fields the request carried, so the viewer can show what was sent', () => {

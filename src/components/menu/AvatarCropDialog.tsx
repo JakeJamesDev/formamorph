@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Meta } from "@/components/ui/typography";
 import {
   IDENTITY_CROP, MAX_ZOOM, MIN_ZOOM, clampCrop, loadImageFile, renderCrop, type CropTransform,
 } from "@/lib/avatarCrop";
@@ -122,7 +123,7 @@ export function AvatarCropDialog({ open, onOpenChange, file, onCropped, onError,
     try {
       onCropped(renderCrop(image, transform, FRAME));
     } catch (error) {
-      report.current((error as Error).message || 'That image could not be prepared');
+      report.current((error as Error).message || "Couldn't prepare that image");
     }
   };
 
@@ -142,10 +143,10 @@ export function AvatarCropDialog({ open, onOpenChange, file, onCropped, onError,
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ImagePlus className="h-4 w-4" /> Position Your Picture
+            <ImagePlus className="h-4 w-4" /> Position Your Profile Image
           </DialogTitle>
           <DialogDescription>
-            Drag to move it, scroll or use the slider to zoom. The circle is exactly what everyone sees.
+            Drag to move the image, and scroll or use the slider to zoom. Other players see what&apos;s inside the circle.
           </DialogDescription>
         </DialogHeader>
 
@@ -162,9 +163,7 @@ export function AvatarCropDialog({ open, onOpenChange, file, onCropped, onError,
             className="h-64 w-64 rounded-full border-2 border-border bg-muted touch-none cursor-grab active:cursor-grabbing"
           >
             {loading && (
-              <span className="flex h-full w-full items-center justify-center text-helper text-muted-foreground">
-                Loading…
-              </span>
+              <Meta className="flex h-full w-full items-center justify-center">Loading…</Meta>
             )}
           </div>
         </div>

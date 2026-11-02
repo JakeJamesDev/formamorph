@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick } from './world';
 import type { ChatMessage } from './ai';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
@@ -237,14 +237,16 @@ export interface RuntimeItem {
   description?: string;
 }
 
-export type InventoryPassOpKind = 'gain' | 'lose' | 'transfer' | 'equip' | 'unequip' | 'use' | 'change' | 'reveal';
+export type InventoryPassOpKind = 'gain' | 'lose' | 'transfer' | 'equip' | 'unequip' | 'use' | 'change' | 'reveal' | 'pay' | 'buy';
 
 /** What a use leaves of a runtime item (Q10). */
 export type InventoryUseAfter = 'kept' | 'used up';
 
 /** One operation as the Inventory pass names it. `owner` holds the item now; `to` receives it (gain, transfer).
  *  `state` is the new State (change), absent when the reply named none; `after` is what a use leaves, absent when
- *  the reply named neither word. */
+ *  the reply named neither word. `target` is the other item a use acts on, absent when it named none. `slot` is the
+ *  slot name an equip goes in, absent when it named none. `price` and `currency` are the money a pay or buy moves, as
+ *  the reply stated them; a pay names no item. On a buy, `owner` is the seller and `to` the buyer. */
 export interface InventoryPassOp {
   op: InventoryPassOpKind;
   item: string;
@@ -253,6 +255,10 @@ export interface InventoryPassOp {
   to: string;
   state?: string;
   after?: InventoryUseAfter;
+  target?: string;
+  slot?: string;
+  price?: string;
+  currency?: string;
 }
 
 /** An entity the Inventory pass can name as an owner. */
@@ -333,6 +339,20 @@ export interface ItemEffectLedger {
   timed?: Record<string, TimedItemEffect>;
 }
 
+/** One active trait with a Body pick: global (`ownerId` null) or an entity owner's. */
+export interface BodyTraitOn {
+  ownerId: string | null;
+  traitId: string;
+}
+
+/** The Body state play keeps beyond the authored picks. */
+export interface BodyRuntime {
+  /** The active Body-setting traits, oldest switch-on first. The last one an owner holds wins (Q13). Absent ⇒ none. */
+  traitsOn?: BodyTraitOn[];
+  /** Each owner's base Body a script wrote, by owner key (the empty string is the played Persona). Absent ⇒ the authored picks. */
+  base?: Record<string, BodyPick>;
+}
+
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */
 export interface GameState {
   globalStats: PlayerStat[];
@@ -357,6 +377,8 @@ export interface GameState {
   entityFollowers?: string[];
   /** The ids of the entities the player has met, in the order they met. Absent ⇒ none. */
   metEntities?: string[];
+  /** The latest alias each stranger was seen under, by entity id. Absent ⇒ none. */
+  strangerAliases?: Record<string, string>;
   /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
   entityStatChanges?: EntityStatChanges;
   /** Every Item Copy in play. A new game seeds them; an older save never gains any. Absent ⇒ none. */
@@ -365,6 +387,8 @@ export interface GameState {
   runtimeItems?: RuntimeItem[];
   /** What item effects have applied. Absent ⇒ none. */
   itemEffects?: ItemEffectLedger;
+  /** Body state beyond the authored picks. Absent ⇒ none. */
+  bodies?: BodyRuntime;
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** Absent ⇒ none. */

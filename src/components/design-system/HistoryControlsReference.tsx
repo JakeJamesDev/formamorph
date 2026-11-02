@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { HistoryControls, type HistoryView } from '@/components/editor/HistoryControls';
 import type { StepLabelParts } from '@/lib/editorHistoryLabels';
 
@@ -14,7 +15,7 @@ const SAMPLE_STEPS: StepLabelParts[] = [
   { verb: 'Edit', type: 'Locations', slice: 'locations' },
   { verb: 'Edit', type: 'World', slice: 'worldOverview', field: 'Thumbnail' },
   { verb: 'Remove', type: 'Trait', slice: 'traits', name: 'Brave' },
-  { verb: 'Edit', type: 'Entity', slice: 'entities', name: 'Mara Featherstonehaugh of the Lantern Docks', field: 'Player Description' },
+  { verb: 'Edit', type: 'Entity', slice: 'entities', name: 'Mara Featherstonehaugh of the Lantern Docks', field: 'Player-Facing Description' },
   { verb: 'Edit', type: 'Location', slice: 'locations', name: 'Docks', field: 'Travel Hint' },
   { verb: 'Import Lorebook' },
 ];
@@ -60,8 +61,8 @@ export function HistoryControlsReference() {
       <CardHeader>
         <CardTitle id="history-controls-title" className="text-heading">History Controls</CardTitle>
         <CardDescription>
-          The World Editor&apos;s Undo, Redo and History list over a sample history. Both layouts read the same
-          history, so a move in one shows in the other.
+          Shows the World Editor&apos;s <strong>Undo</strong>, <strong>Redo</strong> and <strong>History</strong> controls on a sample history. Both layouts share
+          the history, so a step in one shows in the other.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -71,7 +72,7 @@ export function HistoryControlsReference() {
           <Button variant="outline" size="sm" onClick={sample.reset}>Reset Sample</Button>
         </div>
         <section className="grid gap-2" aria-label="Desktop sample">
-          <p className="text-meta font-medium text-muted-foreground">Desktop</p>
+          <Meta as="p" className="font-medium">Desktop</Meta>
           <div className="overflow-x-auto rounded-md border border-border">
             <div className="flex min-h-14 min-w-[28rem] items-center justify-end gap-1 px-3">
               <HistoryControls history={sample.history} layout="pill" />
@@ -84,7 +85,7 @@ export function HistoryControlsReference() {
           </div>
         </section>
         <section className="grid gap-2" aria-label="Mobile sample">
-          <p className="text-meta font-medium text-muted-foreground">Mobile</p>
+          <Meta as="p" className="font-medium">Mobile</Meta>
           <div className="w-full max-w-[390px] rounded-md border border-border">
             <div className="flex items-center gap-2 px-3 py-2 [&>*]:shrink-0">
               <span className="text-label">Advanced</span>

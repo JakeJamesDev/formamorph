@@ -5,6 +5,7 @@ import { conditionTexts, gateOf, gateStates, ownerHolding, requirementOptions } 
 import { joinAnd, summarizeRequirement } from '@/lib/requirementSummary';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
 import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
+import { Hint } from '@/components/ui/typography';
 
 /**
  * The rows read back as Needs, then Plus One Of (Needs One Of with no Needs line), then Blocked By last, so
@@ -12,11 +13,11 @@ import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
  */
 export function RequirementSummaryText({ rows, name }: { rows: TraitRequirementRow[]; name: (c: TraitRequirement) => string }) {
   const summary = summarizeRequirement(rows);
-  if (!summary) return <p className="text-helper text-muted-foreground">Always available</p>;
+  if (!summary) return <Hint>Always available</Hint>;
   const names = (list: TraitRequirement[]) => list.map(name);
   const blocked = names(summary.blocked);
   return (
-    <div data-requirement-summary="" className="space-y-0.5 text-helper text-muted-foreground">
+    <Hint as="div" data-requirement-summary="" className="space-y-0.5">
       {summary.needs.length > 0 && <p><span className="font-medium text-foreground">Needs:</span> {joinAnd(names(summary.needs))}</p>}
       {summary.options.length > 0 && (
         <>
@@ -34,7 +35,7 @@ export function RequirementSummaryText({ rows, name }: { rows: TraitRequirementR
       {blocked.length > 0 && (
         <p><span className="font-medium text-foreground">Blocked By:</span> {blocked.length === 2 ? blocked.join(' and ') : blocked.join(', ')}</p>
       )}
-    </div>
+    </Hint>
   );
 }
 

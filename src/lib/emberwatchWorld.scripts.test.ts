@@ -216,24 +216,35 @@ describe('the Flask of Lamp Oil script', () => {
   const apply: ApplyInventory = (copies, ops) =>
     applyInventoryOps(copies, ops, { world: { items, slots: world.slots }, source: 'script', newId: () => 'new' });
 
-  /** The lanterns' uses left after the flask, used up at `usedAt`, runs its When Used script. */
-  const afterPour = async (usedAt: ItemCopyWhere) => {
-    const copies = [lanternAt('mine', you, 0), lanternAt('spare', wall, 1)];
+  const sword: ItemCopy = { id: 'sword', item: { kind: 'item', itemId: itemNamed('Steel Longsword').id }, where: you, quantity: 1, visibility: 'visible' };
+
+  /** The lanterns' uses left after the flask, used up at `usedAt` on `target`, runs its When Used script. */
+  const afterPour = async (usedAt: ItemCopyWhere, target?: ItemCopy) => {
+    const copies = [lanternAt('mine', you, 0), lanternAt('other', you, 0), lanternAt('spare', wall, 1), sword];
     const was: ItemCopy = { id: 'flask', item: { kind: 'item', itemId: flask.id }, where: usedAt, quantity: 1, visibility: 'visible' };
     const base = turnAt('The Boundary Wall', {});
     const out = await runItemScripts(
       { ...base, state: { ...base.state, items, itemCopies: copies } },
-      [{ timing: 'used', itemId: flask.id, copyId: 'flask', where: usedAt, quantity: 1, was }],
+      [{ timing: 'used', itemId: flask.id, copyId: 'flask', where: usedAt, quantity: 1, was, ...(target && { target }) }],
       items, apply, (item) => item.name,
     );
-    return Object.fromEntries(out.copies.map((copy) => [copy.id, copy.state?.uses ?? lantern.uses]));
+    return Object.fromEntries(out.copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === lantern.id)
+      .map((copy) => [copy.id, copy.state?.uses ?? lantern.uses]));
   };
 
   it("refills the owner's own lanterns to three nights and leaves the rest alone", async () => {
-    expect(await afterPour(you)).toEqual({ mine: 3, spare: 1 });
+    expect(await afterPour(you)).toEqual({ mine: 3, other: 3, spare: 1 });
   });
 
   it('refills nothing when the flask lies at a location', async () => {
-    expect(await afterPour(wall)).toEqual({ mine: 0, spare: 1 });
+    expect(await afterPour(wall)).toEqual({ mine: 0, other: 0, spare: 1 });
+  });
+
+  it('refills only the lantern the oil was poured into', async () => {
+    expect(await afterPour(you, lanternAt('mine', you, 0))).toEqual({ mine: 3, other: 0, spare: 1 });
+  });
+
+  it('refills nothing when the oil was poured into something that is not a lantern', async () => {
+    expect(await afterPour(you, sword)).toEqual({ mine: 0, other: 0, spare: 1 });
   });
 });

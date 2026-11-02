@@ -10,6 +10,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { labelPlaceholders } from '@/lib/placementLetters';
+import { Hint } from '@/components/ui/typography';
 
 /** One row of the flat search list. `name` is the label its row shows, and what the search matches. */
 export type ListEditorRow = {
@@ -28,6 +29,8 @@ export type ListEditorAdapter = {
   tree?: ReactNode;
   /** Every row a search can find, read while a search is typed; a flat list draws them all without one. */
   rows: () => ListEditorRow[];
+  /** Rows above the list under any search and when the list is empty; they never drag and never filter. */
+  pinned?: Pick<ListEditorRow, 'id' | 'name' | 'icon'>[];
   /** The placeholders a row's chips resolve through, for matching and for its label. */
   names: ListSearchNames;
   /** The plural the no-match note names: "No traits match". */
@@ -99,18 +102,19 @@ export function useListEditor(
   const matches = search.typed && !ownsSlot ? adapter.rows().filter((row) => matchesListSearch(row.name, search.term, names)) : null;
 
   const { onReorder } = adapter;
+  const rowProps = (row: Pick<ListEditorRow, 'id' | 'name' | 'icon' | 'labelClass'> & { actions?: ListEditorRow['actions'] }) => ({
+    selected: selectedId === row.id,
+    onSelect: () => onSelect(row.id),
+    selectionLabel: `Select ${labelPlaceholders(row.name, names.placeholders)}`,
+    icon: row.icon,
+    label: <PlaceholderText text={row.name} placeholders={names.placeholders} />,
+    labelClass: row.labelClass,
+    actions: row.actions ?? [],
+  });
   const searchList = (rows: ListEditorRow[]) => {
-    if (!rows.length) return <p className="text-helper text-muted-foreground p-2">No {adapter.noun} match &ldquo;{search.typed}&rdquo;.</p>;
+    if (!rows.length) return <Hint className="p-2">No {adapter.noun} match &ldquo;{search.typed}&rdquo;.</Hint>;
     const drawn = rows.map((row) => {
-      const props = {
-        selected: selectedId === row.id,
-        onSelect: () => onSelect(row.id),
-        selectionLabel: `Select ${labelPlaceholders(row.name, names.placeholders)}`,
-        icon: row.icon,
-        label: <PlaceholderText text={row.name} placeholders={names.placeholders} />,
-        labelClass: row.labelClass,
-        actions: row.actions,
-      };
+      const props = rowProps(row);
       return onReorder && row.sortable
         ? <SortableEditorRow key={row.id} id={row.id} {...props} />
         : <EditorRow key={row.id} grip={false} {...props} />;
@@ -128,6 +132,15 @@ export function useListEditor(
     );
   };
 
+  const withPinned = (list: ReactNode) => (adapter.pinned?.length ? (
+    <>
+      <EditorRowList className="mb-1 border-b pb-1">
+        {adapter.pinned.map((row) => <EditorRow key={row.id} grip={false} {...rowProps(row)} />)}
+      </EditorRowList>
+      {list}
+    </>
+  ) : list);
+
   return {
     search,
     toolbar: (className, extras) => (
@@ -135,7 +148,7 @@ export function useListEditor(
         {extras?.children}
       </ListSearchToolbar>
     ),
-    list: ownsSlot ? adapter.tree : matches ? searchList(matches) : adapter.isEmpty ? adapter.emptyHint : adapter.tree ?? searchList(adapter.rows()),
+    list: ownsSlot ? adapter.tree : withPinned(matches ? searchList(matches) : adapter.isEmpty ? adapter.emptyHint : adapter.tree ?? searchList(adapter.rows())),
     detail: adapter.detail(heldId),
     footer: heldId !== null ? adapter.footer?.(heldId) : undefined,
     fills: heldId !== null && !!adapter.fills?.(heldId),

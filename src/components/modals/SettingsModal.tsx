@@ -93,7 +93,7 @@ import WorldStorageService from '@/services/WorldStorageService';
 import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
-import { readBundledWorld } from '@/lib/bundledWorldText';
+import { bundledWorlds } from '@/lib/bundledWorldText';
 import { PresetNameDialog } from './PresetNameDialog';
 import { workflowOwnModels } from '@/lib/imageGen/comfyui';
 import { DEFAULT_IMAGE_FILE_NAME } from '@/lib/imageGen/fileName';
@@ -241,7 +241,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   toolWorld?: () => ToolSnapshot;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
   initialTab?: SettingsTabId;
-  /** Which AI Endpoints sub-tab to open ('text-endpoint' | 'img-endpoint' | 'img-tagprompt'). Used by the
+  /** Which Endpoints sub-tab to open ('text-endpoint' | 'img-endpoint' | 'img-tagprompt'). Used by the
    *  "Open Settings" shortcut in the image generation dialog to land straight on Image. */
   initialEndpointTab?: string;
   /** Which prompt under the Prompts tab to open (e.g. 'narration', 'thinking'). Set by the dev-router, and
@@ -264,7 +264,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const kind = devRoute?.fixture?.startsWith('fai-notice-') ? devRoute.fixture.slice(11) : '';
-    const sample = { resetAt: '2026-12-01T00:00:00.000Z' } as HostedState;
+    const sample = { resetAt: '2026-11-09T00:00:00.000Z' } as HostedState;
     if (kind === '75' || kind === '90') showWarningNotice(Number(kind), sample);
     if (kind === 'exhausted') showExhaustedNotice(sample, () => {});
   }, [devRoute]);
@@ -347,7 +347,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const restoreDefaultWorlds = async () => {
     clearDeletedDefaultWorlds();
     try {
-      const { failed, errors } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, readBundledWorld);
+      const { failed, errors } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, bundledWorlds);
       if (failed.length) {
         toastError(
           new AggregateError(errors, 'Default worlds failed to restore'),
@@ -625,7 +625,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // Short enough for one line on mobile; the notice puts the whole sentence on hover.
   const readOnlyReason = activePresetIsBuiltIn ? `${activePresetName} is read-only` : undefined;
 
-  // AI Endpoints → Image preset name dialog (mirrors the prompt preset one; all presets editable).
+  // Endpoints → Image preset name dialog (mirrors the prompt preset one; all presets editable).
   const [imagePresetDialog, setImagePresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const IMG_ADD_PRESET_SENTINEL = '__add_image_preset__';
 
@@ -1025,7 +1025,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     // The ⓘ names the current target; the fixed description does not.
     info: pinnedEndpoint
       ? `Always goes to ${pinnedEndpoint.name}, even when you switch endpoints elsewhere`
-      : 'Follows the endpoint picked on the **AI Endpoints** tab. Switch endpoints there and this prompt follows.',
+      : 'Follows the endpoint picked on the **Endpoints** tab. Switch endpoints there and this prompt follows.',
     value: pinnedEndpoint ? pinnedEndpoint.id : null,
     activeName: activeTextEndpointPresetName,
     presets: routableEndpoints,
@@ -1244,12 +1244,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="comfyui">ComfyUI (local)</SelectItem>
-                    <SelectItem value="invokeai">InvokeAI (local)</SelectItem>
-                    <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
-                    <SelectItem value="novelai">NovelAI (cloud)</SelectItem>
+                    <SelectItem value="comfyui">ComfyUI</SelectItem>
+                    <SelectItem value="invokeai">InvokeAI</SelectItem>
+                    <SelectItem value="a1111">Automatic1111 / Forge</SelectItem>
+                    <SelectItem value="novelai">NovelAI</SelectItem>
+                    {/* The disabled item keeps its condition in view, since the ⓘ is optional reading. */}
                     <SelectItem value="openai" disabled={!desktop}>
-                      {desktop ? 'OpenAI-compatible (cloud)' : 'OpenAI-compatible (cloud, desktop app only)'}
+                      {desktop ? 'OpenAI-compatible' : 'OpenAI-compatible (desktop app only)'}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -1390,7 +1391,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   // The description holds still across providers; only what it costs you differs.
                   info={<HintInfo>{imageProvider === 'a1111'
                     ? 'Fixes faces and hands. Requires the **ADetailer** extension installed on your A1111/Forge server.'
-                    : 'Re-renders the face at full resolution. Roughly **doubles** generation time. Works with SDXL and SD1.5 only.'}</HintInfo>}
+                    : 'Re-renders the face at full resolution. Roughly **doubles** generation time. Works with SDXL, SD1.5 and SD2 only.'}</HintInfo>}
                 />
               )}
               {advanced && imageProvider === 'comfyui' && (
@@ -1453,7 +1454,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                           arrived — while it's loading or unreachable, the board is probably fine. */}
                       {imageInvokeBoard && !(invokeMeta?.boards ?? []).some((b) => b.board_id === imageInvokeBoard) && (
                         <SelectItem value={imageInvokeBoard}>
-                          {invokeMeta ? 'Unknown board (falls back to Uncategorized)' : 'Saved board (list unavailable)'}
+                          {invokeMeta ? 'Unknown board · images go to Uncategorized' : 'Saved board · list unavailable'}
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -1469,8 +1470,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     {...rowCopy('invokeEncoder')}
                     // Which encoder the base needs varies; that it needs one does not.
                     info={<HintInfo>{invokeSubmodelBase === 'anima'
-                      ? 'Anima needs a **Qwen3 0.6B** text encoder. Leave blank to auto-pick.'
-                      : 'Z-Image needs a **Qwen3 4B** text encoder. Leave blank to auto-pick.'}</HintInfo>}
+                      ? 'Anima needs a **Qwen3 0.6B** text encoder. Leave it blank to pick one automatically.'
+                      : 'Z-Image needs a **Qwen3 4B** text encoder. Leave it blank to pick one automatically.'}</HintInfo>}
                   >
                     <TokenAutocomplete
                       single
@@ -1485,8 +1486,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     htmlFor="imageInvokeVae"
                     {...rowCopy(invokeSubmodelBase === 'anima' ? 'invokeVaeAnima' : 'invokeVaeZImage')}
                     info={<HintInfo>{invokeSubmodelBase === 'anima'
-                      ? 'Anima needs a **QwenImage/Wan 2.1** VAE. A FLUX VAE also works. Leave blank to auto-pick.'
-                      : 'Z-Image needs a **FLUX-type** VAE, such as the FLUX.1-schnell VAE. Leave blank to auto-pick.'}</HintInfo>}
+                      ? 'Anima needs a **QwenImage/Wan 2.1** VAE. A FLUX VAE also works. Leave it blank to pick one automatically.'
+                      : 'Z-Image needs a **FLUX-type** VAE, such as the FLUX.1-schnell VAE. Leave it blank to pick one automatically.'}</HintInfo>}
                   >
                     <TokenAutocomplete
                       single
@@ -1508,8 +1509,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               {!imageGenDisabled && advanced && (
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
                 <Hint className="flex-shrink-0">
-                  The prompt sent to your text model to turn a subject’s description into booru tags. The
-                  <span className="mx-1 font-medium">Subject</span>chip expands per kind. Entity: “{SUBJECT_GUIDANCE.character}”. Location: “{SUBJECT_GUIDANCE.location}”. World: “{SUBJECT_GUIDANCE.world}”.
+                  Asks your text model to turn a subject’s description into booru tags. The
+                  <span className="mx-1 font-medium">Subject</span>chip expands by kind. Entity: “{SUBJECT_GUIDANCE.character}”. Location: “{SUBJECT_GUIDANCE.location}”. World: “{SUBJECT_GUIDANCE.world}”.
                 </Hint>
                 <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} chipReads={effectivePreviewValues} />
                 <div className="flex justify-start flex-shrink-0">
@@ -1564,8 +1565,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 say so, or picking a preset here looks like it silently did nothing to the rest of the app. */}
             {presetPinnedToWorld && (
               <Hint className="-mt-2 flex-shrink-0">
-                The world you&apos;re playing is pinned to this preset, so changing it here re-pins this world.
-                Your usual preset is unaffected and comes back when you leave.
+                Changes the preset pinned to the world you&apos;re playing. Your usual preset comes back when you
+                leave the world.
               </Hint>
             )}
             {/* Rail + panel. The rail replaces both the thirteen wrapped prompt tabs and the
@@ -2139,9 +2140,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                       format={String}
                     />
                     {autosaveSlots < autosaveSlotsAtOpen && (
-                      <p role="status" className="text-helper text-destructive">
+                      <FieldError role="status">
                         Deletes each world&apos;s oldest autosaves past {autosaveSlots} on its next autosave
-                      </p>
+                      </FieldError>
                     )}
                   </div>
                 </Row>

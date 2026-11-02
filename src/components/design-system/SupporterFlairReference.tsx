@@ -3,7 +3,8 @@ import { Meta, SectionTitle } from '@/components/ui/typography';
 import { RoleBadge } from '@/components/RoleBadge';
 import { SupporterBadge } from '@/components/SupporterBadge';
 import { UserAvatar, type AvatarSize } from '@/components/UserAvatar';
-import { SUPPORTER_LABELS, SUPPORTER_NAME_STYLES, SUPPORTER_TIERS } from '@/lib/supporterFlair';
+import { SUPPORTER_NAME_STYLES, SUPPORTER_TIERS } from '@/lib/supporterFlair';
+import { useTierName } from '@/lib/tierNames';
 import type { SupporterTier } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -63,6 +64,8 @@ function ThemePanel({ mode, children }: { mode: 'light' | 'dark'; children: Reac
 }
 
 function Sample() {
+  const tierNameOf = useTierName();
+
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -82,7 +85,7 @@ function Sample() {
         <Meta>Names</Meta>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-label font-medium">
           <span>Ordinary name</span>
-          {TIERS.map((tier) => <span key={tier} className={SUPPORTER_NAME_STYLES[tier]}>{SUPPORTER_LABELS[tier]} name</span>)}
+          {TIERS.map((tier) => <span key={tier} className={SUPPORTER_NAME_STYLES[tier]}>{tierNameOf(tier)} name</span>)}
         </div>
       </div>
       <div className="space-y-2">
@@ -111,7 +114,7 @@ export function SupporterFlairReference() {
     <Card role="region" aria-labelledby="supporter-flair-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="supporter-flair-reference-title" className="text-heading">Supporter Flair Reference</CardTitle>
-        <CardDescription>This proposal shows the tier colors, badges, names, and Profile Image rings.</CardDescription>
+        <CardDescription>Shows the proposed tier colors, badges, names and Profile Image rings</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 lg:grid-cols-2">
         <ThemePanel mode="light"><Sample /></ThemePanel>

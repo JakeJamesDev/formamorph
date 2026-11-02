@@ -31,17 +31,23 @@ const turns: TurnFixture[] = [
   { narration: 'The golem takes a blow.', turnId: 't2', scene, entityStats: at(60) },
 ];
 
-const show = (entity: object, page?: number, preferImage = false) => renderInGame(
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
+
+const show = (authored: object, page?: number, preferImage = false) => {
+  const entity = { ...authored, locations: ['yard'] };
+  return renderInGame(
   <LeftPanel entities={[entity] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />,
   {
-    world: { entities: [entity] } as never, turns, page,
+    world: { entities: [entity], locations: [YARD] } as never, turns, page,
     seed: (g) => {
+      g.setCurrentLocation(YARD as never);
       g.setEntityStats(at(60));
       g.setVisibleEntities(scene);
       if (preferImage) g.setEntityVisualPreference({ golem: 'image' });
     },
   },
-);
+  );
+};
 const morphsOf = (viewer: HTMLElement) => JSON.parse(viewer.dataset.morphs!) as Record<string, number>;
 
 describe('LeftPanel — entity stat morphs', () => {

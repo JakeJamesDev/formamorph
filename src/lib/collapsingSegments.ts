@@ -12,17 +12,29 @@ export interface SegmentLayout {
 const sum = (widths: readonly number[]) => widths.reduce((a, b) => a + b, 0);
 
 /**
- * Picks the most labels that fit `room`. The `active` step is sized for the widest label, so picking a
- * different segment never changes the step.
+ * The group's width at each step. `active` is sized for the widest label, so picking a different segment
+ * never changes which step fits.
  *
  * @param full - Each segment's width with its label
  * @param icon - Each segment's width as an icon alone
  * @param inset - The group's padding on each side
  */
+export function segmentStepWidths(full: readonly number[], icon: readonly number[], inset: number): Record<SegmentFold, number> {
+  const icons = full.map((width, i) => icon[i] ?? width);
+  const widestLabel = Math.max(0, ...full.map((width, i) => width - icons[i]));
+  return { full: sum(full) + 2 * inset, active: sum(icons) + widestLabel + 2 * inset, icons: sum(icons) + 2 * inset };
+}
+
+/** Picks the most labels that fit `room`, by `segmentStepWidths`. */
 export function segmentFold(full: readonly number[], icon: readonly number[], room: number, inset: number): SegmentFold {
-  if (room >= sum(full) + 2 * inset - 0.5) return 'full';
-  const widestLabel = Math.max(0, ...full.map((width, i) => width - (icon[i] ?? width)));
-  return room >= sum(icon) + widestLabel + 2 * inset - 0.5 ? 'active' : 'icons';
+  const steps = segmentStepWidths(full, icon, inset);
+  if (room >= steps.full - 0.5) return 'full';
+  return room >= steps.active - 0.5 ? 'active' : 'icons';
+}
+
+/** Whether the segment at `index` shows its label at `fold`. */
+export function labelShown(fold: SegmentFold, index: number, active: number): boolean {
+  return fold === 'full' || (fold === 'active' && index === active);
 }
 
 /**
@@ -33,9 +45,12 @@ export function segmentFold(full: readonly number[], icon: readonly number[], ro
  * @param icon - Each segment's width as an icon alone
  * @param active - The index of the selected segment
  * @param inset - The group's padding on each side
+ * @param fill - A width to stretch the group to, its spare room shared evenly between the segments
  */
-export function segmentLayout(full: readonly number[], icon: readonly number[], active: number, fold: SegmentFold, inset: number): SegmentLayout {
-  const widths = full.map((width, i) => (fold === 'full' || (fold === 'active' && i === active) ? width : icon[i] ?? width));
+export function segmentLayout(full: readonly number[], icon: readonly number[], active: number, fold: SegmentFold, inset: number, fill?: number): SegmentLayout {
+  const own = full.map((width, i) => (labelShown(fold, i, active) ? width : icon[i] ?? width));
+  const spare = fill === undefined || own.length === 0 ? 0 : Math.max(0, fill - sum(own) - 2 * inset) / own.length;
+  const widths = own.map((width) => width + spare);
   const lefts: number[] = [];
   let x = inset;
   for (const width of widths) {

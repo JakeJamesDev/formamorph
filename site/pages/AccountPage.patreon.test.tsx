@@ -98,7 +98,7 @@ describe('the Patreon section: linked with no tier', () => {
     patreon({ 'GET ': ok(NO_TIER) });
     render(<AccountPage />);
 
-    expect(await screen.findByText('No active membership')).toBeTruthy();
+    expect(await screen.findByText('Not supporting right now')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Unlink' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Become a Supporter' })).toBeTruthy();
     expect(screen.queryByRole('checkbox', { name: 'Show Supporter Flair' })).toBeNull();
@@ -231,7 +231,7 @@ describe('returning from Patreon', () => {
     ['taken', /linked to another Formamorph account/],
     ['denied', /didn.t approve the request/],
     ['expired', /link request expired/],
-    ['failed', /Patreon didn.t answer/],
+    ['failed', /Patreon didn.t respond/],
   ])('says what the %s result means, and reads the status without a confirm', async (result, message) => {
     at(`/account?patreon=${result}`);
     patreon({ 'GET ': ok(NOT_LINKED) });

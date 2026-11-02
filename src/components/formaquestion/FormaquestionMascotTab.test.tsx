@@ -489,7 +489,7 @@ describe('player images', () => {
     await act(async () => {
       fireEvent.drop(slot, { dataTransfer: { files: [], types: ['text/uri-list'], getData: (type: string) => (type === 'text/uri-list' ? link : ''), dropEffect: 'none' } });
     });
-    expect(screen.getByText('This slot takes image files, not links.')).toBeInTheDocument();
+    expect(screen.getByText("This slot doesn't take links. Drop an image file instead.")).toBeInTheDocument();
     expect(layerOf('happy').images).toHaveLength(2);
   });
 

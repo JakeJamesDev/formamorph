@@ -1,9 +1,14 @@
 # 🪪 Personas for Authors
 <!-- keywords: world creator side, player identity setup, who players become, designing the protagonist -->
 
-How your world meets the player's persona: playable entities, the **Allowed Personas** and **Starts On** controls, the **Persona** chip, and the two Built-in chips that carry names into your text.
+This page covers how your world meets the player's persona:
 
-> Players read [Personas](Personas). This page covers the World Editor side. Everything here except the **Persona Name** and **Character Name** chips is **Advanced mode only**.
+- Playable entities
+- The **Allowed Personas** and **Starts On** controls
+- The **Persona** chip
+- The two Built-in chips that put names in your text
+
+> Players read [Personas](Personas). This page covers the World Editor side. Everything here except the **Persona Name** and **Entity Name** chips is **Advanced mode only**.
 
 ---
 
@@ -46,9 +51,9 @@ See [Persona Rules](#persona-rules) for each choice.
 
 1. Select a prose field, such as an entity's **AI-Facing Description** or an opening.
 2. Type `{`. The menu opens with **Built-in** at the top.
-3. Pick **Persona Name** for the player's name, or **Character Name** for the name of the entity that owns the text.
+3. Pick **Persona Name** for the player's name, or **Entity Name** for the name of the entity that owns the text.
 
-The menu offers **Character Name** only in an entity's own fields. You can also type `{{user}}` or `{{char}}` in any prose field, and the field turns it into the chip.
+The menu offers **Entity Name** only in an entity's own fields. You can also type `{{user}}` or `{{char}}` in any prose field, and the field turns it into the chip.
 
 ## The Short Version
 <!-- keywords: cheat sheet, quick reference, tldr, which option fits -->
@@ -61,7 +66,7 @@ The menu offers **Character Name** only in an entity's own fields. You can also 
 | To decide who the player can be | **Allowed Personas** and **Starts On** on the **Overview** tab |
 | Your own prompt to know the persona | The **Persona** chip |
 | Your text to say the player's name | The **Persona Name** chip |
-| An entity's text to say its own name | The **Character Name** chip |
+| An entity's text to say its own name | The **Entity Name** chip |
 
 ## Playable Entities
 <!-- keywords: role options, role modes, what changes when chosen, text contradicts itself, proofread from hero view, dot on mode switch, leaves and returns -->
@@ -91,12 +96,12 @@ Only entities you select are playable. The setting is your statement that the en
 
 > ⚠️ **Check text that names "the player" as someone else.** Suppose the blacksmith's description says "She distrusts the player". A player who plays the blacksmith now reads as someone who distrusts herself. The app doesn't rewrite this text. You own it when you make the entity playable. Read the entity's descriptions, and the descriptions that mention it, from the player's side first.
 
-In Simple mode, a **Playable** or **Persona-Only** entity puts a dot on the **Advanced** side of the mode switch, so you know the world uses Advanced features.
+In Simple mode, a dot on the corner of the mode menu tells you the world uses Advanced features. A **Playable** or **Persona-Only** entity adds the dot. A non-default **Allowed Personas** or **Starts On** does the same.
 
 ## Persona-Only Entities
 <!-- keywords: hidden unless chosen, never in the world, reserved for player, invisible character, exclusive hero, not offered in library -->
 
-Some entities exist only as a player slot, such as a "Custom Character" with no story of their own. Set **Persona** to **Persona-Only** to keep one out of the world unless the player picks it.
+Some entities exist only as a player slot, such as a *Stranger* with no story of its own. Set **Persona** to **Persona-Only** to keep one out of the world unless the player picks it.
 
 | The player | The entity |
 |---|---|
@@ -110,7 +115,7 @@ Some entities exist only as a player slot, such as a "Custom Character" with no 
 ## Custom Persona
 <!-- keywords: greyed out choice, only one allowed, fallback traits, inherit race and class, unmark consequences, refuses group drop, duplicate loses role, replaces empty option -->
 
-A player who picks a persona from their own library has no world entity's traits. A player who picks **None** has none either. The **Custom Persona** entity gives them traits anyway, such as a race and a class. It also stands in **None**'s place at Enter World.
+A player who picks a persona from their own library has no world entity's traits. A player who picks **None** has none either. The **Custom Persona** entity gives them traits anyway, such as a race and a class. It also takes **None**'s place at Enter World.
 
 Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The mark is the fourth choice, beside **Cast**, **Playable** and **Persona-Only**.
 
@@ -123,13 +128,19 @@ Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The
 | Self openings | Its [Self Openings](World-Editor-Openings#self-openings) draw for a player who picks **None**, or a library persona with no Self openings of its own |
 | At the top level | It stays at the top level of the **Traits** tab, in the order you set. A drop into a group is refused. |
 | Always an owner | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
+| Locations | It moves with the player, so **Presence**, **Movement** and **Known In** don't apply to it |
 | Duplicate | A duplicate drops the mark. |
 
 Its traits are the persona's traits when the player picks **None** or a library persona. A world persona keeps its own traits. The root traits the player picks stay global traits under every persona and under **None**. The picks carry over between **None** and library personas.
 
 Copies work in the same order. A library persona's own copy wins. The Custom Persona entity's copy fills in where the persona has none. The [blueprint](World-Editor-Placeholders#blueprints) itself reads last.
 
-Remove the mark, and the entity keeps its links, traits and copies. Its stat traits keep their stats, but the stats do nothing. A confirmation names the counts of links, traits and copies. Delete the entity, and they go with it. That confirmation names the counts of links, traits and placeholders. An empty entity does neither with a dialog.
+| You | What happens |
+|---|---|
+| Remove the mark | The entity keeps its links, traits and copies. Its stat traits keep their stats, but the stats do nothing. A confirmation names the counts of links, traits and copies. |
+| Delete the entity | Its links, traits and copies go with it. A confirmation names the counts of links, traits and placeholders. |
+
+Neither asks for confirmation on an empty entity.
 
 A world with no marked entity keeps **None** as before. A blueprint chip then reads the blueprint's own values.
 
@@ -154,14 +165,14 @@ Two controls on the **Overview** tab decide who the player can be. Both are **Ad
 | Value | Starts on |
 |---|---|
 | **Player's Default** | The player's default persona. **World Only** hides this choice. |
-| **None**, or your Custom Persona by name | No persona, or your **Custom Persona** when the world has one |
+| **None**, or your Custom Persona by name | No persona, or your **Custom Persona** when the world has one. **World Only** hides **None** when the world has no Custom Persona. |
 | One of your personas | That persona |
 
 Use **Starts On: None** when your world already defines the player. Use **World Only** when the player must be one of your entities.
 
 - **A pick the player made in your world before wins**, when the list still offers it. **Starts On** guides new players. It doesn't lock them.
 - **World Only with no persona entity works like Any** until you give an entity a **Persona** role other than **Cast**.
-- **A start persona you later unmark falls back to Player's Default.**
+- **A start persona you later unmark falls back to Player's Default.** Under **World Only**, it falls back to the first choice **Starts On** still offers.
 - **The side panel's Change list follows Allowed Personas** too.
 - **Worlds saved with the older Persona Choice control load as the same rules.** Fixed becomes **Starts On: None**. Cast becomes **World Only**, and also **Starts On: None** when no entity was playable.
 
@@ -174,7 +185,7 @@ An entity's own stats become *persona stats* while the player plays as it. Under
 |---|---|
 | Stat panel | The global stats show under **Global**. The persona's stats show under its name, below them. Pick the persona's name, marked **You**, in the entity picker, and no entity section shows. |
 | AI stat updates | The AI updates every persona stat under **Player Character**, and the global stats under **Global Stats**. A stat with the same name as a global stat stays a separate stat. See [How the AI Tracks Stat Changes](World-Editor-Stats#how-the-ai-tracks-stat-changes). |
-| AI prompts | The narrator, choice writer and storyboard planner read the global stats and traits first. The persona's own stats follow in its **Persona** block. Under a library persona and under **None**, the **Custom Persona** entity's stats sit in that block. A stat with the same name as an earlier stat reads as "*name* (2)". |
+| AI prompts | The AI reads the global stats and traits first. The persona's own stats follow in its **Player Character** block. Under a library persona and under **None**, the **Custom Persona** entity's stats sit in that block. A stat with the same name as an earlier stat reads as "*name* (2)". |
 | Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
 | Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
 
@@ -187,7 +198,7 @@ The **Persona** chip sends the persona to the AI. The built-in prompt presets al
 
 > ⚠️ **Your own prompt gets no persona until you add the chip.** A prompt in **Custom Prompts** replaces the player's prompt, and nothing is added to it. Without the chip, the AI never sees the player's name or description. The same is true of a player's own custom preset.
 
-Select the placed chip to open [Chip Options](Prompts#chip-options) and set **Content**:
+Select the placed chip to open [Chip Options](Prompt-Chips#chip-options) and set **Content**:
 
 | Content | Sends | Use it for |
 |---|---|---|
@@ -204,7 +215,7 @@ These rows work with **Content**:
 | **Stat Detail** | Pick **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
 | **Format** | **Simple**, **Markdown** or **XML**, as on the other list chips |
 
-**Name** sends plain text. It turns off **Include** and **Stat Detail**, and it locks **Format**. **Only With** still works. Clearing **Include → Stats** turns off **Stat Detail**.
+**Name** sends plain text. It turns off **Include** and **Stat Detail**, and it locks **Format** while the chip has no **Header**. **Only With** still works. Clearing **Include → Stats** turns off **Stat Detail**.
 
 | Detail | What to do |
 |---|---|
@@ -232,10 +243,10 @@ Both fallbacks take a capital at the start of a sentence. A possessive follows: 
 
 > 💡 For what the chip does to page one, see [Openings](World-Editor-Openings).
 
-## The Character Name Chip
+## The Entity Name Chip
 <!-- keywords: self reference, name token, survives renaming, bot name macro, not in menu, inside trait text, owner of text -->
 
-Type `{` in one of an entity's own fields and pick **Character Name** under **Built-in**. It reads as the name of the entity that owns the text. Write one description that names its owner, and it stays right after a rename.
+Type `{` in one of an entity's own fields and pick **Entity Name** under **Built-in**. It reads as the name of the entity that owns the text. Write one description that names its owner, and it stays right after a rename.
 
 - **The menu offers it only in an entity's own fields**, such as its descriptions and its openings. A book, a location or a world field doesn't offer it.
 - **In trait text, type `{{char}}`.** It becomes the chip and names the trait's owner. See [Entity Traits](World-Editor-Traits#entity-traits).
@@ -244,6 +255,6 @@ Type `{` in one of an entity's own fields and pick **Character Name** under **Bu
 
 ## Related
 
-- [🪪 Personas](Personas) — the player's side
-- [🛠️ World Editor](WorldEditor) — [Openings](World-Editor-Openings), [Entities](World-Editor-Entities) and [Placeholders](World-Editor-Placeholders)
-- [📐 World Format](WorldFormat) — the fields behind these controls
+- [🪪 Personas](Personas): the player's side
+- [🛠️ World Editor](WorldEditor): [Openings](World-Editor-Openings), [Entities](World-Editor-Entities) and [Placeholders](World-Editor-Placeholders)
+- [📐 World Format](WorldFormat): the fields behind these controls

@@ -38,7 +38,7 @@ export const SURFACE_EXCLUSIONS: Partial<Record<SurfaceId, SurfaceExclusionReaso
       ...tabsOf('adminPanelModeration')],
     'staff',
   ),
-  ...excludeAll(['designSystem', 'scriptPrompt', ...tabsOf('scriptPrompt'), ...tabsOf('gameViewerAttach'), ...tabsOf('worldEditorHistory')], 'dev'),
+  ...excludeAll(['designSystem', 'scriptPrompt', ...tabsOf('scriptPrompt'), ...tabsOf('gameViewerAttach'), ...tabsOf('gameViewerAllowance'), ...tabsOf('worldEditorHistory')], 'dev'),
   ...excludeAll(DEV_PANE_MODALS, 'dev'),
 };
 
@@ -52,12 +52,13 @@ const THE_PROMPTS: Required<DocTarget> = { page: 'Prompts', anchor: 'the-prompts
 const community = (anchor: string): Required<DocTarget> => ({ page: 'Community-Creations', anchor });
 const PUBLISH_DIALOG = community('the-publish-dialog');
 const EVENT_POSTERS = community('event-posters-and-banners');
-const USER_PROFILE = community('the-user-profile-dialog');
-const ACCOUNT_DELETION = community('account-deletion');
-const BUGS_AND_SUGGESTIONS = community('bugs-and-suggestions');
+const account = (anchor: string): Required<DocTarget> => ({ page: 'Account', anchor });
+const USER_PROFILE = account('the-user-profile-dialog');
+const ACCOUNT_DELETION = account('account-deletion');
+const THE_FEEDBACK_WINDOW: Required<DocTarget> = { page: 'Feedback', anchor: 'the-feedback-window' };
 const THE_LIBRARY_TABS: Required<DocTarget> = { page: 'Library', anchor: 'the-library-tabs' };
 const THE_GROUP_DIALOGS: Required<DocTarget> = { page: 'Library', anchor: 'the-group-dialogs' };
-const FORMAQUESTION_SETTINGS: Required<DocTarget> = { page: 'Formaquestion', anchor: 'formaquestion-settings' };
+const formaquestionSettings = (anchor: string): Required<DocTarget> => ({ page: 'Formaquestion-Settings', anchor });
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
@@ -66,6 +67,10 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   connectReferences: { page: 'LinkedContent', anchor: 'connect-world-references' },
   dictionaryEditor: { page: 'World-Editor-Dictionary', anchor: 'in-the-library' },
   entityEditor: { page: 'World-Editor-Entities', anchor: 'in-the-library' },
+  credits: { page: 'How-to-Play', anchor: 'credits' },
+  'credits.credits': { page: 'How-to-Play', anchor: 'credits' },
+  'credits.supporters': { page: 'How-to-Play', anchor: 'credits' },
+  'credits.licenses': { page: 'How-to-Play', anchor: 'credits' },
   exitApp: { page: 'Install-on-Android', anchor: '\u{FE0F}-the-back-button' },
   importComponent: { page: 'LinkedContent', anchor: 'importing-an-entity-or-dictionary-file' },
   manageAddons: { page: 'LinkedContent', anchor: 'manage-add-ons' },
@@ -74,7 +79,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   persona: { page: 'Personas', anchor: 'change-it-in-game' },
   replaceSource: { page: 'LinkedContent', anchor: 'the-three-repairs' },
   imageReplace: { page: 'World-Editor-Entities', anchor: 'images-and-models' },
-  codeRename: { page: 'ScriptsGuide', anchor: 'accessing-other-stats' },
+  codeRename: { page: 'Scripts-Reference', anchor: 'accessing-other-stats' },
   replaceAll: { page: 'WorldEditor', anchor: 'find-and-replace' },
   deleteWorldAvatar: { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   savedElsewhere: { page: 'WorldEditor', anchor: 'editing-in-two-tabs' },
@@ -84,9 +89,12 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   worldUpdate: { page: 'LinkedContent', anchor: 'update-this-world' },
 
   aiContext: { page: 'How-to-Play', anchor: 'the-ai-context-inspector' },
+  tts: { page: 'How-to-Play', anchor: 'how-to-read-a-turn-aloud' },
   demoAI: { page: 'How-to-Play', anchor: 'the-demo-ai-notice' },
   editText: { page: 'How-to-Play', anchor: 'how-to-edit-narration' },
   entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },
+  stranger: { page: 'How-to-Play', anchor: 'the-stranger-dialog' },
+  item: { page: 'How-to-Play', anchor: 'the-item-dialog' },
   enterWorld: { page: 'Starting-a-Game', anchor: 'the-enter-world-dialog' },
   errorDetails: { page: 'How-to-Play', anchor: 'error-details' },
   imageSetup: { page: 'Image-Generation', anchor: 'providers' },
@@ -119,15 +127,15 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
 
   'settings.display': { page: 'Settings', anchor: 'display' },
   'settings.output': { page: 'Settings', anchor: 'output' },
-  'settings.endpoints': { page: 'Settings', anchor: 'endpoints' },
+  'settings.endpoints': { page: 'Endpoint-Settings', anchor: '-endpoint-settings' },
   'settings.data': { page: 'Settings', anchor: 'data' },
-  'settingsEndpoints.text': { page: 'Settings', anchor: 'text' },
-  'settingsEndpoints.image': { page: 'Settings', anchor: 'image' },
-  'settingsEndpoints.tagPrompt': { page: 'Settings', anchor: 'tag-prompt' },
+  'settingsEndpoints.text': { page: 'Endpoint-Settings', anchor: 'text' },
+  'settingsEndpoints.image': { page: 'Endpoint-Settings', anchor: 'image' },
+  'settingsEndpoints.tagPrompt': { page: 'Endpoint-Settings', anchor: 'tag-prompt' },
 
   'settings.prompts': { page: 'Prompts', anchor: '-prompts' },
   settingsCompare: { page: 'Prompts', anchor: '-prompts' },
-  chipOptions: { page: 'Prompts', anchor: 'chip-options' },
+  chipOptions: { page: 'Prompt-Chips', anchor: 'chip-options' },
   worldPrompts: { page: 'Prompts', anchor: 'world-prompts-and-the-diff-viewer' },
   ...Object.fromEntries(tabsOf('settingsPrompts').map((id) => [id, THE_PROMPTS])),
   'settingsPromptPreset.overview': { page: 'Prompts', anchor: 'the-overview' },
@@ -152,9 +160,9 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   eventAck: EVENT_POSTERS,
   ...Object.fromEntries(tabsOf('eventAck').map((id) => [id, EVENT_POSTERS])),
   ageGate: community('the-adult-content-warning'),
-  auth: community('login-and-register'),
-  privacyPolicy: community('the-privacy-policy'),
-  usernameRename: community('choose-a-new-username'),
+  auth: account('login-and-register'),
+  privacyPolicy: account('the-privacy-policy'),
+  usernameRename: account('choose-a-new-username'),
   profile: USER_PROFILE,
   'profile.messages': USER_PROFILE,
   'profile.notifications': community('the-follow-feed'),
@@ -162,8 +170,8 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'profile.settings': USER_PROFILE,
   deleteAccount: ACCOUNT_DELETION,
   deletionCancelled: ACCOUNT_DELETION,
-  feedbackHub: BUGS_AND_SUGGESTIONS,
-  ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, BUGS_AND_SUGGESTIONS])),
+  feedbackHub: THE_FEEDBACK_WINDOW,
+  ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, THE_FEEDBACK_WINDOW])),
 
   'gameEditor.overview': { page: 'Game-Editor', anchor: 'overview' },
   'gameEditor.entities': { page: 'Game-Editor', anchor: 'entities' },
@@ -242,16 +250,16 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'formaquestion.ask': { page: 'Formaquestion', anchor: 'ask' },
   'formaquestion.search': { page: 'Formaquestion', anchor: 'search' },
   'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
-  formaquestionSettings: FORMAQUESTION_SETTINGS,
-  formaquestionCompare: { page: 'Formaquestion', anchor: 'prompts' },
+  formaquestionSettings: formaquestionSettings('\u{FE0F}-formaquestion-settings'),
+  formaquestionCompare: formaquestionSettings('prompts'),
   formaquestionAiContext: { page: 'Formaquestion', anchor: 'ai-context' },
   formaquestionWikiConfirm: { page: 'Formaquestion', anchor: 'the-wiki-confirm' },
-  'formaquestionSettings.general': { page: 'Formaquestion', anchor: 'general' },
-  'formaquestionSettings.endpoint': { page: 'Formaquestion', anchor: 'endpoint' },
-  'formaquestionSettings.prompts': { page: 'Formaquestion', anchor: 'prompts' },
-  'formaquestionSettings.tools': { page: 'Formaquestion', anchor: 'tools' },
-  'formaquestionSettings.mascot': { page: 'Formaquestion', anchor: 'mascot' },
+  'formaquestionSettings.general': formaquestionSettings('general'),
+  'formaquestionSettings.endpoint': formaquestionSettings('endpoint'),
+  'formaquestionSettings.prompts': formaquestionSettings('prompts'),
+  'formaquestionSettings.tools': formaquestionSettings('tools'),
+  'formaquestionSettings.mascot': { page: 'Formaquestion-Mascot', anchor: '-formaquestion-mascot' },
 
-  avatar: { page: 'Avatars', anchor: 'character-customization' },
+  avatar: { page: 'Avatars', anchor: 'avatar-customization' },
   modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },
 };

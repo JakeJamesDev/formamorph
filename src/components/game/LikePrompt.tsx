@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
+import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { toastError } from '@/lib/linkToast';
 import { ADDRESS_CAP_REACHED, refusalAnswer } from '@/lib/anonymousLikes';
@@ -148,7 +149,7 @@ export function LikePrompt({
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-label font-semibold truncate">Enjoying {worldName}?</span>
-        <span className="block text-meta text-muted-foreground">Give it a like so the author knows</span>
+        <Meta className="block">Give it a like so the author knows</Meta>
       </span>
       <div className="flex shrink-0 gap-2">
         <Button variant="outline" size="sm" onClick={() => answer(listingId)}>Not Now</Button>

@@ -28,6 +28,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { buildTraitWorkspace, type TraitCategory } from '@/lib/setupTraitWorkspace';
 import { isShown } from '@/lib/traitEffects';
 import { YouMark } from '@/components/game/YouMark';
+import { Hint, Meta } from '@/components/ui/typography';
 import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
 
 export interface EnterWorldWorkspaceProps {
@@ -48,7 +49,7 @@ export interface EnterWorldWorkspaceProps {
   statGroups?: StatGroup[];
   locations: GameLocation[];
   resolveText: (text: string) => string;
-  /** A trait's own text, bound for its owner, which is the Character Name in it. */
+  /** A trait's own text, bound for its owner, which is the Entity Name in it. */
   resolveTraitText: (trait: Trait, text: string, owner?: Entity | null) => string;
   /** The global picks, and each entity's by its id. */
   selectedTraits: Scoped<readonly string[]>;
@@ -62,7 +63,7 @@ export interface EnterWorldWorkspaceProps {
   personas?: PersonaOption[];
   /** The picker offers None. Absent = yes. */
   personaNone?: boolean;
-  /** The Custom Persona entity, which stands in None's place. */
+  /** The Custom Persona entity, which replaces None. */
   personaCustom?: PersonaOption;
   persona?: PersonaRef;
   onPersonaChange?: (ref: PersonaRef) => void;
@@ -160,7 +161,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const currentIndex = Math.min(props.categoryIndex, Math.max(categories.length - 1, 0));
   const current = categories[currentIndex];
   const visibleGroups = traitWorkspace.navigationGroups;
-  const dialogDescription = 'Configure this playthrough before entering the world.';
+  const dialogDescription = 'Choose how this game starts';
 
   const categoryButton = (category: (typeof categories)[number], index: number, depth = 0) => {
     const picks = category.kind === 'traits' ? picksOf(category.entityId) : [];
@@ -212,7 +213,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       <div className="mb-3 flex items-start gap-4">
         <PersonaPortrait image={primaryImage(entity)} />
         <div className="min-w-0">
-          <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
+          <Meta as="p" className="mb-1 font-medium tracking-wide">Starting Traits</Meta>
           <h2 className="break-words text-heading font-semibold">
             {entity.name}
             {playerIds.includes(entity.id) && <YouMark />}
@@ -243,9 +244,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     <nav aria-label="World setup categories" className="space-y-1 p-3">
       {personaIndex >= 0 && categoryButton(categories[personaIndex], personaIndex)}
       {traitTree.traits.length > 0 && (
-        <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
+        <Meta as="p" className="my-3 flex items-center gap-3 px-2 font-medium uppercase">
           <span>Starting Traits</span><span className="h-px flex-1 bg-border" />
-        </p>
+        </Meta>
       )}
       {generalIndex >= 0 && categoryButton(categories[generalIndex], generalIndex)}
       {visibleGroups.map(({ group, depth, categoryIndex }) => (
@@ -268,17 +269,17 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       ))}
       {locationIndex >= 0 && (
         <>
-          <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
+          <Meta as="p" className="my-3 flex items-center gap-3 px-2 font-medium uppercase">
             <span>World</span><span className="h-px flex-1 bg-border" />
-          </p>
+          </Meta>
           {categoryButton(categories[locationIndex], locationIndex)}
         </>
       )}
       {libraryIndex >= 0 && (
         <>
-          <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
+          <Meta as="p" className="my-3 flex items-center gap-3 px-2 font-medium uppercase">
             <span>Library</span><span className="h-px flex-1 bg-border" />
-          </p>
+          </Meta>
           {categoryButton(categories[libraryIndex], libraryIndex)}
         </>
       )}
@@ -361,9 +362,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           )}
           {current?.kind === 'persona' && props.persona && props.onPersonaChange && (
             <>
-              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
+              <Meta as="p" className="mb-1 font-medium tracking-wide">World Setup</Meta>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
-              <p className="mb-4 text-helper text-muted-foreground">Choose who you play in this world</p>
+              <Hint className="mb-4">Choose who you play in this world</Hint>
               <PersonaPicker
                 world={props.worldPersonas}
                 library={personaOptions}
@@ -379,9 +380,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           )}
           {current?.kind === 'location' && (
             <>
-              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
+              <Meta as="p" className="mb-1 font-medium tracking-wide">World Setup</Meta>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
-              <p className="mb-4 text-helper text-muted-foreground">Choose where your story begins.</p>
+              <Hint className="mb-4">Choose where your story starts</Hint>
               <RadioGroup
                 value={props.selectedLocationId ?? 'random'}
                 onValueChange={(locationId) => props.onLocationChange(locationId === 'random' ? null : locationId)}
@@ -391,9 +392,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                   <RadioGroupItem id="setup-location-random" value="random" aria-label="Random" className="mt-0.5 shrink-0" />
                   <label htmlFor="setup-location-random" className="min-w-0 flex-1 cursor-pointer">
                     <strong className="block text-label font-semibold">Random</strong>
-                    <span className="mt-1 block text-helper text-muted-foreground">
-                      Let the world choose a starting place.
-                    </span>
+                    <Hint as="span" className="mt-1 block">Starts at a random location</Hint>
                   </label>
                 </div>
                 {props.locations.map((location) => {
@@ -412,9 +411,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                       <label htmlFor={`setup-location-${location.id}`} className="min-w-0 flex-1 cursor-pointer">
                         <strong className="block text-label font-semibold">{location.name}</strong>
                         {description && (
-                          <span className="mt-1 block text-helper text-muted-foreground">
+                          <Hint as="span" className="mt-1 block">
                             {props.resolveText(description)}
-                          </span>
+                          </Hint>
                         )}
                       </label>
                     </div>
@@ -429,14 +428,14 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           {current?.kind === 'library' && (
             <div className="flex min-h-0 flex-1 flex-col p-4 md:px-6 md:py-4">
             <>
-              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
+              <Meta as="p" className="mb-1 font-medium tracking-wide">World Setup</Meta>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-heading font-semibold">Library Additions</h2>
                 {props.onSaveAdditions && (
                   <Tip
                     tip={additionsRemembered
-                      ? 'This world will start future games with these additions.'
-                      : "Save these additions as this world's defaults for future games."}
+                      ? 'Future games of this world start with these additions'
+                      : "Save these additions as this world's defaults for future games"}
                     labelsChild={false}
                   >
                     <Button

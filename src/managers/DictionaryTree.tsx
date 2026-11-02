@@ -21,6 +21,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { fieldPath } from '@/lib/historyField';
 import { cn } from '@/lib/utils';
 import { useDictionaryActions, useDictionaryCollapse, type DictionaryCollapse } from './useDictionaryActions';
+import { Meta } from '@/components/ui/typography';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
 function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onRemove }: {
@@ -47,7 +48,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
       setNodeRef={setNodeRef}
       style={style}
       gripProps={{ ...attributes, ...listeners }}
-      gripTitle="Drag to reorder, re-place, or move to another dictionary"
+      gripTitle="Drag to reorder, or move to another dictionary"
       selected={selected}
       onSelect={() => onSelect(entry.id)}
       checkbox={advanced ? { checked: entry.enabled !== false, onChange: (v) => onToggleEnabled(entry, v), field: fieldPath('rows', entry.id, 'enabled') } : undefined}
@@ -167,7 +168,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
                 onRemove={onRemoveEntry}
               />
             ))}
-            {!flat && entries.length === 0 && <p className="px-2 py-1 text-meta text-muted-foreground">Drag entries here</p>}
+            {!flat && entries.length === 0 && <Meta as="p" className="px-2 py-1">Drag entries here</Meta>}
           </EditorRowList>
           )}
         </StableSortableContext>
@@ -177,8 +178,10 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
 }
 
 /** One book ("dictionary") — a collapsible, reorderable, selectable header over two entry zones. */
-function BookRow({ book, addEntryTourAnchor, collapsed, collapsedZones, selectedId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
+function BookRow({ book, pendingLinks, addEntryTourAnchor, collapsed, collapsedZones, selectedId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
   book: Dictionary;
+  /** Library ids linked this session and not yet saved. */
+  pendingLinks?: readonly string[];
   /** The Authoring Tour anchor on this book's Add entry button. */
   addEntryTourAnchor?: string;
   collapsed: boolean;
@@ -215,7 +218,7 @@ function BookRow({ book, addEntryTourAnchor, collapsed, collapsedZones, selected
         onToggleCollapse={() => onToggleCollapse(book.id)}
         collapseLabels={['Expand dictionary', 'Collapse dictionary']}
         checkbox={advanced ? { checked: book.enabled !== false, onChange: (v) => onToggleEnabled(book, v), field: fieldPath('rows', book.id, 'enabled') } : undefined}
-        icon={<ContentLinkIcon link={book.link} />}
+        icon={<ContentLinkIcon link={book.link} pending={pendingLinks} />}
         label={<PlaceholderText text={book.name} placeholders={placeholders} />}
         labelClass="font-medium"
         meta={advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}
@@ -279,11 +282,13 @@ function BookZones({ book, className, collapsedZones, selectedId, onToggleZone, 
  *  within a zone, between zones, and across books (one unified drag context). `hideBookRow` drops the book
  *  rows and shows the entries at the top level, for a host that edits one book. A host that unmounts the tree
  *  passes its own `collapse`, so the folds survive. */
-const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false, collapse: hostCollapse }: {
+const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false, collapse: hostCollapse, pendingLinks }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   hideBookRow?: boolean;
   collapse?: DictionaryCollapse;
+  /** Library ids linked this session and not yet saved, for the book markers. */
+  pendingLinks?: readonly string[];
 }) => {
   const { dictionaries, setDictionaries, updateDictionary } = useDictionaryStore();
   const worldHistory = useWorldHistoryMovesOptional();
@@ -391,6 +396,7 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false, collapse: h
               <BookRow
                 key={book.id}
                 book={book}
+                pendingLinks={pendingLinks}
                 addEntryTourAnchor={i === 0 ? 'dictionary-add-entry' : undefined}
                 collapsed={draggingBook || collapse.collapsed.has(book.id)}
                 collapsedZones={collapse.zones}

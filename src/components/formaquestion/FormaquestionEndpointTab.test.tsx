@@ -76,6 +76,14 @@ describe('the Endpoint tab', () => {
     expect(app.activeTextEndpointPresetId).toBe('game');
   });
 
+  it('shows Creating on Same as Answer by default, and sets it from its own select', async () => {
+    renderTab();
+    const creating = screen.getAllByRole('combobox')[3];
+    expect(creating).toHaveTextContent('Same as Answer (game)');
+    await choose(creating, 'small');
+    expect(help).toMatchObject({ createEndpoint: 'small', answerEndpoint: null });
+  });
+
   it('shows a deleted preset as the default of its route', () => {
     renderTab({ answerEndpoint: 'deleted', pickEndpoint: 'deleted' });
     expect(selects().answer).toHaveTextContent('Use Active Endpoint (game)');
@@ -123,9 +131,9 @@ describe('the Endpoint tab', () => {
     }
   });
 
-  it('has no preset select: Answer and Pick are the only two', () => {
+  it('has no preset select: Answer, Pick, Sorting and Creating are the only four', () => {
     renderTab();
-    expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    expect(screen.getAllByRole('combobox')).toHaveLength(4);
   });
 
   it('puts Answer and Pick in one row', () => {

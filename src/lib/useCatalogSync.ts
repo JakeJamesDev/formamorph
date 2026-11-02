@@ -117,7 +117,7 @@ export function useCatalogSync(
         setRemoteWorlds((held) => reuseRows(held, fresh));
         setAnonymousLikes(result.anonymousLikes);
       } else if (result.status === 'error' && !cached.length) {
-        toastError(result.error, 'Failed to fetch worlds');
+        toastError(result.error, 'Failed to load Community Creations');
       }
       settle();
 

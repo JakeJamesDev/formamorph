@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import type {
-  Connection, Entity, EntityPositions, GameLocation, Item, ItemCopy, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, Entity, EntityPositions, GameLocation, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import { entitiesInPlay, entityIdsAt } from '../entityPresence';
-import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
+import { entityNamed, scenePresentHere, type OwnedTraitsInForce, type StrangerLabels } from '../locationContext';
 import type { GateTree } from '../traitGates';
 import { activeOwnedTraitIds, borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
@@ -11,7 +11,7 @@ import { treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwners';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import { ownerStatParts, type StatPlacement } from '../statContext';
-import type { ChipScene, ChipSceneTime } from './chipScene';
+import type { ChipScene, ChipSceneTime, SceneEquipment } from './chipScene';
 
 /** A trait's own text under its own pins; an owned trait passes its owner. */
 export type ResolveTraitText = (trait: Trait, text: string, owner?: Entity | null) => string;
@@ -37,9 +37,9 @@ export interface LiveSceneSources {
   /** The entities the player plays as, whose stats are the player's. None when absent. */
   playedEntities?: readonly Entity[];
   resolve: (text: string) => string;
-  /** A trait's own text under its own pins, with an owned trait's owner as the Character Name. */
+  /** A trait's own text under its own pins, with an owned trait's owner as the Entity Name. */
   resolveTrait: ResolveTraitText;
-  /** An entity's own text, with that entity as the Character Name. */
+  /** An entity's own text, with that entity as the Entity Name. */
   resolveEntity: ResolveEntityText;
   persona: ResolvedPersona | null;
   location: GameLocation | null;
@@ -61,6 +61,14 @@ export interface LiveSceneSources {
   itemCopies?: readonly ItemCopy[];
   /** The runtime items the Inventory pass made. None when absent. */
   runtimeItems?: readonly RuntimeItem[];
+  /** The world's Currencies. None when absent. */
+  currencies?: readonly Currency[];
+  /** The world's Placements. None when absent. */
+  placements?: readonly Placement[];
+  /** The label each unmet stranger's roster block prints, by entity id. None when absent. */
+  strangerLabels?: StrangerLabels;
+  /** What each owner's slots in force read. No slots when absent. */
+  equipment?: SceneEquipment;
 }
 
 /** The world under a running turn's code writes, which React has not rendered yet. Each absent field keeps
@@ -152,8 +160,12 @@ export function liveChipScene(
     items: sources.items,
     itemCopies: sources.itemCopies,
     runtimeItems: sources.runtimeItems,
+    currencies: sources.currencies,
+    placements: sources.placements,
+    equipment: sources.equipment,
     outerScopeEntities: ownText(placed(sources.entities)),
     inSceneNames,
+    strangerLabels: sources.strangerLabels,
   };
 }
 
@@ -164,16 +176,16 @@ const inForceByOwner = (states: OwnedTraitStates | undefined): OwnedTraitsInForc
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
     overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-    location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems,
+    location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment,
     }, at, box),
     [
       overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
-      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders, items, itemCopies, runtimeItems, currencies, placements, strangerLabels, equipment,
     ],
   );
 }

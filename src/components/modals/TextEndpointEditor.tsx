@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Hint, FieldError } from '@/components/ui/typography';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
-import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
+import { EndpointReachabilityBadge, HostedReachabilityBadge } from './EndpointReachabilityBadge';
 import { PresetNameDialog } from './PresetNameDialog';
 import { HostedPresetStatus } from './HostedPresetStatus';
 import type { HostedPresetState } from '@/lib/hostedAi/refusals';
@@ -191,10 +191,12 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
             : { heading })}
         />
       </div>
-      {/* The engine has no URL to probe; Formamorph AI reports its own state. */}
-      {!edited.engine && !edited.hosted && (
+      {/* The engine has no URL to probe. */}
+      {!edited.engine && (
         <div className="flex-shrink-0 pt-1">
-          <EditedPresetBadge key={edited.id} url={endpointUrl} apiToken={apiToken} model={modelName} />
+          {edited.hosted
+            ? <HostedReachabilityBadge state={hostedState} />
+            : <EditedPresetBadge key={edited.id} url={endpointUrl} apiToken={apiToken} model={modelName} />}
         </div>
       )}
       <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
@@ -294,7 +296,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
               </Row>
               <Section title="Sampling">
                 <Hint>
-                  Your per-prompt settings and built-in prompt values take priority over “Temperature” and “Repetition Penalty”. Leave a checkbox unchecked to send no override.
+                  Your per-prompt settings and built-in prompt values take priority over <strong>Temperature</strong> and <strong>Repetition Penalty</strong>. Leave a checkbox unchecked to send no override.
                 </Hint>
                 <div className="grid gap-4 pt-3">
                   {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}

@@ -4,7 +4,7 @@
 
 > A browser-based, AI-driven text RPG framework — **play**, **create**, and **share** interactive worlds powered by your own LLM.
 
-> ▶️ **[Play in your browser →](https://jakejamesdev.github.io/formamorph/)** — instant, no install, runs fully client-side. *Please read the 18+ notice below first.*
+> ▶️ **[Play in your browser →](https://formamorph.ai/play/)** — instant, no install, runs fully client-side. *Please read the 18+ notice below first.*
 
 > [!CAUTION]
 > **For adults only (18+) — mature content.**
@@ -34,7 +34,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 
 ## 🚀 Getting started
 
-**Prerequisites:** [Node.js](https://nodejs.org) 20.19+ and npm.
+**Prerequisites:** [Node.js](https://nodejs.org) 24 (or 22.12+) and npm.
 
 ```bash
 npm install
@@ -109,7 +109,7 @@ Then open the in-game **Text to Speech** panel and confirm the **VRAM helper URL
 
 ## 🧱 Tech stack
 
-**React 18** · **TypeScript** · **Vite 5** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** (3D avatars) · **Kokoro** (TTS) · **QuickJS** (sandboxed scripts)
+**React 18** · **TypeScript** · **Vite 8** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** (3D avatars) · **Kokoro** (TTS) · **QuickJS** (sandboxed scripts)
 
 ## 📁 Project layout
 

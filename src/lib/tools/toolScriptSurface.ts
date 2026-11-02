@@ -39,10 +39,11 @@ const USER_TOOL_GLOBAL: Readonly<Record<string, Partial<SurfaceEntry>>> = {
     info: 'The story’s memories as the Memory panel lists them, oldest first. Each entry has its id, turn, day, daypart, text, Custom flag and pins. It’s empty in the World Editor and with no world open.',
   },
   notes: { info: 'The player’s notes. It’s empty in the World Editor and with no world open.' },
-  items: { info: 'Every item in the world by name, with its own placeholders and its Item Copies in play. Use items["Two Words"] for a name with a space.' },
+  items: { info: 'Every item in the world by name, with its own placeholders and every Item Copy of it. Use items["Two Words"] for a name with a space.' },
 };
 
-const ARGS_INFO = 'The arguments the AI sent, checked against the parameters';
+export const ARGS_INFO = 'The arguments the AI sent, checked against the parameters';
+export const TOOL_MISSING_RETURN = 'This script never returns. The Tool sends its “Empty Result”.';
 
 /** The new form of each `world` and `scene` read, for the mark on one that load left as written (Q51). */
 const RETIRED_READS: CodeSurface['retired'] = {
@@ -75,7 +76,7 @@ export function toolScriptSurface(params: readonly ToolParam[]): CodeSurface {
     label: 'a Tool script',
     globals: [{ name: 'args', detail: shapeOf(argEntries), info: ARGS_INFO, access: 'readOnly' }, ...globals],
     members: new Map([...WORLD_SCRIPT_SURFACE.members, ['args', argEntries.map((entry) => ({ ...entry, access: 'readOnly' as const }))]]),
-    missingReturn: 'This script never returns, so the Tool sends its empty result.',
+    missingReturn: TOOL_MISSING_RETURN,
     readOnly: true,
     guide: TOOL_GUIDE_LINKS,
     retired: RETIRED_READS,

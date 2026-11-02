@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useRemoveDiscovered } from './useRemoveDiscovered';
 import { useGameplay } from '@/contexts/GameplayContext';
@@ -8,7 +8,8 @@ import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
 import { templateChipKeys } from '@/lib/promptTemplate';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
-import { resolveEntityByName } from '@/lib/entityMatch';
+import { usePresence } from '@/lib/usePresence';
+import { numbered, type EntityPresence } from '@/lib/presence';
 import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
 import { narrationOf } from '@/lib/aiResponse';
 import { usePlayAvatars } from '@/lib/usePlayAvatars';
@@ -16,7 +17,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { entityStatTraitsInForce, listableGlobalTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
-  activeOwnedTraitIds, ownerTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
+  activeOwnedTraitIds, ownerTraitTree, inSceneTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames, withStrangerNames,
 } from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -43,8 +44,9 @@ import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
 import { AvatarIcon, EntitiesIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
+import { balanceRows } from '@/lib/currency';
 import { InventoryTab } from './InventoryTab';
-import { PanelTab, PanelTabList } from './PanelTabList';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { useInventoryPanel, type InventoryPanelSettle } from './useInventoryPanel';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
@@ -56,6 +58,7 @@ import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONTINUE_CHOICE } from "@/lib/choices";
 import { Progress } from "@/components/ui/progress";
+import { Hint, Meta } from "@/components/ui/typography";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -76,9 +79,10 @@ import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
+import { AllowanceRing } from './AllowanceRing';
 import { EditTextModal } from '../modals/EditTextModal';
 import { visibleItemImage } from '@/lib/imageVisibility';
-import type { Entity, ItemCopy, PersonaRef, SceneEntity, Stat, StatGroup, Trait } from '@/types';
+import type { Entity, ItemCopy, PersonaRef, Stat, StatGroup, Trait } from '@/types';
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
@@ -87,7 +91,9 @@ import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { LocationTabBody } from './LocationTabBody';
-import { EntityListRow } from './EntityListRow';
+import { EntityListRow, EntityListSection } from './EntityListRow';
+import { EntityEquipped } from './EntityEquipped';
+import { visibleWorn } from '@/lib/inventory';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
 import { rowDelta } from '@/lib/useStatDeltas';
@@ -99,7 +105,7 @@ import { PersonaRow } from './PersonaRow';
 import { YouMark } from './YouMark';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
-import { firstShowableEntity, type StatPanelOption } from '@/lib/statPanelEntities';
+import type { StatPanelOption } from '@/lib/statPanelEntities';
 import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
@@ -114,13 +120,15 @@ type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' }
 const PLAYED_SIDE: Pick<Entity, 'id' | 'name'> = { id: '__you', name: 'You' };
 
 
-export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
+export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
   entities: Entity[];
   /** A tab an outside request selects. */
   requestedTab?: string;
   /** Changes with each outside request, so a repeat request selects its tab again. */
   requestKey?: string;
   onEntityClick: (entityId: string) => void;
+  /** A stranger's row opened: its entity id and the label the player sees. */
+  onStrangerClick?: (entityId: string, label: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
   onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
   /** The narration prompt this world actually sends: the world's own unless declined, else the preset's. */
@@ -136,7 +144,6 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const {
     // Aliased to the viewed-page values so paging back shows that turn's scene (they equal the live values
     // on the latest page).
-    viewVisibleEntities: visibleEntities,
     viewEntityFollowers: entityFollowers,
     logEntries,
     calendar,
@@ -156,7 +163,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
   // Authored cast only — the panel receives authored + discovered together, and the two need telling
   // apart to decide what the player may remove.
-  const authoredNames = new Set(authoredEntities.map((e) => e.name));
+  const authoredIds = new Set(authoredEntities.map((e) => e.id));
   const dropDiscovered = useRemoveDiscovered();
   const removeDiscovered = (name: string) => {
     dropDiscovered(name);
@@ -166,8 +173,10 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   // The played side with no played entity: the legacy fallback's Avatar, shown through the You row.
   const youRow = !personaEntity && !!avatars.played;
   const showable = (entity: Entity | undefined): entity is Entity => !!entity && avatars.shows(entity);
-  // First present entity with something to show (the image shows whether or not the name is revealed yet).
-  const firstShowable = firstShowableEntity(visibleEntities, entities, showable);
+  const { currentPage, isViewingPast } = useGameplay();
+  const { lookAround } = usePresence(isViewingPast ? currentPage : undefined);
+  // First met entity in Look Around with something to show. A stranger never heads the view: its art gives it away.
+  const firstShowable = lookAround.find((row) => row.met && showable(row.entity))?.entity;
   const isMobile = useIsMobile();
   const [showEntityView, setShowEntityView] = React.useState(true);
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
@@ -188,20 +197,43 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const entityViewMorphs = useEntityStatMorphs(entityViewSource);
   const entityViewAvatar = entityViewSubject && (entityViewEntity ? avatars.sourceOf(entityViewEntity) : avatars.played);
 
-  // Clicking an entity with something to show selects it, so the view swaps to it. The popup opens on mobile,
-  // and in landscape when the view is hidden or already on that entity. A not-yet-revealed entity can show
-  // its image but never opens the detail popup: that would spoil the name the scene is withholding.
-  const handleEntityListClick = (se: SceneEntity) => {
-    const match = resolveEntityByName(se.name, entities);
-    if (!match) return; // un-named (ad-hoc) participant — nothing to show
-    openEntity(match, se.revealed);
+  // The highlighted row: a pick still listed here, else whoever the view falls back to, else with no pick the
+  // entity the right panel falls back to.
+  const selectedRowId = selectedEntityId && (selectedEntityId === personaEntity?.id || lookAround.some((row) => row.entity.id === selectedEntityId))
+    ? selectedEntityId
+    : entityViewEntity?.id ?? (selectedEntityId === undefined ? lookAround.find((row) => row.inScene && row.met)?.entity.id : undefined);
+
+  // Clicking an entity selects it, which moves the view when it has something to show and the stat panel when
+  // it is listed there. The popup opens on mobile, and in landscape on the row already selected. A
+  // not-yet-revealed entity can show its image but never opens the detail popup: that would spoil the name the
+  // scene is withholding. A stranger opens its reduced popup instead and never selects in the view.
+  const handleLookAroundClick = (row: EntityPresence) => {
+    if (!row.met) {
+      if (row.label) onStrangerClick?.(row.entity.id, row.label);
+      return;
+    }
+    openEntity(row.entity, true);
   };
 
   const openEntity = (match: Entity, revealed: boolean) => {
-    const selects = showable(match) && (isMobile || (showEntityView && match.id !== entityViewEntity?.id));
+    const selects = isMobile || match.id !== selectedRowId;
     if (selects) setSelectedEntityId(match.id);
     if (revealed && (isMobile || !selects)) onEntityClick(match.name);
   };
+
+  const inSceneRows = lookAround.filter((row) => row.inScene);
+  const alsoHereRows = lookAround.filter((row) => !row.inScene);
+  const lookAroundRow = (row: EntityPresence) => (
+    <EntityListRow
+      key={row.entity.id}
+      label={row.label ?? ''}
+      following={entityFollowers.includes(row.entity.id)}
+      selected={row.entity.id === selectedRowId}
+      onClick={() => handleLookAroundClick(row)}
+      // Runtime characters are the story's; authored ones belong to the world and never delete from play.
+      onRemove={row.met && !authoredIds.has(row.entity.id) ? () => setPendingRemoval(row.entity.name) : undefined}
+    />
+  );
 
   // In landscape the view lives on top, not in a tab; leave the "model" tab.
   React.useEffect(() => {
@@ -277,13 +309,17 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
       )}
 
       <Tabs surfaceTabs="gameViewer" value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <PanelTabList>
-          {isMobile && <PanelTab value="model" icon={AvatarIcon} label="View" />}
-          <PanelTab value="entities" icon={EntitiesIcon} label="Entities" />
-          <PanelTab value="notes" icon={NotebookPen} label="Notes" />
-          <PanelTab value="memory" icon={Brain} label="Memory" />
-          <PanelTab value="logs" icon={ScrollText} label={`Logs (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})`} />
-        </PanelTabList>
+        <CollapsingTabsList
+          aria-label="Story"
+          value={leftTab}
+          tabs={[
+            ...(isMobile ? [{ value: 'model', icon: AvatarIcon, label: 'View' }] : []),
+            { value: 'entities', icon: EntitiesIcon, label: 'Entities' },
+            { value: 'notes', icon: NotebookPen, label: 'Notes' },
+            { value: 'memory', icon: Brain, label: 'Memory' },
+            { value: 'logs', icon: ScrollText, label: `Logs (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})` },
+          ]}
+        />
         {isMobile && (
           <TabsContent value="model" className="flex-grow overflow-hidden min-h-[100px]">
             {entityView}
@@ -292,44 +328,36 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
         {/* `flex` must be state-scoped: a plain `flex` class beats the UA `[hidden]{display:none}` Radix
             uses to hide an inactive panel, so the list would keep its space and shove the live tab down. */}
         <TabsContent value="entities" className="flex-grow overflow-hidden min-h-[100px] flex-col data-[state=active]:flex">
-          {/* Shown even when the list is empty — "no entity visible" is itself the state that prompts
-              the question, so the `?` has to be reachable then too. */}
-          <div className="flex-shrink-0 flex justify-end px-2 pt-1">
-            <HelpButton topicId="game.entities" className="h-6 w-6" />
-          </div>
           <ScrollArea className="flex-grow min-h-0">
-            <div className="p-2">
+            <div className="flex flex-col gap-3 p-2">
+              <div>
               {personaEntity && (
-                <EntityListRow label={personaEntity.name} you onClick={() => openEntity(personaEntity, true)} />
+                <EntityListRow
+                  label={personaEntity.name}
+                  you
+                  selected={personaEntity.id === selectedRowId}
+                  onClick={() => openEntity(personaEntity, true)}
+                />
               )}
               {/* No pick falls back to the played side, which is what selecting You means. */}
-              {youRow && <EntityListRow label={PLAYED_SIDE.name} onClick={() => setSelectedEntityId(undefined)} />}
-              {visibleEntities.length > 0 ? (
-                visibleEntities.map((se, index) => {
-                  const entityItem = resolveEntityByName(se.name, entities);
-                  // Show the real name only once revealed; before that, how the player currently knows them.
-                  const label = se.revealed ? (entityItem?.name ?? se.name) : (se.alias ?? 'Unknown');
-                  // A name the story invented has no entity behind it until (and unless) a description is
-                  // written for it, so it reads as a normal row that simply doesn't open — not as a
-                  // broken one. Only an authored entry we failed to resolve is genuinely disabled.
-                  const isAuthored = authoredNames.has(label);
-                  const isDisabled = !entityItem && isAuthored;
-                  // Anything the story invented is removable, whether or not it got a description.
-                  // Authored characters belong to the world and are never deletable from play.
-                  const isRemovable = !isAuthored;
-                  return (
-                    <EntityListRow
-                      key={index}
-                      label={label}
-                      following={!!entityItem && entityFollowers.includes(entityItem.id)}
-                      disabled={isDisabled}
-                      onClick={() => handleEntityListClick(se)}
-                      onRemove={isRemovable ? () => setPendingRemoval(label) : undefined}
-                    />
-                  );
-                })
-              ) : personaEntity || youRow ? null : (
-                <p>No entity visible.</p>
+              {youRow && (
+                <EntityListRow
+                  label={PLAYED_SIDE.name}
+                  selected={!selectedRowId && entityViewSubject?.kind === 'played'}
+                  onClick={() => setSelectedEntityId(undefined)}
+                />
+              )}
+              </div>
+              {/* Shown even when empty: an empty list is itself what prompts the question, so its `?` stays reachable. */}
+              <EntityListSection title="In Scene" topicId="game.entities.inScene">
+                {inSceneRows.length > 0 ? inSceneRows.map(lookAroundRow) : (
+                  <p className="p-2 text-label text-muted-foreground">No entities are in the scene.</p>
+                )}
+              </EntityListSection>
+              {alsoHereRows.length > 0 && (
+                <EntityListSection title="Also Here" topicId="game.entities.alsoHere">
+                  {alsoHereRows.map(lookAroundRow)}
+                </EntityListSection>
               )}
             </div>
           </ScrollArea>
@@ -337,7 +365,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
             open={pendingRemoval !== null}
             onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
             title={`Remove ${pendingRemoval ?? ''}?`}
-            description="This character was invented by the story rather than authored. Removing them takes them out of the scene and stops them being brought back later. Authored characters are unaffected."
+            description="Removing it takes it out of the scene, and the story won't bring it back."
             onConfirm={() => { if (pendingRemoval) removeDiscovered(pendingRemoval); }}
             onCancel={() => setPendingRemoval(null)}
           />
@@ -347,14 +375,14 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
           <div className="h-full p-2 flex flex-col">
             {!placesNotes && (
               <div className="mb-2 p-2 bg-warning/20 border border-warning rounded  text-label">
-                Warning: The current system prompt does not include the &lt;NOTES&gt; placeholder!
+                The <b>Narration</b> prompt has no <b>Notes</b> chip, so the AI doesn&apos;t read these notes. Add the chip in <b>Settings</b> to send them.
               </div>
             )}
             <textarea
               className="w-full flex-grow p-2 bg-background/80 border border-border rounded resize-none"
               value={playerNotes}
               onChange={(e) => setPlayerNotes(e.target.value)}
-              placeholder="Add notes here... These will be sent to the AI along with your actions."
+              placeholder="Write notes the AI reads each turn"
               style={{ height: "calc(100% - 8px)" }}
             />
           </div>
@@ -367,7 +395,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
             <div className="p-2">
               {/* Story events are timestamped in world time; app events (saves, load failures, aborted
                   requests) are not — a story date on the save dialog would be a claim, not a rounding.
-                  Entries from before the split carry no `kind` and read as story events, as they did. */}
+                  An entry with no `kind` reads as a story event. */}
               {logEntries.map((entry, index) => (
                 <p key={index} className={`mb-1${logKind(entry) === 'system' ? ' text-muted-foreground italic' : ''}`}>
                   {logKind(entry) === 'system' ? null : (
@@ -404,17 +432,20 @@ const ActionInput = ({
   onKeyDown,
   placeholder,
   disabled,
+  onFocusedChange,
 }: {
   value: string;
   setValue: (value: string) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder: string;
   disabled: boolean;
+  onFocusedChange: (focused: boolean) => void;
 }) => {
   // The wrapper mirrors the grown height so the box is real layout, not an overlay: the row above it moves
   // up instead of being covered, which is what lets it clear the on-screen keyboard.
   const { height, focused, stateClass, fieldProps } = useAutoGrowTextarea(value, ACTION_INPUT_LINE_H, ACTION_INPUT_MAX_H);
   const slash = useSlashCompletion(fieldProps.ref, value, setValue);
+  useEffect(() => { onFocusedChange(focused); }, [focused, onFocusedChange]);
 
   return (
     <div className="relative flex-grow mr-2 flex-shrink-0" style={{ height }} data-testid="action-input-wrap">
@@ -452,8 +483,8 @@ const ActionInput = ({
 
 // The prompt of Rewind to Here, in both layouts.
 const ROLLBACK_CONFIRM = {
-  title: "Confirm Rollback",
-  description: "Are you sure you want to rollback to the previous state? This action cannot be undone.",
+  title: "Rewind to Here?",
+  description: "The story goes back to this turn and deletes every later turn. Stats, your location, items and entities return to how they were at this turn. This can't be undone.",
 };
 
 /** A slash-command preview's choices: the list so far, and whether its scripted turn has ended. */
@@ -512,7 +543,7 @@ export const MiddlePanel = ({
   handleKeyPress: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** Rolls back to `page`, or to the viewed page. */
   handleRollback: (page?: number) => void;
-  /** Re-generates the turn on `page`, or on the viewed page. */
+  /** Regenerates the turn on `page`, or on the viewed page. */
   handleRegenerate: (page?: number) => void;
   handleRegenerateChoices: () => void;
   handleRegenerateStats: (page?: number) => void;
@@ -593,6 +624,10 @@ export const MiddlePanel = ({
   const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const imageAttachments = useImageAttachments();
+  // On mobile the focused field takes Help's and the ring's room; Send stays.
+  const isMobileWidth = useIsMobile();
+  const [inputFocused, setInputFocused] = useState(false);
+  const inputExpanded = isMobileWidth && inputFocused && !disabled;
 
   // Paste and drop wait for the game to start, like the button.
   const { attaching, dragOver: attachDragOver, attachFiles, intakeProps } = useAttachmentIntake({
@@ -612,7 +647,7 @@ export const MiddlePanel = ({
   const revealOn = revealActive(revealSpec);
   const revealAnim = revealAnimName(revealSpec);
   const revealStyle = revealVars(revealSpec) as React.CSSProperties;
-  // Which partial re-generate actions to offer (mirrors the aux-request gates).
+  // Which partial regenerate actions to offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled && fullMessageHistory[fullMessageHistory.length - 1]?.role === 'assistant';
   const canRegenStats = statUpdatesEnabled && globalStats.length > 0;
   const [toolMenuOpen, setToolMenuOpen] = useState(false);
@@ -790,7 +825,7 @@ export const MiddlePanel = ({
   const commandPreviewHeader = (
     // Left-aligned: the narration options button holds the top-right corner.
     <div className="mb-2 flex shrink-0 items-center gap-1">
-      <span className="text-meta text-muted-foreground">{commandChoices ? 'Choices preview (/choices test)' : 'Markdown preview (/markdown test)'}</span>
+      <Meta>{commandChoices ? 'Choices preview (/choices test)' : 'Markdown preview (/markdown test)'}</Meta>
       <Tip tip="Dismiss preview">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
           <X className="h-5 w-5" />
@@ -844,9 +879,9 @@ export const MiddlePanel = ({
         {ttsGenerating && ttsProgress && (
           <div className="flex items-center gap-2 px-1 pb-1">
             <Progress value={(ttsProgress.done / ttsProgress.total) * 100} className="h-1.5 flex-1" />
-            <span className="text-meta text-muted-foreground whitespace-nowrap">
+            <Meta className="whitespace-nowrap">
               Narrating {Math.min(ttsProgress.done + 1, ttsProgress.total)}/{ttsProgress.total}
-            </span>
+            </Meta>
           </div>
         )}
         {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. The padding
@@ -858,7 +893,7 @@ export const MiddlePanel = ({
             <div className="flex items-center gap-2 shrink-0">
               <TtsPlaybackBar className="w-auto flex-grow" />
               {ttsLoaded && (
-                <Tip tip="Regenerate audio for current text">
+                <Tip tip="Regenerate the audio for this narration">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1136,19 +1171,22 @@ export const MiddlePanel = ({
                 value={playerInput}
                 setValue={setPlayerInput}
                 onKeyDown={handleKeyPress}
-                placeholder="Type your action... [square brackets] direct the story as the author"
+                placeholder="Type your action. Text in [square brackets] directs the story as the author."
                 disabled={disabled}
+                onFocusedChange={setInputFocused}
               />
+              {!inputExpanded && (
               <HelpButton
                 topicId="game.howToPlay"
                 className="mr-2"
+                skipFirstTimeTint
                 tabExtras={{
                   Choices: (
                     <label className="flex items-center gap-3 rounded-md border p-3 text-label flex-shrink-0 cursor-pointer">
                       <Checkbox checked={choicesEnabled} onCheckedChange={(c: boolean | 'indeterminate') => setChoicesEnabled(c === true)} />
                       <span>
                         <span className="font-medium">Choices</span>
-                        <span className="ml-2 text-muted-foreground">offer ready-made actions after each turn</span>
+                        <Hint as="span" className="ml-2">Offers ready-made actions after each turn</Hint>
                       </span>
                     </label>
                   ),
@@ -1157,18 +1195,20 @@ export const MiddlePanel = ({
                       <Checkbox checked={memoryDigests} onCheckedChange={(c: boolean | 'indeterminate') => setMemoryDigests(c === true)} />
                       <span>
                         <span className="font-medium">Memory Summaries</span>
-                        <span className="ml-2 text-muted-foreground">carry older turns as memory notes</span>
+                        <Hint as="span" className="ml-2">Condenses older turns so long stories stay coherent</Hint>
                       </span>
                     </label>
                   ),
                 }}
               />
+              )}
+              {!inputExpanded && <AllowanceRing busy={isWaitingForAI} className="mr-2" />}
               {isWaitingForAI ? (
                 <Button
                   onClick={abortGeneration}
                   variant="destructive"
                   aria-label="Stop generating"
-                  className="border-dashed border-2 w-12 sm:w-32"
+                  className="border-dashed border-2 w-12 px-0"
                 >
                   <Square className="h-4 w-4" />
                 </Button>
@@ -1179,7 +1219,7 @@ export const MiddlePanel = ({
                     onClick={handleSendAction}
                     disabled={disabled}
                     aria-label="Send"
-                    className="border-dashed border-2 w-12 sm:w-32"
+                    className="border-dashed border-2 w-12 px-0"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -1255,7 +1295,7 @@ export const RightPanel = ({
   const worldItems = useGameDataOptional()?.items;
   const {
     locations, connections, traits, traitGroups, viewStats: globalStats, currentLocation, resolveTraitText, resolveEntityText,
-    entities: cast, persona, traitEntities, traitLibrary,
+    entities: cast, persona, traitEntities, traitLibrary, codeEntities,
   } = useResolvedWorld();
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
   const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
@@ -1281,16 +1321,26 @@ export const RightPanel = ({
     () => ({ traits, traitGroups, entities: traitEntities }),
     [traits, traitGroups, traitEntities],
   );
-  // A linked row's name reads its entity as the Character Name, from the original's authored text.
-  const traitTree = React.useMemo(
-    () => withOwnerNames(
-      ownerTraitTree(ownerWorld, personaRef, traitLibrary),
+  // A linked row's name reads its entity as the Entity Name, from the original's authored text.
+  // Owner nodes follow In Scene; the player's and the library's stay. A stranger's node reads its label.
+  const { inScene: sceneNow } = usePresence(isViewingPast ? currentPage : undefined);
+  const traitTree = React.useMemo(() => {
+    const resolveText = (text: string, owner: Entity, trait?: Trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text));
+    // Strangers who share a label are numbered in scene order, as the stat picker numbers them.
+    const strangers = sceneNow.filter((p) => !p.met && p.label);
+    const labels = new Map(numbered(strangers.map((p) => ({ id: p.entity.id, label: p.label! }))).map((o) => [o.id, o.label]));
+    const inScene = inSceneTraitTree(ownerTraitTree(ownerWorld, personaRef, traitLibrary), {
+      scene: new Set(sceneNow.map((p) => p.entity.id)),
+      keep: new Set(traitLibrary.map((e) => e.id)),
+      labels,
+    });
+    return withOwnerNames(
+      withStrangerNames(inScene, new Set(labels.keys()), [...codeEntities.world, ...codeEntities.library], resolveText),
       { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
-      (text, owner, trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text)),
-    ),
-    [ownerWorld, personaRef, traitLibrary, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
-  );
-  // An owner's trait card reads that owner as the Character Name, as the AI does.
+      resolveText,
+    );
+  }, [ownerWorld, personaRef, traitLibrary, sceneNow, codeEntities, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText]);
+  // An owner's trait card reads that owner as the Entity Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
     (trait: Trait, text: string, ownerId: OwnerId) =>
       resolveTraitText(trait, text, ownerId === null ? null : traitTree.entityNodes.get(ownerId) ?? null),
@@ -1346,22 +1396,47 @@ export const RightPanel = ({
     return item && visibleItemImage(item, copy, gateInput);
   }, [worldItems, gateInput]);
   const inventory = useInventoryPanel(inventorySettle, itemImageOf);
-  // A world without items keeps its three tabs.
-  const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0;
   const {
     options: entityOptions, shown: shownEntity, section: entitySection, players: playedOwners, showPicker: entitiesShowStats,
   } = useStatPanelEntity(entityInForce);
+  // The listed entities the player doesn't play. Each tab shows the picker only when one of them has something there.
+  const otherOptions = entityOptions.filter((option) => !playedOwners.some((owner) => owner.entity.id === option.id));
+  const entitiesShowTraits = otherOptions.some((option) => traitTree.entityNodes.has(option.id));
+  const entitiesShowWorn = otherOptions.some((option) => visibleWorn(itemCopies, { kind: 'entity', id: option.id }).length > 0);
+  // Only listed entities follow the pick: a library owner out of the scene has no picker row to reach it by.
+  const hiddenTraitOwners = new Set(otherOptions.filter((option) => option.id !== shownEntity?.id).map((option) => option.id));
+  const entityPicker = (
+    <div className="flex-shrink-0 px-2 pb-2">
+      <Select
+        value={shownEntity?.id ?? NO_ENTITY}
+        onValueChange={(value) => setSelectedEntityId(value === NO_ENTITY ? null : value)}
+      >
+        <SelectTrigger aria-label="Selected entity" className="h-8 w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {entityItems(entityOptions)}
+          <SelectSeparator />
+          <SelectItem value={NO_ENTITY}>(None)</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
   const playedRows = playedOwners.filter((owner) => owner.rows.length > 0);
   // Stats the player sees besides the world's own.
   const ownersShowStats = entitiesShowStats || playedRows.length > 0;
-  const presentOptions = entityOptions.filter((option) => option.present);
-  const absentOptions = entityOptions.filter((option) => !option.present);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
   const visibleStats = globalStats
     .map((stat, index) => ({ stat, index }))
     .filter(({ stat }) => statEnabled[stat.id] !== false && stat.hidden !== true);
+  // Only stats the player can see count here, so a hidden or switched-off backing stat has no row.
+  const balances = balanceRows(inventory.currencies ?? [], {
+    copies: inventory.copies, placements: [], globalStats: visibleStats.map(({ stat }) => stat), statsOf: () => playedOwners.flatMap((owner) => owner.rows),
+  }, inventory.items);
+  // A world with no items and no money keeps its three tabs.
+  const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0 || balances.length > 0;
   // Whether the descriptor line is part of this world's stat list at all. Held across every row so the list
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
@@ -1414,7 +1489,7 @@ export const RightPanel = ({
               values={language ? [language] : []}
               onChange={(vals) => setLanguage(vals[0] ?? '')}
               options={COMMON_LANGUAGES}
-              placeholder="Language or style…"
+              placeholder="Language or style"
             />
           </div>
         </div>
@@ -1425,33 +1500,19 @@ export const RightPanel = ({
       </div>
 
       <Tabs value={shownTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <PanelTabList>
-          {hasShownStats && <PanelTab value="stats" icon={StatIcon} label="Stats" />}
-          <PanelTab value="traits" icon={TraitIcon} label="Traits" />
-          {hasInventory && <PanelTab value="inventory" icon={ItemIcon} label="Inventory" />}
-          <PanelTab value="location" icon={LocationIcon} label="Location" />
-        </PanelTabList>
+        <CollapsingTabsList
+          aria-label="Status"
+          value={shownTab}
+          tabs={[
+            ...(hasShownStats ? [{ value: 'stats', icon: StatIcon, label: 'Stats' }] : []),
+            { value: 'traits', icon: TraitIcon, label: 'Traits' },
+            ...(hasInventory ? [{ value: 'inventory', icon: ItemIcon, label: 'Inventory' }] : []),
+            { value: 'location', icon: LocationIcon, label: 'Location' },
+          ]}
+        />
         {/* `flex` is state-scoped for the same reason as on the Entities tab. */}
         <TabsContent value="stats" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
-          {entitiesShowStats && (
-            <div className="flex-shrink-0 px-2 pb-2">
-              <Select
-                value={shownEntity?.id ?? NO_ENTITY}
-                onValueChange={(value) => setSelectedEntityId(value === NO_ENTITY ? null : value)}
-              >
-                <SelectTrigger aria-label="Entity stats" className="h-8 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {entityItems(presentOptions)}
-                  {presentOptions.length > 0 && absentOptions.length > 0 && <SelectSeparator />}
-                  {entityItems(absentOptions)}
-                  <SelectSeparator />
-                  <SelectItem value={NO_ENTITY}>(None)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {entitiesShowStats && entityPicker}
           <ScrollArea className="min-h-0 flex-grow mb-4 relative">
             <div className="space-y-2 pb-2">
               {visibleStats.length > 0 && (
@@ -1521,32 +1582,59 @@ export const RightPanel = ({
             />
           </ScrollArea>
         </TabsContent>
-        <TabsContent value="traits" className="flex-grow overflow-hidden">
-          {/* Unticked whether it was switched off or never taken — the panel draws no line between the two,
-              because a trait that can be taken at will makes "owned" a distinction without a difference. */}
-          <TraitsTab
-            traits={listedTraits}
-            groups={traitTree.groups}
-            entityNodes={traitTree.entityNodes}
-            playerEntityIds={playerEntityIds(traitTree)}
-            stats={globalStats}
-            ownerStats={viewEntityStats}
-            isOff={(id, ownerId) => (ownerId === null
-              ? disabledTraits.has(id) || !heldTraitIds.has(id)
-              : !activeOwned[ownerId]?.includes(id))}
-            readOnly={isViewingPast}
-            onToggleTrait={onToggleTrait}
-            resolveTraitText={resolveTreeTraitText}
-            view={traitsView}
-            setView={setTraitsView}
-            gates={traitGates}
-            cascade={traitCascade}
-            onDismissCascade={onDismissTraitCascade}
-          />
+        <TabsContent value="traits" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
+          {entitiesShowTraits && entityPicker}
+          <div className="min-h-0 flex-grow">
+            {/* Unticked whether it was switched off or never taken — the panel draws no line between the two,
+                because a trait that can be taken at will makes "owned" a distinction without a difference. */}
+            <TraitsTab
+              traits={listedTraits}
+              groups={traitTree.groups}
+              entityNodes={traitTree.entityNodes}
+              playerEntityIds={playerEntityIds(traitTree)}
+              stats={globalStats}
+              ownerStats={viewEntityStats}
+              isOff={(id, ownerId) => (ownerId === null
+                ? disabledTraits.has(id) || !heldTraitIds.has(id)
+                : !activeOwned[ownerId]?.includes(id))}
+              readOnly={isViewingPast}
+              onToggleTrait={onToggleTrait}
+              resolveTraitText={resolveTreeTraitText}
+              hiddenOwners={hiddenTraitOwners}
+              emptyOwner={entitiesShowTraits && entitySection && !traitTree.entityNodes.has(entitySection.entity.id) ? shownEntity?.label : undefined}
+              view={traitsView}
+              setView={setTraitsView}
+              gates={traitGates}
+              cascade={traitCascade}
+              onDismissCascade={onDismissTraitCascade}
+            />
+          </div>
         </TabsContent>
         {hasInventory && (
-          <TabsContent value="inventory" className="flex-grow overflow-hidden">
-            <InventoryTab {...inventory} />
+          <TabsContent value="inventory" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
+            {entitiesShowWorn && entityPicker}
+            <div className="min-h-0 flex-grow">
+              <InventoryTab
+                {...inventory}
+                balances={balances}
+                entityCard={entitiesShowWorn && shownEntity && entitySection && (
+                  <PanelOwnerCard
+                    key={shownEntity.id}
+                    role="region"
+                    aria-label={`${shownEntity.label} inventory`}
+                    name={shownEntity.label}
+                    entity
+                    className="mt-2"
+                  >
+                    {visibleWorn(itemCopies, { kind: 'entity', id: entitySection.entity.id }).length === 0 ? (
+                      <p role="status" className="px-2 py-2 text-label text-muted-foreground">Nothing equipped.</p>
+                    ) : (
+                      <div className="px-2 py-1"><EntityEquipped entity={entitySection.entity} /></div>
+                    )}
+                  </PanelOwnerCard>
+                )}
+              />
+            </div>
           </TabsContent>
         )}
         <TabsContent value="location" className="flex-grow overflow-hidden">

@@ -164,7 +164,7 @@ describe('resolveEntityTexts', () => {
   const byOwner = (entity: Entity, text: string) =>
     resolveEntityText(entity, text, { placeholders: PLACEHOLDERS, rolls: { world: { [TOWN.id]: 'Sedge' } } });
 
-  it("resolves each entity's prose with that entity as the Character Name, and leaves its name alone", () => {
+  it("resolves each entity's prose with that entity as the Entity Name, and leaves its name alone", () => {
     const keeper: Entity = {
       id: 'k', name: tok(KEEPER.id), playerDescription: 'Meet {{char}}.', aiDescription: '{{char}} of ' + tok(TOWN.id) + '.',
       aiSummary: '{{char}}.',
@@ -178,6 +178,18 @@ describe('resolveEntityTexts', () => {
   it('resolves pronouns in the entity’s scope', () => {
     const keeper: Entity = { id: 'k', name: 'Vera', pronouns: tok(TOWN.id) };
     expect(resolveEntityTexts([keeper], byOwner)[0].pronouns).toBe('Sedge');
+  });
+
+  it('resolves the Stranger Name and Stranger Description in the entity’s scope', () => {
+    const keeper: Entity = { id: 'k', name: 'Vera', strangerName: `a ${tok(TOWN.id)} widow`, strangerDescription: '{{char}} hides her face.' };
+    expect(resolveEntityTexts([keeper], byOwner)[0]).toMatchObject({ strangerName: 'a Sedge widow', strangerDescription: 'Vera hides her face.' });
+  });
+
+  it('drops an authored blank Stranger Name and keeps one that resolves blank', () => {
+    const blank = { ...resolveEntityTexts([{ id: 'k', name: 'Vera', strangerName: '  ' }], byOwner)[0] };
+    expect('strangerName' in blank).toBe(false);
+    const empty = (_e: Entity, _text: string) => '';
+    expect(resolveEntityTexts([{ id: 'k', name: 'Vera', strangerName: tok(TOWN.id) }], empty)[0].strangerName).toBe('');
   });
 
   it('resolves each relationship label in the owning entity’s scope', () => {

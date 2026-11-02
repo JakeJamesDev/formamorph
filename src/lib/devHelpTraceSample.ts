@@ -12,7 +12,9 @@ export function devHelpTraceSample(index: DocsIndex, question = 'How do I add a 
   const picks = index.search('trait', 3).map(traceSection);
   const merged = [...new Map([...keyword, ...picks].map((section) => [section.id, section])).values()];
   const sent = merged.slice(0, 3);
-  const endpoint = { preset: 'Default', routed: false, model: 'default', url: 'https://api.example.com/v1/chat/completions', reasoningFields: [], maxTokens: 800 };
+  const samplers = [{ name: 'temperature', value: 0.2 }, { name: 'repetition_penalty', value: 1 }];
+  const endpoint = { preset: 'Default', routed: false, model: 'default', url: 'https://api.example.com/v1/chat/completions', reasoningFields: [], maxTokens: 800, samplers };
+  const stats = { totalMs: 3800, firstTokenMs: 700, generatingMs: 3100, tokens: 140, tokensEstimated: true, finishReason: 'stop' };
   const trace: HelpTrace = {
     surface: 'World Editor screen, Traits tab, Details tab',
     focus: 'trait Brave',
@@ -32,8 +34,8 @@ export function devHelpTraceSample(index: DocsIndex, question = 'How do I add a 
           messages: [{ role: 'system', content: 'Pick the guide sections that answer the question.' }, { role: 'user', content: `<sections>\n…\n</sections>\n\nQuestion: ${question}` }],
           response: picks.map((section) => `${section.page} › ${section.label}`).join('\n'),
           endpoint: { ...endpoint, maxTokens: 150 },
+          stats,
         },
-        samplers: { temperature: 0.2, repetitionPenalty: 1 },
         customPrompt: false,
       },
       {
@@ -43,8 +45,8 @@ export function devHelpTraceSample(index: DocsIndex, question = 'How do I add a 
           response: '1. Open the **Traits** tab.\n2. Select **Add Trait**.',
           reasoning: 'The player asks how to add a trait. The Traits page has the steps.',
           endpoint,
+          stats: { ...stats, finishReason: 'length' },
         },
-        samplers: { temperature: 0.2, repetitionPenalty: 1 },
         customPrompt: true,
       },
     ],

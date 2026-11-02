@@ -23,7 +23,7 @@ import { entryVectorKey } from '@/lib/semanticDictionary';
 const index = createDocsIndex({ pages: { Entities: '# Entities\n\nAn entity is a character the narrator plays.\n' } });
 
 const mara: Entity = { id: 'mara', name: 'Mara', playerDescription: 'A widow who keeps the gate.', aiDescription: 'She hides the key under the shrine.' };
-const velka: Entity = { id: 'velka', name: 'Velka Thorn', playerDescription: 'A tall woman in grey.', aiDescription: 'The heir in hiding.' };
+const velka: Entity = { id: 'velka', name: 'Velka Thorn', playerDescription: 'A tall woman in grey.', aiDescription: 'The heir in hiding.', strangerName: 'a veiled woman' };
 const stat = (id: string, over: Partial<PlayerStat> = {}): PlayerStat =>
   ({ id, name: id, type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [], ...over });
 const STATS = [stat('Coins'), stat('Suspicion', { hidden: true })];

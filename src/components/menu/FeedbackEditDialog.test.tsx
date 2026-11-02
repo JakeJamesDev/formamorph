@@ -201,7 +201,7 @@ describe('moving between the branches', () => {
     await pickKind('Question');
 
     const warning = await screen.findByText(/Moving this to a question sets its status back to Open/);
-    expect(warning.textContent).toContain('deletes the version and platform it was filed with');
+    expect(warning.textContent).toContain('deletes the Version, Platform and System it was filed with');
     expect(warning.textContent).not.toContain('Only the reporter and staff');
   });
 });

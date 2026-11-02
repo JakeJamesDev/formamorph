@@ -39,7 +39,7 @@ interface Case {
 const open = (screen: SurfaceId, dialog: SurfaceId | null, ...tabs: SurfaceId[]): Surface => ({ screen, dialog, tabs });
 const cases: Case[] = [
   { id: 'display-tab', question: 'What does this tab do?', surface: open('mainMenu', 'settings', 'settings.display'), section: 'Settings#display', facts: ['Theme', 'Font', 'Background Music'] },
-  { id: 'endpoints-tab', question: 'What is on this tab?', surface: open('mainMenu', 'settings', 'settings.endpoints'), section: 'Settings#endpoints', facts: ['Text', 'Image', 'Demo AI'] },
+  { id: 'endpoints-tab', question: 'What is on this tab?', surface: open('mainMenu', 'settings', 'settings.endpoints'), section: 'Endpoint-Settings#-endpoint-settings', facts: ['Text', 'Image', 'Demo AI'] },
   { id: 'library-here', question: 'What can I do here?', surface: open('mainMenu', null, 'mainMenu.worlds'), section: 'Library#the-library-tabs', facts: ['Worlds', 'Entities', 'Dictionaries', 'Avatars'] },
   { id: 'prompt-options', question: 'What are these tabs for?', surface: open('mainMenu', 'settings', 'settings.prompts', 'settingsPromptSurfaces.options'), section: 'Prompts#the-surfaces-of-a-prompt', facts: ['Anatomy', 'System Prompt', 'User Message', 'Options'] },
   { id: 'bench-triggers', question: 'How do I use this?', surface: open('worldEditor' as SurfaceId, null, 'worldEditorBench.triggers'), section: 'Test-Bench#triggers', facts: ['Entities Present', 'Dictionary', 'Rendered Context', 'History'] },

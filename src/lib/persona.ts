@@ -29,7 +29,7 @@ export function enteredPersona(entity: Entity, ref: NoneRef | undefined): Entity
 
 /** The world's entities with the Custom Persona entity carrying the player's entry, or the picked library
  *  persona's name, for the surfaces that read the marked entity from the list: its tree node and its
- *  Character Name. The same list otherwise. */
+ *  Entity Name. The same list otherwise. */
 export function withPersonaEntry(entities: readonly Entity[], ref: PersonaRef | undefined, libraryName?: string): readonly Entity[] {
   if (ref?.source === 'world') return entities;
   const marked = customPersonaEntity(entities);

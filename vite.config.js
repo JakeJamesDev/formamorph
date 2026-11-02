@@ -5,20 +5,22 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { readFileSync, realpathSync } from 'fs'
 import { createRequire } from 'module'
-import { releasedMinorChangelog } from './src/lib/docs/changelogSlice'
+import { releasedMinorChangelog } from './src/lib/docs/changelogSlice.ts'
 import { shipBundledWorlds } from './scripts/shipBundledWorlds.mjs'
 import { stripSeededWorlds } from './scripts/stripSeededWorlds.mjs'
+import { bundledWorldHashes } from './scripts/bundledWorldHashes.mjs'
+import { shipNotices } from './scripts/shipNotices.mjs'
 
-const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
+const pkg = JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8'))
 // The ONNX runtime's dist folder, which its package exports do not expose (src/lib/embeddingWorker.ts).
 const ortDist = path.dirname(createRequire(import.meta.url).resolve('onnxruntime-web'))
 const syncAppOrigin = process.env.E2E_SYNC_APP_ORIGIN
 // Worktrees link node_modules to the main checkout, so each checkout and port gets its own dep cache.
 const portArg = process.argv.findIndex((arg) => arg === '--port' || arg.startsWith('--port='))
 const cachePort = portArg < 0 ? '5173' : process.argv[portArg].split('=')[1] ?? process.argv[portArg + 1]
-const devCacheDir = path.resolve(__dirname, 'node_modules/.vite', `${path.basename(__dirname)}-${cachePort}`)
+const devCacheDir = path.resolve(import.meta.dirname, 'node_modules/.vite', `${path.basename(import.meta.dirname)}-${cachePort}`)
 // A worktree's linked node_modules resolves outside its root, where Vite refuses files such as the QuickJS wasm.
-const servedRoots = [searchForWorkspaceRoot(process.cwd()), realpathSync(path.resolve(__dirname, 'node_modules'))]
+const servedRoots = [searchForWorkspaceRoot(process.cwd()), realpathSync(path.resolve(import.meta.dirname, 'node_modules'))]
 
 const directSyncAppModules = {
   name: 'direct-sync-app-modules',
@@ -89,19 +91,23 @@ const docsIndexMarkdown = {
 // so wrap it as an ES module with the names from its `module.exports = { ... }` line.
 const cacheTypesCjs = {
   name: 'cache-types-cjs',
+  apply: 'serve',
   enforce: 'pre',
   transform(code, id) {
     if (!id.split('?')[0].endsWith('/electron/cacheTypes.cjs')) return null
     const names = /module\.exports\s*=\s*\{([^}]*)\}/.exec(code)?.[1].split(',').map((n) => n.trim()).filter(Boolean) ?? []
     if (names.length === 0) this.error('electron/cacheTypes.cjs must end in a one-line `module.exports = { a, b }`')
     const exports = names.map((n) => `export const ${n} = shared.${n};`).join('\n')
-    return `const shared = (() => {\nconst module = { exports: {} };\n${code}\nreturn module.exports;\n})();\n${exports}\n`
+    return { moduleType: 'js', code: `const shared = (() => {\nconst module = { exports: {} };\n${code}\nreturn module.exports;\n})();\n${exports}\n` }
   },
 }
 
+const shippedWorlds = shipBundledWorlds(import.meta.dirname)
+const notices = shipNotices(import.meta.dirname)
+
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shipBundledWorlds(__dirname), stripSeededWorlds()],
-  cacheDir: process.env.E2E_SYNC_APP ? path.resolve(__dirname, 'node_modules/.vite-sync-app') : devCacheDir,
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices],
+  cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
   define: {
@@ -116,7 +122,7 @@ export default defineConfig({
     // Modal menus and dialogs must share the body pointer-lock registry.
     dedupe: ['@radix-ui/react-dismissable-layer'],
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
       'onnxruntime-web-dist': ortDist,
     },
   },
@@ -134,10 +140,11 @@ export default defineConfig({
     ],
   },
   worker: {
+    plugins: () => [notices.api.workerPlugin()],
     // The image-encode worker lazily `import()`s wasm-webp; under the default iife worker format that dynamic
     // import would force code-splitting (unsupported for iife). Inlining folds it into the single worker chunk.
     // No-op for the other workers (they have no dynamic imports).
-    rollupOptions: { output: { inlineDynamicImports: true } },
+    rolldownOptions: { output: { codeSplitting: false } },
   },
   server: {
     fs: { allow: servedRoots },
@@ -161,7 +168,7 @@ export default defineConfig({
               '**/testing/**',
               '**/graph.json',
               '**/GRAPH_REPORT.md',
-              path.resolve(__dirname, '.claude/worktrees/**').replace(/\\/g, '/'),
+              path.resolve(import.meta.dirname, '.claude/worktrees/**').replace(/\\/g, '/'),
               '**/.scratch/**',
               '**/dist/**',
             ],
@@ -181,11 +188,18 @@ export default defineConfig({
       'src/lib/docs/changelogSlice.ts',
       'scripts/shipBundledWorlds.mjs',
       'scripts/stripSeededWorlds.mjs',
+      'scripts/shipNotices.mjs',
+      'scripts/noticesList.mjs',
+      'src/lib/noticesFormat.ts',
+      'scripts/bundledWorldHashes.mjs',
+      'src/lib/contentHash.ts',
       'scripts/stripWorldImages.mjs',
       'tsconfig*.json',
       '.env*',
-    ].map((file) => path.resolve(__dirname, file).replace(/\\/g, '/')),
+    ].map((file) => path.resolve(import.meta.dirname, file).replace(/\\/g, '/')),
     css: false,
+    // Vitest clears this folder when the lockfile hash differs, and its keys include the root, so checkouts can't share it.
+    fsModuleCachePath: path.resolve(import.meta.dirname, 'node_modules/.vite', `${path.basename(import.meta.dirname)}-vitest`),
     // One fork per hardware thread halves each test's speed for the same throughput: on 32 threads the
     // 5-second tests ran 4.6 s idle and timed out under a peer's load. Half the threads keeps the wall
     // time and gives every fork a thread of its own.

@@ -56,12 +56,12 @@ test('a new action shows no thought until its own reasoning streams', async ({ p
   await expect(page.getByText(/Thought for/)).toHaveCount(1);
 });
 
-test('a re-generated turn shows no thought until its own reasoning streams', async ({ page }) => {
+test('a regenerated turn shows no thought until its own reasoning streams', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
   const endpoint = await playFirstTurn(page);
 
   endpoint.hold();
-  await page.getByRole('button', { name: 'Re-generate Narration' }).first().click();
+  await page.getByRole('button', { name: 'Regenerate Narration' }).first().click();
   await expect(page.getByText(/Thought for|Thinking…/)).toHaveCount(0);
 
   endpoint.release();

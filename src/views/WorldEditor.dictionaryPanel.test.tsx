@@ -165,7 +165,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectEntry('Quiet Folk');
     // With Regex off the offer is there to lose: a comma-bearing keyword is offered as a list.
-    const before = screen.getByPlaceholderText('Add keyword...');
+    const before = screen.getByPlaceholderText('Add keyword');
     fireEvent.change(before, { target: { value: 'wyrm, drake' } });
     fireEvent.keyDown(before, { key: 'Enter' });
     expect(screen.getByRole('button', { name: /^Split/ })).toBeInTheDocument();
@@ -178,7 +178,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
     expect(screen.queryByRole('button', { name: /^Split/ })).toBeNull();
 
     openPanelTab('Details');
-    const keywords = screen.getByPlaceholderText('Add keyword...');
+    const keywords = screen.getByPlaceholderText('Add keyword');
     fireEvent.change(keywords, { target: { value: 'adder, asp' } });
     fireEvent.keyDown(keywords, { key: 'Enter' });
     expect(screen.queryByRole('button', { name: /^Split/ })).toBeNull();
@@ -197,7 +197,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
 
     openPanelTab('Details');
     expect(takesChips('Add keyword')).toBe(false);
-    expect(screen.getByPlaceholderText('Add keyword...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Add keyword')).toBeInTheDocument();
   });
 
   it('puts the placeholder palette bar above the strip, so chips insert on either tab', () => {
@@ -214,6 +214,6 @@ describe('the World Editor dictionary entry panel tabs', () => {
     fireEvent.click(screen.getByText('Fen Lore'));
     expect(panelStrip()).toBeNull();
     // The book panel's own first field, which the Label sits over rather than labels.
-    expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument();
   });
 });

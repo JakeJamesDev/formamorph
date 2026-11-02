@@ -68,6 +68,7 @@ import { MapBackgroundLayer, type MapGesture } from '@/components/MapBackgroundL
 import { mapImages } from '@/lib/mapBackground';
 import { MapBackgroundPanel, type MapBackgroundPanelMode } from '@/managers/MapBackgroundPanel';
 import { useMapBackground } from '@/managers/useMapBackground';
+import { Meta } from '@/components/ui/typography';
 
 /**
  * The Locations canvas: the world's navigable shape as a map, and the primary place to draw on it. What a
@@ -550,7 +551,7 @@ const LocationSearch = ({ find, onPick }: {
             </li>
           ))}
           {!matches.length && (
-            <li className="px-2 py-1.5 text-meta text-muted-foreground">No locations match that name.</li>
+            <Meta as="li" className="px-2 py-1.5">No locations match that name.</Meta>
           )}
         </ul>
       )}

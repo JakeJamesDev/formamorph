@@ -1,35 +1,43 @@
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Hint, Meta } from '@/components/ui/typography';
+import { HostedBreakdown } from '@/components/modals/HostedBreakdown';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
 import { requestClientUpdate } from '@/components/modals/UpdateRequiredDialog';
 import { useAgeGate } from '@/contexts/AgeGateContext';
 import { usePrivacyPolicy } from '@/contexts/PrivacyPolicyContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { DEV_HOSTED_SAMPLES, type DevHostedSample } from '@/lib/hostedAi/devHostedSamples';
 import { hostedStateCopy, hostedUsageCopy, HOSTED_USAGE_HELP, type HostedAction } from '@/lib/hostedAi/hostedCopy';
 import type { HostedState } from '@/lib/hostedAi/hostedState';
 import type { HostedPresetState } from '@/lib/hostedAi/refusals';
 import { openExternal } from '@/lib/openExternal';
 import { requestSignIn } from '@/lib/signInStore';
-import { SUPPORTER_LABELS } from '@/lib/supporterFlair';
-import type { SupporterTier } from '@/types/supporter';
+import { flairTier } from '@/lib/supporterFlair';
+import { useTierName } from '@/lib/tierNames';
+import { cn } from '@/lib/utils';
 
-/** The dev route's canned usage, so `fixture=fai-<state>` shows the allowance lines without a server. */
-const DEV_SAMPLE: Partial<Record<HostedPresetState, Pick<HostedState, 'tier' | 'percentUsed' | 'turnsLeft' | 'resetAt'>>> = {
-  ready: { tier: 'supporter_plus', percentUsed: 32, turnsLeft: 41, resetAt: '2026-12-01T00:00:00.000Z' },
-  warned: { tier: 'supporter_plus', percentUsed: 78, turnsLeft: 9, resetAt: '2026-12-01T00:00:00.000Z' },
-  exhausted: { tier: 'supporter_plus', percentUsed: 100, turnsLeft: 0, resetAt: '2026-12-01T00:00:00.000Z' },
-};
-
-/** Formamorph AI's state in place of the connection fields: its allowance, its reason and its actions. `state` overrides the live one. */
-export function HostedPresetStatus({ state }: { state?: HostedPresetState }) {
+/** Formamorph AI's state: its allowance, its reason and its actions. `state` overrides the live one, with `sample` as its usage. */
+export function HostedPresetStatus({ state, sample: givenSample, className }: {
+  state?: HostedPresetState;
+  sample?: DevHostedSample;
+  className?: string;
+}) {
   const { hostedAi, refreshHostedState, switchBackFromHostedAi } = useSettings();
   const { requireAttestation } = useAgeGate();
   const { checkNow } = usePrivacyPolicy();
+  const tierNameOf = useTierName();
   const shown = state ?? hostedAi.presetState;
-  const sample = import.meta.env.DEV && state ? DEV_SAMPLE[state] : undefined;
+
+  // This surface shows only with Formamorph AI selected, so the read costs nobody else a request.
+  useEffect(() => {
+    if (!state) void refreshHostedState();
+  }, [state, refreshHostedState]);
+  const sample = import.meta.env.DEV && state ? givenSample ?? DEV_HOSTED_SAMPLES[state] : undefined;
   const hosted = sample ? ({ ...hostedAi.hosted, ...sample } as HostedState) : hostedAi.hosted;
   const copy = hostedStateCopy(shown, hosted?.resetAt);
-  const tierLabel = hosted?.tier ? SUPPORTER_LABELS[hosted.tier as SupporterTier] ?? null : null;
+  const knownTier = flairTier(hosted?.tier ? { tier: hosted.tier } : null);
+  const tierLabel = knownTier ? tierNameOf(knownTier) : null;
   const usage = shown === 'ready' || shown === 'warned' || shown === 'exhausted' ? hostedUsageCopy(hosted, tierLabel) : null;
 
   const run: Record<HostedAction, () => void> = {
@@ -43,11 +51,16 @@ export function HostedPresetStatus({ state }: { state?: HostedPresetState }) {
   };
 
   return (
-    <div className="flex flex-col items-start gap-3 py-4" data-hosted-state={shown}>
+    <div className={cn('flex flex-col items-start gap-3 py-4', className)} data-hosted-state={shown}>
       {usage && (
         <div className="flex flex-col gap-1" data-hosted-usage>
           <Meta>{[usage.tier, usage.used, usage.turnsLeft, usage.resets].filter(Boolean).join(' · ')}</Meta>
           <Hint>{HOSTED_USAGE_HELP}</Hint>
+          {hosted?.breakdown && (
+            <div className="mt-3 w-full max-w-sm">
+              <HostedBreakdown breakdown={hosted.breakdown} threshold={hosted.breakdownThreshold} />
+            </div>
+          )}
         </div>
       )}
       {copy && <Hint>{copy.reason}</Hint>}

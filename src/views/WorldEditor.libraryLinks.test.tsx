@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, openAddFromLibrary, renderWorldEditorBench } from '@/test/worldEditorBench';
+import userEvent from '@testing-library/user-event';
 import { toastTexts } from '@/test/toastText';
 import { markHelpSeen } from '@/lib/helpSeenStore';
 import { openingsEnabled } from '@/lib/openings';
@@ -188,6 +189,29 @@ describe('Save to Library', () => {
     clickButton('Save');
     expect(await screen.findByText('Linked · Marsh Lore')).toBeTruthy();
     expect(screen.queryByText('Link pending save · Marsh Lore')).toBeNull();
+  });
+
+  /** The row marker's tip opens on hover; the marker is the one element labeled with the link state. */
+  const hoverRowMarker = (label: string) => userEvent.hover(screen.getByLabelText(label));
+
+  it.each([
+    ['dictionary', /Dictionary/, 'Marsh Lore'],
+    ['entity', /Entities/, 'Wren'],
+  ])('reads Link pending save on the %s row marker until the world saves', async (_kind, tab, name) => {
+    renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
+    openTab(tab);
+    selectRow(name);
+    clickButton('Save to Library');
+    await screen.findByRole('button', { name: 'Open in Library' });
+
+    await hoverRowMarker('Link pending save');
+    expect(await screen.findByText(`Link pending save · ${name}`, {}, { timeout: 3000 })).toBeTruthy();
+
+    clickButton('Save');
+    await waitFor(() => expect(screen.queryByText(`Link pending save · ${name}`)).toBeNull());
+    await userEvent.unhover(screen.getByLabelText('Linked'));
+    await hoverRowMarker('Linked');
+    expect(await screen.findByText(`Linked · ${name}`, {}, { timeout: 3000 })).toBeTruthy();
   });
 
   it('offers the linked copy the library item instead of a second save', async () => {
@@ -567,7 +591,7 @@ describe('Opening a world after a library save', () => {
     expect(ctx().dictionaries[0].entries[0].value).toBe('Wetland.');
     expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
-    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked “Fen Lore” because its library item is gone.');
+    expect(toast.info).toHaveBeenCalledWith('“Fen Lore” is now an independent copy. Its library item is gone.');
   });
 
   it('says it once when Exit Without Saving restores the link and the pass lets go again', async () => {
@@ -594,7 +618,7 @@ describe('Opening a world after a library save', () => {
     } as unknown as Partial<World>), 'advanced');
 
     await waitFor(() => expect(ctx().dictionaries.every((book) => !book.link)).toBe(true));
-    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked 2 copies whose library items are gone.');
+    expect(toast.info).toHaveBeenCalledWith('2 copies are now independent. Their library items are gone.');
     expect(toast.info).toHaveBeenCalledTimes(1);
   });
 
@@ -624,7 +648,7 @@ describe('Opening a world after a library save', () => {
 
     await waitFor(() => expect(ctx().dictionaries[0].link?.libraryId).toBeUndefined());
     expect(ctx().dictionaries[0].link?.sourceId).toBe('listing-9');
-    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked “Fen Lore” because its library item is gone.');
+    expect(toast.info).toHaveBeenCalledWith('“Fen Lore” is now an independent copy. Its library item is gone.');
     focusLinkFace();
     expect(await screen.findByText('Linked · Fen Lore')).toBeTruthy();
   });
@@ -674,7 +698,7 @@ describe('Adding an entity that brings openings', () => {
 
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
     expect(ctx().worldOverview.openingsEnabled).toBeUndefined();
-    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so Openings is switched on.');
+    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Openings” is now on.');
   });
 
   it('leaves the switch alone for a copy with no row that could come up', async () => {
@@ -695,7 +719,7 @@ describe('Adding an entity that brings openings', () => {
 
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
     expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(true);
-    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so Openings is switched on.');
+    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Openings” is now on.');
   });
 
   it('says nothing when the world already has an opening of its own', async () => {

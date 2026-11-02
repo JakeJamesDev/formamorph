@@ -2,7 +2,8 @@ import { useId, useRef, useState, type ReactNode } from 'react';
 import { Copy, Maximize2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
-import type { AIRequestType, Tool, ToolEnabledMap, ToolParam } from '@/types';
+import type { AIRequestType, Intent, Tool, ToolEnabledMap, ToolParam } from '@/types';
+import { INTENTS, toolIntents } from '@/lib/formaquestion/intents';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
-import { Hint } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -70,14 +71,37 @@ function CallLimitField({ callLimit, defaultLimit, maxLimit, onChange }: {
   );
 }
 
-/** Offered To and Max Calls per Request, written on each change. Where one request takes every Tool, the limit alone. */
-export function AvailabilityFields({ tool, onChange, offeredTo }: { tool: Tool; onChange: (tool: Tool) => void; offeredTo: boolean }) {
+/** The Intents in the words of the Sort Questions docs. */
+const INTENT_LABELS: Record<Intent, string> = { Chat: 'Small talk', Help: 'How-to', Code: 'Code', World: 'Your world', Create: 'Make something' };
+
+const INTENT_OPTIONS: MultiSelectOption[] = INTENTS.map((intent) => ({ value: intent, label: INTENT_LABELS[intent] }));
+
+/**
+ * Offered To and Max Calls per Request, written on each change. Where one request takes every Tool, the limit
+ * alone, or with `intents` the Intents that send the Tool beside it.
+ */
+export function AvailabilityFields({ tool, onChange, offeredTo, intents = false }: { tool: Tool; onChange: (tool: Tool) => void; offeredTo: boolean; intents?: boolean }) {
   const id = useId();
   const setLimit = (limit: number | undefined) => {
     const { callLimit: _, ...rest } = tool;
     onChange(limit === undefined ? rest : { ...rest, callLimit: limit });
   };
   const limit = <CallLimitField callLimit={tool.callLimit} defaultLimit={DEFAULT_TOOL_CALL_LIMIT} onChange={setLimit} />;
+  if (intents) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="flex flex-col gap-1 min-w-0">
+          <Label id={`${id}-intents`}>Sorted As</Label>
+          <Hint>Sends the Tool with these kinds of question</Hint>
+          <MultiSelect
+            aria-labelledby={`${id}-intents`} options={INTENT_OPTIONS} placeholder="No Questions" allSelectedLabel="All Questions"
+            defaultValue={[...toolIntents(tool)]} onValueChange={(kinds) => onChange({ ...tool, intents: INTENTS.filter((intent) => kinds.includes(intent)) })}
+          />
+        </div>
+        {limit}
+      </div>
+    );
+  }
   if (!offeredTo) return limit;
   return (
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -224,13 +248,13 @@ export function ToolsTab({
     try {
       const text = await readText();
       if (text === null || !my) return;
-      const { tools, warnings } = parseToolPack(text);
+      const { tools, warnings } = parseToolPack(text, { help: my.singleRequest });
       const plan = planToolImport(my.userTools, tools, randomUUID, reserved);
       plan.added.forEach(my.onSaveTool);
       for (const warning of warnings) toast.warn(warning);
       if (plan.skipped.length) toast.info(`Already in My Tools: ${plan.skipped.join(', ')}`);
       if (plan.added.length) toast.success(`Imported ${plan.added.length} Tool${plan.added.length === 1 ? '' : 's'}`);
-      if (plan.hasScript) toast.warn('This pack holds a Script Tool. A script runs code when the AI calls it, so read it before you turn it on.');
+      if (plan.hasScript) toast.warn('This pack holds a Script Tool. Its script runs code when the AI calls it. Read the script before you turn the Tool on.');
     } catch (error) {
       toastError(error, 'Couldn’t import those Tools');
     }
@@ -300,7 +324,7 @@ export function ToolsTab({
     <div className="flex items-start gap-3">
       <div className="min-w-0 flex-1">
         <h3 className="text-label font-medium font-mono break-all">{row.name}</h3>
-        <p className="text-meta text-muted-foreground">{summary}</p>
+        <Meta as="p">{summary}</Meta>
       </div>
       <label className="flex items-center gap-2 text-label flex-shrink-0">
         <Checkbox
@@ -322,24 +346,24 @@ export function ToolsTab({
         </div>
       )}
       {toolsEnabled === false ? (
-        <p role="note" className="flex-shrink-0 text-helper text-muted-foreground">
+        <Hint role="note" className="flex-shrink-0">
           Your prompts won&apos;t receive Tools. Turn on <strong>Tools</strong> in the <strong>Output</strong> tab to send them.
-        </p>
+        </Hint>
       ) : !toolsSupported && (
-        <p role="note" className="flex-shrink-0 text-helper text-muted-foreground">{unsupportedNote}</p>
+        <Hint role="note" className="flex-shrink-0">{unsupportedNote}</Hint>
       )}
 
       <div className="grid flex-1 min-h-0 gap-4 grid-rows-[minmax(0,10rem)_minmax(0,1fr)] sm:grid-rows-1 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
         <ScrollArea className="h-full min-h-0 rounded-md border">
           {/* The side padding is the Landing Pulse's room around the Share Tools row. */}
           <nav aria-label="Tools" className="px-3 py-2 flex flex-col gap-1">
-            <p className="text-meta text-muted-foreground px-1 pt-1">Built-In</p>
+            <Meta as="p" className="px-1 pt-1">Built-In</Meta>
             {fixedFunctions.map(toolButton)}
             {catalogTools.map(toolButton)}
 
             {my && (<>
             <div className="flex items-center justify-between gap-1 px-1 pt-3" {...targets?.shareTools}>
-              <p className="text-meta text-muted-foreground">My Tools</p>
+              <Meta as="p">My Tools</Meta>
               <span className="flex items-center">
                 <Tip tip="Import Tools">
                   <button type="button" aria-label="Import Tools" className={iconButton} onClick={requestImport}>
@@ -375,15 +399,15 @@ export function ToolsTab({
                 callLimit={selectedFixed.callLimit} defaultLimit={selectedFixed.defaultCallLimit} maxLimit={selectedFixed.maxCallLimit}
                 onChange={(limit) => fixed.onCallLimitChange(selectedFixed.id, limit)}
               />
-              <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selectedFixed.description}</p>
+              <Hint className="whitespace-pre-wrap">{selectedFixed.description}</Hint>
               <ParamList params={selectedFixed.params} />
             </div>
           )}
           {selected && (
             <div className="flex flex-col gap-3 min-w-0 pr-3">
               {readHeader(selected, toolSummary(selected))}
-              {my && <AvailabilityFields tool={selected} onChange={my.onSaveTool} offeredTo={!my.singleRequest} />}
-              <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selected.description}</p>
+              {my && <AvailabilityFields tool={selected} onChange={my.onSaveTool} offeredTo={!my.singleRequest} intents={my.singleRequest} />}
+              <Hint className="whitespace-pre-wrap">{selected.description}</Hint>
               <ToolTryIt key={selected.id} tool={selected} world={world} />
             </div>
           )}

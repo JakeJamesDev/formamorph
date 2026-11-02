@@ -1,6 +1,7 @@
 import type {
-  AIRequestType, Tool, ToolEnabledMap, ToolHandler, ToolLookupSource, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming,
+  AIRequestType, Intent, Tool, ToolEnabledMap, ToolHandler, ToolLookupSource, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming,
 } from '@/types';
+import { INTENTS } from '@/lib/formaquestion/intents';
 import { PROMPT_REQUEST_KINDS } from '@/lib/reasoningEffort';
 import { TOOL_CATALOG } from './toolCatalog';
 import { migrateUserToolScript } from './toolTextMigration';
@@ -13,6 +14,16 @@ export const TOOL_NAME_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${TOOL_NAME_MAX}}$
 
 /** Why a Tool name can't be saved: bad characters or length, used by another user Tool, or a catalog name. */
 export type ToolNameProblem = 'format' | 'taken' | 'builtin';
+
+const NAME_PROBLEM_TEXT: Record<ToolNameProblem, string> = {
+  format: `Use only letters, digits, _ and -, from 1 to ${TOOL_NAME_MAX} characters`,
+  taken: 'Another of your Tools uses this name',
+  builtin: 'A built-in Tool uses this name',
+};
+
+/** The line that tells a player why a name can't be saved, as the Save Tool check words it. */
+export const toolNameProblemText = (problem: ToolNameProblem, world: boolean): string =>
+  world && problem === 'taken' ? 'Another Tool in this world uses this name' : NAME_PROBLEM_TEXT[problem];
 
 /** Whether two Tool names clash, ignoring case. */
 export const sameToolName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
@@ -53,6 +64,12 @@ const REQUEST_KINDS: readonly string[] = PROMPT_REQUEST_KINDS;
 export function parseOfferedTo(raw: unknown): AIRequestType[] | null {
   if (!Array.isArray(raw)) return null;
   return raw.filter((k): k is AIRequestType => typeof k === 'string' && REQUEST_KINDS.includes(k));
+}
+
+/** The Intent list of a Formaquestion Tool; an unknown Intent drops, a non-list is null. */
+function parseIntents(raw: unknown): Intent[] | null {
+  if (!Array.isArray(raw)) return null;
+  return INTENTS.filter((intent) => raw.includes(intent));
 }
 
 /** Whether `raw` is a call limit: a whole number of 1 or more. */
@@ -109,7 +126,7 @@ function parseHandler(raw: unknown, world: boolean): ToolHandler | string | null
  * Validate an untrusted user Tool, such as one in a Tool pack or local storage, or a `world` Tool. Every field must be well-formed or the
  * whole Tool is rejected with a reason; only prompt kinds from a newer version are dropped quietly.
  */
-export function parseTool(raw: unknown, { world = false }: { world?: boolean } = {}): { tool: Tool } | { error: string } {
+export function parseTool(raw: unknown, { world = false, help = false }: { world?: boolean; help?: boolean } = {}): { tool: Tool } | { error: string } {
   if (!isRecord(raw)) return { error: "it isn't a Tool" };
   const { id, name, description, emptyResult, callLimit } = raw;
   if (typeof id !== 'string' || !id) return { error: 'it has no id' };
@@ -135,9 +152,12 @@ export function parseTool(raw: unknown, { world = false }: { world?: boolean } =
   if (callLimit !== undefined && !isCallLimit(callLimit)) {
     return { error: 'its call limit is not a whole number of 1 or more' };
   }
+  // Only a Formaquestion Tool carries an Intent list; a malformed one reads as absent.
+  const intents = help ? parseIntents(raw.intents) : null;
   return {
     tool: {
       id, name, description, params, handler, emptyResult, offeredTo,
+      ...(intents ? { intents } : {}),
       ...(callLimit !== undefined ? { callLimit } : {}),
     },
   };

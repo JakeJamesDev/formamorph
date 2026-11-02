@@ -20,6 +20,9 @@ type FrameSceneProps = SceneProps & {
   cards?: Partial<Record<Layout, CardPair>>;
 };
 
+/** A caption's dot when the shot names none. */
+export const FRAME_DOT: DotColor = 'mint';
+
 /** Frames the depth card trails the subject card. */
 const DEPTH_DELAY = 10;
 
@@ -27,7 +30,7 @@ const DEPTH_DELAY = 10;
 export const frameCards = (layout: Layout, cards?: FrameSceneProps['cards']) => cards?.[layout] ?? FRAME_CARDS[layout];
 
 /** A captured UI shot on a floating glass card over a dimmed depth card, with an optional callout and caption pills. */
-export const FrameScene = ({ layout, durationInFrames, shot, camera, depth, callout, caption, dot = 'mint', cards }: FrameSceneProps) => {
+export const FrameScene = ({ layout, durationInFrames, shot, camera, depth, callout, caption, dot = FRAME_DOT, cards }: FrameSceneProps) => {
   const pair = frameCards(layout, cards);
   return (
     <AbsoluteFill>

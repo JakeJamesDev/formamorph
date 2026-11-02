@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
 import { createSurfaceRegistry } from '@/lib/surface/surfaceRegistry';
@@ -28,7 +29,7 @@ const WORLD = {
 
 let registry: ReturnType<typeof createSurfaceRegistry>;
 let requester: ReturnType<typeof createSurfaceRequester>;
-let onExitToMenu: ReturnType<typeof vi.fn>;
+let onExitToMenu: Mock<() => void>;
 
 /** Enter the game and dismiss the AI setup gate the default endpoint raises, as a player does. */
 async function enterGame() {

@@ -7,6 +7,7 @@ import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import PromptField from '@/components/prompt/PromptField';
 import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
+import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -36,6 +37,8 @@ const ADD_PRESET = '__add__';
 const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
   answer: helpChipVocabulary(HELP_PROMPT_CHIPS.answer),
   pick: helpChipVocabulary(HELP_PROMPT_CHIPS.pick),
+  intent: helpChipVocabulary(HELP_PROMPT_CHIPS.intent),
+  create: helpChipVocabulary(HELP_PROMPT_CHIPS.create),
   lookup: helpChipVocabulary(HELP_PROMPT_CHIPS.lookup),
   code: helpChipVocabulary(HELP_PROMPT_CHIPS.code),
   worldEditor: helpChipVocabulary(HELP_PROMPT_CHIPS.worldEditor),
@@ -142,7 +145,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         )}
       />
       <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" data-testid="help-preset-input" onChange={(event) => void importPreset(event)} />
-      <p className="-mt-2 flex-shrink-0 text-helper text-muted-foreground">{PROMPTS_COPY.preset.hint}</p>
+      <Hint className="-mt-2 flex-shrink-0">{PROMPTS_COPY.preset.hint}</Hint>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
         <Select value={showOptions ? optionsValue(key) : key} onValueChange={(value) => { const next = selectionOf(value); if (next) open(next.key, next.options); }}>

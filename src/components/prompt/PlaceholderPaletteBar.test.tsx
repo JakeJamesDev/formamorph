@@ -310,7 +310,7 @@ describe('PlaceholderPaletteBar owner headings', () => {
 });
 
 /**
- * The Built-in section: every world's Persona Name, and Character Name over an entity's panel. A Built-in the
+ * The Built-in section: every world's Persona Name, and Entity Name over an entity's panel. A Built-in the
  * claimed field refuses stays in place, dimmed, so the strip does not reflow as focus moves.
  */
 describe('PlaceholderPaletteBar Built-in section', () => {
@@ -330,12 +330,12 @@ describe('PlaceholderPaletteBar Built-in section', () => {
     </PlaceholderStoreProvider>,
   );
 
-  it('offers Character Name over an entity’s panel', () => {
+  it('offers Entity Name over an entity’s panel', () => {
     mount('molly');
-    expect(names()).toEqual(['Persona Name', 'Character Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Entity Name', 'Town']);
   });
 
-  it('leaves Character Name out over a book and over world text', () => {
+  it('leaves Entity Name out over a book and over world text', () => {
     mount('lore');
     expect(names()).toEqual(['Persona Name', 'Town']);
     cleanup();
@@ -343,7 +343,7 @@ describe('PlaceholderPaletteBar Built-in section', () => {
     expect(names()).toEqual(['Persona Name', 'Town']);
   });
 
-  it('offers Character Name over a library entity, whose store names it, but not over its values', () => {
+  it('offers Entity Name over a library entity, whose store names it, but not over its values', () => {
     const own = { ...placeholderStore(all, () => {}), owner: { kind: 'entity' as const, id: 'keeper' } };
     const library = (scopeId?: string) => render(
       <PlaceholderStoreProvider value={own}>
@@ -354,7 +354,7 @@ describe('PlaceholderPaletteBar Built-in section', () => {
       </PlaceholderStoreProvider>,
     );
     library();
-    expect(names()).toEqual(['Persona Name', 'Character Name', 'Town']);
+    expect(names()).toEqual(['Persona Name', 'Entity Name', 'Town']);
     cleanup();
     // Scoped to one of its placeholders, the fields are that placeholder's values.
     library('town');
@@ -364,7 +364,7 @@ describe('PlaceholderPaletteBar Built-in section', () => {
   it('marks each Built-in chip and no author chip', () => {
     mount('molly');
     const marked = [...document.querySelectorAll('[data-builtin-mark]')].map((el) => el.closest('button')?.textContent);
-    expect(marked).toEqual(['Persona Name', 'Character Name']);
+    expect(marked).toEqual(['Persona Name', 'Entity Name']);
     expect(document.querySelector('[data-builtin-mark]')).toHaveClass('lucide-pencil-sparkles');
   });
 

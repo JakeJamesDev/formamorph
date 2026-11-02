@@ -296,7 +296,7 @@ describe('entity, dictionary and persona cards', () => {
   it('lists who the player can play on `persona`, and how code reaches the Custom Persona', () => {
     const card = cardAt('return pers|ona.name;', worldBox);
     expect(card?.rows).toEqual([{ label: 'Can Play', value: 'Tom' }]);
-    expect(card?.description).toMatch(/Under a library persona, reach the Custom Persona through entities\[\.\.\.\]$/);
+    expect(card?.description).toMatch(/Under a library persona, read the Custom Persona through entities\[\.\.\.\]$/);
   });
 });
 

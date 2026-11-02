@@ -8,11 +8,12 @@ import type { AnalysisOptions, CodeDictionaryNames, CodeEntityNames, CodeTraitPl
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
 import { isMethodEntry, surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
+import { hasEntityKey } from '@/lib/statCodeNames';
 import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, ITEM_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, CURRENCY_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_ENTRY_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, ITEM_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_CODE_SURFACE, STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -22,6 +23,8 @@ export type VariableTreeNames = Pick<AnalysisOptions, 'statNames' | 'placeholder
   traits?: readonly CodeTraitPlace[];
   /** The world's items by code name. Absent, Items is one type-over row. */
   items?: readonly { id: string; name: string }[];
+  /** The world's Currencies by code name. Absent, Currencies is one type-over row. */
+  currencies?: readonly { id: string; name: string }[];
 };
 
 /** What an owned or Blueprint stat's `owner` holds, for the menu's Owner group. A null owner or name list is the
@@ -188,7 +191,7 @@ const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, 
   return entry.name === 'previous' ? group(entry, fields(at, CLOCK_PREVIOUS_FIELDS)) : undefined;
 });
 
-// The persona has no verbs and stands first where the player is, so an element lists the fields only.
+// The persona has no verbs and is listed first where the player is, so an element lists the fields only.
 const PRESENT_ELEMENT_FIELDS = ENTITY_FIELDS.filter((entry) => !isMethodEntry(entry));
 
 /** `present`: the list itself, then an entity entry's fields on its first element. */
@@ -207,7 +210,7 @@ const locationListGroup = (path: Path, entry: SurfaceEntry, at: Path): VariableG
 const locationEntryFields = (path: Path): VariableNode[] =>
   fields(path, LOCATION_ENTRY_FIELDS, (entry, at) => locationListGroup(path, entry, at));
 
-// A move to where the turn stands runs as inserted in any turn with a location.
+// A move to the turn's location runs as inserted in any turn with a location.
 const locationFields = (): VariableNode[] => fields(root('location'), LOCATION_MEMBERS, (entry, at) => {
   if (entry.name === 'move') return callField(field(root('location'), entry), 'location.name');
   return locationListGroup(root('location'), entry, at);
@@ -244,7 +247,7 @@ function placeholderFields(path: Path, kind: PlaceholderKindNoun): VariableNode[
     if (entry.name !== 'pin') return field(path, entry);
     const args = kind === 'Object' ? '([""])' : '("")';
     const pin = field(path, entry, args);
-    // A type-over name keeps the selection; otherwise the caret sits between the quotes.
+    // A type-over name keeps the selection; otherwise the caret is between the quotes.
     const caret = pin.insert.length - args.length + args.indexOf('"') + 1;
     return pin.selection ? pin : { ...pin, selection: { from: caret, to: caret } };
   });
@@ -264,7 +267,7 @@ function firstOfEach<T>(items: readonly T[], keyOf: (item: T) => string): T[] {
  *  An unnamed item has no key. */
 function keyedLastWins<T extends { name: string }>(items: readonly T[]): T[] {
   const byName = new Map<string, T>();
-  for (const item of items) if (item.name !== '') byName.set(item.name, item);
+  for (const item of items) if (hasEntityKey(item.name)) byName.set(item.name, item);
   return [...byName.values()];
 }
 
@@ -292,7 +295,7 @@ const templateRows = (path: Path, children: (at: Path) => VariableNode[]): Varia
 /** A trait's name and trail, before its row is built. */
 type TraitPlace = Pick<VariableNameRow, 'name' | 'trail'>;
 
-/** One row per trait name. Every trait of a name reads the same fields, so the first one's trail stands. */
+/** One row per trait name. Every trait of a name reads the same fields, so the first one's trail applies. */
 const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[] =>
   firstOfEach(traits, (trait) => trait.name).map((trait) => ({
     ...trait, children: fields(keyed(path, trait.name), TRAIT_ENTRY_FIELDS),
@@ -303,6 +306,8 @@ export interface TimingGlobals {
   narration: boolean;
   player: boolean;
   trait: boolean;
+  /** Whether the surface has `currencies`. Absent reads as true: a user Tool's surface alone lacks it. */
+  currencies?: boolean;
   /** `turn`'s members with the access the timing gives them. Absent, every one is read-only. */
   turn?: readonly SurfaceEntry[];
 }
@@ -314,6 +319,7 @@ export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => {
     narration: surfaceHasGlobal(surface, 'narration'),
     player: surfaceHasGlobal(surface, 'player'),
     trait: surfaceHasGlobal(surface, 'trait'),
+    currencies: surfaceHasGlobal(surface, 'currencies'),
     ...(turn && { turn }),
   };
 };
@@ -423,6 +429,10 @@ export function buildVariableTree(
   const itemRows = names
     ? keyedLastWins(names.items ?? []).map((item) => ({ name: item.name, trail: [], children: itemFields(keyed(items, item.name), item.id) }))
     : templateRows(items, (at) => itemFields(at, null));
+  const currencies = root('currencies');
+  const currencyRows = names
+    ? keyedLastWins(names.currencies ?? []).map((currency) => ({ name: currency.name, trail: [], children: fields(keyed(currencies, currency.name), CURRENCY_FIELDS) }))
+    : templateRows(currencies, (at) => fields(at, CURRENCY_FIELDS));
   const locationRows = names
     ? keyedLastWins((names.locations ?? []).map((name) => ({ name })))
       .map(({ name }) => ({ name, trail: [], children: locationEntryFields(keyed(locations, name)) }))
@@ -456,6 +466,7 @@ export function buildVariableTree(
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     nameList('Items', itemRows, 'No items in this world', globalInfo('items')),
+    ...(timing.currencies === false ? [] : [nameList('Currencies', currencyRows, 'No currencies in this world', globalInfo('currencies'))]),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
     { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), timing.turn ?? TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),

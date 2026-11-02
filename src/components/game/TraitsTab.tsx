@@ -18,6 +18,7 @@ import { gateOf, groupPickState, leavesShort, type GateStates, type GroupPickSta
 import { scopeKey, type OwnerId } from '@/lib/scope';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { textVariants } from '@/components/ui/typography';
 import { gateLineParts } from '@/lib/traitGateLine';
 import { GateLineText } from '@/components/game/GateLineText';
 import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
@@ -50,6 +51,10 @@ export interface TraitsTabProps {
   onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId) => void;
   /** A trait's own text resolved through its own placeholder pins, bound for its owner. */
   resolveTraitText: (trait: Trait, text: string, ownerId: OwnerId) => string;
+  /** Entity nodes left undrawn because another entity is selected. Their fold state stays. */
+  hiddenOwners?: ReadonlySet<string>;
+  /** The selected entity's name, when it has no traits to draw. */
+  emptyOwner?: string;
   /** The tab's own filter/fold state, owned by Gameplay so it outlives the unmount. */
   view: TraitsPanelView;
   setView: React.Dispatch<React.SetStateAction<TraitsPanelView>>;
@@ -77,7 +82,7 @@ const seedOpen = (sections: TraitSection[], isOff: (id: string, ownerId: OwnerId
   new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isHidden(t) && !isOff(t.id, ownerOf(b))))).map((s) => s.key));
 
 export const TraitsTab = ({
-  traits, groups, entityNodes, playerEntityIds = NO_IDS, stats, ownerStats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
+  traits, groups, entityNodes, playerEntityIds = NO_IDS, stats, ownerStats, isOff, readOnly, onToggleTrait, resolveTraitText, hiddenOwners, emptyOwner, view, setView,
   gates, cascade, onDismissCascade,
 }: TraitsTabProps) => {
   const entityNodeIds = React.useMemo(() => new Set(entityNodes?.keys() ?? []), [entityNodes]);
@@ -138,11 +143,14 @@ export const TraitsTab = ({
   }, [stats, ownerStats]);
   const filtering = query.trim() !== '';
 
-  const views = sections
+  const drawn = sections
+    .map((section) => ({ ...section, blocks: section.blocks.filter((b) => !b.entityId || !hiddenOwners?.has(b.entityId)) }))
+    .filter((section) => section.blocks.length > 0);
+  const views = drawn
     .map((section) => ({ section, view: viewTraitSection(section, { query, isOff: (id, b) => isOff(id, b ?? null), describe }) }))
     .flatMap(({ section, view }) => (view ? [{ section, view }] : []));
   // A cast entity's trait carries its owner's name, as the log does; global and played traits read bare.
-  const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits
+  const active = drawn.flatMap((s) => s.blocks.flatMap((b) => b.traits
     .filter((t) => !isHidden(t) && !isOff(t.id, ownerOf(b)))
     .map((t) => (b.entityId && !isPlayer(b.entityId) ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
 
@@ -266,7 +274,7 @@ export const TraitsTab = ({
       </div>
     ));
 
-  if (sections.length === 0) return <p>No traits acquired.</p>;
+  if (sections.length === 0) return <p>No traits to show.</p>;
 
   return (
     <div className="flex h-full flex-col">
@@ -274,7 +282,7 @@ export const TraitsTab = ({
         value={query}
         onChange={(next) => patch({ query: next })}
         aria-label="Filter traits"
-        placeholder="Filter traits…"
+        placeholder="Filter traits"
         size="sm"
         className="mb-2 flex-shrink-0"
         inputClassName="text-label"
@@ -284,13 +292,14 @@ export const TraitsTab = ({
           {active.length > 0 && (
             // The clipped list spelled out; the line already reads itself out in full to a screen reader.
             <Tip tip={active.join(', ')} labelsChild={false}>
-              <p className="truncate px-1 text-helper text-muted-foreground">
+              {/* A plain element: Tip hands its trigger ref to the child, and Hint doesn't forward refs. */}
+              <p className={cn(textVariants({ role: 'hint' }), 'truncate px-1')}>
                 <span className="font-medium text-foreground/70">{active.length} active:</span>{' '}
                 {active.join(', ')}
               </p>
             </Tip>
           )}
-          {views.length === 0 && <p className="px-1 text-label text-muted-foreground">No traits match “{query.trim()}”.</p>}
+          {filtering && views.length === 0 && <p className="px-1 text-label text-muted-foreground">No traits match “{query.trim()}”.</p>}
           {views.map(({ section, view }) => {
             // A filter that matched inside a collapsed section has to open it, or the result is invisible.
             const isOpen = section.name === null || filtering || open.has(section.key);
@@ -335,6 +344,11 @@ export const TraitsTab = ({
               </PanelOwnerCard>
             );
           })}
+          {emptyOwner && !filtering && (
+            <PanelOwnerCard name={emptyOwner} entity>
+              <p role="status" className="py-4 text-center text-muted-foreground">No traits to show.</p>
+            </PanelOwnerCard>
+          )}
           {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
         </div>
       </ScrollArea>

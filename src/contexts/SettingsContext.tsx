@@ -1,6 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import AuthService from '@/services/AuthService';
 import { hostedSession, type HostedSnapshot } from '@/lib/hostedAi/hostedSession';
 import { hostedPromptWindow } from '@/lib/hostedAi/hostedState';
 import { readHostedDevice, writeHostedDevice } from '@/lib/hostedAi/hostedAllowance';
@@ -1435,14 +1434,8 @@ function useProvideSettings() {
     hosted: hostedTarget,
   }), [textPresetStore.activeId, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens, localMaxTokens, engineState.modelId, hostedTarget]);
 
-  // Formamorph AI's state is read while any prompt can send to it, and again for every account change.
+  // Whether any prompt can send to Formamorph AI. HostedAiStateSync reads the state behind the age gate.
   const hostedInUse = hostedActive || Object.values(promptEndpoints).some((id) => id !== undefined && isFormamorphAiId(id));
-  useEffect(() => {
-    if (!hostedInUse) return;
-    void hostedSession.refresh();
-    // The session drops the old account's state itself; this reads the new one's.
-    return AuthService.onSessionChanged(() => { void hostedSession.refresh(); });
-  }, [hostedInUse]);
   const refreshHostedState = useCallback(() => hostedSession.refresh(), []);
 
   /** The routing step alone: which preset a kind resolves to and its display name. No probes. */
@@ -1870,6 +1863,7 @@ function useProvideSettings() {
     activeTextEndpointPresetName,
     activeTextEndpointIsDemoAI,
     hostedAi: hostedSnapshot,
+    hostedInUse,
     refreshHostedState,
     switchBackFromHostedAi,
     narrationIsDemoAI,

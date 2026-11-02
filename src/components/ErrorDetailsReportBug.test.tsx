@@ -88,7 +88,7 @@ describe('Report Bug in Error Details', () => {
 
     expect(titleValue()).toBe('ComfyUI rejected the workflow');
     expect(screen.getByRole('tab', { name: 'Bug' }).getAttribute('data-state')).toBe('active');
-    expect(screen.queryByText(/Picked up where you left off/)).toBeNull();
+    expect(screen.queryByText(/This is your unsent draft/)).toBeNull();
 
     act(() => closeFeedback());
     cleanup();

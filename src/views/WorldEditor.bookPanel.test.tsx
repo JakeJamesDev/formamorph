@@ -63,7 +63,7 @@ const selectBook = (name: string) => {
 /** What Details shows: the Name field, the Description box, the Enabled switch, and the count hint. */
 const detailsShown = () => ({
   name: screen.queryByRole('textbox', { name: 'Name' }) !== null,
-  description: screen.queryByPlaceholderText('Notes for you, not injected into the prompt') !== null,
+  description: screen.queryByRole('textbox', { name: 'Description' }) !== null,
   enabled: screen.queryByText('Enabled') !== null,
   count: screen.queryByText(/^\d+ (entry|entries)\./) !== null,
 });
@@ -71,7 +71,7 @@ const detailsShown = () => ({
 const ALL_DETAILS = { name: true, description: true, enabled: true, count: true };
 const NO_DETAILS = { name: false, description: false, enabled: false, count: false };
 
-const placeholderEditorShown = () => screen.queryByText(/Placeholders of this dictionary/) !== null;
+const placeholderEditorShown = () => screen.queryByText(/These placeholders belong to this dictionary/) !== null;
 
 beforeEach(() => { localStorage.clear(); });
 

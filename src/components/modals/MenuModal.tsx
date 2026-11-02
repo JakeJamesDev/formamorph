@@ -16,6 +16,7 @@ import { sceneImageWeight } from '@/lib/sceneImages';
 import { formatBytes } from '@/lib/imageOptim';
 import { EXIT_TO_MENU_PROMPT } from '@/lib/leavePrompts';
 import type { WorldOverview, SaveRecord } from "@/types";
+import { Hint } from '@/components/ui/typography';
 
 export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onOpenGameEditor, onShowAiContext }: {
   onSettingsClick: () => void;
@@ -190,7 +191,7 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
                 />
                 <span>
                   Save the {sceneWeight.count} scene image{sceneWeight.count === 1 ? '' : 's'} too
-                  <span className="text-muted-foreground"> — adds about {formatBytes(sceneWeight.bytes)} to this save. Left off, the story keeps its tags and the pictures are gone.</span>
+                  <Hint as="span"> Adds about {formatBytes(sceneWeight.bytes)} to this save. Without them, the save keeps each image&apos;s tags but not the image.</Hint>
                 </span>
               </label>
             )}
@@ -205,7 +206,7 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
             <DialogTitle>Save already exists</DialogTitle>
           </DialogHeader>
           <DialogDescription className="py-2">
-            A save named “{shownDup?.name}” already exists in this world. Overwrite it, or keep both?
+            A save named “{shownDup?.name}” already exists in this world. Overwrite replaces it. Keep both adds a second save with the same name.
           </DialogDescription>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setDupConflict(null)}>Cancel</Button>

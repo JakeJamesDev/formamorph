@@ -74,7 +74,7 @@ export function RenamePage() {
         submitLabel="Save Username"
         busyLabel="Saving…"
         footer={<>
-          Your games and saves aren&apos;t affected. After this, you sign in with the new name.
+          Your worlds and saves don&apos;t change. You&apos;ll sign in with the new name.
           <Button
             type="button"
             variant="ghost"

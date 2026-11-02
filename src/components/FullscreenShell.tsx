@@ -28,7 +28,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
    * that already names itself in its toolbar would just say it twice and spend a row doing it.
    */
   showTitle?: boolean;
-  /** Where focus should land after closing when the control that opened the window no longer exists —
+  /** Where focus goes after closing when the control that opened the window no longer exists —
    *  callers that move their content into the overlay destroy that control on the way in. */
   returnFocus?: () => HTMLElement | null | undefined;
   /** The window edits the world, so the World Editor's undo and redo chords stay live in it. */
@@ -48,7 +48,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
         overlayClassName={morph.overlayClassName}
         aria-describedby={undefined}
         data-world-window={worldWindow || undefined}
-        // Focus is moved by hand, without scrolling. Left to the dialog primitive it lands on the first
+        // Focus is moved by hand, without scrolling. Left to the dialog primitive it moves to the first
         // control inside the window — and since the window opens sitting on top of the field it came from,
         // which may be well down a scrolled panel, revealing that control drags the page with it. Closing
         // did the same in reverse, restoring focus to the button that opened it.

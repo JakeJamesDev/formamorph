@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -73,7 +74,7 @@ function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; 
   if (!field) {
     return (
       <Row muted target={row} label={copy.label}>
-        <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
+        <Hint className="pt-2">{REASONING_NOTES.never}</Hint>
       </Row>
     );
   }
@@ -111,7 +112,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
           target={targetAttribute('formaquestionSettings.general', 'mascot-switch')}
           {...GENERAL_COPY.mascot}
         />
-        <Row target={targetAttribute('formaquestionSettings.general', 'chat-style')} label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint}>
+        <Row target={targetAttribute('formaquestionSettings.general', 'chat-style')} label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint} info={<HintInfo>{GENERAL_COPY.chatStyle.info}</HintInfo>}>
           <OptionSwitcher
             ariaLabel={GENERAL_COPY.chatStyle.label}
             value={settings.chatStyle}
@@ -190,6 +191,12 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
       </Section>
       <Section title="Request">
         <CheckRow
+          htmlFor="fq-sort-questions"
+          checked={settings.intentClassifier}
+          onChange={(intentClassifier) => onChange({ intentClassifier })}
+          {...GENERAL_COPY.sortQuestions}
+        />
+        <CheckRow
           htmlFor="fq-open-screen"
           checked={settings.openScreen}
           onChange={(openScreen) => onChange({ openScreen })}
@@ -200,6 +207,12 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
           checked={settings.readWorld}
           onChange={(readWorld) => onChange({ readWorld })}
           {...GENERAL_COPY.readWorld}
+        />
+        <CheckRow
+          htmlFor="fq-creation"
+          checked={settings.creation}
+          onChange={(creation) => onChange({ creation })}
+          {...GENERAL_COPY.creation}
         />
         <Row htmlFor="fq-history-length" {...GENERAL_COPY.historyLength}>
           <Input

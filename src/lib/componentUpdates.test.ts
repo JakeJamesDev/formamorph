@@ -106,7 +106,7 @@ describe('diffContent', () => {
     );
     expect(diff.changed).toEqual([{
       field: 'aiDescription',
-      label: 'AI Description',
+      label: 'AI-Facing Description',
       current: 'A quiet ferryman.',
       incoming: 'A quiet ferryman who sings.',
     }]);

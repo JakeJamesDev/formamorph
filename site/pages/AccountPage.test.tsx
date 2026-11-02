@@ -121,7 +121,7 @@ describe('changing the password', () => {
 
     changePassword();
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Password changed successfully');
+    expect(await screen.findByRole('status')).toHaveTextContent('Password changed');
     expect((screen.getByLabelText('Current Password') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('New Password') as HTMLInputElement).value).toBe('');
   });
@@ -142,7 +142,7 @@ describe('changing the password', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Update Password' }));
 
     expect(await screen.findByRole('alert'))
-      .toHaveTextContent('Both current and new passwords are required');
+      .toHaveTextContent('Enter your current password and a new password');
     // Named rather than "no request at all": the page reads the account on arrival, and that request
     // is not this form submitting.
     expect(asked('/auth/change-password')).toBe(false);
@@ -166,7 +166,7 @@ describe('a suspended account', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }));
 
-    expect(await screen.findByText(/cannot be deleted from here/i)).toBeTruthy();
+    expect(await screen.findByText(/can't delete it here/i)).toBeTruthy();
     expect(asked('/auth/delete-account')).toBe(false);
   });
 
@@ -184,7 +184,7 @@ describe('a suspended account', () => {
   it('says the password rule where the boxes are, as the game does', () => {
     render(<AccountPage />);
 
-    expect(screen.getByText(/password can.t be changed while your account is suspended/i))
+    expect(screen.getByText(/can.t change your password while your account is suspended/i))
       .toBeTruthy();
   });
 });
@@ -440,7 +440,7 @@ describe('the email address', () => {
     expect((screen.getByLabelText('Email Address') as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Save Email' }) as HTMLButtonElement).disabled)
       .toBe(true);
-    expect(screen.getByText(/email address can.t be changed while your account is suspended/i))
+    expect(screen.getByText(/can.t change your email address while your account is suspended/i))
       .toBeTruthy();
   });
 });

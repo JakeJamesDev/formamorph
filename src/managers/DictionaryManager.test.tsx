@@ -44,8 +44,8 @@ beforeEach(() => updateDictionaryEntry.mockClear());
 describe('DictionaryManager — name is independent of keywords', () => {
   it('editing keywords leaves the name alone', () => {
     renderPanel(entry({ name: 'Hostile Forces' }));
-    // The chip field shows 'Add keyword...' once it already holds a chip.
-    const chips = screen.getByPlaceholderText('Add keyword...');
+    // The chip field shows 'Add keyword' once it already holds a chip.
+    const chips = screen.getByPlaceholderText('Add keyword');
     fireEvent.change(chips, { target: { value: 'wyrm' } });
     fireEvent.keyDown(chips, { key: 'Enter' });
 

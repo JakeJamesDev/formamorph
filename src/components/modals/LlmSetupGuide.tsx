@@ -54,11 +54,11 @@ const LlmSetupGuide = ({
               <li>
                 <strong>Playing inside another site&apos;s embed?</strong>
                 <p className="text-muted-foreground">
-                  Browsers don&apos;t let an embedded page reach servers on your machine or local network,
-                  and the site embedding this game hasn&apos;t granted that. In a tab of its own the game
-                  can ask your permission and connect — but the tab keeps storage of its own, so export
-                  any worlds or saves you want to bring and import them there. The desktop app connects
-                  to local servers directly, with none of this in the way.
+                  Browsers don&apos;t let an embedded page reach servers on your machine or local network.
+                  The site that embeds this game doesn&apos;t grant that access. In a tab of its own, the
+                  game can ask your permission and connect. The new tab has its own storage, so export the
+                  worlds and saves you want to keep, then import them there. The desktop app connects to
+                  local servers directly.
                 </p>
                 <Button size="sm" className="mt-2" onClick={openInOwnTab}>
                   Open in a New Tab
@@ -74,42 +74,42 @@ const LlmSetupGuide = ({
                     <a href={modelsUrl} target="_blank" rel="noopener noreferrer" className="underline break-all">
                       {modelsUrl}
                     </a>{" "}
-                    in a new tab — you should see a JSON list of models. Nothing there means the server is off or
+                    in a new tab. You should see a JSON list of models. If you see nothing, the server is off or
                     on a different port.
                   </>
                 ) : (
-                  <>Open your server&apos;s <Code>/v1/models</Code> URL in a new tab — you should see JSON.</>
+                  <>Open your server&apos;s <Code>/v1/models</Code> URL in a new tab. You should see JSON.</>
                 )}
               </p>
             </li>
             <li>
               <strong>Is the Endpoint URL correct?</strong>
               <p className="text-muted-foreground">
-                In <strong>Settings → Endpoints</strong> it should point at your server&apos;s address, e.g.{" "}
-                <Code>http://localhost:1234</Code> — pasting what LM Studio or Ollama shows you is enough, we fill
-                in the rest. Double-check the host and port.
+                In <strong>Settings → Endpoints</strong>, set it to your server&apos;s address, for example{" "}
+                <Code>http://localhost:1234</Code>. The address LM Studio or Ollama shows you is enough. Check the
+                host and the port.
               </p>
             </li>
             <li>
               <strong>Is CORS enabled?</strong>
               <p className="text-muted-foreground">
-                Browsers block requests to servers that don&apos;t allow cross-origin calls, so you have to turn
-                it on at the server:
+                Browsers block requests to a server that doesn&apos;t allow cross-origin calls. Turn CORS on at
+                the server:
               </p>
               <ul className="list-disc list-outside space-y-0.5 pl-5 text-muted-foreground">
                 <li><strong>LM Studio:</strong> in the server settings, turn on <strong>Enable CORS</strong>, then restart the server.</li>
                 <li><strong>Ollama:</strong> start it with <Code>OLLAMA_ORIGINS=*</Code> in the environment.</li>
-                <li><strong>Other OpenAI-compatible servers:</strong> enable CORS / allow all origins in their config.</li>
+                <li><strong>Other OpenAI-compatible servers:</strong> enable CORS, or allow all origins, in the server&apos;s settings.</li>
               </ul>
             </li>
           </ol>
 
           {localEndpoint && (
             <p className="text-muted-foreground">
-              <strong>One more thing your browser does:</strong> the first time a page reaches a server on
+              <strong>Your browser may ask permission.</strong> The first time a page reaches a server on
               your machine or local network, Chrome and Firefox ask your permission. Allow it when the
-              prompt appears. If you dismissed or blocked it, re-allow it from the icon at the left of the
-              address bar → <strong>Site settings</strong>, then reload.
+              prompt appears. If you dismissed or blocked it, click the icon at the left of the address bar,
+              open <strong>Site settings</strong> and allow it, then reload.
             </p>
           )}
         </div>

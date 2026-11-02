@@ -64,8 +64,8 @@ export function dueItemDescriptions(history: readonly ChatMessage[], runtimeItem
     if (message.role !== 'assistant') continue;
     const turn = parseTurnContent(message.content);
     if (!turn?.turnId || !turn.narration?.trim()) continue;
-    // Only a gain, or a take from this place the pass reads as one, makes a runtime item.
-    for (const op of (turn.inventoryOps ?? []).filter((o) => o.op === 'gain' || o.op === 'transfer')) {
+    // Only a gain, a buy no one could fill, or a take from this place the pass reads as a gain, makes a runtime item.
+    for (const op of (turn.inventoryOps ?? []).filter((o) => o.op === 'gain' || o.op === 'transfer' || o.op === 'buy')) {
       const key = itemNameKey(op.item);
       if (!firstTurn.has(key)) firstTurn.set(key, { turnId: turn.turnId, narration: turn.narration });
     }

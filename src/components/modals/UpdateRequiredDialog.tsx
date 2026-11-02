@@ -34,7 +34,7 @@ export function requestClientUpdate(required: ClientUpdateRequired): void {
 function requirement({ feature, minVersion }: ClientUpdateRequired): string {
   const what = feature || 'This part of Formamorph';
   const needs = minVersion ? `Formamorph ${minVersion} or newer` : 'a newer version of Formamorph';
-  return `${what} needs ${needs}. You are running ${APP_VERSION}.`;
+  return `${what} needs ${needs}. You're running ${APP_VERSION}.`;
 }
 
 interface UpdateRequiredDialogProps {

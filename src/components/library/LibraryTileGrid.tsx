@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { FieldError } from '@/components/ui/typography';
 import {
   DragOverlay,
   getScrollableAncestors,
@@ -26,6 +27,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   filteredPlacements,
+  GROUP_NAME_TAKEN_MESSAGE,
+  isGroupNameTaken,
   readGesture,
   resolvePlacements,
   rowMajor,
@@ -77,9 +80,9 @@ const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
  * As many medium columns as the measured width fits, never fewer than one.
  *
  * The grid's own measured width is the source of truth, so the board fills whatever room it has —
- * an ultrawide simply gets more columns — and a width change lands as a redraw at the new cell
+ * an ultrawide simply gets more columns — and a width change redraws at the new cell
  * pitch. The first frame, before the ResizeObserver has reported, falls back to the window width
- * minus the board's own padding, so the opening paint already stands at the right column count.
+ * minus the board's own padding, so the opening paint already has the right column count.
  */
 function fitMediumColumns(measured: number, minMediumWidth: number): number {
   const width = measured > 0
@@ -188,15 +191,18 @@ const rowsFor = (
 );
 
 /** The header of the folder view: back out and rename in place. Taking a tile out is a menu item. */
-function FolderHeader({ name, settings, onBack, onRename }: {
+function FolderHeader({ name, settings, onBack, onRename, isNameTaken }: {
   name: string;
   settings?: React.ReactNode;
   onBack: () => void;
   /** Absent in a filtered view, which shows the name without an editor. */
   onRename?: (name: string) => void;
+  isNameTaken: (name: string) => boolean;
 }) {
   const [draft, setDraft] = useState(name);
-  useEffect(() => setDraft(name), [name]);
+  const [taken, setTaken] = useState(false);
+  const errorId = useId();
+  useEffect(() => { setDraft(name); setTaken(false); }, [name]);
 
   return (
     <div className="px-4 pb-3 flex flex-wrap items-center gap-3">
@@ -206,20 +212,24 @@ function FolderHeader({ name, settings, onBack, onRename }: {
       </Button>
       {onRename ? <Input
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => { setDraft(e.target.value); setTaken(false); }}
+        aria-invalid={taken}
+        aria-describedby={taken ? errorId : undefined}
         onBlur={() => {
+          setTaken(isNameTaken(draft));
           onRename(draft);
-          // A blank name is refused, so the field goes back to the name the folder kept.
-          setDraft((current) => current.trim() || name);
+          // A blank or taken name is refused, so the field goes back to the name the folder kept.
+          setDraft((current) => (current.trim() && !isNameTaken(current) ? current : name));
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setDraft(name);
+          if (e.key === 'Escape') { setDraft(name); setTaken(false); }
         }}
         aria-label="Group name"
         className="h-8 w-56 font-semibold"
       /> : <span className="font-semibold">{name}</span>}
       {settings}
+      {taken && <FieldError id={errorId} role="alert" className="basis-full">{GROUP_NAME_TAKEN_MESSAGE}</FieldError>}
     </div>
   );
 }
@@ -310,7 +320,7 @@ export function LibraryTileGrid<T>({
   const [preview, setPreview] = useState<Preview>(NOTHING_ARMED);
   const [claim, setClaim] = useState<Claim | null>(null);
   // The tile elements and the board they were last painted at, which is what a slide is measured from.
-  // The column count rides along, because a cell only means a distance on the board it was read from;
+  // The column count is stored too, because a cell only means a distance on the board it was read from;
   // so does each tile's span, because a resize has to be animated from the size that was on screen.
   const tileNodes = useRef(new Map<string, HTMLDivElement>());
   // The folder header, which the zoom slides in with the rest of the folder and freezes on the way out.
@@ -333,10 +343,10 @@ export function LibraryTileGrid<T>({
     size: { width: number; height: number };
     bounds: DOMRect | null;
   } | null>(null);
-  // The tile just let go of. It stands in its cell on the commit paint; the slide leaves it there.
+  // The tile just let go of. It is in its cell on the commit paint; the slide leaves it there.
   const releasedRef = useRef<string | null>(null);
   // The pointer's latest reading, which is what a release commits — armed or not, so a drag too quick
-  // to have rested still lands on the spot under the hand. `keyRef` is what the rest is waiting out.
+  // to have rested still drops on the spot under the pointer. `keyRef` is what the rest is waiting out.
   const readingRef = useRef<GestureReading | null>(null);
   const keyRef = useRef<string | null>(null);
   const restRef = useRef<number | null>(null);
@@ -433,7 +443,7 @@ export function LibraryTileGrid<T>({
   const pitch = { x: cellWidth + GAP, y: cellHeight + GAP };
   const rowHeight = Math.max(1, Math.round(cellHeight));
 
-  // The part of a folder's board its tile stands for: the board itself, read the same way as `homes`
+  // The part of a folder's board its tile represents: the board itself, read the same way as `homes`
   // above, and the top-left region of it the face draws. Answered for any folder on the tab, the open
   // one included, because a fly-out zooms out to a tile that is not on screen when it is asked for.
   const faceOf = useCallback((groupId: string): {
@@ -467,8 +477,8 @@ export function LibraryTileGrid<T>({
   };
 
   /**
-   * One folder's face, drawn the same way wherever that folder stands: on the board, and under the
-   * pointer while it is carried. Both read one call, so the two pictures cannot drift apart.
+   * One folder's face, drawn the same way wherever that folder is: on the board, and under the
+   * pointer while it is carried. Both read one call, so the two renders always match.
    */
   const renderFace = (face: ReturnType<typeof faceOf>) => (
     <FolderFace
@@ -755,7 +765,7 @@ export function LibraryTileGrid<T>({
   const handleDragEnd = (event: DragEndEvent) => {
     if (layout === 'grid') {
       // The reading under the hand at the moment of release, armed or not: a drag too quick to have
-      // rested still lands where it was let go. A blocked reading commits nothing at all.
+      // rested still drops where it was let go. A blocked reading commits nothing at all.
       const reading = readingRef.current;
       const id = String(event.active.id);
       resetDrag();
@@ -776,7 +786,7 @@ export function LibraryTileGrid<T>({
     }
 
     // The drop persists the order on screen, with one last stock arrayMove toward the card released on,
-    // so a drop too quick to have slid anything still lands where every plain sortable would put it.
+    // so a drop too quick to have slid anything still drops where every plain sortable would put it.
     let order = drawnRef.current ?? renderedIds;
     resetDrag();
     const { active, over } = event;
@@ -820,7 +830,7 @@ export function LibraryTileGrid<T>({
     }
 
     // Which cell of its own footprint the player took hold of. It only decides where an open-space
-    // drop lands: over a target the reader snaps the footprint and the grab offset drops out.
+    // drop goes: over a target the reader snaps the footprint and the grab offset drops out.
     const box = grid.getBoundingClientRect();
     const span = spanOf(id);
     const inside = (cell: number) => Math.min(Math.max(0, cell), span - 1);
@@ -888,7 +898,7 @@ export function LibraryTileGrid<T>({
             className={cn(
               'relative min-w-0',
               layout === 'detailed' && 'h-full',
-              // The carried tile's slot stands empty, because the overlay is already drawing it. Leaving
+              // The carried tile's slot is empty, because the overlay is already drawing it. Leaving
               // a dimmed copy here would put two of the same tile on screen at once, which the flat grid
               // never did: it floated the card itself and left a gap behind.
               id === activeId && 'opacity-0',
@@ -949,7 +959,7 @@ export function LibraryTileGrid<T>({
     const group = stored && shownGroup(stored);
     const item = byId.get(id);
     const thumb = item ? thumbnailOf(item) : undefined;
-    // The board's own face for this folder. A folder never stands inside a folder, so a drag that
+    // The board's own face for this folder. A folder is never inside a folder, so a drag that
     // carries one is always on the library board, which is where `folderFaces` is filled.
     const face = group && folderFaces.get(id);
     return (
@@ -1001,6 +1011,7 @@ export function LibraryTileGrid<T>({
             settings={groupSettings?.(openGroup.id)}
             onBack={closeGroup}
             onRename={locked ? undefined : (name) => tiles.rename(openGroup.id, name)}
+            isNameTaken={(name) => isGroupNameTaken(Object.values(tiles.organization.groups), name, openGroup.id)}
           />
         </div>
       )}

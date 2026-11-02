@@ -170,7 +170,7 @@ export function EditorRow({
         <span className="flex w-6 shrink-0 items-center justify-center">{gripSlot}</span>
       )}
       {checkbox && (
-        <Tip tip={checkbox.checked ? 'Enabled — click to disable' : 'Disabled — click to enable'}>
+        <Tip tip={checkbox.checked ? 'Enabled. Click to disable.' : 'Disabled. Click to enable.'}>
           <Checkbox
             checked={checkbox.checked}
             disabled={checkbox.disabled}
@@ -253,9 +253,8 @@ export function EditorRow({
 }
 
 /**
- * The column an editor list's rows sit in. Trees used to render their rows with no wrapper at all, so they
- * were flush while the flat lists were spaced 8px apart — the same row read as a different height depending
- * on the tab. Wrapping both in this keeps one answer.
+ * The column an editor list's rows render in. Trees and flat lists both wrap their rows in it, so a row
+ * has the same spacing on every tab.
  */
 export const EditorRowList = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   // The ref is forwarded because a list can also be a drop target (the Dictionary's zones).

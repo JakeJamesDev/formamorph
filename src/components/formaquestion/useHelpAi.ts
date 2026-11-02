@@ -32,16 +32,19 @@ export interface HelpAi {
 
 /**
  * The app's AI settings for Formaquestion. The reachability check runs only while `enabled`, on the endpoint
- * answers resolve to. The default cloud endpoint counts as connected and gets no check. While either help
- * route resolves to the bundled engine, the engine is wanted.
+ * answers resolve to. The default cloud endpoint counts as connected and gets no check. While the answer or
+ * search route, the Intent Classifier route while it is on, or the Create route while Creation is on, resolves to
+ * the bundled engine, the engine is wanted.
  */
-export function useHelpAi(enabled: boolean, settings: Pick<HelpSettings, 'answerEndpoint' | 'pickEndpoint'>): HelpAi {
+export function useHelpAi(enabled: boolean, settings: Pick<HelpSettings, 'answerEndpoint' | 'pickEndpoint' | 'intentEndpoint' | 'intentClassifier' | 'createEndpoint' | 'creation'>): HelpAi {
   const snapshot = useAiSettingsSnapshot();
   const { resolveEndpointForKind, claimEngine, language, requestSurface } = useSettings();
-  const { answerEndpoint, pickEndpoint } = settings;
-  const routes = useMemo(() => helpRoutes({ answerEndpoint, pickEndpoint }), [answerEndpoint, pickEndpoint]);
+  const { answerEndpoint, pickEndpoint, intentEndpoint, intentClassifier, createEndpoint, creation } = settings;
+  const routes = useMemo(() => helpRoutes({ answerEndpoint, pickEndpoint, intentEndpoint, createEndpoint }), [answerEndpoint, pickEndpoint, intentEndpoint, createEndpoint]);
   const answer = resolveEndpointForKind('help', routes.answer);
-  const onEngine = answer.localEngine || resolveEndpointForKind('help', routes.pick).localEngine;
+  const onEngine = answer.localEngine || resolveEndpointForKind('help', routes.pick).localEngine
+    || (intentClassifier && resolveEndpointForKind('help', routes.intent).localEngine)
+    || (intentClassifier && creation && resolveEndpointForKind('help', routes.create).localEngine);
   useEffect(() => claimEngine(ENGINE_OWNER, onEngine), [claimEngine, onEngine]);
   useEffect(() => () => claimEngine(ENGINE_OWNER, false), [claimEngine]);
 

@@ -19,6 +19,7 @@ import { type ImageCap } from '@/lib/imageOptim';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { EndpointReachabilityBadge } from '@/components/modals/EndpointReachabilityBadge';
 import { imageReachabilityTarget } from '@/lib/imageGen/probe';
 
@@ -51,7 +52,7 @@ const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
   preview: string | null;
   onZoom: () => void;
 }) => {
-  // The finished picture wins; until it lands, whatever the provider last sent.
+  // The finished picture wins; until it arrives, whatever the provider last sent.
   const shown = preview ?? (generating ? frame : null);
   return (
     <div
@@ -62,7 +63,7 @@ const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
     >
       {shown ? (
         // Taken out of flow, so the picture is sized by the pane and never the other way about: in flow, a
-        // tall result grows the row it sits in and the whole dialog steps sideways as each one lands.
+        // tall result grows its row and shifts the whole dialog as each one arrives.
         // `object-contain` fits it inside those bounds whatever shape it is, without cropping or distorting.
         <img
           src={shown}
@@ -77,11 +78,11 @@ const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
         // Drawn at the shape the picture will be, so the empty dialog already reads as the frame it will fill.
         <div className={cn('flex max-h-full items-center justify-center rounded border border-dashed p-4 text-center', EMPTY_FRAME[shape])}>
           {generating ? (
-            <span className="flex items-center gap-2 text-meta text-muted-foreground">
+            <Meta className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Generating…
-            </span>
+            </Meta>
           ) : (
-            <span className="text-meta text-muted-foreground">The image appears here.</span>
+            <Meta>The image appears here.</Meta>
           )}
         </div>
       )}
@@ -100,7 +101,7 @@ const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
 /**
  * "Generate with AI" affordance shown beside an ImageUpload. Opens a dialog that prefills an SD-style
  * prompt from the subject's description (via the text model), lets the user tweak it, generates an image
- * through the configured image provider, fits it to the field's cap, and hands it back via `onChange`.
+ * through the configured image provider, fits it to the field's cap, and returns it through `onChange`.
  */
 export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange, className }: {
   /** `name`: what the image shows, for its file name on the image server only. */
@@ -170,7 +171,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      // The preset's prefixes (quality/style tags, shared negatives) ride on top of the per-subject fields.
+      // The preset's prefixes (quality/style tags, shared negatives) are added to the per-subject fields.
       const { provider, params, opts } = buildImageRequest(settings, {
         prompt, negative, width: genWidth, height: genHeight,
         // Saved under the world, named for who or what it shows.
@@ -233,7 +234,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
           <DialogHeader>
             <DialogTitle>Generate image</DialogTitle>
             <div className="flex items-center justify-between gap-3">
-              <DialogDescription>Uses your configured image provider.</DialogDescription>
+              <DialogDescription>Uses the image provider you set up in Settings</DialogDescription>
               <Button
                 type="button"
                 variant="outline"
@@ -272,7 +273,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 label="Prompt"
                 value={prompt}
                 onChange={handlePrompt}
-                placeholder={alwaysSent(imagePositivePrompt) ?? 'comma-separated visual tags…'}
+                placeholder={alwaysSent(imagePositivePrompt) ?? 'comma-separated visual tags'}
                 aside={<AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />}
               />
               {/* No generate button: the model writes what a picture should contain, never what it
@@ -281,7 +282,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                 label="Negative prompt"
                 value={negative}
                 onChange={setNegative}
-                placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid…'}
+                placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid'}
               />
 
             </div>

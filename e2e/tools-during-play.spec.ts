@@ -182,7 +182,7 @@ test('with Show Silent Requests off, a Tool round stays out of sight, and Stop e
 
   await gotoDev(page, 'gameViewer', { modal: 'aiContext' });
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText(/Request 1/).first()).toBeVisible();
+  await expect(dialog.getByText('· #1').first()).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Tool Rounds' })).toHaveCount(0);
   await expect(dialog.getByText(TOOL_NAME)).toHaveCount(0);
 });

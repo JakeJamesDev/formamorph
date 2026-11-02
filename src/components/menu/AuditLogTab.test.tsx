@@ -202,6 +202,11 @@ describe('what each entry reads as', () => {
       .toBe('root-admin made trouble a mod');
   });
 
+  it('names an avatar listing by the word the app shows for it', () => {
+    expect(line({ action: 'listing_deleted', target: { kind: 'model', name: 'Wren' } }))
+      .toBe('root-admin deleted the avatar “Wren” by trouble');
+  });
+
   it('reads a demotion as one, rather than as being made a normal', () => {
     expect(line({ action: 'role_changed', target: { kind: 'account', name: 'trouble' }, snippet: 'mod to normal' }))
       .toBe('root-admin returned trouble to a normal account');
@@ -210,7 +215,7 @@ describe('what each entry reads as', () => {
   it('still says something when the snippet is missing', () => {
     // An entry has to read after its subject is gone, and a malformed one must not read as nonsense.
     expect(line({ action: 'role_changed', snippet: null }))
-      .toBe('root-admin changed what trouble is');
+      .toBe('root-admin changed the role of trouble');
   });
 
   it('says whose picture was cleared', () => {
@@ -436,7 +441,7 @@ describe('what each entry reads as', () => {
   it('has a sentence for every action the client knows', () => {
     // The fallback exists for a server newer than this build; a listed action reaching it is drift.
     for (const action of AUDIT_ACTIONS) {
-      expect(auditPredicate(entry({ action })), action).not.toContain('does not recognize');
+      expect(auditPredicate(entry({ action })), action).not.toContain('doesn’t recognize');
     }
   });
 });

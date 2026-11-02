@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderRightPanel, renderInGame, type Gameplay } from '@/test/gamePanels';
 import { EntityEquipped } from './EntityEquipped';
-import type { Entity, GameLocation, Item, ItemCopy, Slot } from '@/types';
+import type { Currency, Entity, GameLocation, Item, ItemCopy, Slot, Stat, World } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -15,10 +15,20 @@ const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
 const slots: Slot[] = [{ id: 'hand', name: 'Hand' }];
 const items = [
   item('coin', 'Coin'),
-  item('dagger', 'Dagger', { slotId: 'hand', stackable: false }),
+  item('dagger', 'Dagger', { playerDescription: 'A short blade.', slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false }),
+  item('charm', 'Cursed Charm', {
+    playerDescription: 'It drains the wearer.', unidentifiedName: 'Dull Charm', unidentifiedDescription: 'It looks like tin.',
+    slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false,
+  }),
+  // Shows the cursed art while the owner also owns the Coin.
+  item('band', 'Pale Band', {
+    slotRule: { mode: 'either', slotIds: ['hand'] }, stackable: false,
+    images: [{ data: CURSED, requires: [{ all: [{ kind: 'item', id: 'coin', status: 'owned' }] }] }, { data: PLAIN }],
+  }),
   item('crown', 'Old Crown', { stackable: false, bound: true }),
   // Shows the cursed art while the owner also owns the Coin.
   item('ring', 'Silver Ring', {
+    icon: 'none',
     images: [{ data: CURSED, requires: [{ all: [{ kind: 'item', id: 'coin', status: 'owned' }] }] }, { data: PLAIN }],
   }),
 ];
@@ -42,7 +52,79 @@ const stage = (copies: ItemCopy[]) => ({
 
 const region = () => screen.getByRole('region', { name: 'Your inventory' });
 
+describe('Inventory tab — Money', () => {
+  const COIN: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+  const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
+  const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
+  const funds = (over: Partial<Stat> = {}): Stat => ({
+    id: 'funds', name: 'Funds', type: 'number', description: '', min: 0, max: 1000, value: 40, regen: 0, descriptors: [], ...over,
+  });
+  const coins = [item('copper', 'Copper'), item('gold', 'Gold')];
+  const money = () => screen.queryByRole('list', { name: 'Money' });
+  const rows = () => within(money()!).getAllByRole('listitem').map((row) => row.textContent);
+  const withMoney = (copies: ItemCopy[], world: Partial<World>, withItems = true) => {
+    const base = stage(copies);
+    return {
+      ...base,
+      world: { ...base.world, ...(withItems ? { items: [...items, ...coins] } : { items: [] }), ...world },
+      seed: (g: Gameplay) => {
+        base.seed(g);
+        if (world.stats) g.setGlobalStats(world.stats.map((stat) => ({ ...stat, value: stat.value as number })));
+      },
+    };
+  };
+
+  it('shows a coin and a stat balance, name-only left out', async () => {
+    renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 105 })], { currencies: [CREDITS, GOATS, COIN], stats: [funds()] }));
+    await within(region()).findByRole('list', { name: 'Money' });
+    expect(rows()).toEqual(['Credits40', 'Crowns1 Gold, 5 Copper']);
+  });
+
+  it('updates when coins move', async () => {
+    const harness = renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 7 }), copy('b', 'gold')], { currencies: [COIN] }));
+    await within(region()).findByRole('list', { name: 'Money' });
+    expect(rows()).toEqual(['Crowns1 Gold, 7 Copper']);
+    await act(async () => { harness.gameplay().setItemCopies([copy('a', 'copper', { quantity: 7 })]); });
+    expect(rows()).toEqual(['Crowns7 Copper']);
+  });
+
+  it.each<[string, Partial<Stat>]>([
+    ['hidden', { hidden: true }],
+    ['switched off', { enabled: false }],
+  ])('shows no row for a %s backing stat', async (_case, over) => {
+    renderRightPanel({}, withMoney([copy('a', 'copper')], { currencies: [CREDITS, COIN], stats: [funds(over)] }));
+    await within(region()).findByRole('list', { name: 'Money' });
+    expect(rows()).toEqual(['Crowns1 Copper']);
+  });
+
+  it('opens the tab in a world with money and no items', async () => {
+    renderRightPanel({}, withMoney([], { currencies: [CREDITS], stats: [funds()] }, false));
+    await within(region()).findByRole('list', { name: 'Money' });
+    expect(rows()).toEqual(['Credits40']);
+  });
+
+  it('keeps three tabs in a world with no items and only a name-only Currency', async () => {
+    renderRightPanel({}, withMoney([], { currencies: [GOATS] }, false));
+    await screen.findByRole('tab', { name: 'Traits' });
+    expect(screen.queryByRole('tab', { name: 'Inventory' })).toBeNull();
+  });
+});
+
 describe('Inventory tab — Here', () => {
+  it('shows a carried item’s worth from the world’s Currencies in its popup', async () => {
+    const base = stage([copy('a', 'dagger')]);
+    renderRightPanel({}, {
+      ...base,
+      world: {
+        ...base.world,
+        items: items.map((i) => (i.id === 'dagger' ? { ...i, value: 12, currencyId: 'goats' } : i)),
+        currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }],
+      },
+    });
+    await userEvent.click(await within(region()).findByRole('button', { name: 'Dagger' }));
+    expect(within(await screen.findByRole('dialog')).getByText('Worth 12 Goats')).toBeInTheDocument();
+  });
+
   it('lists the visible Item Copies lying at the location and omits hidden ones and other places', async () => {
     renderRightPanel({}, stage([
       copy('a', 'coin', { where: at('yard'), quantity: 4 }),
@@ -122,6 +204,64 @@ describe('Entity Equipped', () => {
     const list = await screen.findByRole('region', { name: 'Equipped' });
     expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['DaggerHand']);
     expect(screen.queryByText('Coin')).not.toBeInTheDocument();
+  });
+
+  it('shows the derived icon on the row and in the popup header', async () => {
+    show([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } })]);
+    const name = await screen.findByRole('button', { name: 'Dagger' });
+    expect(name.closest('li')!.querySelector('[data-item-icon]')).toHaveAttribute('data-item-icon', 'dagger');
+    await userEvent.click(name);
+    const header = within(await screen.findByRole('dialog')).getByRole('heading', { name: 'Dagger' }).parentElement!;
+    expect(header.querySelector('[data-item-icon]')).toHaveAttribute('data-item-icon', 'dagger');
+  });
+
+  it('derives an unidentified item’s row icon from its unidentified face', async () => {
+    show([bramHas('a', 'charm', { state: { unidentified: true }, equipped: { slotId: 'hand', order: 1 } })]);
+    const row = (await screen.findByRole('button', { name: 'Dull Charm' })).closest('li')!;
+    expect(row.querySelector('[data-item-icon]')).toBeInTheDocument();
+    expect(row.querySelector('img')).toBeNull();
+  });
+
+  it('opens a worn item’s popup, with its description and no carried item', async () => {
+    show([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } }), bramHas('b', 'coin')]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Dagger' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(dialog.getByRole('heading', { name: 'Dagger' })).toBeInTheDocument();
+    expect(dialog.getByText('A short blade.')).toBeInTheDocument();
+    expect(dialog.queryByText('Coin')).not.toBeInTheDocument();
+  });
+
+  it('shows a worn item’s worth in its popup', async () => {
+    renderInGame(<EntityEquipped entity={bram} />, {
+      world: {
+        items: items.map((i) => (i.id === 'dagger' ? { ...i, value: 12, currencyId: 'goats' } : i)), slots, entities: [bram], locations: [yard],
+        currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }],
+      },
+      seed: (g) => g.setItemCopies([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } })]),
+    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Dagger' }));
+    expect(within(await screen.findByRole('dialog')).getByText('Worth 12 Goats')).toBeInTheDocument();
+  });
+
+  it('keeps a worn unidentified item on its unidentified face in the popup', async () => {
+    show([bramHas('a', 'charm', { state: { unidentified: true }, equipped: { slotId: 'hand', order: 1 } })]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Dull Charm' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('It looks like tin.')).toBeInTheDocument();
+    expect(dialog.textContent).not.toContain('Cursed Charm');
+  });
+
+  it('shows the image the rules pick for the entity wearing the item', async () => {
+    const band = bramHas('a', 'band', { equipped: { slotId: 'hand', order: 1 } });
+    show([band, bramHas('b', 'coin')]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Pale Band' }));
+    expect(within(await screen.findByRole('dialog')).getByAltText('Pale Band')).toHaveAttribute('src', CURSED);
+  });
+
+  it('shows the image the rules fall back to when the entity lacks what they need', async () => {
+    show([bramHas('a', 'band', { equipped: { slotId: 'hand', order: 1 } }), copy('b', 'coin')]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Pale Band' }));
+    expect(within(await screen.findByRole('dialog')).getByAltText('Pale Band')).toHaveAttribute('src', PLAIN);
   });
 
   it('leaves out a hidden equipped item, and draws nothing when nothing visible is equipped', async () => {

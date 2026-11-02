@@ -15,6 +15,7 @@ import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Hint, Meta } from "@/components/ui/typography";
 import {
   Select,
   SelectContent,
@@ -31,15 +32,15 @@ import type { MessageSeverity, MessageSenderMode, MessageScope, SentMessage } fr
 /** The broadcast reach choice, quietest first. Pinning always includes new accounts, so there is no
  *  "permanent but hidden from new signups" rung. */
 const BROADCAST_SCOPES: { value: MessageScope; label: string; hint: string }[] = [
-  { value: 'existing', label: 'Existing', hint: 'Only accounts that exist right now. They can dismiss it once read.' },
-  { value: 'new', label: 'Existing + New', hint: 'Also everyone who signs up later. They can dismiss it once read.' },
-  { value: 'pinned', label: 'Pinned', hint: 'Everyone including later signups. Kept at the top of their inbox, and cannot be dismissed.' },
+  { value: 'existing', label: 'Existing', hint: 'Reaches the accounts that exist now. Readers can dismiss it.' },
+  { value: 'new', label: 'Existing + New', hint: 'Also reaches accounts created later. Readers can dismiss it.' },
+  { value: 'pinned', label: 'Pinned', hint: 'Reaches every account, including ones created later. Stays at the top of the inbox and can’t be dismissed.' },
 ];
 
 /** A direct message goes to one named person, so only the permanence half of the choice applies. */
 const DIRECT_SCOPES: { value: MessageScope; label: string; hint: string }[] = [
-  { value: 'existing', label: 'Normal', hint: 'They can dismiss it from their inbox once read.' },
-  { value: 'pinned', label: 'Pinned', hint: 'Kept at the top of their inbox, and cannot be dismissed until you unpin or recall it.' },
+  { value: 'existing', label: 'Normal', hint: 'They can dismiss it from their inbox' },
+  { value: 'pinned', label: 'Pinned', hint: 'Stays at the top of their inbox. They can’t dismiss it until you change it to “Normal” or recall it.' },
 ];
 
 /** Mirrors the server's composer limits so the field caps and counter agree with what it will accept. */
@@ -169,8 +170,8 @@ export function MessageComposerDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {editing
-              ? 'Rewrites the message everyone already has. Markdown is supported.'
-              : `This is delivered to ${audience} and cannot be replied to. Markdown is supported.`}
+              ? 'Replaces the message in every inbox that has it. Markdown is supported.'
+              : `Sends to ${audience}. Replies aren’t possible. Markdown is supported.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -189,7 +190,7 @@ export function MessageComposerDialog({
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
               <span className="text-label font-medium">Message</span>
-              <span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>
+              <Meta>{body.length} / {BODY_MAX}</Meta>
             </div>
             {/* Readers see this rendered, so it is authored the same way the world editor's prose is.
                 No placeholders here: any `{{ph…}}` stays inert text, exactly as it would read. */}
@@ -210,7 +211,7 @@ export function MessageComposerDialog({
                   naming an action read as though choosing it performed one. */}
               <label className="text-label font-medium">Severity</label>
               <Select value={severity} onValueChange={(value) => setSeverity(value as MessageSeverity)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Severity"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {MESSAGE_SEVERITIES.map((option) => (
                     <SelectItem key={option} value={option}>{MESSAGE_SEVERITY_STYLES[option].label}</SelectItem>
@@ -222,7 +223,7 @@ export function MessageComposerDialog({
             <div className="space-y-2">
               <label className="text-label font-medium">Send As</label>
               <Select value={senderAs} onValueChange={(value) => setSenderAs(value as MessageSenderMode)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Send As"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="team">Formamorph Team</SelectItem>
                   <SelectItem value="username">{adminUsername}</SelectItem>
@@ -235,6 +236,8 @@ export function MessageComposerDialog({
               it. A direct message has no audience to widen, so it gets the permanence half only. */}
           <div className="space-y-2">
             <label className="text-label font-medium">Who Sees This</label>
+            {/* Two lines are reserved so switching options can't move the buttons under it. */}
+            <Hint className="min-h-8">{activeHint}</Hint>
 
             <ToggleGroup
               type="single"
@@ -250,9 +253,6 @@ export function MessageComposerDialog({
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
-
-            {/* Two lines are reserved so switching options can't shift the fields below. */}
-            <p className="text-meta text-muted-foreground min-h-8">{activeHint}</p>
           </div>
 
           {/* Editing only. Off by default because most edits are typo fixes. */}
@@ -265,9 +265,9 @@ export function MessageComposerDialog({
               />
               <span>
                 Mark unread again
-                <span className="block text-meta text-muted-foreground">
-                  Re-badges everyone, restarts the read count, and returns it to anyone who dismissed it.
-                </span>
+                <Hint as="span" className="block">
+                  Marks it unread, resets the read count, and restores dismissed copies
+                </Hint>
               </span>
             </label>
           )}

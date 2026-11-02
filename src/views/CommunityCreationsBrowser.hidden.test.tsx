@@ -72,7 +72,7 @@ const openHiddenPanel = async () => {
   // query for one would find the card and pass whatever the panel is doing.
   const panel = (await screen.findByText('Tags')).closest('[role="dialog"]') as HTMLElement;
 
-  return { panel, fields: within(panel).getAllByPlaceholderText(/tag…|author…/) };
+  return { panel, fields: within(panel).getAllByPlaceholderText(/Hide a tag|Hide an author/) };
 };
 
 beforeEach(() => {

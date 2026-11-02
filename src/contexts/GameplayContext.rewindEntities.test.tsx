@@ -1,4 +1,4 @@
-// The rewind carve-out for the discovered cast: rollback/re-generate restore a frozen snapshot with
+// The rewind carve-out for the discovered cast: rollback/regenerate restore a frozen snapshot with
 // `keepLiveHistory`, and the live discovered entities + suppressed names — which carry the player's
 // edits — must survive that restore, exactly as the live narration and notes already do. Loading a
 // save (no `keepLiveHistory`) must still adopt the snapshot's values wholesale.
@@ -75,7 +75,7 @@ const seedLive = async (live: () => Gameplay) => {
   });
 };
 
-describe('discovered entities across a keepLiveHistory restore (rollback / re-generate)', () => {
+describe('discovered entities across a keepLiveHistory restore (rollback / regenerate)', () => {
   it('keeps the live discovered entities and suppressed names instead of the snapshot copies', async () => {
     const live = mount();
     await seedLive(live);

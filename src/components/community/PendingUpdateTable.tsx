@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { CHIP_BASE } from "@/components/Chip";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Meta } from "@/components/ui/typography";
 import { formatChangelogDate, type ChangelogEntry } from "@/lib/listingChangelog";
 import { changedFields, fieldLabel, type PendingChangelogOp, type PendingUpdate } from "@/lib/listingModeration";
 import { useMountedRef } from "@/lib/useMountedRef";
@@ -189,7 +190,7 @@ export function PendingUpdateTable({ update, liveThumbnail, approvedChangelog }:
                     </span>
                   </span>
                   {op.op !== 'delete' && (
-                    <span className="shrink-0 text-meta text-muted-foreground">{formatChangelogDate(op.date)}</span>
+                    <Meta className="shrink-0">{formatChangelogDate(op.date)}</Meta>
                   )}
                 </div>
                 {op.op !== 'delete' && op.body && (

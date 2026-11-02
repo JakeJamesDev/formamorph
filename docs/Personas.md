@@ -25,7 +25,7 @@ No copy is made. The entity is now one of your personas, and you can still add i
 2. Right-click a persona tile.
 3. Select **Set as Default Persona**.
 
-A **Default** badge marks it. To remove it, right-click the tile and select **Clear Default Persona**.
+A **Default** badge marks it. To clear it, right-click the tile and select **Clear Default Persona**.
 
 ## How to Pick a Persona
 <!-- keywords: choose, select, play as, character select, who to play, which character, roster, at game start, type my name, name myself, nameless, playing as nobody, before the story -->
@@ -42,7 +42,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 <!-- keywords: switch, swap, mid-game, different character, edit name, rename, already started, ongoing story, become someone else, wrong name fix, replace protagonist, halfway through, body swap -->
 <!-- route: persona -->
 
-1. In the side panel, find the persona row above the **Stats**, **Traits** and **Location** tabs.
+1. In the side panel, find the persona row above the tabs, such as **Traits** and **Location**.
 2. Select **Change**. The **Change Persona** dialog opens.
 3. Pick another persona, or edit the Custom Persona's **Name** or **Description**.
 4. Select **Change**. It turns on when your pick, name or description differs from the current one.
@@ -76,7 +76,7 @@ The **All | Personas** switch above the grid shows only your personas. That view
 ## The Default Persona
 <!-- keywords: fallback identity, used automatically, not synced, this device only, auto picked -->
 
-The default persona is the one Enter World and **Quick Start** pick when nothing else decides. The default stays on this device. It never goes into an export.
+Enter World and **Quick Start** pick the default persona when nothing else decides. The default stays on this device. An export never includes it.
 
 ## Pick at Enter World
 <!-- keywords: preselection priority, why this one chosen, forced character, my own missing, restricted list, last used remembered, one role per game -->
@@ -87,7 +87,7 @@ Enter World opens on a **Persona** category when at least one persona is availab
 |---|---|
 | **None** | Play as the world describes the player. A world with a [Custom Persona](#create-your-own) shows that entity here instead. |
 | **From This World** | Entities the author made playable. See [Play a World's Own Entity](#play-a-worlds-own-entity). |
-| **Your Personas** | The personas in your library |
+| **Your Personas** | The personas in your library. A persona the world already holds a copy of isn't offered. |
 
 The category starts on a pick in this order:
 
@@ -110,7 +110,7 @@ Pick an entity under **From This World**, and you play it:
 
 - It leaves the cast for that game, so you never meet yourself.
 - The AI reads that everyone in the world already knows you.
-- Its locations join the **Starting Location** list, and its first starting location is selected for you. You can pick another.
+- Its locations join the **Starting Location** list. Enter World selects the first of them that is a starting location. With none, it selects the entity's first location. Its row in the picker reads **Starts at** and that place. You can pick another.
 - Its Others openings leave the draw, so page one never greets you as yourself.
 - If it has Self openings, the game draws only from those. See [Self Openings](World-Editor-Openings#self-openings).
 
@@ -119,7 +119,7 @@ A persona from your library can bring its own Self openings. They draw in any wo
 ## Create Your Own
 <!-- keywords: self insert, blank slate, fill in my details, enter my name, race and class picks, replaces none option, author portrait shown -->
 
-Some worlds have a **Custom Persona**. It takes **None**'s place in the list, with the author's portrait and name. Pick it, and **Name** and **Description** fields open under it.
+Some worlds have a **Custom Persona**. It takes **None**'s place in the list, with the author's portrait and name. Pick it, and **Name** and **Description** fields open under it. **Enter World** opens its dialog for these worlds even with nothing else to choose. **Quick Start** still skips it.
 
 - **Your name replaces the entity's name.** The story calls you by it.
 - **Your description follows the author's.** The AI reads both.
@@ -132,7 +132,7 @@ Some worlds have a **Custom Persona**. It takes **None**'s place in the list, wi
 <!-- keywords: memories use wrong name, legacy save identity, deleted identity warning, edits reach old saves, returns next turn, side panel row -->
 <!-- route: persona -->
 
-A row above **Stats**, **Traits** and **Location** shows your persona's portrait and name, or **None**. Select **Change** to open **Change Persona** and pick again.
+A row above the side panel's tabs shows your persona's portrait and name, or **None**. Select **Change** to open **Change Persona** and pick again.
 
 | When you change | What happens |
 |---|---|
@@ -170,12 +170,17 @@ One import brings every SillyTavern persona over. The backup holds no images, so
 | The default persona | Your default, when you have none |
 | Title, position, depth and role | Not imported |
 
-A report lists each persona with no image, each skipped entry, each persona that wasn't saved and each image that matched no persona.
+A report then lists:
+
+- Each persona with no image
+- Each skipped entry
+- Each persona that wasn't saved
+- Each image that matched no persona
 
 > [!NOTE]
-> Keep the avatar filenames as SillyTavern wrote them. The import matches by filename.
+> Keep the avatar filenames as SillyTavern wrote them. The import matches by filename. Pick one backup at a time.
 
 ## Related
 
-- [🎭 Entities in Game](Entities): the cast you meet, and how a game opens
+- [🎭 Entities in Game](Entities): the entities you meet, and how a game opens
 - [🪪 Personas for Authors](Persona-Authoring): playable entities, **Allowed Personas** and **Starts On**, and the prompt chips

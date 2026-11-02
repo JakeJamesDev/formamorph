@@ -1,5 +1,6 @@
 import json5 from 'json5';
 import type { AITurnResult, ChatMessage } from '@/types';
+import type { SceneTurn } from './presence';
 
 /**
  * Pure helpers for the per-turn memory digest (the "summary step").
@@ -132,6 +133,19 @@ export function recentParticipants(history: ChatMessage[], turns: number): strin
     seen += 1;
   }
   return [...names];
+}
+
+/** The last `turns` assistant turns, oldest first, as presence reads them. A turn that recorded no
+ *  participants still counts toward the window. */
+export function recentSceneTurns(history: ChatMessage[], turns: number): SceneTurn[] {
+  const out: SceneTurn[] = [];
+  for (let i = history.length - 1; i >= 0 && out.length < turns; i--) {
+    if (history[i].role !== 'assistant') continue;
+    const parsed = parseTurnContent(history[i].content);
+    if (!parsed) continue;
+    out.push({ participants: parsed.entities ?? [], ...(parsed.locationId ? { locationId: parsed.locationId } : {}) });
+  }
+  return out.reverse();
 }
 
 /**

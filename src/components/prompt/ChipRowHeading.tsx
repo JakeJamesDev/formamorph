@@ -2,6 +2,7 @@ import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext'
 import type { ChipRow } from '@/lib/chipVocabulary';
 import type { Placeholder } from '@/types';
 import OwnerHeading from './OwnerHeading';
+import { Meta } from '@/components/ui/typography';
 
 const NO_PLACEHOLDERS: readonly Placeholder[] = [];
 
@@ -29,7 +30,7 @@ const ChipRowHeading = ({ row, placeholders }: {
       />
     );
   }
-  return <span className="text-meta text-muted-foreground">{row.heading}</span>;
+  return <Meta>{row.heading}</Meta>;
 };
 
 export default ChipRowHeading;

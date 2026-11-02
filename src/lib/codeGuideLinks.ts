@@ -5,13 +5,13 @@
 
 import type { DocTarget } from '@/lib/docs/docsLinks';
 
-/** A heading of the Scripts Guide. */
-const scripts = (anchor: string): DocTarget => ({ page: 'ScriptsGuide', anchor });
+/** A heading of the Scripts Reference. */
+const scripts = (anchor: string): DocTarget => ({ page: 'Scripts-Reference', anchor });
 
 /** A heading of the Tools doc. */
 const tools = (anchor: string): DocTarget => ({ page: 'Tools', anchor });
 
-/** The Scripts Guide heading of each script global. A script's timing decides which of them it reads. */
+/** The Scripts Reference heading of each script global. A script's timing decides which of them it reads. */
 export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   self: scripts('self'),
   stats: scripts('stats'),
@@ -31,6 +31,7 @@ export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   persona: scripts('persona'),
   dictionaries: scripts('dictionaries'),
   items: scripts('items'),
+  currencies: scripts('currencies'),
   narration: scripts('narration'),
   player: scripts('player'),
   trait: scripts('trait'),

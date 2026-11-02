@@ -201,7 +201,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
           values={language ? [language] : []}
           onChange={(vals) => setLanguage(vals[0] ?? '')}
           options={COMMON_LANGUAGES}
-          placeholder="Language or style…"
+          placeholder="Type a language or style"
         />
       </Row>
       {advanced && (
@@ -340,7 +340,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
       {/* Both rows only decide whether a panel appears on screen — nothing about them changes what
           the AI produces, which is what keeps the Output tab honest. */}
       {advanced && (
-      <Section title="Inspection" hint="Shows work that normally happens out of sight">
+      <Section title="Inspection" hint="Shows the AI work you normally don't see">
       <CheckRow
         htmlFor="showReasoning"
         checked={showReasoning}

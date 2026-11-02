@@ -232,7 +232,7 @@ describe('pinned messages', () => {
 
     render(<MessagesTab active />);
 
-    expect(await screen.findByLabelText('Pinned by an administrator')).toBeTruthy();
+    expect(await screen.findByLabelText('Pinned by an admin')).toBeTruthy();
   });
 
   it('still lets the reader open and clear the unread badge', async () => {

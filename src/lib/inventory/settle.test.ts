@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, equipRequirement, settleInventory, type InventoryOp, type InventorySettleWorld } from '.';
 import { groupPickStates } from '@/lib/traitGates';
 import { activeOwnedTraitIds } from '@/lib/ownedTraitsInPlay';
 import { applyCodeTraitSwitches, seedStatBases, switchPlayerTrait, traitGateInput, type TraitRuntimeState, type TraitWorld } from '@/lib/traitRuntime';
 import type {
-  Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, Slot, StatChange, Trait, TraitGroup,
+  Body, Item, ItemCopy, ItemCopyWhere, ItemEffectLedger, ItemStatEffect, ItemTraitEffect, PlayerStat, Slot, StatChange, Trait, TraitGroup,
   TraitRequirementRow,
 } from '@/types';
 
@@ -20,9 +21,10 @@ const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
 const trait = (id: string, over: Partial<Trait> = {}, statChanges: StatChange[] = []): Trait =>
   ({ id, name: id[0].toUpperCase() + id.slice(1), statChanges, playerToggle: true, ...over });
 
-const hand: Slot = { id: 'hand', name: 'Hand', capacity: 2 };
+const hand: Slot = { id: 'hand', name: 'Hand' };
 const body: Slot = { id: 'body', name: 'Body' };
 const finger: Slot = { id: 'finger', name: 'Finger' };
+const humanoid: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand', capacity: 2 }, { slotId: 'body' }, { slotId: 'finger' }] });
 const stance: TraitGroup = { id: 'stance', name: 'Stance', parentId: null, maxPicks: 1 } as TraitGroup;
 
 const cursed = trait('cursed', {}, [{ statId: 'luck', value: -1, type: 'starting' }]);
@@ -38,11 +40,11 @@ const charm = item('charm', 'Bold Charm', { traitEffects: [grant('bold', 'owned'
 const halo = item('halo', 'Halo', { traitEffects: [grant('blessed', 'owned')] });
 const relic = item('relic', 'Relic', { traitEffects: [grant('cursed', 'firstObtain')] });
 const fate = item('fate', 'Fate Coin', { traitEffects: [grant('fated', 'owned')] });
-const strongSword = item('strong', 'Strong Sword', { slotId: 'hand', equipRequires: needs('strength', 5), statEffects: [statRow('strength', 2)] });
-const weakSword = item('weak', 'Cursed Sword', { slotId: 'hand', equipRequires: needs('strength', 5), statEffects: [statRow('strength', -2)] });
-const band = item('band', 'Iron Band', { slotId: 'finger', statEffects: [statRow('strength', 2)] });
-const signet = item('signet', 'Signet', { slotId: 'finger', equipRequires: needs('strength', 5) });
-const gauntlet = item('gauntlet', 'Gauntlet', { slotId: 'body', equipRequires: needs('luck', 1), statEffects: [statRow('strength', 2)] });
+const strongSword = item('strong', 'Strong Sword', { slotRule: { mode: 'either', slotIds: ['hand'] }, equipRequires: needs('strength', 5), statEffects: [statRow('strength', 2)] });
+const weakSword = item('weak', 'Cursed Sword', { slotRule: { mode: 'either', slotIds: ['hand'] }, equipRequires: needs('strength', 5), statEffects: [statRow('strength', -2)] });
+const band = item('band', 'Iron Band', { slotRule: { mode: 'either', slotIds: ['finger'] }, statEffects: [statRow('strength', 2)] });
+const signet = item('signet', 'Signet', { slotRule: { mode: 'either', slotIds: ['finger'] }, equipRequires: needs('strength', 5) });
+const gauntlet = item('gauntlet', 'Gauntlet', { slotRule: { mode: 'either', slotIds: ['body'] }, equipRequires: needs('luck', 1), statEffects: [statRow('strength', 2)] });
 const veil = item('veil', 'Hex Veil', { unidentifiedName: 'Lace Veil', traitEffects: [grant('cursed', 'owned')] });
 const items = [ring, idol, charm, halo, relic, fate, strongSword, weakSword, gauntlet, band, signet, veil];
 
@@ -71,7 +73,7 @@ function act(play: Play, ops: InventoryOp[], cap?: number): Play {
   let n = play.copies.length;
   const check = equipRequirement({ traits: play.traits, ledger: play.ledger }, world());
   const { copies, diagnostics } = applyInventoryOps(play.copies, ops, {
-    world: { items, slots: [hand, body, finger] }, source: 'script', newId: () => `c${n++}`, requirement: check,
+    world: { items, slots: [hand, body, finger], bodies: [humanoid] }, source: 'script', newId: () => `c${n++}`, requirement: check,
   });
   const settled = settleInventory({ copies, previous: play.copies, traits: play.traits, ledger: play.ledger }, world(cap));
   return { copies: settled.copies, traits: settled.traits, ledger: settled.ledger, log: settled.log, skipped: diagnostics };

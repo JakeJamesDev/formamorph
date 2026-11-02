@@ -12,6 +12,7 @@ import MessageService from "@/services/MessageService";
 import { cn } from "@/lib/utils";
 import type { InboxMessage } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 
 interface MessagesTabProps {
   /** Whether the tab is mounted and visible; a fresh fetch runs each time this turns true. */
@@ -142,9 +143,9 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
     <div className="space-y-2 py-4">
       {/* The fetch is capped, so say so rather than letting the oldest quietly not exist. */}
       {total > messages.length && (
-        <p className="pb-1 text-meta text-muted-foreground">
-          Showing {messages.length} of {total}. Dismiss one and the next appears.
-        </p>
+        <Meta as="p" className="pb-1">
+          Showing {messages.length} of {total}. Dismiss one to show the next.
+        </Meta>
       )}
 
       {messages.map((message) => {
@@ -181,7 +182,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                     )}
                   </span>
 
-                  <span className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
+                  <Meta className="flex flex-wrap items-center gap-x-2">
                     <span className="truncate min-w-0">{message.senderAs === 'username' && message.senderName ? message.senderName : 'Formamorph Team'}</span>
                     <span>·</span>
                     <span>{formatMessageDate(message.createdAt)}</span>
@@ -191,7 +192,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                     {message.broadcast && (
                       <Megaphone className="h-3 w-3 shrink-0" aria-label="Sent to everyone" />
                     )}
-                  </span>
+                  </Meta>
                 </span>
 
                 <ChevronDown
@@ -201,11 +202,11 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
 
               {message.scope === 'pinned' ? (
                 // A marker whose tip is the whole of it, so it takes a tab stop and reaches a keyboard.
-                <Tip tip="Kept by an administrator — this can't be dismissed" labelsChild={false}>
+                <Tip tip="Pinned by an admin, so you can’t dismiss it" labelsChild={false}>
                   <span
                     className="h-7 w-7 shrink-0 flex items-center justify-center text-muted-foreground"
                     tabIndex={0}
-                    aria-label="Pinned by an administrator"
+                    aria-label="Pinned by an admin"
                   >
                     <Pin className="h-4 w-4" />
                   </span>

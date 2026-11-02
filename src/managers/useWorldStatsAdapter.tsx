@@ -6,6 +6,7 @@ import type { ListSearch } from '@/components/listToolbarHooks';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useGameData } from '@/contexts/GameDataContext';
 import { newStat } from '@/lib/blankWorld';
+import { backingStatKind, lostStatIds } from '@/lib/currencyDeletes';
 import { BlueprintIcon } from '@/lib/elementIcons';
 import { useEditorMode } from '@/lib/editorMode';
 import { updateOwnedStatGroup } from '@/lib/ownedStats';
@@ -18,7 +19,7 @@ import {
 } from '@/lib/statLinks';
 import { blueprintsGroup } from '@/lib/blueprintGroups';
 import type { FindingSection } from '@/lib/testBench/rules';
-import { alsoDeletesLinks } from './useRemoveWorldTrait';
+import { linksKind, usedByText } from '@/lib/usedByText';
 import { StatLinkToButton } from './OwnerPicker';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint, Stat } from '@/types';
@@ -36,7 +37,7 @@ import WorldStatTree from './WorldStatTree';
 /** What removing the Blueprints stat group does to the links and the stats it holds. */
 function blueprintsLine({ detached, movedUp }: StatBlueprintsRemoval): string {
   return [
-    detached ? `${detached === 1 ? "Its link becomes that entity's own stat" : `Its ${detached} links become each entity's own stat`}, and Remove deletes the linked originals.` : '',
+    detached ? `${detached === 1 ? "Its link becomes that entity's own stat" : `Its ${detached} links become each entity's own stat`}, and this deletes the linked originals.` : '',
     movedUp ? `${detached ? 'The other stats move' : 'Its stats move'} to the top level, where they become global stats.` : '',
   ].filter(Boolean).join(' ');
 }
@@ -58,7 +59,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, t
   focusField: FocusFieldHint | null;
 }): { adapter: ListEditorAdapter; dialog: ReactNode } {
   const {
-    stats, statGroups, entities, placeholders, placementLetters, placeholderOwners, addStat, addStatGroup, updateStatGroup, removeStat,
+    stats, statGroups, entities, currencies, placeholders, placementLetters, placeholderOwners, addStat, addStatGroup, updateStatGroup, removeStat,
     removeStatGroup, setStats, setStatGroups, editEntity,
   } = useGameData();
   const { advanced } = useEditorMode();
@@ -92,17 +93,25 @@ export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, t
     onSelect(next.newId);
   };
   // A linked Blueprint stat or group takes its links with it, and Blueprints itself detaches them, so each asks first.
+  // A Currency the delete leaves without its stat becomes name only, so the confirm names it.
+  const backingKind = (nextStats: Stat[], nextEntities: typeof entities) => backingStatKind(
+    currencies, lostStatIds({ stats, entities }, { stats: nextStats, entities: nextEntities }), (text) => labelPlaceholders(text, placeholders),
+  );
   const askRemoveStat = (id: string) => {
-    const links = statLinksTo(entities, new Set([id]));
-    if (!links) { removeStat(id); return; }
+    const description = usedByText([
+      linksKind(statLinksTo(entities, new Set([id]))),
+      backingKind(stats.filter((s: Stat) => s.id !== id), entities),
+    ]);
+    if (!description) { removeStat(id); return; }
     const name = stats.find((s: Stat) => s.id === id)?.name ?? '';
-    setPending({ id, name, isGroup: false, description: alsoDeletesLinks(links) });
+    setPending({ id, name, isGroup: false, description });
   };
   const askRemoveGroup = (id: string) => {
     const group = statGroups.find((g) => g.id === id);
     const removal = group?.system === 'blueprints' ? removeStatBlueprints({ stats, statGroups }, entities) : null;
-    const links = statLinksTo(entities, new Set([id]));
-    const description = removal ? blueprintsLine(removal) : links ? alsoDeletesLinks(links) : '';
+    const description = removal
+      ? [blueprintsLine(removal), usedByText([backingKind(removal.stats, removal.entities)])].filter(Boolean).join(' ')
+      : usedByText([linksKind(statLinksTo(entities, new Set([id])))]);
     if (!description) { removeStatGroup(id); return; }
     setPending({ id, name: group?.name ?? '', isGroup: true, description });
   };

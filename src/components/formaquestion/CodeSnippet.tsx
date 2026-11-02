@@ -19,6 +19,9 @@ export interface SnippetBlock {
 /** Controls a surface adds to a block's toolbar beside Copy. */
 export type SnippetActions = (block: SnippetBlock) => ReactNode;
 
+/** What a surface draws in place of a block, given the block's own view; undefined keeps that view. */
+export type SnippetCard = (block: SnippetBlock, codeView: ReactNode) => ReactNode | undefined;
+
 function textOf(node: HastChild): string {
   if (node.type === 'text') return node.value;
   return node.type === 'element' ? node.children.map(textOf).join('') : '';
@@ -43,7 +46,7 @@ function snippetBlock(pre: HastElement | undefined): SnippetBlock | null {
 const FLASH_MS = 1200;
 
 /** Copy, confirmed by a tip at the button rather than a toast. */
-function CopyButton({ code }: { code: string }) {
+export function CopyButton({ code }: { code: string }) {
   const button = useRef<HTMLButtonElement>(null);
   const mounted = useMountedRef();
   // `shown` counts presses, so a second copy restarts the timer even with the same text.
@@ -75,12 +78,12 @@ function CopyButton({ code }: { code: string }) {
  * The `pre` renderer of the help window: Streamdown's highlighted block under a toolbar with Copy.
  * It wraps the block rather than replacing `code`, which would replace the highlighter.
  */
-export function CodeSnippet({ node, children, actions }: { node?: HastElement; children?: ReactNode; actions?: SnippetActions }) {
+export function CodeSnippet({ node, children, actions, card }: { node?: HastElement; children?: ReactNode; actions?: SnippetActions; card?: SnippetCard }) {
   // Streamdown's own `pre` marks its child as a block; the `code` renderer reads that mark.
   const body = isValidElement(children) ? cloneElement(children, { 'data-block': 'true' } as Record<string, unknown>) : children;
   const block = snippetBlock(node);
   if (!block) return <>{body}</>;
-  return (
+  const codeView = (
     <div className="relative my-4 [&>[data-streamdown=code-block]]:my-0">
       {body}
       <div className="absolute right-2 top-2 flex h-8 items-center gap-1">
@@ -89,4 +92,5 @@ export function CodeSnippet({ node, children, actions }: { node?: HastElement; c
       </div>
     </div>
   );
+  return card?.(block, codeView) ?? codeView;
 }

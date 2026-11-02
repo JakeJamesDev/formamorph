@@ -8,7 +8,7 @@ Placeholders are reusable pieces of world text: an eye color, a street name, a d
 
 The **Placeholders** tab, the palette strip and value pins are **Advanced mode only**. The `{` menu, the [Built-in chips](#built-in-chips) and the [**Values** tab](#the-values-tab) work in both modes.
 
-## Why it exists
+## Why It Exists
 <!-- keywords: replayability, variety, different each time, avoid rewriting, same detail everywhere -->
 
 Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} stranger"* one time, and it reads as a real detail in each playthrough. It can be the same detail each time, or a new one.
@@ -19,7 +19,7 @@ Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} str
 
 1. Switch the World Editor to Advanced mode, and open the **Placeholders** tab.
 2. Type the name in the **Filter Placeholders** box, such as *Eye Color*.
-3. Select **+**, then **Add Placeholder**. The new placeholder opens.
+3. Select the **Add to Placeholders** icon button (+), then **Add Placeholder**. The new placeholder opens.
 4. Under **Values**, type a value and press Enter. Repeat for each value.
 5. Leave **Kind** on **Wildcard** to pick one value at random, or select **Object** to show all values. A placeholder with one value is a Variable. Use it for one fact that you edit in one place.
 6. Open a field that has the chip picker, such as an entity's **AI-Facing Description**. Type `{` and pick the placeholder.
@@ -103,7 +103,7 @@ The toggle offers **Wildcard** and **Object**. A Variable has no button: the lin
 ## Draw Weight
 <!-- keywords: benched, disable an option, zero means never, default is one, turn off option -->
 
-Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. The box then reads **Benched**.
+Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. In the **Chips** style, the line under the weight box then reads *Benched*. In the **Multiline** style, its chance reads 0%.
 
 ## Parts
 <!-- keywords: nested, inside another, compose, sub item, pieces, combine several, arrow name -->
@@ -113,7 +113,7 @@ A value that is exactly one chip is a **part** of the placeholder that holds it.
 ## World or Unique
 <!-- keywords: same everywhere, different each spot, consistent across text, separate roll, duplicates, repeat result, scope, per use, two must differ -->
 
-Each chip of a Wildcard chooses how it shares the roll. Select the placed chip to open [Chip Options](Prompts#chip-options), and pick **World** or **Unique**:
+Each chip of a Wildcard chooses how it shares the roll. Select the placed chip to open [Chip Options](Prompt-Chips#chip-options), and pick **World** or **Unique**:
 
 | Scope | Behavior |
 |---|---|
@@ -124,7 +124,7 @@ A placeholder that can't roll locks the choice on **World**.
 
 > ⚠️ **Independent doesn't mean different.** Two Unique chips can roll the same value. Three chips from a list of ten values show a repeat about 28% of the time. Where two chips *must* differ, such as two towns, give each its own placeholder with values the other doesn't have.
 
-## How a chip reads in the editor
+## How a Chip Reads in the Editor
 <!-- keywords: letter suffix, what does a mean, letters changed, custom caption, hover tooltip, display name, braces in text -->
 
 | Chip | Reads as | Example |
@@ -133,7 +133,14 @@ A placeholder that can't roll locks the choice on **World**.
 | **Unique** | The name plus a letter, one sequence per placeholder | `Town Name (A)`, `Town Name (B)` … `Town Name (AA)` |
 | **Labeled** | The label you typed in Chip Options | `Hometown` |
 
-The letters follow the order of the world: entities first, in the order of the Entities tree. Then locations, then the Travel Hints, connection by connection: first the trip away from the location you made the connection from, then the trip back. Then traits, trait groups, stats, dictionaries, the world's own prompt fields and openings, and last the placeholders' own values.
+The letters follow the order of the world:
+
+1. Entities, in the order of the Entities tree
+2. Items, then locations
+3. The Travel Hints, connection by connection: the trip away from the location you made the connection from, then the trip back
+4. Traits, trait groups, stats and dictionaries
+5. The Overview's texts: AI-Facing Description, readmes, openings and world prompts
+6. The placeholders' own values
 
 - **Letters aren't stored.** Remove the first chip, and the next one becomes **(A)**. A letter tells two chips apart, but it isn't a permanent name.
 - **Give a Unique chip a Label** in Chip Options when you want a name that stays. Only Unique chips have the **Label** field.
@@ -151,6 +158,8 @@ A text field that holds a chip has a **Values** tab beside **Edit**. It opens ev
 
 The tab shows when the world has a placeholder. It is disabled until the text holds a chip.
 
+**Reroll**, a dice icon button, draws the field's chips again for **Preview** and **Values**. The text doesn't change. Its tooltip reads *Reroll placeholders*.
+
 ## Built-in Chips
 <!-- keywords: user macro, char macro, insert my name, hero name, double braces, sillytavern style, predefined, you or the player -->
 
@@ -159,11 +168,11 @@ The `{` menu lists two chips under **Built-in**, above your own placeholders. Th
 | Chip | Typed form | Reads as | Offered in |
 |---|---|---|---|
 | **Persona Name** | `{{user}}` | The persona's name. With no persona: "you" in an opening, "the player" elsewhere. | Every prose field |
-| **Character Name** | `{{char}}` | The name of the entity the text belongs to | An entity's own fields |
+| **Entity Name** | `{{char}}` | The name of the entity the text belongs to | An entity's own fields |
 
-Type the typed form in any prose field, and it becomes the chip. In trait text the player carries, **Character Name** reads as **Persona Name**. See [The Persona Name Chip](Persona-Authoring#the-persona-name-chip) and [The Character Name Chip](Persona-Authoring#the-character-name-chip).
+Type the typed form in any prose field, and it becomes the chip. In trait text the player carries, **Entity Name** reads as **Persona Name**. See [The Persona Name Chip](Persona-Authoring#the-persona-name-chip) and [The Entity Name Chip](Persona-Authoring#the-entity-name-chip).
 
-## The roll stays for the playthrough
+## The Roll Stays for the Playthrough
 <!-- keywords: change mid game, persist, stays the same, reroll, decided when, after loading, fresh result, locked in, random -->
 
 > 💡 A Wildcard rolls **one time, when a game starts**, and the save keeps the result. The stranger with gray eyes on turn one still has them on turn ninety. A loaded save changes nothing. A new game rolls again.
@@ -178,19 +187,19 @@ A pin keeps a placeholder at one value while a condition is true. The playthroug
 |---|---|---|
 | A stat descriptor | The stat is in that band | The pin button on the [descriptor row](World-Editor-Stats#pins-on-a-descriptor) |
 | A location | The player is there | The location's [**Pins** tab](World-Editor-Locations#placeholder-pins) |
-| A trait | The trait is active | The trait's [**Pins** tab](World-Editor-Traits#placeholder-pins). A trait can [pin a blueprint](World-Editor-Traits#pins-by-blueprint), and each owner's copy takes the pin. |
+| A trait | The trait is active | The trait's [**Pins** tab](World-Editor-Traits#placeholder-pins). A trait can [pin a blueprint](World-Editor-Blueprints#pins-by-blueprint), and each owner's copy takes the pin. |
 | A placeholder value | That value is the placeholder's current value | The pin button beside the value. Its panel has **Add Placeholder Pin**. |
 
-When two sources pin the same placeholder, the higher row in this table wins. A [script](ScriptsGuide) can also pin and unpin a placeholder, and a script pin wins over all four.
+When two sources pin the same placeholder, the higher row in this table wins. Within one kind, the source lower in its own list wins. A [script](ScriptsGuide) can also pin and unpin a placeholder, and a script pin wins over all four.
 
-The placeholder's **Pins** tab gathers every pin aimed at it. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in.
+The placeholder's **Pins** tab gathers every pin aimed at it. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in. A row's first box moves its pin to another source of the same kind.
 
-## Where chips work
+## Where Chips Work
 <!-- keywords: which fields, supported places, cant insert, shows raw text, not replaced, listing blurb, menu order, allowed boxes -->
 
 Chips resolve **both** in the text the AI reads and in the text the player sees. Type `{` in each field that has the chip picker:
 
-- names and descriptions of entities, locations, stats and traits
+- names and descriptions of entities, items, locations, stats and traits, including an entity's Stranger Name and an item's Unidentified Name
 - the pronouns of an entity
 - the relationship labels of an entity
 - stat descriptors and dictionary entries
@@ -199,6 +208,7 @@ Chips resolve **both** in the text the AI reads and in the text the player sees.
 - openings
 - both readme tabs
 - the world's AI-Facing Description
+- the world's own prompts on the Overview, which offer no Built-in chips
 - the values of other placeholders
 
 The `{` menu lists the **Built-in** chips first, then ungrouped placeholders, then each group, then the placeholders of each owner. In an owner's own fields, that owner's placeholders come first.
@@ -207,16 +217,19 @@ A [blueprint chip](#blueprint-chips) works only in the text of an original trait
 
 > ⚠️ **The world's Player-Facing Description takes no chips.** The library shows it before a playthrough exists, so there are no rolls to use.
 
-## Placeholders that belong to an entity or a dictionary
+## Placeholders That Belong to an Entity or a Dictionary
 <!-- keywords: npc own variables, travels with card, portable, exported together, lorebook own list, private to one, owner -->
 <!-- route: worldEditorEntity.placeholders -->
 
-An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. These placeholders travel with their owner in an entity card, a dictionary file and a published listing. They show under their owner in the list, not in a group.
+An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. In the World Editor the tab shows in Advanced mode only.
+
+- **These placeholders go with their owner** in an entity card, a dictionary file and a published listing.
+- **They show under their owner in the list**, not in a group.
 
 ## Groups
 <!-- keywords: organize variables, tidy shared list, sort tokens, folder tree -->
 
-Groups are folders for the shared list, like the groups on the **Entities** tab. The **+** menu offers **Add Group**, **Add Placeholder** and **Add Blueprints Group**. Drag a placeholder under a group to put it there, and drag a group under another group to nest it.
+Groups are folders for the shared list, like the groups on the **Entities** tab. The **Add to Placeholders** menu offers **Add Group**, **Add Placeholder** and **Add Blueprints Group**. Drag a placeholder under a group to put it there, and drag a group under another group to nest it.
 
 Groups are for the editor only. They **never reach the AI**, and an entity card or a dictionary file doesn't keep them.
 
@@ -225,19 +238,19 @@ Groups are for the editor only. They **never reach the AI**, and an entity card 
 
 A blueprint is a placeholder that exists to be copied. Each entity that needs it gets its own [copy](#copies), so one *Class Garb* can read a different value on each owner.
 
-Select **+**, then **Add Blueprints Group**. A group named **Blueprints** appears. It works like the [Blueprints group of the Traits tab](World-Editor-Traits#blueprints):
+Select the **Add to Placeholders** icon button (+), then **Add Blueprints Group**. A group named **Blueprints** appears. It works like the [Blueprints group of the Traits tab](World-Editor-Blueprints#blueprints):
 
 - **A world has one Blueprints group.** It stays at the top level and holds world placeholders and groups. **Add Blueprints Group** leaves the menu while one exists.
 - **A blueprint is never a World placeholder.** One placeholder never reads different values in different places. With no Custom Persona entity, the player is the one owner, so a blueprint reads its own values there.
 - **A move out of the group is refused while something uses the blueprint.** A trait's text or pin, a blueprint value or a copy counts as a use. The notice names each use.
 - **Remove the group, and the same check runs.** An unused group removes with no notice.
 
-Move a world placeholder into the group to make it a blueprint. The move is refused while a chip or pin outside the allowed places names it, such as world text, a location or a stat descriptor.
+Move a world placeholder into the group to make it a blueprint. The move is refused while a chip or pin outside the allowed places names it. Places outside them include world text, a location and a stat descriptor.
 
 ## Copies
 <!-- keywords: appeared on its own, auto created, cant rename, cant move, dimmed option, where did it come, dotted name, leftover, reword for one npc, joins another world -->
 
-A copy is a placeholder that an entity owns. It reads its blueprint live, and it appears by itself.
+A copy is a placeholder that an entity owns. It follows its blueprint's values as they change, and it appears by itself.
 
 - **A copy appears when a trait needs it.** Add, link or move a trait that pins or places a blueprint, and its owner gets a copy. Copies of the blueprints that its values place come with it.
 - **A top-level trait makes copies for every Playable and Persona-Only entity** and for the Custom Persona entity, so each playable persona can customize them.
@@ -245,7 +258,7 @@ A copy is a placeholder that an entity owns. It reads its blueprint live, and it
 - **A copy stays with its owner.** A drag to another owner, the world list or a group is refused. **Duplicate** is hidden.
 - **An untouched copy goes when its last use leaves.** A copy you edited stays, so your work is never deleted. The Test Bench notes it.
 
-A copy's panel lists **Blueprint Values** and **Own Values**. A copy is **live until edited**. You change one value at a time:
+A copy's panel lists **Blueprint Values** and **Own Values**. Each value follows the blueprint until you edit that value. You change one value at a time:
 
 | Change | What it does |
 |---|---|
@@ -254,13 +267,17 @@ A copy's panel lists **Blueprint Values** and **Own Values**. A copy is **live u
 | Add a value | **Add Value** under **Own Values** adds an option that only this owner has |
 | Remove a value | The value stays in the list, dimmed and marked **Removed**. **Reset** restores it. |
 
-A value that the blueprint adds later shows in every copy. A copy keeps its blueprint's value ids, so a pin that names a value still finds it after you reword it. **Reset** returns one value. **Reset to Blueprint** returns them all. **Blueprint changed** shows on a value when the blueprint changed it after your edit. **Edit Blueprint** in the footer selects the blueprint.
+- **A value that the blueprint adds later shows in every copy.**
+- **A copy keeps its blueprint's value ids.** A pin that names a value still finds it after you reword it.
+- **Reset** returns one value. **Reset to Blueprint** returns them all.
+- **Blueprint changed** shows on a value when the blueprint changed it after your edit.
+- **Edit Blueprint** in the footer selects the blueprint.
 
 ### Copies in Other Worlds
 
 An entity card carries the blueprints its copies reach, so a copy keeps its origin. A library persona's links keep their overrides.
 
-When an entity joins a world, each copy binds to a blueprint by id, then by unique name. With no match, the copy becomes a plain owned placeholder with its values, and the pins that named the blueprint move to it.
+When an entity joins a world, each copy binds to a blueprint by id, then by unique name. With no match, the copy becomes a plain owned placeholder with its values. The pins that named the blueprint move to it.
 
 ## Blueprint Chips
 <!-- keywords: link icon on token, paste refused, cant use here, one text many npcs, owner wording, fallback order, needs an owner -->

@@ -21,10 +21,11 @@ export function useScriptWorldNames(): ScriptWorldNames {
   const playStats = gameData?.playStats;
   const locations = gameData?.locations;
   const items = gameData?.items;
+  const currencies = gameData?.currencies;
   // `stats` is the world's play stats in every box.
   const names = useMemo(() => statCodeWorldNames({
-    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items,
-  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items]);
+    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies,
+  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations, items, currencies]);
   const placeholderPlaces = useMemo(
     () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
     [placeholders, placeholderOwners, placeholderGroups],

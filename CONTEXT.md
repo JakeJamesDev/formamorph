@@ -53,15 +53,23 @@ Starter code with slots that a script box's **Templates** menu fills in and inse
 _Avoid_: snippet, preset, recipe, example
 
 **Formaquestion**:
-The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs, the current Surface, and world text from the open world while Read the World is on: in the World Editor, the sections of the World Index that match the question, unsaved edits included, in a world block with a budget of its own; in game, the matching rows of the Player View, the dictionary entries that fire, and the story so far in a block of its own. A Formaquestion Tool the player turns on and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts, read the open world too: the full world in the editor, the Player View in game (ADR-0011, ADR-0014).
+The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It never edits a save or a setting. It changes the open world or the screen only through an action the player clicks on an answer, and writes only in a World Editor: Insert writes a code block into the open script home, an entity card's Add puts a drafted entity at the root of the open world, and Take Me There opens a screen (ADR-0015). A request carries the docs, the current Surface, and world text from the open world while Read the World is on: in the World Editor, the sections of the World Index that match the question, unsaved edits included, in a world block with a budget of its own; in game, the matching rows of the Player View, the dictionary entries that fire, and the story so far in a block of its own. A Formaquestion Tool the player turns on and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts, read the open world too: the full world in the editor, the Player View in game (ADR-0011, ADR-0014).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
+
+**Intent**:
+What a Formaquestion question asks for, one of five: Chat (small talk, not about Formamorph), Help (a Formamorph question with no code), Code (scripts and stat code), World (the open world and its lore) and Create (a request to make an entity). The Intent Classifier gives it, and it decides which blocks and functions the answer request carries. A question has one Intent; one with two asks takes the first ask's.
+_Avoid_: route, category, mode
+
+**Intent Classifier**:
+The Formaquestion request that gives a question its Intent before the answer request, sent alongside the pick requests. It reads the question, the last exchange and the Surface, and has its own prompt, sampler pins and endpoint. A reply that names no known Intent sends the full request. A setting turns it on; the player sees it as Sort Questions.
+_Avoid_: router, sorter
 
 **World Index**:
 The open world's authored parts as sections in the Docs Index shape, one page per item: entities, locations, items, traits, stats with their code, world scripts, World Tools, dictionary entries and the world prompts. Placeholders read as their authored chips. Formaquestion ranks it with the same sources as the guide, as a second pool. Built from the World Editor's live world, and rebuilt when a slice changes.
 _Avoid_: world search index, lore index
 
 **Player View**:
-What the player has met in one playthrough, in player text only: met and discovered entities (an unrevealed one under its scene alias alone), the current location and every location a turn recorded, the items the player held or saw visible where they stood, the visible stats and the player's own active traits. It holds no AI description, AI summary, diary, script memory line or hidden content. It reads the current snapshot and the snapshots before it, so an undo moves it back. The in-game world that Formaquestion reads (ADR-0014).
+What the player has met in one playthrough, in player text only: the Met entities (an unmet stranger only under a scene alias the player saw, never its true name), the current location and every location a turn recorded, the items the player held or saw visible where they stood, the visible stats and the player's own active traits. It holds no AI description, AI summary, diary, script memory line or hidden content. It reads the current snapshot and the snapshots before it, so an undo moves it back. The in-game world that Formaquestion reads (ADR-0014).
 _Avoid_: player world, known world, spoiler-safe world
 
 **Mascot**:
@@ -96,8 +104,30 @@ _Avoid_: auto layout (as a live behavior), nudge
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
 
+**Stranger**:
+An entity the player has not met. Only an entity with a Stranger Name can be one. The player sees it under the latest alias the story gave it, else its Stranger Name, and never its true name. When both are blank it has no label and no player surface shows it. User copy says "stranger" and "the name you know"; "label" stays internal.
+_Avoid_: unknown entity, hidden entity
+
+**Met**:
+Whether the player knows who an entity is. An entity starts met in any of these cases:
+- It has no Stranger Name.
+- It has a relationship with the played persona, on either side.
+- One of its Known In picks is one of the persona's Locations or contains one. Nearby and Nowhere pick nothing.
+- It is a runtime character.
+
+Otherwise the player meets it when the story names it while it is here. A name inside dialogue counts. A met entity stays met. The Met set lists every met entity, wherever it is. It feeds the map and the Help window.
+_Avoid_: known, discovered, revealed
+
+**In Scene**:
+The entities here that took part in the story in one of the last 3 turns. An entity takes part when the prose shows it or the planner casts it. A name inside dialogue does not count. When the player moves, only followers keep the turns from before the move. An entity that leaves the player's place is out of scene at once. The In Scene set feeds the stat picker, the Traits tab and Give.
+_Avoid_: present, visible, participants
+
+**Look Around**:
+Everyone here the player would see if they looked around: In Scene first, then the quiet ones, each under their label. It feeds the Entities tab.
+_Avoid_: scene list, roster
+
 **Item**:
-An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Uses, When Empty, State, Bound, Slot, Unidentified Name and Unidentified Description. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
+An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own Value in a Currency, Stackable, Uses, When Empty, State, Bound, Slot, Unidentified Name and Unidentified Description. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
 _Avoid_: object, thing, entity (for an item)
 
 **Item Copy**:
@@ -128,9 +158,46 @@ _Avoid_: unknown, mystery, disguised
 An authored starting Item Copy: where it goes (the Persona, an entity or a location), a quantity, Hidden, and a source. The source is one item. A new game's seed turns each Placement into Item Copies.
 _Avoid_: spawn, starting item
 
+**Currency**:
+A kind of money in the world's ordered Currencies list, with one Backing. An item's Value is priced in one Currency, or none. The first in the list is the Default, which a new item takes. An item with no Currency has no price, whatever its Value holds.
+_Avoid_: value unit, money type
+
+**Backing**:
+What holds a Currency: a stat, coin items, or nothing, for a name only. A stat backing lists each stat once: a Global Stat, a stat a Persona links under its original id, or a Persona's own stat.
+
+**Coin**:
+A row of a coin-backed Currency: a Stackable item and its worth in the base unit. The smallest coin is worth 1, no two coins share a worth, and an item is a coin of one Currency at most. The Breakdown reads an item's Value as coins, largest first, such as "1 Gold, 5 Copper".
+_Avoid_: denomination
+
+**Balance**:
+What an owner holds in a Currency, or that the owner is untracked, which is never the same as 0. Coins count the visible, identified copies at the owner, and the player always tracks them. An entity tracks them when a Placement of one of the coins starts at it. A stat counts for whoever has it, and a Global Stat counts for the player alone. A name-only Currency tracks no one. Players read it as **Money**.
+_Avoid_: wallet, funds
+
 **Slot**:
-A named place in the world's slot list where an item is equipped, such as Hand or Ring. Its capacity sets how many item units fit; an item's slot size says how many it takes. The Persona and every entity share one list.
-_Avoid_: equipment slot list per entity
+A name in the world's slot list where an item is equipped, such as Main Hand or Ring. A slot has no capacity of its own: each Body that holds it gives it one, and one capacity unit holds one Item Copy. One list serves every Body, so an item's slot works in any Body that has it.
+
+**Slot Rule**:
+An item's slots, in order, and a mode. **Either of** takes one of them, the first free or the one named. **All of** takes one unit in each, and the owner's Body must hold them all. An Item Copy stores the chosen slot, or the first listed under All of; the rule says which slots it occupies. An item without one can't be equipped.
+_Avoid_: slot size, two-handed flag
+
+**Body**:
+A named, ordered list of slot entries, each a slot and its capacity (absent = 1), such as Humanoid with Head and Hand ×2. The world holds an ordered Body list. An entity picks a Body, the Default, or None; None gives the owner no slots.
+_Avoid_: body type, form, paperdoll
+
+**Body Layout**:
+A Body's figure: its Backdrop and one Slot Box per capacity unit. It is display only: scripts and prompts don't see it.
+
+**Backdrop**:
+What a Body Layout's boxes sit on: Humanoid, Quadruped, Plain or a Custom Image. Its size is an aspect ratio.
+
+**Slot Box**:
+Where one capacity unit of a Body entry sits on the Backdrop, stored as fractions of the Backdrop. A smaller box draws above a larger one.
+
+**Default Body**:
+The first Body in the world's list. Every owner without a pick uses it: an entity with no pick, a library character and a character the AI introduces. A world with no Bodies has no Default, so no owner has slots.
+
+**Body in force**:
+The Body an owner equips into right now, from the one resolver every slot reader uses. The latest-on active trait Body row wins, then a script's base Body, then the authored pick. An entity reads its own pick. The played Persona reads a world persona's own pick, or the Custom Persona entity's under None or a library persona. A pick whose Body is gone reads as the Default.
 
 **Persona**:
 The entity that fills the player slot for a playthrough. It comes from the player's library or from the world's entities that carry the Persona mark. A save names one, or an explicit None.
@@ -187,7 +254,7 @@ What a Supporter shows to other people: a badge, a tier name color, a Profile Im
 _Avoid_: perks, rewards, supporter status
 
 **Supporters wall**:
-The page on formamorph.ai that lists linked accounts with a tier, Supporter+ first and longer tenure first. It never lists a Patreon member who did not link.
+The list of linked accounts with a tier, Supporter+ first and longer tenure first. It is a page on formamorph.ai and a tab of the Credits dialog, and both render one component. It never lists a Patreon member who did not link.
 _Avoid_: hall of fame, donor list, credits
 
 **Patreon link**:
@@ -195,15 +262,23 @@ The tie between one Formamorph account and one Patreon user, made in the account
 _Avoid_: Patreon login, connection (the AI endpoint word), integration
 
 **Formamorph AI**:
-The built-in endpoint preset for Supporters, next to the Demo AI. Turns go through Formamorph's server to an AI provider, against a monthly allowance. Its model, context window and output limit come from the Hosted state and can't be edited. It is never stored and never probed.
+The built-in endpoint preset for Supporters, next to the Demo AI. Turns go through Formamorph's server to an AI provider, against a weekly allowance. Its model, context window and output limit come from the Hosted state and can't be edited. It is never stored and never probed.
 _Avoid_: hosted tier (in copy), premium AI, the proxy
 
 **Hosted state**:
 What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, locked or age gate), its context window and output cap, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
 _Avoid_: usage, quota, entitlement (the Patreon word)
 
+**Allowance Ring**:
+A small ring between Help and Send that fills as the week's Formamorph AI allowance is used. It shows while any prompt can send to Formamorph AI. Its figure holds during a turn and moves when the turn ends. Selecting it opens a popover with the usage lines and the Usage breakdown, or the state's reason and actions.
+_Avoid_: usage meter, quota ring
+
+**Usage breakdown**:
+Where one week's Formamorph AI use went, as whole percents over seven groups (Narration, Story Planning, Choices, Stats and World Tracking, Inventory, Memory, Help and Editor) plus an Other row above zero. A single prompt at or above the server's breakdown threshold is named under its group. Shown in AI settings, and in the Allowance Ring's popover.
+_Avoid_: usage chart, cost split (it shows percents, never dollars)
+
 **Spend subject**:
-What Formamorph AI spend is counted against: the Patreon membership for a pledge, or the grant for a staff grant. It is not the account, so relinking Patreon or making a new account keeps the month's spend.
+What Formamorph AI spend is counted against: the Patreon membership for a pledge, or the grant for a staff grant. It is not the account, so relinking Patreon or making a new account keeps the week's spend.
 _Avoid_: account (for spend), payer, customer
 
 **Permissive License**:

@@ -11,15 +11,15 @@ function palette() {
 }
 
 describe('prompt chips reference', () => {
-  it('lists Persona Name and Character Name under Built-in, each with its mark', () => {
+  it('lists Persona Name and Entity Name under Built-in, each with its mark', () => {
     render(<PromptChipsReference />);
-    expect(palette()).toHaveTextContent(/^Built-in\s*Persona Name\s*Character Name\s*Town$/);
-    for (const name of ['Persona Name', 'Character Name']) {
+    expect(palette()).toHaveTextContent(/^Built-in\s*Persona Name\s*Entity Name\s*Town$/);
+    for (const name of ['Persona Name', 'Entity Name']) {
       expect(within(palette()).getByRole('button', { name }).querySelector('[data-builtin-mark]')).not.toBeNull();
     }
   });
 
-  it('previews Character Name as the sample owner’s name', async () => {
+  it('previews Entity Name as the sample owner’s name', async () => {
     render(<PromptChipsReference />);
     // The field has no accessible region; its find-bar identity is its caption.
     const field = document.querySelector<HTMLElement>('[data-find-field="Entity Description"]');

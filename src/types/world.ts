@@ -364,6 +364,13 @@ export interface Trait {
   mode?: TraitMode;
   /** Scripts with this trait as `self`. Absent = none. */
   scripts?: Script[];
+  /** The Body its owner takes while it is active. Absent = no Body row. */
+  body?: TraitBodyRow;
+}
+
+/** A trait's Body row. Absent `pick` = blank: the row sets no Body. */
+export interface TraitBodyRow {
+  pick?: BodyPick;
 }
 
 /** A trait's non-Optional mode. */
@@ -395,7 +402,13 @@ export interface Entity {
    *  never in the cast (see lib/owners). At most one per world, at the root. Excludes the Persona marks and
    *  implies persona-only. */
   customPersona?: boolean;
+  /** The Body it equips into. Absent = the Default Body. */
+  body?: BodyPick;
   type?: string;
+  /** What the player calls the entity before meeting it. Absent, the entity starts met (see lib/presence). */
+  strangerName?: string;
+  /** What the player reads about the entity before meeting it. */
+  strangerDescription?: string;
   /** Shown to the player in game. */
   playerDescription?: string;
   /** Full description sent to the AI. */
@@ -547,8 +560,21 @@ export interface ItemTraitEffect {
   duration?: ItemEffectDuration;
 }
 
-/** What an item's value counts in: a stat (such as Gold), or free text. */
-export type ItemValueUnit = { kind: 'stat'; statId: string } | { kind: 'text'; text: string };
+/** One coin of a coin-backed Currency: an item and its worth in the base unit. The smallest coin is worth 1. */
+export interface CurrencyCoin {
+  itemId: string;
+  worth: number;
+}
+
+/** What holds a Currency: one stat, coin items, or nothing, for a name only. */
+export type CurrencyBacking = { kind: 'stat'; statId: string } | { kind: 'coins'; coins: CurrencyCoin[] } | { kind: 'name' };
+
+/** A kind of money in the world. The world's first is the Default, which a new item takes. */
+export interface Currency {
+  id: string;
+  name: string;
+  backing: CurrencyBacking;
+}
 
 /** What a copy's last use leaves: the copy at zero uses, nothing, one copy of another authored item, or the copy
  *  at zero uses with a new State. */
@@ -572,11 +598,15 @@ export interface Item {
   images?: GalleryImage[];
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
+  /** What it shows on the doll and in rows: an icon id, or `'none'` for its image. Absent = Auto. */
+  icon?: string;
   /** Placeholders of this item's own, live beside the world's through the combined view. They resolve once
    *  per playthrough, shared by every Item Copy. */
   placeholders?: Placeholder[];
+  /** What it's worth, in its Currency's base unit. */
   value?: number;
-  valueUnit?: ItemValueUnit;
+  /** Absent = no price, whatever `value` holds. */
+  currencyId?: string;
   /** Absent = stackable. Never read while `uses` is 2 or more. */
   stackable?: boolean;
   /** The uses each Item Copy starts with, from 1. Absent = unlimited. */
@@ -587,10 +617,8 @@ export interface Item {
   state?: string;
   /** The player cannot drop or give its Item Copies. */
   bound?: boolean;
-  /** The world slot it equips into. Absent = not equippable. */
-  slotId?: string;
-  /** The slot capacity one Item Copy takes. Absent = 1. */
-  slotSize?: number;
+  /** The slots it equips into. Absent = not equippable. */
+  slotRule?: SlotRule;
   statEffects: ItemStatEffect[];
   traitEffects: ItemTraitEffect[];
   /** Any one row that holds lets an owner equip it. Empty = always. */
@@ -599,13 +627,50 @@ export interface Item {
   scripts?: Script[];
 }
 
-/** One equipment slot of the world, shared by the Persona and every entity. */
+/** Which slots an item equips into. `either` takes one of them, in this order; `all` takes one unit in each. Never empty. */
+export interface SlotRule {
+  mode: 'either' | 'all';
+  slotIds: string[];
+}
+
+/** One equipment slot of the world: a name only. Its capacity comes from each Body that holds it. */
 export interface Slot {
   id: string;
   name: string;
+}
+
+/** Where one capacity unit sits on a Body's figure, as fractions (0–1) of the Backdrop. */
+export interface SlotBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** What a Body's Slot Boxes are laid out on. */
+export type Backdrop = { kind: 'humanoid' | 'quadruped' | 'plain' } | { kind: 'image'; image: GalleryImage; /** 0 to 1. Absent = 1. */ opacity?: number };
+
+/** One slot a Body holds. */
+export interface BodyEntry {
+  slotId: string;
   /** Absent = 1. */
   capacity?: number;
+  /** One per capacity unit. */
+  boxes: SlotBox[];
 }
+
+/** A named set of slots an owner equips into, in the order the Inventory panel lists them. */
+export interface Body {
+  id: string;
+  name: string;
+  entries: BodyEntry[];
+  backdrop: Backdrop;
+  /** The Backdrop's width / height. */
+  aspect: number;
+}
+
+/** An entity's Body pick. Absent = the Default Body, the world's first. */
+export type BodyPick = { kind: 'none' } | { kind: 'body'; id: string };
 
 /** Where a placement puts its Item Copies: on the played Persona, on an entity, or at a location. */
 export type PlacementWhere =
@@ -622,6 +687,10 @@ export interface Placement {
   where: PlacementWhere;
   quantity: number;
   hidden?: boolean;
+  /** Starts equipped at new game. An owner placement's only; a location placement never carries it. */
+  equipped?: boolean;
+  /** The slot an Equipped Either of item starts in. Absent = the first free one. */
+  slotId?: string;
   source: PlacementSource;
 }
 
@@ -930,8 +999,12 @@ export interface World {
   tools?: Tool[];
   /** Authored items, in Items-tab order. Absent = none. */
   items?: Item[];
+  /** The world's money, in order. The first is the Default. Absent = none. */
+  currencies?: Currency[];
   /** Equipment slots. Absent = none. */
   slots?: Slot[];
+  /** Bodies, in order. The first is the Default. Absent = none, so no owner has a slot. */
+  bodies?: Body[];
   /** Starting Item Copies. Absent = none. */
   placements?: Placement[];
 }

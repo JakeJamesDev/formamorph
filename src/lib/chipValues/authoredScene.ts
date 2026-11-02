@@ -17,10 +17,12 @@ import { resolveStartingLocation } from '../startingLocation';
 import { seedNewGameStats, treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import { playStatWorld } from '../statLinks';
-import { seedItemCopies } from '../inventory';
+import { startingCopies } from '../inventory';
+import { openingPlayedEntity, type OpeningPersona } from '../openingState';
+import { startsMet, strangersInPlay } from '../presence';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Stat, StatGroup,
-  Trait, TraitGroup, WorldOverview,
+  Body, Connection, Currency, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Slot, Stat,
+  StatGroup, Trait, TraitGroup, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
 
@@ -39,6 +41,9 @@ export interface AuthoredWorld {
   placeholders?: Placeholder[];
   items?: Item[];
   placements?: Placement[];
+  currencies?: Currency[];
+  slots?: Slot[];
+  bodies?: Body[];
 }
 
 /** Overrides for a scene scoped tighter than "the world's own opening" — the Test Bench's Opening
@@ -58,6 +63,8 @@ export interface AuthoredSceneOptions {
   /** An entity's own trait text under that trait's pins over the entity's. Absent, a given `resolveEntity`
    *  reads it, else the trait's own pins do. */
   resolveOwned?: ResolveOwnedTraitText;
+  /** The persona the preview holds, for the start rule that leaves a stranger unmet. Absent is None. */
+  persona?: OpeningPersona;
 }
 
 
@@ -96,7 +103,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     reader ? bindBlueprintPins(trait, blueprints, reader) : trait, {}, placeholders,
   );
   const copiesOf = (reader: CopyReader | undefined) => (reader ? copyLookup(blueprints, reader) : undefined);
-  // An entity's trait reads its own pins and copies, bound for that entity, with the entity as the Character Name.
+  // An entity's trait reads its own pins and copies, bound for that entity, with the entity as the Entity Name.
   const ownTraitText: ResolveOwnedTraitText = options.resolveEntity
     ? (_trait, text, owner) => options.resolveEntity!(owner, text)
     : (trait, text, owner) => {
@@ -114,7 +121,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     defaultPicks(tree.traits, tree.groups);
   const activeIds = new Set(options.activeTraitIds ?? defaultsOf(global));
   const globalCopies = copiesOf(globalReader);
-  // A global trait's Character Name reads as the Persona Name, under a caller's resolve or own pins.
+  // A global trait's Entity Name reads as the Persona Name, under a caller's resolve or own pins.
   const globalText = (trait: Trait, text: string) => (options.resolve
     ? options.resolve(characterAsPlayer(text), globalCopies)
     : resolveOwnerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, globalReader), copies: globalCopies }));
@@ -126,6 +133,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     treeStatTraits(trees, Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]))),
   ));
   let copyCount = 0;
+  const openingPlayed = openingPlayedEntity(entities, options.persona);
 
   return {
     overview: worldOverview?.systemPrompt || '',
@@ -163,7 +171,13 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     resolveEntity,
     placeholders: world.placeholders ?? [],
     items: world.items ?? [],
+    currencies: world.currencies,
+    placements: world.placements,
     // The Item Copies a new game would start with, ids numbered since nothing keeps them.
-    itemCopies: seedItemCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
+    itemCopies: startingCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
+    // No persona is picked, so the played Body is the Custom Persona entity's.
+    equipment: { world: { bodies: world.bodies, slots: world.slots, entities } },
+    // Turn one's labels: nobody is met in play yet, so the start rule alone leaves a stranger unmet.
+    strangerLabels: strangersInPlay(entities, (entity) => startsMet(entity, openingPlayed, locations), {}).labels,
   };
 }

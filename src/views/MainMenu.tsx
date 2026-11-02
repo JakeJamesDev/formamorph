@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { newBlankWorld } from "@/lib/blankWorld";
 import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from "@/lib/scripts";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
-import { readBundledWorld } from "@/lib/bundledWorldText";
+import { bundledWorlds } from "@/lib/bundledWorldText";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
@@ -10,6 +10,10 @@ import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { CollapsingToggleGroup } from '@/components/ui/collapsing-toggle-group';
+import type { SegmentFold } from '@/lib/collapsingSegments';
+import { useHeaderFold } from '@/lib/useHeaderFold';
+import { MEASURE_LAYER } from '@/lib/measureLayer';
+import { KIND_BY_CARD_TYPE, KIND_LABELS } from '@/lib/catalogKinds';
 import { MAIN_MENU_CARD_OPTIONS, MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { clearLibraryModelPicks, deleteModelDescription, findModelUsage, type ModelUsage } from '@/lib/libraryVrmDelete';
 import { DEFAULT_AVATAR_URL, clearUserDefaultAvatar, readUserDefaultAvatar, setUserDefaultAvatar } from '@/lib/defaultAvatar';
@@ -19,6 +23,7 @@ import { withImportedWorldTools } from '@/lib/tools/worldTools';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
+import { Hint, Meta } from "@/components/ui/typography";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
@@ -55,11 +60,13 @@ import { useAiReachable } from '@/lib/useAiReachable';
 import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
+import { DELETE_ENTITY_CONFIRM } from '@/components/library/LibraryTileContextMenu';
 import { EntityPlaceholderArt } from '@/components/EntityPlaceholderArt';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import { isWorldOptimizing, useOptimizingWorldIds } from '@/lib/worldOptimizeProgress';
 import { onWorldSavedHere } from '@/lib/worldChangeSignal';
 import { useComponentUpdates } from '@/lib/useComponentUpdates';
+import { CreditsDialog } from '@/components/modals/CreditsDialog';
 import { UpdateAvailableDialog } from '@/components/modals/UpdateAvailableDialog';
 import { WorldUpdateReviewDialog } from '@/components/modals/WorldUpdateReviewDialog';
 import type { WorldUpdateReview } from '@/lib/useDownloadCoordinator';
@@ -68,7 +75,7 @@ import type { UpdateRow } from '@/lib/componentUpdates';
 import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldFlow, { type EnterWorldFlowHandle, type StartGame } from './EnterWorldFlow';
 import { clearDefaultPersona, readDefaultPersona, setDefaultPersona } from '@/lib/personaPick';
-import WorldStorageService from '../services/WorldStorageService';
+import WorldStorageService, { assertWorldFields } from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
 import ModelStorageService from '../services/ModelStorageService';
@@ -93,7 +100,8 @@ import { entityImageData, entityImages, primaryImage } from '@/lib/entityImages'
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
-import { filesFrom, importSummaryToast } from '@/lib/importFiles';
+import { filesFrom, importReportToast, storageCause, worldFileCause, type SkippedImport } from '@/lib/importFiles';
+import { dictionaryFileCause, writtenCause } from '@/lib/writtenImportError';
 import CommunityBrowserHost from './CommunityBrowserHost';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
@@ -129,7 +137,7 @@ import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
 import { isContestEvent } from "@/lib/serverEvents";
 import { placementsBy, judgingContestsOf } from "@/lib/contests";
 import { useContests } from "@/lib/useContests";
-import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
+import { EventBanner, EventBannerChips, EventBannerCount } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
 import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
@@ -204,9 +212,8 @@ const IMPORT_TARGET: Record<MainMenuCardTab, TargetAttribute> = {
 
 
 // The card grids fit as many columns as the width allows, from a per-tab minimum tile width. The
-// landscape minimum is the narrowest a medium world tile ever rendered under the old breakpoint
-// ladder (a 640px window's pair), so no window shows fewer columns than it used to — wider ones
-// simply gain more. Portrait character tiles are half a world tile less half a gutter.
+// landscape minimum matches a medium world tile in a 640px window. Portrait entity tiles are half a
+// world tile less half a gutter.
 const WORLD_MIN_TILE = 296;
 const ENTITY_MIN_TILE = (WORLD_MIN_TILE - 16) / 2;
 /** Columns for the detailed (community-card) layout — pure CSS, since it keeps no cell arrangement.
@@ -295,6 +302,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { promptWorld, promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
+  const [showCredits, setShowCredits] = useState(false);
   // DEV only: a canned override the prompt viewer falls back to, so its dev route is reachable on a
   // library holding no world that rewrites a prompt. Never set in prod.
   const [devPromptSample, setDevPromptSample] = useState<WorldOverview | null>(null);
@@ -389,7 +397,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showWorldPrompts, setShowWorldPrompts] = useState(false);
-  // Every opening lands on Changes, whichever view the last one was left on.
+  // Every opening shows Changes, whichever view the last one was left on.
   useEffect(() => { if (showWorldPrompts) setPromptView('changes'); }, [showWorldPrompts]);
   const [showSettings, setShowSettings] = useState(false);
   // Forces Settings to a specific tab when something deep-links into it (the AI setup gate → Endpoint).
@@ -433,9 +441,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
     if (devRoute?.modal === 'backup') setShowBackup(true);
     if (devRoute?.modal === 'community') openCommunityBrowser();
-    // The likers list hangs off a listing's details, so this route opens the catalog and lands there.
+    // The likers list opens from a listing's details, so this route opens the catalog.
     if (devRoute?.modal === 'likers') openCommunityBrowser();
-    // The add-on review hangs off a published world, so this route opens the catalog and lands there too.
+    // The add-on review opens from a published world, so this route opens the catalog too.
     if (devRoute?.modal === 'manageAddons') openCommunityBrowser();
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
@@ -443,6 +451,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (['worldEditor', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar'].includes(devRoute?.modal ?? '')) setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
+    if (devRoute?.modal === 'credits') setShowCredits(true);
     // The prompt viewer reads a world's overrides, so it opens on a canned one rather than on whatever the
     // library happens to hold — a world really selected from a card still wins over it.
     if (devRoute?.modal === 'worldPrompts') {
@@ -459,7 +468,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'entityEditor') {
       if (devRoute.fixture === 'gallery') {
         void import('@/lib/devPaneSamples').then(({ devGalleryEntity }) => setDraftEntity(devGalleryEntity(randomUUID())));
-      } else setDraftEntity({ id: randomUUID(), name: 'New Character' });
+      } else setDraftEntity({ id: randomUUID(), name: 'New Entity' });
     }
     if (devRoute?.modal === 'dictionaryEditor') setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
     // The publish dialog names itself from a payload, so it opens on a canned world rather than on
@@ -558,7 +567,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
   // One blank record per stored world, built from the id read that beats the metadata read to the screen.
   // The ids and their order are the same ones the metadata arrives in, so the grid the player waits in
-  // front of is the grid they end up with: same tiles, same sizes, same folders, filled in where it stands.
+  // front of is the grid they end up with: same tiles, same sizes, same folders, filled in where each tile is.
   const [skeletonWorlds, setSkeletonWorlds] = useState<WorldRecord[]>([]);
   // Local dictionary library (metadata only) shown on the Dictionaries tab.
   const [dictionaries, setDictionaries] = useState<DictionaryMetadata[]>([]);
@@ -706,7 +715,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [setListingOpener, handleOpenListing]);
 
   // The same lending for Feedback: a suspended account is told to ask there, and the deletion flow that
-  // tells it stands above this screen. Withdrawn on unmount, so the step offers no button it cannot honor.
+  // tells it renders above this screen. Withdrawn on unmount, so the step offers no button it cannot honor.
   const { setFeedbackOpener } = useAccountDeletion();
   useEffect(() => {
     setFeedbackOpener(() => setShowFeedback(true));
@@ -826,7 +835,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
   }, []);
 
-  // A world stored behind the menu, such as a download that lands after Community Creations closes, joins
+  // A world stored behind the menu, such as a download that finishes after Community Creations closes, joins
   // the grid. Saves of worlds the grid already holds are edits, which their own surfaces resync.
   const worldIdsRef = useRef(new Set<string>());
   worldIdsRef.current = new Set(worlds.map((world) => world.id as string));
@@ -854,7 +863,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    *
    * **The invariant this rests on:** at the moment the editor closes, the store equals what is on disk —
    * Save persists it, and Exit Without Saving has already run `discardChanges` to roll it back. An autosave
-   * moves the baseline it rolls back to, and Exit waits for a running one, so both still land on disk's copy.
+   * moves the baseline it rolls back to, and Exit waits for a running one, so both still end on disk's copy.
    * A future exit path that leaves the two apart (a recovery flow) has to read the payload back here.
    */
   const resyncSelectedWorld = useCallback((list: WorldRecord[], worldId: string) => {
@@ -879,7 +888,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         if (!isMountedRef.current) return;
         setSkeletonWorlds(existingIds.map((id) => ({ id, isLoading: true })));
         const firstRun = existingIds.length === 0;
-        const { failed, errors, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, readBundledWorld);
+        const { failed, errors, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS, bundledWorlds);
         if (!isMountedRef.current) return;
         if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
@@ -960,7 +969,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   useEffect(() => { refreshEntities(); }, [refreshEntities]);
 
-  // A download lands in the browser's copy of the library, not this one, so the grids re-read on the way
+  // A download writes to the browser's copy of the library, not this one, so the grids re-read on the way
   // out — the same handoff the World Editor modal has. Nothing here updates mid-browse, and nothing needs
   // to: the grids are behind a full-screen surface until this fires.
   const handleCommunityBrowserOpenChange = useCallback((next: boolean) => {
@@ -1034,8 +1043,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
   };
 
-  // Persist a dictionary and show its card — shared by the dictionary import and the lorebooks that ride
-  // along inside imported character cards.
+  // Persist a dictionary and show its card — shared by the dictionary import and the lorebooks inside
+  // imported character cards.
   const addDictionaryToLibrary = async (book: Dictionary, libraryDetails?: { author?: string }) => {
     const now = new Date().toISOString();
     await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book, libraryDetails });
@@ -1048,21 +1057,24 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const files = filesFrom(event);
     if (!files.length) return;
 
-    const parsed: { world: World; id: string }[] = [];
-    let skipped = 0;
+    const worldNoun = { one: 'world', many: 'worlds' };
+    const parsed: { world: World; id: string; fileName: string }[] = [];
+    const skipped: SkippedImport[] = [];
     let stored = 0;
     for (const file of files) {
       try {
         // Sanitize at the import boundary: the worker reads, parses and migrates the file to the current
         // version (off-thread: an image-heavy world is tens of MB), then we settle what its bundled content follows.
-        const { world, warning } = withImportedWorldTools(await resolveImportedWorld(await parseWorldFile(file)));
+        const migrated = await parseWorldFile(file);
+        assertWorldFields(migrated);
+        const { world, warning } = withImportedWorldTools(await resolveImportedWorld(migrated));
         if (warning) toast.warning(warning);
         const id = `uploaded-${randomUUID()}`;
         world.id = id;
-        parsed.push({ world, id });
+        parsed.push({ world, id, fileName: file.name });
       } catch (error) {
         console.error('Error parsing world file:', file.name, error);
-        skipped++;
+        skipped.push({ fileName: file.name, cause: worldFileCause(error), error });
       }
     }
 
@@ -1075,9 +1087,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const storeAll = async (tick: (done: number) => void) => {
         let last: { id: string; data: World } | null = null;
         let base = 0;
-        for (const [i, { world, id }] of parsed.entries()) {
-          // Storing is guarded per world: `storeWorld` rejects a shape `migrateWorld` can't complete (no
-          // `statUpdates`, say), and one such file must not abort the rest of the batch.
+        for (const [i, { world, id, fileName }] of parsed.entries()) {
+          // Storing is guarded per world: one failed store must not abort the rest of the batch.
           try {
             const data = mode === 'off' ? world : await applyWorldOptimize(world, mode, (done) => tick(base + done));
             data.id = id;
@@ -1089,14 +1100,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             last = { id, data };
           } catch (error) {
             console.error('Error storing world:', world.worldOverview?.name, error);
-            skipped++;
+            skipped.push({ fileName, cause: storageCause(error, worldNoun), error });
           }
           base += totals[i];
         }
         return last;
       };
       const last = grandTotal ? await withOptimizeProgress(grandTotal, storeAll) : await storeAll(() => {});
-      // A lone import opens the world's details; a batch just lands the cards.
+      // A lone import opens the world's details; a batch only adds the cards.
       if (files.length === 1 && last) {
         const d = last.data;
         loadWorldData(d, true, { stored: true });
@@ -1105,7 +1116,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       }
     }
     // A lone success needs no toast — the details modal above already shows what landed.
-    if (files.length > 1 || skipped) importSummaryToast(stored, skipped, { one: 'world', many: 'worlds' });
+    if (files.length > 1 || skipped.length) importReportToast(stored, skipped, worldNoun);
   };
 
   // Import one or more standalone dictionary `.json` files. Bad files are skipped. `parseDictionaryImport`
@@ -1113,37 +1124,42 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const importDictionaryFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = filesFrom(event);
     if (!files.length) return;
-    const parsed: { book: Dictionary; links: ComponentFileLinks; libraryDetails?: { author?: string } }[] = [];
-    let ok = 0, skipped = 0;
+    const dictionaryNoun = { one: 'dictionary', many: 'dictionaries' };
+    const parsed: { book: Dictionary; links: ComponentFileLinks; libraryDetails?: { author?: string }; fileName: string }[] = [];
+    let ok = 0;
+    const skipped: SkippedImport[] = [];
     for (const file of files) {
       try {
         // Foreign lorebooks (ST / character cards) carry no internal name — fall back to the filename.
         const fallbackName = file.name.replace(/\.[^.]+$/, '');
         const raw = JSON.parse(await file.text());
-        parsed.push({ book: parseDictionaryImport(raw, fallbackName), links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) });
-      } catch (err) {
-        console.error('Error importing dictionary:', file.name, err);
-        skipped++;
+        parsed.push({ book: parseDictionaryImport(raw, fallbackName), links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw), fileName: file.name });
+      } catch (error) {
+        console.error('Error importing dictionary:', file.name, error);
+        skipped.push({ fileName: file.name, cause: dictionaryFileCause(error), error });
       }
     }
 
-    // A lone file that carries relationships is reviewed; everything else lands straight in the library.
-    if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
+    // A lone file that carries relationships is reviewed; everything else goes straight to the library.
+    if (parsed.length === 1 && !skipped.length && hasComponentLinks(parsed[0].links)) {
       await reviewComponentFile('dictionary', parsed[0].book, parsed[0].links, parsed[0].libraryDetails);
       return;
     }
 
-    for (const { book, links, libraryDetails } of parsed) {
+    for (const { book, links, libraryDetails, fileName } of parsed) {
       try {
         // Through the same store either way: a file naming a listing refreshes the copy of it the player
         // already holds, rather than leaving a batch import with two rows of one name.
         if (links.source?.sourceId) await storeComponentFile('dictionary', book, links, libraryDetails);
         else await addDictionaryToLibrary(book, libraryDetails);
         ok++;
-      } catch (err) { console.error('Error importing dictionary:', book.name, err); skipped++; }
+      } catch (error) {
+        console.error('Error importing dictionary:', book.name, error);
+        skipped.push({ fileName, cause: storageCause(error, dictionaryNoun), error });
+      }
     }
     await refreshDictionaries();
-    if (ok || skipped) importSummaryToast(ok, skipped, { one: 'dictionary', many: 'dictionaries' });
+    if (ok || skipped.length) importReportToast(ok, skipped, dictionaryNoun);
   };
 
   // Import one or more character images (our WebP cards or SillyTavern PNGs) into the library. One combined
@@ -1159,16 +1175,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       if (!files.length) return;
     }
 
-    const parsed: Awaited<ReturnType<typeof importCharacterFile>>[] = [];
-    let skipped = 0;
+    const entityNoun = { one: 'entity', many: 'entities' };
+    const parsed: (Awaited<ReturnType<typeof importCharacterFile>> & { fileName: string })[] = [];
+    const skipped: SkippedImport[] = [];
+    let lorebooks = 0;
     for (const file of files) {
-      try { parsed.push(await importCharacterFile(file)); }
-      catch (err) { console.error('Error importing character:', file.name, err); skipped++; }
+      try { parsed.push({ ...(await importCharacterFile(file)), fileName: file.name }); }
+      catch (error) {
+        console.error('Error importing character:', file.name, error);
+        skipped.push({ fileName: file.name, cause: writtenCause(error, 'Formamorph cannot read this file.'), error });
+      }
     }
 
     // A lone card that carries relationships is reviewed. Its portrait still goes through the downscale
     // offer first, so the review stores the same picture an ordinary import would.
-    if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
+    if (parsed.length === 1 && !skipped.length && hasComponentLinks(parsed[0].links)) {
       const mode = await promptImagesBatch(entityImageData(parsed[0].entity), IMAGE_CAPS.entity);
       const record = await applyEntityImagesOptimize(parsed[0].entity, mode, () => {});
       await reviewComponentFile('entity', record, parsed[0].links, parsed[0].libraryDetails);
@@ -1178,12 +1199,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (parsed.length) {
       const mode = await promptImagesBatch(parsed.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
       const now = new Date().toISOString();
-      let lorebooks = 0;
       let stored = 0;
       const total = mode === 'off' ? 0 : parsed.reduce((n, p) => n + entityImages(p.entity).length, 0);
       const storeAll = async (tick: (done: number) => void) => {
         let done = 0;
-        for (const { entity, book, links, libraryDetails } of parsed) {
+        for (const { entity, book, links, libraryDetails, fileName } of parsed) {
           // Guarded per card: a portrait can blow the storage quota mid-batch, and that must not drop the rest.
           try {
             const record = await applyEntityImagesOptimize(entity, mode, () => tick(++done));
@@ -1197,9 +1217,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now, tags: libraryDetails?.tags ?? record.tags, author: libraryDetails?.author, libraryDetails }]);
             }
             stored++;
-          } catch (err) {
-            console.error('Error storing character:', entity.name, err);
-            skipped++;
+          } catch (error) {
+            console.error('Error storing character:', entity.name, error);
+            skipped.push({ fileName, cause: storageCause(error, entityNoun), error });
             continue; // the card never landed, so its lorebook has nothing to attach to
           }
           if (book) {
@@ -1210,10 +1230,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       };
       if (total) await withOptimizeProgress(total, storeAll);
       else await storeAll(() => {});
-      importSummaryToast(stored, skipped, { one: 'character', many: 'characters' },
-        lorebooks ? `, ${lorebooks} lorebook${lorebooks === 1 ? '' : 's'}` : '');
-    } else if (skipped) {
-      toast.error(`Couldn't import ${skipped} character${skipped === 1 ? '' : 's'}.`);
+      importReportToast(stored, skipped, entityNoun, lorebooks ? `, ${lorebooks} lorebook${lorebooks === 1 ? '' : 's'}` : '');
+    } else if (skipped.length) {
+      importReportToast(0, skipped, entityNoun);
     }
   };
 
@@ -1282,29 +1301,28 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const files = filesFrom(event);
     if (!files.length) return;
 
+    const avatarNoun = { one: 'player avatar', many: 'player avatars' };
+    const skipped: SkippedImport[] = [];
     let stored = 0;
-    let skipped = 0;
     for (const file of files) {
       try {
         const duplicate = await ModelStorageService.findDuplicate(file);
-        if (duplicate && !window.confirm(`"${duplicate.name}" is already in your library, and this file is identical.\n\nAdd it again anyway?`)) {
-          skipped++;
-          continue;
-        }
+        // Declining a duplicate is the player's choice: the file is neither imported nor skipped.
+        if (duplicate && !window.confirm(`"${duplicate.name}" is already in your library, and this file is identical.\n\nAdd it again anyway?`)) continue;
         await ModelStorageService.addModel(file);
         stored++;
       } catch (error) {
         console.error('Error importing model:', file.name, error);
-        skipped++;
+        skipped.push({ fileName: file.name, cause: storageCause(error, avatarNoun), error });
       }
     }
     await refreshModels();
-    importSummaryToast(stored, skipped, { one: 'player avatar', many: 'player avatars' });
+    if (stored || skipped.length) importReportToast(stored, skipped, avatarNoun);
   };
 
   // Open the editor on a blank character DRAFT — nothing is stored until the user hits Save in the editor.
   const handleCreateNewEntity = () => {
-    setDraftEntity({ id: randomUUID(), name: 'New Character' });
+    setDraftEntity({ id: randomUUID(), name: 'New Entity' });
   };
 
   // Open the editor on a blank dictionary DRAFT — nothing is stored until the user hits Save in the editor.
@@ -1420,7 +1438,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   useSurfaceOpenRequest((steps, clear) => {
     clear();
     const leave = editorLeaveRef.current;
-    // Settings and the World Editor open over the editor; a surface the page lands closes it.
+    // Settings and the World Editor open over the editor; a surface the page opens closes it.
     if (!showWorldEditor || !landsOnPage(steps) || !leave) {
       openSurfaceHere(steps);
       return;
@@ -1443,8 +1461,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         'Saving images for offline',
       );
       if (failed) {
-        // Named as the host's choice rather than a fault of the world: the pictures still show online.
-        toast.warning(`${cached} of ${urls.length} images saved. ${failed} couldn't be downloaded — those need a connection.`);
+        // Named as the host's choice rather than a fault of the world: the images still show online.
+        toast.warning(`${cached} of ${urls.length} images saved. ${failed} couldn't be downloaded and still need a connection.`);
       } else {
         toast.success(`This world's ${cached} linked image${cached === 1 ? '' : 's'} are available offline.`);
       }
@@ -1500,7 +1518,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       // Close the world modal
       setShowWorldModal(false);
 
-      toast.success('World duplicated successfully!');
+      toast.success('World duplicated');
     } catch (error) {
       console.error('Error duplicating world:', error);
       toastError(error, { headline: 'Failed to duplicate world' });
@@ -1528,7 +1546,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   //
   // Counted rather than fire-and-forget: the auth effect and the events poll both call this, so two
   // reads can be in flight at once, and a signing-out-and-back-in-as-someone-else round trip would
-  // otherwise let the previous account's count land last.
+  // otherwise let the previous account's count arrive last.
   const unreadReadId = useRef(0);
   const refreshUnreadCount = useCallback(() => {
     // Read straight from the flag rather than from the context: the events poll holds this callback, and a
@@ -1582,7 +1600,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   );
 
   // Which Community Creations tab to open on. Set when an event banner sends the player to its content;
-  // cleared as the browser closes, so the next plain visit lands on the catalog again.
+  // cleared as the browser closes, so the next plain visit opens on the catalog again.
   const [communityTab, setCommunityTab] = useState<BrowseTab | undefined>(undefined);
   // Read once: after an accepted deep link has opened, ordinary browser visits must not replay it.
   const [externalListing, setExternalListing] = useState(() => readCommunityListingHandoff(window.location.search));
@@ -1624,6 +1642,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [openCommunityBrowser]);
 
   const banners = useEventBanners(activeEvents);
+
+  // The top bar folds its parts in order by whether they fit side by side; see `headerFold`.
+  const topBarRef = useRef<HTMLDivElement>(null);
+  const [tabSteps, setTabSteps] = useState<Record<SegmentFold, number> | null>(null);
+  const topBarFold = useHeaderFold(topBarRef, tabSteps, `${COMMUNITY_ENABLED && banners.chips.length > 0}:${isAuthenticated && isStaff(currentUser)}`);
 
   // The staff half of the badge story. Its own channel because it counts work rather than news: it is
   // the same number for every staff member, and it clears when somebody — anybody — resolves a group.
@@ -1690,8 +1713,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [isAuthenticated, followCountNonce]);
 
   // Signing out is raised from more than this screen's button — the privacy prompt ends the session
-  // too, and so does a 401 answering any request — so the identity follows the service rather than only
-  // the one handler that used to clear it.
+  // too, and so does a 401 answering any request — so the identity follows the service rather than one
+  // handler.
   useEffect(() => AuthService.onSessionEnded(() => {
     setIsAuthenticated(false);
     setCurrentUser(null);
@@ -1704,7 +1727,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setCurrentUser((held) => (held && AuthService.isAuthenticated() ? AuthService.getCurrentUser() : held));
   }), []);
 
-  // The sign-in dialog is shared by every view, so a sign-in raised from Error Details lands here too.
+  // The sign-in dialog is shared by every view, so a sign-in raised from Error Details arrives here too.
   useEffect(() => onSignInSucceeded(() => {
     setIsAuthenticated(true);
     setCurrentUser(AuthService.getCurrentUser());
@@ -1720,12 +1743,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Handle logout
   const handleLogout = () => {
     AuthService.logout();
-    toast.success('Logged out successfully');
+    toast.success('Logged out');
   };
 
   // Every library grid's tile arrangement — folders, sizes, and the order the two sit in. Device-local,
   // one record per tab, seeded from the flat card order the library kept before tiles.
-  // The blanks stand in only until the metadata lands; `isLoadingWorlds` is what says which list is real,
+  // The blanks show only until the metadata arrives; `isLoadingWorlds` is what says which list is real,
   // rather than the length, so a genuinely empty library still reaches its empty state.
   const shownWorlds = isLoadingWorlds ? skeletonWorlds : worlds;
   const worldIds = useMemo(() => shownWorlds.map((world) => world.id as string), [shownWorlds]);
@@ -1770,30 +1793,26 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     ? `From group “${selectedGroupPreset.group.name}”: ${selectedGroupPreset.name}`
     : null;
 
-  // The singular noun for the selected card type — drives the contextual New/Import button labels.
-  const cardNoun = cardType === 'worlds' ? 'World'
-    : cardType === 'entities' ? 'Entity'
-    : cardType === 'models' ? 'Avatar'
-    : 'Dictionary';
-
   // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
-  // New/Import are contextual to the selected card type.
-  const actionButtons = (
+  // New/Import are contextual to the card type. A `measuring` copy is inert and carries no landing target.
+  const renderActionButtons = (tab: MainMenuCardTab, measuring = false) => {
+    const cardNoun = KIND_LABELS[KIND_BY_CARD_TYPE[tab]].one;
+    return (
     <>
       {COMMUNITY_ENABLED && (
         <GradientButton
           tone="indigo"
-          onClick={() => openCommunityBrowser()}
+          onClick={measuring ? undefined : () => openCommunityBrowser()}
         >
           <Globe className="mr-2 h-4 w-4" /> Community Creations
         </GradientButton>
       )}
 
       {/* Models are import-only: a VRM is authored in modelling software, so there's nothing to create here. */}
-      {cardType !== 'models' && (
+      {tab !== 'models' && (
         <GradientButton
           tone="amber"
-          onClick={() => {
+          onClick={measuring ? undefined : () => {
             if (cardType === 'worlds') handleCreateNewWorld();
             else if (cardType === 'entities') handleCreateNewEntity();
             else if (cardType === 'dictionaries') handleCreateNewDictionary();
@@ -1805,8 +1824,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       <GradientButton
         tone="green"
-        {...IMPORT_TARGET[cardType]}
-        onClick={() => {
+        {...(measuring ? {} : IMPORT_TARGET[tab])}
+        onClick={measuring ? undefined : () => {
           if (cardType === 'worlds') fileInputRef.current?.click();
           else if (cardType === 'dictionaries') dictionaryImportRef.current?.click();
           else if (cardType === 'entities') entityImportRef.current?.click();
@@ -1819,7 +1838,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {isAuthenticated && isStaff(currentUser) && (
         <GradientButton
           tone="purple"
-          onClick={() => setShowAdminPanel(true)}
+          onClick={measuring ? undefined : () => setShowAdminPanel(true)}
         >
           <Shield className="mr-2 h-4 w-4" /> Admin Panel
           {/* Reports and the review queue are the things in this panel that wait on somebody. The count
@@ -1833,7 +1852,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         </GradientButton>
       )}
     </>
-  );
+    );
+  };
+  const actionButtons = renderActionButtons(cardType);
 
   // One place in the tree, so the entry draft survives the Avatar step taking the whole screen.
   const flow = (
@@ -1867,22 +1888,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {/* Top control bar: card-type switcher (left) + action buttons/hamburger (center) + view toggle &
           settings (right). items-center keeps every control on the settings cog's centerline (the cog is
           tallest). The side cells are equal flex-1 so the center section sits at true viewport-center when
-          there's room; it only shifts/wraps once the sides can't yield more space. */}
-      <div className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
-        {/* Card-type switcher: folds to icons by its own cell's room, so the centered buttons keep their
-            labels longer. Hidden on mobile, where the bottom tab bar takes over. No min-w-0: the cell keeps
-            the switcher's folded width so it never overflows onto the centered buttons. */}
-        <div className="flex-1 hidden md:flex items-center justify-start">
-          <CollapsingToggleGroup options={CARD_TABS} value={cardType} onValueChange={setCardType} aria-label="Library" />
+          there's room, and drifts off center before anything folds. `useHeaderFold` folds the parts in order
+          once the cells no longer fit side by side: library tabs, then action buttons, then event badges. */}
+      <div ref={topBarRef} className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
+        {/* Card-type switcher, at the step the bar picks. Hidden on mobile, where the bottom tab bar takes
+            over. No min-w-0: the cell keeps the switcher's width, which pushes the center off center. */}
+        <div data-fold-left="" className="flex-1 hidden md:flex items-center justify-start">
+          <CollapsingToggleGroup options={CARD_TABS} value={cardType} onValueChange={setCardType} aria-label="Library" fold={topBarFold.tabs} onStepWidths={setTabSteps} />
         </div>
 
-        {/* Action buttons — full row on wide viewports, collapsed into a hamburger below 1000px. Auto width so
-            it centers between the flex-1 side cells; wraps only as a last resort. When collapsed, the right-cell
-            menu (Load Game / Settings) folds into this same popover so there's one menu, not two. */}
-        <div className="hidden min-[1000px]:flex items-center gap-4 flex-wrap justify-center">
+        {/* Action buttons: a row, or one menu button once the bar folds them. Folded, the right-cell menu
+            (Load Game / Settings) joins this same popover so there's one menu, not two. */}
+        <div className={topBarFold.center === 'full' ? 'flex items-center gap-4 justify-center' : 'hidden'}>
           {actionButtons}
         </div>
-        <div className="flex min-[1000px]:hidden">
+        <div className={topBarFold.center === 'menu' ? 'flex' : 'hidden'}>
           <Popover>
             <PopoverTrigger asChild>
               <GradientButton
@@ -1908,20 +1928,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </Popover>
         </div>
 
-        {/* Grid/detailed view toggle + settings (cog stays right-most). min-w-0 so a chip beside them can
-            be squeezed rather than pushing the cell past the bar's right edge. */}
-        <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
+        {/* Event badges + grid/detailed view toggle + menu (right-most). No min-w-0: every part keeps its
+            width, and the bar folds a step instead of squeezing one. */}
+        <div className="flex-1 flex items-center justify-end gap-2">
           {/* Dismissed banners, centered in the slack this cell was already holding rather than pushed
-              against the buttons beside it. It takes the free width and gives it back as it shrinks, so
-              a chip costs the bar no row and never crowds the controls it sits between. */}
-          {COMMUNITY_ENABLED && (
-            <EventBannerChips banners={banners} onOpenEvent={openEvent} className="grow justify-center" />
-          )}
+              against the buttons beside it; one count chip once the bar folds them. */}
+          {COMMUNITY_ENABLED && (topBarFold.badges === 'full'
+            ? <EventBannerChips banners={banners} onOpenEvent={openEvent} className="grow justify-center min-w-max" />
+            : <EventBannerCount banners={banners} onOpenEvent={openEvent} />)}
           <ToggleGroup
             type="single"
             value={layoutMode}
-            // shrink-0 here and on the menu beside it: a chip in this cell is the one thing that may give
-            // width back, so the controls it sits beside keep theirs at every viewport.
+            data-fold-live="toggle"
             className="shrink-0"
             // Clicking the active item again would otherwise clear the layout mode, which has no empty state.
             onValueChange={(v) => { if (v) setLayoutMode(v as 'grid' | 'detailed'); }}
@@ -1937,9 +1955,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </ToggleGroupItem>
             </Tip>
           </ToggleGroup>
-          {/* Right menu — hidden below 1000px, where its items fold into the center hamburger; the view toggle
+          {/* Right menu: gone once the action buttons fold, since its items join that menu; the view toggle
               then becomes the right-most control. */}
-          <div className="hidden min-[1000px]:block shrink-0">
+          <div className={topBarFold.center === 'full' ? 'block shrink-0' : 'hidden'}>
             <Popover>
               <Tip tip="Menu">
                 <PopoverTrigger asChild>
@@ -1964,6 +1982,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+
+        {/* Hidden copies of every step the bar can fold to, for `useHeaderFold` to measure. The action
+            buttons come once per library tab, so a new pick never changes the fold. */}
+        <div aria-hidden data-fold-measure-layer="" className={MEASURE_LAYER}>
+          {MAIN_MENU_CARD_TABS.map((tab) => (
+            <div key={tab} data-fold-measure="center" className="flex w-max items-center gap-4">{renderActionButtons(tab, true)}</div>
+          ))}
+          <GradientButton data-fold-measure="center-menu" tone="purple" tabIndex={-1}><Menu className="h-5 w-5" /></GradientButton>
+          <span data-fold-measure="right-menu" className="block w-max p-3"><Menu className="h-6 w-6" /></span>
+          {COMMUNITY_ENABLED && banners.chips.length > 0 && (
+            <>
+              <div data-fold-measure="badges-full" className="w-max"><EventBannerChips banners={banners} /></div>
+              <div data-fold-measure="badges-count" className="w-max"><EventBannerCount banners={banners} /></div>
+            </>
+          )}
         </div>
       </div>
 
@@ -2047,16 +2081,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           placeholderOf={(model) => <EntityPlaceholderArt id={model.id} name={model.name} />}
           emptyState={!isLoadingModels ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
-              <p className="max-w-md text-center text-helper text-muted-foreground">
-                No player avatars yet — use <span className="font-semibold">Import Avatar</span> to add a .vrm.
-              </p>
+              <Hint className="max-w-md text-center">
+                No avatars yet. Use <span className="font-semibold">Import Avatar</span> to add a .vrm file.
+              </Hint>
             </div>
           ) : undefined}
           renderCard={(model, { layout, fill, compact }) => {
             // A plain .glb carries no VRM metadata, so it has no license and its morph targets
             // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
             const glb = model.license?.metaVersion === null ? (
-              <Tip tip="Plain glTF: no license information, and morph targets aren't guaranteed.">
+              <Tip tip="Plain glTF file. It has no license information, and its morph targets might not work.">
                 <span
                   tabIndex={0}
                   className="self-start rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
@@ -2129,15 +2163,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           )}
           emptyState={isLoadingEntities ? undefined : entityPredicate ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
-              <p className="max-w-md text-center text-helper text-muted-foreground">
+              <Hint className="max-w-md text-center">
                 No personas yet. Open an entity and select the <span className="font-semibold">Persona</span> checkbox on its <span className="font-semibold">Profile</span> tab.
-              </p>
+              </Hint>
             </div>
           ) : (
             <div className="flex items-center justify-center py-16 px-4 select-none">
-              <p className="max-w-md text-center text-helper text-muted-foreground">
-                No characters yet — use <span className="font-semibold">New Entity</span> or <span className="font-semibold">Import Entity</span> to add one.
-              </p>
+              <Hint className="max-w-md text-center">
+                No entities yet. Use <span className="font-semibold">New Entity</span> or <span className="font-semibold">Import Entity</span> to add one.
+              </Hint>
             </div>
           )}
           renderCard={(entity, { layout, fill, compact }) => (
@@ -2179,9 +2213,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           thumbnailOf={(dictionary) => dictionary.thumbnail}
           emptyState={!isLoadingDictionaries ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
-              <p className="max-w-md text-center text-helper text-muted-foreground">
-                No dictionaries yet — use <span className="font-semibold">New Dictionary</span> or <span className="font-semibold">Import Dictionary</span> to add one.
-              </p>
+              <Hint className="max-w-md text-center">
+                No dictionaries yet. Use <span className="font-semibold">New Dictionary</span> or <span className="font-semibold">Import Dictionary</span> to add one.
+              </Hint>
             </div>
           ) : undefined}
           renderCard={(dictionary, { layout, fill, compact }) => (
@@ -2376,9 +2410,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           {canUpdate ? <UpdateVersionControl /> : !isMobile && <WebVersionChangelog />}
         </div>
 
-        {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
-            "Based on…" line collapses into the ⋯ menu on mobile; the © stays (it replays the intro). */}
-        <div className="text-center text-meta text-muted-foreground/60 whitespace-nowrap leading-tight">
+        {/* Center: copyright + origin and the Credits line (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
+            credit lines collapse into the ⋯ menu on mobile; the © stays (it replays the intro). */}
+        <div className="min-w-0 text-center text-meta text-muted-foreground/60 whitespace-nowrap leading-tight">
           <Tip tip="Replay intro">
             <button
               type="button"
@@ -2399,6 +2433,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               >
                 Formamorph by FieryLionite
               </a>
+              <div>
+                <button type="button" onClick={() => setShowCredits(true)} className="whitespace-normal hover:underline">Credits</button>
+              </div>
             </div>
           )}
         </div>
@@ -2441,6 +2478,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 >
                   Based on Formamorph by FieryLionite
                 </a>
+                <button
+                  type="button"
+                  onClick={() => setShowCredits(true)}
+                  className="rounded px-2 py-1.5 text-left text-meta text-muted-foreground hover:bg-accent"
+                >
+                  Credits
+                </button>
               </PopoverContent>
             </Popover>
           ) : (
@@ -2640,7 +2684,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 actionIcon={Code}
                 onAction={() => setShowCodeModal(true)}
               >
-                Contains stats with custom code execution — be sure you trust this world&apos;s source.
+                This world runs scripts. Play it only if you trust where it came from.
               </WorldNotice>
             )}
 
@@ -2684,7 +2728,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               {/* Three levels can decide the preset, so the one that wins is named rather than left to
                   be inferred from an unpinned dropdown. */}
               {effectivePresetNote && (
-                <span className="text-meta text-muted-foreground">{effectivePresetNote}</span>
+                <Meta>{effectivePresetNote}</Meta>
               )}
             </div>
 
@@ -2739,7 +2783,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         open={!!worldToDelete}
         onOpenChange={(open) => !open && setWorldToDelete(null)}
         title="Delete World"
-        description="Are you sure you want to delete this world? This action cannot be undone."
+        description="This world is deleted. You can't undo this."
         onConfirm={async () => {
           // A run that finishes would write the world straight back.
           if (isWorldOptimizing(worldToDelete!)) return;
@@ -2757,7 +2801,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         open={!!dictionaryToDelete}
         onOpenChange={(open) => !open && setDictionaryToDelete(null)}
         title="Delete Dictionary"
-        description="Are you sure you want to delete this dictionary? This action cannot be undone."
+        description="This dictionary is deleted from your library. You can't undo this."
         onConfirm={async () => {
           try {
             await DictionaryStorageService.deleteDictionary(dictionaryToDelete!);
@@ -2780,8 +2824,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <ConfirmDialog
         open={!!entityToDelete}
         onOpenChange={(open) => !open && setEntityToDelete(null)}
-        title="Delete Character"
-        description="Are you sure you want to delete this character? This action cannot be undone."
+        title={DELETE_ENTITY_CONFIRM.title}
+        description={DELETE_ENTITY_CONFIRM.description}
         onConfirm={async () => {
           try {
             await EntityStorageService.deleteEntity(entityToDelete!);
@@ -2796,7 +2840,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <ConfirmDialog
         open={!!modelToDelete}
         onOpenChange={(open) => !open && setModelToDelete(null)}
-        title="Delete Player Avatar"
+        title="Delete Avatar"
         description={deleteModelDescription(modelUsage)}
         onConfirm={async () => {
           try {
@@ -2806,7 +2850,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               .catch((error: unknown) => toastError(error, 'Could not clear the Avatar from your library entities.'));
           } catch (error) {
             // The library refuses to drop its last avatar; tell the player why rather than failing silently.
-            toastError(error, 'Could not delete that player avatar.');
+            toastError(error, "Couldn't delete that Avatar.");
           } finally {
             setModelToDelete(null);
           }
@@ -2835,7 +2879,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </DialogHeader>
 
           <DialogDescription>
-            This world contains the following custom code in its stats:
+            Scripts on this world and its stats
           </DialogDescription>
 
           <ScrollArea className="flex-1 min-h-0 bg-muted rounded-md" focusable>
@@ -2851,6 +2895,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </div>
         </DialogContent>
       </Dialog>
+
+      <CreditsDialog open={showCredits} onOpenChange={setShowCredits} />
 
       {/* DEV only: the component update review on canned worlds. Its worlds are in memory, so Apply writes
           nothing; `devUpdates` is never set in prod. */}
@@ -2899,13 +2945,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </DialogHeader>
 
           <DialogDescription className="shrink-0">
-            This world rewrites the {customPromptKinds.length > 1 ? 'passes' : 'pass'} below — text
+            This world rewrites the {customPromptKinds.length > 1 ? 'prompts' : 'prompt'} below. Text
             it <span className="bg-emerald-500/25 rounded-[2px] px-0.5 text-foreground">added</span> to the
-            default prompt is tinted, text it{' '}
+            default prompt is tinted, and text it{' '}
             <span className="bg-red-500/10 text-red-600 dark:text-red-400 line-through decoration-red-500/70 rounded-[2px] px-0.5">removed</span>{' '}
-            is struck through. Uncheck &ldquo;Use this
-            world&apos;s{customPromptKinds.length > 1 ? ' prompts' : ' prompt'}&rdquo; in the world&apos;s
-            window to use your own.
+            is struck through. To use your own, clear <strong>Use this
+            world&apos;s{customPromptKinds.length > 1 ? ' prompts' : ' prompt'}</strong> in the world&apos;s
+            window.
           </DialogDescription>
 
           <Tabs
@@ -2990,7 +3036,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             requestKey={surfaceNav.key}
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
-            // Only on a press, and only where a guest's like cannot land: a server with the feature
+            // Only on a press, and only where a guest's like is refused: a server with the feature
             // switched off, and the cap toast's own Sign in. Closing it leaves them on the listing.
             onGuestLike={() => requestSignIn()}
             promptLibrary={{ target: promptTarget, activeId: activePresetId, select: selectPreset }}

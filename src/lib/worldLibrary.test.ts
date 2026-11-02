@@ -15,7 +15,7 @@ import { promisifyRequest } from '@/lib/idb';
 import {
   WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, putWorldRecords, worldMetaOf, type WorldMetaRecord,
 } from './worldLibrary';
-import { readBundledWorld } from '@/lib/bundledWorldText';
+import { bundledWorlds } from '@/lib/bundledWorldText';
 
 /** Open the library database the way a version 1 build did. */
 function openVersion1(): Promise<IDBDatabase> {
@@ -237,7 +237,7 @@ describe('every write keeps metadata in step', () => {
   });
 
   it('default seeding', async () => {
-    const { failed } = await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
+    const { failed } = await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], bundledWorlds);
 
     expect(failed).toEqual([]);
     await expectMetaInSync();
@@ -294,8 +294,10 @@ describe('a library with unreadable rows', () => {
       Object.defineProperty(request, 'result', { get: () => map(value), set: (next) => { value = next; } });
       return request;
     };
-    const get = IDBObjectStore.prototype.get;
-    const getAll = IDBObjectStore.prototype.getAll;
+    // Spying on a spied method returns the same spy, so a second store calls the first store's behavior.
+    const unspied = <T extends (...args: never[]) => unknown>(method: T) => (vi.isMockFunction(method) ? method.getMockImplementation() as T : method);
+    const get = unspied(IDBObjectStore.prototype.get);
+    const getAll = unspied(IDBObjectStore.prototype.getAll);
     const spies = [
       vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
         const request = get.call(this, key);
@@ -345,7 +347,7 @@ describe('a library with unreadable rows', () => {
     await seedLibrary([edited], state === 'missing' ? ['rampage'] : []);
     const restore = state === 'unreadable' ? unreadable(WORLD_META_STORE, ['rampage']) : () => {};
 
-    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], readBundledWorld);
+    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }], bundledWorlds);
 
     restore();
     expect(await readStore<StoredWorldRecord>(WORLD_STORE)).toEqual([edited]);

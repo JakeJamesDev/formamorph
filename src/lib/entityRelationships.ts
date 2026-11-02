@@ -9,7 +9,8 @@ export const UNKNOWN_TARGET_LABEL = 'Unknown Entity';
 
 /** Whether the entity plays only when picked: a persona-only Persona, or the Custom Persona entity. Its You
  *  row would read as itself whenever it plays, so it never renders. */
-export const playsOnlyWhenPicked = (entity: Entity) => !!entity.customPersona || (!!entity.persona && !!entity.personaOnly);
+export const playsOnlyWhenPicked = (entity: Pick<Entity, 'customPersona' | 'persona' | 'personaOnly'>) =>
+  !!entity.customPersona || (!!entity.persona && !!entity.personaOnly);
 
 /**
  * The relationship ends in play: the player first, as `persona` holding every played entity's rows, then each

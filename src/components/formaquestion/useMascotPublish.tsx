@@ -47,7 +47,7 @@ export function useMascotPublish(control: MascotDraftControl) {
         });
         setPayload(attempt.payload);
         setOpen(true);
-      }).catch((cause: unknown) => toastError(cause, 'Could not prepare the Mascot to publish.'));
+      }).catch((cause: unknown) => toastError(cause, 'Couldn’t prepare the Mascot for publishing.'));
     });
   };
 

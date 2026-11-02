@@ -152,7 +152,12 @@ export type RosterOpts = {
   statPieces?: StatPieces;
   /** The relationship sentences each entity's block prints. None when absent. */
   relationshipLines?: RelationshipLines;
+  /** The label each unmet stranger's block prints. None when absent. */
+  strangerLabels?: StrangerLabels;
 };
+
+/** Entity id → a stranger's label. */
+export type StrangerLabels = Readonly<Record<string, string>>;
 
 /** The known roster's options: `excludeIds` drops whom a higher scope lists; `pulledIds` join it through a relationship. */
 export type KnownRosterOpts = RosterOpts & { excludeIds?: readonly string[]; pulledIds?: readonly string[] };
@@ -247,12 +252,13 @@ export function entityRosterRuns(
   entities: Entity[],
   opts: RosterOpts = {},
 ): MarkedRun[] {
-  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces, relationshipLines } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces, relationshipLines, strangerLabels } = opts;
   const entityIds = allIds.filter((id) => passesOnlyWith(id, opts));
   if (nameOnly) {
     const named = entityIds.flatMap((id) => {
       const name = entities.find((e) => e.id === id)?.name;
-      return name ? [mark(["content", ...ownedKinds(id, opts)], name)] : [];
+      const label = strangerLabels?.[id];
+      return name ? [mark(["content", ...ownedKinds(id, opts)], label ? `${name} (${label})` : name)] : [];
     });
     return named.length ? joinRuns(named, ", ") : emptyRosterRuns(opts);
   }
@@ -278,6 +284,8 @@ export function entityRosterRuns(
     const aliasLine = aliases.length
       ? field(xml ? "aliases" : "also known as", aliases.join(", "))
       : "";
+    const strangerLabel = strangerLabels?.[entityItem.id];
+    const strangerLine = strangerLabel ? field(xml ? "stranger_name" : "stranger name", strangerLabel) : "";
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
     const ownedLines = runs(
@@ -285,6 +293,7 @@ export function entityRosterRuns(
       noStats ? "" : ownedStatRuns(entityItem, ownedStats?.[entityItem.id] ?? [], format, statPieces),
     );
     const fields = runs(
+      strangerLine,
       aliasLine,
       pronounLine,
       hasDesc ? mark(["content"], field(descKey, entityDescription!)) : "",

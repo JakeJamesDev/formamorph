@@ -78,15 +78,14 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle, DemoAINoticeProps>(fu
         <ScrollArea data-testid="demo-ai-body" className="-mr-3 min-h-0 flex-1 pr-3">
           <div className="space-y-3 text-body">
             <DialogDescription className="text-body text-foreground">
-              Formamorph is using its free built-in AI. It&apos;s a small model, and it&apos;s here so you can try the
-              app with zero setup.
+              You&apos;re playing on Formamorph&apos;s free built-in AI. It&apos;s a small model, and it&apos;s here so you
+              can try the app with no setup.
             </DialogDescription>
             <p>
-              The AI writes everything you read. A stronger model gives you sharper narration, a better memory of
-              your story, and characters who stay in character. Nothing else in Formamorph changes the experience
-              as much.
+              The AI writes everything you read. A stronger model writes sharper narration, remembers more of your
+              story, and keeps each entity consistent. Nothing else in Formamorph changes your game as much.
             </p>
-            <p>If a world feels flat, try it on a stronger model before you judge it.</p>
+            <p>If a world seems dull, try it on a stronger model before you judge it.</p>
             <p>
               For the full experience, connect your own AI in <strong>Settings</strong>. Any OpenAI-compatible
               endpoint works, local or hosted.{' '}

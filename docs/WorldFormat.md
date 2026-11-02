@@ -15,7 +15,7 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 2. Open the `.json` file in a text editor. Make your changes.
 3. In the main menu, open the **Worlds** tab and select **Import World**. Pick the file.
 
-> 💡 The World Editor's **Overview** tab has **Export World** too.
+> 💡 The World Editor has **Export World** too, in the menu of the arrow beside **Save**.
 
 The import adds a new world. It never replaces the world you exported. Import skips a file that fails to load, and the menu tells you.
 
@@ -84,10 +84,11 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `formamorphKind` | | `"world"` | Export writes it. Import does not need it. |
 | `version` | | String | The app version that wrote the file, such as `"3.1.2"`. See [Versions and Older Files](#versions-and-older-files) |
 | `worldOverview` | ✓ | Object | Name, listing text and world-wide settings. See [worldOverview](#worldoverview) |
-| `stats` | ✓ | [Stat](#stats)[] | The player's numbers |
+| `stats` | ✓ | [Stat](#stats)[] | The global stats |
+| `statGroups` | | [StatGroup](#stat-groups)[] | Groups for the global stats |
 | `locations` | ✓ | [Location](#locations)[] | Places. A location can nest inside another |
 | `connections` | | [Connection](#connections)[] | Travel links between locations. Absent = travel follows nesting only |
-| `entities` | ✓ | [Entity](#entities)[] | People, creatures and objects |
+| `entities` | ✓ | [Entity](#entities)[] | People, creatures, objects and fixtures |
 | `entityGroups` | | [Group](#entity-groups)[] | Editor-only groups for entities |
 | `traits` | ✓ | [Trait](#traits)[] | The world's traits |
 | `traitGroups` | | [TraitGroup](#trait-groups)[] | Groups for the world's traits |
@@ -95,7 +96,13 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `placeholderGroups` | | [Group](#placeholder-groups)[] | Editor-only groups for shared placeholders |
 | `dictionaries` | ✓ | [Dictionary](#dictionaries)[] | Lore books. Import makes one empty book when the list is absent or empty |
 | `statUpdates` | ✓ | [StatUpdate](#stat-updates)[] | An older field. Write `[]` |
-| `scripts` | | [Script](#scripts)[] | Scripts no stat owns. They run with no `self` |
+| `scripts` | | [Script](#scripts)[] | Scripts no stat or trait owns. They run with no `self` |
+| `tools` | | [Tool](#world-tools)[] | The World Tools, in **Tools** tab order. Absent = none |
+| `items` | | [Item](#items)[] | The world's items, in **Items** tab order. Absent = none |
+| `currencies` | | [Currency](#currencies)[] | The world's money, in order. The first is the **Default**. Absent = none |
+| `slots` | | [Slot](#slots-and-bodies)[] | Where items equip, such as Hand. Absent = none |
+| `bodies` | | [Body](#slots-and-bodies)[] | Which slots each owner has. The first is the **Default**. Absent = no owner has slots |
+| `placements` | | [Placement](#starting-items)[] | The Starting Items. Absent = none |
 
 A stored world also has an `id`. Export leaves it out, and import gives the world a new one.
 
@@ -124,14 +131,15 @@ Import runs every world through a migration. The migration changes an older shap
 | A trait group `exclusive: true` | `maxPicks: 1` |
 | An entity link to a trait outside Blueprints | Removed, with its overrides |
 | A stat's `beforeCode` and `code` | Scripts with the timings `"before"` and `"after"` |
-| A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
 | A script that uses `stats.find(…)` | The same code with the stat map |
-| A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
 | A root `customPlayerVRM` | An Avatar in `worldOverview.vrmStore`. See [Avatar Picks](#avatar-picks) |
+| An entity `startingLocationId` | Removed. A persona's `locations` are where it can start |
+| A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
+| A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
 | Entity and location `inGameDescription` and `detailedDescription` | `playerDescription` and `aiDescription` |
 | A trait `description` | Both `playerDescription` and `aiDescription` |
 
-> ⚠️ **The last six rows run only when `version` is not the app's version.** A file stamped with the current version keeps those older forms as written.
+> ⚠️ **The last four rows run only when `version` is not the app's version.** A file stamped with the current version keeps those older forms as written.
 
 Write new files in the current shape. A file with `scripts` loads in an older version of the app, but its scripts don't run there.
 
@@ -165,7 +173,7 @@ See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
-| `images` | ✓ | [Gallery image](#media-fields)[] | One or more images. In play, the Map shows the first visible one. A condition with no `owner` reads the played persona. The editor's canvas shows the first |
+| `images` | ✓ | [Gallery image](#media-fields)[] | One or more images. During the game, the Map shows the first visible one. A condition with no `owner` reads the played persona. The editor's canvas shows the first |
 | `frame` | ✓ | Object | `{ "x", "y", "width", "height" }` in canvas units. Every image fits inside it at its own aspect ratio |
 | `opacity` | ✓ | Number | From `0` to `1` |
 
@@ -183,7 +191,7 @@ See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields
 ## Stats
 <!-- keywords: meter properties, threshold bands, morph bindings, code keys, lock flags, bonus object, percent unit, hidden flag -->
 
-Each stat is a number the player has. The AI reads it, and a [script](ScriptsGuide) can calculate it.
+Each stat is a number the game tracks. A stat in the top-level `stats` is global. A stat in an entity's `stats` is the entity's own, with the same fields. The AI reads it, and a [script](ScriptsGuide) can calculate it.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -205,17 +213,19 @@ Each stat is a number the player has. The AI reads it, and a [script](ScriptsGui
 | `hidden` | | Boolean | `true` hides the stat from the player. The AI still reads it, and regen and code still run |
 | `noIncrease` / `noDecrease` | | Boolean | The AI can't raise or lower the value |
 | `noIncreaseMax` / `noDecreaseMax` | | Boolean | The AI can't raise or lower the max |
+| `groupId` | | String \| `null` | The [stat group's](#stat-groups) `id`. Absent, `null` or a group the owner lacks = the top level |
+| `order` | | Number | The order among the stats and groups with the same parent |
 
 ### Scripts
-<!-- keywords: scripts, stat code, beforeCode, code field, before the ai, after the ai, during ai output, at game start, when a trait switches, run order, timing -->
+<!-- keywords: scripts, beforeCode, code field, before the ai, after the ai, during ai output, at game start, when a trait switches, run order, timing -->
 
-A script is one box of code with a timing. A stat, a trait and the world each hold a `scripts` list.
+A script is one box of code with a timing. A stat, a trait, an item and the world each hold a `scripts` list.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
 | `name` | | String | The script's name. Absent = the owner and timing name it |
-| `timing` | ✓ | `"before"` \| `"after"` \| `"output"` \| `"start"` \| `"switch"` | When it runs. `"before"` runs before the AI's turn, and its changes reach that turn's prompt. `"after"` runs after the AI's changes and regen. `"output"` runs on each completed narration sentence. `"start"` runs once on a new game's opening turn. `"switch"` runs when a trait turns on or off |
+| `timing` | ✓ | `"before"` \| `"after"` \| `"output"` \| `"start"` \| `"switch"` | When it runs. `"before"` runs before the AI's turn, and its changes reach that turn's prompt. `"after"` runs after the AI's changes and regen. `"output"` runs on each completed narration sentence. `"start"` runs once on a new game's opening turn. `"switch"` runs when a trait turns on or off. An item takes [its own timings](#items) |
 | `code` | ✓ | String | The JavaScript |
 | `order` | | Number | Run position within the timing. Scripts with an `order` run first, lowest first. The rest run after them, world scripts first, then each stat's in stat order |
 
@@ -248,7 +258,38 @@ A trait changes a stat with a list of these.
 
 A `statToggles` entry takes the same `target`.
 
-> 🔁 Older files write `"target": "player"`. The app reads it as `"global"`, and new files write `"global"` only. Apps older than this change don't read `"global"`, so they apply these rows to the entity's own stat until updated.
+> 🔁 Older files write `"target": "player"`. The app reads it as `"global"`, and new files write `"global"` only. Formamorph 3.2 and earlier don't read `"global"`, so they apply these rows to the entity's own stat.
+
+### Stat Groups
+
+A group holds stats and other groups. The world's `statGroups` group the global stats. An entity's `statGroups` group its own stats. A group only organizes: it has no modes or pick counts.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The group name |
+| `aiDescription` | | String | A heading the AI reads above the group's stats |
+| `aiVisible` | | Boolean | `false` keeps the heading from the AI. Its stats move up one level. Absent = `true` |
+| `parentId` | ✓ | String \| `null` | The parent group's `id`. `null` = the top level |
+| `order` | | Number | The order among the stats and groups with the same parent |
+| `system` | | `"blueprints"` | Marks the world's Blueprints group. Its stats are [Blueprint stats](World-Editor-Stats#blueprint-stats-and-links), which reach play only through an entity's [stat link](#stat-links). Only one world group has it. An entity's group never has it |
+
+### Stat Links
+
+A stat link gives a Blueprint stat or stat group to an entity. During the game, each linked stat runs under the original stat's `id`, with the entity's own value. The link takes every change to its original, except in the fields it overrides.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `originalId` | ✓ | String | The `id` of the Blueprint stat or stat group |
+| `kind` | ✓ | `"stat"` \| `"group"` | What the original is |
+| `originalName` | ✓ | String | The original's name. When an entity joins a world, its link finds the original by `originalId`, then by this name |
+| `groupId` | ✓ | String \| `null` | One of the entity's own stat group `id`s. `null` = the entity's top level |
+| `order` | | Number | The order among the entity's stats, links and groups with the same parent |
+| `overrides` | | Object | Overrides per stat. The key is the original stat's `id`. A linked group keys each of its stats here |
+| `keyNames` | | Object | Outside a world only, such as in an entity file: stat `id` to name, for each key of `overrides` |
+
+Each override map can hold any [stat field](#stats) except `id`, `name`, `starting`, `groupId` and `order`. `value` is the **Base Value**. Each field holds `{ "value": …, "blueprint": … }`, as on a [trait link](#trait-links). An entity links each original stat one time.
 
 ## Traits
 <!-- keywords: perk properties, prerequisite object, pick limits keys, mode values, default flag, category object, template folder flag, toggle flag -->
@@ -270,6 +311,7 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `requires` | | [Requirement row](#trait-requirements)[] | Any one row that holds makes the trait available. Absent or empty = always available |
 | `statToggles` | | `{ "statId", "enabled" }`[] | Stats switched on or off while the trait is active |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
+| `body` | | `{ "pick"? }` | The Body its owner takes while the trait is active. `pick` is a [Body pick](#slots-and-bodies) other than absent. No `pick` = the row sets no Body |
 | `scripts` | | [Script](#scripts)[] | Code with this trait as `self`. It runs while the trait is active. See the [Scripts Guide](ScriptsGuide) |
 
 See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave during the game.
@@ -295,11 +337,13 @@ Each requirement has a `kind`:
 | `"group"` | `id`, `name`, `owner` | The owner has any trait in the group with this `id` |
 | `"playingAs"` | `id`, `name` | The player plays as the entity with this `id` |
 | `"stat"` | `id`, `name`, `owner`, `operator`, `value`, `unit` | The owner's stat with this `id` compares true against `value` |
+| `"item"` | `id`, `name`, `owner`, `status`, `state`, `identity` | The owner has a copy of the [item](#items) with this `id`: any copy under `status: "owned"`, or an equipped one under `"equipped"` |
 | `"time"` | `dayparts` | The story clock's time of day is one of `dayparts` |
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
-- `owner` is optional, and it applies only to a trait, group or stat an entity owns. A requirement that names a global item (a root trait, a root group or a global stat) reads the global scope, and the app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- `owner` is optional. It applies only to a trait, group, stat or item an entity owns. A requirement whose target is global (a root trait, a root group or a global stat) reads the global scope. The app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- An `"item"` requirement's `state` and `identity` are optional. They narrow it to a copy with that State word (any case, ends trimmed) or that identity, `"identified"` or `"unidentified"`. On an item, a requirement with no `owner` reads the Item Copy's owner, and never holds while the copy lies at a location.
 - A `"time"` requirement's `dayparts` lists one or more of `"night"`, `"dawn"`, `"morning"`, `"midday"`, `"afternoon"` and `"evening"`. It has no `id`, `owner` or `not`. `{ "kind": "time", "dayparts": ["evening", "night"] }` holds from evening until dawn.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
@@ -338,11 +382,12 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
 | `description` | | String | An older field. The player reads it when `playerDescription` is absent |
-| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. In play the backdrop shows the first visible image |
+| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. During the game, the backdrop shows the first visible image |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
 | `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `locations` join the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
+| `nearbyUsesConnections` | | Boolean | **Nearby Through Connections**. `true` = the entities the AI reads as nearby include those one [Connection](#connections) away. Absent = only the parent's and the siblings'. The editor sets `true` on a new location |
 | `canvasPosition` | | `{ "x", "y" }` | Editor-only. The location's place on the Locations canvas, relative to its parent. Absent = automatic |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the player is here. A child location does not get its parent's pins |
 | `openings` | | [Opening](#openings)[] | Openings that draw when a game starts at this exact location |
@@ -372,9 +417,12 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `aliases` | | String[] | Other names. The AI reads them. The app finds them in the story text, case-sensitive and whole-word |
 | `pronouns` | | String | Free text, such as "she/her". The AI reads it |
 | `type` | | String | An optional category label |
+| `strangerName` | | String | The **Stranger Name**: what the player calls the entity before meeting it. Absent = the player has met it from the start. See [Strangers](World-Editor-Entities#strangers) |
+| `strangerDescription` | | String | The **Stranger Description**: what the player reads about the entity before meeting it |
 | `persona` | | Boolean | The **Persona** mark. See [Persona Marks](#persona-marks) |
 | `personaOnly` | | Boolean | The entity exists only while the player plays it |
 | `customPersona` | | Boolean | The **Custom Persona** mark |
+| `body` | | [Body pick](#slots-and-bodies) | The Body it equips into. Absent = the Default |
 | `playerDescription` | | String | What the player reads |
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
@@ -385,6 +433,10 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
 | `locations` | | String[] | The `id`s of the locations where the entity is. It is at all of them |
+| `presence` | | `"random"` | **Presence**. `"random"` = **One, at Random**: one of `locations`, picked in each new game. Absent = **Everywhere Listed**. The played persona ignores it |
+| `movement` | | `"stays"` \| `"between"` \| `"follow"` | **Movement**: **Stays Put**, **Moves Between Its Locations** or **Can Follow the Player**. Absent = **Free**. The played persona ignores it |
+| `knownIn` | | `"nowhere"` \| String[] | **Known In**: where the AI knows of the entity while it isn't present. `"nowhere"`, or location `id`s, each with every location below it. Absent = **Nearby** |
+| `relationships` | | `{ "targetId", "label" }`[] | **Relationships**, in author order, at most one per target. `targetId` is another entity's `id`, or `"you"` for the played persona. `label` is the target's role toward this entity |
 | `groupId` | | String \| `null` | Editor-only. The [entity group's](#entity-groups) `id`. Absent or `null` = no group |
 | `order` | | Number | Editor-only. The order in its group |
 | `openings` | | [Opening](#openings)[] | The entity's own openings |
@@ -394,9 +446,13 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `traitGroups` | | [TraitGroup](#trait-groups)[] | Groups for the entity's own traits |
 | `traitLinks` | | [TraitLink](#trait-links)[] | Links to Blueprints traits and groups |
 | `traitPlacement` | | `{ "groupId", "order" }` | Where the entity's node sits in the world's Traits tree. `groupId` is a world group `id` or `null` for the top level. Absent = the end of the top level |
+| `stats` | | [Stat](#stats)[] | Stats the entity owns, in order. They are the persona's stats when the player plays it |
+| `statGroups` | | [StatGroup](#stat-groups)[] | Groups for the entity's own stats |
+| `statLinks` | | [StatLink](#stat-links)[] | Links to Blueprint stats and stat groups |
+| `statPlacement` | | `{ "groupId", "order" }` | Where the entity's node sits in the world's Stats tree, as `traitPlacement` does for Traits |
 | `link` | | [ContentLink](#linked-copies) | What library item this copy follows. Absent = it follows nothing |
 
-Only the player has stats. So `statChanges` and `statToggles` on an entity's own traits apply only on a playable, persona-only or Custom Persona entity. A playable or persona-only entity's apply while the player plays it. The Custom Persona entity's apply while the player has no world persona.
+`statChanges` and `statToggles` on an entity's own traits act on the entity's own stats. A row acts on the global stat when its `target` is `"global"`, or when the entity has no stat with that `id`.
 
 ### Persona Marks
 
@@ -413,7 +469,7 @@ One entity at most has `customPersona`, at the top level of the Traits tree. In 
 
 ### Trait Links
 
-A link gives a [Blueprints](#blueprints) trait or group to an entity. The entity does not get its own trait. The link reads its original live, except for the fields it overrides.
+A link gives a [Blueprints](#blueprints) trait or group to an entity. The entity does not get its own trait. The link takes every change to its original, except in the fields it overrides.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -426,7 +482,7 @@ A link gives a [Blueprints](#blueprints) trait or group to an entity. The entity
 | `overrides` | | Object | Overrides per trait. The key is the original trait's `id`. A linked group keys each of its traits here |
 | `keyNames` | | Object | Outside a world only, such as in an entity file: trait `id` to name, for each key of `overrides` |
 
-Each override map can hold `isDefault`, `requires`, `placeholderPins`, `playerToggle`, `statChanges` and `mode`. `mode` takes `"optional"`, `"alwaysOn"` or `"hidden"`. Each field holds `{ "value": …, "blueprint": … }`: your value, and the original's value when you set it. The app uses `blueprint` to tell you when the original changed.
+Each override map can hold `isDefault`, `requires`, `placeholderPins`, `playerToggle`, `statChanges`, `mode` and `scripts`. `scripts` overrides the whole list. `mode` takes `"optional"`, `"alwaysOn"` or `"hidden"`. Each field holds `{ "value": …, "blueprint": … }`: your value, and the original's value when you set it. The app uses `blueprint` to tell you when the original changed.
 
 An entity links each original one time.
 
@@ -468,7 +524,7 @@ See [World Editor: Openings](World-Editor-Openings) for which openings draw.
 ## Placeholders
 <!-- keywords: token syntax, double brace format, write token manually, random list object, weights map, pin object, roll flag, variable properties, override map -->
 
-A placeholder is a named value that a chip shows in text. The world's `placeholders` are shared. An entity's or a book's `placeholders` belong to it.
+A placeholder is a named value that a chip shows in text. The world's `placeholders` are shared. An entity's, an item's or a book's `placeholders` belong to it.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -507,7 +563,7 @@ A pin sets one placeholder to one value while its source is active. Traits, loca
 
 A world shared placeholder in the [Blueprints group](#placeholder-groups), or a group below it, is a **blueprint**. An entity holds a copy of each blueprint its traits need, in its own `placeholders`, with `blueprintId` set. The app makes copies when it loads the world.
 
-A copy reads its blueprint's values live. Its own `values` hold only the values it adds. Its `valueOverrides` map a blueprint value `id` to changes:
+A copy takes every change to its blueprint's values. Its own `values` hold only the values it adds. Its `valueOverrides` map a blueprint value `id` to changes:
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -542,9 +598,9 @@ A chip is a token in a text field. The editor inserts chips. To write one by han
 | `unique` | This chip draws its own value |
 | `<placement id>` | A unique id for this chip. A `unique` chip keeps its draw under it |
 
-The editor can add two more parts after the placement id: a path to a part of the placeholder, and a label after `:=`. Copy those from a chip the editor wrote.
+The editor can add two more parts after the placement id. One is a path to a part of the placeholder. The other is a label after `:=`. Copy those from a chip the editor wrote.
 
-Two chips need no placeholder. `{{user}}` is the [Persona Name chip](Persona-Authoring#the-persona-name-chip). `{{char}}` is the [Character Name chip](Persona-Authoring#the-character-name-chip).
+Two chips need no placeholder. `{{user}}` is the [Persona Name chip](Persona-Authoring#the-persona-name-chip). `{{char}}` is the [Entity Name chip](Persona-Authoring#the-entity-name-chip).
 
 ## Dictionaries
 <!-- keywords: lorebook object, keyword array, regex flag, constant flag, position values, depth key, world info fields, token budget -->
@@ -607,6 +663,165 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 | `connections` | Object | What each world placeholder or location the source expects is in this world, by `id` |
 | `bundledFrom` | String | The copy came in an imported world file, and its library item is not on this machine |
 
+## Items
+<!-- keywords: item object, item fields, effects array, equip requirements key, uses, when empty, stackable flag, bound flag, slot rule, either of, all of, unidentified name, item scripts -->
+
+An item is a kind of object. During the game, a save holds Item Copies of it. See [World Editor: Items](World-Editor-Items) for how items behave.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The name |
+| `playerDescription` | | String | What the player reads |
+| `aiDescription` | | String | The full description the AI reads |
+| `aiSummary` | | String | A short description the AI reads where the full one is too long |
+| `unidentifiedName` | | String | The name an unidentified Item Copy shows. With it or `unidentifiedDescription` set, every copy starts unidentified |
+| `unidentifiedDescription` | | String | The description an unidentified Item Copy shows. Blank = `playerDescription` |
+| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. A condition with no `owner` reads the Item Copy's owner |
+| `imageTags` | | String | Comma-separated tags for image generation |
+| `icon` | | String | What the Inventory panel shows: an icon id, or `"none"` for the item's image. Absent, or an id the game doesn't know, derives an icon from the name, then the slot |
+| `placeholders` | | [Placeholder](#placeholders)[] | Placeholders the item owns. They roll once per game, and every Item Copy shows the same value |
+| `value` | | Number | What the item is worth, in the base unit of its Currency |
+| `currencyId` | | String | The id of the [Currency](#currencies) it is priced in. Absent, or an id the world doesn't have = no price |
+| `stackable` | | Boolean | `false` = copies never group into one row. Absent = stackable. Ignored while `uses` is 2 or more |
+| `uses` | | Number | The uses each Item Copy starts with, from 1. Absent = unlimited |
+| `whenEmpty` | | Object | What a copy's last use leaves: `{ "kind": "stays" }`, `{ "kind": "gone" }`, `{ "kind": "becomes", "itemId": "<item id>" }` or `{ "kind": "changesState", "state": "…" }`. Used only while `uses` is set. Absent = gone |
+| `state` | | String | The State word each Item Copy starts with. Absent = none |
+| `bound` | | Boolean | `true` = the player can't drop or give its copies |
+| `slotRule` | | Object | The [slots](#slots-and-bodies) it equips into: `{ "mode": "either", "slotIds": ["<slot id>", …] }` takes one of them, the first free in this order. `"mode": "all"` takes all of them. Absent = not equippable |
+| `statEffects` | ✓ | Stat effect[] | Changes to the owner's own stats. See below |
+| `traitEffects` | ✓ | Trait effect[] | Traits the owner holds. See below |
+| `equipRequires` | ✓ | [Requirement row](#trait-requirements)[] | Any one row that holds lets an owner equip it. Empty = any owner can |
+| `scripts` | | [Script](#scripts)[] | Code that runs on an event of one of its Item Copies. `timing` is `"gained"`, `"lost"`, `"equipped"`, `"unequipped"` or `"used"` |
+
+Each stat effect:
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `statId` | ✓ | String | The owner's stat with this `id` |
+| `facet` | ✓ | `"value"` \| `"min"` \| `"max"` \| `"regen"` | The part of the stat it changes |
+| `timing` | ✓ | `"equipped"` \| `"owned"` \| `"used"` \| `"firstObtain"` | **While Equipped**, **While Owned**, **After Use** or **On First Obtain** |
+| `duration` | | Object | Under `"used"` only: `{ "kind": "permanent" }`, or `{ "kind": "time", "hours": N }` of story time |
+| `amount` | ✓ | Number | The amount to add. Negative subtracts |
+| `op` | ✓ | `"add"` | Write `"add"` |
+
+Each trait effect has `id`, `traitId`, `timing` and `duration`, with the same meanings. The owner holds the trait with that `id` while the timing holds.
+
+## Currencies
+
+A Currency is a kind of money. See [World Editor: Items](World-Editor-Items) for how to set one up.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The name the player reads after a price, such as Credits |
+| `backing` | ✓ | Object | What holds the money. See below |
+
+Each `backing` is one of these:
+
+| Backing | Meaning |
+|---|---|
+| `{ "kind": "stat", "statId": "<stat id>" }` | A number on a stat: a global stat, a stat a Persona links, or a Persona's own stat |
+| `{ "kind": "coins", "coins": [{ "itemId": "<item id>", "worth": 1 }, …] }` | Coin items, each with its worth in the base unit. The smallest coin is worth 1, and each worth is a whole number used once. An item is a coin of one Currency at most. The game reads an item's `value` as coins, largest first |
+| `{ "kind": "name" }` | A name only, with no tracking |
+
+The game drops a Currency with no `id`, no `name` or an unknown `backing`.
+
+## Slots and Bodies
+<!-- keywords: equipment slots, capacity, hands, rings, body type, default body, none, wear, equip where, slot rule, two handed -->
+
+A **slot** is a name only. A **Body** lists the slots an owner has, and how many items each one holds. Items equip into the slots of their owner's Body.
+
+| Slot field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The name, such as "Hand" |
+
+| Body field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The name, such as "Humanoid" |
+| `entries` | ✓ | Entry[] | The Body's slots, in the order the Inventory panel lists them |
+| `backdrop` | | Backdrop | The figure the boxes sit on. Absent = Humanoid |
+| `aspect` | | Number | The figure's width divided by its height, 0.3 to 3. Absent = 0.5 |
+
+| Entry field | Req. | Type | Meaning |
+|---|---|---|---|
+| `slotId` | ✓ | String | The slot's `id` |
+| `capacity` | | Number | How many items fit, up to 99. Absent = 1 |
+| `boxes` | | Box[] | One box per capacity unit. A missing box starts small, at the center |
+
+| `backdrop.kind` | Meaning |
+|---|---|
+| `"humanoid"` | A standing figure |
+| `"quadruped"` | A four-legged figure |
+| `"plain"` | No figure |
+| `"image"` | The `image` you give it. `opacity` is a number from 0 to 1 that fades it. Absent = 1 |
+
+A **box** has `x`, `y`, `w` and `h`, each a fraction of the figure from 0 to 1, so a box keeps its place when the aspect changes. Its smallest width and height are 0.04.
+
+An entity's `body` picks its Body:
+
+| `body` | Meaning |
+|---|---|
+| absent | The **Default**: the first Body in `bodies` |
+| `{ "kind": "none" }` | No Body. The entity carries items but equips none |
+| `{ "kind": "body", "id": "…" }` | That Body. An `id` the world lacks reads as the Default |
+
+The player's Body comes from the persona they play. A world persona uses its own `body`. With no persona, or with a library persona, the player uses the Custom Persona entity's `body`. Library entities and story-invented entities use the Default.
+
+A trait's `body` row overrides this while the trait is active. A world trait sets the player's Body, and an entity's own trait sets that entity's. When several active traits set one, the trait switched on last wins. A save records that order in `bodies.traitsOn`.
+
+```json
+"slots": [{ "id": "hand", "name": "Hand" }, { "id": "collar", "name": "Collar" }],
+"bodies": [
+  { "id": "humanoid", "name": "Humanoid", "entries": [{ "slotId": "hand", "capacity": 2 }] },
+  { "id": "dog", "name": "Dog", "entries": [{ "slotId": "collar" }] }
+]
+```
+
+## Starting Items
+<!-- keywords: placements, starting items key, starting gear json, give item at start, place item at location, hidden item, start equipped -->
+
+`placements` lists the [Starting Items](World-Editor-Items#starting-items): the Item Copies a new game begins with. A saved game never reads it.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `where` | ✓ | Object | `{ "kind": "you" }` for the player, `{ "kind": "entity", "id": "<entity id>" }`, or `{ "kind": "location", "id": "<location id>" }` |
+| `quantity` | ✓ | Number | How many copies |
+| `hidden` | | Boolean | `true` = the player doesn't see the copies until the story reveals them |
+| `equipped` | | Boolean | `true` = the copies start equipped. Never on a location |
+| `source` | ✓ | Object | `{ "kind": "item", "itemId": "<item id>" }` |
+
+## World Tools
+<!-- keywords: tools key, world tool json, function object, params array, handler object, lookup, template, script handler, offered to, call limit -->
+
+`tools` lists the world's own Tools. See [Tools](Tools) for how they behave.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | ✓ | String | The function name the AI calls |
+| `description` | ✓ | String | What the AI reads to decide when to call the Tool |
+| `params` | ✓ | Param[] | The arguments the AI passes. See below |
+| `handler` | ✓ | Object | What runs when the AI calls the Tool. See below |
+| `emptyResult` | ✓ | String | The text the AI gets when the handler finds nothing |
+| `offeredTo` | ✓ | String[] | The prompts that send the Tool, such as `"narration"` or `"choices"` |
+| `intents` | | String[] | Formaquestion Tools only. A world file doesn't need it |
+| `callLimit` | | Number | Calls allowed per request. Absent = the global default |
+
+Each param has `name`, `type` (`"string"`, `"number"`, `"boolean"` or `"enum"`), `description`, `required` (Boolean) and `options` (the values of an `"enum"`, else `[]`).
+
+`handler` has a `kind`:
+
+| `kind` | Other fields |
+|---|---|
+| `"lookup"` | `source`: `"entities"`, `"locations"` or `"dictionary"`. `param`: the param it searches by. `returns`: `"full"` or `"summary"` |
+| `"template"` | `body`: the text it returns |
+| `"script"` | `code`: the JavaScript. `timing`: `"call"`, `"output"` or `"after"`; absent = `"call"`. `reply`: the text an `"output"` or `"after"` call answers with; blank = `"Done."`. `stack`: `true` = every call in a turn fires |
+
 ## Stat Updates
 <!-- keywords: deprecated list, unused, empty array, obsolete, leftover, what is this for -->
 
@@ -620,7 +835,7 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 - A base64 data URL, such as `data:image/png;base64,…`
 - Or an `http` or `https` URL. The app loads the image from that address
 
-**Gallery images** (entity and location `images`, and `mapBackground.images`) are objects:
+**Gallery images** (entity, location and item `images`, and `mapBackground.images`) are objects:
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -653,7 +868,7 @@ An Avatar pick says which Avatar an entity shows. It is an object with a `kind`:
 | `{ "kind": "world", "id": "<vrmStore id>" }` | An Avatar in the world's `vrmStore` |
 | `{ "kind": "library", "id": "<id>" }` | An Avatar in the player's library. Library entities use this form. A world file never holds it. |
 
-Entities share an Avatar by naming the same `id`. A pick of an `id` the store lacks reads as none. A character card or entity listing that carries a pick also carries the Avatar file.
+Entities share an Avatar by naming the same `id`. A pick of an `id` the store lacks reads as none. An entity card or entity listing that carries a pick also carries the Avatar file.
 
 A world file from an older version can hold `use3DModel` and `customPlayerVRM` in `worldOverview`. The app moves the Avatar into `vrmStore` and sets `legacyVrmFallback` only when `use3DModel` is `true`. New files do not write those two keys.
 
@@ -750,6 +965,6 @@ A short world. `...` replaces the media data.
 ## Related
 
 - [🛠️ World Editor](WorldEditor): the editor that writes this format
-- [🧮 Scripts Guide](ScriptsGuide): what a script's `code` can do
+- [🧮 Scripts Reference](Scripts-Reference): what a script's `code` can do
 - [🪪 Personas for Authors](Persona-Authoring): persona marks and rules
 - [🔗 Linked Content](LinkedContent): linked copies and world files

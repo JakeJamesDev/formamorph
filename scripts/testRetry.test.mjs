@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { retryableFiles } from './testRetry.mjs';
+import { rerunAllowed, rerunRecords, retryableFiles } from './testRetry.mjs';
 
 const problem = (kind, message, body = 'stack', type = 'Error') =>
   (message === undefined ? '' : `<${kind} message="${message}" type="${type}">\n${body}\n</${kind}>`);
@@ -98,5 +98,70 @@ describe('retryableFiles', () => {
   it('returns nothing for a green report', () => {
     expect(retryableFiles(report(suite('src/a.test.ts', [['one']])))).toEqual([]);
     expect(retryableFiles('')).toEqual([]);
+  });
+
+  it('leaves an assertion that only quotes a timeout alone', () => {
+    expect(retryableFiles(report(
+      suite('src/a.test.ts', [['one', 'expected &apos;Request timed out&apos; to equal &apos;Saved&apos;', 'failure', PLAIN_MISS, 'AssertionError']]),
+    ))).toEqual([]);
+  });
+
+  it('counts a waitFor that says it timed out, with no wait-for frame', () => {
+    expect(retryableFiles(report(
+      suite('src/a.test.ts', [['one', 'Timed out in waitFor.', 'failure', 'Error: Timed out in waitFor.']]),
+    ))).toEqual(['src/a.test.ts']);
+  });
+});
+
+describe('rerunAllowed', () => {
+  it('allows a run that ended on failed tests alone', () => {
+    expect(rerunAllowed({ reason: 'failed', unhandled: 0 })).toBe(true);
+  });
+
+  it('refuses an unhandled error, an interrupted run, and a run that wrote no outcome', () => {
+    expect(rerunAllowed({ reason: 'failed', unhandled: 1 })).toBe(false);
+    expect(rerunAllowed({ reason: 'interrupted', unhandled: 0 })).toBe(false);
+    expect(rerunAllowed(null)).toBe(false);
+  });
+});
+
+describe('rerunRecords', () => {
+  const first = report(
+    suite('src/a.test.ts', [['group &gt; starved', 'Test timed out in 5000ms.\nIf this is a long-running test'], ['group &gt; red alone', 'Test timed out in 5000ms.'], ['group &gt; green']]),
+    suite('src/b.test.ts', [['green']]),
+  );
+
+  it('names each failed test, its file and its result, and keeps the context', () => {
+    const rerun = report(suite('src/a.test.ts', [['group &gt; starved'], ['group &gt; red alone', 'Test timed out in 5000ms.'], ['group &gt; green']]));
+    expect(rerunRecords(first, rerun, false, ['src/a.test.ts'], { source: 'local' })).toEqual([
+      { test: 'src/a.test.ts > group > starved', file: 'src/a.test.ts', result: 'passed-alone', message: 'Test timed out in 5000ms.', source: 'local' },
+      { test: 'src/a.test.ts > group > red alone', file: 'src/a.test.ts', result: 'failed-alone', message: 'Test timed out in 5000ms.', source: 'local' },
+    ]);
+  });
+
+  it('counts a test a red rerun lost as failed', () => {
+    expect(rerunRecords(first, '', false, ['src/a.test.ts'], {}).map((r) => r.result)).toEqual(['failed-alone', 'failed-alone']);
+  });
+
+  it('counts a test a red rerun skipped as failed', () => {
+    const rerun = report(`<testsuite name="src/a.test.ts" tests="1" failures="0" errors="0" skipped="1" time="1">
+<testcase classname="src/a.test.ts" name="group &gt; starved" time="0"><skipped/></testcase>
+</testsuite>`);
+    expect(rerunRecords(first, rerun, false, ['src/a.test.ts'], {})[0].result).toBe('failed-alone');
+  });
+
+  it('counts a failed hook\'s suite as passed when the rerun is green, though the green report omits it', () => {
+    const hook = report(suite('src/h.test.ts', [['group', 'Hook timed out in 10000ms', 'failure']]));
+    const green = report(suite('src/h.test.ts', [['group &gt; one']]));
+    expect(rerunRecords(hook, green, true, ['src/h.test.ts'], {})).toEqual([
+      { test: 'src/h.test.ts > group', file: 'src/h.test.ts', result: 'passed-alone', message: 'Hook timed out in 10000ms' },
+    ]);
+  });
+
+  it('reads a file name with an XML escape the same in both lists', () => {
+    const junit = report(suite('src/a&amp;b.test.ts', [['one', 'Test timed out in 5000ms.']]));
+    const files = retryableFiles(junit);
+    expect(files).toEqual(['src/a&b.test.ts']);
+    expect(rerunRecords(junit, '', false, files, {})).toHaveLength(1);
   });
 });

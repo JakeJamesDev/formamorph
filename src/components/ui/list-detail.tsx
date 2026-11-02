@@ -56,7 +56,7 @@ export function ListDetail({
   list: ReactNode;
   detail: ReactNode;
   detailFooter?: ReactNode;
-  /** Whether the detail is active (drives the push; ignored side by side, which shows both). */
+  /** Whether the detail is active (controls the push; ignored side by side, which shows both). */
   showDetail: boolean;
   /** Pop back to the list from the push (typically clears the caller's selection). */
   onBack: () => void;

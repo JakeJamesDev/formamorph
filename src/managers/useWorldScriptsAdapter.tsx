@@ -39,7 +39,7 @@ const groupTiming = (id: string): ScriptTiming | null => {
 
 /** Writes the slices a script edit rewrote through the per-record writers, so a typed run is one Step and a
  *  write that spans homes lands in one commit. */
-function useScriptWrites() {
+export function useScriptWrites() {
   const world = useGameData();
   const { updateStat, updateTrait, editEntity, setWorldScripts, updateWorldScript } = world;
   const latest = useRef(world);
@@ -232,8 +232,8 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
           <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
         </div>
         <Hint>
-          Shows every script by timing, in the order they run. Drag a script to change when it runs in its timing. In play,
-          the persona&apos;s scripts run before other entities&apos;.
+          Shows every script by timing, in the order they run. Drag a script to change its order within its timing.
+          During a game, entities&apos; scripts run in the order the entities are listed in the world.
         </Hint>
       </div>
     );

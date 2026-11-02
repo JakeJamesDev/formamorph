@@ -173,7 +173,7 @@ export function CardTags({ tags, onHide, omitEmpty }: { tags: string[]; onHide?:
   }
 
   const chip = (tag: string, i: number) => (
-    <Tip key={i} tip={onHide ? `Hide all worlds tagged "${tag}"` : undefined} labelsChild={false}>
+    <Tip key={i} tip={onHide ? `Hide everything tagged "${tag}"` : undefined} labelsChild={false}>
       <span
         onClick={onHide ? (e) => { e.stopPropagation(); onHide(tag); } : undefined}
         className={cn(
@@ -206,7 +206,7 @@ export function CardTags({ tags, onHide, omitEmpty }: { tags: string[]; onHide?:
         )}
       </div>
       {truncated && open && (
-        // Offset by border(1px) + p-1(4px) so the first chip lands exactly where the collapsed
+        // Offset by border(1px) + p-1(4px) so the first chip appears exactly where the collapsed
         // one was — no down/right jump when it opens.
         <div
           onClick={(e) => e.stopPropagation()}

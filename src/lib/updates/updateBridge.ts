@@ -19,6 +19,12 @@ export interface UpdateDownloadTarget {
   sha512Url?: string;
 }
 
+/** What a download reports back. Every platform but the Mac returns nothing and streams progress. */
+export interface UpdateDownloadResult {
+  /** The download went to the browser, so no progress or completion event follows. */
+  openedInBrowser?: boolean;
+}
+
 /** What an install attempt reports back. The desktop shell relaunches instead of returning. */
 export interface UpdateApplyResult {
   /** Android cannot install until the player allows installs from this app. The plugin opens that
@@ -41,7 +47,7 @@ export interface UpdateBridge {
   /** A download from an earlier session still staged on disk, or null. */
   pending: () => Promise<{ version: string } | null>;
   /** Start the platform download for a named release. */
-  download: (opts: UpdateDownloadTarget) => Promise<void>;
+  download: (opts: UpdateDownloadTarget) => Promise<UpdateDownloadResult | void>;
   /** Install what was downloaded. */
   apply: () => Promise<UpdateApplyResult | void>;
   /** Subscribe to download progress; returns an unsubscribe function. */

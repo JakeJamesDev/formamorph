@@ -3,8 +3,9 @@
  * come from an injected maker, as the turn commit's do.
  */
 import {
-  byEquipOrder, isUnidentified, itemStackable, itemUsable, sameState, sameWhere, seededState, slotCapacity, slotSizeOf, stateWord, usesLeft, whenEmptyOf,
+  byEquipOrder, isUnidentified, itemStackable, itemUsable, occupiedSlots, ruleGaps, ruleSlots, sameState, sameWhere, seededState, stateWord, usesLeft, whenEmptyOf,
 } from '@/lib/items';
+import { slotsInForce, type BodyWorld } from '@/lib/bodies';
 import { inCast, playsAs } from '@/lib/owners';
 import type {
   Entity, GameLocation, Item, ItemCopy, ItemCopyState, ItemCopyVisibility, ItemCopyWhere, ItemEffectLedger, ItemRef, ItemScriptTiming, PersonaRef, Placement,
@@ -18,10 +19,10 @@ export {
 } from './effects';
 export {
   applyInventoryPass, inventoryPassSchema, itemNameKey, parseInventoryLines, parseInventoryReply, INVENTORY_JSON_FORMAT,
-  INVENTORY_TEXT_FORMAT, PASS_OP_KINDS, type InventoryPassResult, type PassScene,
+  INVENTORY_TEXT_FORMAT, PASS_OP_KINDS, type InventoryPassResult, type PassMoney, type PassScene,
 } from './pass';
 export {
-  equipRequirement, settleInventory, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,
+  equipRequirement, settleInventory, traitPicksInPlay, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,
 } from './settle';
 
 /** Makes a fresh Item Copy id. */
@@ -38,6 +39,10 @@ export interface SeedWorld {
 /** The Item Copies at `where`: one owner's, or the ones lying at one location. */
 export const copiesAt = (copies: readonly ItemCopy[], where: ItemCopyWhere): ItemCopy[] =>
   copies.filter((copy) => sameWhere(copy.where, where));
+
+/** The Item Copies at `where` the player can see worn. */
+export const visibleWorn = (copies: readonly ItemCopy[], where: ItemCopyWhere): ItemCopy[] =>
+  copiesAt(copies, where).filter((c) => c.equipped && c.visibility === 'visible').sort(byEquipOrder);
 
 /**
  * The items with stat effects that the stat request names (Q53, Q149): visible Item Copies held by you or a
@@ -69,13 +74,40 @@ function seedWhere(placement: Placement, world: SeedWorld, persona: PersonaRef |
 
 /**
  * The Item Copies a new game starts with, from the world's placements in authored order. A stackable item
- * placed twice on one owner forms one stack; a hidden placement stays its own row. Each copy of an item that
+ * placed twice on one owner forms one stack; hidden placements stack apart from shown ones. Each copy of an item that
  * isn't stackable is its own Item Copy with full uses. Seeded copies start carried, and unidentified when the item
  * has an unidentified face (Q16). Runs for a new game only (Q59).
  */
-export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): ItemCopy[] {
+export const seedItemCopies = (world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): ItemCopy[] =>
+  seedPlacements(world, persona, newId).copies;
+
+/** The authored slice the starting copies read. */
+export type StartWorld = SeedWorld & InventoryWorld;
+
+/**
+ * The Item Copies a new game starts with: the seed, then each Equipped placement equipped as the panel would
+ * (Q36, Q51). A refused equip stays carried. `requirement` is the new game's equip check; previews pass none.
+ */
+export function startingCopies(
+  world: StartWorld, persona: PersonaRef | undefined, newId: NewId, requirement?: InventoryCall['requirement'],
+): ItemCopy[] {
+  const { copies, equips } = seedPlacements(world, persona, newId);
+  if (!equips.length) return copies;
+  return applyInventoryOps(copies, equips, { world, source: 'panel', newId, persona, ...(requirement && { requirement }) }).copies;
+}
+
+/** The seeded Item Copies, and one equip per unit of each Equipped owner placement, in placement order (Q36). */
+function seedPlacements(world: SeedWorld, persona: PersonaRef | undefined, newId: NewId): { copies: ItemCopy[]; equips: InventoryOp[] } {
   const items = new Map((world.items ?? []).map((item) => [item.id, item]));
   const copies: ItemCopy[] = [];
+  const equips: InventoryOp[] = [];
+  // The validator refuses an equip at a location, so a stray flag there is harmless.
+  const equip = (placement: Placement, item: Item, copyId: string, unit: number) => {
+    if (!placement.equipped) return;
+    // Only the first unit takes the named slot (Q78). A slot the rule no longer lists falls back to the first free one.
+    const slotId = unit === 0 && placement.slotId && item.slotRule?.slotIds.includes(placement.slotId) ? placement.slotId : undefined;
+    equips.push({ kind: 'equip', copyId, ...(slotId && { slotId }) });
+  };
   for (const placement of world.placements ?? []) {
     const item = items.get(placement.source.itemId);
     const where = seedWhere(placement, world, persona);
@@ -87,15 +119,20 @@ export function seedItemCopies(world: SeedWorld, persona: PersonaRef | undefined
     if (itemStackable(item)) {
       const stack = copies.find((c) => c.item.kind === 'item' && c.item.itemId === item.id
         && c.visibility === visibility && sameWhere(c.where, where));
+      const id = stack ? stack.id : newId();
       if (stack) stack.quantity += quantity;
-      else copies.push({ id: newId(), item: ref, where, quantity, visibility, ...(state && { state }) });
+      else copies.push({ id, item: ref, where, quantity, visibility, ...(state && { state }) });
+      // Each equip splits one copy off the stack, which keeps its id.
+      for (let i = 0; i < quantity; i += 1) equip(placement, item, id, i);
       continue;
     }
     for (let i = 0; i < quantity; i += 1) {
-      copies.push({ id: newId(), item: ref, where, quantity: 1, visibility, ...(state && { state }) });
+      const id = newId();
+      copies.push({ id, item: ref, where, quantity: 1, visibility, ...(state && { state }) });
+      equip(placement, item, id, i);
     }
   }
-  return copies;
+  return { copies, equips };
 }
 
 /** Who sent a list of operations. Bound stops the panel only (Q58). */
@@ -107,10 +144,11 @@ export type InventoryOp =
   | { kind: 'gain'; itemId: string; quantity: number; to: ItemCopyWhere; /** Absent = visible. */ visibility?: ItemCopyVisibility }
   | { kind: 'lose'; copyId: string; quantity?: number }
   | { kind: 'transfer'; copyId: string; to: ItemCopyWhere; quantity?: number }
-  | { kind: 'equip'; copyId: string }
+  /** `slotId` names one of the item's slots; absent = the first free one (Q37). */
+  | { kind: 'equip'; copyId: string; slotId?: string }
   | { kind: 'unequip'; copyId: string }
-  /** `after` is read only for a runtime item; absent = used up (Q10, Q56). */
-  | { kind: 'use'; copyId: string; after?: InventoryUseAfter }
+  /** `after` is read only for a runtime item; absent = used up (Q10, Q56). `targetCopyId` is the copy it is used on. */
+  | { kind: 'use'; copyId: string; after?: InventoryUseAfter; targetCopyId?: string }
   | { kind: 'reveal'; copyId: string; quantity?: number }
   | { kind: 'setUses'; copyId: string; uses: number }
   /** Sets one copy's State; a blank `state` clears it. */
@@ -126,10 +164,12 @@ export interface ItemScriptEvent {
   quantity: number;
   /** The Item Copy as it stood before a When Lost or When Used event, which can leave it gone. */
   was?: ItemCopy;
+  /** The Item Copy a use acted on, as it stood before the use. */
+  target?: ItemCopy;
 }
 
 /** The authored slice the operations read. An absent slice reads as empty. */
-export interface InventoryWorld {
+export interface InventoryWorld extends BodyWorld {
   items?: readonly Item[];
   slots?: readonly Slot[];
 }
@@ -144,6 +184,8 @@ export interface InventoryCall {
   world: InventoryWorld;
   source: InventorySource;
   newId: NewId;
+  /** Who `you` is, for the played Persona's Body. */
+  persona?: PersonaRef;
   presence?: Presence;
   /** The runtime items a gain may name. */
   runtimeItems?: readonly RuntimeItem[];
@@ -200,14 +242,14 @@ const whereText = (where: ItemCopyWhere): string => (where.kind === 'you' ? 'you
  */
 export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly InventoryOp[], call: InventoryCall): InventoryResult {
   const items = new Map((call.world.items ?? []).map((item) => [item.id, item]));
-  const slots = new Map((call.world.slots ?? []).map((slot) => [slot.id, slot]));
+  const slots = call.world.slots ?? [];
   let list: ItemCopy[] = [...copies];
   const diagnostics: string[] = [];
   const itemUses: ItemUse[] = [];
   const events: ItemScriptEvent[] = [];
   /** Records an event of `ref`'s item; none for a runtime item. */
-  const fire = (timing: ItemScriptTiming, ref: ItemRef, copyId: string, where: ItemCopyWhere, quantity: number, was?: ItemCopy) => {
-    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }) });
+  const fire = (timing: ItemScriptTiming, ref: ItemRef, copyId: string, where: ItemCopyWhere, quantity: number, was?: ItemCopy, target?: ItemCopy) => {
+    if (ref.kind === 'item') events.push({ timing, itemId: ref.itemId, copyId, where, quantity, ...(was && { was }), ...(target && { target }) });
   };
   const itemOf = (copy: ItemCopy): Item | undefined => (copy.item.kind === 'item' ? items.get(copy.item.itemId) : undefined);
   /** Whether carried `c` is a stack `copy` merges into: same item, visibility, place, uses left (Q27), State and identity (Q18). */
@@ -324,8 +366,10 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
         if (item && !itemUsable(item)) return `use: Item Copy ${copy.id} can't be used`;
         const left = usesLeft(copy, item);
         if (left !== undefined && !(left > 0)) return `use: Item Copy ${copy.id} has no uses left`;
+        const target = op.targetCopyId !== undefined ? list.find((c) => c.id === op.targetCopyId && c !== copy) : undefined;
+        if (op.targetCopyId !== undefined && !target) diagnostics.push(`Inventory (${call.source}) used Item Copy ${copy.id} on nothing: no Item Copy ${op.targetCopyId}`);
         if (item) itemUses.push({ itemId: item.id, where: copy.where, hidden: copy.visibility === 'hidden', ...(isUnidentified(copy) && { unidentified: true }) });
-        fire('used', copy.item, copy.id, copy.where, 1, copy);
+        fire('used', copy.item, copy.id, copy.where, 1, copy, target);
         const empty = item ? (left === 1 ? whenEmptyOf(item) : undefined) : op.after === 'kept' ? undefined : { kind: 'gone' as const };
         if (left !== undefined && left > 1) list = withOneCopy(copy, { uses: left - 1 });
         else if (empty?.kind === 'stays') list = withOneCopy(copy, { uses: 0 });
@@ -365,33 +409,44 @@ export function applyInventoryOps(copies: readonly ItemCopy[], ops: readonly Inv
       case 'equip': {
         if (copy.equipped) return `equip: Item Copy ${copy.id} is already equipped`;
         if (copy.where.kind === 'location') return `equip: Item Copy ${copy.id} has no owner`;
-        const slot = item?.slotId ? slots.get(item.slotId) : undefined;
-        if (!slot) return `equip: Item Copy ${copy.id} has no slot`;
-        const size = slotSizeOf(item);
-        const capacity = slotCapacity(slot);
-        if (size > capacity) return `equip: Item Copy ${copy.id} takes ${size} of slot ${slot.name}'s ${capacity}`;
-        // The owner's items in this slot, longest equipped first (Q14, Q96).
-        const worn = list
-          .filter((c) => c.equipped?.slotId === slot.id && sameWhere(c.where, copy.where))
-          .sort(byEquipOrder);
-        const sizeOf = (c: ItemCopy) => slotSizeOf(c.item.kind === 'item' ? items.get(c.item.itemId) : undefined);
-        let used = worn.reduce((sum, c) => sum + sizeOf(c), 0);
-        let swapped = list;
-        for (const out of worn) {
-          if (used + size <= capacity) break;
-          swapped = put(swapped, unequipped(out));
-          used -= sizeOf(out);
+        const rule = item?.slotRule;
+        if (!rule) return `equip: Item Copy ${copy.id} has no slot`;
+        const slotName = (slotId: string) => slots.find((s) => s.id === slotId)?.name ?? slotId;
+        if (op.slotId !== undefined && !rule.slotIds.includes(op.slotId)) return `equip: Item Copy ${copy.id} can't go in ${slotName(op.slotId)}`;
+        // Capacity comes from the owner's Body in force; a slot that Body lacks refuses the equip (Q8, Q39).
+        const capacities = new Map(slotsInForce(call.world, copy.where, call.persona).map((s) => [s.slot.id, s.capacity]));
+        const held = rule.slotIds.filter((id) => capacities.has(id));
+        const lacks = op.slotId !== undefined && !capacities.has(op.slotId) ? op.slotId : ruleGaps(rule, (id) => capacities.has(id))[0];
+        if (lacks !== undefined) return `equip: no ${slotName(lacks)} slot on ${whereText(copy.where)}`;
+        // The owner's equipped items, longest equipped first (Q14, Q96).
+        const worn = list.filter((c) => c.equipped && sameWhere(c.where, copy.where)).sort(byEquipOrder);
+        const slotsOf = (c: ItemCopy) => occupiedSlots(c, itemOf(c));
+        const unitsLeft = (slotId: string, gone: readonly ItemCopy[]) => (capacities.get(slotId) ?? 0)
+          - worn.filter((c) => !gone.includes(c) && slotsOf(c).includes(slotId)).length;
+        const taken = ruleSlots(rule, op.slotId ?? held.find((id) => unitsLeft(id, []) > 0) ?? held[0]);
+        const leaving: ItemCopy[] = [];
+        for (const slotId of taken) {
+          while (unitsLeft(slotId, leaving) < 1) {
+            const next = worn.find((c) => !leaving.includes(c) && slotsOf(c).includes(slotId));
+            if (!next) break;
+            leaving.push(next);
+          }
         }
+        const full = taken.find((id) => unitsLeft(id, leaving) < 1);
+        if (full !== undefined) return `equip: no room in ${slotName(full)} on ${whereText(copy.where)}`;
+        // A later swap-out can free an earlier one's unit, so one that still fits stays on.
+        for (const out of [...leaving]) {
+          const without = leaving.filter((c) => c !== out);
+          if (slotsOf(out).every((id) => unitsLeft(id, without) >= (taken.includes(id) ? 1 : 0))) leaving.splice(leaving.indexOf(out), 1);
+        }
+        const swapped = leaving.reduce((next, out) => put(next, unequipped(out)), list);
         // The requirement reads the slot after the swap-out, so an item leaving it never counts.
         const refused = call.requirement?.(swapped.find((c) => c.id === copy.id) ?? copy, swapped);
         if (refused) return `equip: ${refused}`;
         list = swapped;
-        for (const out of worn) {
-          if (list.some((c) => c.id === out.id && c.equipped)) continue;
-          fire('unequipped', out.item, rowOf(unequipped(out)), out.where, out.quantity);
-        }
+        for (const out of leaving) fire('unequipped', out.item, rowOf(unequipped(out)), out.where, out.quantity);
         order += 1;
-        const equipped = { slotId: slot.id, order };
+        const equipped = { slotId: taken[0], order };
         // A swapped-out copy can merge into this stack, so read its quantity now. One splits off (Q65).
         if ((list.find((c) => c.id === copy.id)?.quantity ?? 1) > 1) {
           const split = call.newId();

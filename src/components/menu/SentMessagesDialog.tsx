@@ -30,7 +30,7 @@ export function SentMessagesDialog({ open, onOpenChange, userId, username, refre
         <DialogHeader>
           <DialogTitle>{username ? `Messages to ${username}` : 'All Messages'}</DialogTitle>
           <DialogDescription>
-            Direct messages, including recalled ones. Broadcasts are under the Broadcasts tab.
+            Lists direct messages, including recalled ones. Broadcasts are on the <strong>Broadcasts</strong> tab.
           </DialogDescription>
         </DialogHeader>
 

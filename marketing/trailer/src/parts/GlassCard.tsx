@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { AbsoluteFill, interpolate, measureSpring, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import type { Size } from '../layout';
+import { CANVAS, type Layout, type Rect, type Size } from '../layout';
 import { BOB_PIXELS, ENTER_FRAMES, SPRINGS, bob, exitProgress, springIn } from '../motion';
 import type { Shot } from '../shots';
 import { colors, glass } from '../theme';
@@ -41,7 +41,8 @@ export const cardBob = (variant: CardVariant) => BOB_PIXELS * LOOK[variant].bob;
 const EXIT_DRIFT = { x: -60, y: -40 };
 const RADIUS = 28;
 
-type GlassCardProps = {
+/** How a card moves over its scene. */
+export type CardMotion = {
   /** A panel card leaves out `height` and fits its text. */
   pose: Omit<CardPose, 'height'> & { height?: number };
   durationInFrames: number;
@@ -52,22 +53,67 @@ type GlassCardProps = {
   bobPhase?: number;
   /** The card stays to the scene's last frame instead of leaving, as on the end card. */
   holdsToEnd?: boolean;
-  children: ReactNode;
 };
 
-/** Ruling Q27: a tilted glass card that rises on an overshooting spring, floats on a slow bob, and fades as it drifts away on the scene's last frames. */
-export const GlassCard = ({ pose, durationInFrames, variant = 'shot', delay = 0, bobPhase = 0, holdsToEnd = false, children }: GlassCardProps) => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+/** A card's offset off the canvas center, its two turns in degrees and its opacity on a frame. */
+export const cardMotionAt = (frame: number, fps: number, { pose, durationInFrames, variant = 'shot', delay = 0, bobPhase = 0, holdsToEnd = false }: CardMotion) => {
   const look = LOOK[variant];
   const enter = look.settle ? springIn(frame, fps, SPRINGS.card, delay, look.settle) : spring({ frame: frame - delay, fps, config: SPRINGS.card });
   const out = holdsToEnd ? 1 : exitProgress(frame, durationInFrames);
-  const tilt = interpolate(frame, [0, durationInFrames - 1], pose.tilt, { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const x = pose.x + (1 - enter) * look.slide + (1 - out) * EXIT_DRIFT.x;
-  const y = pose.y + (1 - enter) * look.rise + bob(frame, bobPhase) * look.bob + (1 - out) * EXIT_DRIFT.y;
+  return {
+    x: pose.x + (1 - enter) * look.slide + (1 - out) * EXIT_DRIFT.x,
+    y: pose.y + (1 - enter) * look.rise + bob(frame, bobPhase) * look.bob + (1 - out) * EXIT_DRIFT.y,
+    turnY: interpolate(frame, [0, durationInFrames - 1], pose.tilt, { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
+    turnX: pose.lean + (1 - enter) * 10,
+    opacity: Math.min(1, enter * 1.6) * out * look.opacity,
+  };
+};
+
+const PERSPECTIVE = 2200;
+
+/** The box on the canvas that holds a card of `size` on a frame, with its turns and perspective. */
+export const cardBoxAt = (layout: Layout, { width, height }: Size, { x, y, turnY, turnX }: ReturnType<typeof cardMotionAt>): Rect => {
+  const [cosX, sinX] = [Math.cos((turnX * Math.PI) / 180), Math.sin((turnX * Math.PI) / 180)];
+  const [cosY, sinY] = [Math.cos((turnY * Math.PI) / 180), Math.sin((turnY * Math.PI) / 180)];
+  const corners = [-1, 1].flatMap((sideX) =>
+    [-1, 1].map((sideY) => {
+      const [pointX, pointY] = [(sideX * width) / 2, (sideY * height) / 2];
+      const lean = pointY * sinX;
+      const near = PERSPECTIVE / (PERSPECTIVE - (-pointX * sinY + lean * cosY));
+      return { x: (pointX * cosY + lean * sinY + x) * near, y: (pointY * cosX + y) * near };
+    }),
+  );
+  const [left, top] = [Math.min(...corners.map((c) => c.x)), Math.min(...corners.map((c) => c.y))];
+  const canvas = CANVAS[layout];
+  return {
+    x: canvas.width / 2 + left,
+    y: canvas.height / 2 + top,
+    width: Math.max(...corners.map((c) => c.x)) - left,
+    height: Math.max(...corners.map((c) => c.y)) - top,
+  };
+};
+
+type GlassCardProps = CardMotion & {
+  /** Frame the card starts to dim to a depth card, as in a growing stack. */
+  dimFrom?: number;
+  children: ReactNode;
+};
+
+/** Frames a card takes to dim, and how bright it ends. It stays opaque, so the cards under it never show through. */
+const DIM_FRAMES = 30;
+const DIM_BRIGHTNESS = 0.4;
+
+/** Ruling Q27: a tilted glass card that rises on an overshooting spring, floats on a slow bob, and fades as it drifts away on the scene's last frames. */
+export const GlassCard = ({ dimFrom, children, ...motion }: GlassCardProps) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const { pose, variant = 'shot' } = motion;
+  const look = LOOK[variant];
+  const { x, y, turnY, turnX, opacity } = cardMotionAt(frame, fps, motion);
+  const dim = dimFrom === undefined ? 0 : interpolate(frame, [dimFrom, dimFrom + DIM_FRAMES], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
-    <AbsoluteFill style={{ perspective: 2200, justifyContent: 'center', alignItems: 'center' }}>
+    <AbsoluteFill style={{ perspective: PERSPECTIVE, justifyContent: 'center', alignItems: 'center' }}>
       <div
         style={{
           position: 'absolute',
@@ -77,8 +123,9 @@ export const GlassCard = ({ pose, durationInFrames, variant = 'shot', delay = 0,
           borderRadius: RADIUS,
           overflow: 'hidden',
           ...look.style,
-          opacity: Math.min(1, enter * 1.6) * out * look.opacity,
-          transform: `translate(${x}px, ${y}px) rotateY(${tilt}deg) rotateX(${pose.lean + (1 - enter) * 10}deg)`,
+          ...(dim > 0 ? { filter: `brightness(${1 - dim * (1 - DIM_BRIGHTNESS)})` } : undefined),
+          opacity,
+          transform: `translate(${x}px, ${y}px) rotateY(${turnY}deg) rotateX(${turnX}deg)`,
         }}
       >
         {children}

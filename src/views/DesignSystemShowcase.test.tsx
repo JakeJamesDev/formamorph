@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { DesignSystemShowcase } from './DesignSystemShowcase';
 import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
 import { NAV_RAIL_REFERENCE_STORAGE_KEY } from '@/components/design-system/NavRailReference';
+import { seedSampleTierNames } from '@/test/tierNames';
 import { loadEmbeddingModel, disposeEmbeddingModel } from '@/lib/embeddingWorkerClient';
 
 vi.mock('@/lib/embeddingWorkerClient', async (importOriginal) => ({
@@ -23,6 +24,7 @@ const renderShowcase = () => render(
 );
 
 beforeEach(() => {
+  seedSampleTierNames();
   localStorage.clear();
   document.documentElement.classList.remove('light', 'dark');
 });
@@ -70,7 +72,7 @@ describe('settings design reference', () => {
     await user.click(screen.getByRole('option', { name: /^Simple/ }));
     expect(screen.queryByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Memory' })).toBeNull();
-    expect(modeSelect).toHaveAccessibleDescription('Hidden settings are off their defaults');
+    expect(modeSelect).toHaveAccessibleDescription('Hidden settings differ from their defaults');
 
     await user.click(modeSelect);
     await user.click(screen.getByRole('option', { name: /^Advanced/ }));
@@ -119,9 +121,9 @@ describe('settings design reference', () => {
     const status = screen.getByRole('status');
     for (const label of [SETTINGS_COPY.semanticLore.label, SETTINGS_COPY.semanticMemory.label]) {
       await user.click(screen.getByRole('checkbox', { name: label }));
-      expect(status).toHaveTextContent('The reference skipped the download.');
+      expect(status).toHaveTextContent('The reference skipped the embedding model download.');
       await user.click(screen.getByRole('checkbox', { name: label }));
-      expect(status).toHaveTextContent('The reference skipped the unload.');
+      expect(status).toHaveTextContent('The reference skipped the embedding model unload.');
     }
 
     expect(loadEmbeddingModel).not.toHaveBeenCalled();
@@ -139,7 +141,7 @@ describe('settings design reference', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: /preview theme/i }));
-    expect(await screen.findByText(/Seeded from your current theme/)).toBeInTheDocument();
+    expect(await screen.findByText(/Starts from your current .* theme/)).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
   });
 
@@ -219,7 +221,7 @@ describe('code templates reference', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Code Templates' }));
 
-    expect(screen.getByRole('heading', { name: 'Stat Code Templates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Code Templates' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open Code Templates' })).toBeInTheDocument();
   });
 });
@@ -245,7 +247,7 @@ describe('narration turn reference', () => {
 
     const latest = screen.getByRole('region', { name: 'Latest Page' });
     expect(within(latest).getByRole('button', { name: 'Zoom image' })).toBeInTheDocument();
-    expect(within(latest).getByRole('button', { name: 'Re-generate Narration' })).toBeInTheDocument();
+    expect(within(latest).getByRole('button', { name: 'Regenerate Narration' })).toBeInTheDocument();
     expect(within(latest).getByTestId('choice-rows')).toBeInTheDocument();
   });
 });

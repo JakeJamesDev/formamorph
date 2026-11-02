@@ -18,6 +18,20 @@ describe('completion over the locations surface', () => {
     expect(labelsAt('locations["|')).toEqual(expect.arrayContaining(['Inn', 'North Gate']));
   });
 
+  it('offers no location or dictionary entry whose name holds only spaces', () => {
+    const at = (doc: string, over: Partial<SurfaceAnalysisOptions>) => {
+      const pos = doc.indexOf('|');
+      return (codeCompletions(doc.replace('|', ''), pos, { ...options, ...over })?.options ?? []).map((option) => option.label);
+    };
+    expect(at('locations["|', { locations: ['   ', 'Inn'] })).toEqual(expect.arrayContaining(['Inn']));
+    expect(at('locations["|', { locations: ['   ', 'Inn'] })).not.toContain('   ');
+    const entry = (name: string) => ({ id: name, name, keys: [], value: '', enabled: true, constant: false });
+    const placeholders = { dictionaries: [{ id: 'lore', name: 'Lore', entries: [entry('   '), entry('King')] }] };
+    const offered = at('dictionaries.Lore.entries["|', { placeholders: placeholders as unknown as SurfaceAnalysisOptions['placeholders'] });
+    expect(offered).toContain('King');
+    expect(offered).not.toContain('   ');
+  });
+
   it('offers an entry’s fields, location’s fields with move, and the new entity fields', () => {
     expect(labelsAt('locations.Inn.|')).toEqual(LOCATION_ENTRY_FIELDS.map((field) => field.name));
     expect(labelsAt('location.|')).toEqual(LOCATION_MEMBERS.map((field) => field.name));

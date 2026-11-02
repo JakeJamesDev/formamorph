@@ -1,4 +1,4 @@
-// Pure helpers behind the GameViewer rollback / re-generate controls. They operate on the per-turn
+// Pure helpers behind the GameViewer rollback / regenerate controls. They operate on the per-turn
 // snapshot stack (`gameStates` — one entry saved after each turn, 0-indexed by page) and the AI-context
 // turn log. Kept here, free of React/state, so the (off-by-one-prone) index math is unit-testable.
 
@@ -14,7 +14,7 @@ export function rollbackState<S>(gameStates: readonly S[], currentPage: number):
   return gameStates[currentPage - 1] ?? null;
 }
 
-/** Snapshot to restore when re-generating the current turn — the state from *before* it. Turn ≥ 2 uses
+/** Snapshot to restore when regenerating the current turn — the state from *before* it. Turn ≥ 2 uses
  *  the previous turn's snapshot (`gameStates[currentPage - 2]`); turn 1 (the opening) has no predecessor
  *  there, so it uses the captured pre-game `initialState`. */
 export function regenerateState<S>(
@@ -68,13 +68,13 @@ export function pageNextActionIndex(page: number, messagesPerPage: number): numb
 }
 
 /** The flat message history trimmed to the first `page` turns (`page * messagesPerPage` messages). Rollback
- *  and re-generate rewind to a target page by slicing the *live* history — which carries the player's
+ *  and regenerate rewind to a target page by slicing the *live* history — which carries the player's
  *  narration edits — rather than re-injecting a snapshot's frozen (pre-edit) copy. `page <= 0` yields `[]`. */
 export function sliceHistoryToPage<M>(history: readonly M[], page: number, messagesPerPage: number): M[] {
   return history.slice(0, Math.max(0, page) * messagesPerPage);
 }
 
-/** Store `snapshot` at `pageIndex`: overwrite an existing slot (re-generate / kept-abort re-save) or
+/** Store `snapshot` at `pageIndex`: overwrite an existing slot (regenerate / kept-abort re-save) or
  *  append the next turn. Returns a new array; never mutates the input. */
 export function placeSnapshot<S>(states: readonly S[], pageIndex: number, snapshot: S): S[] {
   const next = [...states];
@@ -83,7 +83,7 @@ export function placeSnapshot<S>(states: readonly S[], pageIndex: number, snapsh
   return next;
 }
 
-/** Whether the current page can be re-generated: you're on the latest page and at least one turn exists. */
+/** Whether the current page can be regenerated: you're on the latest page and at least one turn exists. */
 export function canRegenerate(currentPage: number, totalPages: number): boolean {
   return totalPages > 0 && currentPage === totalPages;
 }
@@ -95,7 +95,7 @@ export function lastTurnAction(history: readonly { role: string; content: string
   return user && user.role === "user" ? user.content : null;
 }
 
-/** Flag the most recent turn as superseded by a re-generate (it's about to be re-rolled). */
+/** Flag the most recent turn as superseded by a regenerate (it's about to be re-rolled). */
 export function markRegeneratedTurn<T extends TurnFlags>(turns: readonly T[]): T[] {
   if (turns.length === 0) return [...turns];
   const next = [...turns];
@@ -104,7 +104,7 @@ export function markRegeneratedTurn<T extends TurnFlags>(turns: readonly T[]): T
 }
 
 /** Flag the turns a rollback to `currentPage` discards — every turn after it. In the common case (no
- *  prior re-generate) turn indices line up with pages, so these are the entries at `i >= currentPage`. */
+ *  prior regenerate) turn indices line up with pages, so these are the entries at `i >= currentPage`. */
 export function markPrunedTurns<T extends TurnFlags>(turns: readonly T[], currentPage: number): T[] {
   return turns.map((t, i) => (i >= currentPage ? { ...t, pruned: true } : t));
 }

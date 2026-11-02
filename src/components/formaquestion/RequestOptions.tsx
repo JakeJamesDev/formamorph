@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MaxOutputControl } from '@/components/modals/PromptOptionFields';
 import { SamplerControl } from '@/components/modals/SamplerControl';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
+import { Hint } from '@/components/ui/typography';
 import { DEFAULT_HELP_OPTIONS, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, type HelpRequestOptions } from '@/lib/formaquestion/helpPresets';
 import type { HelpRequestKey } from '@/lib/formaquestion/helpPrompt';
 import { PROMPTS_COPY } from './formaquestionSettingsTabs';
@@ -37,7 +38,7 @@ export function RequestOptions({ prompt, options, readOnly, readOnlyReason, onRe
       {readOnly && readOnlyReason && <ReadOnlyNotice reason={readOnlyReason} onRequestEdit={onRequestEdit} />}
       <div>
         <h3 className="text-label font-medium">{copy.title}</h3>
-        <p className="text-helper text-muted-foreground">{hints.hint}</p>
+        <Hint>{hints.hint}</Hint>
       </div>
       <MaxOutputControl
         custom={on.maxTokens}

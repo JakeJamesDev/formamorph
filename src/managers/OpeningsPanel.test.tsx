@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntityOpenings, OpeningsList, OpeningsPanel } from './OpeningsPanel';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { ownerOpeningRows } from '@/lib/openings';
@@ -39,12 +40,12 @@ async function menu(): Promise<string[]> {
   return screen.getAllByTestId('chip-typeahead-row').map((row) => row.textContent?.trim() ?? '');
 }
 
-/** An entity opening is the entity's own text, so its `{` menu offers Character Name; a world opening has
+/** An entity opening is the entity's own text, so its `{` menu offers Entity Name; a world opening has
  *  no entity to name. */
 describe('opening fields', () => {
-  it('offer Character Name in an entity’s opening', async () => {
+  it('offer Entity Name in an entity’s opening', async () => {
     mount(<EntityOpenings entity={keeper} onChange={() => {}} placeholders={[]} />);
-    expect(await menu()).toEqual(['Persona Name', 'Character Name']);
+    expect(await menu()).toEqual(['Persona Name', 'Entity Name']);
   });
 
   it('leave it out of a world opening', async () => {
@@ -56,7 +57,7 @@ describe('opening fields', () => {
 describe('an entity opening’s Preview', () => {
   const greeting = { ...keeper, openings: [{ id: 'o1', text: '{{char}} nods to {{user}}.', kind: 'narration' }] } as Entity;
 
-  it('reads Character Name as the entity’s name and Persona Name as its label', async () => {
+  it('reads Entity Name as the entity’s name and Persona Name as its label', async () => {
     mount(<EntityOpenings entity={greeting} onChange={() => {}} placeholders={[]} />);
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Persona Name.');
@@ -70,6 +71,35 @@ describe('an entity opening’s Preview', () => {
     mount(<OpeningsPanel />);
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Persona Name.');
+  });
+});
+
+describe('the footer hint on the World tab’s Openings panel', () => {
+  const others: Opening = { id: 'o1', text: 'The Warden waves you in.', kind: 'action' };
+  const self: Opening = { id: 'o2', text: 'You wake as the Warden.', kind: 'narration', self: true };
+  const custom = { id: 'custom', name: 'You', customPersona: true } as Entity;
+  const hint = () => screen.getByText(/Draws one opening|Write an opening here|Openings are off/).textContent;
+  const showWith = (entities: Entity[]) => {
+    game.current = {
+      worldOverview: {}, updateWorldOverview: () => {}, entities, updateEntity: () => {}, locations: [],
+      placeholders: [],
+    };
+    mount(<OpeningsPanel />);
+  };
+
+  it('keeps the default-opening state when the only text is on Custom Persona Others rows', () => {
+    showWith([{ ...custom, openings: [others] } as Entity]);
+    expect(hint()).toMatch(/^Write an opening here/);
+  });
+
+  it('says one opening draws when a Custom Persona Self row has text', () => {
+    showWith([{ ...custom, openings: [others, self] } as Entity]);
+    expect(hint()).toMatch(/^Draws one opening/);
+  });
+
+  it('says one opening draws when another entity has a drawable row', () => {
+    showWith([{ ...custom, openings: [others] } as Entity, { ...keeper, openings: [others] } as Entity]);
+    expect(hint()).toMatch(/^Draws one opening/);
   });
 });
 
@@ -97,6 +127,114 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
     mount(<EntityOpenings entity={{ ...warden, persona: undefined, customPersona: true }} onChange={() => {}} placeholders={[]} />);
     expect(within(switchFor(2)!).getByRole('radio', { name: 'Self' })).toBeChecked();
     expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
+  });
+
+  describe('on the Custom Persona entity', () => {
+    const custom = { ...warden, persona: undefined, customPersona: true } as Entity;
+    const markOn = (row: HTMLElement) => within(row).queryByText('Never Draws');
+    const chanceOf = (n: number) => screen.getByLabelText(`Chance for Opening ${n}`).textContent;
+
+    it('marks an Others row with a dash for its chance, and leaves a Self row its chance', () => {
+      mount(<EntityOpenings entity={custom} onChange={() => {}} placeholders={[]} />);
+      const [others, self] = screen.getAllByTestId('opening-row');
+      expect(markOn(others)).toBeInTheDocument();
+      expect(markOn(self)).toBeNull();
+      expect([chanceOf(1), chanceOf(2)]).toEqual(['—', '100%']);
+    });
+
+    it('drops the mark when the row flips to Self', async () => {
+      const onChange = vi.fn();
+      const user = userEvent.setup();
+      const { rerender } = mount(<EntityOpenings entity={custom} onChange={onChange} placeholders={[]} />);
+      await user.click(within(switchFor(1)!).getByRole('radio', { name: 'Self' }));
+      const flipped = { ...custom, ...onChange.mock.calls[0][0] };
+      rerender(
+        <PlaceholderStoreProvider value={store}>
+          <EditorPreviewRollsProvider><EntityOpenings entity={flipped} onChange={onChange} placeholders={[]} /></EditorPreviewRollsProvider>
+        </PlaceholderStoreProvider>,
+      );
+      expect(screen.queryByText('Never Draws')).toBeNull();
+    });
+
+    it('marks the row in the World tab’s Openings panel too', () => {
+      game.current = {
+        worldOverview: {}, updateWorldOverview: () => {}, entities: [custom], updateEntity: () => {},
+        locations: [{ id: 'dock', name: 'Dock', isStarting: true }], updateLocation: () => {}, placeholders: [],
+      };
+      mount(<OpeningsPanel />);
+      const [others, self] = screen.getAllByTestId('opening-row');
+      expect(markOn(others)).toBeInTheDocument();
+      expect(markOn(self)).toBeNull();
+      expect(screen.queryByText('No Starting Location')).toBeNull();
+    });
+
+    it('states in the hint which openings draw, in place of joining at its locations', () => {
+      mount(<EntityOpenings entity={custom} onChange={() => {}} placeholders={[]} />);
+      expect(document.body).toHaveTextContent('Self openings draw when played, or for a library persona without any.');
+      expect(screen.queryByText(/one of this entity's locations/)).toBeNull();
+    });
+
+    it('leaves a library entity’s row and hint alone', () => {
+      mount(<EntityOpenings library entity={custom} onChange={() => {}} placeholders={[]} />);
+      expect(screen.queryByText('Never Draws')).toBeNull();
+      expect(chanceOf(1)).toBe('100%');
+      expect(screen.getByText(/one of this entity's locations/)).toBeInTheDocument();
+    });
+
+    it('marks no row on any other entity', () => {
+      mount(<EntityOpenings entity={warden} onChange={() => {}} placeholders={[]} />);
+      expect(screen.queryByText('Never Draws')).toBeNull();
+      expect(screen.getByText(/one of this entity's locations/)).toBeInTheDocument();
+    });
+  });
+
+  describe('on a Persona-Only entity', () => {
+    const only = { ...warden, persona: true, personaOnly: true } as Entity;
+    const markOn = (row: HTMLElement) => within(row).queryByText('Never Draws');
+    const chanceOf = (n: number) => screen.getByLabelText(`Chance for Opening ${n}`).textContent;
+
+    it('marks an Others row with a dash for its chance, and leaves a Self row its chance', () => {
+      mount(<EntityOpenings entity={only} onChange={() => {}} placeholders={[]} />);
+      const [others, self] = screen.getAllByTestId('opening-row');
+      expect(markOn(others)).toBeInTheDocument();
+      expect(markOn(self)).toBeNull();
+      expect([chanceOf(1), chanceOf(2)]).toEqual(['—', '100%']);
+    });
+
+    it('marks the row in the World tab’s Openings panel too', () => {
+      game.current = {
+        worldOverview: {}, updateWorldOverview: () => {}, entities: [only], updateEntity: () => {},
+        locations: [{ id: 'dock', name: 'Dock', isStarting: true }], updateLocation: () => {}, placeholders: [],
+      };
+      mount(<OpeningsPanel />);
+      const [others, self] = screen.getAllByTestId('opening-row');
+      expect(markOn(others)).toBeInTheDocument();
+      expect(markOn(self)).toBeNull();
+      expect(screen.queryByText('No Starting Location')).toBeNull();
+    });
+
+    it.each<[string, Entity, string]>([
+      ['a Persona-Only entity', only, 'Never draws on a Persona-Only entity. Select "Self" to draw this opening.'],
+      ['the Custom Persona', { ...warden, persona: undefined, customPersona: true }, 'Never draws on the Custom Persona. Select "Self" to draw this opening.'],
+    ])('names %s in the mark’s tip', async (_name, entity, tip) => {
+      mount(<TooltipProvider><EntityOpenings entity={entity} onChange={() => {}} placeholders={[]} /></TooltipProvider>);
+      await userEvent.setup().hover(screen.getByText('Never Draws'));
+      expect(await screen.findByText(tip, undefined, { timeout: 3000 })).toBeInTheDocument();
+    });
+
+    it('states in the hint which openings draw, in place of joining at its locations', () => {
+      mount(<EntityOpenings entity={only} onChange={() => {}} placeholders={[]} />);
+      expect(document.body).toHaveTextContent('Self openings draw when the player picks this entity.');
+      expect(screen.queryByText(/one of this entity's locations/)).toBeNull();
+      expect(document.body).not.toHaveTextContent('Mark one Self');
+    });
+
+    it('leaves a library entity’s row and hint alone', () => {
+      mount(<EntityOpenings library entity={only} onChange={() => {}} placeholders={[]} />);
+      expect(screen.queryByText('Never Draws')).toBeNull();
+      expect(chanceOf(1)).toBe('100%');
+      expect(screen.getByText(/one of this entity's locations/)).toBeInTheDocument();
+    });
   });
 
   it('flips only that field, keeping text, kind and weight', async () => {

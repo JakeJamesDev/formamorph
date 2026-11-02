@@ -141,6 +141,41 @@ export function ownerTraitTree(world: OwnerWorld, persona: PersonaRef | undefine
   return { groups, traits, entityNodes, ownerOfGroup, owners };
 }
 
+/**
+ * The tree with only the nodes the player may see: those in `scene`, the player's own and `keep` (the library
+ * owners). A dropped node takes its groups and traits. A node in `labels` is a stranger, drawn under that label.
+ */
+export function inSceneTraitTree(
+  tree: OwnerTraitTree,
+  { scene, keep, labels }: { scene: ReadonlySet<string>; keep: ReadonlySet<string>; labels: ReadonlyMap<string, string> },
+): OwnerTraitTree {
+  const players = new Set(playerEntityIds(tree));
+  const shown = (id: string) => scene.has(id) || keep.has(id) || players.has(id);
+  const ownerOfGroup = new Map([...tree.ownerOfGroup].filter(([, owner]) => shown(owner)));
+  const entityNodes = new Map<string, Entity>();
+  for (const [id, entity] of tree.entityNodes) {
+    if (!shown(id)) continue;
+    const label = labels.get(id);
+    entityNodes.set(id, label === undefined ? entity : { ...entity, name: label });
+  }
+  const kept = (groupId: string | null | undefined) => {
+    const owner = groupId == null ? undefined : tree.ownerOfGroup.get(groupId);
+    return owner === undefined || shown(owner);
+  };
+  return {
+    ...tree,
+    entityNodes,
+    ownerOfGroup,
+    groups: tree.groups
+      .filter((g) => kept(g.id))
+      .map((g) => {
+        const label = labels.get(g.id);
+        return label !== undefined && entityNodes.has(g.id) ? { ...g, name: label } : g;
+      }),
+    traits: tree.traits.filter((t) => kept(t.groupId)),
+  };
+}
+
 /** The entity nodes that are the player's, in node order: the played persona, and the Custom Persona
  *  entity under None and a library persona. Each wears the You mark. */
 export const playerEntityIds = (tree: Pick<OwnerTraitTree, 'owners'>): string[] =>
@@ -296,7 +331,7 @@ export function inOwnerPlaces(traits: readonly Trait[], tree: Pick<OwnerTree, 't
   });
 }
 
-/** Each item with the Character Name in its name and AI description written as the Persona Name, for items the
+/** Each item with the Entity Name in its name and AI description written as the Persona Name, for items the
  *  player has. */
 export const borneByPlayer = <T extends { name: string; aiDescription?: string }>(items: readonly T[]): T[] =>
   mapPreservingIdentity(items, (item) => {
@@ -307,7 +342,7 @@ export const borneByPlayer = <T extends { name: string; aiDescription?: string }
 
 
 /** The Traits tab tree with each linked row named for its entity owner. `named` reads an original's authored
- *  text with that entity as the Character Name; the player's rows and owned rows keep their names. */
+ *  text with that entity as the Entity Name; the player's rows and owned rows keep their names. */
 export function withOwnerNames(
   tree: OwnerTraitTree, originals: Pick<OwnerWorld, 'traits' | 'traitGroups'>,
   named: (text: string, owner: Entity, trait?: Trait) => string,
@@ -332,6 +367,36 @@ export function withOwnerNames(
     if (!entity || !original || !linkedTo(ownerId!, originalId)) return row;
     const name = named(original.name, entity);
     return name === row.name ? row : { ...row, name };
+  });
+  return traits === tree.traits && groups === tree.groups ? tree : { ...tree, traits, groups };
+}
+
+/** The tree with each stranger's own trait and group names read from the authored text with the stranger's
+ *  label as the Entity Name. `raw` holds the authored entities; `named` resolves a text for a relabeled node. */
+export function withStrangerNames(
+  tree: OwnerTraitTree, strangers: ReadonlySet<string>, raw: readonly Entity[],
+  named: (text: string, owner: Entity, trait?: Trait) => string,
+): OwnerTraitTree {
+  if (strangers.size === 0) return tree;
+  const rawById = new Map(raw.map((e) => [e.id, e]));
+  const strangerOf = (id: string | null | undefined) => (id != null && strangers.has(id) ? id : undefined);
+  /** `row` named from the stranger's authored `original`, or `row` itself when nothing changes. */
+  const relabel = <R extends { name: string }>(row: R, ownerId: string | undefined, original: { name: string } | undefined, trait?: Trait): R => {
+    const entity = ownerId ? tree.entityNodes.get(ownerId) : undefined;
+    if (!entity || !original) return row;
+    const name = named(original.name, entity, trait);
+    return name === row.name ? row : { ...row, name };
+  };
+  const traits = mapPreservingIdentity(tree.traits, (row) => {
+    const ownerId = strangerOf(rowOwner(tree, row));
+    const original = ownerId ? rawById.get(ownerId)?.traits?.find((t) => t.id === row.id) : undefined;
+    return relabel(row, ownerId, original, original);
+  });
+  const groups = mapPreservingIdentity(tree.groups, (row) => {
+    const ownerId = strangerOf(tree.ownerOfGroup.get(row.id));
+    if (!ownerId || !row.id.startsWith(`${ownerId}/`)) return row;
+    const original = rawById.get(ownerId)?.traitGroups?.find((g) => g.id === row.id.slice(ownerId.length + 1));
+    return relabel(row, ownerId, original);
   });
   return traits === tree.traits && groups === tree.groups ? tree : { ...tree, traits, groups };
 }

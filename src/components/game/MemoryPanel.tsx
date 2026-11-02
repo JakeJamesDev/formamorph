@@ -2,19 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDevRoute } from '@/lib/devRouter';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryFilter } from '@/lib/memoryView';
+import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, memorySentTip, CLEAR_PIN_LABEL, type MemoryFilter } from '@/lib/memoryView';
 import { MemoryManagerModal } from '@/components/modals/MemoryManagerModal';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Pin, PinOff, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
+import { Hint, Meta } from '@/components/ui/typography';
 
 /**
  * The Memory side-panel tab: the story's long-term memory at a glance. Lists every memory with the AI
  * selector's verdict (kept vs let go) and lets the player pin one in or out; a pin overrides the
- * selection until cleared. Recent turns (the verbatim floor) sit under the Recent divider — their verdict
- * is display-only until they age out, because they ride in context verbatim regardless.
+ * selection until cleared. Recent turns (the verbatim floor) are listed under the Recent divider — their
+ * verdict is display-only until they age out, because they are sent verbatim regardless.
  *
  * Rewriting, deleting, regenerating and hand-writing memories live one click away in the Memory Manager
  * (`MemoryManagerModal`); both surfaces read the same ledger so they can't disagree.
@@ -89,10 +90,10 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
   if (!memoryDigests && !anyRows) {
     return (
       <div className="space-y-2 p-2">
-        <p className="text-helper text-muted-foreground">
-          Memory is off. Enable Memory Summaries in Settings to build a long-term memory of the story — or
-          write your own memories by hand.
-        </p>
+        <Hint>
+          Memory is off. Turn on <b>Memory Summaries</b> in <b>Settings</b> to build a long-term memory of the
+          story, or write your own memories in <b>Manage Memories</b>.
+        </Hint>
         {manageButton}
         {manager}
       </div>
@@ -101,9 +102,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
   if (!anyRows) {
     return (
       <div className="space-y-2 p-2">
-        <p className="text-helper text-muted-foreground">
-          Nothing here yet — memories appear as each turn is summarized.
-        </p>
+        <Hint>No memories yet. Each turn adds one once it&apos;s summarized.</Hint>
         {manageButton}
         {manager}
       </div>
@@ -116,11 +115,11 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
         {/* Pinned: the count and the way into the manager stay reachable however far the list is scrolled. */}
         <div className="flex-shrink-0 space-y-1 border-b border-border p-2">
           {manageButton}
-          <p className="text-meta text-muted-foreground">
+          <Meta as="p">
             {filter === 'all'
               ? `${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS.all}`
               : `${rows.length} of ${ledger.totalCount} ${MEMORY_FILTER_COUNT_LABELS[filter]}`}
-          </p>
+          </Meta>
           <div className="flex flex-wrap gap-1">
             {PANEL_FILTERS.map((f) => (
               <Button
@@ -138,7 +137,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
         <ScrollArea className="min-h-0 flex-grow">
           <div className="p-2 space-y-1">
             {rows.length === 0 && (
-              <p className="p-1 text-meta text-muted-foreground">No memories match that.</p>
+              <Meta as="p" className="p-1">No memories match that.</Meta>
             )}
             {rows.map((row, i) => (
               <div key={row.id}>
@@ -164,7 +163,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
                     {/* On the text, not the row: a row-wide trigger sits under the pin buttons and the
                         two tips would open together. */}
                     <Tip
-                      tip={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
+                      tip={memorySentTip(row)}
                       labelsChild={false}
                     >
                       <p className={cn('text-meta', !row.kept && 'line-through')}>{row.text}</p>
@@ -173,7 +172,7 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-0.5">
                     {row.pin && (
-                      <Tip tip="Clear Pin (Let the Story Decide)">
+                      <Tip tip={CLEAR_PIN_LABEL}>
                         <Button
                           variant="ghost"
                           size="icon"

@@ -50,7 +50,7 @@ describe('the bundled Docs Index', () => {
   });
 
   it('routes each how-to on the Settings pages', () => {
-    const howTos = sections.filter((s) => ['Settings', 'Prompts', 'Tools'].includes(s.page) && s.heading.startsWith('How to '));
+    const howTos = sections.filter((s) => ['Settings', 'Prompts', 'Prompt-Chips', 'Tools'].includes(s.page) && s.heading.startsWith('How to '));
     expect(howTos.filter((s) => s.route === undefined).map((s) => s.id)).toEqual([]);
     // How to Turn On Tools routes to the Output tab, where its first step is.
     expect(index.get(['Tools#how-to-turn-on-tools'])[0]?.route).toBe('settings.output');
@@ -152,14 +152,14 @@ describe('hub sections in the bundled docs', () => {
   });
 
   it.each([
-    ['how do I use a different AI for help?', 'Formaquestion#how-to-use-a-different-ai-for-help'],
-    ['how do I turn on reasoning for help?', 'Formaquestion#how-to-turn-on-reasoning-for-help'],
-    ['how do I turn on Semantic Search?', 'Formaquestion#how-to-turn-on-semantic-search'],
-    ['how do I write my own help prompt?', 'Formaquestion#how-to-write-your-own-help-prompt'],
-    ['how do I add a Tool to Formaquestion?', 'Formaquestion#how-to-add-a-tool-to-formaquestion'],
-    ['how do I move a custom preset to another device?', 'Formaquestion#how-to-move-a-custom-preset-to-another-device'],
+    ['how do I use a different AI for help?', 'Formaquestion-Settings#how-to-use-a-different-ai-for-help'],
+    ['how do I turn on reasoning for help?', 'Formaquestion-Settings#how-to-turn-on-reasoning-for-help'],
+    ['how do I turn on Semantic Search?', 'Formaquestion-Settings#how-to-turn-on-semantic-search'],
+    ['how do I write my own help prompt?', 'Formaquestion-Settings#how-to-write-your-own-help-prompt'],
+    ['how do I add a Tool to Formaquestion?', 'Formaquestion-Settings#how-to-add-a-tool-to-formaquestion'],
+    ['how do I move a custom preset to another device?', 'Formaquestion-Settings#how-to-move-a-custom-preset-to-another-device'],
     ['how do I see what the app sent for a question?', 'Formaquestion#how-to-see-what-the-app-sent-for-a-question'],
-    ['how do I use Formaquestion as a plain chat?', 'Formaquestion#how-to-use-formaquestion-as-a-plain-chat'],
+    ['how do I use Formaquestion as a plain chat?', 'Formaquestion-Settings#how-to-use-formaquestion-as-a-plain-chat'],
   ])('finds the Formaquestion how-to in the top 5 for "%s"', (question, id) => {
     expect(index.search(question, 5).map((s) => s.id)).toContain(id);
   });
@@ -176,7 +176,7 @@ describe('hub sections in the bundled docs', () => {
 });
 
 describe('the Scripts sections for a player who still says stat code', () => {
-  const SCRIPTS_SECTIONS = /^(ScriptsGuide#|World-Editor-Stats#scripts$|World-Editor-Traits#scripts$)/;
+  const SCRIPTS_SECTIONS = /^(ScriptsGuide#|Scripts-Reference#|World-Editor-Stats#scripts$|World-Editor-Traits#scripts$)/;
 
   it.each([
     'stat code',
@@ -205,25 +205,25 @@ describe('the Variable menu section of the Scripts Guide', () => {
   });
 });
 
-describe('the Chip Options sections of the Prompts guide', () => {
+describe('the Chip Options sections of the Prompt Chips guide', () => {
   it.each([
     'how do I send only entities with stats?',
     'how do I keep entities that have no stats out of the Entities chip?',
     'how do I filter the entities a prompt sends?',
   ])('answers "%s" in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompts#how-to-send-only-entities-with-stats');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompt-Chips#how-to-send-only-entities-with-stats');
   });
 
   it.each([
     'what are the rows in Chip Options?',
     'what does Stat Detail do on the Entities chip?',
   ])('answers "%s" in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompts#chip-options');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompt-Chips#chip-options');
   });
 });
 
-describe('the other-stat write sections of the Stat Code Guide', () => {
-  const IDS = ['ScriptsGuide#how-to-change-another-stat-from-code', 'ScriptsGuide#writing-to-other-stats'];
+describe('the other-stat write sections of the Scripts pages', () => {
+  const IDS = ['ScriptsGuide#how-to-change-another-stat-from-code', 'Scripts-Reference#writing-to-other-stats'];
 
   it.each([
     'how can one of my stat scripts change a different stat, like lowering health when a dice roll comes up 1?',
@@ -237,14 +237,14 @@ describe('the other-stat write sections of the Stat Code Guide', () => {
 
   it('is first for a question about two scripts that write one stat', () => {
     expect(index.search('two of my stat scripts change the same stat, which one wins?', 1).map((s) => s.id))
-      .toEqual(['ScriptsGuide#writing-to-other-stats']);
+      .toEqual(['Scripts-Reference#writing-to-other-stats']);
   });
 });
 
-describe('the owner sections of the Stat Code Guide', () => {
+describe('the owner sections of the Scripts Reference', () => {
   // Code hover cards link each global to its own heading.
   it.each(['self', 'stats', 'owner'])('has one heading for %s', (name) => {
-    const [section] = index.get([`ScriptsGuide#${name}`]);
+    const [section] = index.get([`Scripts-Reference#${name}`]);
     expect(section?.markdown).toMatch(new RegExp(`^### ${name}\\b`, 'i'));
   });
 
@@ -254,7 +254,7 @@ describe('the owner sections of the Stat Code Guide', () => {
     'in a script on one of my monster\'s stats, how do I get to that monster\'s other stats?',
     'what does owner mean in a Blueprint stat script?',
   ])('answers "%s" in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('ScriptsGuide#owner');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Scripts-Reference#owner');
   });
 
   it.each([
@@ -262,6 +262,6 @@ describe('the owner sections of the Stat Code Guide', () => {
     'I want a village event script to lower a villager\'s energy. How do I write that?',
     'when two scripts set one number in the same turn, whose result stays?',
   ])('answers "%s" with the write section in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('ScriptsGuide#writing-to-other-stats');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Scripts-Reference#writing-to-other-stats');
   });
 });

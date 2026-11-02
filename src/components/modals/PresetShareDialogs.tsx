@@ -12,15 +12,14 @@ import { filesFrom } from '@/lib/importFiles';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { cn } from '@/lib/utils';
+import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import { hasOverviewContent, type PresetOverview } from '@/lib/promptPresets';
 import {
-  serializeSharedJson, serializeSharedCode, parseSharedAny,
+  serializeSharedJson, serializeSharedCode, parseSharedAny, presetFileName,
   type SharedPreset, type ImportedPreset, type ParseResult,
 } from '@/lib/promptPresetShare';
 import { PRESET_SCRIPT_TOOL_WARNING, planPresetTools } from '@/lib/tools/toolPack';
 import type { Tool } from '@/types';
-
-const safeFile = (name: string) => (name.trim().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'preset');
 
 /** Export dialog: the share code (copy) plus a .json download, for the selected preset. */
 export function ExportPresetDialog({ open, onOpenChange, shared }: {
@@ -36,12 +35,12 @@ export function ExportPresetDialog({ open, onOpenChange, shared }: {
       else toast.error("Couldn't copy the share code");
     });
   };
-  const download = () => downloadBlob(new Blob([serializeSharedJson(shared)], { type: 'application/json' }), `${safeFile(shared.name)}.preset.json`);
+  const download = () => downloadBlob(new Blob([serializeSharedJson(shared)], { type: 'application/json' }), presetFileName(shared.name));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Export “{shared.name}”</DialogTitle></DialogHeader>
-        <p className="text-helper text-muted-foreground">Share this preset as a code to paste, or a file to send.</p>
+        <Hint>Share this preset as a code to paste or a file to send</Hint>
         <textarea
           readOnly
           value={code}
@@ -139,7 +138,7 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
         <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={onFile} />
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>Choose file…</Button>
-          <span className="text-meta text-muted-foreground">or paste a share code below</span>
+          <Meta>or paste a share code below</Meta>
         </div>
         <textarea
           placeholder="FMPRESET1:…"
@@ -147,7 +146,7 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
           className="w-full h-20 resize-none rounded-md border bg-muted/40 p-2 font-mono text-meta"
         />
 
-        {parsed && !parsed.ok && <p className="text-label text-destructive">{parsed.error}</p>}
+        {parsed && !parsed.ok && <FieldError>{parsed.error}</FieldError>}
 
         {parsed?.ok && (
           <div className="flex flex-col gap-3">
@@ -162,13 +161,13 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
             {hasTuning && (
               <label className="flex items-start gap-2">
                 <Checkbox checked={includeTuning} onCheckedChange={(c) => setIncludeTuning(c === true)} className="mt-0.5 shrink-0" />
-                <span className="text-meta text-muted-foreground">Include the preset&apos;s tuning (per-prompt samplers, reasoning, max output, attachments, and verbatim turns). Uncheck to import the prompt text only.</span>
+                <Meta>Include the preset&apos;s tuning: its per-prompt samplers, reasoning, max output, attachments and verbatim turns. Uncheck to import only the prompt text.</Meta>
               </label>
             )}
             {collision && (
               <label className="flex items-start gap-2">
                 <Checkbox checked={overwrite} onCheckedChange={(c) => setOverwrite(c === true)} className="mt-0.5 shrink-0" />
-                <span className="text-meta text-muted-foreground">A preset named “{collision.name}” already exists. Overwrite it — otherwise a separate copy is added.</span>
+                <Meta>A preset named “{collision.name}” already exists. Overwrite it instead of adding a separate copy.</Meta>
               </label>
             )}
           </div>

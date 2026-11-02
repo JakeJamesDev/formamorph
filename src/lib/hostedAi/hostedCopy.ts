@@ -1,4 +1,4 @@
-import { formatResetDate } from './hostedAllowance';
+import { formatResetTime } from '@/lib/resetTime';
 import type { HostedState } from './hostedState';
 import type { HostedPresetState } from './refusals';
 
@@ -16,7 +16,7 @@ export interface HostedStateCopy {
   extra?: HostedStateAction;
 }
 
-export const HOSTED_UPGRADE_LABEL = 'Upgrade';
+export const HOSTED_SUPPORT_LABEL = 'Support on Patreon';
 export const HOSTED_SWITCH_BACK_LABEL = 'Switch Back';
 
 const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
@@ -28,12 +28,12 @@ const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
     action: { kind: 'privacy', label: 'Review Policy' },
   },
   suspended: { reason: "Your account is suspended, so you can't use Formamorph AI", action: null },
-  'age-gate': { reason: 'Confirm that you are 18 or older to use Formamorph AI', action: { kind: 'ageGate', label: 'Confirm Age' } },
-  locked: { reason: 'Join as a Supporter on Patreon to use Formamorph AI', action: { kind: 'patreon', label: 'Join on Patreon' } },
+  'age-gate': { reason: "Confirm that you're 18 or older to use Formamorph AI", action: { kind: 'ageGate', label: 'Confirm Age' } },
+  locked: { reason: 'Formamorph AI is for Patreon Supporters', action: { kind: 'patreon', label: HOSTED_SUPPORT_LABEL } },
   exhausted: {
-    reason: "You've used this month's Formamorph AI allowance",
+    reason: "You've used this week's Formamorph AI allowance",
     action: { kind: 'switchBack', label: HOSTED_SWITCH_BACK_LABEL },
-    extra: { kind: 'patreon', label: HOSTED_UPGRADE_LABEL },
+    extra: { kind: 'patreon', label: HOSTED_SUPPORT_LABEL },
   },
   paused: {
     reason: "Formamorph AI is paused for everyone right now. This doesn't use your allowance.",
@@ -46,12 +46,12 @@ const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
   },
 };
 
-/** The copy of a state. `resetAt` adds the reset date to the exhausted reason. */
+/** The copy of a state. `resetAt` adds the local reset time to the exhausted reason. */
 export function hostedStateCopy(state: HostedPresetState, resetAt?: string | null): HostedStateCopy | null {
   const copy = COPY[state];
   if (state !== 'exhausted' || !copy) return copy;
-  const date = formatResetDate(resetAt ?? null);
-  return date ? { ...copy, reason: `${copy.reason}. It comes back on ${date}.` } : copy;
+  const date = formatResetTime(resetAt ?? null);
+  return date ? { ...copy, reason: `${copy.reason}. It comes back ${date}.` } : copy;
 }
 
 /** The allowance lines in AI settings; null when the state holds no usage. */
@@ -64,7 +64,7 @@ export interface HostedUsageCopy {
 
 export function hostedUsageCopy(hosted: HostedState | null, tierLabel: string | null): HostedUsageCopy | null {
   if (!hosted || hosted.percentUsed === null || !tierLabel) return null;
-  const date = formatResetDate(hosted.resetAt);
+  const date = formatResetTime(hosted.resetAt);
   return {
     tier: tierLabel,
     used: `${Math.min(100, Math.round(hosted.percentUsed))}% used`,
@@ -74,10 +74,10 @@ export function hostedUsageCopy(hosted: HostedState | null, tierLabel: string | 
 }
 
 /** The help line under the usage display. */
-export const HOSTED_USAGE_HELP = 'Counts turns on every device and resets on the 1st (UTC)';
+export const HOSTED_USAGE_HELP = 'Counts turns on every device and resets every week';
 
 /** A threshold notice's text. */
 export function hostedWarningText(threshold: number, hosted: HostedState | null): string {
-  const date = formatResetDate(hosted?.resetAt ?? null);
-  return `You've used ${threshold}% of this month's Formamorph AI allowance.${date ? ` It resets on ${date}.` : ''}`;
+  const date = formatResetTime(hosted?.resetAt ?? null);
+  return `You've used ${threshold}% of this week's Formamorph AI allowance.${date ? ` It resets ${date}.` : ''}`;
 }

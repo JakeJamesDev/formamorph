@@ -94,7 +94,7 @@ describe('reading the queue', () => {
 
     render(<ReportsTab active onOpenListing={vi.fn()} />);
 
-    expect(await screen.findByText(/Removed by its author/)).toBeTruthy();
+    expect(await screen.findByText(/Its author deleted it/)).toBeTruthy();
     // Nothing to follow: the snapshot is all there is, so offering a View button would lie.
     expect(viewButton()).toBeNull();
   });
@@ -239,7 +239,7 @@ describe('who may close what', () => {
 
     render(<ReportsTab active />);
 
-    expect(await screen.findByText(/an admin closes this one/i)).toBeTruthy();
+    expect(await screen.findByText(/a staff member you can’t moderate/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Action Taken' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
   });

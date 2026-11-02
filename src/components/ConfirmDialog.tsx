@@ -20,7 +20,7 @@ import type { SurfaceIdName } from "@/components/ui/surface"
  */
 export function ConfirmDialog({
   title = "Are you sure?",
-  description = "This action cannot be undone.",
+  description,
   icon,
   onConfirm,
   onCancel,
@@ -33,7 +33,8 @@ export function ConfirmDialog({
   surface,
 }: {
   title?: ReactNode
-  description?: ReactNode
+  /** The consequence of confirming. */
+  description: ReactNode
   /** Icon beside the title, matching the menu item that opened this. */
   icon?: ReactNode
   onConfirm?: () => void

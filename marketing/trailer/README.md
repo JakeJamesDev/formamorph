@@ -54,6 +54,20 @@ The command also checks each dense card: a card whose subject holds more than on
 - 🔍 Mark a dense card with `dense()` in `src/timeline.tsx`, and with ✅ in the storyboard's Dense column. For a stack, pass the dense pane's rise frame, `paneRise(1)`.
 - 🛬 A card lands when its spring settles within 0.5%. The report prints the frame it lands on.
 
+The command also checks each card of the growing stacks. It reports the seconds the card holds from the frame it lands until the next card rises, and prints `FAIL` under 2 s or under the time its copy and clip need. A stack's length comes from these holds, so a longer line lengthens the shot on its own.
+
+- 🥞 A growing stack skips the dense check, since the eye follows the newest card.
+
+The command also checks that text stays on screen. Each headline word, caption pill, typed panel and end-card line must stay whole at least 4% of the frame height from every edge, on every frame it shows. That is 43 px in the wide cut and 77 px in the tall cut. It prints `FAIL` with the shot, the edge, and the scene and cut frames when:
+
+- a text element crosses the margin, while it enters and leaves too
+- a typed panel cuts off its text
+
+Notes:
+
+- 📐 The check measures the laid-out text in the browser, then moves each box with the same motion functions the scenes use.
+- 🪂 A pill rises 60 px as it enters, so a pill at the bottom of the frame needs that room below it.
+
 The command also checks the camera inside every card. Each camera reports its zoom, `holds` when its crop stays still, and how far its subject sits from the crop's edge. It prints `FAIL` when:
 
 - a card zooms or pans at all; the card's own float is the motion
@@ -63,8 +77,8 @@ The command also checks the camera inside every card. Each camera reports its zo
 Notes:
 
 - 🎯 Each shot in `captures.json` has a `subject`: the part of the screen that carries its point, in 0–1 fractions of the shot. A new shot needs one.
-- 🃏 The check skips the dimmed depth cards and ignores a card's tilt.
-- ⚡ `npm run check` runs the copy and camera checks alone, in about 20 s, with no render.
+- 🃏 The check skips the dimmed depth cards and ignores a card's tilt. In a growing stack it checks each card as the newest, against its own caption alone, since a later card may cover it.
+- ⚡ `npm run check` runs the copy, on-screen and camera checks alone, in about 20 s, with no render.
 
 The render leaves its files in `out/`:
 
@@ -80,6 +94,8 @@ npm run sheet
 This writes each cut's contact sheet to `out/sheets/`, for example `wide-1.png`. Each shot is a row of five frames: entering, settled, mid-hold, late, and leaving into the join. A page holds four wide shots or two tall ones. To render one cut, name it: `npm run sheet -- tall`.
 
 - 👀 Look at every cell before you call a shot done. A sheet takes about 40 s, much less than a render.
+- 🥞 `out/sheets/wide-stack-W05.png` and its neighbors show each growing stack frame by frame: one row per card, through its landing.
+- 🎞️ A sheet shows a clip on its first frame. To see a clip play, open the studio or the render.
 - 🎬 The studio's **Sheets** folder shows the same pages live; set `page` in the props.
 
 ## Re-render after a release
@@ -108,7 +124,7 @@ All on-screen copy is in `src/timeline.tsx`, plus the end card's tagline in `src
 npm run render:wide
 ```
 
-The wide cut plays the storyboard's 20 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 83.83 s. The command encodes it for Steam and checks the result:
+The wide cut plays the storyboard's 14 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 82.67 s. The command encodes it for Steam and checks the result:
 
 | Check | Limit |
 |---|---|
@@ -130,16 +146,16 @@ Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **
 npm run render:tall
 ```
 
-The tall cut plays the storyboard's 14 shots (§4) in 59.92 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
+The tall cut plays the storyboard's 11 shots (§4) in 67.07 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
 
 | Treatment | Shots | How |
 |---|---|---|
-| Relayout | T03, T08, T10a, T12, T14 | The scene places its own content for `tall` |
-| Crop | T04, T07, T09, T10b, T13 | The card fills the width and shows a window of the wide capture. Each scene has one camera path per layout. T07 and T13 use a squarer card, and T09 a card at the stack cards' shape, so their subject fits |
-| Stack | T06, T10, T11 | Two wide captures on two cards, one above the other, each with its own caption pill |
-| Recapture | T05 | The native 540x960 mobile-layout clip `narration-clip-tall`, and `game-tall` on depth cards |
+| Relayout | T03, T08, T11a, T12, T14 | The scene places its own content for `tall` |
+| Crop | T04, T13 | The card fills the width and shows a window of the wide capture. Each scene has one camera path per layout. T13 uses a squarer card, so its subject fits |
+| Pair | T11 | Two wide captures on two cards, one above the other, each with its own caption pill |
+| Column | T05, T06, T09 | A growing stack, with each card below the one before. T05's turn card plays the native 540x960 mobile-layout clip `narration-clip-tall` |
 
-- ✂️ The tall cut drops Morphie with its title card (W13a, W13). It stacks the profile and the travel shot (W11, W10b) as T10.
+- ✂️ The tall cut drops Morphie with its title card (W13a, W13).
 - 🔁 T03 matches W03, so the tall cut loops for its first 6 s too.
 - 📱 `npm run capture -- --only game-tall,narration-clip-tall` rewrites the two recaptures.
 - 🎯 The tall cut has no Steam checks. The render command checks its size, rate, length, codecs and the 6 s loop.
@@ -153,7 +169,8 @@ The studio's **Scene-library** folder lists every scene type and transition in b
 | Kinetic text card | `src/scenes/KineticText.tsx` | One or two lines that rise word by word |
 | Frame card | `src/scenes/FrameScene.tsx` | A shot, a camera path per layout, a depth shot for the card behind, an optional callout region, caption and dot color, and optional card placement |
 | Stack | `src/scenes/StackScene.tsx` | Two cards, each with a shot, a camera path, a caption and a dot color. Tall stacks top and bottom; wide sits side by side |
-| Typed turn | `src/scenes/TypedTurn.tsx` | A turn clip on a card, a camera path per layout, the player line that types in on a panel below the card, and a caption line that follows it. The panel enters on the clip's first narration word |
+| Growing stack | `src/scenes/GrowingStack.tsx` | Cards that land in turn, each with a shot, a camera path per layout, and a caption and dot color or the typed panel. A card past its hold dims and stays. Its timing comes from its copy and clip; its placement is a `StackPoses` in `src/poses.ts` |
+| Typed panel | `src/parts/TypedPanel.tsx` | The player line that types in on a panel below a turn card, and a caption line that follows it. The panel enters on the clip's first narration word |
 | Wordmark title | `src/scenes/WordmarkTitle.tsx` | The goo wordmark alone on the stage: it coalesces, dissolves into crisp letters, holds and leaves, so it ends on the bare stage |
 | Cut, overlap, section | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, an overlap joins 30 frames inside a section, a section join 36 |
 
@@ -197,9 +214,9 @@ Optional fields on a shot:
 | Field | Does |
 |---|---|
 | `subject` | The part of the shot that carries its point, in 0–1 fractions. The render check keeps it in frame (above) |
-| `storyboard` | The storyboard capture ID (C01 to C13), for the record |
+| `storyboard` | The storyboard capture ID (C01 to C14), for the record |
 | `scene` | A game scene file other than the demo one, such as `scripts/fixtures/trailer-chat.json` |
-| `world` | A world built from the app's own code instead of the demo world. `tour` is the world the Authoring Tour leaves when you take every example |
+| `world` | A world built from the app's own code instead of the demo world. `tour` is the world the Authoring Tour leaves when you take every example. A `page` shot finds it in the library, for an `editWorld` step |
 | `setup` | Names from `scripts/captureSetups.mjs` that replace the shot's network and storage with fixed data (below) |
 | `steps` | Moves after the screen is up: `editWorld`, `click`, `link`, `button`, `ask`, `wait` |
 | `hide` | CSS selectors the shot hides, where the app has no switch for them, such as the map's travel-rule labels |
@@ -219,7 +236,7 @@ Setups keep every shot off live servers and live AI:
 | `desktopEngine` | The desktop bridge, with the built-in engine ready on a loaded model. Nothing loads or downloads |
 | `helpAnswer` | The help window's reply, streamed from a fixed text. An ask clip holds it back until it lets it through |
 
-The storyboard's live-data shots (help answer, community grid) are fixed this way. The avatar clip is deferred (Q60) but keeps **Animate character** on and sets `model` (below), so it films the idle animation on a controlled clock if it returns.
+The storyboard's live-data shots (help answer, community grid) are fixed this way. The avatar clip is deferred (Q60) but keeps **Animate Avatar** on and sets `model` (below), so it films the idle animation on a controlled clock if it returns.
 
 ### Frozen time and clips
 
@@ -245,8 +262,8 @@ Each clip prints its motion: the share of pixels each frame changes, ten frames 
 - ✂️ A reveal clip's first step is the send itself, so it never counts as a jump.
 - 🔍 `node scripts/clipMotion.mjs .capture-clip/<id>` prints the same series for frames you already have.
 
-- 📝 The turn shot (W05, T05) plays `narration-clip.mp4` or `narration-clip-tall.mp4`. It holds the screen before the turn while the player line types in, then plays the reveal.
-- 🎞️ The stats shot (W06, and the top pane of T06) plays `stats-clip.mp4`. It holds the first frame, plays the clip from frame 60 of the scene, then holds the last frame.
+- 📝 The turn card (first in W05, T05) plays `narration-clip.mp4` or `narration-clip-tall.mp4`. Its card holds until the reveal ends.
+- 🎞️ The stats card (second in W05, T05) plays `stats-clip.mp4`. It holds the first frame, plays the clip from 60 frames after the card rises, then holds the last frame.
 - 💬 The Morphie shot (W13) plays `help-clip.mp4` once its card lands, at scene frame 40.
 - 🧍 The avatar clip is deferred: no shot plays it since the avatar left the cut (Q60). `npm run capture -- --only avatar-clip` films it again if it returns.
 - 🔁 A second run gives the same frames and the same file, so `npm run capture:diff` prints `same`. The frames stay in `.capture-clip/` to compare two runs.
@@ -261,8 +278,8 @@ Each clip prints its motion: the share of pixels each frame changes, ten frames 
 | Scene library entries for the studio | `src/library.tsx` |
 | Contact sheet composition and script | `src/sheet.tsx`, `scripts/sheet.mjs` |
 | End card scene, with an optional call-to-action pill | `src/scenes/TitleCard.tsx` |
-| Scenes: kinetic text, frame card, stack, typed narration, wordmark title | `src/scenes/` |
-| Shared parts: the stage, the glass card, the camera inside it, the headline and pills, and the wordmark | `src/parts/` |
+| Scenes: kinetic text, frame card, stack, growing stack, wordmark title | `src/scenes/` |
+| Shared parts: the stage, the glass card, the camera inside it, the headline and pills, the typed panel, and the wordmark | `src/parts/` |
 | The opening card's goo wordmark: the app's first-run intro (`src/components/IntroSequence.tsx`), driven by the frame, in the intro's own font | `src/parts/GooWordmark.tsx` |
 | Where each card sits per layout | `src/poses.ts` |
 | Enter and exit timing, and the springs | `src/motion.ts` |

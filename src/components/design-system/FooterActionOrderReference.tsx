@@ -41,14 +41,14 @@ export function FooterActionOrderReference() {
           Footer Action Order
         </CardTitle>
         <CardDescription>
-          These production dialogs keep cancellation before confirmation.
+          Shows production dialogs with Cancel before the confirming action
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-3">
         <section className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <h3 className="text-label font-semibold">Ordinary Acceptance</h3>
-            <Meta>Create Group stays disabled until the sample has a name.</Meta>
+            <Meta><strong>Create Group</strong> is unavailable until the group has a name</Meta>
           </div>
 
           <Dialog onOpenChange={(open) => { if (!open) setGroupName(''); }}>
@@ -59,7 +59,7 @@ export function FooterActionOrderReference() {
               <DialogHeader>
                 <DialogTitle>Create Group</DialogTitle>
                 <DialogDescription>
-                  Create a local sample Group for {SAMPLE_ITEM}.
+                  {SAMPLE_ITEM} goes into a new group.
                 </DialogDescription>
               </DialogHeader>
               <label className="grid gap-2 text-label" htmlFor="footer-reference-group-name">
@@ -87,17 +87,17 @@ export function FooterActionOrderReference() {
             </DialogContent>
           </Dialog>
 
-          <p className="text-helper text-muted-foreground" aria-live="polite">
+          <Meta as="p" aria-live="polite">
             {createdGroup
               ? `Created the local group “${createdGroup}”.`
               : 'No sample group was created.'}
-          </p>
+          </Meta>
         </section>
 
         <section className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <h3 className="text-label font-semibold">Destructive Confirmation</h3>
-            <Meta>Delete keeps its destructive treatment in the affirmative position.</Meta>
+            <Meta><strong>Delete</strong> keeps its destructive color in the confirming position</Meta>
           </div>
 
           <AlertDialog>
@@ -108,7 +108,7 @@ export function FooterActionOrderReference() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Local Sample?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Delete {SAMPLE_ITEM} from this isolated reference.
+                  {SAMPLE_ITEM} is deleted from this reference. <strong>Restore Local Sample</strong> brings it back.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter data-footer-example="destructive">
@@ -124,9 +124,9 @@ export function FooterActionOrderReference() {
           </AlertDialog>
 
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-helper text-muted-foreground" aria-live="polite">
+            <Meta as="p" aria-live="polite">
               {deleted ? 'Deleted the local sample.' : 'The local sample is available.'}
-            </p>
+            </Meta>
             {deleted && (
               <Button size="sm" variant="ghost" onClick={() => setDeleted(false)}>
                 Restore Local Sample
@@ -138,7 +138,7 @@ export function FooterActionOrderReference() {
         <section className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <h3 className="text-label font-semibold">Long Action Labels</h3>
-            <Meta>A constrained footer wraps before its actions can overflow.</Meta>
+            <Meta>A narrow footer wraps its actions before they overflow</Meta>
           </div>
 
           <Dialog>
@@ -149,7 +149,7 @@ export function FooterActionOrderReference() {
               <DialogHeader>
                 <DialogTitle>Export World</DialogTitle>
                 <DialogDescription>
-                  Choose whether to include the remote images in this local example.
+                  <strong>Download and Embed</strong> stores the linked images in the world file.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter
@@ -161,16 +161,16 @@ export function FooterActionOrderReference() {
                 </DialogClose>
                 <DialogClose asChild>
                   <Button onClick={() => setEmbedded(true)}>
-                    Download and Embed — Works Offline
+                    Download and Embed
                   </Button>
                 </DialogClose>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          <p className="text-helper text-muted-foreground" aria-live="polite">
-            {embedded ? 'Embedded the images in the local example.' : 'The local example keeps its image links.'}
-          </p>
+          <Meta as="p" aria-live="polite">
+            {embedded ? 'Embedded the images in the local example.' : 'The local example keeps its linked images.'}
+          </Meta>
         </section>
       </CardContent>
     </Card>

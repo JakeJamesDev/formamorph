@@ -211,7 +211,7 @@ describe('a signed-in reader on a thread', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
     expect(sent.some((request) => request.method === 'DELETE')).toBe(false);
     const dialog = await screen.findByRole('alertdialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => expect(screen.queryByText('Better words.')).toBeNull());
     expect(sent.map((request) => `${request.method} ${request.path}`)).toEqual([
@@ -228,7 +228,7 @@ describe('a signed-in reader on a thread', () => {
 
     await screen.findByText('My own words.');
     fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
-    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
 
     expect((await screen.findByRole('alert')).textContent).toBe('Failed to delete the comment');
     expect(screen.getByText('My own words.')).toBeTruthy();
@@ -240,7 +240,7 @@ describe('a signed-in reader on a thread', () => {
     show(WEBSITE_FEEDBACK_CAPABILITIES);
 
     await screen.findByText('Darker map tiles');
-    fireEvent.click(screen.getByRole('button', { name: /Edit this report/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Edit this thread/ }));
     fireEvent.change(await screen.findByLabelText('Title'), { target: { value: 'Darker night map tiles' } });
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
@@ -256,7 +256,7 @@ describe('a signed-in reader on a thread', () => {
     const notify = show(WEBSITE_FEEDBACK_CAPABILITIES);
 
     await screen.findByText('Darker map tiles');
-    fireEvent.click(screen.getByRole('button', { name: /Edit this report/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Edit this thread/ }));
     fireEvent.change(await screen.findByLabelText('Title'), { target: { value: 'Darker night map tiles' } });
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
@@ -274,7 +274,7 @@ describe('a signed-in reader on a thread', () => {
     await screen.findByText('Somebody else.');
     expect(screen.queryByRole('button', { name: 'Edit comment' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Delete comment' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Edit this report/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Edit this thread/ })).toBeNull();
   });
 
   it('shows a staff reader no edit or delete on other people’s posts', async () => {
@@ -284,7 +284,7 @@ describe('a signed-in reader on a thread', () => {
 
     await screen.findByText('Somebody else.');
     expect(screen.queryByRole('button', { name: 'Delete comment' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Edit this report/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Edit this thread/ })).toBeNull();
   });
 
   it('shows a locked thread as locked with no comment box and no comment edit', async () => {

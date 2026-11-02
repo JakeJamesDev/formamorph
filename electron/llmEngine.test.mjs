@@ -34,6 +34,8 @@ const TWO_DEVICES = 'Available devices:\r\n  Vulkan0: Intel(R) UHD Graphics 770 
 
 let engine = null;
 let workRoot = null;
+// Every engine and folder this test built: a test that starts twice calls setup twice.
+const built = [];
 
 /** An engine over a fake server, recording every status it pushes. Windows unless `platform` says otherwise. */
 function setup(fakeOptions = {}, { platform = 'win32', binaryPath = ({ cpu } = {}) => (cpu ? 'llama-server-cpu' : 'llama-server') } = {}) {
@@ -41,15 +43,16 @@ function setup(fakeOptions = {}, { platform = 'win32', binaryPath = ({ cpu } = {
   workRoot = mkdtempSync(path.join(os.tmpdir(), 'engine-test-'));
   const chatEvents = [];
   engine = createEngine({ spawn: fake.spawn, binaryPath, platform, workRoot, listProcesses: fake.listProcesses, onChatEvent: (e) => chatEvents.push(e) });
+  built.push({ engine, workRoot });
   const seen = [];
   engine.onStatus((s) => seen.push(s));
   return { fake, seen, chatEvents };
 }
 
 afterEach(async () => {
-  await engine?.stop();
+  for (const each of new Set([...built.map((b) => b.engine), engine].filter(Boolean))) await each.stop();
+  for (const { workRoot: root } of built.splice(0)) rmSync(root, { recursive: true, force: true });
   engine = null;
-  if (workRoot) rmSync(workRoot, { recursive: true, force: true });
   workRoot = null;
 });
 

@@ -249,7 +249,7 @@ export function commitEntityMoves<S extends FollowerState>(
   const code = commit.codeWrites?.entities;
   const moved = move.to !== undefined && move.to !== move.from;
   if (commit.suggestedLocation && !moved) {
-    const written = new Set(code?.map((write) => write.entity));
+    const written = new Set(code?.filter((write) => write.kind !== 'meet').map((write) => write.entity));
     const offer = offerOf(entityMoves);
     return {
       state: applyEntityCodeWrites(applyAtOnce(state, entityMoves, move.from), code, move.from),

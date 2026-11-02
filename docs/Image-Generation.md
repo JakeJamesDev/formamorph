@@ -1,21 +1,23 @@
 # 🎨 Image Generation
 <!-- keywords: txt2img, visuals, drawings, does it cost money, can it draw, graphics for story -->
 
-Formamorph can draw images with an image server that you connect. It makes portraits for entities, pictures for locations and world thumbnails, and an image of each turn. The image server is separate from your text AI. It can run on your own PC, or be a paid cloud service.
+Formamorph can draw images with an image server that you connect. It makes portraits for entities, images for locations, world thumbnails, and an image of each turn.
 
-> Image generation is off until you turn it on. To connect a text AI, see [Connect Your Own AI](Connect-Your-Own-AI).
+The image server is separate from your text AI. It can run on your own PC, or be a paid cloud service.
+
+> Image generation is on by default, but it draws nothing until you connect an image server. To connect a text AI, see [Connect Your Own AI](Connect-Your-Own-AI).
 
 ## How to Turn On Image Generation
 <!-- keywords: enable, pictures, art, stable diffusion, ai art, set up, illustrations, activate drawings, generate button missing, render visuals, image backend, photos in game, where are picture settings -->
 <!-- route: settingsEndpoints.image#enable-image-generation -->
 
 1. Open **Settings**, then the **Endpoints** tab, then the **Image** tab.
-2. Select the **Enable Image Generation** checkbox.
+2. Make sure the **Enable Image Generation** checkbox is selected. It is on by default.
 3. In **Provider**, select your image server.
 4. Select **How to Set Up** and follow the steps for that provider. The steps for each provider are below too.
 5. Fill in **Endpoint URL**, **API Token** and **Model** as the provider needs.
 
-The **Generate with AI** buttons now show beside the World Editor's image fields. To get an image of each turn, see [How to Turn On Scene Images](#how-to-turn-on-scene-images).
+The **Generate with AI** buttons show beside the World Editor's image fields while **Enable Image Generation** is on. To get an image of each turn, see [How to Turn On Scene Images](#how-to-turn-on-scene-images).
 
 ## How to Connect ComfyUI
 <!-- keywords: comfy, stable diffusion, local, set up, cors, checkpoint, sdxl, port 8188, will not connect, request blocked, own graphics card, offline drawing, flux, model list empty, bat file flag -->
@@ -26,7 +28,7 @@ The **Generate with AI** buttons now show beside the World Editor's image fields
 3. Start ComfyUI.
 4. In **Provider**, select **ComfyUI (local)**.
 5. Leave **Endpoint URL** empty to use `http://localhost:8188`, or type your server's address.
-6. In **Model**, select a checkpoint. The **Model** and **Sampler** lists load from your server.
+6. In **Model**, select a checkpoint. The **Model** and **Sampler** lists load from your server. Leave **Model** empty to use the server's first checkpoint.
 
 To use your own ComfyUI graph, see [How to Use Your Own ComfyUI Workflow](#how-to-use-your-own-comfyui-workflow).
 
@@ -40,7 +42,7 @@ To use your own ComfyUI graph, see [How to Use Your Own ComfyUI Workflow](#how-t
 4. Restart InvokeAI.
 5. In **Provider**, select **InvokeAI (local)**.
 6. Leave **Endpoint URL** empty to use `http://localhost:9090`, or type your server's address.
-7. In **Model**, select an installed SDXL, SD1.5, Z-Image or Anima model. The list loads from your server.
+7. In **Model**, select an installed SDXL, SD1.5, SD2, Z-Image or Anima model. The list loads from your server.
 
 A Z-Image or Anima model also needs a Qwen3 text encoder and a VAE. Formamorph picks installed ones. To choose them yourself, see [InvokeAI Fields](#invokeai-fields).
 
@@ -120,7 +122,7 @@ Each turn now ends with an image. See [Scene Images](#scene-images).
 1. In the game, open the turn's **More** menu.
 2. Select **Generate Scene Image**. The item shows when the turn has no image.
 
-If a turn is still running, the image starts when it ends. **Write Scene Tags** writes the tags only, so you can edit them before the image is made.
+**Write Scene Tags** writes the tags only, so you can edit them before the image is made. You can't select either item while a turn is running.
 
 ## How to Add an Image Preset
 <!-- keywords: save settings, profile, switch, multiple, config, new setup, second server, different art styles, swap models quickly, loadout, duplicate configuration, keep two servers, named settings -->
@@ -147,7 +149,7 @@ Select a preset in **Preset** to switch to it. See [Image Presets](#image-preset
 
 **ComfyUI (local)** is the default provider. In the browser, **OpenAI-compatible (cloud)** shows *desktop app only* and can't be picked.
 
-Each field of the **Image** tab is explained in [Settings → Image](Settings#image).
+Each field of the **Image** tab is explained in [Endpoint Settings → Image](Endpoint-Settings#image).
 
 ### InvokeAI Fields
 
@@ -156,10 +158,10 @@ These fields show in Advanced mode when the provider is **InvokeAI (local)**.
 | Field | What it does |
 |---|---|
 | **Board** | The InvokeAI board that gets the images. **Uncategorized** is InvokeAI's own default. |
-| **Qwen3 Encoder** | The text encoder for a Z-Image or Anima model. Z-Image needs Qwen3 4B; Anima needs Qwen3 0.6B. Empty picks one. |
+| **Qwen3 Encoder** | The text encoder for a Z-Image or Anima model. Shows only for those models. Z-Image needs Qwen3 4B; Anima needs Qwen3 0.6B. Empty picks one. |
 | **Z-Image VAE**, **Anima VAE** | The VAE for that model. Z-Image needs a FLUX-type VAE. Anima needs a QwenImage/Wan 2.1 VAE; a FLUX VAE also works. Empty picks one. |
 
-**Face Fix** on InvokeAI needs no extension. The first image with it on waits while InvokeAI downloads its detector models, a few hundred MB, one time. After that, it about doubles the time of each image.
+**Face Fix** on InvokeAI skips Z-Image and Anima models, and needs no extension. The first image with it on waits while InvokeAI downloads its detector models, a few hundred MB, one time. After that, it about doubles the time of each image.
 
 ## ComfyUI Workflow Rules
 <!-- keywords: variables in graph, substitution markers, percent signs, graph rejected, node error, hardcode a setting, which output is used -->
@@ -192,11 +194,14 @@ With **Scene Images** on, each turn ends with an image of the scene. The image c
 The image is made in these steps:
 
 1. Your text AI writes tags for the action in the turn. The **Scene Tags** prompt does this. See [Prompts](Prompts).
-2. The game adds the **Image Tags** of the location and of up to two entities in the scene.
-3. An entity or location with no **Image Tags** gets tags from its description, through the [Tag Prompt](Settings#tag-prompt).
+2. The game adds the **Image Tags** of the location and of up to two entities in the scene. Your own entity counts as one of the two when it is in the image.
+3. An entity or location with no **Image Tags** gets tags from its description, through the [Tag Prompt](Endpoint-Settings#tag-prompt).
 4. The image server draws the tags at the **Landscape** size of the current preset.
 
-The image shows on the turn, above your action. Select it to zoom. A turn can keep several images: use **Previous image** and **Next image** to move between them, and **Delete this image** to remove one.
+The image shows on the turn, above your action. Select it to zoom. A turn can keep several images:
+
+- **Previous image** and **Next image** move between them.
+- **Delete this image** removes one.
 
 The panel under the image shows the progress, with **Stop**. Select **Tags** to see the tag line:
 
@@ -211,9 +216,16 @@ Scene images are not in a save unless you select their checkbox in **Save Game**
 ## Image Presets
 <!-- keywords: configuration sets, restore factory values, one per style, world editor picker -->
 
-A preset keeps a full set of **Image** tab values: the provider, its address and token, the model, the prompts, the sizes and the sampling values. Keep one preset for each server or style, and switch between them.
+A preset keeps a full set of **Image** tab values:
 
-The icon buttons next to **Preset** manage your presets. Point at an icon to see its name. On a narrow screen they are in the **Preset Actions** menu.
+- the provider, its address and token
+- the model
+- the prompts
+- the sizes and the sampling values
+
+Keep one preset for each server or style, and switch between them.
+
+The icon buttons next to **Preset** manage your presets. Each icon's tooltip shows its name. On a narrow screen they are in the **Preset Actions** menu.
 
 | Control | What it does |
 |---|---|
@@ -223,7 +235,7 @@ The icon buttons next to **Preset** manage your presets. Point at an icon to see
 | **Reset** | Sets the preset back to its default values |
 | **Delete** | Deletes the preset. Shows when you have more than one. |
 
-The first preset is **Default**, and you can edit it. The **Generate image** dialog in the World Editor has its own **Preset** picker. **Enable Image Generation** and the **Tag Prompt** are the same for all presets.
+The first preset is **Default**, and you can edit it. The **Generate image** dialog in the World Editor has a **Preset** picker too. A preset you pick there becomes the active preset everywhere. **Enable Image Generation** and the **Tag Prompt** are the same for all presets.
 
 Under **Preset**, on the **Image** tab and in the **Generate image** dialog, a badge shows whether the preset's server answers. Select **Recheck** to test again after you start the server.
 
@@ -239,11 +251,11 @@ The check reads ComfyUI's node list, or the model list of InvokeAI, Automatic111
 ## One GPU for Text and Images
 <!-- keywords: vram, out of memory, unable to type, input locked, takes forever, queue order, lag, both models loaded, why so slow -->
 
-Most PCs have one graphics card. When a text model and an image model run on one card at the same time, both move into system memory and get very slow. So Formamorph never runs them at the same time:
+Most PCs have one graphics card. A text model and an image model that run on one card at the same time both move into system memory. Then both get very slow. So Formamorph never runs them at the same time:
 
 - A scene image starts after the turn's text is complete.
 - Your next action waits until the image is done.
-- An image you ask for during a turn starts when the turn ends.
-- A rewind or a re-generate stops the image in progress.
+- An image you ask for from the scene panel during a turn starts when the turn ends.
+- A rewind or a regenerate stops the image in progress.
 
 Each turn with **Scene Images** on takes as long as your image server needs.

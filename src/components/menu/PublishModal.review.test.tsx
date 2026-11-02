@@ -44,6 +44,6 @@ describe('the publish result', () => {
   it('keeps today\'s message for a live result', async () => {
     await publishWith({ _id: 'd2', moderation_state: 'approved' });
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Dictionary published successfully!'));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Dictionary published'));
   });
 });

@@ -44,7 +44,7 @@ export const TUTORIALS: readonly TutorialEntry[] = [
     id: HELP_TAB_TUTORIAL_ID,
     screen: 'mainMenu',
     title: 'Ask Morphie!',
-    body: 'Morphie knows how everything works, and she can take you to the right screen! Click this tab or press F1 to chat with her. Drag the tab to move it along the edge.',
+    body: 'Ask Morphie how anything works, and she can take you to the right screen. Select this tab or press F1 to chat with her. Drag the tab to move it along the edge.',
   },
   {
     id: AUTHORING_TOUR_OFFER_ID,
@@ -59,8 +59,8 @@ export const TUTORIALS: readonly TutorialEntry[] = [
     screen: 'worldEditor',
     title: 'Simple vs. Advanced',
     points: [
-      { term: 'Simple', text: 'Just the Essentials' },
-      { term: 'Advanced', text: 'Powerful but Complex' },
+      { term: 'Simple', text: 'Just the essentials' },
+      { term: 'Advanced', text: 'Every tool and field' },
     ],
   },
   {
@@ -68,8 +68,8 @@ export const TUTORIALS: readonly TutorialEntry[] = [
     screen: 'settings',
     title: 'Simple vs. Advanced',
     points: [
-      { term: 'Simple', text: 'Just the Essentials' },
-      { term: 'Advanced', text: 'Every Knob and Prompt' },
+      { term: 'Simple', text: 'Just the essentials' },
+      { term: 'Advanced', text: 'Every setting' },
     ],
   },
   {
@@ -78,8 +78,8 @@ export const TUTORIALS: readonly TutorialEntry[] = [
     title: 'Worlds, Entities, Dictionaries, Avatars & Prompts',
     points: [
       { term: 'Worlds', text: 'Complete adventures to play' },
-      { term: 'Entities', text: 'Characters and creatures to add to yours' },
-      { term: 'Dictionaries', text: "Lore books that teach the AI your world's terms" },
+      { term: 'Entities', text: 'People, creatures and objects to add to your worlds' },
+      { term: 'Dictionaries', text: "Sets of entries that tell the AI your world's terms" },
       { term: 'Avatars', text: 'Player models to wear in any world' },
       { term: 'Prompts', text: 'Prompt presets that change how the AI writes' },
     ],
@@ -88,13 +88,13 @@ export const TUTORIALS: readonly TutorialEntry[] = [
     id: 'community-filters',
     screen: 'community',
     title: 'Narrow the Catalog',
-    body: 'Filter by author, tag, or download status, in any combination. Your filters stick around between visits.',
+    body: 'Filter by author, tag or download status, in any combination. Your filters stay until you change them.',
   },
   {
     id: 'community-like',
     screen: 'community',
     title: 'Show Some Love',
-    body: 'Tap the heart on anything you enjoyed. Likes help other players find the good stuff — and you can sort the catalog by them.',
+    body: 'Select the heart on anything you enjoyed. Likes help other players find it, and you can sort the catalog by them.',
   },
   {
     id: 'community-search-prefixes',
@@ -106,26 +106,25 @@ export const TUTORIALS: readonly TutorialEntry[] = [
     id: 'community-hidden',
     screen: 'community',
     title: "Hide What You're Done With",
-    body: "Hide individual items, whole tags, or authors you'd rather not see. Undo it all from the same panel.",
+    body: "Hide items, tags or authors you don't want to see. Undo any of it from the same panel.",
   },
   {
     id: 'main-menu-sign-in',
     screen: 'mainMenu',
     title: 'Sign In',
-    body: 'Create a free account to like and comment on community creations — and publish your own!',
+    body: 'Create a free account to like and comment on Community Creations, and to publish your own',
   },
   {
     id: 'main-menu-feedback',
     screen: 'mainMenu',
     title: 'Bugs & Suggestions',
-    body: 'Report a bug or send a suggestion straight to the developers. Replies land in your profile, and suggestions are public so everyone can read and vote on them.',
+    body: 'Report a bug or send a suggestion to the developers. Replies show in your profile. Suggestions are public, so other players can read them and vote on them.',
   },
 ];
 
 const STORAGE_KEY = 'formamorph.tutorialsSeen';
 
-/** Milliseconds after the screen mounts before the popover appears, so it arrives as a change the eye
- *  catches rather than as part of the first paint. */
+/** Milliseconds after the screen mounts before the popover appears, so it appears after the first paint. */
 export const TUTORIAL_APPEAR_DELAY_MS = 600;
 
 function read(): string[] {
@@ -188,7 +187,7 @@ export function useSeenTutorialCount(): number {
 }
 
 // Which screens are on view, innermost last. A screen layered over another — the Community Creations
-// browser over the main menu — takes the tour with it, so two explanations can't share the glass.
+// browser over the main menu — hides the lower screen's tour, so two explanations never show at once.
 const activeScreens: TutorialScreen[] = [];
 const screenListeners = new Set<() => void>();
 let topScreen: TutorialScreen | null = null;
@@ -224,7 +223,7 @@ export interface TutorialNav {
 
 export interface TutorialOptions {
   /** False while the screen isn't on view — a dialog that hasn't opened. The appear delay restarts from
-   *  the moment this turns true, so a tutorial arrives as a change the eye catches on that screen. */
+   *  the moment this turns true. */
   active?: boolean;
   /** Ids that can't be explained yet: their control is absent, or does nothing for this reader. Held
    *  entries are stepped over rather than retired, so they surface on a visit that can show them. */

@@ -64,7 +64,7 @@ import {
 } from '@/services/StatTemplateStorageService';
 import type { ScriptTiming, Stat, ToolParam, ToolParamType, ToolScriptTiming } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
-import { Hint, Meta } from '@/components/ui/typography';
+import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import { namedParams } from '@/lib/tools/toolDraft';
 import { worldToolArgsNodes, worldToolSurface } from '@/lib/tools/worldToolSurface';
 
@@ -159,12 +159,12 @@ type SlotRow = BreadcrumbPickerRow<string>;
 
 /** What a name slot's empty picker asks for, and what its search field says. */
 const PROMPTS: Record<NameSlotType, { pick: string; search: string }> = {
-  stat: { pick: 'Pick a stat…', search: 'Search stats' },
-  placeholder: { pick: 'Pick a placeholder…', search: 'Search placeholders' },
-  trait: { pick: 'Pick a trait…', search: 'Search traits' },
-  entity: { pick: 'Pick an entity…', search: 'Search entities' },
-  location: { pick: 'Pick a location…', search: 'Search locations' },
-  param: { pick: 'Pick a parameter…', search: 'Search parameters' },
+  stat: { pick: 'Pick a stat', search: 'Search stats' },
+  placeholder: { pick: 'Pick a placeholder', search: 'Search placeholders' },
+  trait: { pick: 'Pick a trait', search: 'Search traits' },
+  entity: { pick: 'Pick an entity', search: 'Search entities' },
+  location: { pick: 'Pick a location', search: 'Search locations' },
+  param: { pick: 'Pick a parameter', search: 'Search parameters' },
 };
 
 const OWNER_CRUMB: readonly string[] = ['Owner'];
@@ -294,7 +294,7 @@ function SlotField({ slot, value, problem, options, onChange }: {
           aria-invalid={!!problem}
           aria-describedby={problem ? problemId : undefined}
           // While the field is being typed in it shows exactly what was typed, empty included. Resolving
-          // on every keystroke would refill a backspaced field before the next character landed, so a
+          // on every keystroke would refill a backspaced field before the next character arrived, so a
           // defaulted number could only be replaced by typing over the selection.
           value={typing ?? value}
           inputMode={slot.type === 'number' ? 'decimal' : undefined}
@@ -321,7 +321,7 @@ function SlotField({ slot, value, problem, options, onChange }: {
             aria-invalid={!!problem}
             aria-describedby={problem ? problemId : undefined}
           >
-            <SelectValue placeholder="Pick one…" />
+            <SelectValue placeholder="Pick one" />
           </SelectTrigger>
           <SelectContent>
             {options.length === 0 && <div className="px-2 py-1.5 text-meta text-muted-foreground">Nothing to pick</div>}
@@ -348,7 +348,7 @@ function TemplateForm({ code, kind, names, values, onChange }: {
 
   return (
     <div className="flex flex-col gap-3 min-w-0">
-      {parsed.errors.length > 0 && <p className="text-helper text-destructive">{parsed.errors.join(' ')}</p>}
+      {parsed.errors.length > 0 && <FieldError>{parsed.errors.join(' ')}</FieldError>}
 
       {parsed.slots.length > 0 ? (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -367,7 +367,7 @@ function TemplateForm({ code, kind, names, values, onChange }: {
           ))}
         </div>
       ) : (
-        <p className="text-meta text-muted-foreground">This template asks for nothing — it inserts as it is.</p>
+        <Hint>This template has no fields to fill. <strong>Insert Code</strong> adds it as written.</Hint>
       )}
 
       <div className="flex flex-col gap-1 min-h-0">
@@ -669,7 +669,7 @@ export function StatCodeTemplateDialog({
                 Write a slot as <code>{'{{name:type=default}}'}</code>. {kind === 'worldTool'
                   ? 'Stat, placeholder, trait, entity, location, daypart and parameter'
                   : 'Stat, placeholder, trait, entity, location and daypart'} slots insert a quoted string. Number, choice
-                and text slots insert as written, so add the quotes when you need a string.
+                and text slots insert their value without quotes. Add quotes for a string.
               </Hint>
             </div>
 
@@ -698,7 +698,7 @@ export function StatCodeTemplateDialog({
                     {builtIns.map(templateButton)}
 
                     <div className={cn('flex items-center justify-between gap-1 px-1', builtIns.length > 0 ? 'pt-3' : 'pt-1')}>
-                      <p className="text-meta text-muted-foreground">My Templates</p>
+                      <Meta as="p">My Templates</Meta>
                       <span className="flex items-center">
                         <Tip tip="Import templates">
                           <button
@@ -743,7 +743,7 @@ export function StatCodeTemplateDialog({
                     <div>
                       <p className="text-label font-medium">{selected.name}</p>
                       <Meta className="block text-muted-foreground">Runs {templateTimingLabels(selected).join(', ')}</Meta>
-                      <p className="text-helper text-muted-foreground">{selected.description}</p>
+                      <Hint>{selected.description}</Hint>
                     </div>
                     <TemplateForm code={selected.code} kind={kind} names={slotNames} values={values} onChange={setValues} />
                   </>

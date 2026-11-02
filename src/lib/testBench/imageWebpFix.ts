@@ -65,38 +65,30 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   // Each slice keeps its identity unless this run actually rebuilt it, so the write-back touches only what
   // changed — and an entity whose pictures were all left alone never has its legacy `image` field normalized
   // into `images` as a side effect of fixing a different one.
-  let entitiesChanged = false;
-  const entities: RuleWorld['entities'] = [];
-  for (const entity of world.entities ?? []) {
-    const images: GalleryImage[] = [];
-    let touched = false;
-    for (const img of entityImages(entity)) {
-      const next = await convert(img.data);
-      if (next !== img.data) touched = true;
-      images.push({ ...img, data: next });
+  const convertGalleries = async <T extends { images?: GalleryImage[] }>(list: T[], imagesOf: (record: T) => GalleryImage[]) => {
+    let changed = false;
+    const records: T[] = [];
+    for (const record of list) {
+      const images: GalleryImage[] = [];
+      let touched = false;
+      for (const img of imagesOf(record)) {
+        const next = await convert(img.data);
+        if (next !== img.data) touched = true;
+        images.push({ ...img, data: next });
+      }
+      changed ||= touched;
+      records.push(touched ? { ...record, images } : record);
     }
-    entitiesChanged ||= touched;
-    entities.push(touched ? { ...entity, images } : entity);
-  }
-
-  let locationsChanged = false;
-  const locations: RuleWorld['locations'] = [];
-  for (const location of world.locations ?? []) {
-    const images: GalleryImage[] = [];
-    let touched = false;
-    for (const img of locationImages(location)) {
-      const next = await convert(img.data);
-      if (next !== img.data) touched = true;
-      images.push({ ...img, data: next });
-    }
-    locationsChanged ||= touched;
-    locations.push(touched ? { ...location, images } : location);
-  }
+    return { records, changed };
+  };
+  const { records: entities, changed: entitiesChanged } = await convertGalleries(world.entities ?? [], entityImages);
+  const { records: locations, changed: locationsChanged } = await convertGalleries(world.locations ?? [], locationImages);
+  const { records: items, changed: itemsChanged } = await convertGalleries(world.items ?? [], entityImages);
 
   const thumbnailChanged = nextThumbnail !== thumbnail;
   // Nothing converted means nothing to write back: handing the same world reference back is what lets the
   // caller skip the write entirely, so a run that changed nothing never marks the world dirty.
-  if (!thumbnailChanged && !entitiesChanged && !locationsChanged) {
+  if (!thumbnailChanged && !entitiesChanged && !locationsChanged && !itemsChanged) {
     return { world, converted, kept, skippedAnimated, relabeled };
   }
 
@@ -106,6 +98,7 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
       ...(thumbnailChanged ? { worldOverview: { ...world.worldOverview, thumbnail: nextThumbnail ?? null } } : {}),
       ...(entitiesChanged ? { entities } : {}),
       ...(locationsChanged ? { locations } : {}),
+      ...(itemsChanged ? { items } : {}),
     },
     converted,
     kept,
@@ -119,8 +112,8 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
 const describeSkippedAnimated = (skipped: number): string => {
   if (skipped <= 0) return '';
   return skipped === 1
-    ? 'Left 1 GIF alone — converting it in this browser would flatten its animation.'
-    : `Left ${skipped} GIFs alone — converting them in this browser would flatten their animation.`;
+    ? 'Skipped 1 GIF, because converting it in this browser removes its animation.'
+    : `Skipped ${skipped} GIFs, because converting them in this browser removes their animation.`;
 };
 
 /** Labels corrected to what the bytes say — its own line because the image is deliberately still not WebP,

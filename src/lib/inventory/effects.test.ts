@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, itemEffectLine, settleItemEffects, type InventoryOp, type ItemEffectWorld } from '.';
 import { seedStatBases } from '@/lib/traitRuntime';
-import type { EntityStatValues, Item, ItemCopy, ItemEffectLedger, ItemStatEffect, PlayerStat, Slot } from '@/types';
+import type { Body, EntityStatValues, Item, ItemCopy, ItemEffectLedger, ItemStatEffect, PlayerStat, Slot } from '@/types';
 
 const stat = (id: string, value: number, max = 10, min = 0): PlayerStat =>
   ({ id, name: id[0].toUpperCase() + id.slice(1), value, min, max } as PlayerStat);
@@ -12,13 +13,14 @@ const item = (id: string, over: Partial<Item> = {}): Item =>
   ({ id, name: id === 'sword' ? 'Iron Sword' : id, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 
 const hand: Slot = { id: 'hand', name: 'Hand' };
-const ring: Slot = { id: 'ring', name: 'Ring', capacity: 2 };
-const sword = item('sword', { stackable: false, slotId: 'hand', statEffects: [row('strength', 2, 'equipped')] });
+const ring: Slot = { id: 'ring', name: 'Ring' };
+const humanoid: Body = bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }, { slotId: 'ring', capacity: 2 }] });
+const sword = item('sword', { stackable: false, slotRule: { mode: 'either', slotIds: ['hand'] }, statEffects: [row('strength', 2, 'equipped')] });
 const amulet = item('amulet', { statEffects: [row('health', 5, 'owned', 'max')] });
 const coin = item('coin', { statEffects: [row('luck', 1, 'owned')] });
 const charm = item('charm', { stackable: false, statEffects: [row('luck', 1, 'owned')] });
 const relic = item('relic', { statEffects: [row('health', 5, 'firstObtain', 'max'), row('luck', 1, 'firstObtain')] });
-const band = item('band', { stackable: false, slotId: 'ring', statEffects: [row('luck', 1, 'equipped')] });
+const band = item('band', { stackable: false, slotRule: { mode: 'either', slotIds: ['ring'] }, statEffects: [row('luck', 1, 'equipped')] });
 const items = [sword, amulet, coin, charm, relic, band];
 
 const hero = { kind: 'entity', id: 'hero' } as const;
@@ -33,7 +35,7 @@ interface Play { copies: readonly ItemCopy[]; entityStats: EntityStatValues; led
 /** Applies `ops` through the validator, then settles the effects, as every writer does. */
 function act(play: Play, ...ops: InventoryOp[]): Play {
   let n = play.copies.length;
-  const { copies } = applyInventoryOps(play.copies, ops, { world: { items, slots: [hand, ring] }, source: 'script', newId: () => `c${n++}` });
+  const { copies } = applyInventoryOps(play.copies, ops, { world: { items, slots: [hand, ring], bodies: [humanoid] }, source: 'script', newId: () => `c${n++}` });
   const result = settleItemEffects({ copies, entityStats: play.entityStats, ledger: play.ledger }, world, noTraits);
   return {
     copies, entityStats: result.entityStats, ledger: result.ledger,

@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { HostedAiPanel } from './HostedAiPanel';
 import type { HostedAiAdminApi, HostedAiSettings, HostedGrant } from '@/services/HostedAiAdminService';
 import { toastTexts } from '@/test/toastText';
+import { seedSampleTierNames } from '@/test/tierNames';
 
 const toastErrorMock = vi.fn();
 vi.mock('react-toastify', () => ({ toast: { error: (...args: unknown[]) => toastErrorMock(...args) } }));
@@ -28,6 +29,7 @@ const grant = (over: Partial<HostedGrant> = {}): HostedGrant => ({
 let api: { [K in keyof HostedAiAdminApi]: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
+  seedSampleTierNames();
   toastErrorMock.mockClear();
   api = {
     fetchSettings: vi.fn(async () => settings()),

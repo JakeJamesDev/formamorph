@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { applyInventoryOps, type InventoryCall } from '.';
 import type { Item, ItemCopy } from '@/types';
 
@@ -11,7 +12,7 @@ const copy = (id: string, itemId: string, over: Partial<ItemCopy> = {}): ItemCop
   ({ id, item: { kind: 'item', itemId }, where: you, quantity: 1, visibility: 'visible', ...over });
 
 const call = (over: Partial<InventoryCall> = {}): InventoryCall => ({
-  world: { items: [item('coin'), item('ring', { stackable: false, slotId: 'finger' })], slots: [{ id: 'finger', name: 'Finger' }] },
+  world: { items: [item('coin'), item('ring', { stackable: false, slotRule: { mode: 'either', slotIds: ['finger'] } })], slots: [{ id: 'finger', name: 'Finger' }], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'finger' }] })] },
   source: 'pass', newId: ids(), ...over,
 });
 

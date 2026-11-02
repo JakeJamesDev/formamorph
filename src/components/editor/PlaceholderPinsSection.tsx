@@ -14,6 +14,7 @@ import {
   type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceOption, type PinSourceRef,
 } from '@/lib/placeholderPins';
 import type { Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
+import { Hint, Meta } from '@/components/ui/typography';
 
 /** The world the section reads pins from and writes them back to: the four source lists, and the writer
  *  for each. The world editor's data store is one. */
@@ -59,7 +60,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
   const kinds = pinKindsFor(world, placeholder.id);
 
   /** Hand each source that `next` rewrote back to its writer. `next` carries every change at once, so a
-   *  source written twice lands the same record twice, which is harmless. */
+   *  source written twice writes the same record twice, which is harmless. */
   const commit = (next: PinEditorWorld, ...sources: PinSourceRef[]) => {
     for (const source of sources) commitPinSource(next, source, world);
   };
@@ -82,13 +83,13 @@ export function PlaceholderPinsSection({ world, placeholder }: {
         <HelpButton topicId="worldEditor.pinsOnPlaceholder" className="h-6 w-6" />
       </div>
       {rows.length === 0 && !draft && (
-        <p className="text-helper text-muted-foreground">Nothing pins this placeholder</p>
+        <Hint>Nothing pins this placeholder</Hint>
       )}
       {rows.map((row, index) => (
         // A pin has no id, so its source and place in the list name it.
         <div key={`${pinSourceKey(row.source)}:${index}`} className="space-y-1" {...fieldFrame('pins', `${pinSourceKey(row.source)}:${index}`)}>
           <div className="flex space-x-2">
-            {/* The row's own label stands in for the picked item: it carries the kind a bare name would not. */}
+            {/* The row's own label names the picked item: it carries the kind a bare name would not. */}
             <OnDemandSelect
               aria-label="Pin Source"
               value={pinSourceKey(row.source)}
@@ -139,7 +140,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
             </Button>
           </div>
           {draft.kind && draftOptions.length === 0 && (
-            <p className="text-meta text-muted-foreground pl-1">{kinds.find((k) => k.kind === draft.kind)?.empty}</p>
+            <Meta as="p" className="pl-1">{kinds.find((k) => k.kind === draft.kind)?.empty}</Meta>
           )}
         </div>
       )}

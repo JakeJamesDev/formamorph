@@ -85,14 +85,14 @@ describe('the website feedback page', () => {
     acceptAgeGate();
     serve(() => ({ status: 503, body: { error: 'Service unavailable' } }));
     const { unmount } = render(<FeedbackPage />);
-    expect(await screen.findByText('Formamorph couldn’t load these threads.')).toBeInTheDocument();
+    expect(await screen.findByText('These threads didn’t load.')).toBeInTheDocument();
     expect(screen.queryByText('No suggestions match this filter.')).not.toBeInTheDocument();
     unmount();
 
     serve(() => board([]));
     render(<FeedbackPage />);
     expect(await screen.findByText('No suggestions match this filter.')).toBeInTheDocument();
-    expect(screen.queryByText('Formamorph couldn’t load these threads.')).not.toBeInTheDocument();
+    expect(screen.queryByText('These threads didn’t load.')).not.toBeInTheDocument();
   });
 
   it('shows the sign-in nudge in place of the board when the server refuses a guest read', async () => {
@@ -103,7 +103,7 @@ describe('the website feedback page', () => {
 
     expect(await screen.findByText('Sign in to read suggestions and questions.')).toBeInTheDocument();
     expect(within(screen.getByRole('main')).getByRole('link', { name: 'Sign In' })).toHaveAttribute('href', '/login?next=%2Ffeedback');
-    expect(screen.queryByText('Formamorph couldn’t load these threads.')).not.toBeInTheDocument();
+    expect(screen.queryByText('These threads didn’t load.')).not.toBeInTheDocument();
   });
 
   it('clears a stale session and reads the board once as a guest', async () => {

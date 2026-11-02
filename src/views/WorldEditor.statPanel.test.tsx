@@ -59,7 +59,8 @@ const FIELD_LABELS =
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
 const panelLabels = () =>
   screen.getAllByText(FIELD_LABELS)
-    .filter((el) => !el.closest('[role="tablist"]'))
+    // The strip, with its hidden measuring copies, names tabs, not fields.
+    .filter((el) => !el.closest('[role="tablist"], [data-collapsing-root]'))
     .map((el) => el.textContent);
 
 /** The checkbox captions the panel shows, which are spans rather than labeled fields. */
@@ -122,9 +123,9 @@ describe('the World Editor stat panel tabs', () => {
     const help = screen.getByText(/Enabled keeps the stat active/);
     expect(help.textContent).toMatch(/Hidden hides it from the player only/);
     // The pair had a paragraph each before; a second line under Availability is the regression.
-    expect(screen.queryByText(/Regen and Code/)).toBeNull();
+    expect(screen.queryByText(/Regen and scripts/)).toBeNull();
     await userEvent.click(within(help.parentElement!).getByRole('button', { name: 'More info' }));
-    expect(await screen.findByText(/its Regen and Code run/)).toBeInTheDocument();
+    expect(await screen.findByText(/its Regen and scripts run/)).toBeInTheDocument();
   });
 
   it('puts the descriptor section whole on Descriptors', () => {

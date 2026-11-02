@@ -15,7 +15,7 @@ self.addEventListener('message', async (event) => {
     self.postMessage({
       type: 'error',
       id,
-      error: { message: (error as Error).message, stack: (error as Error).stack },
+      error: { name: (error as Error).name, message: (error as Error).message, stack: (error as Error).stack },
     });
   }
 });

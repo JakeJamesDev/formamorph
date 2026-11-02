@@ -89,7 +89,7 @@ describe('a refused delete in Community Creations', () => {
   it('keeps the toast words and names the route, status and server reason in Error Details', async () => {
     renderBrowser();
     fireEvent.click(await screen.findByLabelText('Delete world'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     await screen.findByText('Failed to delete world');
     fireEvent.click(await screen.findByRole('button', { name: 'View Details →' }));

@@ -3,7 +3,7 @@ import { Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ListAddButton } from '@/components/ListToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Hint } from '@/components/ui/typography';
+import { Meta } from '@/components/ui/typography';
 import { MENU_ROW } from '@/components/menuRow';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { OwnerList } from '@/managers/OwnerPicker';
@@ -56,7 +56,7 @@ export function OwnerFlyoutReference() {
             </DrillSlide>
           </PopoverContent>
         </Popover>
-        <Hint role="status">{status}</Hint>
+        <Meta as="p" role="status">{status}</Meta>
       </div>
       <div className="space-y-2">
         <Popover>
@@ -72,7 +72,7 @@ export function OwnerFlyoutReference() {
             />
           </PopoverContent>
         </Popover>
-        <Hint>The sample links {[...linked].map(nameOf).join(', ')}.</Hint>
+        <Meta as="p">The sample links {[...linked].map(nameOf).join(', ')}.</Meta>
       </div>
     </section>
   );

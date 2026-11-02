@@ -207,6 +207,26 @@ describe('streamAiToolLoop: one lookup, then prose', () => {
     await run(transport);
     expect(assistantOf(transport.sent[1])[0].content).toBeNull();
   });
+
+  it('counts the output of every round, and leaves out the time between them', async () => {
+    const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('Bram ', 'nods.')]);
+    let clock = 0;
+    const events = await run(transport, { now: () => (clock += 10) });
+    const { output, timings } = doneOf(events);
+    expect(output.frames).toBe(3);
+    expect(output.reportedTokens).toBeNull();
+    expect(output.generatingMs).toBeGreaterThan(0);
+    expect(output.generatingMs).toBeLessThan(timings.endedAt - (timings.firstTokenAt as number));
+  });
+
+  it('adds up the counts the endpoint reports, and drops the total when a round reports none', async () => {
+    const usage = (completion_tokens: number) => `data: ${JSON.stringify({ choices: [], usage: { completion_tokens } })}\n\n`;
+    const calls = callFrames(['get_entity', { name: 'Bram' }]);
+    const both = await run(scripted([[...calls, usage(5)], [...proseFrames('x'), usage(9)]]));
+    expect(doneOf(both).output.reportedTokens).toBe(14);
+    const one = await run(scripted([calls, [...proseFrames('x'), usage(9)]]));
+    expect(doneOf(one).output.reportedTokens).toBeNull();
+  });
 });
 
 describe('streamAiToolLoop: what reaches the reply', () => {
@@ -307,6 +327,60 @@ describe('streamAiToolLoop: what reaches the reply', () => {
     expect(timings.startedAt).toBe(10);
     expect(timings.endedAt).toBe(clock);
     expect(timings.firstContentAt).toBeGreaterThan(timings.firstTokenAt as number);
+  });
+});
+
+describe('streamAiToolLoop: unseen functions', () => {
+  const GET_LOCATION: Tool = TOOL_CATALOG.find((t) => t.id === 'get_location')!;
+  const unseen = new Set([GET_ENTITY.id]);
+
+  it('leaves an unseen call and its result out of the next round, and sends that round without Tools when none are left', async () => {
+    const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('Bram ', 'nods.')]);
+
+    const events = await run(transport, { unseen, captureRounds: true });
+
+    const [first, second] = transport.sent;
+    expect(second.messages).toEqual(first.messages);
+    expect(second).not.toHaveProperty('tools');
+    expect(roundsOf(events)[0].calls[0].result).toContain(BRAM_FACT);
+    expect(roundsOf(events)[0].calls[0].unseen).toBe(true);
+    expect(doneOf(events).content).toBe('Bram nods.');
+  });
+
+  it('keeps a seen call beside an unseen one, and offers only the functions not yet spent', async () => {
+    const transport = scripted([
+      callFrames(['get_entity', { name: 'Bram' }], ['get_location', { name: 'Ferry' }]),
+      proseFrames('x'),
+    ]);
+
+    await run(transport, { unseen }, spec([GET_ENTITY, GET_LOCATION]));
+
+    const second = transport.sent[1];
+    expect(assistantOf(second)[0].tool_calls.map((c) => c.function.name)).toEqual(['get_location']);
+    expect(toolMessagesOf(second).map((t) => t.tool_call_id)).toEqual([assistantOf(second)[0].tool_calls[0].id]);
+    expect(second.tools).toEqual([toolSchema(GET_LOCATION)]);
+  });
+
+  it('takes the answer written beside an unseen call as the reply and sends no further round', async () => {
+    const transport = scripted([[frame({ content: 'The ferryman waits.' }), ...callFrames(['get_entity', { name: 'Bram' }])]]);
+
+    const events = await run(transport, { unseen, captureRounds: true });
+
+    expect(transport.sent).toHaveLength(1);
+    expect(events.some((e) => e.type === 'toolCalls')).toBe(false);
+    expect(roundsOf(events)).toHaveLength(1);
+    expect(doneOf(events).content).toBe('The ferryman waits.');
+    expect(doneOf(events).finishReason).toBe('stop');
+  });
+
+  it('keeps a call in the next round when no unseen set names it', async () => {
+    const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('x')]);
+
+    const events = await run(transport, { unseen: new Set(['get_location']), captureRounds: true });
+
+    expect(roundsOf(events)[0].calls[0]).not.toHaveProperty('unseen');
+    expect(toolMessagesOf(transport.sent[1])).toHaveLength(1);
+    expect(transport.sent[1].tools).toEqual([toolSchema(GET_ENTITY)]);
   });
 });
 

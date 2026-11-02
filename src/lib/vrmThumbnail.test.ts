@@ -16,12 +16,39 @@ describe('frameModel with a head bone', () => {
   it('aims above the head bone, which sits at the base of the skull rather than the face', () => {
     const { target } = frameModel(head, body);
     expect(target.y).toBeGreaterThan(head.y);
-    expect(target.y).toBeCloseTo(head.y + headHeight * 0.25, 5);
+    expect(target.y).toBeCloseTo(head.y + headHeight * 0.42, 5);
   });
 
-  it('frames a couple of head-heights so the shoulders sit below the face', () => {
+  it('frames a close-up of about one and a half head-heights', () => {
     const { position, target } = frameModel(head, body);
-    expect(position.z - target.z).toBeCloseTo(fit(headHeight * 2.2), 5);
+    expect(position.z - target.z).toBeCloseTo(fit(headHeight * 1.5), 5);
+  });
+
+  describe('with an eye bone', () => {
+    const eye = new THREE.Vector3(0.03, 1.414, 0.1);
+    const eyeRise = 1.414 - 1.351;
+
+    it('frames five eye rises with the aim just above the eyes', () => {
+      const { position, target } = frameModel(head, body, eye);
+      expect(position.z - target.z).toBeCloseTo(fit(eyeRise * 5), 5);
+      expect(target.y).toBeCloseTo(1.414 + eyeRise * 0.4, 5);
+    });
+
+    it('ignores tall ears, which would otherwise pull the camera back', () => {
+      const eared = box([-0.686, 0, -0.149], [0.686, 1.9, 0.133]);
+      expect(frameModel(head, eared, eye)).toEqual(frameModel(head, body, eye));
+    });
+
+    it('stays on the head axis rather than centering on one eye', () => {
+      const { target } = frameModel(head, body, eye);
+      expect(target.x).toBe(head.x);
+      expect(target.z).toBe(head.z);
+    });
+
+    it('falls back to bounds when the eye bone sits below the head bone', () => {
+      const low = new THREE.Vector3(0, 1.2, 0);
+      expect(frameModel(head, body, low)).toEqual(frameModel(head, body));
+    });
   });
 
   it('stands the camera off along +Z, the direction the model faces', () => {

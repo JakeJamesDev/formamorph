@@ -37,7 +37,7 @@ export function parseHelpTools(raw: unknown): Tool[] {
   if (!Array.isArray(raw)) return [];
   const tools: Tool[] = [];
   for (const entry of raw) {
-    const result = parseTool(entry);
+    const result = parseTool(entry, { help: true });
     if ('tool' in result && !tools.some((t) => t.id === result.tool.id) && !toolNameProblem(result.tool.name, tools, { reserved: HELP_RESERVED_TOOL_NAMES })) tools.push(result.tool);
   }
   return tools;

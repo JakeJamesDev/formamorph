@@ -10,6 +10,7 @@ import PlaceholderList from './PlaceholderList';
 import { usePlaceholderDetail } from './PlaceholderDetail';
 import { usePlaceholderListAdapter } from './usePlaceholderListAdapter';
 import { usePlaceholderRowActions } from './usePlaceholderRowActions';
+import { Hint } from '@/components/ui/typography';
 
 /** The world store narrowed to one owner's list: the same reads and writes, a list that draws only that
  *  owner's rows, and a create that lands there. */
@@ -77,9 +78,9 @@ const ScopedPlaceholdersSection = ({ kind, ownerId, ...selection }: ScopedSelect
   if (!advanced || !scoped) return null;
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <p className="text-helper text-muted-foreground">
-        Placeholders of this {kind}&apos;s own. Elsewhere in the world they read as {'{'}Name{OWNER_NAME_SEPARATOR}Placeholder{'}'}.
-      </p>
+      <Hint>
+        These placeholders belong to this {kind}. Elsewhere in the world they read as {'{'}Name{OWNER_NAME_SEPARATOR}Placeholder{'}'}.
+      </Hint>
       <PlaceholderStoreProvider value={scoped}>
         <ScopedPlaceholdersEditor home={home} {...selection} />
       </PlaceholderStoreProvider>

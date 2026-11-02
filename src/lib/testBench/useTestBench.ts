@@ -2,7 +2,7 @@
  * The whole Test Bench orchestration behind the World Editor: open/close, the per-world Instrument tab, the
  * debounced rule pass and the on-demand script check, the lens, the trigger report, the two view-models,
  * seen-state, and quick-fix write-through. The editor keeps only wiring — where its own selection stands and
- * how to land on an item — so the view stops changing for Bench reasons.
+ * how to open an item — so the view stops changing for Bench reasons.
  *
  * Reads and writes the authored world through GameDataContext directly; the panel itself stays presentational
  * and receives everything as `panelProps`.
@@ -22,6 +22,7 @@ import { buildAiContext, EMPTY_AI_CONTEXT } from './aiContext';
 import { buildOpening, EMPTY_OPENING, type OpeningChoice } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
+import { openingPersonaOf } from '@/lib/openingState';
 import { checkedScriptCount, checkScripts } from './scriptCheck';
 import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
 import { lensStatOverrides } from './lens';
@@ -69,7 +70,7 @@ export interface TestBenchHandle {
   docked: boolean;
   /** The flask's one-button semantics: nothing showing opens the popover, anything showing closes. */
   toggleFlask: () => void;
-  /** The world's publish size from the worker measure, or null until the first one lands. */
+  /** The world's publish size from the worker measure, or null until the first one finishes. */
   publishBytes: number | null;
   /** Whether any Bench surface is showing — what the flask reads as pressed from. */
   active: boolean;
@@ -103,7 +104,7 @@ export function useTestBench({
   const {
     worldId, worldOverview, getWorldData, worldMetadata, updateWorldOverview,
     setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups,
-    setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders, setPlaceholderGroups,
+    setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders, setPlaceholderGroups, setItems,
   } = useGameData();
 
   const [benchOpen, setBenchOpen] = useState(false);
@@ -118,7 +119,7 @@ export function useTestBench({
   // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
-  // Null until the first pass lands: the list holds every row till then, so it never reads as clean.
+  // Null until the first pass finishes: the list holds every row till then, so it never reads as clean.
   const pass = useBenchPass(benchWorld);
   const publishBytes = pass.bytes;
   // Script execution is the one check the live pass can't carry — each script costs a sandbox VM. Its
@@ -135,12 +136,19 @@ export function useTestBench({
     setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
     closeCodePrompts();
   }, [benchWorld, closeCodePrompts]);
+  // Which start, persona and opening the author is looking at: view state, never stored.
+  const [openingChoice, setOpeningChoice] = useState<OpeningChoice>({});
   const runScriptCheck = useCallback(async () => {
     const stillCurrent = beginCodeRun();
     const prompts = openCodePrompts();
     setCodeCheckStatus('running');
     try {
-      const found = await checkScripts(getWorldData(), prompts.host);
+      const world = getWorldData();
+      // The persona the Opening instrument shows, so `met` reads the start rule under it.
+      const played = world.entities?.find((e) => e.persona && e.id === openingChoice.personaId);
+      const found = await checkScripts(world, {
+        prompts: prompts.host, persona: openingPersonaOf(played && { source: 'world', entityId: played.id }),
+      });
       if (!stillCurrent()) return;
       setCodeFindings(found);
       setCodeCheckStatus('done');
@@ -152,7 +160,7 @@ export function useTestBench({
     } finally {
       if (isCurrentCodeRun(prompts)) closeCodePrompts();
     }
-  }, [getWorldData, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
+  }, [getWorldData, openingChoice.personaId, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
   const scriptCount = useMemo(() => checkedScriptCount(benchWorld), [benchWorld]);
   // Out of the rule catalog, since its input is the measured byte count rather than the world.
   // Kept while it says the same thing: a keystroke in an over-limit world must not re-mark every finding.
@@ -176,7 +184,7 @@ export function useTestBench({
     panelShown && benchTab === 'triggers', semanticOn, benchWorld, triggerText,
   );
   // The lens every instrument reads. It seeds from whatever location the author has open in the editor, so
-  // opening the Bench mid-edit lands on the place they were already looking at.
+  // opening the Bench mid-edit opens on the place they were already looking at.
   const benchLens = useBenchLens(worldId, benchWorld, {
     open: panelShown,
     selectedLocationId,
@@ -200,8 +208,6 @@ export function useTestBench({
   // assembly itself — stat settling, the roll table, the whole first prompt — runs only while watched.
   const openingLive = panelShown && benchTab === 'opening';
   const openingRolls = useOpeningRolls(benchWorld, openingLive);
-  // Which start and which opening the author is looking at: view state, never stored.
-  const [openingChoice, setOpeningChoice] = useState<OpeningChoice>({});
   const opening = useMemo(
     () => (openingLive ? buildOpening(benchWorld, benchLens.lens, openingRolls.rolls, openingChoice) : EMPTY_OPENING),
     [openingLive, benchWorld, benchLens.lens, openingRolls.rolls, openingChoice],
@@ -273,15 +279,15 @@ export function useTestBench({
   // Chrome, not authoring: remembered globally, so "Open Test Bench" opens the Bench the way this author
   // works rather than the way the last world left it.
   const [placement, setPlacement] = useState<BenchPlacement>(readBenchPlacement);
-  // The write sits out here rather than inside the updater: a state updater that stores as a side effect
+  // The write is out here rather than inside the updater: a state updater that stores as a side effect
   // toggles twice, back to where it started, the moment anything replays it.
   const togglePlacement = useCallback(() => {
     const next = placement === 'embedded' ? 'docked' : 'embedded';
     writeBenchPlacement(next);
     setPlacement(next);
   }, [placement]);
-  // A finding's item is a place in the editor: the view lands on it, and the mobile sheet — which covers the
-  // editor — closes on the way. Only the sheet: a desktop panel sits beside the editor and stays open for
+  // A finding's item is a place in the editor: the view opens it, and the mobile sheet — which covers the
+  // editor — closes on the way. Only the sheet: a desktop panel renders beside the editor and stays open for
   // the next finding, and the popover covers nothing on either. Guarded on the sheet actually being what is
   // open, since closing marks the list seen — from the popover that would quiet a list still on screen.
   const openFindingItem = useCallback((section: FindingSection, itemId: string) => {
@@ -294,7 +300,7 @@ export function useTestBench({
     if (!worldId || !benchWorldMeta?.sourceId || benchWorldMeta.dirty) return;
     if (hasSeenDownloadNote(worldId)) return;
     markDownloadNoteSeen(worldId);
-    toast.info('This world was downloaded — saving this fix marks your copy as edited.');
+    toast.info('This world is a download, so saving this fix marks your copy as edited.');
   }, [worldId, benchWorldMeta?.sourceId, benchWorldMeta?.dirty]);
   // A quick fix is a hand edit made all at once: the repaired world's every rebuilt slice is written back
   // through the same setter the panels use, so the world goes dirty and Exit Without Saving is still the
@@ -317,10 +323,11 @@ export function useTestBench({
     if (after.dictionaries !== before.dictionaries) setDictionaries(after.dictionaries);
     if (after.placeholders !== before.placeholders) setWorldPlaceholders(after.placeholders ?? []);
     if (after.placeholderGroups !== before.placeholderGroups) setPlaceholderGroups(after.placeholderGroups ?? []);
+    if (after.items !== before.items) setItems(after.items ?? []);
     noteFirstDownloadEdit();
   }, [updateWorldOverview, setStats, setStatGroups, setLocations, setConnections, setEntities,
       setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders,
-      setPlaceholderGroups, noteFirstDownloadEdit]);
+      setPlaceholderGroups, setItems, noteFirstDownloadEdit]);
   // The image conversion is the one repair the pure pass can't carry — it decodes and re-encodes every
   // convertible picture. So it runs like the script check: one at a time, and a result about a world the
   // author has since edited is dropped rather than written over the world they now have.
@@ -345,7 +352,7 @@ export function useTestBench({
     }
   }, [getWorldData, writeFixedWorld, beginImageRun]);
   // A repair is a hand edit like a quick fix, and goes back through the same write-through. Replace is the
-  // one that needs an answer first: the author picks the library item, and the repair lands on their pick.
+  // one that needs an answer first: the author picks the library item, and the repair applies to their pick.
   const [replaceSource, setReplaceSource] = useState<MissingSource | null>(null);
   const repairSource = useCallback((copyId: string, action: RepairAction) => {
     if (action === 'replace') {

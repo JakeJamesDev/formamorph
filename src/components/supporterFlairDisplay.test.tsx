@@ -1,7 +1,8 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { onFakeClock } from '@/test/fakeClock';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { seedSampleTierNames } from '@/test/tierNames';
 import { SupporterBadge } from './SupporterBadge';
 import { TOOLTIP_DELAY_MS, TooltipProvider } from './ui/tooltip';
 import { UserAvatar } from './UserAvatar';
@@ -9,6 +10,8 @@ import { UserName } from './UserName';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import { SUPPORTER_TIERS } from '@/lib/supporterFlair';
 import type { SupporterFlair } from '@/types';
+
+beforeEach(seedSampleTierNames);
 
 afterEach(() => {
   cleanup();

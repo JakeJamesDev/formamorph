@@ -1,11 +1,18 @@
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, PersonaRef, Placement, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
-import type { OwnedStatsInForce, OwnedTraitsInForce } from '../locationContext';
+import type { slotsInForce } from '../bodies';
+import type { OwnedStatsInForce, OwnedTraitsInForce, StrangerLabels } from '../locationContext';
 import type { OwnerStatPart, StatPlacement } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
 import type { WorldCalendar } from '../gameClock';
+
+/** The slice each owner's Body in force resolves from. */
+export interface SceneEquipment {
+  world: Parameters<typeof slotsInForce>[0];
+  persona?: PersonaRef;
+}
 
 /** The story clock as the Time chip reads it: the hours elapsed since the opening, on the world's calendar. */
 export interface ChipSceneTime {
@@ -58,6 +65,13 @@ export interface ChipScene {
   itemCopies?: readonly ItemCopy[];
   /** The runtime items the Inventory pass made. None when absent. */
   runtimeItems?: readonly RuntimeItem[];
+  /** The world's Currencies. None when absent. */
+  currencies?: readonly Currency[];
+  /** The world's Placements, which say whose coin balance the author set. None when absent. */
+  placements?: readonly Placement[];
+  /** What each owner's slots in force read: the Bodies, the slots, the Body picks, and the played persona. No
+   *  slots when absent. */
+  equipment?: SceneEquipment;
   /** The lore entries to render, each carrying its position. */
   lore: DictionaryEntry[];
   /** The player's notes; blank when there are none. */
@@ -66,7 +80,7 @@ export interface ChipScene {
   time: ChipSceneTime | null;
   /** Placeholder resolution, applied to every value before it reaches a prompt. */
   resolve: (text: string) => string;
-  /** An entity's own text with that entity as the Character Name; `resolve` reads it when absent. */
+  /** An entity's own text with that entity as the Entity Name; `resolve` reads it when absent. */
   resolveEntity?: ResolveEntityText;
   /** The world's shared placeholders, which a Tool script reads by name. None when absent. */
   placeholders?: readonly Placeholder[];
@@ -76,4 +90,6 @@ export interface ChipScene {
   outerScopeEntities?: Entity[];
   /** Participant names that match nobody in the roster. They join the In Scene Name content only. */
   inSceneNames?: string[];
+  /** The label each unmet stranger's roster block prints, by entity id. None when absent. */
+  strangerLabels?: StrangerLabels;
 }

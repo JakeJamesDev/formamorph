@@ -1,5 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { downloadBlob } from "@/lib/downloadBlob";
+import { toastError } from "@/lib/linkToast";
+import { useMountedRef } from "@/lib/useMountedRef";
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,7 @@ import {
 import { serializeJsonBlob, terminateWorker as terminateExportWorker } from '../../lib/jsonFileWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
-import { filesFrom, importSummaryToast } from "@/lib/importFiles";
+import { filesFrom, importReportToast, storageCause, type SkippedImport } from "@/lib/importFiles";
 import WorldStorageService from '../../services/WorldStorageService';
 import {
   formatSaveTimestamp, groupSaves, mergeOrder, mergeVisibleSaveOrder, folderRefFor, FOLDER_ORDER_KEY,
@@ -24,6 +26,7 @@ import {
 } from '../../lib/saveOrdering';
 import type { SaveRecord } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { SaveList, type SaveListItem } from './SaveList';
 
@@ -53,7 +56,7 @@ function FolderRowBody({ folder, pinned }: { folder: SaveFolder; pinned: boolean
       <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="flex-1 min-w-0">
         <div className="break-words font-medium">
-          {folder.worldName}{pinned && <span className="ml-2 text-meta text-muted-foreground">(current)</span>}
+          {folder.worldName}{pinned && <Meta className="ml-2">(current)</Meta>}
         </div>
         <div className="text-meta opacity-70">
           {folder.saves.length} save{folder.saves.length === 1 ? '' : 's'}
@@ -153,6 +156,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
   const [pendingLoad, setPendingLoad] = React.useState<{ row: SaveRow; targetWorldId?: string } | null>(null);
   const [blockedLoad, setBlockedLoad] = React.useState<SaveRow | null>(null); // cold-start orphan (world not installed)
 
+  const mountedRef = useMountedRef();
   React.useEffect(() => () => { terminateExportWorker(); }, []);
 
   const loadData = React.useCallback(async () => {
@@ -227,15 +231,18 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     if (isLoading) return;
     try {
       setIsLoading(true);
-      setLoadingMessage('Loading save file. Please wait...');
+      setLoadingMessage('Loading the save…');
       await new Promise(resolve => setTimeout(resolve, 100));
       await onLoad(row.id, targetWorldId);
       onOpenChange(false);
     } catch (error) {
       console.error('Error loading game:', error);
+      toastError(error, { headline: "Couldn't load the save. Try again." });
     } finally {
-      setIsLoading(false);
-      setLoadingMessage('');
+      if (mountedRef.current) {
+        setIsLoading(false);
+        setLoadingMessage('');
+      }
     }
   };
 
@@ -257,7 +264,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     try {
       setIsExporting(true);
       setExportingSaveName(row.name);
-      setLoadingMessage(`Preparing ${row.name} for export...`);
+      setLoadingMessage(`Preparing “${row.name}” for export…`);
       // Strip device-local fields from the export: the record id and the autosave marker (an exported
       // autosave re-imports as an ordinary manual save).
       const { id: _id, isAutosave: _auto, ...fileData } = row.record;
@@ -265,19 +272,23 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
       downloadBlob(blob, `${fileData.name || 'save'}.json`);
     } catch (error) {
       console.error('Error exporting save:', error);
+      toastError(error, { headline: "Couldn't export the save. Try again." });
     } finally {
-      setIsExporting(false);
-      setExportingSaveName('');
-      setLoadingMessage('');
+      if (mountedRef.current) {
+        setIsExporting(false);
+        setExportingSaveName('');
+        setLoadingMessage('');
+      }
     }
   };
 
   const doDelete = async (row: SaveRow) => {
     try {
       await deleteSaveRecord(row.id);
-      setRecords(prev => prev.filter(r => r.id !== row.id));
+      if (mountedRef.current) setRecords(prev => prev.filter(r => r.id !== row.id));
     } catch (error) {
       console.error('Error deleting save:', error);
+      toastError(error, { headline: "Couldn't delete the save. Try again." });
     }
   };
 
@@ -293,11 +304,20 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
   };
 
   const handleImport = async (files: File[]) => {
-    let ok = 0, skipped = 0;
+    const saveNoun = { one: 'save', many: 'saves' };
+    let ok = 0;
+    const skipped: SkippedImport[] = [];
     let lastKey: string | null = null;
     for (const file of files) {
       try {
-        const save = JSON.parse(await file.text()) as SaveRecord & { version?: string | number };
+        let text: string;
+        try { text = await file.text(); }
+        catch (error) {
+          console.error('Error reading save:', file.name, error);
+          skipped.push({ fileName: file.name, cause: 'Formamorph cannot read this file.', error });
+          continue;
+        }
+        const save = JSON.parse(text) as SaveRecord & { version?: string | number };
         if (isSaveEnvelope(save)) {
           // migrateSave is idempotent and now also hoists the canonical history + strips snapshot copies for
           // string-version saves, so run it for every envelope, not just numeric-legacy ones.
@@ -312,16 +332,21 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
           worldId: save.worldId ?? nameToId.get(worldName ?? ''),
           isAutosave: undefined, // an imported save is always a manual one, never the auto slot
         };
-        await putSaveRecord(record);
+        try { await putSaveRecord(record); }
+        catch (error) {
+          console.error('Error storing save:', file.name, error);
+          skipped.push({ fileName: file.name, cause: storageCause(error, saveNoun), error });
+          continue;
+        }
         lastKey = folderRefFor(recordToRow(record), nameToId, idToName).key;
         ok++;
       } catch (error) {
         console.error('Error uploading save:', file.name, error);
-        skipped++;
+        skipped.push({ fileName: file.name, cause: "This isn't a valid save file.", error });
       }
     }
     if (ok) { await loadData(); if (lastKey) setActiveKey(lastKey); }
-    if (ok || skipped) importSummaryToast(ok, skipped, { one: 'save', many: 'saves' });
+    if (ok || skipped.length) importReportToast(ok, skipped, saveNoun);
   };
 
   const busy = isLoading || isExporting;
@@ -337,8 +362,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
         onOpenChange={(o) => { if (!o) setPendingLoad(null); }}
         title={pendingLoad?.targetWorldId ? 'Switch worlds and load?' : 'Load a save from another world?'}
         description={pendingLoad?.targetWorldId
-          ? `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”. Loading it switches to that world and leaves your current game — unsaved progress will be lost.`
-          : `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”, which isn't installed. It will load into your current world (“${current?.name ?? ''}”) and may not behave as intended. Your current game will be replaced — unsaved progress will be lost.`}
+          ? `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”. Loading it switches to that world and ends your current game. Unsaved progress is lost.`
+          : `This save belongs to “${pendingLoad?.row.worldName ?? 'another world'}”, which isn't installed. It loads into your current world, “${current?.name ?? ''}”, and may not play as intended. Your current game ends, and unsaved progress is lost.`}
         onConfirm={() => { const p = pendingLoad; setPendingLoad(null); if (p) void doLoad(p.row, p.targetWorldId); }}
       />
 
@@ -349,8 +374,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
             <DialogTitle>World not installed</DialogTitle>
           </DialogHeader>
           <DialogDescription className="py-2">
-            This save belongs to “{shownBlocked?.worldName ?? 'a world'}”, which is not installed. Import or
-            download that world first to play its saves. You can still export or delete this save.
+            This save belongs to “{shownBlocked?.worldName ?? 'a world'}”, which isn&apos;t installed. Import or
+            download that world to play its saves. You can still export or delete this save.
           </DialogDescription>
           <DialogFooter>
             <Button onClick={() => setBlockedLoad(null)}>OK</Button>
@@ -449,11 +474,11 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                 {busy && (
                   <div className="text-center py-4 flex flex-col items-center space-y-2">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <div className="text-label">{loadingMessage || 'Processing...'}</div>
+                    <div className="text-label">{loadingMessage || 'Processing…'}</div>
                     <div className="text-meta text-warning max-w-xs">
                       {isExporting
-                        ? `Please wait while the save file "${exportingSaveName}" is being prepared for export. For large save files, this may take a moment.`
-                        : 'Please wait while the save file is being processed. For large save files, this may take a moment. Do not attempt to load another save until this process completes.'}
+                        ? `Preparing “${exportingSaveName}” for export. A large save can take a moment.`
+                        : "A large save can take a moment. Don't load another save until it finishes."}
                     </div>
                   </div>
                 )}

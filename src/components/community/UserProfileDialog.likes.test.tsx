@@ -197,7 +197,7 @@ describe('clearing an account’s likes', () => {
     await openLikes();
 
     await screen.findByText(/liked anything/);
-    expect(screen.queryByRole('button', { name: /Clear all/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove All Likes' })).toBeNull();
   });
 
   it('is hidden on an account the reader cannot moderate', async () => {
@@ -210,7 +210,7 @@ describe('clearing an account’s likes', () => {
     await openLikes();
 
     await screen.findByText('Sedge Landing');
-    expect(screen.queryByRole('button', { name: /Clear all/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove All Likes' })).toBeNull();
   });
 
   it('is offered to an admin on that same account', async () => {
@@ -221,7 +221,7 @@ describe('clearing an account’s likes', () => {
     show();
     await openLikes();
 
-    expect(await screen.findByRole('button', { name: /Clear all/ })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Remove All Likes' })).toBeTruthy();
   });
 
   it('says how many it will remove, and does nothing when the answer is no', async () => {
@@ -235,7 +235,7 @@ describe('clearing an account’s likes', () => {
     show();
     await openLikes();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Clear all/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove All Likes' }));
     // The full count, not the rows on screen — the list is capped and the action is not.
     expect(await screen.findByText('Remove 4 likes?')).toBeTruthy();
 
@@ -252,13 +252,13 @@ describe('clearing an account’s likes', () => {
     show();
     await openLikes();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Clear all/ }));
-    fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove All Likes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(clearLikes).toHaveBeenCalledWith('u1'));
     expect(await screen.findByText(/liked anything/)).toBeTruthy();
     expect(toast.success).toHaveBeenCalledWith('Removed 2 likes');
-    expect(screen.queryByRole('button', { name: /Clear all/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove All Likes' })).toBeNull();
   });
 
   it('keeps the list and toasts the server’s wording when the clear is refused', async () => {
@@ -269,8 +269,8 @@ describe('clearing an account’s likes', () => {
     show();
     await openLikes();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Clear all/ }));
-    fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove All Likes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('You cannot moderate themView Details →'));
     expect(screen.getByText('Sedge Landing')).toBeTruthy();

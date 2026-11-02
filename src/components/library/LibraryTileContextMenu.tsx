@@ -24,6 +24,12 @@ const SIZE_LABELS: { size: LibraryTileSize; label: string }[] = [
 
 const ActionSpace = () => <span aria-hidden className="h-4 w-4 shrink-0" />;
 
+/** The confirm behind an entity tile's Delete, shared with the design-system reference. */
+export const DELETE_ENTITY_CONFIRM = {
+  title: 'Delete Entity',
+  description: "This entity is deleted from your library. You can't undo this.",
+} as const;
+
 export type LibraryTileMenuModel = Pick<
   LibraryTiles,
   'groups' | 'group' | 'groupOfItem' | 'size' | 'setSize' | 'addTo' | 'groupWithNew' | 'removeFrom' | 'disband'

@@ -14,15 +14,16 @@ import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMMetaLoaderPlugin } from '@
 /** Matches VRMViewer's framing so a thumbnail reads like the model the player will actually see. */
 const FOV = 30;
 /**
- * Portrait framing is expressed in head-heights rather than metres so it holds for any model — a chibi with a
- * huge head and a tall realistic one frame alike. "Head height" is the head bone up to the top of the bounds.
+ * Close-up height in eye rises, the head bone up to the eye bone. Ears and hats can't inflate it, and at five
+ * rises the head nearly fills the frame like a VRoid Studio thumbnail.
  */
-const PORTRAIT_HEADS = 2.2;
-/**
- * The VRM head bone sits at the base of the skull, not the middle of the face, so the look-at has to rise off
- * it to centre the portrait. A quarter of a head height puts the face mid-frame with the shoulders below.
- */
-const HEAD_TARGET_RISE = 0.25;
+const CLOSE_UP_EYE_RISES = 5;
+/** Close-up height in head-heights, the head bone up to the top of the bounds, for a rig with no eye bone. */
+const CLOSE_UP_HEADS = 1.5;
+/** How far the aim sits above the eyes, in eye rises, so the eyes land just below mid-frame. */
+const EYE_TARGET_RISE = 0.4;
+/** The same aim for a rig with no eye bone, above the head bone in head-heights. */
+const HEAD_TARGET_RISE = 0.42;
 /** Margin so a bounds-fitted model doesn't touch the frame edge. */
 const FIT_MARGIN = 1.2;
 /**
@@ -43,19 +44,24 @@ export interface ModelFraming {
 }
 
 /**
- * Choose a camera placement: a head-and-shoulders portrait when the model has a head bone, otherwise a fit
- * of the whole model. A plain `.glb` has no humanoid rig, and guessing where its "head" is would frame
- * arbitrary geometry badly — showing all of it is the honest answer.
+ * Choose a camera placement: a close-up of the head when the model has a head bone, otherwise a fit of the
+ * whole model. A plain `.glb` has no humanoid rig, and guessing where its "head" is would frame arbitrary
+ * geometry badly — showing all of it is the honest answer.
  *
  * Assumes the model already faces +Z (VRM 1.0 natively; VRM 0.0 once rotated).
  */
-export function frameModel(head: THREE.Vector3 | null, bounds: THREE.Box3): ModelFraming {
+export function frameModel(head: THREE.Vector3 | null, bounds: THREE.Box3, eye: THREE.Vector3 | null = null): ModelFraming {
   if (head) {
-    // Top of the bounds is the crown (hair included, which we want in frame). Floored so a model whose bounds
-    // somehow sit below the head bone still yields a positive, usable head height instead of a camera inside it.
+    if (eye && eye.y > head.y) {
+      const eyeRise = eye.y - head.y;
+      const target = new THREE.Vector3(head.x, eye.y + eyeRise * EYE_TARGET_RISE, head.z);
+      const distance = distanceToFit(eyeRise * CLOSE_UP_EYE_RISES);
+      return { position: new THREE.Vector3(target.x, target.y, target.z + distance), target };
+    }
+    // Floored so bounds that sit below the head bone still yield a usable head height, not a camera inside it.
     const headHeight = Math.max(bounds.max.y - head.y, 0.01);
     const target = new THREE.Vector3(head.x, head.y + headHeight * HEAD_TARGET_RISE, head.z);
-    const distance = distanceToFit(headHeight * PORTRAIT_HEADS);
+    const distance = distanceToFit(headHeight * CLOSE_UP_HEADS);
     return { position: new THREE.Vector3(target.x, target.y, target.z + distance), target };
   }
   const size = bounds.getSize(new THREE.Vector3());
@@ -120,12 +126,13 @@ export async function renderVrmThumbnail(
     scene.add(light);
 
     const head = vrm?.humanoid?.getRawBoneNode('head')?.getWorldPosition(new THREE.Vector3()) ?? null;
-    const { position, target } = frameModel(head, new THREE.Box3().setFromObject(root));
+    const eye = vrm?.humanoid?.getRawBoneNode('leftEye')?.getWorldPosition(new THREE.Vector3()) ?? null;
+    const { position, target } = frameModel(head, new THREE.Box3().setFromObject(root), eye);
 
     const canvas = document.createElement('canvas');
     // preserveDrawingBuffer keeps the frame readable by toDataURL after the draw call returns.
-    renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
-    renderer.setClearColor(0x000000, 0);
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    renderer.setClearColor(0xffffff, 1);
     renderer.setSize(width, height, false);
 
     // FOV is vertical in three.js, so `frameModel`'s head-height maths holds at any aspect; a taller frame

@@ -103,7 +103,7 @@ export function PresetHeaderReference() {
     <Card role="region" aria-labelledby="preset-header-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="preset-header-reference-title" className="text-heading">Preset Header Reference</CardTitle>
-        <CardDescription>Select an action to see its local result. Each confirm names what it changes.</CardDescription>
+        <CardDescription>Select an action to see its result. Each confirmation names what it changes.</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 grid-cols-1 gap-6">
         <Meta role="status" aria-live="polite">{status}</Meta>
@@ -168,7 +168,7 @@ export function PresetHeaderReference() {
             <BadgeSample title="Not Checked" status={null} />
             <SampleCard label="Built-In Engine">
               <PresetSelect value="Local Llama" names={['Local Llama']} />
-              <Meta>The preset has no URL, so no badge shows.</Meta>
+              <Meta>Shows no badge, because the preset has no URL</Meta>
             </SampleCard>
           </div>
         </div>
@@ -202,7 +202,7 @@ export function PresetHeaderReference() {
             </SampleCard>
             <SampleCard label="Built-In Prompt" title="Built-In Preset, No Pair">
               <Textarea aria-label="Built-In Narration Prompt" rows={3} value={DEFAULT_TEXT} readOnly />
-              <Meta>A built-in preset hides the pair, so its text stays the default of this release.</Meta>
+              <Meta>Hides the pair, because a built-in preset always keeps this release’s default text</Meta>
             </SampleCard>
           </div>
         </div>

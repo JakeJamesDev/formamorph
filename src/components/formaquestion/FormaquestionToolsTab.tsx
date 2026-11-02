@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ToolsTab as ToolsLayout, type FixedFunction, type FixedFunctions } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, type ToolsView } from '@/components/modals/toolsView';
+import { Hint } from '@/components/ui/typography';
 import { DOCS_LOOKUP, DOCS_LOOKUP_CALL_LIMIT } from '@/lib/formaquestion/docsLookup';
 import { HELP_CODE_TEST, HELP_CODE_TEST_CALL_LIMIT } from '@/lib/formaquestion/helpCodeTest';
 import { HELP_ROLL, HELP_ROLL_CALL_LIMIT } from '@/lib/formaquestion/helpRoll';
@@ -80,7 +81,7 @@ export function ToolsTab({ settings, onChange, toolsSupported }: {
         onViewChange={setView}
         openWorld={openWorld?.snapshot}
       />
-      <p className="flex-shrink-0 text-helper text-muted-foreground">{TOOLS_COPY.worldText}</p>
+      <Hint className="flex-shrink-0">{TOOLS_COPY.worldText}</Hint>
     </div>
   );
 }

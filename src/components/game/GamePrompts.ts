@@ -10,7 +10,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 - Let the player character's current stats shape how each action turns out: a low stat shows in the effort it costs, a high one shows as ease or assurance - worked into the events, not stated.
 - Advance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.
 - Characters speak through what they do: their actual words land as quoted dialogue woven into their movements, and the more physical the moment, the more they voice it - urging, teasing, voicing what they want next. Their words respond to what the player just said or did and carry the scene onward.
-- The names in your notes are what you know, not what the player knows: introduce anyone the player hasn't met by description - what they look like, their role, what they are doing - and let a name reach the page only once the player would have learned it in the story.<PERSONA|name|pre=" Characters say the player's name, "|post=", only after they learn it.">
+- The names in your notes are what you know, not what the player knows: introduce anyone the player hasn't met by description - what they look like, their role, what they are doing - and let a name reach the page only once the player would have learned it in the story. When an entry gives a stranger name, call that person by their stranger name until the story introduces them.<PERSONA|name|pre=" Characters say the player's name, "|post=", only after they learn it.">
 - The player's own fixed features - their appearance, name, and role - are already established; don't re-introduce or re-describe them each turn. Reach for one only when the moment genuinely turns on it, never as scene-setting.
 - Don't report or tabulate any stats or their changes - a separate step handles them.
 <MARKDOWN GUIDANCE|pre="The game displays this syntax in your reply.\n\n"|format=markdown|header="Formatting">\
@@ -257,7 +257,7 @@ Beats: <two to four sentences of what happens this turn as the scene continues -
 ## Rules
 - Carry the moment forward, don't reinvent it. Whatever a character was holding, wearing, or doing last turn, and wherever they stood, stays true this turn unless the action changes it - never swap an established object or position for a new one.
 - List EVERY individual present this turn, not only the one the player is dealing with: if several people were in the scene and the player speaks to or acts on just one, the others are still standing right there and stay in the Cast. Keep everyone who was present last turn, add anyone this action brings in, and drop only someone who actually leaves - never trim the Cast down to just who the action involves.
-- Label each cast member with their real name from the lists above, so the same person is tracked every turn. If that name has already been spoken in the story, write it plainly, with no parentheses. But if the player has not yet heard it, do not reveal it: write the real name, then how the player currently knows them - by look, role, or manner - in parentheses, and the game shows only the parenthetical; drop the parentheses the turn the name is first spoken.
+- Label each cast member with their real name from the lists above, so the same person is tracked every turn, and the game shows only a parenthetical after it. When their entry gives a stranger name, write that stranger name word for word in parentheses. Otherwise, write a name already spoken in the story plainly; for a name the player has not yet heard, write how the player currently knows them - by look, role, or manner - in parentheses, and drop the parentheses the turn the name is first spoken.
 - Begin the Cast with "- Player Character - <placement>", giving only the player's position and what they are physically doing, never an action they choose.
 - Cast only individual beings that can act or speak - a person, creature, or animate threat. Places, objects, structures, crowds, and scenery stay out of the Cast, however vivid. You may name a new individual when one enters, with a concrete name to reuse next turn; never name a place or object to make it a character.
 - The Beats are what the world and the other characters do and say - their grounded physical reactions and the words they speak aloud, in quotation marks, consistent with the Cast above. Their words carry the scene onward - answering what the player just said or did, or speaking up on their own about what they want, notice, or feel. Never write the outcome of the player's own action, their thoughts, or their next move.
@@ -557,31 +557,36 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 <PERSONA|summary.markdown|header="Player Character">\
 <INVENTORY|markdown|header="Items Here">
 ## Operations
-- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.
+- gain: someone receives an item that Items Here does not list - it is made or found where no item was listed.
 - lose: an owner loses an item for good - it is burned, broken or destroyed, used up off screen, or leaves the scene with no one present.
 - transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.
-- equip: an owner wields or wears an item they carry.
+- equip: an owner wields or wears an item they carry, when that owner's slots include the slot shown after the item's name.
 - unequip: an owner puts away or takes off an item they had equipped.
-- use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, or spends a charge of it.
+- use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, spends a charge of it, or pours, applies or loads it into another item. The item is the one spent; the other item is the target.
 - change: an item stays with its owner and its look or state changes, with no use. The owner still holds that same item.
 - reveal: an item marked hidden comes into view because someone searches where it lies, or an item's true nature becomes known. A found item stays where it lies until someone takes it.
+- pay: money is handed over this turn with no item bought or sold, paid out or received - a bribe, fee, fine, tip, wage or reward. One pay records the whole sum, coins included, and the game moves the money itself. Every sum of money handed over with no item is one pay and no other operation.
+- buy: an item is bought or sold for money this turn. One buy records the item and its money together, and the game moves both itself, so the sale has no gain, transfer or pay beside it. The player selling an item is a buy with "you" as the owner.
 
 ## Fields
 - op: one operation from the list above.
-- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.
+- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item. Empty for pay.
 - quantity: how many, a whole number from 1.
-- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. For gain, the person who hands the item over, or "here" for anywhere else.
-- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.
+- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. For gain, the person who hands the item over, or "here" for anywhere else. For pay, who pays, and empty when the money comes from no one here. For buy, the seller, and empty when no seller is here.
+- to: who holds it after a gain or a transfer, who receives a pay, or who buys, in the same words as owner. Empty for every other operation, and for a pay that no one here receives.
 - state: for change, the item's new state in a word or two. Empty for every other operation.
 - after: for use, "kept" when the item is still there after the use, or "used up" when it is gone. Empty for every other operation.
+- target: for use, the other item it is used on, by its name as Items Here shows it. Empty when it acts on no other item, and for every other operation.
+- slot: for equip, the one slot the story puts the item in, by a slot name shown after the item's name. Empty when the story shows no particular slot, and for every other operation.
+- price: for pay, the sum as digits and money words. For buy, the sum for the whole purchase in the same form when the story states one, and empty when it states none. Empty for every other operation.
+- currency: for pay or a buy with a price, the money's name when Items Here shows more than one kind. Empty otherwise.
 
-Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.
-
+Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all. A price someone names, asks for or turns down is talk, and has no pay or buy.
 Items Here shows who held each item before this turn. An item listed under an owner is already theirs: record it only when this turn moves it to another owner or this place, uses it, changes it, or puts it on or takes it off.`;
 
 export const defaultInventoryUserPrompt = `<PLAYER ACTION|format=markdown|header="The player character's action">\
 <NARRATION|format=markdown|header="What happened">
-Record the item changes this turn made.`;
+Record the item and money changes this turn made.`;
 
 /** The canonical prompt text every built-in preset derives from (see lib/sectionStyle). */
 export const PROMPT_TEXT_DEFAULTS: PromptValues = {

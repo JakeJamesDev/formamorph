@@ -40,7 +40,7 @@ const BASES = { baseMin: 0, baseMax: 10, baseRegen: 0, aiMaxDelta: 0 };
 const SEEDED = [{ ...stats[0], starting: 7, ...BASES }, { ...stats[1], starting: 3, ...BASES }];
 
 /** The executor's `persona` when none plays. */
-const NO_PERSONA = { id: '', name: '', type: '', pronouns: '', inScene: false, traits: [] };
+const NO_PERSONA = { id: '', name: '', type: '', pronouns: '', inScene: false, met: false, traits: [] };
 
 const updateStat = vi.fn();
 /** What a case adds to the mocked world, such as Blueprint stats. */
@@ -479,9 +479,9 @@ describe('what Test Code reports', () => {
     // No authored text and no location, so each entity reads blank text and stands nowhere.
     const unplaced = { description: '', summary: '', aliases: [], locationIds: [] };
     expect(executeStatCode.mock.calls[0][3].entities).toEqual([
-      { id: 'e1', name: 'Mira', type: '', pronouns: '', inScene: false, ...unplaced, traits: [{ id: 't4', name: 'Scarred', ...unheld }] },
+      { id: 'e1', name: 'Mira', type: '', pronouns: '', inScene: false, met: true, ...unplaced, traits: [{ id: 't4', name: 'Scarred', ...unheld }] },
       {
-        id: 'e2', name: 'Ash', type: '', pronouns: '', inScene: false, ...unplaced, traits: [{ id: 't5', name: 'Loyal', ...unheld }],
+        id: 'e2', name: 'Ash', type: '', pronouns: '', inScene: false, met: true, ...unplaced, traits: [{ id: 't5', name: 'Loyal', ...unheld }],
         stats: { stats: [{ ...ashStock, starting: 4, ...BASES }], enabled: { a1: false } },
       },
     ]);

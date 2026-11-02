@@ -12,7 +12,7 @@ import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { FieldError, Hint } from '@/components/ui/typography';
+import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import { Section } from '@/components/SettingsRows';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
@@ -37,28 +37,17 @@ import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { settleCodeUseReveal, useCodeUseReveal } from '@/lib/codeUseReveal';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
 import type { ValueLookup } from '@/lib/promptValues';
-import { armsTrigger, type ToolNameProblem } from '@/lib/tools/toolValidation';
+import { armsTrigger, toolNameProblemText } from '@/lib/tools/toolValidation';
 import { TOOL_EDIT_TABS, type ToolEditTab } from './toolsView';
 import { ToolTryIt, type TryItWorld } from './ToolTryIt';
 import { useTryItPlacement } from './useTryItPlacement';
 
 type Change = (next: Tool) => void;
 
-const NAME_PROBLEM: Record<ToolNameProblem, string> = {
-  format: 'Use only letters, digits, _ and -, from 1 to 64 characters',
-  taken: 'Another of your Tools uses this name',
-  builtin: 'A built-in Tool uses this name',
-};
-
 /** Where the edited Tool lives: the player's own list, or a world's (which may take a built-in name). */
 export type ToolHome = 'user' | 'world';
 
-const NAME_PROBLEM_BY_HOME: Record<ToolHome, Record<ToolNameProblem, string>> = {
-  user: NAME_PROBLEM,
-  world: { ...NAME_PROBLEM, taken: 'Another Tool in this world uses this name' },
-};
-
-/** Shown under a parameter's name. An unnamed one is left to the footer, so a new card isn't born red. */
+/** Shown under a parameter's name. An unnamed one is left to the footer, so a new card shows no error. */
 const PARAM_PROBLEM: Record<ParamProblem, string | null> = {
   unnamed: null,
   repeated: 'Another parameter uses this name',
@@ -104,7 +93,7 @@ type LookupSource = Extract<ToolHandler, { kind: 'lookup' }>['source'];
 const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: string }[] = [
   { value: 'entities', label: 'Entities', matches: 'Matches entity names and aliases, in any case' },
   { value: 'locations', label: 'Locations', matches: 'Matches location names, in any case' },
-  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches dictionary names and trigger keywords, in any case' },
+  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches entry names and Trigger Keywords, in any case' },
 ];
 
 /** Label, help, control, then the control's problem: the Design System's field help order. */
@@ -152,7 +141,7 @@ function DefinitionTab({ draft, onChange, problems, home, nameNote }: TabProps &
     const kept = draft.description.trimEnd();
     onChange({ ...draft, description: `${kept}${kept ? '\n' : ''}${missing.map((h) => `${h} `).join('\n')}` });
   };
-  const nameError = draft.name && problems.name ? NAME_PROBLEM_BY_HOME[home][problems.name] : null;
+  const nameError = draft.name && problems.name ? toolNameProblemText(problems.name, home === 'world') : null;
   return (
     <div className="flex flex-col gap-4">
       <Field
@@ -312,7 +301,7 @@ function TriggerFields({ handler, onChange }: { handler: ToolScriptHandler; onCh
       </div>
       {armsTrigger(timing) && (
         <>
-          <Field id={`${id}-reply`} label="Reply" hint="Goes to the AI on each call. Blank sends “Done.”">
+          <Field id={`${id}-reply`} label="Reply" hint="Goes to the AI on each call. Leave it blank to send “Done.”">
             <Input id={`${id}-reply`} value={handler.reply ?? ''} onChange={(e) => onChange({ ...handler, reply: e.target.value })} />
           </Field>
           <div className="flex flex-col gap-1">
@@ -600,7 +589,7 @@ export function ToolEditor({
         )}
       >
         <div className="flex flex-col min-h-0 gap-3">
-          <PanelTabsList tabs={tabs} stripLabel="Tool Fields" labelClassName="hidden sm:inline" />
+          <PanelTabsList tabs={tabs} value={shownTab} stripLabel="Tool Fields" />
           <ScrollArea className={cn('flex-1 min-h-0', tryItOpen && 'hidden')}>
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} home={home} nameNote={nameNote} /></TabsContent>
@@ -622,7 +611,7 @@ export function ToolEditor({
         </TabsContent>
       </Tabs>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 flex-shrink-0">
-        {fixes && <p role="status" className="mr-auto text-helper text-muted-foreground">{fixes}</p>}
+        {fixes && <Meta as="p" role="status" className="mr-auto">{fixes}</Meta>}
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button disabled={blocked} onClick={onSave}>Save Tool</Button>
       </div>

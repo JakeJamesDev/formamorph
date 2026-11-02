@@ -4,7 +4,7 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
+import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
@@ -40,42 +40,121 @@ const ENTITY_STATS_CAST = [
       devStat('Secret', 9, { hidden: true }),
       devStat('Dormant', 3, { enabled: false }),
     ],
+    traits: [{ id: 'dev-trait-oath', name: 'Oathbound', statChanges: [], playerToggle: true }],
   },
-  { id: 'dev-wick', name: 'Wick', image: portrait('#3e5c7a'), stats: [devStat('Nerve', 70), devStat('Stamina', 55)] },
+  {
+    id: 'dev-wick', name: 'Wick', image: portrait('#3e5c7a'), strangerName: 'a thin runner', stats: [devStat('Nerve', 70), devStat('Stamina', 55)],
+    traits: [{ id: 'dev-trait-swift', name: 'Swift', statChanges: [], playerToggle: true }],
+  },
   { id: 'dev-odette', name: 'Odette', stats: [devStat('Stock', 12)] },
+  // Stands here with no art and takes no part: an Also Here row.
+  { id: 'dev-mara', name: 'Mara' },
   // The played persona, for the You mark on the persona row, its stat heading and the picker.
   { id: 'dev-sable', name: 'Sable', persona: true, stats: [devStat('Poise', 65)] },
 ] as unknown as Entity[];
 
 const WHITE_ROOM_ID = '1783535114538';
 
-/** The `items` fixture's slots and items. */
-const DEV_SLOTS: Slot[] = [{ id: 'dev-slot-hand', name: 'Hand', capacity: 2 }, { id: 'dev-slot-ring', name: 'Ring' }];
+/** The `items` fixture's slots, its Bodies and its items. Nobody picks the Hound, so play reads the Humanoid. */
+const DEV_SLOTS: Slot[] = [
+  { id: 'dev-slot-hand', name: 'Main Hand' }, { id: 'dev-slot-off-hand', name: 'Off Hand' }, { id: 'dev-slot-ring', name: 'Ring' }, { id: 'dev-slot-neck', name: 'Neck' },
+  { id: 'dev-slot-head', name: 'Head' }, { id: 'dev-slot-chest', name: 'Chest' }, { id: 'dev-slot-waist', name: 'Waist' }, { id: 'dev-slot-legs', name: 'Legs' }, { id: 'dev-slot-feet', name: 'Feet' },
+];
+/** A bright custom image, so the Backdrop Opacity fade has something to fade. */
+const BRIGHT_BACKDROP = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffbe6"/><stop offset="1" stop-color="#ffd76a"/></linearGradient></defs><rect width="100" height="200" fill="url(#g)"/><circle cx="50" cy="20" r="15" fill="#f4a98a"/><rect x="30" y="38" width="40" height="70" rx="10" fill="#f4a98a"/><rect x="12" y="42" width="14" height="66" rx="7" fill="#f4a98a"/><rect x="74" y="42" width="14" height="66" rx="7" fill="#f4a98a"/><rect x="32" y="108" width="15" height="84" rx="7" fill="#f4a98a"/><rect x="53" y="108" width="15" height="84" rx="7" fill="#f4a98a"/></svg>')}`;
+/** The Backdrop's opacity in percent from the dev route's `opacity` param; absent or invalid reads as 100. */
+const devOpacity = (): number => {
+  const param = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('opacity');
+  const raw = param ? Number(param) : Number.NaN;
+  return Number.isFinite(raw) ? raw : 100;
+};
+const devBodies = (): Body[] => [
+  {
+    id: 'dev-body-humanoid', name: 'Humanoid', aspect: 0.5,
+    backdrop: { kind: 'image', image: { data: BRIGHT_BACKDROP }, opacity: devOpacity() / 100 },
+    entries: [
+      { slotId: 'dev-slot-head', boxes: [{ x: 0.36, y: 0.03, w: 0.28, h: 0.13 }] },
+      { slotId: 'dev-slot-neck', boxes: [{ x: 0.42, y: 0.175, w: 0.16, h: 0.05 }] },
+      { slotId: 'dev-slot-chest', boxes: [{ x: 0.32, y: 0.24, w: 0.36, h: 0.16 }] },
+      { slotId: 'dev-slot-waist', boxes: [{ x: 0.36, y: 0.415, w: 0.28, h: 0.06 }] },
+      { slotId: 'dev-slot-legs', boxes: [{ x: 0.34, y: 0.5, w: 0.32, h: 0.2 }] },
+      { slotId: 'dev-slot-feet', boxes: [{ x: 0.3, y: 0.86, w: 0.4, h: 0.09 }] },
+      { slotId: 'dev-slot-hand', boxes: [{ x: 0.03, y: 0.36, w: 0.2, h: 0.14 }] },
+      { slotId: 'dev-slot-off-hand', boxes: [{ x: 0.77, y: 0.36, w: 0.2, h: 0.14 }] },
+      { slotId: 'dev-slot-ring', capacity: 2, boxes: [{ x: 0.06, y: 0.52, w: 0.12, h: 0.06 }, { x: 0.82, y: 0.52, w: 0.12, h: 0.06 }] },
+    ],
+  },
+  {
+    id: 'dev-body-hound', name: 'Hound', backdrop: { kind: 'quadruped' }, aspect: 1.6,
+    entries: [{ slotId: 'dev-slot-neck', boxes: [{ x: 0.68, y: 0.268, w: 0.14, h: 0.22 }] }],
+  },
+];
+const devItem = (id: string, name: string, slotId: string, extra: Partial<Item> = {}): Item => ({
+  id, name, stackable: false, slotRule: { mode: 'either', slotIds: [slotId] }, statEffects: [], traitEffects: [], equipRequires: [], ...extra,
+});
+const DEV_NAME_CURRENCY = 'dev-currency-silver';
+const DEV_STAT_CURRENCY = 'dev-currency-credits';
+const DEV_COIN_CURRENCY = 'dev-currency-crowns';
+/** A stat-backed Currency on the world's first stat, a name-only one, then a coin-backed one. */
+const devCurrencies = (statId: string | undefined): Currency[] => [
+  ...(statId ? [{ id: DEV_STAT_CURRENCY, name: 'Credits', backing: { kind: 'stat' as const, statId } }] : []),
+  { id: DEV_NAME_CURRENCY, name: 'Silver', backing: { kind: 'name' } },
+  {
+    id: DEV_COIN_CURRENCY, name: 'Crowns',
+    backing: { kind: 'coins', coins: [{ itemId: 'dev-item-copper', worth: 1 }, { itemId: 'dev-item-silver-bit', worth: 10 }, { itemId: 'dev-item-gold', worth: 100 }] },
+  },
+];
+const devCoin = (id: string, name: string): Item => ({ id, name, playerDescription: `A ${name.toLowerCase()} coin.`, statEffects: [], traitEffects: [], equipRequires: [] });
 const devItems = (valueStatId: string | undefined): Item[] => [
   {
     id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', uses: 1,
-    value: 5, valueUnit: { kind: 'text', text: 'silver' }, traitEffects: [], equipRequires: [],
+    value: 5, currencyId: DEV_NAME_CURRENCY, traitEffects: [], equipRequires: [],
     statEffects: [{ id: 'dev-effect-tonic', statId: 'dev-vigor', facet: 'value', timing: 'used', duration: { kind: 'time', hours: 2 }, amount: 2, op: 'add' }],
   },
   {
     id: 'dev-item-wand', name: 'Ash Wand', playerDescription: 'A wand of pale ash wood.', uses: 3, whenEmpty: { kind: 'stays' }, stackable: false, bound: true,
-    slotId: 'dev-slot-hand', statEffects: [], traitEffects: [], equipRequires: [],
+    slotRule: { mode: 'either', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] }, statEffects: [], traitEffects: [], equipRequires: [],
   },
   {
-    id: 'dev-item-sword', name: 'Greatsword', playerDescription: 'A long two-handed blade.', slotId: 'dev-slot-hand', slotSize: 2,
-    ...(valueStatId ? { value: 40, valueUnit: { kind: 'stat' as const, statId: valueStatId } } : {}),
+    id: 'dev-item-sword', name: 'Greatsword of the Ashen Vigil', playerDescription: 'A long two-handed blade.', images: [{ data: portrait('#6b7a8f') }], slotRule: { mode: 'all', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] },
+    ...(valueStatId ? { value: 40, currencyId: DEV_STAT_CURRENCY } : {}),
+    statEffects: [], traitEffects: [], equipRequires: [],
+  },
+  devCoin('dev-item-copper', 'Copper'),
+  devCoin('dev-item-silver-bit', 'Silver Bit'),
+  devCoin('dev-item-gold', 'Gold'),
+  {
+    id: 'dev-item-pouch', name: 'Coin Pouch', playerDescription: 'A pouch that clinks.', value: 105, currencyId: DEV_COIN_CURRENCY,
     statEffects: [], traitEffects: [], equipRequires: [],
   },
   {
-    id: 'dev-item-ring', name: 'Silver Ring', playerDescription: 'A plain silver band.', stackable: false, slotId: 'dev-slot-ring',
+    id: 'dev-item-ring', name: 'Silver Ring', playerDescription: 'A plain silver band.', stackable: false, slotRule: { mode: 'either', slotIds: ['dev-slot-ring'] },
     statEffects: [], traitEffects: [], equipRequires: [],
   },
+  devItem('dev-item-helmet', 'Iron Helmet', 'dev-slot-head'),
+  devItem('dev-item-amulet', 'Amulet of the Tide', 'dev-slot-neck'),
+  devItem('dev-item-cuirass', 'Boiled Leather Cuirass', 'dev-slot-chest'),
+  devItem('dev-item-belt', 'Sword Belt', 'dev-slot-waist'),
+  devItem('dev-item-breeches', 'Travel-Worn Breeches', 'dev-slot-legs'),
+  devItem('dev-item-boots', 'Hobnailed Boots', 'dev-slot-feet'),
+  // None with an image.
+  devItem('dev-item-signet', 'Signet of Lord Vane', 'dev-slot-ring', { icon: 'none', images: [{ data: portrait('#b08d57') }] }),
+  // Names no word list matches, and one that is unidentified.
+  devItem('dev-item-stormcaller', 'Stormcaller', 'dev-slot-hand'),
+  // A specific icon.
+  devItem('dev-item-whisper', 'Whisper', 'dev-slot-neck', { icon: 'gem' }),
+  devItem('dev-item-elixir', 'Sunfire Elixir', 'dev-slot-ring', { slotRule: undefined, unidentifiedName: 'Cloudy Vial', icon: 'crown' }),
+  devItem('dev-item-fish', 'Swordfish', 'dev-slot-ring', { slotRule: undefined, stackable: true }),
+  // None with no image.
+  devItem('dev-item-trinket', 'Strange Trinket', 'dev-slot-ring', { slotRule: undefined, icon: 'none' }),
 ];
-/** The `items` fixture's starting Item Copies: all on the player, so every row and button shows. */
+/** The `items` fixture's starting Item Copies, on the player. The equipped ones fill the doll. */
 const DEV_PLACEMENTS = ([
-  ['dev-item-tonic', 5], ['dev-item-wand', 1], ['dev-item-sword', 1], ['dev-item-ring', 2],
-] as [string, number][]).map(([itemId, quantity]): Placement => ({
-  id: `dev-placement-${itemId}`, where: { kind: 'you' }, quantity, source: { kind: 'item', itemId },
+  ['dev-item-sword', 1, true], ['dev-item-ring', 1, true], ['dev-item-signet', 1, true], ['dev-item-helmet', 1, true], ['dev-item-amulet', 1, true],
+  ['dev-item-cuirass', 1, true], ['dev-item-belt', 1, true], ['dev-item-breeches', 1, true], ['dev-item-boots', 1, true],
+  ['dev-item-tonic', 5], ['dev-item-wand', 1], ['dev-item-stormcaller', 1], ['dev-item-whisper', 1], ['dev-item-elixir', 1], ['dev-item-fish', 3], ['dev-item-trinket', 1], ['dev-item-copper', 15], ['dev-item-gold', 1],
+] as [string, number, boolean?][]).map(([itemId, quantity, equipped]): Placement => ({
+  id: `dev-placement-${itemId}`, where: { kind: 'you' }, quantity, source: { kind: 'item', itemId }, ...(equipped ? { equipped: true } : {}),
 }));
 /** The `items` fixture's Give targets: two at the White Room and one away, who never shows. The Custom Persona
  *  holds the Vigor stat the Healing Tonic raises for two hours. */
@@ -109,6 +188,8 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
   // Relationships rows for the entity panel's Profile tab: one long label, one blank.
   {
     id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID],
+    // The one stranger here: the Entities tab lists it by this label.
+    strangerName: 'a stooped scholar', strangerDescription: 'Ink-stained fingers and a satchel of scrolls.',
     relationships: [['dev-warden', 'mentor and former employer'], ['dev-queen', '']].map(([targetId, label]) => ({ targetId, label })),
   },
   { id: 'dev-tamsin', name: 'Tamsin', locations: [WHITE_ROOM_ID], persona: true },
@@ -173,21 +254,43 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       };
     }
     case 'entityStats': {
-      // The white room plus three entities that own stats, in the scene: one met by name, one by alias only,
-      // and one who left earlier. Their values are the authored values the load backfills. Sable is played.
+      // The white room plus three entities that own stats: one In Scene and met, one In Scene as a stranger, and
+      // one who left earlier. Mara stands here quiet. Bram wears a wand and carries a tonic, and holds a trait.
+      // Their values are the authored values the load backfills. Sable is played.
       const [world, save] = await Promise.all([
         import('./devFixtures/whiteRoomWorld.json'),
         import('./devFixtures/whiteRoomSave.json'),
       ]);
       const base = world.default as unknown as World;
       const saved = save.default as unknown as SaveObject;
+      const here = new Set(['dev-bram', 'dev-wick', 'dev-mara']);
+      const history = saved.currentState.fullMessageHistory ?? [];
+      const last = history.length - 1;
       return {
-        world: { ...base, entities: [...base.entities, ...ENTITY_STATS_CAST] },
+        world: {
+          ...base,
+          slots: DEV_SLOTS,
+          bodies: devBodies(),
+          items: devItems(base.stats[0]?.id),
+          currencies: devCurrencies(base.stats[0]?.id),
+          entities: [...base.entities, ...ENTITY_STATS_CAST.map((e) => (here.has(e.id) ? { ...e, locations: [WHITE_ROOM_ID] } : e))],
+        },
         save: {
           ...saved,
           persona: { source: 'world', entityId: 'dev-sable' },
           currentState: {
             ...saved.currentState,
+            locationId: WHITE_ROOM_ID,
+            metEntities: ['dev-bram', 'dev-mara'],
+            ownedTraits: { 'dev-bram': { chosen: ['dev-trait-oath'] } },
+            itemCopies: [
+              { id: 'dev-copy-worn', item: { kind: 'item', itemId: 'dev-item-wand' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'dev-slot-hand', order: 0 } },
+              { id: 'dev-copy-carried', item: { kind: 'item', itemId: 'dev-item-tonic' }, where: { kind: 'entity', id: 'dev-bram' }, quantity: 1, visibility: 'visible' },
+            ],
+            // The latest turn names who took part, which is what puts them In Scene.
+            fullMessageHistory: history.map((message, index) => (
+              index === last ? { ...message, content: JSON.stringify({ ...JSON.parse(message.content), entities: ['Bram', 'Wick'] }) } : message
+            )),
             visibleEntities: [
               { name: 'Bram', revealed: true },
               { name: 'Wick', alias: 'a thin runner', revealed: false },
@@ -260,7 +363,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       return {
         world: {
-          ...world, slots: DEV_SLOTS, items: devItems(world.stats[0]?.id), placements: DEV_PLACEMENTS,
+          ...world, slots: DEV_SLOTS, bodies: devBodies(), items: devItems(world.stats[0]?.id), currencies: devCurrencies(world.stats[0]?.id), placements: DEV_PLACEMENTS,
           // Starts in the White Room, so Give has its two entities.
           locations: world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, isStarting: true } : l)),
           entities: [...world.entities, ...DEV_ITEM_CAST],

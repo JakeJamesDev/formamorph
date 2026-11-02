@@ -4,7 +4,7 @@ import { EntityLocationsField } from './EntityFields';
 import type { Entity } from '@/types';
 
 const options = [{ label: 'Town Gate', value: 'gate' }];
-const HINT = 'The player can start as this persona at any of these';
+const HINT = 'Lets the player start at any of these when they play this entity';
 
 const mount = (value: Partial<Entity>) => render(
   <EntityLocationsField value={{ id: 'e1', name: 'Hermit', ...value } as Entity} onChange={() => {}} options={options} />,

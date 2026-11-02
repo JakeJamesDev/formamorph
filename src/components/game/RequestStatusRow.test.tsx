@@ -12,9 +12,9 @@ describe('RequestStatusRow glyph', () => {
   const shownGlyph = () => [...document.querySelectorAll('[data-glyph]')].at(-1)?.getAttribute('data-glyph');
 
   it.each([
-    ['Generating Plan…', 'compass'],
+    ['Generating Planning…', 'compass'],
     ['Generating Narration…', 'quill'],
-    ['Generating Cast…', 'masks'],
+    ['Generating Director…', 'masks'],
     ['Generating Choices…', 'split'],
     ['Calling roll_dice…', 'hammer'],
   ] as const)('shows %s with its glyph beside it', (label, glyph) => {
@@ -26,7 +26,7 @@ describe('RequestStatusRow glyph', () => {
   });
 
   it('changes the label at once and the glyph only after the old one has shown 300 ms', () => {
-    const { rerender } = render(<RequestStatusRow label="Generating Plan…" glyph="compass" />);
+    const { rerender } = render(<RequestStatusRow label="Generating Planning…" glyph="compass" />);
     advance(100);
     rerender(<RequestStatusRow label="Generating Stat Updates…" glyph="chartColumnIncreasing" />);
     expect(screen.getByText('Generating Stat Updates…')).toBeTruthy();
@@ -38,9 +38,9 @@ describe('RequestStatusRow glyph', () => {
   });
 
   it('swaps at once when the old glyph has already shown 300 ms', () => {
-    const { rerender } = render(<RequestStatusRow label="Generating Plan…" glyph="compass" />);
+    const { rerender } = render(<RequestStatusRow label="Generating Planning…" glyph="compass" />);
     advance(400);
-    rerender(<RequestStatusRow label="Generating Location…" glyph="mapPin" />);
+    rerender(<RequestStatusRow label="Generating Location Change…" glyph="mapPin" />);
     expect(shownGlyph()).toBe('mapPin');
   });
 
@@ -57,8 +57,8 @@ describe('RequestStatusRow glyph', () => {
   });
 
   it('skips a glyph that was replaced before it could show', () => {
-    const { rerender } = render(<RequestStatusRow label="Generating Plan…" glyph="compass" />);
-    rerender(<RequestStatusRow label="Generating Location…" glyph="mapPin" />);
+    const { rerender } = render(<RequestStatusRow label="Generating Planning…" glyph="compass" />);
+    rerender(<RequestStatusRow label="Generating Location Change…" glyph="mapPin" />);
     advance(100);
     rerender(<RequestStatusRow label="Generating Clock…" glyph="hourglass" />);
     advance(200);
@@ -86,7 +86,7 @@ describe('RequestStatusRow timer', () => {
 
   it('keeps counting when the request label changes within one turn', () => {
     const startedAt = Date.now();
-    const { rerender } = render(<RequestStatusRow label="Generating Plan…" glyph="sparkles" startedAt={startedAt} />);
+    const { rerender } = render(<RequestStatusRow label="Generating Planning…" glyph="sparkles" startedAt={startedAt} />);
     advance(5000);
     rerender(<RequestStatusRow label="Generating Narration…" glyph="sparkles" startedAt={startedAt} />);
     expect(timer()?.textContent).toBe('5s');
@@ -99,7 +99,7 @@ describe('RequestStatusRow timer', () => {
     const { rerender } = render(<RequestStatusRow label="Generating Narration…" glyph="sparkles" startedAt={Date.now()} />);
     advance(8000);
     expect(timer()?.textContent).toBe('8s');
-    rerender(<RequestStatusRow label="Generating Plan…" glyph="sparkles" startedAt={Date.now()} />);
+    rerender(<RequestStatusRow label="Generating Planning…" glyph="sparkles" startedAt={Date.now()} />);
     expect(timer()).toBeNull();
     advance(3000);
     expect(timer()?.textContent).toBe('3s');

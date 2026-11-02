@@ -118,7 +118,7 @@ export function PosterPositionDialog({
             <Move className="h-4 w-4" aria-hidden /> Position the Artwork
           </DialogTitle>
           <DialogDescription>
-            Drag to move it, scroll or use the slider to zoom. The band is exactly what players see.
+            Drag the artwork to move it. Scroll or use the slider to zoom. Players see the band as it shows here.
           </DialogDescription>
         </DialogHeader>
 

@@ -64,6 +64,7 @@ export function ImportComponentModal({
             {installed.length > 0 && (
               <div className="space-y-2">
                 <p className="text-label font-medium">Add to Your Worlds</p>
+                <Hint>Adds a linked copy of the library item to each world you select</Hint>
                 {installed.map((row) => (
                   <label key={row.listingId} className="flex cursor-pointer items-center gap-2">
                     <Checkbox
@@ -74,13 +75,17 @@ export function ImportComponentModal({
                     <span className="truncate">{row.worldName ?? row.name}</span>
                   </label>
                 ))}
-                <Hint>Each selected world receives a linked copy of the library item.</Hint>
               </div>
             )}
 
             {online.length > 0 && (
               <div className="space-y-2">
                 <p className="text-label font-medium">Worlds You Do Not Have</p>
+                <Hint>
+                  {offline
+                    ? "Can't connect to Community Creations. Try again when you're online."
+                    : 'Open Listing shows the world on Community Creations, where you can download it.'}
+                </Hint>
                 {online.map((row) => (
                   <div key={row.listingId} className="flex items-center justify-between gap-2">
                     <span className="truncate">{row.name}</span>
@@ -89,11 +94,6 @@ export function ImportComponentModal({
                     </Button>
                   </div>
                 ))}
-                <Hint>
-                  {offline
-                    ? 'Formamorph cannot connect to Community Creations. These worlds cannot be found now.'
-                    : 'Open Listing opens the world in Community Creations. Download the world there.'}
-                </Hint>
               </div>
             )}
           </div>

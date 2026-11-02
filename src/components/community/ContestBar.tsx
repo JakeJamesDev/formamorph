@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Calendar, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Meta } from '@/components/ui/typography';
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -36,10 +37,10 @@ function statusLine(contest: ServerEvent, phase: ContestPhase | null): string {
     const runnersUp = podium.length - first.length;
     const lead = first.length > 1
       ? tiedForFirstLine(first.length)
-      : `Won by ${first[0].worldName} — ${first[0].authorName}`;
+      : `Winner: ${first[0].worldName} by ${first[0].authorName}`;
     return lead + (runnersUp > 0 ? ` · ${runnersUp} more placed` : '');
   }
-  if (phase === 'judging') return `Closed ${formatServerDate(contest.endsAt)} — being judged`;
+  if (phase === 'judging') return `Closed ${formatServerDate(contest.endsAt)} · Judging`;
   const days = daysRemaining(contest);
   return days === null ? 'Open for entries' : `${days} day${days === 1 ? '' : 's'} left to enter`;
 }
@@ -86,13 +87,13 @@ export function ContestBar({ contest, contests, onSelect, entryCount }: ContestB
         <span className="font-semibold truncate">{contest.title}</span>
       )}
 
-      <span className="text-meta text-muted-foreground truncate">{statusLine(contest, phase)}</span>
+      <Meta className="truncate">{statusLine(contest, phase)}</Meta>
       <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-secondary text-secondary-foreground px-2 py-0.5 text-meta font-semibold">
         <Calendar className="h-3 w-3" aria-hidden /> {dates}
       </span>
-      <span className="text-meta text-muted-foreground">
+      <Meta>
         {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
-      </span>
+      </Meta>
 
       <Button variant="outline" size="sm" className="ml-auto shrink-0" onClick={() => setRulesOpen(true)}>
         Rules

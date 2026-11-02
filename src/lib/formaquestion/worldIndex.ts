@@ -2,17 +2,19 @@
  * The World Index: every authored part of the open world as sections in the Docs Index shape, one page per
  * item, so the help search ranks them as it ranks guide sections. Placeholders read as their authored chips.
  */
-import { builtinLabel } from '@/lib/builtinPlaceholders';
+import { BUILTIN_PLACEHOLDERS, builtinLabel } from '@/lib/builtinPlaceholders';
+import { worthText } from '@/lib/currency';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { decodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
+import { decodePlaceholderToken, encodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
+import { randomUUID } from '@/lib/uuid';
 import type { DictionaryEntry, Item, Placeholder, Script, Stat, Tool, Trait, World } from '@/types';
 import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSource';
 
 /** The world slices the index reads: an editor's live world. */
 export type WorldIndexInput = Pick<World, 'worldOverview' | 'stats' | 'locations' | 'entities' | 'traits' | 'dictionaries'>
-  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'placeholders' | 'connections'>>;
+  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'currencies' | 'placeholders' | 'connections' | 'entityGroups'>>;
 
 export interface WorldIndex {
   /** The world's sections, searched like the guide's. */
@@ -76,8 +78,42 @@ function scriptsBlock(scripts: readonly Script[] | undefined, text: (value: stri
   return scripts.map((script) => `**Script${script.name?.trim() ? ` ${script.name.trim()}` : ''} (${script.timing}):**\n${fenced(text(script.code))}`).join('\n\n');
 }
 
+const placeholdersOf = (world: WorldIndexInput) => allPlaceholders({ ...world, placeholders: world.placeholders ?? [], items: world.items ?? [] });
+
+/** The world's text reader: placeholders as their chips, as the World Index shows them. */
+export function worldTextOf(world: WorldIndexInput): (value: string | undefined) => string {
+  const placeholders = placeholdersOf(world);
+  return (value) => chipText(value ?? '', placeholders);
+}
+
+// A `{Name}` the reader wrote, never part of a `{{token}}`.
+const WRITTEN_CHIP = /(?<!\{)\{([^{}\n]+)\}(?!\})/g;
+
+/**
+ * Drafted text back as world text: each `{Name}` that names one shared placeholder or one Built-in becomes
+ * its chip, as the editor's palette inserts it. Any other braces stay as written.
+ */
+export function chipsFromText(world: WorldIndexInput): (text: string) => string {
+  const byName = new Map<string, (() => string) | null>();
+  const add = (name: string, token: () => string) => {
+    const key = name.trim().toLowerCase();
+    byName.set(key, byName.has(key) ? null : token);
+  };
+  for (const placeholder of world.placeholders ?? []) {
+    add(placeholder.name, () => encodePlaceholderToken({ id: placeholder.id, mode: 'world', placementId: randomUUID() }));
+  }
+  for (const builtin of BUILTIN_PLACEHOLDERS) add(builtin.label, () => builtin.token);
+  return (text) => text.replace(WRITTEN_CHIP, (written, name: string) => byName.get(name.trim().toLowerCase())?.() ?? written);
+}
+
+/** The world's entity names, placeholders as their chips, as the World Index shows them. */
+export function entityNamesOf(world: WorldIndexInput): string[] {
+  const text = worldTextOf(world);
+  return world.entities.map((entity) => text(entity.name));
+}
+
 export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
-  const placeholders = allPlaceholders({ ...world, placeholders: world.placeholders ?? [], items: world.items ?? [] });
+  const placeholders = placeholdersOf(world);
   const text = (value: string | undefined) => chipText(value ?? '', placeholders);
   const statName = (id: string, own: readonly Stat[] = []) => [...own, ...world.stats].find((stat) => stat.id === id)?.name ?? id;
   const traitName = (id: string) => world.traits.find((trait) => trait.id === id)?.name ?? world.entities.flatMap((entity) => entity.traits ?? []).find((trait) => trait.id === id)?.name ?? id;
@@ -146,7 +182,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   for (const item of world.items ?? []) {
     add('item', item.id, item.name, [], lines(
       `# ${item.name}`,
-      facts(item.value !== undefined && `Value: ${item.value}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
+      facts(item.value !== undefined && `Value: ${text(worthText(item, world.currencies ?? [], world.items ?? []) ?? String(item.value))}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
       field('Player Description', text(item.playerDescription)),
       field('Unidentified Name', text(item.unidentifiedName)),
       field('Unidentified Description', text(item.unidentifiedDescription)),

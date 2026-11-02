@@ -7,9 +7,9 @@ import { pickList } from '@/lib/formaquestion/helpPicks';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
 import { helpSettingsCodec, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
-import { openSseReply, sseFrame, sseReply } from '@/test/aiTextFixtures';
+import { openSseReply, sseFrame, sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
+import { isIntentRequest, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import { AI_CONTEXT_COPY } from './formaquestionSettingsTabs';
 import type { HelpAi } from './useHelpAi';
@@ -106,11 +106,11 @@ describe('AI Context in Formaquestion', () => {
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
     expect(within(question).getByText('Search')).toBeInTheDocument();
     expect(within(question).getByText(`Sources on: ${AI_CONTEXT_COPY.sources.keyword}, ${AI_CONTEXT_COPY.sources.aiPicks}`)).toBeInTheDocument();
-    expect(within(question).getByText('Request 1: AI Search')).toBeInTheDocument();
-    expect(within(question).getByText('Request 2: Answer')).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^AI Search · #1/ })).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^Answer · #2/ })).toBeInTheDocument();
     // The endpoint, the samplers and the reasoning of each request show on its card.
     expect(within(question).getAllByText('cloud · m')).toHaveLength(2);
-    expect(within(question).getAllByText('Temp 0.2 · Rep 1')).toHaveLength(2);
+    expect(within(question).getAllByText('0.2')).toHaveLength(2);
     expect(within(question).getByText('Traits first.')).toBeInTheDocument();
     expect(within(question).getByText('Select **Add Trait**.')).toBeInTheDocument();
     expect(within(question).queryByText(AI_CONTEXT_COPY.customPrompt.label)).toBeNull();
@@ -134,6 +134,24 @@ describe('AI Context in Formaquestion', () => {
     expect(within(question).queryByText(/Settings › Display.*sent/)).toBeNull();
   });
 
+  it('shows the sorted kind and the sorting request while Sort Questions is on', async () => {
+    localStorage.setItem(STORAGE_KEY, helpSettingsCodec.serialize(helpSettingsOf({ intentClassifier: true })));
+    const answers = stubHelpStream(sseReply('Select **Add Trait**.'), TRAIT_LINE);
+    const routed = globalThis.fetch;
+    vi.stubGlobal('fetch', (url: string, init: RequestInit) => (isIntentRequest(init)
+      ? Promise.resolve(sseResponse(sseReply('Intent: Help\nSecond ask: no')))
+      : routed(url, init)));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    const dialog = await openAiContext();
+
+    const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
+    expect(within(question).getByText(`${AI_CONTEXT_COPY.intent}: Help`)).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^Sorting · #1/ })).toBeInTheDocument();
+    expect(within(question).getByRole('button', { name: /^Answer · #3/ })).toBeInTheDocument();
+    expect(answers).toHaveBeenCalledTimes(1);
+  });
+
   it('marks the request whose prompt differs from the default text', async () => {
     // A stored custom preset with an edited answer prompt, active, and the switch on.
     let presets = duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine');
@@ -147,7 +165,7 @@ describe('AI Context in Formaquestion', () => {
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
     const marks = within(question).getAllByText(AI_CONTEXT_COPY.customPrompt.label);
     expect(marks).toHaveLength(1);
-    expect(marks[0].closest('button')?.textContent).toContain('Request 2: Answer');
+    expect(marks[0].closest('button')?.textContent).toContain('Answer · #2');
     expect(within(question).getByText(/Preset: /)).toHaveTextContent('Preset: Mine');
   });
 
@@ -243,7 +261,7 @@ describe('AI Context in Formaquestion', () => {
     await screen.findByRole('button', { name: 'Stop' });
     const dialog = await openAiContext();
     // The trace arrives once the answer request is built, while its reply is still open.
-    await within(dialog).findByText('Request 1: AI Search');
+    await within(dialog).findByRole('button', { name: /^AI Search · #1/ });
 
     // The unmount ends the request; the stream's reader closes it, so nothing writes to the gone state.
     view.unmount();

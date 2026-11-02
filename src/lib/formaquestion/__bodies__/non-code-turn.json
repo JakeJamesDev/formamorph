@@ -1,0 +1,74 @@
+{
+  "model": "m",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide sections in the message.\n\nYou are Morphie. Speak in this voice: Playful and cheerful, with a light touch of humor. Keep the fun in your word choice.\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.\n\n- Take each fact, each step and each name from the guide sections.\n- When the player asks how to do a task, answer with every step of that task as a numbered list, in the order the guide gives.\n- Write each control name as the guide writes it, in bold.\n- After the steps, add one or two sentences of detail when the player needs them.\n- When the guide sections do not cover the question, write [NOT IN GUIDE] alone on the first line. Then answer from general knowledge in a few sentences, and name only the controls the guide names."
+    },
+    {
+      "role": "user",
+      "content": "<guide>\n<section page=\"Entities\">\n## How to Add an Entity\n\n1. Select **Add**.\n</section>\n</guide>\n\nQuestion: Who keeps the gate, and how do I add an entity?\n\nAnswer the question from the guide sections above."
+    }
+  ],
+  "max_tokens": 800,
+  "stream": true,
+  "temperature": 0.2,
+  "repetition_penalty": 1,
+  "repeat_penalty": 1,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "roll",
+        "description": "Purpose: Roll dice for a fair random result.\nUse when: The player asks you to roll dice. Call it once for each roll the player asks for, then give the player the total.\nInput: dice — the dice the player names, in dice notation: the count, the letter d, the number of sides, and an optional plus or minus modifier. Use 1 to 100 dice with 2 to 1000 sides, and a modifier from -1000 to 1000.\nOutput: JSON with dice, rolls (each die), modifier, and total. Use the total as the result. Bad notation returns text that explains the problem.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dice": {
+              "type": "string",
+              "description": "Dice notation, such as 2d6+1."
+            }
+          },
+          "required": [
+            "dice"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "set_face",
+        "description": "Purpose: Set the face you show beside this chat while the player reads your answer.\nUse when: You start an answer. Pick the face that matches the mood of your answer, then write the answer.\nInput: face — the name of one face from the list.\nOutput: JSON with the face you set.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "face": {
+              "type": "string",
+              "enum": [
+                "Happy",
+                "Blushing",
+                "Surprised",
+                "Pondering",
+                "Confused",
+                "Crying",
+                "Smitten",
+                "Dizzy",
+                "Wink",
+                "Slighted",
+                "Unimpressed"
+              ],
+              "description": "The face that matches the mood of your answer."
+            }
+          },
+          "required": [
+            "face"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}

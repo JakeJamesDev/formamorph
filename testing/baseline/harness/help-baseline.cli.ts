@@ -13,6 +13,8 @@
 //   keep-old   with `--keep-old`: retrieval where a question that points at the open screen keeps every pick, as
 //              before ticket 47
 //   howto-old  with `--howto-old`: retrieval where the open page's how-tos join every question, as before ticket 49
+//   intent     with `--intent`: retrieval with the Intent Classifier on, so each answer gets its Intent's plan;
+//              the report adds the Intents given and the classifier's median latency beside both picks (Q63)
 //   lookup     with `--lookup`: the help session in lookup mode, on an endpoint that takes function calls
 //   mascot-off with `--mascot-off`: retrieval with the Mascot off, so a Voice is measured against no Voice in one batch
 //   old        with `--old`: retrieval with the surface section outside the block: its length comes off the
@@ -58,7 +60,7 @@
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--howto-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--search-old] [--fuzzy-only] [--unfloored] [--semantic] [--floor-old] [--floor-alt 0.35] [--variants v-goal,v-close,v-labels,v-order] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--intent] [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--howto-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--search-old] [--fuzzy-only] [--unfloored] [--semantic] [--floor-old] [--floor-alt 0.35] [--variants v-goal,v-close,v-labels,v-order] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--mascot on|off] [--voice TEXT] [--mascot-off]  (the Mascot switch, on as shipped, and the rig's Voice, the default rig's when absent)
 //          [--frames frame-a,frame-b]  (needs the Mascot on and a Voice)
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
@@ -79,11 +81,12 @@ import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
-import { exactDocsIndex, mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
+import { exactDocsIndex, mean, noUsage, probeSnapshot, send, sessionFetch, timeIntent, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
 import { ANSWER_VARIANTS, answerVariant, type AnswerVariant } from './help-answer-variants';
 import { VOICE_FRAMES, voiceFrame, type VoiceFrame } from './help-voice-frames';
 import { BASELINE_KINDS, loadBaselineCases, type BaselineCase, type BaselineKind } from './help-baseline-cases';
 import { nodeEmbedder } from './help-node-embedder';
+import { median } from './help-intent-score';
 import { liveRouteVerdict } from './help-route-score';
 import { inLanguage, scoreAnswer, summarize, worstQuestions, type ScoredRow, type Summary } from './help-baseline-score';
 
@@ -118,7 +121,7 @@ const mascotSettings = {
 };
 if (frames.length > 0 && !(mascotSettings.mascot && mascotVoice.trim())) throw new Error('--frames needs the Mascot on and a Voice');
 
-type Arm = AnswerVariant | VoiceFrame | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'search-old' | 'fuzzy-only' | 'unfloored' | 'floor-old' | 'floor-alt' | 'lookup' | 'mascot-off' | 'no-docs';
+type Arm = AnswerVariant | VoiceFrame | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'search-old' | 'fuzzy-only' | 'unfloored' | 'floor-old' | 'floor-alt' | 'intent' | 'lookup' | 'mascot-off' | 'no-docs';
 
 interface Sample extends Usage {
   /** The time from the question to the end of the answer, in milliseconds. A saved batch can have none. */
@@ -130,6 +133,9 @@ interface Sample extends Usage {
   sources: string[];
   /** The id of the open screen's section among the sources. */
   lead?: string;
+  /** With the Intent Classifier on: the Intent given (null for none) and each classifier request's milliseconds. */
+  intent?: string | null;
+  intentMs?: number[];
 }
 interface Row { caseId: string; arm: Arm; run: number; sample: Sample | null; error?: string }
 interface Batch {
@@ -200,10 +206,13 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
   const fetchImpl = arm === 'pick-old'
     ? withoutEarlierAnswer(sessionFetch(usage), PICK_LINES, { question: c.question, earlier: previous?.question, earlierAnswer: previous?.answer, where: surfaceHint(c.surface, index)?.where })
     : isVariant(arm) ? answerVariant(sessionFetch(usage), arm)
-    : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotVoice.trim(), DEFAULT_MASCOT_NAME) : sessionFetch(usage);
+    : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotVoice.trim(), DEFAULT_MASCOT_NAME)
+    : arm === 'intent' ? timeIntent(sessionFetch(usage), (ms) => intentMs.push(ms)) : sessionFetch(usage);
+  const intentMs: number[] = [];
+  let intent: string | null | undefined;
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'search-old' ? exactIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
-    settings: helpSettingsOf({ lookup, ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), sources: { semantic: semantic && arm !== 'search-old' && arm !== 'fuzzy-only', ...(arm === 'keyword-only' && { aiPicks: false }) } }),
+    settings: helpSettingsOf({ lookup, intentClassifier: arm === 'intent', ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), sources: { semantic: semantic && arm !== 'search-old' && arm !== 'fuzzy-only', ...(arm === 'keyword-only' && { aiPicks: false }) } }),
     snapshot: probeSnapshot(target, lookup), fetchImpl, embedder: nodeSemantic?.embedder,
     ...(arm === 'unfloored' && { semanticFloor: -Infinity }),
     ...(arm === 'keep-old' && { screenRule: false }),
@@ -211,7 +220,8 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
   });
   const idOf = (id: string) => (untiered && id.startsWith(`${UNTIERED_CHANGELOG}#`) ? `Changelog${id.slice(UNTIERED_CHANGELOG.length)}` : id);
   for await (const event of session) {
-    if (event.type === 'done') return { answer: event.text, flagged: event.flagged, sources: event.sources.map((section) => idOf(section.id)), lead: event.lead?.id, ms: performance.now() - started, ...usage };
+    if (event.type === 'trace' && event.trace.intent !== undefined) intent = event.trace.intent;
+    if (event.type === 'done') return { answer: event.text, flagged: event.flagged, sources: event.sources.map((section) => idOf(section.id)), lead: event.lead?.id, ms: performance.now() - started, ...usage, ...(arm === 'intent' && { intent: intent ?? null, intentMs }) };
   }
   throw new Error('the help session ended with no answer');
 }
@@ -280,7 +290,7 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...variants, ...frames, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--search-old') ? ['search-old' as const] : []), ...(args.includes('--fuzzy-only') ? ['fuzzy-only' as const] : []), ...(args.includes('--unfloored') ? ['unfloored' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), ...(args.includes('--mascot-off') ? ['mascot-off' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...variants, ...frames, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--search-old') ? ['search-old' as const] : []), ...(args.includes('--fuzzy-only') ? ['fuzzy-only' as const] : []), ...(args.includes('--unfloored') ? ['unfloored' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--intent') ? ['intent' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), ...(args.includes('--mascot-off') ? ['mascot-off' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 
@@ -402,6 +412,15 @@ report.push(`## Cost per question\n\n${table(
     ];
   }),
 )}`);
+const intentSamples = batch.rows.flatMap((r) => (r.arm === 'intent' && r.sample && picked.has(r.caseId) ? [r.sample] : []));
+if (intentSamples.length) {
+  const timed = intentSamples.flatMap((s) => s.intentMs ?? []).sort((a, b) => a - b);
+  const given = new Map<string, number>();
+  for (const s of intentSamples) given.set(s.intent ?? 'none', (given.get(s.intent ?? 'none') ?? 0) + 1);
+  report.push(`## Intent Classifier
+
+${timed.length} classifier requests beside both picks: median ${Math.round(median(timed))} ms, slowest ${Math.round(timed.at(-1) ?? 0)} ms. Intents given: ${[...given].map(([label, n]) => `${label} ${pct(n / intentSamples.length)}`).join(', ')}.`);
+}
 for (const arm of batch.arms.filter((a) => a !== 'no-docs')) {
   const failing = worstQuestions(scored.filter((r) => r.arm === arm), Infinity);
   const worst = failing.slice(0, worstCount);

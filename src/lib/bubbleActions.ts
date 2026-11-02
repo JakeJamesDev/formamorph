@@ -50,7 +50,7 @@ export interface BubbleActionHandlers {
 
 /**
  * The actions of one narration bubble, in menu order: generate, content, then destructive. The latest turn
- * gets the re-generate actions; a past turn gets Rewind to Here. A live turn gets none.
+ * gets the regenerate actions; a past turn gets Rewind to Here. A live turn gets none.
  */
 export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): BubbleAction[] {
   if (state.live) return [];
@@ -58,10 +58,10 @@ export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): Bubb
   const sceneBlocked = busy || sceneJob !== null;
   const actions: BubbleAction[] = [];
   if (state.isLatest) {
-    actions.push({ key: 'regenerate', request: 'narration', label: 'Re-generate Narration', icon: RefreshCw, section: 'generate', disabled: busy, run: h.regenerate });
+    actions.push({ key: 'regenerate', request: 'narration', label: 'Regenerate Narration', icon: RefreshCw, section: 'generate', disabled: busy, run: h.regenerate });
     if (state.canRegenStats) {
       // A running scene render holds the graphics card, and the re-roll keeps the turn its picture belongs to.
-      actions.push({ key: 'stats', request: 'statUpdates', label: 'Re-generate Stats', icon: StatIcon, section: 'generate', disabled: sceneBlocked, menuOnly: true, run: h.regenerateStats });
+      actions.push({ key: 'stats', request: 'statUpdates', label: 'Regenerate Stats', icon: StatIcon, section: 'generate', disabled: sceneBlocked, menuOnly: true, run: h.regenerateStats });
     }
   }
   if (state.sceneImagesAvailable) {
@@ -106,7 +106,7 @@ export function choicesActions(
   if (!state.canRegenerate) return [];
   if (!state.hasChoices && state.busy && !state.regenerating) return [];
   return [{
-    key: 'regenerateChoices', request: 'choices', label: 'Re-generate Choices', icon: ListRestart, section: 'generate',
+    key: 'regenerateChoices', request: 'choices', label: 'Regenerate Choices', icon: ListRestart, section: 'generate',
     disabled: state.busy, spinning: state.regenerating, run: regenerate,
   }];
 }

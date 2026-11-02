@@ -141,6 +141,9 @@ export const DEFAULT_CANVAS_GRID_VISIBLE = true;
 // Straight lines are the plainest reading of the map, so curves and elbows are opted into.
 export const DEFAULT_CANVAS_CONNECTION_STYLE: ConnectionStyle = 'straight';
 
+// Snap to Others in the Body Layout editor. A per-user editor preference like the canvas ones above.
+export const DEFAULT_BODY_LAYOUT_SNAP = true;
+
 // The Change Location dialog's first-open view. A per-player preference like the canvas ones above — the
 // dialog thereafter opens on whichever view was used last.
 export const DEFAULT_TRAVEL_VIEW: TravelView = 'list';
@@ -169,7 +172,7 @@ export const THEME_COLORS: { value: ThemeColor; label: string }[] = [
   { value: 'highcontrast', label: 'High Contrast' },
 ];
 
-// Fonts (Settings). One shared registry feeds two selectors: the global app Font (Presentation) and the
+// Fonts (Settings). One shared registry feeds two selectors: the global app Font (Appearance) and the
 // Narration Font (Accessibility). All are self-hosted webfonts (see src/fonts.ts); `stack` is the CSS
 // family, applied via a CSS variable with the OS stack appended as a glyph fallback (e.g. non-Latin text).
 export type FontValue =
@@ -199,10 +202,10 @@ export const FONT_LIST: FontEntry[] = [
   { value: 'poppins', label: 'Poppins', stack: "'Poppins'" },
   // Its 600 reads too light for markdown bold (ink coverage +24% at 800), so it ships pre-tuned.
   { value: 'jetbrainsmono', label: 'JetBrains Mono', stack: "'JetBrains Mono Variable', 'JetBrains Mono', monospace", fsa: 0.48, wmax: 800, tuning: { boldWeight: 800 } },
-  { value: 'opendyslexic', label: 'OpenDyslexic (dyslexia)', stack: "'OpenDyslexic'", a11y: true },
-  { value: 'atkinson', label: 'Atkinson Hyperlegible (low vision)', stack: "'Atkinson Hyperlegible'", a11y: true },
-  { value: 'lexend', label: 'Lexend (reading)', stack: "'Lexend Variable', 'Lexend'", a11y: true, wmax: 900 },
-  { value: 'andika', label: 'Andika (literacy)', stack: "'Andika'", a11y: true },
+  { value: 'opendyslexic', label: 'OpenDyslexic', stack: "'OpenDyslexic'", a11y: true },
+  { value: 'atkinson', label: 'Atkinson Hyperlegible', stack: "'Atkinson Hyperlegible'", a11y: true },
+  { value: 'lexend', label: 'Lexend', stack: "'Lexend Variable', 'Lexend'", a11y: true, wmax: 900 },
+  { value: 'andika', label: 'Andika', stack: "'Andika'", a11y: true },
 ];
 /** CSS family stack for a font value, or '' if unknown/sentinel. */
 export const fontStack = (value: string): string => FONT_LIST.find((f) => f.value === value)?.stack ?? '';

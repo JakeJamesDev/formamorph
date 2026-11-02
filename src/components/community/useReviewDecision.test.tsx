@@ -165,7 +165,7 @@ describe('the 409 conflicts', () => {
 
     await waitFor(() => expect(onOutcome).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), 'dropped', undefined));
     expect(screen.queryByTestId('composer')).toBeNull();
-    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Quarantine length' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Delete it after' })).toBeNull());
   });
 });
 
@@ -194,7 +194,7 @@ describe('rejecting', () => {
     press('Sedge Landing', 'Reject');
 
     // No length to pick on an update.
-    expect(screen.queryByRole('combobox', { name: 'Quarantine length' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Delete it after' })).toBeNull();
     const confirm = await screen.findByRole('alertdialog');
     expect(reject).not.toHaveBeenCalled();
     fireEvent.click(within(confirm).getByRole('button', { name: 'Reject' }));

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { SectionTitle } from '@/components/ui/typography';
+import { Hint, SectionTitle } from '@/components/ui/typography';
 import { EdgeTabButton } from '@/components/formaquestion/EdgeTab';
 import { FormaquestionFrame, type ResizeHandlers } from '@/components/formaquestion/FormaquestionFrame';
 import type { MenuActions } from '@/components/formaquestion/FormaquestionMenu';
@@ -197,7 +197,11 @@ export function FormaquestionReference() {
     <Card role="region" aria-labelledby="formaquestion-reference-title" className="min-w-0">
       <CardHeader>
         <CardTitle id="formaquestion-reference-title" className="text-heading">Formaquestion Reference</CardTitle>
-        <CardDescription>Select Wide View to change the layout. The samples do not move, Close does nothing here, and a question you send shows a search of the sample guide, not an AI answer.</CardDescription>
+        <CardDescription>Shows the production Formaquestion parts on a sample guide. Select <strong>Wide View</strong> to change the layout.</CardDescription>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li>The samples don’t move, and <strong>Close</strong> does nothing here.</li>
+          <li>A question you send gets a search of the sample guide. No AI answers it.</li>
+        </Hint>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-6">
         <section aria-label="Help Tab" className="space-y-2">
@@ -222,7 +226,7 @@ export function FormaquestionReference() {
         </section>
         <section aria-label="Minimal Chrome" className="min-w-0 space-y-2">
           <SectionTitle>Minimal Chrome</SectionTitle>
-          <p className="text-helper text-muted-foreground">Select a source name to show its section in the reader. Select Show Head Only to see the head view.</p>
+          <Hint>Select a source name to show its section in the reader. Select <strong>Show Head Only</strong> to see the head view.</Hint>
           <div className="overflow-x-auto pb-2">
             <SampleMinimalChrome />
           </div>

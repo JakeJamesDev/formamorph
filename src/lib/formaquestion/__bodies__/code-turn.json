@@ -1,0 +1,119 @@
+{
+  "model": "m",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide sections in the message.\n\nYou are Morphie. Speak in this voice: Playful and cheerful, with a light touch of humor. Keep the fun in your word choice.\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.\n\n- Take each fact, each step and each name from the guide sections.\n- When the player asks how to do a task, answer with every step of that task as a numbered list, in the order the guide gives.\n- Write each control name as the guide writes it, in bold.\n- After the steps, add one or two sentences of detail when the player needs them.\n- When the guide sections do not cover the question, write [NOT IN GUIDE] alone on the first line. Then answer from general knowledge in a few sentences, and name only the controls the guide names."
+    },
+    {
+      "role": "user",
+      "content": "<guide>\n<section page=\"Scripts Reference\">\n## Quick Reference\n\nRead a stat through `.value`.\n</section>\n\n<section page=\"Scripts Reference\">\n# Stat Code\n\nCode sets a stat.\n</section>\n</guide>\n\n<world>\n\n</world>\n\nQuestion: Write stat code that switches Brave on when my Courage reaches 50.\n\nAnswer the question from the guide and world sections above.\n\nThe player wants a script. Answer with a fenced block of working JavaScript that does the whole task:\n- Write the code yourself from the rules in the guide sections. The guide has no script for most tasks.\n- Write the whole contents of the box the task needs. Pick the box by when it runs: **Before the AI** at the start of each turn, **After the AI** at the end of each turn, **During AI Output** once for each narration sentence, **At Game Start** once when a new game begins, **When a Trait Switches** each time a trait turns on or off. Name the box in one sentence. Then give the block.\n- Read the script's home as `self`, the world's stats through `stats`, traits through `traits`, placeholders through `placeholders`, and the time through `clock`.\n- The app reads the word after `javascript` on the opening line to put the code in the right box: `before` for **Before the AI**, `after` for **After the AI**, `output` for **During AI Output**, `start` for **At Game Start**, `switch` for **When a Trait Switches**.\n- Start the block of the **Before the AI** box with this line: ```javascript before\n- Start the block of the **After the AI** box with this line: ```javascript after\n- Start the block of the **During AI Output** box with this line: ```javascript output\n- Start the block of the **At Game Start** box with this line: ```javascript start\n- Start the block of the **When a Trait Switches** box with this line: ```javascript switch\n- After the block, write at most three short steps.\n- This is a stat's script: `self` is the stat, and `owner.stats` reads the stats of the entity that owns it.\n- Before you answer, test the block with the `test_script` function. Fix each error and dropped write it reports.\n\nThe message also holds sections of the world the player has open in the World Editor. The player is building or studying this world.\n\n- Explain how the world works: what each part does, when it runs, and how the parts connect.\n- Take each fact about the world from the world sections, and each fact about the app from the guide sections.\n- When the question is about a script, a stat's code or a Tool, say what its code does, step by step.\n- Write each name from the world as the world writes it."
+    }
+  ],
+  "max_tokens": 800,
+  "stream": true,
+  "temperature": 0.2,
+  "repetition_penalty": 1,
+  "repeat_penalty": 1,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "roll",
+        "description": "Purpose: Roll dice for a fair random result.\nUse when: The player asks you to roll dice. Call it once for each roll the player asks for, then give the player the total.\nInput: dice — the dice the player names, in dice notation: the count, the letter d, the number of sides, and an optional plus or minus modifier. Use 1 to 100 dice with 2 to 1000 sides, and a modifier from -1000 to 1000.\nOutput: JSON with dice, rolls (each die), modifier, and total. Use the total as the result. Bad notation returns text that explains the problem.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dice": {
+              "type": "string",
+              "description": "Dice notation, such as 2d6+1."
+            }
+          },
+          "required": [
+            "dice"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "set_face",
+        "description": "Purpose: Set the face you show beside this chat while the player reads your answer.\nUse when: You start an answer. Pick the face that matches the mood of your answer, then write the answer.\nInput: face — the name of one face from the list.\nOutput: JSON with the face you set.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "face": {
+              "type": "string",
+              "enum": [
+                "Happy",
+                "Blushing",
+                "Surprised",
+                "Pondering",
+                "Confused",
+                "Crying",
+                "Smitten",
+                "Dizzy",
+                "Wink",
+                "Slighted",
+                "Unimpressed"
+              ],
+              "description": "The face that matches the mood of your answer."
+            }
+          },
+          "required": [
+            "face"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "test_script",
+        "description": "Purpose: Check a script you wrote, and run it once on the open world, before you give it to the player.\nUse when: You wrote a script for the player. Call it before you answer. When it reports errors or dropped writes, fix the code and call it again. When an error remains after your last call, give your best code and name the remaining error in one sentence.\nInput: code, timing, owner and name. The script runs in its timing on its owner. A stat or trait script reads that stat or trait as self. Without owner and name, the script sits on the stat, trait or world the player has open, else on a stat. Without name, self is the open stat or trait of that kind, if any.\nOutput: JSON with errors and warnings, each with its line; notInWorld: the names the world does not have yet, each with its kind; and run: the value the code set, its writes, its pending writes, its assumed stats, its dropped writes, the sentence a During AI Output script left, or the error it threw. A During AI Output script runs on a sample sentence, and a When a Trait Switches script on a sample switched trait. A pending write lands on the played persona during the game. It is not an error. A notInWorld name and an assumed stat are not errors: keep the code, tell the player to create each one, and name its kind. An assumed stat is a stat the world does not have yet, run as a number at 0 in 0–100. With world false, no world is open: names go unchecked and nothing runs.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "The whole contents of the script."
+            },
+            "timing": {
+              "type": "string",
+              "enum": [
+                "before",
+                "after",
+                "output",
+                "start",
+                "switch"
+              ],
+              "description": "When the script runs: before is Before the AI, after is After the AI, output is During AI Output, start is At Game Start, switch is When a Trait Switches."
+            },
+            "owner": {
+              "type": "string",
+              "enum": [
+                "stat",
+                "trait",
+                "world"
+              ],
+              "description": "What the script sits on."
+            },
+            "name": {
+              "type": "string",
+              "description": "The name of the stat or trait the script sits on."
+            }
+          },
+          "required": [
+            "code",
+            "timing"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}

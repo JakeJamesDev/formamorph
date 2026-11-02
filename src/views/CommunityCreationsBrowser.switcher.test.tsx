@@ -381,6 +381,6 @@ describe('the Prompts section', () => {
 
     await userEvent.click(await screen.findByRole('tab', { name: 'Prompts' }));
 
-    expect(await screen.findByText(/No prompts available/)).toBeInTheDocument();
+    expect(await screen.findByText(/No prompts yet/)).toBeInTheDocument();
   });
 });

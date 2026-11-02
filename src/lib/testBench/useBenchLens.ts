@@ -16,7 +16,7 @@ export interface BenchLensHandle {
 /**
  * The Bench's lens: seeded when the Bench opens, then the author's own until they change it. Seeding reads
  * the session's stored selection first and the editor's current location only where that has nothing to say,
- * so re-opening the Bench lands where the author left it rather than wherever the editor happens to be.
+ * so re-opening the Bench opens where the author left it rather than wherever the editor happens to be.
  *
  * The editor's selection is read at the moment of opening and not after — moving the list selection with the
  * Bench open would otherwise re-aim the lens under an author who is mid-test.

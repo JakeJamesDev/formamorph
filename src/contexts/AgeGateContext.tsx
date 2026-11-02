@@ -27,6 +27,8 @@ export interface AttestationRequest {
 interface AgeGateValue {
   /** Whether the player has attested to the gate as it currently reads. Always true without community. */
   attested: boolean;
+  /** The session the attestation covers, or null while unattested. It changes once a new account's answer is in. */
+  attestedSession: string | null;
   /** Whether the gate is on screen. Other blocking dialogs hold themselves back while it is. */
   gateOpen: boolean;
   /** Ask for the attestation before opening something behind it. */
@@ -78,7 +80,13 @@ const initialState = (): GateState => {
  * asks again — the player who turns 18 tomorrow should not have to find a setting.
  */
 export function AgeGateProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<GateState>(initialState);
+  // Each state carries the session it was set for, so a new account never inherits the old one's answer.
+  const [gate, setGate] = useState(() => ({ state: initialState(), session: sessionKey() }));
+  const state = gate.state;
+  const setState = useCallback((next: GateState) => {
+    const session = sessionKey();
+    setGate((prev) => (prev.state === next && prev.session === session ? prev : { state: next, session }));
+  }, []);
   const [currentSession, setCurrentSession] = useState(sessionKey);
   const [pendingRequest, setPendingRequest] = useState<AttestationRequest | null>(null);
   const pendingRequestRef = useRef(pendingRequest);
@@ -97,6 +105,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
   const resolvedSessionRef = useRef<string | null>(null);
   const devRoute = useDevRoute();
   const attested = state === 'accepted';
+  const attestedSession = attested ? gate.session : null;
   const gateOpen = state === 'prompt' || state === 'failed';
   const consumePendingRequest = useCallback(() => {
     const request = pendingRequestRef.current;
@@ -222,7 +231,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
       });
 
     return () => { current = false; };
-  }, [boundAuthentication, consumeAuthenticationCompletion, consumePendingRequest, currentSession, readAttempt]);
+  }, [boundAuthentication, consumeAuthenticationCompletion, consumePendingRequest, currentSession, readAttempt, setState]);
 
   // DEV: `#dev?modal=ageGate` raises the gate on demand, so its copy is checkable after accepting once.
   useEffect(() => {
@@ -230,7 +239,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
       setPendingRequest({});
       setState('prompt');
     }
-  }, [devRoute?.modal]);
+  }, [devRoute?.modal, setState]);
 
   const requireAttestation = useCallback((request: AttestationRequest = {}) => {
     if (!COMMUNITY_ENABLED || state === 'accepted') {
@@ -241,7 +250,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     pendingRequestRef.current = request;
     setPendingRequest(request);
     if (state === 'idle') setState('prompt');
-  }, [state]);
+  }, [setState, state]);
 
   const requireAuthentication = useCallback((request: AttestationRequest) => {
     if (!COMMUNITY_ENABLED) {
@@ -257,7 +266,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     pendingRequestRef.current = request;
     setPendingRequest(request);
     if (state === 'idle') setState('prompt');
-  }, [state]);
+  }, [setState, state]);
 
   const finishAcceptance = useCallback(() => {
     if (authenticationRequestRef.current) {
@@ -270,7 +279,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     setState('accepted');
     consumePendingRequest()?.onAccept?.();
     consumeAuthenticationCompletion();
-  }, [consumeAuthenticationCompletion, consumePendingRequest]);
+  }, [consumeAuthenticationCompletion, consumePendingRequest, setState]);
 
   const authenticationSucceeded = useCallback((onAcceptanceResolved?: () => void) => {
     const key = sessionKey();
@@ -353,11 +362,12 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     authenticationAccountRef.current = null;
     setState('idle');
     if (AuthService.isAuthenticated()) AuthService.logout();
-  }, [consumePendingRequest]);
+  }, [consumePendingRequest, setState]);
 
   const value = useMemo(
     () => ({
       attested,
+      attestedSession,
       gateOpen,
       requireAttestation,
       requireAuthentication,
@@ -367,6 +377,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     }),
     [
       attested,
+      attestedSession,
       authenticationAbandoned,
       authenticationPrivacyResolved,
       authenticationSucceeded,
@@ -385,6 +396,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
           open={gateOpen}
           onAccept={() => { void handleAccept(); }}
           onDecline={handleDecline}
+          declineNote="If you decline, you'll be signed out and asked again next time. Your library and your worlds stay as they are."
           busy={saving}
           error={state === 'failed' ? readError : writeError}
           acceptLabel={state === 'failed' || writeError ? 'Retry' : 'Accept'}

@@ -19,6 +19,19 @@ describe('the Tool pack', () => {
     expect(parseToolPack(JSON.stringify(pack))).toEqual({ tools: [tool(), script], warnings: [] });
   });
 
+  it('round-trips an Intent list into a Formaquestion list, and reads a pack without one as no list', () => {
+    const listed = tool({ intents: ['Chat', 'World'] });
+    const json = JSON.stringify(buildToolPack([listed, script], '9.9.9'));
+    expect(parseToolPack(json, { help: true }).tools).toEqual([listed, script]);
+    expect(parseToolPack(json, { help: true }).tools[1]).not.toHaveProperty('intents');
+  });
+
+  it('drops an Intent list from a gameplay list, and an Intent it does not know from a Formaquestion list', () => {
+    const json = JSON.stringify({ formamorphTools: 1, tools: [{ ...tool(), intents: ['Chat', 'Lore', 'Help', 'Help'] }] });
+    expect(parseToolPack(json).tools[0]).not.toHaveProperty('intents');
+    expect(parseToolPack(json, { help: true }).tools[0].intents).toEqual(['Chat', 'Help']);
+  });
+
   it('carries definitions only, dropping an enabled bit an older pack holds', () => {
     const { tools } = parseToolPack(JSON.stringify({ formamorphTools: 1, tools: [{ ...tool(), enabled: true }] }));
     expect(tools).toEqual([tool()]);

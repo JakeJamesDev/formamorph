@@ -3,7 +3,9 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { openingFold } from './openingState';
 import type { StatCodeOwners } from './statCodeTraits';
 import type { PlayerStat, Script } from '@/types';
 import { statCodeTurnOf, type FlatStatCodeTurn } from '@/test/statCodeTurnFixture';
@@ -97,5 +99,20 @@ describe('the At Game Start timing', () => {
     const out = await runStatCodeTurn(start({ stats }));
     expect(out.stats).toBe(stats);
     expect(console.error).toHaveBeenCalled();
+  });
+
+  it("reads an Equipped placement's Item Copy as equipped, in its slot", async () => {
+    const helm = { id: 'helm', name: 'Helm', slotRule: { mode: 'either' as const, slotIds: ['head'] }, statEffects: [], traitEffects: [], equipRequires: [] };
+    const slots = [{ id: 'head', name: 'Head' }];
+    const { state } = openingFold({
+      items: [helm], slots, bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'head' }] })],
+      placements: [{ id: 'p1', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'helm' } }],
+    });
+    const out = await runStatCodeTurn(start({
+      stats: [stat({ id: 'a', name: 'Health' })],
+      worldScripts: [script('start', "const [c] = items.Helm.copies; stats.Health.value = c.equipped && c.slot === 'Head' ? 9 : 1;")],
+      items: [helm], slots, itemCopies: state.itemCopies,
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(9);
   });
 });

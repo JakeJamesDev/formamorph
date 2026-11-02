@@ -9,12 +9,13 @@ vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 /** One Blueprint stat linked onto two entities, placed in each one's own group, each with its own value. */
 const trust: Stat = { ...statFixture('Trust', 5), id: 'bp-trust', groupId: 'bp' };
 const link = (id: string, groupId: string | null): StatLink => ({ id, originalId: 'bp-trust', kind: 'stat', originalName: 'Trust', groupId, order: 0 });
+const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
 const bram = {
-  id: 'bram', name: 'Bram', image: 'data:image/png;base64,AAAA',
+  id: 'bram', name: 'Bram', image: 'data:image/png;base64,AAAA', locations: ['yard'],
   statGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, order: 0 }],
   statLinks: [link('l-bram', 'g-bond')],
 };
-const odette = { id: 'odette', name: 'Odette', image: 'data:image/png;base64,AAAA', statLinks: [link('l-odette', null)] };
+const odette = { id: 'odette', name: 'Odette', image: 'data:image/png;base64,AAAA', locations: ['yard'], statLinks: [link('l-odette', null)] };
 const values: EntityStatValues = {
   bram: [{ ...statFixture('Trust', 40), id: 'bp-trust' }],
   odette: [{ ...statFixture('Trust', 12), id: 'bp-trust' }],
@@ -22,11 +23,11 @@ const values: EntityStatValues = {
 const scene: SceneEntity[] = [{ name: 'Bram', revealed: true }, { name: 'Odette', revealed: true }];
 const stage = (selected: string) => ({
   world: {
-    stats: [trust], statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }], entities: [bram, odette],
+    stats: [trust], statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }], entities: [bram, odette], locations: [YARD],
   } as never,
-  turns: [{ narration: 'Bram and Odette wait.', turnId: 't1', scene, entityStats: values }],
+  turns: [{ narration: 'Bram and Odette wait.', turnId: 't1', scene, entities: ['Bram', 'Odette'], entityStats: values }],
   stats: [statFixture('Vigor', 50)],
-  seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(scene); g.setSelectedEntityId(selected); },
+  seed: (g: Gameplay) => { g.setEntityStats(values); g.setVisibleEntities(scene); g.setCurrentLocation(YARD as never); g.setSelectedEntityId(selected); },
 });
 
 describe('RightPanel — linked stats', () => {

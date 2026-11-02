@@ -60,7 +60,7 @@ async function send(action: string) {
   fireEvent.change(await screen.findByPlaceholderText(/Type your action/), { target: { value: action } });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
-const settled = () => waitFor(() => expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeEnabled());
+const settled = () => waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
 const tells = () => screen.queryAllByTestId('script-tell').map((line) => line.textContent);
 const valueOf = () => live().globalStats.find((s) => s.id === 'health')?.value;
 
@@ -103,7 +103,7 @@ describe('script prompts in play', () => {
     expect(bodies.filter((body) => body.includes('The bell tolls'))).toEqual([]);
   });
 
-  it('replaces a turn’s tells with the re-rolled ones on Re-generate Stats', async () => {
+  it('replaces a turn’s tells with the re-rolled ones on Regenerate Stats', async () => {
     const ask: Script = { id: 'ask', timing: 'before', code: 'if (player.confirm("Ring it?")) stats.Health.value += 1;' };
     const report: Script = { id: 'report', timing: 'after', code: 'player.tell("Health is " + stats.Health.value + ".");' };
     renderGameViewer({ ...world(), scripts: [ask, report] }, { inGameplay: <Probe /> });
@@ -114,7 +114,7 @@ describe('script prompts in play', () => {
     await settled();
     expect(tells()).toEqual(['Health is 11.']);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
     fireEvent.click(await screen.findByRole('button', { name: 'No' }));
     await settled();
     await waitFor(() => expect(tells()).toEqual(['Health is 10.']));

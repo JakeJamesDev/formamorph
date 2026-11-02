@@ -6,7 +6,7 @@ import { executeStatCode } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, CURRENCY_FIELDS, TURN_MEMBERS, LOCATION_ENTRY_FIELDS, LOCATION_EXIT_FIELDS, LOCATION_MEMBERS, MEMORY_ENTRY_FIELDS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
@@ -73,6 +73,7 @@ function editorNames(): VariableTreeNames {
     placeholders: { list, owners: placeholderOwners(world), dictionaries: codeDictionaries(world.dictionaries, list) },
     locations: ['Dock', 'Old Mill'],
     items: [{ id: 'lamp', name: 'Brass Lamp' }],
+    currencies: [{ id: 'coin', name: 'Coin' }],
   };
 }
 
@@ -117,7 +118,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Items', 'Currencies', 'Clock', 'Turn', 'Locations', 'Location', 'Memories', 'notes', 'discover']);
   });
 
   it('keeps the in-group order of a stat’s fields', () => {
@@ -213,6 +214,25 @@ describe('placeholders', () => {
 });
 
 describe('entities, the persona and dictionaries', () => {
+  it('lists no entity, entry or location whose name holds only spaces, as the sandbox keys none', () => {
+    const names = editorNames();
+    const blank = '   ';
+    const spaced = buildVariableTree({
+      ...names,
+      entities: [{ ...names.entities![0], name: blank }, ...names.entities!],
+      locations: [blank, 'Dock'],
+      placeholders: {
+        ...names.placeholders!,
+        dictionaries: names.placeholders!.dictionaries!.map((book) =>
+          ({ ...book, entries: [{ ...book.entries![0], name: blank }, ...book.entries!] })),
+      },
+    });
+    expect(levelAt(spaced, 'Entities')).not.toContain(blank);
+    expect(levelAt(spaced, 'Dictionaries', 'Lore', 'Entries')).not.toContain(blank);
+    expect(levelAt(spaced, 'Locations')).not.toContain(blank);
+    expect(levelAt(spaced, 'Locations')).toContain('Dock');
+  });
+
   it('opens an entity to its fields plus Traits and Placeholders over its own names', () => {
     expect(levelAt(tree, 'Entities')).toEqual(['Mira', 'Rook', 'Old Tom']);
     expect(levelAt(tree, 'Entities', 'Mira')).toEqual(asLevel(ENTITY_FIELDS));
@@ -343,8 +363,8 @@ describe('verbs last in a group (R7)', () => {
     expect(misordered(toolTree)).toEqual([]);
   });
 
-  it('reads an entity’s fields, then move, follow, unfollow, diary', () => {
-    expect(levelAt(tree, 'Entities', 'Mira').slice(-4)).toEqual(['move', 'follow', 'unfollow', 'diary']);
+  it('reads an entity’s fields, then move, follow, unfollow, meet, diary', () => {
+    expect(levelAt(tree, 'Entities', 'Mira').slice(-5)).toEqual(['move', 'follow', 'unfollow', 'meet', 'diary']);
   });
 
   it('reads the memory entry’s eleven fields, then pin, forget, edit, remove', () => {
@@ -451,6 +471,7 @@ describe('field info', () => {
     [['Entities', 'Mira', 'Traits', 'Keen'], TRAIT_ENTRY_FIELDS],
     [['Persona'], PERSONA_FIELDS],
     [['Dictionaries', 'Lore'], DICTIONARY_FIELDS],
+    [['Currencies', 'Coin'], CURRENCY_FIELDS],
     [['Placeholders', 'Mood'], placeholderEntryFields('Wildcard')],
     [['Placeholders', 'Gear'], placeholderEntryFields('Object')],
     [['Entities', 'Mira', 'Placeholders', 'Eye Color'], placeholderEntryFields('Variable')],
@@ -467,7 +488,7 @@ describe('field info', () => {
 describe('array elements', () => {
   // The fields only: the persona has no verbs and stands first where the player is.
   const presentFields = [
-    'id', 'name', 'type', 'pronouns', 'inScene', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items',
+    'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats', 'items', 'body',
   ];
 
   it('lists the memory element’s group, then the memories calls, with the verbs last', () => {
@@ -572,6 +593,7 @@ describe('every leaf against the sandbox', () => {
     // Test Code stands at the world's starting location.
     places: { locations: [{ id: 'dock', name: 'Dock' }, { id: 'mill', name: 'Old Mill' }], location: { id: 'dock', name: 'Dock' } },
     items: [{ id: 'lamp', name: 'Brass Lamp', placeholders: placeholders.owners.get('lamp'), copies: [] }],
+    currencies: [{ id: 'coin', name: 'Coin', kind: 'name' }],
   });
 
   // `diary` writes for a real entity and never the persona, so it has its own cases below.

@@ -239,10 +239,10 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
           </DialogTitle>
           <DialogDescription>
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most likes first. A{' '}
-            <strong>Tied</strong> badge marks entries that share a like count. Click an entry to place it,
-            and again to step it down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share
-            the place above it. A tie doesn&apos;t use up a place, so the row after two worlds on 1st takes
-            2nd. Your own entry and quarantined worlds can&apos;t be placed.
+            <strong>Tied</strong> badge marks entries with the same like count. Click an entry to place it,
+            and click again to move it down a place. Select <strong>Tie With Above</strong> to share the
+            place above. A tie doesn&apos;t use up a place: after two worlds on 1st, the next row takes 2nd.
+            You can&apos;t place your own entry or a quarantined world.
           </DialogDescription>
         </DialogHeader>
 
@@ -431,9 +431,9 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             )}
 
             {editing && (
-              <p className="text-meta text-muted-foreground">
-                Saving a correction posts nothing. The change is recorded in the audit log.
-              </p>
+              <Meta as="p">
+                Saving a correction posts nothing. The audit log records the change.
+              </Meta>
             )}
           </div>
         </ScrollArea>

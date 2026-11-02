@@ -103,7 +103,7 @@ describe('EditorPreviewRollsProvider', () => {
     expect(drawsDiffer(() => { h.reroll(['hair']); return h.read(u)[u]; }, before)).toBe(true);
   });
 
-  it('keeps the roll of a Unique chip in the owner name, so Character Name reads one value', () => {
+  it('keeps the roll of a Unique chip in the owner name, so Entity Name reads one value', () => {
     const h = mount();
     const name = `${tok('hair', 'u1', 'unique')} Vos`;
     const before = h.readOwned('{{char}} waits.', name)['{{char}}'];

@@ -1,4 +1,4 @@
-import type { Entity, GameLocation, Item, ItemCopy, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Currency, Entity, GameLocation, Item, ItemCopy, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { ownerStatParts } from '../statContext';
@@ -93,12 +93,17 @@ const ossery: Entity = {
   stats: [stat('ossery-temper', 'Temper', 35, 'How close she is to closing the gate.', [[30, 'Calm'], [70, 'Short'], [100, 'Furious']])],
 };
 
-const item = (id: string, name: string, aiSummary?: string): Item => ({
-  id, name, ...(aiSummary && { aiSummary }), statEffects: [], traitEffects: [], equipRequires: [],
+const item = (id: string, name: string, aiSummary?: string, value?: number): Item => ({
+  id, name, ...(aiSummary && { aiSummary }), ...(value !== undefined && { value, currencyId: 'tide-coin' }), statEffects: [], traitEffects: [], equipRequires: [],
 });
-const compass = item('brass-compass', 'Brass Compass', 'Swings toward the nearest wreck, not north.');
+const compass = item('brass-compass', 'Brass Compass', 'Swings toward the nearest wreck, not north.', 150);
 // Wren carries a stack, and a charm lies hidden at the Landing, so the Inventory chip shows each kind of row.
-const ITEMS = [compass, item('rope', 'Coil of Rope'), item('lamp-oil', 'Flask of Lamp Oil'), item('nails', 'Bent Nail'), item('charm', 'Salt Glass Charm')];
+const ITEMS = [
+  compass, item('rope', 'Coil of Rope', undefined, 12), item('lamp-oil', 'Flask of Lamp Oil', undefined, 5), item('nails', 'Bent Nail'), item('charm', 'Salt Glass Charm'),
+  item('tide-bit', 'Copper Bit'), item('tide-crown', 'Silver Crown'),
+];
+// The traveler and Wren hold coins and a gull doesn't, so the chip shows a balance on some owners only.
+const CURRENCIES: Currency[] = [{ id: 'tide-coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'tide-bit', worth: 1 }, { itemId: 'tide-crown', worth: 10 }] } }];
 
 /** The sample world the Settings preview renders when no game runs. */
 const SAMPLE_WORLD: AuthoredWorld = {
@@ -128,7 +133,9 @@ const SAMPLE_WORLD: AuthoredWorld = {
   }],
   placeholders: [fixed('weather', 'Weather', 'a thin gray drizzle'), fixed('tide', 'Tide', 'far out and turning')],
   items: ITEMS,
+  currencies: CURRENCIES,
   placements: [
+    { id: 'p-purse', where: { kind: 'entity', id: 'wren' }, quantity: 3, source: { kind: 'item', itemId: 'tide-crown' } },
     { id: 'p-oil', where: { kind: 'entity', id: 'wren' }, quantity: 2, source: { kind: 'item', itemId: 'lamp-oil' } },
     { id: 'p-nails', where: { kind: 'location', id: 'landing' }, quantity: 5, source: { kind: 'item', itemId: 'nails' } },
     { id: 'p-charm', where: { kind: 'location', id: 'landing' }, quantity: 1, hidden: true, source: { kind: 'item', itemId: 'charm' } },
@@ -160,6 +167,7 @@ const persona: ResolvedPersona = {
 const travelerItems: ItemCopy[] = [
   { id: 'c-compass', item: { kind: 'item', itemId: compass.id }, where: { kind: 'you' }, quantity: 1, visibility: 'visible', equipped: { slotId: 'hand', order: 1 } },
   { id: 'c-rope', item: { kind: 'item', itemId: 'rope' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' },
+  { id: 'c-bits', item: { kind: 'item', itemId: 'tide-bit' }, where: { kind: 'you' }, quantity: 14, visibility: 'visible' },
 ];
 
 /** The library persona the sample plays. */

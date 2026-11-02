@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Save } from 'lucide-react';
+import { Save, Shield } from 'lucide-react';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { SortableList, type SortableListItem } from '@/components/SortableList';
 import { SaveList, type SaveListItem } from '@/components/modals/SaveList';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Meta } from '@/components/ui/typography';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { randomUUID } from '@/lib/uuid';
 
@@ -34,6 +36,8 @@ const SAVE_ITEMS: SaveListItem[] = [
   { id: 'key', name: 'A Brass Key in the Rain', timestamp: Date.UTC(2026, 8, 3, 4, 12), gameTime: 0.9 },
   { id: 'arrival', name: 'Arrival at Tidemark', timestamp: Date.UTC(2026, 8, 3, 3, 4), gameTime: 0.3 },
 ];
+
+const PINNED_ID = 'pinned-settings';
 
 function WorldEditorListReference() {
   const [items, setItems] = useState(EDITOR_ITEMS);
@@ -67,10 +71,22 @@ function WorldEditorListReference() {
     <Card role="region" aria-labelledby="world-editor-list-title">
       <CardHeader>
         <CardTitle id="world-editor-list-title" className="text-heading">World Editor List</CardTitle>
-        <CardDescription>Rich rows keep sorting, metadata, selection, and item actions.</CardDescription>
+        <CardDescription>Shows editor rows with sorting, details, selection and row actions</CardDescription>
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(14rem,0.8fr)]">
         <ScrollArea type="always" className="h-64 rounded-md border p-1">
+          {/* A pinned entry: never drags, never filters out, and opens the list's own settings. */}
+          <EditorRowList className="mb-1 border-b pb-1">
+            <EditorRow
+              grip={false}
+              selected={selectedId === PINNED_ID}
+              onSelect={() => setSelectedId(PINNED_ID)}
+              selectionLabel="Select Sample Settings"
+              icon={<Shield className="h-4 w-4" aria-hidden />}
+              label="Sample Settings"
+              actions={[]}
+            />
+          </EditorRowList>
           <SortableList
             items={items}
             selectedId={selectedId}
@@ -90,9 +106,9 @@ function WorldEditorListReference() {
             onChange={(event) => rename(event.target.value)}
             disabled={!selected}
           />
-          <p className="text-helper text-muted-foreground">
-            {selected ? `Editing a ${selected.kind.toLowerCase()} sample.` : 'Select an item.'}
-          </p>
+          <Meta as="p">
+            {selected ? `Editing a ${selected.kind.toLowerCase()} sample.` : selectedId === PINNED_ID ? 'The pinned entry opens settings for the whole list.' : 'Select an item.'}
+          </Meta>
         </div>
       </CardContent>
     </Card>
@@ -115,7 +131,7 @@ function SaveLoadListReference() {
     <Card role="region" aria-labelledby="save-load-list-title">
       <CardHeader>
         <CardTitle id="save-load-list-title" className="text-heading">Save and Load List</CardTitle>
-        <CardDescription>Save rows keep timestamps, game time, ordering, and row actions.</CardDescription>
+        <CardDescription>Shows save rows with timestamps, game time, ordering and row actions</CardDescription>
       </CardHeader>
       <CardContent className="min-w-0 space-y-3">
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
@@ -143,7 +159,7 @@ function SaveLoadListReference() {
             />
           </div>
         </ScrollArea>
-        <p aria-live="polite" className="text-helper text-muted-foreground">{status}</p>
+        <Meta as="p" aria-live="polite">{status}</Meta>
       </CardContent>
     </Card>
   );

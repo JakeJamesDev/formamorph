@@ -406,7 +406,7 @@ describe('an entity’s own scope', () => {
   const you: Entity = { id: 'e-you', name: 'You', customPersona: true };
   const scoped = (over: Partial<AiContextWorld> = {}) => context(at('loc-harbor', 't-sedge'), { entities: [...entities, wren, you], ...over });
 
-  it('reads a description’s owned chip and Character Name as play does', () => {
+  it('reads a description’s owned chip and Entity Name as play does', () => {
     expect(block(scoped(), 'entities').text).toContain('Wren has gray eyes.');
   });
 
@@ -423,7 +423,7 @@ describe('an entity’s own scope', () => {
     expect(block(scoped(), 'entities').text).toContain('Eyes go amber at dusk.');
   });
 
-  it('names the entity in its Character Name with the chips in its name read in its scope', () => {
+  it('names the entity in its Entity Name with the chips in its name read in its scope', () => {
     const titled = { ...wren, name: `Wren the ${EYES}-Eyed` };
     expect(block(scoped({ entities: [...entities, titled, you] }), 'entities').text).toContain('Wren the gray-Eyed has gray eyes.');
   });

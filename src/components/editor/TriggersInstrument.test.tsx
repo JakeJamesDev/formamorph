@@ -106,7 +106,7 @@ describe('TriggersInstrument', () => {
       ])] }),
       'The tide pulls out.',
     );
-    expect(screen.getByText(/is not valid regex/)).toBeInTheDocument();
+    expect(screen.getByText(/isn’t valid regex/)).toBeInTheDocument();
     // The healthy entry beside it still got its verdict.
     expect(screen.getByText('Keyword')).toBeInTheDocument();
   });
@@ -119,16 +119,16 @@ describe('TriggersInstrument', () => {
       ])] }),
       '',
     );
-    expect(screen.getByText(/1 constant entry injects on every turn/)).toBeInTheDocument();
+    expect(screen.getByText(/1 entry has “Always Inject” on and is injected on every turn/)).toBeInTheDocument();
     expect(screen.getByText('House Rules')).toBeInTheDocument();
-    expect(screen.getByText('Always On')).toBeInTheDocument();
+    expect(screen.getByText('Always Inject')).toBeInTheDocument();
   });
 
   it('reads nothing-fired as a result, with the number of entries checked', () => {
     renderTriggers(sedge, 'A quiet morning.');
-    expect(screen.getByText(/Nothing fired\. 2 entries were checked/)).toBeInTheDocument();
+    expect(screen.getByText(/No entry activated\. Each of the 2 entries below says why/)).toBeInTheDocument();
     // And the rows are still there to explain themselves.
-    expect(screen.getAllByText('No keyword found in the text.')).toHaveLength(2);
+    expect(screen.getAllByText('The text has no keyword.')).toHaveLength(2);
   });
 
   it('says so plainly when a world has no dictionary at all', () => {
@@ -190,7 +190,7 @@ describe('TriggersInstrument rendered context', () => {
     renderTriggers(lore, 'A quiet morning.');
     expect(screen.getByRole('button', { name: /Rendered Context/ }).textContent).toMatch(/~0 tokens/);
     await userEvent.click(screen.getByRole('button', { name: /Rendered Context/ }));
-    expect(screen.getByText('Nothing fired, so no entry’s text is injected')).toBeInTheDocument();
+    expect(screen.getByText('No entry activated, so no lore is injected')).toBeInTheDocument();
   });
 });
 
@@ -343,7 +343,7 @@ describe('TriggersInstrument — the semantic toggle', () => {
   it('cannot be turned on without an index, and says why', () => {
     renderTriggers(lore, scene, { semanticStatus: 'unavailable' });
     expect(screen.getByRole('checkbox', { name: 'Semantic' })).toBeDisabled();
-    expect(screen.getByText(/play this world once with Semantic Lore on/)).toBeInTheDocument();
+    expect(screen.getByText(/play this world once with “Semantic Lore” on/)).toBeInTheDocument();
   });
 
   it('is enabled once the world has an index', async () => {
@@ -357,15 +357,15 @@ describe('TriggersInstrument — the semantic toggle', () => {
 
   it('states a score against the threshold rather than a bare fired-or-not', () => {
     renderScored([[beacon, 0.6], [tides, 0.1]]);
-    expect(screen.getByText('0.60 vs the 0.40 threshold — close enough to fire on meaning.')).toBeInTheDocument();
-    expect(screen.getByText('0.10 vs the 0.40 threshold — too far to fire on meaning.')).toBeInTheDocument();
+    expect(screen.getByText('0.60 vs the 0.40 threshold, close enough to activate on meaning.')).toBeInTheDocument();
+    expect(screen.getByText('0.10 vs the 0.40 threshold, too far to activate on meaning.')).toBeInTheDocument();
   });
 
   it('marks a semantic-only firing as one, so no keyword can be credited for it', () => {
     renderScored([[beacon, 0.6], [tides, 0.1]]);
     const row = screen.getByText('Old Beacon').closest('div[class*="rounded-md"]') as HTMLElement;
     expect(within(row).getByText('Semantic')).toBeInTheDocument();
-    expect(within(row).getByText('Fired on meaning alone. No keyword matched.')).toBeInTheDocument();
+    expect(within(row).getByText('Activated on meaning alone. No keyword matched.')).toBeInTheDocument();
   });
 
   it('leaves a keyword firing labeled as one even when its meaning also scores', () => {
@@ -399,13 +399,13 @@ describe('TriggersInstrument — the semantic toggle', () => {
       semanticOn: true,
     });
     const row = screen.getByText('Riptides').closest('div[class*="rounded-md"]') as HTMLElement;
-    expect(within(row).getByText('Fired on meaning alone. No keyword matched.')).toBeInTheDocument();
+    expect(within(row).getByText('Activated on meaning alone. No keyword matched.')).toBeInTheDocument();
     expect(within(row).getByText(/appears only inside “riptides”/)).toBeInTheDocument();
   });
 
   it('reports how much of the dictionary the run could score', () => {
     renderScored([[beacon, 0.6]]);
     expect(screen.getByText('1 of 2 scored against 0.40')).toBeInTheDocument();
-    expect(screen.getByText('Not embedded yet, so it cannot fire on meaning.')).toBeInTheDocument();
+    expect(screen.getByText('Not embedded yet, so it can’t activate on meaning.')).toBeInTheDocument();
   });
 });

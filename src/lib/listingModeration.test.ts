@@ -180,8 +180,8 @@ describe('the publish message', () => {
   });
 
   it('keeps the old message for a live result', () => {
-    expect(publishedMessage('world', false, { moderation_state: 'approved' })).toBe('World published successfully!');
-    expect(publishedMessage('world', true, {})).toBe('World updated successfully!');
-    expect(publishedMessage('world', false, undefined)).toBe('World published successfully!');
+    expect(publishedMessage('world', false, { moderation_state: 'approved' })).toBe('World published');
+    expect(publishedMessage('world', true, {})).toBe('World updated');
+    expect(publishedMessage('world', false, undefined)).toBe('World published');
   });
 });

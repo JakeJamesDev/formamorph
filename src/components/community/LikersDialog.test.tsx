@@ -131,7 +131,7 @@ describe('reading who liked a listing', () => {
 
     show();
 
-    expect(await screen.findByText('Nobody has liked this yet.')).toBeTruthy();
+    expect(await screen.findByText('No likes yet.')).toBeTruthy();
   });
 
   it('shows the server’s wording when the list is refused', async () => {
@@ -208,7 +208,7 @@ describe('removing one like', () => {
     show({ onLikesChanged });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by wren_hallow' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(removeLike).toHaveBeenCalledWith('w1', 'u1'));
     // The row leaves, the header total drops with it, and the parent gets the server's own count.
@@ -225,7 +225,7 @@ describe('removing one like', () => {
     show();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by wren_hallow' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('You cannot moderate themView Details →'));
     expect(screen.getByText('wren_hallow')).toBeTruthy();
@@ -450,7 +450,7 @@ describe('auditing the network record behind the likes', () => {
     await screen.findByText('ring_1');
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove the like by ring_1' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(removeLike).toHaveBeenCalledWith('w1', 'r1'));
     // The row leaves, the group counts itself again, and none of it costs another look at the record.
@@ -473,7 +473,7 @@ describe('auditing the network record behind the likes', () => {
     await screen.findByText('2 accounts share a network address');
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove the like by pair_1' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
     // One account cannot share an address with anybody, so the box it was in is no longer a finding.
     await waitFor(() => expect(screen.queryByText('2 accounts share a network address')).toBeNull());
@@ -509,7 +509,7 @@ describe('auditing the network record behind the likes', () => {
 
     show();
 
-    await screen.findByText('Nobody has liked this yet.');
+    await screen.findByText('No likes yet.');
     expect(screen.queryByRole('button', { name: /Audit/ })).toBeNull();
   });
 });
@@ -546,7 +546,7 @@ describe('the Anonymous Likes on a listing', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Audit the likes/ }));
 
   const confirm = async () =>
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
   /** The anonymous rows on screen, which carry no name to find them by. */
   const markEls = () => screen.queryAllByRole('listitem').filter((el) => el.dataset.anonymous === 'true');
@@ -576,7 +576,7 @@ describe('the Anonymous Likes on a listing', () => {
 
     // Four likes is not "nobody", even with no account behind any of them.
     expect(await screen.findByRole('button', { name: /Audit the likes/ })).toBeTruthy();
-    expect(screen.queryByText('Nobody has liked this yet.')).toBeNull();
+    expect(screen.queryByText('No likes yet.')).toBeNull();
   });
 
   it('draws anonymous likes inside the group their address put them in', async () => {
@@ -887,7 +887,7 @@ describe('what the audit summary counts, and what a race re-reads', () => {
     // Clearing them all is reachable without ever pressing Audit, so the quiet re-read on a race must
     // not file a look at the people in the list.
     fireEvent.click(await screen.findByRole('button', { name: 'Remove all Anonymous Likes' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(fetchLikers).toHaveBeenCalledTimes(2));
     expect(fetchAudit).not.toHaveBeenCalled();
@@ -984,7 +984,7 @@ describe('what the audit says about network kinds and Bursts', () => {
     show();
     await runAudit();
 
-    expect(await screen.findByText('Marker fires on: Burst and Flagged share')).toBeTruthy();
+    expect(await screen.findByText('Marked for: Burst and Flagged share')).toBeTruthy();
     expect(screen.getByText(/ · 9 likers$/)).toBeTruthy();
     expect(screen.getByText(/ · 8 likers$/)).toBeTruthy();
   });

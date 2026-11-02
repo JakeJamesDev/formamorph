@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { bodyFixture } from '@/test/bodyFixture';
 import { followsResponseSchema } from '@/lib/aiRequest/responseSchema';
 import {
-  applyInventoryPass, inventoryPassSchema, parseInventoryLines, parseInventoryReply, withoutOrphanCopies, type PassScene,
+  applyInventoryPass, inventoryPassSchema, parseInventoryLines, parseInventoryReply, withoutOrphanCopies, type PassMoney, type PassScene,
 } from '.';
-import type { InventoryPassOp, Item, ItemCopy, RuntimeItem, Slot } from '@/types';
+import type { Currency, InventoryPassOp, Item, ItemCopy, Placement, PlayerStat, RuntimeItem, Slot } from '@/types';
 
 const item = (id: string, name: string, over: Partial<Item> = {}): Item =>
   ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], ...over });
 const ids = () => { let i = 0; return () => `n${i++}`; };
 
 const hand: Slot = { id: 'hand', name: 'Hand' };
-const sword = item('sword', 'Iron Sword', { stackable: false, slotId: 'hand' });
+const sword = item('sword', 'Iron Sword', { stackable: false, slotRule: { mode: 'either', slotIds: ['hand'] } });
 const tonic = item('tonic', 'Tonic', { uses: 1 });
 const ring = item('ring', '{Cursed} Ring');
 const you = { kind: 'you' } as const;
@@ -28,7 +29,7 @@ const scene = (over: Partial<PassScene> = {}): PassScene => ({
   resolve: (text) => text.replace('{Cursed}', 'Cursed'), ...over,
 });
 const run = (copies: ItemCopy[], ops: InventoryPassOp[], over: Partial<PassScene> = {}) =>
-  applyInventoryPass(copies, ops, scene(over), { world: { items: [sword, tonic, ring], slots: [hand] }, newId: ids() });
+  applyInventoryPass(copies, ops, scene(over), { world: { items: [sword, tonic, ring], slots: [hand], bodies: [bodyFixture({ id: 'humanoid', name: 'Humanoid', entries: [{ slotId: 'hand' }] })] }, newId: ids() });
 
 describe('parseInventoryReply', () => {
   it('reads the schema reply, and a reply the schema shapes passes the schema check', () => {
@@ -153,7 +154,7 @@ describe('applyInventoryPass', () => {
       op('lose', 'Tonic', { owner: 'you' }),
     ]);
     expect(result.diagnostics).toEqual([
-      'Inventory (pass) skipped transfer "Tonic": no one present is "Odette"',
+      'Inventory (pass) skipped transfer "Tonic": nothing present is named "Odette"',
       'Inventory (pass) skipped equip: Item Copy t has no slot',
       'Inventory (pass) skipped use "Iron Sword": none at "you"',
     ]);
@@ -170,7 +171,7 @@ describe('applyInventoryPass', () => {
   it('never touches an owner who is not present', () => {
     const result = run([copy('s', 'sword', { kind: 'entity', id: 'odette' })], [op('lose', 'Iron Sword', { owner: 'Odette' })]);
     expect(result.copies).toHaveLength(1);
-    expect(result.diagnostics).toEqual(['Inventory (pass) skipped lose "Iron Sword": no one present is "Odette"']);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped lose "Iron Sword": nothing present is named "Odette"']);
   });
 
   it('moves an item lying here when a gain names it, instead of making a second one', () => {
@@ -228,7 +229,7 @@ describe('applyInventoryPass', () => {
   it('makes no second item where the same one already lies', () => {
     const result = run([copy('t', 'tonic', cellar)], [op('gain', 'Tonic', { to: 'here' })]);
     expect(result.copies).toEqual([copy('t', 'tonic', cellar)]);
-    expect(result.diagnostics).toEqual(['Inventory (pass) skipped gain "Tonic": it already lies at "here"']);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped gain "Tonic": it is already at "here"']);
   });
 
   it('spreads a quantity over several Item Copies of an item that does not stack', () => {
@@ -286,6 +287,56 @@ describe('the pass\'s use, after and change (Q6, Q7, Q10)', () => {
       .toEqual([copy('t', 'tonic', you, { quantity: 1 })]);
   });
 
+  describe('a use on a target', () => {
+    const oil = item('oil', 'Lamp Oil', { uses: 1 });
+    const lamp = item('lamp', 'Lantern', { uses: 3, stackable: false });
+    const world = [oil, lamp];
+    const use = (copies: ItemCopy[], target: string) => applyInventoryPass(copies, [op('use', 'Lamp Oil', { owner: 'you', target })],
+      scene({ items: world }), { world: { items: world }, newId: ids() });
+    const used = (result: ReturnType<typeof use>) => result.events.filter((e) => e.timing === 'used').map((e) => e.target?.id);
+
+    it('names the copy the owner holds on the used event', () => {
+      const result = use([copy('o', 'oil', you), copy('l', 'lamp', you)], 'lantern');
+      expect(result.diagnostics).toEqual([]);
+      expect(used(result)).toEqual(['l']);
+    });
+
+    it('falls back to a copy lying here, never a hidden one', () => {
+      expect(used(use([copy('o', 'oil', you), copy('l', 'lamp', cellar)], 'Lantern'))).toEqual(['l']);
+      expect(used(use([copy('o', 'oil', you), copy('l', 'lamp', cellar, { visibility: 'hidden' })], 'Lantern'))).toEqual([undefined]);
+    });
+
+    it('still uses the item when the target is not here, with a diagnostic', () => {
+      const result = use([copy('o', 'oil', you), copy('l', 'lamp', mara)], 'Lantern');
+      expect(used(result)).toEqual([undefined]);
+      expect(result.copies.map((c) => c.id)).toEqual(['l']);
+      expect(result.diagnostics).toEqual(['Inventory (pass) skipped target "Lantern" of use "Lamp Oil": none at "you" or here']);
+    });
+
+    it('reads a target copied with its Items Here marks, or written in to, as the item named', () => {
+      const oilOn = (over: Partial<InventoryPassOp>) => applyInventoryPass([copy('o', 'oil', you), copy('l', 'lamp', you)],
+        [op('use', 'Lamp Oil', { owner: 'you', ...over })], scene({ items: world }), { world: { items: world }, newId: ids() });
+      expect(used(oilOn({ target: 'Lantern (3 of 3 uses left)' }))).toEqual(['l']);
+      expect(used(oilOn({ to: 'the Lantern' }))).toEqual(['l']);
+      expect(used(oilOn({ to: 'you' }))).toEqual([undefined]);
+    });
+
+    it('reads an item named as its own target as a plain use, with no diagnostic', () => {
+      const result = applyInventoryPass([copy('l', 'lamp', you)], [op('use', 'Lantern', { owner: 'you', target: 'Lantern' })],
+        scene({ items: world }), { world: { items: world }, newId: ids() });
+      expect(result.diagnostics).toEqual([]);
+      expect(used(result)).toEqual([undefined]);
+    });
+
+    it('reads the target from the schema reply and a text line', () => {
+      const raw = JSON.stringify({ operations: [{ op: 'use', item: 'Lamp Oil', quantity: 1, owner: 'you', to: '', after: 'used up', target: 'Lantern' }] });
+      expect(followsResponseSchema(raw, inventoryPassSchema().schema)).toBe(true);
+      expect(parseInventoryReply(raw)).toEqual([op('use', 'Lamp Oil', { owner: 'you', after: 'used up', target: 'Lantern' })]);
+      expect(parseInventoryLines('use | Lamp Oil | 1 | you |  |  | used up | Lantern\nuse | Tonic | 1 | you |  |  |  | none'))
+        .toEqual([op('use', 'Lamp Oil', { owner: 'you', state: '', after: 'used up', target: 'Lantern' }), op('use', 'Tonic', { owner: 'you', state: '' })]);
+    });
+  });
+
   it('sets the named copy\'s State, splitting one off a stack', () => {
     const result = pass([copy('c', 'cloak', you, { quantity: 2 })], [op('change', 'oilskin cloak', { owner: 'you', state: 'soaked' })]);
     expect(result.diagnostics).toEqual([]);
@@ -334,6 +385,278 @@ describe('the pass\'s use, after and change (Q6, Q7, Q10)', () => {
     expect(missing.copies).toEqual(start);
     expect(missing.diagnostics).toEqual(['Inventory (pass) skipped change "Oilskin Cloak": it names no state']);
     expect(states(pass(start, [op('change', 'Oilskin Cloak', { owner: 'you', state: '' })]).copies)).toEqual([{ id: 'a', quantity: 1, state: undefined }]);
+  });
+});
+
+describe("the pass's named slot (Q37, Q41, Q65)", () => {
+  const dagger = item('dagger', 'Dagger', { slotRule: { mode: 'either', slotIds: ['main', 'off'] } });
+  const greatsword = item('greatsword', 'Greatsword', { stackable: false, slotRule: { mode: 'all', slotIds: ['main', 'off'] } });
+  const hands: Slot[] = [{ id: 'main', name: 'Main Hand' }, { id: 'off', name: 'Off Hand' }, hand];
+  const items = [dagger, greatsword, sword];
+  const equipOn = (name: string, slot?: string, quantity = 1, itemId = name.toLowerCase()) => applyInventoryPass(
+    [copy('c', itemId, you, { quantity })], [op('equip', name, { owner: 'you', quantity, ...(slot !== undefined && { slot }) })],
+    scene({ items, resolve: undefined }),
+    { world: { items, slots: hands, bodies: [bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 'main' }, { slotId: 'off' }] })] }, newId: ids() },
+  );
+  const slotsTaken = (result: ReturnType<typeof equipOn>) => result.copies.flatMap((c) => (c.equipped ? [c.equipped.slotId] : []));
+
+  it('reads the slot from the schema reply and the ninth text field, a filler word as none', () => {
+    const raw = JSON.stringify({ operations: [
+      { op: 'equip', item: 'Dagger', quantity: 1, owner: 'you', to: '', slot: 'Off Hand' },
+      { op: 'equip', item: 'Sword', quantity: 1, owner: 'you', to: '', slot: 'none' },
+    ] });
+    expect(followsResponseSchema(raw, inventoryPassSchema().schema)).toBe(true);
+    expect(parseInventoryReply(raw)).toEqual([
+      op('equip', 'Dagger', { owner: 'you', slot: 'Off Hand' }),
+      op('equip', 'Sword', { owner: 'you' }),
+    ]);
+    expect(parseInventoryLines('equip | Dagger | 1 | you | | | | | Off Hand')).toEqual([op('equip', 'Dagger', { owner: 'you', state: '', slot: 'Off Hand' })]);
+  });
+
+  it('lands in the named slot, past the first free one, ignoring case', () => {
+    expect(slotsTaken(equipOn('Dagger', 'off hand'))).toEqual(['off']);
+  });
+
+  it('takes the first free slot when the reply names none', () => {
+    expect(slotsTaken(equipOn('Dagger'))).toEqual(['main']);
+  });
+
+  it("reads two or more of the item's own slots, joined by anything, as no name", () => {
+    expect(slotsTaken(equipOn('Dagger', 'Main Hand or Off Hand'))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Dagger', 'off hand, main hand'))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Greatsword', 'main hand + off hand'))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Greatsword', 'Main Hand or Off Hand'))).toEqual(['main']);
+  });
+
+  it.each(['both Main Hand and Off Hand', 'Main Hand with Off Hand', 'Main Hand, Off Hand, Left Paw'])('reads %s as no name, whatever joins the two (Q65)', (slot) => {
+    expect(slotsTaken(equipOn('Dagger', slot))).toEqual(['main']);
+    expect(slotsTaken(equipOn('Greatsword', slot))).toEqual(['main']);
+  });
+
+  it.each(['Main Hand or Left Paw', 'Left Paw', 'Main Hand or Off Handle'])("skips %s, which holds a name the item doesn't list", (slot) => {
+    const result = equipOn('Dagger', slot);
+    expect(slotsTaken(result)).toEqual([]);
+    expect(result.diagnostics).toEqual([`Inventory (pass) skipped equip "Dagger": no slot is named "${slot}"`]);
+  });
+
+  it('counts a shorter slot name inside a longer one only once', () => {
+    const glove = item('glove', 'Glove', { slotRule: { mode: 'either', slotIds: ['hand', 'off'] } });
+    const slotFor = (slot: string) => applyInventoryPass([copy('c', 'glove', you)], [op('equip', 'Glove', { owner: 'you', slot })], scene({ items: [glove], resolve: undefined }), {
+      world: { items: [glove], slots: hands, bodies: [bodyFixture({ id: 'b', name: 'B', entries: [{ slotId: 'hand' }, { slotId: 'off' }] })] }, newId: ids(),
+    }).copies[0].equipped?.slotId;
+    expect(slotFor('Off Hand')).toBe('off');
+    expect(slotFor('Off Hand or Hand')).toBe('hand');
+  });
+
+  it("skips a slot the item doesn't allow, with a diagnostic", () => {
+    const result = equipOn('Dagger', 'Hand');
+    expect(slotsTaken(result)).toEqual([]);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped equip: Item Copy c can\'t go in Hand']);
+  });
+
+  it('skips a name no slot has, with a diagnostic', () => {
+    const result = equipOn('Dagger', 'Left Paw');
+    expect(slotsTaken(result)).toEqual([]);
+    expect(result.diagnostics).toEqual(['Inventory (pass) skipped equip "Dagger": no slot is named "Left Paw"']);
+  });
+
+  it('accepts a listed name on an All of item, which takes every slot', () => {
+    const result = equipOn('Greatsword', 'Off Hand');
+    expect(result.diagnostics).toEqual([]);
+    expect(result.copies[0].equipped).toBeDefined();
+  });
+
+  it('holds the name to one copy of a stack, the next taking the first free slot', () => {
+    expect(slotsTaken(equipOn('Dagger', 'Off Hand', 2)).sort()).toEqual(['main', 'off']);
+  });
+});
+
+describe('pay', () => {
+  const copper = item('copper', 'Copper');
+  const gold = item('gold', 'Gold');
+  const COIN: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+  const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
+  const funds = (value: number, over: Partial<PlayerStat> = {}): PlayerStat =>
+    ({ id: 'funds', name: 'Funds', type: 'number', description: '', min: 0, max: 100, value, regen: 0, descriptors: [], ...over });
+  const money = (over: Partial<PassMoney> = {}): PassMoney => ({
+    currencies: [COIN], placements: [], stats: { globalStats: [], entityStats: {} }, playedIds: ['hero'], statsOn: (_owner, stats) => stats, ...over,
+  });
+  const pay = (owner: string, to: string, price: string, currency?: string) =>
+    op('pay', '', { owner, to, price, ...(currency && { currency }) });
+  const settle = (copies: ItemCopy[], ops: InventoryPassOp[], moneyOver: Partial<PassMoney> = {}) =>
+    applyInventoryPass(copies, ops, scene({ items: [copper, gold], playerNames: ['Ashley Vance', 'Little Bird'], money: money(moneyOver) }), { world: { items: [copper, gold] }, newId: ids() });
+  const counts = (copies: readonly ItemCopy[], where: ItemCopy['where']) => Object.fromEntries(copies
+    .filter((c) => JSON.stringify(c.where) === JSON.stringify(where)).map((c) => [c.item.kind === 'item' ? c.item.itemId : '', c.quantity]));
+
+  it('parses from the schema and from the text line, with no item, and a bare-number price', () => {
+    const json = JSON.stringify({ operations: [{ op: 'pay', item: '', quantity: 1, owner: 'you', to: 'Mara', price: '3 Gold', currency: 'Coin' }] });
+    expect(followsResponseSchema(json, inventoryPassSchema().schema)).toBe(true);
+    expect(parseInventoryReply(json)).toEqual([op('pay', '', { owner: 'you', to: 'Mara', price: '3 Gold', currency: 'Coin' })]);
+    expect(parseInventoryReply(JSON.stringify({ operations: [{ op: 'pay', item: '', quantity: 1, owner: 'you', to: '', price: 40 }] })))
+      .toEqual([op('pay', '', { owner: 'you', price: '40' })]);
+    expect(parseInventoryLines('pay |  | 1 | you | Mara |  |  |  |  | 3 Gold | Coin'))
+      .toEqual([op('pay', '', { owner: 'you', to: 'Mara', state: '', price: '3 Gold', currency: 'Coin' })]);
+  });
+
+  it("reads a pay's sum from the quantity cell of a text line", () => {
+    expect(parseInventoryLines('pay | | 2 Silver | you | dock guard | | | | |'))
+      .toEqual([op('pay', '', { owner: 'you', to: 'dock guard', state: '', price: '2 Silver' })]);
+  });
+
+  it('counts a hand move of money the reply repeats once, and an item move twice', () => {
+    const gain = op('gain', 'Copper', { quantity: 4, to: 'you' });
+    expect(counts(settle([], [gain, gain]).copies, you)).toEqual({ copper: 4 });
+    expect(counts(settle([], [gain, { ...gain, owner: 'here' }]).copies, you)).toEqual({ copper: 4 });
+    expect(counts(settle([], [gain, { ...gain, quantity: 2 }]).copies, you)).toEqual({ copper: 6 });
+    const item2 = op('gain', 'Tonic', { to: 'you' });
+    const twice = applyInventoryPass([], [item2, item2], scene({ items: [tonic, copper], money: money() }), { world: { items: [tonic, copper] }, newId: ids() });
+    expect(twice.copies.reduce((sum, c) => sum + c.quantity, 0)).toBe(2);
+  });
+
+  it('reads text lines whose cells carry their field names', () => {
+    expect(parseInventoryLines('op: use | item: Tonic | quantity: 2 | owner: you | to: | state: | after: used up'))
+      .toEqual([op('use', 'Tonic', { quantity: 2, owner: 'you', state: '', after: 'used up' })]);
+    expect(parseInventoryLines('op: pay | item: | quantity: 1 | owner: you | to: Mara | | | | | price: 3 Gold'))
+      .toEqual([op('pay', '', { owner: 'you', to: 'Mara', state: '', price: '3 Gold' })]);
+  });
+
+  it('still drops an item operation with no item', () => {
+    expect(parseInventoryLines('lose |  | 1 | you')).toEqual([]);
+  });
+
+  it('settles coins between present owners, and a tracked entity keeps them', () => {
+    const placements: Placement[] = [{ id: 'p', source: { kind: 'item', itemId: 'copper' }, where: mara, quantity: 1 }];
+    const { copies, diagnostics } = settle([copy('g', 'gold', you, { quantity: 1 })], [pay('you', 'Mara', '1 Gold')], { placements });
+    expect(diagnostics).toEqual([]);
+    expect(counts(copies, mara)).toEqual({ gold: 1 });
+    expect(counts(copies, you)).toEqual({});
+  });
+
+  it.each(['you', 'You', 'the player', 'Ashley Vance', 'Little Bird', 'Ashley'])('reads %s as the player, never as income (Q51)', (name) => {
+    const { copies } = settle([copy('c', 'copper', you, { quantity: 5 })], [pay(name, '', '2 Copper')]);
+    expect(counts(copies, you)).toEqual({ copper: 3 });
+  });
+
+  it.each(['you', 'Little Bird', 'Ashley'])('reads %s as the player receiving, never as money that leaves', (name) => {
+    const { copies } = settle([], [pay('', name, '2 Copper')]);
+    expect(counts(copies, you)).toEqual({ copper: 2 });
+  });
+
+  it.each(['the harbor guard', '', 'here', 'Cellar'])('reads a payee of "%s" as no one: the money leaves the world (Q51)', (to) => {
+    const { copies, diagnostics } = settle([copy('c', 'copper', you, { quantity: 5 })], [pay('you', to, '2 Copper')]);
+    expect(diagnostics).toEqual([]);
+    expect(counts(copies, you)).toEqual({ copper: 3 });
+    expect(copies.filter((c) => c.where.kind !== 'you')).toEqual([]);
+  });
+
+  it.each(['the harbor mayor', '', 'here'])('reads a payer of "%s" as income', (owner) => {
+    expect(counts(settle([], [pay(owner, 'you', '2 Copper')]).copies, you)).toEqual({ copper: 2 });
+  });
+
+  it('refuses a pay with no party, no price, or an unknown Currency, with a diagnostic and no change', () => {
+    const start = [copy('c', 'copper', you, { quantity: 5 })];
+    for (const bad of [pay('', '', '1 Copper'), op('pay', '', { owner: 'you' }), pay('you', '', '1', 'Marks')]) {
+      const { copies, diagnostics, events } = settle(start, [bad]);
+      expect(copies).toEqual(start);
+      expect(events).toEqual([]);
+      expect(diagnostics).toEqual([expect.stringContaining('Inventory (pass) skipped pay')]);
+    }
+  });
+
+  it('refuses a price in one Currency against a purse of another (Q26)', () => {
+    const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'coins', coins: [{ itemId: 'shell', worth: 1 }] } };
+    const shell = item('shell', 'Shell');
+    const start = [copy('s', 'shell', you, { quantity: 50 })];
+    const { copies, diagnostics } = applyInventoryPass(start, [pay('you', '', '1 Copper')],
+      scene({ items: [copper, gold, shell], money: money({ currencies: [COIN, SHELLS] }) }), { world: { items: [copper, gold, shell] }, newId: ids() });
+    expect(copies).toEqual(start);
+    expect(diagnostics).toHaveLength(1);
+  });
+
+  it('settles a stat on the played entity, and each pay reads what the one before it left', () => {
+    const stats = { globalStats: [], entityStats: { hero: [funds(50)] } };
+    const result = settle([], [pay('you', '', '30', 'Credits'), pay('you', '', '30', 'Credits')], { currencies: [CREDITS], stats });
+    expect(result.stats?.entityStats.hero[0].value).toBe(20);
+    expect(result.diagnostics).toHaveLength(1);
+  });
+
+  it('reads a switched-off stat as untracked (Q45)', () => {
+    const stats = { globalStats: [funds(50)], entityStats: {} };
+    const result = settle([], [pay('you', '', '5', 'Credits')], { currencies: [CREDITS], stats, statsOn: () => [] });
+    expect(result.stats?.globalStats[0].value).toBe(50);
+    expect(result.diagnostics).toHaveLength(1);
+  });
+
+  it('counts a reply that pays and also moves the coins by hand once', () => {
+    const { copies, diagnostics } = settle([], [op('gain', 'Copper', { quantity: 4, to: 'you' }), pay('Mara', 'you', '4 Copper')]);
+    expect(counts(copies, you)).toEqual({ copper: 4 });
+    expect(diagnostics).toEqual([expect.stringContaining('covers this money')]);
+  });
+
+  it('charges nothing when a refused pay comes with a hand move of the coins (Q56)', () => {
+    const start = [copy('c', 'copper', you, { quantity: 3 })];
+    const { copies, diagnostics } = settle(start, [pay('you', 'Mara', '5 Copper'), op('lose', 'Copper', { quantity: 3, owner: 'you' })]);
+    expect(copies).toEqual(start);
+    expect(diagnostics).toHaveLength(2);
+  });
+
+  it('hands a broke player no free money when a refused pay comes with a gain as change (Q56)', () => {
+    const start = [copy('c', 'copper', you, { quantity: 3 })];
+    const { copies } = settle(start, [pay('you', 'Mara', '1 Gold'), op('gain', 'Gold', { to: 'you' })]);
+    expect(copies).toEqual(start);
+  });
+
+  it('skips the hand move when the pay beside it cannot be read at all', () => {
+    expect(settle([], [op('gain', 'Copper', { quantity: 4, to: 'you' }), pay('Mara', 'you', 'a fair sum')]).copies).toEqual([]);
+  });
+
+  it("leaves another Currency's coins to their hand move", () => {
+    const shell = item('shell', 'Shell');
+    const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'coins', coins: [{ itemId: 'shell', worth: 1 }] } };
+    const { copies } = applyInventoryPass([], [op('gain', 'Shell', { quantity: 2, to: 'you' }), pay('', 'you', '1 Copper')],
+      scene({ items: [copper, gold, shell], money: money({ currencies: [COIN, SHELLS] }) }), { world: { items: [copper, gold, shell] }, newId: ids() });
+    expect(counts(copies, you)).toEqual({ shell: 2, copper: 1 });
+  });
+
+  it('keeps an item move beside a pay', () => {
+    const { copies } = applyInventoryPass([copy('s', 'sword', you)], [op('transfer', 'Iron Sword', { owner: 'you', to: 'Mara' }), pay('', 'you', '1 Copper')],
+      scene({ items: [sword, copper, gold], money: money() }), { world: { items: [sword, copper, gold] }, newId: ids() });
+    expect(counts(copies, mara)).toEqual({ sword: 1 });
+    expect(counts(copies, you)).toEqual({ copper: 1 });
+  });
+
+  it.each([
+    ['the money as the item', op('pay', 'Copper', { quantity: 3, owner: 'you' })],
+    ['the money as the currency', op('pay', '', { quantity: 3, owner: 'you', currency: 'Copper' })],
+    ['a price with no number', op('pay', '', { quantity: 3, owner: 'you', price: 'Copper' })],
+  ])('reads %s, with how many as the quantity', (_case, reply) => {
+    expect(counts(settle([copy('c', 'copper', you, { quantity: 5 })], [reply]).copies, you)).toEqual({ copper: 2 });
+  });
+
+  it('refuses money named with no amount, and never invents one', () => {
+    const start = [copy('c', 'copper', you, { quantity: 5 })];
+    for (const bare of [op('pay', 'Copper', { owner: 'you' }), op('pay', '', { owner: 'you', currency: 'Copper' }), op('pay', '', { owner: 'you', price: 'Copper' })]) {
+      expect(settle(start, [bare]).copies).toEqual(start);
+    }
+  });
+
+  it('charges the played entity whose stat is on, past one whose stat is off (Q45)', () => {
+    const stats = { globalStats: [], entityStats: { other: [funds(90)], hero: [funds(50)] } };
+    const result = settle([], [pay('you', '', '5', 'Credits')], {
+      currencies: [CREDITS], stats, playedIds: ['other', 'hero'], statsOn: (owner, list) => (owner === 'other' ? [] : list),
+    });
+    expect(result.stats?.entityStats.other[0].value).toBe(90);
+    expect(result.stats?.entityStats.hero[0].value).toBe(45);
+  });
+
+  it('counts a repeated lose of coins twice: only a gain creates money', () => {
+    const lose = op('lose', 'Copper', { owner: 'you' });
+    expect(counts(settle([copy('c', 'copper', you, { quantity: 5 })], [lose, lose]).copies, you)).toEqual({ copper: 3 });
+  });
+
+  it('skips a pay in a scene with no money', () => {
+    const { diagnostics } = run([], [pay('you', '', '5')]);
+    expect(diagnostics).toEqual([expect.stringContaining('skipped pay')]);
   });
 });
 

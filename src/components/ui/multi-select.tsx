@@ -26,6 +26,7 @@ import {
 	CommandList,
 	CommandSeparator,
 } from "@/components/ui/command";
+import { Hint } from "@/components/ui/typography";
 
 /**
  * Animation types and configurations
@@ -1047,9 +1048,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 								</div>
 							) : (
 								<div className="flex items-center justify-between w-full mx-auto">
-									<span className="text-helper text-muted-foreground mx-3">
+									<Hint as="span" className="mx-3">
 										{placeholder}
-									</span>
+									</Hint>
 									<ChevronDown className="h-4 cursor-pointer text-muted-foreground mx-2" />
 								</div>
 							)}
@@ -1081,7 +1082,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 						<Command shouldFilter={false}>
 							{searchable && (
 								<CommandInput
-									placeholder="Search options..."
+									placeholder="Search options"
 									onKeyDown={handleInputKeyDown}
 									value={searchValue}
 									onValueChange={setSearchValue}

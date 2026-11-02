@@ -209,6 +209,14 @@ describe('changePassword', () => {
     expect(AuthService.token).toBe('old-tok');
   });
 
+  it('shows the length rule the server sends in an errors array', async () => {
+    AuthService.token = 'old-tok';
+    vi.mocked(fetch).mockResolvedValue(
+      res({ errors: [{ msg: 'New password must be at least 6 characters long' }] }, false, 400),
+    );
+    await expect(AuthService.changePassword('old', 'short')).rejects.toThrow('New password must be at least 6 characters long');
+  });
+
   it('says "Failed to change password" when the server answers with an error page', async () => {
     AuthService.token = 'old-tok';
     vi.mocked(fetch).mockResolvedValue(htmlPage(502));
@@ -235,6 +243,13 @@ describe('resetPassword', () => {
   it('says "Failed to reset the password" when the server answers with an error page', async () => {
     vi.mocked(fetch).mockResolvedValue(htmlPage(502));
     await expect(AuthService.resetPassword('t0ken', 'new-pw')).rejects.toThrow('Failed to reset the password');
+  });
+
+  it('shows the length rule the server sends in an errors array', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      res({ errors: [{ msg: 'New password must be at least 6 characters long' }] }, false, 400),
+    );
+    await expect(AuthService.resetPassword('t0ken', 'short')).rejects.toThrow('New password must be at least 6 characters long');
   });
 
   it('reports success', async () => {

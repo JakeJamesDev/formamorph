@@ -1,5 +1,6 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Hint, Meta } from '@/components/ui/typography';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { KIND_LABELS } from '@/lib/catalogKinds';
 import { LISTING_OPTIONS, type LinkedContentRow } from '@/lib/publishLinks';
@@ -36,10 +37,10 @@ export function LinkedContentSection({ rows, onChange, disabled }: {
         <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0">
           <p className="text-label font-medium">Linked Content</p>
-          <p className="text-meta text-muted-foreground">
+          <Hint>
             A player who downloads this world also downloads and links each required source. Content you
             don&apos;t require is included in the world with no source to follow.
-          </p>
+          </Hint>
         </div>
       </div>
 
@@ -65,9 +66,9 @@ export function LinkedContentSection({ rows, onChange, disabled }: {
                 </span>
                 <div className="min-w-0">
                   <Label htmlFor={boxId} className="block truncate">{row.name}</Label>
-                  <p className="text-meta text-muted-foreground">
+                  <Meta as="p">
                     {KIND_LABELS[row.kind].one} · {STATE_LINES[row.state]}
-                  </p>
+                  </Meta>
                 </div>
               </div>
 
@@ -75,17 +76,17 @@ export function LinkedContentSection({ rows, onChange, disabled }: {
                   already has, and this publish never touches it. */}
               {row.required && row.state === 'unpublished' && (
                 <div className="pl-6 space-y-1">
+                  <Hint>
+                    {row.visibility === 'unlisted'
+                      ? 'Keeps this out of Community Creations. It still downloads with this world.'
+                      : 'Lists this in Community Creations on its own'}
+                  </Hint>
                   <OptionSwitcher
                     value={row.visibility}
                     onChange={(visibility) => update(row.libraryId, { visibility })}
                     options={LISTING_OPTIONS}
                     ariaLabel={`Listing for ${row.name}`}
                   />
-                  <p className="text-meta text-muted-foreground">
-                    {row.visibility === 'unlisted'
-                      ? 'Unlisted keeps this out of Community Creations. It still downloads with this world.'
-                      : 'Public lists this in Community Creations on its own'}
-                  </p>
                 </div>
               )}
             </li>

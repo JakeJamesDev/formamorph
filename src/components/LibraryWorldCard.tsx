@@ -37,7 +37,7 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
       compact={compact}
       loading={loading}
       progress={progress}
-      // The grid tile is all thumbnail, so the badge rides over it; the detailed card has a body to put
+      // The grid tile is all thumbnail, so the badge overlays it; the detailed card has a body to put
       // the same line in. Only the overlay is guarded — that slot wraps whatever it is given in a
       // positioned box, and a box around nothing is still a box.
       badge={placements.length > 0

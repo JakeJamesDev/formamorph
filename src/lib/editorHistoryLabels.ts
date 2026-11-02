@@ -21,7 +21,9 @@ export const SLICE_TYPE_NAMES: Record<SliceName, [string, string]> = {
   tools: ["Tool", "Tools"],
   items: ["Item", "Items"],
   slots: ["Slot", "Slots"],
+  bodies: ["Body", "Bodies"],
   placements: ["Placement", "Placements"],
+  currencies: ["Currency", "Currencies"],
 };
 
 /** Field labels as the editor shows them. A field missing here reads as its name in title case. */
@@ -29,9 +31,9 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
   "*": {
     name: "Name",
     description: "Description",
-    playerDescription: "Player Description",
-    aiDescription: "AI Description",
-    aiSummary: "AI Summary",
+    playerDescription: "Player-Facing Description",
+    aiDescription: "AI-Facing Description",
+    aiSummary: "AI-Facing Summary",
     aiVisible: "Show Heading to AI",
     imageTags: "Image Tags",
     placeholderPins: "Placeholder Pins",
@@ -90,6 +92,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     secondaryExclude: "Exclude",
   },
   placeholders: { values: "Values", weights: "Weights" },
+  items: { currencyId: "Currency" },
 };
 
 const titleCase = (field: string) => field

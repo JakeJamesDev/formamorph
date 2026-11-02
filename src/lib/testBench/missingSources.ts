@@ -27,7 +27,7 @@ const asItem = (row: MissingSource): FindingItem => ({
 const removedMessage = (row: MissingSource): string =>
   row.required
     ? `This world requires “${row.sourceName}”. Its author removed the listing.`
-    : `The source “${row.sourceName}” was removed by its author.`;
+    : `Its author removed the source “${row.sourceName}”.`;
 
 /**
  * One finding per copy whose source the check could not confirm.
@@ -45,7 +45,7 @@ export function checkMissingSources(
       .map((row) => finding(SOURCE_NOT_FOUND, removedMessage(row), [asItem(row)])),
     ...rows.filter((row) => row.status === 'unavailable')
       .map((row) => finding(
-        SOURCE_UNAVAILABLE, `Formamorph could not check “${row.sourceName}”`, [asItem(row)],
+        SOURCE_UNAVAILABLE, `Formamorph couldn’t check “${row.sourceName}”`, [asItem(row)],
       )),
   ];
 }

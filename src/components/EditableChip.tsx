@@ -168,7 +168,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
         },
       }}
       tip={!renameable
-        ? (onActivate ? "Click to open — switch to Multiline to edit the text" : "Switch to Multiline to edit this value")
+        ? (onActivate ? "Click to open. To edit the text, switch to \"Multiline\"." : "To edit this value, switch to \"Multiline\"")
         : onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit"}
       grabbable={sortable}
     />

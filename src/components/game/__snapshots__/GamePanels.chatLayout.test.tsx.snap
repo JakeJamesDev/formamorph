@@ -125,7 +125,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                     >
                       <span
                         aria-hidden="true"
-                        class="mr-auto text-meta text-muted-foreground"
+                        class="text-meta text-muted-foreground mr-auto"
                       >
                         Turn 
                         2
@@ -339,7 +339,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                       aria-current="page"
                       aria-expanded="false"
                       aria-haspopup="dialog"
-                      aria-label="Page 2 of 3 — jump to a page"
+                      aria-label="Page 2 of 3, jump to a page"
                       class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
                       data-state="closed"
                       type="button"
@@ -407,14 +407,14 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
               >
                 <textarea
                   class="absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden whitespace-nowrap h-10"
-                  placeholder="Type your action... [square brackets] direct the story as the author"
+                  placeholder="Type your action. Text in [square brackets] directs the story as the author."
                   rows="1"
                   style="overflow-y: hidden;"
                 />
               </div>
               <button
                 aria-label="About How to Play"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10 flex-shrink-0 border-primary text-primary mr-2"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10 flex-shrink-0 mr-2"
               >
                 <svg
                   aria-hidden="true"
@@ -444,7 +444,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
               </button>
               <button
                 aria-label="Send"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 py-2 border-dashed border-2 w-12 px-0"
                 data-base-ui-tooltip-trigger=""
                 id="base-ui-_r_1d_"
               >
@@ -603,13 +603,13 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                     >
                       <span
                         aria-hidden="true"
-                        class="mr-auto text-meta text-muted-foreground"
+                        class="text-meta text-muted-foreground mr-auto"
                       >
                         Turn 
                         3
                       </span>
                       <button
-                        aria-label="Re-generate Narration"
+                        aria-label="Regenerate Narration"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                         data-base-ui-tooltip-trigger=""
                         id="base-ui-_r_k_"
@@ -844,7 +844,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                       class="flex shrink-0"
                     >
                       <button
-                        aria-label="Re-generate Choices"
+                        aria-label="Regenerate Choices"
                         class="inline-flex items-center justify-center whitespace-nowrap text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-auto w-10 rounded-none border-0"
                         data-base-ui-tooltip-trigger=""
                         id="base-ui-_r_p_"
@@ -962,7 +962,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                       aria-current="page"
                       aria-expanded="false"
                       aria-haspopup="dialog"
-                      aria-label="Page 3 of 3 — jump to a page"
+                      aria-label="Page 3 of 3, jump to a page"
                       class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
                       data-state="closed"
                       type="button"
@@ -1021,14 +1021,14 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               >
                 <textarea
                   class="absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden whitespace-nowrap h-10"
-                  placeholder="Type your action... [square brackets] direct the story as the author"
+                  placeholder="Type your action. Text in [square brackets] directs the story as the author."
                   rows="1"
                   style="overflow-y: hidden;"
                 />
               </div>
               <button
                 aria-label="About How to Play"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10 flex-shrink-0 border-primary text-primary mr-2"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10 flex-shrink-0 mr-2"
               >
                 <svg
                   aria-hidden="true"
@@ -1058,7 +1058,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               </button>
               <button
                 aria-label="Send"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 py-2 border-dashed border-2 w-12 px-0"
                 data-base-ui-tooltip-trigger=""
                 id="base-ui-_r_g_"
               >

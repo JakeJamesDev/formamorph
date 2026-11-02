@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { BubbleActionButton, BubbleMenu } from '@/components/game/BubbleMenu';
 import { bubbleActions, choicesActions, withEndpoints, type BubbleAction, type BubbleActionHandlers } from '@/lib/bubbleActions';
 import { endpointTipLine } from '@/lib/endpointTip';
@@ -55,8 +55,12 @@ export function MenuDetailLineReference() {
       <CardHeader>
         <CardTitle id="menu-detail-line-title" className="text-heading">Item Detail Line</CardTitle>
         <CardDescription>
-          These are the production Chat bubble menus with sample endpoints. Right-click a sample. On a touch screen, press and hold a sample. For keyboard access, focus a sample and press Shift+F10. A button shows the same line in its tooltip.
+          Shows the production bubble menus with sample endpoints. Right-click a sample to open its menu.
         </CardDescription>
+        <Hint as="ul" className="list-disc space-y-1 pl-5">
+          <li>On a touch screen, press and hold a sample.</li>
+          <li>With a keyboard, focus a sample and press Shift+F10.</li>
+        </Hint>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
         <BubbleMenu actions={narration}>
@@ -67,7 +71,7 @@ export function MenuDetailLineReference() {
         </BubbleMenu>
         <div className="flex items-center gap-2">
           {regenerate && <BubbleActionButton action={regenerate} />}
-          <Meta>Point at the button for its tooltip.</Meta>
+          <Meta>Hover over the button to see the same line in its tooltip</Meta>
         </div>
         <div className="rounded-md border border-border bg-muted/30 p-3 sm:col-span-2" role="status" aria-live="polite">
           <Meta>{lastAction ? `${lastAction} ran on the local sample.` : 'No action has run.'}</Meta>

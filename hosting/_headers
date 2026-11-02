@@ -20,6 +20,11 @@
 /site-app/header.js
   Cache-Control: public, max-age=0, must-revalidate
 
+# The footer's Licenses link. Plain text so a browser shows it rather than downloading it, and a deploy is live at once.
+/site-app/THIRD-PARTY-NOTICES.md
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
 # The model and animation files keep their names across releases. A day, so a replacement reaches
 # players without a network round trip on every visit.
 /play/*.vrm

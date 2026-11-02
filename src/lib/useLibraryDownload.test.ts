@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { Mock } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useLibraryDownload, type LibraryRecord } from './useLibraryDownload';
 import * as fetchModule from './fetchCatalogContent';
@@ -11,7 +12,7 @@ const listing = (id: string, updatedAt = '2026-07-02T00:00:00.000Z') =>
 /** The published content — it carries the author's own entity id, as a real listing does. */
 const content = { id: 'author-original-id', name: 'Mara' } as Entity;
 
-type Store = ReturnType<typeof vi.fn>;
+type Store = Mock<Parameters<typeof useLibraryDownload<Entity>>[0]['store']>;
 
 const setup = (records: LibraryRecord[] = [], store: Store = vi.fn()) => {
   const hook = renderHook(() =>

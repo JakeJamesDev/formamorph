@@ -4,6 +4,7 @@ import type { DebugEndpointInfo } from '@/lib/promptEndpoints';
 import type { RequestAnatomy } from '@/lib/requestAnatomy';
 import type { DictionaryDebug } from '@/lib/turnPipeline/narrationPrompt';
 import type { StatUpdateDiagnostic } from '@/lib/statRequest';
+import type { AiRequestStats } from './requestStats';
 
 /**
  * One AI request as the AI Context viewers show it: what was sent, what came back, and which endpoint
@@ -21,6 +22,8 @@ export interface AiRequestRecord {
   toolRounds?: AiToolRound[];
   /** Which endpoint served this request. Absent on turns captured before routing existed. */
   endpoint?: DebugEndpointInfo;
+  /** How the reply went. Absent until a reply finishes, and on a stopped or failed request. */
+  stats?: AiRequestStats;
   /** Correlates a captured request to its own response, so concurrent same-type calls each land on the right entry. */
   id?: string;
   /**

@@ -27,7 +27,7 @@ const keeper: Entity = {
   playerDescription: 'The lamp-keeper.', aiDescription: 'Secretly runs the smuggling ring.', locations: ['harbor'],
 };
 const stranger: Entity = {
-  id: 'stranger', name: 'Velka Thorn', playerDescription: 'A tall woman in grey.', aiDescription: 'The heir in hiding.', locations: ['vault'],
+  id: 'stranger', name: 'Velka Thorn', playerDescription: 'A tall woman in grey.', aiDescription: 'The heir in hiding.', strangerName: 'a veiled woman', locations: ['vault'],
 };
 const brave: Trait = { id: 'brave', name: 'Brave', statChanges: [], playerToggle: true };
 const cursed: Trait = { id: 'cursed', name: 'Cursed', statChanges: [], playerToggle: true, mode: 'hidden' };
@@ -62,6 +62,8 @@ async function openGame() {
   // A save record with only the fields a load reads.
   await putSaveRecord({ id: 'met', name: 'met', version: '3.0.1', currentState: state, stateHistory: [] } as unknown as SaveRecord);
   renderGameViewer(world(), { inGameplay: <Probe />, initialSaveId: 'met' });
+  // The keeper has no Stranger Name, so the view holds it before the save loads; the met list marks the load.
+  await waitFor(() => expect(live?.metEntities).toContain('keeper'));
   await waitFor(() => expect(helpWorld.get()?.snapshot().world.entities.map((e) => e.id)).toContain('keeper'));
   return helpWorld.get()!;
 }
@@ -102,6 +104,8 @@ describe('the game registers the Player View for Formaquestion', () => {
     const world = await openGame();
     expect(world.lean).toBe('game');
     expect(world.open).toBeUndefined();
+    // The game cannot write: an entity card's Add stays off.
+    expect(world.addEntity).toBeUndefined();
     const { view, story } = world.game!();
     expect(view.entities.map((e) => e.name)).toEqual(['Odd Wick']);
     expect(view.stats.map((s) => s.id)).toEqual(['Coins']);

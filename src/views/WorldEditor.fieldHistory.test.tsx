@@ -50,7 +50,7 @@ const rowButton = (name: string) => within(treeRow(name)).getByText(name, { exac
 const statNames = (ctx: () => { stats: { name: string }[] }) => ctx().stats.map((s) => s.name);
 
 /** One author action, then the event loop moves on as it does between two presses. */
-const step = (action: () => void) => act(async () => { action(); });
+const step = async (action: () => void) => { await act(async () => { action(); }); await new Promise((r) => setTimeout(r, 5)); };
 /** Lets the event loop move on, so the next write is a new Step and does not fold into the last one. */
 const apart = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
 const removeStat = (name: string) => step(() => {
@@ -266,7 +266,7 @@ describe('Ctrl+Z in a plain input', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Dictionar/);
     fireEvent.click(screen.getAllByText('Default')[0]);
-    const notes = await screen.findByPlaceholderText('Notes for you, not injected into the prompt');
+    const notes = await screen.findByRole('textbox', { name: 'Description' });
     await step(() => fireEvent.change(notes, { target: { value: 'Fen lore.' } }));
     expect(ctx().dictionaries[0].description).toBe('Fen lore.');
 

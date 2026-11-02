@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { EntityListRow } from './EntityListRow';
 
 /**
@@ -16,6 +16,21 @@ describe('EntityListRow outside a running game', () => {
     fireEvent.click(screen.getByText('Sedge'));
     expect(onClick).toHaveBeenCalledOnce();
     expect(screen.queryByRole('button', { name: 'Remove Sedge' })).toBeNull();
+  });
+
+  it('opens from the keyboard through a named button that says which row is selected', () => {
+    const onClick = vi.fn();
+    render(<EntityListRow label="Sedge" selected onClick={onClick} onRemove={vi.fn()} />);
+    const button = screen.getByRole('button', { name: 'Sedge', current: true });
+    button.focus();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('draws no button for a row that opens nothing', () => {
+    render(<EntityListRow label="Sedge" />);
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('offers removal without opening the row', () => {
@@ -37,5 +52,19 @@ describe('EntityListRow outside a running game', () => {
     render(<><EntityListRow label="Kate" you /><EntityListRow label="Hesk" /></>);
     expect(screen.getAllByText('You')).toHaveLength(1);
     expect(screen.getByText('Kate').closest('div')).toHaveTextContent(/^KateYou$/);
+  });
+
+  it('fills the selected row and inverts its chrome, and no other row', () => {
+    render(<><EntityListRow label="Kate" you following selected /><EntityListRow label="Hesk" you following /></>);
+    const kate = screen.getByText('Kate').closest('div')!;
+    const hesk = screen.getByText('Hesk').closest('div')!;
+    expect(within(kate).getByText('Kate').closest('[aria-current]')).not.toBeNull();
+    expect(kate).toHaveClass('bg-primary', 'text-primary-foreground');
+    expect(within(kate).getByRole('img', { name: 'Following you' })).toHaveClass('text-primary-foreground');
+    expect(within(kate).getByText('You')).toHaveClass('bg-primary-foreground', 'text-primary');
+    expect(within(hesk).getByText('Hesk').closest('[aria-current]')).toBeNull();
+    expect(hesk).not.toHaveClass('bg-primary');
+    expect(within(hesk).getByRole('img', { name: 'Following you' })).toHaveClass('text-muted-foreground');
+    expect(within(hesk).getByText('You')).toHaveClass('bg-primary', 'text-primary-foreground');
   });
 });

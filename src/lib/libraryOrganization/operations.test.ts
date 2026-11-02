@@ -6,6 +6,7 @@ import {
   disbandGroup,
   groupItems,
   groupOf,
+  isGroupNameTaken,
   pruneOrganization,
   setDrawnOrder,
   removeFromGroup,
@@ -135,6 +136,17 @@ describe('groupItems', () => {
     expect(org.placements[6].b).toBeUndefined();
   });
 
+  it('names each dropped folder with the first free name in the New Group series', () => {
+    const first = groupItems(withItems('a', 'b', 'c', 'd'), { groupId: 'g1', itemId: 'a', targetId: 'b' });
+    const second = groupItems(first, { groupId: 'g2', itemId: 'c', targetId: 'd' });
+    const typed = renameGroup(second, 'g2', ' new group 2 ');
+    const third = groupItems({ ...typed, order: ['x', 'y', ...typed.order] }, { groupId: 'g3', itemId: 'x', targetId: 'y' });
+
+    expect(first.groups.g1.name).toBe('New Group');
+    expect(second.groups.g2.name).toBe('New Group 2');
+    expect(third.groups.g3.name).toBe('New Group 3');
+  });
+
   it('refuses a folder on either side, and a tile dropped on itself', () => {
     const org = withGroup();
 
@@ -194,6 +206,27 @@ describe('renameGroup', () => {
 
   it('keeps the old name when the field is emptied, so a folder is never nameless', () => {
     expect(renameGroup(withGroup(), 'g1', '   ').groups.g1.name).toBe(NEW_GROUP_NAME);
+  });
+
+  it.each(['Favorites', '  favorites ', 'FAVORITES'])('refuses the name %j that another group holds', (name) => {
+    const org = renameGroup(withTwoGroups(), 'g2', 'Favorites');
+    const refused = renameGroup(renameGroup(org, 'g1', 'Other'), 'g1', name);
+
+    expect(refused.groups.g1.name).toBe('Other');
+  });
+
+  it('lets a group change the case of its own name', () => {
+    expect(renameGroup(renameGroup(withGroup(), 'g1', 'Favorites'), 'g1', 'FAVORITES').groups.g1.name).toBe('FAVORITES');
+  });
+});
+
+describe('isGroupNameTaken', () => {
+  it('compares trimmed and case-insensitive, and skips the group being renamed', () => {
+    const org = renameGroup(withGroup(), 'g1', 'Favorites');
+
+    expect(isGroupNameTaken(Object.values(org.groups), ' FAVORITES ')).toBe(true);
+    expect(isGroupNameTaken(Object.values(org.groups), 'Favorites', 'g1')).toBe(false);
+    expect(isGroupNameTaken(Object.values(org.groups), 'Other')).toBe(false);
   });
 });
 

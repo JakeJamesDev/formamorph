@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
+import { Hint, Meta } from '@/components/ui/typography';
 import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext';
 import { FONT_OPTIONS, fontStack, fontSizeAdjust, SYSTEM_FONT_STACK, type FontChoice } from '@/contexts/settingsDefaults';
 import {
@@ -24,7 +25,7 @@ const SAMPLE = 'The lantern guttered as you stepped into the hollow.';
 
 /** One labeled slider over a numeric field of the draft. */
 function TuneSlider({
-  label, value, min, max, step, format, onChange,
+  label, value, min, max, step, format, onChange, hint,
 }: {
   label: string;
   value: number;
@@ -33,13 +34,16 @@ function TuneSlider({
   step: number;
   format: (v: number) => string;
   onChange: (v: number) => void;
+  /** Help line between the caption and the slider. */
+  hint?: ReactNode;
 }) {
   return (
     <label className="flex flex-col gap-1 text-label">
       <span className="flex items-baseline justify-between gap-2">
         <span className="text-muted-foreground">{label}</span>
-        <span className="text-meta text-muted-foreground tabular-nums">{format(value)}</span>
+        <Meta className="tabular-nums">{format(value)}</Meta>
       </span>
+      {hint && <Hint as="span" className="block">{hint}</Hint>}
       <Slider value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
     </label>
   );
@@ -53,7 +57,7 @@ export function FontTuneDialog({ font, open, onOpenChange, source }: { font: Fon
   const { fontTunings, setFontTuning } = useSettingsSource(source);
   const [draft, setDraft] = useState<FontTuning>(() => resolveFontTuning(font, fontTunings));
 
-  // Reopening — or opening from the other selector, on a different font — starts from what's in force.
+  // Reopening — or opening from the other selector, on a different font — starts from the current settings.
   useEffect(() => {
     if (open) setDraft(resolveFontTuning(font, fontTunings));
     // Reading the stored map on open only; a later store change while open would discard the draft.
@@ -71,7 +75,7 @@ export function FontTuneDialog({ font, open, onOpenChange, source }: { font: Fon
   const sampleStyle: CSSProperties = {
     fontFamily: stack ? `${stack}, ${SYSTEM_FONT_STACK}` : SYSTEM_FONT_STACK,
     // A string, not a number: React unit-suffixes an unknown numeric property, and `0.572px` is
-    // invalid enough that the declaration never lands and the sample stops resizing.
+    // invalid enough that the declaration never applies and the sample stops resizing.
     fontSizeAdjust: String(fontSizeAdjust(font) * draft.scale),
     lineHeight: 1.5 * draft.lineHeight,
     letterSpacing: `${draft.letterSpacing}em`,
@@ -91,7 +95,7 @@ export function FontTuneDialog({ font, open, onOpenChange, source }: { font: Fon
         <DialogHeader className="shrink-0">
           <DialogTitle>Customize {label}</DialogTitle>
           <DialogDescription>
-            Tune how this font renders. Every font keeps its own settings, and they apply wherever you use it.
+            Changes how this font looks wherever you use it. Each font keeps its own settings.
           </DialogDescription>
         </DialogHeader>
 
@@ -116,6 +120,10 @@ export function FontTuneDialog({ font, open, onOpenChange, source }: { font: Fon
               {...boldRange}
               format={(v) => `${v} / ${bold}`}
               onChange={set('boldWeight')}
+              hint={<>
+                Bold Weight sets the semibold weight, the first number beside the slider. Bold is 100
+                heavier, up to this font&apos;s heaviest weight.
+              </>}
             />
             <TuneSlider
               label="Italic Slant"
@@ -138,10 +146,6 @@ export function FontTuneDialog({ font, open, onOpenChange, source }: { font: Fon
               format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(3)}em`}
               onChange={set('letterSpacing')}
             />
-            <p className="text-helper text-muted-foreground">
-              Bold Weight sets how heavy semibold text renders; bold sits a step above it, as far as this
-              font goes. Both numbers appear beside the slider.
-            </p>
           </div>
         </ScrollArea>
 

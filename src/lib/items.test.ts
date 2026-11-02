@@ -1,11 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blankItem, duplicateItem, itemStackable, itemTraitOptions, itemsInSlot, parseItems, parsePlacements, wholeCount, withSlotCapacity,
+  blankItem, duplicateItem, itemStackable, itemTraitOptions, itemsInSlot, parseItems, parsePlacements, wholeCount,
   withoutItemPlacements, withoutSlotRefs,
 } from './items';
 import type { Item, Placement } from '@/types';
 
 const item = (over: Partial<Item> & { id: string }): Item => ({ ...blankItem(over.id, over.name ?? over.id), ...over });
+
+describe('an item\'s icon through export and import', () => {
+  it('keeps a specific icon and None, and leaves Auto absent', () => {
+    const exported = JSON.parse(JSON.stringify([item({ id: 'a', icon: 'lantern' }), item({ id: 'b', icon: 'none' }), item({ id: 'c', icon: undefined })]));
+    const [specific, none, auto] = parseItems(exported);
+    expect(specific.icon).toBe('lantern');
+    expect(none.icon).toBe('none');
+    expect(auto).not.toHaveProperty('icon');
+  });
+});
 
 describe('itemStackable', () => {
   it('stacks by default and when switched on', () => {
@@ -73,18 +83,21 @@ describe('duplicateItem', () => {
 });
 
 describe('slot references', () => {
-  const items = [item({ id: 'sword', slotId: 'hand', slotSize: 2 }), item({ id: 'ring', slotId: 'finger' })];
+  const items = [item({ id: 'sword', slotRule: { mode: 'all', slotIds: ['hand', 'off'] } }), item({ id: 'ring', slotRule: { mode: 'either', slotIds: ['finger'] } })];
 
   it('counts the items that equip into a slot', () => {
     expect(itemsInSlot(items, 'hand')).toBe(1);
     expect(itemsInSlot(items, 'head')).toBe(0);
   });
 
-  it('clears the slot and its size from the items that used it, and only those', () => {
+  it('takes the slot out of the rules that list it, and only those', () => {
     const next = withoutSlotRefs(items, 'hand');
-    expect(next[0]).not.toHaveProperty('slotId');
-    expect(next[0]).not.toHaveProperty('slotSize');
+    expect(next[0].slotRule).toEqual({ mode: 'all', slotIds: ['off'] });
     expect(next[1]).toBe(items[1]);
+  });
+
+  it('drops a rule left with no slot', () => {
+    expect(withoutSlotRefs(items, 'finger')[1]).not.toHaveProperty('slotRule');
   });
 
   it('keeps the list when no item uses the slot', () => {
@@ -112,19 +125,15 @@ describe('parsePlacements', () => {
     const kept = { id: 'p1', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'lamp' } };
     expect(parsePlacements([kept, { id: 'p2', where: { kind: 'you' }, quantity: 1 }, { id: 'p3', source: { kind: 'table' } }])).toEqual([kept]);
   });
-});
 
-describe('withSlotCapacity', () => {
-  it('cuts the slot sizes in a slot down to its new capacity, and only in that slot', () => {
-    const items = [item({ id: 'sword', slotId: 'hand', slotSize: 2 }), item({ id: 'pike', slotId: 'back', slotSize: 2 })];
-    const next = withSlotCapacity(items, 'hand', 1);
-    expect(next[0].slotSize).toBe(1);
-    expect(next[1]).toBe(items[1]);
-  });
-
-  it('keeps the list when every size still fits', () => {
-    const items = [item({ id: 'sword', slotId: 'hand', slotSize: 2 })];
-    expect(withSlotCapacity(items, 'hand', 2)).toBe(items);
+  it('keeps Equipped on an owner placement and drops it at a location', () => {
+    const source = { kind: 'item', itemId: 'lamp' };
+    const worn = { id: 'p1', where: { kind: 'entity', id: 'e' }, quantity: 1, equipped: true, source };
+    const floor = { id: 'p2', where: { kind: 'location', id: 'l' }, quantity: 1, source };
+    const [kept, onFloor, junk] = parsePlacements([worn, { ...floor, equipped: true }, { ...worn, id: 'p3', equipped: 'yes' }]);
+    expect(kept).toEqual(worn);
+    expect(onFloor).toStrictEqual(floor);
+    expect('equipped' in junk).toBe(false);
   });
 });
 

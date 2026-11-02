@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Placeholder } from '@/types';
-import { statCodeName, statCodeNamed } from './statCodeNames';
+import { hasEntityKey, statCodeName, statCodeNamed } from './statCodeNames';
 
 const beast: Placeholder = {
   id: 'ph-beast',
@@ -9,6 +9,16 @@ const beast: Placeholder = {
 };
 const mood: Placeholder = { id: 'ph-mood', name: 'Mood', values: [{ id: 'v-calm', text: 'calm' }] };
 const chip = (id: string, tail = '') => `{{ph:${id}:world:p1${tail}}}`;
+
+describe('hasEntityKey', () => {
+  it.each(['', ' ', '   ', ' \t\n'])('gives a blank name %j no key', (name) => {
+    expect(hasEntityKey(name)).toBe(false);
+  });
+
+  it('keeps the key of a name with spaces and text', () => {
+    expect(hasEntityKey(' Mira ')).toBe(true);
+  });
+});
 
 describe('statCodeName', () => {
   it('hands back a chip-free name unchanged, character for character', () => {

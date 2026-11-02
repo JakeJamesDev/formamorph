@@ -119,7 +119,7 @@ describe('the options a snapshot assembles', () => {
   it('gives an Owner outside the cast an entry of its own, where its traits read as not held', () => {
     const offstage: UnitHome = { kind: 'trait', trait: grim, entityId: 'ghost' };
     const options = optionsFor(snapshot, unitAt(offstage, 'after'));
-    expect(options.owner).toEqual({ id: 'ghost', name: '', type: '', pronouns: '', inScene: false, traits: [], stats: { stats: [], readings: {}, enabled: {} } });
+    expect(options.owner).toEqual({ id: 'ghost', name: '', type: '', pronouns: '', inScene: false, met: false, traits: [], stats: { stats: [], readings: {}, enabled: {} } });
     expect(options.selfTrait).toEqual({ id: 'grim', name: 'Grim', enabled: false, acquired: false });
   });
 });

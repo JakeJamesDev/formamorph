@@ -355,8 +355,8 @@ describe('the fresh game’s stage', () => {
   });
 });
 
-describe('the Character Name chip on turn one', () => {
-  // Tobin's name holds a chip, which resolves before it fills the Character Name chip.
+describe('the Entity Name chip on turn one', () => {
+  // Tobin's name holds a chip, which resolves before it fills the Entity Name chip.
   const w = () => world({
     worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
     entities: [{
@@ -372,6 +372,24 @@ describe('the Character Name chip on turn one', () => {
 
   it('names each entity in its own text in the first prompt', () => {
     expect(openingFor(w()).system).toContain('ash Tobin mends nets.');
+  });
+});
+
+describe('the stranger label on turn one', () => {
+  const stranger: Entity = { id: 'e-stranger', name: 'Tobin', strangerName: 'the net mender', locations: ['harbor'], aiDescription: 'Mends nets.' };
+  const wren: Entity = { id: 'e-wren', name: 'Wren', persona: true, locations: ['market'] };
+  const first = (entity: Entity, personaId: string | null) => {
+    const w = world({ entities: [entity, wren] });
+    return buildOpening(w, lensAt(w), primeOpeningRolls(w, {}, pickFirst), { personaId }).system;
+  };
+
+  it('prints an unmet stranger under its label in the first prompt', () => {
+    expect(first(stranger, 'e-wren')).toMatch(/stranger[ _]name.{0,6}the net mender/);
+  });
+
+  it('prints a stranger the persona knows without its label', () => {
+    const known = { ...stranger, relationships: [{ targetId: 'e-wren', label: 'kin' }] };
+    expect(first(known, 'e-wren')).not.toContain('the net mender');
   });
 });
 
@@ -700,7 +718,7 @@ describe('the persona pick', () => {
     expect(texts(opening)).toEqual(['You arrive as yourself.']);
   });
 
-  it('names the persona as the Character Name of its own row', () => {
+  it('names the persona as the Entity Name of its own row', () => {
     const w = staged({ entities: [{ ...cast()[1], openings: [row('o-wren', '{{char}} steps ashore.', true)] }] });
     expect(at(w, { personaId: 'e-wren' }).opening.text).toBe('Wren steps ashore.');
   });

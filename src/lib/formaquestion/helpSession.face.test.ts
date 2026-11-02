@@ -38,7 +38,6 @@ type FetchSpy = ReturnType<typeof vi.fn<(url: string, init: RequestInit) => Prom
 const bodyOf = (spy: FetchSpy, request = 0) => JSON.parse(spy.mock.calls[request][1].body as string) as SentBody;
 const toolNames = (body: SentBody) => body.tools?.map((tool) => tool.function.name);
 const faceSchema = (body: SentBody) => body.tools?.find((tool) => tool.function.name === HELP_FACE.name);
-const toolResults = (body: SentBody) => body.messages.filter((message) => message.role === 'tool').map((message) => message.content ?? '');
 
 const faceFrames = (...faces: string[]): string[] => [
   ...faces.map((face, at) => sseFrame({ tool_calls: [{ index: at, id: `srv-${at}`, type: 'function', function: { name: HELP_FACE.name, arguments: JSON.stringify({ face }) } }] })),
@@ -111,24 +110,31 @@ describe('the face call', () => {
     const events = await collect(ask(fetchImpl));
 
     expect(faceEvents(events)).toEqual([{ type: 'face', face: 'happy' }]);
-    expect(toolResults(bodyOf(fetchImpl, 1))).toEqual([JSON.stringify({ face: 'Happy' })]);
     const trace = events.filter((event) => event.type === 'trace').at(-1)!.trace;
     const [round] = trace.requests.at(-1)!.record.toolRounds!;
     expect(round.calls.map((call) => [call.name, call.arguments])).toEqual([[HELP_FACE.name, JSON.stringify({ face: 'Happy' })]]);
     expect(events.at(-1)).toMatchObject({ type: 'done', text: 'Select **Add Trait**.' });
   });
 
-  it('yields one face event per call, in call order, across rounds', async () => {
-    const fetchImpl = script(faceFrames('Happy', 'Wink'), faceFrames('Crying'), sseReply('Select **Add Trait**.'));
+  it('yields one face event per call, in call order', async () => {
+    const fetchImpl = script(faceFrames('Happy', 'Wink'), sseReply('Select **Add Trait**.'));
     const events = await collect(ask(fetchImpl));
-    expect(faceEvents(events).map((event) => event.face)).toEqual(['happy', 'wink', 'sad']);
+    expect(faceEvents(events).map((event) => event.face)).toEqual(['happy', 'wink']);
+  });
+
+  it('leaves the face call and its result out of the next round, which no longer offers it', async () => {
+    const fetchImpl = script(faceFrames('Happy'), sseReply('Select **Add Trait**.'));
+    await collect(ask(fetchImpl, { lookup: true }));
+    expect(bodyOf(fetchImpl, 1).messages).toEqual(bodyOf(fetchImpl).messages);
+    expect(toolNames(bodyOf(fetchImpl, 1))).toEqual([DOCS_LOOKUP.name]);
   });
 
   it('answers a face that is not offered with an error, and yields no face event', async () => {
     const fetchImpl = script(faceFrames('Happy'), sseReply('Select **Add Trait**.'));
     const events = await collect(ask(fetchImpl, { mascotPresets: mascotStoreOf(without('happy')) }));
     expect(faceEvents(events)).toEqual([]);
-    expect(toolResults(bodyOf(fetchImpl, 1))[0]).toContain('"error"');
+    const [round] = events.filter((event) => event.type === 'trace').at(-1)!.trace.requests.at(-1)!.record.toolRounds!;
+    expect(round.calls[0].result).toContain('"error"');
     expect(events.at(-1)).toMatchObject({ type: 'done', text: 'Select **Add Trait**.' });
   });
 });

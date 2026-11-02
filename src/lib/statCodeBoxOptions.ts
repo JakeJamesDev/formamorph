@@ -14,7 +14,7 @@ import { codeDictionaries } from './statCodePlaceholders';
 import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { playStatWorld } from './statLinks';
 import { entityCodeStats, entityTraitNames, worldTraitPlaces } from './statCodeTraits';
-import type { Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { Currency, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Stat, Trait, TraitGroup } from '@/types';
 
 /** The names a run reads and the editor's reader checks, all under their code names. */
 export interface StatCodeNames {
@@ -36,6 +36,8 @@ export interface StatCodeNames {
   places?: SandboxPlaces;
   /** The world's items under their code names, which `items` keys. */
   items: { id: string; name: string }[];
+  /** The world's Currencies under their code names, which `currencies` keys. */
+  currencies: { id: string; name: string }[];
 }
 
 /** The world as play reads it, with links read through their Blueprints. */
@@ -51,6 +53,7 @@ export interface StatCodeNameWorld {
   dictionaries?: readonly Dictionary[];
   locations?: readonly Pick<GameLocation, 'id' | 'name' | 'isStarting'>[];
   items?: readonly Pick<Item, 'id' | 'name'>[];
+  currencies?: readonly Pick<Currency, 'id' | 'name'>[];
 }
 
 /** `locations` under their code names, standing where a run with no playthrough stands: the starting one, else
@@ -78,6 +81,7 @@ export function statCodeWorldNames(world: StatCodeNameWorld): StatCodeNames {
     entityStats: entityCodeStats(world.playEntities, placeholders),
     places: codeLocationsOf(world.locations ?? [], placeholders),
     items: (world.items ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
+    currencies: (world.currencies ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, placeholders) })),
   };
 }
 

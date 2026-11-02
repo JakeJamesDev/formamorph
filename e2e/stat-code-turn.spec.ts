@@ -74,10 +74,10 @@ test('stat code halves an AI gain, and a stats re-roll lands the same value', as
   await expect(page.getByText(/70\s*\/\s*100/).first()).toBeVisible();
 
   if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
-  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
-  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await page.getByRole('button', { name: 'More regenerate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate Stats', exact: true }).click();
   await expect.poll(statCalls).toBe(2);
-  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'More regenerate options', exact: true })).toBeEnabled();
   if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
   // From the same pre-turn 60, not from the 70 the first run left.
   await expect(page.getByText(/70\s*\/\s*100/).first()).toBeVisible();
@@ -192,10 +192,10 @@ test('a stats re-roll reads the pre-turn Code Pins, so a flip lands once', async
   await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
 
   if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
-  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
-  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await page.getByRole('button', { name: 'More regenerate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate Stats', exact: true }).click();
   await expect.poll(statCalls).toBe(2);
-  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'More regenerate options', exact: true })).toBeEnabled();
   if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
   // Read from the pre-turn calm, not the angry the first run pinned.
   await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
@@ -214,10 +214,10 @@ test('the first coded turn’s snapshot holds the code’s value, so a re-roll o
   await expect(page.getByText(/62\s*\/\s*100/).first()).toBeVisible();
 
   if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
-  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
-  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await page.getByRole('button', { name: 'More regenerate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate Stats', exact: true }).click();
   await expect.poll(statCalls).toBe(3);
-  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'More regenerate options', exact: true })).toBeEnabled();
   if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
   // From turn one's 61, not from the 80 the AI alone would have left there.
   await expect(page.getByText(/62\s*\/\s*100/).first()).toBeVisible();
@@ -355,10 +355,10 @@ test('a stats re-roll runs the before box again from the pre-turn state', async 
   await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
 
   if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
-  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
-  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await page.getByRole('button', { name: 'More regenerate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate Stats', exact: true }).click();
   await expect.poll(statCalls).toBe(2);
-  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'More regenerate options', exact: true })).toBeEnabled();
   if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
   // Skipping the box on the re-roll would leave the pre-turn 60; stacking on the first run would give 62.
   await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
@@ -377,9 +377,9 @@ test('a narration re-roll runs the before box again from the pre-turn state', as
   await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
 
   if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
-  await page.getByRole('button', { name: 'Re-generate', exact: true }).click();
+  await page.getByRole('button', { name: 'Regenerate', exact: true }).click();
   await expect.poll(statCalls).toBe(2);
-  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'More regenerate options', exact: true })).toBeEnabled();
   if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
   // Skipping the box on the re-roll would leave the pre-turn 60; stacking on the first run would give 62.
   await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();

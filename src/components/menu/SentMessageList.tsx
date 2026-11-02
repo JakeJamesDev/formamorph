@@ -11,6 +11,7 @@ import MessageService from "@/services/MessageService";
 import { cn } from "@/lib/utils";
 import type { SentMessage } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { Meta } from "@/components/ui/typography";
 
 const PAGE_SIZE = 10;
 
@@ -112,7 +113,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
         {isFirstLoad ? (
           Array(3).fill(0).map((_, index) => <Skeleton key={index} className="h-16 w-full" />)
         ) : messages.length === 0 ? (
-          <p className="py-8 text-center text-helper text-muted-foreground">{emptyLabel}</p>
+          <Meta as="p" className="py-8 text-center">{emptyLabel}</Meta>
         ) : (
           messages.map((message) => {
             const style = MESSAGE_SEVERITY_STYLES[message.severity];
@@ -149,7 +150,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
                         {message.scope === 'new' && <Users className="h-3 w-3 shrink-0" aria-label="Also reaches new accounts" />}
                       </span>
 
-                      <span className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
+                      <Meta className="flex flex-wrap items-center gap-x-2">
                         <span>{message.broadcast ? 'Everyone' : message.recipient?.username ?? 'Unknown'}</span>
                         <span>·</span>
                         <span>{formatMessageDate(message.createdAt)}</span>
@@ -157,7 +158,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
                         <span>·</span>
                         <Receipt message={message} />
                         {message.recalledAt && <span className="text-destructive">· Recalled</span>}
-                      </span>
+                      </Meta>
                     </span>
 
                     <ChevronDown
@@ -237,14 +238,15 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
         title="Recall this message?"
         description={
           pendingRecall?.broadcast
-            ? `"${pendingRecall?.subject}" will disappear from every inbox. It stays on this list.`
-            : `"${pendingRecall?.subject}" will disappear from the recipient's inbox. It stays on this list.`
+            ? `This removes “${pendingRecall?.subject}” from every inbox. It stays on this list.`
+            : `This removes “${pendingRecall?.subject}” from the recipient’s inbox. It stays on this list.`
         }
         onConfirm={() => {
           if (pendingRecall) recall(pendingRecall);
           setPendingRecall(null);
         }}
         onCancel={() => setPendingRecall(null)}
+        confirmLabel="Recall"
       />
     </>
   );

@@ -12,8 +12,12 @@ import {
 } from '@/lib/worldPrompt';
 import { hintsLinked, travelHintFieldKey, withHint, withLink } from '@/lib/connectionEditing';
 import { connectionLegs } from '@/lib/locationGraph';
+import { homeKey, worldScriptEntries, type ScriptEdit } from '@/lib/worldScripts';
+import { draftProblems } from '@/lib/tools/toolDraft';
+import { toolNameProblemText } from '@/lib/tools/toolValidation';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, PlaceholderGroup, Script, Stat, StatGroup, Tool, Trait,
+  TraitGroup, WorldOverview,
 } from '@/types';
 
 /**
@@ -63,6 +67,9 @@ export interface SearchTarget {
    *  editor is edited as chips, and an entry often repeats its item's name verbatim — so which of the two
    *  a hit belongs to cannot be read off the text. */
   inChipList: boolean;
+  /** The reason the field's own checks reject `next`, or null; a replace leaves a rejected field as it is.
+   *  `written` holds the text this pass already wrote, keyed `itemKey#fieldKey`. */
+  refuses?: (next: string, written?: ReadonlyMap<string, string>) => string | null;
   value: string;
   write: (next: string) => void;
 }
@@ -119,6 +126,18 @@ export interface SearchSources {
   /** The folders on the Placeholders tab, when the host has them. */
   placeholderGroups?: PlaceholderGroup[];
   updatePlaceholderGroup?: (group: PlaceholderGroup) => void;
+  /** The Items tab, when the host edits it. */
+  items?: Item[];
+  updateItem?: (item: Item) => void;
+  /** False in Simple mode, where the item panel hides its Scripts tab and item script hits drop. */
+  advanced?: boolean;
+  /** The world's own scripts; the Scripts tab also lists every stat's and trait's. */
+  scripts?: Script[];
+  /** Applies script edits where each home stores its list, as the Scripts tab writes them. */
+  writeScripts?: (edits: readonly ScriptEdit[]) => void;
+  /** The Tools tab, when the host edits it. */
+  tools?: Tool[];
+  updateTool?: (tool: Tool) => void;
 }
 
 /** `updateDictionaryEntry` matches by entry id across books, so the entry alone is the whole argument. */
@@ -126,12 +145,16 @@ type DictionaryEntryWithBook = Dictionary['entries'][number];
 
 const untitled = (name: string | undefined, fallback: string) => name?.trim() || fallback;
 
+/** The key of one field in `refuses`' `written` map. */
+const writtenKey = (itemKey: string, fieldKey: string) => `${itemKey}#${fieldKey}`;
+
 /**
  * Every authored string the editor can navigate to, in tab order — and within an item, in the order its
  * panel lays the fields out, so stepping through hits runs down the panel rather than jumping about.
  *
- * Deliberately absent: ids and id-arrays, image/media payloads, enum-ish fields, stat `code`, and anything
- * with no editor field to jump to — legacy `GameLocation.description`, `Entity.tags`, `Dictionary.tags`,
+ * Deliberately absent: ids and id-arrays, image/media payloads (the Media tab holds no text of its own),
+ * enum-ish fields, legacy stat `code`, and anything with no editor field to jump to — legacy
+ * `GameLocation.description`, `Entity.tags`, `Dictionary.tags`,
  * `GameLocation.connections` (authored nowhere; only the in-game panel reads it), and the Stat Updates
  * tab, which no tab entry renders.
  */
@@ -156,11 +179,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       fieldLabel: string,
       value: string | undefined,
       set: (record: T, next: string) => T,
-      inChipList = false,
+      { inChipList = false, refuses }: Pick<SearchTarget, 'refuses'> & { inChipList?: boolean } = {},
     ) => {
       if (!value) return;
       targets.push({
-        ...where, fieldKey, fieldLabel, value, itemKey, record, inChipList,
+        ...where, fieldKey, fieldLabel, value, itemKey, record, inChipList, ...(refuses && { refuses }),
         applyTo: (draft, next) => set(draft as T, next),
         commit: (draft) => commit(draft as T),
         write: (next) => commit(set(record, next)),
@@ -178,10 +201,21 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       values?.forEach((entry, i) => {
         if (!entry) return;
         add(where, `${fieldKey}[${i}]`, fieldLabel, entry, (draft, next) =>
-          set(draft, read(draft).map((v, j) => (j === i ? next : v))), true);
+          set(draft, read(draft).map((v, j) => (j === i ? next : v))), { inChipList: true });
       });
     };
     return { add, addEach };
+  }
+
+  /** A stored script's name and code, as fields of the record that holds its list. `at` prefixes the field
+   *  key and its caption where the record has fields of its own. */
+  function addScript<T extends { scripts?: Script[] }>(
+    add: ReturnType<typeof bind<T>>['add'], where: Where, script: Script, at = { key: '', caption: '' },
+  ) {
+    const set = (r: T, change: Partial<Script>): T =>
+      ({ ...r, scripts: (r.scripts ?? []).map((s) => (s.id === script.id ? { ...s, ...change } : s)) });
+    add(where, `${at.key}name`, `${at.caption}Name`, script.name, (r, v) => set(r, { name: v }));
+    add(where, `${at.key}code`, `${at.caption}Code`, script.code, (r, v) => set(r, { code: v }));
   }
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -200,8 +234,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...ovWhere, chipCapable: true }, 'systemPrompt', 'AI-Facing Description', ov.systemPrompt, (r, v) => ({ ...r, systemPrompt: v }));
     // The two readmes share one caption ("Readme") and are told apart by their tab, so their labels carry
     // which one — the breadcrumb is all the author has to go on once both hold the same phrase.
-    add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Readme (Introduction)', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
-    add({ ...ovWhere, chipCapable: true }, 'readme', 'Readme (Gameplay)', ov.readme, (r, v) => ({ ...r, readme: v }));
+    add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Introduction Readme', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
+    add({ ...ovWhere, chipCapable: true }, 'readme', 'Gameplay Readme', ov.readme, (r, v) => ({ ...r, readme: v }));
     // Every row, switched on or not; the default opening is not world text and is never a target.
     (ov.openings ?? []).forEach((opening, i) => {
       add({ ...ovWhere, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
@@ -268,6 +302,27 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     const { add } = bind(`entityGroup:${group.id}`, group, src.updateEntityGroup);
     add({ ...where, chipCapable: false }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
   });
+
+  // ── Items ─────────────────────────────────────────────────────────────────
+  const updateItem = src.updateItem;
+  if (updateItem) {
+    (src.items ?? []).forEach((item) => {
+      const where = { tab: 'items', itemId: item.id, itemLabel: labeled(item.name, 'Item') };
+      const text = { ...where, chipCapable: true };
+      const plain = { ...where, chipCapable: false };
+      const { add } = bind(`item:${item.id}`, item, updateItem);
+      add(text, 'name', 'Name', item.name, (r, v) => ({ ...r, name: v }));
+      add(plain, 'imageTags', 'Image Tags', item.imageTags, (r, v) => ({ ...r, imageTags: v }));
+      add(text, 'playerDescription', 'Player-Facing Description', item.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
+      add(text, 'aiDescription', 'AI-Facing Description', item.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
+      add(text, 'aiSummary', 'AI-Facing Summary', item.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
+      add(text, 'unidentifiedName', 'Unidentified Name', item.unidentifiedName, (r, v) => ({ ...r, unidentifiedName: v }));
+      add(text, 'unidentifiedDescription', 'Unidentified Description', item.unidentifiedDescription,
+        (r, v) => ({ ...r, unidentifiedDescription: v }));
+      // The item's own scripts, which the Scripts tab doesn't list; they open on the item panel's Scripts tab.
+      if (src.advanced !== false) (item.scripts ?? []).forEach((script, i) => addScript(add, plain, script, { key: `scripts[${i}].`, caption: 'Script ' }));
+    });
+  }
 
   // ── Locations ─────────────────────────────────────────────────────────────
   (src.locations ?? []).forEach((location) => {
@@ -371,6 +426,57 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     });
   }
 
+  // ── Scripts ───────────────────────────────────────────────────────────────
+  // Every write replaces its whole record from the state it was handed, so all edits to one record in a pass
+  // must merge: a world stat's or trait's scripts join that stat's or trait's own record, and the rest of a
+  // home's scripts share one record by script id.
+  const writeScripts = src.writeScripts;
+  if (writeScripts) {
+    type HomeDraft = Record<string, Script>;
+    const drafts = new Map<string, HomeDraft>();
+    worldScriptEntries({
+      scripts: src.scripts ?? [], stats: src.stats ?? [], statGroups: src.statGroups ?? [], traits: src.traits ?? [],
+      traitGroups: src.traitGroups ?? [], entities: src.entities ?? [], placeholders: src.placeholders ?? [],
+    }).forEach(({ key, home, script, label }) => {
+      const where = { tab: 'scripts', itemId: key, itemLabel: labeled(label, 'Script'), chipCapable: false };
+      const stat = home.kind === 'stat' ? src.stats?.find((s) => s.id === home.statId) : undefined;
+      if (stat) return addScript(bind(`stat:${stat.id}`, stat, src.updateStat).add, where, script);
+      const trait = home.kind === 'trait' ? src.traits?.find((t) => t.id === home.traitId) : undefined;
+      if (trait) return addScript(bind(`trait:${trait.id}`, trait, src.updateTrait).add, where, script);
+      const itemKey = `scripts:${homeKey(home)}`;
+      const record = drafts.get(itemKey) ?? {};
+      drafts.set(itemKey, record);
+      const { add } = bind<HomeDraft>(itemKey, record, (draft) =>
+        writeScripts([{ home, edit: (scripts) => scripts.map((s) => draft[s.id] ?? s) }]));
+      const set = (field: 'name' | 'code') => (draft: HomeDraft, v: string): HomeDraft =>
+        ({ ...draft, [script.id]: { ...(draft[script.id] ?? script), [field]: v } });
+      add(where, 'name', 'Name', script.name, set('name'));
+      add(where, 'code', 'Code', script.code, set('code'));
+    });
+  }
+
+  // ── Tools ─────────────────────────────────────────────────────────────────
+  const updateTool = src.updateTool;
+  if (updateTool) {
+    (src.tools ?? []).forEach((tool) => {
+      const where = { tab: 'tools', itemId: tool.id, itemLabel: untitled(tool.name, 'Tool'), chipCapable: false };
+      const { add } = bind(`tool:${tool.id}`, tool, updateTool);
+      // The Save Tool draft's own check: a name the AI can't call, or another Tool's, stays as it is.
+      // Counts the names this pass already wrote, so two Tools can't end up with one name.
+      const refuses = (name: string, written?: ReadonlyMap<string, string>) => {
+        const others = (src.tools ?? []).map((t) => ({ ...t, name: written?.get(writtenKey(`tool:${t.id}`, 'name')) ?? t.name }));
+        const problem = draftProblems({ ...tool, name }, others, [], { world: true }).name;
+        return problem && toolNameProblemText(problem, true);
+      };
+      add(where, 'name', 'Name', tool.name, (r, v) => ({ ...r, name: v }), { refuses });
+      add(where, 'description', 'Description', tool.description, (r, v) => ({ ...r, description: v }));
+      (tool.params ?? []).forEach((param, i) => {
+        add(where, `params[${i}].description`, `Parameter ${param.name}`, param.description,
+          (r, v) => ({ ...r, params: (r.params ?? []).map((p, j) => (j === i ? { ...p, description: v } : p)) }));
+      });
+    });
+  }
+
   return targets;
 }
 
@@ -462,6 +568,8 @@ export interface ReplaceSummary {
   skippedFields: string[];
   /** Hits that were chips. A chip is changed in Chip Options, never by a text replace. */
   chips: number;
+  /** Hits left alone because their field's own checks reject the replaced text. */
+  refused: number;
 }
 
 /** True where `insert` would put a blueprint chip into a field that refuses one. */
@@ -485,7 +593,7 @@ export function replaceAll(
   onWrite?: (target: SearchTarget, next: string) => void,
 ): ReplaceSummary {
   const byTarget = new Map<SearchTarget, SearchMatch[]>();
-  const summary: ReplaceSummary = { replaced: 0, fields: 0, skipped: 0, skippedFields: [], chips: 0 };
+  const summary: ReplaceSummary = { replaced: 0, fields: 0, skipped: 0, skippedFields: [], chips: 0, refused: 0 };
   for (const match of matches) {
     if (match.chip) {
       summary.chips += 1;
@@ -497,6 +605,7 @@ export function replaceAll(
   }
 
   const drafts = new Map<string, { record: SearchRecord; commit: (record: SearchRecord) => void }>();
+  const written = new Map<string, string>();
   for (const [target, hits] of byTarget) {
     if (insertFor(target) === null) {
       summary.skipped += hits.length;
@@ -508,6 +617,11 @@ export function replaceAll(
       // Asked per occurrence, not once: a chip's placement id keys its Unique roll and can never be shared.
       next = spliceText(next, hit.start, hit.end, insertFor(target) ?? '');
     }
+    if (target.refuses?.(next, written)) {
+      summary.refused += hits.length;
+      continue;
+    }
+    written.set(writtenKey(target.itemKey, target.fieldKey), next);
     const draft = drafts.get(target.itemKey) ?? { record: target.record, commit: target.commit };
     drafts.set(target.itemKey, { ...draft, record: target.applyTo(draft.record, next) });
     summary.replaced += hits.length;

@@ -135,11 +135,13 @@ const playerConnections = (met: Met, connections: readonly Connection[] = []): C
   .map((c) => ({ id: c.id, a: c.a, b: c.b, ...(c.aToB && { aToB: {} }), ...(c.bToA && { bToA: {} }) }));
 
 function playerItem(item: Item, row: PlayerViewItem): Item {
-  const { value, valueUnit, stackable, uses, whenEmpty, state, bound, slotId, slotSize, placeholders } = item;
+  const { stackable, uses, whenEmpty, state, bound, slotRule, placeholders } = item;
   const { id } = row;
+  // A price can reveal an unidentified item, so that face carries none.
+  const price = id === unidentifiedRowId(item.id) ? {} : { value: item.value, currencyId: item.currencyId };
   return {
     id, name: row.name, playerDescription: row.description, aiDescription: row.description,
-    value, valueUnit, stackable, uses, whenEmpty, state: stateWord(state), bound, slotId, slotSize, placeholders,
+    ...price, stackable, uses, whenEmpty, state: stateWord(state), bound, slotRule, placeholders,
     statEffects: [], traitEffects: [], equipRequires: [],
   };
 }
@@ -248,7 +250,7 @@ function playerOwnerTraits(met: Met, owners: StatCodeOwners, keep: KeepStat, sta
     ...(world.gateStats && { gateStats: playerGateStats(world.gateStats, keep, statOwners) }),
     ...(world.items && {
       // Only the fields a Condition reads, so no other text of the item rides along.
-      items: metFaces(met, world.items, (item, row) => ({ id: row.id, name: row.name, ...(item.slotId !== undefined && { slotId: item.slotId }) })),
+      items: metFaces(met, world.items, (item, row) => ({ id: row.id, name: row.name, ...(item.slotRule && { slotRule: item.slotRule }) })),
     }),
     ...(world.itemCopies && { itemCopies: shownCopies(met, world.itemCopies) }),
   };

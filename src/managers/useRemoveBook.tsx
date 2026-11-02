@@ -17,7 +17,7 @@ export function useRemoveBook({ selectedId, onSelect }: {
       open={!!bookToDelete}
       onOpenChange={(open) => !open && setBookToDelete(null)}
       title="Delete Dictionary"
-      description="Delete this dictionary and all of its entries? This cannot be undone."
+      description="Deletes this dictionary and all of its entries."
       onConfirm={() => {
         if (bookToDelete) { removeDictionary(bookToDelete); if (bookToDelete === selectedId) onSelect(null); }
         setBookToDelete(null);

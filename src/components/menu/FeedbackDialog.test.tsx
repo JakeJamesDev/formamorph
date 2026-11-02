@@ -182,7 +182,7 @@ describe('reopening', () => {
 
     expect(titleValue()).toBe('Save button does nothing');
     expect(bodyValue()).toBe('Pressing save just spins.');
-    expect(screen.getByText(/Picked up where you left off/)).toBeInTheDocument();
+    expect(screen.getByText(/This is your unsent draft/)).toBeInTheDocument();
   });
 
   it('holds it across a reload, not just a close', async () => {
@@ -212,7 +212,7 @@ describe('reopening', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Discard Draft' }));
     expect(titleValue()).toBe('');
-    expect(screen.queryByText(/Picked up where you left off/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/This is your unsent draft/)).not.toBeInTheDocument();
 
     reopen(rerender);
     expect(titleValue()).toBe('');
@@ -228,7 +228,7 @@ describe('reopening', () => {
     reopen(rerender);
 
     expect(titleValue()).toBe('');
-    expect(screen.queryByText(/Picked up where you left off/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/This is your unsent draft/)).not.toBeInTheDocument();
   });
 
   it('offers nothing to discard on a blank form', async () => {
@@ -261,7 +261,7 @@ describe('a fill over a draft', () => {
     expect(titleValue()).toBe('How do I change the theme?');
     expect(bodyValue()).toBe('');
     expect(activeTab()).toBe('Question');
-    expect(screen.queryByText(/Picked up where you left off/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/This is your unsent draft/)).not.toBeInTheDocument();
 
     // The fill is the draft now.
     cleanup();

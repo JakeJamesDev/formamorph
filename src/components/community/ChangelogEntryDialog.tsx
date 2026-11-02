@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FieldError, Hint, Meta } from "@/components/ui/typography";
 import { DateTimeField } from "@/components/ui/date-time-field";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -92,7 +93,7 @@ export function ChangelogEntryDialog({
         <DialogHeader>
           <DialogTitle>{editing ? 'Edit Changelog Entry' : 'Add Changelog Entry'}</DialogTitle>
           <DialogDescription>
-            {description ?? 'Tell readers what changed. Entries are shown newest first, under the date you set.'}
+            {description ?? 'Tell players what changed. Entries show newest first, under the date you set.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,15 +112,13 @@ export function ChangelogEntryDialog({
 
             <div className="space-y-2">
               <Label htmlFor="changelogDate">Date</Label>
+              {/* The reason the field is here at all: a history written after the fact should carry the days
+                  it happened on, not the day it was typed up. */}
+              <Hint>Set an earlier date to record an update you made in the past</Hint>
               {/* The app's own calendar, not the browser's — which follows the operating system's theme and
                   cannot be styled. Day-only: an entry is dated to the day, and an hour on it would be a
                   control that changes nothing. */}
               <DateTimeField id="changelogDate" label="Date" value={date} onChange={setDate} dateOnly />
-              {/* The reason the field is here at all: a history written after the fact should carry the days
-                  it happened on, not the day it was typed up. */}
-              <p className="text-meta text-muted-foreground">
-                Set this back to log an update you made earlier.
-              </p>
             </div>
 
             {/* Lexical renders a div, so the caption names the field through `ariaLabel` rather than `htmlFor`. */}
@@ -130,16 +129,16 @@ export function ChangelogEntryDialog({
                 onChange={(next) => setBody(next.slice(0, CHANGELOG_BODY_MAX))}
                 vocabulary={plainVocabulary()}
                 markdown
-                ariaLabel="What changed"
-                placeholder="Added the drowned quarter, and fixed the ferry never arriving..."
+                ariaLabel="What Changed"
+                placeholder="Added the drowned quarter, and fixed the ferry never arriving"
               />
-              <p className="text-meta text-muted-foreground text-right">
+              <Meta as="p" className="text-right">
                 {body.length} / {CHANGELOG_BODY_MAX}
-              </p>
+              </Meta>
             </div>
 
             {error && (
-              <p className="text-label text-destructive" role="alert">{error}</p>
+              <FieldError role="alert">{error}</FieldError>
             )}
           </div>
         </ScrollArea>

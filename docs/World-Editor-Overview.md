@@ -49,7 +49,7 @@ The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Ed
 | **Player-Facing Description** | The text on the library card and the community listing. Players read it before they play, so placeholders stay as plain text here. The AI never reads it. |
 | **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices. **Gameplay** shows when they enter the world. Both take markdown. |
 | **AI-Facing Description** | The world's description for the AI. The AI reads it on every turn. Players never see it. |
-| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Openings** item holds the world's [Openings](World-Editor-Openings). |
+| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Each item has a checkbox, and its text applies only while the box is checked. The player can decline it from the world's details window. **Reset** clears your text, so the item follows the player's prompt again. Its **Openings** item holds the world's [Openings](World-Editor-Openings). Its checkbox stays off until an opening exists. |
 
 ## Upload or link
 <!-- keywords: hotlink, external hosting, imgur, discord image broken, image not loading, dead url, shrink file size, embed vs host, works without internet -->
@@ -74,4 +74,9 @@ A linked image shows a 🔗 badge. Two badges are warnings:
 
 > 💡 **Make Available Offline** in the [world dialog](Starting-a-Game#the-world-dialog) downloads all its linked images at once. Use it before you lose your connection.
 
-When you export a world with linked images, you choose: keep the links for a small file, or download the images into the file so it works anywhere. An **entity card** export always downloads the portrait, because the card is the image.
+When you export a world with linked images, you pick one of two choices:
+
+- Keep the links, for a small file.
+- Download the images into the file, so it works anywhere.
+
+An **entity card** export always downloads the portrait, because the card is the image.

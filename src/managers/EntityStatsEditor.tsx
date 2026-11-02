@@ -24,12 +24,14 @@ import { statListAdapter } from './statListAdapter';
  * `edit`. The caller holds the selection and the layout; the list clears a selection the entity doesn't hold.
  */
 const EntityStatsEditor = ({
-  entity, world, edit, names, layout, selectedId, onSelect, canLink, standalone = false, placeholder, emptyHint, detailHeader,
+  entity, world, edit, confirmRemove, names, layout, selectedId, onSelect, canLink, standalone = false, placeholder, emptyHint, detailHeader,
 }: {
   entity: Entity;
   /** The stats and groups the entity's links read their Blueprints from. */
   world: StatLinkWorld;
   edit: (change: (e: Entity) => Entity) => void;
+  /** Runs an own stat or group delete in place of `edit`, so a host can ask first. Absent = `edit`. */
+  confirmRemove?: (change: (e: Entity) => Entity, name?: string) => void;
   /** How the host's chips read as text. */
   names: { placeholders: Placeholder[]; letters: PlacementLetters; owners?: PlaceholderOwners };
   layout: ListEditorLayout;
@@ -60,6 +62,8 @@ const EntityStatsEditor = ({
     onSelect(id);
   };
 
+  const remove = (change: (e: Entity) => Entity, name?: string) => (confirmRemove ? confirmRemove(change, name) : edit(change));
+
   const adapter = statListAdapter({
     stats: rows.stats,
     groups: rows.groups,
@@ -72,8 +76,12 @@ const EntityStatsEditor = ({
       edit(() => next);
       onSelect(newId);
     },
-    onRemoveStat: (id) => edit((e) => (rows.linked.get(id)?.root ? removeStatLink(e, id) : removeOwnedStat(e, id))),
-    onRemoveGroup: (id) => edit((e) => (rows.linked.get(id)?.root ? removeStatLink(e, id) : removeEntityStatGroup(e, id))),
+    onRemoveStat: (id) => remove(
+      (e) => (rows.linked.get(id)?.root ? removeStatLink(e, id) : removeOwnedStat(e, id)), entity.stats?.find((s) => s.id === id)?.name,
+    ),
+    onRemoveGroup: (id) => remove(
+      (e) => (rows.linked.get(id)?.root ? removeStatLink(e, id) : removeEntityStatGroup(e, id)), entity.statGroups?.find((g) => g.id === id)?.name,
+    ),
     tree: { onDrop: (next) => edit((e) => applyEntityStatRows(e, rows, next) ?? e) },
     onWriteGroup: (group) => edit((e) => updateOwnedStatGroup(e, group)),
     add: {

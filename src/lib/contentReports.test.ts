@@ -61,7 +61,7 @@ describe('detecting whether the server has reports at all', () => {
 
 describe('validating a draft', () => {
   it('asks for a category before anything else', () => {
-    expect(reportDraftError({ category: null, details: '' })).toMatch(/what is wrong/i);
+    expect(reportDraftError({ category: null, details: '' })).toMatch(/what’s wrong/i);
   });
 
   it('accepts a category on its own — details are optional', () => {

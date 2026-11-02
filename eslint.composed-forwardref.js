@@ -12,6 +12,7 @@
 /** Components verified to forward their ref. Adding a name here is a promise that it does. */
 export const REF_SAFE_COMPOSED_CHILDREN = [
   'Button', // src/components/ui/button.tsx
+  'FrameButton', // src/components/game/BodyDoll.tsx
   'GradientButton',
   'ListAddButton', // src/components/ListToolbar.tsx
   'WorldActionButton',

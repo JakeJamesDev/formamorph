@@ -13,6 +13,7 @@ import {
   type AnatomyConditions, type AnatomyPreviewPrompts, type AnatomyPreviewSettings,
 } from '@/lib/anatomyPreview';
 import { Tip } from '@/components/ui/tooltip';
+import { Hint } from '@/components/ui/typography';
 
 /**
  * The Anatomy hub: what a prompt *is*, shown the moment it is selected in Settings → Prompts. The whole
@@ -152,15 +153,15 @@ export function RequestAnatomyPanel({
       viewportRef={paneMode === 'chips' ? bindChips : bindResolved}
     >
       {requests.length === 0 ? (
-        <p className="text-helper text-muted-foreground">
+        <Hint>
           Your current settings never send this request, so there&apos;s nothing to show
-        </p>
+        </Hint>
       ) : (
         <div className="flex flex-col gap-4">
           {requests.map((request) => (
             <div key={request.key} className="flex flex-col gap-1.5">
               {request.caption && (
-                <p className="text-helper text-muted-foreground italic">{request.caption}</p>
+                <Hint className="italic">{request.caption}</Hint>
               )}
               <RequestAnatomyView
                 blocks={request.blocks}
@@ -180,9 +181,9 @@ export function RequestAnatomyPanel({
       {/* The prompt's own description line, the same one the editors show, not a toolbar: what this prompt
           does, how to read the view behind the ⓘ, and the panel's own controls at the far end. */}
       <div className="mb-2 flex flex-shrink-0 items-center gap-1.5">
-        <p className="text-helper text-muted-foreground">{description}</p>
+        <Hint>{description}</Hint>
         <HintInfo>
-          {'The request sent with your current settings.\n\n' +
+          {'Shows the request your current settings send.\n\n' +
             '- The **Chips** tab shows your template, with each value replaced by its chip. Dashed chips are parts filled in for you. Click one to open its prompt.\n' +
             '- The **Preview** tab shows the full text of the request. The highlighted parts are text you typed. Click one to open the editor you typed it in.\n' +
             '- Messages from settings that are off aren\'t sent'}

@@ -2,6 +2,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Hint } from '@/components/ui/typography';
 
 interface AccountFormProps {
   /** Runs on submit; the form has already stopped the browser's own. */
@@ -72,7 +73,7 @@ export function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
-      {hint && <p className="text-meta text-muted-foreground">{hint}</p>}
+      {hint && <Hint>{hint}</Hint>}
     </div>
   );
 }

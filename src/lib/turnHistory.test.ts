@@ -85,7 +85,7 @@ describe('sliceHistoryToPage', () => {
     expect(sliceHistoryToPage(history, 2, 2)).toEqual(['u1', 'a1', 'u2', 'a2']);
     expect(sliceHistoryToPage(history, 3, 2)).toEqual(history);
   });
-  it('yields an empty history for page 0 or below (opening re-generate)', () => {
+  it('yields an empty history for page 0 or below (opening regenerate)', () => {
     expect(sliceHistoryToPage(history, 0, 2)).toEqual([]);
     expect(sliceHistoryToPage(history, -1, 2)).toEqual([]);
   });
@@ -94,7 +94,7 @@ describe('sliceHistoryToPage', () => {
     const edited = ['u1', 'a1', 'u2', 'a2-edited', 'u3', 'a3'];
     // Rolling back to page 2 slices to 4 messages — the edit at index 3 survives.
     expect(sliceHistoryToPage(edited, 2, 2)).toEqual(['u1', 'a1', 'u2', 'a2-edited']);
-    // Re-generating page 3 rewinds to page 2 — turn 2's edit is still kept.
+    // Regenerating page 3 rewinds to page 2 — turn 2's edit is still kept.
     expect(sliceHistoryToPage(edited, 3 - 1, 2)).toEqual(['u1', 'a1', 'u2', 'a2-edited']);
   });
   it('does not mutate the input', () => {

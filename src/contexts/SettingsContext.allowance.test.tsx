@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { SettingsProvider, useSettings } from './SettingsContext';
-import { HostedAiAutoSwitch } from '@/components/HostedAiAutoSwitch';
+import { HostedAiStateSync } from '@/components/HostedAiStateSync';
 import AuthService from '@/services/AuthService';
 import { textEndpointPresetCodec, FORMAMORPH_AI_PRESET_ID, DEFAULT_TEXT_PRESET_ID, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
@@ -14,14 +14,16 @@ import { readHostedDevice } from '@/lib/hostedAi/hostedAllowance';
 const STATE = {
   tier: 'supporter', state: 'ready', window: 24000, maxTokens: 600, tokenMargin: 800,
   model: { id: 'entry-7', capabilities: {} },
-  percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [],
+  percentUsed: 5, turnsLeft: 200, resetAt: '2026-11-01T00:00:00.000Z', acknowledged: [], warnThresholds: [75, 90],
 };
 
 const gate = vi.hoisted(() => ({ attested: true }));
-vi.mock('@/contexts/AgeGateContext', () => ({ useAgeGate: () => ({ attested: gate.attested }) }));
+vi.mock('@/contexts/AgeGateContext', () => ({
+  useAgeGate: () => ({ attested: gate.attested, attestedSession: gate.attested ? 'token-a' : null }),
+}));
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <SettingsProvider><HostedAiAutoSwitch />{children}</SettingsProvider>
+  <SettingsProvider><HostedAiStateSync />{children}</SettingsProvider>
 );
 const ENDPOINTS_KEY = 'FORMAMORPH_textEndpointPresets';
 

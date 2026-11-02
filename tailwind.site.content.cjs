@@ -10,8 +10,7 @@
  *
  * `site/bundleBoundary.test.ts` walks the site's imports and fails when a file it reaches is in
  * neither list below. The two are kept as plain paths rather than globs so that check is a string
- * comparison — matching globs would mean either a glob library or `fs.globSync`, which does not exist
- * on the Node 20.19 this repo still supports.
+ * comparison.
  */
 
 /** Scanned whole, every file under them. */
@@ -80,6 +79,7 @@ const FILES = [
   'src/components/PatreonSection.tsx',
   'src/components/RoleBadge.tsx',
   'src/components/SupporterBadge.tsx',
+  'src/components/SupportersWall.tsx',
   'src/components/UserAvatar.tsx',
   'src/components/theme-provider.tsx',
   'src/components/community/AgeGateDialog.tsx',
@@ -114,6 +114,8 @@ const FILES = [
   'src/lib/serverAssets.ts',
   'src/lib/serverDate.ts',
   'src/lib/supporterFlair.ts',
+  'src/lib/tierNames.ts',
+  'src/lib/resetTime.ts',
   'src/lib/thumbAspect.ts',
   'src/lib/useCachedThumbnail.tsx',
   'src/lib/useMountedRef.ts',
