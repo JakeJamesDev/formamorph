@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRequestKey } from '@/lib/surface/useRequestKey';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
@@ -438,17 +438,20 @@ const ActionInput = ({
   onKeyDown,
   placeholder,
   disabled,
+  onFocusedChange,
 }: {
   value: string;
   setValue: (value: string) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder: string;
   disabled: boolean;
+  onFocusedChange: (focused: boolean) => void;
 }) => {
   // The wrapper mirrors the grown height so the box is real layout, not an overlay: the row above it moves
   // up instead of being covered, which is what lets it clear the on-screen keyboard.
   const { height, focused, stateClass, fieldProps } = useAutoGrowTextarea(value, ACTION_INPUT_LINE_H, ACTION_INPUT_MAX_H);
   const slash = useSlashCompletion(fieldProps.ref, value, setValue);
+  useEffect(() => { onFocusedChange(focused); }, [focused, onFocusedChange]);
 
   return (
     <div className="relative flex-grow mr-2 flex-shrink-0" style={{ height }} data-testid="action-input-wrap">
@@ -627,6 +630,10 @@ export const MiddlePanel = ({
   const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const imageAttachments = useImageAttachments();
+  // On mobile the focused field takes Help's and the ring's room; Send stays.
+  const isMobileWidth = useIsMobile();
+  const [inputFocused, setInputFocused] = useState(false);
+  const inputExpanded = isMobileWidth && inputFocused && !disabled;
 
   // Paste and drop wait for the game to start, like the button.
   const { attaching, dragOver: attachDragOver, attachFiles, intakeProps } = useAttachmentIntake({
@@ -1172,7 +1179,9 @@ export const MiddlePanel = ({
                 onKeyDown={handleKeyPress}
                 placeholder="Type your action. Text in [square brackets] directs the story as the author."
                 disabled={disabled}
+                onFocusedChange={setInputFocused}
               />
+              {!inputExpanded && (
               <HelpButton
                 topicId="game.howToPlay"
                 className="mr-2"
@@ -1199,7 +1208,8 @@ export const MiddlePanel = ({
                   ),
                 }}
               />
-              <AllowanceRing busy={isWaitingForAI} className="mr-2" />
+              )}
+              {!inputExpanded && <AllowanceRing busy={isWaitingForAI} className="mr-2" />}
               {isWaitingForAI ? (
                 <Button
                   onClick={abortGeneration}

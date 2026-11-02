@@ -68,6 +68,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Your Formamorph AI allowance now resets every week, and Formamorph shows the reset in your local time.** Settings and your formamorph.ai account page name the weekday and time. One notice appears at the highest warning level each week.
     - **AI settings shows where this week's Formamorph AI use went.** Seven groups appear by percent, and any single prompt with a large share is named under its group.
     - **A ring beside Send shows how much of this week's Formamorph AI allowance you've used.** Select it for the percent used, about how many turns are left, the reset time and where your use went. Help and Send also have larger icons.
+    - **On a phone, the action field now fills the row while you type.** Help and the allowance ring hide until you leave the field. Send stays in place.
   - **Main Menu:**
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.
