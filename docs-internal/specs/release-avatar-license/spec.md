@@ -128,6 +128,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - No Steam build class exists yet. This effort adds `none` to `FORMAMORPH_AVATARS`, and the Steam effort sets it.
 - The build must leave out every `.vrm`, including the tracked default that `public/` copies into a dist.
 - With no bundled file, these change: the viewer's default model URL, library seeding, the bundled hash check, and the rule that the library keeps at least one Avatar.
+- With no device default, User's Default resolves to no model even when the library holds an added Avatar. It never guesses a record.
 - The Avatar surfaces get an empty state that leads to adding a `.vrm`. Games run without a model.
 - Saves and worlds that name the default Avatar id resolve to no model, with no error. That includes Sugarscape's User's Default pick.
 - Store art and trailers may still show a model. pixiv's terms allow images and videos of models in games. Recheck this if a sample appears in them.

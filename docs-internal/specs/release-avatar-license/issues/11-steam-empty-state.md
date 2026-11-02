@@ -11,6 +11,8 @@ UI on a state only the Steam switch can reach, so it needs a dev route.
 
 A player with no Avatars sees why the Avatar surfaces are empty and has a clear way to add a `.vrm`. This covers the Model Library, the Avatar viewer and the Player Avatar dropdown in character creation. Use the design system's empty-state pattern, and write the copy from the Writing Guide. Each surface gets a dev route that shows the empty state.
 
+A player can also hold added Avatars with no device default. The viewer then shows no model on User's Default, so it says how to set a default in place of a blank canvas.
+
 Rulings: Q18.
 
 ## Acceptance criteria
