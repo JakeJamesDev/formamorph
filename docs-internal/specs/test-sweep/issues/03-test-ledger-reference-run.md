@@ -1,6 +1,6 @@
 # 03: Test Ledger And Reference Run
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -19,10 +19,21 @@ Rulings: Q1, Q3, Q5, Q6, Q8, Q26.
 
 ## Acceptance criteria
 
-- [ ] The ledger command writes one record per test, and tests cover its output from a given run report.
-- [ ] Changing a test or its source marks that record stale; a test proves it.
-- [ ] A Reference Run summary records wall time, the vitest breakdown, the top families, and failure history.
-- [ ] The summary names which tests have real-bug history and how that was determined.
-- [ ] The owner's full-suite and gate targets (Q3) are recorded in the summary.
+- [x] The ledger command writes one record per test, and tests cover its output from a given run report.
+- [x] Changing a test or its source marks that record stale; a test proves it.
+- [x] A Reference Run summary records wall time, the vitest breakdown, the top families, and failure history.
+- [x] The summary names which tests have real-bug history and how that was determined.
+- [x] The owner's full-suite and gate targets (Q3) are recorded in the summary.
 
-For you: Pick full-suite and gate time targets from the Reference Run summary.
+## Landed
+
+[reference-run.md](../reference-run.md) holds the results and the owner's targets: 240 s full suite, 200 s gate on the 610-file sample. [testLedger.mjs](../../../../scripts/testLedger.mjs) writes the ledger to `<git common dir>/test-ledger`.
+
+**Not verified:**
+
+- The coverage process and the `TestLedgerReporter` class have no unit test. Only the smoke run and the Reference Run exercised them.
+- Peer gates overlapped two of the three full runs and both gate runs. The summary records this.
+- The real-bug tests are named per file in the summary. The per-test list comes from `--real-bug`, because it is too long to track.
+- Rule (b) missed 15 failed CI runs whose logs are gone.
+
+For you: nothing. You picked the targets on 2026-11-02.

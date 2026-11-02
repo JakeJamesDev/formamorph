@@ -127,6 +127,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **`world-question-probe.cli.ts` scores Formaquestion's world answers on the bundled worlds, editor and game apart.** Game cases ask on hand-written saves. It scores grounded facts, leaks of unmet or hidden text, and opinion phrasing, against a Read the World off arm and a full-world arm.
   - **`affectedTests`, `changedLint` and `buildGate` accept `@<file>` in place of a git base.** The file lists the paths to check, so a shared checkout can gate one session's files without a peer's edits.
   - **Tests and builds now run on Vitest 5 and Vite 8, and affected-test gates finish about a quarter faster.** Building from source now needs Node 24 or 22.12+.
+  - **`npm run test:ledger` writes one record per test, with its time, coverage, failure history and a stale check.** Raw output stays untracked in the git folder, so every worktree reads the same ledger.
 
 #### ➖ Removed
 

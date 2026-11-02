@@ -21,7 +21,7 @@ export function calibrate() {
   return hash === 0 ? ms + 1 : ms; // keeps the loop from being optimized away
 }
 
-const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+export const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 
 /** How many times slower than idle the machine ran over [start, end]; the run's median when no sample falls inside. */
 export function loadFactor(samples, start, end, reference) {
