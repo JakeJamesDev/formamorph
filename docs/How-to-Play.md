@@ -17,6 +17,16 @@ While the AI writes, the **Send** button turns red and becomes **Stop generating
 
 > 💡 Success isn't guaranteed. The narrator decides how your attempt goes, and your stats shape it.
 
+## How to Check Your Formamorph AI Allowance
+<!-- keywords: ring, circle, allowance, usage, how much left, turns left, percent used, weekly, reset, breakdown, where did it go, formamorph ai, ran out -->
+<!-- route: gameViewer#action-box -->
+
+When any prompt uses **Formamorph AI**, a ring sits beside **Send**. It fills as you use this week's allowance, and it turns amber and then red as the allowance runs low. The ring updates when a turn ends.
+
+Select the ring to see the percent used, about how many turns are left, when the allowance resets, and where this week's use went.
+
+If Formamorph AI can't serve you right now, the ring stays empty. Select it to see why and what to do.
+
 ## How to Use a Choice
 <!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine, suggested actions, multiple choice, quick replies, prewritten, ctrl click, append, long press, tap answer -->
 <!-- route: gameViewer#action-box -->

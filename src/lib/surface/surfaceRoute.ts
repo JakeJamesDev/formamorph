@@ -113,6 +113,7 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
   gameViewer: { parent: 'gameViewer' },
   gameViewerLayout: { ancestor: 'gameViewer' },
   gameViewerAttach: { ancestor: 'gameViewer' },
+  gameViewerAllowance: { ancestor: 'gameViewer' },
   scriptPrompt: { ancestor: 'gameViewer' },
   designSystemGroupPicker: { ancestor: 'mainMenu' },
 

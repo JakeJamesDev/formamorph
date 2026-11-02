@@ -254,6 +254,10 @@ _Avoid_: hosted tier (in copy), premium AI, the proxy
 What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, locked or age gate), its context window and output cap, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
 _Avoid_: usage, quota, entitlement (the Patreon word)
 
+**Allowance Ring**:
+A small ring between Help and Send that fills as the week's Formamorph AI allowance is used. It shows while any prompt can send to Formamorph AI. Its figure holds during a turn and moves when the turn ends. Selecting it opens a popover with the usage lines and the Usage breakdown, or the state's reason and actions.
+_Avoid_: usage meter, quota ring
+
 **Usage breakdown**:
 Where one week's Formamorph AI use went, as whole percents over seven groups (Narration, Story Planning, Choices, Stats and World Tracking, Inventory, Memory, Help and Editor) plus an Other row above zero. A single prompt at or above the server's breakdown threshold is named under its group. Shown in AI settings, and in the Allowance Ring's popover.
 _Avoid_: usage chart, cost split (it shows percents, never dollars)
