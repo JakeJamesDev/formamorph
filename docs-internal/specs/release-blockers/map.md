@@ -32,6 +32,7 @@ Everything in `issues/` is closed, so nothing on this list stands between the cu
 - **03 — Stat request invents changes on Cydonia** (from Entity Stats, Q66). The shipped stat request scores 30% exact with 122 invented changes on Cydonia 24B; the cloud model clears its bar. Details in [03](issues/03-cydonia-stat-request.md).
 - **04 — Supporter tier names are not decided** (from Formamorph AI). Names come from Patreon titles with "Member" as the fallback, and copy reads as a donation. Details in [04](issues/04-supporter-tier-names.md).
 - **05 — Formamorph AI needs the Weekly Allowance first** (from Weekly Allowance). No member may start on a monthly allowance. Details in [05](issues/05-weekly-allowance.md).
+- **06 — Release builds still ship the Elaina Avatar** (from Release Avatar License). Its metadata turns off the use a paid adult release needs. Details in [06](issues/06-release-avatar-license.md).
 
 _(none)_
 

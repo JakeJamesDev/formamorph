@@ -1,0 +1,171 @@
+# Spec: Release Avatar License
+
+Status: ready-for-agent
+
+A reading of the licenses, not legal advice.
+
+## Problem Statement
+
+Release builds ship a bundled Avatar named Elaina, by TronSpectra. Its VRM metadata turns off all four expression flags: sexual, violent, political or religious, and antisocial or hate. Formamorph is an adult-capable game heading to a paid Steam release, and we hold no extra rights from the author.
+
+Community Creations has a related gap. The Permissive License gate never reads these flags, so an Avatar with restricted terms can be published.
+
+## Solution
+
+Elaina leaves release builds on every channel. A new model takes its place at the same path, so the release swap stays as it is. The model is one you build or one you pick from VRoid Hub, and it must pass the stricter gate.
+
+The Permissive License gate becomes fully permissive: if a file adds any restriction, it can't be published.
+
+## Rulings
+
+| # | Ruling |
+|---|---|
+| Q1 | Replace Elaina. No permission request to the author. |
+| Q2 | The fix covers every release channel. |
+| Q3 | Published releases stay up. The next release carries the fix. |
+| Q4 | Community Avatars are in scope. This reopens the usage-flag line in the Community Avatar Uploads spec. |
+| Q5 | A new model replaces Elaina, not the VRoid default. Widened by Q16. |
+| Q6 | Existing players keep their seeded Elaina copy. No migration. |
+| Q7 | Publishing needs a fully permissive license. A file with added restrictions isn't allowed. |
+| Q8 | Recapture the landing page's Avatar shots with the new model. |
+| Q9 | The user builds or picks the model. Agents write the checks and wiring. |
+| Q10 | Keep the split. The VRoid sample stays on local dev and the Pages dev build. Releases swap in the new model. |
+| Q11 | Credit required, personal-only commercial use, and extra license terms all block a publish. |
+| Q12 | No listing sweep. Elaina is the only uploaded Avatar, and the user removes that listing after the new model ships. |
+| Q13 | Accept our reading of VRoid Studio Article 13. No contact with pixiv. See Further Notes for the accepted risk. |
+| Q14 | The new model matches Elaina: clothed, with the three body keys and working customization. |
+| Q15 | The fix blocks every release. No new build on any channel ships Elaina. |
+| Q16 | A VRoid Hub model may replace the own-model route if it passes the gate and shows no sign of third-party characters or BOOTH parts. |
+
+## User Stories
+
+1. As the owner, I want release builds to ship a model whose terms allow adult use, so that the paid release doesn't conflict with its bundled Avatar's license.
+2. As the owner, I want every channel to change together, so that no store carries the known conflict.
+3. As the owner, I want a release blocked until the new model lands, so that Elaina can't ship by accident.
+4. As the owner, I want a list of Hub models that pass our rules, so that I can pick by popularity without reading each license.
+5. As the owner, I want a candidate file checked before it lands, so that I learn early if its license or keys fall short.
+6. As the owner, I want the model's source and license recorded, so that we can show where it came from later.
+7. As the owner, I want the Article 13 risk on record, so that the decision and its reasons are easy to find.
+8. As a new player, I want the bundled Avatar to have working body sliders, so that I lose nothing from the change.
+9. As a world author, I want body stat bindings to keep driving the new model, so that existing worlds still work.
+10. As an existing player, I want my library and saves left alone, so that an update doesn't change my Avatar.
+11. As a publisher, I want a restricted file refused before the publish modal opens, so that I don't fill in a listing for nothing.
+12. As a publisher, I want the refusal to name each failed requirement, so that I know what the file's terms prevent.
+13. As a publisher, I want the Model Library to show why a model is Not Shareable, so that I can tell before I try.
+14. As a player downloading an Avatar, I want every listing to allow every use, so that I don't have to read its terms before I play.
+15. As an API client, I want the server to refuse a restricted file, so that the gate holds without the app.
+16. As a player with an old library record, I want its license read again, so that the new checks judge its real terms and not missing fields.
+17. As a visitor to formamorph.ai, I want the landing page to show the Avatar the app ships, so that the page is accurate.
+18. As a developer, I want a test that reads the shipped model files, so that a restricted file fails the gates.
+
+## Implementation Decisions
+
+**The model (human step)**
+
+- The new file replaces the alternate Avatar at its current path. The tracked default and the release swap steps don't change.
+- A candidate must meet all of these:
+  - Passes the stricter gate from its own metadata.
+  - Has `Waist`, `Bust` and `Thickness` keys, or a license that lets us add them. New keys are authored fresh, never copied from Elaina.
+  - Works in Character Customization.
+  - Shows no sign of a third-party character, BOOTH parts, or a VRoid sample base.
+- Modified files keep the original author in their metadata, and their license stays as permissive as the original.
+- The Hub filter query and a gate script are the selection tools. The Hub lists no sort control, so a generated gallery does the ranking.
+- A provenance record holds the source URL, author, download date, and a copy of the metadata as downloaded.
+
+**Permissive License gate**
+
+- The gate stays one pure module in each repo, with the same requirement identifiers on both sides.
+- New requirements:
+  - `allowExcessivelySexualUsage` must be true.
+  - `allowExcessivelyViolentUsage` must be true.
+  - `allowPoliticalOrReligiousUsage` must be true.
+  - `allowAntisocialOrHateUsage` must be true.
+  - `creditNotation` must be `unnecessary`.
+  - `licenseUrl` must be the VRM Public License 1.0.
+  - `otherLicenseUrl` must be empty.
+- The existing `commercialUsage` requirement tightens to `corporation`. `personalProfit` now fails.
+- A missing field fails its requirement, as it does today.
+- Identifiers stay append-only. The existing five keep their names.
+- The server reads the new fields in its VRM meta reader and runs the same checks on create and on file update.
+- The server's error body and the client's copy gain the new identifiers. Both client copy tables need an entry for each.
+
+**Client license data**
+
+- The normalized VRM license type gains the four flags, the credit field as read, and `otherLicenseUrl`.
+- The library's stale-license check moves to a field that only new records carry, so old records are read again. Today it keys on `avatarPermission`.
+
+**Fingerprints and records**
+
+- Regenerate the bundled fingerprint list after the new file lands, and copy it to the server. Elaina's hash stays in the list through file history.
+- `STEAM-RELEASE-CHECKLIST.md` and the third-party notices clear a file that no longer exists and omit the release model. Both name the real files. The notices work belongs with the Credits effort, so this effort hands it the new model's details.
+
+**Landing order**
+
+1. Server gate, because the server enforces it for every client.
+2. The new model file. The user does this step.
+3. Client gate, license data and copy. The bundled-avatar test reads the alternate file, and Elaina fails the stricter gate, so this waits for step 2.
+4. Fingerprints, records, and the landing page recapture.
+
+**Unchanged by ruling**
+
+- The morph alias layer stays, so worlds bound to older key names keep working.
+- The one-shot seed stays. New installs get the new model. Existing players keep their copy and don't receive the new model in their library.
+
+**Export-shape reminder**
+
+- Adding license fields touches the stored model record and the Avatar listing's `license` content. Tickets must repeat this reminder in their responses.
+
+## Testing Decisions
+
+- A good test calls the gate or the real file reader and asserts the verdict. It never restates the gate's logic.
+- **Gate, both repos:** every requirement passing, each one failing alone and named, and each missing field failing. Prior art: the existing gate tests and the server's model-kind tests.
+- **Client and server agreement:** both reject the same files with the same identifiers. Prior art: the shared bundled-fingerprint vector.
+- **Shipped files:** the bundled-avatar test keeps both rows and now holds them to the stricter gate. It must stay as it is, never narrowed, so Elaina going red until the new file lands is expected. Land the client gate after the file.
+- **Stale license:** an old record is read again, and a current one isn't.
+- **Refusal copy:** each new identifier produces its own words, and a file with no VRM 1.0 metadata keeps the single sentence about format.
+- **Guards bite:** prove the shipped-file test by running it against the current Elaina file before the swap.
+- **By hand:** load the new file in Character Customization and confirm the sliders and colors with `verify-ui`.
+
+## Out of Scope
+
+- Asking TronSpectra or pixiv for permission.
+- Pulling or rebuilding published releases.
+- Migrating seeded library copies.
+- A listing sweep. The user removes the one Elaina listing by hand.
+- Restricting what players import for their own local play, or warning them about a model's flags.
+- Steam Workshop rules. Steam has no Community Creations, and Workshop is a separate effort.
+- Removing body sliders from the bundled model.
+- Other licensing findings from the Credits sweep.
+
+## Further Notes
+
+**VRM Public License 1.0**
+
+- The prohibited-expression condition covers images generated in Model Use and Avatar Use. It doesn't cover redistribution of the file, which is why Q3 and Q6 are acceptable readings.
+- Elaina allows corporate commercial use, redistribution, and redistribution of modified copies.
+- A modified copy must keep terms at least as restrictive, so editing Elaina can't lift its flags.
+
+**Accepted risk (Q13)**
+
+- VRoid Studio Article 13 excludes applications with functions that let 3D models be created by deforming meshes or combining meshes or textures. Such an app needs a separate pixiv license. Article 7 and the guidelines say the same, and output is banned beside creation.
+- The Japanese text prevails. Writing no file doesn't clear us.
+- An independent read leaned about 60% that setup-screen body sliders are in scope, with low to moderate confidence. Color tints probably fall out. Stat-driven changes lean out.
+- For our reading: the banned function creates a 3D model, and we only change render state. Every VRM app deforms meshes at runtime, so the clause must be narrower than that.
+- No record of a pixiv ruling, license or forced change was found. No clear paid app with VRoid-based sliders was found either, which means "others do it" has no support. Neither shows that none exist.
+- The risk applies to any model with VRoid preset content, which includes most Hub models.
+- New evidence reopens this ruling. A pixiv statement or a complaint would count.
+
+**UNVERIFIED**
+
+- VRoid Hub's own terms for downloaded models. Read them before a Hub pick lands.
+- Whether Hub flags are accurate. They are the uploader's claim.
+- Elaina's provenance, and whether it contains preset or sample content. pixiv's sample terms ban selling a sample's data and using it in character creation.
+- Whether signed-in Hub searches show more models. The 187 passing models came from a signed-out read on 2026-11-02.
+- Whether "Elaina" copies a third-party character.
+
+**Sources**
+
+- [VRM Public License 1.0](https://vrm.dev/en/licenses/1.0/)
+- [VRoid Studio Guidelines](https://vroid.com/en/studio/guidelines)
+- [pixiv terms, VRoid Studio section](https://policies.pixiv.net/en.html#vroidstudio)
+- [VRoid sample model conditions](https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z)
