@@ -13,7 +13,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { dollColumnWidth, fillBoxes } from '@/lib/bodyLayout';
-import { resolveItemIcon } from '@/lib/itemIcons';
+import { itemSlotNames, resolveItemIcon } from '@/lib/itemIcons';
 import { byEquipOrder, copyFace, copyFacts, copyState, isUnidentified, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
@@ -244,10 +244,7 @@ export function InventoryTab({
     return resolveItemIcon({
       icon: item?.icon,
       name: nameOf(copy),
-      slotNames: (item?.slotRule?.slotIds ?? []).flatMap((id) => {
-        const slot = worldSlots.find((s) => s.id === id);
-        return slot ? [resolveText(slot.name)] : [];
-      }),
+      slotNames: itemSlotNames(item, worldSlots, resolveText),
       unidentified: isUnidentified(copy),
       image: imageOf?.(copy),
     });

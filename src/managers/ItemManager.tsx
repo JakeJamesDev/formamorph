@@ -10,6 +10,7 @@ import { WorldInput } from '@/components/editor/WorldField';
 import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
 import { ItemEffectsFields, ItemTraitEffectsFields } from './ItemEffectsFields';
+import { ItemIconField } from './ItemIconField';
 import { ItemRequirementsField } from './ItemRequirementsField';
 import { ItemSlotRuleField } from './ItemSlotRuleField';
 import { ItemScripts } from './ItemScripts';
@@ -259,6 +260,7 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
                   ariaLabel="Name"
                 />
               </div>
+              <ItemIconField item={draft} apply={apply} />
               <ImageTags />
             </div>
           </div>

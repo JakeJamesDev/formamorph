@@ -680,6 +680,35 @@ Open `#dev?modal=designSystem&tab=breadcrumb-picker`. The reference uses sample 
 
 Prompts such as "Pick a trait…" and the "Nothing to pick" and "No matches" lines are functional copy with no period. Sample names are authored content and keep their own voice. This review is local. It does not certify STE compliance.
 
+## Pattern: Icon Grid Picker
+
+**Purpose:** Pick one icon when the picture matters more than its name.
+
+**When to use it:** Only for the item icon catalog today. Lists of world content use the [Breadcrumb Picker](#pattern-breadcrumb-picker).
+
+### Composition
+
+| Part | Treatment |
+| --- | --- |
+| 🔽 Trigger | Looks like a Select trigger: the current icon, then its name, **Auto** or **None** |
+| 🔎 Search | A small `SearchField`, focused on open. It matches any word of the catalog, so "blade" finds the sword. |
+| 🔘 Auto and None | Two labeled tiles above the grid. They stay while a search runs. Auto's tile shows the icon the name gives. |
+| 🗂️ Grid | Six columns of 40px ghost tiles under the catalog's group headings. It scrolls in a `ScrollArea`. A tooltip names each icon. |
+| ✅ Picked | The picked tile uses the default button fill and `aria-pressed`. |
+| 🚫 No matches | The grid says "No matches". |
+
+A pick closes the popover. Escape closes it with no change. Each opening starts with an empty search.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Trigger, popover and grid | `ItemIconPicker` in [`ItemIconPicker.tsx`](../src/components/ItemIconPicker.tsx) |
+| The Item panel's Icon field | `ItemIconField` in [`ItemIconField.tsx`](../src/managers/ItemIconField.tsx) |
+| Isolated reference | [`ItemIconPickerReference.tsx`](../src/components/design-system/ItemIconPickerReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=icon-grid-picker`. The reference uses local state. It never reads or writes a world.
+
 ## Pattern: Lists With Controls or Metadata
 
 **Purpose:** Preserve the information and actions needed to identify, edit, order, and manage complex items.

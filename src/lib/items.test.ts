@@ -7,6 +7,16 @@ import type { Item, Placement } from '@/types';
 
 const item = (over: Partial<Item> & { id: string }): Item => ({ ...blankItem(over.id, over.name ?? over.id), ...over });
 
+describe('an item\'s icon through export and import', () => {
+  it('keeps a specific icon and None, and leaves Auto absent', () => {
+    const exported = JSON.parse(JSON.stringify([item({ id: 'a', icon: 'lantern' }), item({ id: 'b', icon: 'none' }), item({ id: 'c', icon: undefined })]));
+    const [specific, none, auto] = parseItems(exported);
+    expect(specific.icon).toBe('lantern');
+    expect(none.icon).toBe('none');
+    expect(auto).not.toHaveProperty('icon');
+  });
+});
+
 describe('itemStackable', () => {
   it('stacks by default and when switched on', () => {
     expect(itemStackable(item({ id: 'a' }))).toBe(true);

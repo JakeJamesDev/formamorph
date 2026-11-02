@@ -34,7 +34,7 @@ The item panel works like the entity panel.
 
 | Tab | What it holds |
 |---|---|
-| **Profile** | The name, the images with their rules, and the image tags |
+| **Profile** | The name, the [**Icon**](#icon), the images with their rules, and the image tags |
 | **Descriptions** | The player-facing and AI-facing descriptions, in Advanced mode the **AI-Facing Summary**, and the **Unidentified Name** and **Unidentified Description** |
 | **Properties** | Value, Stackable, Uses, State, When Empty, Bound and Slots |
 | **Effects** | The stat and trait effect rows: what the item does to its owner |
@@ -45,6 +45,22 @@ The item panel works like the entity panel.
 An image's **Visibility Rule** reads whoever owns the item. A Condition with no owner reads as **Item Owner**.
 
 An item's placeholders roll once per playthrough. Every Item Copy shows the same value.
+
+## Icon
+<!-- keywords: item icon, icon field, auto icon, pick an icon, wrong icon, no icon, show item image on doll, inventory icon -->
+<!-- route: worldEditorItem.profile -->
+
+The **Icon** field picks what the **Inventory** tab shows for the item, on the figure and in its rows. Search the grid by a word, such as "blade" for a sword.
+
+| Choice | What shows |
+|---|---|
+| **Auto** | An icon from the item's name, then its slots. This is the default, and the field shows the icon you get. |
+| An icon | That icon |
+| **None** | The item's image. With no image, a filled box on the figure and no icon in a row. |
+
+- 🖼️ The item's own dialog keeps its image under every choice.
+- 🔒 An unidentified copy ignores this field and the item's image. Its icon comes from what the player sees, so it reveals nothing.
+- 🎲 The field reads a placeholder in the name by its label. During the game, Auto reads the rolled value, so the icon can differ.
 
 ## Unidentified items
 <!-- keywords: unidentified, identify, mystery item, cursed item, true name, hidden identity, unidentified name, unidentified description -->
