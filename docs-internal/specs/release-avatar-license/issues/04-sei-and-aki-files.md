@@ -30,6 +30,7 @@ Rulings: Q1, Q14, Q17, Q19, Q23, Q24, Q26.
 - [ ] The fingerprint test passes with both new hashes, and Elaina's hash stays in the list.
 - [ ] The release workflow's swap steps are unchanged, and no tracked file outside history holds Elaina.
 - [ ] All sliders and pickers respond on both files in Character Customization, read through `verify-ui`.
+- [ ] Carried from ticket 03, which had no free preview slot: Face and Body render at matching color on Sei at the default skin value, and all three pickers respond on the Elaina file, which existing players keep. Read Elaina from file history.
 - [ ] A changelog fragment is added.
 - [ ] Frames: `.scratch/frames/sei-customization.png` and `.scratch/frames/aki-customization.png` at 1366.
 
