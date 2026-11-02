@@ -146,6 +146,9 @@ export interface StatCodeTurn {
   narration?: NarrationInput;
   /** The switch a `switch` run fires on. The run's state is the one the switch left. */
   switched?: TraitSwitchEvent;
+  /** The global stats a penalty's "no script moved it" compares against, when a nested run fired inside a timing
+   *  that began earlier. Absent ⇒ when this run began. */
+  penaltyStart?: readonly PlayerStat[];
   /** The world the switches held under before they fired, when it differs (a persona change). A switch-off's
    *  trait reads this one (Q16). Absent ⇒ `ownerTraits.world`. */
   switchedFrom?: TraitWorld;
@@ -154,6 +157,9 @@ export interface StatCodeTurn {
   /** The Scripts tab's row keys at this timing in run order (`runRowKeys`). The turn runs each row's scripts at
    *  its place, and the library entities' after every row. Absent ⇒ owner order, scripts with an `order` first. */
   rowOrder?: readonly string[];
+  /** The Scripts tab's row keys at When a Trait Switches (`runRowKeys`), which every switch run this turn fires reads
+   *  as its `rowOrder`. */
+  switchRowOrder: readonly string[];
   /** The global stats as they stood at the start of the turn, matched by id. A stat missing here reads its
    *  `previous` as a copy of its own current entry. */
   previous: readonly PlayerStat[];
@@ -519,22 +525,43 @@ function rowedUnits<T extends { unit: ScriptUnit; run: OwnerRun; script: Script 
   return inRowOrder(rowOrder.map((key) => byRow.get(key) ?? []), [...loose, ...library]);
 }
 
-/** Nested rounds of switch runs one action fires before a further switch stops firing scripts (Q47). */
+/** Nested rounds of switch runs one script's switch fires before a further switch stops firing scripts (Q47). */
 export const SWITCH_DEPTH_CAP = 8;
 
-/** Run one timing's scripts over one turn in the sandbox, then the When a Trait Switches runs its trait
- *  switches fire. An `output` run's switches fire with the After batch instead, where its writes land (Q42). */
-export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
-  const result = await runScripts(turn);
-  if (turn.timing === 'output') return result;
-  const switched = await withSwitchRuns(turn, result);
-  const { reply, triggerWrites, choices } = result;
+/** Switch runs one action fires across all depths before a further switch fires no script (Q40). */
+export const SWITCH_RUN_TOTAL = 100;
+
+/** One action's limit on the runs it nests, shared across all depths. */
+export interface RunTotal {
+  /** Whether one more run may fire. The first refusal warns. */
+  take: () => boolean;
+}
+
+/** A fresh {@link RunTotal} of `total` runs, which warns `refused` once. */
+export function runTotal(total: number, refused: string): RunTotal {
+  let left = total;
+  let warned = false;
   return {
-    ...switched, ...(choices ? { choices } : {}), ...(reply ? { reply, ...(triggerWrites ? { triggerWrites } : {}) } : {}),
+    take: () => {
+      if (left > 0) {
+        left -= 1;
+        return true;
+      }
+      if (!warned) console.warn(refused);
+      warned = true;
+      return false;
+    },
   };
 }
 
-/** `result` with the switch runs fired by the switches it made over `turn`, as one result over `turn`. */
+const switchRunTotal = () => runTotal(SWITCH_RUN_TOTAL, `Trait switches fired ${SWITCH_RUN_TOTAL} runs in one action; further switches fired no script`);
+
+/** Run one timing's scripts over one turn in the sandbox. Each script's trait switches fire their When a Trait
+ *  Switches runs at once, before the next script (Q5). An `output` run's fire with the After batch instead, where
+ *  its writes land (Q42). */
+export const runStatCodeTurn = (turn: StatCodeTurn): Promise<StatCodeTurnResult> => runScripts(turn);
+
+/** An `output` run's `result` with the switch runs fired by the switches it made over `turn`, as one result over `turn`. */
 export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnResult): Promise<StatCodeTurnResult> {
   const after = afterRun(turn, result);
   return (await chainSwitchRuns(turn, [result], after, switchesBetween(turn, after))) ?? result;
@@ -581,7 +608,8 @@ export interface ItemRunsResult {
  * Each event's item scripts, in order, over the state the run before left; `turn.state.itemCopies` is the state
  * the events left. A run's inventory writes land through `apply` at once, and their events nest one level deeper,
  * with the automatic unequips `settle` finds after that write (Q66). Past {@link ITEM_EVENT_DEPTH} the writes still
- * land, but their events fire nothing (Q66, Q140). A run's own trait switches fire their switch runs.
+ * land, but their events fire nothing (Q66, Q140). A run's own trait switches fire their switch runs at once, whose
+ * inventory writes land with the run's.
  */
 export async function runItemScripts(
   turn: StatCodeTurn, events: readonly ItemScriptEvent[], items: readonly Pick<Item, 'id' | 'name' | 'scripts' | 'unidentifiedName'>[],
@@ -592,6 +620,7 @@ export async function runItemScripts(
   const diagnostics: string[] = [];
   const itemUses: ItemUse[] = [];
   const landedOps: InventoryOp[] = [];
+  const switches = switchRunTotal();
   const level = async (at: StatCodeTurn, batch: readonly ItemScriptEvent[], depth: number): Promise<StatCodeTurn> => {
     let now = at;
     for (const event of batch) {
@@ -604,12 +633,11 @@ export async function runItemScripts(
         diagnostics.push(`Item scripts nested past ${ITEM_EVENT_DEPTH} levels; ${SCRIPT_TIMING_LABEL[event.timing]} of ${itemName} did not run`);
         continue;
       }
-      const ran = await runScripts({ ...now, timing: event.timing, itemEvent: { event, item, itemName } });
+      const ran = await runScripts({ ...now, timing: event.timing, itemEvent: { event, item, itemName } }, 0, switches);
       const ops = ran.worldWrites?.inventory ?? [];
       const step = ops.length ? { ...ran, worldWrites: withoutInventory(ran.worldWrites) } : ran;
       steps.push(step);
-      const next = afterRun(now, step);
-      now = await switchRuns(next, switchesBetween(now, next), 1, steps);
+      now = afterRun(now, step);
       if (!ops.length) continue;
       const landed = apply(now.state.itemCopies ?? [], ops);
       landedOps.push(...ops);
@@ -654,7 +682,7 @@ async function chainSwitchRuns(
   start: StatCodeTurn, steps: StatCodeTurnResult[], at: StatCodeTurn, events: readonly TraitSwitchEvent[],
 ): Promise<StatCodeTurnResult | null> {
   if (!events.length) return null;
-  const now = await switchRuns(at, events, 1, steps);
+  const now = await switchRuns(at, events, 1, steps, switchRunTotal());
   return chainedResult(start, steps, now);
 }
 
@@ -662,10 +690,17 @@ async function chainSwitchRuns(
 const switchesBetween = (from: StatCodeTurn, to: StatCodeTurn): TraitSwitchEvent[] =>
   traitSwitchEvents(forceStateOf(from), forceStateOf(to), to.state.ownerTraits.world);
 
-/** Runs `events` in order, each over the state the run before left, and each run's own switches nested
- *  under it. Every run's result joins `steps`. */
+/** `turn` as the switch run of `switched` runs over it: only the state and the turn's readings carry over. A World
+ *  Tool's call, a sentence and an item event belong to the run that fired it. */
+function switchRunOf(turn: StatCodeTurn, switched: TraitSwitchEvent): StatCodeTurn {
+  const { triggers: _t, replayed: _r, triggersOnly: _o, itemEvent: _i, narration: _n, timingStart: _s, ...rest } = turn;
+  return { ...rest, timing: 'switch', switched, rowOrder: turn.switchRowOrder };
+}
+
+/** Runs `events` in order, each over the state the run before left, at nesting `depth`, while `total` allows. Every
+ *  run's result joins `steps`. */
 async function switchRuns(
-  turn: StatCodeTurn, events: readonly TraitSwitchEvent[], depth: number, steps: StatCodeTurnResult[],
+  turn: StatCodeTurn, events: readonly TraitSwitchEvent[], depth: number, steps: StatCodeTurnResult[], total: RunTotal,
 ): Promise<StatCodeTurn> {
   if (depth > SWITCH_DEPTH_CAP) {
     console.warn(`Trait switches nested past ${SWITCH_DEPTH_CAP} rounds; ${events.length} switch(es) fired no script`);
@@ -673,11 +708,10 @@ async function switchRuns(
   }
   let now = turn;
   for (const switched of events) {
-    const step = await runScripts({ ...now, timing: 'switch', switched });
+    if (!total.take()) continue;
+    const step = await runScripts(switchRunOf(now, switched), depth, total);
     steps.push(step);
-    // A run's own switches hold under the world it ran in.
-    const next = { ...afterRun(now, step), switchedFrom: undefined };
-    now = { ...await switchRuns(next, switchesBetween(now, next), depth + 1, steps), switchedFrom: turn.switchedFrom };
+    now = afterRun(now, step);
   }
   return now;
 }
@@ -721,7 +755,7 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
       ownerTraits,
       placeholders: set && { ...set, codePins, ...(pins ? { pins } : {}) },
       ...(result.loreWrites ? { loreToggles: withLoreWrites(state.loreToggles ?? {}, result.loreWrites) } : {}),
-      // The switch runs read the choices the batch left.
+      // A landing's switch runs read the choices the batch left.
       ...(result.choices && state.turn ? { turn: { ...state.turn, choices: result.choices } } : {}),
     },
   };
@@ -938,9 +972,10 @@ export function afterScript(turn: StatCodeTurn, { unit, run }: PlannedUnit, resu
 /**
  * Run one timing's scripts one by one, each over a fresh snapshot of what the script before left: the replayed
  * writes, the triggers, then the world's and every owner's in run order. Which scripts run reads at each script's
- * turn. A failing script is logged and adds nothing.
+ * turn. A failing script is logged and adds nothing. A script's trait switches fire their switch runs before the
+ * next script, one `depth` deeper; an `output` run's wait for its landing (Q42).
  */
-async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
+async function runScripts(turn: StatCodeTurn, depth = 0, total = switchRunTotal()): Promise<StatCodeTurnResult> {
   const timing = turn.timing ?? 'after';
   const began = beganOf(turn);
   const { itemEvent } = turn;
@@ -965,17 +1000,25 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   // The plan of `now`, dropped whenever a script's writes change it.
   let plan: RunPlan | undefined;
   const planNow = () => (plan ??= planOf(now, began));
-  const land = (unit: ScriptUnit, writes: ScriptWrites, snapshot: SandboxSnapshot) => {
+  const land = async (unit: ScriptUnit, writes: ScriptWrites, snapshot: SandboxSnapshot) => {
     const { step, next } = afterWrites(now, began, unit, writes, snapshot);
     steps.push(step);
+    const fired = step.traits && timing !== 'output' ? switchesBetween(now, next) : [];
     now = next;
     plan = undefined;
+    if (!fired.length) return;
+    // The switch runs read the choices so far. Their own switches hold under the world they ran in.
+    const read = choices && now.state.turn ? { ...now.state, turn: { ...now.state.turn, choices } } : now.state;
+    const end = await switchRuns(
+      { ...now, state: read, switchedFrom: undefined, penaltyStart: turn.penaltyStart ?? began.stats }, fired, depth + 1, steps, total,
+    );
+    now = { ...now, state: end.state };
   };
   const runUnit = async (unit: ScriptUnit, ownerId: OwnerId) => {
     const snapshot = snapshotOf(now.state, { readings: planNow().readings });
     // A replayed unit holds its saved writes already and runs no script.
     if (unit.writes) {
-      land(unit, unit.writes, snapshot);
+      await land(unit, unit.writes, snapshot);
       return;
     }
     const { stat, script, args } = unit;
@@ -1003,7 +1046,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const writes = scriptWritesFrom(stat, result, ownerId);
     if (first) triggerWrites = savedWrites(writes);
     if (!turn.choicesOnly) warnDroppedWrites(whoRan(unit), result);
-    if (landsAnything(writes)) land(unit, writes, snapshot);
+    if (landsAnything(writes)) await land(unit, writes, snapshot);
   };
   for (const unit of [...replayed, ...triggers]) await runUnit(unit, null);
   // Every script's place is fixed from the start, so one switched on runs only if it is lower than the one that
@@ -1016,8 +1059,8 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     if (entry) await runUnit(entry.unit, entry.run.owner.id);
   }
   // The one settle carries the gate snapshot and the penalties when no script landed a write. A choices-only run
-  // chains its scripts' writes to build the choices, then lands none of them.
-  const settled = turn.choicesOnly || !steps.length ? settledStep(turn, began) : undefined;
+  // chains its scripts' writes and switch runs to build the choices, then lands none of them.
+  const settled = (turn.choicesOnly && depth === 0) || !steps.length ? settledStep(turn, began) : undefined;
   const chained = settled ? chainedResult(turn, [settled], afterRun(turn, settled)) : chainedResult(turn, steps, now);
   // What the chained scripts left: the sentence, and the choices once a script changed them.
   // Scripts that restore the list between them leave no change.
@@ -1048,7 +1091,7 @@ function settledStep(
   const ownerWrites = new Map(owned.map((owner) => [owner.id, byOwner.get(owner.id) ?? new Map<string, SettledWrite>()]));
   // The snapshot every settle below reads: the code writes landed with no switch yet, then the penalties.
   const landedMain = withPenalties(
-    settleWrites(state.stats, state.stats, mainWrites, ownerStatTraitsInForce(before, world, null)).stats, turn.penalties, began.stats,
+    settleWrites(state.stats, state.stats, mainWrites, ownerStatTraitsInForce(before, world, null)).stats, turn.penalties, turn.penaltyStart ?? began.stats,
   );
   const landedOwners: EntityStatValues = Object.fromEntries(owned.map((owner) => [owner.id, settleWrites(
     owner.stats, owner.stats, ownerWrites.get(owner.id) ?? new Map(), ownerStatTraitsInForce(before, world, owner.id),

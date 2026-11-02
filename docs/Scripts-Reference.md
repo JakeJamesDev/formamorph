@@ -467,7 +467,7 @@ A write to an unknown placeholder name is ignored. **Test Code** and the **Test 
 
 `enabled` and `acquired` read the player's state only. An entity that holds the same trait does not change them. To see why a switch had no effect, read `mode`, `available` and `group`.
 
-A write to `enabled` switches the trait after the run, with the same effect as the player's checkbox:
+A write to `enabled` switches the trait when the script ends, with the same effect as the player's checkbox:
 
 - A switch on turns off the trait's siblings in an Up to One group.
 - Code never switches an Automatic or Hidden trait. It ignores pick counts.
@@ -909,6 +909,8 @@ if (trait.name === 'Wounded' && trait.enabled) stats.Vigor.value -= 5;
 
 A stat or world script sees every switch through `trait`. A trait's own script sees its own switches, with `self` as the trait and `trait` as the same entry.
 
+When a script switches a trait, its **When a Trait Switches** scripts run at once, before the next script in the list. The next script reads their full result. A switch that one of these scripts makes runs the same way, up to 8 levels deep. One action runs these scripts at most 100 times in all. Past either limit, the switch still applies, but it runs no script, and the console reports it. See [Order of Effects](#order-of-effects).
+
 **Test Code** reads a sample. In a trait's own script, `trait` is that trait. In other scripts, it is the world's first trait in tree order, read as switched on, or a blank trait.
 
 ### Order of Effects
@@ -933,7 +935,9 @@ A bound that a stat writes applies at the written number, after that script's tr
 - **`previous` holds the start value.** In After the AI, it is the value at the start of the turn. In every other timing, it is the value when the timing began. `value` and `delta.actual` include earlier scripts' writes. `delta.ai` and `delta.regen` keep their meaning.
 - **During AI Output scripts read each other's writes on each sentence.** The writes still land with After the AI, and a stopped turn applies none.
 - **A World Tool's writes come first.** On a re-roll, its saved writes apply before the list, and every script reads them.
-- **When a Trait Switches scripts run after the timing's scripts.** So do item events.
+- **A switch runs its When a Trait Switches scripts at once.** They run before the next script in the list, and the next script reads their result. A World Tool's switch does the same. Two scripts that switch one trait on and then off run these scripts twice, in that order.
+- **During AI Output switches wait.** A switch in this timing runs its scripts once, with After the AI. A later script on the sentence doesn't read their result.
+- **Item events run after the timing's scripts.**
 - **A later script reads the earlier scripts' Body, location, clock, memory, discovery and entity writes.** `location` with its `present` and `exits`, `clock`, `memories`, `entities` and `body` read as the earlier scripts left them.
 - **Where a write applies does not change.** A script that fails adds nothing to what later scripts read.
 - **A diary line has no read.** A later script can write to the diary of an entity that an earlier script discovered.

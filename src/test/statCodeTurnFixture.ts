@@ -3,13 +3,15 @@ import {
 } from '@/lib/statCodeTurn';
 
 /** A turn as a test writes it: the board's fields beside the turn's own, each owner as one row. */
-export type FlatStatCodeTurn = Omit<StatCodeTurn, 'state' | 'ownerTurns'> & Omit<SandboxState, 'owners'> & {
+export type FlatStatCodeTurn = Omit<StatCodeTurn, 'state' | 'ownerTurns' | 'switchRowOrder'> & Omit<SandboxState, 'owners'> & {
   owners?: readonly OwnerCodeTurn[];
+  /** Absent ⇒ no row, so switch runs keep owner order. */
+  switchRowOrder?: StatCodeTurn['switchRowOrder'];
 };
 
 /** `flat` as the turn module takes it. A field left out stays out. */
 export function statCodeTurnOf({
-  stats, enabled, owners, gateStats, ownerTraits, placeholders, places, positions, followers, resolveText, clock, memories, notes, turn, loreToggles, itemCopies, items, slots, money, bodies, ...rest
+  stats, enabled, owners, gateStats, ownerTraits, placeholders, places, positions, followers, resolveText, clock, memories, notes, turn, loreToggles, itemCopies, items, slots, money, bodies, switchRowOrder = [], ...rest
 }: FlatStatCodeTurn): StatCodeTurn {
   // A state field missing from the list above would stay on the turn; this fails to compile then.
   const onlyTurnFields: [Exclude<keyof typeof rest, keyof StatCodeTurn>] extends [never] ? true : false = true;
@@ -17,6 +19,7 @@ export function statCodeTurnOf({
   const split = owners && splitOwnerTurns(owners);
   return {
     ...rest,
+    switchRowOrder,
     state: {
       stats, enabled, clock, ownerTraits,
       ...(split ? { owners: split.owners } : {}),

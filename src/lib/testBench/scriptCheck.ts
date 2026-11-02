@@ -20,7 +20,7 @@ import { snapshotOf, type SandboxSnapshot, type UnitHome } from '@/lib/sandboxSn
 import { SCRIPT_TIMINGS } from '@/lib/scripts';
 import { turnOneClock, type RunTiming } from '@/lib/statCodeTiming';
 import { afterScript, chainSnapshotOf, playedScripts, type SandboxState, type StatCodeTurn } from '@/lib/statCodeTurn';
-import { runRowPlace } from '@/lib/worldScripts';
+import { runRowKeys, runRowPlace } from '@/lib/worldScripts';
 import type { Script, ScriptTiming } from '@/types';
 
 export { SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME } from './rules';
@@ -125,7 +125,7 @@ function findingOf(unit: ScriptUnit, result: StatCodeResult): Finding | null {
 const benchTurnOf = (world: RuleWorld, timing: ScriptTiming, persona: OpeningPersona | undefined): StatCodeTurn => {
   const state = benchStateOf(world, timing, persona);
   return {
-    state, timing, worldScripts: world.scripts, previous: state.stats, asks: [], regenApplied: {},
+    state, timing, worldScripts: world.scripts, switchRowOrder: runRowKeys(scriptTreeWorldOf(world), 'switch'), previous: state.stats, asks: [], regenApplied: {},
     statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name,
   };
 };

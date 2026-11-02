@@ -89,7 +89,7 @@ export function bundledWorldHarness(raw: string) {
         },
         owners: [{ id: persona.id, stats, enabled }],
       },
-      previous: globalPrevious, asks: [], regenApplied: {},
+      previous: globalPrevious, asks: [], regenApplied: {}, switchRowOrder: [],
       ownerTurns: { [persona.id]: { previous, regenApplied: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     };

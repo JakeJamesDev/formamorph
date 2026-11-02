@@ -316,7 +316,7 @@ A timing adds names to the ones every script reads. The editor's **Variable** me
 | 4 | The AI's stat changes apply |
 | 5 | Regen applies |
 | 6 | **After the AI** runs |
-| 7 | **When a Trait Switches** runs right after any step above that switches a trait |
+| 7 | **When a Trait Switches** runs right after any step above that switches a trait. After a script's switch, it runs before the next script |
 
 **Before the AI** runs before the prompt is built. The prompt for that turn holds each value it sets, each placeholder it pins and each trait it switches. A value it sets shows on the bar while the AI writes.
 
@@ -363,7 +363,7 @@ The script runs once for each trait that turns on or off during a game, whatever
 - A requirement that stops holding
 - A persona change
 
-Setup picks and a loaded save skip these scripts. So does a trait that switches and switches back inside one action.
+Setup picks and a loaded save skip these scripts. So does a trait that switches and switches back inside one script, or across one reply in During AI Output.
 
 - A script in this timing reads `trait`: the trait that switched, with `enabled` set to its new state (see [Trait](Scripts-Reference#trait)).
 - A trait's own script also has `self`. It runs on its own switch-off too. That is the one time a trait's script runs while the trait is off.

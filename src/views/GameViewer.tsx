@@ -3871,7 +3871,7 @@ const GameViewer = ({
           ...(health && healthLoss !== null ? { penalties: { [health.id]: healthLoss } } : {}),
           statNameOf: (stat) => resolvePH(stat.name),
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
-          worldScripts, rowOrder: runRowKeys(scriptTabWorld, timing),
+          worldScripts, rowOrder: runRowKeys(scriptTabWorld, timing), switchRowOrder: runRowKeys(scriptTabWorld, 'switch'),
           ...(triggers?.length ? { triggers } : {}),
         };
         /** What the run left, in the shapes state holds, with nothing landed; null when it changed nothing. */

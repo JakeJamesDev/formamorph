@@ -536,7 +536,7 @@ The Timing that runs once for each new playthrough, on the opening turn, before 
 _Avoid_: on load, setup script, init
 
 **When a Trait Switches**:
-The Timing that runs once for each trait that turns on or off in play, whatever switched it. The script reads `trait`, the trait that switched, with `enabled` as its new state. Setup picks fire nothing.
+The Timing that runs once for each trait that turns on or off in play, whatever switched it. The script reads `trait`, the trait that switched, with `enabled` as its new state. A script's switch runs it before the next script, nested; a During AI Output switch waits for the After the AI landing. Setup picks fire nothing.
 _Avoid_: on toggle, trait hook, trait event
 
 **Item timings**:
