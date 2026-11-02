@@ -29,7 +29,8 @@ const store: Record<string, Ratings> = JSON.parse(readFileSync(storeUrl, "utf8")
 const ratings = store[accent] ?? {};
 
 const setWords = (name: string): string[] => {
-  const data = JSON.parse(readFileSync(new URL(`./sets/${name}.json`, import.meta.url), "utf8"));
+  const file = name === "britishWords" ? "../../src/lib/tts/g2p/britishWords.json" : `./sets/${name}.json`;
+  const data = JSON.parse(readFileSync(new URL(file, import.meta.url), "utf8"));
   return Array.isArray(data) ? data : Object.keys(data);
 };
 const readArms = (specs: string[]): Record<string, Record<string, string>> =>

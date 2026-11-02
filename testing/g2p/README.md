@@ -38,10 +38,11 @@ node testing/g2p/scoreCli.mjs --predictions .scratch/g2p/pred/onnx-fp16.json
 
 A pipeline is either `--predictions <word-to-phonemes.json>` or `--module <file>` whose default export is `async (word, accent) => phonemes`. A TypeScript module runs through `npx vite-node testing/g2p/scoreCli.mjs`. Add `--accent b` for British.
 
-The shipped American pipeline is [`pipeline.ts`](pipeline.ts):
+The shipped pipeline is [`pipeline.ts`](pipeline.ts), for American and British voices:
 
 ```bash
 npx vite-node testing/g2p/scoreCli.mjs --module testing/g2p/pipeline.ts
+npx vite-node testing/g2p/scoreCli.mjs --module testing/g2p/pipeline.ts --accent b
 ```
 
 The script fetches WikiPron at run time, checks its git blob hash, and caches it under `node_modules`. WikiPron is CC BY-SA, so **nothing derived from its pronunciations is ever committed**.
@@ -67,8 +68,9 @@ npx vite-node testing/g2p/ratingPage.ts tally fantasy new=.scratch/g2p/pred/pipe
 ```
 
 - [`sentences`](sets/sentences.json) checks weak forms in whole sentences. It has no carrier and no bar.
+- `britishWords` is the hand-written [British word list](../../src/lib/tts/g2p/britishWords.json). Each entry goes on this rating page.
 
 - `build` makes a page of blind clips. Pass several `arm=file` pairs to compare, and the page never says which arm said what.
 - A string already rated for that word is carried from [`ratings.json`](ratings.json), so you only hear what is new.
-- Add `--accent b` for British voices. Those ratings are kept apart.
+- Add `--accent b` for British voices, and pass `b` to `writePredictions.ts`. Those ratings are kept apart.
 - The store holds only strings from our own pipeline. The full record of the first passes is in [`ear-test-strange-words.md`](../../docs-internal/specs/espeak-ng-replacement/ear-test-strange-words.md).

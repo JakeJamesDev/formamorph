@@ -182,6 +182,8 @@ describe('the shipped notices file', () => {
     ['LLVM OpenMP', 'LLVM Exceptions'],
     ['eSpeak NG', 'GNU GENERAL PUBLIC LICENSE'],
     ['eSpeak NG', 'Version 3, 29 June 2007'],
+    ['phonemize', 'Copyright (c) 2025 Hans'],
+    ['phonemize', 'Permission is hereby granted'],
     ['Android libraries', 'Apache License'],
   ])('%s carries %s', (name, wording) => {
     expect(text(name).includes(wording)).toBe(true);

@@ -1,8 +1,12 @@
 import { arpabetToKokoro, parseCmudictLine } from "./arpabet";
+import { toBritish } from "./britishRules";
 import { cleanText } from "./textCleanup";
 import compoundWords from "./g2p/compoundWords.json";
+import britishWords from "./g2p/britishWords.json";
 import weakForms from "./g2p/weakForms.json";
 import wordTable from "./g2p/wordTable.json";
+
+export type Accent = "a" | "b";
 
 export interface TextToPhonemesSources {
   /** The result of `parseDictionary`. */
@@ -23,6 +27,7 @@ const SIBILANT_END = /[szʃʒʧʤ]$/;
 const NO_BARE_S = /(?:ss|us)$/i;
 
 const table = new Map<string, string>(Object.entries(wordTable));
+const british = new Map<string, string>(Object.entries(britishWords));
 const weak = new Map(Object.entries(weakForms).map(([word, form]) => [word, arpabetToKokoro(form)]));
 const commonShort = new Set<string>(compoundWords);
 
@@ -41,9 +46,19 @@ function endingFor(stem: string): string {
   return VOICELESS_END.test(stem) ? "s" : "z";
 }
 
+/** A British list word, or its regular plural or possessive, as in tomatoes. */
+function fromBritishList(lower: string): string | undefined {
+  const hit = british.get(lower);
+  if (hit !== undefined) return hit;
+  const ending = /^(.+?)(?:'s|es|s)$/.exec(lower);
+  const stem = ending && (british.get(ending[1]) ?? british.get(`${ending[1]}e`));
+  return stem ? stem + endingFor(stem) : undefined;
+}
+
 /**
- * Builds the American text-to-phoneme call. Each word takes the first source that has it:
+ * Builds the text-to-phoneme call. Each word takes the first source that has it:
  * word table, CMUdict, compound split, a regular ending on one of those, then the model.
+ * British rules apply to every source's result, so word table entries stay American.
  */
 export function createTextToPhonemes({ dictionary: primary, predict }: TextToPhonemesSources) {
   const said = new Map<string, string>();
@@ -72,15 +87,25 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
     return fromDictionary(best[0])! + fromDictionary(best[1])!.replace(/ˈ/g, "ˌ");
   };
 
-  const spell = (letters: string): string => {
-    const names = [...letters.toLowerCase()].map((letter) => (letter === "a" ? "ˈA" : fromDictionary(letter) ?? ""));
+  const spell = (letters: string, inAccent?: (letter: string, name: string) => string): string => {
+    const names = [...letters.toLowerCase()].map((letter) => {
+      const name = letter === "a" ? "ˈA" : fromDictionary(letter) ?? "";
+      return inAccent ? inAccent(letter, name) : name;
+    });
     return names.map((name, i) => (i < names.length - 1 ? name.replace(/ˈ/g, "ˌ") : name)).join("");
   };
 
   /** Short capitals, and capitals with no vowel, read as letters when no dictionary has them. */
-  const fromCapitals = (word: string): string | undefined => {
+  const fromCapitals = (word: string, inAccent?: (letter: string, name: string) => string): string | undefined => {
     if (!/^[A-Z]{2,5}$/.test(word)) return undefined;
-    return word.length <= 3 || !/[AEIOUY]/.test(word) ? spell(word) : undefined;
+    return word.length <= 3 || !/[AEIOUY]/.test(word) ? spell(word, inAccent) : undefined;
+  };
+
+  /** Letters take the rules one at a time, so an /r/ in R stays out of the next letter's vowel. */
+  const britishCapitals = (word: string): string | undefined => {
+    const lower = word.toLowerCase();
+    const known = table.get(lower) ?? fromDictionary(lower);
+    return known === undefined || known === fromCapitals(word) ? fromCapitals(word, toBritish) : undefined;
   };
 
   const fromKnown = (word: string): string | undefined => {
@@ -117,7 +142,8 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
     return phonemes;
   };
 
-  return async function textToPhonemes(text: string): Promise<string> {
+  return async function textToPhonemes(text: string, accent: Accent = "a"): Promise<string> {
+    const inAccent = (word: string, american: string) => (accent === "b" ? toBritish(word, american) : american);
     const tokens = cleanText(text).match(TOKEN) ?? [];
     let out = "";
     let afterWord = false;
@@ -136,14 +162,15 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
       afterWord = true;
       const run = SPELLED_RUN.exec(word);
       if (run) {
-        const letters = spell(run[1].replace(/-/g, ""));
+        const letters = spell(run[1].replace(/-/g, ""), inAccent);
         out += run[2] ? letters + endingFor(letters) : letters;
       } else {
         const next = tokens.slice(i + 1).find((later) => !/^\s/.test(later));
         const strong = next === undefined || PHRASE_END.test(next) || (insideQuote && next.startsWith('"'));
         const shouted = word.length > 1 && word === word.toUpperCase();
         const reduced = strong || shouted ? undefined : weak.get(word.toLowerCase());
-        out += reduced ?? await sayWord(word);
+        const listed = accent === "b" && reduced === undefined ? fromBritishList(word.toLowerCase()) ?? britishCapitals(word) : undefined;
+        out += listed ?? inAccent(word, reduced ?? await sayWord(word));
       }
     }
     return out.replace(/ +/g, " ").trim();

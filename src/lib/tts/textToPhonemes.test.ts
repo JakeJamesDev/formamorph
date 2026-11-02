@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { arpabetToKokoro, parseCmudictLine } from "./arpabet";
+import { toBritish } from "./britishRules";
+import britishWords from "./g2p/britishWords.json";
 import compoundWords from "./g2p/compoundWords.json";
 import vocab from "./g2p/vocab.json";
 import weakForms from "./g2p/weakForms.json";
@@ -287,9 +289,205 @@ describe("text cleanup", () => {
   });
 });
 
+describe("British accent", () => {
+  const british = async (text: string) => setup().say(text, "b");
+
+  it.each([
+    ["car", "kˈɑː"],
+    ["bird", "bˈɜːd"],
+    ["near", "nˈɪə"],
+    ["door", "dˈɔː"],
+    ["there", "ðˈɛː"],
+    ["sure", "ʃˈʊə"],
+    ["fire", "fˈIə"],
+    ["water", "wˈɔːtə"],
+  ])("non-rhotic: %s is %s", async (word, phonemes) => {
+    expect(await british(word)).toBe(phonemes);
+  });
+
+  it("keeps an /r/ before a vowel", async () => {
+    expect(await british("very")).toBe("vˈɛɹi");
+    expect(await british("story")).toBe("stˈɔːɹi");
+  });
+
+  it.each([
+    ["care", "kˈɛː"],
+    ["share", "ʃˈɛː"],
+    ["prepare", "pɹipˈɛː"],
+    ["wearing", "wˈɛːɹɪŋ"],
+    ["caring", "kˈɛːɹɪŋ"],
+    ["furry", "fˈɜːɹi"],
+    ["stirring", "stˈɜːɹɪŋ"],
+    ["occurring", "əkˈɜːɹɪŋ"],
+    ["hurry", "hˈʌɹi"],
+    ["abhorred", "əbhˈɔːd"],
+    ["forestall", "fɔːstˈɔːl"],
+    ["warring", "wˈɔːɹɪŋ"],
+    ["until", "əntˈɪl"],
+    ["unless", "ənlˈɛs"],
+    ["sauce", "sˈɔːs"],
+    ["author", "ˈɔːθə"],
+    ["avocado", "ˌavəkˈɑːdQ"],
+    ["almond", "ˈɑːmənd"],
+    ["macho", "mˈɑːʧQ"],
+    ["sabbath", "sˈabəθ"],
+    ["ballast", "bˈaləst"],
+    ["psychopath", "sˈIkQpˌaθ"],
+    ["fastest", "fˈɑːstəst"],
+    ["exhausted", "ɪɡzˈɔːstɪd"],
+    ["bathroom", "bˈɑːθɹˌuːm"],
+    ["MRI", "ˌɛmˌɑːˈI"],
+    ["dancer", "dˈɑːnsə"],
+    ["dancing", "dˈɑːnsɪŋ"],
+    ["laughter", "lˈɑːftə"],
+    ["disastrous", "dɪzˈɑːstɹəs"],
+    ["bypass", "bˈIpˌɑːs"],
+    ["hourglass", "ˈWəɡlˌɑːs"],
+    ["implant", "ˌɪmplˈɑːnt"],
+    ["nutrition", "njutɹˈɪʃən"],
+    ["during", "djˈʊɹɪŋ"],
+  ])("%s is %s", async (word, phonemes) => {
+    expect(await british(word)).toBe(phonemes);
+  });
+
+  it("the British word list covers a regular plural and possessive", async () => {
+    expect(await british("tomatoes")).toBe(`${britishWords.tomato}z`);
+    expect(await british("schedules")).toBe(`${britishWords.schedule}z`);
+    expect(await british("vases")).toBe(`${britishWords.vase}ɪz`);
+    expect(await british("clerk's")).toBe(`${britishWords.clerk}s`);
+  });
+
+  it.each([
+    ["bath", "bˈɑːθ"],
+    ["glass", "ɡlˈɑːs"],
+    ["after", "ˈɑːftə"],
+    ["dance", "dˈɑːns"],
+  ])("bath vowel: %s is %s", async (word, phonemes) => {
+    expect(await british(word)).toBe(phonemes);
+  });
+
+  it.each([
+    ["gas", "ɡˈas"],
+    ["cat", "kˈat"],
+    ["plastic", "plˈastɪk"],
+    ["passage", "pˈasɪʤ"],
+    ["sympathy", "sˈɪmpəθi"],
+    ["ambulance", "ˈambjələns"],
+  ])("trap vowel stays: %s is %s", async (word, phonemes) => {
+    expect(await british(word)).toBe(phonemes);
+  });
+
+  it.each([
+    ["hot", "hˈɒt"],
+    ["wash", "wˈɒʃ"],
+    ["long", "lˈɒŋ"],
+    ["cloth", "klˈɒθ"],
+    ["forest", "fˈɒɹəst"],
+  ])("lot vowel: %s is %s", async (word, phonemes) => {
+    expect(await british(word)).toBe(phonemes);
+  });
+
+  it("father keeps the palm vowel and fallen takes the thought vowel", async () => {
+    expect(await british("father")).toBe("fˈɑːðə");
+    expect(await british("fallen")).toBe("fˈɔːlən");
+  });
+
+  it.each([
+    ["go", "ɡˈQ"],
+    ["road", "ɹˈQd"],
+    ["window", "wˈɪndQ"],
+  ])("goat vowel: %s is %s", async (word, phonemes) => {
+    expect(await british(word)).toBe(phonemes);
+  });
+
+  it.each([
+    ["new", "njˈuː"],
+    ["student", "stjˈuːdənt"],
+    ["noon", "nˈuːn"],
+    ["do", "dˈuː"],
+    ["city", "sˈɪti"],
+    ["capital", "kˈapɪtəl"],
+    ["wanted", "wˈɒntɪd"],
+    ["military", "mˈɪlɪtəɹi"],
+    ["unhappy", "ʌnhˈapi"],
+    ["serious", "sˈɪəɹiəs"],
+    ["charity", "ʧˈaɹɪti"],
+    ["area", "ˈɛːɹiə"],
+  ])("other British forms: %s is %s", async (word, phonemes) => {
+    expect(await british(word)).toBe(phonemes);
+  });
+
+  it("applies the rules to word table entries, which stay American", async () => {
+    expect(wordTable.wyvern).toContain("əɹ");
+    expect(await british("wyvern")).toBe("wˈIvən");
+    expect(await british("kraken")).toBe("kɹˈɑːkən");
+    expect(await british("asgard")).toBe("ˈazɡɑːd");
+  });
+
+  it("applies the rules to a split and to the model's result", async () => {
+    expect(await british("Emberwatch")).toBe("ˈɛmbəwˌɒʧ");
+    const predict = vi.fn(async () => "zˈOɹɑθ");
+    const say = createTextToPhonemes({ dictionary, predict });
+    expect(await say("zorath", "b")).toBe("zˈQɹɑːθ");
+    expect(await say("zorath")).toBe("zˈOɹɑθ");
+  });
+
+  it("drops a coda /r/ after any vowel the model pairs it with", async () => {
+    const say = createTextToPhonemes({ dictionary, predict: async () => "kˈAɹd" });
+    expect(await say("kaird", "b")).toBe("kˈAd");
+  });
+
+  it("the British word list beats every source and leaves weak forms alone", async () => {
+    expect(await british("tomato")).toBe(britishWords.tomato);
+    expect(await british("of")).toBe(britishWords.of);
+    expect(await british("a cup of tea")).toContain("əv");
+    expect(await british("a cup of tea")).not.toContain(britishWords.of);
+  });
+
+  it("applies the rules to weak forms and spelled runs", async () => {
+    expect(await british("tea for two")).toBe("tˈiː fə tˈuː");
+    expect(await british("R-O")).toBe("ˌɑːˈQ");
+  });
+
+  it("American output ignores every British source", async () => {
+    const text = "The road near the bath was long, and a new car of tomato wyverns went after Emberwatch.";
+    const { say } = setup();
+    const american = await say(text);
+    expect(await say(text, "a")).toBe(american);
+    expect(american).toContain(cmu("road"));
+    expect(american).toContain(cmu("bath"));
+    expect(american).toContain(cmu("tomato"));
+    expect(american).toContain(cmu("near"));
+    expect(american).not.toMatch(/ː|Q|ɒ/);
+    expect(await say(text, "b")).not.toBe(american);
+  });
+
+  it("one call's accent does not stay in the cache for the next call", async () => {
+    const { say } = setup();
+    expect(await say("road", "b")).toBe("ɹˈQd");
+    expect(await say("road", "a")).toBe(cmu("road"));
+    expect(await say("road", "b")).toBe("ɹˈQd");
+  });
+});
+
 describe("Kokoro notation", () => {
   it.each(Object.entries(wordTable))("%s uses only symbols Kokoro accepts", (_, phonemes) => {
     expect([...phonemes].filter((symbol) => !KOKORO_SYMBOLS.has(symbol))).toEqual([]);
+  });
+
+  it.each(Object.entries(britishWords))("British %s uses only symbols Kokoro accepts", (_, phonemes) => {
+    expect([...phonemes].filter((symbol) => !KOKORO_SYMBOLS.has(symbol))).toEqual([]);
+  });
+
+  it("the British word list holds only words the rules do not reach", () => {
+    const reached = Object.entries(britishWords).filter(([word, phonemes]) => toBritish(word, cmu(word)) === phonemes);
+    expect(reached).toEqual([]);
+  });
+
+  it("British rules leave only symbols Kokoro accepts over every dictionary word", () => {
+    const bad = [...dictionary].filter(([word, entry]) =>
+      [...toBritish(word, arpabetToKokoro(entry))].some((symbol) => !KOKORO_SYMBOLS.has(symbol)));
+    expect(bad).toEqual([]);
   });
 
   it("the model and weak forms use only symbols Kokoro accepts", () => {
