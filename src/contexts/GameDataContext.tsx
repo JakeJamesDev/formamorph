@@ -45,7 +45,7 @@ import {
 } from '@/lib/items';
 import { parseBodies, withoutBodyRows, withoutEntityBodyRefs, withoutSlotEntries } from '@/lib/bodies';
 import { parseCurrencies } from '@/lib/currency';
-import { lostStatIds, withoutBackingStats, withoutCoinItem, withoutCurrencyRefs } from '@/lib/currencyDeletes';
+import { lostStatIds, withoutBackingStats, withoutCurrencyItem, withoutCurrencyRefs } from '@/lib/currencyDeletes';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
 import type { SliceName, WorldSlices } from '@/lib/editorHistory';
@@ -390,11 +390,11 @@ function useProvideGameData() {
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
   }, []);
 
-  // An item's placements place nothing once it is gone, and its coin rows go: the last coin leaves a name-only Currency.
+  // An item's placements place nothing once it is gone, and its Currency Item rows go: the last one leaves a name-only Currency.
   const removeItem = useCallback((itemId: string) => {
     setItems(prev => prev.filter(item => item.id !== itemId));
     setPlacements(prev => withoutItemPlacements(prev, itemId));
-    setCurrencies(prev => withoutCoinItem(prev, itemId));
+    setCurrencies(prev => withoutCurrencyItem(prev, itemId));
   }, []);
 
   // Items priced in a removed Currency lose it and keep their Value.

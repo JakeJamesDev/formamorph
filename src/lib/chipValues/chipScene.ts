@@ -67,7 +67,7 @@ export interface ChipScene {
   runtimeItems?: readonly RuntimeItem[];
   /** The world's Currencies. None when absent. */
   currencies?: readonly Currency[];
-  /** The world's Placements, which say whose coin balance the author set. None when absent. */
+  /** The world's Placements, which say whose balance the author set. None when absent. */
   placements?: readonly Placement[];
   /** What each owner's slots in force read: the Bodies, the slots, the Body picks, and the played persona. No
    *  slots when absent. */

@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Coins, Copy, Shield, X } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Hint } from '@/components/ui/typography';
-import { coinItemKind } from '@/lib/currencyDeletes';
+import { currencyItemKind } from '@/lib/currencyDeletes';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { usedByText } from '@/lib/usedByText';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
@@ -57,10 +57,10 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
     removeItem(id);
     if (selectedId === id) onSelect(null);
   };
-  // An item that is a coin asks first, naming the Currency; any other item goes at once.
+  // An item that is a Currency Item asks first, naming the Currency; any other item goes at once.
   const askRemove = (id: string) => {
     const item = byId.get(id);
-    const text = usedByText([coinItemKind(currencies, id, (name) => labelPlaceholders(name, placeholders))]);
+    const text = usedByText([currencyItemKind(currencies, id, (name) => labelPlaceholders(name, placeholders))]);
     if (item && text) setPending({ id, name: item.name, text });
     else remove(id);
   };

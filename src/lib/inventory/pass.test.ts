@@ -474,12 +474,12 @@ describe("the pass's named slot (Q37, Q41, Q65)", () => {
 describe('pay', () => {
   const copper = item('copper', 'Copper');
   const gold = item('gold', 'Gold');
-  const COIN: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+  const MONEY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
   const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
   const funds = (value: number, over: Partial<PlayerStat> = {}): PlayerStat =>
     ({ id: 'funds', name: 'Funds', type: 'number', description: '', min: 0, max: 100, value, regen: 0, descriptors: [], ...over });
   const money = (over: Partial<PassMoney> = {}): PassMoney => ({
-    currencies: [COIN], placements: [], stats: { globalStats: [], entityStats: {} }, playedIds: ['hero'], statsOn: (_owner, stats) => stats, ...over,
+    currencies: [MONEY], placements: [], stats: { globalStats: [], entityStats: {} }, playedIds: ['hero'], statsOn: (_owner, stats) => stats, ...over,
   });
   const pay = (owner: string, to: string, price: string, currency?: string) =>
     op('pay', '', { owner, to, price, ...(currency && { currency }) });
@@ -524,7 +524,7 @@ describe('pay', () => {
     expect(parseInventoryLines('lose |  | 1 | you')).toEqual([]);
   });
 
-  it('settles coins between present owners, and a tracked entity keeps them', () => {
+  it('settles items between present owners, and a tracked entity keeps them', () => {
     const placements: Placement[] = [{ id: 'p', source: { kind: 'item', itemId: 'copper' }, where: mara, quantity: 1 }];
     const { copies, diagnostics } = settle([copy('g', 'gold', you, { quantity: 1 })], [pay('you', 'Mara', '1 Gold')], { placements });
     expect(diagnostics).toEqual([]);
@@ -564,11 +564,11 @@ describe('pay', () => {
   });
 
   it('refuses a price in one Currency against a purse of another (Q26)', () => {
-    const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'coins', coins: [{ itemId: 'shell', worth: 1 }] } };
+    const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'items', items: [{ itemId: 'shell', worth: 1 }] } };
     const shell = item('shell', 'Shell');
     const start = [copy('s', 'shell', you, { quantity: 50 })];
     const { copies, diagnostics } = applyInventoryPass(start, [pay('you', '', '1 Copper')],
-      scene({ items: [copper, gold, shell], money: money({ currencies: [COIN, SHELLS] }) }), { world: { items: [copper, gold, shell] }, newId: ids() });
+      scene({ items: [copper, gold, shell], money: money({ currencies: [MONEY, SHELLS] }) }), { world: { items: [copper, gold, shell] }, newId: ids() });
     expect(copies).toEqual(start);
     expect(diagnostics).toHaveLength(1);
   });
@@ -587,13 +587,13 @@ describe('pay', () => {
     expect(result.diagnostics).toHaveLength(1);
   });
 
-  it('counts a reply that pays and also moves the coins by hand once', () => {
+  it('counts a reply that pays and also moves the items by hand once', () => {
     const { copies, diagnostics } = settle([], [op('gain', 'Copper', { quantity: 4, to: 'you' }), pay('Mara', 'you', '4 Copper')]);
     expect(counts(copies, you)).toEqual({ copper: 4 });
     expect(diagnostics).toEqual([expect.stringContaining('covers this money')]);
   });
 
-  it('charges nothing when a refused pay comes with a hand move of the coins (Q56)', () => {
+  it('charges nothing when a refused pay comes with a hand move of the items (Q56)', () => {
     const start = [copy('c', 'copper', you, { quantity: 3 })];
     const { copies, diagnostics } = settle(start, [pay('you', 'Mara', '5 Copper'), op('lose', 'Copper', { quantity: 3, owner: 'you' })]);
     expect(copies).toEqual(start);
@@ -610,11 +610,11 @@ describe('pay', () => {
     expect(settle([], [op('gain', 'Copper', { quantity: 4, to: 'you' }), pay('Mara', 'you', 'a fair sum')]).copies).toEqual([]);
   });
 
-  it("leaves another Currency's coins to their hand move", () => {
+  it("leaves another Currency's items to their hand move", () => {
     const shell = item('shell', 'Shell');
-    const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'coins', coins: [{ itemId: 'shell', worth: 1 }] } };
+    const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'items', items: [{ itemId: 'shell', worth: 1 }] } };
     const { copies } = applyInventoryPass([], [op('gain', 'Shell', { quantity: 2, to: 'you' }), pay('', 'you', '1 Copper')],
-      scene({ items: [copper, gold, shell], money: money({ currencies: [COIN, SHELLS] }) }), { world: { items: [copper, gold, shell] }, newId: ids() });
+      scene({ items: [copper, gold, shell], money: money({ currencies: [MONEY, SHELLS] }) }), { world: { items: [copper, gold, shell] }, newId: ids() });
     expect(counts(copies, you)).toEqual({ shell: 2, copper: 1 });
   });
 
@@ -649,7 +649,7 @@ describe('pay', () => {
     expect(result.stats?.entityStats.hero[0].value).toBe(45);
   });
 
-  it('counts a repeated lose of coins twice: only a gain creates money', () => {
+  it('counts a repeated lose of items twice: only a gain creates money', () => {
     const lose = op('lose', 'Copper', { owner: 'you' });
     expect(counts(settle([copy('c', 'copper', you, { quantity: 5 })], [lose, lose]).copies, you)).toEqual({ copper: 3 });
   });

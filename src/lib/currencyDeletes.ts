@@ -1,4 +1,4 @@
-import { coinsOf } from '@/lib/currency';
+import { itemsOf } from '@/lib/currency';
 import { usedByText, type ReferenceKind } from '@/lib/usedByText';
 import type { Currency, Entity, Item, Stat } from '@/types';
 
@@ -27,20 +27,20 @@ export function withoutBackingStats(currencies: Currency[], ids: ReadonlySet<str
   ));
 }
 
-/** The Currencies with a coin row for the item. */
-export const currenciesCoinedBy = (currencies: readonly Currency[], itemId: string): Currency[] =>
-  currencies.filter((currency) => coinsOf(currency).some((coin) => coin.itemId === itemId));
+/** The Currencies with a Currency Item row for the item. */
+export const currenciesWithItem = (currencies: readonly Currency[], itemId: string): Currency[] =>
+  currencies.filter((currency) => itemsOf(currency).some((row) => row.itemId === itemId));
 
 /**
- * `currencies` without the item's coin rows. A Currency that loses its last row becomes name only; one that keeps
- * rows stays coin-backed, even when the base coin is the row that went. The same list when none holds the item.
+ * `currencies` without the item's Currency Item rows. A Currency that loses its last row becomes name only; one that keeps
+ * rows stays Items-backed, even when the base Item is the row that went. The same list when none holds the item.
  */
-export function withoutCoinItem(currencies: Currency[], itemId: string): Currency[] {
-  if (currenciesCoinedBy(currencies, itemId).length === 0) return currencies;
+export function withoutCurrencyItem(currencies: Currency[], itemId: string): Currency[] {
+  if (currenciesWithItem(currencies, itemId).length === 0) return currencies;
   return currencies.map((currency) => {
-    if (currency.backing.kind !== 'coins' || !currency.backing.coins.some((coin) => coin.itemId === itemId)) return currency;
-    const coins = currency.backing.coins.filter((coin) => coin.itemId !== itemId);
-    return { ...currency, backing: coins.length > 0 ? { kind: 'coins', coins } : { kind: 'name' } };
+    if (currency.backing.kind !== 'items' || !currency.backing.items.some((row) => row.itemId === itemId)) return currency;
+    const kept = currency.backing.items.filter((row) => row.itemId !== itemId);
+    return { ...currency, backing: kept.length > 0 ? { kind: 'items', items: kept } : { kind: 'name' } };
   });
 }
 
@@ -76,18 +76,18 @@ export const backingStatKind = (
   currencies: readonly Currency[], ids: ReadonlySet<string>, label: (name: string) => string,
 ): ReferenceKind => nameOnlyKind(currenciesBackedBy(currencies, ids), label);
 
-/** The confirm kind for deleting an item that is a coin. Count zero when it is none. */
-export const coinItemKind = (
+/** The confirm kind for deleting an item that is a Currency Item. Count zero when it is none. */
+export const currencyItemKind = (
   currencies: readonly Currency[], itemId: string, label: (name: string) => string,
 ): ReferenceKind => {
-  const held = currenciesCoinedBy(currencies, itemId);
-  const lastCoin = held.length > 0 && held.every((currency) => coinsOf(currency).length === 1);
+  const held = currenciesWithItem(currencies, itemId);
+  const lastItem = held.length > 0 && held.every((currency) => itemsOf(currency).length === 1);
   return {
     count: held.length,
     one: 'Currency',
     many: 'Currencies',
     named: namesOf(held, label),
-    clause: (who) => (lastCoin ? `makes ${who} Name Only` : `removes its coin row from ${who}`),
+    clause: (who) => (lastItem ? `makes ${who} Name Only` : `removes its item row from ${who}`),
   };
 };
 

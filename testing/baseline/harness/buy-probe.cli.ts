@@ -50,12 +50,12 @@ const location = world.locations.find((candidate) => candidate.id === 'loc-sedge
 if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
 
 const item = (id: string, name: string, over: Partial<Item> = {}): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], stackable: true, ...over });
-const COINS: Currency = { id: 'river-coin', name: 'River Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }] } };
+const MONEY: Currency = { id: 'river-coin', name: 'River Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }] } };
 const SCRIP: Currency = { id: 'scrip', name: 'Scrip', backing: { kind: 'stat', statId: 'stat-scrip' } };
 const priced = (currencyId: string) => [
   item('knife', 'Gutting Knife', { value: 30, currencyId }), item('lantern', 'Tin Lantern', { value: 25, currencyId }), item('net', 'Fishing Net', { value: 90, currencyId }),
 ];
-const COIN_ITEMS = [item('copper', 'Copper'), item('silver', 'Silver'), ...priced('river-coin')];
+const BACKING_ITEMS = [item('copper', 'Copper'), item('silver', 'Silver'), ...priced('river-coin')];
 const STAT_ITEMS = priced('scrip');
 const ODETTE = 'ent-odette';
 const PURSE: Placement = { id: 'purse', where: { kind: 'entity', id: ODETTE }, quantity: 10, source: { kind: 'item', itemId: 'silver' } };
@@ -66,39 +66,39 @@ const copy = (itemId: string, where: ItemCopyWhere, quantity = 1): ItemCopy => (
 });
 const you: ItemCopyWhere = { kind: 'you' };
 const odette: ItemCopyWhere = { kind: 'entity', id: ODETTE };
-const COIN_COPIES = [copy('silver', you, 5), copy('silver', odette, 10), copy('knife', you), copy('lantern', odette), copy('net', odette)];
+const BACKING_COPIES = [copy('silver', you, 5), copy('silver', odette, 10), copy('knife', you), copy('lantern', odette), copy('net', odette)];
 const STAT_COPIES = [copy('knife', you), copy('lantern', odette), copy('net', odette)];
 
-type Money = 'coins' | 'stat';
+type Money = 'items' | 'stat';
 /** `change` is the player's balance change the story states; `holds` is how many of `itemId` the player ends with. */
 type Case = { id: string; money: Money; action: string; narration: string; change: number; itemId: string; holds: number; wantsBuy: boolean };
 const CASES: Case[] = [
   {
-    id: 'buy-value', money: 'coins', action: 'I buy the tin lantern from Odette.', itemId: 'lantern', holds: 1, change: -25, wantsBuy: true,
+    id: 'buy-value', money: 'items', action: 'I buy the tin lantern from Odette.', itemId: 'lantern', holds: 1, change: -25, wantsBuy: true,
     narration: 'Odette lifts the tin lantern from its hook and sets it on the counter. You count out what it is worth and she slides it across to you.',
   },
   {
-    id: 'haggle', money: 'coins', action: 'I talk Odette down on the lantern.', itemId: 'lantern', holds: 1, change: -15, wantsBuy: true,
+    id: 'haggle', money: 'items', action: 'I talk Odette down on the lantern.', itemId: 'lantern', holds: 1, change: -15, wantsBuy: true,
     narration: '"Fifteen copper, and not a coin less," Odette says at last. You pay her fifteen copper and she hands you the tin lantern.',
   },
   {
-    id: 'sell', money: 'coins', action: 'I sell my gutting knife to Odette.', itemId: 'knife', holds: 0, change: 30, wantsBuy: true,
+    id: 'sell', money: 'items', action: 'I sell my gutting knife to Odette.', itemId: 'knife', holds: 0, change: 30, wantsBuy: true,
     narration: 'You lay the gutting knife on the counter. Odette tests the edge, nods, and pays you what it is worth before tucking it under her apron.',
   },
   {
-    id: 'sell-haggle', money: 'coins', action: 'I ask Odette for a better price on my knife.', itemId: 'knife', holds: 0, change: 40, wantsBuy: true,
+    id: 'sell-haggle', money: 'items', action: 'I ask Odette for a better price on my knife.', itemId: 'knife', holds: 0, change: 40, wantsBuy: true,
     narration: '"Four silver, then," Odette says. She counts four silver into your hand and takes the gutting knife.',
   },
   {
-    id: 'buy-broke', money: 'coins', action: 'I buy the fishing net from Odette.', itemId: 'net', holds: 0, change: 0, wantsBuy: true,
+    id: 'buy-broke', money: 'items', action: 'I buy the fishing net from Odette.', itemId: 'net', holds: 0, change: 0, wantsBuy: true,
     narration: 'Odette names her price for the fishing net: nine silver. You hand it over and she drops the net into your arms.',
   },
   {
-    id: 'talk-price', money: 'coins', action: 'I ask Odette what the lantern costs.', itemId: 'lantern', holds: 0, change: 0, wantsBuy: false,
+    id: 'talk-price', money: 'items', action: 'I ask Odette what the lantern costs.', itemId: 'lantern', holds: 0, change: 0, wantsBuy: false,
     narration: '"Two silver and five copper," Odette says, tapping the tin lantern. You thank her and leave it on its hook, and your coins stay in your purse.',
   },
   {
-    id: 'gift', money: 'coins', action: 'I ask Odette if I can have the lantern.', itemId: 'lantern', holds: 1, change: 0, wantsBuy: false,
+    id: 'gift', money: 'items', action: 'I ask Odette if I can have the lantern.', itemId: 'lantern', holds: 1, change: 0, wantsBuy: false,
     narration: '"Take it, it was my late husband\'s," Odette says, and she presses the tin lantern into your hands. She will not hear of payment.',
   },
   {
@@ -140,12 +140,12 @@ const baseScene = authoredChipScene(world, {
   resolve: (text: string) => text,
   resolveEntity: (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
 });
-const itemsOf = (c: Case) => (c.money === 'coins' ? COIN_ITEMS : STAT_ITEMS);
-const copiesOf = (c: Case) => (c.money === 'coins' ? COIN_COPIES : STAT_COPIES);
+const itemsOf = (c: Case) => (c.money === 'items' ? BACKING_ITEMS : STAT_ITEMS);
+const copiesOf = (c: Case) => (c.money === 'items' ? BACKING_COPIES : STAT_COPIES);
 const statsOf = (c: Case): PlayerStat[] => (c.money === 'stat' ? [WALLET, ...baseScene.stats] : baseScene.stats);
-const currenciesOf = (c: Case) => [c.money === 'stat' ? SCRIP : COINS];
+const currenciesOf = (c: Case) => [c.money === 'stat' ? SCRIP : MONEY];
 const ctxFor = (c: Case) => chipValues({
-  ...baseScene, stats: statsOf(c), items: itemsOf(c), itemCopies: copiesOf(c), currencies: currenciesOf(c), placements: c.money === 'coins' ? [PURSE] : [],
+  ...baseScene, stats: statsOf(c), items: itemsOf(c), itemCopies: copiesOf(c), currencies: currenciesOf(c), placements: c.money === 'items' ? [PURSE] : [],
 });
 const balance = (c: Case, copies: readonly ItemCopy[], stats: readonly PlayerStat[]) => {
   const read = balanceOf(currenciesOf(c)[0], you as { kind: 'you' }, { copies, placements: [PURSE], globalStats: stats, statsOf: () => [] });
@@ -241,14 +241,14 @@ for (const c of cases) {
 }
 
 // Replies a model could send, settled with no request: the same-sum drop and the all-or-nothing commit.
-const coinCase = CASES.find((c) => c.id === 'buy-value')!;
+const itemCase = CASES.find((c) => c.id === 'buy-value')!;
 const settleCanned = (ops: ReturnType<typeof parseInventoryReply>, presentIds?: string[]) => {
   let id = 0;
-  const landed = applyInventoryPass(copiesOf(coinCase), ops, {
-    items: itemsOf(coinCase), runtimeItems: [], playerNames: [], owners: [{ id: ODETTE, name: 'Odette' }], location: { id: location.id, name: location.name },
-    money: { currencies: [COINS], placements: [PURSE], stats: { globalStats: [], entityStats: {} }, playedIds: [], statsOn: (_owner, stats) => stats },
-  }, { world: { items: itemsOf(coinCase) }, newId: () => `c${id++}`, ...(presentIds && { presence: { locationId: location.id, entityIds: new Set(presentIds) } }) });
-  return { moved: balance(coinCase, landed.copies, []) - balance(coinCase, copiesOf(coinCase), []), holds: held(landed.copies, 'lantern') };
+  const landed = applyInventoryPass(copiesOf(itemCase), ops, {
+    items: itemsOf(itemCase), runtimeItems: [], playerNames: [], owners: [{ id: ODETTE, name: 'Odette' }], location: { id: location.id, name: location.name },
+    money: { currencies: [MONEY], placements: [PURSE], stats: { globalStats: [], entityStats: {} }, playedIds: [], statsOn: (_owner, stats) => stats },
+  }, { world: { items: itemsOf(itemCase) }, newId: () => `c${id++}`, ...(presentIds && { presence: { locationId: location.id, entityIds: new Set(presentIds) } }) });
+  return { moved: balance(itemCase, landed.copies, []) - balance(itemCase, copiesOf(itemCase), []), holds: held(landed.copies, 'lantern') };
 };
 const op = (kind: 'buy' | 'pay' | 'gain', over: Record<string, unknown>) => ({ op: kind, item: '', quantity: 1, owner: '', to: '', ...over }) as ReturnType<typeof parseInventoryReply>[number];
 const lantern = op('buy', { item: 'Tin Lantern', owner: 'Odette', to: 'you' });

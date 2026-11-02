@@ -53,7 +53,7 @@ const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
 describe('the live adapter', () => {
   describe('balances in the Inventory chip', () => {
     const credits: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
-    const coin: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }] } };
+    const money: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }] } };
     const funds = (over: Partial<PlayerStat> = {}): PlayerStat => ({ ...grit, id: 'funds', name: 'Funds', value: 30, ...over });
     const read = (over: Partial<LiveSceneSources>) => chipValues(liveChipScene(sources({ currencies: [credits], ...over })))('<INVENTORY|markdown>');
 
@@ -71,10 +71,10 @@ describe('the live adapter', () => {
       expect(read({ stats: [grit] })).toBe('N/A');
     });
 
-    it('reads who the author gave coins through the world’s Placements', () => {
+    it('reads who the author gave items through the world’s Placements', () => {
       const placements: Placement[] = [{ id: 'p', where: { kind: 'entity', id: 'harbormaster' }, quantity: 1, source: { kind: 'item', itemId: 'copper' } }];
       const items: Item[] = [{ id: 'copper', name: 'Copper', statEffects: [], traitEffects: [], equipRequires: [] }];
-      expect(read({ currencies: [coin], items, placements })).toContain('- **Harbormaster**\n  - **balance:** 0 Copper');
+      expect(read({ currencies: [money], items, placements })).toContain('- **Harbormaster**\n  - **balance:** 0 Copper');
     });
   });
 

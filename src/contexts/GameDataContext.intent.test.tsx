@@ -306,7 +306,7 @@ describe('Steps that match intent', () => {
 
 describe('Currency deletes in the history', () => {
   const credits: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'hunger' } };
-  const crowns: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }] } };
+  const crowns: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }] } };
   const priced = (id: string, currencyId: string) => ({ id, name: id, currencyId, value: 3 }) as unknown as Item;
 
   it('records deleting a backing stat and the name-only cleanup as one Step, and undo restores both', async () => {
@@ -333,7 +333,7 @@ describe('Currency deletes in the history', () => {
     expect(ctx().entities[0].stats).toHaveLength(1);
   });
 
-  it('records deleting the last coin item as one Step, and undo restores the row', async () => {
+  it('records deleting the last Currency Item as one Step, and undo restores the row', async () => {
     const copper = { id: 'copper', name: 'Copper' } as unknown as Item;
     const { ctx, history } = await open(world({ items: [copper], currencies: [crowns] }));
     await act1(() => ctx().removeItem('copper'));

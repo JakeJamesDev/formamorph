@@ -41,8 +41,8 @@ const pool = Number(argVal('--pool', '4'));
 const only = argVal('--only', '');
 const textPass = args.includes('--text');
 const SEED = 515151;
-type Arm = 'control' | 'pay';
-const ARMS: Arm[] = ['control', 'pay'];
+type Arm = 'control' | 'pay' | 'payOld';
+const ARMS = argVal('--arms', 'control,pay').split(',') as Arm[];
 
 const world = migrateWorld(JSON.parse(readFileSync(path.resolve('testing/baseline/sedge-landing.json'), 'utf8')));
 const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
@@ -50,7 +50,7 @@ if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
 
 const item = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], stackable: true });
 const ITEMS = [item('copper', 'Copper'), item('silver', 'Silver'), item('knife', 'Gutting Knife')];
-const COINS: Currency = { id: 'river-coin', name: 'River Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }] } };
+const MONEY: Currency = { id: 'river-coin', name: 'River Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }] } };
 const CREDITS: Currency = { id: 'scrip', name: 'Scrip', backing: { kind: 'stat', statId: 'stat-scrip' } };
 const ODETTE = 'ent-odette';
 const PURSE: Placement = { id: 'purse', where: { kind: 'entity', id: ODETTE }, quantity: 10, source: { kind: 'item', itemId: 'silver' } };
@@ -61,35 +61,35 @@ const copy = (itemId: string, where: ItemCopyWhere, quantity = 1): ItemCopy => (
 });
 const you: ItemCopyWhere = { kind: 'you' };
 const odette: ItemCopyWhere = { kind: 'entity', id: ODETTE };
-const COIN_COPIES = [copy('knife', you), copy('silver', you, 5), copy('silver', odette, 10)];
+const BACKING_COPIES = [copy('knife', you), copy('silver', you, 5), copy('silver', odette, 10)];
 const STAT_COPIES = [copy('knife', you)];
 
-type Money = 'coins' | 'stat';
+type Money = 'items' | 'stat';
 /** `change` is the player's balance change the story states, in base units; a refusal holds at 0. */
 type Case = { id: string; money: Money; action: string; narration: string; change: number; wantsPay: boolean };
 const CASES: Case[] = [
   {
-    id: 'bribe', money: 'coins', action: 'I slip the dock guard two silver to look the other way.',
+    id: 'bribe', money: 'items', action: 'I slip the dock guard two silver to look the other way.',
     narration: 'You press two silver coins into the dock guard\'s palm. He closes his fist around them, turns his back and studies the river until you have passed.', change: -20, wantsPay: true,
   },
   {
-    id: 'fee', money: 'coins', action: 'I pay Odette the mooring fee.',
+    id: 'fee', money: 'items', action: 'I pay Odette the mooring fee.',
     narration: '"One silver and five copper," Odette says. You count it out and she drops the coins into her apron without looking at them.', change: -15, wantsPay: true,
   },
   {
-    id: 'bounty', money: 'coins', action: 'I bring the reeve the poacher\'s snare and claim the bounty.',
+    id: 'bounty', money: 'items', action: 'I bring the reeve the poacher\'s snare and claim the bounty.',
     narration: 'The reeve weighs the snare in one hand, nods, and counts four silver into your palm. "That is the bounty, and fairly earned."', change: 40, wantsPay: true,
   },
   {
-    id: 'fine-broke', money: 'coins', action: 'I tell the reeve I will settle the fine now.',
+    id: 'fine-broke', money: 'items', action: 'I tell the reeve I will settle the fine now.',
     narration: 'The reeve names the fine: nine silver. You hand it over, and he makes a mark in his ledger.', change: 0, wantsPay: true,
   },
   {
-    id: 'talk-price', money: 'coins', action: 'I ask Odette what the mooring fee is.',
+    id: 'talk-price', money: 'items', action: 'I ask Odette what the mooring fee is.',
     narration: '"Three silver a night," Odette says. You thank her and say you will think about it, and the coins stay in your purse.', change: 0, wantsPay: false,
   },
   {
-    id: 'gift-item', money: 'coins', action: 'I hand my gutting knife to Odette as a gift.',
+    id: 'gift-item', money: 'items', action: 'I hand my gutting knife to Odette as a gift.',
     narration: 'You hold the gutting knife out handle first. Odette takes it and tests the edge on her thumb. "A fine gift," she says.', change: 0, wantsPay: false,
   },
   {
@@ -110,6 +110,9 @@ const CASES: Case[] = [
   },
 ];
 
+/** The shipped prompt with the pay line's pre-rename wording, for the payOld arm. */
+const oldPayPrompt = defaultInventoryPrompt.replace('whole sum, whatever it is made of, and', 'whole sum, coins included, and');
+
 /** The prompt as it stood before `pay`, for the control arm. */
 const controlPrompt = defaultInventoryPrompt
   .split('\n').filter((line) => !/^- (pay|price|currency):/.test(line)).join('\n')
@@ -126,12 +129,12 @@ const baseScene = authoredChipScene(world, {
   resolve: (text: string) => text,
   resolveEntity: (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
 });
-const itemsOf = (c: Case) => (c.money === 'coins' ? ITEMS : ITEMS.filter((held) => held.id === 'knife'));
-const copiesOf = (c: Case) => (c.money === 'coins' ? COIN_COPIES : STAT_COPIES);
+const itemsOf = (c: Case) => (c.money === 'items' ? ITEMS : ITEMS.filter((held) => held.id === 'knife'));
+const copiesOf = (c: Case) => (c.money === 'items' ? BACKING_COPIES : STAT_COPIES);
 const statsOf = (c: Case): PlayerStat[] => (c.money === 'stat' ? [SCRIP, ...baseScene.stats] : baseScene.stats);
-const currenciesOf = (c: Case) => [c.money === 'stat' ? CREDITS : COINS];
+const currenciesOf = (c: Case) => [c.money === 'stat' ? CREDITS : MONEY];
 const ctxFor = (c: Case) => chipValues({
-  ...baseScene, stats: statsOf(c), items: itemsOf(c), itemCopies: copiesOf(c), currencies: currenciesOf(c), placements: c.money === 'coins' ? [PURSE] : [],
+  ...baseScene, stats: statsOf(c), items: itemsOf(c), itemCopies: copiesOf(c), currencies: currenciesOf(c), placements: c.money === 'items' ? [PURSE] : [],
 });
 const balance = (c: Case, copies: readonly ItemCopy[], stats: readonly PlayerStat[]) => {
   const read = balanceOf(currenciesOf(c)[0], you as { kind: 'you' }, { copies, placements: [PURSE], globalStats: stats, statsOf: () => [] });
@@ -156,13 +159,13 @@ const messagesOf = (request: { systemPrompt: string; messages: ChatMessage[] }) 
 async function runCase(arm: Arm, c: Case, run: number) {
   const ctx = ctxFor(c);
   const values = { ctx, action: c.action, narration: c.narration };
-  const invRequest = inventoryRequest({ system: arm === 'pay' ? defaultInventoryPrompt : controlPrompt, user: defaultInventoryUserPrompt }, values, { textPass, quiet: true });
-  const statRequest = createStatRequest(statsOf(c), { omit: arm === 'pay' ? backingStatIds(currenciesOf(c)) : new Set() });
+  const invRequest = inventoryRequest({ system: arm === 'pay' ? defaultInventoryPrompt : arm === 'payOld' ? oldPayPrompt : controlPrompt, user: defaultInventoryUserPrompt }, values, { textPass, quiet: true });
+  const statRequest = createStatRequest(statsOf(c), { omit: arm !== 'control' ? backingStatIds(currenciesOf(c)) : new Set() });
   const statPass = statUpdatesRequest({ system: defaultStatUpdatesPrompt, user: defaultStatUpdatesUserPrompt, text: { system: defaultStatUpdatesPrompt, user: defaultStatUpdatesUserPrompt } as never }, values, { statCount: statRequest.targets.length, statRequest, quiet: true });
   const [invRaw, statRaw] = await Promise.all([
     complete({
       seed: SEED + run, max_tokens: 400, temperature: PROMPT_SAMPLER_PINS.inventory?.temperature, messages: messagesOf(invRequest),
-      ...(!textPass && { response_format: responseFormat(arm === 'pay' ? inventoryPassSchema() : controlSchema()) }),
+      ...(!textPass && { response_format: responseFormat(arm !== 'control' ? inventoryPassSchema() : controlSchema()) }),
     }),
     complete({
       seed: SEED + run, max_tokens: 400, temperature: PROMPT_SAMPLER_PINS.statUpdates?.temperature, messages: messagesOf(statPass),

@@ -10,8 +10,8 @@ const ids = () => { let i = 0; return () => `n${i++}`; };
 const copper = item('copper', 'Copper', { stackable: true });
 const gold = item('gold', 'Gold', { stackable: true });
 const shell = item('shell', 'Shell', { stackable: true });
-const COIN: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
-const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'coins', coins: [{ itemId: 'shell', worth: 1 }] } };
+const MONEY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+const SHELLS: Currency = { id: 'shells', name: 'Shells', backing: { kind: 'items', items: [{ itemId: 'shell', worth: 1 }] } };
 const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
 const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
 
@@ -40,7 +40,7 @@ const funds = (value: number): PlayerStat =>
 const maraPurse: Placement = { id: 'purse', source: { kind: 'item', itemId: 'gold' }, where: mara, quantity: 1 };
 
 const money = (over: Partial<PassMoney> = {}): PassMoney => ({
-  currencies: [COIN, SHELLS, CREDITS, GOATS], placements: [], stats: { globalStats: [funds(50)], entityStats: {} }, playedIds: ['hero'], statsOn: (_owner, stats) => stats, ...over,
+  currencies: [MONEY, SHELLS, CREDITS, GOATS], placements: [], stats: { globalStats: [funds(50)], entityStats: {} }, playedIds: ['hero'], statsOn: (_owner, stats) => stats, ...over,
 });
 const scene = (over: Partial<PassScene> = {}): PassScene => ({
   items: ITEMS, runtimeItems: [], playerNames: ['Ashley Vance', 'Little Bird'], owners: [{ id: 'mara', name: 'Mara' }], location: { id: 'shop', name: 'Shop' }, money: money(), ...over,
@@ -63,7 +63,7 @@ describe('parsing a buy', () => {
 });
 
 describe('a buy moves money and item as one', () => {
-  it('moves coins to a tracked seller and the item to the buyer', () => {
+  it('moves items to a tracked seller and the item to the buyer', () => {
     const { copies, diagnostics } = settle([copy('s', 'sword', mara), copy('g', 'gold', you, 2), copy('m', 'gold', mara)],
       [buy('Iron Sword', 'Mara', 'you')], { money: money({ placements: [maraPurse] }) });
     expect(diagnostics).toEqual([]);
@@ -132,7 +132,7 @@ describe('what a buy costs', () => {
     expect(counts(copies, you)).toEqual({ copper: 8, rope: 1 });
   });
 
-  it("lets a named coin or a stated Currency override the item's Currency", () => {
+  it("lets a named item or a stated Currency override the item's Currency", () => {
     const named = settle([copy('p', 'potion', mara), copy('c', 'shell', you, 20)], [buy('Potion', 'Mara', 'you', { price: '12 Shell' })]);
     expect(fundsAfter(named)).toBe(50);
     expect(counts(named.copies, you)).toEqual({ shell: 8, potion: 1 });
@@ -174,7 +174,7 @@ describe('what a buy costs', () => {
     expect(settle(start, [buy('Iron Sword', 'Mara', 'you', { price: '0' })]).copies).toEqual(start);
   });
 
-  it('refuses a coin price that is not whole coins', () => {
+  it('refuses an item price that is not a whole number of items', () => {
     const fractional = item('dust', 'Dust', { value: 1.5, currencyId: 'coin' });
     const start = [copy('x', 'dust', mara), copy('c', 'copper', you, 40)];
     const { copies } = settle(start, [buy('Dust', 'Mara', 'you')], { items: [...ITEMS, fractional] });
@@ -183,7 +183,7 @@ describe('what a buy costs', () => {
 });
 
 describe('an item that moves alone (Q64)', () => {
-  it('moves alone in a world with no stat or coin Currency, ignoring the price', () => {
+  it('moves alone in a world with no stat or item Currency, ignoring the price', () => {
     for (const noMoney of [{ money: undefined }, { money: money({ currencies: [GOATS] }) }]) {
       const { copies } = settle([copy('s', 'sword', mara), copy('c', 'copper', you, 40)], [buy('Iron Sword', 'Mara', 'you', { price: '12 Copper' })], noMoney);
       expect(counts(copies, you)).toEqual({ copper: 40, sword: 1 });
@@ -204,7 +204,7 @@ describe('an item that moves alone (Q64)', () => {
     expect(counts(copies, you)).toEqual({ pebble: 1 });
   });
 
-  it('charges a named coin on a name-only item: a stated price counts (Q65)', () => {
+  it('charges a named item on a name-only item: a stated price counts (Q65)', () => {
     const { copies } = settle([copy('f', 'flute', mara), copy('c', 'copper', you, 40)], [buy('Flute', 'Mara', 'you', { price: '12 Copper' })]);
     expect(counts(copies, you)).toEqual({ copper: 28, flute: 1 });
   });
@@ -372,7 +372,7 @@ describe('one reply, one statement (Q68, Q69)', () => {
     expect(copies).toEqual(start);
   });
 
-  it("skips hand moves of the buy's coins", () => {
+  it("skips hand moves of the buy's Currency Items", () => {
     const { copies, diagnostics } = settle([purse], [buy('Iron Sword', 'Mara', 'you', { price: '1 Gold' }), hand('lose', 'Gold', 'you'), hand('transfer', 'Gold', 'you', 'Mara')]);
     expect(counts(copies, you)).toEqual({ gold: 4, sword: 1 });
     expect(diagnostics.filter((line) => line.includes('covers this money'))).toHaveLength(2);

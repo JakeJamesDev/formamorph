@@ -94,11 +94,11 @@ describe('the World Index', () => {
     expect(section(item({ currencyId: 'gone' }))).toMatch(/Value: 10(?! Goats)/);
   });
 
-  it('states a coin Currency’s Value as its Breakdown', () => {
-    const coin = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [] });
+  it('states an Items Currency’s Value as its Breakdown', () => {
+    const moneyItem = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [] });
     const draught: Item = { id: 'draught', name: 'Healing Draught', value: 105, currencyId: 'crowns', statEffects: [], traitEffects: [], equipRequires: [] };
-    const currencies: Currency[] = [{ id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } }];
-    const index = buildWorldIndex(world({ items: [draught, coin('copper', 'Copper'), coin('gold', 'Gold')], currencies }));
+    const currencies: Currency[] = [{ id: 'crowns', name: 'Crowns', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } }];
+    const index = buildWorldIndex(world({ items: [draught, moneyItem('copper', 'Copper'), moneyItem('gold', 'Gold')], currencies }));
     expect(index.docs.search('draught', 1)[0].markdown).toContain('Value: 1 Gold, 5 Copper');
   });
 

@@ -1338,7 +1338,7 @@ export interface SandboxMoney {
   balance: (currencyId: string, owner: SlotOwner) => number | null;
   /** Settles a payment over the run's own state. A null payer is income and a null payee leaves the world. */
   pay: (currencyId: string, payer: SlotOwner | null, payee: SlotOwner | null, price: number | string) => { paid: boolean; reason: string };
-  /** The coin ops, and each stat's final value and net change, the settled payments leave. `ownerId` is null for a Global Stat. */
+  /** The Item ops, and each stat's final value and net change, the settled payments leave. `ownerId` is null for a Global Stat. */
   settled: () => { ops: InventoryOp[]; stats: { ownerId: string | null; write: StatWrite; delta: number }[] };
 }
 

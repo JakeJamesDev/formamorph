@@ -4300,8 +4300,8 @@
       "id": "emberwatch-coin",
       "name": "Coin",
       "backing": {
-        "kind": "coins",
-        "coins": [
+        "kind": "items",
+        "items": [
           {
             "itemId": "a3f1c7d2-5e84-4b19-9c60-2d7e8b1f4a03",
             "worth": 1

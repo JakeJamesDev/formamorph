@@ -100,7 +100,7 @@ export interface SandboxState {
   items?: readonly Item[];
   /** The world's slots, which an equipped Item Copy names. Absent ⇒ none. */
   slots?: readonly Slot[];
-  /** The world's Currencies and the Placements that track a shopkeeper's coins, which `currencies` reads and pays
+  /** The world's Currencies and the Placements that track a shopkeeper's Currency Items, which `currencies` reads and pays
    *  over. Absent ⇒ no Currency. */
   money?: { currencies: readonly Currency[]; placements: readonly Placement[] };
   /** The Bodies `body` reads, with the picks that decide which is in force. Absent ⇒ no Bodies. */

@@ -163,14 +163,14 @@ A kind of money in the world's ordered Currencies list, with one Backing. An ite
 _Avoid_: value unit, money type
 
 **Backing**:
-What holds a Currency: a stat, coin items, or nothing, for a name only. A stat backing lists each stat once: a Global Stat, a stat a Persona links under its original id, or a Persona's own stat.
+What holds a Currency: a stat, Items, or nothing, for a name only. A stat backing lists each stat once: a Global Stat, a stat a Persona links under its original id, or a Persona's own stat.
 
-**Coin**:
-A row of a coin-backed Currency: a Stackable item and its worth in the base unit. The smallest coin is worth 1, no two coins share a worth, and an item is a coin of one Currency at most. The Breakdown reads an item's Value as coins, largest first, such as "1 Gold, 5 Copper".
+**Currency Item**:
+A row of an Items-backed Currency: a Stackable item and its worth in the base unit. The smallest Currency Item is worth 1, no two share a worth, and an item is a Currency Item of one Currency at most. The Breakdown reads an item's Value as Currency Items, largest first, such as "1 Gold, 5 Copper".
 _Avoid_: denomination
 
 **Balance**:
-What an owner holds in a Currency, or that the owner is untracked, which is never the same as 0. Coins count the visible, identified copies at the owner, and the player always tracks them. An entity tracks them when a Placement of one of the coins starts at it. A stat counts for whoever has it, and a Global Stat counts for the player alone. A name-only Currency tracks no one. Players read it as **Money**.
+What an owner holds in a Currency, or that the owner is untracked, which is never the same as 0. Currency Items count the visible, identified copies at the owner, and the player always tracks them. An entity tracks them when a Placement of one of the Currency Items starts at it. A stat counts for whoever has it, and a Global Stat counts for the player alone. A name-only Currency tracks no one. Players read it as **Money**.
 _Avoid_: wallet, funds
 
 **Slot**:

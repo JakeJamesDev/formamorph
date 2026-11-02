@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-Stats are the numbers your world tracks: health, coin, reputation, or anything your world needs. Each stat has a value between a **Min** and a **Max**. The AI reads your stats on every turn. A stat on the **Stats** tab is a *global stat*: no entity owns it. A persona or an entity can own stats of its own.
+Stats are the numbers your world tracks: health, gold, reputation, or anything your world needs. Each stat has a value between a **Min** and a **Max**. The AI reads your stats on every turn. A stat on the **Stats** tab is a *global stat*: no entity owns it. A persona or an entity can own stats of its own.
 
 ## Why it exists
 <!-- keywords: point of meters, do numbers affect story, narrator ignores values, consequences, low energy effects, narrator lists numbers -->

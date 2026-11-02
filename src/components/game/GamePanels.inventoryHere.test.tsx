@@ -53,7 +53,7 @@ const stage = (copies: ItemCopy[]) => ({
 const region = () => screen.getByRole('region', { name: 'Your inventory' });
 
 describe('Inventory tab — Money', () => {
-  const COIN: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+  const MONEY: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
   const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
   const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
   const funds = (over: Partial<Stat> = {}): Stat => ({
@@ -74,14 +74,14 @@ describe('Inventory tab — Money', () => {
     };
   };
 
-  it('shows a coin and a stat balance, name-only left out', async () => {
-    renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 105 })], { currencies: [CREDITS, GOATS, COIN], stats: [funds()] }));
+  it('shows an item and a stat balance, name-only left out', async () => {
+    renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 105 })], { currencies: [CREDITS, GOATS, MONEY], stats: [funds()] }));
     await within(region()).findByRole('list', { name: 'Money' });
     expect(rows()).toEqual(['Credits40', 'Crowns1 Gold, 5 Copper']);
   });
 
-  it('updates when coins move', async () => {
-    const harness = renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 7 }), copy('b', 'gold')], { currencies: [COIN] }));
+  it('updates when items move', async () => {
+    const harness = renderRightPanel({}, withMoney([copy('a', 'copper', { quantity: 7 }), copy('b', 'gold')], { currencies: [MONEY] }));
     await within(region()).findByRole('list', { name: 'Money' });
     expect(rows()).toEqual(['Crowns1 Gold, 7 Copper']);
     await act(async () => { harness.gameplay().setItemCopies([copy('a', 'copper', { quantity: 7 })]); });
@@ -92,7 +92,7 @@ describe('Inventory tab — Money', () => {
     ['hidden', { hidden: true }],
     ['switched off', { enabled: false }],
   ])('shows no row for a %s backing stat', async (_case, over) => {
-    renderRightPanel({}, withMoney([copy('a', 'copper')], { currencies: [CREDITS, COIN], stats: [funds(over)] }));
+    renderRightPanel({}, withMoney([copy('a', 'copper')], { currencies: [CREDITS, MONEY], stats: [funds(over)] }));
     await within(region()).findByRole('list', { name: 'Money' });
     expect(rows()).toEqual(['Crowns1 Copper']);
   });
@@ -176,10 +176,10 @@ describe('Inventory tab — Here', () => {
 
 describe('Inventory tab — thumbnails', () => {
   it('picks the item image through its rules for each Item Copy (Q113)', async () => {
-    const withCoin = renderRightPanel({}, stage([copy('r', 'ring'), copy('c', 'coin')]));
+    const withBackingItem = renderRightPanel({}, stage([copy('r', 'ring'), copy('c', 'coin')]));
     const row = (await screen.findByText('Silver Ring')).closest('li')!;
     expect(row.querySelector('img')).toHaveAttribute('src', CURSED);
-    withCoin.unmount();
+    withBackingItem.unmount();
     renderRightPanel({}, stage([copy('r', 'ring')]));
     const bare = (await screen.findByText('Silver Ring')).closest('li')!;
     expect(bare.querySelector('img')).toHaveAttribute('src', PLAIN);

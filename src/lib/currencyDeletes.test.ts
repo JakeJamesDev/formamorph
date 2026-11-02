@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  backingStatKind, coinItemKind, currencyUsedBy, goneIds, statIdsOf, withoutBackingStats, withoutCoinItem, withoutCurrencyRefs,
+  backingStatKind, currencyItemKind, currencyUsedBy, goneIds, statIdsOf, withoutBackingStats, withoutCurrencyItem, withoutCurrencyRefs,
 } from '@/lib/currencyDeletes';
 import { usedByText } from '@/lib/usedByText';
 import type { Currency, Entity, Item, Stat } from '@/types';
@@ -13,7 +13,7 @@ const credits: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'st
 const other: Currency = { id: 'other', name: 'Other', backing: { kind: 'stat', statId: 'bank' } };
 const goats: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
 const crowns = (...ids: string[]): Currency => ({
-  id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: ids.map((itemId, at) => ({ itemId, worth: 10 ** at })) },
+  id: 'crowns', name: 'Crowns', backing: { kind: 'items', items: ids.map((itemId, at) => ({ itemId, worth: 10 ** at })) },
 });
 
 describe('stat ids', () => {
@@ -39,20 +39,20 @@ describe('withoutBackingStats', () => {
   });
 });
 
-describe('withoutCoinItem', () => {
-  it('drops the row and keeps the Currency coin-backed while rows remain, base coin included', () => {
-    expect(withoutCoinItem([crowns('copper', 'silver')], 'copper')).toEqual([
-      { ...crowns('copper', 'silver'), backing: { kind: 'coins', coins: [{ itemId: 'silver', worth: 10 }] } },
+describe('withoutCurrencyItem', () => {
+  it('drops the row and keeps the Currency Items-backed while rows remain, base item included', () => {
+    expect(withoutCurrencyItem([crowns('copper', 'silver')], 'copper')).toEqual([
+      { ...crowns('copper', 'silver'), backing: { kind: 'items', items: [{ itemId: 'silver', worth: 10 }] } },
     ]);
   });
 
   it('makes the Currency name only when its last row goes', () => {
-    expect(withoutCoinItem([crowns('copper')], 'copper')).toEqual([{ ...crowns('copper'), backing: { kind: 'name' } }]);
+    expect(withoutCurrencyItem([crowns('copper')], 'copper')).toEqual([{ ...crowns('copper'), backing: { kind: 'name' } }]);
   });
 
   it('returns the same list when the item is no coin', () => {
     const list = [crowns('copper'), goats];
-    expect(withoutCoinItem(list, 'lamp')).toBe(list);
+    expect(withoutCurrencyItem(list, 'lamp')).toBe(list);
   });
 });
 
@@ -77,10 +77,10 @@ describe('confirm lines', () => {
     expect(usedByText([backingStatKind([credits], new Set(['hunger']), same)])).toBeNull();
   });
 
-  it('says the last coin makes the Currency name only, and another coin removes its row', () => {
-    expect(usedByText([coinItemKind([crowns('copper')], 'copper', same)])).toBe('This also makes Crowns Name Only.');
-    expect(usedByText([coinItemKind([crowns('copper', 'silver')], 'silver', same)])).toBe('This also removes its coin row from Crowns.');
-    expect(usedByText([coinItemKind([crowns('copper')], 'lamp', same)])).toBeNull();
+  it('says the last item makes the Currency name only, and another item removes its row', () => {
+    expect(usedByText([currencyItemKind([crowns('copper')], 'copper', same)])).toBe('This also makes Crowns Name Only.');
+    expect(usedByText([currencyItemKind([crowns('copper', 'silver')], 'silver', same)])).toBe('This also removes its item row from Crowns.');
+    expect(usedByText([currencyItemKind([crowns('copper')], 'lamp', same)])).toBeNull();
   });
 
   it('counts the items a deleted Currency clears', () => {

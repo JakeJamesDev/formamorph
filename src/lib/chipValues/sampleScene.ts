@@ -94,7 +94,7 @@ const ossery: Entity = {
 };
 
 const item = (id: string, name: string, aiSummary?: string, value?: number): Item => ({
-  id, name, ...(aiSummary && { aiSummary }), ...(value !== undefined && { value, currencyId: 'tide-coin' }), statEffects: [], traitEffects: [], equipRequires: [],
+  id, name, ...(aiSummary && { aiSummary }), ...(value !== undefined && { value, currencyId: 'tide-money' }), statEffects: [], traitEffects: [], equipRequires: [],
 });
 const compass = item('brass-compass', 'Brass Compass', 'Swings toward the nearest wreck, not north.', 150);
 // Wren carries a stack, and a charm lies hidden at the Landing, so the Inventory chip shows each kind of row.
@@ -102,8 +102,8 @@ const ITEMS = [
   compass, item('rope', 'Coil of Rope', undefined, 12), item('lamp-oil', 'Flask of Lamp Oil', undefined, 5), item('nails', 'Bent Nail'), item('charm', 'Salt Glass Charm'),
   item('tide-bit', 'Copper Bit'), item('tide-crown', 'Silver Crown'),
 ];
-// The traveler and Wren hold coins and a gull doesn't, so the chip shows a balance on some owners only.
-const CURRENCIES: Currency[] = [{ id: 'tide-coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'tide-bit', worth: 1 }, { itemId: 'tide-crown', worth: 10 }] } }];
+// The traveler and Wren hold Items and a gull doesn't, so the chip shows a balance on some owners only.
+const CURRENCIES: Currency[] = [{ id: 'tide-money', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'tide-bit', worth: 1 }, { itemId: 'tide-crown', worth: 10 }] } }];
 
 /** The sample world the Settings preview renders when no game runs. */
 const SAMPLE_WORLD: AuthoredWorld = {

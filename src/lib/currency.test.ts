@@ -4,11 +4,11 @@ import { copyWorthText, currencyOf, currencyStatGroups, defaultCurrencyPatch, pa
 
 const STAT_CURRENCY: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
 const NAME_CURRENCY: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
-const COIN_CURRENCY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+const ITEM_CURRENCY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
 
 describe('parseCurrencies', () => {
   it('keeps each valid backing, in order', () => {
-    const list = [NAME_CURRENCY, STAT_CURRENCY, COIN_CURRENCY];
+    const list = [NAME_CURRENCY, STAT_CURRENCY, ITEM_CURRENCY];
     expect(parseCurrencies(list)).toEqual(list);
   });
 
@@ -24,16 +24,18 @@ describe('parseCurrencies', () => {
     ['an unknown backing', { id: 'a', name: 'A', backing: { kind: 'text', text: 'silver' } }],
     ['a stat backing with no stat', { id: 'a', name: 'A', backing: { kind: 'stat' } }],
     ['a stat backing with a blank stat', { id: 'a', name: 'A', backing: { kind: 'stat', statId: '' } }],
-    ['a coin backing with no rows', { id: 'a', name: 'A', backing: { kind: 'coins' } }],
+    ['an items backing with no rows', { id: 'a', name: 'A', backing: { kind: 'items' } }],
+    ['the old coins backing', { id: 'a', name: 'A', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }] } }],
+    ['an items backing under the old coins key', { id: 'a', name: 'A', backing: { kind: 'items', coins: [{ itemId: 'copper', worth: 1 }] } }],
     ['a non-record', 'credits'],
   ])('drops a Currency with %s and keeps its neighbors', (_case, bad) => {
     expect(parseCurrencies([NAME_CURRENCY, bad, STAT_CURRENCY])).toEqual([NAME_CURRENCY, STAT_CURRENCY]);
   });
 
-  it('drops a coin row that has no item or a worth that is not a whole number above zero', () => {
-    const coins = [{ itemId: 'copper', worth: 1 }, { worth: 5 }, { itemId: 'tin', worth: 0 }, { itemId: 'lead', worth: 1.5 }, { itemId: 'gold', worth: 100 }];
-    expect(parseCurrencies([{ id: 'c', name: 'C', backing: { kind: 'coins', coins } }])[0].backing)
-      .toEqual({ kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] });
+  it('drops an item row that has no item or a worth that is not a whole number above zero', () => {
+    const rows = [{ itemId: 'copper', worth: 1 }, { worth: 5 }, { itemId: 'tin', worth: 0 }, { itemId: 'lead', worth: 1.5 }, { itemId: 'gold', worth: 100 }];
+    expect(parseCurrencies([{ id: 'c', name: 'C', backing: { kind: 'items', items: rows } }])[0].backing)
+      .toEqual({ kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] });
   });
 
   it('strips fields a Currency does not have', () => {

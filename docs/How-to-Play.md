@@ -290,7 +290,7 @@ The buttons are icons. Their tooltips name the item, such as *Use Healing Potion
 
 Changes apply at once, and the next turn's narration sees them.
 
-- **Money** lists how much you have of each kind of money in the world, such as *1 Gold, 5 Copper*. Hidden and unidentified coins don't count.
+- **Money** lists how much you have of each kind of money in the world, such as *1 Gold, 5 Copper*. Hidden and unidentified items don't count.
 - **Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack.
 - An item with uses shows how many are left under its name.
 - An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack.
@@ -310,7 +310,7 @@ After each turn's narration, the **Inventory** prompt reads what happened and up
 
 - An item the world doesn't define gets a plain entry with no effects. You can still **Use** it.
 - The item's own effects come from the item, so the stat changes never count a potion twice.
-- 💰 Paying works the same way. Pay a bribe or collect a bounty in the story, and your money changes once the turn ends. You hand over your smallest coins first and get change back.
+- 💰 Paying works the same way. Pay a bribe or collect a bounty in the story, and your money changes once the turn ends. You hand over your smallest items first and get change back.
 - 🛒 To buy or sell, type it: "I buy the sword" or "I sell the ring to the blacksmith". The item and the money move together once the turn ends. If the story settles on a price, that price counts. If not, the item goes at its full worth.
 - 🚫 If you can't afford a payment or a purchase, your money stays as it was, even when the story says you paid. You don't get the item either.
 - 🎒 You can only sell what you hold.

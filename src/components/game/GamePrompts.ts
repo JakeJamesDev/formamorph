@@ -565,7 +565,7 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, spends a charge of it, or pours, applies or loads it into another item. The item is the one spent; the other item is the target.
 - change: an item stays with its owner and its look or state changes, with no use. The owner still holds that same item.
 - reveal: an item marked hidden comes into view because someone searches where it lies, or an item's true nature becomes known. A found item stays where it lies until someone takes it.
-- pay: money is handed over this turn with no item bought or sold, paid out or received - a bribe, fee, fine, tip, wage or reward. One pay records the whole sum, coins included, and the game moves the money itself. Every sum of money handed over with no item is one pay and no other operation.
+- pay: money is handed over this turn with no item bought or sold, paid out or received - a bribe, fee, fine, tip, wage or reward. One pay records the whole sum, whatever it is made of, and the game moves the money itself. Every sum of money handed over with no item is one pay and no other operation.
 - buy: an item is bought or sold for money this turn. One buy records the item and its money together, and the game moves both itself, so the sale has no gain, transfer or pay beside it. The player selling an item is a buy with "you" as the owner.
 
 ## Fields

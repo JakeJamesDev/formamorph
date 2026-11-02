@@ -28,22 +28,22 @@ const world = (): StatCodeOwners => {
 };
 
 const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
-const COIN: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+const MONEY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
 const item = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], stackable: true });
-const coin = (id: string, itemId: string, quantity: number): ItemCopy =>
+const moneyCopy = (id: string, itemId: string, quantity: number): ItemCopy =>
   ({ id, item: { kind: 'item', itemId }, where: { kind: 'you' }, quantity, visibility: 'visible' });
 
 const funds = (value: number, over: Partial<PlayerStat> = {}) => stat({ id: 'funds', name: 'Funds', value, ...over });
 
-const run = (code: string, over: { mira?: PlayerStat; coins?: ItemCopy[] } = {}): Promise<StatCodeTurnResult> => runStatCodeTurn(statCodeTurnOf({
+const run = (code: string, over: { mira?: PlayerStat; moneyCopies?: ItemCopy[] } = {}): Promise<StatCodeTurnResult> => runStatCodeTurn(statCodeTurnOf({
   stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: world(),
   owners: [
     { id: 'mira', stats: [over.mira ?? funds(50)], enabled: {}, previous: [], regenApplied: {} },
     { id: 'rook', stats: [funds(5)], enabled: {}, previous: [], regenApplied: {} },
   ],
   worldScripts: [{ id: 'w', timing: 'after', code }],
-  money: { currencies: [CREDITS, COIN], placements: [] },
-  items: [item('copper', 'Copper'), item('gold', 'Gold')], itemCopies: over.coins ?? [coin('c-gold', 'gold', 1)],
+  money: { currencies: [CREDITS, MONEY], placements: [] },
+  items: [item('copper', 'Copper'), item('gold', 'Gold')], itemCopies: over.moneyCopies ?? [moneyCopy('c-gold', 'gold', 1)],
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
 }));
 
@@ -75,7 +75,7 @@ describe('runStatCodeTurn script pay', () => {
     expect(fundsOf(out, 'rook')).toBe(5);
   });
 
-  it('writes the coins of a coin pay as inventory writes for the host to land', async () => {
+  it('writes the items of an item pay as inventory writes for the host to land', async () => {
     const out = await run('currencies.Coin.pay(persona, null, 5);');
     expect(out.worldWrites?.inventory).toEqual(expect.arrayContaining([{ kind: 'lose', copyId: 'c-gold', quantity: 1 }]));
   });

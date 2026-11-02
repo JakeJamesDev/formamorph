@@ -353,13 +353,13 @@ describe('the Emberwatch items', () => {
 
   describe('its money', () => {
     const currencies = world.currencies ?? [];
-    const coinCurrency = currencies[0];
+    const itemCurrency = currencies[0];
     const albus = entityNamed(world, 'Albus');
     const jory = { kind: 'entity', id: entityNamed(world, 'Jory Pike').id } as const;
     const bram = { kind: 'entity', id: entityNamed(world, 'Bram Oakes').id } as const;
     const you = { kind: 'you' } as const;
     const amountAt = (copies: readonly ItemCopy[], owner: typeof you | typeof jory) =>
-      balanceOf(coinCurrency, owner, { copies, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
+      balanceOf(itemCurrency, owner, { copies, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
     const quantityAt = (copies: readonly ItemCopy[], name: string, where: ItemCopy['where']) => copiesOf(copies, name)
       .filter((copy) => sameWhere(copy.where, where)).reduce((sum, copy) => sum + copy.quantity, 0);
 
@@ -380,19 +380,19 @@ describe('the Emberwatch items', () => {
       { id: 'cup', item: { kind: 'item', itemId: itemNamed('Gold Burial Cup').id }, where: you, quantity: 1, visibility: 'visible' },
     ];
 
-    it('has one coin Currency of Copper, Silver and Gold', () => {
+    it('has one item Currency of Copper, Silver and Gold', () => {
       expect(currencies).toHaveLength(1);
-      expect(coinCurrency.backing).toEqual({
-        kind: 'coins',
-        coins: [['Copper', 1], ['Silver', 10], ['Gold', 100]].map(([name, worth]) => ({ itemId: itemNamed(String(name)).id, worth })),
+      expect(itemCurrency.backing).toEqual({
+        kind: 'items',
+        items: [['Copper', 1], ['Silver', 10], ['Gold', 100]].map(([name, worth]) => ({ itemId: itemNamed(String(name)).id, worth })),
       });
       for (const name of ['Copper', 'Silver', 'Gold']) expect(itemNamed(name).stackable).toBe(true);
     });
 
-    it('prices every priced item in the coin Currency, and reads a price as coins', () => {
+    it('prices every priced item in the item Currency, and reads a price as items', () => {
       const priced = items.filter((item) => item.value !== undefined);
       expect(priced.length).toBeGreaterThan(0);
-      for (const item of priced) expect(item.currencyId, item.name).toBe(coinCurrency.id);
+      for (const item of priced) expect(item.currencyId, item.name).toBe(itemCurrency.id);
       expect(worthText(itemNamed('Healing Draught'), currencies, items)).toBe('6 Silver');
       expect(worthText(itemNamed('Cold Iron Dagger'), currencies, items)).toBe('1 Gold, 5 Silver');
     });

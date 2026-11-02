@@ -52,7 +52,7 @@ export function scriptMoney(state: ScriptMoneyState): SandboxMoney {
       const currency = currencyOf(currencyId);
       if (!currency) return refused('the world has no such Currency');
       const stated: StatedPrice = typeof price === 'number'
-        ? (price > 0 && Number.isFinite(price) && (currency.backing.kind !== 'coins' || Number.isInteger(price))
+        ? (price > 0 && Number.isFinite(price) && (currency.backing.kind !== 'items' || Number.isInteger(price))
           ? { currency, amount: price } : { refused: `${price} is no amount` })
         : readStatedPrice(price, '', [currency], state.itemNames);
       if ('refused' in stated) return refused(stated.refused);

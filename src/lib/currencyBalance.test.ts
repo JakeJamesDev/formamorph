@@ -6,8 +6,8 @@ import type { Currency, Entity, EntityStatValues, ItemCopy, Placement, PlayerSta
 import { balanceOf, balanceRows, balanceText, type BalanceState } from './currency';
 
 const ITEMS = [blankItem('copper', 'Copper'), blankItem('gold', 'Gold'), blankItem('ruby', 'Ruby'), blankItem('rope', 'Rope')];
-const COIN: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
-const GEMS: Currency = { id: 'gems', name: 'Gems', backing: { kind: 'coins', coins: [{ itemId: 'ruby', worth: 1 }] } };
+const MONEY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+const GEMS: Currency = { id: 'gems', name: 'Gems', backing: { kind: 'items', items: [{ itemId: 'ruby', worth: 1 }] } };
 const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
 const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
 
@@ -21,50 +21,50 @@ const placed = (itemId: string, where: Placement['where'], hidden = false): Plac
 const row = (id: string, value: number): Pick<PlayerStat, 'id' | 'value'> => ({ id, value });
 const state = (over: Partial<BalanceState> = {}): BalanceState => ({ copies: [], placements: [], globalStats: [], statsOf: () => [], ...over });
 
-describe('Balance by coins', () => {
-  it('adds each coin stack at the owner by its worth, and leaves other owners and items out', () => {
-    expect(balanceOf(COIN, YOU, state({
+describe('Balance by Currency Items', () => {
+  it('adds each item stack at the owner by its worth, and leaves other owners and items out', () => {
+    expect(balanceOf(MONEY, YOU, state({
       copies: [copy('copper', YOU, 5), copy('gold', YOU, 2), copy('rope', YOU, 3), copy('gold', MERCHANT, 9), copy('gold', { kind: 'location', id: 'yard' }, 9)],
     }))).toEqual({ tracked: true, amount: 205 });
   });
 
   it('leaves out a hidden coin', () => {
-    expect(balanceOf(COIN, YOU, state({ copies: [copy('copper', YOU, 5), copy('gold', YOU, 1, { visibility: 'hidden' })] })))
+    expect(balanceOf(MONEY, YOU, state({ copies: [copy('copper', YOU, 5), copy('gold', YOU, 1, { visibility: 'hidden' })] })))
       .toEqual({ tracked: true, amount: 5 });
   });
 
   it('leaves out an unidentified coin', () => {
-    expect(balanceOf(COIN, YOU, state({ copies: [copy('copper', YOU, 5), copy('gold', YOU, 1, { state: { unidentified: true } })] })))
+    expect(balanceOf(MONEY, YOU, state({ copies: [copy('copper', YOU, 5), copy('gold', YOU, 1, { state: { unidentified: true } })] })))
       .toEqual({ tracked: true, amount: 5 });
   });
 
   it('counts a Bound coin', () => {
     const bound = { ...blankItem('copper', 'Copper'), bound: true };
-    const rows = balanceRows([COIN], state({ copies: [copy(bound.id, YOU, 3)] }), [bound]);
+    const rows = balanceRows([MONEY], state({ copies: [copy(bound.id, YOU, 3)] }), [bound]);
     expect(rows).toEqual([{ currencyId: 'coin', name: 'Coin', amount: '3 Copper' }]);
   });
 
   it('leaves out a runtime item', () => {
     const runtime: ItemCopy = { ...copy('copper', YOU, 5), item: { kind: 'runtime', runtimeItemId: 'copper' } };
-    expect(balanceOf(COIN, YOU, state({ copies: [runtime] }))).toEqual({ tracked: true, amount: 0 });
+    expect(balanceOf(MONEY, YOU, state({ copies: [runtime] }))).toEqual({ tracked: true, amount: 0 });
   });
 
-  it('reads the player with no coins as 0, not untracked', () => {
-    expect(balanceOf(COIN, YOU, state())).toEqual({ tracked: true, amount: 0 });
+  it('reads the player with no items as 0, not untracked', () => {
+    expect(balanceOf(MONEY, YOU, state())).toEqual({ tracked: true, amount: 0 });
   });
 
-  it('reads an entity with no Placement of a coin as untracked, even holding coins it gained in play', () => {
-    expect(balanceOf(COIN, MERCHANT, state({ copies: [copy('gold', MERCHANT, 4)] }))).toEqual({ tracked: false });
+  it('reads an entity with no Placement of an item as untracked, even holding items it gained in play', () => {
+    expect(balanceOf(MONEY, MERCHANT, state({ copies: [copy('gold', MERCHANT, 4)] }))).toEqual({ tracked: false });
   });
 
   it('reads a merchant who spent an authored purse as 0, so they can run out', () => {
-    expect(balanceOf(COIN, MERCHANT, state({ placements: [placed('gold', MERCHANT)] }))).toEqual({ tracked: true, amount: 0 });
+    expect(balanceOf(MONEY, MERCHANT, state({ placements: [placed('gold', MERCHANT)] }))).toEqual({ tracked: true, amount: 0 });
   });
 
-  it('tracks a hidden purse, and reads its coins only once they are revealed', () => {
+  it('tracks a hidden purse, and reads its items only once they are revealed', () => {
     const placements = [placed('gold', MERCHANT, true)];
-    expect(balanceOf(COIN, MERCHANT, state({ placements, copies: [copy('gold', MERCHANT, 2, { visibility: 'hidden' })] }))).toEqual({ tracked: true, amount: 0 });
-    expect(balanceOf(COIN, MERCHANT, state({ placements, copies: [copy('gold', MERCHANT, 2)] }))).toEqual({ tracked: true, amount: 200 });
+    expect(balanceOf(MONEY, MERCHANT, state({ placements, copies: [copy('gold', MERCHANT, 2, { visibility: 'hidden' })] }))).toEqual({ tracked: true, amount: 0 });
+    expect(balanceOf(MONEY, MERCHANT, state({ placements, copies: [copy('gold', MERCHANT, 2)] }))).toEqual({ tracked: true, amount: 200 });
   });
 
   it.each<[string, Placement]>([
@@ -73,7 +73,7 @@ describe('Balance by coins', () => {
     ['another owner', placed('gold', { kind: 'entity', id: 'guard' })],
     ['a location', placed('gold', { kind: 'location', id: 'merchant' })],
   ])('reads a Placement of %s as no authored balance', (_case, placement) => {
-    expect(balanceOf(COIN, MERCHANT, state({ placements: [placement] }))).toEqual({ tracked: false });
+    expect(balanceOf(MONEY, MERCHANT, state({ placements: [placement] }))).toEqual({ tracked: false });
   });
 });
 
@@ -120,21 +120,21 @@ describe('Balance by name only', () => {
 });
 
 describe('balanceText', () => {
-  it('reads coins as their Breakdown and a stat as its rounded number and Currency name', () => {
-    expect(balanceText(105, COIN, ITEMS)).toBe('1 Gold, 5 Copper');
-    expect(balanceText(0, COIN, ITEMS)).toBe('0 Copper');
+  it('reads items as their Breakdown and a stat as its rounded number and Currency name', () => {
+    expect(balanceText(105, MONEY, ITEMS)).toBe('1 Gold, 5 Copper');
+    expect(balanceText(0, MONEY, ITEMS)).toBe('0 Copper');
     expect(balanceText(40.6, CREDITS, ITEMS)).toBe('41 Credits');
   });
 
-  it('reads a coin Currency with no worth-1 coin as its number and name', () => {
-    const noBase: Currency = { id: 'c', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'gold', worth: 100 }] } };
+  it('reads an Items Currency with no worth-1 item as its number and name', () => {
+    const noBase: Currency = { id: 'c', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'gold', worth: 100 }] } };
     expect(balanceText(300, noBase, ITEMS)).toBe('300 Coin');
   });
 });
 
 describe('balanceRows', () => {
   it('lists each tracked Currency in world order, name-only and untracked left out', () => {
-    const rows = balanceRows([CREDITS, GOATS, COIN, GEMS], state({ copies: [copy('copper', YOU, 105)], statsOf: () => [row('funds', 40.4)] }), ITEMS);
+    const rows = balanceRows([CREDITS, GOATS, MONEY, GEMS], state({ copies: [copy('copper', YOU, 105)], statsOf: () => [row('funds', 40.4)] }), ITEMS);
     expect(rows).toEqual([
       { currencyId: 'credits', name: 'Credits', amount: '40' },
       { currencyId: 'coin', name: 'Coin', amount: '1 Gold, 5 Copper' },

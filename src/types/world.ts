@@ -560,14 +560,14 @@ export interface ItemTraitEffect {
   duration?: ItemEffectDuration;
 }
 
-/** One coin of a coin-backed Currency: an item and its worth in the base unit. The smallest coin is worth 1. */
-export interface CurrencyCoin {
+/** One Item of an Items-backed Currency: an item and its worth in the base unit. The smallest Item is worth 1. */
+export interface CurrencyItem {
   itemId: string;
   worth: number;
 }
 
-/** What holds a Currency: one stat, coin items, or nothing, for a name only. */
-export type CurrencyBacking = { kind: 'stat'; statId: string } | { kind: 'coins'; coins: CurrencyCoin[] } | { kind: 'name' };
+/** What holds a Currency: one stat, Items, or nothing, for a name only. */
+export type CurrencyBacking = { kind: 'stat'; statId: string } | { kind: 'items'; items: CurrencyItem[] } | { kind: 'name' };
 
 /** A kind of money in the world. The world's first is the Default, which a new item takes. */
 export interface Currency {

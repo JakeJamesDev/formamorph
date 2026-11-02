@@ -205,24 +205,24 @@ The [Scripts Guide](Scripts-Reference#items) lists what an item script can read 
 | Type | What it does |
 |---|---|
 | 📊 **Stat** | The money is a number on a stat you pick. |
-| 🪙 **Coin Items** | The money is coins, each one a Stackable item, such as Copper, Silver and Gold. |
+| 🧩 **Items** | The money is items, each one a Stackable item, such as Copper, Silver and Gold. |
 | 🏷️ **Name Only** | The money is only a name, such as goats. Nothing tracks it. |
 
-With **Coin Items**, pick **Add Coin** to add a row. Each row is an item and its worth in the smallest coin:
+With **Items**, pick **Add Item** to add a row. Each row is an item and its worth counted in the smallest item:
 
-- 1️⃣ One coin is worth 1. The first row you add takes it. Later rows start at ten times the largest worth.
-- 🔢 Each worth is a whole number, and no two coins share one.
-- 🧱 A coin is a Stackable item, and an item is a coin of one Currency at most.
-- ↕️ The arrows move a row. The player always reads coins from largest to smallest.
+- 1️⃣ One item is worth 1. The first row you add takes it. Later rows start at ten times the largest worth.
+- 🔢 Each worth is a whole number, and no two items share one.
+- 🧱 Every row is a Stackable item, and an item backs one Currency at most.
+- ↕️ The arrows move a row. The player always reads items from largest to smallest.
 
-An item priced in a coin Currency shows one **Value** field per coin. Type 1 in **Gold** and 5 in **Copper** to store 105. The fields tidy up when you leave them, so 15 Copper becomes 1 Silver and 5 Copper. If you change a coin's worth, each item keeps its total, and its fields change to match.
+An item priced in an Items Currency shows one **Value** field per item. Type 1 in **Gold** and 5 in **Copper** to store 105. The fields tidy up when you leave them, so 15 Copper becomes 1 Silver and 5 Copper. If you change an item's worth, each priced item keeps its total, and its fields change to match.
 
 - 🥇 A new item takes the first Currency in the list. Drag a row to change which one comes first.
 - 🔗 The stat list holds your global stats, the stats your Personas link, and each Persona's own stats. A stat that many Personas link shows once.
 - 💰 The player sees an item's worth in its popup, such as "Worth 40 Credits" or "Worth 1 Gold, 5 Copper". An unidentified copy shows no worth.
-- 👛 The **Inventory** tab lists the player's money under **Money**: one row for each Currency with coins or a stat the player has. A **Name Only** Currency has no row. A hidden stat has no row either.
+- 👛 The **Inventory** tab lists the player's money under **Money**: one row for each Currency with Items or a stat the player has. A **Name Only** Currency has no row. A hidden stat has no row either.
 - 🤖 The **Inventory** chip tells the AI each listed item's worth, and how much money the player and each entity have.
-- 🏪 To limit how much an entity can pay, place one of the coins on it, or give it the stat. An entity with neither has no money to run out of. A Global Stat is the player's money only.
+- 🏪 To limit how much an entity can pay, place one of the Currency's items on it, or give it the stat. An entity with neither has no money to run out of. A Global Stat is the player's money only.
 - 🚫 An item with **No Currency** shows no worth, even with a **Value**.
 
 The bundled world **Emberwatch** pays in Copper, Silver and Gold. To see a full setup, open it in the World Editor and read **How this world is built** in its readme.
@@ -232,7 +232,7 @@ The bundled world **Emberwatch** pays in Copper, Silver and Gold. To see a full 
 A delete is never blocked. When something uses what you delete, a confirm names what changes. Nothing else asks.
 
 - 📊 Delete a stat that backs a Currency, or the Persona who owns it, and that Currency becomes **Name Only**. Deleting Blueprints does the same when it removes the stat's last copy.
-- 🪙 Delete a coin item and its row leaves the Currency. If it was the last coin, the Currency becomes **Name Only**. If it was the coin worth 1, the other coins stay, and the Currency shows a hint until a coin is worth 1.
+- 🧩 Delete an item that backs a Currency and its row leaves the Currency. If it was the last row, the Currency becomes **Name Only**. If it was the item worth 1, the other rows stay, and the Currency shows a hint until an item is worth 1.
 - 🗑️ Delete a Currency and its items lose their **Currency**. The confirm gives the item count.
 - 🏷️ Every item keeps its **Value**. A delete clears the Currency and leaves each price in place.
 - ↩️ Each delete is one undo step.
@@ -351,14 +351,14 @@ After each turn's narration, the **Inventory** prompt reads the turn and records
 - 🧪 A use follows the item's **When Empty**. For a plain item the story made, the story says whether the use kept it or used it up.
 - 🔤 A name in the story matches your item when it's the same name, ignoring case and the spaces at the ends. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.
 - ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used, and it has no slot and no effects. The same name later reuses it.
-- 🎒 The step runs only while the world has items, the game holds any, or the world has a **Stat** or **Coin Items** Currency.
+- 🎒 The step runs only while the world has items, the game holds any, or the world has a **Stat** or **Items** Currency.
 - ⚖️ The story can take a **Bound** item. Only the player's buttons can't.
-- 💰 The same step moves money when the story pays a bribe or a bounty, in any world with a **Stat** or **Coin Items** Currency. The game works out the amounts: smallest coins first, then change in the fewest coins.
-- 🛒 Buying and selling move the item and the money together. The price is the one the story states, or else the item's **Value** times how many. A price that names no coin or Currency uses the item's own Currency, then the first in your **Currencies** list.
+- 💰 The same step moves money when the story pays a bribe or a bounty, in any world with a **Stat** or **Items** Currency. The game works out the amounts: smallest items first, then change in the fewest items.
+- 🛒 Buying and selling move the item and the money together. The price is the one the story states, or else the item's **Value** times how many. A price that names no item or Currency uses the item's own Currency, then the first in your **Currencies** list.
 - 🚫 A payment the player can't afford moves nothing, and so does one that would break a stat's lock or take it below its minimum. The story isn't told. A trade that fails moves neither the item nor the money.
-- 🏷️ A trade fails when the item has no price: no price in the story, and no **Value** or no Currency on the item. A **Value** of 0 and a **Name Only** Currency move the item with no money. So does any trade in a world with no **Stat** or **Coin Items** Currency.
+- 🏷️ A trade fails when the item has no price: no price in the story, and no **Value** or no Currency on the item. A **Value** of 0 and a **Name Only** Currency move the item with no money. So does any trade in a world with no **Stat** or **Items** Currency.
 - 🛍️ A seller doesn't need the item in stock. The game takes it from the seller, then from what lies at the location, then makes a new one. Hidden copies never sell. The player can sell only what they hold.
 - 🧾 While this step runs, the stats step can't change a stat that backs a Currency, so a payment counts once.
-- 🏪 An entity with no coins or stat of its own keeps nothing it is paid, and what it pays out is new money. A name the world doesn't know works the same way. Between two entities with money, the payer loses and the payee gains the exact amount, even when one lacks change.
+- 🏪 An entity with no Items or stat of its own keeps nothing it is paid, and what it pays out is new money. A name the world doesn't know works the same way. Between two entities with money, the payer loses and the payee gains the exact amount, even when one lacks change.
 
 The step's prompt is on the **Prompts** tab in Settings, under **Inventory**. That tab shows in Advanced mode.

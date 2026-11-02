@@ -37,11 +37,11 @@ describe('InventoryTab item popup worth', () => {
     expect((await openOn(priced())).getByText('Worth 40 Credits')).toBeInTheDocument();
   });
 
-  it('shows a coin Currency’s worth as its Breakdown', async () => {
-    const coinItems = [item('copper', 'Copper'), item('gold', 'Gold')];
-    const coin: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+  it('shows an Items Currency’s worth as its Breakdown', async () => {
+    const backingItems = [item('copper', 'Copper'), item('gold', 'Gold')];
+    const money: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
     const shown = item('sword', 'Greatsword', { value: 105, currencyId: 'crowns' });
-    render(<InventoryTab {...props({ items: [shown, ...coinItems], currencies: [coin], copies: [copy('s', 'sword')] })} />);
+    render(<InventoryTab {...props({ items: [shown, ...backingItems], currencies: [money], copies: [copy('s', 'sword')] })} />);
     await userEvent.click(screen.getByRole('button', { name: 'Greatsword' }));
     expect(within(screen.getByRole('dialog')).getByText('Worth 1 Gold, 5 Copper')).toBeInTheDocument();
   });

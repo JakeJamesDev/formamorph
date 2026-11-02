@@ -394,7 +394,7 @@ export function applyInventoryPass(
     if (own.backing.kind === 'name' || item?.value === 0) return { kind: 'alone', currency: own };
     if (item?.value === undefined) return { kind: 'refused', reason: 'it has no price' };
     const amount = item.value * op.quantity;
-    if (own.backing.kind === 'coins' && !Number.isInteger(amount)) return { kind: 'refused', reason: `${amount} is no whole number of coins` };
+    if (own.backing.kind === 'items' && !Number.isInteger(amount)) return { kind: 'refused', reason: `${amount} is no whole number of items` };
     return { kind: 'priced', currency: own, amount };
   };
 

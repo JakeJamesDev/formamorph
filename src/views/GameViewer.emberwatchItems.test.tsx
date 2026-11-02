@@ -27,14 +27,14 @@ const entityId = (name: string) => world.entities.find((entity) => entity.name =
 const traitId = (name: string) => world.traits.find((trait) => trait.name === name)!.id;
 const asEntity = (name: string): PersonaRef => ({ source: 'world', entityId: entityId(name) });
 const NONE: PersonaRef = { source: 'none' };
-const coin = world.currencies![0];
+const money = world.currencies![0];
 const YOU: SlotOwner = { kind: 'you' };
 
 let live: ReturnType<typeof useGameplay> | null = null;
 const Probe = () => { live = useGameplay(); return null; };
 const balance = (owner: SlotOwner) => {
   if (!live) throw new Error('no gameplay yet');
-  return balanceOf(coin, owner, { copies: live.itemCopies, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
+  return balanceOf(money, owner, { copies: live.itemCopies, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
 };
 
 /** Every owner's picks at setup, as Enter World gives them: their defaults under `persona`, with each named
@@ -83,12 +83,12 @@ describe('a new game of Emberwatch', () => {
     expect(within(await screen.findByRole('list', { name: 'Money' })).getByText('3 Gold')).toBeInTheDocument();
   }, 60_000);
 
-  it('gives a played Rogue the extra coins', async () => {
+  it('gives a played Rogue the extra items', async () => {
     await playOpening({ initialPersona: { ref: asEntity('Sylvie Thornwhistle') }, initialOwnedTraits: setupPicks(asEntity('Sylvie Thornwhistle')) });
     expect(balance(YOU)).toEqual({ tracked: true, amount: 500 });
   }, 60_000);
 
-  it('gives a Rogue in the cast the extra coins, and the played non-Rogue none', async () => {
+  it('gives a Rogue in the cast the extra items, and the played non-Rogue none', async () => {
     await playOpening({ initialPersona: { ref: asEntity('Albus') }, initialOwnedTraits: setupPicks(asEntity('Albus')) });
     expect(balance({ kind: 'entity', id: entityId('Sylvie Thornwhistle') })).toEqual({ tracked: true, amount: 500 });
     expect(balance(YOU)).toEqual({ tracked: true, amount: 300 });
@@ -134,7 +134,7 @@ describe('a new game of Emberwatch', () => {
     expect(balance({ kind: 'entity', id: entityId('Wanderer') })).toEqual({ tracked: true, amount: 0 });
   }, 60_000);
 
-  it('gives a Custom Persona no extra coins for a Human Paladin build', async () => {
+  it('gives a Custom Persona no extra items for a Human Paladin build', async () => {
     await playOpening({ initialPersona: { ref: NONE }, initialOwnedTraits: setupPicks(NONE, 'Human', 'Paladin') });
     expect(balance(YOU)).toEqual({ tracked: true, amount: 300 });
   }, 60_000);
@@ -144,7 +144,7 @@ describe('a new game of Emberwatch', () => {
     expect(balance(YOU)).toEqual({ tracked: true, amount: 550 });
   }, 60_000);
 
-  it('tracks Jory Pike by his purse, and leaves a shopkeeper with no coins placed untracked', async () => {
+  it('tracks Jory Pike by his purse, and leaves a shopkeeper with no items placed untracked', async () => {
     await playOpening({ initialPersona: { ref: asEntity('Albus') }, initialOwnedTraits: setupPicks(asEntity('Albus')) });
     expect(balance({ kind: 'entity', id: entityId('Jory Pike') })).toEqual({ tracked: true, amount: 3250 });
     expect(balance({ kind: 'entity', id: entityId('Bram Oakes') })).toEqual({ tracked: false });

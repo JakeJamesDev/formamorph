@@ -9,9 +9,9 @@ import type { Currency, Item, ItemCopy, ItemCopyWhere, PlayerStat, Stat } from '
 
 const item = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], stackable: true });
 const items = [item('copper', 'Copper'), item('silver', 'Silver'), item('gold', 'Gold')];
-const COIN: Currency = {
+const MONEY: Currency = {
   id: 'coin', name: 'Coin',
-  backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }, { itemId: 'gold', worth: 100 }] },
+  backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }, { itemId: 'gold', worth: 100 }] },
 };
 const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
 const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
@@ -23,10 +23,10 @@ const hero: SandboxEntity = { id: 'e-hero', name: 'Hero', traits: [] };
 const funds = (value: number, over: Partial<PlayerStat> = {}): PlayerStat =>
   ({ id: 'funds', name: 'Funds', type: 'number', description: '', min: 0, max: 1000, value, regen: 0, descriptors: [], ...over });
 
-const coin = (id: string, itemId: string, where: ItemCopyWhere, quantity: number): ItemCopy =>
+const moneyCopy = (id: string, itemId: string, where: ItemCopyWhere, quantity: number): ItemCopy =>
   ({ id, item: { kind: 'item', itemId }, where, quantity, visibility: 'visible' });
 
-const sandboxCoin = (copy: ItemCopy): SandboxItem['copies'][number] =>
+const sandboxBackingItem = (copy: ItemCopy): SandboxItem['copies'][number] =>
   ({ id: copy.id, where: copy.where, quantity: copy.quantity, equipped: false, slot: '', occupies: [], allowed: [], hidden: false });
 
 const health: Stat = { id: 'h', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [] };
@@ -35,19 +35,19 @@ const kinds = (currencies: readonly Currency[]) => currencies.map((c) => ({ id: 
 
 /** A run over a world with one Currency of each backing. The player holds 1 Gold; the Keeper is placed with Copper. */
 function run(code: string, state: Partial<ScriptMoneyState> = {}, over: Partial<StatCodeRunOptions> = {}) {
-  const copies = state.copies ?? [coin('c-gold', 'gold', { kind: 'you' }, 1), coin('c-copper', 'copper', { kind: 'entity', id: 'e-keeper' }, 3)];
+  const copies = state.copies ?? [moneyCopy('c-gold', 'gold', { kind: 'you' }, 1), moneyCopy('c-copper', 'copper', { kind: 'entity', id: 'e-keeper' }, 3)];
   const money = scriptMoney({
-    currencies: [COIN, CREDITS, GOATS], items, itemNames: items, slots: [],
+    currencies: [MONEY, CREDITS, GOATS], items, itemNames: items, slots: [],
     placements: [{ id: 'p', source: { kind: 'item', itemId: 'copper' }, where: { kind: 'entity', id: 'e-keeper' }, quantity: 3 }],
     copies, stats: { globalStats: [], entityStats: { 'e-hero': [funds(50)], 'e-keeper': [funds(5)] } },
     playedIds: ['e-hero'], statsOn: (_id, stats) => stats,
     ...state,
   });
   const sandboxItems: SandboxItem[] = items.map(({ id, name }) => ({
-    id, name, copies: copies.filter((c) => c.item.kind === 'item' && c.item.itemId === id).map(sandboxCoin),
+    id, name, copies: copies.filter((c) => c.item.kind === 'item' && c.item.itemId === id).map(sandboxBackingItem),
   }));
   return executeStatCode(code, [health], null, {
-    entities: [keeper, stranger, hero], persona: hero, items: sandboxItems, currencies: kinds([COIN, CREDITS, GOATS]), money, ...over,
+    entities: [keeper, stranger, hero], persona: hero, items: sandboxItems, currencies: kinds([MONEY, CREDITS, GOATS]), money, ...over,
   });
 }
 
@@ -55,7 +55,7 @@ describe('executeStatCode currencies', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());
 
-  it('reads a coin balance, a stat balance and an untracked owner', async () => {
+  it('reads an item balance, a stat balance and an untracked owner', async () => {
     const res = await run(`
       if (currencies.Coin.balance(persona) !== 100) throw new Error('coin ' + currencies.Coin.balance(persona));
       if (currencies.Coin.balance("Keeper") !== 3) throw new Error('keeper');
@@ -68,7 +68,7 @@ describe('executeStatCode currencies', () => {
     expect(res.error).toBeNull();
   });
 
-  it('settles a coin pay with exact change and shows the script the result', async () => {
+  it('settles an item pay with exact change and shows the script the result', async () => {
     const res = await run(`
       const result = currencies.Coin.pay(persona, "Keeper", 5);
       if (!result.paid) throw new Error(result.reason);
@@ -146,7 +146,7 @@ describe('executeStatCode currencies', () => {
     ]);
   });
 
-  it('keeps give working on a coin beside a payment', async () => {
+  it('keeps give working on an item beside a payment', async () => {
     const res = await run(`
       items.Copper.give(persona, 4);
       currencies.Coin.pay(persona, null, 100);
@@ -173,7 +173,7 @@ describe('executeStatCode currencies', () => {
     expect(res.worldWrites).toBeUndefined();
   });
 
-  it('reads a text price in the Currency’s own coins', async () => {
+  it('reads a text price in the Currency’s own Items', async () => {
     const res = await run(`
       if (!currencies.Coin.pay(persona, null, "5 Copper").paid) throw new Error('text price');
       if (currencies.Coin.pay(persona, null, "5 Credits").paid) throw new Error('another Currency should refuse');

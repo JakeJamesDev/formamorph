@@ -24,7 +24,7 @@ vi.mock('@/contexts/GameDataContext', () => {
     dictionaries: [] as Dictionary[], placeholders: [] as Placeholder[],
     items: [{ id: 'copper', name: 'Copper', statEffects: [], traitEffects: [], equipRequires: [] }],
     placements: [{ id: 'p1', where: { kind: 'entity', id: 'ent1' }, quantity: 2, source: { kind: 'item', itemId: 'copper' } }],
-    currencies: [{ id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }] } }],
+    currencies: [{ id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }] } }],
   });
   return { useGameData: data, useGameDataOptional: data };
 });

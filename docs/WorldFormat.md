@@ -723,7 +723,7 @@ Each `backing` is one of these:
 | Backing | Meaning |
 |---|---|
 | `{ "kind": "stat", "statId": "<stat id>" }` | A number on a stat: a global stat, a stat a Persona links, or a Persona's own stat |
-| `{ "kind": "coins", "coins": [{ "itemId": "<item id>", "worth": 1 }, …] }` | Coin items, each with its worth in the base unit. The smallest coin is worth 1, and each worth is a whole number used once. An item is a coin of one Currency at most. The game reads an item's `value` as coins, largest first |
+| `{ "kind": "items", "items": [{ "itemId": "<item id>", "worth": 1 }, …] }` | Items, each with its worth in the base unit. The smallest Item is worth 1, and each worth is a whole number used once. An item backs one Currency at most. The game reads an item's `value` as these Items, largest first |
 | `{ "kind": "name" }` | A name only, with no tracking |
 
 The game drops a Currency with no `id`, no `name` or an unknown `backing`.

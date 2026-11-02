@@ -28,14 +28,14 @@ const render = (copies: ItemCopy[], key = '<INVENTORY|markdown>') => chipValues(
 describe('the Inventory chip’s money', () => {
   const COPPER = item('copper', 'Copper');
   const GOLD = item('gold', 'Gold');
-  const COIN: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+  const MONEY: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
   const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
   const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
   const BLADE = item('blade', 'Notched Blade', { value: 105, currencyId: 'coin' });
   const ROPE = item('rope', 'Rope', { value: 12, currencyId: 'goats' });
   const purse = (where: Placement['where']): Placement => ({ id: 'p1', where, quantity: 1, source: { kind: 'item', itemId: 'gold' } });
   const money = (copies: ItemCopy[], over: Partial<ChipScene> = {}): ChipScene => ({
-    ...scene(copies), items: [BLADE, ROPE, COPPER, GOLD, ...ITEMS.filter((i) => i.id === 'cloak')], currencies: [COIN, GOATS], placements: [purse({ kind: 'entity', id: 'wren' })], ...over,
+    ...scene(copies), items: [BLADE, ROPE, COPPER, GOLD, ...ITEMS.filter((i) => i.id === 'cloak')], currencies: [MONEY, GOATS], placements: [purse({ kind: 'entity', id: 'wren' })], ...over,
   });
   const read = (s: ChipScene, key = '<INVENTORY|markdown>') => chipValues(s)(key);
 
@@ -87,7 +87,7 @@ describe('the Inventory chip’s money', () => {
     expect(out).toContain('Dull Ring: A tarnished band. (unknown to the player: it is Ring of Curses, worth 7 Copper: Drains the wearer.)');
   });
 
-  it('leaves a hidden coin out of the balance and marks it hidden', () => {
+  it('leaves a hidden item out of the balance and marks it hidden', () => {
     const out = read(money([copy('gold', { kind: 'you' }, { visibility: 'hidden' })]));
     expect(out).toContain('**balance:** 0 Copper');
     expect(out).toContain('Gold (hidden)');
@@ -183,7 +183,7 @@ describe('the Inventory chip', () => {
   });
 
   it('leaves out owners and places that are not here', () => {
-    // Bell stands in the Boathouse, and the coin lies there.
+    // Bell stands in the Boathouse, and the item lies there.
     expect(render([
       copy('ring', { kind: 'entity', id: 'bell' }),
       copy('coin', { kind: 'location', id: 'boathouse' }),

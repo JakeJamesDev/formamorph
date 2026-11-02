@@ -3,11 +3,11 @@ import { copiesAt, type InventoryOp } from '@/lib/inventory';
 import { isUnidentified, itemStackable } from '@/lib/items';
 import { canBePlayer } from '@/lib/owners';
 import { globalStatsOf, resolvedEntityStats, statBlueprintIds, type StatLinkWorld } from '@/lib/statLinks';
-import type { Currency, CurrencyBacking, CurrencyCoin, Entity, EntityStatValues, Item, ItemCopy, Placement, PlayerStat, Stat } from '@/types';
+import type { Currency, CurrencyBacking, CurrencyItem, Entity, EntityStatValues, Item, ItemCopy, Placement, PlayerStat, Stat } from '@/types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 
-const parseCoin = (raw: unknown): CurrencyCoin[] =>
+const parseCurrencyItem = (raw: unknown): CurrencyItem[] =>
   (isRecord(raw) && typeof raw.itemId === 'string' && typeof raw.worth === 'number' && Number.isInteger(raw.worth) && raw.worth > 0
     ? [{ itemId: raw.itemId, worth: raw.worth }] : []);
 
@@ -15,7 +15,7 @@ const parseBacking = (raw: unknown): CurrencyBacking | null => {
   if (!isRecord(raw)) return null;
   if (raw.kind === 'name') return { kind: 'name' };
   if (raw.kind === 'stat') return typeof raw.statId === 'string' && raw.statId ? { kind: 'stat', statId: raw.statId } : null;
-  if (raw.kind === 'coins') return Array.isArray(raw.coins) ? { kind: 'coins', coins: raw.coins.flatMap(parseCoin) } : null;
+  if (raw.kind === 'items') return Array.isArray(raw.items) ? { kind: 'items', items: raw.items.flatMap(parseCurrencyItem) } : null;
   return null;
 };
 
@@ -32,8 +32,8 @@ export const currencyOf = (item: Pick<Item, 'currencyId'>, currencies: readonly 
 
 type ItemName = Pick<Item, 'id' | 'name'>;
 
-/** One coin's share of a value, or one Value field: the coin's item, its name, and how many. */
-export interface CoinAmount {
+/** One row's share of a value, or one Value field: the row's item, its name, and how many. */
+export interface CurrencyItemAmount {
   itemId: string;
   name: string;
   worth: number;
@@ -42,49 +42,49 @@ export interface CoinAmount {
 
 const isWholeValue = (value: number): boolean => Number.isInteger(value) && value >= 0;
 
-/** The coin rows of `currency`, in author order. Empty for any other backing. */
-export const coinsOf = (currency: Currency): readonly CurrencyCoin[] => (currency.backing.kind === 'coins' ? currency.backing.coins : []);
+/** The Currency Items of `currency`, in author order. Empty for any other backing. */
+export const itemsOf = (currency: Currency): readonly CurrencyItem[] => (currency.backing.kind === 'items' ? currency.backing.items : []);
 
 /** The rows of `currency` whose item exists, largest worth first. Empty for any other backing. */
-const usableCoins = (currency: Currency, items: readonly ItemName[]): Omit<CoinAmount, 'count'>[] =>
-  coinsOf(currency)
-    .flatMap((coin) => {
-      const item = items.find((other) => other.id === coin.itemId);
-      return item ? [{ itemId: coin.itemId, name: item.name, worth: coin.worth }] : [];
+const usableItems = (currency: Currency, items: readonly ItemName[]): Omit<CurrencyItemAmount, 'count'>[] =>
+  itemsOf(currency)
+    .flatMap((row) => {
+      const item = items.find((other) => other.id === row.itemId);
+      return item ? [{ itemId: row.itemId, name: item.name, worth: row.worth }] : [];
     })
     .sort((a, b) => b.worth - a.worth);
 
 /**
- * `value` in base units as one count per coin, largest first, zero counts kept. Null when it cannot read as
- * coins: a Currency with no coins, a value that is not a whole number from zero, or no usable coin worth 1.
+ * `value` in base units as one count per row, largest first, zero counts kept. Null when it cannot read as
+ * rows: a Currency with no Items, a value that is not a whole number from zero, or no usable Item worth 1.
  */
-export function coinFields(value: number, currency: Currency, items: readonly ItemName[]): CoinAmount[] | null {
-  const coins = usableCoins(currency, items);
-  if (!isWholeValue(value) || coins[coins.length - 1]?.worth !== 1) return null;
+export function itemFields(value: number, currency: Currency, items: readonly ItemName[]): CurrencyItemAmount[] | null {
+  const rows = usableItems(currency, items);
+  if (!isWholeValue(value) || rows[rows.length - 1]?.worth !== 1) return null;
   let rest = value;
-  return coins.map((coin) => {
-    const count = Math.floor(rest / coin.worth);
-    rest -= count * coin.worth;
-    return { ...coin, count };
+  return rows.map((row) => {
+    const count = Math.floor(rest / row.worth);
+    rest -= count * row.worth;
+    return { ...row, count };
   });
 }
 
-/** The coins that make `value`, largest first, zero counts left out. Zero reads as none of the smallest coin. Null as `coinFields`. */
-export function breakdown(value: number, currency: Currency, items: readonly ItemName[]): CoinAmount[] | null {
-  const fields = coinFields(value, currency, items);
+/** The Currency Items that make `value`, largest first, zero counts left out. Zero reads as none of the smallest Item. Null as `itemFields`. */
+export function breakdown(value: number, currency: Currency, items: readonly ItemName[]): CurrencyItemAmount[] | null {
+  const fields = itemFields(value, currency, items);
   if (!fields) return null;
-  const held = fields.filter((coin) => coin.count > 0);
+  const held = fields.filter((row) => row.count > 0);
   return held.length > 0 ? held : fields.slice(-1);
 }
 
 /** The Value stored for the counts of `fields`, in base units. */
-export const valueOfCoins = (fields: readonly Pick<CoinAmount, 'worth' | 'count'>[]): number =>
-  fields.reduce((sum, coin) => sum + coin.worth * coin.count, 0);
+export const valueOfItems = (fields: readonly Pick<CurrencyItemAmount, 'worth' | 'count'>[]): number =>
+  fields.reduce((sum, row) => sum + row.worth * row.count, 0);
 
 /** The Breakdown as text, such as "1 Gold, 5 Copper". Null when `value` has no Breakdown. */
 export function breakdownText(value: number, currency: Currency, items: readonly ItemName[]): string | null {
-  const coins = breakdown(value, currency, items);
-  return coins && coins.map((coin) => `${coin.count} ${coin.name}`).join(', ');
+  const rows = breakdown(value, currency, items);
+  return rows && rows.map((row) => `${row.count} ${row.name}`).join(', ');
 }
 
 /** `amount` in base units as text: its Breakdown, else the number and the Currency's name. */
@@ -121,9 +121,9 @@ export type Balance = { tracked: false } | { tracked: true; amount: number };
 
 const UNTRACKED: Balance = { tracked: false };
 
-/** The worth of the coins at `owner`. Only visible, identified copies count, Bound ones included. */
-function coinAmount(coins: readonly CurrencyCoin[], owner: SlotOwner, copies: readonly ItemCopy[]): number {
-  const worthOf = new Map(coins.map((coin) => [coin.itemId, coin.worth]));
+/** The worth of the Currency Items at `owner`. Only visible, identified copies count, Bound ones included. */
+function itemAmount(rows: readonly CurrencyItem[], owner: SlotOwner, copies: readonly ItemCopy[]): number {
+  const worthOf = new Map(rows.map((row) => [row.itemId, row.worth]));
   return copiesAt(copies, owner).reduce((sum, copy) => {
     const worth = copy.item.kind === 'item' ? worthOf.get(copy.item.itemId) : undefined;
     return worth !== undefined && copy.visibility === 'visible' && !isUnidentified(copy) ? sum + worth * copy.quantity : sum;
@@ -131,16 +131,16 @@ function coinAmount(coins: readonly CurrencyCoin[], owner: SlotOwner, copies: re
 }
 
 /**
- * What `owner` holds in `currency`. The player always tracks coins, and an entity tracks them from a Placement of
- * one of the coins at it, hidden or not. A Global Stat counts for the player alone, and any other stat for whoever has it.
+ * What `owner` holds in `currency`. The player always tracks Items, and an entity tracks them from a Placement of
+ * one of the Items at it, hidden or not. A Global Stat counts for the player alone, and any other stat for whoever has it.
  */
 export function balanceOf(currency: Currency, owner: SlotOwner, state: BalanceState): Balance {
   const { backing } = currency;
   if (backing.kind === 'name') return UNTRACKED;
-  if (backing.kind === 'coins') {
+  if (backing.kind === 'items') {
     const authored = owner.kind === 'you' || state.placements.some((placement) => placement.where.kind === 'entity'
-      && placement.where.id === owner.id && backing.coins.some((coin) => coin.itemId === placement.source.itemId));
-    return authored ? { tracked: true, amount: coinAmount(backing.coins, owner, state.copies) } : UNTRACKED;
+      && placement.where.id === owner.id && backing.items.some((row) => row.itemId === placement.source.itemId));
+    return authored ? { tracked: true, amount: itemAmount(backing.items, owner, state.copies) } : UNTRACKED;
   }
   const held = walletStat(backing.statId, owner, state);
   return held ? { tracked: true, amount: held.stat.value } : UNTRACKED;
@@ -167,7 +167,7 @@ export interface BalanceRow {
   amount: string;
 }
 
-/** The player's tracked Currencies as rows. A coin amount reads as its Breakdown and a stat's as the bare number. */
+/** The player's tracked Currencies as rows. An Items amount reads as its Breakdown and a stat's as the bare number. */
 export const balanceRows = (currencies: readonly Currency[], state: BalanceState, items: readonly ItemName[]): BalanceRow[] =>
   currencies.flatMap((currency) => {
     const balance = balanceOf(currency, { kind: 'you' }, state);
@@ -176,32 +176,32 @@ export const balanceRows = (currencies: readonly Currency[], state: BalanceState
     return [{ currencyId: currency.id, name: currency.name, amount: breakdownText(whole, currency, items) ?? `${whole}` }];
   });
 
-/** Items a coin row can take: Stackable, and no coin of any Currency yet. `keep` always stays, so a row lists its own item. */
-export const coinItemChoices = (items: readonly Item[], currencies: readonly Currency[], keep?: string): Item[] => {
-  const taken = new Set(currencies.flatMap((currency) => coinsOf(currency).map((coin) => coin.itemId)));
+/** Items a Currency Item row can take: Stackable, and no Item of any Currency yet. `keep` always stays, so a row lists its own item. */
+export const currencyItemChoices = (items: readonly Item[], currencies: readonly Currency[], keep?: string): Item[] => {
+  const taken = new Set(currencies.flatMap((currency) => itemsOf(currency).map((row) => row.itemId)));
   return items.filter((item) => item.id === keep || (itemStackable(item) && !taken.has(item.id)));
 };
 
-/** `coins` plus a row for `itemId`. It takes worth 1 when no row has it, else ten times the largest worth. */
-export const addCoin = (coins: readonly CurrencyCoin[], itemId: string, items: readonly ItemName[]): CurrencyCoin[] => [
-  ...coins,
-  { itemId, worth: lacksBaseCoin(coins, items) ? 1 : Math.max(...coins.map((coin) => coin.worth)) * 10 },
+/** `rows` plus a row for `itemId`. It takes worth 1 when no row has it, else ten times the largest worth. */
+export const addCurrencyItem = (rows: readonly CurrencyItem[], itemId: string, items: readonly ItemName[]): CurrencyItem[] => [
+  ...rows,
+  { itemId, worth: lacksBaseItem(rows, items) ? 1 : Math.max(...rows.map((row) => row.worth)) * 10 },
 ];
 
 /**
- * `coins` with row `index` set to `worth`, or null when that breaks a rule: a whole number above zero, no
+ * `rows` with row `index` set to `worth`, or null when that breaks a rule: a whole number above zero, no
  * worth twice, and the only worth-1 row keeps its worth.
  */
-export function setCoinWorth(coins: readonly CurrencyCoin[], index: number, worth: number): CurrencyCoin[] | null {
-  if (!Number.isInteger(worth) || worth < 1 || index < 0 || index >= coins.length) return null;
-  if (coins.some((coin, at) => at !== index && coin.worth === worth)) return null;
-  if (coins[index].worth === 1 && worth !== 1) return null;
-  return coins.map((coin, at) => (at === index ? { ...coin, worth } : coin));
+export function setItemWorth(rows: readonly CurrencyItem[], index: number, worth: number): CurrencyItem[] | null {
+  if (!Number.isInteger(worth) || worth < 1 || index < 0 || index >= rows.length) return null;
+  if (rows.some((row, at) => at !== index && row.worth === worth)) return null;
+  if (rows[index].worth === 1 && worth !== 1) return null;
+  return rows.map((row, at) => (at === index ? { ...row, worth } : row));
 }
 
-/** True when no row worth 1 has an item, so no value has a Breakdown. */
-export const lacksBaseCoin = (coins: readonly CurrencyCoin[], items: readonly ItemName[]): boolean =>
-  !coins.some((coin) => coin.worth === 1 && items.some((item) => item.id === coin.itemId));
+/** True when no Currency Item worth 1 has an item, so no value has a Breakdown. */
+export const lacksBaseItem = (rows: readonly CurrencyItem[], items: readonly ItemName[]): boolean =>
+  !rows.some((row) => row.worth === 1 && items.some((item) => item.id === row.itemId));
 
 /** A new item's Currency: the Default, the world's first. */
 export const defaultCurrencyPatch = (currencies: readonly Currency[]): Pick<Item, 'currencyId'> =>
@@ -232,18 +232,18 @@ export function currencyStatGroups(world: StatLinkWorld & { entities: readonly E
 /** The Currency a price names and its amount in base units, or why it can't be read. */
 export type StatedPrice = { currency: Currency; amount: number } | { refused: string };
 
-/** A money word as a price compares it: case, a plural and a trailing "coin" ignored. */
+/** A money word as a price compares it: case, a plural and a trailing "coin" ignored. "Coin" stays: it reads story wording, not our copy. */
 const moneyKey = (name: string): string => name.trim().toLowerCase().replace(/\s+coins?$/, '').replace(/s$/, '');
 
-/** What a money word can mean: each coin of that name, else each Currency of that name, worth its base unit. */
+/** What a money word can mean: each Currency Item of that name, else each Currency of that name, worth its base unit. */
 function moneyTerms(word: string, currencies: readonly Currency[], items: readonly ItemName[]): { currency: Currency; worth: number }[] {
   const key = moneyKey(word);
-  const coins = currencies.flatMap((currency) => usableCoins(currency, items)
-    .filter((coin) => moneyKey(coin.name) === key).map((coin) => ({ currency, worth: coin.worth })));
-  return coins.length ? coins : currencies.filter((currency) => moneyKey(currency.name) === key).map((currency) => ({ currency, worth: 1 }));
+  const rows = currencies.flatMap((currency) => usableItems(currency, items)
+    .filter((row) => moneyKey(row.name) === key).map((row) => ({ currency, worth: row.worth })));
+  return rows.length ? rows : currencies.filter((currency) => moneyKey(currency.name) === key).map((currency) => ({ currency, worth: 1 }));
 }
 
-/** Whether `word` names a coin or a Currency. */
+/** Whether `word` names a Currency Item or a Currency. */
 export const namesMoney = (word: string, currencies: readonly Currency[], items: readonly ItemName[]): boolean =>
   moneyTerms(word, currencies, items).length > 0;
 
@@ -271,8 +271,8 @@ function leadingAmount(part: string): { count: number | null; word: string } {
 
 /**
  * A price as the AI states it: the Breakdown's form ("3 Gold, 5 Copper"), or a bare number, in digits or words. A bare
- * number counts the coin `named` names, else base units of the Currency it names, else of the Default. A lone money
- * word with no number takes `count`. A coin's name beats a Currency's, and every part must fit one Currency (Q26).
+ * number counts the Currency Item `named` names, else base units of the Currency it names, else of the Default. A lone money
+ * word with no number takes `count`. An Item's name beats a Currency's, and every part must fit one Currency (Q26).
  */
 export function readStatedPrice(price: string, named: string, currencies: readonly Currency[], items: readonly ItemName[], count?: number): StatedPrice {
   const termsOf = (word: string) => moneyTerms(word, currencies, items);
@@ -299,7 +299,7 @@ export function readStatedPrice(price: string, named: string, currencies: readon
   const [currency] = fits;
   const amount = terms.reduce((sum, term) => sum + term.count * term.options.find((option) => option.currency === currency)!.worth, 0);
   if (!(amount > 0)) return { refused: `"${price}" is no amount` };
-  if (currency.backing.kind === 'coins' && !Number.isInteger(amount)) return { refused: `"${price}" is no whole number of coins` };
+  if (currency.backing.kind === 'items' && !Number.isInteger(amount)) return { refused: `"${price}" is no whole number of items` };
   return { currency, amount };
 }
 
@@ -325,26 +325,26 @@ export type PaymentPlan = { settled: true; ops: InventoryOp[]; stats: PaymentSta
 const SETTLES_NOTHING: PaymentPlan = { settled: true, ops: [], stats: [] };
 const refuse = (reason: string): PaymentPlan => ({ settled: false, reason });
 
-/** The biggest amount the coin search walks; a larger one takes its largest coin first. */
-const COIN_SEARCH_LIMIT = 100_000;
+/** The biggest amount the item search walks; a larger one takes its largest Item first. */
+const ITEM_SEARCH_LIMIT = 100_000;
 
-/** The fewest coins that make `amount` exactly, by item id. Null when no mix of the coins makes it. */
-function fewestCoins(amount: number, coins: readonly Pick<CurrencyCoin, 'itemId' | 'worth'>[]): Map<string, number> | null {
-  if (!coins.length) return null;
+/** The fewest Items that make `amount` exactly, by item id. Null when no mix of the Items makes it. */
+function fewestItems(amount: number, rows: readonly Pick<CurrencyItem, 'itemId' | 'worth'>[]): Map<string, number> | null {
+  if (!rows.length) return null;
   const counts = new Map<string, number>();
-  const largest = coins.reduce((top, coin) => (coin.worth > top.worth ? coin : top));
-  const peeled = amount > COIN_SEARCH_LIMIT ? Math.ceil((amount - COIN_SEARCH_LIMIT) / largest.worth) : 0;
+  const largest = rows.reduce((top, row) => (row.worth > top.worth ? row : top));
+  const peeled = amount > ITEM_SEARCH_LIMIT ? Math.ceil((amount - ITEM_SEARCH_LIMIT) / largest.worth) : 0;
   if (peeled) counts.set(largest.itemId, peeled);
   const rest = amount - peeled * largest.worth;
   const best = [0];
-  const last: (typeof coins[number] | null)[] = [null];
+  const last: (typeof rows[number] | null)[] = [null];
   for (let at = 1; at <= rest; at += 1) {
     best[at] = Infinity;
     last[at] = null;
-    for (const coin of coins) {
-      if (coin.worth <= at && best[at - coin.worth] + 1 < best[at]) {
-        best[at] = best[at - coin.worth] + 1;
-        last[at] = coin;
+    for (const row of rows) {
+      if (row.worth <= at && best[at - row.worth] + 1 < best[at]) {
+        best[at] = best[at - row.worth] + 1;
+        last[at] = row;
       }
     }
   }
@@ -353,14 +353,14 @@ function fewestCoins(amount: number, coins: readonly Pick<CurrencyCoin, 'itemId'
   return counts;
 }
 
-/** The copies of a coin `owner` can hand over: the ones Balance counts, carried before equipped. */
+/** The copies of a Currency Item `owner` can hand over: the ones Balance counts, carried before equipped. */
 const spendableCopies = (itemId: string, owner: SlotOwner, copies: readonly ItemCopy[]): ItemCopy[] =>
   copiesAt(copies, owner)
     .filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemId && copy.visibility === 'visible' && !isUnidentified(copy))
     .sort((a, b) => Number(!!a.equipped) - Number(!!b.equipped));
 
-/** Ops that take `count` of a coin from `owner`, and how many of the count its copies could not cover. */
-function takeCoins(
+/** Ops that take `count` of a Currency Item from `owner`, and how many of the count its copies could not cover. */
+function takeItems(
   itemId: string, count: number, owner: SlotOwner, copies: readonly ItemCopy[], op: (copyId: string, quantity: number) => InventoryOp[],
 ): { ops: InventoryOp[]; short: number } {
   const ops: InventoryOp[] = [];
@@ -374,52 +374,52 @@ function takeCoins(
   return { ops, short };
 }
 
-/** Settles coins: smallest first, change in the fewest coins, and only the net of each coin moves (Q11). */
-function coinPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner | null, amount: number, state: PaymentState, items: readonly ItemName[]): PaymentPlan {
-  const coins = usableCoins(currency, items).reverse();
+/** Settles Items: smallest first, change in the fewest Items, and only the net of each Item moves (Q11). */
+function itemPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner | null, amount: number, state: PaymentState, items: readonly ItemName[]): PaymentPlan {
+  const rows = usableItems(currency, items).reverse();
   const paying = payer ? balanceOf(currency, payer, state) : UNTRACKED;
   const tracked = payee && balanceOf(currency, payee, state).tracked ? payee : null;
   if (!payer || !paying.tracked) {
     if (!tracked) return SETTLES_NOTHING;
-    const made = fewestCoins(amount, coins);
-    if (!made) return refuse(`the coins can't make ${amount}`);
+    const made = fewestItems(amount, rows);
+    if (!made) return refuse(`the items can't make ${amount}`);
     return { settled: true, stats: [], ops: [...made].map(([itemId, quantity]) => ({ kind: 'gain', itemId, quantity, to: tracked })) };
   }
   if (paying.amount < amount) return refuse(`it costs ${amount} and the payer has ${paying.amount}`);
   const net = new Map<string, number>();
   let rest = amount;
-  for (const coin of coins) {
+  for (const row of rows) {
     if (rest <= 0) break;
-    const held = spendableCopies(coin.itemId, payer, state.copies).reduce((sum, copy) => sum + copy.quantity, 0);
-    const take = Math.min(held, Math.ceil(rest / coin.worth));
-    net.set(coin.itemId, take);
-    rest -= take * coin.worth;
+    const held = spendableCopies(row.itemId, payer, state.copies).reduce((sum, copy) => sum + copy.quantity, 0);
+    const take = Math.min(held, Math.ceil(rest / row.worth));
+    net.set(row.itemId, take);
+    rest -= take * row.worth;
   }
-  if (rest > 0) return refuse(`it costs ${amount} and the payer's coins cover ${amount - rest}`);
-  const change = rest < 0 ? fewestCoins(-rest, coins) : new Map<string, number>();
-  if (!change) return refuse(`the coins can't make ${-rest} in change`);
+  if (rest > 0) return refuse(`it costs ${amount} and the payer's items cover ${amount - rest}`);
+  const change = rest < 0 ? fewestItems(-rest, rows) : new Map<string, number>();
+  if (!change) return refuse(`the items can't make ${-rest} in change`);
   for (const [itemId, count] of change) net.set(itemId, (net.get(itemId) ?? 0) - count);
   const returned = new Map([...net].filter(([, count]) => count < 0).map(([itemId, count]) => [itemId, tracked
-    ? takeCoins(itemId, -count, tracked, state.copies, (copyId, quantity) => [{ kind: 'transfer', copyId, to: payer, quantity }])
+    ? takeItems(itemId, -count, tracked, state.copies, (copyId, quantity) => [{ kind: 'transfer', copyId, to: payer, quantity }])
     : { ops: [], short: -count }]));
   // Change the payee lacks is created, and a tracked payee gives up that worth from the handover, so value is conserved.
-  const worthOf = (itemId: string) => coins.find((coin) => coin.itemId === itemId)?.worth ?? 0;
+  const worthOf = (itemId: string) => rows.find((row) => row.itemId === itemId)?.worth ?? 0;
   let owed = tracked ? [...returned].reduce((sum, [itemId, back]) => sum + back.short * worthOf(itemId), 0) : 0;
   const dropped = new Map<string, number>();
-  for (const { itemId, worth } of coins) {
+  for (const { itemId, worth } of rows) {
     const count = net.get(itemId) ?? 0;
     if (count <= 0 || owed <= 0) continue;
     const drop = Math.min(count, Math.ceil(owed / worth));
     dropped.set(itemId, drop);
     owed -= drop * worth;
   }
-  const topUp = owed < 0 ? fewestCoins(-owed, coins) : new Map<string, number>();
-  if (!topUp) return refuse(`the coins can't make ${-owed} for the payee`);
+  const topUp = owed < 0 ? fewestItems(-owed, rows) : new Map<string, number>();
+  if (!topUp) return refuse(`the items can't make ${-owed} for the payee`);
   const ops: InventoryOp[] = [];
   for (const [itemId, count] of net) {
     if (count > 0) {
       let kept = tracked ? count - (dropped.get(itemId) ?? 0) : 0;
-      ops.push(...takeCoins(itemId, count, payer, state.copies, (copyId, quantity) => {
+      ops.push(...takeItems(itemId, count, payer, state.copies, (copyId, quantity) => {
         const moved = Math.min(kept, quantity);
         kept -= moved;
         const handed: InventoryOp[] = moved > 0 && tracked ? [{ kind: 'transfer', copyId, to: tracked, quantity: moved }] : [];
@@ -465,7 +465,7 @@ export function planPayment(currency: Currency, payer: SlotOwner | null, payee: 
   const { backing } = currency;
   if (backing.kind === 'name') return SETTLES_NOTHING;
   if (backing.kind === 'stat') return statPlan(backing.statId, payer, payee, amount, state);
-  return coinPlan(currency, payer, payee, amount, state, items);
+  return itemPlan(currency, payer, payee, amount, state, items);
 }
 
 /** The live stats a payment writes: the world's, and each owner's by entity id. */

@@ -4,7 +4,7 @@ import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/
 import { blankItem } from '@/lib/items';
 import type { Currency, Item, World } from '@/types';
 
-/** What deleting a stat, a coin item, a Persona or a Currency does to the Currencies that use it (Q22). */
+/** What deleting a stat, a Currency Item, a Persona or a Currency does to the Currencies that use it (Q22). */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -139,33 +139,33 @@ describe('deleting a backing stat', () => {
   });
 });
 
-describe('deleting a coin item', () => {
-  const COINS: Item[] = [blankItem('copper', 'Copper'), blankItem('silver', 'Silver'), priced('pouch', 'Pouch', 'crowns')];
-  const crowns = (coins: { itemId: string; worth: number }[]): Currency => ({ id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins } });
+describe('deleting a Currency Item', () => {
+  const MONEY: Item[] = [blankItem('copper', 'Copper'), blankItem('silver', 'Silver'), priced('pouch', 'Pouch', 'crowns')];
+  const crowns = (rows: { itemId: string; worth: number }[]): Currency => ({ id: 'crowns', name: 'Crowns', backing: { kind: 'items', items: rows } });
   const open = (currency: Currency) => {
-    const bench = renderWorldEditorBench(benchEditorWorld({ items: COINS, currencies: [currency] } as Partial<World>), 'advanced');
+    const bench = renderWorldEditorBench(benchEditorWorld({ items: MONEY, currencies: [currency] } as Partial<World>), 'advanced');
     openEditorTab(/Items/);
     return bench;
   };
   const deleteItem = (name: string) => fireEvent.click(within(screen.getByRole('button', { name: `Select ${name}` }).parentElement!).getByRole('button', { name: 'Delete' }));
 
-  it('removes its row and names the Currency, and the Currency stays coin-backed', () => {
+  it('removes its row and names the Currency, and the Currency stays Items-backed', () => {
     const { ctx } = open(crowns([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]));
     deleteItem('Silver');
-    expect(dialog()).toHaveTextContent('This also removes its coin row from Crowns.');
+    expect(dialog()).toHaveTextContent('This also removes its item row from Crowns.');
     confirm();
-    expect(ctx().currencies[0].backing).toEqual({ kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }] });
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'items', items: [{ itemId: 'copper', worth: 1 }] });
     expect(ctx().items.map((i) => i.id)).toEqual(['copper', 'pouch']);
   });
 
-  it('leaves a Currency without its base coin coin-backed, with the other rows', () => {
+  it('keeps a Currency Items-backed without its base item, with the other rows', () => {
     const { ctx } = open(crowns([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]));
     deleteItem('Copper');
     confirm();
-    expect(ctx().currencies[0].backing).toEqual({ kind: 'coins', coins: [{ itemId: 'silver', worth: 10 }] });
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'items', items: [{ itemId: 'silver', worth: 10 }] });
   });
 
-  it('makes the Currency name only when the last coin goes, and keeps item prices', () => {
+  it('makes the Currency name only when the last item goes, and keeps item prices', () => {
     const { ctx } = open(crowns([{ itemId: 'copper', worth: 1 }]));
     deleteItem('Copper');
     expect(dialog()).toHaveTextContent('This also makes Crowns Name Only.');
@@ -174,7 +174,7 @@ describe('deleting a coin item', () => {
     expect(ctx().items.find((i) => i.id === 'pouch')).toMatchObject({ value: 7, currencyId: 'crowns' });
   });
 
-  it('deletes an item that is no coin at once', () => {
+  it('deletes an item that is no item at once', () => {
     const { ctx } = open(crowns([{ itemId: 'copper', worth: 1 }]));
     deleteItem('Pouch');
     expect(screen.queryByRole('alertdialog')).toBeNull();

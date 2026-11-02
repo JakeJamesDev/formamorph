@@ -1,9 +1,9 @@
 // Currency chip probe — does the narrator state fair prices and respect what the player can afford once the
 // <INVENTORY> chip carries worth and balances? Sedge Landing at the dock: Odette holds a hook and smoked eels and
-// keeps a purse; the player holds a knife and coins.
+// keeps a purse; the player holds a knife and items.
 //
 // Arms, paired by run index: `control` (the same Item Copies with no Currencies, so no worth and no balance line)
-// and `chip` (the world's Currency). Every other byte is shared, the coins in Carried included. With --alt-pre,
+// and `chip` (the world's Currency). Every other byte is shared, the items in Carried included. With --alt-pre,
 // an `alt` arm is the chip with this Prepend text in place of the shipped one. A prior turn opens the sale in
 // every arm, so a price is due in the reply.
 //
@@ -13,7 +13,7 @@
 //   fair-hook     — names 12 Silver, or 120 Copper, the hook's worth (up)
 //   fair-knife    — names 1 Silver and 5 Copper, or 15 Copper, the knife's worth (up)
 //   sale-happens  — the model's own yes/no: the player gets the eel (up when they can pay, down when they can't)
-//   short-of-coin — the model's own yes/no: the passage shows the player lacks the money (up when broke)
+//   short-of-money — the model's own yes/no: the passage shows the player lacks the money (up when broke)
 //
 // Usage: npx vite-node testing/baseline/harness/currency-chip-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 6] [--max 600] [--only ask-eel,buy-broke] [--alt-pre TEXT] [--pool 4] [--out results.json] [--show]
@@ -56,7 +56,7 @@ const item = (id: string, name: string, value?: number): Item => ({
   id, name, ...(value !== undefined && { value, currencyId: 'river-coin' }), statEffects: [], traitEffects: [], equipRequires: [],
 });
 const ITEMS = [item('copper', 'Copper'), item('silver', 'Silver'), item('eel', 'Smoked Eel', 35), item('hook', 'Bone Hook', 120), item('knife', 'Gutting Knife', 15)];
-const CURRENCY: Currency = { id: 'river-coin', name: 'River Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }] } };
+const CURRENCY: Currency = { id: 'river-coin', name: 'River Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }] } };
 const ODETTE = 'ent-odette';
 const PURSE: Placement = { id: 'purse', where: { kind: 'entity', id: ODETTE }, quantity: 10, source: { kind: 'item', itemId: 'silver' } };
 
@@ -74,8 +74,8 @@ const CASES: Case[] = [
   { id: 'ask-eel', action: 'I point at the smoked eels Odette is holding. "How much for one? Name your price."', copies: RICH, checks: ['price-stated', 'fair-eel'] },
   { id: 'ask-hook', action: 'I nod at the bone hook on Odette\'s wrist. "What would you charge me for one like that? Give me a number."', copies: RICH, checks: ['price-stated', 'fair-hook'] },
   { id: 'sell-knife', action: 'I hold out my gutting knife to Odette. "What is this worth to you? Give me a number."', copies: RICH, checks: ['price-stated', 'fair-knife'] },
-  { id: 'buy-broke', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', copies: BROKE, checks: ['sale-happens', 'short-of-coin'] },
-  { id: 'buy-rich', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', copies: RICH, checks: ['sale-happens', 'short-of-coin'] },
+  { id: 'buy-broke', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', copies: BROKE, checks: ['sale-happens', 'short-of-money'] },
+  { id: 'buy-rich', action: 'I tell Odette I will take one smoked eel at her usual price. I count out my coins into her hand and we see if it is enough.', copies: RICH, checks: ['sale-happens', 'short-of-money'] },
 ];
 
 const baseScene = authoredChipScene(world, {
@@ -128,12 +128,12 @@ async function judge(text: string, question: string): Promise<boolean> {
 }
 const JUDGED: Record<string, string> = {
   'sale-happens': 'By the end of this passage, has the player paid for a smoked eel and received it?',
-  'short-of-coin': 'Does this passage show that the player does not have enough money for what they want?',
+  'short-of-money': 'Does this passage show that the player does not have enough money for what they want?',
 };
 
 type Result = { arm: Arm; case: string; run: number; text: string; judged: Record<string, boolean> };
 const WORD_NUMBERS: Record<string, string> = { 1: 'one', 3: 'three', 5: 'five', 12: 'twelve', 15: 'fifteen', 35: 'thirty[- ]five', 120: 'a hundred and twenty|one hundred (and )?twenty' };
-const amount = (count: number, coin: string) => new RegExp(`\\b(${count}|${WORD_NUMBERS[count]})\\s+${coin}`, 'i');
+const amount = (count: number, unit: string) => new RegExp(`\\b(${count}|${WORD_NUMBERS[count]})\\s+${unit}`, 'i');
 const names = (text: string, ...parts: RegExp[]) => parts.every((part) => part.test(text));
 const CHECKS: Record<string, (r: Result) => boolean> = {
   'price-stated': ({ text }) => /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|a)\s+(silver|copper)/i.test(text),
@@ -141,7 +141,7 @@ const CHECKS: Record<string, (r: Result) => boolean> = {
   'fair-hook': ({ text }) => amount(12, 'silver').test(text) || amount(120, 'copper').test(text),
   'fair-knife': ({ text }) => names(text, amount(1, 'silver'), amount(5, 'copper')) || amount(15, 'copper').test(text),
   'sale-happens': (r) => r.judged['sale-happens'] === true,
-  'short-of-coin': (r) => r.judged['short-of-coin'] === true,
+  'short-of-money': (r) => r.judged['short-of-money'] === true,
 };
 
 const cases = CASES.filter((c) => !only || only.split(',').includes(c.id));
