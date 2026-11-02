@@ -1,6 +1,7 @@
 # Spec: Release Avatar License
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-02. Tickets 01–11 landed, last landing c9861dcfe on the server and 0fbae22b0 on the client. Review: spec text corrected. Gates green on 2026-11-02 (lint 34s, test 384s).
 Spec session: release-avatar-license — spec
 
 A reading of the licenses, not legal advice.
@@ -13,7 +14,7 @@ Community Creations has a related gap. The Permissive License gate never reads t
 
 ## Solution
 
-Elaina leaves release builds on every channel. A new model takes its place at the same path on the free channels, so the release swap stays as it is. The model is one you build or one you pick from VRoid Hub, and it must pass the stricter gate.
+Elaina leaves release builds on every channel. Sei, a VRoid Hub model, takes its place at the same path on NSFW builds, and Praline ships beside her. Aki is the tracked default on SFW builds. All three pass the stricter gate.
 
 The Steam build ships no bundled Avatar at all (Q18). Players bring their own, and Steam Workshop can supply them in a later effort.
 
@@ -51,6 +52,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 | Q26 | Sei and Praline default to hair and eye colors that match each model's source look as closely as the pickers allow. |
 | Q27 | Accept VRoid Hub Article 3(2)'s respect clause as a risk for Sei on NSFW builds. See Further Notes. |
 | Q28 | VRoid Hub Article 4's ban on analyzing Registered Works doesn't cover edits that the modification flag allows. See Further Notes. |
+| Q29 | A tint keeps the material's original shade-to-base ratio. Saved skin and clothing tints render differently, and the user accepted that. |
 
 **Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is. The conditions read on 2026-11-02 are saved in `evidence/sei-hub-conditions-2026-11-02.json`.
 
@@ -83,7 +85,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 ## Implementation Decisions
 
-**The model (human step)**
+**The models**
 
 - The new file replaces the alternate Avatar at its current path. The release swap steps for that file don't change.
 - The tracked default becomes the fresh A export named Aki (Q19), at its current path.
@@ -91,7 +93,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
   - Passes the stricter gate from its own metadata.
   - Has `Waist`, `Bust` and `Thickness` keys, or a license that lets us add them. New keys are authored fresh, never copied from Elaina.
   - Works in Character Customization.
-  - Shows no sign of a third-party character, BOOTH parts, or a VRoid sample base.
+  - Shows no sign of a third-party character, BOOTH parts, or, for a Hub model, a VRoid sample base. Aki and Praline are samples by ruling (Q19, Q20).
 - Modified files keep the original author in their metadata, and their license stays as permissive as the original.
 - The Hub filter query and a gate script are the selection tools. The Hub lists no sort control, so a generated gallery does the ranking.
 - A provenance record holds the source URL, author, download date, and a copy of the metadata as downloaded.
@@ -100,7 +102,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - **Waist limit:** the apron and skirt have few vertices, so at the top value the apron looks faceted and stands off the skirt. A cleaner result needs more mesh detail. The user accepted this file.
 - **Textures:** the Hub file's hair is flat black and its iris has no green or blue, so multiply tinting can't move them. The script writes a neutral mid-tone hair and an iris with all three channels above zero.
 - **Default look (Q26):** color factors in the file restore the source look until a picker is touched, and a touch overwrites them. The picker seed reads texture median times factor, so a picker opens on the color shown when factors are 0 or 1, and factors of 1 change nothing. At mid factors, such as Praline's hair, the swatch opens darker than the render, and picking it still restores the factor. The linear tint fix stays out of this effort, because it changes how saved tints render.
-- **Picking the seed:** this isn't always the identity. A touched picker writes the shade factor equal to the base factor, which moves skin shading (Sei's skin changes 30,646 pixels at 700x1000, max 49). One seed also covers Praline's three hair materials, whose medians differ. The untouched render and Revert stay exact, and no file clips its textures to hide this.
+- **Picking the seed:** this isn't always the identity. Sei's Face and Body have different medians, so her skin channel still moves slightly (30,586 pixels at 700x1000, max 8). One seed also covers Praline's three hair materials, whose medians differ. The untouched render and Revert stay exact, and no file clips its textures to hide this.
 - **Praline's stockings:** the stocking picker is the material's existing row in Other Colors. There is no new channel.
 - **Provenance:** one record at `provenance.md` beside this spec. Aki's raw export carried the user's name as author, so her record keeps that metadata as exported, notes the author edit, and cites pixiv's sample page as source.
 
@@ -116,7 +118,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - The default-Avatar hash check and the fingerprint list include Praline, so her unedited file can't be published.
 - Sugarscape's Custom Persona gains `vrmPick: { kind: 'default' }`. No other bundled world picks an Avatar today. The world file is the same on every build.
 - Sei, Aki and Praline carry those names in their `name` field, which sets the library label.
-- Praline needs body keys built and checked on her 14 `Body` primitives, including her stocking layer and fox tail. Her build script joins the `tools` folder.
+- Praline needs body keys built and checked on her 14 `Body` primitives, her stocking primitive and her fox tail. Her build script joins the `tools` folder.
 
 **Thumbnails (Q24)**
 
@@ -130,7 +132,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - With no bundled file, these change: the viewer's default model URL, library seeding, the bundled hash check, and the rule that the library keeps at least one Avatar.
 - With no device default, User's Default resolves to no model even when the library holds an added Avatar. It never guesses a record. In a game the entity view then hides, and Character Creation's picker opens on the first library Avatar, so no blank canvas needs explaining. A locked world pick missing from the library gets a hint in the preview.
 - The Avatar surfaces get an empty state that leads to adding a `.vrm`. Games run without a model.
-- Saves and worlds that name the default Avatar id resolve to no model, with no error. That includes Sugarscape's User's Default pick.
+- Saves and worlds that name the default Avatar id resolve to no model, with no error, unless the library holds a record at that id. That includes Sugarscape's User's Default pick.
 - Store art and trailers may still show a model. pixiv's terms allow images and videos of models in games. Recheck this if a sample appears in them.
 
 **Tint code**
@@ -148,7 +150,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
   - `allowAntisocialOrHateUsage` must be true.
   - `creditNotation` must be `unnecessary`.
   - `licenseUrl` must be exactly `https://vrm.dev/licenses/1.0/`.
-  - `otherLicenseUrl` must be absent or empty. Exporters omit it, and all six real files checked on 2026-11-02 do.
+  - `otherLicenseUrl` must be absent or the empty string. `null` fails. Exporters omit it, and all six real files checked on 2026-11-02 do.
 - The existing `commercialUsage` requirement tightens to `corporation`. `personalProfit` now fails.
 - A missing field fails its requirement, as it does today. `otherLicenseUrl` is the one exception.
 - The new identifiers are the VRM field names, appended in this order: `allowExcessivelySexualUsage`, `allowExcessivelyViolentUsage`, `allowPoliticalOrReligiousUsage`, `allowAntisocialOrHateUsage`, `creditNotation`, `licenseUrl`, `otherLicenseUrl`.
@@ -164,7 +166,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 **Fingerprints and records**
 
 - The bundled fingerprint test fails when a shipped model's hash is missing, so the client list regenerates in the same landing as each model file. The server copy follows. Elaina's hash stays in the list through file history.
-- `STEAM-RELEASE-CHECKLIST.md` and the third-party notices clear a file that no longer exists and omit the release model. Both name the real files. The notices work belongs with the Credits effort, so this effort hands it the new model's details.
+- `STEAM-RELEASE-CHECKLIST.md` and the third-party notices clear a file that no longer exists and omit the release model. Both name the real files.
 
 **Landing order**
 
@@ -177,7 +179,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 **Unchanged by ruling**
 
 - The morph alias layer stays, so worlds bound to older key names keep working.
-- The one-shot seed stays. New installs get the new model. Existing players keep their copy and don't receive the new model in their library.
+- Each bundled entry seeds once. New installs get every entry for their build. Existing players keep their copy and receive only Praline (Q25).
 
 **Export-shape reminder**
 
@@ -188,7 +190,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - A good test calls the gate or the real file reader and asserts the verdict. It never restates the gate's logic.
 - **Gate, both repos:** every requirement passing, each one failing alone and named, and each missing field failing. Prior art: the existing gate tests and the server's model-kind tests.
 - **Client and server agreement:** both reject the same files with the same identifiers. Prior art: the shared bundled-fingerprint vector.
-- **Shipped files:** the bundled-avatar test keeps both rows and now holds them to the stricter gate. It must stay as it is, never narrowed, so Elaina going red until the new file lands is expected. Land the client gate after the file.
+- **Shipped files:** the bundled-avatar test holds a row per shipped file to the stricter gate. It is never narrowed. The Elaina file failed it, so the gates landed after the new files.
 - **Stale license:** an old record is read again, and a current one isn't.
 - **Refusal copy:** each new identifier produces its own words, and a file with no VRM 1.0 metadata keeps the single sentence about format.
 - **Guards bite:** prove the shipped-file test by running it against the current Elaina file before the swap.
@@ -246,7 +248,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **UNVERIFIED**
 
-- How the keys behave in the app. The user tested the file in the app. No agent has driven the sliders there.
+- How the keys behave in the app. The user tested the maid file in the app, and agents measured render changes per slider and picker on the final files. No release build has been played.
 - Whether Hub flags are accurate. They are the uploader's claim.
 - Elaina's provenance, and whether it contains preset or sample content. pixiv's sample terms ban selling a sample's data and using it in character creation.
 - Whether signed-in Hub searches show more models. The 187 passing models came from a signed-out read on 2026-11-02.

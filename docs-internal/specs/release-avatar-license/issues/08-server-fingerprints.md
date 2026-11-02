@@ -1,6 +1,6 @@
 # 08: Server Fingerprints
 
-Status: ready-for-human
+Status: done
 Base: 0541624
 Blocked by: 04, 05, 06
 Repo: FormamorphServer

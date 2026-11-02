@@ -1,6 +1,6 @@
 # 01: Stricter Server Gate
 
-Status: ready-for-human
+Status: done
 Base: da09679
 Blocked by: None (can start immediately)
 Repo: FormamorphServer
