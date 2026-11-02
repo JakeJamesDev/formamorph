@@ -10,7 +10,7 @@ import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { HairTypeDef } from '@/types';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { resolveMorphAlias } from '@/lib/bodyMorphs';
-import { medianOpaqueRGB } from '@/lib/textureMedian';
+import { medianOpaqueRGB, tintSeedRGB } from '@/lib/textureMedian';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -197,7 +197,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   };
 
   // Median opaque pixel of a material's texture → normalized [r,g,b] (0..1), cached. Null if it has no texture.
-  const getMedianRGB = (material: VrmMaterial): number[] | null => {
+  const getMedianRGB = (material: VrmMaterial): [number, number, number] | null => {
     if (material.userData.__medianRGB !== undefined) return material.userData.__medianRGB;
     const src = getOriginalImageData(material);
     const avg = src ? medianOpaqueRGB(src.data) : null;
@@ -205,10 +205,12 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     return avg;
   };
 
-  // A representative current color for a material (to seed a picker): texture median, else the color factor.
-  const medianColor = (material: VrmMaterial) => {
+  // A material's untinted color (to seed a picker): texture median under the original color factor, else that factor.
+  const untintedColor = (material: VrmMaterial) => {
     const avg = getMedianRGB(material);
-    const rgb = avg ?? (material.color?.isColor ? [material.color.r, material.color.g, material.color.b] : null);
+    const color: THREE.Color | null | undefined = material.userData.__origColor ?? material.color;
+    const factor: [number, number, number] | null = color?.isColor ? [color.r, color.g, color.b] : null;
+    const rgb = avg ? tintSeedRGB(avg, factor ?? [1, 1, 1]) : factor;
     if (!rgb) return null;
     return '#' + rgb.map(x => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0')).join('');
   };
@@ -351,7 +353,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   // Calculated representative color of a target (its first material's average) — for seeding a picker.
   const calcColor = (target: string) => {
     let c: string | null = null;
-    forEachTargetMaterial(target, (m) => { if (!c) c = medianColor(m); });
+    forEachTargetMaterial(target, (m) => { if (!c) c = untintedColor(m); });
     return c;
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- calcColor reads live refs; a stable handle is fine.
@@ -492,7 +494,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
           // Sample each part's current color from its texture so the pickers start at the model's real colors.
           const sampleColor = (channel: string) => {
             let c: string | null = null;
-            forEachChannelMaterial(channel, (m) => { if (!c) c = medianColor(m); });
+            forEachChannelMaterial(channel, (m) => { if (!c) c = untintedColor(m); });
             return c;
           };
           const colors = { hair: sampleColor('hair') ?? undefined, skin: sampleColor('skin') ?? undefined, eye: sampleColor('eye') ?? undefined };

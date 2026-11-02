@@ -1,11 +1,15 @@
-# Usage: embed.py <in.vrm> <out.vrm> [thumb.png] [--keep-author]: sets the pixiv author unless --keep-author, and, when given, the embedded thumbnail.
+# Usage: embed-thumbnail.py <in.vrm> <out.vrm> [thumb.png] [--keep-author] [--name <name>]: sets the pixiv author unless --keep-author, and, when given, the embedded thumbnail and model name.
 import json,struct,sys
 def load(p):
     f=open(p,'rb');f.read(12);l,_=struct.unpack('<II',f.read(8));j=json.loads(f.read(l));bl,_=struct.unpack('<II',f.read(8));return j,f.read(bl)
 keep='--keep-author' in sys.argv
 argv=[a for a in sys.argv if a!='--keep-author']
+name=None
+if '--name' in argv:
+    i=argv.index('--name');name=argv[i+1];del argv[i:i+2]
 j,b=load(argv[1]);m=j['extensions']['VRMC_vrm']['meta']
 if not keep:m['authors']=['pixiv VRoid Project']
+if name:m['name']=name
 new={}
 if len(argv)>3:
     new[j['images'][m['thumbnailImage']]['bufferView']]=open(argv[3],'rb').read()

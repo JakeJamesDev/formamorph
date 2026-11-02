@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { medianOpaqueRGB } from './textureMedian';
+import { medianOpaqueRGB, tintSeedRGB } from './textureMedian';
+
+describe('tintSeedRGB', () => {
+  it('returns the median under a factor of 1', () => {
+    expect(tintSeedRGB([0.55, 0.52, 0.55], [1, 1, 1])).toEqual([0.55, 0.52, 0.55]);
+  });
+
+  it('applies a color factor below 1, per channel', () => {
+    expect(tintSeedRGB([0.55, 0.5, 0.25], [0, 0.5, 1])).toEqual([0, 0.25, 0.25]);
+  });
+});
 
 const px = (r: number, g: number, b: number, a = 255, count = 1) =>
   Array.from({ length: count }, () => [r, g, b, a]).flat();
