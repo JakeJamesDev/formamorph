@@ -103,12 +103,12 @@ export function LicensesPanel({ state, retry }: ReturnType<typeof useNotices>) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <SearchField value={filter} onChange={setFilter} placeholder="Filter by Name" aria-label="Filter by Name" />
       {groups.length === 0 ? (
         <p className="text-body text-muted-foreground">No license has that name.</p>
       ) : (
-        <ScrollArea className="max-h-[50dvh]">
+        <ScrollArea className="min-h-0 flex-1">
           <div className="space-y-4 pr-3">
             {groups.map(({ section, rows }) => {
               const headingId = `licenses-${HEADINGS[section].replace(/\W+/g, '-')}`;
