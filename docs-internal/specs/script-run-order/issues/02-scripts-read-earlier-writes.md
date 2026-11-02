@@ -24,6 +24,7 @@ Rulings: Q1, Q6, Q11, Q12, Q13, Q14, Q17.
 - [ ] "lets no run see another run's write" and "moves a world stat once when a Blueprint stat on two owners writes it" flip to the new result. Any other failing test goes to the spec session first and is never edited to pass.
 - [ ] Each new guard fails when the one-snapshot rule returns.
 - [ ] Bundled-world tests pass with no scenario changed.
+- [ ] The Test Bench and the help window's code test run scripts in the Scripts tab's order. Ticket 01 left them on the old sort because `rowOrder` is optional. Every multi-script caller passes it, and a test proves the Test Bench's order.
 - [ ] Two Scripts, One Field shows the writers' list order and says each script reads the one before it.
 - [ ] CONTEXT.md, Order of Effects, One snapshot per run, Owner order, the prompts rule, A Note on Accumulating Stats and the Test Bench's Issues describe the new rule.
 - [ ] A changelog fragment under Major says shipped worlds with stacking writes play differently and how to check a world.

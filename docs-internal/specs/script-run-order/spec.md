@@ -36,7 +36,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q7 | The heavy script author hears early and tests a build before the release. The changelog tells everyone. The user makes the contact |
 | Q8 | One Blueprint row runs for all its owners back to back, at the row's place in the list. With no `order`, Blueprint scripts now run after entity scripts |
 | Q9 | Library entities' scripts run after every row in the list, in pick order, ignoring any `order` they carry. World Tools stay first. Item scripts run on their events |
-| Q10 | Scripts with no `order` keep today's default sort. A new script goes to the bottom of its timing. Nothing writes an `order` until a drag does |
+| Q10 | Scripts with no `order` keep today's default sort. Only a drag or an add writes an `order` (Q25) |
 | Q11 | The Test Bench's Two Scripts, One Field finding stays, reworded, and shows the writers' list order |
 | Q12 | An open `player.ask` holds every later script in its timing, including ones that never name `player`. The docs get corrected |
 | Q13 | `previous` stays the turn's start value for every script. At a timing that reads the turn start, it is the value when that timing began. `value` and `delta.actual` include earlier scripts' writes. `delta.ai` and `delta.regen` keep their meaning |
@@ -47,6 +47,11 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q18 | The Scripts tab lists timings in this order: At Game Start, Before the AI, During AI Output, After the AI, When a Trait Switches |
 | Q19 | The Timing menus, Add Script, templates and Code Insert use the Q18 order. AI prompt text keeps its current order, so it needs no probe |
 | Q20 | The test seams are the ones under Testing Decisions. No new seam |
+| Q21 | (ticket 01) The played persona no longer runs ahead of other entities. Entity rows run in the tab's order, which is authored entity order. A library persona runs after the list, as Q9 says |
+| Q22 | (ticket 01) A library entity's unit from a linked Blueprint stat or trait runs after the list with its other scripts. Only world-entity owners join the row's back-to-back run, in authored owner order |
+| Q23 | (ticket 01) A link override is its own tab row per owner, and its unit runs at that row's place, not at the Blueprint row's |
+| Q24 | (ticket 01) Timings become start, before, output, after, switch in the shared list. The Formaquestion help tool's schema and code-rider prompt read a separate list in the old order, pinned by a byte test |
+| Q25 | (ticket 01) Add Script and Code Insert number that timing's rows in the tab's current order, as a drag does, and give the new script the last number. A new script reads everything above it. A world with no add or drag stores no `order`. This amends Q10, whose two clauses couldn't both hold |
 
 ## User Stories
 
