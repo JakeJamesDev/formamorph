@@ -1,0 +1,14 @@
+{
+  "seed": 1234,
+  "cmudict": {
+    "repo": "cmusphinx/cmudict",
+    "commit": "74790861f652b15e4ac49015a90074ad62a27690",
+    "sha256": "81917843c7f44ce2b094ac63873c2c7a4cf802040792c455ba3ca406891c3d22"
+  },
+  "wikipron": {
+    "repo": "CUNY-CL/wikipron",
+    "commit": "d282e848a211ea31cfd730f0ced8bc8cdab9e83d",
+    "us": { "path": "data/scrape/tsv/eng_latn_us_broad.tsv", "blob": "3b455d446a38b3cedd3722d1431ecf3a43b5cee1" },
+    "uk": { "path": "data/scrape/tsv/eng_latn_uk_broad.tsv", "blob": "dcf85e69cbf3358cfbedd385cf69f260ca4081fd" }
+  }
+}
