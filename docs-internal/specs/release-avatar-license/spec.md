@@ -40,20 +40,21 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 | Q16 | A VRoid Hub model may replace the own-model route if it passes the gate and shows no sign of third-party characters or BOOTH parts. |
 | Q17 | The candidate is the maid model, built by script from its Hub file. The user accepted the prototype on 2026-11-02. This moves the key work in Q9 from the user to a script. |
 | Q18 | The Steam build ships no bundled VRM, because the paid build carries too much risk otherwise. Free channels keep a bundled model. New evidence: pixiv's sample conditions ban paid redistribution and character creation use. This narrows Q2, Q10, Q15 and Q17: Elaina still leaves every channel, and the candidate serves the free channels only. |
+| Q19 | SFW builds (local dev, Pages) ship A as Aki with no body keys. NSFW builds (desktop, web, Android) ship the maid as Sei, the default, with body keys. Steam ships no model and is revisited once a shippable build exists. |
+| Q20 | Praline (sample F) ships on NSFW builds as a second bundled library Avatar, with body keys and the hair, eye and stocking changes. |
+| Q21 | Sugarscape's Custom Persona uses User's Default, which turns on Avatars there. Players pick Praline from the Player Avatar dropdown. |
+| Q22 | Our reading of the sample ban on a character creation service: it targets redistributing models made by a tool like VRoid Studio. Body sliders change local render state, and any model output returns the imported file unchanged, so we hold ourselves clean. pixiv could read it differently. Its guidelines title the section "character creation tools" and allow commissions. |
+| Q23 | The user confirmed that all three models read as adults. |
+| Q24 | Generated thumbnails get a white background. Sei gets a recaptured embedded thumbnail. |
 
 **Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is.
 
 **Open before the file lands:**
 
-- The bundled name. The prototype uses a placeholder.
-- The user's check that the model reads as an adult in full-body view.
 - VRoid Hub's terms for downloaded models.
-- The default hair and eye colors.
+- The default hair and eye colors for Sei and Praline.
 
-**Open, not blocking:**
-
-- Whether a sample-based Sugarscape Avatar ships on the free channels. A prototype works, but pixiv's character creation ban still applies there.
-- The tracked default on the free Pages build. A fresh AvatarSample_A export confirmed it is that sample: same face and body geometry, and every texture except the thumbnail. The character creation ban could still apply there.
+**Evidence on A:** a fresh AvatarSample_A export matches the tracked default's face and body geometry and every texture except the thumbnail.
 
 ## User Stories
 
@@ -98,13 +99,29 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - **Waist limit:** the apron and skirt have few vertices, so at the top value the apron looks faceted and stands off the skirt. A cleaner result needs more mesh detail. The user accepted this file.
 - **Textures:** the Hub file's hair is flat black and its iris has no green or blue, so multiply tinting can't move them. The script writes a neutral mid-tone hair and an iris with all three channels above zero.
 
+**Bundled Avatars by build (Q19–Q21)**
+
+- A build flag, not a failed fetch, decides whether Praline exists. A 404 on an SFW build would retry on every launch.
+- Seeding becomes a list of bundled entries, each with a fixed library id and its own one-shot flag. Seeded copies stay the player's, so a deleted Praline stays gone.
+- Existing players on NSFW builds receive Praline through her own flag. They keep their current default copy (Q6), so they don't receive Sei.
+- Praline's file lives beside the alternate file in `build-assets`, and the release swap copies it in. This adds about 20 MB to each NSFW build.
+- The default-Avatar hash check and the fingerprint list include Praline, so her unedited file can't be published.
+- Sugarscape's Custom Persona gains `vrmPick: { kind: 'default' }`. No other bundled world picks an Avatar today. The world file is the same on every build.
+- Sei, Aki and Praline carry those names in their `name` field, which sets the library label.
+- Praline needs body keys built and checked on her 14 `Body` primitives, including her stocking layer and fox tail. Her build script joins the `tools` folder.
+
+**Thumbnails (Q24)**
+
+- The generated thumbnail renders on an opaque white background. Thumbnails already stored keep their old look.
+- Embedded thumbnails for the bundled models are rendered with the same framing and background.
+
 **Steam build (Q18)**
 
 - No Steam build class exists yet. This effort adds the "no bundled Avatar" switch on the build class that the Steam effort will use.
 - The build must leave out every `.vrm`, including the tracked default that `public/` copies into a dist.
 - With no bundled file, these change: the viewer's default model URL, library seeding, the bundled hash check, and the rule that the library keeps at least one Avatar.
 - The Avatar surfaces get an empty state that leads to adding a `.vrm`. Games run without a model.
-- Saves and worlds that name the default Avatar id resolve to no model, with no error.
+- Saves and worlds that name the default Avatar id resolve to no model, with no error. That includes Sugarscape's User's Default pick.
 - Store art and trailers may still show a model. pixiv's terms allow images and videos of models in games. Recheck this if a sample appears in them.
 
 **Tint code**
@@ -167,6 +184,9 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - **Guards bite:** prove the shipped-file test by running it against the current Elaina file before the swap.
 - **Steam artifact:** a build test asserts the Steam output holds no `.vrm`. Prove it bites by leaving one in. Prior art: the bundle boundary test.
 - **Empty library:** the viewer, library and a game run with no Avatar and no error.
+- **Seeding:** each entry seeds once, a deleted one stays gone, an existing library gains Praline and keeps its default, and an SFW build never fetches her.
+- **Build contents:** an SFW build holds no Praline file, and an NSFW build holds both.
+- **Sugarscape:** starting it offers the library picker, and Praline resolves as the played Avatar.
 - **By hand:** load the new file in Character Customization and confirm the sliders and colors with `verify-ui`.
 
 ## Out of Scope
@@ -189,7 +209,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - Elaina allows corporate commercial use, redistribution, and redistribution of modified copies.
 - A modified copy must keep terms at least as restrictive, so editing Elaina can't lift its flags.
 
-**Accepted risk (Q13)**
+**Accepted risk (Q13, Q22)**
 
 - VRoid Studio Article 13 excludes applications with functions that let 3D models be created by deforming meshes or combining meshes or textures. Such an app needs a separate pixiv license. Article 7 and the guidelines say the same, and output is banned beside creation.
 - The Japanese text prevails. Writing no file doesn't clear us.
