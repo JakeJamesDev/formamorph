@@ -16,9 +16,9 @@ const SLOTS: Slot[] = [{ id: 'hand', name: 'Main Hand' }, { id: 'off-hand', name
 const BODIES: Body[] = parseBodies([{
   id: 'humanoid', name: 'Humanoid', backdrop: { kind: 'humanoid' }, aspect: 0.5,
   entries: [
-    { slotId: 'hand', boxes: [{ x: 0.02, y: 0.34, w: 0.26, h: 0.26 }] },
-    { slotId: 'off-hand', boxes: [{ x: 0.72, y: 0.34, w: 0.26, h: 0.26 }] },
-    { slotId: 'ring', capacity: 2, boxes: [{ x: 0.04, y: 0.44, w: 0.22, h: 0.09 }, { x: 0.74, y: 0.44, w: 0.22, h: 0.09 }] },
+    { slotId: 'hand', boxes: [{ x: 0.02, y: 0.3725, w: 0.26, h: 0.26 }] },
+    { slotId: 'off-hand', boxes: [{ x: 0.72, y: 0.3725, w: 0.26, h: 0.26 }] },
+    { slotId: 'ring', capacity: 2, boxes: [{ x: 0.04, y: 0.4725, w: 0.22, h: 0.09 }, { x: 0.74, y: 0.4725, w: 0.22, h: 0.09 }] },
   ],
 }]);
 const BODY_SLOTS = bodySlots(BODIES[0], SLOTS);

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
-import { BodyDoll, FillPopoverContent } from './BodyDoll';
+import { BodyDoll } from './BodyDoll';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
 export interface InventoryTabProps {
@@ -331,8 +331,6 @@ export function InventoryTab({
       />
     </div>
   );
-  // The popover's row, shared by the Slot Box and the Equipped row's name (Q15).
-  const equippedDetail = (copy: ItemCopy) => row(copy, equippedActions(copy), { fullName: true });
   const equippedList = (className?: string) => {
     // An All of item fills two boxes and shows one row (story 5).
     const listed = equipped.filter((c) => boxed.has(c.id));
@@ -341,12 +339,7 @@ export function InventoryTab({
       <ul aria-label="Equipped Items" className={className}>
         {listed.map((copy) => row(copy, equippedActions(copy), {
           slotLine: occupiedSlots(copy, itemOf(copy)).map(slotNameOf).filter(Boolean).join(', '),
-          nameControl: (
-            <Popover>
-              <PopoverTrigger asChild><EquippedRowName name={nameOf(copy)} /></PopoverTrigger>
-              <FillPopoverContent detail={equippedDetail(copy)} />
-            </Popover>
-          ),
+          nameControl: <EquippedRowName name={nameOf(copy)} onClick={() => setViewingId(copy.id)} />,
         }))}
       </ul>
     );
@@ -361,7 +354,7 @@ export function InventoryTab({
           id: copy.id,
           name: nameOf(copy),
           icon: iconOf(copy),
-          detail: equippedDetail(copy),
+          detail: row(copy, equippedActions(copy), { fullName: true }),
         }]))}
       />
     );
