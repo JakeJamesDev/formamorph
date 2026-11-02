@@ -35,7 +35,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
     const item = itemOf(copy);
     return item && visibleItemImage(item, copy, gateInput);
   };
-  const iconOf = (copy: ItemCopy) => {
+  const shownIconOf = (copy: ItemCopy) => {
     const item = itemOf(copy);
     return resolveItemIcon({
       icon: item?.icon,
@@ -56,7 +56,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
           const item = itemOf(copy);
           return (
             <li key={copy.id} className="relative flex items-center gap-2 rounded-md hover:bg-secondary/60">
-              <ItemRowArt shown={iconOf(copy)} />
+              <ItemRowArt shown={shownIconOf(copy)} />
               {/* The name's button covers the row, so the art and the slot open the popup too. */}
               <button
                 type="button"
@@ -74,7 +74,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
         <ItemModal
           id={viewing.id}
           name={nameOf(viewing)}
-          icon={iconOf(viewing)}
+          icon={shownIconOf(viewing)}
           image={imageOf(viewing)}
           description={resolveText(viewingItem ? copyFace(viewingItem, viewing).description ?? '' : '')}
           facts={copyFacts(viewing, viewingItem)}

@@ -74,18 +74,17 @@ ItemRowButton.displayName = 'ItemRowButton';
 const ROW_NAME = 'rounded-sm text-left after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring';
 
 /** An Equipped row's name: one line, with the full text in a tooltip while it is cut (Q5). */
-const EquippedRowName = forwardRef<HTMLButtonElement, ComponentProps<'button'> & { name: string }>(({ name, ...rest }, ref) => {
+function EquippedRowName({ name, onClick }: { name: string; onClick: () => void }) {
   const text = useRef<HTMLSpanElement>(null);
   const cut = useIsCut(text, name);
   return (
     <Tip tip={name} labelsChild={false} disabled={!cut}>
-      <button ref={ref} type="button" className={cn(ROW_NAME, 'min-w-0')} {...rest}>
+      <button type="button" className={cn(ROW_NAME, 'min-w-0')} onClick={onClick}>
         <span ref={text} className="block truncate">{name}</span>
       </button>
     </Tip>
   );
-});
-EquippedRowName.displayName = 'EquippedRowName';
+}
 
 /** The count a typed quantity means: a whole number from 1 to `max`, 1 for a blank field. */
 const countOf = (text: string, max: number) => Math.min(max, Math.max(1, wholeCount(text) ?? 1));
@@ -238,7 +237,7 @@ export function InventoryTab({
     return (copy.item.kind === 'runtime'
       ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
   };
-  const iconOf = (copy: ItemCopy) => {
+  const shownIconOf = (copy: ItemCopy) => {
     const item = itemOf(copy);
     return resolveItemIcon({
       icon: item?.icon,
@@ -276,22 +275,22 @@ export function InventoryTab({
     return [...copyFacts(copy, item), ...(item?.bound ? [BOUND_TIP] : [])];
   };
 
-  /** `nameControl` replaces the name's popup button, `slotLine` the row's second line. `fullName` wraps the name instead of cutting it. */
-  const row = (copy: ItemCopy, actions: ReactNode, { nameControl, slotLine, fullName }: { nameControl?: ReactNode; slotLine?: string; fullName?: boolean } = {}) => {
+  /** `nameControl` replaces the name's popup button, `slotLine` the row's second line. `wrapName` wraps the name instead of cutting it. */
+  const row = (copy: ItemCopy, actions: ReactNode, { nameControl, slotLine, wrapName }: { nameControl?: ReactNode; slotLine?: string; wrapName?: boolean } = {}) => {
     const item = itemOf(copy);
     const name = nameOf(copy);
     const state = copyState(copy);
     const line = slotLine ?? (copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item));
     return (
       <li key={copy.id} className="relative flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
-        <ItemRowArt shown={iconOf(copy)} />
+        <ItemRowArt shown={shownIconOf(copy)} />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
             {nameControl ?? (
               <button
                 type="button"
                 onClick={() => setViewingId(copy.id)}
-                className={cn(ROW_NAME, fullName ? 'min-w-0 [overflow-wrap:anywhere]' : 'truncate')}
+                className={cn(ROW_NAME, wrapName ?'min-w-0 [overflow-wrap:anywhere]' : 'truncate')}
               >
                 {name}
               </button>
@@ -345,8 +344,8 @@ export function InventoryTab({
         fills={new Map([...inBoxes].map(([key, copy]) => [key, {
           id: copy.id,
           name: nameOf(copy),
-          icon: iconOf(copy),
-          detail: row(copy, equippedActions(copy), { fullName: true }),
+          icon: shownIconOf(copy),
+          detail: row(copy, equippedActions(copy), { wrapName: true }),
         }]))}
       />
     );
@@ -452,7 +451,7 @@ export function InventoryTab({
         <ItemModal
           id={viewing.id}
           name={nameOf(viewing)}
-          icon={iconOf(viewing)}
+          icon={shownIconOf(viewing)}
           image={imageOf?.(viewing)}
           description={descriptionOf(viewing)}
           facts={factsOf(viewing)}

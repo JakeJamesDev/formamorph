@@ -89,9 +89,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Scripts can name a slot when they equip, and a starting item can name its slot.** Call `copy.equip("Off Hand")`. An item that takes both hands reads under each hand in `body`. In a placement, pick a slot for an Equipped item that fits several.
     - **When the story puts an item in a certain slot, your Inventory now shows it equipped in that slot.** The AI sees every slot an item fits, such as either hand for a dagger or both for a greatsword.
   - **Body Layouts:**
-    - **A Custom Image Backdrop has an Opacity slider.** Fade a bright image in the Body Layout editor and on the Inventory doll. It starts at 100%.
-    - **Item icons show on Inventory doll boxes, Inventory rows, the entity popup's Equipped list and the item popup.** Each icon comes from the item's name, then its slot. Item images leave the doll and rows by default, and still show in the item's dialog.
-    - **The Inventory panel lists equipped items beside the doll, each with a one-click Unequip button.** Each row shows the item's icon, name and slots. Select a row to open the item's details. A figure wider than tall sits above the list.
+    - **A Custom Image Backdrop has an Opacity slider.** Fade a bright image in the Body Layout editor and on the Inventory figure. It starts at 100%.
+    - **Item icons show on the Inventory figure, Inventory rows, the entity popup's Equipped list and the item popup.** Each icon comes from the item's name, then its slot. Item images leave the figure and rows by default, and still show in the item popup.
+    - **The Inventory panel lists equipped items beside the figure, each with a one-click Unequip button.** Each row shows the item's icon, name and slots. Select a row to open the item's details. A figure wider than tall sits above the list.
     - **An item's Icon field in the World Editor picks what the Inventory tab shows for it.** Auto gives an icon from the name. Search the grid for a specific icon, or pick None to bring back the item's image.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.

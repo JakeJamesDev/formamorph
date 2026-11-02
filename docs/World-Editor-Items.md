@@ -243,7 +243,7 @@ An expanded Body shows a figure with one box for each unit of each slot. Hand wi
 | Resize a box | Select it, then drag a corner |
 | Change the figure's height | Drag its bottom edge. Boxes stretch with it |
 | Change the figure | Pick from **Backdrop**: **Humanoid**, **Quadruped**, **Plain** or **Custom Image** |
-| Fade a Custom Image | Move the **Opacity** slider under the image. It runs from 0 to 100% and starts at 100%. It fades the image in the editor and on the Inventory panel's doll |
+| Fade a Custom Image | Move the **Opacity** slider under the image. It runs from 0 to 100% and starts at 100%. It fades the image in the editor and on the **Inventory** tab's figure |
 | Line boxes up | Turn on **Snap to Others**. Hold Alt to skip it for one drag |
 | Move or resize by keyboard | Select the box, then use the arrow keys, or Shift + arrow keys to resize |
 

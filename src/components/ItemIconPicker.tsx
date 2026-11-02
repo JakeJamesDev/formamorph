@@ -89,13 +89,12 @@ function ItemIconGrid({ choice, derivedId, onPick }: { choice: string | undefine
  * A form control that picks an item's icon from a searchable grid of the catalog. `value` is `Item.icon`;
  * `derivedId` is the icon Auto shows now. `onPick` gets an icon id, `'none'`, or `undefined` for Auto.
  */
-export function ItemIconPicker({ value, derivedId, onPick, labelId, describedBy, className }: {
+export function ItemIconPicker({ value, derivedId, onPick, labelId, describedBy }: {
   value: string | undefined;
   derivedId: string;
   onPick: (icon: string | undefined) => void;
   labelId?: string;
   describedBy?: string;
-  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const specific = value ? itemIconById(value) : undefined;
@@ -112,7 +111,7 @@ export function ItemIconPicker({ value, derivedId, onPick, labelId, describedBy,
           type="button"
           aria-labelledby={labelId}
           aria-describedby={describedBy}
-          className={cn(selectTriggerVariants(), className)}
+          className={selectTriggerVariants()}
         >
           <span className="!flex min-w-0 items-center gap-2">
             {choice === ITEM_ICON_NONE
