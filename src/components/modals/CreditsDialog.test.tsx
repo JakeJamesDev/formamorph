@@ -90,7 +90,7 @@ describe('CreditsDialog', () => {
     renderDialog();
     expect(screen.getByRole('link', { name: 'game-icons.net' })).toHaveAttribute('href', 'https://game-icons.net');
     expect(screen.getByRole('link', { name: 'creativecommons.org/licenses/by/3.0' })).toHaveAttribute('href', 'https://creativecommons.org/licenses/by/3.0/');
-    expect(screen.getByRole('tabpanel')).toHaveTextContent("draws them in your theme's colors");
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('Your theme sets their colors');
   });
 
   it('names llama.cpp on desktop only', () => {

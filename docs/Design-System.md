@@ -2369,6 +2369,19 @@ Button names are verb-first and name the item: "Equip Greatsword", "Drop Ash Wan
 
 Open `#dev?modal=designSystem&tab=inventory-tab`, or `#dev?view=gameViewer&fixture=items&tab=inventory` for the tab in a game.
 
+## Pattern: License Rows
+
+**Purpose:** Let a player scan hundreds of named texts and read one.
+
+> ✅ **Approved.** The user approved the row on 2026-11-02 from frames of the Licenses tab.
+
+- 📄 **Row.** A full-width button with the name on the left and a chevron on the right, with a bottom border between rows.
+- 📖 **Open.** The text renders as markdown under the row. A closed row mounts no text.
+- 🔎 **Filter.** A search field above the list matches names, and each section heading stays only while it has rows.
+- 🧩 **Component.** `LicensesPanel` in [`LicensesPanel.tsx`](../src/components/modals/LicensesPanel.tsx). Use the collapsible section for a short list with heavier titles.
+
+Open `#dev?view=mainMenu&modal=credits&tab=licenses`.
+
 ## Pattern: Entity Popup
 
 **Purpose:** Show an entity's picture and everything the player can read about it at once, in game.

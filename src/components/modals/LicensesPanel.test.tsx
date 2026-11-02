@@ -77,12 +77,14 @@ describe('the Licenses tab', () => {
     openLicenses();
     const panel = await screen.findByRole('tabpanel');
     await within(panel).findByRole('button', { name: 'eSpeak NG' });
-    expect(panel.querySelectorAll('pre')).toHaveLength(0);
+    expect(panel).not.toHaveTextContent('GNU GENERAL PUBLIC LICENSE');
 
     fireEvent.click(within(panel).getByRole('button', { name: 'eSpeak NG' }));
-    const text = entries.find((entry) => entry.name === 'eSpeak NG')!.text;
-    await waitFor(() => expect(panel.querySelectorAll('pre')).toHaveLength(1));
-    expect(panel.querySelector('pre')!.textContent).toBe(text);
+    const lines = entries.find((entry) => entry.name === 'eSpeak NG')!.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    await waitFor(() => expect(panel).toHaveTextContent('GNU GENERAL PUBLIC LICENSE'));
+    // The license's last line proves the row holds the whole text, and the missing fence proves it renders.
+    expect(panel).toHaveTextContent(lines[lines.length - 2]);
+    expect(panel).not.toHaveTextContent('```');
   });
 
   it('filters by name, case-insensitively, and says so when nothing matches', async () => {

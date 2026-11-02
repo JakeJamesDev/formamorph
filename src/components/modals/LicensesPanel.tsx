@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { SearchField } from '@/components/ui/search-field';
@@ -62,7 +63,10 @@ function LicenseRow({ entry }: { entry: NoticeEntry }) {
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <pre className="whitespace-pre-wrap break-words pb-3 font-mono text-helper text-muted-foreground">{entry.text}</pre>
+        {/* License text wraps, because a narrow dialog can't hold its 80-column lines. */}
+        <div className="pb-3 text-label text-muted-foreground [&_:first-child]:mt-0 [&_code]:whitespace-pre-wrap [&_pre]:whitespace-pre-wrap [&_pre]:break-words">
+          <MarkdownRenderer text={entry.text} lineNumbers={false} />
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
