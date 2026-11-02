@@ -15,6 +15,6 @@ describe('shipNotices', () => {
   });
 
   it('is in the app build', () => {
-    expect(readFileSync('vite.config.js', 'utf8')).toMatch(/plugins: \[[^\]]*shipNotices\(__dirname\)/);
+    expect(readFileSync('vite.config.js', 'utf8')).toMatch(/plugins: \[[^\]]*shipNotices\(import\.meta\.dirname\)/);
   });
 });

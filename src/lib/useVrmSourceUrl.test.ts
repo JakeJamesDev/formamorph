@@ -17,7 +17,7 @@ import { useVrmSourceUrl } from './useVrmSourceUrl';
 beforeEach(() => {
   getModelData.mockReset();
   storeVrm = undefined;
-  vi.stubGlobal('URL', { createObjectURL: () => 'blob:model', revokeObjectURL: () => {} });
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:model');
 });
 
 describe('useVrmSourceUrl', () => {

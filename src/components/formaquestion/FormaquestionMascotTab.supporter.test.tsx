@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { DEFAULT_MASCOT_RIG, type MascotImageRef } from '@/lib/formaquestion/mascot';
 import { buildMascotCardData } from '@/lib/formaquestion/mascotCard';
@@ -22,8 +23,8 @@ const fake = vi.hoisted(() => ({
   snapshot: { status: 'ready', qualifies: false, entitled: [], installed: [] } as SupporterContentSnapshot,
   served: new Map<string, unknown>(),
   listeners: new Set<() => void>(),
-  install: null as unknown as ReturnType<typeof vi.fn>,
-  refresh: null as unknown as ReturnType<typeof vi.fn>,
+  install: null as unknown as Mock<(id: string) => unknown>,
+  refresh: null as unknown as Mock<() => unknown>,
   listings: [] as SupporterMascotListing[],
 }));
 

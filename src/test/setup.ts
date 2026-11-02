@@ -127,9 +127,10 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// jsdom has no object-URL store. The upload path makes one to show the file being converted without handing
-// an <img> the multi-megabyte data URL, so without these the whole flow throws.
-if (typeof URL.createObjectURL === 'undefined') {
+// Node's object-URL store rejects anything but its own Blob, and these tests hand it other values.
+// The upload path makes one to show the file being converted without handing an <img> the multi-megabyte
+// data URL, so without these the whole flow throws.
+if (typeof window !== 'undefined') {
   let n = 0;
   URL.createObjectURL = () => `blob:formamorph/${++n}`;
   URL.revokeObjectURL = () => {};
@@ -145,7 +146,12 @@ afterEach(async () => {
   // and the cache would then read the live community server instead of the test's stub; and it reaches
   // `AuthService`, which needs `localStorage` — absent in the suites that run outside jsdom.
   if (typeof window === 'undefined') return;
-  (await import('@/lib/eventsCache')).resetEventsCache();
+  // Paths are variables so test selection's walk of setup files does not make every test depend on these.
+  const eventsCache = '@/lib/eventsCache';
+  ((await import(/* @vite-ignore */ eventsCache)) as typeof import('@/lib/eventsCache')).resetEventsCache();
   // Listing details persist on disk, so one test's opened listing would show in the next one's window.
-  if (typeof indexedDB !== 'undefined') await (await import('@/lib/listingDetailsCache')).clearListingDetails();
+  if (typeof indexedDB !== 'undefined') {
+    const listingDetails = '@/lib/listingDetailsCache';
+    await ((await import(/* @vite-ignore */ listingDetails)) as typeof import('@/lib/listingDetailsCache')).clearListingDetails();
+  }
 });

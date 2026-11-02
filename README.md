@@ -34,7 +34,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 
 ## 🚀 Getting started
 
-**Prerequisites:** [Node.js](https://nodejs.org) 20.19+ and npm.
+**Prerequisites:** [Node.js](https://nodejs.org) 24 (or 22.12+) and npm.
 
 ```bash
 npm install
@@ -109,7 +109,7 @@ Then open the in-game **Text to Speech** panel and confirm the **VRAM helper URL
 
 ## 🧱 Tech stack
 
-**React 18** · **TypeScript** · **Vite 5** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** (3D avatars) · **Kokoro** (TTS) · **QuickJS** (sandboxed scripts)
+**React 18** · **TypeScript** · **Vite 8** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** (3D avatars) · **Kokoro** (TTS) · **QuickJS** (sandboxed scripts)
 
 ## 📁 Project layout
 

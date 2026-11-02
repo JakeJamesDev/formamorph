@@ -46,7 +46,7 @@ const rows = () => treeRows().map((r) => r.textContent!);
 const row = (name: string) => treeRows().find((r) => within(r).queryByText(name, { exact: true }))!;
 
 /** One author action, then the event loop moves on as it does between two presses. */
-const step = (action: () => void) => act(async () => { action(); });
+const step = async (action: () => void) => { await act(async () => { action(); }); await new Promise((r) => setTimeout(r, 5)); };
 const removeStat = (name: string) => step(() => {
   fireEvent.click(within(row(name)).getByRole('button', { name: 'Delete' }));
 });

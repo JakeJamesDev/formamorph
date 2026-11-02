@@ -44,7 +44,7 @@ const WORLD: World = benchEditorWorld({
 });
 
 /** One author action, then the event loop moves on as it does between two presses. */
-const step = (action: () => void) => act(async () => { action(); });
+const step = async (action: () => void) => { await act(async () => { action(); }); await new Promise((r) => setTimeout(r, 5)); };
 const undo = () => step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
 const redo = () => step(() => { fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true }); });
 

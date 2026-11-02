@@ -55,6 +55,7 @@ const openFilters = async () => fireEvent.click(await screen.findByRole('button'
 
 beforeEach(() => {
   threadProps.last = null;
+  vi.mocked(AuthService.getCurrentUser).mockReturnValue({ id: 'u1', username: 'finder', accountType: 'normal' });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 

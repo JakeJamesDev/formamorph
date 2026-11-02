@@ -10,8 +10,7 @@
  *
  * `site/bundleBoundary.test.ts` walks the site's imports and fails when a file it reaches is in
  * neither list below. The two are kept as plain paths rather than globs so that check is a string
- * comparison — matching globs would mean either a glob library or `fs.globSync`, which does not exist
- * on the Node 20.19 this repo still supports.
+ * comparison.
  */
 
 /** Scanned whole, every file under them. */

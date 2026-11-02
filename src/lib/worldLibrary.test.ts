@@ -294,8 +294,10 @@ describe('a library with unreadable rows', () => {
       Object.defineProperty(request, 'result', { get: () => map(value), set: (next) => { value = next; } });
       return request;
     };
-    const get = IDBObjectStore.prototype.get;
-    const getAll = IDBObjectStore.prototype.getAll;
+    // Spying on a spied method returns the same spy, so a second store calls the first store's behavior.
+    const unspied = <T extends (...args: never[]) => unknown>(method: T) => (vi.isMockFunction(method) ? method.getMockImplementation() as T : method);
+    const get = unspied(IDBObjectStore.prototype.get);
+    const getAll = unspied(IDBObjectStore.prototype.getAll);
     const spies = [
       vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
         const request = get.call(this, key);

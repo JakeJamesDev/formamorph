@@ -6,7 +6,7 @@
   "type": "module",
   "main": "electron/main.cjs",
   "engines": {
-    "node": ">=20.19"
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
     "postinstall": "patch-package",
@@ -132,14 +132,15 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.184.1",
-    "@vitejs/plugin-react": "^4.3.1",
-    "@vitest/coverage-v8": "^3.2.6",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "electron": "^42.5.0",
     "electron-builder": "^26.15.7",
+    "esbuild": "^0.28.2",
     "eslint": "^9.8.0",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
@@ -179,8 +180,9 @@
     "typescript-eslint": "^8.62.0",
     "unified": "^11.0.5",
     "vaul": "^1.1.2",
-    "vite": "^5.4.0",
-    "vitest": "^3.2.6",
+    "vite": "^8.3.5",
+    "vite-node": "^6.0.0",
+    "vitest": "^5.0.5",
     "wasm-webp": "^0.1.0"
   }
 }

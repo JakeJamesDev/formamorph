@@ -81,7 +81,7 @@ Pick a world that comes with Formamorph, import one, or build your own in the Wo
 ## 🚀 Getting started
 <!-- keywords: run from source, build it myself, developer setup, clone repository, compile -->
 
-Prerequisites: **Node.js 20.19+** and npm.
+Prerequisites: **Node.js 24 (or 22.12+)** and npm.
 
 ```bash
 npm install
@@ -93,7 +93,7 @@ Open the app, go to **Settings**, and enter your AI endpoint. The [repository RE
 ## 🧱 Tech stack
 <!-- keywords: built with, framework, technology used, programming language, open source code -->
 
-**React 19** · **TypeScript** (strict) · **Vite 5** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** · **Kokoro** (TTS) · **QuickJS** (sandboxed scripts)
+**React 19** · **TypeScript** (strict) · **Vite 8** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** · **Kokoro** (TTS) · **QuickJS** (sandboxed scripts)
 
 ---
 
