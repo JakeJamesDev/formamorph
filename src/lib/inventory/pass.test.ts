@@ -600,6 +600,24 @@ describe('pay', () => {
     expect(diagnostics).toHaveLength(2);
   });
 
+  it('refuses a pay whose item names anything but money, known or not (Q70)', () => {
+    for (const word of ['nothing', 'Mara']) {
+      const { copies, diagnostics } = settle([], [op('pay', word, { owner: 'Mara', to: 'you', price: '2 Gold' })]);
+      expect(copies).toEqual([]);
+      expect(diagnostics).toEqual([expect.stringContaining("isn't money")]);
+    }
+  });
+
+  it('settles a pay whose item names its money', () => {
+    const { copies } = settle([], [op('pay', 'Copper', { owner: 'Mara', to: 'you', quantity: 4, price: '4 Copper' })]);
+    expect(counts(copies, you)).toEqual({ copper: 4 });
+  });
+
+  it('runs a gain beside a pay with a stray item and no price (Q76)', () => {
+    const { copies } = settle([], [op('gain', 'Copper', { quantity: 4, owner: 'here', to: 'you' }), op('pay', 'no item', { owner: 'here', to: 'you' })]);
+    expect(counts(copies, you)).toEqual({ copper: 4 });
+  });
+
   it('runs a gain beside a pay with no price or no one on either side (Q76)', () => {
     for (const bad of [op('pay', '', { quantity: 4, owner: 'here', to: 'you' }), pay('here', '', '4 Copper')]) {
       const { copies } = settle([], [op('gain', 'Copper', { quantity: 4, owner: 'here', to: 'you' }), bad]);

@@ -259,10 +259,10 @@ export function applyInventoryPass(
       skip(`${payLabel(op)}: the world has no Currency`);
       return [];
     }
-    // A pay names no item, so one that names a thing that isn't money is talk about a price (Q70).
-    if (op.item && known(itemNameKey(listedName(op.item))) && !namesMoney(listedName(op.item), moneyCurrencies, moneyNames)) {
+    // A pay names no item, so one that names anything but money is talk about a price (Q70).
+    if (op.item && !namesMoney(listedName(op.item), moneyCurrencies, moneyNames)) {
       skip(`${payLabel(op)}: "${op.item}" isn't money`);
-      return moneyCurrencies;
+      return !op.price && partyOf(op.owner)?.kind !== 'you' ? [] : moneyCurrencies;
     }
     const stated = statedPay(op);
     if ('refused' in stated) {

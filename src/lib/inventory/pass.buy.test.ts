@@ -350,9 +350,15 @@ describe('a pay that names an item (Q70)', () => {
     expect(copies).toEqual([]);
   });
 
-  it.each(['Copper', 'Coin', 'the reeve'])('settles a pay whose item reads "%s"', (name) => {
+  it.each(['Copper', 'Coin'])('settles a pay whose item reads "%s"', (name) => {
     const { copies } = settle([], [namingPay(name)]);
     expect(counts(copies, you)).toEqual({ copper: 25 });
+  });
+
+  it('refuses a pay naming a person, which reads the same as talk about a price', () => {
+    const { copies, diagnostics } = settle([], [namingPay('the reeve')]);
+    expect(copies).toEqual([]);
+    expect(diagnostics).toEqual([expect.stringContaining("isn't money")]);
   });
 });
 
