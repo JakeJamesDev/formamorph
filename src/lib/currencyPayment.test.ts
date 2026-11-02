@@ -51,18 +51,50 @@ describe('planPayment with coins', () => {
     expect(hers).toEqual({ copper: 3, silver: 1 });
   });
 
-  it('returns change in the fewest coins, created when the payee lacks it', () => {
+  it('returns change in the fewest coins, created when the payee lacks it, and the payee keeps only the amount', () => {
     const { you: mine, mara: hers } = settle([coin('gold', you, 1)], you, mara, 5);
     // 95 back reads 9 Silver, 5 Copper, never 95 Copper.
     expect(mine).toEqual({ silver: 9, copper: 5 });
-    expect(hers).toEqual({ gold: 1 });
+    expect(hers).toEqual({ copper: 5 });
   });
 
-  it('draws change from what a tracked payee holds before creating the rest', () => {
+  it('draws change from what a tracked payee holds, and the payee ends up by the amount', () => {
     const { you: mine, mara: hers } = settle([coin('silver', you, 1), coin('copper', mara, 2)], you, mara, 5);
     expect(mine).toEqual({ copper: 5 });
-    // Mara's own 2 Copper left; 3 more were created, so she ends with the Silver alone.
-    expect(hers).toEqual({ silver: 1 });
+    expect(hers).toEqual({ copper: 7 });
+  });
+
+  describe('value between tracked parties (Q54)', () => {
+    const worth = { copper: 1, silver: 10, gold: 100 };
+    const value = (held: Record<string, number>) => Object.entries(held).reduce((sum, [id, n]) => sum + worth[id as keyof typeof worth] * n, 0);
+    const purses: [string, ItemCopy[], ItemCopy[], number][] = [
+      ['one big coin against an empty purse', [coin('gold', you, 1)], [], 5],
+      ['two big coins and a remainder', [coin('gold', you, 2)], [], 150],
+      ['a payee with part of the change', [coin('silver', you, 1)], [coin('copper', mara, 2)], 5],
+      ['a payee with all the change', [coin('gold', you, 1)], [coin('silver', mara, 9), coin('copper', mara, 5)], 5],
+      ['a payee with the wrong coins', [coin('gold', you, 1)], [coin('gold', mara, 3)], 5],
+      ['mixed coins and overpay', [coin('copper', you, 3), coin('silver', you, 1), coin('gold', you, 1)], [coin('silver', mara, 1)], 17],
+      ['exact coins', [coin('copper', you, 5)], [], 5],
+    ];
+    it.each(purses)('moves exactly the amount, you to Mara: %s', (_shape, mine, hers, amount) => {
+      const after = settle([...mine, ...hers], you, mara, amount);
+      const before = { you: value(Object.fromEntries(mine.map((c) => [(c.item as { itemId: string }).itemId, c.quantity]))), mara: value(Object.fromEntries(hers.map((c) => [(c.item as { itemId: string }).itemId, c.quantity]))) };
+      expect(value(after.you)).toBe(before.you - amount);
+      expect(value(after.mara)).toBe(before.mara + amount);
+    });
+    it.each(purses)('moves exactly the amount, Mara to you: %s', (_shape, mine, hers, amount) => {
+      const swap = (c: ItemCopy, where: ItemCopyWhere) => coin((c.item as { itemId: string }).itemId, where, c.quantity);
+      const hersNow = mine.map((c) => swap(c, mara));
+      const minesNow = hers.map((c) => swap(c, you));
+      const after = settle([...hersNow, ...minesNow], mara, you, amount);
+      const total = (list: ItemCopy[]) => value(Object.fromEntries(list.map((c) => [(c.item as { itemId: string }).itemId, c.quantity])));
+      expect(value(after.mara)).toBe(total(hersNow) - amount);
+      expect(value(after.you)).toBe(total(minesNow) + amount);
+    });
+    it('still creates and destroys money with an untracked party', () => {
+      expect(settle([coin('gold', you, 1)], you, stranger, 5).you).toEqual({ silver: 9, copper: 5 });
+      expect(settle([], stranger, you, 5).you).toEqual({ copper: 5 });
+    });
   });
 
   it('finds the fewest coins when the largest-first answer is not the fewest', () => {

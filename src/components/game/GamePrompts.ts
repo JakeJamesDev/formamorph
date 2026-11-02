@@ -557,7 +557,7 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 <PERSONA|summary.markdown|header="Player Character">\
 <INVENTORY|markdown|header="Items Here">
 ## Operations
-- gain: someone receives an item that Items Here does not list - it is made, bought or found where no item was listed.
+- gain: someone receives an item that Items Here does not list - it is made or found where no item was listed.
 - lose: an owner loses an item for good - it is burned, broken or destroyed, used up off screen, or leaves the scene with no one present.
 - transfer: an item moves between owners here - given, taken, stolen, picked up from this place, or dropped in it.
 - equip: an owner wields or wears an item they carry, when that owner's slots include the slot shown after the item's name.
@@ -565,23 +565,23 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, spends a charge of it, or pours, applies or loads it into another item. The item is the one spent; the other item is the target.
 - change: an item stays with its owner and its look or state changes, with no use. The owner still holds that same item.
 - reveal: an item marked hidden comes into view because someone searches where it lies, or an item's true nature becomes known. A found item stays where it lies until someone takes it.
-- pay: money is handed over this turn with no item bought or sold, paid out or received - a bribe, fee, fine, tip, wage or reward. One pay records the whole sum, coins included, and the game moves the money itself. Every sum of money handed over is one pay and no other operation.
+- pay: money is handed over this turn with no item bought or sold, paid out or received - a bribe, fee, fine, tip, wage or reward. One pay records the whole sum, coins included, and the game moves the money itself. Every sum of money handed over with no item is one pay and no other operation.
+- buy: an item is bought or sold for money this turn. One buy records the item and its money together, and the game moves both itself, so the sale has no gain, transfer or pay beside it. The player selling an item is a buy with "you" as the owner.
 
 ## Fields
 - op: one operation from the list above.
 - item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item. Empty for pay.
 - quantity: how many, a whole number from 1.
-- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. For gain, the person who hands the item over, or "here" for anywhere else. For pay, who pays, and empty when the money comes from no one here.
-- to: who holds it after a gain or a transfer, or who receives a pay, in the same words as owner. Empty for every other operation, and for a pay that no one here receives.
+- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. For gain, the person who hands the item over, or "here" for anywhere else. For pay, who pays, and empty when the money comes from no one here. For buy, the seller, and empty when no seller is here.
+- to: who holds it after a gain or a transfer, who receives a pay, or who buys, in the same words as owner. Empty for every other operation, and for a pay that no one here receives.
 - state: for change, the item's new state in a word or two. Empty for every other operation.
 - after: for use, "kept" when the item is still there after the use, or "used up" when it is gone. Empty for every other operation.
 - target: for use, the other item it is used on, by its name as Items Here shows it. Empty when it acts on no other item, and for every other operation.
 - slot: for equip, the one slot the story puts the item in, by a slot name shown after the item's name. Empty when the story shows no particular slot, and for every other operation.
-- price: for pay, the sum as digits and money words. Empty for every other operation.
-- currency: for pay, the money's name when Items Here shows more than one kind. Empty otherwise.
+- price: for pay, the sum as digits and money words. For buy, the sum for the whole purchase in the same form when the story states one, and empty when it states none. Empty for every other operation.
+- currency: for pay or a buy with a price, the money's name when Items Here shows more than one kind. Empty otherwise.
 
-Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all. A price someone names, asks for or turns down is talk, and has no pay.
-
+Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all. A price someone names, asks for or turns down is talk, and has no pay or buy.
 Items Here shows who held each item before this turn. An item listed under an owner is already theirs: record it only when this turn moves it to another owner or this place, uses it, changes it, or puts it on or takes it off.`;
 
 export const defaultInventoryUserPrompt = `<PLAYER ACTION|format=markdown|header="The player character's action">\

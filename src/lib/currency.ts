@@ -276,10 +276,13 @@ function leadingAmount(part: string): { count: number | null; word: string } {
  */
 export function readStatedPrice(price: string, named: string, currencies: readonly Currency[], items: readonly ItemName[], count?: number): StatedPrice {
   const termsOf = (word: string) => moneyTerms(word, currencies, items);
-  const namedTerms = named.trim() ? termsOf(named) : null;
-  if (namedTerms && !namedTerms.length) return { refused: `no Currency is named "${named}"` };
   const parts = price.replace(/(\d),(\d{3})\b/g, '$1$2').split(/,|&|\+|\band\b/i).map((part) => part.trim()).filter(Boolean);
   if (!parts.length) return { refused: 'it states no price' };
+  const statedTerms = named.trim() ? termsOf(named) : [];
+  // A price that names its own money needs no Currency, so a `named` that names no money is ignored.
+  const selfNamed = parts.every((part) => { const { word } = leadingAmount(part); return !!word && termsOf(word).length > 0; });
+  if (named.trim() && !statedTerms.length && !selfNamed) return { refused: `no Currency is named "${named}"` };
+  const namedTerms = statedTerms.length ? statedTerms : null;
   const terms: { count: number; options: { currency: Currency; worth: number }[] }[] = [];
   for (const part of parts) {
     const { count: stated, word } = leadingAmount(part);
@@ -358,14 +361,14 @@ const spendableCopies = (itemId: string, owner: SlotOwner, copies: readonly Item
 
 /** Ops that take `count` of a coin from `owner`, and how many of the count its copies could not cover. */
 function takeCoins(
-  itemId: string, count: number, owner: SlotOwner, copies: readonly ItemCopy[], op: (copyId: string, quantity: number) => InventoryOp,
+  itemId: string, count: number, owner: SlotOwner, copies: readonly ItemCopy[], op: (copyId: string, quantity: number) => InventoryOp[],
 ): { ops: InventoryOp[]; short: number } {
   const ops: InventoryOp[] = [];
   let short = count;
   for (const copy of spendableCopies(itemId, owner, copies)) {
     if (short <= 0) break;
     const quantity = Math.min(short, copy.quantity);
-    ops.push(op(copy.id, quantity));
+    ops.push(...op(copy.id, quantity));
     short -= quantity;
   }
   return { ops, short };
@@ -396,20 +399,39 @@ function coinPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner 
   const change = rest < 0 ? fewestCoins(-rest, coins) : new Map<string, number>();
   if (!change) return refuse(`the coins can't make ${-rest} in change`);
   for (const [itemId, count] of change) net.set(itemId, (net.get(itemId) ?? 0) - count);
+  const returned = new Map([...net].filter(([, count]) => count < 0).map(([itemId, count]) => [itemId, tracked
+    ? takeCoins(itemId, -count, tracked, state.copies, (copyId, quantity) => [{ kind: 'transfer', copyId, to: payer, quantity }])
+    : { ops: [], short: -count }]));
+  // Change the payee lacks is created, and a tracked payee gives up that worth from the handover, so value is conserved.
+  const worthOf = (itemId: string) => coins.find((coin) => coin.itemId === itemId)?.worth ?? 0;
+  let owed = tracked ? [...returned].reduce((sum, [itemId, back]) => sum + back.short * worthOf(itemId), 0) : 0;
+  const dropped = new Map<string, number>();
+  for (const { itemId, worth } of coins) {
+    const count = net.get(itemId) ?? 0;
+    if (count <= 0 || owed <= 0) continue;
+    const drop = Math.min(count, Math.ceil(owed / worth));
+    dropped.set(itemId, drop);
+    owed -= drop * worth;
+  }
+  const topUp = owed < 0 ? fewestCoins(-owed, coins) : new Map<string, number>();
+  if (!topUp) return refuse(`the coins can't make ${-owed} for the payee`);
   const ops: InventoryOp[] = [];
   for (const [itemId, count] of net) {
     if (count > 0) {
-      ops.push(...takeCoins(itemId, count, payer, state.copies, (copyId, quantity) => (tracked
-        ? { kind: 'transfer', copyId, to: tracked, quantity } : { kind: 'lose', copyId, quantity })).ops);
+      let kept = tracked ? count - (dropped.get(itemId) ?? 0) : 0;
+      ops.push(...takeCoins(itemId, count, payer, state.copies, (copyId, quantity) => {
+        const moved = Math.min(kept, quantity);
+        kept -= moved;
+        const handed: InventoryOp[] = moved > 0 && tracked ? [{ kind: 'transfer', copyId, to: tracked, quantity: moved }] : [];
+        return moved < quantity ? [...handed, { kind: 'lose', copyId, quantity: quantity - moved }] : handed;
+      }).ops);
     } else if (count < 0) {
-      // Change the payee lacks is created.
-      const back = tracked
-        ? takeCoins(itemId, -count, tracked, state.copies, (copyId, quantity) => ({ kind: 'transfer', copyId, to: payer, quantity }))
-        : { ops: [], short: -count };
+      const back = returned.get(itemId)!;
       ops.push(...back.ops);
       if (back.short > 0) ops.push({ kind: 'gain', itemId, quantity: back.short, to: payer });
     }
   }
+  if (tracked) for (const [itemId, quantity] of topUp) ops.push({ kind: 'gain', itemId, quantity, to: tracked });
   return { settled: true, stats: [], ops };
 }
 
