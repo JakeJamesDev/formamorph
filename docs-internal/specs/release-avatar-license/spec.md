@@ -108,6 +108,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 - A build flag, not a failed fetch, decides whether Praline exists. A 404 on an SFW build would retry on every launch.
 - The flag is `FORMAMORPH_AVATARS`, set to `nsfw` only by the three release steps that copy her file. Unset means SFW, so a local Android or desktop build holds Aki alone. A build check fails when the flag and the output disagree.
+- With no device default, User's Default resolves to the seeded default record when the library holds it, else to the bundled file. An existing player keeps seeing their copy (Q6), and the picker and the played Avatar agree.
 - Old Sugarscape saves with no chosen Avatar resolve to the player's default, because the world stays authoritative for saves. They get no save handling.
 - Seeding becomes a list of bundled entries, each with a fixed library id and its own one-shot flag. Seeded copies stay the player's, so a deleted Praline stays gone.
 - Existing players on NSFW builds receive Praline through her own flag. They keep their current default copy (Q6), so they don't receive Sei.
