@@ -90,7 +90,7 @@ The source and license of each model Formamorph bundles. This is a reading of th
 - `name` is `Praline`. Every other metadata field is unchanged.
 - `Waist`, `Bust` and `Thickness` keys are new and generated.
 - Hair and iris textures are recolored so the pickers can tint them. Color factors restore the source look until a player changes a color.
-- The stockings move out of the Body skin texture into their own material and layer.
+- The stockings move out of the Body skin texture into their own material and layer, named `Stockings_CLOTH`.
 - The embedded thumbnail is recaptured on a white background.
 
 **Metadata of `AvatarSample_F.vrm`, as exported**

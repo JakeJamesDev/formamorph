@@ -109,7 +109,7 @@ newviews[bvi]=enc(px,w,h,ch)
 j['bufferViews'].append({'buffer':0,'byteLength':0});stv=len(j['bufferViews'])-1;newviews[stv]=enc(st,w,h,ch)
 j['images'].append({'name':'Stockings','mimeType':'image/png','bufferView':stv});sti=len(j['images'])-1
 j['textures'].append({'source':sti,'sampler':j['textures'][body['pbrMetallicRoughness']['baseColorTexture']['index']].get('sampler',0)});stt=len(j['textures'])-1
-sm=copy.deepcopy(body);sm['name']='N00_000_00_Stockings_00_CLOTH';sm['pbrMetallicRoughness']['baseColorTexture']['index']=stt;sm['alphaMode']='MASK';sm.setdefault('alphaCutoff',.5)
+sm=copy.deepcopy(body);sm['name']='Stockings_CLOTH';sm['pbrMetallicRoughness']['baseColorTexture']['index']=stt;sm['alphaMode']='MASK';sm.setdefault('alphaCutoff',.5)
 mt=sm['extensions']['VRMC_materials_mtoon'];mt['shadeMultiplyTexture']=dict(mt.get('shadeMultiplyTexture',{}),index=stt);mt['shadeColorFactor']=[.82,.78,.8]
 j['materials'].append(sm);smi=len(j['materials'])-1
 M=[x for x in j['meshes'] if 'Body' in x['name']][0];p0=[p for p in M['primitives'] if p['material']==bi][0];A=p0['attributes']
