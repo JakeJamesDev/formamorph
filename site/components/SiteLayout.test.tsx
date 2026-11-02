@@ -17,7 +17,16 @@ beforeEach(() => { resetAccountPage('/u/rowan'); document.documentElement.classN
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+
+describe('the site footer', () => {
+  it('links to the notices file through the build base path', () => {
+    vi.stubEnv('BASE_URL', '/site-app/');
+    renderPage();
+    expect(screen.getByRole('link', { name: 'Licenses' })).toHaveAttribute('href', '/site-app/THIRD-PARTY-NOTICES.md');
+  });
 });
 
 describe('the shared site account controls', () => {

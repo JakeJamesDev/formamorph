@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { GENERIC_ITEM_ICON, ITEM_ICONS, ITEM_ICON_AUTHORS, ITEM_ICON_NONE, copyItemIcon, deriveItemIcon, itemIconById, itemIconName, resolveItemIcon, searchItemIcons } from './itemIcons';
+import { parseNotices } from './noticesFormat';
 
 const IMAGE = 'data:image/png;base64,AAAA';
 const icon = (id: string) => ({ kind: 'icon', id });
@@ -210,14 +211,14 @@ describe('the Game Icons credit', () => {
   it('stays in THIRD-PARTY-NOTICES.md with the license text', () => {
     const notices = readFileSync('THIRD-PARTY-NOTICES.md', 'utf8');
     // Booleans, so a failure doesn't print the whole file.
-    expect(notices.includes('**Game Icons**')).toBe(true);
+    expect(notices.includes('### Game Icons')).toBe(true);
     expect(notices.includes('Creative Commons Attribution 3.0')).toBe(true);
     expect(notices.includes('game-icons.net')).toBe(true);
   });
 
   it('names every author in the catalog, and only them', () => {
-    const entry = readFileSync('THIRD-PARTY-NOTICES.md', 'utf8').split('\n').find((line) => line.startsWith('- **Game Icons**')) ?? '';
-    const named = entry.match(/Icons made by ([^.]+)\./)?.[1] ?? '';
+    const entry = parseNotices(readFileSync('THIRD-PARTY-NOTICES.md', 'utf8')).find((notice) => notice.name === 'Game Icons');
+    const named = entry?.text.match(/Icons made by ([^.]+)\./)?.[1] ?? '';
     expect(named.replace(' and ', ' ').split(/,\s*/).map((name) => name.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, 'en'))).toEqual(ITEM_ICON_AUTHORS);
   });
 });

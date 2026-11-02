@@ -103,9 +103,10 @@ const cacheTypesCjs = {
 }
 
 const shippedWorlds = shipBundledWorlds(import.meta.dirname)
+const notices = shipNotices(import.meta.dirname)
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), shipNotices(import.meta.dirname)],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
@@ -139,6 +140,7 @@ export default defineConfig({
     ],
   },
   worker: {
+    plugins: () => [notices.api.workerPlugin()],
     // The image-encode worker lazily `import()`s wasm-webp; under the default iife worker format that dynamic
     // import would force code-splitting (unsupported for iife). Inlining folds it into the single worker chunk.
     // No-op for the other workers (they have no dynamic imports).
@@ -187,6 +189,8 @@ export default defineConfig({
       'scripts/shipBundledWorlds.mjs',
       'scripts/stripSeededWorlds.mjs',
       'scripts/shipNotices.mjs',
+      'scripts/noticesList.mjs',
+      'src/lib/noticesFormat.ts',
       'scripts/bundledWorldHashes.mjs',
       'src/lib/contentHash.ts',
       'scripts/stripWorldImages.mjs',

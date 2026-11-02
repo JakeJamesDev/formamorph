@@ -39,6 +39,7 @@
     "vram-helper": "node scripts/vram-helper.mjs",
     "gen-tags": "node scripts/genDanbooruTags.mjs",
     "gen-item-icons": "node scripts/genItemIcons.mjs",
+    "gen-notices": "vite-node scripts/genNotices.mjs",
     "docs": "typedoc",
     "changelog:notes": "node scripts/extractReleaseNotes.mjs",
     "copy:sweep": "node scripts/copySweep.mjs",
