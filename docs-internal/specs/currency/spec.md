@@ -54,6 +54,11 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q27 | The stat pass keeps writing a backing stat when the Inventory pass isn't due |
 | Q28 | The Inventory pass is due in a world that has Currencies and no items |
 | Q29 | A stat's No Decrease and No Increase locks still apply. A locked stat refuses the payment |
+| Q30 | (ticket 01) The stat picker lists Global Stats, then each Persona's resolved stats, own and linked. A Blueprint stat appears once under its original id when at least one Persona links it. An own stat is that Persona's alone |
+| Q31 | (ticket 01) The picker has no stat type filter. Number and percentage stats both list |
+| Q32 | (ticket 01) Player surfaces show worth only for an item with a Value and an existing Currency. The world index keeps a bare Value for an item with none |
+| Q33 | (ticket 01) An unidentified copy shows the player no worth, and its player view row carries no `value` or `currencyId` |
+| Q34 | (ticket 01) Until ticket 04, removing a Currency has no confirm or cleanup. Every reader treats a dangling `currencyId` as no Currency |
 
 ## User Stories
 
@@ -155,7 +160,7 @@ The plan is the one place that holds Q8, Q11, Q18, Q21, Q26 and Q29. The Invento
 
 - A pinned **Currencies** entry on the Items tab, following Equipment Settings. Rows reorder by the existing list patterns.
 - Each Currency edits its name, its backing kind, the stat picker or the coin rows.
-- The stat picker follows Q4: Global Stats, then Persona stats through Stat Links, each stat once. This replaces the broken picker in the item Value field.
+- The stat picker follows Q4 and Q30. This replaces the broken picker in the item Value field.
 - The item Properties tab shows a Currency picker. It shows one number field per coin for a coin-backed Currency, and one field otherwise.
 - Deleting a stat, a coin item or a Currency follows Q22. The cleanup runs in the same GameDataContext action as the delete.
 - Every new screen gets a dev route, with an Items fixture covering a stat, a coin and a name-only Currency.

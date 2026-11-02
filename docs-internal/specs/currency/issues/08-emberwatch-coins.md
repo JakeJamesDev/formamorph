@@ -13,7 +13,7 @@ Emberwatch becomes the Currency showcase. Copper, Silver and Gold are coin items
 
 The Gold stat goes, with its Stat Links and descriptors. The Rogue bonus becomes extra coins from the trait. Renown stays. The readme and any text that treats Gold as a stat are updated, and the story's plain mentions of gold stay.
 
-Follow the bundled-worlds skill.
+Follow the bundled-worlds skill. From ticket 01's landing: `npm run fingerprints` crashes on main until `c3cbde4f5` lands, so check that before updating the bundled-world hashes.
 
 Rulings: Q23, Q24, Q25.
 

@@ -15,6 +15,8 @@ This ticket owns the Breakdown in the Currency module. Tickets 03 and 05 read it
 
 Rulings: Q6, Q10.
 
+From ticket 01's landing: the parser checks record shape only, so this ticket's editor enforces the coin-row rules. The player view's readable worth is `PlayerViewItem.worth`, and its scene and script items carry raw values with no Currency list.
+
 ## Acceptance criteria
 
 - [ ] The Currencies entry adds, reorders and removes coin rows of an item and a worth.
