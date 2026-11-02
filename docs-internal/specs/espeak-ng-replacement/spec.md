@@ -30,7 +30,8 @@ Each word takes the first source that has it:
 | 1 | Word table | Hand-checked words, accepted by ear. Beats every other source. |
 | 2 | CMUdict | General English, with our own homograph picks. |
 | 3 | Compound split | Two known words, such as Emberwatch. |
-| 4 | Our model | Everything else. Trained only on CMUdict. |
+| 4 | Regular ending | A regular -s or -'s on a word from the sources above, such as wyverns. |
+| 5 | Our model | Everything else. Trained only on CMUdict. |
 
 British voices keep British pronunciation, through rules applied to this American result.
 
@@ -52,6 +53,10 @@ British voices keep British pronunciation, through rules applied to this America
 | Q14 | Homographs use our own table from CMUdict variants, plus a small tagger with a named license. |
 | Q15 | A hand-checked word table comes before CMUdict. It starts with the 20 accepted entries in the ear test record. |
 | Q16 | The bar adds at least 80 of 97 fantasy words, and no fewer than eSpeak's 76. The set grows as words are added. |
+| Q17 | Compound parts come from CMUdict with at least 4 letters, plus a short reviewed list of common 3-letter CMUdict words. Rejects arc + hon, hald + ren, tia + mat, and nyx + ara. |
+| Q18 | A short plain-data list of function words takes a weak CMUdict form or loses its stress, unless the word ends the phrase. It lands with the American pipeline. The rating page adds sentence clips, with no numeric bar. |
+| Q19 | Before the model, a regular -s or -'s on a table, CMUdict, or split word takes that word's phonemes plus the regular ending. |
+| Q20 | The phoneme error bars gate landing. The listening bars are the owner's step after landing, on a page the ticket builds. The ticket stays `ready-for-human` until the owner reports. |
 
 ## Measurements
 
@@ -74,6 +79,7 @@ The word table entries were written for the words that failed. So the last colum
 | Misaki fallback model | 39.4% | 15.4 |
 | Chosen model, no splits | 40.1% | 14.9 |
 | Chosen model, with splits | 38.8% | 15.3 |
+| Landed American pipeline | 38.6% | 14.9 |
 
 Compound splits cost a little here, and they win by ear on names: 13 of 13 against eSpeak's 11 of 13.
 
@@ -83,18 +89,19 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 |---|---|---|
 | eSpeak NG | 92.6% | 1.9 |
 | CMUdict, with `phonemize` for gaps | 92.5% | 1.9 |
+| Landed American pipeline | 92.6% | 1.9 |
 
-**Size:** the model is 7.48 MB at half precision and about 6.9 MB gzipped. Half precision changed 2 of 1,632 outputs. The first trial reached about 72% on its CMUdict validation split, and dropout moved held-out accuracy more than extra epochs did.
+**Size:** the shipped model is 7.99 MB in two files and 6.96 MB gzipped. The dictionary adds 3.62 MB. The first trial reached about 72% on its CMUdict validation split, and dropout moved held-out accuracy more than extra epochs did.
+
+**Speed:** in headless Chromium over a production build, the model loads and answers its first word in 541 ms. An unknown word then takes 21 ms at the median and 33 ms at most. Electron measures 570, 23, and 39 ms.
 
 **Why half the fantasy list needs help:** 49 of the 97 words are not in CMUdict, wyvern among them. Six CMUdict entries also failed by ear: chimera, valkyrie, seraphim, alchemist, liege, and Asgard.
 
 ### Not Measured Yet
 
-- The final pipeline on the known-word set. The row above used `phonemize` for gaps, and the final pipeline uses the model.
 - British voices on the new pipeline.
 - The homograph table and tagger. They do not exist yet.
-- The model as ONNX in the browser: size, accuracy, and load and per-word speed.
-- A model trained from the pinned CMUdict revision. The trial used the `cmu-pronouncing-dictionary` npm data.
+- The Android build and a packaged desktop build. Both ship the same `dist` files.
 
 ## User Stories
 
@@ -121,11 +128,13 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 **Kokoro client.** A small client of our own, built on `@huggingface/transformers`, replaces `kokoro-js`. It keeps the two calls Text to Speech uses: load the model, and generate from text with a voice and speed. `kokoro-js` inlines `phonemizer`, so a package alias cannot remove eSpeak. Anything adapted from `kokoro-js` keeps its Apache-2.0 notice, in the source and in the notices after the package leaves. Parity with `kokoro-js` is a one-time check quoted in the ticket. No eSpeak output is committed as a test snapshot.
 
-**Text to phonemes.** One deep module takes text and a voice's accent and returns the phoneme string for Kokoro. It owns text cleanup, word lookup in the order above, homograph picks, stress handling, and British rules. It holds the Kokoro notation mapping, including flaps, which CMUdict does not mark.
+**Text to phonemes.** One deep module takes text and a voice's accent and returns the phoneme string for Kokoro. It owns text cleanup, word lookup in the order above, homograph picks, stress handling, and British rules. It holds the Kokoro notation mapping, including flaps, which CMUdict does not mark. Function words take weak forms in a phrase (Q18), because eSpeak reduced them and players would hear the loss.
 
 **Text cleanup.** eSpeak handled numbers, abbreviations, and initialisms itself. The new module must handle them too, and the known-word scoring run covers this.
 
-**Compound split.** A word splits into two parts of at least 3 letters when both parts are in CMUdict. The second part takes secondary stress. The trial also required both parts in a common-word list taken from WikiPron. Since WikiPron is never committed, the shipped list comes from CMUdict.
+**Compound split.** A word splits into two parts when both are in CMUdict and each has at least 4 letters or is on a short reviewed list of common 3-letter words (Q17). The second part takes secondary stress. CMUdict has no frequency data and holds many surnames, so a false split that remains gets a word table entry.
+
+**Regular ending.** A regular -s or -'s on a known word takes that word's phonemes plus the ending, voiced to match the last sound (Q19). This step needs its own check for false stems, the same as compound splits.
 
 **Model.** A from-scratch BART grapheme-to-phoneme model with the Q9 shape, exported to ONNX as an encoder file and a decoder file, about 7 MB in total. It trains on primary CMUdict entries only. A model loads once and is released with the rest of Text to Speech.
 
@@ -161,7 +170,7 @@ A good test here calls the text-to-phoneme module or the client through its publ
 | Word table entries are valid Kokoro notation | Unit test over the data | Gates |
 | No eSpeak in the build | Build check that must fail when `phonemizer` is put back | Build gate |
 | Phoneme error bar | Scoring script against stored reference numbers | By hand, on model or lookup changes |
-| Listening bars | Blind rating page, with ratings carried for identical strings | By hand, before landing |
+| Listening bars | Blind rating page, with ratings carried for identical strings | By hand, by the owner, after landing (Q20) |
 
 The scoring script fetches WikiPron, so it stays outside the gates. Prior art is the probe harness and the Credits drift guard.
 
