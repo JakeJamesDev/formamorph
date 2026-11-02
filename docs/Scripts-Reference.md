@@ -943,6 +943,7 @@ A bound that a stat writes applies at the written number, after that script's tr
 - **`previous` holds the start value.** In After the AI, it is the value at the start of the turn. In every other timing, it is the value when the timing began. `value` and `delta.actual` include earlier scripts' writes. `delta.ai` and `delta.regen` keep their meaning.
 - **During AI Output scripts read each other's writes on each sentence.** The writes still land with After the AI, and a stopped turn applies none.
 - **A World Tool's writes come first.** On a re-roll, its saved writes apply before the list, and every script reads them.
+- **During AI Output scripts read an On Call Tool's writes.** When the AI calls a Tool during the reply, the Tool's writes apply at once, and scripts on later sentences read them. Item scripts and Currency payments read them too.
 - **A switch runs its When a Trait Switches scripts at once.** They run before the next script in the list, and the next script reads their result. A World Tool's switch does the same. Two scripts that switch one trait on and then off run these scripts twice, in that order.
 - **During AI Output switches wait.** A switch in this timing runs its scripts once, with After the AI. A later script on the sentence doesn't read their result.
 - **An inventory write runs its item scripts at once.** They run before the next script in the list, and the next script reads their result. See [Items](#items).
@@ -1027,6 +1028,7 @@ An After the AI script can change the choices the player sees. Edit `turn.choice
 - **It is read-only at other timings.** Before the AI, At Game Start, During AI Output, When a Trait Switches, Tools and runs between turns read the list. A change there is ignored and reported. With the player's choices off, a change is ignored too.
 - **A stats re-roll starts again.** It runs the scripts on the AI's own choices. Edits never stack. The save keeps both lists.
 - **Regenerate Choices runs the scripts again.** They read the new list and the AI's stat changes for the turn. Only their choice edits apply. The new list shows once they finish.
+- **Regenerate Choices reads items as the turn did.** The scripts read the items from Before the AI, On Call Tools and the story's item changes. They don't read an item that a During AI Output script wrote.
 - **A `player` call shows nothing on that run.** `tell` and `toast` show nothing, `confirm` answers `false`, `ask` answers `null` (`[]` with `multiple`), and `input` answers `""`. The script runs on.
 
 ```js

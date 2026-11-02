@@ -392,6 +392,34 @@ type PreTurnCodeState = Pick<
  *  passes, which run before React re-renders with it. */
 type TurnCodeState = Pick<LiveSnapshot, 'globalStats'> & PreTurnCodeState;
 
+/** The Item Copies, effects and Bodies a run reads. */
+interface HeldItems {
+  copies: readonly ItemCopy[];
+  effects: ItemEffectLedger;
+  bodies: BodyRuntime;
+}
+
+/** What an Inventory pass lands over. */
+type InventoryPassFrom = HeldItems & { runtimeItems: readonly RuntimeItem[] };
+
+/** What a quiet replay's run reads in place of the live state, which already holds the turn it replays. */
+interface QuietReplay {
+  items: HeldItems;
+  base: TurnCodeState | null;
+}
+
+/** `world` with its item gates reading `items`, when a quiet replay holds its own. */
+const worldHolding = (world: TraitWorld, items: HeldItems | undefined): TraitWorld =>
+  (items ? { ...world, itemCopies: items.copies } : world);
+
+/** `traits` in the shape a code run hands on, with the pins and lore of `pins`. */
+const codeStateOf = (traits: TraitRuntimeState, pins: Pick<PreTurnCodeState, 'codePins' | 'loreToggles'>): TurnCodeState => ({
+  codePins: pins.codePins, loreToggles: pins.loreToggles,
+  globalStats: traits.stats, globalTraits: traits.traits, disabledTraitIds: traits.disabledTraitIds,
+  appliedTraitValues: traits.appliedValues, cascadeOffTraitIds: traits.cascadeOffTraitIds,
+  ownedTraits: traits.ownedTraits, entityStats: traits.entityStats,
+});
+
 /** `base`'s fields over `live`; `traits` are the world's, which chosen traits refresh from. */
 function codeStateOver(base: TurnCodeState | null, live: TraitRuntimeState, traits: Trait[]): TraitRuntimeState {
   if (!base) return live;
@@ -1795,22 +1823,33 @@ const GameViewer = ({
   /**
    * A turn replayed up to its After the AI batch, for the stats re-roll and the choices rerun: the start scripts on
    * a fresh game's first page, the before box, then the turn's On Call writes. `land` writes each run to the game.
-   * `quiet` answers every `player` call silent (Q20) and lands nothing. The batch then reads the turn's own page
-   * and `afterChoices`. `onWrote` hears what the runs have left after each stage, so a caller can undo it when
+   * `quiet` answers every `player` call silent (Q20) and lands nothing, its runs chaining from `quietItems`. The batch
+   * then reads the turn's own page and `afterChoices`. `onWrote` hears what the runs have left after each stage, so a caller can undo it when
    * `signal` stops the replay (null then).
    */
   const replayToAfter = async (
     landing: "land" | "quiet",
-    { prev, action, page, preTurn, turnHours, afterChoices, signal, onWrote }: {
+    { prev, action, page, preTurn, turnHours, afterChoices, signal, onWrote, quietItems }: {
       prev: AITurnResult; action: string; page: number; preTurn: LiveSnapshot; turnHours: number;
-      afterChoices: readonly string[]; signal?: AbortSignal; onWrote?: (written: TurnCodeState | null) => void;
+      afterChoices: readonly string[]; signal?: AbortSignal; onWrote?: (written: TurnCodeState | null) => void; quietItems?: HeldItems;
     },
-  ): Promise<{ written: TurnCodeState | null; base: TurnCodeState; afterTriggers: ReturnType<typeof replayedToolEffects>["afterTriggers"] } | null> => {
-    /** What a prepared run leaves with nothing landed and every `player` call silent; null when it changed nothing or failed. */
-    const quietly = async (prepared: PreparedStatCode | null, mode: Partial<StatCodeTurn> = {}) => {
+  ): Promise<{ written: TurnCodeState | null; base: TurnCodeState; afterTriggers: ReturnType<typeof replayedToolEffects>["afterTriggers"]; items?: HeldItems } | null> => {
+    let items = quietItems;
+    /** What a prepared run over `over` leaves with nothing landed and every `player` call silent; null when it changed
+     *  nothing or failed. Its item writes settle as a landing's do, so the next stage reads their effects. */
+    const quietly = async (prepared: PreparedStatCode | null, over: TurnCodeState, mode: Partial<StatCodeTurn> = {}): Promise<TurnCodeState | null> => {
       if (!prepared) return null;
       try {
-        return prepared.writtenBy(await runStatCodeTurn({ ...prepared.turn, prompts: silentPrompts, ...mode }));
+        const result = await runStatCodeTurn({ ...prepared.turn, prompts: silentPrompts, ...mode });
+        const left = prepared.writtenBy(result);
+        if (!items || !result.items) return left;
+        const base = left ?? over;
+        const settled = settleInventory({
+          copies: result.items.copies, previous: result.items.from, traits: codeStateOver(base, liveTraitStateRef.current, traits),
+          ledger: items.effects, itemUses: result.items.itemUses, now: gameTime, bodies: items.bodies,
+        }, settleWorldOf(worldHolding(gatedWorld(), { ...items, copies: result.items.copies })));
+        items = { copies: settled.copies, effects: settled.ledger, bodies: settled.bodies };
+        return codeStateOf(settled.traits, base);
       } catch (error) {
         console.error("Error processing stat code:", error);
         return null;
@@ -1825,9 +1864,9 @@ const GameViewer = ({
     if (landing === "land") {
       ({ written } = await runBeforeAI(stats, clock, preTurn, opening));
     } else {
-      const started = opening ? await quietly(prepareStatCode(stats, stats, [], clock, preTurn, "start")) : null;
+      const started = opening ? await quietly(prepareStatCode(stats, stats, [], clock, preTurn, "start", { items }), preTurn) : null;
       const boxStats = started?.globalStats ?? stats;
-      written = await quietly(prepareStatCode(boxStats, boxStats, [], clock, started ?? preTurn, "before")) ?? started;
+      written = await quietly(prepareStatCode(boxStats, boxStats, [], clock, started ?? preTurn, "before", { items }), started ?? preTurn) ?? started;
     }
     onWrote?.(written);
     // Past the before box, the batch reads the turn's own page and the choices it is given.
@@ -1836,21 +1875,21 @@ const GameViewer = ({
     const { onCallWrites, afterTriggers } = replayedToolEffects(worldTools, prev.toolCalls ?? []);
     if (onCallWrites.length) {
       const replay = { replayed: onCallWrites, triggersOnly: true };
-      const onCalled = prepareTurnStartCode(written ?? preTurn);
+      const onCalled = prepareTurnStartCode(written ?? preTurn, 'before', items);
       if (landing === "land") {
         if (onCalled) written = onCalled.finish(await runStatCodeTurn({ ...onCalled.turn, ...replay })).written ?? written;
       } else {
-        written = await quietly(onCalled, replay) ?? written;
+        written = await quietly(onCalled, written ?? preTurn, replay) ?? written;
       }
       onWrote?.(written);
     }
     if (signal?.aborted) return null;
-    return { written, base: written ?? preTurn, afterTriggers };
+    return { written, base: written ?? preTurn, afterTriggers, ...(items ? { items } : {}) };
   };
 
   /**
    * The After the AI batch rerun over a new draw, on the turn's replay state (Q19): the pre-turn state, the before
-   * box, the turn's On Call writes and its saved asks, replayed with nothing landing. Answers `ran: false` when
+   * box, the turn's On Call writes, its Inventory pass and its saved asks, replayed with nothing landing. Answers `ran: false` when
    * the rerun cannot start, else whether the scripts changed the choices.
    */
   const rerunChoiceScripts = async (
@@ -1860,15 +1899,22 @@ const GameViewer = ({
     if (!preTurnState?.globalStats) return { ran: false };
     const preTurn = liveSnapshotOf(preTurnState);
     const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
-    const replay = await replayToAfter("quiet", { prev, action, page, preTurn, turnHours, afterChoices: drawn });
+    const preTurnItems: HeldItems = { copies: preTurnState.itemCopies ?? [], effects: preTurnState.itemEffects ?? {}, bodies: preTurnState.bodies ?? {} };
+    const replay = await replayToAfter("quiet", { prev, action, page, preTurn, turnHours, afterChoices: drawn, quietItems: preTurnItems });
     if (!replay) return { ran: false };
-    const { base } = replay;
+    const replayed = replay.items ?? preTurnItems;
+    const pass = inventoryPassOver(
+      prev.inventoryOps ?? [], locations.find((loc) => loc.id === prev.inventoryLocationId) ?? null, prev.inventoryOwners ?? [], replay.base,
+      { ...replayed, runtimeItems: preTurnState.runtimeItems ?? [] }, worldHolding(gatedWorld(), replayed),
+    )?.moved;
+    const base = pass?.state ?? replay.base;
+    const items: HeldItems = pass ? { copies: pass.settled.copies, effects: pass.settled.ledger, bodies: pass.settled.bodies } : replayed;
     const baseStats = base.globalStats ?? [];
     const response = replayedStatResponse(prev, resolveStatNames(baseStats, resolvePH));
     const { applied, asks, entityTurn } = askedOver(response, baseStats, base.entityStats ?? {}, base.ownedTraits ?? {});
     const prepared = prepareStatCode(
       baseStats, applied.stats, asks, { deltaHours: turnHours, elapsedHours: gameTime, calendar }, base, "after",
-      { entityTurn, thresholdStats: baseStats },
+      { entityTurn, thresholdStats: baseStats, items },
     );
     if (!prepared) return { ran: false };
     try {
@@ -1996,7 +2042,7 @@ const GameViewer = ({
         // The turn's Inventory pass replays as saved, at the place and presence it landed at (Q53, Q62).
         const turnLocation = locations.find((loc) => loc.id === prev.inventoryLocationId) ?? null;
         const landed = landInventoryPass(prev.inventoryOps ?? [], turnLocation, prev.inventoryOwners ?? [], replay.base, {
-          copies: liveItemsRef.current.copies, ledger: liveItemsRef.current.effects, runtimeItems: preTurnItems.runtimeItems,
+          ...liveItemsRef.current, runtimeItems: preTurnItems.runtimeItems,
         });
         const base = landed?.state ?? replay.base;
         const snapshot = statRequestFor(enabledStats(
@@ -2812,7 +2858,7 @@ const GameViewer = ({
     } : {};
     const inventory = landInventoryPass(
       commit.inventoryOps, turn.location, inventoryRecord.inventoryOwners ?? [], outputWritten,
-      { copies: liveItemsRef.current.copies, ledger: liveItemsRef.current.effects, runtimeItems },
+      { ...liveItemsRef.current, runtimeItems },
     );
     const outputBase = inventory?.state ?? outputWritten;
 
@@ -3351,6 +3397,7 @@ const GameViewer = ({
           turn: prepared.turn,
           land: (result) => {
             const { written, world } = prepared.finish(result);
+            outputRunRef.current?.run.onCallLanded(result);
             // Scene writes join the before box's (Q44): a move sets where later prompts and Tool calls stand.
             turnWorldWrites = mergeWorldWrites(turnWorldWrites, world);
             const target = world?.location === undefined ? undefined : locations.find((loc) => loc.id === world.location);
@@ -3698,7 +3745,7 @@ const GameViewer = ({
   // The landing of a script's inventory writes, which needs the settle defined further down.
   const landScriptInventoryRef = useRef<((ops: readonly InventoryOp[], items: ChainedItems, over?: TraitRuntimeState) => void) | null>(null);
   /** A run's inventory step: `written` reads what the run has left so far. */
-  const scriptInventoryRef = useRef<((from: readonly ItemCopy[], written: (so: StatCodeTurnResult) => TurnCodeState | null) => Pick<InventoryStep, 'apply' | 'settle'>) | null>(null);
+  const scriptInventoryRef = useRef<((from: readonly ItemCopy[], written: (so: StatCodeTurnResult) => TurnCodeState | null, replay?: QuietReplay) => Pick<InventoryStep, 'apply' | 'settle'>) | null>(null);
   // The settle of the live traits and Item Copies, with the base Bodies a script wrote. Defined further down.
   const settleLiveRef = useRef<((baseWrites?: Record<string, BodyPick>) => void) | null>(null);
   // The Item Copies and item effects a turn started with, which a discarded turn puts back. Null between turns.
@@ -3767,7 +3814,7 @@ const GameViewer = ({
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
       timing: RunTiming = 'after',
-      { entityTurn, thresholdStats, traitWorld, triggers }: {
+      { entityTurn, thresholdStats, traitWorld, triggers, items }: {
         /** World Tool calls that run ahead of the timing's scripts. */
         triggers?: readonly ScriptTrigger[];
         /** The entities' values after this turn's AI asks, and the asks, by owner. */
@@ -3776,6 +3823,8 @@ const GameViewer = ({
         thresholdStats?: readonly PlayerStat[];
         /** The world the run's traits hold under, when its render has not committed yet. Absent ⇒ the live one. */
         traitWorld?: TraitWorld;
+        /** A quiet replay's Item Copies, effects and Bodies. Absent ⇒ the live ones. */
+        items?: HeldItems;
       } = {},
     ): PreparedStatCode | null => {
       try {
@@ -3792,7 +3841,8 @@ const GameViewer = ({
         // Every entity in the playthrough runs beside the player, over the same tick, each over its own asks.
         const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
         const entityBase = entityTurn?.values ?? entityPrevious;
-        const world = traitWorld ?? gatedWorld();
+        const world = worldHolding(traitWorld ?? gatedWorld(), items);
+        const itemsNow = items ?? liveItemsRef.current;
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const live = liveCodeStateRef.current;
         const held = preTurn ? savedTraits(preTurn, traits)
@@ -3858,12 +3908,12 @@ const GameViewer = ({
           notes: liveScene().notes,
           turn: currentTurnRead(),
           loreToggles: baseLore,
-          itemCopies: liveItemsRef.current.copies, items: worldItems, slots: worldSlots,
+          itemCopies: itemsNow.copies, items: worldItems, slots: worldSlots,
           ...(worldCurrencies.length ? { money: { currencies: worldCurrencies, placements: worldPlacements } } : {}),
           bodies: {
             world: {
-              ...inventoryWorld, traitPicks: traitPicksInPlay(liveItemsRef.current.bodies, liveTraitStateRef.current, world),
-              basePicks: liveItemsRef.current.bodies.base,
+              ...inventoryWorld, traitPicks: traitPicksInPlay(itemsNow.bodies, liveTraitStateRef.current, world),
+              basePicks: itemsNow.bodies.base,
             },
             persona: personaRef,
           },
@@ -3886,7 +3936,7 @@ const GameViewer = ({
         };
         /** Read at each write, since the settle reads the live state. */
         const inventorySteps = (): Pick<InventoryStep, 'apply' | 'settle'> =>
-          scriptInventoryRef.current?.(state.itemCopies ?? [], (so) => writtenBy(so)) ?? stateInventory(state);
+          scriptInventoryRef.current?.(state.itemCopies ?? [], (so) => writtenBy(so), items && { items, base: preTurn ? { ...preTurn, globalStats: before } : null }) ?? stateInventory(state);
         /** What the run left, in the shapes state holds, with nothing landed; null when it changed nothing. */
         const writtenBy = (result: StatCodeTurnResult): TurnCodeState | null => {
           const nextPins = withPinWrites(basePins, result.pinWrites);
@@ -4492,9 +4542,9 @@ const GameViewer = ({
   };
 
   /** A run over the turn's start as code has left it: `base`, else the live state; no asks, no regen. */
-  const prepareTurnStartCode = (base: TurnCodeState | null, timing: RunTiming = 'before') => {
+  const prepareTurnStartCode = (base: TurnCodeState | null, timing: RunTiming = 'before', items?: HeldItems) => {
     const stats = base?.globalStats ?? rawGlobalStatsRef.current;
-    return prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: turnClockRef.current ?? gameTime, calendar }, base ?? undefined, timing);
+    return prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: turnClockRef.current ?? gameTime, calendar }, base ?? undefined, timing, { items });
   };
   toolScriptSourceRef.current = (base) => {
     const world = getWorldData();
@@ -5275,18 +5325,19 @@ const GameViewer = ({
   );
 
   /** Script inventory writes through the Inventory module, checked against `over`, else the live state (Q41, Q58). */
-  const applyScriptOps = useCallback((copies: readonly ItemCopy[], ops: readonly InventoryOp[], over: TraitRuntimeState = liveTraitStateRef.current) => applyInventoryOps(copies, ops, {
+  const applyScriptOps = useCallback((copies: readonly ItemCopy[], ops: readonly InventoryOp[], over: TraitRuntimeState = liveTraitStateRef.current, replay?: HeldItems) => applyInventoryOps(copies, ops, {
     world: inventoryWorldInForce, source: 'script', newId: randomUUID, persona: personaRef,
-    requirement: equipRequirement({ traits: over, ledger: liveItemsRef.current.effects, now: gameTime }, settleWorldOf(gatedWorld())),
+    requirement: equipRequirement({ traits: over, ledger: (replay ?? liveItemsRef.current).effects, now: gameTime }, settleWorldOf(worldHolding(gatedWorld(), replay))),
   }), [inventoryWorldInForce, personaRef, gameTime, settleWorldOf, gatedWorld]);
-  scriptInventoryRef.current = (from, written) => {
-    const chainTraits = (so: StatCodeTurnResult) => codeStateOver(written(so), liveTraitStateRef.current, traits);
+  scriptInventoryRef.current = (from, written, replay) => {
+    const chainTraits = (so: StatCodeTurnResult) => codeStateOver(written(so) ?? replay?.base ?? null, liveTraitStateRef.current, traits);
+    const held = () => replay?.items ?? liveItemsRef.current;
     return {
-      apply: (copies, ops, so) => applyScriptOps(copies, ops, so && chainTraits(so)),
+      apply: (copies, ops, so) => applyScriptOps(copies, ops, so && chainTraits(so), replay?.items),
       // Each write's automatic unequips fire one level below it, settled over what the runs so far left.
       settle: (copies, itemUses, so) => settleInventory({
-        copies, previous: from, traits: chainTraits(so), ledger: liveItemsRef.current.effects, itemUses, now: gameTime, bodies: liveItemsRef.current.bodies,
-      }, settleWorldOf(gatedWorld())),
+        copies, previous: from, traits: chainTraits(so), ledger: held().effects, itemUses, now: gameTime, bodies: held().bodies,
+      }, settleWorldOf(worldHolding(gatedWorld(), replay?.items))),
     };
   };
 
@@ -5427,21 +5478,20 @@ const GameViewer = ({
   };
 
   /**
-   * The Inventory pass's operations through the validator and the inventory settle, committed before the stat
-   * deltas (Q53). `owners` are the entities present (Q62); `from` holds the Item Copies, effects and runtime
-   * items it lands over. Answers the state the stat commit then starts from and the item events the caller
-   * fires once the turn settles, or null when nothing moved.
+   * The Inventory pass's operations through the validator and the inventory settle, with nothing landed. `owners`
+   * are the entities present (Q62); `from` holds what it lands over, under `world`'s gates. `moved` is what the pass
+   * left, null when nothing moved. Answers null with no operations.
    */
-  const landInventoryPass = (
+  const inventoryPassOver = (
     ops: readonly InventoryPassOp[],
     location: GameLocation | null,
     owners: readonly InventoryOwner[],
     base: TurnCodeState | null,
-    from: { copies: readonly ItemCopy[]; ledger: ItemEffectLedger | undefined; runtimeItems: readonly RuntimeItem[] },
-  ): { state: TurnCodeState; events: ItemScriptEvent[] } | null => {
+    from: InventoryPassFrom,
+    world: TraitWorld = gatedWorld(),
+  ) => {
     if (!ops.length) return null;
     const traitsBefore = traitStateOver(base);
-    const world = gatedWorld();
     const settleWorld = settleWorldOf(world);
     const entityStatsBefore = traitsBefore.entityStats ?? {};
     const inForce = entityInForceUnder(traitsBefore.ownedTraits ?? {});
@@ -5456,25 +5506,41 @@ const GameViewer = ({
       },
     }, {
       world: inventoryWorldInForce, newId: randomUUID, persona: personaRef,
-      requirement: equipRequirement({ traits: traitsBefore, ledger: from.ledger, now: gameTime }, settleWorld),
+      requirement: equipRequirement({ traits: traitsBefore, ledger: from.effects, now: gameTime }, settleWorld),
     });
-    for (const line of result.diagnostics) addSystemLogEntry(line);
-    if (result.runtimeItems.length !== from.runtimeItems.length) setRuntimeItems(result.runtimeItems);
     const paid = !!result.stats && (result.stats.globalStats !== traitsBefore.stats || result.stats.entityStats !== entityStatsBefore);
-    if (!paid && JSON.stringify(result.copies) === JSON.stringify(from.copies)) return null;
+    if (!paid && JSON.stringify(result.copies) === JSON.stringify(from.copies)) return { result, moved: null };
     const traitsPaid = paid && result.stats
       ? { ...traitsBefore, stats: [...result.stats.globalStats], entityStats: result.stats.entityStats } : traitsBefore;
+    const settled = settleInventory(
+      { copies: result.copies, previous: from.copies, traits: traitsPaid, ledger: from.effects, itemUses: result.itemUses, now: gameTime, bodies: from.bodies },
+      settleWorld,
+    );
+    return { result, moved: { traitsBefore, traitsPaid, settled, state: codeStateOf(settled.traits, base ?? liveCodeStateRef.current), world } };
+  };
+
+  /**
+   * The Inventory pass committed before the stat deltas (Q53). Answers the state the stat commit then starts from
+   * and the item events the caller fires once the turn settles, or null when nothing moved.
+   */
+  const landInventoryPass = (
+    ops: readonly InventoryPassOp[],
+    location: GameLocation | null,
+    owners: readonly InventoryOwner[],
+    base: TurnCodeState | null,
+    from: InventoryPassFrom,
+  ): { state: TurnCodeState; events: ItemScriptEvent[] } | null => {
+    const pass = inventoryPassOver(ops, location, owners, base, from);
+    if (!pass) return null;
+    const { result, moved } = pass;
+    for (const line of result.diagnostics) addSystemLogEntry(line);
+    if (result.runtimeItems.length !== from.runtimeItems.length) setRuntimeItems(result.runtimeItems);
+    if (!moved) return null;
+    const { traitsBefore, traitsPaid, settled, state, world } = moved;
     // A paid stat joins the turn's held bar deltas, as the runs before the AI do.
     const paidDeltas = appliedStatDeltas(resolveStatNames(traitsBefore.stats, resolvePH), resolveStatNames(traitsPaid.stats, resolvePH));
     addStatDeltas(null, paidDeltas);
     beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, paidDeltas);
-    const settled = settleInventory(
-      {
-        copies: result.copies, previous: from.copies, traits: traitsPaid, ledger: from.ledger, itemUses: result.itemUses, now: gameTime,
-        bodies: liveItemsRef.current.bodies,
-      },
-      settleWorld,
-    );
     commitTraitState(settled.traits);
     // The turn's later script writes land over these Item Copies, before React renders them.
     liveItemsRef.current = { copies: settled.copies, effects: settled.ledger, bodies: settled.bodies };
@@ -5483,13 +5549,6 @@ const GameViewer = ({
     setBodies(settled.bodies);
     for (const line of [...settled.log, ...settled.bodyLog]) addLogEntry(line);
     void fireSwitchScripts(traitsBefore, settled.traits, world);
-    const codeBase = base ?? liveCodeStateRef.current;
-    const state: TurnCodeState = {
-      codePins: codeBase.codePins, loreToggles: codeBase.loreToggles,
-      globalStats: settled.traits.stats, globalTraits: settled.traits.traits, disabledTraitIds: settled.traits.disabledTraitIds,
-      appliedTraitValues: settled.traits.appliedValues, cascadeOffTraitIds: settled.traits.cascadeOffTraitIds,
-      ownedTraits: settled.traits.ownedTraits, entityStats: settled.traits.entityStats,
-    };
     return { state, events: [...result.events, ...settled.events] };
   };
 

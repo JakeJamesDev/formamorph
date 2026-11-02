@@ -7,7 +7,7 @@ import type { ItemScriptEvent } from './inventory';
 import { openOutputRun } from './outputRun';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
-import { ITEM_EVENT_DEPTH, ITEM_RUN_TOTAL, runItemScripts, runStatCodeTurn, stateInventory, SWITCH_RUN_TOTAL, type StatCodeTurn, type StatCodeTurnResult } from './statCodeTurn';
+import { ITEM_EVENT_DEPTH, ITEM_RUN_TOTAL, runItemScripts, runStatCodeTurn, stateInventory, SWITCH_RUN_TOTAL, type SavedScriptWrites, type StatCodeTurn, type StatCodeTurnResult } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import type { Currency, Entity, Item, ItemCopy, ItemScriptTiming, PersonaRef, PlayerStat, Script, ScriptTiming, Slot, Trait } from '@/types';
 import { bodyFixture } from '@/test/bodyFixture';
@@ -351,5 +351,95 @@ describe('During AI Output', () => {
     expect(run?.result()).toBeNull();
     await run?.rewrite('Two.', sentence);
     expect(run?.result() && heldOf(run.result()!, 'gem')).toBe(1);
+  });
+});
+
+describe('an On Call Tool’s write during a reply', () => {
+  const sentence = { index: 0, full: 'One.', earlier: [] };
+  const gem = item('gem', 'Gem');
+  const toolRun = (turn: StatCodeTurn, code: string) =>
+    runStatCodeTurn({ ...turn, triggers: [{ name: 'tool', code, args: {} }], triggersOnly: true });
+
+  it('reaches a later sentence’s script', async () => {
+    const turn = turnOf({ items: [gem], worldScripts: scripts('output', 'stats.Echo.value = items.Gem.copies.length;') });
+    const run = openOutputRun(turn)!;
+    run.onCallLanded(await toolRun(turn, 'items.Gem.give(persona);'));
+    await run.rewrite('One.', sentence);
+    expect(echoOf(run.result())).toBe(1);
+  });
+
+  it('leaves `previous` at the reply’s start', async () => {
+    const turn = turnOf({ worldScripts: scripts('output', 'stats.Echo.value = stats.Echo.value * 10 + stats.Echo.previous.value;') });
+    const run = openOutputRun(turn)!;
+    run.onCallLanded(await toolRun(turn, 'stats.Echo.value = 5;'));
+    await run.rewrite('One.', sentence);
+    expect(echoOf(run.result())).toBe(50);
+  });
+
+  it('survives a retract, which drops only the sentences’ writes', async () => {
+    const turn = turnOf({ items: [gem], worldScripts: scripts('output', 'stats.Echo.value += 1 + items.Gem.copies.length * 10;') });
+    const run = openOutputRun(turn)!;
+    await run.rewrite('Lost.', sentence);
+    run.listener({ type: 'retract', hadPartial: false });
+    run.onCallLanded(await toolRun(turn, 'items.Gem.give(persona);'));
+    run.listener({ type: 'retract', hadPartial: false });
+    await run.rewrite('One.', sentence);
+    expect(echoOf(run.result())).toBe(11);
+  });
+
+  it('reaches a held item run at the landing', async () => {
+    const counted = item('gem', 'Gem', { scripts: scripts('gained', 'stats.Echo.value = items.Gem.copies.length;') });
+    const turn = turnOf({ items: [counted], worldScripts: scripts('output', 'items.Gem.give(persona);') });
+    const run = openOutputRun(turn)!;
+    run.onCallLanded(await toolRun(turn, 'items.Gem.give(persona);'));
+    await run.rewrite('One.', sentence);
+    const landed = await run.landing();
+    expect(echoOf(landed)).toBe(2);
+    expect(landed && heldOf(landed, 'gem')).toBe(2);
+  });
+
+  it.each([
+    ['a stat', 'Credits', (out: StatCodeTurnResult) => fundsOf(out, 'mira'), 10],
+    ['a coin', 'Coin', (out: StatCodeTurnResult) => heldOf(out, 'gold') * 100 + heldOf(out, 'copper'), 60],
+  ])('charges the full sum when the Tool and a script both pay %s Currency', async (_kind, currency, balance, left) => {
+    const pay = `currencies.${currency}.pay(persona, null, 20);`;
+    const turn = turnOf({ worldScripts: scripts('output', pay) });
+    const run = openOutputRun(turn)!;
+    run.onCallLanded(await toolRun(turn, pay));
+    await run.rewrite('One.', sentence);
+    expect(balance((await run.landing())!)).toBe(left);
+  });
+});
+
+describe('an On Call Tool’s saved item writes', () => {
+  const gem = item('gem', 'Gem', { scripts: scripts('gained', 'stats.Echo.value += 1;') });
+  /** The turn a re-roll replays over, and the writes as a save hands them back. */
+  const savedFrom = async (code: string) => {
+    const turn = turnOf({ items: [gem, ...COIN_ITEMS] });
+    const { triggerWrites } = await runStatCodeTurn({ ...turn, triggers: [{ name: 'tool', code, args: {} }], triggersOnly: true });
+    return { turn, writes: JSON.parse(JSON.stringify(triggerWrites)) as SavedScriptWrites };
+  };
+  const replay = (turn: StatCodeTurn, writes: SavedScriptWrites) =>
+    runStatCodeTurn({ ...turn, replayed: [{ name: 'tool', writes }], triggersOnly: true });
+
+  it('bring back a give and a coin pay once, and the give’s item script runs once', async () => {
+    const { turn, writes } = await savedFrom('items.Gem.give(persona); currencies.Coin.pay(persona, null, 30);');
+    const out = await replay(turn, writes);
+    expect(heldOf(out, 'gem')).toBe(1);
+    expect(heldOf(out, 'gold')).toBe(0);
+    expect(heldOf(out, 'copper')).toBe(70);
+    expect(echoOf(out)).toBe(1);
+  });
+
+  it('leave a write out of the save when the script made none', async () => {
+    const { writes } = await savedFrom('stats.Echo.value = 7;');
+    expect(writes).not.toHaveProperty('inventory');
+  });
+
+  it('skip a write that names a copy the replay can’t find, with a log line', async () => {
+    const { turn } = await savedFrom('');
+    const out = await replay(turn, { inventory: [{ kind: 'lose', copyId: 'made-by-the-first-run' }, { kind: 'gain', itemId: 'gem', quantity: 1, to: { kind: 'you' } }] });
+    expect(heldOf(out, 'gem')).toBe(1);
+    expect(out.items?.log.join(' ')).toContain('made-by-the-first-run');
   });
 });

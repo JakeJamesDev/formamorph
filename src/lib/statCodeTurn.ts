@@ -214,7 +214,7 @@ export interface ScriptTrigger {
   args: Readonly<Record<string, unknown>>;
 }
 
-/** What a World Tool call's script wrote to stats, pins and traits, in the shape a save keeps. Its scene
+/** What a World Tool call's script wrote to stats, pins, traits and items, in the shape a save keeps. Its scene
  *  writes are left out: a stat re-roll keeps the turn's location, clock and cast. */
 export interface SavedScriptWrites {
   stats?: { owner: OwnerId; writes: TargetWrite[] }[];
@@ -222,6 +222,8 @@ export interface SavedScriptWrites {
   traits?: StatTraitWrites;
   /** Absent ⇒ none (Q50). */
   lore?: LoreWrite[];
+  /** Absent ⇒ none. A write naming a copy the turn made skips on replay, which makes new ids (Q49). */
+  inventory?: InventoryOp[];
 }
 
 /** A World Tool call replayed from its saved writes: the Tool's name, for the switch log, and the writes. */
@@ -450,18 +452,20 @@ function targetWrites(stat: PlayerStat | null, result: StatCodeResult, ownerId: 
 }
 
 /** `writes` as a save keeps them; empty fields are left out. */
-function savedWrites({ stats, placeholders, traits, lore }: ScriptWrites): SavedScriptWrites {
+function savedWrites({ stats, placeholders, traits, lore, world }: ScriptWrites): SavedScriptWrites {
   return {
     ...(stats.size ? { stats: [...stats].map(([owner, writes]) => ({ owner, writes: [...writes] })) } : {}),
     ...(placeholders.length ? { placeholders: [...placeholders] } : {}),
     ...(traits ? { traits } : {}),
     ...(lore?.length ? { lore: [...lore] } : {}),
+    ...(world?.inventory?.length ? { inventory: [...world.inventory] } : {}),
   };
 }
 
 /** Saved writes as a run lays them on. */
-const scriptWritesOf = ({ stats = [], placeholders = [], traits, lore }: SavedScriptWrites): ScriptWrites => ({
+const scriptWritesOf = ({ stats = [], placeholders = [], traits, lore, inventory }: SavedScriptWrites): ScriptWrites => ({
   stats: new Map(stats.map(({ owner, writes }) => [owner, writes])), placeholders, ...(traits ? { traits } : {}), ...(lore ? { lore } : {}),
+  ...(inventory ? { world: { inventory } } : {}),
 });
 
 /** One script's writes by target scope, each target stat's merged field by field, its later write winning a field. */

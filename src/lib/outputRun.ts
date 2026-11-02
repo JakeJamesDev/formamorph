@@ -22,6 +22,8 @@ export interface OutputRun {
   result: () => StatCodeTurnResult | null;
   /** `result` with the switch runs its trait switches fire, which land with it in the After batch (Q42, Q47). */
   landing: () => Promise<StatCodeTurnResult | null>;
+  /** An On Call run landed during the reply: later sentences and the landing read what it left. */
+  onCallLanded: (result: StatCodeTurnResult) => void;
 }
 
 /** Whether any script of the timing has code to run: the world's, or an enabled stat's of any owner. */
@@ -45,6 +47,7 @@ export function openOutputRun(
   turn: StatCodeTurn, { released = () => Number.POSITIVE_INFINITY, triggers }: OutputRunOptions = {},
 ): OutputRun | null {
   if (!triggers && !hasOutputScripts(turn)) return null;
+  let start = turn;
   let now = turn;
   // The timing begins at the reply's first sentence, so every sentence's `previous` reads it (Q27).
   const began = timingStartOf(turn.state);
@@ -55,7 +58,7 @@ export function openOutputRun(
   const listener: NarrationListener = (event) => {
     if (event.type !== 'retract') return;
     round += 1;
-    now = turn;
+    now = start;
     steps.length = 0;
   };
 
@@ -70,11 +73,15 @@ export function openOutputRun(
     return step.sentence ?? sentence;
   };
 
-  const result = (): StatCodeTurnResult | null => (steps.length ? chainedResult(turn, steps, now) : null);
+  const result = (): StatCodeTurnResult | null => (steps.length ? chainedResult(start, steps, now) : null);
   const landing = async (): Promise<StatCodeTurnResult | null> => {
     const ran = result();
-    return ran && withSwitchRuns(turn, ran);
+    return ran && withSwitchRuns(start, ran);
+  };
+  const onCallLanded = (landed: StatCodeTurnResult) => {
+    start = afterRun(start, landed);
+    now = afterRun(now, landed);
   };
 
-  return { rewrite, listener, result, landing };
+  return { rewrite, listener, result, landing, onCallLanded };
 }
