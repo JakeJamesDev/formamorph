@@ -1,6 +1,7 @@
 # Spec: Release Avatar License
 
 Status: ready-for-agent
+Spec session: release-avatar-license — spec
 
 A reading of the licenses, not legal advice.
 
@@ -84,7 +85,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **The model (human step)**
 
-- The new file replaces the alternate Avatar at its current path. The tracked default and the release swap steps don't change.
+- The new file replaces the alternate Avatar at its current path. The release swap steps for that file don't change.
+- The tracked default becomes the fresh A export named Aki (Q19), at its current path.
 - A candidate must meet all of these:
   - Passes the stricter gate from its own metadata.
   - Has `Waist`, `Bust` and `Thickness` keys, or a license that lets us add them. New keys are authored fresh, never copied from Elaina.
@@ -152,15 +154,15 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **Fingerprints and records**
 
-- Regenerate the bundled fingerprint list after the new file lands, and copy it to the server. Elaina's hash stays in the list through file history.
+- The bundled fingerprint test fails when a shipped model's hash is missing, so the client list regenerates in the same landing as each model file. The server copy follows. Elaina's hash stays in the list through file history.
 - `STEAM-RELEASE-CHECKLIST.md` and the third-party notices clear a file that no longer exists and omit the release model. Both name the real files. The notices work belongs with the Credits effort, so this effort hands it the new model's details.
 
 **Landing order**
 
 1. Server gate, because the server enforces it for every client.
-2. The new model file. The user does this step.
+2. The new model files with their client fingerprints, built by script (Q17).
 3. Client gate, license data and copy. The bundled-avatar test reads the alternate file, and Elaina fails the stricter gate, so this waits for step 2.
-4. Fingerprints, records, and the landing page recapture.
+4. Server fingerprints, records, and the landing page recapture.
 5. The Steam switch and empty state. This doesn't depend on the model file.
 
 **Unchanged by ruling**
