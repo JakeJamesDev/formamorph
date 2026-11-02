@@ -2410,7 +2410,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           {canUpdate ? <UpdateVersionControl /> : !isMobile && <WebVersionChangelog />}
         </div>
 
-        {/* Center: copyright + origin and icon credits (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
+        {/* Center: copyright + origin and the Credits line (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
             credit lines collapse into the ⋯ menu on mobile; the © stays (it replays the intro). */}
         <div className="min-w-0 text-center text-meta text-muted-foreground/60 whitespace-nowrap leading-tight">
           <Tip tip="Replay intro">
