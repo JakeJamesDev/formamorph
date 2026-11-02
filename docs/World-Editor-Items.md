@@ -349,7 +349,11 @@ After each turn's narration, the **Inventory** prompt reads the turn and records
 - 🧪 A use follows the item's **When Empty**. For a plain item the story made, the story says whether the use kept it or used it up.
 - 🔤 A name in the story matches your item when it's the same name, ignoring case and the spaces at the ends. "iron sword" is your **Iron Sword**. "iron swords" is not. An unidentified copy also matches its **Unidentified Name**.
 - ➕ A name that matches no item makes a plain item with that name: it stacks, it can be used, and it has no slot and no effects. The same name later reuses it.
-- 🎒 The step runs only while the world has items or the game holds any. A world with no items never sends it.
+- 🎒 The step runs only while the world has items, the game holds any, or the world has a **Stat** or **Coin Items** Currency.
 - ⚖️ The story can take a **Bound** item. Only the player's buttons can't.
+- 💰 The same step moves money when the story pays a bribe or a bounty, in any world with a **Stat** or **Coin Items** Currency. The game works out the amounts: smallest coins first, then change in the fewest coins.
+- 🚫 A payment the player can't afford moves nothing, and so does one that would break a stat's lock or take it below its minimum. The story isn't told.
+- 🧾 While this step runs, the stats step can't change a stat that backs a Currency, so a payment counts once.
+- 🏪 An entity with no coins or stat of its own keeps nothing it is paid, and what it pays out is new money. A name the world doesn't know works the same way.
 
 The step's prompt is on the **Prompts** tab in Settings, under **Inventory**. That tab shows in Advanced mode.

@@ -25,7 +25,8 @@ import {
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
 import { INVENTORY_JSON_FORMAT, INVENTORY_TEXT_FORMAT, inventoryPassSchema, parseInventoryReply } from '@/lib/inventory/pass';
-import type { InventoryPassOp } from '@/types';
+import { backingStatIds } from '@/lib/currency';
+import type { Currency, InventoryPassOp } from '@/types';
 import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/lib/statRequest';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
@@ -621,7 +622,7 @@ export function inventoryRequest(
   };
 }
 
-/** How the story changed who has which item (R1, Q23). Due only in a world with items (Q37). */
+/** How the story changed who has which item and money (R1, Q23). Due only in a world with items or money that settles (Q37, Q55). */
 export const inventoryPass: TurnPassRecord<InventoryPassOp[]> = {
   id: 'inventory',
   type: 'inventory',
@@ -635,6 +636,10 @@ export const inventoryPass: TurnPassRecord<InventoryPassOp[]> = {
   ),
   parseResponse: (raw) => parseInventoryReply(raw),
 };
+
+/** The stats the stat pass can't write this turn: what backs a Currency, while the Inventory pass settles money (Q9, Q27). */
+export const statPassOmits = (input: TurnPlanInput, currencies: readonly Currency[]): ReadonlySet<string> =>
+  (inventoryPass.isDue(input) ? backingStatIds(currencies) : new Set<string>());
 
 /**
  * This turn's memory digest. Due in the batch only; the Background Pass Queue writes any digest a turn

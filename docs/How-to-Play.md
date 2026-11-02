@@ -310,7 +310,9 @@ After each turn's narration, the **Inventory** prompt reads what happened and up
 
 - An item the world doesn't define gets a plain entry with no effects. You can still **Use** it.
 - The item's own effects come from the item, so the stat changes never count a potion twice.
-- Worlds with no items skip this step.
+- 💰 Paying works the same way. Pay a bribe or collect a bounty in the story, and your money changes once the turn ends. You hand over your smallest coins first and get change back.
+- 🚫 If you can't afford a payment, your money stays as it was, even when the story says you paid.
+- Worlds with no items and no money skip this step.
 
 ## The Entity Dialog
 <!-- keywords: npc profile, character sheet, portrait, bio, unknown name, who is this, click a name, cast details -->

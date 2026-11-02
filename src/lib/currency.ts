@@ -1,9 +1,9 @@
-import type { SlotOwner } from '@/lib/bodies';
-import { copiesAt } from '@/lib/inventory';
+import { slotOwnerKey, type SlotOwner } from '@/lib/bodies';
+import { copiesAt, type InventoryOp } from '@/lib/inventory';
 import { isUnidentified, itemStackable } from '@/lib/items';
 import { canBePlayer } from '@/lib/owners';
 import { globalStatsOf, resolvedEntityStats, statBlueprintIds, type StatLinkWorld } from '@/lib/statLinks';
-import type { Currency, CurrencyBacking, CurrencyCoin, Entity, Item, ItemCopy, Placement, PlayerStat, Stat } from '@/types';
+import type { Currency, CurrencyBacking, CurrencyCoin, Entity, EntityStatValues, Item, ItemCopy, Placement, PlayerStat, Stat } from '@/types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 
@@ -142,10 +142,18 @@ export function balanceOf(currency: Currency, owner: SlotOwner, state: BalanceSt
       && placement.where.id === owner.id && backing.coins.some((coin) => coin.itemId === placement.source.itemId));
     return authored ? { tracked: true, amount: coinAmount(backing.coins, owner, state.copies) } : UNTRACKED;
   }
-  const global = state.globalStats.find((stat) => stat.id === backing.statId);
-  if (global) return owner.kind === 'you' ? { tracked: true, amount: global.value } : UNTRACKED;
-  const own = state.statsOf(owner).find((stat) => stat.id === backing.statId);
-  return own ? { tracked: true, amount: own.value } : UNTRACKED;
+  const held = walletStat(backing.statId, owner, state);
+  return held ? { tracked: true, amount: held.stat.value } : UNTRACKED;
+}
+
+/** The stat that holds `owner`'s money. A Global Stat is the player's alone. */
+function walletStat<S extends Pick<PlayerStat, 'id' | 'value'>>(
+  statId: string, owner: SlotOwner, state: { globalStats: readonly S[]; statsOf: (owner: SlotOwner) => readonly S[] },
+): { stat: S; global: boolean } | null {
+  const global = state.globalStats.find((stat) => stat.id === statId);
+  if (global) return owner.kind === 'you' ? { stat: global, global: true } : null;
+  const own = state.statsOf(owner).find((stat) => stat.id === statId);
+  return own ? { stat: own, global: false } : null;
 }
 
 /** A Balance as text, such as "40 Credits" or "1 Gold, 5 Copper". A stat's fraction rounds, as the Stats chip's does. */
@@ -220,3 +228,249 @@ export function currencyStatGroups(world: StatLinkWorld & { entities: readonly E
   ];
   return groups.filter((group) => group.stats.length > 0);
 }
+
+/** The Currency a price names and its amount in base units, or why it can't be read. */
+export type StatedPrice = { currency: Currency; amount: number } | { refused: string };
+
+/** A money word as a price compares it: case, a plural and a trailing "coin" ignored. */
+const moneyKey = (name: string): string => name.trim().toLowerCase().replace(/\s+coins?$/, '').replace(/s$/, '');
+
+/** What a money word can mean: each coin of that name, else each Currency of that name, worth its base unit. */
+function moneyTerms(word: string, currencies: readonly Currency[], items: readonly ItemName[]): { currency: Currency; worth: number }[] {
+  const key = moneyKey(word);
+  const coins = currencies.flatMap((currency) => usableCoins(currency, items)
+    .filter((coin) => moneyKey(coin.name) === key).map((coin) => ({ currency, worth: coin.worth })));
+  return coins.length ? coins : currencies.filter((currency) => moneyKey(currency.name) === key).map((currency) => ({ currency, worth: 1 }));
+}
+
+/** Whether `word` names a coin or a Currency. */
+export const namesMoney = (word: string, currencies: readonly Currency[], items: readonly ItemName[]): boolean =>
+  moneyTerms(word, currencies, items).length > 0;
+
+const NUMBER_WORDS: Record<string, number> = {
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+};
+
+/** The amount at the start of a price part, in digits or plain words, and the words after it. Null count with none. */
+function leadingAmount(part: string): { count: number | null; word: string } {
+  const digits = /^(\d+(?:\.\d+)?)\s*(.*)$/.exec(part);
+  if (digits) return { count: Number(digits[1]), word: digits[2].trim() };
+  const tokens = part.split(/[\s-]+/);
+  let count: number | null = null;
+  let at = 0;
+  for (; at < tokens.length; at += 1) {
+    const token = tokens[at].toLowerCase();
+    if (token === 'hundred' && count !== null) count *= 100;
+    else if (NUMBER_WORDS[token] !== undefined) count = (count ?? 0) + NUMBER_WORDS[token];
+    else break;
+  }
+  return { count, word: count === null ? part : tokens.slice(at).join(' ') };
+}
+
+/**
+ * A price as the AI states it: the Breakdown's form ("3 Gold, 5 Copper"), or a bare number, in digits or words. A bare
+ * number counts the coin `named` names, else base units of the Currency it names, else of the Default. A lone money
+ * word with no number takes `count`. A coin's name beats a Currency's, and every part must fit one Currency (Q26).
+ */
+export function readStatedPrice(price: string, named: string, currencies: readonly Currency[], items: readonly ItemName[], count?: number): StatedPrice {
+  const termsOf = (word: string) => moneyTerms(word, currencies, items);
+  const namedTerms = named.trim() ? termsOf(named) : null;
+  if (namedTerms && !namedTerms.length) return { refused: `no Currency is named "${named}"` };
+  const parts = price.replace(/(\d),(\d{3})\b/g, '$1$2').split(/,|&|\+|\band\b/i).map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return { refused: 'it states no price' };
+  const terms: { count: number; options: { currency: Currency; worth: number }[] }[] = [];
+  for (const part of parts) {
+    const { count: stated, word } = leadingAmount(part);
+    const amountOf = stated ?? (parts.length === 1 ? count : undefined);
+    if (amountOf === undefined) return { refused: `"${part}" is no amount` };
+    if (!word && parts.length > 1) return { refused: `"${part}" names no money` };
+    const options = word ? termsOf(word) : namedTerms ?? currencies.slice(0, 1).map((currency) => ({ currency, worth: 1 }));
+    if (!options.length) return { refused: word ? `no money is named "${word}"` : 'the world has no Currency' };
+    terms.push({ count: amountOf, options });
+  }
+  const fits = currencies.filter((currency) => terms.every(({ options }) => options.some((option) => option.currency === currency))
+    && (!namedTerms || namedTerms.some((term) => term.currency === currency)));
+  if (fits.length !== 1) return { refused: fits.length ? `"${price}" fits more than one Currency` : `"${price}" draws on more than one Currency` };
+  const [currency] = fits;
+  const amount = terms.reduce((sum, term) => sum + term.count * term.options.find((option) => option.currency === currency)!.worth, 0);
+  if (!(amount > 0)) return { refused: `"${price}" is no amount` };
+  if (currency.backing.kind === 'coins' && !Number.isInteger(amount)) return { refused: `"${price}" is no whole number of coins` };
+  return { currency, amount };
+}
+
+/** A stat as a payment reads it. */
+export type PaymentStat = Pick<PlayerStat, 'id' | 'value' | 'min' | 'max' | 'noIncrease' | 'noDecrease'>;
+
+/** What a payment reads. As with Balance, a stat left out reads as untracked. */
+export interface PaymentState extends BalanceState {
+  globalStats: readonly PaymentStat[];
+  statsOf: (owner: SlotOwner) => readonly PaymentStat[];
+}
+
+/** One stat's move in a settled payment. `owner` is null for a Global Stat. */
+export interface PaymentStatChange {
+  owner: SlotOwner | null;
+  statId: string;
+  delta: number;
+}
+
+/** The ops and stat changes that settle a payment, or why it is refused. A refused plan changes nothing. */
+export type PaymentPlan = { settled: true; ops: InventoryOp[]; stats: PaymentStatChange[] } | { settled: false; reason: string };
+
+const SETTLES_NOTHING: PaymentPlan = { settled: true, ops: [], stats: [] };
+const refuse = (reason: string): PaymentPlan => ({ settled: false, reason });
+
+/** The biggest amount the coin search walks; a larger one takes its largest coin first. */
+const COIN_SEARCH_LIMIT = 100_000;
+
+/** The fewest coins that make `amount` exactly, by item id. Null when no mix of the coins makes it. */
+function fewestCoins(amount: number, coins: readonly Pick<CurrencyCoin, 'itemId' | 'worth'>[]): Map<string, number> | null {
+  if (!coins.length) return null;
+  const counts = new Map<string, number>();
+  const largest = coins.reduce((top, coin) => (coin.worth > top.worth ? coin : top));
+  const peeled = amount > COIN_SEARCH_LIMIT ? Math.ceil((amount - COIN_SEARCH_LIMIT) / largest.worth) : 0;
+  if (peeled) counts.set(largest.itemId, peeled);
+  const rest = amount - peeled * largest.worth;
+  const best = [0];
+  const last: (typeof coins[number] | null)[] = [null];
+  for (let at = 1; at <= rest; at += 1) {
+    best[at] = Infinity;
+    last[at] = null;
+    for (const coin of coins) {
+      if (coin.worth <= at && best[at - coin.worth] + 1 < best[at]) {
+        best[at] = best[at - coin.worth] + 1;
+        last[at] = coin;
+      }
+    }
+  }
+  if (best[rest] === Infinity) return null;
+  for (let at = rest; at > 0; at -= last[at]!.worth) counts.set(last[at]!.itemId, (counts.get(last[at]!.itemId) ?? 0) + 1);
+  return counts;
+}
+
+/** The copies of a coin `owner` can hand over: the ones Balance counts, carried before equipped. */
+const spendableCopies = (itemId: string, owner: SlotOwner, copies: readonly ItemCopy[]): ItemCopy[] =>
+  copiesAt(copies, owner)
+    .filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemId && copy.visibility === 'visible' && !isUnidentified(copy))
+    .sort((a, b) => Number(!!a.equipped) - Number(!!b.equipped));
+
+/** Ops that take `count` of a coin from `owner`, and how many of the count its copies could not cover. */
+function takeCoins(
+  itemId: string, count: number, owner: SlotOwner, copies: readonly ItemCopy[], op: (copyId: string, quantity: number) => InventoryOp,
+): { ops: InventoryOp[]; short: number } {
+  const ops: InventoryOp[] = [];
+  let short = count;
+  for (const copy of spendableCopies(itemId, owner, copies)) {
+    if (short <= 0) break;
+    const quantity = Math.min(short, copy.quantity);
+    ops.push(op(copy.id, quantity));
+    short -= quantity;
+  }
+  return { ops, short };
+}
+
+/** Settles coins: smallest first, change in the fewest coins, and only the net of each coin moves (Q11). */
+function coinPlan(currency: Currency, payer: SlotOwner | null, payee: SlotOwner | null, amount: number, state: PaymentState, items: readonly ItemName[]): PaymentPlan {
+  const coins = usableCoins(currency, items).reverse();
+  const paying = payer ? balanceOf(currency, payer, state) : UNTRACKED;
+  const tracked = payee && balanceOf(currency, payee, state).tracked ? payee : null;
+  if (!payer || !paying.tracked) {
+    if (!tracked) return SETTLES_NOTHING;
+    const made = fewestCoins(amount, coins);
+    if (!made) return refuse(`the coins can't make ${amount}`);
+    return { settled: true, stats: [], ops: [...made].map(([itemId, quantity]) => ({ kind: 'gain', itemId, quantity, to: tracked })) };
+  }
+  if (paying.amount < amount) return refuse(`it costs ${amount} and the payer has ${paying.amount}`);
+  const net = new Map<string, number>();
+  let rest = amount;
+  for (const coin of coins) {
+    if (rest <= 0) break;
+    const held = spendableCopies(coin.itemId, payer, state.copies).reduce((sum, copy) => sum + copy.quantity, 0);
+    const take = Math.min(held, Math.ceil(rest / coin.worth));
+    net.set(coin.itemId, take);
+    rest -= take * coin.worth;
+  }
+  if (rest > 0) return refuse(`it costs ${amount} and the payer's coins cover ${amount - rest}`);
+  const change = rest < 0 ? fewestCoins(-rest, coins) : new Map<string, number>();
+  if (!change) return refuse(`the coins can't make ${-rest} in change`);
+  for (const [itemId, count] of change) net.set(itemId, (net.get(itemId) ?? 0) - count);
+  const ops: InventoryOp[] = [];
+  for (const [itemId, count] of net) {
+    if (count > 0) {
+      ops.push(...takeCoins(itemId, count, payer, state.copies, (copyId, quantity) => (tracked
+        ? { kind: 'transfer', copyId, to: tracked, quantity } : { kind: 'lose', copyId, quantity })).ops);
+    } else if (count < 0) {
+      // Change the payee lacks is created.
+      const back = tracked
+        ? takeCoins(itemId, -count, tracked, state.copies, (copyId, quantity) => ({ kind: 'transfer', copyId, to: payer, quantity }))
+        : { ops: [], short: -count };
+      ops.push(...back.ops);
+      if (back.short > 0) ops.push({ kind: 'gain', itemId, quantity: back.short, to: payer });
+    }
+  }
+  return { settled: true, stats: [], ops };
+}
+
+/** Settles a stat: locks refuse, the floor counts as money the payer lacks, and a full payee keeps only what fits. */
+function statPlan(statId: string, payer: SlotOwner | null, payee: SlotOwner | null, amount: number, state: PaymentState): PaymentPlan {
+  const paying = payer && walletStat(statId, payer, state);
+  const receiving = payee && walletStat(statId, payee, state);
+  if ((payer?.kind === 'you' && !paying) || (payee?.kind === 'you' && !receiving)) return refuse('the player has no balance in it');
+  const stats: PaymentStatChange[] = [];
+  if (paying) {
+    if (paying.stat.noDecrease) return refuse(`stat ${statId} has No Decrease`);
+    if (paying.stat.value < amount || paying.stat.value - amount < paying.stat.min) return refuse(`it costs ${amount} and the payer can spend less from ${paying.stat.value}`);
+    stats.push({ owner: paying.global ? null : payer, statId, delta: -amount });
+  }
+  if (receiving) {
+    if (receiving.stat.noIncrease) return refuse(`stat ${statId} has No Increase`);
+    const delta = Math.min(amount, receiving.stat.max - receiving.stat.value);
+    if (delta > 0) stats.push({ owner: receiving.global ? null : payee, statId, delta });
+  }
+  return { settled: true, ops: [], stats };
+}
+
+/**
+ * Moves `amount` base units of `currency` from `payer` to `payee`. A null payer is income and a null payee means the
+ * money leaves the world. An untracked entity holds no money: what it pays is created and what it gets is gone (Q8).
+ */
+export function planPayment(currency: Currency, payer: SlotOwner | null, payee: SlotOwner | null, amount: number, state: PaymentState, items: readonly ItemName[]): PaymentPlan {
+  if (!payer && !payee) return refuse('no one pays and no one receives');
+  if (payer && payee && slotOwnerKey(payer) === slotOwnerKey(payee)) return refuse('the payer receives it');
+  if (!(amount > 0)) return refuse(`${amount} is no amount`);
+  const { backing } = currency;
+  if (backing.kind === 'name') return SETTLES_NOTHING;
+  if (backing.kind === 'stat') return statPlan(backing.statId, payer, payee, amount, state);
+  return coinPlan(currency, payer, payee, amount, state, items);
+}
+
+/** The live stats a payment writes: the world's, and each owner's by entity id. */
+export interface PaymentStats {
+  globalStats: readonly PlayerStat[];
+  entityStats: EntityStatValues;
+}
+
+/** `stats` with `changes` applied. `playerOwner` names the entity whose stat is the player's. */
+export function applyPaymentStats(stats: PaymentStats, changes: readonly PaymentStatChange[], playerOwner: (statId: string) => string | undefined): PaymentStats {
+  let { globalStats, entityStats } = stats;
+  const moved = (list: readonly PlayerStat[], { statId, delta }: PaymentStatChange) =>
+    list.map((stat) => (stat.id === statId ? { ...stat, value: stat.value + delta } : stat));
+  for (const change of changes) {
+    if (!change.owner) {
+      globalStats = moved(globalStats, change);
+      continue;
+    }
+    const id = change.owner.kind === 'entity' ? change.owner.id : playerOwner(change.statId);
+    if (id !== undefined && entityStats[id]) entityStats = { ...entityStats, [id]: moved(entityStats[id], change) };
+  }
+  return { globalStats, entityStats };
+}
+
+/** The ids of the stats that back a Currency. */
+export const backingStatIds = (currencies: readonly Currency[]): Set<string> =>
+  new Set(currencies.flatMap((currency) => (currency.backing.kind === 'stat' ? [currency.backing.statId] : [])));
+
+/** Whether the world's money needs the Inventory pass: a name-only Currency settles nothing (Q55). */
+export const currenciesSettle = (currencies: readonly Currency[]): boolean => currencies.some((currency) => currency.backing.kind !== 'name');

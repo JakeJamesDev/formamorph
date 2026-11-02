@@ -162,6 +162,7 @@ import { layerValues, omitValues, type TokenValues } from "../lib/promptValues";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityTurn } from "../lib/turnPipeline/parityRecorder";
 import {
+  statPassOmits,
   statRequestReady,
   choicesPass,
   statUpdatesPass,
@@ -225,6 +226,7 @@ import { TURN_CHROME_ENTER_MS } from "../lib/turnChrome";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { appliedStatDeltas, applyRegen, sumDeltas } from "../lib/statChanges";
+import { currenciesSettle } from "../lib/currency";
 import type { OwnerId } from "../lib/scope";
 
 import { applyStatResponse, createStatRequest, keyedScene, readStatResponse, replayedStatResponse, savedStatAsks, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
@@ -2673,7 +2675,7 @@ const GameViewer = ({
     memoryDigests,
     characterDiaries,
     describeCharacters,
-    inventoryDue: worldItems.length > 0 || itemCopies.length > 0,
+    inventoryDue: worldItems.length > 0 || itemCopies.length > 0 || currenciesSettle(worldCurrencies),
     inventoryTextPass: !schemaAccepted(resolveEndpointForKind("inventory").reasoning),
     imageAttachments,
     promptAttachments,
@@ -4836,6 +4838,7 @@ const GameViewer = ({
         (groups) => resolveStatGroupTexts(groups, resolvePH),
       ),
       inSceneIds: present.map((entity) => entity.id),
+      omit: statPassOmits(standalonePassInput(), worldCurrencies),
     });
   };
   /** The defined entities among a turn's participants, as the diary fan-out resolves them. */
@@ -5411,19 +5414,34 @@ const GameViewer = ({
     const traitsBefore = traitStateOver(base);
     const world = gatedWorld();
     const settleWorld = settleWorldOf(world);
+    const entityStatsBefore = traitsBefore.entityStats ?? {};
+    const inForce = entityInForceUnder(traitsBefore.ownedTraits ?? {});
     const result = applyInventoryPass(from.copies, ops, {
       items: worldItems, runtimeItems: from.runtimeItems, playerNames, owners,
       location: location && { id: location.id, name: location.name }, resolve: resolvePH,
+      money: {
+        currencies: worldCurrencies, placements: worldPlacements,
+        stats: { globalStats: traitsBefore.stats, entityStats: entityStatsBefore },
+        playedIds: playedEntities.map((entity) => entity.id),
+        statsOn: (ownerId, stats) => enabledStats([...stats], ownerId === null ? statEnabledRef.current : activeStatEnabled([...stats], inForce(ownerId))),
+      },
     }, {
       world: inventoryWorldInForce, newId: randomUUID, persona: personaRef,
       requirement: equipRequirement({ traits: traitsBefore, ledger: from.ledger, now: gameTime }, settleWorld),
     });
     for (const line of result.diagnostics) addSystemLogEntry(line);
     if (result.runtimeItems.length !== from.runtimeItems.length) setRuntimeItems(result.runtimeItems);
-    if (JSON.stringify(result.copies) === JSON.stringify(from.copies)) return null;
+    const paid = !!result.stats && (result.stats.globalStats !== traitsBefore.stats || result.stats.entityStats !== entityStatsBefore);
+    if (!paid && JSON.stringify(result.copies) === JSON.stringify(from.copies)) return null;
+    const traitsPaid = paid && result.stats
+      ? { ...traitsBefore, stats: [...result.stats.globalStats], entityStats: result.stats.entityStats } : traitsBefore;
+    // A paid stat joins the turn's held bar deltas, as the runs before the AI do.
+    const paidDeltas = appliedStatDeltas(resolveStatNames(traitsBefore.stats, resolvePH), resolveStatNames(traitsPaid.stats, resolvePH));
+    addStatDeltas(null, paidDeltas);
+    beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, paidDeltas);
     const settled = settleInventory(
       {
-        copies: result.copies, previous: from.copies, traits: traitsBefore, ledger: from.ledger, itemUses: result.itemUses, now: gameTime,
+        copies: result.copies, previous: from.copies, traits: traitsPaid, ledger: from.ledger, itemUses: result.itemUses, now: gameTime,
         bodies: liveItemsRef.current.bodies,
       },
       settleWorld,

@@ -565,25 +565,28 @@ export const defaultInventoryPrompt = `You are the inventory keeper for an inter
 - use: an owner uses an item they hold as it is meant to be used - drinks, eats, reads, opens or blows it, spends a charge of it, or pours, applies or loads it into another item. The item is the one spent; the other item is the target.
 - change: an item stays with its owner and its look or state changes, with no use. The owner still holds that same item.
 - reveal: an item marked hidden comes into view because someone searches where it lies, or an item's true nature becomes known. A found item stays where it lies until someone takes it.
+- pay: money is handed over this turn with no item bought or sold, paid out or received - a bribe, fee, fine, tip, wage or reward. One pay records the whole sum, coins included, and the game moves the money itself. Every sum of money handed over is one pay and no other operation.
 
 ## Fields
 - op: one operation from the list above.
-- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item.
+- item: the item's name alone, exactly as Items Here shows it before any colon, or a short plain name for a new item. Empty for pay.
 - quantity: how many, a whole number from 1.
-- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. For gain, the person who hands the item over, or "here" for anywhere else.
-- to: who holds it after a gain or a transfer, in the same words as owner. Empty for every other operation.
+- owner: who holds the item before the change. "you" for the player character, a person's name as Items Here shows it, or "here" for this place. For gain, the person who hands the item over, or "here" for anywhere else. For pay, who pays, and empty when the money comes from no one here.
+- to: who holds it after a gain or a transfer, or who receives a pay, in the same words as owner. Empty for every other operation, and for a pay that no one here receives.
 - state: for change, the item's new state in a word or two. Empty for every other operation.
 - after: for use, "kept" when the item is still there after the use, or "used up" when it is gone. Empty for every other operation.
 - target: for use, the other item it is used on, by its name as Items Here shows it. Empty when it acts on no other item, and for every other operation.
 - slot: for equip, the one slot the story puts the item in, by a slot name shown after the item's name. Empty when the story shows no particular slot, and for every other operation.
+- price: for pay, the sum as digits and money words. Empty for every other operation.
+- currency: for pay, the money's name when Items Here shows more than one kind. Empty otherwise.
 
-Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all.
+Record each change the narration shows happening this turn, in story order. A turn that only talks about an item, or that shows an item staying where it is, has no operations at all. A price someone names, asks for or turns down is talk, and has no pay.
 
 Items Here shows who held each item before this turn. An item listed under an owner is already theirs: record it only when this turn moves it to another owner or this place, uses it, changes it, or puts it on or takes it off.`;
 
 export const defaultInventoryUserPrompt = `<PLAYER ACTION|format=markdown|header="The player character's action">\
 <NARRATION|format=markdown|header="What happened">
-Record the item changes this turn made.`;
+Record the item and money changes this turn made.`;
 
 /** The canonical prompt text every built-in preset derives from (see lib/sectionStyle). */
 export const PROMPT_TEXT_DEFAULTS: PromptValues = {
