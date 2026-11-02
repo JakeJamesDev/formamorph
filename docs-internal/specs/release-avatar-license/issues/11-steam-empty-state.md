@@ -13,6 +13,8 @@ A player with no Avatars sees why the Avatar surfaces are empty and has a clear 
 
 A player can also hold added Avatars with no device default. The viewer then shows no model on User's Default, so it says how to set a default in place of a blank canvas.
 
+The library's delete confirmation says saves will use the Default Avatar instead. With no bundled file, those saves show no model, so the confirmation says that on these builds.
+
 Rulings: Q18.
 
 ## Acceptance criteria
@@ -20,6 +22,7 @@ Rulings: Q18.
 - [ ] Each surface shows its empty state with no Avatars, and shows the normal view after one is added.
 - [ ] The add action in the empty state opens the same flow as the library's add action.
 - [ ] Character creation still completes with no Avatar.
+- [ ] The delete confirmation's wording matches the build, tested with the flag at `none` and at its other values.
 - [ ] `src/lib/devRoutes.ts` reaches each empty state.
 - [ ] A changelog fragment is added.
 - [ ] Frames at 1366 and 375, both themes: `.scratch/frames/empty-library-light.png`, `.scratch/frames/empty-library-dark.png`, `.scratch/frames/empty-library-mobile.png`.
