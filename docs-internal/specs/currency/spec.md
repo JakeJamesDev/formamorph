@@ -59,6 +59,11 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q32 | (ticket 01) Player surfaces show worth only for an item with a Value and an existing Currency. The world index keeps a bare Value for an item with none |
 | Q33 | (ticket 01) An unidentified copy shows the player no worth, and its player view row carries no `value` or `currencyId` |
 | Q34 | (ticket 01) Until ticket 04, removing a Currency has no confirm or cleanup. Every reader treats a dangling `currencyId` as no Currency |
+| Q35 | (ticket 02) A coin Currency with no worth-1 row is legal while editing, and shows a hint. Removing rows in the Currencies entry never makes it name only; only deleting the coin item does (Q22). The Breakdown then reads the plain number and the Currency name, as it does for a stored Value that isn't a whole non-negative number. A row whose item is missing counts as absent |
+| Q36 | (ticket 02) A worth edit that leaves two worth-1 rows, repeats a worth, or moves the only worth-1 row off 1 is refused inline. Removing the worth-1 row is allowed. The Breakdown sorts by worth, not row order |
+| Q37 | (ticket 02) The coin picker lists Stackable items that aren't a coin in any Currency, plus the row's own item. A coin that later stops being Stackable keeps its row, with a warning |
+| Q38 | (ticket 02) Coin Value fields normalize when focus leaves the group of fields, not on each field. A blank Value shows blank fields, and all blank clears the Value. A Value of 0 shows zeros and reads "0 Copper". A coin Currency's fields take whole non-negative numbers, and the top coin has no cap |
+| Q39 | (ticket 02) The Breakdown is largest first with zero coins omitted, and ends in the worth-1 coin, so no remainder is lost |
 
 ## User Stories
 
