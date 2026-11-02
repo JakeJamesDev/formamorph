@@ -33,6 +33,8 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q3, Q9 | Auto means the derived icon. Auto beats the Item image. A specific icon also beats the Item image. Only None shows the Item image. |
 | Q4 | Carried rows show icons with the same rules as the doll. |
 | Q19 | After play: the entity popup's Equipped rows show icons under the same rules, and the item popup's header shows the catalog icon beside the name. Under None the header shows no icon, since the body draws the image. |
+| Q20 | After the close review: an unidentified copy's popup body keeps following image rules. An unidentified item is not an invisible one, so the author decides if it looks different. |
+| Q21 | After the close review: Hand, Main Hand and Off Hand slots derive the sword icon. Hands still derives gloves. |
 | Q6 | Auto derives at display time and nothing is stored. The AI does not pick icons. |
 | Q7 | The word list is English only. A name in another language falls through to the slot icon, then the generic icon. |
 | Q10 | None shows the Item image. With no image, a Slot Box is a plain filled box with the name in its tooltip, and rows show no icon. Long text never returns to the doll. |
@@ -45,7 +47,9 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 
 | # | Ruling |
 |---|---|
-| Q5 | Long Equipped names stay on one line with an ellipsis. The tooltip shows the full name. |
+| Q5, Q23 | Long names stay on one line with an ellipsis on Equipped, Carried and Here rows. The tooltip shows the full name. |
+| Q22 | Equipped rows keep the Use button when the item can be used. |
+| Q25 | `EquippedSection` and `ItemRow` hold the Equipped layout and the row, apart from `InventoryTab`. |
 | Q12 | Layout C holds at every width, mobile included: the doll and list stay side by side. |
 | Q15 | Replaced after play: the popover repeated the row. Pressing an Equipped row opens the item popup in one press, like Carried rows. The unequip button stays separate. The doll's Slot Box keeps its popover. |
 | Q18 | After play: the default outlines sit centered on the Backdrop. Humanoid moves down 6.5 of 200 and Quadruped 1 of 125. Slot Boxes in bundled worlds and the design system's samples move with them. Stored boxes in an author's unreleased draft do not. |
@@ -94,6 +98,8 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 - **Item shape.** `Item.icon?` holds an icon id or `'none'`. Absent means Auto. No migration: absent already means the right thing. **Export-shape change, additive.**
 - **Backdrop shape.** The Custom Image Backdrop gets `opacity?`, 0 to 1, absent means 1. The Backdrop parser rebuilds the object on load, so it must keep and clamp this field, and replacing the image must keep it too. **Export-shape change, additive.** The save shape does not change.
 - **Visibility.** The Icon field is display only. Scripts and prompts don't see it.
+- **Copy icon helper (Q24).** `copyItemIcon` builds the resolver's input for an Item Copy, so a new surface can't forget the unidentified rule.
+- **Popup word (Q26).** Player text calls the item's window its popup, in the wiki and the changelog.
 - **Popover.** The Slot Box popover shows the row with the full name unclipped. A row press and the row's buttons don't trigger each other.
 - **Panel layout.** The doll takes `fit` sizing as in the prototype. The list is the existing row with the slot names, joined with ", ", as its second line. That replaces the uses line or runtime description in the Equipped list only; both stay in the popover and the popup. Tooltips for clipped names go on Equipped rows only.
 - **Popover name.** The name inside the Slot Box popover wraps and still opens the item popup.

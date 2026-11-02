@@ -4,8 +4,8 @@ import { ItemRowArt } from '@/components/ItemIconArt';
 import { Meta } from '@/components/ui/typography';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { visibleItemImage } from '@/lib/imageVisibility';
-import { itemSlotNames, resolveItemIcon } from '@/lib/itemIcons';
-import { copyFace, copyFacts, isUnidentified, occupiedSlots } from '@/lib/items';
+import { copyItemIcon } from '@/lib/itemIcons';
+import { copyFace, copyFacts, occupiedSlots } from '@/lib/items';
 import { visibleWorn } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -35,16 +35,8 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
     const item = itemOf(copy);
     return item && visibleItemImage(item, copy, gateInput);
   };
-  const shownIconOf = (copy: ItemCopy) => {
-    const item = itemOf(copy);
-    return resolveItemIcon({
-      icon: item?.icon,
-      name: nameOf(copy),
-      slotNames: itemSlotNames(item, data?.slots ?? [], resolveText),
-      unidentified: isUnidentified(copy),
-      image: imageOf(copy),
-    });
-  };
+  const shownIconOf = (copy: ItemCopy) =>
+    copyItemIcon(copy, itemOf(copy), { name: nameOf(copy), slots: data?.slots ?? [], readText: resolveText, image: imageOf(copy) });
   // A copy that left the entity closes its popup.
   const viewing = worn.find((copy) => copy.id === viewingId);
   const viewingItem = viewing && itemOf(viewing);

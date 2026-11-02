@@ -1,7 +1,5 @@
-import { forwardRef, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
-import { ArrowDownToLine, ArrowUpFromLine, Gift, Lock, Shirt, Sparkles, Undo2 } from 'lucide-react';
-import { ItemRowArt } from '@/components/ItemIconArt';
-import { useIsCut } from '@/components/TruncatedText';
+import { forwardRef, useEffect, useState, type ComponentProps, type ReactNode } from 'react';
+import { ArrowDownToLine, ArrowUpFromLine, Gift, Shirt, Sparkles, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
@@ -12,14 +10,14 @@ import { Meta } from '@/components/ui/typography';
 import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
-import { dollColumnWidth, fillBoxes } from '@/lib/bodyLayout';
-import { itemSlotNames, resolveItemIcon } from '@/lib/itemIcons';
-import { byEquipOrder, copyFace, copyFacts, copyState, isUnidentified, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
-import { cn } from '@/lib/utils';
+import { fillBoxes } from '@/lib/bodyLayout';
+import { copyItemIcon } from '@/lib/itemIcons';
+import { byEquipOrder, copyFace, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
-import { BodyDoll } from './BodyDoll';
+import { EquippedSection } from './EquippedSection';
+import { BOUND_TIP, ItemRow } from './ItemRow';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
 export interface InventoryTabProps {
@@ -56,7 +54,6 @@ export interface InventoryTabProps {
 }
 
 const YOU: ItemCopyWhere = { kind: 'you' };
-const BOUND_TIP = "Bound: you can't drop or give it";
 
 /** One small labeled icon button on an item row. */
 const ItemRowButton = forwardRef<HTMLButtonElement, ComponentProps<typeof Button> & { label: string; icon: typeof Shirt }>(
@@ -69,22 +66,6 @@ const ItemRowButton = forwardRef<HTMLButtonElement, ComponentProps<typeof Button
   ),
 );
 ItemRowButton.displayName = 'ItemRowButton';
-
-/** A row name's button. It covers the row, so the picture and the meta text press it too. */
-const ROW_NAME = 'rounded-sm text-left after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring';
-
-/** An Equipped row's name: one line, with the full text in a tooltip while it is cut (Q5). */
-function EquippedRowName({ name, onClick }: { name: string; onClick: () => void }) {
-  const text = useRef<HTMLSpanElement>(null);
-  const cut = useIsCut(text, name);
-  return (
-    <Tip tip={name} labelsChild={false} disabled={!cut}>
-      <button type="button" className={cn(ROW_NAME, 'min-w-0')} onClick={onClick}>
-        <span ref={text} className="block truncate">{name}</span>
-      </button>
-    </Tip>
-  );
-}
 
 /** The count a typed quantity means: a whole number from 1 to `max`, 1 for a blank field. */
 const countOf = (text: string, max: number) => Math.min(max, Math.max(1, wholeCount(text) ?? 1));
@@ -238,14 +219,7 @@ export function InventoryTab({
       ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
   };
   const shownIconOf = (copy: ItemCopy) => {
-    const item = itemOf(copy);
-    return resolveItemIcon({
-      icon: item?.icon,
-      name: nameOf(copy),
-      slotNames: itemSlotNames(item, worldSlots, resolveText),
-      unidentified: isUnidentified(copy),
-      image: imageOf?.(copy),
-    });
+    return copyItemIcon(copy, itemOf(copy), { name: nameOf(copy), slots: worldSlots, readText: resolveText, image: imageOf?.(copy) });
   };
   const occupies = (c: ItemCopy, slotId: string) => occupiedSlots(c, itemOf(c)).includes(slotId);
   const equipped = shown.filter((c) => slots.some((s) => occupies(c, s.slot.id))).sort(byEquipOrder);
@@ -275,40 +249,22 @@ export function InventoryTab({
     return [...copyFacts(copy, item), ...(item?.bound ? [BOUND_TIP] : [])];
   };
 
-  /** `nameControl` replaces the name's popup button, `slotLine` the row's second line. `wrapName` wraps the name instead of cutting it. */
-  const row = (copy: ItemCopy, actions: ReactNode, { nameControl, slotLine, wrapName }: { nameControl?: ReactNode; slotLine?: string; wrapName?: boolean } = {}) => {
+  /** `slotLine` replaces the row's second line. */
+  const row = (copy: ItemCopy, actions: ReactNode, { slotLine, wrapName }: { slotLine?: string; wrapName?: boolean } = {}) => {
     const item = itemOf(copy);
-    const name = nameOf(copy);
-    const state = copyState(copy);
-    const line = slotLine ?? (copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item));
     return (
-      <li key={copy.id} className="relative flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
-        <ItemRowArt shown={shownIconOf(copy)} />
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-label">
-            {nameControl ?? (
-              <button
-                type="button"
-                onClick={() => setViewingId(copy.id)}
-                className={cn(ROW_NAME, wrapName ?'min-w-0 [overflow-wrap:anywhere]' : 'truncate')}
-              >
-                {name}
-              </button>
-            )}
-            {state && <Meta className="shrink-0">{state}</Meta>}
-            {copy.quantity > 1 && <Meta className="shrink-0">×{copy.quantity}</Meta>}
-            {item?.bound && (
-              <Tip tip={BOUND_TIP}>
-                <span role="img" aria-label="Bound" className="relative shrink-0">
-                  <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-                </span>
-              </Tip>
-            )}
-          </p>
-          {line && <Meta as="p">{line}</Meta>}
-        </div>
-        <div className="relative shrink-0">{actions}</div>
-      </li>
+      <ItemRow
+        key={copy.id}
+        name={nameOf(copy)}
+        shown={shownIconOf(copy)}
+        state={copyState(copy)}
+        quantity={copy.quantity}
+        bound={item?.bound}
+        line={slotLine ?? (copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item))}
+        wrapName={wrapName}
+        onOpen={() => setViewingId(copy.id)}
+        actions={actions}
+      />
     );
   };
 
@@ -322,57 +278,24 @@ export function InventoryTab({
       />
     </div>
   );
-  const equippedList = (className?: string) => {
-    // An All of item fills two boxes and shows one row (story 5).
-    const listed = equipped.filter((c) => boxed.has(c.id));
-    if (listed.length === 0) return <p role="status" className={cn('px-2 py-2 text-label text-muted-foreground', className)}>Nothing is equipped.</p>;
-    return (
-      <ul aria-label="Equipped Items" className={className}>
-        {listed.map((copy) => row(copy, equippedActions(copy), {
-          slotLine: occupiedSlots(copy, itemOf(copy)).map(slotNameOf).filter(Boolean).join(', '),
-          nameControl: <EquippedRowName name={nameOf(copy)} onClick={() => setViewingId(copy.id)} />,
-        }))}
-      </ul>
-    );
-  };
-
-  const equippedSection = (worn: Body) => {
-    const doll = (
-      <BodyDoll
-        body={{ ...worn, entries }}
-        slotName={slotNameOf}
-        fills={new Map([...inBoxes].map(([key, copy]) => [key, {
-          id: copy.id,
-          name: nameOf(copy),
-          icon: shownIconOf(copy),
-          detail: row(copy, equippedActions(copy), { wrapName: true }),
-        }]))}
-      />
-    );
-    return (
-      <>
-        <PanelSubheader>Equipped</PanelSubheader>
-        {worn.aspect > 1 ? (
-          <div data-doll-layout="stacked" className="flex flex-col gap-3">
-            {doll}
-            {equippedList()}
-          </div>
-        ) : (
-          <div data-doll-layout="columns" className="flex items-start gap-3">
-            <div className="shrink-0" style={{ width: dollColumnWidth(worn.aspect) }}>{doll}</div>
-            {equippedList('min-w-0 flex-1')}
-          </div>
-        )}
-      </>
-    );
-  };
 
   return (
     <ScrollArea className="h-[calc(100%-1rem)]">
       <PanelOwnerCard
         role="region" aria-label={`${ownerName ?? 'Your'} inventory`} name={ownerName ?? 'You'} entity you={ownerName !== null}
       >
-        {body && entries.length > 0 && equippedSection(body)}
+        {body && entries.length > 0 && (
+          <EquippedSection
+            body={{ ...body, entries }}
+            boxes={inBoxes}
+            listed={equipped.filter((c) => boxed.has(c.id))}
+            slotName={slotNameOf}
+            nameOf={nameOf}
+            shownIconOf={shownIconOf}
+            listRow={(copy) => row(copy, equippedActions(copy), { slotLine: occupiedSlots(copy, itemOf(copy)).map(slotNameOf).filter(Boolean).join(', ') })}
+            popoverRow={(copy) => row(copy, equippedActions(copy), { wrapName: true })}
+          />
+        )}
         <PanelSubheader>Carried</PanelSubheader>
         {carried.length === 0 ? (
           <p role="status" className="px-2 py-2 text-label text-muted-foreground">You carry nothing.</p>

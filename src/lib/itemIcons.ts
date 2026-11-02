@@ -1,5 +1,6 @@
 import catalog from '@/data/itemIcons.json';
-import type { Item, Slot } from '@/types';
+import { isUnidentified } from '@/lib/items';
+import type { Item, ItemCopy, Slot } from '@/types';
 
 /** One icon of the catalog. `id` is ours, never the art's name. `body` is the SVG inside a 512 viewBox. */
 export interface ItemIconEntry {
@@ -25,7 +26,7 @@ const BY_ID = new Map(ITEM_ICONS.map((icon) => [icon.id, icon]));
 const BY_WORD = new Map(ITEM_ICONS.flatMap((icon) => icon.words.map((word): [string, string] => [word, icon.id])));
 
 const SLOT_WORDS = new Map(Object.entries({
-  head: 'helmet', neck: 'necklace', chest: 'armor', torso: 'armor', waist: 'belt', leg: 'pants', foot: 'boots', feet: 'boots', hands: 'gloves', back: 'cloak', finger: 'ring', ring: 'ring',
+  head: 'helmet', neck: 'necklace', chest: 'armor', torso: 'armor', waist: 'belt', leg: 'pants', foot: 'boots', feet: 'boots', hand: 'sword', hands: 'gloves', back: 'cloak', finger: 'ring', ring: 'ring',
 }));
 
 /** Words that name what holds the thing, so the words after "of" name the thing. */
@@ -108,3 +109,16 @@ export function resolveItemIcon({ icon, name, slotNames, unidentified, image }: 
   if (!unidentified && icon && BY_ID.has(icon)) return { kind: 'icon', id: icon };
   return { kind: 'icon', id: deriveItemIcon(name, slotNames) };
 }
+
+/** What one Item Copy shows on a play surface. `name` and `image` are what the player may see of the copy. */
+export const copyItemIcon = (
+  copy: Pick<ItemCopy, 'state'>,
+  item: Pick<Item, 'icon' | 'slotRule'> | undefined,
+  { name, slots, readText, image }: { name: string; slots: readonly Slot[]; readText: (text: string) => string; image?: string },
+): ShownItemIcon => resolveItemIcon({
+  icon: item?.icon,
+  name,
+  slotNames: itemSlotNames(item, slots, readText),
+  unidentified: isUnidentified(copy),
+  image,
+});

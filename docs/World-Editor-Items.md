@@ -58,7 +58,7 @@ The **Icon** field picks what the **Inventory** tab shows for the item, on the f
 | An icon | That icon |
 | **None** | The item's image. With no image, a filled box on the figure and no icon in a row. |
 
-- 🖼️ The item's own dialog keeps its image under every choice.
+- 🖼️ The item's popup keeps its image under every choice.
 - 🔒 An unidentified copy ignores this field and the item's image. Its icon comes from what the player sees, so it reveals nothing.
 - 🎲 The field reads a placeholder in the name by its label. During the game, Auto reads the rolled value, so the icon can differ.
 
