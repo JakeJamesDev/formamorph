@@ -154,7 +154,6 @@
     "hast-util-to-html": "^9.0.5",
     "jsdom": "^25.0.1",
     "json5": "^2.2.3",
-    "kokoro-js": "^1.2.0",
     "lexical": "^0.50.0",
     "lucide-react": "^1.31.0",
     "next-themes": "^0.4.6",

@@ -98,6 +98,7 @@ export const GRAPH_COVERED = {
   'scripts/stripSeededWorlds.mjs': 'reads only the world file an import names; a change to it runs the full suite',
   'scripts/shipNotices.mjs': 'reads the notices file its caller names and the package.json of each module; a change to it runs the full suite',
   'scripts/bundledAvatarCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
+  'scripts/espeakCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
   'scripts/noticesList.mjs': 'reads only the folders its caller names',
   'scripts/noticesList.test.ts': 'reads only its own temp folders',
   'scripts/bundledWorldHashes.mjs': 'reads only the world file an import names; a change to it runs the full suite',
@@ -151,6 +152,7 @@ export const PATH_TRIGGERS = {
   '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
   '.github/workflows/release.yml': ['scripts/bundledAvatarCheck.test.mjs'],
   '.github/workflows/pages.yml': ['scripts/bundledAvatarCheck.test.mjs'],
+  'vite.config.js': ['scripts/espeakCheck.test.mjs'],
   // The runner test loads this reporter by path through real vitest.
   'scripts/runOutcomeReporter.mjs': ['scripts/runTests.test.mjs'],
 };

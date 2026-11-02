@@ -4,7 +4,6 @@
     "@capacitor/app",
     "@capacitor/filesystem",
     "@capacitor/share",
-    "phonemizer",
     "@huggingface/jinja",
     "@preact/signals-core",
     "@lexical/internal",

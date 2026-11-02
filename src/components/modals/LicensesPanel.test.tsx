@@ -53,14 +53,17 @@ describe('the Licenses tab', () => {
     expect(signal!.aborted).toBe(true);
   });
 
-  it('lists Bundled Assets, then Standards, then Software, with Game Icons and eSpeak NG', async () => {
+  it('lists Bundled Assets, then Standards, then Software, with Game Icons and CMUdict', async () => {
     openLicenses();
     const panel = await screen.findByRole('tabpanel');
     await within(panel).findByRole('heading', { name: 'Software' });
     expect(within(panel).getAllByRole('heading', { level: 2 }).map((h) => h.textContent))
       .toEqual(['Bundled Assets', 'Standards & Specifications', 'Software']);
     expect(within(panel).getByRole('button', { name: 'Game Icons' })).toBeInTheDocument();
-    expect(within(panel).getByRole('button', { name: 'eSpeak NG' })).toBeInTheDocument();
+    for (const name of ['CMUdict', 'Text to Speech pronunciation model', 'kokoro-js']) {
+      expect(within(panel).getByRole('button', { name })).toBeInTheDocument();
+    }
+    expect(within(panel).queryByRole('button', { name: 'eSpeak NG' })).toBeNull();
     expect(within(panel).queryByText('Software license summary')).toBeNull();
   });
 
@@ -76,12 +79,12 @@ describe('the Licenses tab', () => {
   it('mounts no license text until a row opens, then shows the whole text', async () => {
     openLicenses();
     const panel = await screen.findByRole('tabpanel');
-    await within(panel).findByRole('button', { name: 'eSpeak NG' });
-    expect(panel).not.toHaveTextContent('GNU GENERAL PUBLIC LICENSE');
+    await within(panel).findByRole('button', { name: 'LLVM OpenMP' });
+    expect(panel).not.toHaveTextContent('The LLVM Project is under');
 
-    fireEvent.click(within(panel).getByRole('button', { name: 'eSpeak NG' }));
-    const lines = entries.find((entry) => entry.name === 'eSpeak NG')!.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    await waitFor(() => expect(panel).toHaveTextContent('GNU GENERAL PUBLIC LICENSE'));
+    fireEvent.click(within(panel).getByRole('button', { name: 'LLVM OpenMP' }));
+    const lines = entries.find((entry) => entry.name === 'LLVM OpenMP')!.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    await waitFor(() => expect(panel).toHaveTextContent('The LLVM Project is under'));
     // The license's last line proves the row holds the whole text, and the missing fence proves it renders.
     expect(panel).toHaveTextContent(lines[lines.length - 2]);
     expect(panel).not.toHaveTextContent('```');
@@ -94,7 +97,7 @@ describe('the Licenses tab', () => {
 
     fireEvent.change(box, { target: { value: software.name.toUpperCase() } });
     expect(within(panel).getByRole('button', { name: software.name })).toBeInTheDocument();
-    expect(within(panel).queryByRole('button', { name: 'eSpeak NG' })).toBeNull();
+    expect(within(panel).queryByRole('button', { name: 'LLVM OpenMP' })).toBeNull();
 
     fireEvent.change(box, { target: { value: 'no such package' } });
     expect(within(panel).getByText('No license has that name.')).toBeInTheDocument();
@@ -110,7 +113,7 @@ describe('the Licenses tab when the read fails', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the licenses.');
     fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
 
-    expect(await screen.findByRole('button', { name: 'eSpeak NG' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'LLVM OpenMP' })).toBeInTheDocument();
     expect(noticeReads()).toBe(2);
   });
 });

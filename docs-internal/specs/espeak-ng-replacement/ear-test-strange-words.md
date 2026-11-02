@@ -324,3 +324,20 @@ Both rejected sentences of ours say the homograph correctly, so another word in 
 The owner compared weak and strong first words, blind, on 9 sentences. Weak "I" sounded cut off, and weak "you" was rejected. Strong forms of both passed. "they", "he", "she", "it", and "we" passed either way. In "You should have told me…", the owner named "because I" and "come with you" as the faults. "They lead the way to the keep." was rejected in both forms because the sentence reads ambiguously alone, so no fix applies.
 
 "I" now stays strong, "you" stays strong at a phrase start, and "with" reduces (Q25). The owner then accepted all six test sentences, including "You should have told me…" and "I will read the letter tonight."
+
+## Final Bar Run
+
+Recorded 2026-11-02, Ticket 06, on the final pipeline with the old engine out of every build. `scoreCli.mjs --module testing/g2p/pipeline.ts`, against the stored eSpeak numbers.
+
+| Voice | Set | Words | Exact | Phoneme error | eSpeak exact / error | Delta |
+|---|---|---|---|---|---|---|
+| American | Unknown | 1,500 | 38.6% | 14.9 | 35.8% / 16.0 | -1.1 |
+| American | Known | 4,524 | 92.6% | 1.9 | 92.6% / 1.9 | 0.0 |
+| British | Unknown | 1,332 | 44.4% | 13.6 | 42.4% / 14.4 | -0.8 |
+| British | Known | 4,452 | 94.8% | 1.4 | 91.7% / 2.2 | -0.8 |
+
+Both phoneme error bars hold: no score is above eSpeak's. These match the landed numbers in the spec, so nothing moved when the packages left.
+
+The strange and fantasy sets score on the few words WikiPron lists (14 and 89 American). The ear decides them, so the owner's final blind listening pass is still open.
+
+A clip generated in the preview through the shipped client: `af_heart` 4.08 s and `bf_emma` 4.25 s, both with non-silent audio.
