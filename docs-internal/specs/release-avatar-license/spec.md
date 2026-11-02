@@ -48,13 +48,10 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 | Q24 | Generated thumbnails get a white background. Sei gets a recaptured embedded thumbnail. |
 | Q25 | Existing NSFW players don't receive Sei. Q6 stands. |
 | Q26 | Sei and Praline default to hair and eye colors that match each model's source look as closely as the pickers allow. |
-| Q27 | The user reads VRoid Hub's terms from the page and pastes them. An agent reads them before the Sei file lands. |
+| Q27 | Accept VRoid Hub Article 3(2)'s respect clause as a risk for Sei on NSFW builds. See Further Notes. |
+| Q28 | VRoid Hub Article 4's ban on analyzing Registered Works doesn't cover edits that the modification flag allows. See Further Notes. |
 
-**Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is.
-
-**Open before the file lands:**
-
-- VRoid Hub's terms for downloaded models (Q27).
+**Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is. The conditions read on 2026-11-02 are saved in `evidence/sei-hub-conditions-2026-11-02.json`.
 
 **Evidence on A:** a fresh AvatarSample_A export matches the tracked default's face and body geometry and every texture except the thumbnail.
 
@@ -221,6 +218,15 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - The risk applies to any model with VRoid preset content, which includes most Hub models.
 - New evidence reopens this ruling. A pixiv statement or a complaint would count.
 
+**VRoid Hub terms (Q27, Q28)**
+
+- Article 3(2): the Conditions of Use at download time apply, and later changes don't reach a copy already downloaded. The source file's size matches the listing's 15,069,648 bytes. The saved read is from the download date, 2026-11-02.
+- Respect clause: uses must respect the character's personality and individuality and maintain and enhance her image. It has no exception for sexual use.
+- For our reading: Sei's flags allow sexual use, the listing has no description, and the terms say a registrant can't object that a use is "not to my liking".
+- Article 4 bans reverse engineering or otherwise analyzing Registered Works. For our reading: a modification the flags allow needs the file opened.
+- Article 3(1): a registrant answers for disputes when registered content conflicts with outside conditions. That doesn't stop a third party from raising a dispute with us.
+- The Japanese text prevails. New evidence reopens these rulings. A creator or pixiv complaint would count.
+
 **pixiv sample conditions**
 
 - Allowed: for-profit use, and editing texture and parameters to make an original character, even for sale.
@@ -229,7 +235,6 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **UNVERIFIED**
 
-- VRoid Hub's own terms for downloaded models. A browser read on 2026-11-02 was denied or failed, so they are still unread (Q27).
 - How the keys behave in the app. The user tested the file in the app. No agent has driven the sliders there.
 - Whether Hub flags are accurate. They are the uploader's claim.
 - Elaina's provenance, and whether it contains preset or sample content. pixiv's sample terms ban selling a sample's data and using it in character creation.
@@ -241,4 +246,5 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - [VRM Public License 1.0](https://vrm.dev/en/licenses/1.0/)
 - [VRoid Studio Guidelines](https://vroid.com/en/studio/guidelines)
 - [pixiv terms, VRoid Studio section](https://policies.pixiv.net/en.html#vroidstudio)
+- [pixiv terms, VRoid Hub section](https://policies.pixiv.net/en.html#vroidhub)
 - [VRoid sample model conditions](https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z)
