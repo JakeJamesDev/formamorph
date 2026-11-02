@@ -62,6 +62,13 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 | Q35 | A run with an unhandled error or a crashed worker never reruns. Only Vitest's own timeout messages and the existing `waitFor` marks can trigger a rerun. |
 | Q36 | Repeat offenders that have not failed since the shard change are named with last-seen dates and not fixed. Rerun records watch them from now on. |
 | Q37 | The owner adopted Vitest 5 on Vite 8. The Reference Run measures this toolchain and records one affected gate in a fresh ticket worktree, cold then warm, because the trial did not measure that case. |
+| Q38 | The module under test is the sibling file with the test's name, without dotted suffixes. Else the test's only import, else its first production import, flagged as a guess. Else null, with coverage null. |
+| Q39 | Coverage runs per test file, limited to the module under test, and stores the covered line and branch ids as well as totals. Later tickets need the ids to tell whether another test covers the same lines. |
+| Q40 | A record's hash covers the test file, its snapshot file, its test-only direct imports and the module under test. Each record also names the run sha and toolchain. Time and import cost need a fresh run after import work, whatever the hash says. |
+| Q41 | Level comes from the path alone: `view`, `component`, `scan`, `script` or `unit`. `scan` means listed as always run, so ticket 14 still finds other scans itself. |
+| Q42 | Real-bug history means a `Fix` commit that touches source and adds the test, or a CI red followed by commits to the module before the next green. Each record names the rule and the commit, so Q9 knows which bug to reinstate. Transcript failures never count. |
+| Q43 | A family is the test's module under test, or its file's base name when the module is null. |
+| Q44 | Each checkout keeps its own Vitest module cache. The owner ruled this lands before the Reference Run, so the run measures the setup we keep. Cache keys include the checkout's root, so a ticket worktree's first gate always starts cold; Q37 measures that cost. |
 
 ## User Stories
 

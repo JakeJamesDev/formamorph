@@ -198,6 +198,8 @@ export default defineConfig({
       '.env*',
     ].map((file) => path.resolve(import.meta.dirname, file).replace(/\\/g, '/')),
     css: false,
+    // Vitest clears this folder when the lockfile hash differs, and its keys include the root, so checkouts can't share it.
+    fsModuleCachePath: path.resolve(import.meta.dirname, 'node_modules/.vite', `${path.basename(import.meta.dirname)}-vitest`),
     // One fork per hardware thread halves each test's speed for the same throughput: on 32 threads the
     // 5-second tests ran 4.6 s idle and timed out under a peer's load. Half the threads keeps the wall
     // time and gives every fork a thread of its own.
