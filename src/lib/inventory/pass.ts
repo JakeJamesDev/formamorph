@@ -267,7 +267,7 @@ export function applyInventoryPass(
     const stated = statedPay(op);
     if ('refused' in stated) {
       skip(`${payLabel(op)}: ${stated.refused}`);
-      return !payPrice(op) && partyOf(op.owner)?.kind !== 'you' ? [] : moneyCurrencies;
+      return !op.price && partyOf(op.owner)?.kind !== 'you' ? [] : moneyCurrencies;
     }
     const payer = partyOf(op.owner);
     const payee = partyOf(op.to);

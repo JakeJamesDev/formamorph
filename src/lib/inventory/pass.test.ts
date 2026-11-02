@@ -613,6 +613,11 @@ describe('pay', () => {
     expect(counts(copies, you)).toEqual({ copper: 4 });
   });
 
+  it('runs a gain beside a pay that names its money and states no price (Q76)', () => {
+    const { copies } = settle([], [op('gain', 'Gold', { owner: 'here', to: 'you' }), op('pay', 'Gold', { to: 'you' })]);
+    expect(counts(copies, you)).toEqual({ gold: 1 });
+  });
+
   it('runs a gain beside a pay with a stray item and no price (Q76)', () => {
     const { copies } = settle([], [op('gain', 'Copper', { quantity: 4, owner: 'here', to: 'you' }), op('pay', 'no item', { owner: 'here', to: 'you' })]);
     expect(counts(copies, you)).toEqual({ copper: 4 });
