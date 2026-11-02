@@ -759,6 +759,11 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 | `copy.setState(word)` | Sets its **State**. `''` clears it |
 
 - **The writes apply when the script ends**, in run order, through the same checks as the panel. A check that fails skips that write and logs the reason.
+- **The next script reads the Item Copies with these writes applied.** A `give` in one script is in `items` and `persona.items` in the scripts below it. So is an equip, and any item that unequips as a result.
+- **The item scripts a write fires run before the next script.** **When Gained** and the other item timings run at once, up to 3 levels deep. One action runs item scripts at most 100 times in all. Past either limit, the write still applies and no item script runs. The log says so.
+- **During AI Output waits.** Scripts read the Item Copies from sentence to sentence, but item scripts run once, when the reply ends. A stopped reply applies none of it.
+- **An item's stat effects and granted traits wait for the end of the turn.** A later script reads the new Item Copy, but not the effects it brings.
+- **An equip's requirement reads what the scripts above it wrote.** A script can raise a stat, and the next script can equip the item that needs it.
 - **Bound stops the player only.** A script can remove or move a **Bound** Item Copy.
 - **A script can give to an entity that is not present.**
 - **Under a library persona, the Custom Persona entity means the player.** A `give` or a `pay` that names it reaches the player.
@@ -791,9 +796,11 @@ if (!toll.paid) player.toast("You can't pay the toll.");
 - **A payment follows the game's rules.** It spends the smallest items first, makes change in the fewest items, and refuses what the payer can't afford. A stat with **No Decrease** or **No Increase** refuses it too.
 - **A refused payment changes nothing.** `paid` is `false` and `reason` says why.
 - **The result is in the run.** The script can read `paid` and the next `balance`. The money lands when the script ends.
-- **`balance` leaves out the script's own `give` calls and stat writes.** It counts the starting state and the payments this script made.
+- **`balance` counts every write so far.** That covers the scripts above this one and this script's own payments, `give` calls and stat writes.
+- **Two scripts that pay from one balance each charge in full.** The second script pays from what the first left, and it can spend the first script's change.
 - **A payment adds to your own write of the same stat.** After `stats.Funds.value = 100`, a payment of 30 leaves 70.
-- **A later payment can't spend change an earlier one made.** It refuses instead.
+- **A payment can't spend items this script just made:** its own `give` calls and the change from its earlier payments. `balance` counts those items, so `pay` can refuse money that `balance` shows. The `reason` says the next script can spend them.
+- **A script that fails moves no money.** A `pay` before the error adds nothing, and later scripts read the balance as if the script never ran.
 - **Stat writes and `give` still work** on a stat or item that backs a Currency.
 - **An unknown Currency or party stops the script with an error.**
 - **A user Tool reads `balance` and can't pay.** Calling `pay` stops the Tool with an error.
@@ -917,7 +924,7 @@ When a script switches a trait, its **When a Trait Switches** scripts run at onc
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
-Each timing is a separate run. Within one run, scripts run one by one, in the order of the **Scripts** tab (see [Run Order](ScriptsGuide#run-order)). Each script reads what the scripts above it wrote: stats, trait switches, placeholder pins, dictionary entries, the sentence in During AI Output and `turn.choices` in After the AI.
+Each timing is a separate run. Within one run, scripts run one by one, in the order of the **Scripts** tab (see [Run Order](ScriptsGuide#run-order)). Each script reads what the scripts above it wrote: stats, trait switches, placeholder pins, dictionary entries, Item Copies, Currency balances, the sentence in During AI Output and `turn.choices` in After the AI.
 
 Two scripts that each write `stats.Health.value -= 5` take 10 from Health.
 
@@ -938,11 +945,10 @@ A bound that a stat writes applies at the written number, after that script's tr
 - **A World Tool's writes come first.** On a re-roll, its saved writes apply before the list, and every script reads them.
 - **A switch runs its When a Trait Switches scripts at once.** They run before the next script in the list, and the next script reads their result. A World Tool's switch does the same. Two scripts that switch one trait on and then off run these scripts twice, in that order.
 - **During AI Output switches wait.** A switch in this timing runs its scripts once, with After the AI. A later script on the sentence doesn't read their result.
-- **Item events run after the timing's scripts.**
+- **An inventory write runs its item scripts at once.** They run before the next script in the list, and the next script reads their result. See [Items](#items).
 - **A later script reads the earlier scripts' Body, location, clock, memory, discovery and entity writes.** `location` with its `present` and `exits`, `clock`, `memories`, `entities` and `body` read as the earlier scripts left them.
 - **Where a write applies does not change.** A script that fails adds nothing to what later scripts read.
 - **A diary line has no read.** A later script can write to the diary of an entity that an earlier script discovered.
-- **Some writes apply after the timing's scripts.** These are writes to items. A later script doesn't read them yet.
 
 The timings run in order against each other. Everything a Before the AI script wrote is in place when an After the AI script reads. On the opening turn, an At Game Start script's writes are in place when Before the AI reads.
 

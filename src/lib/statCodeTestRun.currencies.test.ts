@@ -167,13 +167,14 @@ describe('a user Tool reads a balance and can’t pay', () => {
 
   it('has the money host answer a balance and refuse a pay in a read-only run', () => {
     const money: SandboxMoney = {
-      balance: vi.fn(() => 7), pay: vi.fn(() => ({ paid: true, reason: '' })), settled: () => ({ ops: [], payments: [], stats: [] }),
+      ownWrites: vi.fn(), balance: vi.fn(() => 7), pay: vi.fn(() => ({ paid: true, reason: '' })), settled: () => ({ ops: [], payments: [], stats: [] }),
     };
     const you = { kind: 'you' };
-    expect(JSON.parse(answerMoney(money, JSON.stringify(['pay', 'coin', you, null, 5]), true))).toEqual({ paid: false, reason: 'a Tool can’t pay' });
+    const answer = (args: unknown[], readOnly: boolean) => JSON.parse(answerMoney(money, JSON.stringify({ own: [], args }), readOnly, () => ({ ops: [], stats: [] })));
+    expect(answer(['pay', 'coin', you, null, 5], true)).toEqual({ paid: false, reason: 'a Tool can’t pay' });
     expect(money.pay).not.toHaveBeenCalled();
-    expect(JSON.parse(answerMoney(money, JSON.stringify(['balance', 'coin', you]), true))).toBe(7);
+    expect(answer(['balance', 'coin', you], true)).toBe(7);
     // The control: the same call pays in a script's run.
-    expect(JSON.parse(answerMoney(money, JSON.stringify(['pay', 'coin', you, null, 5]), false))).toEqual({ paid: true, reason: '' });
+    expect(answer(['pay', 'coin', you, null, 5], false)).toEqual({ paid: true, reason: '' });
   });
 });

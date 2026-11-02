@@ -19,7 +19,7 @@ import { openingHomeOf, openingStateOf, type OpeningPersona } from '@/lib/openin
 import { snapshotOf, type SandboxSnapshot, type UnitHome } from '@/lib/sandboxSnapshot';
 import { SCRIPT_TIMINGS } from '@/lib/scripts';
 import { turnOneClock, type RunTiming } from '@/lib/statCodeTiming';
-import { afterScript, chainSnapshotOf, playedScripts, type SandboxState, type StatCodeTurn } from '@/lib/statCodeTurn';
+import { afterScript, chainSnapshotOf, playedScripts, stateInventory, type SandboxState, type StatCodeTurn } from '@/lib/statCodeTurn';
 import { runRowKeys, runRowPlace } from '@/lib/worldScripts';
 import type { Script, ScriptTiming } from '@/types';
 
@@ -98,7 +98,11 @@ export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(worl
 
 /** The Bench's state of `world` at turn one for a `timing` run: Test Code's clock and the authored enabled map. */
 const benchStateOf = (world: RuleWorld, timing: RunTiming, persona: OpeningPersona | undefined): SandboxState =>
-  ({ ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing) });
+  ({
+    ...openingStateOf(world, undefined, persona), clock: turnOneClock(timing), turn: sampleTurn(world.worldOverview, timing),
+    items: world.items ?? [], slots: world.slots ?? [],
+    ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),
+  });
 
 /** The Bench's snapshot of `world` at turn one for a `timing` run: its state and the open cast, with no editor
  *  overlays (Q2, Q6). */
@@ -125,7 +129,7 @@ function findingOf(unit: ScriptUnit, result: StatCodeResult): Finding | null {
 const benchTurnOf = (world: RuleWorld, timing: ScriptTiming, persona: OpeningPersona | undefined): StatCodeTurn => {
   const state = benchStateOf(world, timing, persona);
   return {
-    state, timing, worldScripts: world.scripts, switchRowOrder: runRowKeys(scriptTreeWorldOf(world), 'switch'), previous: state.stats, asks: [], regenApplied: {},
+    state, timing, worldScripts: world.scripts, switchRowOrder: runRowKeys(scriptTreeWorldOf(world), 'switch'), inventory: stateInventory(state), previous: state.stats, asks: [], regenApplied: {},
     statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name,
   };
 };

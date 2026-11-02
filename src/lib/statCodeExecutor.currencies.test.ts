@@ -132,12 +132,16 @@ describe('executeStatCode currencies', () => {
     expect(res.ownerStatWrites).toEqual(expect.arrayContaining([{ ownerId: 'e-hero', writes: [expect.objectContaining({ value: 40 })] }]));
   });
 
-  it('adds a payment to the value the script wrote to the same stat, and leaves that write out of balance', async () => {
+  it('adds a payment to the value the script wrote to the same stat, and reads that write in balance', async () => {
     const withStats: SandboxEntity = { ...hero, stats: { stats: [funds(50)] } };
     const res = await run(`
       persona.stats.Funds.value = 100;
-      if (currencies.Credits.balance(persona) !== 50) throw new Error('balance should read the starting 50');
+      if (currencies.Credits.balance(persona) !== 100) throw new Error('balance should read the written 100');
       if (!currencies.Credits.pay(persona, null, 30).paid) throw new Error('refused');
+      if (currencies.Credits.balance(persona) !== 70) throw new Error('balance should read 70');
+      persona.stats.Funds.value = 200;
+      if (currencies.Credits.balance(persona) !== 170) throw new Error('balance should keep the payment over a later write');
+      persona.stats.Funds.value = 100;
     `, {}, { entities: [keeper, stranger, withStats], persona: withStats });
     expect(res.error).toBeNull();
     expect(res.ownerStatWrites).toEqual([
@@ -158,12 +162,70 @@ describe('executeStatCode currencies', () => {
     ]);
   });
 
-  it('does not let a second payment spend the change the first made, which the host has not landed', async () => {
+  it('does not let a second payment spend the change the first made, and says the next script can', async () => {
     const res = await run(`
       if (!currencies.Coin.pay(persona, null, 5).paid) throw new Error('first');
       // 95 of change is held now, and the run cannot name those copies yet.
-      if (currencies.Coin.pay(persona, null, 50).paid) throw new Error('second should refuse');
+      const second = currencies.Coin.pay(persona, null, 50);
+      if (second.paid) throw new Error('second should refuse');
+      if (second.reason !== "this script can't spend the items it just made, but the next script can") throw new Error(second.reason);
     `);
+    expect(res.error).toBeNull();
+  });
+
+  it('counts the run’s own give in balance, while its pay refuses to spend it', async () => {
+    const res = await run(`
+      items.Copper.give(persona, 4);
+      if (currencies.Coin.balance(persona) !== 104) throw new Error('balance ' + currencies.Coin.balance(persona));
+      const over = currencies.Coin.pay(persona, null, 103);
+      if (over.reason !== "this script can't spend the items it just made, but the next script can") throw new Error(over.reason);
+      const never = currencies.Coin.pay(persona, null, 500);
+      if (never.paid || never.reason === over.reason) throw new Error('a sum no copy covers keeps its own reason');
+    `);
+    expect(res.error).toBeNull();
+  });
+
+  it('counts the run’s own loss in balance and in a payment’s plan', async () => {
+    const res = await run(`
+      persona.items[0].lose();
+      if (currencies.Coin.balance(persona) !== 0) throw new Error('balance');
+      if (currencies.Coin.pay(persona, null, 5).paid) throw new Error('a lost copy should not pay');
+    `);
+    expect(res.error).toBeNull();
+  });
+
+  it('plans a stat payment over the run’s own write, so it can’t undercharge', async () => {
+    const withStats: SandboxEntity = { ...hero, stats: { stats: [funds(50)] } };
+    const res = await run(`
+      persona.stats.Funds.value -= 40;
+      if (currencies.Credits.pay(persona, null, 30).paid) throw new Error('should refuse: 10 is left');
+      if (!currencies.Credits.pay(persona, null, 10).paid) throw new Error('should pay');
+    `, {}, { entities: [keeper, stranger, withStats], persona: withStats });
+    expect(res.error).toBeNull();
+    expect(res.ownerStatWrites?.at(-1)).toEqual({ ownerId: 'e-hero', writes: [expect.objectContaining({ id: 'funds', value: 0 })] });
+  });
+
+  it('reads a write past the stat’s max as that max, in balance and in what lands', async () => {
+    const withStats: SandboxEntity = { ...hero, stats: { stats: [funds(50)] } };
+    const res = await run(`
+      persona.stats.Funds.value = 5000;
+      if (!currencies.Credits.pay(persona, null, 30).paid) throw new Error('refused');
+      if (currencies.Credits.balance(persona) !== 970) throw new Error('balance ' + currencies.Credits.balance(persona));
+    `, {}, { entities: [keeper, stranger, withStats], persona: withStats });
+    expect(res.error).toBeNull();
+    expect(res.ownerStatWrites?.at(-1)).toEqual({ ownerId: 'e-hero', writes: [expect.objectContaining({ id: 'funds', value: 970 })] });
+  });
+
+  it('reads a script’s own `self.value` write in balance', async () => {
+    const purse = funds(50);
+    const money = scriptMoney({
+      currencies: [CREDITS], items, itemNames: items, slots: [], placements: [], copies: [],
+      stats: { globalStats: [purse], entityStats: {} }, playedIds: ['e-hero'], statsOn: (_id, stats) => stats,
+    });
+    const res = await executeStatCode(`
+      self.value = 80;
+      if (currencies.Credits.balance(persona) !== 80) throw new Error('balance ' + currencies.Credits.balance(persona));
+    `, [purse], purse, { entities: [hero], persona: hero, currencies: kinds([CREDITS]), money });
     expect(res.error).toBeNull();
   });
 

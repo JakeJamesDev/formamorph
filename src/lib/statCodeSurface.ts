@@ -323,7 +323,7 @@ export const CURRENCY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id of the Currency' },
   { name: 'name', detail: 'string', info: 'Code name of the Currency' },
   { name: 'kind', detail: 'string', info: '"stat", "items" or "name": what backs the Currency' },
-  { name: 'balance', detail: '(owner) => number | null', info: 'What an entity or the persona has, by entry or by name, or null when it has no balance. This script’s own stat writes and give calls don’t count.', keptOnReadOnly: true },
+  { name: 'balance', detail: '(owner) => number | null', info: 'What an entity or the persona has, by entry or by name, or null when it has no balance. Counts every write so far, this script’s own included.', keptOnReadOnly: true },
   { name: 'pay', detail: '(payer, payee, amount) => { paid, reason }', info: 'Moves money as the game does, with change, and answers { paid, reason }. A null payer is income and a null payee takes the money out of the world.' },
 ]);
 
