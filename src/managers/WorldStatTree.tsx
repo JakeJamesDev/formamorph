@@ -15,6 +15,7 @@ import {
 import { detachStatLink, removeEntityStatGroup, removeStatLink } from '@/lib/statLinks';
 import type { Placeholder } from '@/types';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { useOwnedStatDelete } from './useOwnedStatDelete';
 import { statRowSpec, type StatRowActions } from './statRowSpec';
 import { chipInput } from './chipInput';
 
@@ -79,6 +80,7 @@ const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint }: {
   } = useGameData();
   const { advanced } = useEditorMode();
   const [refusal, setRefusal] = useState<StatDropRefusal | null>(null);
+  const { ask: askRemoveOwned, dialog: removeOwnedDialog } = useOwnedStatDelete();
   const dropWorld = useMemo(
     () => ({ stats, statGroups, traits, traitGroups, entities, placeholders, scripts: worldScripts }),
     [stats, statGroups, traits, traitGroups, entities, placeholders, worldScripts],
@@ -90,8 +92,12 @@ const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint }: {
     const realId = (id: string) => tree.owned.get(id)?.id ?? id;
     const isLink = (id: string) => !!owner?.statLinks?.some((l) => l.id === id);
     return {
-      onRemoveStat: (id) => editEntity(entityId, (e) => (isLink(id) ? removeStatLink(e, id) : removeOwnedStat(e, realId(id)))),
-      onRemoveGroup: (id) => editEntity(entityId, (e) => (isLink(id) ? removeStatLink(e, id) : removeEntityStatGroup(e, realId(id)))),
+      onRemoveStat: (id) => askRemoveOwned(
+        entityId, (e) => (isLink(id) ? removeStatLink(e, id) : removeOwnedStat(e, realId(id))), owner?.stats?.find((s) => s.id === realId(id))?.name,
+      ),
+      onRemoveGroup: (id) => askRemoveOwned(
+        entityId, (e) => (isLink(id) ? removeStatLink(e, id) : removeEntityStatGroup(e, realId(id))), owner?.statGroups?.find((g) => g.id === realId(id))?.name,
+      ),
       onDuplicate: (id) => {
         if (!owner) return;
         const res = duplicateOwnedStatNode(owner, realId(id));
@@ -161,6 +167,7 @@ const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint }: {
     <>
       {refusal && <StatDropRefusalNotice refusal={refusal} placeholders={placeholders} onDismiss={() => setRefusal(null)} />}
       <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} revealSelected />
+      {removeOwnedDialog}
     </>
   );
 };

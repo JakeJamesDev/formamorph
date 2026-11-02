@@ -1,6 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Coins, Copy, Shield, X } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Hint } from '@/components/ui/typography';
+import { coinItemKind } from '@/lib/currencyDeletes';
+import { labelPlaceholders } from '@/lib/placementLetters';
+import { usedByText } from '@/lib/usedByText';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -34,9 +38,10 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
   onOpenWorldPlaceholder: (id: string) => void;
   /** The search target the find bar just navigated to. */
   focusField?: FocusFieldHint | null;
-}): ListEditorAdapter {
+}): { adapter: ListEditorAdapter; dialog: ReactNode } {
   const { items, setItems, removeItem, currencies, placeholders, placementLetters, placeholderOwners } = useGameData();
   const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
+  const [pending, setPending] = useState<{ id: string; name: string; text: string } | null>(null);
 
   const add = (typed: string) => {
     const id = randomUUID();
@@ -51,6 +56,13 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
   const remove = (id: string) => {
     removeItem(id);
     if (selectedId === id) onSelect(null);
+  };
+  // An item that is a coin asks first, naming the Currency; any other item goes at once.
+  const askRemove = (id: string) => {
+    const item = byId.get(id);
+    const text = usedByText([coinItemKind(currencies, id, (name) => labelPlaceholders(name, placeholders))]);
+    if (item && text) setPending({ id, name: item.name, text });
+    else remove(id);
   };
 
   const detail = (id: string | null) => {
@@ -79,7 +91,7 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
     );
   };
 
-  return {
+  const adapter: ListEditorAdapter = {
     pinned: [
       { id: EQUIPMENT_ID, name: 'Equipment Settings', icon: <Shield className="h-4 w-4" aria-hidden /> },
       { id: CURRENCIES_ID, name: 'Currencies', icon: <Coins className="h-4 w-4" aria-hidden /> },
@@ -90,7 +102,7 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
       sortable: true,
       actions: [
         { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicate(item.id) },
-        { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => remove(item.id) },
+        { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => askRemove(item.id) },
       ],
     })),
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
@@ -109,4 +121,19 @@ export function useWorldItemsAdapter({ selectedId, onSelect, tab, onTabChange, p
     isEmpty: items.length === 0,
     emptyHint: <Hint className="p-3">Add an item the player or an entity can own</Hint>,
   };
+  const dialog = (
+    <ConfirmDialog
+      open={!!pending}
+      onOpenChange={(open) => { if (!open) setPending(null); }}
+      title={`Delete ${labelPlaceholders(pending?.name ?? '', placeholders) || 'Item'}?`}
+      description={pending?.text ?? ''}
+      confirmLabel="Delete"
+      destructive
+      onConfirm={() => {
+        if (pending) remove(pending.id);
+        setPending(null);
+      }}
+    />
+  );
+  return { adapter, dialog };
 }

@@ -45,6 +45,7 @@ import {
 } from '@/lib/items';
 import { parseBodies, withoutBodyRows, withoutEntityBodyRefs, withoutSlotEntries } from '@/lib/bodies';
 import { parseCurrencies } from '@/lib/currency';
+import { lostStatIds, withoutBackingStats, withoutCoinItem, withoutCurrencyRefs } from '@/lib/currencyDeletes';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
 import type { SliceName, WorldSlices } from '@/lib/editorHistory';
@@ -192,6 +193,13 @@ function useProvideGameData() {
     slices, worldId, sliceSetters, savedWorld,
   );
   const { keyNext } = history;
+  // A Currency backed by a stat the next lists no longer hold becomes name only, in the delete's own write.
+  const dropBackings = useCallback((nextStats: Stat[], nextEntities: Entity[]) => {
+    const { stats: held, entities: heldEntities, currencies: heldCurrencies } = latest.current;
+    if (!heldCurrencies.some((currency) => currency.backing.kind === 'stat')) return;
+    const gone = lostStatIds({ stats: held, entities: heldEntities }, { stats: nextStats, entities: nextEntities });
+    if (gone.size) setCurrencies((prev) => withoutBackingStats(prev, gone));
+  }, []);
   // A per-record write names its record first, so a typed run merges into one Step; the commit settles the field.
   const keyed = useMemo(() => {
     // The first argument is the record, or its id; the overview's updates carry none.
@@ -227,8 +235,12 @@ function useProvideGameData() {
         entity.id !== next.id ? entity : entity.link === next.link ? contentEdit(next, next) : next
       )))),
       // Read off the entity as it stands at write time, so two edits in one tick both land.
-      editEntity: keyedTo('entities', (id: string, edit: (entity: Entity) => Entity) =>
-        setEntities((prev) => prev.map((entity) => (entity.id === id ? contentEdit(entity, edit(entity)) : entity)))),
+      editEntity: keyedTo('entities', (id: string, edit: (entity: Entity) => Entity) => {
+        const { stats: held, entities: heldEntities } = latest.current;
+        const before = heldEntities.find((entity) => entity.id === id);
+        if (before?.stats?.length) dropBackings(held, heldEntities.map((entity) => (entity === before ? edit(before) : entity)));
+        setEntities((prev) => prev.map((entity) => (entity.id === id ? contentEdit(entity, edit(entity)) : entity)));
+      }),
       updateEntityGroup: keyedTo('entityGroups', replaceIn(setEntityGroups)),
       updateTrait: keyedTo('traits', replaceIn(setTraits)),
       updateTraitGroup: keyedTo('traitGroups', replaceIn(setTraitGroups)),
@@ -242,7 +254,7 @@ function useProvideGameData() {
       updateWorldOverview: keyedTo('worldOverview', (updates: Partial<WorldOverview>) =>
         setWorldOverview((prev) => ({ ...prev, ...updates }))),
     };
-  }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed]);
+  }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed, dropBackings]);
   const {
     keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateStatGroup, updateLocation, updateConnection, updateEntity, editEntity,
     updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview, updateWorldScript, updateItem, updateSlot, updateCurrency,
@@ -260,11 +272,13 @@ function useProvideGameData() {
     setStats(prevStats => [...prevStats, withDefaultDescriptors(newStat)]);
   }, []);
 
-  // A Blueprint stat takes its links with it.
+  // A Blueprint stat takes its links with it, and a Currency it backs becomes name only.
   const removeStat = useCallback((statId: string) => {
+    const { stats: held, entities: heldEntities } = latest.current;
+    dropBackings(held.filter(stat => stat.id !== statId), heldEntities);
     setStats(prevStats => prevStats.filter(stat => stat.id !== statId));
     setEntities(prevEntities => dropStatLinksTo(prevEntities, new Set([statId])));
-  }, []);
+  }, [dropBackings]);
 
   const addStatGroup = useCallback((newGroup: StatGroup) => {
     setStatGroups(prev => [...prev, newGroup]);
@@ -276,16 +290,18 @@ function useProvideGameData() {
     if (groups.find(g => g.id === groupId)?.system === 'blueprints') {
       const removed = removeStatBlueprints({ stats: held, statGroups: groups }, entities);
       if (!removed) return;
+      dropBackings(removed.stats, removed.entities);
       setStatGroups(removed.statGroups);
       setStats(removed.stats);
       setEntities(removed.entities);
       return;
     }
     const next = removeStatGroupFrom(groups, held, groupId);
+    dropBackings(next.stats, entities);
     if (next.groups !== groups) setStatGroups(next.groups);
     if (next.stats !== held) setStats(next.stats);
     setEntities(prevEntities => dropStatLinksTo(prevEntities, new Set([groupId])));
-  }, []);
+  }, [dropBackings]);
 
   // A new location is given a place on the canvas as it is created, wherever it was created from: the map is
   // manual-first, so one arriving without a position of its own would sit wherever the fallback left it.
@@ -323,10 +339,13 @@ function useProvideGameData() {
 
   // Membership rides on the entity itself, so deleting it takes every location link with it. Relationships
   // that target it ride on other entities, so they go in the same pass.
+  // Its own stats go with it, so a Currency one backs becomes name only.
   const removeEntity = useCallback((entityId: string) => {
+    const { stats: held, entities: heldEntities } = latest.current;
+    dropBackings(held, heldEntities.filter(entity => entity.id !== entityId));
     setEntities(prevEntities => dropRelationshipsTo(entityId, prevEntities.filter(entity => entity.id !== entityId)));
     setPlacements(prev => withoutPlacementsAt(prev, { kind: 'entity', id: entityId }));
-  }, []);
+  }, [dropBackings]);
 
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {
     setEntityGroups(prev => [...prev, newGroup]);
@@ -371,10 +390,17 @@ function useProvideGameData() {
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
   }, []);
 
-  // An item's placements place nothing once it is gone.
+  // An item's placements place nothing once it is gone, and its coin rows go: the last coin leaves a name-only Currency.
   const removeItem = useCallback((itemId: string) => {
     setItems(prev => prev.filter(item => item.id !== itemId));
     setPlacements(prev => withoutItemPlacements(prev, itemId));
+    setCurrencies(prev => withoutCoinItem(prev, itemId));
+  }, []);
+
+  // Items priced in a removed Currency lose it and keep their Value.
+  const removeCurrency = useCallback((currencyId: string) => {
+    setCurrencies(prev => prev.filter(currency => currency.id !== currencyId));
+    setItems(prev => withoutCurrencyRefs(prev, currencyId));
   }, []);
 
   // Items equipping into a removed slot lose the slot; Bodies lose its entries.
@@ -558,7 +584,7 @@ function useProvideGameData() {
   const placeholderOwnerIndex = ownersRef.current;
 
   // The committed state, which every action reads at call time so it keeps one identity.
-  const committed = { stats, statGroups, entities, entityGroups, traits, traitGroups, locations, bodies, placeholders, worldOverview, worldId, savedWorld, worldStored, getWorldData };
+  const committed = { stats, statGroups, entities, entityGroups, currencies, traits, traitGroups, locations, bodies, placeholders, worldOverview, worldId, savedWorld, worldStored, getWorldData };
   const latest = useRef(committed);
   useLayoutEffect(() => { latest.current = committed; });
 
@@ -792,7 +818,7 @@ function useProvideGameData() {
     addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
     setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
     setDictionaries, setWorldPlaceholders, setWorldScripts, updateWorldScript, setWorldTools, updateWorldTool,
-    setItems, updateItem, removeItem, setSlots, updateSlot, removeSlot, setBodies, removeBody, setPlacements, setCurrencies, updateCurrency,
+    setItems, updateItem, removeItem, setSlots, updateSlot, removeSlot, setBodies, removeBody, setPlacements, setCurrencies, updateCurrency, removeCurrency,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
     updateWorldOverview, loadWorldMetadata,
@@ -807,7 +833,7 @@ function useProvideGameData() {
     addDictionary, updateDictionary, removeDictionary,
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
     addPlaceholder, updatePlaceholder, removePlaceholder,
-    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript, updateWorldTool, updateItem, removeItem, updateSlot, removeSlot, removeBody, updateCurrency,
+    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript, updateWorldTool, updateItem, removeItem, updateSlot, removeSlot, removeBody, updateCurrency, removeCurrency,
     setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   ]);
 

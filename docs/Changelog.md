@@ -96,6 +96,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Currencies:**
     - **World authors can back a Currency with coin items, such as Copper, Silver and Gold.** An item priced in it has one Value field per coin, and players read "1 Gold, 5 Copper".
     - **The Inventory tab lists your money, and the AI reads each item's worth and how much money each entity has.** Coins and stats both show. Hidden and unidentified coins don't count.
+    - **Deleting a Currency's stat, a coin item or the Currency now updates everything that used it.** A confirm names the Currency or the item count, and item prices stay.
   - **Credits:**
     - **The Main Menu footer now has a Credits line that opens a Credits window.** It names Jake James, FieryLionite, the item icon artists and, on desktop, llama.cpp.
     - **The Credits window has a Supporters tab that lists the game's Patreon supporters.** It shows once you've accepted the adult content warning. Select a name to open that profile.

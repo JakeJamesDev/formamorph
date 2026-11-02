@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { stepLabel } from '@/lib/editorHistoryLabels';
 import { defaultDescriptorBands } from '@/lib/statDescriptors';
 import type {
-  Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup, TraitLink, World,
+  Currency, Dictionary, Entity, GameLocation, Item, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup, TraitLink, World,
 } from '@/types';
 
 /** Each author action is one Step: a typed run, a drag, a stepper burst, an operation. */
@@ -301,6 +301,60 @@ describe('Steps that match intent', () => {
     }
     expect(ctx().entities[0].link?.localReplacement).toBe(true);
     expect(labels(history())).toEqual(['Edit Entity Wick: Player-Facing Description']);
+  });
+});
+
+describe('Currency deletes in the history', () => {
+  const credits: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'hunger' } };
+  const crowns: Currency = { id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }] } };
+  const priced = (id: string, currencyId: string) => ({ id, name: id, currencyId, value: 3 }) as unknown as Item;
+
+  it('records deleting a backing stat and the name-only cleanup as one Step, and undo restores both', async () => {
+    const { ctx, history } = await open(world({ currencies: [credits] }));
+    await act1(() => ctx().removeStat('hunger'));
+    expect(ctx().stats.map((s) => s.id)).toEqual(['thirst']);
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'name' });
+    expect(history().steps).toHaveLength(1);
+    await act1(() => history().undo());
+    expect(ctx().stats.map((s) => s.id)).toEqual(['hunger', 'thirst']);
+    expect(ctx().currencies).toEqual([credits]);
+  });
+
+  it('records deleting a Persona’s own backing stat as one Step', async () => {
+    const owner = entity('ada', { persona: true, stats: [stat('purse')] } as Partial<Entity>);
+    const { ctx, history } = await open(world({
+      entities: [owner], currencies: [{ ...credits, backing: { kind: 'stat', statId: 'purse' } }],
+    }));
+    await act1(() => ctx().editEntity('ada', (e) => ({ ...e, stats: [] })));
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'name' });
+    expect(history().steps).toHaveLength(1);
+    await act1(() => history().undo());
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'stat', statId: 'purse' });
+    expect(ctx().entities[0].stats).toHaveLength(1);
+  });
+
+  it('records deleting the last coin item as one Step, and undo restores the row', async () => {
+    const copper = { id: 'copper', name: 'Copper' } as unknown as Item;
+    const { ctx, history } = await open(world({ items: [copper], currencies: [crowns] }));
+    await act1(() => ctx().removeItem('copper'));
+    expect(ctx().items).toEqual([]);
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'name' });
+    expect(history().steps).toHaveLength(1);
+    await act1(() => history().undo());
+    expect(ctx().items.map((i) => i.id)).toEqual(['copper']);
+    expect(ctx().currencies).toEqual([crowns]);
+  });
+
+  it('records deleting a Currency as one Step that clears it on its items, and undo puts it back', async () => {
+    const items = [priced('lamp', 'credits'), priced('rope', 'other')];
+    const { ctx, history } = await open(world({ items, currencies: [credits] }));
+    await act1(() => ctx().removeCurrency('credits'));
+    expect(ctx().currencies).toEqual([]);
+    expect(ctx().items.map((i) => i.currencyId)).toEqual([undefined, 'other']);
+    expect(history().steps).toHaveLength(1);
+    await act1(() => history().undo());
+    expect(ctx().currencies).toEqual([credits]);
+    expect(ctx().items.map((i) => i.currencyId)).toEqual(['credits', 'other']);
   });
 });
 
