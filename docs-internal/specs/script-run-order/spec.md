@@ -1,0 +1,148 @@
+# Spec: Script Run Order
+
+Status: ready-for-agent
+
+## Problem Statement
+
+The Scripts tab lets an author drag scripts into an order, and the tab says they run in that order. The order only decides whose write lands last. Every script in a timing reads one Sandbox Snapshot, so no script sees what an earlier script wrote.
+
+Authors meet this as lost effects. Two scripts that each take 5 Health take 5, not 10. A hub's write reaches Health's own script only on the next turn. A Blueprint stat that adds to a global stat adds once, however many owners run it. The Test Bench warns about these cases, but the author still can't build a step-by-step chain.
+
+The same rule breaks money. Two scripts that `pay` from one balance in one turn each plan against the same start, and the later stat write wins, so the player is undercharged.
+
+The list also misleads in smaller ways. Blueprint rows show last but run inside each owner. Timings are listed Before, After, During, Start, Switch, which is not the order a turn reaches them.
+
+## Solution
+
+Scripts run one by one: by timing, then top-down in the list. Each script reads everything the earlier scripts wrote. This holds for all worlds and every timing, with no new mode and no change to world or save files.
+
+The Scripts tab becomes the truth. A row's place is where it runs, and one Blueprint row runs for all its owners back to back. Timings are listed in the order a turn reaches them.
+
+Money needs no ledger, because each script's payment plans over what the earlier scripts left.
+
+## Rulings
+
+Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on a new opinion.
+
+| # | Ruling |
+|---|---|
+| Q1 | A script reads what earlier scripts in its timing wrote, in list order. All worlds, every timing. No mode, no world or save migration, no version bump |
+| Q2 | Live community survey is limited to the one heavy script author's two latest worlds. No other community world is read |
+| Q3 | That survey's +1 on each world's public download count is accepted |
+| Q4 | Every write chains: stats, traits, placeholder pins, lore, choices, inventory, Bodies, location, clock, memories, the diary, discover and entity moves |
+| Q5 | When a script switches a trait or changes inventory, the When a Trait Switches and item scripts it fires run at once, nested, before the next script in the list. The existing depth caps stay |
+| Q6 | A script that throws or times out adds nothing, including a `pay` before the error. Later scripts read the state as if it never ran, and they still run |
+| Q7 | The heavy script author hears early and tests a build before the release. The changelog tells everyone. The user makes the contact |
+| Q8 | One Blueprint row runs for all its owners back to back, at the row's place in the list. With no `order`, Blueprint scripts now run after entity scripts |
+| Q9 | Library entities' scripts run after every row in the list, in pick order, ignoring any `order` they carry. World Tools stay first. Item scripts run on their events |
+| Q10 | Scripts with no `order` keep today's default sort. A new script goes to the bottom of its timing. Nothing writes an `order` until a drag does |
+| Q11 | The Test Bench's Two Scripts, One Field finding stays, reworded, and shows the writers' list order |
+| Q12 | An open `player.ask` holds every later script in its timing, including ones that never name `player`. The docs get corrected |
+| Q13 | `previous` stays the turn's start value for every script. At a timing that reads the turn start, it is the value when that timing began. `value` and `delta.actual` include earlier scripts' writes. `delta.ai` and `delta.regen` keep their meaning |
+| Q14 | A re-roll uses the same chain from its clean start. A World Tool's replayed writes go at the head, and later scripts read them. Script Prompts ask again as they do today. Test Bench runs use the same chain |
+| Q15 | The money ledger ticket closes. Currency Q61 changes: a balance read reflects every earlier write in the chain, including direct stat writes and `give`, and the run's own. The Currency spec session makes that edit once this spec lands |
+| Q16 | This effort lands before the release that carries Currency. Currency's tickets 06 and 08 continue on their own |
+| Q17 | During AI Output chains on each sentence: a later script reads the earlier scripts' writes. The real landing stays with After the AI, and a stopped turn applies none |
+| Q18 | The Scripts tab lists timings in this order: At Game Start, Before the AI, During AI Output, After the AI, When a Trait Switches |
+| Q19 | The Timing menus, Add Script, templates and Code Insert use the Q18 order. AI prompt text keeps its current order, so it needs no probe |
+| Q20 | The test seams are the ones under Testing Decisions. No new seam |
+
+## User Stories
+
+1. As a world author, I want a script to read what the script above it wrote, so that I can build effects in steps.
+2. As a world author, I want two scripts that each take 5 Health to take 10, so that neither effect is lost.
+3. As a world author, I want a hub's write to Health to be in Health's own script on the same turn, if Health is lower in the list, so that a cap applies at once.
+4. As a world author, I want dragging a row to change what later scripts read, so that the Scripts tab is a real control.
+5. As a world author, I want a row's place in the list to be where it runs, so that I can trust the tab without reading the docs.
+6. As a world author, I want one Blueprint row to run for all its owners together, so that one row means one place in the order.
+7. As a world author, I want a Blueprint stat's write to a global stat to count once per owner, so that each owner's effect adds up.
+8. As a world author, I want a new script to go to the bottom of its timing, so that it can read everything above it.
+9. As a world author, I want an undragged world to read top-down as the tab lists it, so that I need no drag to know the order.
+10. As a world author, I want timings listed in the order a turn reaches them, so that the list reads like a turn.
+11. As a world author, I want the Timing menu and Add Script to use that same order, so that every list agrees.
+12. As a world author, I want a later script to read an earlier script's trait switch, so that I can react on the same turn.
+13. As a world author, I want a trait's switch script to finish before the next script runs, so that the next script reads its full result.
+14. As a world author, I want a later script to read an earlier script's inventory change, so that a give and a check work in one timing.
+15. As a world author, I want a later script to read an earlier script's location, clock and placeholder writes, so that no kind of write is an exception.
+16. As a world author, I want a script switched off by an earlier script not to run, so that a trait's scripts stop when the trait stops.
+17. As a world author, I want a script switched on by an earlier script to run if it is lower in the list, so that a switch takes effect in order.
+18. As a world author, I want a failed script to add nothing, so that later scripts never read half an effect.
+19. As a world author, I want later scripts to still run after a failure, so that one bug doesn't stop the whole timing.
+20. As a world author, I want `previous` to stay the turn's start value, so that a script that compares against the turn start keeps working.
+21. As a world author, I want `delta.actual` to show the whole move so far, so that a script can read what the turn has done.
+22. As a world author, I want During AI Output scripts on one sentence to read each other's writes, so that this timing has the same rule.
+23. As a world author, I want a stopped turn to apply none of its During AI Output writes, so that a stop behaves as it does today.
+24. As a world author, I want an open `player.ask` to hold later scripts, so that a later script can use what the answer changed.
+25. As a world author, I want a World Tool's writes to come ahead of the list, so that every row can read what the AI's call did.
+26. As a world author, I want a library entity's scripts to run after the list, so that they can't break my order with a number from another world.
+27. As a world author, I want the Test Bench to show who writes a field and in what order, so that I can check how writes stack.
+28. As a world author, I want the Test Bench to compute with the same chain as play, so that what it shows is what a turn does.
+29. As a world author, I want the docs to describe one rule, so that I don't have to learn exceptions.
+30. As a world author, I want my world file to stay as it is, so that I need no re-export.
+31. As a player, I want a re-roll to start clean, so that its effects never count twice.
+32. As a player, I want a shop script and a quest script that both charge me to charge me both amounts, so that the balance is correct.
+33. As a player, I want turns to feel no slower, so that the change costs me nothing.
+34. As the heaviest script author, I want a test build before the release, so that I can fix my worlds first.
+35. As a player with a saved game, I want my save to load unchanged, so that I keep my game.
+
+## Implementation Decisions
+
+**One run order, shared.** A single function produces the run order: World Tool units, then the rows in the tab's order, then the units with no row. Both the Scripts tab and the turn read it, so they can't drift. The rows stay world scripts, global stats, global traits, each entity's stats and traits, Blueprint stats, Blueprint traits. Scripts with an `order` sort first, as `inRunOrder` does today.
+
+**The chain.** The per-script loop replaces the two branches at the end of the run, the one-by-one loop and the `Promise.all`. Each unit gets a fresh Sandbox Snapshot of the state the unit before left. The existing `afterRun` and `chainedResult` are the base. `afterRun` grows to carry every write in Q4. Switch runs and item events already chain this way, so this is one mechanism with a wider reach.
+
+**In force at the script's turn.** Whether a stat is on and a trait is in force reads at that script's turn, not at the start of the timing. This follows from Q4 and Q5 and is the behavior in stories 16 and 17.
+
+**Writes land per script.** Trait switches, bounds, values and placeholder pins apply after each script, in the existing order. Penalties still apply once per timing to a stat that no script moved. Inventory writes need the apply and settle step at each script, so the turn entry point takes the step that `runItemScripts` already takes.
+
+**During AI Output and stat re-rolls read a chain they don't land.** Later scripts read earlier writes, but what lands stays as it is today. For During AI Output, that is with After the AI. A stat re-roll keeps the turn's location, time, scene entities, memories and diary lines, so its chain can read a location write that the re-roll then discards. The stat re-roll part is derived from Q4, Q14 and the existing keep rule, and the Implement session may raise it with the spec session.
+
+**Money.** A script's money state builds over the chained state, so `pay` plans over earlier scripts' payments, direct writes and `give` calls. The run's own direct writes count too (Q15).
+
+**Timing order.** The shared timing list takes the Q18 order. The AI prompt text and the help tool's schema read a list of their own in the current order, so their bytes don't change. Their request bodies must stay byte-equal.
+
+**Sandbox Snapshot keeps its name.** Its meaning narrows from one per turn to one per script. CONTEXT.md and its Timing and After the AI entries change with this.
+
+**Docs to change.**
+- Scripts Reference: Order of Effects, One snapshot per run, Owner order, Two Scripts, One Field, the prompts rule that a script that never names `player` is not held, and the "later in the same run" lines.
+- Scripts Guide: Run Order, A Note on Accumulating Stats, the Scripts tab how-to.
+- Test Bench: Issues.
+
+**Export shape.** Unchanged, in worlds and in saves. `order` already exists. The version doesn't change.
+
+**Measured cost.** Node, trivial script, median. One script runs in about 6 ms, and a snapshot rebuild adds 0.2 to 0.4 ms. Twenty chained scripts took 124 ms in Slime against 117 ms with one snapshot, and 274 ms in Rampage against 135 ms. That chained whole turn runs, so it is an upper bound. Not measured in a browser, or on Emberwatch or Fantasy Futanari.
+
+## Testing Decisions
+
+A good test plays a real run through the highest seam and asserts what the player or the next script reads. It never reads the order of internal calls. Every guard must fail when the snapshot rule is put back.
+
+| Seam | Covers |
+|---|---|
+| `runStatCodeTurn` | Reads and stacking for every home, timing and owner. Blueprint rows, library entities, World Tools at the head, replayed writes, failed scripts, switched-off scripts, nested switches, `previous` and `delta.actual` |
+| `runItemScripts` | Item events and the scripts on one event |
+| `openOutputRun` | During AI Output within and across sentences, and a stopped turn |
+| `scriptsByTiming` | The Q18 list order and the shared run order |
+| Bundled-world tests | Parity. They must stay green, with no scenario changed to get there |
+| Byte-equal request bodies | The AI prompt text and the help tool's schema keep their order |
+
+- **Tests that assert the old rule flip.** "lets no run see another run's write" and "moves a world stat once when a Blueprint stat on two owners writes it" assert what Q1 and Q8 reverse. Flip each one to assert the new result. Any other test that fails gets reported first, never edited to pass.
+- **Prior art:** the `statCodeTurn.*` test files, `outputRun.test.ts`, `worldScripts` tests, `statCodeTurn.crossOwner.test.ts`, and the bundled-world harness.
+- **Currency:** a test where two scripts `pay` from one balance in one turn, for a stat Currency and a coin Currency, each charging the full sum.
+- **Editor:** a dev-router read of the Scripts tab in both themes is not needed, since colors don't change. A DOM read confirms the timing order.
+
+## Out of Scope
+
+- A per-world switch or a mode. Q1 rejected it.
+- Migrating, rewriting or linting shipped worlds or saves.
+- Rows in the Scripts tab for item scripts, World Tools or library entities.
+- Per-owner rows for a Blueprint script.
+- Changing Currency's other rulings, or tickets 06 and 08.
+- Editing bundled or work-in-progress worlds. If a bundled-world test fails on real behavior, it goes to the user.
+
+## Further Notes
+
+- **Survey of bundled worlds:** 14 scripts, none with an `order`. A regex survey found no script that reads another script's write in one timing. It reads literal names only.
+- **Work-in-progress worlds:** Fantasy Futanari has Fertility reading Pregnancy in After the AI, and a Pregnancy script comments on another script's write in the same run. Centaur Breeder 3.3.2 has two Pregnancy scripts. Both need a check when they next change.
+- **Survey of the heavy author's larger world:** 11 world scripts, about 656,000 characters, none with an `order`. In Before the AI, two scripts can both spend one stat, which the chain fixes. Two later scripts would read the first script's same-turn placeholder state instead of last turn's. Its scripts read placeholder names through variables, so the count may miss cases. The test build (Q7) is the real check.
+- **Changelog:** a 👤 line under Major, because shipped worlds with stacking writes play differently. It also says how to check a world.
+- **Docs bug found on the way:** the prompts rule already looks wrong for After the AI, which runs one by one today. Q12's docs fix covers it.
