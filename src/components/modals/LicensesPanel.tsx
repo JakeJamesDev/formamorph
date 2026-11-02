@@ -64,7 +64,7 @@ function LicenseRow({ entry }: { entry: NoticeEntry }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         {/* License text wraps, because a narrow dialog can't hold its 80-column lines. Only the tab scrolls, so a fence drops its own 400px scroller. */}
-        <div className="pb-3 text-label text-muted-foreground [&_:first-child]:mt-0 [&_[data-streamdown=code-block-body]]:max-h-none [&_code]:whitespace-pre-wrap [&_pre]:whitespace-pre-wrap [&_pre]:break-words">
+        <div className="pb-3 text-label text-muted-foreground [&_:first-child]:mt-0 [&_[data-streamdown=code-block-body]]:!max-h-none [&_code]:whitespace-pre-wrap [&_pre]:whitespace-pre-wrap [&_pre]:break-words">
           <MarkdownRenderer text={entry.text} lineNumbers={false} />
         </div>
       </CollapsibleContent>
