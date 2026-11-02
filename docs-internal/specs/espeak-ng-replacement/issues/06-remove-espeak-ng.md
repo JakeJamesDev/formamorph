@@ -11,7 +11,7 @@ Mostly removal and one guard. The final bar run is what closes the Steam blocker
 
 No build holds eSpeak NG. `phonemizer` and `kokoro-js` leave the dependencies, along with the old phoneme step. A check over the build output fails on eSpeak NG and `phonemizer` markers, in the place the build gate runs.
 
-The notices generator drops both packages. The hand-kept Bundled assets section drops eSpeak NG and its GPL text, and adds the CMUdict BSD-style license and the model. The client and phoneme step adapt `kokoro-js` code, so that Apache-2.0 notice moves to the hand-kept section when the generator drops the package.
+The notices generator drops both packages. The hand-kept Bundled assets section drops eSpeak NG and its GPL text, and adds the CMUdict BSD-style license and the model. The client and phoneme step adapt `kokoro-js` code, so that Apache-2.0 notice moves to the hand-kept section when the generator drops the package. The generator already drops it, because Ticket 02 took the package out of the module graph, and the entry stays by hand in the generated list until this ticket moves it. So move it before any `gen-notices` run.
 
 Run the full bar on the final pipeline. Update the ear test record with every result.
 

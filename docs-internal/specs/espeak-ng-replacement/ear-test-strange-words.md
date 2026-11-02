@@ -273,3 +273,35 @@ Rated by the owner on Ticket 05's pages.
 | Sentences | 5 of 6 | No bar |
 
 Rejected: Aethelred `ˈɛθəld`, Nyxara `nˈɪksəɹə`, Archon `ˈɑːʧən`, Kaelith `kˈɛlɪθ`, Thessaly `θˈɛsəli`, manticore `mɒntikˈɔːɹi`, Ragnarok `ɹəɡnˈɑːɹək`, and the sentence "You should have told me you were going, because I would have come with you."
+
+## American Voices, New Pipeline
+
+Rated by the owner on Ticket 03's pages. Rejected: Nyxara, Archon, manticore, succubus, ensorcell, Ragnarok, and two sentences: the "should have" sentence and the "Dr. Smith" sentence.
+
+## Word Table Additions
+
+Six words joined the table after these rejections. "have" and "had" also took a schwa.
+
+| Word | Phonemes | Status |
+|---|---|---|
+| manticore | `mˈæntɪkˌɔɹ` | Accepted in both accents |
+| Ragnarok | `ɹˈæɡnəɹɑk` | Accepted in both accents |
+| succubus | `sˈʌkjəbəs` | Accepted in both accents |
+| ensorcell | `ɛnsˈɔɹsəl` | Accepted in both accents |
+| Archon | `ˈɑɹkˌɑn` | Accepted in both accents |
+| Aethelred | `ˈɛθəlɹˌɛd` | Accepted in both accents |
+
+| Set | American | British |
+|---|---|---|
+| Strange words | 38 acceptable, 2 rejected | 37 acceptable, 3 rejected |
+| Fantasy words | 97 acceptable | 29 acceptable, 68 unrated |
+
+Six table entries came from rejections, so these totals show coverage. New words will score closer to the model's rate.
+
+## Spoken Numbers
+
+The owner rejected an even reading of 1999 in American, then accepted a joined one with a soft t in "ninety". Four joined readings were close, and `nˌIntˈin nˈInɾinˌIn` was the pick. An unstressed final "nine" was rejected. British `nˌIntˈiːn nˈIntinˌIn` is not rated.
+
+"nineteen", "thirteen", "fourteen", "seventeen", and "ninety" joined the word table for this. Only 1999 was heard.
+
+The sentence "You should have told me you were going, because I would have come with you." is still rejected in both accents, with the schwa in "have". The fault is not named yet.

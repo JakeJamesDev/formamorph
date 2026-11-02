@@ -26,6 +26,8 @@ const VOICELESS_END = /[ptkfθ]$/;
 const SIBILANT_END = /[szʃʒʧʤ]$/;
 /** -ss and -us endings are the word's own, as in moss and Marcus. */
 const NO_BARE_S = /(?:ss|us)$/i;
+const TENS = /^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)$/i;
+const ONES = /^(?:one|two|three|four|five|six|seven|eight|nine)$/i;
 
 const table = new Map<string, string>(Object.entries(wordTable));
 const british = new Map<string, string>(Object.entries(britishWords));
@@ -154,10 +156,12 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
     let out = "";
     let afterWord = false;
     let insideQuote = false;
+    let afterTens = false;
     for (const [i, token] of tokens.entries()) {
       if (NOT_A_WORD.test(token)) {
         out += /^\s/.test(token) ? " " : token;
         afterWord = false;
+        if (!/^\s/.test(token)) afterTens = false;
         if (token.split('"').length % 2 === 0) insideQuote = !insideQuote;
         continue;
       }
@@ -178,8 +182,12 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
         const listed = accent === "b" && reduced === undefined ? fromBritishList(word.toLowerCase()) ?? britishCapitals(word) : undefined;
         const start = matches[i].index + token.indexOf(word);
         const pick = table.has(word.toLowerCase()) ? undefined : picks.get(start);
-        out += listed ?? inAccent(word, reduced ?? (pick && fromDictionary(pick)) ?? await sayWord(word));
+        const spoken = listed ?? inAccent(word, reduced ?? (pick && fromDictionary(pick)) ?? await sayWord(word));
+        // Ninety-nine runs together, with its stress on the tens.
+        if (afterTens && ONES.test(word)) out = out.trimEnd() + spoken.replace(/ˈ/g, "ˌ");
+        else out += spoken;
       }
+      afterTens = TENS.test(word);
     }
     return out.replace(/ +/g, " ").trim();
   };

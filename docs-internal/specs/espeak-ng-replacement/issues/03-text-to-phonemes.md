@@ -63,3 +63,7 @@ For the next tickets:
 - Rate `.scratch/espeak-ng-replacement-03/frames/rating-strange/index.html` (6 clips) and `.scratch/espeak-ng-replacement-03/frames/rating-fantasy/index.html` (8 clips), then merge with `testing/g2p/ratingPage.ts merge`. The strange words must reach at least 30 of 40 and the fantasy words at least 80 of 97.
 - Listen to `.scratch/espeak-ng-replacement-03/frames/rating-sentences/index.html` (6 clips) for weak forms in whole sentences. No bar applies.
 - Archon no longer splits, so its new string `ˈɑɹʧən` is on the strange page.
+
+## Owner's Ratings
+
+Strange words 38 of 40. Fantasy words 97 of 97. Sentences 4 of 6.

@@ -54,11 +54,12 @@ British voices keep British pronunciation, through rules applied to this America
 | Q15 | A hand-checked word table comes before CMUdict. It starts with the 20 accepted entries in the ear test record. |
 | Q16 | The bar adds at least 80 of 97 fantasy words, and no fewer than eSpeak's 76. The set grows as words are added. |
 | Q17 | Compound parts come from CMUdict with at least 4 letters, plus a short reviewed list of common 3-letter CMUdict words. Rejects arc + hon, hald + ren, tia + mat, and nyx + ara. |
-| Q18 | A short plain-data list of function words takes a weak CMUdict form or loses its stress, unless the word ends the phrase. It lands with the American pipeline. The rating page adds sentence clips, with no numeric bar. |
+| Q18 | A short plain-data list of function words takes a weak CMUdict form or loses its stress, unless the word ends the phrase. It lands with the American pipeline. The rating page adds sentence clips, with no numeric bar. "have" and "had" have no weak CMUdict form, so they take our own schwa, after the owner rejected the full vowel by ear. |
 | Q19 | Before the model, a regular -s or -'s on a table, CMUdict, or split word takes that word's phonemes plus the regular ending. |
 | Q20 | The phoneme error bars gate landing. The listening bars are the owner's step after landing, on a page the ticket builds. The ticket stays `ready-for-human` until the owner reports. |
 | Q21 | British rules may use a small plain-data list for words no rule can derive. We write each string and accept it by ear. Word table entries stay American and take the rules. |
 | Q22 | The owner accepted a 24-word sample for the British fantasy bar, at 22 of 24, because 97 clips are too many to rate. The final pass at Ticket 06 stays. |
+| Q23 | Spoken numbers follow the owner's ear: tens and ones run together, -teen words take one main stress, and "ninety" takes a soft t in American. |
 
 ## Measurements
 
@@ -108,7 +109,6 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 ### Not Measured Yet
 
-- The homograph table and tagger. They do not exist yet.
 - The Android build and a packaged desktop build. Both ship the same `dist` files.
 
 ## User Stories
@@ -150,7 +150,7 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 **British rules.** Our own rules over the American result. `phonemize` is MIT and ships such rules, so we may adapt them with its notice. Its data stays out, and `ipa-dict` `en_UK` stays out because it is GPL-derived. The British word list (Q21) follows the same rule as the word table: we write each string, and none is copied from another source. Words are chosen because they are common and no rule reaches them, never because they miss on a scored set.
 
-**Homographs.** Q14's own table comes from CMUdict variants. The tagger must have a named license and no eSpeak or Misaki lineage. A ticket picks it and records its license.
+**Homographs.** Q14's own table comes from CMUdict variants. The tagger must have a named license and no eSpeak or Misaki lineage. Ticket 04 picked `compromise`: MIT, rule-based, with no training corpus.
 
 **Loading.** The text-to-phoneme code and the model stay in a lazy chunk, loaded on first Text to Speech use, the same as today. The model file ships inside web, desktop, and Android builds.
 

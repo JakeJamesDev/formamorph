@@ -77,7 +77,7 @@ describe("compound split", () => {
     expect(await setup().say("Emberwatch")).toBe("ˈɛmbəɹwˌɑʧ");
   });
 
-  it.each(["Archon", "Haldren", "Tiamat", "Nyxara"])("keeps %s whole", async (word) => {
+  it.each(["Haldren", "Tiamat", "Nyxara"])("keeps %s whole", async (word) => {
     const { say, predict } = setup();
     expect(await say(word)).toBe(`<${word.toLowerCase()}>`);
     expect(predict).toHaveBeenCalledTimes(1);
@@ -171,10 +171,56 @@ describe("function words", () => {
       const base = word.replace(/\(\d+\)$/, "");
       variants.set(base, [...(variants.get(base) ?? []), phones]);
     }
+    // CMUdict has no weak form for these two, and the owner rejected the full vowel by ear.
+    const ownSchwa: Record<string, string> = { had: "HH AH0 D", have: "HH AH0 V" };
     for (const [word, form] of Object.entries(weakForms)) {
+      if (word in ownSchwa) {
+        expect(form, word).toBe(ownSchwa[word]);
+        continue;
+      }
       const known = variants.get(word)!;
       expect(known.includes(form) || stressless(known[0]) === form, word).toBe(true);
     }
+  });
+
+  it("reduces have and had to a schwa inside a phrase", async () => {
+    const { say } = setup();
+    expect(await say("they have it and had it")).toBe(`${cmu("they")} həv ɪt ənd həd ${cmu("it")}`);
+    expect(await say("what they have")).toBe(`${cmu("what")} ${cmu("they")} ${cmu("have")}`);
+  });
+});
+
+describe("number rhythm", () => {
+  it("reads a year with a light nineteen and a joined ninety-nine", async () => {
+    expect(await setup().say("1999")).toBe("nˌIntˈin nˈInɾinˌIn");
+  });
+
+  it("joins tens and ones however they were written", async () => {
+    const { say } = setup();
+    const twentyOne = `${cmu("twenty")}${cmu("one").replace("ˈ", "ˌ")}`;
+    expect(await say("21")).toBe(twentyOne);
+    expect(await say("twenty one")).toBe(twentyOne);
+    expect(await say("twenty-one")).toBe(twentyOne);
+  });
+
+  it("keeps words apart when they are not tens then ones", async () => {
+    const { say } = setup();
+    expect(await say("ninety, nine")).toBe("nˈInɾi, nˈIn");
+    expect(await say("nine ninety")).toBe("nˈIn nˈInɾi");
+    expect(await say("ninety knights")).toBe(`nˈInɾi ${cmu("knights")}`);
+    expect(await say("one nine")).toBe(`${cmu("one")} ${cmu("nine")}`);
+  });
+
+  it("gives no -teen a second main stress", () => {
+    for (const word of ["thirteen", "fourteen", "seventeen", "nineteen"]) {
+      expect(wordTable[word as keyof typeof wordTable].match(/ˈ/g), word).toHaveLength(1);
+    }
+  });
+
+  it("takes the British rules, so the soft t leaves", async () => {
+    const said = await setup().say("1999", "b");
+    expect(said).not.toContain("ɾ");
+    expect(said).toMatch(/nˈIntinˌIn$/);
   });
 });
 
