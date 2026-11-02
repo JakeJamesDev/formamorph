@@ -50,12 +50,12 @@ export function avatarPublishRefusal(failed: AvatarLicenseRequirement[]): string
 }
 
 /** Why a bundled Avatar can't be published, whatever its license says. */
-const DEFAULT_AVATAR_REFUSAL = 'This Avatar comes with Formamorph. Upload your own VRM.';
+const BUNDLED_AVATAR_REFUSAL = 'This Avatar comes with Formamorph. Upload your own VRM.';
 
 /** A model that may be published, with the payload ready, or one that may not, with the reason to show. */
 export type AvatarPublishAttempt =
   | { allowed: true; payload: PublishPayload }
-  | { allowed: false; reason: 'defaultAvatar'; message: string }
+  | { allowed: false; reason: 'bundledAvatar'; message: string }
   | { allowed: false; reason: 'license'; message: string; failedRequirements: AvatarLicenseRequirement[] };
 
 /** Everything the gate needs that only the caller knows. */
@@ -101,9 +101,9 @@ export async function buildAvatarPublish(target: AvatarPublishTarget): Promise<A
   }
 
   // The server makes the same check, so a failed lookup here only moves the refusal there.
-  const defaultHashes = await ModelStorageService.defaultAvatarHashes().catch((): string[] => []);
-  if (defaultHashes.includes(data.hash || await blobHash(data.blob))) {
-    return { allowed: false, reason: 'defaultAvatar', message: DEFAULT_AVATAR_REFUSAL };
+  const bundledHashes = await ModelStorageService.bundledAvatarHashes().catch((): string[] => []);
+  if (bundledHashes.includes(data.hash || await blobHash(data.blob))) {
+    return { allowed: false, reason: 'bundledAvatar', message: BUNDLED_AVATAR_REFUSAL };
   }
 
   const verdict = gateAvatarLicense(data.license ?? NOTHING_KNOWN);

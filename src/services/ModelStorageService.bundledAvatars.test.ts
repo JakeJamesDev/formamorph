@@ -176,7 +176,7 @@ describe('seeding on an SFW build', () => {
 
   it('never requests her file for the hash check', async () => {
     serveBoth();
-    await ModelStorageService.defaultAvatarHashes(SFW);
+    await ModelStorageService.bundledAvatarHashes(SFW);
     expect(fetchedUrls()).not.toContain(PRALINE_URL);
   });
 

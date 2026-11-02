@@ -29,7 +29,7 @@ vi.mock('@/services/ModelStorageService', () => ({
     getModelMetadata: vi.fn(async () => library.models),
     ensureThumbnail: vi.fn(async () => null),
     getModelData: vi.fn(async () => null),
-    defaultAvatarHashes: vi.fn(async () => []),
+    bundledAvatarHashes: vi.fn(async () => []),
     deleteModel: vi.fn(async (id: string) => { library.models = library.models.filter((m) => m.id !== id); }),
   },
 }));

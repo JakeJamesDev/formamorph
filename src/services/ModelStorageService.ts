@@ -313,7 +313,7 @@ class ModelStorageService {
    * Hashes that mark a model as a bundled Avatar: each seeded library record's, and the running build's bundled
    * file's. They differ when an older build seeded the library, and either can be missing.
    */
-  async defaultAvatarHashes(avatars: readonly BundledAvatar[] = BUNDLED_AVATARS): Promise<string[]> {
+  async bundledAvatarHashes(avatars: readonly BundledAvatar[] = BUNDLED_AVATARS): Promise<string[]> {
     await this.ensureMigrated();
     const hashes = await Promise.all(avatars.flatMap(({ id, url }) => [
       this.getRecord(id).then((seeded) => seeded?.data?.hash),

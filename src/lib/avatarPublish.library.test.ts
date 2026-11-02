@@ -34,13 +34,13 @@ describe('buildAvatarPublish against the library', () => {
     await ModelStorageService.seedBundledAvatars();
 
     await expect(buildAvatarPublish({ id: 'default-avatar', name: 'Default Avatar' }))
-      .resolves.toMatchObject({ allowed: false, reason: 'defaultAvatar' });
+      .resolves.toMatchObject({ allowed: false, reason: 'bundledAvatar' });
 
     const copy = await ModelStorageService.addModel(new File([bundled], 'My Model.vrm', { type: 'model/vrm' }));
     await ModelStorageService.deleteModel('default-avatar');
 
     await expect(buildAvatarPublish({ id: copy.id, name: 'My Model' }))
-      .resolves.toMatchObject({ allowed: false, reason: 'defaultAvatar' });
+      .resolves.toMatchObject({ allowed: false, reason: 'bundledAvatar' });
   });
 
   it('publishes the thumbnail the player chose', async () => {
@@ -60,6 +60,6 @@ describe('buildAvatarPublish against the library', () => {
     const other = await ModelStorageService.addModel(await vrmFile('Sedge'));
 
     await expect(buildAvatarPublish({ id: other.id, name: 'Sedge' }))
-      .resolves.not.toMatchObject({ reason: 'defaultAvatar' });
+      .resolves.not.toMatchObject({ reason: 'bundledAvatar' });
   });
 });

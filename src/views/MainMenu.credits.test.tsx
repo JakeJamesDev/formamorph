@@ -21,7 +21,7 @@ vi.mock('@/services/ModelStorageService', () => ({
     getModelMetadata: vi.fn(async () => []),
     ensureThumbnail: vi.fn(async () => null),
     getModelData: vi.fn(async () => null),
-    defaultAvatarHashes: vi.fn(async () => []),
+    bundledAvatarHashes: vi.fn(async () => []),
   },
 }));
 

@@ -40,7 +40,7 @@ describe('the library on a build with no bundled Avatar', () => {
 
   it('requests no bundled file for the hash check', async () => {
     await ModelStorageService.addModel(added('Mine'));
-    expect(await ModelStorageService.defaultAvatarHashes()).toEqual([]);
+    expect(await ModelStorageService.bundledAvatarHashes()).toEqual([]);
     expect(fetch).not.toHaveBeenCalled();
   });
 

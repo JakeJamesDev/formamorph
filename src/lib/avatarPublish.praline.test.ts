@@ -41,7 +41,7 @@ describe('publishing Praline', () => {
     expect(seeded?.name).toBe('Praline');
 
     await expect(buildAvatarPublish({ id: PRALINE_AVATAR_ID, name: 'Praline' }))
-      .resolves.toMatchObject({ allowed: false, reason: 'defaultAvatar' });
+      .resolves.toMatchObject({ allowed: false, reason: 'bundledAvatar' });
   });
 
   it('refuses a re-import of her unedited file after the seeded copy is gone', async () => {
@@ -50,7 +50,7 @@ describe('publishing Praline', () => {
     const copy = await ModelStorageService.addModel(file(pralineBytes, 'Renamed.vrm'));
 
     await expect(buildAvatarPublish({ id: copy.id, name: 'Renamed' }))
-      .resolves.toMatchObject({ allowed: false, reason: 'defaultAvatar' });
+      .resolves.toMatchObject({ allowed: false, reason: 'bundledAvatar' });
   });
 
   it('lets an edited copy through, since its license still passes', async () => {

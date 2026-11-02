@@ -522,7 +522,7 @@ describe('validation', () => {
   });
 });
 
-describe('defaultAvatarHashes', () => {
+describe('bundledAvatarHashes', () => {
   const serve = (body: Blob) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, blob: async () => body }));
 
   beforeEach(() => {
@@ -535,21 +535,21 @@ describe('defaultAvatarHashes', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     await putRaw({ id: 'default-avatar', name: 'Default Avatar', data: { type: 'model/vrm', blob: blob(), size: 9, hash: 'seeded-hash' } });
 
-    await expect(ModelStorageService.defaultAvatarHashes()).resolves.toEqual(['seeded-hash']);
+    await expect(ModelStorageService.bundledAvatarHashes()).resolves.toEqual(['seeded-hash']);
   });
 
   it('holds the bundled file’s hash after the seeded copy is gone', async () => {
     serve(new Blob(['bundled-bytes']));
     const imported = await ModelStorageService.addModel(new File([blob('bundled-bytes')], 'Renamed.vrm', { type: 'model/vrm' }));
 
-    await expect(ModelStorageService.defaultAvatarHashes()).resolves.toEqual([imported.data.hash]);
+    await expect(ModelStorageService.bundledAvatarHashes()).resolves.toEqual([imported.data.hash]);
   });
 
   it('holds both when an older build seeded a different file', async () => {
     serve(new Blob(['bundled-bytes']));
     await putRaw({ id: 'default-avatar', name: 'Default Avatar', data: { type: 'model/vrm', blob: blob(), size: 9, hash: 'old-build-hash' } });
 
-    const hashes = await ModelStorageService.defaultAvatarHashes();
+    const hashes = await ModelStorageService.bundledAvatarHashes();
 
     expect(hashes).toHaveLength(2);
     expect(hashes[0]).toBe('old-build-hash');
@@ -557,21 +557,21 @@ describe('defaultAvatarHashes', () => {
 
   it('reads the bundled file once per session', async () => {
     serve(new Blob(['bundled-bytes']));
-    await ModelStorageService.defaultAvatarHashes();
-    await ModelStorageService.defaultAvatarHashes();
+    await ModelStorageService.bundledAvatarHashes();
+    await ModelStorageService.bundledAvatarHashes();
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 
   it('reads the bundled file again after a failed read', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('offline')));
-    await expect(ModelStorageService.defaultAvatarHashes()).resolves.toEqual([]);
+    await expect(ModelStorageService.bundledAvatarHashes()).resolves.toEqual([]);
 
     serve(new Blob(['bundled-bytes']));
-    await expect(ModelStorageService.defaultAvatarHashes()).resolves.toHaveLength(1);
+    await expect(ModelStorageService.bundledAvatarHashes()).resolves.toHaveLength(1);
   });
 
   it('ignores a response that is not the file', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, blob: async () => new Blob(['<html>']) }));
-    await expect(ModelStorageService.defaultAvatarHashes()).resolves.toEqual([]);
+    await expect(ModelStorageService.bundledAvatarHashes()).resolves.toEqual([]);
   });
 });
