@@ -12,7 +12,9 @@ Community Creations has a related gap. The Permissive License gate never reads t
 
 ## Solution
 
-Elaina leaves release builds on every channel. A new model takes its place at the same path, so the release swap stays as it is. The model is one you build or one you pick from VRoid Hub, and it must pass the stricter gate.
+Elaina leaves release builds on every channel. A new model takes its place at the same path on the free channels, so the release swap stays as it is. The model is one you build or one you pick from VRoid Hub, and it must pass the stricter gate.
+
+The Steam build ships no bundled Avatar at all (Q18). Players bring their own, and Steam Workshop can supply them in a later effort.
 
 The Permissive License gate becomes fully permissive: if a file adds any restriction, it can't be published.
 
@@ -37,6 +39,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 | Q15 | The fix blocks every release. No new build on any channel ships Elaina. |
 | Q16 | A VRoid Hub model may replace the own-model route if it passes the gate and shows no sign of third-party characters or BOOTH parts. |
 | Q17 | The candidate is the maid model, built by script from its Hub file. The user accepted the prototype on 2026-11-02. This moves the key work in Q9 from the user to a script. |
+| Q18 | The Steam build ships no bundled VRM, because the paid build carries too much risk otherwise. Free channels keep a bundled model. New evidence: pixiv's sample conditions ban paid redistribution and character creation use. This narrows Q2, Q10, Q15 and Q17: Elaina still leaves every channel, and the candidate serves the free channels only. |
 
 **Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is.
 
@@ -46,6 +49,11 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - The user's check that the model reads as an adult in full-body view.
 - VRoid Hub's terms for downloaded models.
 - The default hair and eye colors.
+
+**Open, not blocking:**
+
+- Whether a sample-based Sugarscape Avatar ships on the free channels. A prototype works, but pixiv's character creation ban still applies there.
+- Whether the tracked default is a pixiv sample. Its author field says so, and no original copy was available to compare. It reaches only local dev and the free Pages build, where the character creation ban could still apply.
 
 ## User Stories
 
@@ -67,6 +75,10 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 16. As a player with an old library record, I want its license read again, so that the new checks judge its real terms and not missing fields.
 17. As a visitor to formamorph.ai, I want the landing page to show the Avatar the app ships, so that the page is accurate.
 18. As a developer, I want a test that reads the shipped model files, so that a restricted file fails the gates.
+19. As the owner, I want the Steam build to contain no VRM file, so that the paid product carries no sample or Hub model data.
+20. As a Steam player with an empty library, I want a clear empty state, so that I know to add my own Avatar.
+21. As a Steam player, I want to add a `.vrm` and use it, so that the 3D view still works for me.
+22. As a Steam player without an Avatar, I want to play every world, so that the missing model never blocks a game.
 
 ## Implementation Decisions
 
@@ -85,6 +97,15 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - **Keys:** each is a generated per-vertex offset, built from bone positions and skin weights. All `Body` primitives share one vertex buffer, so clothing moves with the same offsets. `Waist` peaks near 12 cm, `Bust` near 5.6 cm and `Thickness` near 3.6 cm.
 - **Waist limit:** the apron and skirt have few vertices, so at the top value the apron looks faceted and stands off the skirt. A cleaner result needs more mesh detail. The user accepted this file.
 - **Textures:** the Hub file's hair is flat black and its iris has no green or blue, so multiply tinting can't move them. The script writes a neutral mid-tone hair and an iris with all three channels above zero.
+
+**Steam build (Q18)**
+
+- No Steam build class exists yet. This effort adds the "no bundled Avatar" switch on the build class that the Steam effort will use.
+- The build must leave out every `.vrm`, including the tracked default that `public/` copies into a dist.
+- With no bundled file, these change: the viewer's default model URL, library seeding, the bundled hash check, and the rule that the library keeps at least one Avatar.
+- The Avatar surfaces get an empty state that leads to adding a `.vrm`. Games run without a model.
+- Saves and worlds that name the default Avatar id resolve to no model, with no error.
+- Store art and trailers may still show a model. pixiv's terms allow images and videos of models in games. Recheck this if a sample appears in them.
 
 **Tint code**
 
@@ -124,6 +145,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 2. The new model file. The user does this step.
 3. Client gate, license data and copy. The bundled-avatar test reads the alternate file, and Elaina fails the stricter gate, so this waits for step 2.
 4. Fingerprints, records, and the landing page recapture.
+5. The Steam switch and empty state. This doesn't depend on the model file.
 
 **Unchanged by ruling**
 
@@ -143,6 +165,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - **Stale license:** an old record is read again, and a current one isn't.
 - **Refusal copy:** each new identifier produces its own words, and a file with no VRM 1.0 metadata keeps the single sentence about format.
 - **Guards bite:** prove the shipped-file test by running it against the current Elaina file before the swap.
+- **Steam artifact:** a build test asserts the Steam output holds no `.vrm`. Prove it bites by leaving one in. Prior art: the bundle boundary test.
+- **Empty library:** the viewer, library and a game run with no Avatar and no error.
 - **By hand:** load the new file in Character Customization and confirm the sliders and colors with `verify-ui`.
 
 ## Out of Scope
@@ -152,7 +176,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - Migrating seeded library copies.
 - A listing sweep. The user removes the one Elaina listing by hand.
 - Restricting what players import for their own local play, or warning them about a model's flags.
-- Steam Workshop rules. Steam has no Community Creations, and Workshop is a separate effort.
+- Steam Workshop rules. Steam has no Community Creations, and Workshop is a separate effort. It is also how Steam players could get Avatars later.
+- Building the Steam build itself. This effort only adds its avatar switch.
 - Removing body sliders from the bundled model.
 - Other licensing findings from the Credits sweep.
 
@@ -174,6 +199,12 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - The risk applies to any model with VRoid preset content, which includes most Hub models.
 - New evidence reopens this ruling. A pixiv statement or a complaint would count.
 
+**pixiv sample conditions**
+
+- Allowed: for-profit use, and editing texture and parameters to make an original character, even for sale.
+- Prohibited: redistributing the VRM or its data for a fee, using sample data in a character creation service, and distributing it with CC0 terms.
+- Removing bundled models from the Steam build also likely takes Article 13 out of play there, because the app holds no VRoid data. This is an inference.
+
 **UNVERIFIED**
 
 - VRoid Hub's own terms for downloaded models. A browser read on 2026-11-02 was denied or failed, so they are still unread. Read them before the file lands.
@@ -189,3 +220,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - [VRoid Studio Guidelines](https://vroid.com/en/studio/guidelines)
 - [pixiv terms, VRoid Studio section](https://policies.pixiv.net/en.html#vroidstudio)
 - [VRoid sample model conditions](https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z)
+
+**Follow-up**
+
+- An old `readheadedit.vrm` has author `fierylion`, `personalProfit` commercial use, and `allowRedistribution: false`. The Steam checklist clears a file of that name as a pixiv sample. Whether this copy is what early releases shipped is unchecked.
