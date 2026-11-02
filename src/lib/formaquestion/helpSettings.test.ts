@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Tool } from '@/types';
 import { chatChrome, CHAT_STYLES, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, SAME_AS_SEARCH, helpSettingsCodec, helpSettingsOf } from './helpSettings';
@@ -46,20 +44,6 @@ describe('the default help settings', () => {
       scrimOpacity: 60,
       wikiConfirm: true,
     });
-  });
-});
-
-describe('the help session', () => {
-  const source = readFileSync(resolve(__dirname, 'helpSession.ts'), 'utf8');
-
-  it('takes the settings module as a type alone, so every value it reads comes from the question', () => {
-    const imports = [...source.matchAll(/^import (type )?\{[^}]*\} from '\.\/helpSettings';$/gm)];
-    expect(imports.map((match) => match[1])).toEqual(['type ']);
-    expect(source).not.toContain('DEFAULT_HELP_SETTINGS');
-  });
-
-  it('declares no source, lookup, history or cap constant of its own', () => {
-    expect(source).not.toMatch(/HELP_(LOOKUP_MODE|KEYWORD_SOURCE|AI_PICKS_SOURCE|SEMANTIC_SOURCE|HISTORY_EXCHANGES|MAX_TOKENS)\b/);
   });
 });
 

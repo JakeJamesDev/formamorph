@@ -28,35 +28,30 @@ export const touchedSince = (base) => (base.startsWith('@') ? listedFiles(base) 
   ...gitFiles('ls-files', '--others', '--exclude-standard'),
 ]);
 
-/** Tests whose result depends on files they don't import. The ticket test gate runs them every time. */
+/**
+ * Tests whose result depends on files they don't import. The ticket test gate runs them every time. A scan of one file
+ * at a time for a form to forbid belongs in ESLint; what stays here reads docs, CSS or worlds, needs many files at once, or pins what a file must say.
+ */
 export const ALWAYS_RUN = {
   'scripts/buildDecision.test.mjs': 'scans every tracked source file and glob import to keep the build skip set honest',
   'scripts/changelogFormat.test.mjs': 'reads docs/Changelog.md and runs scripts/extractReleaseNotes.mjs as a child process',
   'scripts/testSelection.test.mjs': 'scans every test and source file to keep these lists complete',
   'site/bundleBoundary.test.ts': 'scans the site and app sources for imports',
   'site/supporterTokens.test.ts': 'reads the app and site stylesheets',
-  'src/components/FullscreenShell.test.tsx': 'reads view sources and src/index.css',
   'src/components/formaquestion/searchNaming.test.ts': 'reads helpSpeaker.ts, helpSession.ts and three docs pages, which it does not import',
   'src/components/menu/WebVersionChangelog.test.tsx': 'reads src/index.css',
-  'src/components/menu/feedbackCapabilities.test.tsx': 'reads six feedback component sources for toast imports',
   'src/lib/aiRequest/localEngineImageDrop.test.ts': 'reads electron/llmEngine.cjs',
   'src/lib/bundledFingerprint.test.ts': 'scans src/defaultworlds and reads the shipped avatars',
   'src/lib/codeHighlight.test.ts': 'reads src/index.css',
-  'src/lib/docs/bundledDocsIndex.test.ts': 'scans src for the Docs Index loader',
-  'src/lib/elementIcons.test.ts': 'scans every src file for direct lucide-react imports',
-  'src/lib/formaquestion/helpSettings.test.ts': 'reads helpSession.ts, which it does not import',
   'src/lib/helpTopics.test.ts': 'checks that each help topic page exists in docs/',
   'src/lib/ownerTermGuard.test.ts': 'scans the docs, every src file and the e2e specs for bearer and holder',
-  'src/lib/personaReaders.test.ts': 'scans src/components/game sources',
+  'src/lib/personaReaders.test.ts': 'pins the lists GameViewer.tsx, GamePanels.tsx and liveScene.ts hand each reader',
   'src/lib/playerInputRename.test.ts': 'scans the docs, every src file, electron, site and the e2e specs for the retired call',
-  'src/lib/sandboxSnapshot.boundary.test.ts': 'scans every src file for an executor import',
-  'src/lib/scrollGuard.test.ts': 'scans every src file for native overflow scrollers',
   'src/lib/supporterTokens.test.ts': 'reads src/index.css',
   'src/lib/surface/surfaceReportChecks.test.ts': 'scans every src file for surface reports',
-  'src/lib/useResolvedWorld.playerName.test.tsx': 'reads src/views/GameViewer.tsx',
+  'src/lib/useResolvedWorld.playerName.test.tsx': 'pins how src/views/GameViewer.tsx calls resolveOpening',
   'src/lib/viewportSizing.test.ts': 'reads view sources and src/index.css',
   'src/lib/worldSearchLabels.test.ts': 'scans src/managers sources',
-  'src/managers/fieldLabels.test.ts': 'scans src/managers sources',
   'src/test/tokenCorpus.ts': 'scans every src file and bundled world for prompt tokens; selects promptTokenGrammar.test.ts',
 };
 

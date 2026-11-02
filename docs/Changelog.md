@@ -135,6 +135,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **`affectedTests`, `changedLint` and `buildGate` accept `@<file>` in place of a git base.** The file lists the paths to check, so a shared checkout can gate one session's files without a peer's edits.
   - **Tests and builds now run on Vitest 5 and Vite 8, and affected-test gates finish about a quarter faster.** Building from source now needs Node 24 or 22.12+.
   - **`npm run test:ledger` writes one record per test, with its time, coverage, failure history and a stale check.** Raw output stays untracked in the git folder, so every worktree reads the same ledger.
+  - **Eight source-scanning tests are now ESLint rules.** They leave the always-run test list, so every gate runs fewer tests, and a reintroduced problem fails lint on the file that holds it.
 
 #### ➖ Removed
 

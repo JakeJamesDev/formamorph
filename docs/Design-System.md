@@ -18,7 +18,7 @@ Use semantic values from the app. Do not sample colors from screenshots; HDR and
 | Borders and radius | [`src/index.css`](../src/index.css) | Use `border`, `input`, and `--radius`; use `h-hairline` or `w-hairline` for dividers. |
 | Spacing | Production component classes | Compose the existing 4-unit rhythm: 1rem between rows and 1.5rem between sections in settings surfaces. |
 | Focus | Production controls in [`src/components/ui`](../src/components/ui) | Keep the shared two-pixel inset `ring` treatment. Do not replace it with a palette-specific outline. |
-| Element icons | [`src/lib/elementIcons.ts`](../src/lib/elementIcons.ts) | Read the icon for a world element type from `ELEMENT_ICONS`. Never import it from `lucide-react`. One type wears one icon on every surface. `elementIcons.test.ts` fails on a direct import of a mapped icon. |
+| Element icons | [`src/lib/elementIcons.ts`](../src/lib/elementIcons.ts) | Read the icon for a world element type from `ELEMENT_ICONS`. Never import it from `lucide-react`. One type wears one icon on every surface. The `formamorph/element-icon-import` lint rule fails on a direct import of a mapped icon. |
 
 Cards use `card` rather than inventing a second panel color. Destructive, success, warning, and information states keep their semantic colors across palettes.
 
@@ -813,7 +813,7 @@ The [scrollbar and list inventory](../docs-internal/designs/design-system/rich-l
 
 ### Scroll guard
 
-A test, [`scrollGuard.test.ts`](../src/lib/scrollGuard.test.ts), fails when a source file under `src` holds a native overflow scroller (`overflow-auto`, `overflow-y-auto`, `overflow-x-auto`, `overflow-scroll`, or the inline style). The file passes only when it carries one allow comment. Importing `ScrollArea` exempts nothing, so a file that mixes both needs the comment too. The check works per file, so one comment covers every native scroller in that file. Put the comment on its own line. The end of the file keeps it clear of other edits:
+A lint rule, [`formamorph/no-native-scroller`](../eslint.no-native-scroller.js), fails when a source file under `src` holds a native overflow scroller (`overflow-auto`, `overflow-y-auto`, `overflow-x-auto`, `overflow-scroll`, or the inline style). The file passes only when it carries one allow comment. Importing `ScrollArea` exempts nothing, so a file that mixes both needs the comment too. The check works per file, so one comment covers every native scroller in that file. Put the comment on its own line. The end of the file keeps it clear of other edits:
 
 ```ts
 // scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input

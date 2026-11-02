@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MyFeedbackSection } from './MyFeedbackSection';
@@ -182,16 +181,5 @@ describe('the unread badge', () => {
     renderUnread(WEBSITE_FEEDBACK_CAPABILITIES);
     expect(await screen.findByText('Darker map tiles')).toBeTruthy();
     expect(screen.queryByLabelText('New replies')).toBeNull();
-  });
-});
-
-describe('the reused components', () => {
-  const REUSED = [
-    'MyFeedbackSection', 'MyFeedbackTab', 'FeedbackList', 'FeedbackThreadView', 'FeedbackDialog', 'FeedbackEditDialog',
-  ];
-
-  it.each(REUSED)('%s imports no toast library', (name) => {
-    const source = readFileSync(`src/components/menu/${name}.tsx`, 'utf-8');
-    expect(source).not.toMatch(/from ["'](react-toastify|@\/lib\/linkToast|@\/lib\/feedbackToast)["']/);
   });
 });

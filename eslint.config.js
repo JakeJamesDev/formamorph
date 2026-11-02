@@ -6,8 +6,14 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import tsdoc from 'eslint-plugin-tsdoc'
 import { composedForwardRefRule } from './eslint.composed-forwardref.js'
+import { elementIconImportRule } from './eslint.element-icon-import.js'
+import { fieldCaptionPropRule } from './eslint.field-caption-prop.js'
+import { moduleBoundaryRule } from './eslint.module-boundary.js'
+import { noNativeScrollerRule } from './eslint.no-native-scroller.js'
 import { noNativeTitleRule } from './eslint.no-native-title.js'
 import { noPinnedCommitRule } from './eslint.no-pinned-commit.js'
+import { noRawEntityListRule } from './eslint.no-raw-entity-list.js'
+import { sourceContractRule } from './eslint.source-contract.js'
 
 // Raw Tailwind size utilities say how big text is, never what it is — so `text-xs` reads the same on a
 // hint and on a deliberately compact control, and the two can't be told apart or retuned separately.
@@ -31,10 +37,27 @@ const noRawTextSize = [
 const formamorph = {
   rules: {
     'composed-forwardref': composedForwardRefRule,
+    'element-icon-import': elementIconImportRule,
+    'field-caption-prop': fieldCaptionPropRule,
+    'module-boundary': moduleBoundaryRule,
+    'no-native-scroller': noNativeScrollerRule,
     'no-native-title': noNativeTitleRule,
     'no-pinned-commit': noPinnedCommitRule,
+    'no-raw-entity-list': noRawEntityListRule,
+    'source-contract': sourceContractRule,
   },
 }
+
+const TESTS = ['**/*.test.{ts,tsx}']
+
+/** A file's contract with the full-screen window: every surface shares one header, close button and animation. */
+const fullScreenContract = (files, options) => ({
+  files,
+  plugins: { formamorph },
+  rules: {
+    'formamorph/source-contract': ['error', { ...options, reason: 'every full-screen surface goes through the shared shell.' }],
+  },
+})
 
 export default tseslint.config(
   // 'out' is the Cloudflare Pages upload root the deploy assembles: a copy of dist beside the site.
@@ -113,6 +136,72 @@ export default tseslint.config(
     plugins: { formamorph },
     rules: { 'formamorph/no-pinned-commit': 'error' },
   },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: TESTS,
+    plugins: { formamorph },
+    rules: {
+      'formamorph/no-native-scroller': 'error',
+      'formamorph/element-icon-import': 'error',
+      'formamorph/module-boundary': [
+        'error',
+        {
+          module: 'statCodeExecutor',
+          names: ['executeStatCode'],
+          except: ['lib/sandboxSnapshot.ts', 'lib/statCodeExecutor.ts', 'test/'],
+          reason: "only the Sandbox Snapshot calls the executor, so no caller assembles a Script's world its own way.",
+        },
+        {
+          module: 'bundledDocsIndex',
+          dynamicOnly: ['lib/docs/loadDocsIndex.ts'],
+          reason: 'only loadDocsIndex names it, through a dynamic import, which keeps the docs out of the start chunk.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/views/GameViewer.tsx', 'src/components/game/**/*.{ts,tsx}'],
+    ignores: TESTS,
+    plugins: { formamorph },
+    rules: { 'formamorph/no-raw-entity-list': 'error' },
+  },
+  {
+    files: ['src/managers/*.tsx'],
+    ignores: TESTS,
+    plugins: { formamorph },
+    rules: { 'formamorph/field-caption-prop': 'error' },
+  },
+  {
+    // The site reuses these components, so they report through their notify prop, never a toast library.
+    files: ['src/components/menu/{MyFeedbackSection,MyFeedbackTab,FeedbackList,FeedbackThreadView,FeedbackDialog,FeedbackEditDialog}.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', 'react-toastify', '@/lib/linkToast', '@/lib/feedbackToast'],
+    },
+  },
+  {
+    files: ['src/lib/formaquestion/helpSession.ts'],
+    plugins: { formamorph },
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', { patterns: [{ regex: '/helpSettings$', allowTypeImports: true }] }],
+      'formamorph/source-contract': [
+        'error',
+        {
+          forbids: ['DEFAULT_HELP_SETTINGS', 'HELP_LOOKUP_MODE', 'HELP_KEYWORD_SOURCE', 'HELP_AI_PICKS_SOURCE', 'HELP_SEMANTIC_SOURCE', 'HELP_HISTORY_EXCHANGES', 'HELP_MAX_TOKENS'],
+          reason: 'every value the help session reads comes from the question.',
+        },
+      ],
+    },
+  },
+  fullScreenContract(['src/components/prompt/CodeArea.tsx', 'src/components/prompt/PromptField.tsx', 'src/components/PanelShell.tsx'], {
+    renders: ['FullscreenShell'],
+    forbids: ['dialogFullHeight'],
+  }),
+  fullScreenContract(['src/components/modals/SettingsModal.tsx', 'src/components/formaquestion/FormaquestionPromptsTab.tsx', 'src/components/formaquestion/FormaquestionMascotTab.tsx'], {
+    renders: ['PanelShell'],
+    forbids: ['FullscreenShell', 'dialogFullHeight'],
+  }),
+  // Its footer holds the save, so a raised overlay would cover it. It resizes in place on the same animation.
+  fullScreenContract(['src/components/modals/EditTextModal.tsx'], { requires: ['useMorphResize', 'hideClose'] }),
   {
     // animate-ui's registry source, copied as is. Its icons take `ref` as a React 19 prop and spread it on
     // the svg, and its `<style precedence>` is a React 19 resource prop.
