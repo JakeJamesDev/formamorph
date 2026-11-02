@@ -70,7 +70,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
           icon={shownIconOf(viewing)}
           image={imageOf(viewing)}
           description={resolveText(viewingItem ? copyFace(viewingItem, viewing).description ?? '' : '')}
-          facts={[...copyFacts(viewing, viewingItem), ...copyWorthFacts(viewing, viewingItem, data?.currencies ?? [], resolveText)]}
+          facts={[...copyFacts(viewing, viewingItem), ...copyWorthFacts(viewing, viewingItem, data?.currencies ?? [], resolveText, data?.items ?? [])]}
           isOpen
           onOpenChange={(open) => { if (!open) setViewingId(null); }}
         />

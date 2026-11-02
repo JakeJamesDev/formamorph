@@ -1,4 +1,4 @@
-import { isUnidentified } from '@/lib/items';
+import { isUnidentified, itemStackable } from '@/lib/items';
 import { canBePlayer } from '@/lib/owners';
 import { globalStatsOf, resolvedEntityStats, statBlueprintIds, type StatLinkWorld } from '@/lib/statLinks';
 import type { Currency, CurrencyBacking, CurrencyCoin, Entity, Item, ItemCopy, Stat } from '@/types';
@@ -28,21 +28,106 @@ export const parseCurrencies = (raw: unknown): Currency[] => (Array.isArray(raw)
 export const currencyOf = (item: Pick<Item, 'currencyId'>, currencies: readonly Currency[]): Currency | undefined =>
   (item.currencyId === undefined ? undefined : currencies.find((currency) => currency.id === item.currencyId));
 
-/** What `item` is worth as text, such as "40 Gold". Null without a Value and a Currency. */
-export const worthText = (item: Pick<Item, 'value' | 'currencyId'>, currencies: readonly Currency[]): string | null => {
+type ItemName = Pick<Item, 'id' | 'name'>;
+
+/** One coin's share of a value, or one Value field: the coin's item, its name, and how many. */
+export interface CoinAmount {
+  itemId: string;
+  name: string;
+  worth: number;
+  count: number;
+}
+
+const isWholeValue = (value: number): boolean => Number.isInteger(value) && value >= 0;
+
+/** The coin rows of `currency`, in author order. Empty for any other backing. */
+export const coinsOf = (currency: Currency): readonly CurrencyCoin[] => (currency.backing.kind === 'coins' ? currency.backing.coins : []);
+
+/** The rows of `currency` whose item exists, largest worth first. Empty for any other backing. */
+const usableCoins = (currency: Currency, items: readonly ItemName[]): Omit<CoinAmount, 'count'>[] =>
+  coinsOf(currency)
+    .flatMap((coin) => {
+      const item = items.find((other) => other.id === coin.itemId);
+      return item ? [{ itemId: coin.itemId, name: item.name, worth: coin.worth }] : [];
+    })
+    .sort((a, b) => b.worth - a.worth);
+
+/**
+ * `value` in base units as one count per coin, largest first, zero counts kept. Null when it cannot read as
+ * coins: a Currency with no coins, a value that is not a whole number from zero, or no usable coin worth 1.
+ */
+export function coinFields(value: number, currency: Currency, items: readonly ItemName[]): CoinAmount[] | null {
+  const coins = usableCoins(currency, items);
+  if (!isWholeValue(value) || coins[coins.length - 1]?.worth !== 1) return null;
+  let rest = value;
+  return coins.map((coin) => {
+    const count = Math.floor(rest / coin.worth);
+    rest -= count * coin.worth;
+    return { ...coin, count };
+  });
+}
+
+/** The coins that make `value`, largest first, zero counts left out. Zero reads as none of the smallest coin. Null as `coinFields`. */
+export function breakdown(value: number, currency: Currency, items: readonly ItemName[]): CoinAmount[] | null {
+  const fields = coinFields(value, currency, items);
+  if (!fields) return null;
+  const held = fields.filter((coin) => coin.count > 0);
+  return held.length > 0 ? held : fields.slice(-1);
+}
+
+/** The Value stored for the counts of `fields`, in base units. */
+export const valueOfCoins = (fields: readonly Pick<CoinAmount, 'worth' | 'count'>[]): number =>
+  fields.reduce((sum, coin) => sum + coin.worth * coin.count, 0);
+
+/** The Breakdown as text, such as "1 Gold, 5 Copper". Null when `value` has no Breakdown. */
+export function breakdownText(value: number, currency: Currency, items: readonly ItemName[]): string | null {
+  const coins = breakdown(value, currency, items);
+  return coins && coins.map((coin) => `${coin.count} ${coin.name}`).join(', ');
+}
+
+/** What `item` is worth as text, such as "40 Gold" or "1 Gold, 5 Copper". Null without a Value and a Currency. */
+export const worthText = (item: Pick<Item, 'value' | 'currencyId'>, currencies: readonly Currency[], items: readonly ItemName[]): string | null => {
   const currency = currencyOf(item, currencies);
-  return currency && item.value !== undefined ? `${item.value} ${currency.name}` : null;
+  if (!currency || item.value === undefined) return null;
+  return breakdownText(item.value, currency, items) ?? `${item.value} ${currency.name}`;
 };
 
 /** The worth an Item Copy shows the player. An unidentified copy shows none, because a price can reveal the item. */
-export const copyWorthText = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[]): string | null =>
-  (item && !isUnidentified(copy) ? worthText(item, currencies) : null);
+export const copyWorthText = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[], items: readonly ItemName[]): string | null =>
+  (item && !isUnidentified(copy) ? worthText(item, currencies, items) : null);
 
 /** The item popup's worth fact, when the copy shows one. */
-export const copyWorthFacts = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[], resolveText: (text: string) => string): string[] => {
-  const worth = copyWorthText(copy, item, currencies);
+export const copyWorthFacts = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, 'value' | 'currencyId'> | undefined, currencies: readonly Currency[], resolveText: (text: string) => string, items: readonly ItemName[]): string[] => {
+  const worth = copyWorthText(copy, item, currencies, items);
   return worth ? [`Worth ${resolveText(worth)}`] : [];
 };
+
+/** Items a coin row can take: Stackable, and no coin of any Currency yet. `keep` always stays, so a row lists its own item. */
+export const coinItemChoices = (items: readonly Item[], currencies: readonly Currency[], keep?: string): Item[] => {
+  const taken = new Set(currencies.flatMap((currency) => coinsOf(currency).map((coin) => coin.itemId)));
+  return items.filter((item) => item.id === keep || (itemStackable(item) && !taken.has(item.id)));
+};
+
+/** `coins` plus a row for `itemId`. It takes worth 1 when no row has it, else ten times the largest worth. */
+export const addCoin = (coins: readonly CurrencyCoin[], itemId: string, items: readonly ItemName[]): CurrencyCoin[] => [
+  ...coins,
+  { itemId, worth: lacksBaseCoin(coins, items) ? 1 : Math.max(...coins.map((coin) => coin.worth)) * 10 },
+];
+
+/**
+ * `coins` with row `index` set to `worth`, or null when that breaks a rule: a whole number above zero, no
+ * worth twice, and the only worth-1 row keeps its worth.
+ */
+export function setCoinWorth(coins: readonly CurrencyCoin[], index: number, worth: number): CurrencyCoin[] | null {
+  if (!Number.isInteger(worth) || worth < 1 || index < 0 || index >= coins.length) return null;
+  if (coins.some((coin, at) => at !== index && coin.worth === worth)) return null;
+  if (coins[index].worth === 1 && worth !== 1) return null;
+  return coins.map((coin, at) => (at === index ? { ...coin, worth } : coin));
+}
+
+/** True when no row worth 1 has an item, so no value has a Breakdown. */
+export const lacksBaseCoin = (coins: readonly CurrencyCoin[], items: readonly ItemName[]): boolean =>
+  !coins.some((coin) => coin.worth === 1 && items.some((item) => item.id === coin.itemId));
 
 /** A new item's Currency: the Default, the world's first. */
 export const defaultCurrencyPatch = (currencies: readonly Currency[]): Pick<Item, 'currencyId'> =>

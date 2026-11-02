@@ -230,14 +230,14 @@ export const playerItemId = (copy: ItemCopy): string => (copy.item.kind === 'run
 
 /** The item a copy is of as the player knows it, with its player text; undefined when the item is gone. */
 function copiedItem(
-  copy: ItemCopy, authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>, currencies: readonly Currency[],
+  copy: ItemCopy, authored: ReadonlyMap<string, Item>, runtime: ReadonlyMap<string, RuntimeItem>, currencies: readonly Currency[], items: readonly Item[],
 ): { id: string; name: string; text?: string; worth?: string } | undefined {
   const ref = copy.item;
   if (ref.kind === 'item') {
     const item = authored.get(ref.itemId);
     if (!item) return undefined;
     const face = copyFace(item, copy);
-    const worth = copyWorthText(copy, item, currencies);
+    const worth = copyWorthText(copy, item, currencies, items);
     return { id: playerItemId(copy), name: face.name, text: face.description, ...(worth && { worth }) };
   }
   // A runtime item's description is text the AI wrote in play, which counts as player text.
@@ -255,7 +255,7 @@ function viewItems(input: PlayerViewInput): PlayerViewItem[] {
     for (const item of snapshot.runtimeItems ?? []) runtime.set(item.id, item);
     for (const copy of snapshot.itemCopies ?? []) {
       if (!metCopy(copy, snapshot)) continue;
-      const item = copiedItem(copy, authored, runtime, input.world.currencies ?? []);
+      const item = copiedItem(copy, authored, runtime, input.world.currencies ?? [], input.world.items ?? []);
       if (!item) continue;
       const key = `${copy.item.kind}:${item.id}`;
       const row = met.get(key);

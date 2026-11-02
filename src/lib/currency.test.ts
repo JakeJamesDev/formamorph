@@ -45,22 +45,22 @@ describe('worth', () => {
   const currencies = [STAT_CURRENCY, NAME_CURRENCY];
 
   it('reads the Value with the Currency name', () => {
-    expect(worthText({ value: 40, currencyId: 'credits' }, currencies)).toBe('40 Credits');
-    expect(worthText({ value: 0, currencyId: 'goats' }, currencies)).toBe('0 Goats');
+    expect(worthText({ value: 40, currencyId: 'credits' }, currencies, [])).toBe('40 Credits');
+    expect(worthText({ value: 0, currencyId: 'goats' }, currencies, [])).toBe('0 Goats');
   });
 
   it('is nothing without a Value, without a Currency, or with a Currency that is gone', () => {
-    expect(worthText({ currencyId: 'credits' }, currencies)).toBeNull();
-    expect(worthText({ value: 40 }, currencies)).toBeNull();
-    expect(worthText({ value: 40, currencyId: 'gone' }, currencies)).toBeNull();
+    expect(worthText({ currencyId: 'credits' }, currencies, [])).toBeNull();
+    expect(worthText({ value: 40 }, currencies, [])).toBeNull();
+    expect(worthText({ value: 40, currencyId: 'gone' }, currencies, [])).toBeNull();
     expect(currencyOf({ currencyId: 'gone' }, currencies)).toBeUndefined();
   });
 
   it('stays off an unidentified copy', () => {
     const item = { value: 40, currencyId: 'credits' };
-    expect(copyWorthText({}, item, currencies)).toBe('40 Credits');
-    expect(copyWorthText({ state: { unidentified: true } }, item, currencies)).toBeNull();
-    expect(copyWorthText({}, undefined, currencies)).toBeNull();
+    expect(copyWorthText({}, item, currencies, [])).toBe('40 Credits');
+    expect(copyWorthText({ state: { unidentified: true } }, item, currencies, [])).toBeNull();
+    expect(copyWorthText({}, undefined, currencies, [])).toBeNull();
   });
 });
 
