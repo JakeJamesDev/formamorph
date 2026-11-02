@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
 import { OwnerFlyoutReference } from '@/components/design-system/OwnerFlyoutReference';
 import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
+import { ItemIconPickerReference } from '@/components/design-system/ItemIconPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
@@ -411,6 +412,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Breadcrumb Picker',
     description: 'Searchable single-select popover over world content',
     Component: BreadcrumbPickerReference,
+  },
+  {
+    id: 'icon-grid-picker',
+    label: 'Icon Grid Picker',
+    description: 'Searchable popover grid of item icons',
+    Component: ItemIconPickerReference,
   },
   {
     id: 'travel-hints',

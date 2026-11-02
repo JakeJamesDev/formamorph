@@ -1,4 +1,5 @@
 import catalog from '@/data/itemIcons.json';
+import type { Item, Slot } from '@/types';
 
 /** One icon of the catalog. `id` is ours, never the art's name. `body` is the SVG inside a 512 viewBox. */
 export interface ItemIconEntry {
@@ -68,7 +69,23 @@ function iconFromSlots(slotNames: readonly string[]): string | undefined {
 export const deriveItemIcon = (name: string, slotNames: readonly string[]): string =>
   iconFromName(name) ?? iconFromSlots(slotNames) ?? GENERIC_ITEM_ICON;
 
+/** The names of an item's slots in its rule's order, read through `readText`. A slot gone from the world drops out. */
+export const itemSlotNames = (item: Pick<Item, 'slotRule'> | undefined, slots: readonly Slot[], readText: (text: string) => string): string[] =>
+  (item?.slotRule?.slotIds ?? []).flatMap((id) => {
+    const slot = slots.find((s) => s.id === id);
+    return slot ? [readText(slot.name)] : [];
+  });
+
 export const itemIconById = (id: string): ItemIconEntry | undefined => BY_ID.get(id);
+
+/** The name an author reads for an icon: its first word in Title Case. */
+export const itemIconName = ({ words: [word] }: ItemIconEntry): string => word.charAt(0).toUpperCase() + word.slice(1);
+
+/** The icons with a word starting with each term of `search`, in catalog order. */
+export function searchItemIcons(search: string): readonly ItemIconEntry[] {
+  const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+  return ITEM_ICONS.filter((icon) => terms.every((term) => icon.words.some((word) => word.startsWith(term))));
+}
 
 /** What an Item Copy shows on the doll and in rows. */
 export type ShownItemIcon = { kind: 'icon'; id: string } | { kind: 'image'; src: string } | { kind: 'nothing' };

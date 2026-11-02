@@ -90,6 +90,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A Custom Image Backdrop has an Opacity slider.** Fade a bright image in the Body Layout editor and on the Inventory doll. It starts at 100%.
     - **Inventory doll boxes, Carried rows and Here rows show item icons instead of long names or images.** Each icon comes from the item's name, then its slot. Item images leave the doll and rows by default, and still show in the item's dialog.
     - **The Inventory panel lists equipped items beside the doll, each with a one-click Unequip button.** Each row shows the item's icon, name and slots. Select a row to read the item's full name. A figure wider than tall sits above the list.
+    - **An item's Icon field in the World Editor picks what the Inventory tab shows for it.** Auto gives an icon from the name. Search the grid for a specific icon, or pick None to bring back the item's image.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
   - **The game's Send and Stop buttons are now narrower on larger screens, leaving more room to type.**

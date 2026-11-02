@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GENERIC_ITEM_ICON, ITEM_ICONS, ITEM_ICON_AUTHORS, ITEM_ICON_NONE, deriveItemIcon, itemIconById, resolveItemIcon } from './itemIcons';
+import { GENERIC_ITEM_ICON, ITEM_ICONS, ITEM_ICON_AUTHORS, ITEM_ICON_NONE, deriveItemIcon, itemIconById, itemIconName, resolveItemIcon, searchItemIcons } from './itemIcons';
 
 const IMAGE = 'data:image/png;base64,AAAA';
 const icon = (id: string) => ({ kind: 'icon', id });
@@ -141,6 +141,38 @@ describe('the catalog', () => {
 
   it('holds the generic icon', () => {
     expect(itemIconById(GENERIC_ITEM_ICON)).toBeDefined();
+  });
+});
+
+describe('searchItemIcons', () => {
+  const ids = (search: string) => searchItemIcons(search).map((i) => i.id);
+
+  it('finds an icon by any catalog word, not only its name', () => {
+    expect(ids('blade')).toContain('sword');
+    expect(ids('BLADE')).toContain('sword');
+    expect(ids('dag')).toEqual(['dagger']);
+  });
+
+  it('needs every term to match', () => {
+    expect(ids('sword dagger')).toEqual([]);
+    expect(ids('sword zzz')).toEqual([]);
+  });
+
+  it('lists the whole catalog in order for an empty search', () => {
+    expect(ids('  ')).toEqual(ITEM_ICONS.map((i) => i.id));
+  });
+
+  it('returns nothing for a word no icon has', () => {
+    expect(ids('zzzzz')).toEqual([]);
+  });
+});
+
+describe('itemIconName', () => {
+  it('reads the first word in Title Case, also for an id that means nothing to an author', () => {
+    const name = (id: string) => itemIconName(itemIconById(id)!);
+    expect(name('sword')).toBe('Sword');
+    expect(name(GENERIC_ITEM_ICON)).toBe('Bag');
+    expect(name('instrument')).toBe('Lute');
   });
 });
 
