@@ -1,7 +1,11 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useSettings } from '@/contexts/SettingsContext';
 import { useEndpointReachable, type ReachabilityTarget } from '@/lib/useEndpointReachable';
 import type { EndpointProbe } from '@/lib/useAiReachable';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
 import { isHostedChatUrl } from '@/lib/hostedAi/hostedUrls';
+import type { HostedPresetState } from '@/lib/hostedAi/refusals';
 
 /**
  * One probe outcome as a dot, a line and Recheck. `unknownModel` is a reachable server that can't serve the
@@ -51,13 +55,48 @@ export function RecheckButton({ onClick, disabled, children }: { onClick: () => 
   );
 }
 
+/** A read's outcome as a probe's. Null where nothing was read; every refusal still means the server answered. */
+function hostedProbe(state: HostedPresetState, read: boolean): EndpointProbe | null {
+  if (state === 'signed-out' || !read) return null;
+  return state === 'unavailable' ? 'unreachable' : 'ok';
+}
+
+/** Formamorph AI's badge, from a read of the hosted state, which spends no allowance. `state` overrides the live one. */
+export function HostedReachabilityBadge({ state }: { state?: HostedPresetState }) {
+  const { hostedAi, refreshHostedState } = useSettings();
+  const mounted = useMountedRef();
+  const unread = hostedAi.readCount === 0;
+  const [checking, setChecking] = useState(!state && unread);
+  const recheck = useCallback(() => {
+    setChecking(true);
+    void refreshHostedState().finally(() => { if (mounted.current) setChecking(false); });
+  }, [refreshHostedState, mounted]);
+
+  // Reads once per session, as a probe does; only Recheck reads again.
+  useEffect(() => {
+    if (!state && unread) recheck();
+  }, [state, unread, recheck]);
+
+  return (
+    <EndpointReachabilityView
+      status={state ? hostedProbe(state, true) : hostedProbe(hostedAi.presetState, !unread)}
+      checking={checking}
+      model=""
+      onRecheck={recheck}
+    />
+  );
+}
+
+function ProbedReachabilityBadge({ target }: { target: ReachabilityTarget }) {
+  const { status, checking, recheck } = useEndpointReachable(
+    target.url, target.apiToken, target.model, target.enabled, target.provider ?? 'text',
+  );
+  if (!target.enabled) return null;
+  return <EndpointReachabilityView status={status} checking={checking} model={target.model} onRecheck={recheck} />;
+}
+
 /** Whether one named endpoint is actually answering. A disabled target draws nothing and sends no probe. */
 export function EndpointReachabilityBadge({ target }: { target: ReachabilityTarget }) {
-  // Formamorph AI reports its own state instead.
-  const enabled = target.enabled && !((target.provider ?? 'text') === 'text' && isHostedChatUrl(target.url));
-  const { status, checking, recheck } = useEndpointReachable(
-    target.url, target.apiToken, target.model, enabled, target.provider ?? 'text',
-  );
-  if (!enabled) return null;
-  return <EndpointReachabilityView status={status} checking={checking} model={target.model} onRecheck={recheck} />;
+  if (target.enabled && (target.provider ?? 'text') === 'text' && isHostedChatUrl(target.url)) return <HostedReachabilityBadge />;
+  return <ProbedReachabilityBadge target={target} />;
 }
