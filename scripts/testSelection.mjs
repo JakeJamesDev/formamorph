@@ -22,9 +22,9 @@ export const changedSince = (base) => (base.startsWith('@') ? listedFiles(base).
   ...gitFiles('ls-files', '--others', '--exclude-standard'),
 ]);
 
-/** `changedSince` with deleted files kept. */
+/** `changedSince` with deleted files kept, a renamed file's old path among them. */
 export const touchedSince = (base) => (base.startsWith('@') ? listedFiles(base) : [
-  ...gitFiles('diff', '--name-only', base),
+  ...gitFiles('diff', '--name-only', '--no-renames', base),
   ...gitFiles('ls-files', '--others', '--exclude-standard'),
 ]);
 
@@ -36,7 +36,7 @@ export const ALWAYS_RUN = {
   'site/bundleBoundary.test.ts': 'scans the site and app sources for imports',
   'site/supporterTokens.test.ts': 'reads the app and site stylesheets',
   'src/components/FullscreenShell.test.tsx': 'reads view sources and src/index.css',
-  'src/components/formaquestion/searchNaming.test.ts': 'reads AskParts.tsx, helpSession.ts and three docs pages, which it does not import',
+  'src/components/formaquestion/searchNaming.test.ts': 'reads helpSpeaker.ts, helpSession.ts and three docs pages, which it does not import',
   'src/components/menu/WebVersionChangelog.test.tsx': 'reads src/index.css',
   'src/components/menu/feedbackCapabilities.test.tsx': 'reads six feedback component sources for toast imports',
   'src/lib/aiRequest/localEngineImageDrop.test.ts': 'reads electron/llmEngine.cjs',
@@ -68,14 +68,12 @@ export const GRAPH_COVERED = {
   'scripts/typecheck.test.mjs': 'reads only its own temp folder',
   'scripts/slowTestReporter.mjs': 'reads only its timing cache in node_modules/.cache',
   'scripts/versionSiteImages.test.mjs': 'reads only its own temp folder',
-  'scripts/fetchLlamaServer.test.mjs': 'reads its recorded asset list and its own temp folders',
   'scripts/moveReach.test.mjs':'reads its own temp folder and walks src/lib/uuid.ts, whose closure it never asserts',
   'testing/baseline/harness/planning-parser-probe.test.ts': 'reads files only under PARSER_PROBE=1',
   'src/test/bundledRevisions.ts': 'reads the worlds from fixed commits, which no change alters',
   'electron/modelDownload.cjs': 'reads only the paths its caller passes',
   'electron/modelMove.cjs': 'reads only the paths its caller passes',
   'electron/modelScan.cjs': 'reads only the paths its caller passes',
-  'scripts/fetchLlamaServer.mjs': 'reads only llamaServerPin.json and the folders its caller passes',
   'electron/llmEngine.cjs': 'writes and reads only its work folder under the root its caller passes',
   'electron/llamaServer.cjs': 'checks only for the bundled binary, which tests replace',
   'electron/llmEngine.test.mjs': 'reads only its own temp folder',
@@ -142,12 +140,17 @@ export const PATH_TRIGGERS = {
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
   // The fake llama-server replays the run recorded at the pinned tag; the stream parser test reads the same files.
   'electron/fixtures/llama-server/*.json': ['electron/fakeLlamaServer.mjs', 'src/lib/aiRequest/aiStream.llamaServer.test.ts'],
-  'scripts/llamaServerPin.json': ['electron/fakeLlamaServer.mjs'],
+  'scripts/llamaServerPin.json': ['electron/fakeLlamaServer.mjs', 'scripts/fetchLlamaServer.mjs'],
+  'scripts/fixtures/llamaServerAssets.*.json': ['scripts/fetchLlamaServer.test.mjs'],
   // The pin load test runs the generator as a child process.
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
-  'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts'],
-  'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
-  'build-assets/praline-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts'],
+  // The notices test checks that each avatar file the notices name exists.
+  'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts', 'scripts/shipNotices.test.ts'],
+  'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'scripts/shipNotices.test.ts'],
+  'build-assets/praline-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts', 'scripts/shipNotices.test.ts'],
+  // The notices test reads this config and, through the real root, this map.
+  'vite.site.config.js': ['scripts/shipNotices.test.ts'],
+  'legal/notices-map.json': ['scripts/shipNotices.test.ts'],
   'package-lock.json': ['src/components/ui/radixSingleCopy.test.ts'],
   '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
   '.github/workflows/release.yml': ['scripts/bundledAvatarCheck.test.mjs'],

@@ -2,8 +2,8 @@
 // Ticket test gate: runs the tests a change since <base> can affect. `--list` prints the related paths instead;
 // `--project <name>` runs only that vitest project's share.
 // Usage: node scripts/affectedTests.mjs <base> [--list | --project <name>]
-import { readFileSync } from 'node:fs';
-import { MAX_ARGS_LENGTH, changedSince, gateOptions, gitFiles, relatedFiles, requirersOf } from './testSelection.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { MAX_ARGS_LENGTH, gateOptions, gitFiles, relatedFiles, requirersOf, touchedSince } from './testSelection.mjs';
 import { runTests } from './runTests.mjs';
 
 const [base, ...rest] = process.argv.slice(2);
@@ -13,8 +13,9 @@ if (!base || !options) {
   process.exit(2);
 }
 
-const changed = changedSince(base);
-const cjs = Object.fromEntries(gitFiles('ls-files', '--', '*.cjs').map((file) => [file, readFileSync(file, 'utf8')]));
+// Deleted files count: removing a doc or a world fires its path triggers, and vitest ignores a path that is gone.
+const changed = touchedSince(base);
+const cjs = Object.fromEntries(gitFiles('ls-files', '--', '*.cjs').filter((file) => existsSync(file)).map((file) => [file, readFileSync(file, 'utf8')]));
 const related = relatedFiles(changed, requirersOf(cjs));
 
 if (options.list) {

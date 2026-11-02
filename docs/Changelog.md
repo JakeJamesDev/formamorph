@@ -196,6 +196,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Script Test Runs, Tools and the Test Bench now read `met` with the full start rule.** A stranger tied to the persona by a relationship or a Known In pick reads met, as in play.
   - **CI tests run through the logged runner, and every timeout rerun leaves a record.** A timeout beside an unhandled error stays red, and pinned commits live in one list that CI fetches.
   - **The third-party notices file now lists what every build ships, and a build fails when it is out of date.** `npm run gen-notices` rewrites the package list. The account site ships the file and links it from its footer.
+  - **The affected-test gate now runs a path trigger's tests when a matching file is deleted or renamed away.** Six files that tests read by path also gained triggers: the llama-server asset list, three avatars, the site config and the notices map.
 
 ---
 
