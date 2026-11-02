@@ -25,7 +25,7 @@ Rulings: Q8, Q15.
 - [x] The tab works on the dev route and from a production build served locally. The desktop path `app://local` and the APK web root are checked by reading how each serves `dist/`, or by running them. (dev route and `preview-dist` both showed 373 rows; `electron/main.cjs` maps `app://local/<path>` to `dist/<path>`; `capacitor.config.ts` has `webDir: 'dist'`; neither was run)
 - [x] The How to Play topic names the tab. (`docs/How-to-Play.md`, Credits topic)
 - [x] A changelog fragment is added. (`docs-internal/changelog.d/credits-04-licenses-tab.md`)
-- [x] Frames at 1366 and 375, both themes: `.scratch/credits-04/frames/licenses-tab-1366-light.png`, `licenses-tab-1366-dark.png`, `licenses-tab-375-light.png`, `licenses-tab-375-dark.png`. Taken with Playwright after the close. No sideways page scroll at either width.
+- [x] Frames at 1366 and 375, both themes: `.scratch/credits-04/frames/licenses-tab-1366-light-rendered.png`, `licenses-tab-1366-dark.png`, `licenses-tab-375-light.png`, `licenses-tab-375-dark.png`. Taken with Playwright after the close. No sideways page scroll at either width.
 
 For you: scroll and filter feel on the real list at mobile width.
 

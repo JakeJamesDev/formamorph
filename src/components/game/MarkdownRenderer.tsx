@@ -147,9 +147,11 @@ const COMPONENTS: MarkdownComponents = {
  *
  * `fitShown` holds the block to the words that have started their entrance while it animates, so the
  * chrome around it grows with the text rather than to the whole released sentence at once.
+ *
+ * `lineNumbers` numbers the lines of a fence, on by default. A license text turns it off.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, links, resume = false, fitShown = false }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; links?: RemarkPlugin; resume?: boolean; fitShown?: boolean },
+  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, links, resume = false, fitShown = false, lineNumbers = true }: { lineNumbers?: boolean; text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; links?: RemarkPlugin; resume?: boolean; fitShown?: boolean },
 ) {
   const root = useRef<HTMLDivElement>(null);
   useFitShown(root, animate && fitShown, text);
@@ -168,6 +170,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
         plugins={PLUGINS}
         linkSafety={LINK_SAFETY}
         controls={false}
+        lineNumbers={lineNumbers}
         // Committed text renders straight from the parsed blocks. Streamdown's `streaming` mode routes
         // them through state committed in a transition, which leaves finished text a render behind —
         // visible when paging history, where nothing follows to flush it.

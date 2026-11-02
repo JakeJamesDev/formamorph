@@ -79,7 +79,7 @@ export function SupportersWall({ renderName, load = PatreonService.getSupporters
           href={PATREON_PAGE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary underline underline-offset-2"
+          className="text-primary hover:underline"
         >
           Become a Supporter
         </a>

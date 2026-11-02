@@ -59,12 +59,12 @@ function CreditsTabs() {
         <ul className="space-y-3">
           <li>
             <div className={NAME}>Jake James</div>
-            <Hint>Made Formamorph.</Hint>
+            <Hint>Creator of Formamorph</Hint>
           </li>
           <li>
             <div className={NAME}>FieryLionite</div>
             <Hint>
-              Made the original <ExternalLink href="https://github.com/FieryLionite/formamorph">Formamorph</ExternalLink>, which this game grew from.
+              Creator of the original <ExternalLink href="https://github.com/FieryLionite/formamorph">Formamorph</ExternalLink>, the base of this game
             </Hint>
           </li>
           <li>
@@ -72,13 +72,13 @@ function CreditsTabs() {
             <Hint>
               Item icons, from <ExternalLink href="https://game-icons.net">game-icons.net</ExternalLink>. Licensed under CC BY 3.0:{' '}
               <ExternalLink href="https://creativecommons.org/licenses/by/3.0/">creativecommons.org/licenses/by/3.0</ExternalLink>.
-              {' '}The game draws them in your theme&apos;s colors.
+              {' '}Your theme sets their colors.
             </Hint>
           </li>
           {isDesktop() && (
             <li>
               <div className={NAME}>llama.cpp</div>
-              <Hint>The engine that runs local models.</Hint>
+              <Hint>Runs local models</Hint>
             </li>
           )}
         </ul>
