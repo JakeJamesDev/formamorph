@@ -1,6 +1,7 @@
 # Spec: Script Run Order
 
 Status: ready-for-agent
+Spec session: script-run-order — spec
 
 ## Problem Statement
 
