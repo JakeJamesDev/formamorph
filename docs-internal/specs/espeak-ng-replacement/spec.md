@@ -57,6 +57,7 @@ British voices keep British pronunciation, through rules applied to this America
 | Q18 | A short plain-data list of function words takes a weak CMUdict form or loses its stress, unless the word ends the phrase. It lands with the American pipeline. The rating page adds sentence clips, with no numeric bar. |
 | Q19 | Before the model, a regular -s or -'s on a table, CMUdict, or split word takes that word's phonemes plus the regular ending. |
 | Q20 | The phoneme error bars gate landing. The listening bars are the owner's step after landing, on a page the ticket builds. The ticket stays `ready-for-human` until the owner reports. |
+| Q21 | British rules may use a small plain-data list for words no rule can derive. We write each string and accept it by ear. Word table entries stay American and take the rules. |
 
 ## Measurements
 
@@ -91,6 +92,13 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 | CMUdict, with `phonemize` for gaps | 92.5% | 1.9 |
 | Landed American pipeline | 92.6% | 1.9 |
 
+**British voices:** scored against WikiPron UK. The rules were written while reading misses on the unknown set, so 13.6 is not fully held out.
+
+| Set | eSpeak NG exact / error | Landed pipeline exact / error |
+|---|---|---|
+| Unknown | 42.4% / 14.4 | 44.4% / 13.6 |
+| Known | 91.7% / 2.2 | 94.8% / 1.4 |
+
 **Size:** the shipped model is 7.99 MB in two files and 6.96 MB gzipped. The dictionary adds 3.62 MB. The first trial reached about 72% on its CMUdict validation split, and dropout moved held-out accuracy more than extra epochs did.
 
 **Speed:** in headless Chromium over a production build, the model loads and answers its first word in 541 ms. An unknown word then takes 21 ms at the median and 33 ms at most. Electron measures 570, 23, and 39 ms.
@@ -99,7 +107,6 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 ### Not Measured Yet
 
-- British voices on the new pipeline.
 - The homograph table and tagger. They do not exist yet.
 - The Android build and a packaged desktop build. Both ship the same `dist` files.
 
@@ -140,7 +147,7 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 **Word table.** Plain data in this repo: word and phoneme string. We write each entry and accept it by ear. Entries are never copied from Wiktionary, WikiPron, or Misaki.
 
-**British rules.** Our own rules over the American result. `phonemize` is MIT and ships such rules, so we may adapt them with its notice. Its data stays out, and `ipa-dict` `en_UK` stays out because it is GPL-derived.
+**British rules.** Our own rules over the American result. `phonemize` is MIT and ships such rules, so we may adapt them with its notice. Its data stays out, and `ipa-dict` `en_UK` stays out because it is GPL-derived. The British word list (Q21) follows the same rule as the word table: we write each string, and none is copied from another source. Words are chosen because they are common and no rule reaches them, never because they miss on a scored set.
 
 **Homographs.** Q14's own table comes from CMUdict variants. The tagger must have a named license and no eSpeak or Misaki lineage. A ticket picks it and records its license.
 
