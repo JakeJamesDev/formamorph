@@ -31,6 +31,7 @@ export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   persona: scripts('persona'),
   dictionaries: scripts('dictionaries'),
   items: scripts('items'),
+  currencies: scripts('currencies'),
   narration: scripts('narration'),
   player: scripts('player'),
   trait: scripts('trait'),

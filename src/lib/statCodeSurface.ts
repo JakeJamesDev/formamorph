@@ -137,6 +137,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits, placeholders and stats. Empty when the player plays no entity.' },
   { name: 'dictionaries', detail: 'object', info: 'Every dictionary in the game by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
   { name: 'items', detail: 'object', info: 'Every item in the world by name, with its own placeholders and every Item Copy of it. Call items.Lamp.give to give one. Use items["Two Words"] for a name with a space.' },
+  { name: 'currencies', detail: 'object', info: 'Every Currency in the world by name. Call currencies.Gold.balance to read what an owner has, and currencies.Gold.pay to move money. Use currencies["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
 ];
 
@@ -316,6 +317,15 @@ export const ITEM_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'copies', detail: 'array', info: 'Every Item Copy of the item, each with id, item, owner, location, quantity, equipped, slot, hidden, unidentified, uses and state' },
   { name: 'give', detail: '(to, quantity?) => void', info: 'Gives a new Item Copy to an entity, the persona or a location, by entry or by name' },
 ], ['placeholders']);
+
+/** The members of one entry in `currencies`. The fields are read-only; a settled payment lands when the script ends. */
+export const CURRENCY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'id', detail: 'string', info: 'Unique id of the Currency' },
+  { name: 'name', detail: 'string', info: 'Code name of the Currency' },
+  { name: 'kind', detail: 'string', info: '"stat", "coins" or "name": what backs the Currency' },
+  { name: 'balance', detail: '(owner) => number | null', info: 'What an entity or the persona has, by entry or by name, or null when it has no balance. This script’s own stat writes and give calls don’t count.' },
+  { name: 'pay', detail: '(payer, payee, amount) => { paid, reason }', info: 'Moves money as the game does, with change, and answers { paid, reason }. A null payer is income and a null payee takes the money out of the world.' },
+]);
 
 /** The members of one entry in a dictionary's `entries`. Only `enabled` and `constant` take a write. */
 export const DICTIONARY_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([

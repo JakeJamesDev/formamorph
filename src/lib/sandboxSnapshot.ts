@@ -6,7 +6,7 @@
 import type { Entity, Item, ItemCopy, ItemCopyWhere, Placeholder, Stat, Trait } from '@/types';
 import {
   EMPTY_REPLY, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type SandboxEntity, type SandboxPlace,
-  type SandboxBodyDef, type SandboxItem, type SandboxItemCopy, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
+  type SandboxBodyDef, type SandboxCurrency, type SandboxItem, type SandboxMoney, type SandboxItemCopy, type SandboxLocationLinks, type SandboxPlaceholderNode, type SandboxPlaces, type SandboxStats, type SandboxTrait, type StatCodeResult, type StatCodeRunOptions, type StatTurnInputs,
   type SandboxTurn, type SwitchedTrait, type TraitWrite,
 } from './statCodeExecutor';
 import { bodyDefsOf, bodyReadingOf } from './bodies';
@@ -19,6 +19,7 @@ import {
 import { codeEntities, sandboxTraits, worldTraitPlaces, type CodeEntities, type CodeEntity } from './statCodeTraits';
 import { sampleNarration, sampleSwitchedTrait } from './scriptTestSamples';
 import { randomUUID } from './uuid';
+import { scriptMoney } from './scriptMoney';
 import { withLoreToggles } from './loreToggles';
 import { gateStatsOf, type TraitRuntimeState, type TraitSwitchEvent, type TraitWorld } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
@@ -242,6 +243,9 @@ interface Board {
   items: SandboxItem[];
   itemCopy: (copy: ItemCopy) => SandboxItemCopy;
   bodyDefs: SandboxBodyDef[];
+  currencies: SandboxCurrency[];
+  /** A run's money, over the state as it stands at the start of the run. Absent, the world has no Currency. */
+  money?: () => SandboxMoney;
 }
 
 /** `inPlay` with each owner's Body in force, as `body` reads it. The played entity reads as the played Persona. */
@@ -329,9 +333,24 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
     ...(sandbox?.owners.get(item.id) ? { placeholders: sandbox.owners.get(item.id) } : {}),
     copies: (state.itemCopies ?? []).filter((copy) => copy.item.kind === 'item' && copy.item.itemId === item.id).map(itemCopy),
   }));
+  const currencyList = state.money?.currencies ?? [];
+  const ownerEnabled = new Map((state.owners ?? []).map((owner) => [owner.id, owner.enabled]));
+  const played = inPlay.persona.id;
+  const money = currencyList.length ? (): SandboxMoney => scriptMoney({
+    currencies: currencyList, items: state.items ?? [], itemNames: (state.items ?? []).map((item) => ({ id: item.id, name: resolve(item.name, null) })),
+    slots: state.slots ?? [], placements: state.money?.placements ?? [], copies: state.itemCopies ?? [],
+    stats: {
+      globalStats: statCodeNamed(state.stats, placeholderDefs),
+      entityStats: Object.fromEntries((state.owners ?? []).map((owner) => [owner.id, statCodeNamed(owner.stats, placeholderDefs)])),
+    },
+    playedIds: played ? [played] : [],
+    statsOn: (ownerId, stats) => stats.filter((stat) => (ownerId === null ? state.enabled : ownerEnabled.get(ownerId))?.[stat.id] !== false),
+  }) : undefined;
   return {
     stats: scopeStats(globalStats, globalEnabled, readings?.global),
     traits, inPlay, placeholderDefs, ownerStats, items, itemCopy,
+    currencies: currencyList.map((currency): SandboxCurrency => ({ id: currency.id, name: statCodeName(currency.name, placeholderDefs), kind: currency.backing.kind })),
+    ...(money ? { money } : {}),
     bodyDefs: state.bodies ? bodyDefsOf(state.bodies.world) : [],
     placeholders: sandbox?.top ?? [],
     dictionaries: sandboxDictionaries(
@@ -415,6 +434,8 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(options.openCast && { openCast: true }), ...(state.memories && { memories: state.memories }),
       ...(state.notes && { notes: state.notes }), ...(unit.readOnly && { readOnly: true }),
       ...(read.items.length && { items: read.items }),
+      ...(read.currencies.length && { currencies: read.currencies }),
+      ...(read.money && !unit.readOnly && { money: read.money() }),
       ...(read.bodyDefs.length && { bodies: read.bodyDefs }),
       ...(unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing) && {
         itemEvent: {
