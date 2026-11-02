@@ -68,6 +68,7 @@ Settled in the grill on 2026-11-02. A settled ruling reopens on new evidence, ne
 | T03-4 | The guard requires fenced license text on every generated entry and non-empty text on hand-kept entries. Avatars, Mixamo, world art and the Danbooru list stay as attribution with a link. Hand-kept entries marked "Needed" in the table below carry full text. |
 | T03-5 | Ticket 03 owns the pure notices parser, returning `{ name, section, text }[]`. Ticket 04 imports it. |
 | T03-6 | The site footer's link reads **Licenses**. |
+| T04-1 | The Licenses tab lists Bundled assets, then Standards & specifications, then Components and license texts, each in file order. It skips the Software license summary, because that repeats the Components rows. The filter ignores case. |
 | Q19 | New evidence: the account site's build bundles third-party packages and ships no notices file. The site build now ships the same file, with a footer link to it. It doesn't fetch the file from GitHub, because `main` can differ from the deployed site. |
 
 ### Set elsewhere
