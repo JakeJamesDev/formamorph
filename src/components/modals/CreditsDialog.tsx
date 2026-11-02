@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react';
+import { Award, Heart, Scale } from 'lucide-react';
 import { SUPPORTERS_THANKS, SupportersWall } from '@/components/SupportersWall';
+import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Hint } from '@/components/ui/typography';
 import { useAgeGate } from '@/contexts/AgeGateContext';
 import { useUserProfile } from '@/contexts/userProfileStore';
@@ -13,6 +15,12 @@ import { ITEM_ICON_AUTHORS } from '@/lib/itemIcons';
 import { LicensesPanel, useNotices } from './LicensesPanel';
 
 const AUTHORS = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(ITEM_ICON_AUTHORS);
+
+const TABS = [
+  { value: 'credits', label: 'Credits', icon: Award },
+  { value: 'supporters', label: 'Supporters', icon: Heart },
+  { value: 'licenses', label: 'Licenses', icon: Scale },
+];
 
 const LINK = 'text-primary hover:underline';
 // Every credited name shares one style, so the icon authors are as prominent as the rest.
@@ -49,43 +57,49 @@ function CreditsTabs() {
   if (tab === 'supporters' && !showSupporters) setTab('credits');
 
   return (
-    <Tabs surfaceTabs="credits" value={tab} onValueChange={selectTab} className="w-full min-w-0">
-      <TabsList>
-        <TabsTrigger value="credits">Credits</TabsTrigger>
-        {showSupporters && <TabsTrigger value="supporters">Supporters</TabsTrigger>}
-        <TabsTrigger value="licenses">Licenses</TabsTrigger>
-      </TabsList>
-      <TabsContent value="credits" className="space-y-4">
-        <ul className="space-y-3">
-          <li>
-            <div className={NAME}>Jake James</div>
-            <Hint>Creator of Formamorph</Hint>
-          </li>
-          <li>
-            <div className={NAME}>FieryLionite</div>
-            <Hint>
-              Creator of the original <ExternalLink href="https://github.com/FieryLionite/formamorph">Formamorph</ExternalLink>, the base of this game
-            </Hint>
-          </li>
-          <li>
-            <div className={NAME}>{AUTHORS}</div>
-            <Hint>
-              Item icons, from <ExternalLink href="https://game-icons.net">game-icons.net</ExternalLink>. Licensed under CC BY 3.0:{' '}
-              <ExternalLink href="https://creativecommons.org/licenses/by/3.0/">creativecommons.org/licenses/by/3.0</ExternalLink>.
-              {' '}Your theme sets their colors.
-            </Hint>
-          </li>
-          {isDesktop() && (
+    <Tabs surfaceTabs="credits" value={tab} onValueChange={selectTab} className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+      {/* A row, because `hug` sizes the strip by its flex basis. */}
+      <div className="flex justify-center sm:justify-start">
+        <CollapsingTabsList
+          hug
+          tabs={showSupporters ? TABS : TABS.filter((option) => option.value !== 'supporters')}
+          value={tab}
+          aria-label="Credits Sections"
+        />
+      </div>
+      <TabsContent value="credits" className="min-h-0 flex-1">
+        <ScrollArea className="h-full">
+          <ul className="space-y-3">
             <li>
-              <div className={NAME}>llama.cpp</div>
-              <Hint>Runs local models</Hint>
+              <div className={NAME}>Jake James</div>
+              <Hint>Creator of Formamorph</Hint>
             </li>
-          )}
-        </ul>
+            <li>
+              <div className={NAME}>FieryLionite</div>
+              <Hint>
+                Creator of the original <ExternalLink href="https://github.com/FieryLionite/formamorph">Formamorph</ExternalLink>, the base of this game
+              </Hint>
+            </li>
+            <li>
+              <div className={NAME}>{AUTHORS}</div>
+              <Hint>
+                Item icons, from <ExternalLink href="https://game-icons.net">game-icons.net</ExternalLink>. Licensed under CC BY 3.0:{' '}
+                <ExternalLink href="https://creativecommons.org/licenses/by/3.0/">creativecommons.org/licenses/by/3.0</ExternalLink>.
+                {' '}Your theme sets their colors.
+              </Hint>
+            </li>
+            {isDesktop() && (
+              <li>
+                <div className={NAME}>llama.cpp</div>
+                <Hint>Runs local models</Hint>
+              </li>
+            )}
+          </ul>
+        </ScrollArea>
       </TabsContent>
       {showSupporters && (
-        <TabsContent value="supporters">
-          <ScrollArea className="max-h-[60dvh]">
+        <TabsContent value="supporters" className="min-h-0 flex-1">
+          <ScrollArea className="h-full">
             <div className="space-y-4">
               <Hint>{SUPPORTERS_THANKS}</Hint>
               <SupportersWall
@@ -104,7 +118,7 @@ function CreditsTabs() {
           </ScrollArea>
         </TabsContent>
       )}
-      <TabsContent value="licenses">
+      <TabsContent value="licenses" className="min-h-0 flex-1">
         <LicensesPanel {...notices} />
       </TabsContent>
     </Tabs>
@@ -115,7 +129,7 @@ function CreditsTabs() {
 export function CreditsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent surface="credits" className="max-w-md">
+      <DialogContent surface="credits" className="flex h-[720px] max-h-[85dvh] flex-col sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>Credits</DialogTitle>
           <DialogDescription className="sr-only">The people and projects behind Formamorph.</DialogDescription>
