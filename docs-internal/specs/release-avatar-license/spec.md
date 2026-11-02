@@ -36,6 +36,16 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 | Q14 | The new model matches Elaina: clothed, with the three body keys and working customization. |
 | Q15 | The fix blocks every release. No new build on any channel ships Elaina. |
 | Q16 | A VRoid Hub model may replace the own-model route if it passes the gate and shows no sign of third-party characters or BOOTH parts. |
+| Q17 | The candidate is the maid model, built by script from its Hub file. The user accepted the prototype on 2026-11-02. This moves the key work in Q9 from the user to a script. |
+
+**Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is.
+
+**Open before the file lands:**
+
+- The bundled name. The prototype uses a placeholder.
+- The user's check that the model reads as an adult in full-body view.
+- VRoid Hub's terms for downloaded models.
+- The default hair and eye colors.
 
 ## User Stories
 
@@ -71,6 +81,15 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 - Modified files keep the original author in their metadata, and their license stays as permissive as the original.
 - The Hub filter query and a gate script are the selection tools. The Hub lists no sort control, so a generated gallery does the ranking.
 - A provenance record holds the source URL, author, download date, and a copy of the metadata as downloaded.
+- The `tools` folder beside this spec holds the build script. It writes the three keys and recolors the textures from the Hub file.
+- **Keys:** each is a generated per-vertex offset, built from bone positions and skin weights. All `Body` primitives share one vertex buffer, so clothing moves with the same offsets. `Waist` peaks near 12 cm, `Bust` near 5.6 cm and `Thickness` near 3.6 cm.
+- **Waist limit:** the apron and skirt have few vertices, so at the top value the apron looks faceted and stands off the skirt. A cleaner result needs more mesh detail. The user accepted this file.
+- **Textures:** the Hub file's hair is flat black and its iris has no green or blue, so multiply tinting can't move them. The script writes a neutral mid-tone hair and an iris with all three channels above zero.
+
+**Tint code**
+
+- The skin picker starts from the Face average, while the Body average is darker, so the same tint renders Body brighter than Face. The Body average drops because of dark texture areas. Tinting uses the median of opaque pixels instead of the mean.
+- Tint math runs in sRGB while rendering is linear, so dark textures come out darker than the picker. A linear fix would allow a darker default hair. This is optional and not ruled.
 
 **Permissive License gate**
 
@@ -157,7 +176,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **UNVERIFIED**
 
-- VRoid Hub's own terms for downloaded models. Read them before a Hub pick lands.
+- VRoid Hub's own terms for downloaded models. A browser read on 2026-11-02 was denied or failed, so they are still unread. Read them before the file lands.
+- How the keys behave in the app. The user tested the file in the app. No agent has driven the sliders there.
 - Whether Hub flags are accurate. They are the uploader's claim.
 - Elaina's provenance, and whether it contains preset or sample content. pixiv's sample terms ban selling a sample's data and using it in character creation.
 - Whether signed-in Hub searches show more models. The 187 passing models came from a signed-out read on 2026-11-02.
