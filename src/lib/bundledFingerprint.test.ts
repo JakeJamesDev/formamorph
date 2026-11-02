@@ -54,7 +54,7 @@ describe('bundled fingerprint list', () => {
     },
   );
 
-  it.each(['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm'])(
+  it.each(['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm', 'build-assets/praline-avatar.vrm'])(
     'holds the byte hash of %s',
     async (path) => {
       expect(avatars.has(await sha256Hex(new Uint8Array(readFileSync(path))))).toBe(true);

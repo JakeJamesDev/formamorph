@@ -140,6 +140,7 @@ export const PATH_TRIGGERS = {
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
   'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
+  'build-assets/praline-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'package-lock.json': ['src/components/ui/radixSingleCopy.test.ts'],
   '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
   // The runner test loads this reporter by path through real vitest.

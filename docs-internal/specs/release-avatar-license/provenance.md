@@ -73,3 +73,42 @@ The source and license of each model Formamorph bundles. This is a reading of th
   "modification": "allowModificationRedistribution"
 }
 ```
+
+## 🦊 Praline
+
+| | |
+|---|---|
+| **Ships at** | `build-assets/praline-avatar.vrm` (desktop, web, Android, from ticket 07) |
+| **Source** | [VRoid preset sample F](https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z), exported from VRoid Studio |
+| **Author** | pixiv VRoid Project |
+| **Exported** | 2026-11-02, `AvatarSample_F.vrm`, 20,812,660 bytes |
+| **Rebuild** | [tools/build-praline.py](tools/build-praline.py) with [tools/praline-thumbnail.png](tools/praline-thumbnail.png) |
+
+**Changes from the export**
+
+- `authors` is `pixiv VRoid Project`. The raw export wrote the name of the account that ran it.
+- `name` is `Praline`. Every other metadata field is unchanged.
+- `Waist`, `Bust` and `Thickness` keys are new and generated.
+- Hair and iris textures are recolored so the pickers can tint them. Color factors restore the source look until a player changes a color.
+- The stockings move out of the Body skin texture into their own material and layer.
+- The embedded thumbnail is recaptured on a white background.
+
+**Metadata of `AvatarSample_F.vrm`, as exported**
+
+```json
+{
+  "name": "AvatarSample_F",
+  "authors": ["Jake James"],
+  "thumbnailImage": 32,
+  "licenseUrl": "https://vrm.dev/licenses/1.0/",
+  "avatarPermission": "everyone",
+  "allowExcessivelyViolentUsage": true,
+  "allowExcessivelySexualUsage": true,
+  "commercialUsage": "corporation",
+  "allowPoliticalOrReligiousUsage": true,
+  "allowAntisocialOrHateUsage": true,
+  "creditNotation": "unnecessary",
+  "allowRedistribution": true,
+  "modification": "allowModificationRedistribution"
+}
+```

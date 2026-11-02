@@ -13,6 +13,7 @@ import { gateAvatarLicense } from './avatarLicenseGate';
 describe.each([
   ['public/default-avatar.vrm'],
   ['build-assets/alternate-avatar.vrm'],
+  ['build-assets/praline-avatar.vrm'],
 ])('%s', (path) => {
   it('passes the Permissive License gate', async () => {
     const blob = new Blob([readFileSync(path)]);

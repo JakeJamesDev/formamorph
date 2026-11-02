@@ -1,5 +1,5 @@
 // Writes src/lib/bundledFingerprints.json: the fingerprint of every revision of every bundled world, source
-// and shipped form, and the byte hash of every revision of both default Avatar files. A world carries a
+// and shipped form, and the byte hash of every revision of every bundled Avatar file. A world carries a
 // shipped form as it stood at SHIPPED_SINCE, at every later commit that touched it, and in the working tree.
 // Run with `npm run fingerprints`.
 import { writeFileSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { worldPublishPayload } from '@/lib/publishPayload';
 import { shippedWorldText } from '@/lib/shippedWorld';
 import { git, historyRevisions, onDisk, worldRevisions } from './bundledRevisions';
 
-const AVATAR_FILES = ['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm'];
+const AVATAR_FILES = ['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm', 'build-assets/praline-avatar.vrm'];
 const OUT = 'src/lib/bundledFingerprints.json';
 
 async function worldFingerprints(): Promise<string[]> {
