@@ -67,6 +67,13 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q38 | (ticket 03) Check Scripts fires no nested runs and keeps its own sample run per switch script. A later script there doesn't read a switch script's write, which can rarely give a false finding. This is a known gap beside story 28 |
 | Q39 | (ticket 03) Tests that assert a switch run lands after the batch flip to the new result and are listed at landing. Any other failing test goes to the spec session first |
 | Q40 | (ticket 03) The depth cap stays, and one action also fires at most 100 switch runs across all depths. Past that, a switch still applies, fires no script and warns once. A looping author bug otherwise grows as a tree: three scripts measured 9,840 runs and 61 s in Node |
+| Q41 | (ticket 04) A later script reads an earlier script's Item Copies and automatic unequips, not the item's granted traits and stat effects. Those land once in the turn's commit settle, and the docs name the gap. An equip's requirement check reads the chain's stats and traits. This is the user's named exception to Q4 |
+| Q42 | (ticket 04) During AI Output applies each sentence's inventory writes for later scripts to read, with no settle and no item event. The whole reply's item events and unequips fire once at the landing, after its switch runs. A stop or retract drops them all |
+| Q43 | (ticket 04) `balance` counts the run's own `give`, verbs and direct stat writes, and `pay` plans over them. `pay` can't spend a copy the same run made, because it has no id until the script lands. It refuses with a reason, and the next script can spend it |
+| Q44 | (ticket 04) A script's landing runs in this order: its writes, its copies with their settle, its switch runs, then its item events (op events, then unequips). An item run's nested runs follow the same order |
+| Q45 | (ticket 04) Item events have their own total of 100 per action. Past it, writes still land with one log line. Switch depth and item depth both carry through nesting, so a loop across the two stays capped |
+| Q46 | (ticket 04) A switch run's inventory writes land between turns too. A failing test comes first. The bug never reached a release, so ticket 02's changelog entry covers it with no Fixed line |
+| Q47 | (ticket 04) Check Scripts gets the world's items, slots and Currencies, so a script that names one no longer reports a false error. It applies inventory writes to its chain and fires no item event, as Q38 says of switch runs |
 
 ## User Stories
 
