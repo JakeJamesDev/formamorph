@@ -157,6 +157,20 @@ describe("function words", () => {
     expect(await setup().say("went to the top of it")).toBe(`${cmu("went")} tə ðə ${cmu("top")} əv ${cmu("it")}`);
   });
 
+  it("reduces they and the helper will", async () => {
+    expect(await setup().say("they will go")).toBe(`ðA wəl ${cmu("go")}`);
+  });
+
+  it("keeps will strong as a noun, a name, a question, and at a phrase end", async () => {
+    const { say } = setup();
+    const will = cmu("will");
+    expect(await say("his will was strong")).toBe(`hɪz ${will} wəz ${cmu("strong")}`);
+    expect(await say("of free will and more")).toBe(`əv ${cmu("free")} ${will} ənd ${cmu("more")}`);
+    expect(await say("Will went home")).toBe(`${will} ${cmu("went")} ${cmu("home")}`);
+    expect(await say("Will you go")).toBe(`${will} ju ${cmu("go")}`);
+    expect(await say("yes, I will.")).toBe(`${cmu("yes")}, I ${will}.`);
+  });
+
   it("stays strong at a phrase end and alone", async () => {
     const { say } = setup();
     expect(await say("to")).toBe(cmu("to"));
@@ -185,8 +199,8 @@ describe("function words", () => {
 
   it("reduces have and had to a schwa inside a phrase", async () => {
     const { say } = setup();
-    expect(await say("they have it and had it")).toBe(`${cmu("they")} həv ɪt ənd həd ${cmu("it")}`);
-    expect(await say("what they have")).toBe(`${cmu("what")} ${cmu("they")} ${cmu("have")}`);
+    expect(await say("they have it and had it")).toBe(`ðA həv ɪt ənd həd ${cmu("it")}`);
+    expect(await say("what they have")).toBe(`${cmu("what")} ðA ${cmu("have")}`);
   });
 });
 

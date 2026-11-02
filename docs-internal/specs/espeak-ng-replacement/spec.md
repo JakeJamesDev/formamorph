@@ -60,6 +60,7 @@ British voices keep British pronunciation, through rules applied to this America
 | Q21 | British rules may use a small plain-data list for words no rule can derive. We write each string and accept it by ear. Word table entries stay American and take the rules. |
 | Q22 | The owner accepted a 24-word sample for the British fantasy bar, at 22 of 24, because 97 clips are too many to rate. The final pass at Ticket 06 stays. |
 | Q23 | Spoken numbers follow the owner's ear: tens and ones run together, -teen words take one main stress, and "ninety" takes a soft t in American. |
+| Q24 | "they" and lowercase "will" join the weak forms. "will" stays strong after a determiner, a possessive, or words such as "free", because there it is the noun. |
 
 ## Measurements
 

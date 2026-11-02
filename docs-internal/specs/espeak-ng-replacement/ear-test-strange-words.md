@@ -316,3 +316,5 @@ Rated blind by the owner on 20 American sentences, against the old phoneme step.
 | Old phoneme step | 15 of 20 | "She read the letter last night.", "They lead the way to the keep.", "The pipe was made of lead.", "He wound the rope around the post.", and "Please close the door." |
 
 Both rejected sentences of ours say the homograph correctly, so another word in each is the likely fault. `wˈɪl` and `ðˈA` both carry full stress.
+
+"they" and "will" then took weak forms (Q24). The five changed sentences wait for the owner.

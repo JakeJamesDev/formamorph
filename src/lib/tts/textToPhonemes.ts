@@ -28,6 +28,8 @@ const SIBILANT_END = /[szʃʒʧʤ]$/;
 const NO_BARE_S = /(?:ss|us)$/i;
 const TENS = /^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)$/i;
 const ONES = /^(?:one|two|three|four|five|six|seven|eight|nine)$/i;
+/** After these, "will" is the noun, as in "his will". */
+const BEFORE_NOUN_WILL = /^(?:a|an|the|his|her|my|your|our|their|its|own|free|good|ill|last)$/i;
 
 const table = new Map<string, string>(Object.entries(wordTable));
 const british = new Map<string, string>(Object.entries(britishWords));
@@ -156,12 +158,12 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
     let out = "";
     let afterWord = false;
     let insideQuote = false;
-    let afterTens = false;
+    let previous = "";
     for (const [i, token] of tokens.entries()) {
       if (NOT_A_WORD.test(token)) {
         out += /^\s/.test(token) ? " " : token;
         afterWord = false;
-        if (!/^\s/.test(token)) afterTens = false;
+        if (!/^\s/.test(token)) previous = "";
         if (token.split('"').length % 2 === 0) insideQuote = !insideQuote;
         continue;
       }
@@ -178,16 +180,18 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
         const next = tokens.slice(i + 1).find((later) => !/^\s/.test(later));
         const strong = next === undefined || PHRASE_END.test(next) || (insideQuote && next.startsWith('"'));
         const shouted = word.length > 1 && word === word.toUpperCase();
-        const reduced = strong || shouted ? undefined : weak.get(word.toLowerCase());
+        // A capital "Will" is a name or a question, so only lowercase "will" reduces.
+        const fullWill = /^will$/i.test(word) && (word !== "will" || BEFORE_NOUN_WILL.test(previous));
+        const reduced = strong || shouted || fullWill ? undefined : weak.get(word.toLowerCase());
         const listed = accent === "b" && reduced === undefined ? fromBritishList(word.toLowerCase()) ?? britishCapitals(word) : undefined;
         const start = matches[i].index + token.indexOf(word);
         const pick = table.has(word.toLowerCase()) ? undefined : picks.get(start);
         const spoken = listed ?? inAccent(word, reduced ?? (pick && fromDictionary(pick)) ?? await sayWord(word));
         // Ninety-nine runs together, with its stress on the tens.
-        if (afterTens && ONES.test(word)) out = out.trimEnd() + spoken.replace(/ˈ/g, "ˌ");
+        if (TENS.test(previous) && ONES.test(word)) out = out.trimEnd() + spoken.replace(/ˈ/g, "ˌ");
         else out += spoken;
       }
-      afterTens = TENS.test(word);
+      previous = word;
     }
     return out.replace(/ +/g, " ").trim();
   };
