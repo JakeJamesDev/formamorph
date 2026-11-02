@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { InventoryTab, type InventoryTabProps } from './InventoryTab';
 import type { Body, Item, ItemCopy, Slot } from '@/types';
 
@@ -25,6 +26,34 @@ const props = (over: Partial<InventoryTabProps>): InventoryTabProps => ({
 const box = () => screen.getByRole('button', { name: /^Head: / });
 const iconIn = (el: Element) => el.querySelector('[data-item-icon]')?.getAttribute('data-item-icon');
 const rowOf = (name: string) => screen.getByRole('button', { name }).closest('li')!;
+
+describe('item popup header', () => {
+  const headerOf = async (name: string) => {
+    await userEvent.click(screen.getByRole('button', { name }));
+    return within(await screen.findByRole('dialog')).getByRole('heading', { name }).parentElement!;
+  };
+
+  it('shows the derived icon beside the name', async () => {
+    render(<InventoryTab {...props({ items: [item('h', 'Iron Helmet')], copies: [carried('h')] })} />);
+    expect(iconIn(await headerOf('Iron Helmet'))).toBe('helmet');
+  });
+
+  it('shows a specific icon', async () => {
+    render(<InventoryTab {...props({ items: [item('h', 'Iron Helmet', { icon: 'crown' })], copies: [carried('h')] })} />);
+    expect(iconIn(await headerOf('Iron Helmet'))).toBe('crown');
+  });
+
+  it('shows no icon under None', async () => {
+    render(<InventoryTab {...props({ items: [item('h', 'Iron Helmet', { icon: 'none' })], copies: [carried('h')] })} />);
+    expect(iconIn(await headerOf('Iron Helmet'))).toBeUndefined();
+  });
+
+  it('never shows an unidentified copy its authored icon', async () => {
+    const ring = item('r', 'Crown of Curses', { icon: 'crown', unidentifiedName: 'Plain Ring' });
+    render(<InventoryTab {...props({ items: [ring], copies: [carried('r', { state: { unidentified: true } })] })} />);
+    expect(iconIn(await headerOf('Plain Ring'))).toBe('ring');
+  });
+});
 
 describe('filled Slot Box', () => {
   it('Auto shows the derived icon, with no long text and no image', () => {
