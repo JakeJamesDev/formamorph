@@ -22,6 +22,7 @@ Rulings: Q4, Q5, Q6, Q15.
 - [ ] A test proves a third script's balance read includes earlier payments and direct writes.
 - [ ] A test proves a script that fails after a `pay` moves no money.
 - [ ] A test proves inventory writes land once in the turn's result, with no double apply when the turn commits or re-rolls.
+- [ ] A test proves a nested switch script's inventory write inside an item run lands once, at that item level. Ticket 03 left this untested.
 - [ ] A test proves a stat re-roll keeps the turn's location, time, scene entities, memories and diary lines. Ticket 05 left this criterion open because its drop has no reachable seam, so this test may need one moved out of the game view.
 - [ ] Each new guard fails when the script's money state reads the start of the timing again.
 - [ ] Scripts Reference's Items and Currencies sections describe this, and the changelog entry from ticket 02 covers it.
