@@ -27,7 +27,7 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 |---|---|
 | Q1 | Scope is the Vitest suite, gate test selection and full-suite speed setup. |
 | Q2 | The right tests run on a change. Time comes second. Less test code comes last. |
-| Q3 | The owner picks full-suite and gate time targets after the Reference Run. |
+| Q3 | The owner picks full-suite and gate time targets after the Reference Run. Picked: full suite 240 s, from 330 s; affected gate on the 610-file sample 200 s, from 279 s warm. |
 | Q4 | Tickets delete tests when evidence meets the bar. Each ticket lists deletions and reasons. |
 | Q5 | Deep-coverage areas: saves, import and migration; turn pipeline and prompts; stat sandbox and scripts; accounts, age gate and moderation. |
 | Q6 | CPU-heavy evidence runs wait until the owner says they are AFK. |
