@@ -1,5 +1,13 @@
 const MIN_ALPHA = 10;
 
+/** The picker's start color: the texture median under the untinted color factor. Tinting to it restores that factor. */
+export function tintSeedRGB(
+  median: readonly [number, number, number],
+  factor: readonly [number, number, number],
+): [number, number, number] {
+  return [median[0] * factor[0], median[1] * factor[1], median[2] * factor[2]];
+}
+
 /** Per-channel median of the opaque pixels in RGBA data, each channel in 0..1. Null when no pixel is opaque. */
 export function medianOpaqueRGB(data: ArrayLike<number>): [number, number, number] | null {
   const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];

@@ -109,6 +109,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **AI Context now shows how fast each AI request ran, how long it took, and whether it reached Max Output.** Each request also shows its prompt name and the samplers it sent, with icons in place of repeated labels. Hover a value to see its full name.
   - **The game's Send and Stop buttons are now narrower on larger screens, leaving more room to type.**
   - **The entity popup shows the picture beside the text on large screens.** The text scrolls on its own, so long descriptions and Equipped have more room. Smaller screens keep the picture above the text.
+  - **New installs now start with Sei as the bundled Avatar.** If you already play, your current Avatars stay in your library.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.
@@ -165,6 +166,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A failed world, dictionary, entity, save or player avatar import now names the file and says why.** With several failed files the count stays, and **View Details** lists each one. Declining a duplicate avatar is no longer a failure.
   - **An Avatar's Generated thumbnail now has a white background.** Before, the background was see-through. A thumbnail generated earlier keeps its old look.
   - **Skin color now looks the same on Body and Face.** Body no longer comes out paler than Face for the same skin color, on models with dark areas in the Body texture.
+  - **Avatar color pickers now open on the color the model shows.** Before, some models opened the picker on a brighter color, and touching it changed their look.
 - **🛠️ Developer tooling**
   - **An Avatar's Generated thumbnail now shows a close-up of the head.** Tall ears and hats no longer pull the view back to the waist. A thumbnail generated earlier keeps its old view.
   - **Scene Presence:**

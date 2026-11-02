@@ -37,16 +37,19 @@ def enc(px,w,h,ch):
     def chunk(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d))
     return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,6 if ch==4 else 2,0,0,0))+chunk(b'IDAT',zlib.compress(bytes(raw),9))+chunk(b'IEND',b'')
 newviews={}
-def retex(mat,fn):
+# Writes a texture the picker can tint, and color factors that restore the source look until a picker is touched.
+def retex(mat,fn,factor):
     s=j['textures'][mat['pbrMetallicRoughness']['baseColorTexture']['index']]['source'];bvi=j['images'][s]['bufferView']
     t,err=png(view(bvi));assert t,err;px,w,h,ch=t
     for i in range(w*h):
         o=i*ch;px[o],px[o+1],px[o+2]=fn(px[o],px[o+1],px[o+2])
     newviews[bvi]=enc(px,w,h,ch)
+    mat['pbrMetallicRoughness']['baseColorFactor']=[*factor,mat['pbrMetallicRoughness'].get('baseColorFactor',[1,1,1,1])[3]]
+    mat['extensions']['VRMC_materials_mtoon']['shadeColorFactor']=list(factor)
 HAIR=(140,132,140)
 for m in j['materials']:
-    if 'HAIR' in m['name']: retex(m,lambda r,g,bb:HAIR)
-    if 'EyeIris' in m['name']: retex(m,lambda r,g,bb:(min(255,round(r*1.25)),min(255,round(r*.75)),min(255,round(r*.78))))
+    if 'HAIR' in m['name']: retex(m,lambda r,g,bb:HAIR,(0,0,0))
+    if 'EyeIris' in m['name']: retex(m,lambda r,g,bb:(r,min(255,round(r*.75)),min(255,round(r*.78))),(1,0,0))
 N=j['nodes'];par={}
 for i,n in enumerate(N):
     for c in n.get('children',[]):par[c]=i
