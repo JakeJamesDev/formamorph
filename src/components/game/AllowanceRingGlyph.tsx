@@ -9,7 +9,7 @@ const TONE_CLASS: Record<AllowanceTone, string> = {
 /** The ring on its own: a track, and an arc from the top that `percent` fills. Null draws the track alone. */
 export function AllowanceRingGlyph({ percent, tone }: { percent: number | null; tone: AllowanceTone }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 -rotate-90" fill="none" strokeWidth={3} aria-hidden data-allowance-glyph>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 -rotate-90" fill="none" strokeWidth={3} aria-hidden data-allowance-glyph>
       <circle cx="12" cy="12" r="9" stroke="currentColor" className="text-muted-foreground/30" />
       {percent !== null && percent > 0 && (
         <circle
