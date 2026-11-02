@@ -1185,7 +1185,6 @@ export const MiddlePanel = ({
               <HelpButton
                 topicId="game.howToPlay"
                 className="mr-2"
-                iconClassName="h-5 w-5"
                 skipFirstTimeTint
                 tabExtras={{
                   Choices: (
@@ -1217,7 +1216,7 @@ export const MiddlePanel = ({
                   aria-label="Stop generating"
                   className="border-dashed border-2 w-12 px-0"
                 >
-                  <Square className="h-5 w-5" />
+                  <Square className="h-4 w-4" />
                 </Button>
               ) : (
                 // The narration's endpoint: the turn's other passes may route elsewhere, and their buttons name theirs.
@@ -1228,7 +1227,7 @@ export const MiddlePanel = ({
                     aria-label="Send"
                     className="border-dashed border-2 w-12 px-0"
                   >
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 w-4" />
                   </Button>
                 </Tip>
               )}

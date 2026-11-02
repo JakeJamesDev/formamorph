@@ -418,7 +418,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
               >
                 <svg
                   aria-hidden="true"
-                  class="lucide lucide-circle-question-mark h-5 w-5"
+                  class="lucide lucide-circle-question-mark h-4 w-4"
                   fill="none"
                   height="24"
                   stroke="currentColor"
@@ -450,7 +450,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
               >
                 <svg
                   aria-hidden="true"
-                  class="lucide lucide-send h-5 w-5"
+                  class="lucide lucide-send h-4 w-4"
                   fill="none"
                   height="24"
                   stroke="currentColor"
@@ -1032,7 +1032,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               >
                 <svg
                   aria-hidden="true"
-                  class="lucide lucide-circle-question-mark h-5 w-5"
+                  class="lucide lucide-circle-question-mark h-4 w-4"
                   fill="none"
                   height="24"
                   stroke="currentColor"
@@ -1064,7 +1064,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               >
                 <svg
                   aria-hidden="true"
-                  class="lucide lucide-send h-5 w-5"
+                  class="lucide lucide-send h-4 w-4"
                   fill="none"
                   height="24"
                   stroke="currentColor"
