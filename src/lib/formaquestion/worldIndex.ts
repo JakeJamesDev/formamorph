@@ -182,7 +182,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   for (const item of world.items ?? []) {
     add('item', item.id, item.name, [], lines(
       `# ${item.name}`,
-      facts(item.value !== undefined && `Value: ${text(worthText(item, world.currencies ?? []) ?? String(item.value))}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
+      facts(item.value !== undefined && `Value: ${text(worthText(item, world.currencies ?? [], world.items ?? []) ?? String(item.value))}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
       field('Player Description', text(item.playerDescription)),
       field('Unidentified Name', text(item.unidentifiedName)),
       field('Unidentified Description', text(item.unidentifiedDescription)),

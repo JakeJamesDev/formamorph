@@ -14,7 +14,8 @@ import { fieldFrame } from '@/lib/historyField';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { dragStyle, droppedMove } from '@/lib/sortableDrag';
 import { randomUUID } from '@/lib/uuid';
-import type { Currency, CurrencyBacking } from '@/types';
+import type { Currency, CurrencyBacking, Item } from '@/types';
+import CoinRows from './CoinRows';
 
 const GROUP_HEADING = { global: 'Global Stats', linked: 'Linked to Personas' };
 
@@ -24,7 +25,7 @@ const KIND_LABEL: Record<CurrencyBacking['kind'], string> = { stat: 'Stat', coin
 
 /** The Items tab's Currencies entry: the world's money, in order. The first is the one a new item takes. */
 const CurrenciesEditor = () => {
-  const { currencies, setCurrencies, updateCurrency, stats, statGroups, entities, placeholders } = useGameData();
+  const { currencies, setCurrencies, updateCurrency, stats, statGroups, entities, placeholders, items } = useGameData();
   const groups = useMemo(() => currencyStatGroups({ stats, statGroups, entities }), [stats, statGroups, entities]);
   const add = () => setCurrencies([...currencies, { id: randomUUID(), name: 'New Currency', backing: { kind: 'name' } }]);
   const onDragEnd = (event: DragEndEvent) => {
@@ -47,6 +48,8 @@ const CurrenciesEditor = () => {
                   <SortableCurrency
                     key={currency.id}
                     currency={currency}
+                    currencies={currencies}
+                    items={items}
                     groups={groups}
                     label={(name) => labelPlaceholders(name, placeholders)}
                     onChange={updateCurrency}
@@ -66,8 +69,10 @@ const CurrenciesEditor = () => {
 };
 
 /** One Currency: a grip, its name, what holds it, and Delete. */
-function SortableCurrency({ currency, groups, label, onChange, onRemove }: {
+function SortableCurrency({ currency, currencies, items, groups, label, onChange, onRemove }: {
   currency: Currency;
+  currencies: readonly Currency[];
+  items: readonly Item[];
   groups: readonly CurrencyStatGroup[];
   label: (name: string) => string;
   onChange: (currency: Currency) => void;
@@ -80,6 +85,7 @@ function SortableCurrency({ currency, groups, label, onChange, onRemove }: {
     if (kind === backing.kind) return;
     if (kind === 'name') onChange({ ...currency, backing: { kind: 'name' } });
     else if (kind === 'stat' && firstStat) onChange({ ...currency, backing: { kind: 'stat', statId: firstStat.id } });
+    else if (kind === 'coins') onChange({ ...currency, backing: { kind: 'coins', coins: [] } });
   };
   return (
     <EditorRow
@@ -103,7 +109,7 @@ function SortableCurrency({ currency, groups, label, onChange, onRemove }: {
             <SelectContent>
               <SelectItem value="stat" disabled={!firstStat}>{KIND_LABEL.stat}</SelectItem>
               <SelectItem value="name">{KIND_LABEL.name}</SelectItem>
-              {backing.kind === 'coins' && <SelectItem value="coins">{KIND_LABEL.coins}</SelectItem>}
+              <SelectItem value="coins">{KIND_LABEL.coins}</SelectItem>
             </SelectContent>
           </Select>
           {backing.kind === 'stat' && (
@@ -120,6 +126,16 @@ function SortableCurrency({ currency, groups, label, onChange, onRemove }: {
                 ))}
               </SelectContent>
             </Select>
+          )}
+          {backing.kind === 'coins' && (
+            <CoinRows
+              currency={currency}
+              coins={backing.coins}
+              items={items}
+              currencies={currencies}
+              label={label}
+              onChange={(coins) => onChange({ ...currency, backing: { kind: 'coins', coins } })}
+            />
           )}
         </div>
       )}

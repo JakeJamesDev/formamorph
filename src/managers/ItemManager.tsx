@@ -21,7 +21,8 @@ import { useEditorMode } from '@/lib/editorMode';
 import { fieldFrame } from '@/lib/historyField';
 import { WHEN_EMPTY_LABEL, itemStackable, whenEmptyOf, wholeCount } from '@/lib/items';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { currencyOf } from '@/lib/currency';
+import { coinFields, currencyOf } from '@/lib/currency';
+import CoinValueFields from './CoinValueFields';
 import { itemPanelTabsFor, itemTabForField, type ItemPanelTab } from '@/views/itemPanelTabs';
 import type { FocusFieldHint, Item, ItemWhenEmpty } from '@/types';
 
@@ -62,6 +63,9 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
         : { kind },
   });
   const id = (field: string) => `item-${field}-${item.id}`;
+  const currency = currencyOf(item, currencies);
+  // A blank Value splits as zero; a Value with no Breakdown keeps the single plain field.
+  const coinSplit = currency ? coinFields(item.value ?? 0, currency, items) : null;
 
   return (
     <div className="space-y-5">
@@ -69,17 +73,21 @@ const ItemPropertiesFields = ({ item, apply }: { item: Item; apply: (patch: Part
         <Label htmlFor={id('value')}>Value</Label>
         <Hint>Sets what the item is worth. Add currencies in <b>Currencies</b>.</Hint>
         <div className="flex flex-wrap items-center gap-2">
-          <WorldInput
-            id={id('value')}
-            type="number"
-            className="w-32"
-            value={item.value ?? ''}
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              if (e.target.value.trim() === '') apply({ value: undefined });
-              else if (Number.isFinite(value)) apply({ value });
-            }}
-          />
+          {coinSplit ? (
+            <CoinValueFields key={coinSplit.map((coin) => `${coin.itemId}:${coin.worth}`).join()} id={id('value')} fields={coinSplit} hasValue={item.value !== undefined} label={label} onChange={(value) => apply({ value })} />
+          ) : (
+            <WorldInput
+              id={id('value')}
+              type="number"
+              className="w-32"
+              value={item.value ?? ''}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                if (e.target.value.trim() === '') apply({ value: undefined });
+                else if (Number.isFinite(value)) apply({ value });
+              }}
+            />
+          )}
           <Select
             value={currencyOf(item, currencies)?.id ?? NO_CURRENCY}
             onValueChange={(picked) => apply({ currencyId: picked === NO_CURRENCY ? undefined : picked })}

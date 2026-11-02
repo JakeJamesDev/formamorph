@@ -349,7 +349,7 @@ describe('the Emberwatch items', () => {
     expect(ids.filter((id) => id === 'gold')).toEqual(['gold']);
     expect(new Set(ids).size).toBe(ids.length);
     expect(world.currencies?.map((currency) => currency.backing)).toEqual([{ kind: 'stat', statId: 'gold' }]);
-    expect(worthText(itemNamed('Cold Iron Sword'), world.currencies ?? [])).toBe(`${itemNamed('Cold Iron Sword').value} Gold`);
+    expect(worthText(itemNamed('Cold Iron Sword'), world.currencies ?? [], world.items ?? [])).toBe(`${itemNamed('Cold Iron Sword').value} Gold`);
   });
 
   it('points every effect, requirement, slot and placement at something the world has', () => {

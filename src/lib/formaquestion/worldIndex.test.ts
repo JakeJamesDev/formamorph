@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
-import type { Dictionary, Entity, Item, Stat, Tool, World } from '@/types';
+import type { Currency, Dictionary, Entity, Item, Stat, Tool, World } from '@/types';
 import { buildWorldIndex, chipsFromText, worldIndexOf, worldTextOf, type WorldIndexInput } from './worldIndex';
 
 const stat = (patch: Partial<Stat> = {}): Stat => ({ id: 'grit', name: 'Grit', type: 'number', description: 'How long you hold on.', min: 0, max: 100, value: 40, regen: 0, descriptors: [], ...patch });
@@ -92,6 +92,14 @@ describe('the World Index', () => {
     expect(section(item({ currencyId: 'goats' }))).toContain('Value: 10 Goats');
     expect(section(item({}))).toMatch(/Value: 10(?! Goats)/);
     expect(section(item({ currencyId: 'gone' }))).toMatch(/Value: 10(?! Goats)/);
+  });
+
+  it('states a coin Currency’s Value as its Breakdown', () => {
+    const coin = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [] });
+    const draught: Item = { id: 'draught', name: 'Healing Draught', value: 105, currencyId: 'crowns', statEffects: [], traitEffects: [], equipRequires: [] };
+    const currencies: Currency[] = [{ id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } }];
+    const index = buildWorldIndex(world({ items: [draught, coin('copper', 'Copper'), coin('gold', 'Gold')], currencies }));
+    expect(index.docs.search('draught', 1)[0].markdown).toContain('Value: 1 Gold, 5 Copper');
   });
 
   it('states an item’s Uses and When Empty, and names a Becomes target only when the world holds it', () => {

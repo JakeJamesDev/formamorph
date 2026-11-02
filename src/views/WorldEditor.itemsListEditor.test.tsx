@@ -405,3 +405,152 @@ function pickOption(label: string, option: string) {
   openSelect(label);
   fireEvent.keyDown(screen.getByRole('option', { name: option }), { key: 'Enter' });
 }
+
+describe('coin Currencies', () => {
+  const COIN_ITEMS: Item[] = [
+    blankItem('copper', 'Copper'), blankItem('silver', 'Silver'), blankItem('gold', 'Gold'),
+    { ...blankItem('wand', 'Wand'), stackable: false },
+    { ...blankItem('pouch', 'Pouch'), value: 105, currencyId: 'crowns' },
+  ];
+  const coinsOf = (ctx: () => { currencies: Currency[] }) => {
+    const { backing } = ctx().currencies[0];
+    return backing.kind === 'coins' ? backing.coins : [];
+  };
+  const coinWorld = (coins: { itemId: string; worth: number }[]) =>
+    ({ ...WORLD, items: COIN_ITEMS, placements: [], currencies: [{ id: 'crowns', name: 'Crowns', backing: { kind: 'coins', coins } }] as Currency[] });
+  const openCurrencies = () => {
+    openEditorTab(/Items/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Currencies' }));
+  };
+  const commitWorth = (at: number, text: string) => {
+    const input = screen.getAllByRole('spinbutton', { name: 'Coin Worth' })[at];
+    fireEvent.change(input, { target: { value: text } });
+    fireEvent.blur(input);
+  };
+
+  it('switches a Currency to Coin Items and adds rows, the first worth 1 and the next ten times the largest', () => {
+    const { ctx } = renderWorldEditorBench({ ...coinWorld([]), currencies: [{ id: 'crowns', name: 'Crowns', backing: { kind: 'name' } }] }, 'advanced');
+    openCurrencies();
+    pickOption('Currency Type', 'Coin Items');
+    expect(screen.getByText('Add a coin worth 1, the smallest coin.')).toBeInTheDocument();
+    pickOption('Add Coin', 'Copper');
+    pickOption('Add Coin', 'Silver');
+    expect(coinsOf(ctx)).toEqual([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]);
+    expect(screen.queryByText('Add a coin worth 1, the smallest coin.')).toBeNull();
+  });
+
+  it('offers only Stackable items that are no coin yet', () => {
+    renderWorldEditorBench(coinWorld([{ itemId: 'copper', worth: 1 }]), 'advanced');
+    openCurrencies();
+    openSelect('Add Coin');
+    const names = screen.getAllByRole('option').map((option) => option.textContent);
+    expect(names).toContain('Silver');
+    expect(names).not.toContain('Copper');
+    expect(names).not.toContain('Wand');
+  });
+
+  it('refuses a worth another row has, the second worth 1, and moving the only worth 1', () => {
+    const start = [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }, { itemId: 'gold', worth: 100 }];
+    const { ctx } = renderWorldEditorBench(coinWorld(start), 'advanced');
+    openCurrencies();
+    commitWorth(2, '10');
+    expect(screen.getByRole('alert')).toHaveTextContent('Use a whole number no other coin has.');
+    expect(coinsOf(ctx)).toEqual(start);
+    commitWorth(1, '1');
+    expect(coinsOf(ctx)).toEqual(start);
+    commitWorth(0, '5');
+    expect(coinsOf(ctx)).toEqual(start);
+    expect(screen.getAllByRole('spinbutton', { name: 'Coin Worth' }).map((input) => (input as HTMLInputElement).value)).toEqual(['1', '10', '100']);
+  });
+
+  it('applies a free worth', () => {
+    const { ctx } = renderWorldEditorBench(coinWorld([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]), 'advanced');
+    openCurrencies();
+    commitWorth(1, '25');
+    expect(coinsOf(ctx)[1]).toEqual({ itemId: 'silver', worth: 25 });
+  });
+
+  it('reorders and removes rows', () => {
+    const { ctx } = renderWorldEditorBench(coinWorld([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]), 'advanced');
+    openCurrencies();
+    fireEvent.click(screen.getByRole('button', { name: 'Move Silver Up' }));
+    expect(coinsOf(ctx).map((coin) => coin.itemId)).toEqual(['silver', 'copper']);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Silver' }));
+    expect(coinsOf(ctx)).toEqual([{ itemId: 'copper', worth: 1 }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Copper' }));
+    expect(ctx().currencies[0].backing).toEqual({ kind: 'coins', coins: [] });
+    expect(screen.getByText('Add a coin worth 1, the smallest coin.')).toBeInTheDocument();
+  });
+
+  it('warns on a row whose item stopped being Stackable, and keeps the row', () => {
+    const { ctx } = renderWorldEditorBench(coinWorld([{ itemId: 'copper', worth: 1 }, { itemId: 'wand', worth: 10 }]), 'advanced');
+    openCurrencies();
+    expect(screen.getByText('Wand is not Stackable.')).toBeInTheDocument();
+    expect(coinsOf(ctx)).toHaveLength(2);
+  });
+
+  describe('the Value fields', () => {
+    const coins = [{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }, { itemId: 'gold', worth: 100 }];
+    const field = (coin: string) => screen.getByRole('spinbutton', { name: `Value in ${coin}` }) as HTMLInputElement;
+    const openPouch = (world = coinWorld(coins)) => {
+      const bench = renderWorldEditorBench(world, 'advanced');
+      openEditorTab(/Items/);
+      openItem('Pouch');
+      itemFieldsTab('Properties');
+      return bench;
+    };
+
+    it('shows the stored total as one field per coin, largest first', () => {
+      openPouch();
+      const fields = screen.getAllByRole('spinbutton', { name: /Value in/ }) as HTMLInputElement[];
+      expect(fields.map((input) => [input.getAttribute('aria-label'), input.value])).toEqual([['Value in Gold', '1'], ['Value in Silver', '0'], ['Value in Copper', '5']]);
+    });
+
+    it('stores the base units of what the author types, and tidies the fields once focus leaves the group', () => {
+      const { ctx } = openPouch();
+      fireEvent.change(field('Gold'), { target: { value: '2' } });
+      expect(ctx().items.find((item) => item.id === 'pouch')?.value).toBe(205);
+      fireEvent.change(field('Copper'), { target: { value: '15' } });
+      expect(ctx().items.find((item) => item.id === 'pouch')?.value).toBe(215);
+      expect(field('Copper').value).toBe('15');
+      fireEvent.blur(field('Copper'), { relatedTarget: field('Silver') });
+      expect(field('Copper').value).toBe('15');
+      fireEvent.blur(field('Silver'), { relatedTarget: document.body });
+      expect([field('Gold').value, field('Silver').value, field('Copper').value]).toEqual(['2', '1', '5']);
+    });
+
+    it('shows blank fields for a blank Value, zeros for a Value of 0, and clears the Value when every field empties', () => {
+      const blank = coinWorld(coins);
+      const { ctx } = openPouch({ ...blank, items: blank.items.map((item) => (item.id === 'pouch' ? { ...item, value: undefined } : item)) });
+      expect([field('Gold').value, field('Silver').value, field('Copper').value]).toEqual(['', '', '']);
+      fireEvent.change(field('Silver'), { target: { value: '3' } });
+      expect(ctx().items.find((item) => item.id === 'pouch')?.value).toBe(30);
+      fireEvent.change(field('Silver'), { target: { value: '' } });
+      expect(ctx().items.find((item) => item.id === 'pouch')?.value).toBeUndefined();
+    });
+
+    it('shows zeros for a stored Value of 0', () => {
+      const zero = coinWorld(coins);
+      openPouch({ ...zero, items: zero.items.map((item) => (item.id === 'pouch' ? { ...item, value: 0 } : item)) });
+      expect([field('Gold').value, field('Silver').value, field('Copper').value]).toEqual(['0', '0', '0']);
+    });
+
+    it('keeps each item\'s stored total when a coin changes worth, and shifts its fields', () => {
+      const { ctx } = openPouch();
+      openEditorTab(/Items/);
+      fireEvent.click(screen.getByRole('button', { name: 'Select Currencies' }));
+      commitWorth(2, '50');
+      expect(ctx().items.find((item) => item.id === 'pouch')?.value).toBe(105);
+      openItem('Pouch');
+      itemFieldsTab('Properties');
+      expect([field('Gold').value, field('Silver').value, field('Copper').value]).toEqual(['2', '0', '5']);
+    });
+
+    it('keeps one plain field for a Value with no Breakdown', () => {
+      const odd = coinWorld(coins);
+      openPouch({ ...odd, items: odd.items.map((item) => (item.id === 'pouch' ? { ...item, value: 2.5 } : item)) });
+      expect(screen.queryByRole('spinbutton', { name: /Value in/ })).toBeNull();
+      expect((screen.getByLabelText('Value') as HTMLInputElement).value).toBe('2.5');
+    });
+  });
+});

@@ -205,11 +205,21 @@ The [Scripts Guide](Scripts-Reference#items) lists what an item script can read 
 | Type | What it does |
 |---|---|
 | 📊 **Stat** | The money is a number on a stat you pick. |
+| 🪙 **Coin Items** | The money is coins, each one a Stackable item, such as Copper, Silver and Gold. |
 | 🏷️ **Name Only** | The money is only a name, such as goats. Nothing tracks it. |
+
+With **Coin Items**, pick **Add Coin** to add a row. Each row is an item and its worth in the smallest coin:
+
+- 1️⃣ One coin is worth 1. The first row you add takes it. Later rows start at ten times the largest worth.
+- 🔢 Each worth is a whole number, and no two coins share one.
+- 🧱 A coin is a Stackable item, and an item is a coin of one Currency at most.
+- ↕️ The arrows move a row. The player always reads coins from largest to smallest.
+
+An item priced in a coin Currency shows one **Value** field per coin. Type 1 in **Gold** and 5 in **Copper** to store 105. The fields tidy up when you leave them, so 15 Copper becomes 1 Silver and 5 Copper. If you change a coin's worth, each item keeps its total, and its fields change to match.
 
 - 🥇 A new item takes the first Currency in the list. Drag a row to change which one comes first.
 - 🔗 The stat list holds your global stats, the stats your Personas link, and each Persona's own stats. A stat that many Personas link shows once.
-- 💰 The player sees an item's worth in its popup, such as "Worth 40 Credits". An unidentified copy shows no worth.
+- 💰 The player sees an item's worth in its popup, such as "Worth 40 Credits" or "Worth 1 Gold, 5 Copper". An unidentified copy shows no worth.
 - 🚫 An item with **No Currency** shows no worth, even with a **Value**.
 
 ## Equipment Settings

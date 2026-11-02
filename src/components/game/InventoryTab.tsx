@@ -249,7 +249,7 @@ export function InventoryTab({
   };
   const factsOf = (copy: ItemCopy) => {
     const item = itemOf(copy);
-    return [...copyFacts(copy, item), ...copyWorthFacts(copy, item, currencies, resolveText), ...(item?.bound ? [BOUND_TIP] : [])];
+    return [...copyFacts(copy, item), ...copyWorthFacts(copy, item, currencies, resolveText, items), ...(item?.bound ? [BOUND_TIP] : [])];
   };
 
   /** `slotLine` replaces the row's second line. */

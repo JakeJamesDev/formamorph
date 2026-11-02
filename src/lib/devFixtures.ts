@@ -94,11 +94,17 @@ const devItem = (id: string, name: string, slotId: string, extra: Partial<Item> 
 });
 const DEV_NAME_CURRENCY = 'dev-currency-silver';
 const DEV_STAT_CURRENCY = 'dev-currency-credits';
-/** A stat-backed Currency on the world's first stat, then a name-only one. */
+const DEV_COIN_CURRENCY = 'dev-currency-crowns';
+/** A stat-backed Currency on the world's first stat, a name-only one, then a coin-backed one. */
 const devCurrencies = (statId: string | undefined): Currency[] => [
   ...(statId ? [{ id: DEV_STAT_CURRENCY, name: 'Credits', backing: { kind: 'stat' as const, statId } }] : []),
   { id: DEV_NAME_CURRENCY, name: 'Silver', backing: { kind: 'name' } },
+  {
+    id: DEV_COIN_CURRENCY, name: 'Crowns',
+    backing: { kind: 'coins', coins: [{ itemId: 'dev-item-copper', worth: 1 }, { itemId: 'dev-item-silver-bit', worth: 10 }, { itemId: 'dev-item-gold', worth: 100 }] },
+  },
 ];
+const devCoin = (id: string, name: string): Item => ({ id, name, playerDescription: `A ${name.toLowerCase()} coin.`, statEffects: [], traitEffects: [], equipRequires: [] });
 const devItems = (valueStatId: string | undefined): Item[] => [
   {
     id: 'dev-item-tonic', name: 'Healing Tonic', playerDescription: 'A small corked bottle of red tonic.', uses: 1,
@@ -112,6 +118,13 @@ const devItems = (valueStatId: string | undefined): Item[] => [
   {
     id: 'dev-item-sword', name: 'Greatsword of the Ashen Vigil', playerDescription: 'A long two-handed blade.', images: [{ data: portrait('#6b7a8f') }], slotRule: { mode: 'all', slotIds: ['dev-slot-hand', 'dev-slot-off-hand'] },
     ...(valueStatId ? { value: 40, currencyId: DEV_STAT_CURRENCY } : {}),
+    statEffects: [], traitEffects: [], equipRequires: [],
+  },
+  devCoin('dev-item-copper', 'Copper'),
+  devCoin('dev-item-silver-bit', 'Silver Bit'),
+  devCoin('dev-item-gold', 'Gold'),
+  {
+    id: 'dev-item-pouch', name: 'Coin Pouch', playerDescription: 'A pouch that clinks.', value: 105, currencyId: DEV_COIN_CURRENCY,
     statEffects: [], traitEffects: [], equipRequires: [],
   },
   {

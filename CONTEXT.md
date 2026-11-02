@@ -165,6 +165,10 @@ _Avoid_: value unit, money type
 **Backing**:
 What holds a Currency: a stat, coin items, or nothing, for a name only. A stat backing lists each stat once: a Global Stat, a stat a Persona links under its original id, or a Persona's own stat.
 
+**Coin**:
+A row of a coin-backed Currency: a Stackable item and its worth in the base unit. The smallest coin is worth 1, no two coins share a worth, and an item is a coin of one Currency at most. The Breakdown reads an item's Value as coins, largest first, such as "1 Gold, 5 Copper".
+_Avoid_: denomination
+
 **Slot**:
 A name in the world's slot list where an item is equipped, such as Main Hand or Ring. A slot has no capacity of its own: each Body that holds it gives it one, and one capacity unit holds one Item Copy. One list serves every Body, so an item's slot works in any Body that has it.
 
