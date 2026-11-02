@@ -1,0 +1,30 @@
+# 04: Licenses Tab
+
+Status: ready-for-agent
+Blocked by: 01, 03
+Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
+Reasoning effort: medium
+
+A pure parser and a list, with one cross-platform fetch to prove.
+
+## What to build
+
+The Credits dialog gains a **Licenses** tab. It reads the shipped notices file when the tab first opens, relative to the build's base path, so it works offline on web, desktop and the APK. Entries show as collapsed rows, with Bundled assets first, then software, and a filter by name. Only an expanded row mounts its text.
+
+A pure parser turns the file into ordered entries of name, section and text, using the format ticket 03 owns. The Vite plugin also serves the file in dev, so the dev route and preview work.
+
+Rulings: Q8, Q15.
+
+## Acceptance criteria
+
+- [ ] The parser runs on the real file: sections in order, every entry named and non-empty, Game Icons and eSpeak NG present.
+- [ ] The file loads only when the tab first opens, tested by counting fetches.
+- [ ] Filtering by a package name finds it, and a name with no match shows an empty message.
+- [ ] A row expands to its full license text, and collapsed rows mount no text. Measured by a DOM read on the real file.
+- [ ] A failed read shows a message and a way to try again.
+- [ ] The tab works on the dev route and from a production build served locally. The desktop path `app://local` and the APK web root are checked by reading how each serves `dist/`, or by running them.
+- [ ] The How to Play topic names the tab.
+- [ ] A changelog fragment is added.
+- [ ] Frames at 1366 and 375, both themes: `.scratch/frames/licenses-tab-light.png`, `.scratch/frames/licenses-tab-dark.png`, `.scratch/frames/licenses-tab-mobile.png`.
+
+For you: scroll and filter feel on the real list at mobile width.
