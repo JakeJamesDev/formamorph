@@ -126,7 +126,7 @@ All names are test files, with `.test.ts` or `.test.tsx` left off.
 | Vite warnings | `inlineDynamicImports` is deprecated, and `configLoader: 'native'` warns on `__dirname` and an extensionless import | 15 min |
 | Selection walk | Vitest 5 walks setup files, dynamic imports included. Two cleanup imports in `src/test/setup.ts` made a lib change select all 1,717 files, so the walk must not see them | 15 min |
 | Build checks | Compare app and site output, run in a browser, run Electron and Android | 2 h |
-| Shared `node_modules` | Every worktree uses a junction to it, so all open tickets change toolchain at landing. Land in a quiet window. Vitest 5's module cache would also be shared across worktrees, which I did not test | Owner's call |
+| Shared `node_modules` | Every worktree uses a junction to it, so all open tickets change toolchain at landing. Land in a quiet window. Vitest 5's module cache would also be shared across worktrees, which I did not test. After adoption this failed gates at startup with `ENOTEMPTY`, so each checkout now has its own cache (Q44) | Owner's call |
 
 ### Node versions
 
