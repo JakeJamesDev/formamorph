@@ -483,7 +483,7 @@ return base - (active ? {{penalty:number=10}} : 0);`,
     timings: ['after'],
     name: 'Dice Roll With Consequences',
     description: 'Roll a d20 into this stat each turn, and pin the placeholder to that roll’s value. A 1 halves one stat, and a 20 adds 1 to another. Set this stat’s range to 1–20.',
-    // Writes to one stat field apply in stat order. The last write wins.
+    // Writes to one stat field apply in the Scripts tab's order. The last write wins.
     code: `const roll = Math.floor(Math.random() * 20) + 1;
 const target = placeholders[{{bandPlaceholder:placeholder}}];
 if (target.values.length) target.pin(target.values[Math.floor((roll - 1) / 20 * target.values.length)]);

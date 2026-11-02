@@ -96,6 +96,46 @@ describe('the on-demand script check', () => {
     expect(await checkScripts(world)).toEqual([]);
   });
 
+  describe('walks each timing in the Scripts tab’s order, each script reading the scripts above it', () => {
+    const health = () => stat({ id: 'health', name: 'Health', min: 0, max: 100, value: 10 });
+    const take: Script = { id: 'take', timing: 'after', code: 'stats.Health.value = 90;' };
+    const read: Script = { id: 'read', timing: 'after', code: 'if (stats.Health.value !== 90) throw new Error("read " + stats.Health.value);' };
+
+    it('passes a script that reads the write of the row above it', async () => {
+      expect(await checkScripts({ ...base([health()]), scripts: [take, read] })).toEqual([]);
+    });
+
+    it('fails that script once a drag puts it above the write', async () => {
+      const dragged = [{ ...take, order: 1 }, { ...read, order: 0 }];
+      const found = await checkScripts({ ...base([health()]), scripts: dragged });
+      expect(found.map((f) => f.ruleId)).toEqual([SCRIPT_EXECUTION.id]);
+    });
+
+    it('reads previous and delta.actual as a turn does, and the sentence the script above left', async () => {
+      const moved: Script = { id: 'moved', timing: 'after', code: 'if (stats.Health.delta.actual.value !== 80 || stats.Health.previous.value !== 10) throw new Error("no chain");' };
+      expect(await checkScripts({ ...base([health()]), scripts: [take, moved] })).toEqual([]);
+      const mark: Script = { id: 'mark', timing: 'output', code: 'narration.sentence = "marked";' };
+      const reads: Script = { id: 'reads', timing: 'output', code: 'if (narration.sentence !== "marked") throw new Error("no sentence");' };
+      expect(await checkScripts({ ...base([health()]), scripts: [mark, reads] })).toEqual([]);
+    });
+
+    it('adds nothing from a failed script', async () => {
+      const failed: Script = { id: 'failed', timing: 'after', code: 'stats.Health.value = 90; throw new Error("boom");' };
+      const found = await checkScripts({ ...base([health()]), scripts: [failed, read] });
+      expect(found).toHaveLength(2);
+    });
+
+    it('still checks a script on an off trait, and it adds nothing to the chain', async () => {
+      const off = (code: string): Trait => ({ id: 'off', name: 'Off', statChanges: [], scripts: [{ id: 'o', timing: 'after', code }] });
+      // The next row would pass if the off trait's write reached it.
+      const later: Trait = { id: 'next', name: 'Next', statChanges: [], scripts: [read] };
+      const found = await checkScripts({ ...base([health()]), traits: [off('stats.Health.value = 90;'), later] });
+      expect(found.map((f) => f.message)).toEqual([expect.stringContaining('Next')]);
+      const broken = await checkScripts({ ...base([health()]), traits: [off('throw new Error("boom");')] });
+      expect(broken.map((f) => f.ruleId)).toEqual([SCRIPT_EXECUTION.id]);
+    });
+  });
+
   it('runs every script the static rules read, and names each by the same row', async () => {
     const fails: Script[] = [{ id: 'f', timing: 'after', code: 'throw new Error("x");' }];
     const ash: Entity = {

@@ -99,7 +99,8 @@ describe('runStatCodeTurn', () => {
       regenApplied: { a: 5 },
     }));
     expect(valueOf(out.stats, 'a')).toBe(15);
-    expect(valueOf(out.stats, 'b')).toBe(260);
+    // B reads A after A's script set 15: a total of 25 and an actual of 15 - 90.
+    expect(valueOf(out.stats, 'b')).toBe(175);
   });
 
   it('keeps an ask a flag zeroed in total, and the loss in total minus actual', async () => {
@@ -983,13 +984,13 @@ describe('runStatCodeTurn traits', () => {
     expect(health(out)).toMatchObject({ max: 150, value: 50 });
   });
 
-  it('lands the switch after the run: every stat reads the pre-switch traits and bounds', async () => {
+  it('lands the switch after its script: the next stat reads the post-switch traits and bounds', async () => {
     const out = await run([
       'traits.Cursed.enabled = true;',
       'return (traits.Cursed.enabled ? 1 : 0) + stats.Health.max / 10;',
     ]);
-    // Read after the switch, this would be 1 + 150 / 10.
-    expect(valueOf(out.stats, 's1')).toBe(10);
+    // 1 + 150 / 10.
+    expect(valueOf(out.stats, 's1')).toBe(16);
     expect(health(out).max).toBe(150);
   });
 
@@ -1002,16 +1003,16 @@ describe('runStatCodeTurn traits', () => {
     expect(health(out)).toMatchObject({ max: 80, codeDelta: { max: -70 } });
   });
 
-  it('applies two stats switching one trait once, the later stat winning', async () => {
+  it('applies each stat’s switch of one trait in turn, a switch to the state it holds doing nothing', async () => {
     const off = 'traits.Brave.enabled = false;';
     const on = 'traits.Brave.enabled = true;';
     const twice = await run([off, off]);
-    expect(twice.traits?.log).toEqual(['Trait switched off: Brave (by S1)']);
+    expect(twice.traits?.log).toEqual(['Trait switched off: Brave (by S0)']);
     expect(health(twice).value).toBe(50);
     await expect(run([on, off])).resolves.toMatchObject({ traits: { log: ['Trait switched off: Brave (by S1)'] } });
-    // The later stat asks for the state Brave already holds, so Brave stays on and nothing switches.
+    // Brave goes off, then the later stat brings it back on.
     const keptOn = await run([off, on]);
-    expect(keptOn.traits).toBeUndefined();
+    expect(keptOn.traits?.log).toEqual(['Trait switched off: Brave (by S0)', 'Trait switched on: Brave (by S1)']);
     expect(health(keptOn).value).toBe(60);
   });
 

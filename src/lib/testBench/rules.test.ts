@@ -938,7 +938,7 @@ describe('script two writers rule', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toBe(
-      'Two scripts write the value of “Health”: “Health · After the AI” and “Fate · After the AI”',
+      'Two scripts write the value of “Health”, in this order: “Health · After the AI”, then “Fate · After the AI”. Each reads what the one before it wrote.',
     );
     expect(found[0].items.map((i) => i.id)).toEqual(['h']);
   });
@@ -951,7 +951,7 @@ describe('script two writers rule', () => {
     ]);
     expect(found).toHaveLength(1);
     expect(found[0].message).toBe(
-      'Two scripts write the max of “Health”: “Fate · After the AI” and “Luck · After the AI”',
+      'Two scripts write the max of “Health”, in this order: “Fate · After the AI”, then “Luck · After the AI”. Each reads what the one before it wrote.',
     );
   });
 
@@ -968,7 +968,7 @@ describe('script two writers rule', () => {
       stat({ id: 'h', name: 'Health', scripts: [{ id: 's1', name: 'Clamp', timing: 'after', code: 'self.value = 1;' }] }),
       stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.value = 2;' }) }),
     ]);
-    expect(found.message).toBe('Two scripts write the value of “Health”: “Clamp” (After the AI) on “Health” and “Fate · After the AI”');
+    expect(found.message).toBe('Two scripts write the value of “Health”, in this order: “Clamp” (After the AI) on “Health”, then “Fate · After the AI”. Each reads what the one before it wrote.');
   });
 
   it('counts a world script and a trait script as writers', () => {
@@ -978,7 +978,7 @@ describe('script two writers rule', () => {
       traits: [{ id: 't1', name: 'Brave', statChanges: [], scripts: [{ id: 'ts', timing: 'after', code: 'stats.Health.value = 2;' }] }],
     }), RULE);
     expect(found.map((f) => f.message)).toEqual([
-      'Two scripts write the value of “Health”: “World · After the AI” and “Brave · After the AI”',
+      'Two scripts write the value of “Health”, in this order: “World · After the AI”, then “Brave · After the AI”. Each reads what the one before it wrote.',
     ]);
     // A named world script names the world as its home.
     const named = only(base({
@@ -986,7 +986,7 @@ describe('script two writers rule', () => {
       stats: [stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.value = 2;' }) })],
     }), RULE);
     expect(named.map((f) => f.message)).toEqual([
-      'Two scripts write the value of “Health”: “Tide” (After the AI) on the world and “Health · After the AI”',
+      'Two scripts write the value of “Health”, in this order: “Tide” (After the AI) on the world, then “Health · After the AI”. Each reads what the one before it wrote.',
     ]);
   });
 
@@ -1029,6 +1029,13 @@ describe('script two writers rule', () => {
     expect(coded([stat({ id: 'h', name: 'Health', scripts: boxScripts({ before: 'self.value = 1;', after: 'self.value += 2;' }) })])).toEqual([]);
   });
 
+  it('lists the writers in the Scripts tab’s order, which a drag changes', () => {
+    const script = (name: string, order?: number): Script => ({ id: name, name, timing: 'after', code: 'stats.Health.value = 1;', ...(order === undefined ? {} : { order }) });
+    const names = (scripts: Script[]) => only(base({ stats: [stat({ id: 'h', name: 'Health' })], scripts }), RULE)[0].message;
+    expect(names([script('Alpha'), script('Beta')])).toMatch(/Alpha.*then.*Beta/);
+    expect(names([script('Alpha', 1), script('Beta', 0)])).toMatch(/Beta.*then.*Alpha/);
+  });
+
   it('counts the scripts when more than two write one field, and names each', () => {
     const [found] = coded([
       stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.max = 1;' }) }),
@@ -1036,7 +1043,7 @@ describe('script two writers rule', () => {
       stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.max = 3;' }) }),
     ]);
     expect(found.message).toBe(
-      '3 scripts write the max of “Health”: “Health · After the AI”, “Fate · After the AI” and “Luck · After the AI”',
+      '3 scripts write the max of “Health”, in this order: “Health · After the AI”, then “Fate · After the AI”, then “Luck · After the AI”. Each reads what the one before it wrote.',
     );
   });
 
@@ -1098,7 +1105,7 @@ describe('script two writers rule', () => {
       }), RULE);
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        'Two scripts write the value of “Guard” on “Maren”: “Hub · After the AI” and “Guard · After the AI”',
+        'Two scripts write the value of “Guard” on “Maren”, in this order: “Hub · After the AI”, then “Guard · After the AI”. Each reads what the one before it wrote.',
       );
       expect(found[0].items).toEqual([{ id: 'Maren', name: 'Maren', section: 'entities' }]);
     });
@@ -1155,7 +1162,7 @@ describe('script two writers rule', () => {
       }), RULE);
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        'Two scripts write the value of “Destruction”: “Destruction · After the AI” and “Rage · After the AI” of “The Creature”',
+        'Two scripts write the value of “Destruction”, in this order: “Destruction · After the AI”, then “Rage · After the AI” of “The Creature”. Each reads what the one before it wrote.',
       );
       expect(found[0].items).toEqual([{ id: 'dest', name: 'Destruction' }]);
     });
@@ -1170,8 +1177,8 @@ describe('script two writers rule', () => {
       }), RULE);
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        '4 scripts write the max of “Rage” on “The Creature”: “Alarm · After the AI”, “Dread · After the AI”, '
-        + '“Rage · After the AI” and “Fury · After the AI”',
+        '4 scripts write the max of “Rage” on “The Creature”, in this order: “Alarm · After the AI”, then “Dread · After the AI”, '
+        + 'then “Rage · After the AI”, then “Fury · After the AI”. Each reads what the one before it wrote.',
       );
       expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
     });
@@ -1219,7 +1226,7 @@ describe('script two writers rule', () => {
       const found = owners('Maren', 'Tobb');
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        'Two scripts write the value of “Destruction”: “Guard · After the AI” of “Maren” and “Guard · After the AI” of “Tobb”',
+        'Two scripts write the value of “Destruction”, in this order: “Guard · After the AI” of “Maren”, then “Guard · After the AI” of “Tobb”. Each reads what the one before it wrote.',
       );
       expect(owners('Maren')).toEqual([]);
     });

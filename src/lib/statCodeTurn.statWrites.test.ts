@@ -113,10 +113,10 @@ describe('runStatCodeTurn writes to other stats', () => {
     expect(find(out.stats, 'h')).toMatchObject({ value: 75, max: 80 });
   });
 
-  it('hides a hub’s write from the target’s own box on the same run', async () => {
+  it('shows a hub’s write to the target’s own box lower in the list, in its value and delta.actual', async () => {
     const own = health({ scripts: boxScripts({ after: 'self.regen = self.value; self.min = self.delta.actual.value;' }) });
     const out = await run([hub('stats.Health.value = 90;'), own]);
-    expect(find(out.stats, 'h')).toMatchObject({ value: 90, regen: 60, min: 0 });
+    expect(find(out.stats, 'h')).toMatchObject({ value: 90, regen: 90, min: 30 });
   });
 
   it('drops and reports a write to an unknown stat name by its path', async () => {

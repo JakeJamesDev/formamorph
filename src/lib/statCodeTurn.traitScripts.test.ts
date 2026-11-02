@@ -191,7 +191,7 @@ describe('an entity’s trait scripts', () => {
     const out = await run(ownerTraits({
       entities: twins, owned: { bram: { chosen: ['grim'] }, cass: { chosen: ['grim'] } },
     }));
-    // Both read one snapshot; the later owner's write wins the field.
-    expect(hpOf(out)).toBe(60);
+    // Cass reads the 51 Bram left.
+    expect(hpOf(out)).toBe(61);
   });
 });

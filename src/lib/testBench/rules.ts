@@ -40,7 +40,7 @@ import { scanStatLookups, scanStatWrites } from '@/lib/statCodeWriteScan';
 import {
   isStatOn, routeTargets, statCodeOwners, traitCodeBoxes, type CodeOwner, type CodeOwners, type TraitRun,
 } from '@/lib/statCodeTargets';
-import { worldScriptList, type ListedScript } from '@/lib/worldScripts';
+import { rowKeyOf, runRowPlace, scriptEntryKey, worldScriptList, type ListedScript, type ScriptTreeWorld } from '@/lib/worldScripts';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
@@ -1005,6 +1005,12 @@ const codeOwnersOf = (world: RuleWorld): CodeOwners => statCodeOwners({
   stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: allPlaceholders(world),
 });
 
+/** `world` as the Scripts tab lists it. */
+export const scriptTreeWorldOf = (world: RuleWorld): ScriptTreeWorld => ({
+  scripts: world.scripts, stats: world.stats ?? [], statGroups: world.statGroups ?? [], traits: world.traits ?? [],
+  traitGroups: world.traitGroups ?? [], entities: world.entities ?? [], placeholders: allPlaceholders(world),
+});
+
 /** One script of the world as a finding names it. */
 export interface RuleScript {
   listed: ListedScript;
@@ -1018,11 +1024,7 @@ export interface RuleScript {
 
 /** Every filled script of the world once, from the list every script reader walks. */
 export const ruleScripts = (world: RuleWorld, owners: CodeOwners = codeOwnersOf(world)): RuleScript[] => {
-  const listWorld = {
-    scripts: world.scripts, stats: world.stats ?? [], statGroups: world.statGroups ?? [], traits: world.traits ?? [],
-    traitGroups: world.traitGroups ?? [], entities: world.entities ?? [], placeholders: allPlaceholders(world),
-  };
-  return worldScriptList(listWorld, filledScripts, owners).map((listed): RuleScript => {
+  return worldScriptList(scriptTreeWorldOf(world), filledScripts, owners).map((listed): RuleScript => {
     const { box, section } = listed;
     const label = (home: string) => scriptLabel(box, home);
     if (listed.kind === 'world') {
@@ -1169,8 +1171,10 @@ interface WrittenField {
   owner: CodeOwner;
   target: Stat;
   field: string;
-  /** Keyed by the writer's owner, home and script. The label names the script without its owner. */
-  writers: Map<string, { owner: CodeOwner; label: string }>;
+  timing: Script['timing'];
+  /** Keyed by the writer's owner, home and script. The label names the script without its owner; the row key is
+   *  the writer's row in the Scripts tab. */
+  writers: Map<string, { owner: CodeOwner; label: string; rowKey: string | null }>;
 }
 
 const scriptTwoWriters: Rule = {
@@ -1184,45 +1188,50 @@ const scriptTwoWriters: Rule = {
   check: (world) => {
     const owners = codeOwnersOf(world);
     const fields = new Map<string, WrittenField>();
-    const write = (writerKey: string, from: CodeOwner, label: string, script: Script, run: TraitRun & { self?: Stat }) => {
+    const authored = new Map((world.entities ?? []).map((entity) => [entity.id, entity]));
+    const write = (writerKey: string, from: CodeOwner, label: string, rowKey: string | null, script: Script, run: TraitRun & { self?: Stat }) => {
       for (const route of scanStatWrites(script.code)) {
         for (const { owner: targetOwner, stat: target } of routeTargets(owners, run, route)) {
           if (!isStatOn(target)) continue;
           const key = JSON.stringify([script.timing, targetOwner.entity?.id ?? null, target.id, route.field]);
-          const held = fields.get(key) ?? { owner: targetOwner, target, field: route.field, writers: new Map() };
-          held.writers.set(writerKey, { owner: from, label });
+          const held = fields.get(key) ?? { owner: targetOwner, target, field: route.field, timing: script.timing, writers: new Map() };
+          held.writers.set(writerKey, { owner: from, label, rowKey });
           fields.set(key, held);
         }
       }
     };
     for (const script of filledScripts(world)) {
-      write(JSON.stringify(['world', script.id]), owners.world, scriptRef(script, null), script, { owner: null });
+      write(JSON.stringify(['world', script.id]), owners.world, scriptRef(script, null), scriptEntryKey({ kind: 'world' }, script.id), script, { owner: null });
     }
     for (const owner of owners.all) {
       for (const writer of owner.stats.filter(isStatOn)) {
+        const { entity } = owner;
+        const home = entity ? { kind: 'entityStat' as const, entityId: entity.id, stat: writer } : { kind: 'globalStat' as const, stat: writer };
         for (const script of filledCodeBoxes(writer)) {
-          write(JSON.stringify([owner.entity?.id ?? null, 'stat', writer.id, script.id]), owner,
-            scriptRef(script, labelOf(writer.name, world)), script, { self: writer, owner: owner.entity ? owner : null });
+          write(JSON.stringify([entity?.id ?? null, 'stat', writer.id, script.id]), owner,
+            scriptRef(script, labelOf(writer.name, world)), rowKeyOf(home, script.id, authored), script, { self: writer, owner: entity ? owner : null });
         }
       }
     }
     for (const box of traitCodeBoxes(owners, { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [] })) {
       for (const run of box.runs) {
         write(JSON.stringify([run.owner?.entity?.id ?? null, 'trait', box.trait.id, box.id]), run.owner ?? owners.world,
-          scriptRef(box, labelOf(box.trait.name, world)), box, run);
+          scriptRef(box, labelOf(box.trait.name, world)), scriptEntryKey(box.home, box.id), box, run);
       }
     }
-    return [...fields.values()].filter(({ writers }) => writers.size > 1).map(({ owner, target, field, writers }) => {
+    const treeWorld = scriptTreeWorldOf(world);
+    return [...fields.values()].filter(({ writers }) => writers.size > 1).map(({ owner, target, field, timing, writers }) => {
       const howMany = writers.size === 2 ? 'Two' : String(writers.size);
       const { entity } = owner;
       const at = entity ? ` on ${quote(labelOf(entity.name, world))}` : '';
       const item = entity ? { ...asItem(entity, world), section: 'entities' as const } : namedItem(target.id, target.name, world);
+      const placeOf = runRowPlace(treeWorld, timing);
       // A writer from another entity names it; a world script and a same-owner script need no owner.
-      const labels = [...writers.values()].map(({ owner: from, label }) =>
+      const labels = [...writers.values()].sort((a, b) => placeOf(a.rowKey) - placeOf(b.rowKey)).map(({ owner: from, label }) =>
         (from.entity && from !== owner ? `${label} of ${quote(labelOf(from.entity.name, world))}` : label));
       return finding(
         scriptTwoWriters,
-        `${howMany} scripts write the ${field} of ${quote(labelOf(target.name, world))}${at}: ${listNames(labels)}`,
+        `${howMany} scripts write the ${field} of ${quote(labelOf(target.name, world))}${at}, in this order: ${labels.join(', then ')}. Each reads what the one before it wrote.`,
         [item],
       );
     });

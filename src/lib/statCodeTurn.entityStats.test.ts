@@ -105,13 +105,21 @@ describe('runStatCodeTurn entity owners', () => {
     expect(valueOf(out.stats, 'gold')).toBe(74);
   });
 
-  it('runs every owner’s code over one snapshot, before any code wrote', async () => {
+  it('runs a global stat’s code ahead of an owner’s, so it reads the owner’s stat before its write', async () => {
     const out = await run(
       [stat({ id: 'gold', name: 'Gold', value: 0, scripts: boxScripts({ after: 'return entities.Bram.stats.Trust.value;' }) })],
       [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, scripts: boxScripts({ after: 'return 90;' }) })])],
     );
     expect(valueOf(out.stats, 'gold')).toBe(30);
     expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(90);
+  });
+
+  it('runs an owner’s code after a global stat’s, so it reads the global stat’s write', async () => {
+    const out = await run(
+      [stat({ id: 'gold', name: 'Gold', value: 0, scripts: boxScripts({ after: 'return 40;' }) })],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, scripts: boxScripts({ after: 'return stats.Gold.value;' }) })])],
+    );
+    expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(40);
   });
 
   it('runs no code for a switched-off entity stat, and lists it with enabled false', async () => {

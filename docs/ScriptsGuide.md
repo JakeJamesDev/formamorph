@@ -323,8 +323,8 @@ A timing adds names to the ones every script reads. The editor's **Variable** me
 **After the AI** is the timing of a stat's code in a world file with a single code box per stat. It reads the AI's change, this turn's regen, and the values the Before the AI scripts set.
 
 > ⚠️ **A Before the AI script has no turn behind it yet.**
-> - `previous` reads as the stat itself.
-> - `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros.
+> - `previous` reads as the stat when the timing began.
+> - `delta.ai`, `delta.regen` and `delta.total` read zeros. `delta.actual` holds what earlier scripts wrote.
 > - The clock reads turn start, so `clock.deltaHours` is `0`.
 >
 > Code that scales the AI's change belongs in an After the AI script. At Game Start and During AI Output read the same turn start.
@@ -407,7 +407,7 @@ Within one timing, scripts run in the order the world's **Scripts** tab lists th
 
 A Blueprint script is one row. It runs once for each owner that uses it, one owner after another, at the row's place in the list.
 
-A later write to a field overwrites an earlier one, so the order decides which write wins. When a world script is ordered before a stat script, the stat script overwrites the world script's write. Swap their orders, and the world script wins. See [Writing to Other Stats](Scripts-Reference#writing-to-other-stats).
+Each script reads what the scripts above it wrote, so you can build an effect in steps. Two scripts that each take 5 Health take 10. A hub's write to Health is in Health's own script on the same turn, if Health is lower in the list. Drag a row to change what later scripts read. See [Order of Effects](Scripts-Reference#order-of-effects).
 
 A [World Tool](#world-tools) the AI called runs before all of these, in its timing.
 
@@ -470,7 +470,7 @@ The sketch matches the exact name only. The drone world has the full **lock_targ
 
 - A run has a timeout of 1 second, so an endless loop stops. A run also has a 16 MB memory limit and a 512 KB stack limit.
 - Code has no access to external resources: no network, no files.
-- Two stats that read each other never loop. Each reads the turn's snapshot.
+- Two stats that read each other never loop. Each script runs once in its timing, and the lower one reads the upper one's write.
 - The code is plain JavaScript in a sandbox. Its only globals are the script objects, `console.log` and the standard built-ins, such as `Math`, `JSON` and `Object`.
 - Code writes `value`, `min`, `max`, `regen` and `hidden` only. Every other field of a stat entry is read-only on every path.
 - A write is ignored and reported when its target is an entity that is not in the game, an unknown stat, or a stat a trait switched off.
@@ -489,7 +489,7 @@ Most scripts are **formulas**. A formula reads other stats and returns an answer
 
 Formamorph runs it once per turn. A re-roll of a turn's stat changes runs it again, by design. The re-roll rebuilds the turn from its starting values, so the total does not count twice. A running total is still more fragile than a formula. Use a formula where one does the job.
 
-**A Blueprint stat's write to a global stat applies once, not once for each owner.** The code runs once for each owner, but every run reads one snapshot. Two owners that each write `stats.Alert.value += 5` both write the snapshot's Alert plus 5. The later write wins, so Alert rises by 5, not by 10. To count each owner, write to `owner.stats`, where each owner has its own copy. The [Test Bench](Test-Bench#issues) warns on a Blueprint box that writes a global stat's field when two or more owners run it.
+**A Blueprint stat's write to a global stat counts once for each owner.** The code runs once for each owner, and each owner reads what the one before it wrote. Two owners that each write `stats.Alert.value += 5` raise Alert by 10. To keep a total for each owner, write to `owner.stats`, where each owner has its own copy. The [Test Bench](Test-Bench#issues) warns on a Blueprint box that writes a global stat's field when two or more owners run it.
 
 ## Troubleshooting
 <!-- keywords: no effect, value never changes, nan, silent failure, checklist, capital letters matter, ignored writes -->

@@ -201,7 +201,7 @@ describe('a world script with When a Trait Switches', () => {
     const calmed = trait('calm', 'Calm', { scripts: [script('stats.HP.value = stats.HP.value * 2;')] });
     const turn = turnOf(ownerTraits({ traits: [brave, calmed], acquired: [brave] }), { worldScripts: [chain] });
     const out = await runSwitchScripts(turn, [{ traitId: 'brave', ownerId: null, enabled: true }]);
-    // Calm's run: the world script adds 7 and Calm's own doubles, over one snapshot, so the later write wins.
+    // Calm's run: the world script adds 7, and Calm's own doubles that 57 to 114, which HP's max caps.
     expect(hpOf(out)).toBe(100);
     expect(out?.traits?.acquired.map((t) => t.id)).toEqual(['brave', 'calm']);
   });

@@ -188,6 +188,12 @@ export function rowKeyOf(home: UnitHome, scriptId: string, entities: ReadonlyMap
 export const runRowKeys = (world: ScriptTreeWorld, timing: ScriptTiming): string[] =>
   (scriptsByTiming(worldScriptEntries(world))[timing] ?? []).map((entry) => entry.key);
 
+/** Each row's place at `timing` in run order; a key with no row sorts last. */
+export function runRowPlace(world: ScriptTreeWorld, timing: ScriptTiming): (key: string | null) => number {
+  const place = new Map(runRowKeys(world, timing).map((key, i) => [key, i]));
+  return (key) => (key === null ? place.size : place.get(key) ?? place.size);
+}
+
 /** One script's new `order`. */
 export interface OrderWrite {
   entry: ScriptEntry;

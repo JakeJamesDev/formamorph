@@ -3,14 +3,14 @@ import type { NarrationListener } from './aiRequest/narrationStream';
 import type { SentenceRewrite } from './aiRequest/narrationRewrite';
 import { filledScriptsAt } from './scripts';
 import {
-  afterRun, chainedResult, runStatCodeTurn, withSwitchRuns, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
+  afterRun, chainedResult, runStatCodeTurn, timingStartOf, withSwitchRuns, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
 } from './statCodeTurn';
 
 /**
  * One reply's During AI Output run. Each completed sentence runs the turn's armed output triggers, then the
- * world's and every owner's output scripts, over what the sentences before it left, so what they write sums
- * across the reply. The run holds those writes back: `result` lays them out as one result, which lands with
- * the turn's After batch.
+ * world's and every owner's output scripts one by one, each over what the scripts and sentences before it left, so
+ * what they write sums across the reply. The run holds those writes back: `result` lays them out as one result, which
+ * lands with the turn's After batch.
  */
 export interface OutputRun {
   /** Rewrites one sentence. Calls must not overlap, which the sentence rewrite's queue guarantees. */
@@ -46,6 +46,8 @@ export function openOutputRun(
 ): OutputRun | null {
   if (!triggers && !hasOutputScripts(turn)) return null;
   let now = turn;
+  // The timing begins at the reply's first sentence, so every sentence's `previous` reads it (Q27).
+  const began = timingStartOf(turn.state);
   const steps: StatCodeTurnResult[] = [];
   // Bumped on a retract, so a sentence run that was in progress then leaves no write.
   let round = 0;
@@ -61,7 +63,7 @@ export function openOutputRun(
     const mine = round;
     const shown = Math.min(released(), earlier.length);
     const narration = { sentence, full, index, sent: earlier.slice(0, shown), buffered: earlier.slice(shown) };
-    const step = await runStatCodeTurn({ ...now, timing: 'output', narration, triggers: triggers?.() });
+    const step = await runStatCodeTurn({ ...now, timing: 'output', narration, triggers: triggers?.(), timingStart: began });
     if (mine !== round) return sentence;
     steps.push(step);
     now = afterRun(now, step);

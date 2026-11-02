@@ -263,9 +263,9 @@ Every stat entry on every path takes writes to the same five fields as `self`: `
 
 | Rule | What it means |
 | --- | --- |
-| Owner order, last write wins | Two writes to one field apply in owner order, and the later write wins. The order is the global stats first, then the world's entities in authored order, then the library entities in the order the player picked them. The played persona has its place in that order like any entity, so a library persona applies last |
-| Stat order inside one owner | Writes from one owner's stats apply in the order of that owner's stat list. A write through `self` and a write through any other path count the same. The target's own box is one of the writers |
-| One snapshot per run | Every box of every owner reads the snapshot the run started from. A hub's write to Health is not in Health's own box on that run, or in its `delta.actual`. It is in Health's `previous` on the next turn |
+| Scripts tab order | Writes apply in the order of the **Scripts** tab, and a later write to a field replaces an earlier one. A Blueprint script's row runs for all its owners, one after another. A library entity's scripts run after every row, in the order the player picked them |
+| Stat order inside one owner | With no **order** set, one owner's stats run in the order of that owner's stat list. A write through `self` and a write through any other path count the same. The target's own box is one of the writers |
+| Each script reads the one before it | If Health is lower in the list than a hub, Health's own script reads the hub's write on the same turn, in `value` and `delta.actual`. If Health is higher, its script reads the write on the next turn |
 | Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` sets that owner's own copy of Mana. A write through `stats` sets the global stat |
 | Unknown or switched-off stats | A write to an unknown name, or to a stat a trait switched off, is ignored and reported. The editor underlines an unknown name |
 | An entity not in the game | A write through `entities.<Entity>.stats` to an entity that is not in the game is ignored and reported |
@@ -282,7 +282,7 @@ A stat that a hub set shows the change on its bar, as with any code change. The 
 
 #### Two Scripts, One Field
 
-The [Test Bench](Test-Bench#issues) warns when more than one box writes the same field of one stat. The warning shows in **Advanced** mode. The finding names the field and the box of each writer. A writer whose owner is not the target's owner shows with its stat and owner.
+The [Test Bench](Test-Bench#issues) warns when more than one box writes the same field of one stat. The warning shows in **Advanced** mode. The finding names the field and each writer's box, in the order of the **Scripts** tab. Each script reads what the one before it wrote. A writer whose owner is not the target's owner shows with its stat and owner.
 
 - It counts a box that assigns the field, such as `self.max = 10`, `stats.Health.value -= 5` or `stats.Health.value++`. It counts the target's own box too.
 - It compares scripts of one timing only. A **Before the AI** box and an **After the AI** box that write one field raise no finding.
@@ -293,7 +293,7 @@ The [Test Bench](Test-Bench#issues) warns when more than one box writes the same
 - `persona.stats` resolves to every entity that the player can play, because the world does not know which one the player picks.
 - A Blueprint stat's box counts once for each owner. The check reads each owner's own copy of the stat separately, so two owners do not clash on their own stats. A Blueprint box that writes a global stat's field gets the warning when it has two or more owners (see [A Note on Accumulating Stats](ScriptsGuide#a-note-on-accumulating-stats)).
 
-A warning is not an error. Owner order, then stat order, already decides which write wins. The finding shows two boxes that can overwrite each other by mistake.
+A warning is not an error. The finding shows who writes a field and in what order, so you can check how the writes stack. Drag the rows in the **Scripts** tab to change the order.
 
 ### Hiding and Showing a Stat
 <!-- keywords: reveal a stat, unhide, unlock a stat, show a stat later, secret stat, stat appears mid story, hide a stat, remove from panel, hidden stat, show to the player -->
@@ -309,7 +309,7 @@ if (stats.Anger.value >= 50) {
 }
 ```
 
-- **It applies with the other stat writes.** It applies after the run, in run order, so a later write wins. Later in the same run, the entry reads what you set.
+- **It applies with the other stat writes.** It applies after the script, and a later write wins. Later in the same script, and in later scripts, the entry reads what you set.
 - **A During AI Output write waits.** It applies with the writes of the After the AI scripts, before those scripts run.
 - **A shown stat shows this turn's changes.** It appears with its change chips for this turn.
 - **The game adds no notice.** To tell the player, call `player.tell` or `player.toast`.
@@ -325,7 +325,7 @@ This section is about After the AI scripts. Every stat has the turn's state from
 - `previous` holds the stat's fields at the start of the turn (see the `previous` row in [Stat Properties](#stat-properties)).
 - `delta` holds every change the turn made to the stat, by source.
 
-In a Before the AI script, the turn has done nothing yet. `previous` reads as the stat itself, and every `delta` below reads zero.
+In a Before the AI script, the AI and regen have done nothing yet. `previous` reads as the stat when the timing began, and `delta.ai`, `delta.regen` and `delta.total` read zero. `delta.actual` holds what earlier scripts wrote.
 
 Each `delta` member has the same four fields: `value`, `min`, `max` and `regen`. A field that a source cannot change reads `0`.
 
@@ -677,7 +677,7 @@ if (stats.Gate.value === 0) dictionaries["Chapter Two"].enabled = true;
 - **The list holds the world's dictionaries, then the library dictionaries.** The world's dictionaries are the ones that the player left on at **Enter World** and the ones you ship off. The library dictionaries are the ones that the player picked there. Of two that share a code name, the later one is the entry.
 - **A dictionary you ship off reads `enabled: false`.** To keep its entries from the AI, clear the dictionary's **Enabled** checkbox, in **Advanced** mode. A script can switch it on later in the story.
 - **A dictionary that the player turned off at Enter World reads as an unknown dictionary.** A write to it is ignored and reported.
-- **A write applies as an entry write does.** It applies after the run, and later in the same run the dictionary reads what you set. An undo or a re-roll clears it with the turn. A Before the AI write changes this turn's narration.
+- **A write applies as an entry write does.** It applies after the script, and later in the same script, and in later scripts, the dictionary reads what you set. An undo or a re-roll clears it with the turn. A Before the AI write changes this turn's narration.
 - **A library dictionary that the player picked takes writes like any other.** The player's library copy never changes.
 - **Test Code reads each dictionary's own Enabled setting,** because it has no **Enter World**.
 - **An unknown dictionary name reads as a blank entry.** Its `name` and `id` are `''`, and every placeholder under it reads as blank. A pin through it is ignored.
@@ -711,7 +711,7 @@ if (traits["Vault Key"].enabled) dictionaries.Lore.entries["Sealed Vault"].enabl
 - **An entry with no name is left out.** A name of only spaces counts as no name. Scripts can't read it or write to it. It still works in the story.
 - **Of two entries with one name, the name resolves to the enabled one.** Between two enabled or two disabled entries, it resolves to the later one. A write through the name sets that entry.
 - **A name with no entry in the dictionary reads as a blank entry.** Its `id`, `name` and `value` are `''`, `keys` is an empty list, and `enabled` and `constant` are false. A write through it is ignored and reported.
-- **A write applies after the run.** Writes apply in run order, so a later write wins. Later in the same run, the entry reads what you set. Its name still resolves to the entry it named at the start of the run.
+- **A write applies after the script.** A later write wins. Later in the same script, and in later scripts, the entry reads what you set. Its name still resolves to the entry it named at the start of the script.
 - **A Before the AI write shapes this turn.** The narration reads the entry this turn. An After the AI write shapes the next turn. A During AI Output write waits for the writes of the After the AI scripts.
 - **It persists for the playthrough.** The save keeps it. An undo or a re-roll reverts it with the turn. The dictionary itself never changes.
 - **Keywords find a newly enabled entry at once.** Meaning-based recall can miss it until the game has indexed it. The index starts at once and does not delay the turn.
@@ -877,7 +877,7 @@ placeholders.Route.pin(path);
 - **A prompt needs a screen.** With no game screen to answer, `ask`, `confirm` and `input` fail as canceled at once. `tell` and `toast` do nothing.
 - **A bad call throws a TypeError in the script.** A bad call is a message, question or placeholder that is not text, an `ask` with no options, or an option that is neither text nor `{ label, value }`.
 - **A multiple pick with nothing chosen** returns an empty list. A single `ask` always returns one value.
-- **Prompts show one at a time.** An open prompt holds every other script that prompts, until you answer it. A script that never names `player` is not held.
+- **Prompts show one at a time.** An open prompt holds every later script in its timing until you answer it, including a script that never names `player`.
 - **The timeout pauses** while a prompt is open. The one-second limit counts the script's own work.
 - **Write `player.` by name.** A script that reads `player` another way, such as `const p = player;`, fails with "player is not defined".
 
@@ -914,29 +914,27 @@ A stat or world script sees every switch through `trait`. A trait's own script s
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
-Each timing is a separate run. Within one run, every script reads the same snapshot. No script sees another script's writes from that run, with two exceptions:
+Each timing is a separate run. Within one run, scripts run one by one, in the order of the **Scripts** tab (see [Run Order](ScriptsGuide#run-order)). Each script reads what the scripts above it wrote: stats, trait switches, placeholder pins, dictionary entries, the sentence in During AI Output and `turn.choices` in After the AI.
 
-- The sentence in During AI Output
-- `turn.choices` in After the AI
+Two scripts that each write `stats.Health.value -= 5` take 10 from Health.
 
-Each script reads those two as the script before it left them.
-
-After each run, effects apply in this order:
+After each script, its effects apply in this order:
 
 1. Trait switches
 2. Bounds
 3. Values
 4. Placeholder pins
 
-A bound that a stat writes applies at the written number, after the run's trait switches have changed the bounds.
+A bound that a stat writes applies at the written number, after that script's trait switches have changed the bounds.
 
-Each run covers the global stats and every entity's stats over that one snapshot. When two stats write the same placeholder, trait or stat field in one run, this order decides:
-
-1. Scripts with an **order** run first (see [Run Order](ScriptsGuide#run-order)).
-2. Then owner order decides.
-3. Then the later stat in the owner's list wins.
-
-The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats) for the order.
+- **Later writes replace earlier ones.** The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats).
+- **A failed script adds nothing.** The scripts below it still run, and they read the state as if it never ran.
+- **A switch applies to the scripts below it.** A script that an earlier script switched off doesn't run. A script that an earlier script switched on runs if it is lower in the list.
+- **`previous` holds the start value.** In After the AI, it is the value at the start of the turn. In every other timing, it is the value when the timing began. `value` and `delta.actual` include earlier scripts' writes. `delta.ai` and `delta.regen` keep their meaning.
+- **During AI Output scripts read each other's writes on each sentence.** The writes still land with After the AI, and a stopped turn applies none.
+- **A World Tool's writes come first.** On a re-roll, its saved writes apply before the list, and every script reads them.
+- **When a Trait Switches scripts run after the timing's scripts.** So do item events.
+- **Some writes apply after the timing's scripts.** These are writes to items, Bodies, the location, the clock, memories, diaries and discoveries. A later script doesn't read them yet.
 
 The timings run in order against each other. Everything a Before the AI script wrote is in place when an After the AI script reads. On the opening turn, an At Game Start script's writes are in place when Before the AI reads.
 

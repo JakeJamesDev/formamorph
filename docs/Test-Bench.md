@@ -93,10 +93,11 @@ The **Issues** tab is the World Doctor. It checks your world's structure: broken
 - **Mark All Seen** clears the **New** tags. Closing the bench also marks the list seen. A row whose text changes shows as **New** again.
 - This browser remembers seen and dismissed rows for each world. An update to a downloaded world clears the seen marks.
 - A world with no findings shows **No Problems Found**.
+- In **Advanced** mode, a row lists the scripts that write one stat field, in the order they run. Each script reads what the one before it wrote, so check that the writes stack the way you want.
 
 Some checks run only when you ask:
 
-- **Check Scripts** runs every script of the world, every stat and every trait, entities' included. Each runs once, in its own timing, and the list shows what fails. Each finding names the script by its name, or by its owner and timing. It shows prompts as it runs: each `player` question shows, one after another, for you to answer. It shows in Advanced mode when the world has a script with code.
+- **Check Scripts** runs every script of the world, every stat and every trait, entities' included. Each runs once, in its own timing, in the order of the **Scripts** tab, and reads what the scripts above it wrote. A script on a trait that is off still runs, but later scripts don't read its writes. The list shows what fails. Each finding names the script by its name, or by its owner and timing. It shows prompts as it runs: each `player` question shows, one after another, for you to answer. It shows in Advanced mode when the world has a script with code.
 - **Check Sources** asks the server whether the library items this world's copies follow still exist. It shows when a copy follows a published item. A copy whose source is gone gets a repair list and **Apply**. The repairs are **Replace from Library**, **Unlink and Keep Content** and **Remove from World**. When the server can't be reached, **Retry Check** asks again.
 
 After a run, each button reads **Check Again**.

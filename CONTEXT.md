@@ -512,19 +512,20 @@ One box of JavaScript with a Timing, kept on a stat, on a trait, on the world or
 _Avoid_: stat code, code box, formula (a returned number is one use), macro
 
 **Timing**:
-When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. An item's scripts have five Timings of their own, the item timings. The Timing menu is the only way to move a script between timings. Inside one timing, an optional `order` decides who runs first.
+When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. An item's scripts have five Timings of their own, the item timings. The Timing menu is the only way to move a script between timings. Inside one timing, scripts run one by one in the Scripts tab's order, and an optional `order` decides who runs first.
 _Avoid_: hook, phase, trigger (a Test Bench Instrument), event
 
 **Sandbox Snapshot**:
-A frozen read of one playthrough state that every Script of a turn or a check runs against: the stats and which are on, the Owners and their stats, the traits in force, the placeholders, the dictionaries, the places, the discovered cast and the clock. Play takes one per turn. Test Code and the Test Bench take one of the authored world at turn one, so an editor run and a real turn read the same board. Taken once, read by every run.
+A frozen read of one playthrough state that one Script runs against: the stats and which are on, the Owners and their stats, the traits in force, the placeholders, the dictionaries, the places, the discovered cast and the clock. Play takes one per Script, over what the Script before it left. Test Code and the Test Bench start from the authored world at turn one, so an editor run and a real turn read the same board. Taken once per Script, read by that Script alone.
 _Avoid_: sandbox context, run options, script world, code scene
 
 **Before the AI**:
-The Timing that runs at the start of a turn, before the prompt is built. Its writes are in that turn's prompt. No AI change, regen or clock time exists yet, so `previous` reads as the stat and every `delta` reads zero.
+The Timing that runs at the start of a turn, before the prompt is built. Its writes are in that turn's prompt. No AI change, regen or clock time exists yet, so `previous` reads as the stat when the Timing began and `delta.ai` and `delta.regen` read zero.
 _Avoid_: pre-turn, before box
 
 **After the AI**:
-The Timing that runs after the AI's stat changes and Regen apply. It reads the AI's change, this turn's regen and what the Before the AI scripts set._Avoid_: post-turn, after box, stat code (the old name of the whole feature)
+The Timing that runs after the AI's stat changes and Regen apply. It reads the AI's change, this turn's regen, what the Before the AI scripts set and what the After the AI scripts above it wrote.
+_Avoid_: post-turn, after box, stat code (the old name of the whole feature)
 
 **During AI Output**:
 The Timing that runs once for each completed narration sentence, never for each token. The script reads `narration` and rewrites the sentence through `narration.sentence`. The rewrite is the one copy that the screen, the save, read-aloud and the AI's recap carry. It has no `player`.

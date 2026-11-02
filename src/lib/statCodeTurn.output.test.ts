@@ -107,12 +107,12 @@ describe('runStatCodeTurn at During AI Output', () => {
     expect(failure).toHaveBeenCalledWith(expect.stringMatching(/During AI Output/), expect.stringMatching(/player\.ask.*During AI Output/s));
   });
 
-  it('merges other writes over one snapshot, the later script winning the field', async () => {
+  it('chains other writes through the scripts on one sentence, so they stack', async () => {
     const health = stat({ id: 'h', name: 'Health', value: 10 });
     const out = await runStatCodeTurn(output({
       stats: [health], worldScripts: [script('stats.Health.value += 1;'), script('stats.Health.value += 5;')],
     }));
-    expect(valueOf(out.stats, 'h')).toBe(15);
+    expect(valueOf(out.stats, 'h')).toBe(16);
     expect(out.moved).toEqual(['h']);
   });
 

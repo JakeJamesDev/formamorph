@@ -105,14 +105,14 @@ describe('runStatCodeTurn writes across owners', () => {
     expect(valueOf(out.owners?.odette.stats, 'calm')).toBe(2);
   });
 
-  it('moves a world stat once when a Blueprint stat on two owners writes it', async () => {
+  it('moves a world stat once per owner when a Blueprint stat on two owners writes it', async () => {
     const hub = stat({ id: 'hub', name: 'Hub', scripts: boxScripts({ after: 'stats.Gold.value = stats.Gold.value + 1;' }) });
     const out = await run([stat({ id: 'gold', name: 'Gold', value: 5 })], [owner('bram', [hub]), owner('odette', [hub])]);
-    // Each owner reads Gold at 5, so both write 6.
-    expect(valueOf(out.stats, 'gold')).toBe(6);
+    // The second owner reads the first owner's 6.
+    expect(valueOf(out.stats, 'gold')).toBe(7);
   });
 
-  it('lets no run see another run’s write in the same turn', async () => {
+  it('lets each run see the writes of the runs before it in the same turn, and no later run’s', async () => {
     const out = await run(
       [
         stat({ id: 'alert', name: 'Alert', value: 10 }),
@@ -123,8 +123,9 @@ describe('runStatCodeTurn writes across owners', () => {
         owner('odette', [stat({ id: 'calm', name: 'Calm', value: 0, scripts: boxScripts({ after: 'return entities.Bram.stats.Trust.value;' }) })]),
       ],
     );
+    // Echo runs ahead of Fury, so it reads Alert before Fury's write.
     expect(valueOf(out.stats, 'echo')).toBe(10);
-    expect(valueOf(out.owners?.odette.stats, 'calm')).toBe(30);
+    expect(valueOf(out.owners?.odette.stats, 'calm')).toBe(99);
     expect(valueOf(out.stats, 'alert')).toBe(90);
     expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(99);
   });
