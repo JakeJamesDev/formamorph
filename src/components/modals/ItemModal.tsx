@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ItemIconArt } from '@/components/ItemIconArt';
+import { ItemRowArt } from '@/components/ItemIconArt';
 import { Meta } from '@/components/ui/typography';
 import type { ShownItemIcon } from '@/lib/itemIcons';
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
@@ -28,7 +28,7 @@ export function ItemModal({ id, name, icon, image, description, facts, isOpen, o
       >
         <DialogHeader className="flex-shrink-0">
           <div className="flex flex-wrap items-center justify-center gap-x-2 pr-6 sm:justify-start">
-            {icon.kind === 'icon' && <ItemIconArt id={icon.id} className="h-6 w-6 shrink-0" />}
+            {icon.kind === 'icon' && <ItemRowArt shown={icon} />}
             <DialogTitle>{name}</DialogTitle>
             {facts.map((fact) => <Meta key={fact}>{fact}</Meta>)}
           </div>
