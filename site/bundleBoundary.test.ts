@@ -53,6 +53,7 @@ const ALLOWED = [
   '@/components/PatreonSection',
   '@/components/RoleBadge',
   '@/components/SupporterBadge',
+  '@/components/SupportersWall',
   '@/lib/supporterFlair',
   '@/lib/tierNames',
   '@/lib/resetTime',
@@ -198,7 +199,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 72: `tierNames`, the one place a tier's name comes from; it reads only `apiBase` and `supporterFlair`.
     // 73: `typography`, the text roles the age gate, creations list, Patreon section and delete-account dialog read; it reads only `utils`.
     // 74: `resetTime`, the pure leaf that formats the local reset weekday and time for the allowance section.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(74);
+    // 75: `SupportersWall`, the wall the page and the game's Credits dialog share; it reads only leaves already listed.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(75);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

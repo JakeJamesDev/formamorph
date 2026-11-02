@@ -69,7 +69,7 @@ export const PatreonService = {
 
   /** The public Supporters wall. Needs no sign-in. */
   async getSupporters(): Promise<Supporter[]> {
-    const failure = 'Could not load the Supporters wall.';
+    const failure = 'Could not load the list of supporters.';
     let response: Response;
     try {
       response = await fetch(`${API_BASE_URL}/patreon/supporters`);

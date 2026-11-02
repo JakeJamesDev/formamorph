@@ -154,7 +154,8 @@ export const DEV_MODAL_TABS = {
   // The account dialog: admin messages, the follow feed, the terms, and the account settings. Log Out is a
   // header button rather than a tab, so it is not routable.
   profile: ['messages', 'notifications', 'terms', 'settings'],
-  credits: ['credits'],
+  // `tab=supporters` needs the age gate accepted. Add `fixture=supporters` for a canned wall (`devSupportersSample.ts`).
+  credits: ['credits', 'supporters'],
   // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch. Add
   // `fixture=feedback` to serve a canned board (`devFeedbackStub.ts`); the admin feedback route takes it too.
   feedbackHub: ['bugs', 'suggestions', 'questions'],

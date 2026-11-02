@@ -69,4 +69,20 @@ describe('the Credits line on the Main Menu', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Credits' }));
     expect(await screen.findByRole('dialog', { name: 'Credits' })).toBeInTheDocument();
   });
+
+  it('opens the profile dialog over Credits when a name on the Supporters tab is selected', async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => new Response(JSON.stringify({
+      data: String(url).endsWith('/patreon/supporters')
+        ? [{ id: 'id-zed', username: 'Zed', avatarUrl: null, tier: 'supporter', since: null }]
+        : [],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    renderMainMenu();
+    fireEvent.click(await screen.findByRole('button', { name: 'Credits' }));
+    await screen.findByRole('dialog', { name: 'Credits' });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Supporters' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Zed' }));
+
+    expect(await screen.findByRole('dialog', { name: /Zed/ })).toBeInTheDocument();
+  });
 });
