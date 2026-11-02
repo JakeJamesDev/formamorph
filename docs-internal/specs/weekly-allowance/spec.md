@@ -109,16 +109,17 @@ The breakdown shows seven groups by share of cost. Any single prompt with a larg
 
 **Allowance Ring**
 - A new component between Help and Send, in every game layout (Q15). It is a button with an accessible name that holds the percent.
-- It shows when any prompt in the active setup resolves to Formamorph AI, including a pinned pass (Q3). It uses the same per-prompt endpoint resolution as the Send tooltip.
-- Its figure is a snapshot taken when a turn ends, committed or aborted (Q13), and refreshed by any fetch of the hosted state outside a turn. Mid-turn usage events still update the hosted session for its existing rules; the ring doesn't read them until the turn ends.
-- It changes color at each value in `warnThresholds` (Q14). The toast fires only for the highest threshold.
+- It shows when any prompt in the active setup resolves to Formamorph AI, including a pinned pass (Q3). It uses `hostedInUse`, the rule that already governs the hosted state read, so the ring and the read never disagree. The ring may therefore show when every prompt is pinned away, or when the pinned prompt is switched off.
+- Its figure and state are a snapshot taken when a turn ends: the falling edge of `isWaitingForAI`, on every path (Q13). A fetch of the hosted state or a state change outside a turn also refreshes it. A usage event alone never moves the ring, so background passes after a turn show at the next of those. Usage events still update the hosted session for its existing rules.
+- A popover opened during a turn shows the live read while the ring holds. A popover still open when the turn ends refetches once.
+- It uses the normal color below the first value in `warnThresholds`, `warning` from there, and `destructive` from the highest value, at 100% and in `exhausted` (Q14). Null thresholds mean no color change. The toast fires only for the highest threshold.
 - For a state with no usage figure (`paused`, `locked` and the app-derived states), the ring stays and shows no fill (Q19).
 - The ring's look is a new visual pattern. It needs the user's approval before adoption, and it enters the Design System and its showcase with a dev route.
 
 **Popover**
 - Selecting the ring opens a popover above the input (Q4), holding the existing usage lines and the breakdown, or the existing state reason and actions where the state has them. At the end of the allowance it holds switch back and the Patreon link.
 - It covers this week only (Q16), with an empty state when nothing is spent yet.
-- One shared breakdown component serves the popover and AI settings (Q12). The site profile keeps percent and reset day, with no breakdown.
+- One shared breakdown component serves the popover and AI settings (Q12). The user approved the bar under each group, and it enters the Design System with the ring. The site profile keeps percent and reset day, with no breakdown.
 
 **Mobile input expansion**
 - On mobile widths, the focused action input expands over Help and the ring, and Send stays visible (Q15, Q17). The input already tracks focus and collapses on blur; the same state drives this.
