@@ -119,7 +119,7 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 ## Implementation Decisions
 
-**Kokoro client.** A small client of our own, built on `@huggingface/transformers`, replaces `kokoro-js`. It keeps the two calls Text to Speech uses: load the model, and generate from text with a voice and speed. `kokoro-js` inlines `phonemizer`, so a package alias cannot remove eSpeak. Anything adapted from `kokoro-js` keeps its Apache-2.0 notice.
+**Kokoro client.** A small client of our own, built on `@huggingface/transformers`, replaces `kokoro-js`. It keeps the two calls Text to Speech uses: load the model, and generate from text with a voice and speed. `kokoro-js` inlines `phonemizer`, so a package alias cannot remove eSpeak. Anything adapted from `kokoro-js` keeps its Apache-2.0 notice, in the source and in the notices after the package leaves. Parity with `kokoro-js` is a one-time check quoted in the ticket. No eSpeak output is committed as a test snapshot.
 
 **Text to phonemes.** One deep module takes text and a voice's accent and returns the phoneme string for Kokoro. It owns text cleanup, word lookup in the order above, homograph picks, stress handling, and British rules. It holds the Kokoro notation mapping, including flaps, which CMUdict does not mark.
 
@@ -127,7 +127,7 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 **Compound split.** A word splits into two parts of at least 3 letters when both parts are in CMUdict. The second part takes secondary stress. The trial also required both parts in a common-word list taken from WikiPron. Since WikiPron is never committed, the shipped list comes from CMUdict.
 
-**Model.** A from-scratch BART grapheme-to-phoneme model with the Q9 shape, exported to ONNX. It trains on primary CMUdict entries only. A model loads once and is released with the rest of Text to Speech.
+**Model.** A from-scratch BART grapheme-to-phoneme model with the Q9 shape, exported to ONNX as an encoder file and a decoder file, about 7 MB in total. It trains on primary CMUdict entries only. A model loads once and is released with the rest of Text to Speech.
 
 **Word table.** Plain data in this repo: word and phoneme string. We write each entry and accept it by ear. Entries are never copied from Wiktionary, WikiPron, or Misaki.
 
@@ -141,9 +141,9 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 **Notices.** The generator drops `phonemizer` and `kokoro-js` when they leave the dependencies. The hand-kept Bundled assets section drops eSpeak NG and its GPL text, and adds CMUdict's BSD-style license and the model.
 
-**Provenance.** The repo holds the training script, the pinned CMUdict revision, its license text, and the seed. The shipped model comes from that pinned revision, so it is retrained and rechecked rather than carried from the trial.
+**Provenance.** The repo holds the training script, the pinned CMUdict file, its license text and hash, and the seed. The mapping to Kokoro notation has one implementation, in TypeScript, and the trainer reads pairs it writes. The shipped model comes from that pinned revision, so it is retrained and rechecked rather than carried from the trial.
 
-**WikiPron.** Its data is CC BY-SA. The scoring script fetches it at run time and nothing derived from its pronunciations is committed. The committed sets hold words only, and the eSpeak reference numbers are stored as results.
+**WikiPron.** Its data is CC BY-SA. The scoring script fetches it at run time and nothing derived from its pronunciations is committed. The scoring source is `CUNY-CL/wikipron`, pinned by commit, and the US file at `d282e848` is the same blob the trial used, so the 16.0 stands. The committed sets hold words only, plus token counts for the known-word set, so 1.9 stays comparable. The eSpeak reference numbers are stored as aggregates with their method, and the script that made them does not land. The ear test record keeps its third-party strings as this spec's history.
 
 **Export shape.** World and save files do not change.
 
