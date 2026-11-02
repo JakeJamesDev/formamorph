@@ -107,6 +107,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 **Bundled Avatars by build (Q19–Q21)**
 
 - A build flag, not a failed fetch, decides whether Praline exists. A 404 on an SFW build would retry on every launch.
+- The flag is `FORMAMORPH_AVATARS`, set to `nsfw` only by the three release steps that copy her file. Unset means SFW, so a local Android or desktop build holds Aki alone. A build check fails when the flag and the output disagree.
+- Old Sugarscape saves with no chosen Avatar resolve to the player's default, because the world stays authoritative for saves. They get no save handling.
 - Seeding becomes a list of bundled entries, each with a fixed library id and its own one-shot flag. Seeded copies stay the player's, so a deleted Praline stays gone.
 - Existing players on NSFW builds receive Praline through her own flag. They keep their current default copy (Q6), so they don't receive Sei.
 - Praline's file lives beside the alternate file in `build-assets`, and the release swap copies it in. This adds about 20 MB to each NSFW build.
@@ -122,7 +124,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **Steam build (Q18)**
 
-- No Steam build class exists yet. This effort adds the "no bundled Avatar" switch on the build class that the Steam effort will use.
+- No Steam build class exists yet. This effort adds `none` to `FORMAMORPH_AVATARS`, and the Steam effort sets it.
 - The build must leave out every `.vrm`, including the tracked default that `public/` copies into a dist.
 - With no bundled file, these change: the viewer's default model URL, library seeding, the bundled hash check, and the rule that the library keeps at least one Avatar.
 - The Avatar surfaces get an empty state that leads to adding a `.vrm`. Games run without a model.

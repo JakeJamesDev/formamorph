@@ -9,9 +9,9 @@ Several code paths assume a bundled file exists, and a miss shows up only as a r
 
 ## What to build
 
-A build on the Steam class holds no `.vrm` file and runs without one. Every world plays, and a save or world that names the default Avatar id resolves to no model with no error. That includes Sugarscape's User's Default pick.
+A build with the flag set to `none` holds no `.vrm` file and runs without one. Every world plays, and a save or world that names the default Avatar id resolves to no model with no error. That includes Sugarscape's User's Default pick.
 
-This extends ticket 07's build flag with a "no bundled Avatar" switch on the build class the Steam effort will use. Building the Steam build itself stays out of scope. The output must leave out every `.vrm`, including the tracked default that `public/` copies into a dist.
+This adds `none` to ticket 07's `FORMAMORPH_AVATARS` flag, which the Steam effort will set. Building the Steam build itself stays out of scope. The output must leave out every `.vrm`, including the tracked default that `public/` copies into a dist.
 
 With no bundled file, these change: the viewer's default model URL, library seeding, the bundled hash check, and the rule that the library keeps at least one Avatar. Ticket 11 owns the empty-state UI, so this ticket leaves those surfaces functional and unstyled.
 
