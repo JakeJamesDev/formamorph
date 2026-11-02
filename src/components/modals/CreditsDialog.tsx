@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { SUPPORTERS_THANKS, SupportersWall } from '@/components/SupportersWall';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,7 +18,7 @@ const LINK = 'text-primary hover:underline';
 // Every credited name shares one style, so the icon authors are as prominent as the rest.
 const NAME = 'text-body font-semibold';
 
-function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
+function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
   return <a href={href} target="_blank" rel="noopener noreferrer" className={LINK}>{children}</a>;
 }
 

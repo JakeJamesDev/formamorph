@@ -36,11 +36,21 @@ describe('the Licenses tab', () => {
   it('reads nothing until the tab opens, and once however often it reopens', async () => {
     expect(noticeReads()).toBe(0);
     openLicenses();
-    await screen.findByRole('searchbox', { name: 'Filter Licenses' });
+    await screen.findByRole('searchbox', { name: 'Filter by Name' });
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Credits' }));
     openLicenses();
-    await screen.findByRole('searchbox', { name: 'Filter Licenses' });
+    await screen.findByRole('searchbox', { name: 'Filter by Name' });
     expect(noticeReads()).toBe(1);
+  });
+
+  it('cancels the read when the dialog closes', async () => {
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>(() => {}));
+    openLicenses();
+    await waitFor(() => expect(noticeReads()).toBe(1));
+    const { signal } = vi.mocked(fetch).mock.calls[0][1]!;
+    expect(signal!.aborted).toBe(false);
+    cleanup();
+    expect(signal!.aborted).toBe(true);
   });
 
   it('lists Bundled Assets, then Standards, then Software, with Game Icons and eSpeak NG', async () => {
@@ -77,7 +87,7 @@ describe('the Licenses tab', () => {
 
   it('filters by name, case-insensitively, and says so when nothing matches', async () => {
     openLicenses();
-    const box = await screen.findByRole('searchbox', { name: 'Filter Licenses' });
+    const box = await screen.findByRole('searchbox', { name: 'Filter by Name' });
     const panel = screen.getByRole('tabpanel');
 
     fireEvent.change(box, { target: { value: software.name.toUpperCase() } });
