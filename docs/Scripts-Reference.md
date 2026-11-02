@@ -780,7 +780,7 @@ if (location.name === 'Shrine') for (const copy of persona.items) if (copy.item 
 | `currencies.<Currency>.balance(owner)` | What an entity or the persona holds. An Items Currency counts visible, identified items as one number. It is `null` when the owner has no balance, and for a name-only Currency |
 | `currencies.<Currency>.pay(payer, payee, amount)` | Moves money as a payment in the game does, and answers `{ paid, reason }` at once |
 
-The `owner`, `payer` and `payee` are an entity or the persona, as an entry or by name. A `payer` of `null` is income. A `payee` of `null` takes the money out of the world. The `amount` is a whole number of the Currency's smallest unit, or text such as `"1 Gold, 5 Copper"`.
+The `owner`, `payer` and `payee` are an entity or the persona, as an entry or by name. A `payer` of `null` is income. A `payee` of `null` takes the money out of the world. The `amount` is a whole number of the Currency's base unit, or text such as `"1 Gold, 5 Copper"`.
 
 ```javascript
 // The toll gate takes 5, or says why not.

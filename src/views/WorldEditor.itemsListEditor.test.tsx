@@ -432,11 +432,11 @@ describe('Items Currencies', () => {
     const { ctx } = renderWorldEditorBench({ ...itemWorld([]), currencies: [{ id: 'crowns', name: 'Crowns', backing: { kind: 'name' } }] }, 'advanced');
     openCurrencies();
     pickOption('Currency Type', 'Items');
-    expect(screen.getByText('Add an item worth 1, the smallest one.')).toBeInTheDocument();
+    expect(screen.getByText('Add an item worth 1, the smallest one')).toBeInTheDocument();
     pickOption('Add Item', 'Copper');
     pickOption('Add Item', 'Silver');
     expect(itemsOf(ctx)).toEqual([{ itemId: 'copper', worth: 1 }, { itemId: 'silver', worth: 10 }]);
-    expect(screen.queryByText('Add an item worth 1, the smallest one.')).toBeNull();
+    expect(screen.queryByText('Add an item worth 1, the smallest one')).toBeNull();
   });
 
   it('offers only Stackable items that are no item yet', () => {
@@ -479,13 +479,13 @@ describe('Items Currencies', () => {
     expect(itemsOf(ctx)).toEqual([{ itemId: 'copper', worth: 1 }]);
     fireEvent.click(screen.getByRole('button', { name: 'Remove Copper' }));
     expect(ctx().currencies[0].backing).toEqual({ kind: 'items', items: [] });
-    expect(screen.getByText('Add an item worth 1, the smallest one.')).toBeInTheDocument();
+    expect(screen.getByText('Add an item worth 1, the smallest one')).toBeInTheDocument();
   });
 
   it('warns on a row whose item stopped being Stackable, and keeps the row', () => {
     const { ctx } = renderWorldEditorBench(itemWorld([{ itemId: 'copper', worth: 1 }, { itemId: 'wand', worth: 10 }]), 'advanced');
     openCurrencies();
-    expect(screen.getByText('Wand is not Stackable.')).toBeInTheDocument();
+    expect(screen.getByText("Wand isn't Stackable")).toBeInTheDocument();
     expect(itemsOf(ctx)).toHaveLength(2);
   });
 

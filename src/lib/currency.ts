@@ -130,10 +130,7 @@ function itemAmount(rows: readonly CurrencyItem[], owner: SlotOwner, copies: rea
   }, 0);
 }
 
-/**
- * What `owner` holds in `currency`. The player always tracks Items, and an entity tracks them from a Placement of
- * one of the Items at it, hidden or not. A Global Stat counts for the player alone, and any other stat for whoever has it.
- */
+/** What `owner` holds in `currency`, or that it is untracked (Q43, Q44). */
 export function balanceOf(currency: Currency, owner: SlotOwner, state: BalanceState): Balance {
   const { backing } = currency;
   if (backing.kind === 'name') return UNTRACKED;
@@ -210,11 +207,7 @@ export const defaultCurrencyPatch = (currencies: readonly Currency[]): Pick<Item
 /** One heading of the stat picker. `persona` holds that Persona's own stats. */
 export type CurrencyStatGroup = { stats: Stat[] } & ({ kind: 'global' | 'linked' } | { kind: 'persona'; persona: Entity });
 
-/**
- * What can back a Currency, each stat once: Global Stats, the Blueprint stats a Persona links, under their
- * original ids, then each Persona's own. A Blueprint stat no Persona links has no owner, so the list omits it.
- * Two Personas can own one id after a link is detached; the first lists it.
- */
+/** What can back a Currency, each stat once: Global Stats, linked Blueprint stats under their original ids, then each Persona's own (Q30). */
 export function currencyStatGroups(world: StatLinkWorld & { entities: readonly Entity[] }): CurrencyStatGroup[] {
   const blueprints = statBlueprintIds(world);
   const personas = world.entities.filter(canBePlayer).map((persona) => ({ persona, stats: resolvedEntityStats(world, persona) }));
@@ -232,7 +225,7 @@ export function currencyStatGroups(world: StatLinkWorld & { entities: readonly E
 /** The Currency a price names and its amount in base units, or why it can't be read. */
 export type StatedPrice = { currency: Currency; amount: number } | { refused: string };
 
-/** A money word as a price compares it: case, a plural and a trailing "coin" ignored. "Coin" stays: it reads story wording, not our copy. */
+/** A money word as a price compares it: case, a plural and a trailing "coin" from story wording ignored. */
 const moneyKey = (name: string): string => name.trim().toLowerCase().replace(/\s+coins?$/, '').replace(/s$/, '');
 
 /** What a money word can mean: each Currency Item of that name, else each Currency of that name, worth its base unit. */
@@ -269,11 +262,7 @@ function leadingAmount(part: string): { count: number | null; word: string } {
   return { count, word: count === null ? part : tokens.slice(at).join(' ') };
 }
 
-/**
- * A price as the AI states it: the Breakdown's form ("3 Gold, 5 Copper"), or a bare number, in digits or words. A bare
- * number counts the Currency Item `named` names, else base units of the Currency it names, else of the Default. A lone money
- * word with no number takes `count`. An Item's name beats a Currency's, and every part must fit one Currency (Q26).
- */
+/** A price as the AI states it, in the Breakdown's form or as a bare number (Q26, Q50, Q58). */
 export function readStatedPrice(price: string, named: string, currencies: readonly Currency[], items: readonly ItemName[], count?: number): StatedPrice {
   const termsOf = (word: string) => moneyTerms(word, currencies, items);
   const parts = price.replace(/(\d),(\d{3})\b/g, '$1$2').split(/,|&|\+|\band\b/i).map((part) => part.trim()).filter(Boolean);
@@ -454,10 +443,7 @@ function statPlan(statId: string, payer: SlotOwner | null, payee: SlotOwner | nu
   return { settled: true, ops: [], stats };
 }
 
-/**
- * Moves `amount` base units of `currency` from `payer` to `payee`. A null payer is income and a null payee means the
- * money leaves the world. An untracked entity holds no money: what it pays is created and what it gets is gone (Q8).
- */
+/** Moves `amount` base units from `payer` to `payee`, where null on either side is outside the world (Q8, Q51, Q54). */
 export function planPayment(currency: Currency, payer: SlotOwner | null, payee: SlotOwner | null, amount: number, state: PaymentState, items: readonly ItemName[]): PaymentPlan {
   if (!payer && !payee) return refuse('no one pays and no one receives');
   if (payer && payee && slotOwnerKey(payer) === slotOwnerKey(payee)) return refuse('the payer receives it');

@@ -208,7 +208,7 @@ The [Scripts Guide](Scripts-Reference#items) lists what an item script can read 
 | 🪙 **Items** | The money is items, each one a Stackable item, such as Copper, Silver and Gold. |
 | 🏷️ **Name Only** | The money is only a name, such as goats. Nothing tracks it. |
 
-With **Items**, pick **Add Item** to add a row. Each row is an item and its worth counted in the smallest item:
+With **Items**, pick **Add Item** to add a row. Each row is an item and its worth in the base unit, which is the item worth 1:
 
 - 1️⃣ One item is worth 1. The first row you add takes it. Later rows start at ten times the largest worth.
 - 🔢 Each worth is a whole number, and no two items share one.

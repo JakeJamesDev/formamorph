@@ -52,7 +52,7 @@ export default function ItemRows({ currency, rows, items, currencies, label, onC
 
   return (
     <div className="w-full space-y-2" data-testid={`item-rows-${currency.id}`}>
-      {lacksBaseItem(rows, items) && <Hint>Add an item worth 1, the smallest one.</Hint>}
+      {lacksBaseItem(rows, items) && <Hint>Add an item worth 1, the smallest one</Hint>}
       {rows.map((row, at) => {
         const item = items.find((other) => other.id === row.itemId);
         return (
@@ -81,7 +81,7 @@ export default function ItemRows({ currency, rows, items, currencies, label, onC
             <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Remove ${nameOf(row.itemId) ?? 'Item'}`} onClick={() => onChange(rows.filter((_, index) => index !== at))}>
               <X className="h-4 w-4" aria-hidden />
             </Button>
-            {item && !itemStackable(item) && <Hint>{label(item.name)} is not Stackable.</Hint>}
+            {item && !itemStackable(item) && <Hint>{label(item.name)} isn&apos;t Stackable</Hint>}
           </div>
         );
       })}

@@ -253,7 +253,7 @@ export function applyInventoryPass(
   const statedPay = (op: InventoryPassOp) =>
     readStatedPrice(payPrice(op), op.currency ?? '', moneyCurrencies, moneyNames, op.quantity > 1 ? op.quantity : undefined);
 
-  /** Settles one pay and answers the Currencies it governs. With no price or no one on either side it says nothing, so it governs none, unless the player pays (Q76). */
+  /** Settles one pay and answers the Currencies it governs (Q56, Q76). */
   const settlePay = (op: InventoryPassOp): readonly Currency[] => {
     if (!scene.money) {
       skip(`${payLabel(op)}: the world has no Currency`);
@@ -471,7 +471,7 @@ export function applyInventoryPass(
   }));
   const partyKey = (name: string) => { const party = partyOf(name); return party && slotOwnerKey(party); };
   const pricedByPay = new Set<InventoryPassOp>();
-  /** A pay of a buy's sum is that buy said again, in any direction, unless both its sides name other people (Q68). Beside a buy with no price, it states the price (Q71). */
+  /** Whether a pay is a buy said again (Q68), or states the price of a buy with none (Q71). */
   const repeatsBuy = (pay: InventoryPassOp): boolean => {
     const stated = statedPay(pay);
     if ('refused' in stated) return false;
