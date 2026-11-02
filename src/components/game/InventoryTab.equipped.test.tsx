@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TOOLTIP_DELAY_MS, TooltipProvider } from '@/components/ui/tooltip';
 import { dollColumnWidth } from '@/lib/bodyLayout';
@@ -65,7 +65,7 @@ describe('Equipped rows', () => {
     expect(within(list()).getByText('Hand, Head')).toBeInTheDocument();
   });
 
-  it('shows the slot names instead of the uses line, and the popover keeps the uses line', async () => {
+  it('shows the slot names instead of the uses line, and the popup keeps the uses line', async () => {
     render(<InventoryTab {...props({ copies: [worn('w', 'wand')] })} />);
     expect(within(list()).getByText('Hand')).toBeInTheDocument();
     expect(within(list()).queryByText('3 of 3 uses')).toBeNull();
@@ -81,29 +81,31 @@ describe('Equipped rows', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('opens the same popover from the row name and the Slot Box', async () => {
+  it('opens the item popup from the row name in one press', async () => {
     render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
     await userEvent.click(within(list()).getByRole('button', { name: LONG }));
-    const fromRow = await screen.findByRole('dialog');
-    const rowContent = { text: fromRow.textContent, buttons: buttonNames(fromRow) };
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    await userEvent.click(screen.getByRole('button', { name: `Hand: ${LONG}` }));
-    const fromBox = await screen.findByRole('dialog');
-    expect({ text: fromBox.textContent, buttons: buttonNames(fromBox) }).toEqual(rowContent);
+    const popup = await screen.findByRole('dialog');
+    expect(within(popup).getByRole('heading', { name: LONG })).toBeInTheDocument();
+    expect(within(popup).queryByRole('button', { name: `Unequip ${LONG}` })).toBeNull();
   });
 
-  it('shows the full name unclipped in the popover', async () => {
+  it('keeps the row in the Slot Box popover, with Unequip', async () => {
     render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
-    await userEvent.click(within(list()).getByRole('button', { name: LONG }));
+    await userEvent.click(screen.getByRole('button', { name: `Hand: ${LONG}` }));
+    expect(buttonNames(await screen.findByRole('dialog'))).toContain(`Unequip ${LONG}`);
+  });
+
+  it('shows the full name unclipped in the Slot Box popover', async () => {
+    render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
+    await userEvent.click(screen.getByRole('button', { name: `Hand: ${LONG}` }));
     const name = within(await screen.findByRole('dialog')).getByRole('button', { name: LONG });
     expect(name).not.toHaveClass('truncate');
     expect(name).toHaveTextContent(LONG);
   });
 
-  it('opens the item popup from the name inside the popover', async () => {
+  it('opens the item popup from the name inside the Slot Box popover', async () => {
     render(<InventoryTab {...props({ copies: [worn('s', 'sword')] })} />);
-    await userEvent.click(within(list()).getByRole('button', { name: LONG }));
+    await userEvent.click(screen.getByRole('button', { name: `Hand: ${LONG}` }));
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: LONG }));
     expect(await screen.findByRole('heading', { name: LONG })).toBeInTheDocument();
   });

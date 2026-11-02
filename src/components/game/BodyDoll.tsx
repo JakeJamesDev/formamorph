@@ -48,14 +48,9 @@ function FilledBox({ fill, label, box, aspect }: { fill: DollFill; label: string
           {fill.icon.kind === 'icon' && <ItemIconArt id={fill.icon.id} className="h-full w-full" />}
         </FrameButton>
       </PopoverTrigger>
-      <FillPopoverContent detail={fill.detail} />
+      <PopoverContent className="w-72 p-1"><ul>{fill.detail}</ul></PopoverContent>
     </Popover>
   );
-}
-
-/** The popover of a filled box and of an Equipped row's name. `detail` is the list row it holds. */
-export function FillPopoverContent({ detail }: { detail: ReactNode }) {
-  return <PopoverContent className="w-72 p-1"><ul>{detail}</ul></PopoverContent>;
 }
 
 /** An empty box: a blank outline, with the slot name on hover or tap (Q9, Q22). */

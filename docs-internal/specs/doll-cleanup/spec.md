@@ -45,7 +45,8 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 |---|---|
 | Q5 | Long Equipped names stay on one line with an ellipsis. The tooltip shows the full name. |
 | Q12 | Layout C holds at every width, mobile included: the doll and list stay side by side. |
-| Q15 | Pressing an Equipped row's name opens the same popover as the doll's Slot Box. The unequip button stays separate. This gives touch users the full name. |
+| Q15 | Replaced after play: the popover repeated the row. Pressing an Equipped row opens the item popup in one press, like Carried rows. The unequip button stays separate. The doll's Slot Box keeps its popover. |
+| Q18 | After play: the default outlines sit centered on the Backdrop. Humanoid moves down 6.5 of 200 and Quadruped 1 of 125. Slot Boxes in bundled worlds and the design system's samples move with them. Stored boxes in an author's unreleased draft do not. |
 | V1 | Prototype verdict: layout C. The doll takes `clamp(120px, 33%, its full width)`. A Body wider than tall always stacks, doll over list, at every width. A square Body takes columns. |
 
 ### Backdrop Opacity and effort
@@ -93,7 +94,7 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 - **Visibility.** The Icon field is display only. Scripts and prompts don't see it.
 - **Popover.** The Slot Box popover and the row-name popover show the same content, with the full name unclipped. Row-name press and the row's buttons don't trigger each other.
 - **Panel layout.** The doll takes `fit` sizing as in the prototype. The list is the existing row with the slot names, joined with ", ", as its second line. That replaces the uses line or runtime description in the Equipped list only; both stay in the popover and the popup. Tooltips for clipped names go on Equipped rows only.
-- **Popover name.** The name inside the popover wraps and still opens the item popup, so from an Equipped row the popup is one press further.
+- **Popover name.** The name inside the Slot Box popover wraps and still opens the item popup.
 - **Icon field.** It sits on the Profile tab under Name, in Simple and Advanced, as a Select-style trigger that opens a Popover. Icon names are the first catalog word in Title Case. The Auto preview derives from Name and slots with placeholder labels, so it can differ from a rolled name in play, and it never reads the Unidentified Name. The grid is a new visual pattern, so the user approves frames before it lands, and it then gets a Design System entry.
 - **Empty Slot Box.** It keeps today's behavior: a tap flashes the slot's name.
 - **Copy.** Labels and hints follow the Writing Guide at build time.

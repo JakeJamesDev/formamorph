@@ -9,9 +9,9 @@ const NAMES: Record<string, string> = { head: 'Head', hand: 'Hand', ring: 'Ring'
 const SAMPLE: Body = {
   id: 'sample', name: 'Sample', backdrop: { kind: 'humanoid' }, aspect: 0.5,
   entries: [
-    { slotId: 'head', boxes: [{ x: 0.36, y: 0.02, w: 0.28, h: 0.14 }] },
-    { slotId: 'hand', capacity: 2, boxes: [{ x: 0.02, y: 0.44, w: 0.2, h: 0.12 }, { x: 0.78, y: 0.44, w: 0.2, h: 0.12 }] },
-    { slotId: 'ring', boxes: [{ x: 0.08, y: 0.49, w: 0.08, h: 0.04 }] },
+    { slotId: 'head', boxes: [{ x: 0.36, y: 0.0525, w: 0.28, h: 0.14 }] },
+    { slotId: 'hand', capacity: 2, boxes: [{ x: 0.02, y: 0.4725, w: 0.2, h: 0.12 }, { x: 0.78, y: 0.4725, w: 0.2, h: 0.12 }] },
+    { slotId: 'ring', boxes: [{ x: 0.08, y: 0.5225, w: 0.08, h: 0.04 }] },
   ],
 };
 

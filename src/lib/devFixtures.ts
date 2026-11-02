@@ -86,7 +86,7 @@ const devBodies = (): Body[] => [
   },
   {
     id: 'dev-body-hound', name: 'Hound', backdrop: { kind: 'quadruped' }, aspect: 1.6,
-    entries: [{ slotId: 'dev-slot-neck', boxes: [{ x: 0.68, y: 0.26, w: 0.14, h: 0.22 }] }],
+    entries: [{ slotId: 'dev-slot-neck', boxes: [{ x: 0.68, y: 0.268, w: 0.14, h: 0.22 }] }],
   },
 ];
 const devItem = (id: string, name: string, slotId: string, extra: Partial<Item> = {}): Item => ({
