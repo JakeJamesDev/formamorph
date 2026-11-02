@@ -1584,17 +1584,9 @@
           },
           {
             "groupId": null,
-            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -1696,17 +1688,9 @@
           },
           {
             "groupId": null,
-            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -1808,17 +1792,9 @@
           },
           {
             "groupId": null,
-            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -2604,17 +2580,9 @@
           },
           {
             "groupId": null,
-            "id": "4fddf718-82a5-4367-bf40-3cae01f3a528",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "5c063dd3-7c64-45d5-8e78-24efe786f579",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -2700,17 +2668,9 @@
           },
           {
             "groupId": null,
-            "id": "4fddf718-82a5-4367-bf40-3cae01f3a528",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "5c063dd3-7c64-45d5-8e78-24efe786f579",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -2796,17 +2756,9 @@
           },
           {
             "groupId": null,
-            "id": "4fddf718-82a5-4367-bf40-3cae01f3a528",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "5c063dd3-7c64-45d5-8e78-24efe786f579",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -2900,17 +2852,9 @@
           },
           {
             "groupId": null,
-            "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -2996,17 +2940,9 @@
           },
           {
             "groupId": null,
-            "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -3092,17 +3028,9 @@
           },
           {
             "groupId": null,
-            "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           }
@@ -3190,17 +3118,9 @@
           },
           {
             "groupId": null,
-            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           },
@@ -3302,17 +3222,9 @@
           },
           {
             "groupId": null,
-            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           },
@@ -3422,17 +3334,9 @@
           },
           {
             "groupId": null,
-            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-            "kind": "stat",
-            "order": 3,
-            "originalId": "gold",
-            "originalName": "Gold"
-          },
-          {
-            "groupId": null,
             "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
             "kind": "stat",
-            "order": 4,
+            "order": 3,
             "originalId": "renown",
             "originalName": "Renown"
           },

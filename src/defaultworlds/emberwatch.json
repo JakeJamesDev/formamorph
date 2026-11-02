@@ -13,8 +13,8 @@
       "rpg",
       "adventure"
     ],
-    "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** is your own character. Enter your name, then change the **Race** and the **Class** from the Halfling Wizard it starts as. Your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play. Each has an opening and gear of their own.\n- Bring a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource: Paladins and Clerics gain Faith, Wizards gain Mana, and Rogues start with more Gold. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.\n\nUnder **Bonds**, **Squire to Albus** makes you Albus's squire. You can pick it only while Albus is a Paladin and you don't play Albus.",
-    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n🎯 **Goal:** lay the Barrow Wight to rest before the wall falls. It lies down when its broken crown rests whole on the king's bier, deep in the barrow.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, and **Faith** feeds prayers and holy light. Rest restores all three.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- **Gold** pays for rooms, gear and help. **Renown** changes how the keep treats you: the better known you are, the more people help you and the more they ask of you.\n- Every night the barrow goes unanswered, the danger grows. Go in prepared, with light, cold iron and allies.\n- Your **Inventory** tab holds what you carry. Equip, Use, Drop and Give work from there, or just say what you do in the story. Gear changes your stats only while you wear it.\n- Search a place, and the story reveals what lies hidden there. Some finds keep their true nature until you learn it.\n- Earn enough **Renown**, and Captain Blackwell trusts you with the keep's oldest secret.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every owner.\n- **Trait links.** **Mother Hesk** links the **Dwarf**, **Cleric** and **Darkvision** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original. Darkvision is default-on in Blueprints, so Hesk's link starts it on with no override.\n- **Entity stats.** Hesk owns her own **Health** and **Faith**, and Corvin owns **Renown** and **Mana**. Their race and class links change their own stats, never yours: Dwarf raises Hesk's Health, and Wizard raises Corvin's Mana.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Link overrides.** Select **Paladin** under Albus's **Classes** link. Its stat change is an override, so Albus gains more Faith than any other Paladin. **Reset** returns it to the blueprint.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**, two placeholders in the Placeholders tab's **Blueprints** group. Each entity with a Class or a Race owns a copy of each, named like **Albus.Class Garb**, and the pin lands on that owner's copy. A copy reads the blueprint's values until you edit one. Hesk's and Corvin's copies reword the value their class and race pin, so their text reads their own words.\n- **Blueprint chips.** Each Class's AI description ends with a **Class Garb** chip, and each Race's with a **Heritage** chip. A chip in a blueprint trait reads the owner's copy, so one Cleric text gives Hesk her own vestments.\n- **Custom Persona.** **Wanderer** carries the Custom Persona mark, so it takes None's place at Enter World. The player enters a name, and Wanderer's links build the character. Its links also apply under a persona from your library, and its copies of **Class Garb** and **Heritage** fill in where that persona has none.\n- **Persona-only.** The Custom Persona mark implies Persona-only. Unpicked, Wanderer leaves the cast and never joins a scene.\n- **Same-owner gates.** **Smite** requires Paladin on the same owner. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Lorebook.** The **Emberwatch** book in the **Dictionary** tab holds the keep, the barrow, the broken crown and the factions, with an entry for each new place. The narrator gets an entry only when one of its keywords appears in the story.\n- **Script control of lore.** **The Founders' Pact** ships off. The world script on the **Scripts** tab switches it on while your Renown is 70 or more, and off again below it.\n- **World Tool.** **offer_prayer** is an On Call Tool on the stat pass. When the narration shows you pray at the Ember's brazier in the Chapel of the Ember, the AI calls it. Its script adds 10 Faith once per story day and keeps the prayer as a memory. The world still plays with Tools off.\n- **Items.** The **Items** tab holds thirty-two items. Each one has its own descriptions, effect rows and switches, and the Inventory pass tracks them through the story.\n- **Bodies.** The **Equipment Settings** entry at the top of the **Items** tab holds the slots and Bodies. A Body lists the slots an owner has. **Humanoid** is first, so it is the Default and every owner follows it: **Hands** holds two, so a sword and a lantern fit together, and **Body**, **Neck** and **Head** hold one each. The **Grave Hounds** pick **Hound**, which has only **Neck** and **Body**. The **Spiral-Cut Staff** is size 2 and fills both hands.\n- **Equip requirements.** The **Cold Iron Sword** needs Paladin or Rogue, the **Ember Holy Symbol** Paladin or Cleric, and the staff Wizard. The **Cold Iron Dagger** needs nothing, so every class has a cold iron option. Re-class, and gear you can no longer use unequips itself.\n- **Effect timings.** The holy symbol raises Faith's max and regen While Equipped, and the mail raises Health's max. A **Healing Draught** restores Health After Use. **Ember Ash Tea** raises Faith regen for 8 hours, and **Grave Chill Salve** raises Health regen for a day. **Old King's Coin** and the **Gold Burial Cup** cost 5 Faith On First Obtain, because grave goods break the dead's rest. The oath ring works While Owned, so it acts from a pocket.\n- **Trait effects.** The **Hooded Lantern** grants **Darkvision** while it is equipped. It has 3 Uses, so Use spends one night of oil. The **Brass Spyglass** grants **Keen Senses** the same way, and the ward scroll grants **Arcane Ward** for 8 hours After Use.\n- **Value.** Every item but the crown counts its value in **Gold**, so the narrator knows what a fair price is.\n- **Placements.** You start with a draught and the lantern. Bram Oakes sells swords and daggers, Mother Hesk, Bryony Fenn and Mara Venn carry their remedies and bread, and the Barrow Wight wears the upper half of the crown. Corvin carries his cane-staff, the captain his key, the Shade his grimoire, and the barrow dead the lost sentry's badge. The mail lies at the Smithy, spare lanterns on the wall, and lamp oil at the market.\n- **Starting gear.** Placements marked **Equipped** start worn, in placement order, and their While Equipped effects apply from the first turn. Albus starts with his shield and sword in hand and his holy symbol on, Sylvie with her dagger, Wanderer with its staff and cloak, Mother Hesk with her holy symbol, Corvin with his cane-staff, and the Barrow Wight in the upper half of the crown. Bram Oakes keeps his blades as stock. Albus's and Sylvie's gear sits on their own **Items** tabs. Play that hero, and the gear lands on you. Play anyone else, and that hero wears it as a member of the cast. Wanderer's gear lands on you under Wanderer or a library persona, and never enters the game otherwise.\n- **Hidden items.** The staff and a scroll lie hidden in the Sorcerer's Vault, a stack of coins and a ring in the Hall of Shields, gold cups in the Bier Chamber, a spyglass in the Old Watchtower, a letter by the waystone, a map under the tavern's back table, and the lower half of the crown under the plinth in Ashford Square. The narrator knows they are there. You see them once the story reveals them.\n- **Unidentified items.** The ring and the scroll carry an **Unidentified Name** and **Description**. You see a tarnished ring and a folded vellum, everywhere, until the story identifies them. Their effects apply all the same.\n- **State.** The **Sealed Letter** starts *sealed*. Its one Use changes its State to *opened*, and the letter stays in your inventory to read again.\n- **Bound items.** Both crown halves are Bound, so the Inventory tab can't drop or give them. Lay them down in the story instead.\n- **Item scripts.** Each crown half has a **When Gained** script. When both halves lie in the Bier Chamber, it switches on **The Crown Restored**, and the narrator lets the Wight rest. The **Flask of Lamp Oil** has a **When Used** script. It refills the lantern the oil is poured into, or every lantern its owner carries when the story names none.\n- **Relationship labels.** Each entity's **Relationships** name who serves, rivals or owes whom. The narrator reads each one as a sentence: Albus is Corvin Vale's rival for the captain's bounty. Most ties join two people who share a place, because a tie brings its other end into every scene where either one stands.\n- **Rolled label.** **Lost Sentry** in the Placeholders tab rolls the lost guard's name once per game. Mara Venn's label to the captain carries the chip, and so do her description, Sergeant Marr's and the Garrison entry, so all four read the same name.\n- **Known In.** The **Cold Lights** stay among the mounds, but the narrator knows of them at the watchtower and on the wall. The **Shade of Maelis** is known nowhere until you find his vault.\n- **Random presence.** **Hob Wainwright** is on the road or at the market, one of the two, picked at random each game.\n- **Self openings.** Albus and Sylvie each own an opening set to **Self**. It comes up only when you play that persona, in place of the world's own openings.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. Two info findings stay by design: The Founders' Pact and The Crown Restored are off until their scripts switch them on.",
+    "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** is your own character. Enter your name, then change the **Race** and the **Class** from the Halfling Wizard it starts as. Your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play. Each has an opening and gear of their own.\n- Bring a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource: Paladins and Clerics gain Faith, Wizards gain Mana, and Rogues start with more coin. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.\n\nUnder **Bonds**, **Squire to Albus** makes you Albus's squire. You can pick it only while Albus is a Paladin and you don't play Albus.",
+    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in gold and **Renown** for anyone who finds out why and does something about it.\n\n🎯 **Goal:** lay the Barrow Wight to rest before the wall falls. It lies down when its broken crown rests whole on the king's bier, deep in the barrow.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, and **Faith** feeds prayers and holy light. Rest restores all three.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- **Coin** pays for rooms, gear and help. Ten **Copper** make a **Silver**, and ten **Silver** make a **Gold**. Your **Inventory** tab shows your total under **Money**. Say in the story what you buy or pay, and the coins and the change move on their own.\n- **Renown** changes how the keep treats you: the better known you are, the more people help you and the more they ask of you.\n- Every night the barrow goes unanswered, the danger grows. Go in prepared, with light, cold iron and allies.\n- Your **Inventory** tab holds what you carry. Equip, Use, Drop and Give work from there, or just say what you do in the story. Gear changes your stats only while you wear it.\n- Search a place, and the story reveals what lies hidden there. Some finds keep their true nature until you learn it.\n- Earn enough **Renown**, and Captain Blackwell trusts you with the keep's oldest secret.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every owner.\n- **Trait links.** **Mother Hesk** links the **Dwarf**, **Cleric** and **Darkvision** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original. Darkvision is default-on in Blueprints, so Hesk's link starts it on with no override.\n- **Entity stats.** Hesk owns her own **Health** and **Faith**, and Corvin owns **Renown** and **Mana**. Their race and class links change their own stats, never yours: Dwarf raises Hesk's Health, and Wizard raises Corvin's Mana.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Link overrides.** Select **Paladin** under Albus's **Classes** link. Its stat change is an override, so Albus gains more Faith than any other Paladin. **Reset** returns it to the blueprint.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**, two placeholders in the Placeholders tab's **Blueprints** group. Each entity with a Class or a Race owns a copy of each, named like **Albus.Class Garb**, and the pin lands on that owner's copy. A copy reads the blueprint's values until you edit one. Hesk's and Corvin's copies reword the value their class and race pin, so their text reads their own words.\n- **Blueprint chips.** Each Class's AI description ends with a **Class Garb** chip, and each Race's with a **Heritage** chip. A chip in a blueprint trait reads the owner's copy, so one Cleric text gives Hesk her own vestments.\n- **Custom Persona.** **Wanderer** carries the Custom Persona mark, so it takes None's place at Enter World. The player enters a name, and Wanderer's links build the character. Its links also apply under a persona from your library, and its copies of **Class Garb** and **Heritage** fill in where that persona has none.\n- **Persona-only.** The Custom Persona mark implies Persona-only. Unpicked, Wanderer leaves the cast and never joins a scene.\n- **Same-owner gates.** **Smite** requires Paladin on the same owner. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Lorebook.** The **Emberwatch** book in the **Dictionary** tab holds the keep, the barrow, the broken crown and the factions, with an entry for each new place. The narrator gets an entry only when one of its keywords appears in the story.\n- **Script control of lore.** **The Founders' Pact** ships off. The world script on the **Scripts** tab switches it on while your Renown is 70 or more, and off again below it.\n- **World Tool.** **offer_prayer** is an On Call Tool on the stat pass. When the narration shows you pray at the Ember's brazier in the Chapel of the Ember, the AI calls it. Its script adds 10 Faith once per story day and keeps the prayer as a memory. The world still plays with Tools off.\n- **Items.** The **Items** tab holds thirty-five items. Each one has its own descriptions, effect rows and switches, and the Inventory pass tracks them through the story.\n- **Bodies.** The **Equipment Settings** entry at the top of the **Items** tab holds the slots and Bodies. A Body lists the slots an owner has. **Humanoid** is first, so it is the Default and every owner follows it: **Hands** holds two, so a sword and a lantern fit together, and **Body**, **Neck** and **Head** hold one each. The **Grave Hounds** pick **Hound**, which has only **Neck** and **Body**. The **Spiral-Cut Staff** is size 2 and fills both hands.\n- **Equip requirements.** The **Cold Iron Sword** needs Paladin or Rogue, the **Ember Holy Symbol** Paladin or Cleric, and the staff Wizard. The **Cold Iron Dagger** needs nothing, so every class has a cold iron option. Re-class, and gear you can no longer use unequips itself.\n- **Effect timings.** The holy symbol raises Faith's max and regen While Equipped, and the mail raises Health's max. A **Healing Draught** restores Health After Use. **Ember Ash Tea** raises Faith regen for 8 hours, and **Grave Chill Salve** raises Health regen for a day. **Old King's Coin** and the **Gold Burial Cup** cost 5 Faith On First Obtain, because grave goods break the dead's rest. The oath ring works While Owned, so it acts from a pocket.\n- **Trait effects.** The **Hooded Lantern** grants **Darkvision** while it is equipped. It has 3 Uses, so Use spends one night of oil. The **Brass Spyglass** grants **Keen Senses** the same way, and the ward scroll grants **Arcane Ward** for 8 hours After Use.\n- **Coins.** The **Currencies** entry at the top of the **Items** tab holds one Currency, **Coin**. **Copper**, **Silver** and **Gold** are Stackable items, listed there with their worth: 1, 10 and 100.\n- **Value.** Items with a price have a **Value** in **Coin**, so the narrator knows what a fair price is and the game can move the money. A price reads as coins, such as 1 Gold, 5 Silver.\n- **Purses.** Wanderer, Albus and Sylvie each hold 2 Gold, 8 Silver and 20 Copper on their **Items** tabs. Play one, and the purse lands on you. **Rogue** has an **At Game Start** script that gives its owner 2 Gold, and **Halfling** has one that gives 5 Silver.\n- **A limited buyer.** **Jory Pike** holds 30 Gold, 20 Silver and 50 Copper, so his money can run out. He can't buy what he can't pay for. The other shopkeepers hold no coins, so they trade without limit.\n- **Placements.** You start with a draught and the lantern. Bram Oakes sells swords and daggers, Mother Hesk, Bryony Fenn and Mara Venn carry their remedies and bread, and the Barrow Wight wears the upper half of the crown. Corvin carries his cane-staff, the captain his key, the Shade his grimoire, and the barrow dead the lost sentry's badge. The mail lies at the Smithy, spare lanterns on the wall, and lamp oil at the market.\n- **Starting gear.** Placements marked **Equipped** start worn, in placement order, and their While Equipped effects apply from the first turn. Albus starts with his shield and sword in hand and his holy symbol on, Sylvie with her dagger, Wanderer with its staff and cloak, Mother Hesk with her holy symbol, Corvin with his cane-staff, and the Barrow Wight in the upper half of the crown. Bram Oakes keeps his blades as stock. Albus's and Sylvie's gear sits on their own **Items** tabs. Play that hero, and the gear lands on you. Play anyone else, and that hero wears it as a member of the cast. Wanderer's gear lands on you under Wanderer or a library persona, and never enters the game otherwise.\n- **Hidden items.** The staff and a scroll lie hidden in the Sorcerer's Vault, a stack of coins and a ring in the Hall of Shields, gold cups in the Bier Chamber, a spyglass in the Old Watchtower, a letter by the waystone, a map under the tavern's back table, and the lower half of the crown under the plinth in Ashford Square. The narrator knows they are there. You see them once the story reveals them.\n- **Unidentified items.** The ring and the scroll carry an **Unidentified Name** and **Description**. You see a tarnished ring and a folded vellum, everywhere, until the story identifies them. Their effects apply all the same.\n- **State.** The **Sealed Letter** starts *sealed*. Its one Use changes its State to *opened*, and the letter stays in your inventory to read again.\n- **Bound items.** Both crown halves are Bound, so the Inventory tab can't drop or give them. Lay them down in the story instead.\n- **Item scripts.** Each crown half has a **When Gained** script. When both halves lie in the Bier Chamber, it switches on **The Crown Restored**, and the narrator lets the Wight rest. The **Flask of Lamp Oil** has a **When Used** script. It refills the lantern the oil is poured into, or every lantern its owner carries when the story names none.\n- **Relationship labels.** Each entity's **Relationships** name who serves, rivals or owes whom. The narrator reads each one as a sentence: Albus is Corvin Vale's rival for the captain's bounty. Most ties join two people who share a place, because a tie brings its other end into every scene where either one stands.\n- **Rolled label.** **Lost Sentry** in the Placeholders tab rolls the lost guard's name once per game. Mara Venn's label to the captain carries the chip, and so do her description, Sergeant Marr's and the Garrison entry, so all four read the same name.\n- **Known In.** The **Cold Lights** stay among the mounds, but the narrator knows of them at the watchtower and on the wall. The **Shade of Maelis** is known nowhere until you find his vault.\n- **Random presence.** **Hob Wainwright** is on the road or at the market, one of the two, picked at random each game.\n- **Self openings.** Albus and Sylvie each own an opening set to **Self**. It comes up only when you play that persona, in place of the world's own openings.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. Two info findings stay by design: The Founders' Pact and The Crown Restored are off until their scripts switch them on.",
     "openings": [
       {
         "id": "a47ba8ec-fd14-5aa5-849a-6dfc2f6468db",
@@ -157,42 +157,6 @@
       "order": 2
     },
     {
-      "id": "gold",
-      "name": "Gold",
-      "type": "number",
-      "description": "Coin in the purse. Pay for rooms, gear and bribes; earn it from bounties and finds.",
-      "min": 0,
-      "max": 300,
-      "value": 30,
-      "starting": 30,
-      "regen": 0,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "gold_0",
-          "threshold": 5,
-          "description": "Broke. Nothing in the purse but lint."
-        },
-        {
-          "id": "gold_1",
-          "threshold": 25,
-          "description": "Scraping by. Enough for bread and a cot."
-        },
-        {
-          "id": "gold_2",
-          "threshold": 60,
-          "description": "Comfortable. A good room, good gear, a round for the table."
-        },
-        {
-          "id": "gold_3",
-          "threshold": 100,
-          "description": "Flush. Heavy pockets and heavier attention."
-        }
-      ],
-      "groupId": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
-      "order": 3
-    },
-    {
       "id": "renown",
       "name": "Renown",
       "type": "number",
@@ -226,7 +190,7 @@
         }
       ],
       "groupId": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
-      "order": 4
+      "order": 3
     }
   ],
   "statGroups": [
@@ -803,20 +767,12 @@
           "order": 2
         },
         {
-          "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
-          "originalId": "gold",
-          "kind": "stat",
-          "originalName": "Gold",
-          "groupId": null,
-          "order": 3
-        },
-        {
           "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
           "originalId": "renown",
           "kind": "stat",
           "originalName": "Renown",
           "groupId": null,
-          "order": 4
+          "order": 3
         }
       ],
       "imageTags": "adventurer, traveling cloak, dusty boots, frontier road, determined, high fantasy",
@@ -945,20 +901,12 @@
           "order": 2
         },
         {
-          "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-          "originalId": "gold",
-          "kind": "stat",
-          "originalName": "Gold",
-          "groupId": null,
-          "order": 3
-        },
-        {
           "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
           "originalId": "renown",
           "kind": "stat",
           "originalName": "Renown",
           "groupId": null,
-          "order": 4
+          "order": 3
         }
       ],
       "imageTags": "male paladin, human, late thirties, broad shoulders, scarred jaw, gray eyes, white tabard, chainmail, polished shield, sun-disc symbol",
@@ -1082,20 +1030,12 @@
           "order": 2
         },
         {
-          "id": "4fddf718-82a5-4367-bf40-3cae01f3a528",
-          "originalId": "gold",
-          "kind": "stat",
-          "originalName": "Gold",
-          "groupId": null,
-          "order": 3
-        },
-        {
           "id": "5c063dd3-7c64-45d5-8e78-24efe786f579",
           "originalId": "renown",
           "kind": "stat",
           "originalName": "Renown",
           "groupId": null,
-          "order": 4
+          "order": 3
         }
       ],
       "imageTags": "female elf rogue, slight build, crooked grin, green eyes, dark leather armor, hooded half-cloak, knives, shadows",
@@ -1960,13 +1900,7 @@
       "name": "Halfling",
       "playerDescription": "Small, lucky, and never quite broke.",
       "aiDescription": "{{char}} is a halfling: small, cheerful, light-fingered when it counts, and lucky in small ways. {{char}} has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:da18fa14-a2a5-4dc6-834f-e68900acc4c5}}.",
-      "statChanges": [
-        {
-          "statId": "gold",
-          "value": 15,
-          "type": "starting"
-        }
-      ],
+      "statChanges": [],
       "groupId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
       "order": 3,
       "placeholderPins": [
@@ -1974,6 +1908,14 @@
           "placeholderId": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
           "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
           "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+        }
+      ],
+      "scripts": [
+        {
+          "id": "e62a8f13-7d94-4b6e-a150-3c8f7d2e6b94",
+          "name": "Halfling Luck",
+          "timing": "start",
+          "code": "// Halfling: never quite broke. The purse itself is a Placement, and this script adds a small lucky extra.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give five Silver to whoever this Halfling belongs to. It is smaller than a Rogue's stash,\n  //    because a race gives one small edge and a class sets the trade.\n  items.Silver.give(owner, 5);\n}"
         }
       ]
     },
@@ -2026,13 +1968,7 @@
       "name": "Rogue",
       "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
       "aiDescription": "{{char}} is a rogue: quick, quiet and practical, skilled with locks, pockets, poisons and quiet exits, and never without a plan to leave. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:2d6eca9b-5125-4b81-99e1-28c43c56e200}}.",
-      "statChanges": [
-        {
-          "statId": "gold",
-          "value": 40,
-          "type": "starting"
-        }
-      ],
+      "statChanges": [],
       "groupId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
       "order": 2,
       "placeholderPins": [
@@ -2040,6 +1976,14 @@
           "placeholderId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
           "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
           "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
+        }
+      ],
+      "scripts": [
+        {
+          "id": "d91e6b27-4c58-4a03-8f1d-7b2c5e9a1046",
+          "name": "Rogue Stash",
+          "timing": "start",
+          "code": "// Rogue: a rogue starts with more money than the other classes.\n// The purse itself is a Placement. A Placement can't read a trait, so the extra coins come from this script.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give two Gold to whoever this Rogue belongs to: the player, or another Rogue in the story.\n  items.Gold.give(owner, 2);\n}"
         }
       ]
     },
@@ -2718,14 +2662,56 @@
   ],
   "items": [
     {
+      "id": "a3f1c7d2-5e84-4b19-9c60-2d7e8b1f4a03",
+      "name": "Copper",
+      "playerDescription": "A worn copper coin from the lowland mints. A few buy a loaf of bread.",
+      "aiDescription": "A worn copper coin from the lowland mints, the smallest money on the frontier. Ten make a silver.",
+      "aiSummary": "A worn copper coin.",
+      "imageTags": "copper coins, worn, small stack, wooden table, still life",
+      "value": 1,
+      "currencyId": "emberwatch-coin",
+      "stackable": true,
+      "statEffects": [],
+      "traitEffects": [],
+      "equipRequires": []
+    },
+    {
+      "id": "b84e2a96-1d37-4f5c-a2b8-6c09e3d7f512",
+      "name": "Silver",
+      "playerDescription": "A thin silver coin from the lowland mints. A few buy a night at the inn.",
+      "aiDescription": "A thin silver coin from the lowland mints, worth ten copper. Ten make a gold.",
+      "aiSummary": "A thin silver coin.",
+      "imageTags": "thin silver coins, small stack, wooden table, still life",
+      "value": 10,
+      "currencyId": "emberwatch-coin",
+      "stackable": true,
+      "statEffects": [],
+      "traitEffects": [],
+      "equipRequires": []
+    },
+    {
+      "id": "c75d9e41-3a62-4c8e-b7f1-9e20a4c6d831",
+      "name": "Gold",
+      "playerDescription": "A heavy gold coin from the lowland mints. One buys a lot of goodwill on the frontier.",
+      "aiDescription": "A heavy gold coin from the lowland mints, worth ten silver. Few people on the frontier see many of them.",
+      "aiSummary": "A heavy gold coin.",
+      "imageTags": "gold coins, heavy, small stack, wooden table, still life",
+      "value": 100,
+      "currencyId": "emberwatch-coin",
+      "stackable": true,
+      "statEffects": [],
+      "traitEffects": [],
+      "equipRequires": []
+    },
+    {
       "id": "ebe860ee-88ed-4dd6-8599-36b76624ff77",
       "name": "Cold Iron Sword",
       "playerDescription": "A plain blade hammered cold on Bram Oakes's anvil. It breaks the barrow dead where steel only chips them. Paladins and rogues can wield it.",
       "aiDescription": "A straight sword of cold iron: iron finished on the anvil without fire. It is plain, heavy and unpolished, with a leather grip. Its blows break the barrow dead, which shrug off ordinary steel.",
       "aiSummary": "A cold iron sword that breaks the barrow dead.",
       "imageTags": "iron sword, plain straight blade, leather-wrapped grip, dark gray metal, forge, still life",
-      "value": 40,
-      "currencyId": "emberwatch-gold",
+      "value": 400,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -2764,8 +2750,8 @@
       "aiDescription": "A palm-sized disc of blackened bronze stamped with a flame, hung on a chain of old nails, made by Mother Hesk. The barrow dead flinch from it when it is raised.",
       "aiSummary": "A bronze flame disc on a chain of nails, sacred to the Ember.",
       "imageTags": "holy symbol, bronze disc, flame emblem, chain of iron nails, pendant, still life",
-      "value": 25,
-      "currencyId": "emberwatch-gold",
+      "value": 250,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -2820,8 +2806,8 @@
       "aiDescription": "A tall staff of black bog oak carved with spirals that match the walls of the Sorcerer's Vault. It was Maelis's, the old king's court sorcerer, and it hums faintly near the dead.",
       "aiSummary": "Maelis's spiral-carved staff of black oak.",
       "imageTags": "wizard staff, black wood, spiral carvings, faint violet glow, stone vault, still life",
-      "value": 80,
-      "currencyId": "emberwatch-gold",
+      "value": 800,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "all",
@@ -2860,8 +2846,8 @@
       "aiDescription": "A small stoppered bottle of thick green herbal brew from Bryony Fenn's cottage. It tastes of moss and bitter root, and it closes wounds within moments.",
       "aiSummary": "A bottle of Bryony Fenn's green healing brew.",
       "imageTags": "potion bottle, green liquid, cork stopper, herbs, wooden table, still life",
-      "value": 10,
-      "currencyId": "emberwatch-gold",
+      "value": 60,
+      "currencyId": "emberwatch-coin",
       "statEffects": [
         {
           "id": "f172b3bf-bd47-4d05-84a8-5dd0c1eea362",
@@ -2889,8 +2875,8 @@
       "aiDescription": "Ash from the chapel brazier, folded in a twist of paper and steeped like tea. Mother Hesk gives it to those who go out past the wall. It tastes of smoke, and it steadies the spirit.",
       "aiSummary": "Chapel brazier ash steeped as tea, steadying the spirit.",
       "imageTags": "paper packet, gray ash, clay cup, steam, chapel candlelight, still life",
-      "value": 5,
-      "currencyId": "emberwatch-gold",
+      "value": 25,
+      "currencyId": "emberwatch-coin",
       "statEffects": [
         {
           "id": "b5248ba2-8760-4ef3-83b0-b173f629ff93",
@@ -2919,8 +2905,8 @@
       "aiDescription": "A dented tin lantern with a sliding hood that shutters or opens the light. While it is lit, whoever carries it sees in the dark as if by dim moonlight. Its reservoir holds oil for three nights.",
       "aiSummary": "A hooded tin lantern that lights the dark.",
       "imageTags": "tin lantern, sliding hood, warm candlelight, dented metal, dark stone floor, still life",
-      "value": 8,
-      "currencyId": "emberwatch-gold",
+      "value": 80,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -2950,8 +2936,8 @@
       "aiDescription": "A shirt of riveted mail from the old kingdom, scoured of rust and patched with cold iron rings at the shoulders. It is heavy and it rattles, but blades and claws slide off it.",
       "aiSummary": "Old riveted mail patched with cold iron rings.",
       "imageTags": "chainmail shirt, riveted rings, patched shoulders, armor stand, forge, still life",
-      "value": 60,
-      "currencyId": "emberwatch-gold",
+      "value": 600,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -2979,8 +2965,8 @@
       "aiDescription": "A thick silver coin of the old kingdom, stamped with King Haldren's bearded face and a broken-crown mark on the back. They lie with the barrow dead as grave goods. Taking them breaks the dead's rest a little more.",
       "aiSummary": "A silver grave-goods coin with King Haldren's face.",
       "imageTags": "silver coins, ancient coinage, bearded king profile, tarnish, scattered on stone, still life",
-      "value": 5,
-      "currencyId": "emberwatch-gold",
+      "value": 40,
+      "currencyId": "emberwatch-coin",
       "statEffects": [
         {
           "id": "0c624bf8-abdb-4fee-b0bf-279a444ce63d",
@@ -3049,8 +3035,8 @@
       "aiDescription": "A round steel shield, rim bound in iron, the Ember's flame painted red and gold on a white field and polished bright. Albus has carried it since his vows. Raised against the barrow dead, it takes the blows that would land.",
       "aiSummary": "Albus's polished round shield, painted with the Ember's flame.",
       "imageTags": "round shield, steel, painted flame emblem, white and red, polished, armor stand, still life",
-      "value": 30,
-      "currencyId": "emberwatch-gold",
+      "value": 300,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3089,8 +3075,8 @@
       "aiDescription": "A straight soldier's longsword of forged steel with a plain cross guard and a leather grip. Good against the living. Against the barrow dead it chips bone and rotted mail and does not break them; only cold iron does that.",
       "aiSummary": "A plain steel longsword, little use against the barrow dead.",
       "imageTags": "longsword, steel blade, plain cross guard, leather grip, scabbard, wooden table, still life",
-      "value": 20,
-      "currencyId": "emberwatch-gold",
+      "value": 200,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3110,8 +3096,8 @@
       "aiDescription": "A slim dagger of pale elf-steel with a leaf-shaped blade and a grip wrapped in green cord. It holds an edge for years and makes no sound leaving its sheath. Sylvie keeps it in her boot.",
       "aiSummary": "Sylvie's slim, silent elf-steel dagger.",
       "imageTags": "dagger, leaf-shaped blade, pale steel, green cord grip, boot sheath, still life",
-      "value": 25,
-      "currencyId": "emberwatch-gold",
+      "value": 250,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3131,8 +3117,8 @@
       "aiDescription": "A roll of oiled leather that unties to show a dozen steel picks, hooks and a thin pry wedge, each in its own loop. In practiced hands it opens any lock in the keep without a mark. Thieves' tools; the guards take a dim view of them.",
       "aiSummary": "A roll of lockpicks and hooks, thieves' tools.",
       "imageTags": "lockpick set, leather roll, steel picks, hooks, unrolled on wood, still life",
-      "value": 10,
-      "currencyId": "emberwatch-gold",
+      "value": 100,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [],
@@ -3145,8 +3131,8 @@
       "aiDescription": "A plain ash walking staff, shoulder high, worn smooth at the grip and shod with iron at the foot. It has carried its owner a month up the frontier road. It serves as a stick to lean on, a bar to test footing, and a club at need.",
       "aiSummary": "A plain ash walking staff, iron-shod.",
       "imageTags": "wooden walking staff, ash wood, iron ferrule, worn grip, leaning against stone wall, still life",
-      "value": 2,
-      "currencyId": "emberwatch-gold",
+      "value": 15,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3166,8 +3152,8 @@
       "aiDescription": "A heavy waxed-wool traveler's cloak, hooded, gray with road dust and patched at the hem. It sheds rain, keeps the night cold out, and hides whatever its wearer carries under it.",
       "aiSummary": "A waxed gray traveler's cloak, hooded.",
       "imageTags": "hooded cloak, waxed wool, gray, patched hem, hanging on a peg, still life",
-      "value": 6,
-      "currencyId": "emberwatch-gold",
+      "value": 50,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3186,8 +3172,8 @@
       "aiDescription": "A day's road food wrapped in a square of cloth: hard bread, dry sausage and a wedge of lowland cheese. It is dull and it is filling, and it keeps a traveler on their feet.",
       "aiSummary": "A day's wrapped road food.",
       "imageTags": "bread, dried sausage, cheese wedge, cloth bundle, travel food, still life",
-      "value": 1,
-      "currencyId": "emberwatch-gold",
+      "value": 8,
+      "currencyId": "emberwatch-coin",
       "statEffects": [
         {
           "id": "79fe98ba-87bc-4be3-87e1-0141efc3d6dd",
@@ -3215,8 +3201,8 @@
       "aiDescription": "A short, rough dagger of cold iron, hammered without fire on Bram Oakes's anvil, with a plain wooden grip. Heavy for its size and never polished. It breaks the barrow dead where steel only chips them, and it needs no training to use. Bram makes them for the people who cannot swing a sword.",
       "aiSummary": "A rough cold iron dagger that breaks the barrow dead.",
       "imageTags": "iron dagger, rough dark blade, wooden grip, forge, anvil, still life",
-      "value": 20,
-      "currencyId": "emberwatch-gold",
+      "value": 150,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3236,8 +3222,8 @@
       "aiDescription": "A slim staff of black lacquered wood with silver joints that let it fold down into a walking cane. Corvin Vale carries it folded and opens it with a flick when he casts. River-city work, expensive and discreet.",
       "aiSummary": "Corvin's silver-jointed staff that folds into a cane.",
       "imageTags": "wizard staff, black lacquer, silver joints, folding cane, elegant, tavern table, still life",
-      "value": 45,
-      "currencyId": "emberwatch-gold",
+      "value": 450,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3276,8 +3262,8 @@
       "aiDescription": "A round loaf of brown bread from Mara Venn's stall in Ashford Square, dusted with flour and still warm. She gives one to anyone who promises to look for her husband past the wall.",
       "aiSummary": "A warm brown loaf from Mara Venn's stall.",
       "imageTags": "round bread loaf, brown crust, flour dust, bread stall, cloth, still life",
-      "value": 1,
-      "currencyId": "emberwatch-gold",
+      "value": 3,
+      "currencyId": "emberwatch-coin",
       "statEffects": [
         {
           "id": "d44c0e37-2ac1-4419-bee0-c689356e4afe",
@@ -3305,8 +3291,8 @@
       "aiDescription": "A small clay pot of gray salve that smells of wolfsbane and goose fat, from Bryony Fenn's cottage. Rubbed into a wound from the barrow dead, it draws out the grave chill, the slow cold such wounds leave behind, which prayer alone only slows. The warmth comes back over a day.",
       "aiSummary": "Bryony Fenn's gray salve that cures the grave chill.",
       "imageTags": "clay pot, gray salve, herbs, wolfsbane, cottage table, still life",
-      "value": 15,
-      "currencyId": "emberwatch-gold",
+      "value": 120,
+      "currencyId": "emberwatch-coin",
       "statEffects": [
         {
           "id": "765a73f1-eae3-4011-aa6a-c77376d41c3b",
@@ -3347,8 +3333,8 @@
       "aiDescription": "A thick grimoire bound in cracked black leather with spiral-shaped iron clasps, the spellbook of Maelis, King Haldren's court sorcerer. Its pages hold his wards and workings in a hand that is still legible. The Shade of Maelis holds it against his chest and names it as the price for breaking his oath. Corvin Vale wants it more than anything in the barrow.",
       "aiSummary": "Maelis's black grimoire, the court sorcerer's spellbook.",
       "imageTags": "ancient grimoire, black leather book, iron spiral clasps, open pages, arcane writing, violet glow, still life",
-      "value": 150,
-      "currencyId": "emberwatch-gold",
+      "value": 1500,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3387,8 +3373,8 @@
       "aiDescription": "A brass night-watch badge stamped with Emberwatch's flame, its pin bent, its back scratched with a tally of nights. Every sentry on the wall wears one. This one belonged to the sentry the barrow dead took from the walk, and it walks with them now. Mara Venn would know it at a glance.",
       "aiSummary": "The lost sentry's brass night-watch badge.",
       "imageTags": "brass badge, flame emblem, bent pin, scratched metal, dirt, still life",
-      "value": 2,
-      "currencyId": "emberwatch-gold",
+      "value": 20,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [],
@@ -3401,8 +3387,8 @@
       "aiDescription": "A dented brass spyglass in a cracked leather case, left in a niche of the Old Watchtower by a watchman decades dead. Its lens is clear. Through it the barrow field shows mound by mound, and a face on the wall at a mile.",
       "aiSummary": "A dented brass spyglass that shows the barrow field mound by mound.",
       "imageTags": "brass spyglass, dented metal, leather case, stone niche, dusty, still life",
-      "value": 25,
-      "currencyId": "emberwatch-gold",
+      "value": 250,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3446,8 +3432,8 @@
       "aiDescription": "A torn ledger page with a charcoal map of the barrow, ringed with beer stains, left wedged under the adventurers' back table. It shows the passage from the mound's mouth to the Hall of Shields, the long stair down to the Bier Chamber, and the carved door to the Sorcerer's Vault marked with a cross. Whoever drew it went in and came out.",
       "aiSummary": "A charcoal map of the barrow's halls, drawn on a torn page.",
       "imageTags": "hand-drawn map, torn paper, charcoal lines, beer stains, tavern table, candlelight, still life",
-      "value": 5,
-      "currencyId": "emberwatch-gold",
+      "value": 50,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [],
@@ -3460,8 +3446,8 @@
       "aiDescription": "A round wooden shield of King Haldren's guard, taken from its hook in the Hall of Shields. Its iron rim and boss are red with rust and its painted crown has flaked to a ghost. It stops a blow or two before it splits.",
       "aiSummary": "A rusted round shield of the old king's guard.",
       "imageTags": "rusted round shield, wooden boards, iron rim, flaking paint, stone hall, still life",
-      "value": 3,
-      "currencyId": "emberwatch-gold",
+      "value": 25,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3492,8 +3478,8 @@
       "aiDescription": "A heavy ring of tarnished silver over a lead core, stamped with the broken-crown mark of King Haldren's guard. Each guard swore his oath on one and was buried wearing it. Whoever carries it is counted among the king's guard: the barrow dead hesitate before striking, and the oath's weight dims the Ember's light in its owner. Jory Pike pays well for it.",
       "aiSummary": "A guard's oath ring that counts its owner among the king's dead.",
       "imageTags": "silver ring, black tarnish, broken crown engraving, heavy band, stone floor, bones, still life",
-      "value": 30,
-      "currencyId": "emberwatch-gold",
+      "value": 300,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "statEffects": [
         {
@@ -3525,8 +3511,8 @@
       "aiDescription": "A sheet of vellum folded in four, scorched at one corner, written over in Maelis's spiral hand. It holds one of his wards, set down so a soldier could speak it. Read aloud, it raises the Arcane Ward around the reader for eight hours and then burns to ash in the hand.",
       "aiSummary": "One of Maelis's ward scrolls; read once, it raises an Arcane Ward.",
       "imageTags": "folded vellum scroll, scorched corner, spiral runes, dark ink, stone lectern, violet glow, still life",
-      "value": 60,
-      "currencyId": "emberwatch-gold",
+      "value": 500,
+      "currencyId": "emberwatch-coin",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [
@@ -3553,8 +3539,8 @@
       "aiDescription": "A thin beaten-gold cup from the grave goods heaped around King Haldren's bier, dented and dull with age, the broken-crown mark on its foot. Taking it breaks the dead's rest a little more.",
       "aiSummary": "A dented gold cup from the king's grave goods.",
       "imageTags": "gold cup, dented, tarnished, ancient goblet, frost, stone, still life",
-      "value": 25,
-      "currencyId": "emberwatch-gold",
+      "value": 250,
+      "currencyId": "emberwatch-coin",
       "statEffects": [
         {
           "id": "3a9078e4-c305-493a-b7f8-53c47b4e5287",
@@ -3575,8 +3561,8 @@
       "aiDescription": "A stoppered clay flask of lamp oil, enough to fill a hooded lantern for three nights, sold at the Riverside Market stalls. It smells of fish and smoke.",
       "aiSummary": "A clay flask of lamp oil, one lantern's fill.",
       "imageTags": "clay flask, cork stopper, oil, market stall, rope, still life",
-      "value": 3,
-      "currencyId": "emberwatch-gold",
+      "value": 30,
+      "currencyId": "emberwatch-coin",
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": [],
@@ -4163,15 +4149,172 @@
         "kind": "item",
         "itemId": "8f7fcfb8-3c7f-4b09-ab6c-f3679c444975"
       }
+    },
+    {
+      "id": "1f7a3c90-6b24-4e18-9d35-a0c2e7f41b01",
+      "where": {
+        "kind": "entity",
+        "id": "a42d21f3-2b05-5192-b6cd-01d453a4dc98"
+      },
+      "quantity": 2,
+      "source": {
+        "kind": "item",
+        "itemId": "c75d9e41-3a62-4c8e-b7f1-9e20a4c6d831"
+      }
+    },
+    {
+      "id": "1f7a3c90-6b24-4e18-9d35-a0c2e7f41b02",
+      "where": {
+        "kind": "entity",
+        "id": "a42d21f3-2b05-5192-b6cd-01d453a4dc98"
+      },
+      "quantity": 8,
+      "source": {
+        "kind": "item",
+        "itemId": "b84e2a96-1d37-4f5c-a2b8-6c09e3d7f512"
+      }
+    },
+    {
+      "id": "1f7a3c90-6b24-4e18-9d35-a0c2e7f41b03",
+      "where": {
+        "kind": "entity",
+        "id": "a42d21f3-2b05-5192-b6cd-01d453a4dc98"
+      },
+      "quantity": 20,
+      "source": {
+        "kind": "item",
+        "itemId": "a3f1c7d2-5e84-4b19-9c60-2d7e8b1f4a03"
+      }
+    },
+    {
+      "id": "2e8b4da1-7c35-4f29-8e46-b1d3f8052c01",
+      "where": {
+        "kind": "entity",
+        "id": "6d14f861-781e-5b30-9996-e271ac3c39d2"
+      },
+      "quantity": 2,
+      "source": {
+        "kind": "item",
+        "itemId": "c75d9e41-3a62-4c8e-b7f1-9e20a4c6d831"
+      }
+    },
+    {
+      "id": "2e8b4da1-7c35-4f29-8e46-b1d3f8052c02",
+      "where": {
+        "kind": "entity",
+        "id": "6d14f861-781e-5b30-9996-e271ac3c39d2"
+      },
+      "quantity": 8,
+      "source": {
+        "kind": "item",
+        "itemId": "b84e2a96-1d37-4f5c-a2b8-6c09e3d7f512"
+      }
+    },
+    {
+      "id": "2e8b4da1-7c35-4f29-8e46-b1d3f8052c03",
+      "where": {
+        "kind": "entity",
+        "id": "6d14f861-781e-5b30-9996-e271ac3c39d2"
+      },
+      "quantity": 20,
+      "source": {
+        "kind": "item",
+        "itemId": "a3f1c7d2-5e84-4b19-9c60-2d7e8b1f4a03"
+      }
+    },
+    {
+      "id": "3d9c5eb2-8d46-4a3a-9f57-c2e4a9163d01",
+      "where": {
+        "kind": "entity",
+        "id": "8ea42790-83cc-55b0-acdd-4194e878a1cd"
+      },
+      "quantity": 2,
+      "source": {
+        "kind": "item",
+        "itemId": "c75d9e41-3a62-4c8e-b7f1-9e20a4c6d831"
+      }
+    },
+    {
+      "id": "3d9c5eb2-8d46-4a3a-9f57-c2e4a9163d02",
+      "where": {
+        "kind": "entity",
+        "id": "8ea42790-83cc-55b0-acdd-4194e878a1cd"
+      },
+      "quantity": 8,
+      "source": {
+        "kind": "item",
+        "itemId": "b84e2a96-1d37-4f5c-a2b8-6c09e3d7f512"
+      }
+    },
+    {
+      "id": "3d9c5eb2-8d46-4a3a-9f57-c2e4a9163d03",
+      "where": {
+        "kind": "entity",
+        "id": "8ea42790-83cc-55b0-acdd-4194e878a1cd"
+      },
+      "quantity": 20,
+      "source": {
+        "kind": "item",
+        "itemId": "a3f1c7d2-5e84-4b19-9c60-2d7e8b1f4a03"
+      }
+    },
+    {
+      "id": "4cad6fc3-9e57-4b4b-a068-d3f5ba274e01",
+      "where": {
+        "kind": "entity",
+        "id": "30f2d584-1ff5-5189-bda3-6d3dcf69d336"
+      },
+      "quantity": 30,
+      "source": {
+        "kind": "item",
+        "itemId": "c75d9e41-3a62-4c8e-b7f1-9e20a4c6d831"
+      }
+    },
+    {
+      "id": "4cad6fc3-9e57-4b4b-a068-d3f5ba274e02",
+      "where": {
+        "kind": "entity",
+        "id": "30f2d584-1ff5-5189-bda3-6d3dcf69d336"
+      },
+      "quantity": 20,
+      "source": {
+        "kind": "item",
+        "itemId": "b84e2a96-1d37-4f5c-a2b8-6c09e3d7f512"
+      }
+    },
+    {
+      "id": "4cad6fc3-9e57-4b4b-a068-d3f5ba274e03",
+      "where": {
+        "kind": "entity",
+        "id": "30f2d584-1ff5-5189-bda3-6d3dcf69d336"
+      },
+      "quantity": 50,
+      "source": {
+        "kind": "item",
+        "itemId": "a3f1c7d2-5e84-4b19-9c60-2d7e8b1f4a03"
+      }
     }
   ],
   "currencies": [
     {
-      "id": "emberwatch-gold",
-      "name": "Gold",
+      "id": "emberwatch-coin",
+      "name": "Coin",
       "backing": {
-        "kind": "stat",
-        "statId": "gold"
+        "kind": "coins",
+        "coins": [
+          {
+            "itemId": "a3f1c7d2-5e84-4b19-9c60-2d7e8b1f4a03",
+            "worth": 1
+          },
+          {
+            "itemId": "b84e2a96-1d37-4f5c-a2b8-6c09e3d7f512",
+            "worth": 10
+          },
+          {
+            "itemId": "c75d9e41-3a62-4c8e-b7f1-9e20a4c6d831",
+            "worth": 100
+          }
+        ]
       }
     }
   ]

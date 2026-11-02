@@ -761,6 +761,7 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 - **The writes apply when the script ends**, in run order, through the same checks as the panel. A check that fails skips that write and logs the reason.
 - **Bound stops the player only.** A script can remove or move a **Bound** Item Copy.
 - **A script can give to an entity that is not present.**
+- **Under a library persona, the Custom Persona entity means the player.** A `give` or a `pay` that names it reaches the player.
 - **An unknown target stops the script with an error.** So does `give` on an unknown item name.
 - **A bad argument to a verb throws a TypeError.**
 

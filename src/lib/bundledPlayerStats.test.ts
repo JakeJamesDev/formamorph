@@ -29,7 +29,7 @@ const SPLIT: Record<string, { owned: string[]; loose: string[] }> = {
   veilwood: { owned: ['Health', 'Stamina', 'Stress', 'Satiety', 'Toxin'], loose: ['Predator Attention'] },
 };
 const OWNING = Object.keys(SPLIT);
-const PLAYER_STATS = ['Health', 'Mana', 'Faith', 'Gold', 'Renown'];
+const PLAYER_STATS = ['Health', 'Mana', 'Faith', 'Renown'];
 
 const ownerWorld = (w: World): OwnerWorld => ({ traits: w.traits, traitGroups: w.traitGroups ?? [], entities: w.entities });
 const statWorld = (w: World) => ({ stats: w.stats, statGroups: w.statGroups ?? [] });

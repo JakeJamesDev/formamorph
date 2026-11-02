@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { bundledWorldText } from '@/test/bundledWorldFiles';
-import { currencyStatGroups, worthText } from './currency';
+import { balanceOf, currencyStatGroups, worthText } from './currency';
+import { sameWhere } from './items';
 import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
@@ -18,10 +19,10 @@ import { personaStartLocation } from './personaPick';
 import { visibleImages, visibleLocationImages } from './imageVisibility';
 import { scoped } from './scope';
 import type { GateInput, GateStatSet } from './traitGates';
-import { applyInventoryOps, seedItemCopies } from './inventory';
+import { applyInventoryOps, applyInventoryPass, seedItemCopies } from './inventory';
 import { openingFold } from './openingState';
 import { wantedGrants } from './inventory/grants';
-import type { Entity, ItemCopy, PersonaRef, World } from '@/types';
+import type { Entity, InventoryPassOp, ItemCopy, PersonaRef, World } from '@/types';
 
 // The stored text through the world migration, images included: the Test Bench pass below reads them.
 const raw = bundledWorldText('emberwatch');
@@ -343,13 +344,99 @@ describe('the Emberwatch items', () => {
   };
   const copiesOf = (copies: readonly ItemCopy[], name: string) => copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === itemNamed(name).id);
 
-  it('prices its items in a Gold stat that the stat picker lists once', () => {
+  it('lists a Blueprint stat once in the Currency stat picker', () => {
     const groups = currencyStatGroups({ stats: world.stats, statGroups: world.statGroups ?? [], entities: world.entities });
     const ids = groups.flatMap((group) => group.stats.map((stat) => stat.id));
-    expect(ids.filter((id) => id === 'gold')).toEqual(['gold']);
+    expect(ids.filter((id) => id === 'faith')).toEqual(['faith']);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(world.currencies?.map((currency) => currency.backing)).toEqual([{ kind: 'stat', statId: 'gold' }]);
-    expect(worthText(itemNamed('Cold Iron Sword'), world.currencies ?? [], world.items ?? [])).toBe(`${itemNamed('Cold Iron Sword').value} Gold`);
+  });
+
+  describe('its money', () => {
+    const currencies = world.currencies ?? [];
+    const coinCurrency = currencies[0];
+    const albus = entityNamed(world, 'Albus');
+    const jory = { kind: 'entity', id: entityNamed(world, 'Jory Pike').id } as const;
+    const bram = { kind: 'entity', id: entityNamed(world, 'Bram Oakes').id } as const;
+    const you = { kind: 'you' } as const;
+    const amountAt = (copies: readonly ItemCopy[], owner: typeof you | typeof jory) =>
+      balanceOf(coinCurrency, owner, { copies, placements: world.placements ?? [], globalStats: [], statsOf: () => [] });
+    const quantityAt = (copies: readonly ItemCopy[], name: string, where: ItemCopy['where']) => copiesOf(copies, name)
+      .filter((copy) => sameWhere(copy.where, where)).reduce((sum, copy) => sum + copy.quantity, 0);
+
+    /** One Inventory pass reply over a game Albus plays. */
+    const settle = (copies: ItemCopy[], op: Pick<InventoryPassOp, 'item' | 'owner' | 'to'> & Partial<InventoryPassOp>) => {
+      let next = 0;
+      return applyInventoryPass(copies, [{ op: 'buy', quantity: 1, ...op }], {
+        items, runtimeItems: [], playerNames: [albus.name], owners: world.entities.map(({ id, name }) => ({ id, name })),
+        location: { id: world.locations[0].id, name: world.locations[0].name },
+        money: {
+          currencies, placements: world.placements ?? [], stats: { globalStats: [], entityStats: {} }, playedIds: [albus.id], statsOn: (_owner, stats) => stats,
+        },
+      }, { world: { items }, newId: () => `bought-${(next += 1)}`, persona: asEntity(world, 'Albus') }).copies;
+    };
+    /** Albus's starting game, carrying one grave good to sell. */
+    const withCup = (): ItemCopy[] => [
+      ...seeded(asEntity(world, 'Albus')),
+      { id: 'cup', item: { kind: 'item', itemId: itemNamed('Gold Burial Cup').id }, where: you, quantity: 1, visibility: 'visible' },
+    ];
+
+    it('has one coin Currency of Copper, Silver and Gold', () => {
+      expect(currencies).toHaveLength(1);
+      expect(coinCurrency.backing).toEqual({
+        kind: 'coins',
+        coins: [['Copper', 1], ['Silver', 10], ['Gold', 100]].map(([name, worth]) => ({ itemId: itemNamed(String(name)).id, worth })),
+      });
+      for (const name of ['Copper', 'Silver', 'Gold']) expect(itemNamed(name).stackable).toBe(true);
+    });
+
+    it('prices every priced item in the coin Currency, and reads a price as coins', () => {
+      const priced = items.filter((item) => item.value !== undefined);
+      expect(priced.length).toBeGreaterThan(0);
+      for (const item of priced) expect(item.currencyId, item.name).toBe(coinCurrency.id);
+      expect(worthText(itemNamed('Healing Draught'), currencies, items)).toBe('6 Silver');
+      expect(worthText(itemNamed('Cold Iron Dagger'), currencies, items)).toBe('1 Gold, 5 Silver');
+    });
+
+    it('leaves no reference to a Gold stat', () => {
+      const stored = JSON.parse(raw) as World;
+      // Every string in the file: ids and descriptors by their value, and any script, Tool's included, by a read of the stat.
+      const found: string[] = [];
+      JSON.stringify(stored, (key, value: unknown) => {
+        if (typeof value === 'string' && /^gold(_\d+)?$|stats(\.Gold|\[['"]Gold)/.test(value)) found.push(`${key}: ${value.slice(0, 80)}`);
+        return value;
+      });
+      expect(found).toEqual([]);
+      expect(stored.stats.map((stat) => stat.name)).not.toContain('Gold');
+      const { readme, introReadme } = stored.worldOverview;
+      for (const text of [readme, introReadme]) expect(text).not.toMatch(/\*\*Gold\*\* (and|pays)|more Gold|Gold stat/);
+    });
+
+    it('buys a real shop item from a starting purse, through the buy op', () => {
+      const start = seeded(asEntity(world, 'Albus'));
+      expect(amountAt(start, you)).toEqual({ tracked: true, amount: 300 });
+      const after = settle(start, { item: 'Cold Iron Dagger', owner: 'Bram Oakes', to: 'you' });
+      expect(amountAt(after, you)).toEqual({ tracked: true, amount: 150 });
+      expect(quantityAt(after, 'Cold Iron Dagger', you)).toBe(1);
+      expect(quantityAt(after, 'Cold Iron Dagger', bram)).toBe(1);
+    });
+
+    it('refuses a shop item past the purse, and moves nothing', () => {
+      const start = seeded(asEntity(world, 'Albus'));
+      expect(settle(start, { item: 'Cold Iron Sword', owner: 'Bram Oakes', to: 'you' })).toEqual(start);
+    });
+
+    it('lets Jory Pike buy within his purse', () => {
+      const after = settle(withCup(), { item: 'Gold Burial Cup', owner: 'you', to: 'Jory Pike', price: '1 Gold' });
+      expect(amountAt(after, you)).toEqual({ tracked: true, amount: 400 });
+      expect(amountAt(after, jory)).toEqual({ tracked: true, amount: 3150 });
+      expect(quantityAt(after, 'Gold Burial Cup', jory)).toBe(1);
+    });
+
+    it('refuses a sale to Jory Pike past his purse, and moves nothing', () => {
+      const start = withCup();
+      expect(amountAt(start, jory)).toEqual({ tracked: true, amount: 3250 });
+      expect(settle(start, { item: 'Gold Burial Cup', owner: 'you', to: 'Jory Pike', price: '33 Gold' })).toEqual(start);
+    });
   });
 
   it('points every effect, requirement, slot and placement at something the world has', () => {

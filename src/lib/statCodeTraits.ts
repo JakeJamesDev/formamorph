@@ -139,6 +139,7 @@ function codeEntity(
     pronouns: statCodeName(authored.pronouns, named),
     inScene: authored.id === played || !!ownerTraits.inSceneIds?.includes(authored.id),
     met: authored.id === played || (ownerTraits.metIds ? ownerTraits.metIds.includes(authored.id) : startsMet(authored, null, [])),
+    ...(authored.customPersona && ownerTraits.world.persona?.source === 'library' ? { holdsAsPlayer: true } : {}),
     traits: (owner?.traits ?? []).map((trait) => ({
       ...traitIdentity({ ...trait, name: authoredTraitName(trait, authored, ownerTraits.world.traits) }, authored.id,
         [...(owner?.groups ?? []), ...ownerTraits.world.groups], gates, named),

@@ -331,6 +331,8 @@ export interface SandboxEntity {
   /** The Body in force for the entity (null = none), and whether a trait forces it so a write cannot change what `body`
    *  reads. Absent, it holds no Body. */
   body?: { id: string | null; locked: boolean };
+  /** The Custom Persona under a library persona: a target of `give` or `pay` that means the player. */
+  holdsAsPlayer?: boolean;
 }
 
 /** One Body of the world as `body` reads it: its slots in entry order with each capacity. */
@@ -943,6 +945,9 @@ export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], p
 const isPlayed = (entity: SandboxEntity, persona: SandboxEntity): boolean =>
   entity === persona || (!!persona.id && entity.id === persona.id);
 
+/** Whether Item Copies and money at `entity` are the player's. */
+const holdsForPlayer = (entity: SandboxEntity, persona: SandboxEntity): boolean => isPlayed(entity, persona) || !!entity.holdsAsPlayer;
+
 /** JS source of `(fields, entries, blank, build) => [map, readWrites, entry]`: frozen entries with read-only
  *  `fields`, built by `build(key, data, unknown) => [values, rows, hidden?, setters?]`, where `hidden` fields are
  *  left out of the entry's keys and a field in `setters` takes its write there; an unknown name builds from `blank`.
@@ -1197,7 +1202,7 @@ const itemsPrelude = (
 ): string => {
   const you: ItemCopyWhere = { kind: 'you' };
   const whereOf = (entity: SandboxEntity): ItemCopyWhere | null =>
-    (isPlayed(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
+    (holdsForPlayer(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
   const nameById = new Map([...byName].flatMap(([name, entity]) => (entity.id && !isPlayed(entity, persona) ? [[entity.id, name]] : [])));
   const personaName = hasEntityKey(persona.name) && byName.get(persona.name) === persona ? persona.name : '';
   const placeName = new Map(locations.map((place) => [place.id, place.name]));
@@ -1343,7 +1348,7 @@ const MONEY_HOOK = '__formamorphMoney';
 /** The `currencies` prelude: `balance` and `pay` ask the host. An unknown name is a blank entry that stops the script. */
 const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, persona }: KeyedEntities): string => {
   const you: SlotOwner = { kind: 'you' };
-  const partyOf = (entity: SandboxEntity): SlotOwner | null => (isPlayed(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
+  const partyOf = (entity: SandboxEntity): SlotOwner | null => (holdsForPlayer(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
   const spec = {
     currencies: [...new Map(currencies.map((currency) => [currency.name, currency]))],
     ids: Object.fromEntries([

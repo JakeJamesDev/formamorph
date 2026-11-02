@@ -100,6 +100,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Deleting a Currency's stat, a coin item or the Currency now updates everything that used it.** A confirm names the Currency or the item count, and item prices stay.
     - **Scripts can read what an entity holds in a Currency and pay with it.** `currencies.Gold.balance(persona)` and `pay` follow the game's rules: exact change, and a refusal the script can read.
     - **Players can now type a purchase or sale, and the money and the item move together when the turn ends.** A price the story states counts. Without one, the item costs its Value. A trade the buyer can't afford moves nothing.
+    - **Emberwatch now pays in Copper, Silver and Gold coins, and its Gold stat is gone.** Each hero starts with a purse to spend at the keep's shops. Rogues and Halflings start with extra coins. A script's `give` or `pay` to a Custom Persona now reaches a library persona.
   - **Credits:**
     - **The Main Menu footer now has a Credits line that opens a Credits window.** It names Jake James, FieryLionite, the item icon artists and, on desktop, llama.cpp.
     - **The Credits window has a Supporters tab that lists the game's Patreon supporters.** It shows once you've accepted the adult content warning. Select a name to open that profile.

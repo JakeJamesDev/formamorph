@@ -22,8 +22,8 @@
               "id": "parity-link",
               "kind": "stat",
               "order": 1,
-              "originalId": "gold",
-              "originalName": "Gold"
+              "originalId": "mana",
+              "originalName": "Mana"
             }
           ],
           "stats": [
@@ -146,7 +146,7 @@
       ],
       "kind": "moved",
       "rowIds": {
-        "gold": "5ae466c2-5651-5a51-b218-46ae7e914545/parity-link"
+        "mana": "5ae466c2-5651-5a51-b218-46ae7e914545/parity-link"
       }
     },
     "Blueprint stat into the Custom Persona entity, links on": {
@@ -154,7 +154,7 @@
       "refusal": {
         "held": {
           "kind": "links",
-          "name": "Gold"
+          "name": "Mana"
         },
         "owner": "Wanderer",
         "reason": "held"
@@ -198,17 +198,9 @@
             },
             {
               "groupId": null,
-              "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
-              "kind": "stat",
-              "order": 3,
-              "originalId": "gold",
-              "originalName": "Gold"
-            },
-            {
-              "groupId": null,
               "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
               "kind": "stat",
-              "order": 4,
+              "order": 3,
               "originalId": "renown",
               "originalName": "Renown"
             }
@@ -301,17 +293,9 @@
             },
             {
               "groupId": null,
-              "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-              "kind": "stat",
-              "order": 3,
-              "originalId": "gold",
-              "originalName": "Gold"
-            },
-            {
-              "groupId": null,
               "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
               "kind": "stat",
-              "order": 4,
+              "order": 3,
               "originalId": "renown",
               "originalName": "Renown"
             }
@@ -416,17 +400,9 @@
             },
             {
               "groupId": null,
-              "id": "4fddf718-82a5-4367-bf40-3cae01f3a528",
-              "kind": "stat",
-              "order": 3,
-              "originalId": "gold",
-              "originalName": "Gold"
-            },
-            {
-              "groupId": null,
               "id": "5c063dd3-7c64-45d5-8e78-24efe786f579",
               "kind": "stat",
-              "order": 4,
+              "order": 3,
               "originalId": "renown",
               "originalName": "Renown"
             }
@@ -759,14 +735,6 @@
               "order": 3,
               "originalId": "faith",
               "originalName": "Faith"
-            },
-            {
-              "groupId": null,
-              "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-              "kind": "stat",
-              "order": 4,
-              "originalId": "gold",
-              "originalName": "Gold"
             },
             {
               "groupId": null,
@@ -3031,11 +2999,11 @@
     "read link row to another entity": {
       "kind": "refused",
       "refusal": {
-        "name": "Gold",
+        "name": "Renown",
         "owner": "Albus",
         "reader": {
           "kind": "change",
-          "trait": "Halfling"
+          "trait": "Human"
         },
         "reason": "read"
       }
@@ -5079,13 +5047,15 @@
               }
             ],
             "playerDescription": "Small, lucky, and never quite broke.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 15
+                "code": "// Halfling: never quite broke. The purse itself is a Placement, and this script adds a small lucky extra.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give five Silver to whoever this Halfling belongs to. It is smaller than a Rogue's stash,\n  //    because a race gives one small edge and a class sets the trade.\n  items.Silver.give(owner, 5);\n}",
+                "id": "e62a8f13-7d94-4b6e-a150-3c8f7d2e6b94",
+                "name": "Halfling Luck",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:53b40c47-48f2-441c-a1ab-d123d6bf25ea}}.",
@@ -5145,13 +5115,15 @@
               }
             ],
             "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 40
+                "code": "// Rogue: a rogue starts with more money than the other classes.\n// The purse itself is a Placement. A Placement can't read a trait, so the extra coins come from this script.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give two Gold to whoever this Rogue belongs to: the player, or another Rogue in the story.\n  items.Gold.give(owner, 2);\n}",
+                "id": "d91e6b27-4c58-4a03-8f1d-7b2c5e9a1046",
+                "name": "Rogue Stash",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:b32afcc9-4da3-4132-a094-c40caf046dc1}}.",
@@ -5606,17 +5578,9 @@
             },
             {
               "groupId": null,
-              "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-              "kind": "stat",
-              "order": 3,
-              "originalId": "gold",
-              "originalName": "Gold"
-            },
-            {
-              "groupId": null,
               "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
               "kind": "stat",
-              "order": 4,
+              "order": 3,
               "originalId": "renown",
               "originalName": "Renown"
             }
@@ -5852,13 +5816,15 @@
               }
             ],
             "playerDescription": "Small, lucky, and never quite broke.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 15
+                "code": "// Halfling: never quite broke. The purse itself is a Placement, and this script adds a small lucky extra.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give five Silver to whoever this Halfling belongs to. It is smaller than a Rogue's stash,\n  //    because a race gives one small edge and a class sets the trade.\n  items.Silver.give(owner, 5);\n}",
+                "id": "e62a8f13-7d94-4b6e-a150-3c8f7d2e6b94",
+                "name": "Halfling Luck",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:53b40c47-48f2-441c-a1ab-d123d6bf25ea}}.",
@@ -5918,13 +5884,15 @@
               }
             ],
             "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 40
+                "code": "// Rogue: a rogue starts with more money than the other classes.\n// The purse itself is a Placement. A Placement can't read a trait, so the extra coins come from this script.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give two Gold to whoever this Rogue belongs to: the player, or another Rogue in the story.\n  items.Gold.give(owner, 2);\n}",
+                "id": "d91e6b27-4c58-4a03-8f1d-7b2c5e9a1046",
+                "name": "Rogue Stash",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:b32afcc9-4da3-4132-a094-c40caf046dc1}}.",
@@ -6255,17 +6223,9 @@
             },
             {
               "groupId": null,
-              "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
-              "kind": "stat",
-              "order": 3,
-              "originalId": "gold",
-              "originalName": "Gold"
-            },
-            {
-              "groupId": null,
               "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
               "kind": "stat",
-              "order": 4,
+              "order": 3,
               "originalId": "renown",
               "originalName": "Renown"
             }
@@ -9702,13 +9662,15 @@
               }
             ],
             "playerDescription": "Small, lucky, and never quite broke.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 15
+                "code": "// Halfling: never quite broke. The purse itself is a Placement, and this script adds a small lucky extra.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give five Silver to whoever this Halfling belongs to. It is smaller than a Rogue's stash,\n  //    because a race gives one small edge and a class sets the trade.\n  items.Silver.give(owner, 5);\n}",
+                "id": "e62a8f13-7d94-4b6e-a150-3c8f7d2e6b94",
+                "name": "Halfling Luck",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:53b40c47-48f2-441c-a1ab-d123d6bf25ea}}.",
@@ -9768,13 +9730,15 @@
               }
             ],
             "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 40
+                "code": "// Rogue: a rogue starts with more money than the other classes.\n// The purse itself is a Placement. A Placement can't read a trait, so the extra coins come from this script.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give two Gold to whoever this Rogue belongs to: the player, or another Rogue in the story.\n  items.Gold.give(owner, 2);\n}",
+                "id": "d91e6b27-4c58-4a03-8f1d-7b2c5e9a1046",
+                "name": "Rogue Stash",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:b32afcc9-4da3-4132-a094-c40caf046dc1}}.",
@@ -10105,17 +10069,9 @@
             },
             {
               "groupId": null,
-              "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
-              "kind": "stat",
-              "order": 3,
-              "originalId": "gold",
-              "originalName": "Gold"
-            },
-            {
-              "groupId": null,
               "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
               "kind": "stat",
-              "order": 4,
+              "order": 3,
               "originalId": "renown",
               "originalName": "Renown"
             }
@@ -10349,13 +10305,15 @@
               }
             ],
             "playerDescription": "Small, lucky, and never quite broke.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 15
+                "code": "// Halfling: never quite broke. The purse itself is a Placement, and this script adds a small lucky extra.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give five Silver to whoever this Halfling belongs to. It is smaller than a Rogue's stash,\n  //    because a race gives one small edge and a class sets the trade.\n  items.Silver.give(owner, 5);\n}",
+                "id": "e62a8f13-7d94-4b6e-a150-3c8f7d2e6b94",
+                "name": "Halfling Luck",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:53b40c47-48f2-441c-a1ab-d123d6bf25ea}}.",
@@ -10415,13 +10373,15 @@
               }
             ],
             "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 40
+                "code": "// Rogue: a rogue starts with more money than the other classes.\n// The purse itself is a Placement. A Placement can't read a trait, so the extra coins come from this script.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give two Gold to whoever this Rogue belongs to: the player, or another Rogue in the story.\n  items.Gold.give(owner, 2);\n}",
+                "id": "d91e6b27-4c58-4a03-8f1d-7b2c5e9a1046",
+                "name": "Rogue Stash",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:b32afcc9-4da3-4132-a094-c40caf046dc1}}.",
@@ -10752,17 +10712,9 @@
             },
             {
               "groupId": null,
-              "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
-              "kind": "stat",
-              "order": 3,
-              "originalId": "gold",
-              "originalName": "Gold"
-            },
-            {
-              "groupId": null,
               "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
               "kind": "stat",
-              "order": 4,
+              "order": 3,
               "originalId": "renown",
               "originalName": "Renown"
             }
@@ -10984,13 +10936,15 @@
               }
             ],
             "playerDescription": "Small, lucky, and never quite broke.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 15
+                "code": "// Halfling: never quite broke. The purse itself is a Placement, and this script adds a small lucky extra.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give five Silver to whoever this Halfling belongs to. It is smaller than a Rogue's stash,\n  //    because a race gives one small edge and a class sets the trade.\n  items.Silver.give(owner, 5);\n}",
+                "id": "e62a8f13-7d94-4b6e-a150-3c8f7d2e6b94",
+                "name": "Halfling Luck",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:53b40c47-48f2-441c-a1ab-d123d6bf25ea}}.",
@@ -11050,13 +11004,15 @@
               }
             ],
             "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
-            "statChanges": [
+            "scripts": [
               {
-                "statId": "gold",
-                "type": "starting",
-                "value": 40
+                "code": "// Rogue: a rogue starts with more money than the other classes.\n// The purse itself is a Placement. A Placement can't read a trait, so the extra coins come from this script.\n\n// 1. Test Code and the Test Bench run a Blueprint script with an empty owner. With no one to give to, skip the gift.\nif (owner.id) {\n  // 2. Give two Gold to whoever this Rogue belongs to: the player, or another Rogue in the story.\n  items.Gold.give(owner, 2);\n}",
+                "id": "d91e6b27-4c58-4a03-8f1d-7b2c5e9a1046",
+                "name": "Rogue Stash",
+                "timing": "start"
               }
-            ]
+            ],
+            "statChanges": []
           },
           {
             "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:b32afcc9-4da3-4132-a094-c40caf046dc1}}.",

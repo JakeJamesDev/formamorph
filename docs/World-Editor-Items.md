@@ -225,6 +225,8 @@ An item priced in a coin Currency shows one **Value** field per coin. Type 1 in 
 - 🏪 To limit how much an entity can pay, place one of the coins on it, or give it the stat. An entity with neither has no money to run out of. A Global Stat is the player's money only.
 - 🚫 An item with **No Currency** shows no worth, even with a **Value**.
 
+The bundled world **Emberwatch** pays in Copper, Silver and Gold. To see a full setup, open it in the World Editor and read **How this world is built** in its readme.
+
 ### Deleting money
 
 A delete is never blocked. When something uses what you delete, a confirm names what changes. Nothing else asks.
