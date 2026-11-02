@@ -9,6 +9,8 @@ import { mergeRatings, pageHtml, planClips, tally } from "./ratingPlan.mjs";
 
 type Ratings = Record<string, Record<string, boolean>>;
 const storeUrl = new URL("./ratings.json", import.meta.url);
+/** Whole sentences, spoken with no carrier; no bar counts them. */
+const SENTENCES = "sentences";
 const CARRIER: Record<string, (phonemes: string) => string> = {
   a: (ph) => `ðə ɹˈOd tə ${ph} wʌz klˈOzd.`,
   b: (ph) => `ðə ɹˈəʊd tə ${ph} wɒz klˈəʊzd.`,
@@ -56,14 +58,15 @@ if (command === "build") {
   for (const { word, clips } of plan) {
     const rendered = [];
     for (const phonemes of clips) {
-      const audio = await tts.generate(CARRIER[accent](phonemes), { voice });
+      const audio = await tts.generate(set === SENTENCES ? phonemes : CARRIER[accent](phonemes), { voice });
       const file = `c${String(n++).padStart(4, "0")}.wav`;
       writeFileSync(join(resolve(outDir), file), Buffer.from(audio.toWav()));
       rendered.push({ phonemes, file });
     }
     rows.push({ word, clips: rendered });
   }
-  writeFileSync(join(resolve(outDir), "index.html"), pageHtml(`Rating ${set} ${accent}`, rows));
+  const intro = set === SENTENCES ? "Each clip says the sentence above it." : undefined;
+  writeFileSync(join(resolve(outDir), "index.html"), pageHtml(`Rating ${set} ${accent}`, rows, intro));
   console.log(`${n} clips for ${rows.length} words in ${join(resolve(outDir), "index.html")}`);
 } else if (command === "merge") {
   const results = JSON.parse(readFileSync(rest[0], "utf8"));

@@ -1,7 +1,7 @@
 // Adapted from kokoro-js (https://github.com/hexgrad/kokoro, Apache-2.0, copyright hexgrad and contributors):
-// src/kokoro.js and src/voices.js. Keeps the two calls Text to Speech uses: load, and generate.
+// src/kokoro.js and src/voices.js. Holds the calls Text to Speech uses: load, generate, and dispose.
 import { StyleTextToSpeech2Model, AutoTokenizer, Tensor, RawAudio } from "@huggingface/transformers";
-import { phonemize, type Accent } from "./phonemeStep";
+import { phonemize, releasePhonemeStep, type Accent } from "./phonemeStep";
 
 const STYLE_DIM = 256;
 const SAMPLE_RATE = 24000;
@@ -99,6 +99,10 @@ export class KokoroClient {
       AutoTokenizer.from_pretrained(modelId),
     ]);
     return new KokoroClient(model as unknown as KokoroModel, tokenizer as unknown as Tokenizer);
+  }
+
+  async dispose(): Promise<void> {
+    await Promise.all([this.model.dispose(), releasePhonemeStep()]);
   }
 
   async generate(text: string, { voice = "af_heart", speed = 1 }: GenerateOptions = {}): Promise<RawAudio> {

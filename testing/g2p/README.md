@@ -38,6 +38,12 @@ node testing/g2p/scoreCli.mjs --predictions .scratch/g2p/pred/onnx-fp16.json
 
 A pipeline is either `--predictions <word-to-phonemes.json>` or `--module <file>` whose default export is `async (word, accent) => phonemes`. A TypeScript module runs through `npx vite-node testing/g2p/scoreCli.mjs`. Add `--accent b` for British.
 
+The shipped American pipeline is [`pipeline.ts`](pipeline.ts):
+
+```bash
+npx vite-node testing/g2p/scoreCli.mjs --module testing/g2p/pipeline.ts
+```
+
 The script fetches WikiPron at run time, checks its git blob hash, and caches it under `node_modules`. WikiPron is CC BY-SA, so **nothing derived from its pronunciations is ever committed**.
 
 The stored eSpeak numbers are in [`espeak-reference.json`](espeak-reference.json), with the method used to get them.
@@ -54,10 +60,13 @@ The sets hold words only. WikiPron lists few of the strange words, so their erro
 ## 👂 Rate by ear
 
 ```bash
-npx vite-node testing/g2p/ratingPage.ts build fantasy .scratch/rating/fantasy new=.scratch/g2p/pred/onnx-fp16.json
+npx vite-node testing/g2p/writePredictions.ts .scratch/g2p/pred/pipeline.json
+npx vite-node testing/g2p/ratingPage.ts build fantasy .scratch/rating/fantasy new=.scratch/g2p/pred/pipeline.json
 npx vite-node testing/g2p/ratingPage.ts merge <downloaded ratings.json>
-npx vite-node testing/g2p/ratingPage.ts tally fantasy new=.scratch/g2p/pred/onnx-fp16.json
+npx vite-node testing/g2p/ratingPage.ts tally fantasy new=.scratch/g2p/pred/pipeline.json
 ```
+
+- [`sentences`](sets/sentences.json) checks weak forms in whole sentences. It has no carrier and no bar.
 
 - `build` makes a page of blind clips. Pass several `arm=file` pairs to compare, and the page never says which arm said what.
 - A string already rated for that word is carried from [`ratings.json`](ratings.json), so you only hear what is new.

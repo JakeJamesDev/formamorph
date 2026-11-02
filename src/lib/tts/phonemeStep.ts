@@ -1,8 +1,72 @@
 // Adapted from kokoro-js (https://github.com/hexgrad/kokoro, Apache-2.0, copyright hexgrad and contributors):
-// src/phonemize.js. The only file that imports `phonemizer`.
+// src/phonemize.js. The only file that imports `phonemizer`, which serves British voices.
+import { env } from "@huggingface/transformers";
 import { phonemize as espeakng } from "phonemizer";
+// The runtime instance transformers imports, undeclared in package.json so the two cannot drift apart.
+import * as ort from "onnxruntime-web";
+import ortMjsUrl from "onnxruntime-web-dist/ort-wasm-simd-threaded.jsep.mjs?url";
+import ortWasmUrl from "onnxruntime-web-dist/ort-wasm-simd-threaded.jsep.wasm?url";
+import dictionaryUrl from "./g2p/cmudict.dict?url";
+import decoderUrl from "./g2p/decoder.fp16.onnx?url";
+import encoderUrl from "./g2p/encoder.fp16.onnx?url";
+import { loadG2pModel, type G2pModel, type OrtRuntime } from "./g2pModel";
+import { createTextToPhonemes, parseDictionary } from "./textToPhonemes";
 
 export type Accent = "a" | "b";
+
+if (env.backends.onnx.wasm) {
+  // The bundled runtime files, as absolute URLs because the runtime's XHR rejects root-relative ones.
+  env.backends.onnx.wasm.wasmPaths = {
+    mjs: new URL(ortMjsUrl, import.meta.url).href,
+    wasm: new URL(ortWasmUrl, import.meta.url).href,
+  };
+}
+
+async function fetchAsset(url: string): Promise<Response> {
+  const response = await fetch(new URL(url, import.meta.url).href);
+  if (!response.ok) throw new Error(`Phoneme data failed to load (${response.status}).`);
+  return response;
+}
+
+async function loadModel(): Promise<G2pModel> {
+  const [encoder, decoder] = await Promise.all([
+    fetchAsset(encoderUrl).then((r) => r.arrayBuffer()),
+    fetchAsset(decoderUrl).then((r) => r.arrayBuffer()),
+  ]);
+  // The runtime's overloads do not fit OrtRuntime's single signatures.
+  return loadG2pModel(ort as unknown as OrtRuntime, new Uint8Array(encoder), new Uint8Array(decoder), { executionProviders: ["wasm"] });
+}
+
+let model: Promise<G2pModel> | null = null;
+let americanPipeline: Promise<(text: string) => Promise<string>> | null = null;
+
+function loadAmerican(): Promise<(text: string) => Promise<string>> {
+  americanPipeline ??= fetchAsset(dictionaryUrl)
+    .then((r) => r.text())
+    .then((text) => createTextToPhonemes({
+      dictionary: parseDictionary(text),
+      predict: async (word) => {
+        model ??= loadModel().catch((error: unknown) => {
+          model = null;
+          throw error;
+        });
+        return (await model).predict(word);
+      },
+    }))
+    .catch((error: unknown) => {
+      americanPipeline = null;
+      throw error;
+    });
+  return americanPipeline;
+}
+
+/** Drops the phoneme data and model; the next use loads them again. */
+export async function releasePhonemeStep(): Promise<void> {
+  const loaded = model;
+  model = null;
+  americanPipeline = null;
+  if (loaded) await (await loaded).release();
+}
 
 /** Helper function to split a string on a regex, but keep the delimiters */
 function split(text: string, regex: RegExp): { match: boolean; text: string }[] {
@@ -140,8 +204,10 @@ function escapeRegExp(string: string): string {
 const PUNCTUATION = ';:,.!?¡¿—…"«»“”(){}[]';
 const PUNCTUATION_PATTERN = new RegExp(`(\\s*[${escapeRegExp(PUNCTUATION)}]+\\s*)+`, "g");
 
-/** Phonemize text using the eSpeak-NG phonemizer */
+/** Turns text into Kokoro phonemes: American voices use our pipeline, British voices use eSpeak-NG. */
 export async function phonemize(text: string, language: Accent = "a", norm = true): Promise<string> {
+  if (language === "a") return (await loadAmerican())(text);
+
   // 1. Normalize text
   if (norm) {
     text = normalize_text(text);
@@ -151,11 +217,10 @@ export async function phonemize(text: string, language: Accent = "a", norm = tru
   const sections = split(text, PUNCTUATION_PATTERN);
 
   // 3. Convert each section to phonemes
-  const lang = language === "a" ? "en-us" : "en";
-  const ps = (await Promise.all(sections.map(async ({ match, text }) => (match ? text : (await espeakng(text, lang)).join(" "))))).join("");
+  const ps = (await Promise.all(sections.map(async ({ match, text }) => (match ? text : (await espeakng(text, "en")).join(" "))))).join("");
 
   // 4. Post-process phonemes
-  let processed = ps
+  const processed = ps
     // https://en.wiktionary.org/wiki/kokoro#English
     .replace(/kəkˈoːɹoʊ/g, "kˈoʊkəɹoʊ")
     .replace(/kəkˈɔːɹəʊ/g, "kˈəʊkəɹəʊ")
@@ -166,9 +231,5 @@ export async function phonemize(text: string, language: Accent = "a", norm = tru
     .replace(/(?<=[a-zɹː])(?=hˈʌndɹɪd)/g, " ")
     .replace(/ z(?=[;:,.!?¡¿—…"«»“” ]|$)/g, "z");
 
-  // 5. Additional post-processing for American English
-  if (language === "a") {
-    processed = processed.replace(/(?<=nˈaɪn)ti(?!ː)/g, "di");
-  }
   return processed.trim();
 }

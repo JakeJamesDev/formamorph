@@ -83,11 +83,11 @@ document.getElementById('download').onclick = () => {
 `;
 
 /** `rows` holds `{ word, clips: [{ phonemes, file }] }`. */
-export function pageHtml(title, rows) {
+export function pageHtml(title, rows, intro = 'Each clip says "The road to ___ was closed."') {
   let n = 0;
   const sections = rows.map((row) => `<section><h3>${row.word}</h3>${row.clips.map((clip) => {
     const data = `name="c${n++}" data-w="${row.word}" data-p="${clip.phonemes}"`;
     return `<div class=clip><audio controls preload=none src="${clip.file}"></audio><label><input type=radio ${data} value=ok> OK</label><label><input type=radio ${data} value=no> No</label></div>`;
   }).join("")}</section>`).join("");
-  return `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>${title}</title><style>${PAGE_STYLE}</style><h1>${title}</h1><p>Each clip says "The road to ___ was closed." Answer each clip you hear. Your answers save on reload, and clips you skip stay unrated.</p><div id=bar><button id=download>Download Ratings</button> <span id=count></span></div><hr>${sections}<script>${PAGE_SCRIPT(`ratings-${title}`)}</script>`;
+  return `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>${title}</title><style>${PAGE_STYLE}</style><h1>${title}</h1><p>${intro} Answer each clip you hear. Your answers save on reload, and clips you skip stay unrated.</p><div id=bar><button id=download>Download Ratings</button> <span id=count></span></div><hr>${sections}<script>${PAGE_SCRIPT(`ratings-${title}`)}</script>`;
 }

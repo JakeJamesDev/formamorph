@@ -29,6 +29,14 @@ function setup(tokenCount: number) {
   return { client, calls, tokenizer, phonemize, loadVoice };
 }
 
+describe('KokoroClient.dispose', () => {
+  it('releases the speech model', async () => {
+    const { client } = setup(10);
+    await client.dispose();
+    expect(client.model.dispose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('KokoroClient.generate', () => {
   it('phonemizes the text, tokenizes the phonemes with truncation, and returns 24 kHz audio', async () => {
     const { client, tokenizer, phonemize } = setup(10);

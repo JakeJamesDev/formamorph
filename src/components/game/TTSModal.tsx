@@ -104,7 +104,7 @@ const TTSModal = forwardRef<TTSModalHandle, {
     if (!tts) return;
     try {
       setIsUnloading(true);
-      await tts.model.dispose();
+      await tts.dispose();
     } catch (error) {
       console.error("Failed to unload TTS model:", error);
     } finally {
