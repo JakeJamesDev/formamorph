@@ -109,7 +109,7 @@ export const GRAPH_COVERED = {
 export const PATH_TRIGGERS = {
   'docs/*.md': ['src/lib/docs/bundledDocsIndex.ts', 'src/lib/docs/docsCoverage.test.ts', 'src/lib/docs/bundledDocsIndex.test.ts', 'src/lib/codeGuideLinks.test.ts'],
   'src/index.css': ['src/lib/landingPulse.test.ts'],
-  'THIRD-PARTY-NOTICES.md': ['src/lib/itemIcons.test.ts', 'scripts/shipNotices.test.ts', 'src/lib/noticesFormat.test.ts'],
+  'THIRD-PARTY-NOTICES.md': ['src/lib/itemIcons.test.ts', 'scripts/shipNotices.test.ts', 'src/lib/noticesFormat.test.ts', 'src/components/modals/LicensesPanel.test.tsx'],
   'index.html': ['src/components/themeBootstrap.test.ts'],
   'src/defaultworlds/*.json': ['src/lib/bundledWorldText.ts', 'src/test/bundledWorldFiles.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledWorlds.test.ts', 'src/views/GameViewer.bundledSaves.test.tsx', 'src/lib/ownerTreeParity.test.ts', 'src/lib/seedRule.bundled.test.ts', 'src/lib/shippedWorld.test.ts', 'scripts/shipBundledWorlds.test.ts', 'scripts/bundledWorldHashes.test.ts', 'scripts/bundledRevisions.test.ts', 'testing/baseline/harness/world-question-cases.ts', 'testing/baseline/harness/world-question-cases.test.ts'],
   'src/lib/__parity__/*.json': ['src/lib/ownerTreeParity.test.ts'],
