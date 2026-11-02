@@ -19,7 +19,7 @@ export {
 } from './effects';
 export {
   applyInventoryPass, inventoryPassSchema, itemNameKey, parseInventoryLines, parseInventoryReply, INVENTORY_JSON_FORMAT,
-  INVENTORY_TEXT_FORMAT, PASS_OP_KINDS, type InventoryPassResult, type PassScene,
+  INVENTORY_TEXT_FORMAT, PASS_OP_KINDS, type InventoryPassResult, type PassMoney, type PassScene,
 } from './pass';
 export {
   equipRequirement, settleInventory, traitPicksInPlay, SETTLE_CAP, type InventorySettleResult, type InventorySettleState, type InventorySettleWorld,

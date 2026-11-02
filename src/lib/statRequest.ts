@@ -116,19 +116,20 @@ function keyedParts(parts: readonly OwnerPart[]) {
 /** Capture the names and identities this stat request exposes, with plain names in every Stats chip. `stats`
  *  are the global stats, keyed Global Stats; `persona` and `played`, any other entity
  *  the player plays as, are keyed Player Character. Each of `entities` takes its own owner key. `inSceneIds`
- *  names every entity present this turn. */
+ *  names every entity present this turn. A stat in `omit` is left out for every owner. */
 export function createStatRequest(
   stats: readonly PlayerStat[],
-  { textPass = false, entities = [], persona, played = [], placement, inSceneIds = [] }: {
+  { textPass = false, entities = [], persona, played = [], placement, inSceneIds = [], omit }: {
     textPass?: boolean; entities?: readonly StatRequestOwner[]; persona?: StatRequestOwner;
-    played?: readonly StatRequestOwner[]; placement?: StatPlacement; inSceneIds?: readonly string[];
+    played?: readonly StatRequestOwner[]; placement?: StatPlacement; inSceneIds?: readonly string[]; omit?: ReadonlySet<string>;
   } = {},
 ): StatRequestSnapshot {
-  const global: OwnerPart = { id: null, stats, placement, ownerKey: GLOBAL_STATS_HEADING };
-  const own = [...(persona ? [persona] : []), ...played].map((owner) => ({ ...owner, ownerKey: PLAYER_STAT_HEADING }));
+  const kept = <S extends { id: string }>(list: readonly S[]): readonly S[] => (omit?.size ? list.filter((stat) => !omit.has(stat.id)) : list);
+  const global: OwnerPart = { id: null, stats: kept(stats), placement, ownerKey: GLOBAL_STATS_HEADING };
+  const own = [...(persona ? [persona] : []), ...played].map((owner) => ({ ...owner, stats: kept(owner.stats), ownerKey: PLAYER_STAT_HEADING }));
   // Stat keys run global, persona, played, as the narration's chips number a played stat.
   const [globalPart, ...personaParts] = keyedParts([global, ...own]);
-  const owners = entities.filter((owner) => owner.stats.length);
+  const owners = entities.map((owner) => ({ ...owner, stats: kept(owner.stats) })).filter((owner) => owner.stats.length);
   const keys = ownerKeys(owners.map((owner) => owner.name), new Set([PLAYER_STAT_HEADING, GLOBAL_STATS_HEADING]));
   const sections = owners.flatMap((owner, i) => keyedParts([{ ...owner, ownerKey: keys[i] }]));
   return {

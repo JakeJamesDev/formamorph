@@ -3,13 +3,15 @@
  * named operations it returns into the validator's id-form operations (Q23, Q24, Q56). Pure.
  */
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
+import type { SlotOwner } from '@/lib/bodies';
+import { applyPaymentStats, namesMoney, planPayment, readStatedPrice, type PaymentStats } from '@/lib/currency';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { isUnidentified, sameState, sameWhere, stateWord, usesLeft } from '@/lib/items';
 import { escapeRegExp } from '@/lib/utils';
-import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import type { Currency, InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, Item, ItemCopy, ItemCopyWhere, Placement, PlayerStat, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
-export const PASS_OP_KINDS = ['gain', 'lose', 'transfer', 'equip', 'unequip', 'use', 'change', 'reveal'] as const satisfies readonly InventoryPassOpKind[];
+export const PASS_OP_KINDS = ['gain', 'lose', 'transfer', 'equip', 'unequip', 'use', 'change', 'reveal', 'pay'] as const satisfies readonly InventoryPassOpKind[];
 // Fails to compile when the union gains an operation the list lacks.
 const _everyOpListed: Exclude<InventoryPassOpKind, (typeof PASS_OP_KINDS)[number]> extends never ? true : never = true;
 void _everyOpListed;
@@ -50,6 +52,8 @@ export const inventoryPassSchema = (): ResponseSchema => ({
             after: { type: 'string', enum: ['', ...PASS_AFTER_WORDS] },
             target: { type: 'string' },
             slot: { type: 'string' },
+            price: { type: 'string' },
+            currency: { type: 'string' },
           },
         },
       },
@@ -60,12 +64,12 @@ export const inventoryPassSchema = (): ResponseSchema => ({
 /** The text pass's reply format, which rides after the user message out of the author's reach. */
 export const INVENTORY_TEXT_FORMAT = `
 
-Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state, the after, the target and the slot, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item changed.`;
+Reply with one line per change: the operation, the item, the quantity, the owner, the receiver, the state, the after, the target, the slot, the price and the currency, split by " | ". Leave a field empty when the operation has none. Reply NONE when no item or money changed.`;
 
 /** The schema request's reply format: what the text format's NONE is for the JSON reply. */
 export const INVENTORY_JSON_FORMAT = `
 
-Reply with one operation per change. Reply with an empty operations list when no item changed.`;
+Reply with one operation per change. Reply with an empty operations list when no item or money changed.`;
 
 const isKind = (value: string): value is InventoryPassOpKind => (PASS_OP_KINDS as readonly string[]).includes(value);
 
@@ -88,15 +92,23 @@ const afterOf = (value: unknown): InventoryUseAfter | undefined => {
 const passOp = (raw: Record<string, unknown>): InventoryPassOp | null => {
   const op = text(raw.op).toLowerCase();
   const item = text(raw.item);
-  if (!isKind(op) || !item || NO_ITEM.test(item)) return null;
+  // A pay moves money with no item.
+  if (!isKind(op) || (op !== 'pay' && (!item || NO_ITEM.test(item)))) return null;
   const after = afterOf(raw.after);
   const target = text(raw.target);
   const slot = text(raw.slot);
+  // A model can answer a price with a bare number, or put a pay's sum in the quantity cell of a text line.
+  const quantityText = text(raw.quantity);
+  const price = typeof raw.price === 'number' ? String(raw.price)
+    : text(raw.price) || (op === 'pay' && quantityText && !/^\d+$/.test(quantityText) ? quantityText : '');
+  const currency = text(raw.currency);
   return {
     op, item, quantity: quantityOf(raw.quantity), owner: text(raw.owner), to: text(raw.to),
     ...(raw.state !== undefined && { state: text(raw.state) }), ...(after && { after }),
     ...(target && !NO_ITEM.test(target) && { target }),
     ...(slot && !NO_ITEM.test(slot) && { slot }),
+    ...(price && !NO_ITEM.test(price) && { price }),
+    ...(currency && !NO_ITEM.test(currency) && { currency }),
   };
 };
 
@@ -114,11 +126,14 @@ const jsonOps = (raw: string): InventoryPassOp[] | null => {
   }
 };
 
-/** The text pass's lines: `op | item | quantity | owner | to | state | after | target | slot`. A line that names no operation is skipped. */
+/** A cell a reply labeled with its field's name, as in `item: Rope`. */
+const FIELD_LABEL = /^(op|operation|item|quantity|owner|to|receiver|state|after|target|slot|price|currency):\s*/i;
+
+/** The text pass's lines: `op | item | quantity | owner | to | state | after | target | slot | price | currency`. A line that names no operation is skipped. */
 export function parseInventoryLines(raw: string): InventoryPassOp[] {
   return raw.split('\n').flatMap((line) => {
-    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = '', target = '', slot = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim());
-    const parsed = passOp({ op, item, quantity, owner, to, state, after, target, slot });
+    const [op = '', item = '', quantity = '', owner = '', to = '', state, after = '', target = '', slot = '', price = '', currency = ''] = line.replace(/^[\s*>-]+/, '').split('|').map((s) => s.trim().replace(FIELD_LABEL, ''));
+    const parsed = passOp({ op, item, quantity, owner, to, state, after, target, slot, price, currency });
     return parsed ? [parsed] : [];
   });
 }
@@ -139,11 +154,26 @@ export interface PassScene {
   owners: readonly { id: string; name: string }[];
   location: { id: string; name: string } | null;
   resolve?: (text: string) => string;
+  /** What a pay settles against. Absent, every pay is skipped. */
+  money?: PassMoney;
+}
+
+/** The world's money and the stats that can hold it. */
+export interface PassMoney {
+  currencies: readonly Currency[];
+  placements: readonly Placement[];
+  stats: PaymentStats;
+  /** The entities the player plays as, whose stats are the player's. */
+  playedIds: readonly string[];
+  /** Which of `stats`, an owner's or the world's on null, are switched on. */
+  statsOn: (ownerId: string | null, stats: readonly PlayerStat[]) => readonly PlayerStat[];
 }
 
 export interface InventoryPassResult extends InventoryResult {
   /** Every runtime item: the scene's, and the ones this reply made. */
   runtimeItems: RuntimeItem[];
+  /** The stats after this reply's payments. Absent when the scene has no money. */
+  stats?: PaymentStats;
 }
 
 /** One whole reply through the validator, in order (Q22). Presence comes from `scene` unless `call` sets it. */
@@ -181,6 +211,50 @@ export function applyInventoryPass(
     if (exact) return { kind: 'entity', id: exact.id };
     const loose = scene.owners.filter((o) => sameCharacterName(o.name, name));
     return loose.length === 1 ? { kind: 'entity', id: loose[0].id } : null;
+  };
+
+  /** Who a pay names. A name no one present answers to, or this place, holds no money and reads as no one (Q51). */
+  const partyOf = (name: string): SlotOwner | null => {
+    const where = ownerOf(name);
+    if (where) return where.kind === 'location' ? null : where;
+    return name.trim() && scene.playerNames.some((player) => sameCharacterName(player, name)) ? { kind: 'you' } : null;
+  };
+
+  let moneyStats = scene.money?.stats;
+
+  const moneyNames = scene.items.map((item) => ({ id: item.id, name: resolve(item.name) }));
+  const moneyCurrencies = (scene.money?.currencies ?? []).map((currency) => ({ ...currency, name: resolve(currency.name) }));
+
+  /** Settles one pay and answers the Currencies it governs: all of them when its money can't be read. */
+  const settlePay = (op: InventoryPassOp): readonly Currency[] => {
+    const label = `pay "${op.price ?? ''}"`;
+    if (!scene.money || !moneyStats) {
+      skip(`${label}: the world has no Currency`);
+      return [];
+    }
+    const { money } = scene;
+    const stats = moneyStats;
+    // A reply can name the money as the item or the currency alone, with how many as a quantity above 1.
+    const count = op.quantity > 1 ? op.quantity : undefined;
+    const price = op.price || op.item || (op.currency && count ? String(count) : '');
+    const stated = readStatedPrice(price, op.currency ?? '', moneyCurrencies, moneyNames, count);
+    if ('refused' in stated) {
+      skip(`${label}: ${stated.refused}`);
+      return moneyCurrencies;
+    }
+    const onFor = (id: string) => money.statsOn(id, stats.entityStats[id] ?? []);
+    const plan = planPayment(stated.currency, partyOf(op.owner), partyOf(op.to), stated.amount, {
+      copies: list, placements: money.placements, globalStats: money.statsOn(null, stats.globalStats),
+      statsOf: (owner) => (owner.kind === 'entity' ? onFor(owner.id) : money.playedIds.flatMap(onFor)),
+    }, moneyNames);
+    if (!plan.settled) {
+      skip(`${label}: ${plan.reason}`);
+      return [stated.currency];
+    }
+    if (plan.ops.length) run(plan.ops);
+    // A switched-off stat reads as untracked, so the charge lands on the played entity whose stat was read.
+    moneyStats = applyPaymentStats(stats, plan.stats, (statId) => money.playedIds.find((id) => onFor(id).some((stat) => stat.id === statId)));
+    return [stated.currency];
   };
 
   /** `key` is the item's Unidentified Name. */
@@ -279,8 +353,27 @@ export function applyInventoryPass(
     return (matches.find((s) => rule?.slotIds.includes(s.id)) ?? matches[0])?.id ?? null;
   };
 
+  // Pays settle first. A pay is the reply's only statement about its Currency's money, settled or refused (Q56).
+  const paidIn = passOps.filter((named) => named.op === 'pay').flatMap(settlePay);
+  const handMoves = new Set<string>();
+  const movesMoney = (op: InventoryPassOp, currencies: readonly Currency[]) =>
+    (op.op === 'gain' || op.op === 'lose' || op.op === 'transfer') && namesMoney(listedName(op.item), currencies, moneyNames);
   for (const named of passOps) {
-    let op = { ...named, item: listedName(named.item) };
+    if (named.op === 'pay') continue;
+    if (movesMoney(named, paidIn)) {
+      skip(`${named.op} "${named.item}": a pay in the reply covers this money`);
+      continue;
+    }
+    // A reply that repeats a gain of money, by item, quantity and receiver, states one gain (Q56).
+    if (named.op === 'gain' && movesMoney(named, moneyCurrencies)) {
+      const said = JSON.stringify([itemNameKey(named.item), named.quantity, itemNameKey(named.to || named.owner)]);
+      if (handMoves.has(said)) {
+        skip(`${named.op} "${named.item}": the reply repeats it`);
+        continue;
+      }
+      handMoves.add(said);
+    }
+    let op = { ...named, item: listedName(named.item) } as InventoryPassOp & { op: Exclude<InventoryPassOpKind, 'pay'> };
     const key = itemNameKey(op.item);
     // Taking from this place an item it never listed is finding a new one.
     const from = op.op === 'transfer' ? ownerOf(op.owner) : null;
@@ -396,7 +489,7 @@ export function applyInventoryPass(
     }
   }
 
-  return { copies: list, itemUses, diagnostics, events, runtimeItems };
+  return { copies: list, itemUses, diagnostics, events, runtimeItems, ...(moneyStats && { stats: moneyStats }) };
 }
 
 /** Splits `quantity` over `copies` in order, each taking what it holds. */
