@@ -1,5 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import * as avatars from './defaultAvatar';
 import { DEFAULT_AVATAR_ID, PRALINE_AVATAR_ID, pickerStart } from './defaultAvatar';
+
+describe('setDevAvatarSet', () => {
+  const built = avatars.BUNDLED_AVATARS;
+  afterEach(() => avatars.setDevAvatarSet(__AVATAR_SET__));
+
+  it('moves the dev build to a set with no bundled file, and back', () => {
+    avatars.setDevAvatarSet('none');
+    expect(avatars.BUNDLED_AVATARS).toEqual([]);
+    expect(avatars.BUNDLED_DEFAULT_URL).toBeUndefined();
+    avatars.setDevAvatarSet(__AVATAR_SET__);
+    expect(avatars.BUNDLED_AVATARS).toEqual(built);
+    expect(avatars.BUNDLED_DEFAULT_URL).toBeDefined();
+  });
+});
 
 describe('pickerStart', () => {
   it('starts on the device default', () => {

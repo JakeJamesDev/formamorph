@@ -52,7 +52,7 @@ function Harness({ initial }: { initial: HelpSettings }) {
 /** A rig of stored images only, its Wave layer holding `art`. */
 async function ownRig(art: Uint8Array = tinyWebp()): Promise<MascotRig> {
   // The fake store clones a jsdom Blob to an empty object; Node's Blob keeps its bytes, as a browser's store does.
-  const stored = async (bytes: Uint8Array) => ({ kind: 'stored' as const, id: await addMascotImage(new NodeBlob([bytes], { type: 'image/webp' }) as unknown as Blob) });
+  const stored = async (bytes: Uint8Array) => ({ kind: 'stored' as const, id: await addMascotImage(new NodeBlob([bytes as Uint8Array<ArrayBuffer>],{ type: 'image/webp' }) as unknown as Blob) });
   const wave: MascotLayer = { id: 'wave', name: 'Wave', kind: 'state', enabled: true, images: [await stored(art)] };
   return {
     ...DEFAULT_MASCOT_RIG,

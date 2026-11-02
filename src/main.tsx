@@ -19,7 +19,11 @@ if (import.meta.env.DEV) installDevReviewStub()
 if (import.meta.env.DEV) installDevLikesStub()
 if (import.meta.env.DEV && import.meta.env.VITE_FM_HOLD_UPDATES) void import('./lib/dev/heldUpdatesBanner')
 
-createRoot(document.getElementById('root')!).render(
+const mount = () => createRoot(document.getElementById('root')!).render(
 
     <App />
 )
+
+// The avatars route rewrites the library before anything lists it.
+if (import.meta.env.DEV) void import('./lib/dev/devAvatars').then(({ installDevAvatars }) => installDevAvatars()).catch(console.error).then(mount)
+else mount()

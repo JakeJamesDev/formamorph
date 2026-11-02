@@ -50,6 +50,8 @@ export interface DevRoute {
   allowance?: string;
   /** Pick this entity id on the full-screen Locations Canvas; `<id>:knownIn` starts in Known In mode. */
   pick?: string;
+  /** Switch the dev build to a Steam-like Avatar set (see the `avatars=…` note in `devRoutes.ts`): `none` or `lockedMissing`. */
+  avatars?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -73,6 +75,8 @@ function parseHash(hash: string): DevRoute | null {
   const attach = params.get('attach');
   const allowance = params.get('allowance');
   const pick = params.get('pick');
+  const avatars = params.get('avatars');
+  if (avatars) route.avatars = avatars;
   if (allowance) route.allowance = allowance;
   if (pick) route.pick = pick;
   if (fullscreen) route.fullscreen = fullscreen;
@@ -136,7 +140,7 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; history?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string; allowance?: string; pick?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; history?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string; allowance?: string; pick?: string; avatars?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
@@ -153,6 +157,7 @@ export function installDevRouter(): () => void {
       if (opts?.attach) params.set('attach', opts.attach);
       if (opts?.allowance) params.set('allowance', opts.allowance);
       if (opts?.pick) params.set('pick', opts.pick);
+      if (opts?.avatars) params.set('avatars', opts.avatars);
       // A probe outlives the screen it was turned on over, so it carries across a goto unless replaced.
       const probe = opts?.probe ?? getDevRoute()?.probe;
       if (probe) params.set('probe', probe);

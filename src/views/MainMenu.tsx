@@ -62,6 +62,7 @@ import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
 import { DELETE_ENTITY_CONFIRM } from '@/components/library/LibraryTileContextMenu';
 import { EntityPlaceholderArt } from '@/components/EntityPlaceholderArt';
+import { AvatarEmptyState } from '@/components/AvatarEmptyState';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import { isWorldOptimizing, useOptimizingWorldIds } from '@/lib/worldOptimizeProgress';
 import { onWorldSavedHere } from '@/lib/worldChangeSignal';
@@ -2080,11 +2081,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           thumbnailOf={(model) => model.thumbnail}
           placeholderOf={(model) => <EntityPlaceholderArt id={model.id} name={model.name} />}
           emptyState={!isLoadingModels ? (
-            <div className="flex items-center justify-center py-16 px-4 select-none">
-              <Hint className="max-w-md text-center">
-                No avatars yet. Use <span className="font-semibold">Import Avatar</span> to add a .vrm file.
-              </Hint>
-            </div>
+            <AvatarEmptyState className="py-16" onAdd={() => modelImportRef.current?.click()} />
           ) : undefined}
           renderCard={(model, { layout, fill, compact }) => {
             // A plain .glb carries no VRM metadata, so it has no license and its morph targets

@@ -1,4 +1,5 @@
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
+import { AvatarEmptyState } from '@/components/AvatarEmptyState';
 import { Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -16,7 +17,8 @@ import { filesFrom } from '@/lib/importFiles';
 import { useVrmSourceUrl } from '@/lib/useVrmSourceUrl';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
-import { DEFAULT_AVATAR_ID, pickerStart, readUserDefaultAvatar } from '@/lib/defaultAvatar';
+import { Hint } from '@/components/ui/typography';
+import { BUNDLED_DEFAULT_URL, DEFAULT_AVATAR_ID, pickerStart, readUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { namedVrmSource } from '@/lib/vrmResolver';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -84,13 +86,19 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
     }
   };
 
+  const noAvatars = !locked && !!libraryModels && libraryModels.length === 0;
+  const uploadRef = useRef<HTMLInputElement>(null);
+
   const handleFinalize = () => {
-    onCharacterCustomized({ ...characterData, chosenVrm: locked ? null : { pick: { kind: 'library', id: selectedModelId } } });
+    onCharacterCustomized({ ...characterData, chosenVrm: locked || noAvatars ? null : { pick: { kind: 'library', id: selectedModelId } } });
   };
 
   // Portrait/narrow: the controls move into a bottom drawer that hovers over the viewer, so the model gets the
   // full width and the panel doesn't truncate. Desktop keeps the side-by-side split.
   const isMobile = useIsMobile();
+
+  // Outside the panel, which the mobile drawer unmounts while closed.
+  const uploadInput = <Input id="model-upload" ref={uploadRef} type="file" accept=".vrm,.glb" onChange={handleModelUpload} disabled={listing} className="hidden" />;
 
   const viewer = (
     <Card className={cn('m-4 bg-secondary overflow-hidden', isMobile ? 'flex-1 min-h-0' : 'w-2/3')}>
@@ -102,6 +110,10 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
         <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
           {resolvingModel || (locked && listing) ? (
             <Loader2 className="animate-spin" size={32} />
+          ) : noAvatars ? (
+            <AvatarEmptyState onAdd={() => uploadRef.current?.click()} />
+          ) : locked && !lockedSource && !BUNDLED_DEFAULT_URL ? (
+            <Hint className="text-center">This world&apos;s Avatar isn&apos;t available.</Hint>
           ) : (
             <VRMViewer
               key={resolvedModelUrl ?? 'default'}
@@ -130,7 +142,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
           {!locked && (
           <div className="space-y-2">
             <h3 className="text-title font-semibold">Player Avatar</h3>
-            <Select value={selectedModelId} onValueChange={setSelectedModelId} disabled={listing}>
+            <Select value={noAvatars ? '' : selectedModelId} onValueChange={setSelectedModelId} disabled={listing || noAvatars}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a Player Avatar" />
               </SelectTrigger>
@@ -146,7 +158,6 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
               <Label htmlFor="model-upload" className="cursor-pointer text-label text-primary underline">
                 Add .vrm
               </Label>
-              <Input id="model-upload" type="file" accept=".vrm,.glb" onChange={handleModelUpload} disabled={listing} className="hidden" />
             </div>
           </div>
           )}
@@ -160,6 +171,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
     return (
       <div className="relative flex app-viewport flex-col pt-[env(safe-area-inset-top)]">
         <SurfaceLayer id="avatar" />
+        {uploadInput}
         {viewer}
         <MobileControlsDrawer title="Avatar Customization">{panel}</MobileControlsDrawer>
       </div>
@@ -169,6 +181,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
   return (
     <div className="flex app-viewport pt-[env(safe-area-inset-top)]">
       <SurfaceLayer id="avatar" />
+      {uploadInput}
       {viewer}
       <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 min-h-0">

@@ -290,5 +290,9 @@ export const DEV_MODAL_TABS = {
   formaquestionSettings: ['general', 'endpoint', 'prompts', 'tools', 'mascot'],
 } as const;
 
+// A build that bundles no Avatar (Steam), reached with `avatars=…` on a fresh page load (`devAvatars.ts`). It empties the
+// dev profile's Avatar library first. `none` leaves it empty: the library grid (`#dev?view=mainMenu&tab=models&avatars=none`)
+// and Avatar Customization (`#dev?modal=avatar&avatars=none`) show their empty states. `lockedMissing` is the same with a
+// world pick that names an Avatar the library lacks (`#dev?modal=avatar&avatars=lockedMissing`).
 // Admin Panel → Policies uses the `subtab=…` slot, and its two are fixed, so they are guarded above.
 // Mid-game boot fixtures live in `devFixtures.ts` (`DEV_FIXTURES`); reached via `bootFixture(name)`.

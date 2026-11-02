@@ -2,6 +2,8 @@ import { randomUUID } from '@/lib/uuid';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
+import { getDevRoute } from '@/lib/devRouter';
+import { DEV_MISSING_PICK } from '@/lib/dev/devAvatars';
 import { useLingeringMount } from '@/lib/useLingeringMount';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
@@ -520,7 +522,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   if (showCharacterCustomization && !showIntroReadme) {
     return (
       <CharacterCustomization
-        vrm={selectedVrm}
+        vrm={import.meta.env.DEV && getDevRoute()?.avatars === 'lockedMissing' ? DEV_MISSING_PICK : selectedVrm}
         onCharacterCustomized={(customizedData) => {
           if (entryStarted.current) return;
           entryStarted.current = true;
