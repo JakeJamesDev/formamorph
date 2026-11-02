@@ -75,6 +75,9 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q46 | (ticket 04) A switch run's inventory writes land between turns too. A failing test comes first. The bug never reached a release, so ticket 02's changelog entry covers it with no Fixed line |
 | Q47 | (ticket 04) Check Scripts gets the world's items, slots and Currencies, so a script that names one no longer reports a false error. It applies inventory writes to its chain and fires no item event, as Q38 says of switch runs |
 | Q48 | (ticket 06) Ticket 04's three gaps get fixed before the spec closes: an On Call Tool's inventory write reaches the output run and held item runs, a stat re-roll brings back that Tool's item writes, and Regenerate Choices reads Item Copies as a real After the AI run does. The saved writes gain an optional field, an additive change to the save shape |
+| Q49 | (ticket 06) A replayed op that names a copy the same turn made skips with a log line, and the docs name it. Saved writes don't store copy ids |
+| Q50 | (ticket 06) A replayed `give` or coin `pay` fires its item events again, so a rolled result in those scripts can differ. Only the Tool's own writes come back as saved |
+| Q51 | (ticket 06) Regenerate Choices replays quietly from the pre-turn copies: the Before the AI scripts, the On Call saved writes, then the Inventory pass. During AI Output scripts don't replay, so an After the AI script there reads no copy they wrote, and the docs name it |
 
 ## User Stories
 
