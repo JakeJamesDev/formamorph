@@ -162,6 +162,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A failed autosave now says why, and a full disk now reports the failed save.** The message says when the storage is full. Other failures show their cause under View Details.
   - **A failed world, dictionary, entity, save or player avatar import now names the file and says why.** With several failed files the count stays, and **View Details** lists each one. Declining a duplicate avatar is no longer a failure.
   - **An Avatar's Generated thumbnail now has a white background.** Before, the background was see-through. A thumbnail generated earlier keeps its old look.
+  - **Skin color now looks the same on Body and Face.** Body no longer comes out paler than Face for the same skin color, on models with dark areas in the Body texture.
 - **🛠️ Developer tooling**
   - **An Avatar's Generated thumbnail now shows a close-up of the head.** Tall ears and hats no longer pull the view back to the waist. A thumbnail generated earlier keeps its old view.
   - **Scene Presence:**
