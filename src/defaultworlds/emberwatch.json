@@ -2725,10 +2725,7 @@
       "aiSummary": "A cold iron sword that breaks the barrow dead.",
       "imageTags": "iron sword, plain straight blade, leather-wrapped grip, dark gray metal, forge, still life",
       "value": 40,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -2768,10 +2765,7 @@
       "aiSummary": "A bronze flame disc on a chain of nails, sacred to the Ember.",
       "imageTags": "holy symbol, bronze disc, flame emblem, chain of iron nails, pendant, still life",
       "value": 25,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -2827,10 +2821,7 @@
       "aiSummary": "Maelis's spiral-carved staff of black oak.",
       "imageTags": "wizard staff, black wood, spiral carvings, faint violet glow, stone vault, still life",
       "value": 80,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "all",
@@ -2870,10 +2861,7 @@
       "aiSummary": "A bottle of Bryony Fenn's green healing brew.",
       "imageTags": "potion bottle, green liquid, cork stopper, herbs, wooden table, still life",
       "value": 10,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [
         {
           "id": "f172b3bf-bd47-4d05-84a8-5dd0c1eea362",
@@ -2902,10 +2890,7 @@
       "aiSummary": "Chapel brazier ash steeped as tea, steadying the spirit.",
       "imageTags": "paper packet, gray ash, clay cup, steam, chapel candlelight, still life",
       "value": 5,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [
         {
           "id": "b5248ba2-8760-4ef3-83b0-b173f629ff93",
@@ -2935,10 +2920,7 @@
       "aiSummary": "A hooded tin lantern that lights the dark.",
       "imageTags": "tin lantern, sliding hood, warm candlelight, dented metal, dark stone floor, still life",
       "value": 8,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -2969,10 +2951,7 @@
       "aiSummary": "Old riveted mail patched with cold iron rings.",
       "imageTags": "chainmail shirt, riveted rings, patched shoulders, armor stand, forge, still life",
       "value": 60,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3001,10 +2980,7 @@
       "aiSummary": "A silver grave-goods coin with King Haldren's face.",
       "imageTags": "silver coins, ancient coinage, bearded king profile, tarnish, scattered on stone, still life",
       "value": 5,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [
         {
           "id": "0c624bf8-abdb-4fee-b0bf-279a444ce63d",
@@ -3074,10 +3050,7 @@
       "aiSummary": "Albus's polished round shield, painted with the Ember's flame.",
       "imageTags": "round shield, steel, painted flame emblem, white and red, polished, armor stand, still life",
       "value": 30,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3117,10 +3090,7 @@
       "aiSummary": "A plain steel longsword, little use against the barrow dead.",
       "imageTags": "longsword, steel blade, plain cross guard, leather grip, scabbard, wooden table, still life",
       "value": 20,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3141,10 +3111,7 @@
       "aiSummary": "Sylvie's slim, silent elf-steel dagger.",
       "imageTags": "dagger, leaf-shaped blade, pale steel, green cord grip, boot sheath, still life",
       "value": 25,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3165,10 +3132,7 @@
       "aiSummary": "A roll of lockpicks and hooks, thieves' tools.",
       "imageTags": "lockpick set, leather roll, steel picks, hooks, unrolled on wood, still life",
       "value": 10,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [],
@@ -3182,10 +3146,7 @@
       "aiSummary": "A plain ash walking staff, iron-shod.",
       "imageTags": "wooden walking staff, ash wood, iron ferrule, worn grip, leaning against stone wall, still life",
       "value": 2,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3206,10 +3167,7 @@
       "aiSummary": "A waxed gray traveler's cloak, hooded.",
       "imageTags": "hooded cloak, waxed wool, gray, patched hem, hanging on a peg, still life",
       "value": 6,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3229,10 +3187,7 @@
       "aiSummary": "A day's wrapped road food.",
       "imageTags": "bread, dried sausage, cheese wedge, cloth bundle, travel food, still life",
       "value": 1,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [
         {
           "id": "79fe98ba-87bc-4be3-87e1-0141efc3d6dd",
@@ -3261,10 +3216,7 @@
       "aiSummary": "A rough cold iron dagger that breaks the barrow dead.",
       "imageTags": "iron dagger, rough dark blade, wooden grip, forge, anvil, still life",
       "value": 20,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3285,10 +3237,7 @@
       "aiSummary": "Corvin's silver-jointed staff that folds into a cane.",
       "imageTags": "wizard staff, black lacquer, silver joints, folding cane, elegant, tavern table, still life",
       "value": 45,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3328,10 +3277,7 @@
       "aiSummary": "A warm brown loaf from Mara Venn's stall.",
       "imageTags": "round bread loaf, brown crust, flour dust, bread stall, cloth, still life",
       "value": 1,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [
         {
           "id": "d44c0e37-2ac1-4419-bee0-c689356e4afe",
@@ -3360,10 +3306,7 @@
       "aiSummary": "Bryony Fenn's gray salve that cures the grave chill.",
       "imageTags": "clay pot, gray salve, herbs, wolfsbane, cottage table, still life",
       "value": 15,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [
         {
           "id": "765a73f1-eae3-4011-aa6a-c77376d41c3b",
@@ -3405,10 +3348,7 @@
       "aiSummary": "Maelis's black grimoire, the court sorcerer's spellbook.",
       "imageTags": "ancient grimoire, black leather book, iron spiral clasps, open pages, arcane writing, violet glow, still life",
       "value": 150,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3448,10 +3388,7 @@
       "aiSummary": "The lost sentry's brass night-watch badge.",
       "imageTags": "brass badge, flame emblem, bent pin, scratched metal, dirt, still life",
       "value": 2,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [],
@@ -3465,10 +3402,7 @@
       "aiSummary": "A dented brass spyglass that shows the barrow field mound by mound.",
       "imageTags": "brass spyglass, dented metal, leather case, stone niche, dusty, still life",
       "value": 25,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3513,10 +3447,7 @@
       "aiSummary": "A charcoal map of the barrow's halls, drawn on a torn page.",
       "imageTags": "hand-drawn map, torn paper, charcoal lines, beer stains, tavern table, candlelight, still life",
       "value": 5,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [],
@@ -3530,10 +3461,7 @@
       "aiSummary": "A rusted round shield of the old king's guard.",
       "imageTags": "rusted round shield, wooden boards, iron rim, flaking paint, stone hall, still life",
       "value": 3,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "slotRule": {
         "mode": "either",
@@ -3565,10 +3493,7 @@
       "aiSummary": "A guard's oath ring that counts its owner among the king's dead.",
       "imageTags": "silver ring, black tarnish, broken crown engraving, heavy band, stone floor, bones, still life",
       "value": 30,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "statEffects": [
         {
@@ -3601,10 +3526,7 @@
       "aiSummary": "One of Maelis's ward scrolls; read once, it raises an Arcane Ward.",
       "imageTags": "folded vellum scroll, scorched corner, spiral runes, dark ink, stone lectern, violet glow, still life",
       "value": 60,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "stackable": false,
       "statEffects": [],
       "traitEffects": [
@@ -3632,10 +3554,7 @@
       "aiSummary": "A dented gold cup from the king's grave goods.",
       "imageTags": "gold cup, dented, tarnished, ancient goblet, frost, stone, still life",
       "value": 25,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [
         {
           "id": "3a9078e4-c305-493a-b7f8-53c47b4e5287",
@@ -3657,10 +3576,7 @@
       "aiSummary": "A clay flask of lamp oil, one lantern's fill.",
       "imageTags": "clay flask, cork stopper, oil, market stall, rope, still life",
       "value": 3,
-      "valueUnit": {
-        "kind": "stat",
-        "statId": "gold"
-      },
+      "currencyId": "emberwatch-gold",
       "statEffects": [],
       "traitEffects": [],
       "equipRequires": [],
@@ -4246,6 +4162,16 @@
       "source": {
         "kind": "item",
         "itemId": "8f7fcfb8-3c7f-4b09-ab6c-f3679c444975"
+      }
+    }
+  ],
+  "currencies": [
+    {
+      "id": "emberwatch-gold",
+      "name": "Gold",
+      "backing": {
+        "kind": "stat",
+        "statId": "gold"
       }
     }
   ]

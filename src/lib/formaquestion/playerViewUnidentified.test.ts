@@ -56,4 +56,30 @@ describe('the player view of an unidentified item (Q19, Q40)', () => {
     expect(JSON.stringify(script)).not.toMatch(TRUE_FACE);
     expect(script.items?.map((item) => item.name)).toEqual(['Plain Ring']);
   });
+
+  describe('worth', () => {
+    const priced = { ...RING, value: 40, currencyId: 'goats' };
+    const worthView = (copies: ItemCopy[]) => {
+      const current = state(copies);
+      return {
+        current,
+        view: buildPlayerView({
+          world: { entities: [], locations: [], traits: [], items: [priced], currencies: [{ id: 'goats', name: 'Goats', backing: { kind: 'name' } }] },
+          chain: [current], history: [], persona: null, resolve: (text) => text,
+        }),
+      };
+    };
+
+    it('gives the identified row its worth, and the unidentified row none', () => {
+      const { view } = worthView([copy('c1', false), copy('c2', true)]);
+      expect(view.items.map((row) => [row.id, row.worth])).toEqual([['ring', '40 Goats'], [unidentifiedRowId('ring'), undefined]]);
+    });
+
+    it('cuts the price from the unidentified face of the scene item', () => {
+      const scene = playerViewScene({ ...sampleChipScene(), items: [priced] }, worthView([copy('c2', true)]));
+      expect(scene.items?.[0]).toMatchObject({ id: unidentifiedRowId('ring') });
+      expect(scene.items?.[0].value).toBeUndefined();
+      expect(scene.items?.[0].currencyId).toBeUndefined();
+    });
+  });
 });

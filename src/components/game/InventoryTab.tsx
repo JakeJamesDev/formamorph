@@ -11,10 +11,11 @@ import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
+import { copyWorthFacts } from '@/lib/currency';
 import { copyItemIcon } from '@/lib/itemIcons';
 import { byEquipOrder, copyFace, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
-import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
+import type { Body, Currency, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
 import { EquippedSection } from './EquippedSection';
 import { BOUND_TIP, ItemRow } from './ItemRow';
@@ -28,6 +29,8 @@ export interface InventoryTabProps {
   /** The Item Copies lying at the player's location. Hidden ones are filtered out here. */
   lying: readonly ItemCopy[];
   items: readonly Item[];
+  /** What the items are priced in. Absent ⇒ none. */
+  currencies?: readonly Currency[];
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: readonly RuntimeItem[];
   /** The played Persona's Body in force. Absent = no Body. */
@@ -205,7 +208,7 @@ function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: 
 /** The game panel's Inventory tab: the played Persona's figure with their equipped items, then carried items,
  *  then a card for what lies at the location. */
 export function InventoryTab({
-  ownerName, copies, lying, items, runtimeItems = [], body, slots, worldSlots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
+  ownerName, copies, lying, items, currencies = [], runtimeItems = [], body, slots, worldSlots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
@@ -246,7 +249,7 @@ export function InventoryTab({
   };
   const factsOf = (copy: ItemCopy) => {
     const item = itemOf(copy);
-    return [...copyFacts(copy, item), ...(item?.bound ? [BOUND_TIP] : [])];
+    return [...copyFacts(copy, item), ...copyWorthFacts(copy, item, currencies, resolveText), ...(item?.bound ? [BOUND_TIP] : [])];
   };
 
   /** `slotLine` replaces the row's second line. */

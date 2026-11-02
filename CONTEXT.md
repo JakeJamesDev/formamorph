@@ -127,7 +127,7 @@ Everyone here the player would see if they looked around: In Scene first, then t
 _Avoid_: scene list, roster
 
 **Item**:
-An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own value, Stackable, Uses, When Empty, State, Bound, Slot, Unidentified Name and Unidentified Description. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
+An authored kind of object in the world's Items list, such as a sword or a potion. It has the entity description fields, images and placeholders, and its own Value in a Currency, Stackable, Uses, When Empty, State, Bound, Slot, Unidentified Name and Unidentified Description. An Item never joins the roster or the stat pass. Its placeholders roll once per playthrough, shared by every Item Copy.
 _Avoid_: object, thing, entity (for an item)
 
 **Item Copy**:
@@ -157,6 +157,13 @@ _Avoid_: unknown, mystery, disguised
 **Placement**:
 An authored starting Item Copy: where it goes (the Persona, an entity or a location), a quantity, Hidden, and a source. The source is one item. A new game's seed turns each Placement into Item Copies.
 _Avoid_: spawn, starting item
+
+**Currency**:
+A kind of money in the world's ordered Currencies list, with one Backing. An item's Value is priced in one Currency, or none. The first in the list is the Default, which a new item takes. An item with no Currency has no price, whatever its Value holds.
+_Avoid_: value unit, money type
+
+**Backing**:
+What holds a Currency: a stat, coin items, or nothing, for a name only. A stat backing lists each stat once: a Global Stat, a stat a Persona links under its original id, or a Persona's own stat.
 
 **Slot**:
 A name in the world's slot list where an item is equipped, such as Main Hand or Ring. A slot has no capacity of its own: each Body that holds it gives it one, and one capacity unit holds one Item Copy. One list serves every Body, so an item's slot works in any Body that has it.

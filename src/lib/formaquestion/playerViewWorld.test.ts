@@ -110,6 +110,11 @@ describe('playerViewScene', () => {
     expect(kept.items).toEqual([expect.objectContaining({ id: 'key', uses: 2, whenEmpty: { kind: 'stays' }, state: 'rusty' })]);
   });
 
+  it('keeps a met item’s Value and Currency', () => {
+    const kept = playerViewScene({ ...scene, items: [{ ...item('key'), value: 4, currencyId: 'goats' }] }, reach());
+    expect(kept.items).toEqual([expect.objectContaining({ id: 'key', value: 4, currencyId: 'goats' })]);
+  });
+
   it('drops the world overview and the lore, and keeps the notes', () => {
     expect(cut.overview).toBe('');
     expect(cut.lore).toEqual([]);

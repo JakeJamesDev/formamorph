@@ -3,6 +3,7 @@
  * item, so the help search ranks them as it ranks guide sections. Placeholders read as their authored chips.
  */
 import { BUILTIN_PLACEHOLDERS, builtinLabel } from '@/lib/builtinPlaceholders';
+import { worthText } from '@/lib/currency';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { WHEN_EMPTY_LABEL, stateWord, whenEmptyOf } from '@/lib/items';
 import { allPlaceholders } from '@/lib/placeholderHomes';
@@ -13,7 +14,7 @@ import { sourceKey, type WorldItemKind, type WorldSource } from './helpWorldSour
 
 /** The world slices the index reads: an editor's live world. */
 export type WorldIndexInput = Pick<World, 'worldOverview' | 'stats' | 'locations' | 'entities' | 'traits' | 'dictionaries'>
-  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'placeholders' | 'connections' | 'entityGroups'>>;
+  & Partial<Pick<World, 'scripts' | 'tools' | 'items' | 'currencies' | 'placeholders' | 'connections' | 'entityGroups'>>;
 
 export interface WorldIndex {
   /** The world's sections, searched like the guide's. */
@@ -181,7 +182,7 @@ export function buildWorldIndex(world: WorldIndexInput): WorldIndex {
   for (const item of world.items ?? []) {
     add('item', item.id, item.name, [], lines(
       `# ${item.name}`,
-      facts(item.value !== undefined && `Value: ${item.value}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
+      facts(item.value !== undefined && `Value: ${text(worthText(item, world.currencies ?? []) ?? String(item.value))}`, item.stackable && 'Stackable', item.uses !== undefined && `Uses: ${item.uses}`, item.uses !== undefined && `When Empty: ${whenEmptyText(item)}`, stateLine(item), item.bound && 'Bound'),
       field('Player Description', text(item.playerDescription)),
       field('Unidentified Name', text(item.unidentifiedName)),
       field('Unidentified Description', text(item.unidentifiedDescription)),
