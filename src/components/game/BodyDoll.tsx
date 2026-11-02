@@ -3,13 +3,10 @@ import { BodyBackdropArt } from '@/components/BodyBackdropArt';
 import { ItemIconArt } from '@/components/ItemIconArt';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FlashTip, Tip } from '@/components/ui/tooltip';
-import { boxKey, boxLabel, boxStyle, frameInBox, stackOrder } from '@/lib/bodyLayout';
+import { DOLL_MAX_HEIGHT, boxKey, boxLabel, boxStyle, frameInBox, stackOrder } from '@/lib/bodyLayout';
 import type { ShownItemIcon } from '@/lib/itemIcons';
 import { cn } from '@/lib/utils';
 import type { Body, SlotBox } from '@/types';
-
-/** The doll's height cap. Its width follows the Body's aspect, up to the panel's width (Q49). */
-const DOLL_MAX_HEIGHT = 320;
 
 const BOX_BUTTON = 'rounded-sm border border-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
 
@@ -51,9 +48,14 @@ function FilledBox({ fill, label, box, aspect }: { fill: DollFill; label: string
           {fill.icon.kind === 'icon' && <ItemIconArt id={fill.icon.id} className="h-full w-full" />}
         </FrameButton>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-1"><ul>{fill.detail}</ul></PopoverContent>
+      <FillPopoverContent detail={fill.detail} />
     </Popover>
   );
+}
+
+/** The popover of a filled box and of an Equipped row's name. `detail` is the list row it holds. */
+export function FillPopoverContent({ detail }: { detail: ReactNode }) {
+  return <PopoverContent className="w-72 p-1"><ul>{detail}</ul></PopoverContent>;
 }
 
 /** An empty box: a blank outline, with the slot name on hover or tap (Q9, Q22). */

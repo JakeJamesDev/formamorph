@@ -1,6 +1,7 @@
-import { forwardRef, useEffect, useState, type ComponentProps, type ReactNode } from 'react';
+import { forwardRef, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { ArrowDownToLine, ArrowUpFromLine, Gift, Lock, Shirt, Sparkles, Undo2 } from 'lucide-react';
 import { ItemIconArt } from '@/components/ItemIconArt';
+import { useIsCut } from '@/components/TruncatedText';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Meta } from '@/components/ui/typography';
 import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
-import { fillBoxes } from '@/lib/bodyLayout';
+import { dollColumnWidth, fillBoxes } from '@/lib/bodyLayout';
 import { resolveItemIcon } from '@/lib/itemIcons';
 import { byEquipOrder, copyFace, copyFacts, copyState, isUnidentified, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
@@ -19,7 +20,7 @@ import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
-import { BodyDoll } from './BodyDoll';
+import { BodyDoll, FillPopoverContent } from './BodyDoll';
 import { PanelOwnerCard, PanelSubheader } from './PanelOwnerCard';
 
 export interface InventoryTabProps {
@@ -69,6 +70,23 @@ const ItemRowButton = forwardRef<HTMLButtonElement, ComponentProps<typeof Button
   ),
 );
 ItemRowButton.displayName = 'ItemRowButton';
+
+/** A row name's button. It covers the row, so the picture and the meta text press it too. */
+const ROW_NAME = 'rounded-sm text-left after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring';
+
+/** An Equipped row's name: one line, with the full text in a tooltip while it is cut (Q5). */
+const EquippedRowName = forwardRef<HTMLButtonElement, ComponentProps<'button'> & { name: string }>(({ name, ...rest }, ref) => {
+  const text = useRef<HTMLSpanElement>(null);
+  const cut = useIsCut(text, name);
+  return (
+    <Tip tip={name} labelsChild={false} disabled={!cut}>
+      <button ref={ref} type="button" className={cn(ROW_NAME, 'min-w-0')} {...rest}>
+        <span ref={text} className="block truncate">{name}</span>
+      </button>
+    </Tip>
+  );
+});
+EquippedRowName.displayName = 'EquippedRowName';
 
 /** The count a typed quantity means: a whole number from 1 to `max`, 1 for a blank field. */
 const countOf = (text: string, max: number) => Math.min(max, Math.max(1, wholeCount(text) ?? 1));
@@ -262,11 +280,12 @@ export function InventoryTab({
     return [...copyFacts(copy, item), ...(item?.bound ? [BOUND_TIP] : [])];
   };
 
-  const row = (copy: ItemCopy, actions: ReactNode) => {
+  /** `nameControl` replaces the name's popup button, `slotLine` the row's second line. `fullName` wraps the name instead of cutting it. */
+  const row = (copy: ItemCopy, actions: ReactNode, { nameControl, slotLine, fullName }: { nameControl?: ReactNode; slotLine?: string; fullName?: boolean } = {}) => {
     const item = itemOf(copy);
     const name = nameOf(copy);
     const state = copyState(copy);
-    const line = copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item);
+    const line = slotLine ?? (copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item));
     const icon = iconOf(copy);
     return (
       <li key={copy.id} className="relative flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
@@ -279,14 +298,15 @@ export function InventoryTab({
         {icon.kind === 'icon' && <ItemIconArt id={icon.id} className="h-6 w-6 shrink-0" />}
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
-            {/* The name's button covers the row, so the picture and the meta text open the popup too. */}
-            <button
-              type="button"
-              onClick={() => setViewingId(copy.id)}
-              className="truncate rounded-sm text-left after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"
-            >
-              {name}
-            </button>
+            {nameControl ?? (
+              <button
+                type="button"
+                onClick={() => setViewingId(copy.id)}
+                className={cn(ROW_NAME, fullName ? 'min-w-0 [overflow-wrap:anywhere]' : 'truncate')}
+              >
+                {name}
+              </button>
+            )}
             {state && <Meta className="shrink-0">{state}</Meta>}
             {copy.quantity > 1 && <Meta className="shrink-0">×{copy.quantity}</Meta>}
             {item?.bound && (
@@ -304,34 +324,74 @@ export function InventoryTab({
     );
   };
 
+  const slotNameOf = (slotId: string) => resolveText(slots.find((s) => s.slot.id === slotId)?.slot.name ?? '');
+  const equippedActions = (copy: ItemCopy) => (
+    <div className="flex shrink-0 items-center">
+      <UseButton copy={copy} item={itemOf(copy)} name={nameOf(copy)} disabled={disabled} onOps={onOps} />
+      <ItemRowButton
+        label={`Unequip ${nameOf(copy)}`} icon={Undo2} disabled={disabled}
+        onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
+      />
+    </div>
+  );
+  // The popover's row, shared by the Slot Box and the Equipped row's name (Q15).
+  const equippedDetail = (copy: ItemCopy) => row(copy, equippedActions(copy), { fullName: true });
+  const equippedList = (className?: string) => {
+    // An All of item fills two boxes and shows one row (story 5).
+    const listed = equipped.filter((c) => boxed.has(c.id));
+    if (listed.length === 0) return <p role="status" className={cn('px-2 py-2 text-label text-muted-foreground', className)}>Nothing is equipped.</p>;
+    return (
+      <ul aria-label="Equipped Items" className={className}>
+        {listed.map((copy) => row(copy, equippedActions(copy), {
+          slotLine: occupiedSlots(copy, itemOf(copy)).map(slotNameOf).filter(Boolean).join(', '),
+          nameControl: (
+            <Popover>
+              <PopoverTrigger asChild><EquippedRowName name={nameOf(copy)} /></PopoverTrigger>
+              <FillPopoverContent detail={equippedDetail(copy)} />
+            </Popover>
+          ),
+        }))}
+      </ul>
+    );
+  };
+
+  const equippedSection = (worn: Body) => {
+    const doll = (
+      <BodyDoll
+        body={{ ...worn, entries }}
+        slotName={slotNameOf}
+        fills={new Map([...inBoxes].map(([key, copy]) => [key, {
+          id: copy.id,
+          name: nameOf(copy),
+          icon: iconOf(copy),
+          detail: equippedDetail(copy),
+        }]))}
+      />
+    );
+    return (
+      <>
+        <PanelSubheader>Equipped</PanelSubheader>
+        {worn.aspect > 1 ? (
+          <div data-doll-layout="stacked" className="flex flex-col gap-3">
+            {doll}
+            {equippedList()}
+          </div>
+        ) : (
+          <div data-doll-layout="columns" className="flex items-start gap-3">
+            <div className="shrink-0" style={{ width: dollColumnWidth(worn.aspect) }}>{doll}</div>
+            {equippedList('min-w-0 flex-1')}
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <ScrollArea className="h-[calc(100%-1rem)]">
       <PanelOwnerCard
         role="region" aria-label={`${ownerName ?? 'Your'} inventory`} name={ownerName ?? 'You'} entity you={ownerName !== null}
       >
-        {body && entries.length > 0 && (
-          <>
-            <PanelSubheader>Equipped</PanelSubheader>
-            <BodyDoll
-              body={{ ...body, entries }}
-              slotName={(slotId) => resolveText(slots.find((s) => s.slot.id === slotId)?.slot.name ?? '')}
-              fills={new Map([...inBoxes].map(([key, copy]) => [key, {
-                id: copy.id,
-                name: nameOf(copy),
-                icon: iconOf(copy),
-                detail: row(copy, (
-                  <div className="flex shrink-0 items-center">
-                    <UseButton copy={copy} item={itemOf(copy)} name={nameOf(copy)} disabled={disabled} onOps={onOps} />
-                    <ItemRowButton
-                      label={`Unequip ${nameOf(copy)}`} icon={Undo2} disabled={disabled}
-                      onClick={() => onOps([{ kind: 'unequip', copyId: copy.id }])}
-                    />
-                  </div>
-                )),
-              }]))}
-            />
-          </>
-        )}
+        {body && entries.length > 0 && equippedSection(body)}
         <PanelSubheader>Carried</PanelSubheader>
         {carried.length === 0 ? (
           <p role="status" className="px-2 py-2 text-label text-muted-foreground">You carry nothing.</p>

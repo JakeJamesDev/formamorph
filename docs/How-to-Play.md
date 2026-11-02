@@ -263,8 +263,8 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 <!-- route: gameViewer.inventory -->
 
 1. In the right panel, open the **Inventory** tab. On mobile, open **Status** first.
-2. **Equipped** draws a figure with an icon for each item you wear. **Carried** lists the rest below it. A second card, named for your location, lists the items lying there.
-3. Select an item's row to see its image and description. Hover over a filled box on the figure to see the item's name, or select the box to see the item's row. Hover over or select an empty box to see its slot's name.
+2. **Equipped** draws a figure with an icon for each item you wear. A list beside it names each item and its slots. A figure wider than tall sits above the list instead. **Carried** lists the rest below. A second card, named for your location, lists the items lying there.
+3. Select an item's row under **Carried** or at your location to see its image and description. Under **Equipped**, select the row or the item's box on the figure to see its full name and buttons. Then select the name to see its image and description. Hover over a filled box to see the item's name. Hover over or select an empty box to see its slot's name.
 4. Use the buttons on an item's row:
 
 | Button | What it does |

@@ -25,6 +25,15 @@ const NEW_BODY_ASPECT = OUTLINE_ASPECT.humanoid;
 
 export const clampAspect = (aspect: number): number => clamp(aspect, MIN_ASPECT, MAX_ASPECT);
 
+/** The doll's height cap. Its width follows the Body's aspect, up to the panel's width (Q49). */
+export const DOLL_MAX_HEIGHT = 320;
+
+/** The doll's column beside the Equipped list: a third of the width, between 120px and the doll's full width (V1). */
+export function dollColumnWidth(aspect: number): string {
+  const full = DOLL_MAX_HEIGHT * aspect;
+  return `clamp(${Math.min(120, full)}px, 33%, ${full}px)`;
+}
+
 /** A small square at the Backdrop's center: square on screen, so its fractions follow the aspect (Q5). */
 export function centerBox(aspect: number): SlotBox {
   const w = aspect >= 1 ? NEW_BOX_SIDE / aspect : NEW_BOX_SIDE;

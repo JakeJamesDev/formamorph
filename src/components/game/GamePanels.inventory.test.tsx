@@ -59,6 +59,8 @@ const stage = (copies: ItemCopy[], over: { page?: number; inScene?: string[]; me
 const carried = () => screen.getByRole('region', { name: 'Your inventory' });
 const mine = (g: Gameplay) => g.itemCopies.filter((c) => c.where.kind === 'you');
 const dollBoxes = () => within(screen.getByRole('group', { name: 'Equipped' })).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
+/** A Slot Box's open popover. The Equipped list holds the same buttons, so each test names which one it presses. */
+const popover = async () => within(await screen.findByRole('dialog'));
 
 describe('RightPanel — the selected entity on the Inventory tab', () => {
   const onBram = (id: string, itemId: string, over: Partial<ItemCopy> = {}) => copy(id, itemId, { where: { kind: 'entity', id: 'bram' }, ...over });
@@ -142,7 +144,7 @@ describe('RightPanel — Inventory tab', () => {
     await screen.findByRole('group', { name: 'Equipped' });
     expect(dollBoxes()).toEqual(['Hand 1: Halberd', 'Hand 2: Empty', 'Head: Halberd']);
     await userEvent.click(screen.getByRole('button', { name: 'Head: Halberd' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Unequip Halberd' }));
+    await userEvent.click((await popover()).getByRole('button', { name: 'Unequip Halberd' }));
     expect(mine(h.gameplay())[0].equipped).toBeUndefined();
     expect(dollBoxes()).toEqual(['Hand 1: Empty', 'Hand 2: Empty', 'Head: Empty']);
   });
@@ -164,10 +166,10 @@ describe('RightPanel — Inventory tab', () => {
       await screen.findByRole('group', { name: 'Equipped' });
       expect(dollBoxes()).toEqual(['Hand 1: Dagger', 'Hand 2: Ash Wand', 'Head: Empty']);
       await userEvent.click(screen.getByRole('button', { name: 'Hand 1: Dagger' }));
-      await userEvent.click(await screen.findByRole('button', { name: 'Unequip Dagger' }));
+      await userEvent.click((await popover()).getByRole('button', { name: 'Unequip Dagger' }));
       expect(mine(h.gameplay()).find((c) => c.id === 'early')?.equipped).toBeUndefined();
       expect(dollBoxes()).toEqual(['Hand 1: Ash Wand', 'Hand 2: Empty', 'Head: Empty']);
-      await waitFor(() => expect(screen.queryByRole('button', { name: 'Unequip Ash Wand' })).toBeNull());
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
     it('carries a copy with no box left, where it unequips', async () => {
@@ -291,7 +293,7 @@ describe('RightPanel — Inventory tab', () => {
   it('unequips an item into the carried list', async () => {
     const h = renderRightPanel({}, stage([copy('h', 'helm', { equipped: { slotId: 'head', order: 1 } })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Head: Iron Helm' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Unequip Iron Helm' }));
+    await userEvent.click((await popover()).getByRole('button', { name: 'Unequip Iron Helm' }));
     expect(mine(h.gameplay())[0].equipped).toBeUndefined();
     expect(screen.getByRole('button', { name: 'Head: Empty' })).toBeInTheDocument();
     expect(within(carried()).getByRole('button', { name: 'Equip Iron Helm' })).toBeInTheDocument();
@@ -455,7 +457,8 @@ describe('RightPanel — Inventory tab', () => {
     expect(screen.getByRole('button', { name: 'Drop Coin' })).toBeDisabled();
     // A figure's box only reads: its popover's actions are what turn off.
     await userEvent.click(screen.getByRole('button', { name: 'Head: Iron Helm' }));
-    expect(await screen.findByRole('button', { name: 'Unequip Iron Helm' })).toBeDisabled();
+    expect((await popover()).getByRole('button', { name: 'Unequip Iron Helm' })).toBeDisabled();
+    expect(within(screen.getByRole('list', { name: 'Equipped Items' })).getByRole('button', { name: 'Unequip Iron Helm' })).toBeDisabled();
     await userEvent.keyboard('{Escape}');
     act(() => h.gameplay().setIsWaitingForAI(false));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Give Coin' })).toBeEnabled());
@@ -503,10 +506,11 @@ describe('RightPanel — Inventory tab', () => {
   it('spends a use on an equipped wand, and turns Use off at zero uses', async () => {
     const h = renderRightPanel({}, stage([copy('w', 'wand', { state: { uses: 1 }, equipped: { slotId: 'hand', order: 1 } })]));
     await userEvent.click(await screen.findByRole('button', { name: 'Hand 1: Ash Wand' }));
-    expect(await screen.findByText('1 of 3 uses')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Use Ash Wand' }));
+    const open = await popover();
+    expect(open.getByText('1 of 3 uses')).toBeInTheDocument();
+    await userEvent.click(open.getByRole('button', { name: 'Use Ash Wand' }));
     expect(mine(h.gameplay())[0].state).toEqual({ uses: 0 });
-    expect(await screen.findByRole('button', { name: 'Use Ash Wand: no uses left' })).toBeDisabled();
+    expect((await popover()).getByRole('button', { name: 'Use Ash Wand: no uses left' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Use Coin' })).not.toBeInTheDocument();
   });
 
