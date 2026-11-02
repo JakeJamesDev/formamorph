@@ -10,7 +10,7 @@
 //   node scripts/captureSiteShots.mjs --only 02-game --verify-only --width 1600 --height 900
 //   node scripts/captureSiteShots.mjs --only 02-game --scene scripts/fixtures/site-game.json
 //
-// The avatar screen ships the alternate VRM, which is not the tracked default. The capture serves it
+// The avatar screen shows Sei (build-assets/alternate-avatar.vrm), not the tracked Aki. The capture serves it
 // by intercepting the fetch in a context of its own, so the tracked file is never touched: writing an
 // 18 MB file into public/ restarts Vite's watcher mid-run and kills the server under the capture.
 import { chromium } from '@playwright/test';

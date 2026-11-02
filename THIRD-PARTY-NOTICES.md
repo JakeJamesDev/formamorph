@@ -6,13 +6,19 @@ Formamorph bundles third-party open-source software and assets. This file lists 
 
 ## Bundled assets
 
-### VRoid default model
+The Steam build ships no VRM file.
 
-`public/default-avatar.vrm`, in local and Pages dev builds. By pixiv VRoid Project. Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted, credit not required.
+### Aki
 
-### Elaina
+`public/default-avatar.vrm`, in local and Pages dev builds. By pixiv VRoid Project, from VRoid preset sample A (<https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z>), which sets the conditions for the sample data. Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted, credit not required.
 
-`build-assets/alternate-avatar.vrm`, copied over `public/default-avatar.vrm` in release builds. By TronSpectra. Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>), with the usage terms that license records in the file. Credit not required.
+### Sei
+
+`build-assets/alternate-avatar.vrm`, copied over `public/default-avatar.vrm` in the desktop, web and Android release builds. By 乙幡皇斗羽, from VRoid Hub (<https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999>). Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted, credit not required.
+
+### Praline
+
+`build-assets/praline-avatar.vrm`, a second bundled Avatar in the desktop, web and Android release builds. By pixiv VRoid Project, from VRoid preset sample F (<https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z>), which sets the conditions for the sample data. Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted, credit not required.
 
 ### Mixamo animations
 
