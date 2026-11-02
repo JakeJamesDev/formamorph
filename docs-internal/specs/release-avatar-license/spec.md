@@ -53,7 +53,7 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 **Open, not blocking:**
 
 - Whether a sample-based Sugarscape Avatar ships on the free channels. A prototype works, but pixiv's character creation ban still applies there.
-- Whether the tracked default is a pixiv sample. Its author field says so, and no original copy was available to compare. It reaches only local dev and the free Pages build, where the character creation ban could still apply.
+- The tracked default on the free Pages build. A fresh AvatarSample_A export confirmed it is that sample: same face and body geometry, and every texture except the thumbnail. The character creation ban could still apply there.
 
 ## User Stories
 
