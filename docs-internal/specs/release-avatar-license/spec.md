@@ -139,17 +139,18 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
   - `allowPoliticalOrReligiousUsage` must be true.
   - `allowAntisocialOrHateUsage` must be true.
   - `creditNotation` must be `unnecessary`.
-  - `licenseUrl` must be the VRM Public License 1.0.
-  - `otherLicenseUrl` must be empty.
+  - `licenseUrl` must be exactly `https://vrm.dev/licenses/1.0/`.
+  - `otherLicenseUrl` must be absent or empty. Exporters omit it, and all six real files checked on 2026-11-02 do.
 - The existing `commercialUsage` requirement tightens to `corporation`. `personalProfit` now fails.
-- A missing field fails its requirement, as it does today.
+- A missing field fails its requirement, as it does today. `otherLicenseUrl` is the one exception.
+- The new identifiers are the VRM field names, appended in this order: `allowExcessivelySexualUsage`, `allowExcessivelyViolentUsage`, `allowPoliticalOrReligiousUsage`, `allowAntisocialOrHateUsage`, `creditNotation`, `licenseUrl`, `otherLicenseUrl`.
 - Identifiers stay append-only. The existing five keep their names.
 - The server reads the new fields in its VRM meta reader and runs the same checks on create and on file update.
 - The server's error body and the client's copy gain the new identifiers. Both client copy tables need an entry for each.
 
 **Client license data**
 
-- The normalized VRM license type gains the four flags, the credit field as read, and `otherLicenseUrl`.
+- The normalized VRM license type gains the four flags, `creditNotation` and `otherLicenseUrl`, under those VRM field names. The server's listing `license` content uses the same names.
 - The library's stale-license check moves to a field that only new records carry, so old records are read again. Today it keys on `avatarPermission`.
 
 **Fingerprints and records**
@@ -159,8 +160,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 
 **Landing order**
 
-1. Server gate, because the server enforces it for every client.
-2. The new model files with their client fingerprints, built by script (Q17).
+1. The new model files with their client fingerprints, built by script (Q17).
+2. Server gate. The server's bundled-avatar test reads the client's alternate file, and Elaina fails the stricter gate, so this waits for step 1.
 3. Client gate, license data and copy. The bundled-avatar test reads the alternate file, and Elaina fails the stricter gate, so this waits for step 2.
 4. Server fingerprints, records, and the landing page recapture.
 5. The Steam switch and empty state. This doesn't depend on the model file.
