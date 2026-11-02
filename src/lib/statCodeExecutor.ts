@@ -118,6 +118,8 @@ export interface StatCodeResult {
   unknownLore?: string[];
   /** Read-only fields the code wrote, as code spelled them, such as `traits.Brave.mode`; each write was dropped. */
   readOnlyWrites?: string[];
+  /** Each `pay` call the run made, in order. Absent when it made none. */
+  payments?: ScriptPayment[];
   /** The `turn.choices` the run left, when it takes the write and the list differs from the one it read (Q12). */
   choices?: string[];
   /** The sentence the code left, by return or by `narration.sentence`. Present on a During AI Output run that
@@ -1336,21 +1338,31 @@ export interface SandboxCurrency {
   kind: CurrencyBacking['kind'];
 }
 
+/** One `pay` call of a run, settled or refused. */
+export interface ScriptPayment {
+  currencyId: string;
+  payer: SlotOwner | null;
+  payee: SlotOwner | null;
+  amount: number | string;
+  paid: boolean;
+  reason: string;
+}
+
 /** A run's money, held by the host: calls answer in the run, and the settled payments come back once as writes. */
 export interface SandboxMoney {
   /** What the owner holds in the Currency, or null when the owner is untracked. */
   balance: (currencyId: string, owner: SlotOwner) => number | null;
   /** Settles a payment over the run's own state. A null payer is income and a null payee leaves the world. */
   pay: (currencyId: string, payer: SlotOwner | null, payee: SlotOwner | null, price: number | string) => { paid: boolean; reason: string };
-  /** The Item ops, and each stat's final value and net change, the settled payments leave. `ownerId` is null for a Global Stat. */
-  settled: () => { ops: InventoryOp[]; stats: { ownerId: string | null; write: StatWrite; delta: number }[] };
+  /** Every `pay` call, then the Item ops and each stat's final value and net change the settled payments leave. `ownerId` is null for a Global Stat. */
+  settled: () => { ops: InventoryOp[]; payments: ScriptPayment[]; stats: { ownerId: string | null; write: StatWrite; delta: number }[] };
 }
 
 // The host hook `balance` and `pay` call. The prelude takes it and deletes the global before user code runs.
 const MONEY_HOOK = '__formamorphMoney';
 
-/** The `currencies` prelude: `balance` and `pay` ask the host. An unknown name is a blank entry that stops the script. */
-const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, persona }: KeyedEntities): string => {
+/** The `currencies` prelude: `balance` and a run's `pay` ask the host, and a read-only run's `pay` stops it. An unknown name is a blank entry that stops the script. */
+const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, persona }: KeyedEntities, readOnly: boolean): string => {
   const you: SlotOwner = { kind: 'you' };
   const partyOf = (entity: SandboxEntity): SlotOwner | null => (holdsForPlayer(entity, persona) ? you : entity.id ? { kind: 'entity', id: entity.id } : null);
   const spec = {
@@ -1369,8 +1381,11 @@ const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, per
     `  };`,
     `  const own = (target, key) => Object.prototype.hasOwnProperty.call(target, key);`,
     `  const verb = (target, path, name, call) => Object.defineProperty(target, name, { get: () => call, set: () => note(path + name) });`,
+    // With no persona played, a blank `persona` or `owner` is the player, who has no money.
+    `  const isBlankParty = (value) => !!value && !value.id && (value === persona || value === owner${readOnly ? ` || value === ${READ_ONLY_VIEW_OF}(persona, 'persona')` : ''});`,
     `  const partyOf = (value, call, none) => {`,
     `    if (none && (value === null || value === undefined)) return null;`,
+    `    if (isBlankParty(value)) return { kind: 'you' };`,
     `    const id = value && typeof value === 'object' && typeof value.id === 'string' ? value.id : '';`,
     `    const hit = id ? (own(spec.ids, id) ? spec.ids[id] : undefined) : typeof value === 'string' ? (own(spec.names, value) ? spec.names[value] : undefined) : undefined;`,
     `    return hit || fail(call + ' needs an entity or the persona the game has, not ' + (typeof value === 'string' ? '"' + value + '"' : String(value && value.name !== undefined ? '"' + value.name + '"' : value)));`,
@@ -1383,12 +1398,16 @@ const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, per
     `      if (unknown) fail('The world has no Currency named "' + key + '"');`,
     `      return ask('balance', data.id, partyOf(owner, path + 'balance', false));`,
     `    });`,
-    `    verb(out, path, 'pay', (payer, payee, amount) => {`,
-    `      if (unknown) fail('The world has no Currency named "' + key + '"');`,
-    `      if (typeof amount !== 'string' && (typeof amount !== 'number' || !Number.isFinite(amount))) throw new TypeError(path + 'pay needs an amount, a number or a text price');`,
-    `      const result = ask('pay', data.id, partyOf(payer, path + 'pay', true), partyOf(payee, path + 'pay', true), amount);`,
-    `      return Object.freeze({ paid: result.paid, reason: result.reason });`,
-    `    });`,
+    ...(readOnly ? [
+      `    verb(out, path, 'pay', () => fail(path + 'pay isn’t available in a Tool script'));`,
+    ] : [
+      `    verb(out, path, 'pay', (payer, payee, amount) => {`,
+      `      if (unknown) fail('The world has no Currency named "' + key + '"');`,
+      `      if (typeof amount !== 'string' && (typeof amount !== 'number' || !Number.isFinite(amount))) throw new TypeError(path + 'pay needs an amount, a number or a text price');`,
+      `      const result = ask('pay', data.id, partyOf(payer, path + 'pay', true), partyOf(payee, path + 'pay', true), amount);`,
+      `      return Object.freeze({ paid: result.paid, reason: result.reason });`,
+      `    });`,
+    ]),
     `    return Object.freeze(out);`,
     `  };`,
     `  const map = Object.create(null);`,
@@ -1403,10 +1422,11 @@ const currenciesPrelude = (currencies: readonly SandboxCurrency[], { byName, per
   ].join('\n');
 };
 
-/** The host side of `MONEY_HOOK`: one call's answer as JSON text. */
-function answerMoney(money: SandboxMoney | undefined, call: string): string {
+/** The host side of `MONEY_HOOK`: one call's answer as JSON text. A read-only run never pays. */
+export function answerMoney(money: SandboxMoney | undefined, call: string, readOnly: boolean): string {
   const [op, currencyId, first, second, price] = JSON.parse(call) as [string, string, SlotOwner | null, SlotOwner | null, number | string];
   if (op === 'balance') return JSON.stringify(money && first ? money.balance(currencyId, first) : null);
+  if (readOnly) return JSON.stringify({ paid: false, reason: 'a Tool can’t pay' });
   return JSON.stringify(money ? money.pay(currencyId, first, second, price) : { paid: false, reason: 'the world has no Currency' });
 }
 
@@ -1835,7 +1855,7 @@ const READ_ONLY_VIEW = `(note) => {
 
 /** The program's names a read-only run hides from its code: the globals its surface lacks, and the prelude's hooks. */
 const HIDDEN_GLOBALS = [
-  'self', 'owner', 'discover', 'currencies', MOVE_TURN, ADVANCE_CLOCK, ENTITY_WRITE, WORLD_WRITES, SELF_ASSIGNED, STRINGIFY, READ_ONLY_VIEW_OF,
+  'self', 'owner', 'discover', MOVE_TURN, ADVANCE_CLOCK, ENTITY_WRITE, WORLD_WRITES, SELF_ASSIGNED, STRINGIFY, READ_ONLY_VIEW_OF,
 ] as const;
 
 /** `code` as a read-only run runs it: the hidden names shadowed, each surface global, `args` with them when the run
@@ -2224,7 +2244,7 @@ export const executeStatCode = async (
     const hostFunctions: Record<string, SandboxHostFunction> = {
       [ROLL_HOOK]: (vm, indexHandle) => vm.newString(placeholderMap.nodes[vm.getNumber(indexHandle)]?.entry?.roll() ?? ''),
       [HOST_READ_HOOK]: (vm, slotHandle) => vm.newString(reads.answer(vm.getNumber(slotHandle))),
-      [MONEY_HOOK]: (vm, callHandle) => vm.newString(answerMoney(money, vm.getString(callHandle))),
+      [MONEY_HOOK]: (vm, callHandle) => vm.newString(answerMoney(money, vm.getString(callHandle), readOnly)),
       ...(engine === 'sync' ? {} : {
         [PROMPT_HOOK]: async (vm, requestHandle) => {
           // The prelude built the request from checked arguments, so it is one of the kinds.
@@ -2298,7 +2318,7 @@ export const executeStatCode = async (
       locationsPrelude(places, standing, reads),
       dictionariesPrelude(dictionaries, placeholderMap, reads, resolveEntryValue),
       itemsPrelude(items, keyed, places, placeholderMap, itemEvent),
-      currenciesPrelude(currencies, keyed),
+      currenciesPrelude(currencies, keyed, readOnly),
       // An accessor, so `notes = x` drops and lists the write as a locked field does.
       `Object.defineProperty(globalThis, 'notes', { enumerable: true, get: () => ${JSON.stringify(notes)}, set: () => ${LOOSE_NOTE}('notes') });`,
       ...(readOnly ? [`const ${READ_ONLY_VIEW_OF} = (${READ_ONLY_VIEW})(${LOOSE_NOTE});`] : []),
@@ -2477,6 +2497,7 @@ export const executeStatCode = async (
         ...(choices ? { choices } : {}),
         ...(sentence === undefined ? {} : { sentence }),
         ...(inventoryWrites ? { worldWrites: inventoryWrites } : {}),
+        ...(paid?.payments.length ? { payments: paid.payments } : {}),
         ...(worldWrites.maybeDiary ? { maybeDiary: worldWrites.maybeDiary } : {}),
         ...(args ? { reply: replyOf() } : {}),
       });

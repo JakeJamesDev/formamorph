@@ -176,3 +176,25 @@ describe.each([
     expect(report.queryByText(/did nothing/)).toBeNull();
   });
 });
+
+describe('Test Code on a world with an Items Currency', () => {
+  const PRICED: World = {
+    ...LINKED,
+    items: [{ id: 'copper', name: 'Copper', statEffects: [], traitEffects: [], equipRequires: [], stackable: true }],
+    placements: [{ id: 'p-copper', where: { kind: 'entity', id: 'ash' }, quantity: 3, source: { kind: 'item', itemId: 'copper' } }],
+    currencies: [{ id: 'coin', name: 'Coin', backing: { kind: 'items', items: [{ itemId: 'copper', worth: 1 }] } }],
+  };
+
+  it('runs a balance and a pay from the box, reports both results, and changes no copy or Placement', async () => {
+    const { ctx } = renderWorldEditorBench(PRICED, 'advanced');
+    openScriptsTab(TRUST_BOX);
+    fireEvent.change(screen.getByRole('textbox', { name: `Code ${TRUST_BOX}` }), {
+      target: { value: 'if (currencies.Coin.balance("Ash") !== 3) throw new Error("balance"); currencies.Coin.pay("Ash", null, 2); currencies.Coin.pay(persona, "Ash", 1);' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: `Test Code ${TRUST_BOX}` }));
+    const report = within(screen.getByRole('group', { name: TRUST_BOX }));
+    expect(await report.findByText(/currencies\.Coin\.pay: 2 from Ash · currencies\.Coin\.pay: 1 from persona to Ash, refused: the player has no money/)).toBeInTheDocument();
+    expect(ctx().placements).toEqual(PRICED.placements);
+    expect(ctx().items).toEqual(PRICED.items);
+  });
+});

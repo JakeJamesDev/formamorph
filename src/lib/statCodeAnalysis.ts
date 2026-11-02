@@ -16,7 +16,7 @@ import { rewrittenKey } from '@/lib/statCodeRename';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
-  isMethodEntry, nearestName, readOnlyEntries, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
+  isDroppedMethod, nearestName, readOnlyEntries, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
 } from '@/lib/codeSurface';
 import type { SandboxDictionaryEntry } from '@/lib/statCodeExecutor';
 import {
@@ -529,7 +529,7 @@ function surfaceMembersOf(value: CodeValue, options: SurfaceAnalysisOptions, rul
   const members = membersOf(value, options, rules);
   const { surface } = options;
   const builtin = value.is === 'listed' && surface.builtins.some((entry) => entry.name === value.path.split('.')[0]);
-  return members && surface.readOnly && !builtin ? readOnlyEntries(members.filter((entry) => !isMethodEntry(entry))) : members;
+  return members && surface.readOnly && !builtin ? readOnlyEntries(members.filter((entry) => !isDroppedMethod(entry))) : members;
 }
 
 /** Whether a map entry's key is missing from the names its map holds. False where those names are not given. */
@@ -971,6 +971,14 @@ function checkTurnMutatingCall(call: SyntaxNode, code: string, surface: CodeSurf
   return member?.name === 'MemberExpression' ? readOnlyMember(member, code, surface, 'turn') : null;
 }
 
+/** What is wrong with a `currencies.Name.pay(...)` call on a read-only surface: the run stops on it. */
+function checkReadOnlyPay(call: SyntaxNode, code: string, surface: CodeSurface): CodeDiagnostic | null {
+  const callee = call.firstChild;
+  const method = callee?.name === 'MemberExpression' ? callee.getChild('PropertyName') : null;
+  if (!surface.readOnly || !method || code.slice(method.from, method.to) !== 'pay' || memberRoot(callee!, code) !== 'currencies') return null;
+  return { from: method.from, to: method.to, severity: 'error', message: `“pay” isn’t available in ${surface.label}.` };
+}
+
 
 /** What is wrong with a write into `entities`: to the map, to an entry or one of its members, or into an
  *  entry's traits as `traits`. */
@@ -1387,6 +1395,8 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     }
     const mutation = cursor.type.name === 'CallExpression' && readOnlyInScope.has('turn') ? checkTurnMutatingCall(cursor.node, code, surface) : null;
     if (mutation && !overlapsAny(mutation.from, mutation.to, ranges)) diagnostics.push(mutation);
+    const pay = cursor.type.name === 'CallExpression' && !declared.has('currencies') ? checkReadOnlyPay(cursor.node, code, surface) : null;
+    if (pay) diagnostics.push(pay);
     if (cursor.type.name === 'CallExpression' && isPlaceholderWriteCall(cursor.node, code, chainRootInScope)) {
       sawPlaceholderWrite = true;
     }

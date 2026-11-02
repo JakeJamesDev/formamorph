@@ -123,7 +123,7 @@ const editorFindings = (code: string, timing?: ScriptTiming) => (timing
   : statCodeDiagnostics(code, editorNames)).map((finding) => finding.message);
 
 /** The result fields a run that changed only what it meant to fills. Any other field reports a dropped write. */
-const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites', 'lore', 'choices']);
+const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites', 'lore', 'choices', 'payments']);
 const APPLIED_ENTITY_FIELDS = new Set(['entity', 'traits']);
 
 /** The fields of a run's result that report a dropped write, an entity's own included. */

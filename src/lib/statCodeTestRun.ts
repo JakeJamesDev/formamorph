@@ -8,7 +8,7 @@ import { codePinText } from '@/lib/placeholderPins';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import {
   clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, memberPath, traitWritesPath, SELF_WRITABLE_FIELDS, type CodeBoundField,
-  type OwnerStatWrites, type PlaceholderWrite, type SandboxPlace, type StatWrite, type TraitWrite, type WorldWrites,
+  type OwnerStatWrites, type PlaceholderWrite, type SandboxPlace, type ScriptPayment, type StatWrite, type TraitWrite, type WorldWrites,
 } from '@/lib/statCodeExecutor';
 import type { MissingName } from '@/lib/statCodeAnalysis';
 import { cardWorldNames, codeLocationsOf, type StatCodeNames } from '@/lib/statCodeBoxOptions';
@@ -31,7 +31,7 @@ const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', r
 
 /** The parts of an authored world a stat's code reaches. */
 export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>
-  & Partial<Pick<World, 'locations'>>;
+  & Partial<Pick<World, 'locations' | 'currencies'>>;
 
 /** The names of `world` as the stat panel reads them: the global stats without Blueprints, and each entity's
  *  with its links. */
@@ -200,6 +200,17 @@ const worldWriteLines = (
   ];
 };
 
+/** One line per `pay` call as code names its Currency: the amount and parties, and why a refused one failed. */
+const paymentLines = (
+  payments: readonly ScriptPayment[], currencyName: (id: string) => string, entityNames: ReadonlyMap<string, string>,
+): string[] => {
+  const party = (who: NonNullable<ScriptPayment['payer']>) => (who.kind === 'you' ? 'persona' : entityNames.get(who.id) ?? who.id);
+  return payments.map(({ currencyId, payer, payee, amount, paid, reason }) => {
+    const parties = [...(payer ? [`from ${party(payer)}`] : []), ...(payee ? [`to ${party(payee)}`] : [])];
+    return `${memberPath('currencies', currencyName(currencyId))}.pay: ${[amount, ...parties].join(' ')}${paid ? '' : `, refused: ${reason}`}`;
+  });
+};
+
 /** Test Code's snapshot of `world` at turn one for a `timing` run. No playthrough: no picks, no persona and no
  *  rolls (Q3). The editor holds no discovered cast, so a `diary` name it lacks is a warning (Q46). */
 export const testCodeSnapshotOf = (
@@ -222,6 +233,7 @@ export async function runTestCode(
   const list = allPlaceholders(world);
   const entityNames = new Map((world.entities ?? []).map((entity) => [entity.id, statCodeName(entity.name, list)]));
   const { locations } = codeLocationsOf(world.locations ?? [], list);
+  const currencyName = (id: string) => statCodeName(world.currencies?.find((currency) => currency.id === id)?.name ?? id, list);
   const assumed = [...new Set((missing ?? []).filter(({ kind }) => kind === 'stat').map(({ segments }) => segments[0]))];
   const snapshot = testCodeSnapshotOf(world, timing, { pendingPersona: pending, persona, ...(assumed.length && { assumedStats: assumed }) });
   const unit: ScriptRunUnit = {
@@ -259,6 +271,7 @@ export async function runTestCode(
     ...(outcome.lore ?? []).map(({ path, value }) => `${path} = ${value}`),
     ...(outcome.choices ? [`turn.choices = ${JSON.stringify(outcome.choices)}`] : []),
     ...worldWriteLines(outcome.worldWrites, locations, entityNames),
+    ...paymentLines(outcome.payments ?? [], currencyName, entityNames),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
   const dropped = [

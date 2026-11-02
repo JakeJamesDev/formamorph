@@ -29,7 +29,7 @@ import type {
 /** The authored slice the fold reads. An absent slice reads as empty, as an editor's half-built world can be. */
 export type OpeningFoldWorld = Partial<Pick<World,
   'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries' | 'locations'
-  | 'connections' | 'worldOverview' | 'items' | 'placements' | 'slots' | 'bodies'
+  | 'connections' | 'worldOverview' | 'items' | 'placements' | 'slots' | 'bodies' | 'currencies'
 >>;
 
 /** What the player picked at the entry step: the global trait ids and each owner's trait ids. */
@@ -147,6 +147,9 @@ export function openingFold(
     resolveText: turnOneText(allPlaceholders(world)),
     clock: { deltaHours: 0, elapsedHours: 0 },
     itemCopies: playWorld.itemCopies,
+    items: world.items ?? [],
+    slots: world.slots ?? [],
+    ...(world.currencies?.length ? { money: { currencies: world.currencies, placements: world.placements ?? [] } } : {}),
   };
   const startingTraits = [...held.map((trait) => ({ trait, ownerId: null })), ...rows.appliedRows];
   return { state, entityStats, startingTraits, traitState, itemEffects: { ledger: items.ledger, log: items.log }, bodies: items.bodies };

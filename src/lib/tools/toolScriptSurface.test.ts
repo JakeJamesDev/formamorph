@@ -28,7 +28,7 @@ describe('the Tool script surface matches the sandbox', () => {
   it('lists every global the script can reach, and each is really there', async () => {
     const globals = surface.globals.map((g) => g.name);
     expect(globals).toEqual([
-      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'console',
+      'args', 'stats', 'clock', 'turn', 'locations', 'location', 'memories', 'notes', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'items', 'currencies', 'console',
     ]);
     const probe = `return [${globals.map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, { name: 'Wren' }, snapshot);
@@ -37,10 +37,10 @@ describe('the Tool script surface matches the sandbox', () => {
 
   it('leaves out every name a world script has that the Tool surface lacks, and the sandbox lacks each too', async () => {
     const absent = WORLD_SCRIPT_SURFACE.globals.map((g) => g.name).filter((name) => !surface.globals.some((g) => g.name === name));
-    expect(absent.sort()).toEqual(['currencies', 'discover', 'owner', 'self']);
+    expect(absent.sort()).toEqual(['discover', 'owner', 'self']);
     const probe = `return [${[...absent, 'player', 'world', 'scene'].map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, {}, snapshot);
-    expect(JSON.parse((result as { text: string }).text)).toEqual(Array(7).fill('undefined'));
+    expect(JSON.parse((result as { text: string }).text)).toEqual(Array(6).fill('undefined'));
   });
 });
 

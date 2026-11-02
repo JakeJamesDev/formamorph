@@ -95,7 +95,7 @@ describe('Tool script access matches the sandbox', () => {
   // Both run on one sandbox, so a stat-script global must not reach a Tool script.
   const toolNames = new Set(surface.globals.map((entry) => entry.name));
   const statOnly = SANDBOX_GLOBALS.map((entry) => entry.name).filter((name) => !toolNames.has(name));
-  it('has stat-script globals to hold out', () => expect(statOnly.sort()).toEqual(['currencies', 'discover', 'owner', 'self']));
+  it('has stat-script globals to hold out', () => expect(statOnly.sort()).toEqual(['discover', 'owner', 'self']));
   it.each(statOnly)('%s is undefined in a Tool script', async (name) => {
     expect(await runToolScript(`return typeof ${name};`, { size: 2 }, sampleToolSnapshot())).toEqual({ text: 'undefined' });
   });

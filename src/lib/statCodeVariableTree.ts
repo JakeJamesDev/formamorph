@@ -6,7 +6,7 @@
 
 import type { AnalysisOptions, CodeDictionaryNames, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
-import { isMethodEntry, surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
+import { isMethodEntry, isDroppedMethod, surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
 import { hasEntityKey } from '@/lib/statCodeNames';
 import {
@@ -47,6 +47,8 @@ export interface VariableField {
   info: string;
   /** Absent on a method. The menu draws no badge, so it states this as text. */
   access?: CodeAccess;
+  /** A method a read-only surface keeps. */
+  keptOnReadOnly?: boolean;
   insert: string;
   selection?: VariableSelection;
 }
@@ -119,6 +121,7 @@ function typeOver(path: Path): Path {
 const field = (path: Path, entry: SurfaceEntry, call = ''): VariableField => ({
   kind: 'field', label: entry.name, detail: entry.detail, info: entry.info, insert: `${path.text}${path.optional ? '?.' : '.'}${entry.name}${call}`,
   ...(entry.access ? { access: entry.access } : {}),
+  ...(entry.keptOnReadOnly ? { keptOnReadOnly: true } : {}),
   ...(path.selection ? { selection: path.selection } : {}),
 });
 
@@ -306,8 +309,6 @@ export interface TimingGlobals {
   narration: boolean;
   player: boolean;
   trait: boolean;
-  /** Whether the surface has `currencies`. Absent reads as true: a user Tool's surface alone lacks it. */
-  currencies?: boolean;
   /** `turn`'s members with the access the timing gives them. Absent, every one is read-only. */
   turn?: readonly SurfaceEntry[];
 }
@@ -319,7 +320,6 @@ export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => {
     narration: surfaceHasGlobal(surface, 'narration'),
     player: surfaceHasGlobal(surface, 'player'),
     trait: surfaceHasGlobal(surface, 'trait'),
-    currencies: surfaceHasGlobal(surface, 'currencies'),
     ...(turn && { turn }),
   };
 };
@@ -466,7 +466,7 @@ export function buildVariableTree(
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     nameList('Items', itemRows, 'No items in this world', globalInfo('items')),
-    ...(timing.currencies === false ? [] : [nameList('Currencies', currencyRows, 'No currencies in this world', globalInfo('currencies'))]),
+    nameList('Currencies', currencyRows, 'No currencies in this world', globalInfo('currencies')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
     { kind: 'group', label: 'Turn', info: globalInfo('turn'), children: fields(root('turn'), timing.turn ?? TURN_MEMBERS) },
     nameList('Locations', locationRows, 'No locations in this world', globalInfo('locations')),
@@ -507,17 +507,17 @@ function leafForOneChild(node: VariableNode): VariableNode {
   return children.length === 1 && children[0].kind === 'field' ? children[0] : { ...node, children };
 }
 
-/** `nodes` as a read-only surface lists them (Q24): no method, every field read-only, and no level left empty. */
+/** `nodes` as a read-only surface lists them (Q24): only the methods it keeps, every field read-only, and no level left empty. */
 export function readOnlyTree(nodes: readonly VariableNode[]): VariableNode[] {
   return nodes.flatMap((node): VariableNode[] => {
-    if (node.kind === 'field') return isMethodEntry(node) ? [] : [{ ...node, access: 'readOnly' }];
+    if (node.kind === 'field') return isDroppedMethod(node) ? [] : [{ ...node, access: 'readOnly' }];
     if (node.kind === 'group') {
       const children = readOnlyTree(node.children);
       return children.length ? [{ ...node, children }] : [];
     }
     if (node.kind === 'names') {
       const rows = node.rows.flatMap((row) => {
-        const field = row.field && !isMethodEntry(row.field) ? { ...row.field, access: 'readOnly' as const } : undefined;
+        const field = row.field && !isDroppedMethod(row.field) ? { ...row.field, access: 'readOnly' as const } : undefined;
         const children = readOnlyTree(row.children);
         return field || children.length ? [{ ...row, children, ...(field ? { field } : {}) }] : [];
       });

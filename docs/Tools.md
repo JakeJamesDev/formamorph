@@ -260,6 +260,7 @@ A script reads `args` and the same globals a world script reads. Each entry has 
 | `memories` | The Memory panel's rows, oldest first | [Memory](Scripts-Reference#memory) |
 | `dictionaries` | Every dictionary, with `entries`. Disabled entries read `enabled: false` | [Dictionaries](Scripts-Reference#dictionaries) |
 | `items` | Every item in the world by name, with its placeholders and its Item Copies in play | [Items](Scripts-Reference#items) |
+| `currencies` | Every Currency by name, with `balance()`. A Tool can't call `pay()` | [Currencies](Scripts-Reference#currencies) |
 | `stats`, `traits`, `placeholders`, `persona` | The global stats and traits, the placeholders, and the persona | [Stats](Scripts-Reference#stats), [Traits](Scripts-Reference#traits), [Placeholders](Scripts-Reference#placeholders), [Persona](Scripts-Reference#persona) |
 | `clock` | The story clock. It reads the opening outside a game | [The Story Clock](Scripts-Reference#the-story-clock) |
 | `turn` | The player's action and the turn number. A call the AI makes in a turn reads that turn | [Turn](Scripts-Reference#turn) |
@@ -272,6 +273,8 @@ A Tool script has none of the calls that write. Each of these calls is a "not a 
 - An entry verb or an item verb
 - `location.move`, `entities.<Entity>.move`, `follow`, `unfollow`
 - `diary`
+
+`currencies.<Currency>.pay` stops the Tool with an error too.
 
 A write to a field is ignored and the read keeps its value. The Tool does not fail, and **Try It** lists the write as ignored. `self`, `owner`, `trait`, `narration`, `player`, `discover` and `clock.advance` are not available.
 

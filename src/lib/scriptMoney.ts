@@ -1,7 +1,7 @@
 import type { SlotOwner } from '@/lib/bodies';
 import { applyPaymentStats, balanceOf, planPayment, readStatedPrice, type PaymentState, type PaymentStats, type StatedPrice } from '@/lib/currency';
 import { applyInventoryOps, type InventoryOp } from '@/lib/inventory';
-import type { SandboxMoney } from '@/lib/statCodeExecutor';
+import type { SandboxMoney, ScriptPayment } from '@/lib/statCodeExecutor';
 import { randomUUID } from '@/lib/uuid';
 import type { Currency, Item, ItemCopy, Placement, PlayerStat, Slot } from '@/types';
 
@@ -32,6 +32,7 @@ export function scriptMoney(state: ScriptMoneyState): SandboxMoney {
   let copies: readonly ItemCopy[] = state.copies;
   let stats = state.stats;
   const ops: InventoryOp[] = [];
+  const payments: ScriptPayment[] = [];
   const touched = new Map<string, { ownerId: string | null; statId: string }>();
 
   const onFor = (id: string) => state.statsOn(id, stats.entityStats[id] ?? []);
@@ -41,6 +42,30 @@ export function scriptMoney(state: ScriptMoneyState): SandboxMoney {
     statsOf: (owner) => (owner.kind === 'entity' ? onFor(owner.id) : state.playedIds.flatMap(onFor)),
   });
   const currencyOf = (id: string) => state.currencies.find((currency) => currency.id === id);
+  const settlePay = (currency: Currency, payer: SlotOwner | null, payee: SlotOwner | null, price: number | string) => {
+    const stated: StatedPrice = typeof price === 'number'
+      ? (price > 0 && Number.isFinite(price) && (currency.backing.kind !== 'items' || Number.isInteger(price))
+        ? { currency, amount: price } : { refused: `${price} is no amount` })
+      : readStatedPrice(price, '', [currency], state.itemNames);
+    if ('refused' in stated) return refused(stated.refused);
+    const plan = planPayment(currency, payer, payee, stated.amount, reading(copies.filter((copy) => known.has(copy.id))), state.itemNames);
+    if (!plan.settled) {
+      const noPersona = !state.playedIds.length && (payer?.kind === 'you' || payee?.kind === 'you');
+      return refused(noPersona ? 'the player has no money: no persona is in play' : plan.reason);
+    }
+    if (plan.ops.length) {
+      copies = applyInventoryOps(copies, plan.ops, { world, source: 'script', newId: randomUUID }).copies;
+      ops.push(...plan.ops);
+    }
+    if (plan.stats.length) {
+      stats = applyPaymentStats(stats, plan.stats, playerOwner);
+      for (const { owner, statId } of plan.stats) {
+        const ownerId = owner === null ? null : owner.kind === 'entity' ? owner.id : playerOwner(statId) ?? null;
+        if (owner === null || ownerId !== null) touched.set(JSON.stringify([ownerId, statId]), { ownerId, statId });
+      }
+    }
+    return { paid: true, reason: '' };
+  };
 
   return {
     balance: (currencyId, owner: SlotOwner) => {
@@ -51,28 +76,13 @@ export function scriptMoney(state: ScriptMoneyState): SandboxMoney {
     pay: (currencyId, payer, payee, price) => {
       const currency = currencyOf(currencyId);
       if (!currency) return refused('the world has no such Currency');
-      const stated: StatedPrice = typeof price === 'number'
-        ? (price > 0 && Number.isFinite(price) && (currency.backing.kind !== 'items' || Number.isInteger(price))
-          ? { currency, amount: price } : { refused: `${price} is no amount` })
-        : readStatedPrice(price, '', [currency], state.itemNames);
-      if ('refused' in stated) return refused(stated.refused);
-      const plan = planPayment(currency, payer, payee, stated.amount, reading(copies.filter((copy) => known.has(copy.id))), state.itemNames);
-      if (!plan.settled) return refused(plan.reason);
-      if (plan.ops.length) {
-        copies = applyInventoryOps(copies, plan.ops, { world, source: 'script', newId: randomUUID }).copies;
-        ops.push(...plan.ops);
-      }
-      if (plan.stats.length) {
-        stats = applyPaymentStats(stats, plan.stats, playerOwner);
-        for (const { owner, statId } of plan.stats) {
-          const ownerId = owner === null ? null : owner.kind === 'entity' ? owner.id : playerOwner(statId) ?? null;
-          if (owner === null || ownerId !== null) touched.set(JSON.stringify([ownerId, statId]), { ownerId, statId });
-        }
-      }
-      return { paid: true, reason: '' };
+      const result = settlePay(currency, payer, payee, price);
+      payments.push({ currencyId, payer, payee, amount: price, ...result });
+      return result;
     },
     settled: () => ({
       ops,
+      payments,
       stats: [...touched.values()].flatMap(({ ownerId, statId }) => {
         const find = (from: PaymentStats) => (ownerId === null ? from.globalStats : from.entityStats[ownerId] ?? []).find((other) => other.id === statId);
         const stat = find(stats);

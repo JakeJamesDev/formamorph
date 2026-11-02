@@ -343,7 +343,7 @@ function boardOf(state: SandboxState, { readings, pendingPersona, assumedStats =
       globalStats: statCodeNamed(state.stats, placeholderDefs),
       entityStats: Object.fromEntries((state.owners ?? []).map((owner) => [owner.id, statCodeNamed(owner.stats, placeholderDefs)])),
     },
-    playedIds: played ? [played] : [],
+    playedIds: played && played !== PENDING_PERSONA_ID ? [played] : [],
     statsOn: (ownerId, stats) => stats.filter((stat) => (ownerId === null ? state.enabled : ownerEnabled.get(ownerId))?.[stat.id] !== false),
   }) : undefined;
   return {
@@ -435,7 +435,7 @@ export function snapshotOf(state: SandboxState, options: SnapshotOptions = {}): 
       ...(state.notes && { notes: state.notes }), ...(unit.readOnly && { readOnly: true }),
       ...(read.items.length && { items: read.items }),
       ...(read.currencies.length && { currencies: read.currencies }),
-      ...(read.money && !unit.readOnly && { money: read.money() }),
+      ...(read.money && { money: read.money() }),
       ...(read.bodyDefs.length && { bodies: read.bodyDefs }),
       ...(unit.home.kind === 'item' && unit.itemEvent && isItemTiming(unit.timing) && {
         itemEvent: {

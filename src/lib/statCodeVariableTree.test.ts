@@ -357,9 +357,9 @@ describe('verbs last in a group (R7)', () => {
     },
   );
 
-  // Q24: a Tool script's menu drops every verb, so its order is the fields' alone.
-  it('keeps a user Tool script’s read-only menu in order, with no verb left in it', () => {
-    expect(variableTreeLeaves(toolTree).some(isVerbLeaf)).toBe(false);
+  // Q24: a Tool script's menu drops every verb but the one that only reads (Q87).
+  it('keeps a user Tool script’s read-only menu in order, with only balance left as a verb', () => {
+    expect([...new Set(variableTreeLeaves(toolTree).filter(isVerbLeaf).map((leaf) => leaf.label))]).toEqual(['balance']);
     expect(misordered(toolTree)).toEqual([]);
   });
 

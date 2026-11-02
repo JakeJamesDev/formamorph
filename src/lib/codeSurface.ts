@@ -38,10 +38,15 @@ export interface SurfaceEntry {
   info: string;
   /** Absent on a method, and on a map whose own entries carry the access. */
   access?: CodeAccess;
+  /** A method a read-only surface keeps. */
+  keptOnReadOnly?: boolean;
 }
 
 /** Whether an entry is a function, by the arrow its detail spells. */
 export const isMethodEntry = (entry: Pick<SurfaceEntry, 'detail'>): boolean => /^\(.*\)\s*=>/.test(entry.detail);
+
+/** Whether a read-only surface leaves an entry out. */
+export const isDroppedMethod = (entry: Pick<SurfaceEntry, 'detail' | 'keptOnReadOnly'>): boolean => isMethodEntry(entry) && !entry.keptOnReadOnly;
 
 /** `entries` with each field's access. A method and a name in `maps` carry none. */
 const applyAccess = (entries: readonly SurfaceEntry[], accessOf: (name: string) => CodeAccess, maps: readonly string[]) =>
