@@ -294,7 +294,7 @@ Changes apply at once, and the next turn's narration sees them.
 - An item with uses shows how many are left under its name.
 - An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack.
 - An unidentified item shows only its unidentified name and description until the story reveals what it is.
-- Each item shows an icon on its row and on the figure. The icon comes from the item's name, or from its slot when the name doesn't suggest one. A world's author can show the item's image instead, or nothing.
+- Each item shows an icon on its row, on the figure and in its popup. The icon comes from the item's name, or from its slot when the name doesn't suggest one. A world's author can show the item's image instead, or nothing.
 - An item that takes two slots shows in both boxes. When a slot holds several items, the rest move up after you take one off.
 - The location card shows items you can see. An item you haven't found yet stays out of the panel until the story reveals it.
 - On a stack, **Drop**, **Give** and **Pick Up** ask how many. Type a number or select **All**.

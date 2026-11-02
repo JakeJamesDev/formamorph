@@ -31,6 +31,7 @@ Settled in the grill on 2026-11-01. A settled ruling reopens on new evidence, ne
 | Q2 | The Item editor gets an Icon field that opens a searchable grid. Auto is the default and shows the icon the name derives. |
 | Q3, Q9 | Auto means the derived icon. Auto beats the Item image. A specific icon also beats the Item image. Only None shows the Item image. |
 | Q4 | Carried rows show icons with the same rules as the doll. |
+| Q19 | After play: the entity popup's Equipped rows show icons under the same rules, and the item popup's header shows the catalog icon beside the name. Under None the header shows no icon, since the body draws the image. |
 | Q6 | Auto derives at display time and nothing is stored. The AI does not pick icons. |
 | Q7 | The word list is English only. A name in another language falls through to the slot icon, then the generic icon. |
 | Q10 | None shows the Item image. With no image, a Slot Box is a plain filled box with the name in its tooltip, and rows show no icon. Long text never returns to the doll. |
@@ -119,7 +120,7 @@ A good test calls the module's public interface and checks what the player or au
 - A separate credits screen beyond what opens the full credit.
 - A color tint over a Backdrop.
 - Opacity on Humanoid, Quadruped or Plain Backdrops.
-- Icons on other surfaces, such as narration or the Effects list.
+- Icons on other surfaces, such as narration or the Effects list. Q19 adds the entity popup's rows and the item popup's header.
 
 ## Further Notes
 

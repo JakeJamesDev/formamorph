@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { ItemRowArt } from '@/components/ItemIconArt';
 import { Meta } from '@/components/ui/typography';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { visibleItemImage } from '@/lib/imageVisibility';
-import { copyFace, copyFacts, occupiedSlots } from '@/lib/items';
+import { itemSlotNames, resolveItemIcon } from '@/lib/itemIcons';
+import { copyFace, copyFacts, isUnidentified, occupiedSlots } from '@/lib/items';
 import { visibleWorn } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -29,6 +31,20 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
     const item = itemOf(copy);
     return resolveText(item ? copyFace(item, copy).name : '') || 'Unknown Item';
   };
+  const imageOf = (copy: ItemCopy) => {
+    const item = itemOf(copy);
+    return item && visibleItemImage(item, copy, gateInput);
+  };
+  const iconOf = (copy: ItemCopy) => {
+    const item = itemOf(copy);
+    return resolveItemIcon({
+      icon: item?.icon,
+      name: nameOf(copy),
+      slotNames: itemSlotNames(item, data?.slots ?? [], resolveText),
+      unidentified: isUnidentified(copy),
+      image: imageOf(copy),
+    });
+  };
   // A copy that left the entity closes its popup.
   const viewing = worn.find((copy) => copy.id === viewingId);
   const viewingItem = viewing && itemOf(viewing);
@@ -39,8 +55,9 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
         {worn.map((copy) => {
           const item = itemOf(copy);
           return (
-            <li key={copy.id} className="relative flex items-baseline gap-2 rounded-md hover:bg-secondary/60">
-              {/* The name's button covers the row, so the slot opens the popup too. */}
+            <li key={copy.id} className="relative flex items-center gap-2 rounded-md hover:bg-secondary/60">
+              <ItemRowArt shown={iconOf(copy)} />
+              {/* The name's button covers the row, so the art and the slot open the popup too. */}
               <button
                 type="button"
                 onClick={() => setViewingId(copy.id)}
@@ -57,7 +74,8 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
         <ItemModal
           id={viewing.id}
           name={nameOf(viewing)}
-          image={viewingItem && visibleItemImage(viewingItem, viewing, gateInput)}
+          icon={iconOf(viewing)}
+          image={imageOf(viewing)}
           description={resolveText(viewingItem ? copyFace(viewingItem, viewing).description ?? '' : '')}
           facts={copyFacts(viewing, viewingItem)}
           isOpen

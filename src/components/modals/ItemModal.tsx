@@ -1,12 +1,16 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ItemIconArt } from '@/components/ItemIconArt';
 import { Meta } from '@/components/ui/typography';
+import type { ShownItemIcon } from '@/lib/itemIcons';
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
 
-/** An Item Copy's popup: its image beside its description. `name`, `image`, `description` and `facts` are what
+/** An Item Copy's popup: its image beside its description. `name`, `icon`, `image`, `description` and `facts` are what
  *  the player may see of the copy, so an unidentified copy stays on its unidentified face. */
-export function ItemModal({ id, name, image, description, facts, isOpen, onOpenChange }: {
+export function ItemModal({ id, name, icon, image, description, facts, isOpen, onOpenChange }: {
   id: string;
   name: string;
+  /** The header draws only a catalog icon, since the body already draws the image. */
+  icon: ShownItemIcon;
   image?: string;
   description: string;
   /** Short text beside the name: State, count, uses left. */
@@ -23,7 +27,8 @@ export function ItemModal({ id, name, image, description, facts, isOpen, onOpenC
         className={image ? 'sm:max-w-[800px] lg:max-w-[1040px] h-[90dvh] flex flex-col' : 'sm:max-w-[520px] h-[40dvh] flex flex-col'}
       >
         <DialogHeader className="flex-shrink-0">
-          <div className="flex flex-wrap items-baseline justify-center gap-x-2 pr-6 sm:justify-start">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 pr-6 sm:justify-start">
+            {icon.kind === 'icon' && <ItemIconArt id={icon.id} className="h-6 w-6 shrink-0" />}
             <DialogTitle>{name}</DialogTitle>
             {facts.map((fact) => <Meta key={fact}>{fact}</Meta>)}
           </div>

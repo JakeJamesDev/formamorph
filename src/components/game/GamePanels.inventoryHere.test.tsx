@@ -134,6 +134,22 @@ describe('Entity Equipped', () => {
     expect(screen.queryByText('Coin')).not.toBeInTheDocument();
   });
 
+  it('shows the derived icon on the row and in the popup header', async () => {
+    show([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } })]);
+    const name = await screen.findByRole('button', { name: 'Dagger' });
+    expect(name.closest('li')!.querySelector('[data-item-icon]')).toHaveAttribute('data-item-icon', 'dagger');
+    await userEvent.click(name);
+    const header = within(await screen.findByRole('dialog')).getByRole('heading', { name: 'Dagger' }).parentElement!;
+    expect(header.querySelector('[data-item-icon]')).toHaveAttribute('data-item-icon', 'dagger');
+  });
+
+  it('derives an unidentified item’s row icon from its unidentified face', async () => {
+    show([bramHas('a', 'charm', { state: { unidentified: true }, equipped: { slotId: 'hand', order: 1 } })]);
+    const row = (await screen.findByRole('button', { name: 'Dull Charm' })).closest('li')!;
+    expect(row.querySelector('[data-item-icon]')).toBeInTheDocument();
+    expect(row.querySelector('img')).toBeNull();
+  });
+
   it('opens a worn item’s popup, with its description and no carried item', async () => {
     show([bramHas('a', 'dagger', { equipped: { slotId: 'hand', order: 1 } }), bramHas('b', 'coin')]);
     await userEvent.click(await screen.findByRole('button', { name: 'Dagger' }));

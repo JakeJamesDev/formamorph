@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { ArrowDownToLine, ArrowUpFromLine, Gift, Lock, Shirt, Sparkles, Undo2 } from 'lucide-react';
-import { ItemIconArt } from '@/components/ItemIconArt';
+import { ItemRowArt } from '@/components/ItemIconArt';
 import { useIsCut } from '@/components/TruncatedText';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
@@ -15,7 +15,6 @@ import type { BodySlot } from '@/lib/bodies';
 import { dollColumnWidth, fillBoxes } from '@/lib/bodyLayout';
 import { itemSlotNames, resolveItemIcon } from '@/lib/itemIcons';
 import { byEquipOrder, copyFace, copyFacts, copyState, isUnidentified, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
-import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Body, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
@@ -283,16 +282,9 @@ export function InventoryTab({
     const name = nameOf(copy);
     const state = copyState(copy);
     const line = slotLine ?? (copy.item.kind === 'runtime' ? runtimeById.get(copy.item.runtimeItemId)?.description : usesLine(copy, item));
-    const icon = iconOf(copy);
     return (
       <li key={copy.id} className="relative flex min-h-9 items-center gap-2 rounded-md px-2 py-1 hover:bg-secondary/60">
-        {icon.kind === 'image' && (
-          <img
-            src={icon.src} alt="" {...THUMB_INTRINSIC.portrait}
-            className={cn('w-6 shrink-0 rounded', THUMB_FRAME.portrait, thumbFit('portrait'))}
-          />
-        )}
-        {icon.kind === 'icon' && <ItemIconArt id={icon.id} className="h-6 w-6 shrink-0" />}
+        <ItemRowArt shown={iconOf(copy)} />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-label">
             {nameControl ?? (
@@ -460,6 +452,7 @@ export function InventoryTab({
         <ItemModal
           id={viewing.id}
           name={nameOf(viewing)}
+          icon={iconOf(viewing)}
           image={imageOf?.(viewing)}
           description={descriptionOf(viewing)}
           facts={factsOf(viewing)}
