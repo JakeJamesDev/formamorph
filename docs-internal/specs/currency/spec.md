@@ -1,7 +1,7 @@
 # Spec: Currency
 
-Status: done
-Status note: Closed 2026-11-02. Tickets 01 to 09 landed, last landing 7a6889b62, with fixes 9f39ee67f, cd4573219 and 6d26d884e. Review: spec text corrected. Gates green on 2026-11-02.
+Status: ready-for-agent
+Status note: Reopened 2026-11-02 for tickets 10 to 13, from the close review. Tickets 01 to 09 closed the same day at 74f80dc96, with gates green.
 Spec session: currency — spec
 
 ## Problem Statement
@@ -65,7 +65,7 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q37 | (ticket 02) The coin picker lists Stackable items that aren't a coin in any Currency, plus the row's own item. A coin that later stops being Stackable keeps its row, with a warning |
 | Q38 | (ticket 02) Coin Value fields normalize when focus leaves the group of fields, not on each field. A blank Value shows blank fields, and all blank clears the Value. A Value of 0 shows zeros and reads "0 Copper". A coin Currency's fields take whole non-negative numbers, and the top coin has no cap |
 | Q39 | (ticket 02) The Breakdown is largest first with zero coins omitted, and ends in the worth-1 coin, so no remainder is lost |
-| Q40 | (ticket 04) Q22's stat rule covers every delete that removes a backing stat's id: a world stat, a Persona's own stat, a Persona, and Blueprints removal. A Persona delete names the Currency only in a confirm it already shows, and adds no dialog of its own. Unlinking a Blueprint stat from its last Persona is not a delete: the Currency keeps it, the picker still shows it, and it has no Balance |
+| Q40 | (ticket 04) Q22's stat rule covers every delete that removes a backing stat's id: a world stat, a Persona's own stat, a Persona, and Blueprints removal. Unlinking a Blueprint stat from its last Persona is not a delete: the Currency keeps it, the picker still shows it, and it has no Balance |
 | Q41 | (ticket 04) Deleting the base coin drops its row and leaves a coin Currency with ticket 02's hint. Only deleting the last coin makes it name only |
 | Q42 | (ticket 04) A confirm for Currency reasons shows only when a Currency uses the stat or coin, or when items point at the Currency |
 | Q43 | (ticket 03) An entity is tracked in a coin Currency when the world has a Placement of one of its coins at that entity, hidden or not. It stays tracked at 0 once spent down, and coins received in play don't make an untracked entity tracked. A stat-backed Currency tracks whoever has the stat |
@@ -100,6 +100,14 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q72 | (ticket 06) Every pay of a buy's sum that shares a party is dropped, not one per buy. A real second equal pay in that reply counts once |
 | Q74 | (ticket 08) Emberwatch's Rogue and Halfling bonuses are At Game Start scripts on their Blueprint traits, because no trait field grants items. Rogue gives 2 Gold and Halfling 5 Silver. Jory Pike alone holds a tracked purse of about 30 Gold; the other shopkeepers stay untracked. The Currency is named Coin, and Old King's Coin stays a priced non-money item |
 | Q73 | (ticket 06) A stated coin price beats Q64: a name-only item priced "12 Copper" charges 12 Copper. A Value of 0 moves alone only with a Currency that settles. With no Currency it stays priceless and refused (Q13) |
+| Q77 | (close review) The Currencies entry and its item rows use the Design System's expandable `EditorRow`, with drag reordering in place of arrow buttons |
+| Q78 | (close review) A script's pay naming a location stops the script with an error, like any unknown party |
+| Q79 | (close review) Deleting any Persona or entity whose own stat backs a Currency shows a confirm that names the Currency. With no Currency affected, nothing changes |
+| Q80 | (close review) A pay with a money word in `item` and a bare `price` counts that item, so item Silver and price 5 means 5 Silver |
+| Q81 | (close review) A played entity's name counts as the player in a pay or buy, for every played entity |
+| Q82 | (close review) A pay's text reply may state its price in the quantity cell, as ticket 05 built it |
+| Q83 | (close review) The structure findings become one refactor ticket, after Script Run Order ticket 04 lands |
+| Q84 | (close review) Test Code and the Test Bench build Currencies. User Tools get a read-only balance. A test covers a script pay followed by a pass pay in one turn |
 | Q76 | (after ticket 09) Narrows Q56: a pay with no `price`, or with a readable price and no one on either side, says nothing, so a gain, lose or transfer beside it runs. A pay with no price still blocks them when the player is its payer. A pay with a price it can't read, or one refused for funds or a lock, still blocks them. Probes showed Q56 losing a correct bounty in 5 of 15 runs |
 | Q75 | (ticket 09) "Coin" leaves the product and the code. The backing is `{ kind: 'items', items: [{ itemId, worth }] }`, the label is **Items**, and a row is a **Currency Item**, because they are plain items and the author names the Currency. Earlier rulings keep "coin" as history and mean a Currency Item |
 
