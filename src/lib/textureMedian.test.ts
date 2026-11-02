@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { medianOpaqueRGB, tintSeedRGB } from './textureMedian';
+import { medianOpaqueRGB, tintFactors, tintSeedRGB } from './textureMedian';
 
 describe('tintSeedRGB', () => {
   it('returns the median under a factor of 1', () => {
@@ -8,6 +8,74 @@ describe('tintSeedRGB', () => {
 
   it('applies a color factor below 1, per channel', () => {
     expect(tintSeedRGB([0.55, 0.5, 0.25], [0, 0.5, 1])).toEqual([0, 0.25, 0.25]);
+  });
+});
+
+describe('tintFactors', () => {
+  const median = [0.8, 0.6, 0.4] as const;
+  const white = [1, 1, 1] as const;
+  // A warm skin shade under a white base, in the shape VRoid exports.
+  const warmShade = [0.93, 0.62, 0.71] as const;
+  const seedOf = (m: readonly [number, number, number], f: readonly [number, number, number]) =>
+    tintSeedRGB(m, f).map((x) => Math.round(x * 255) / 255) as [number, number, number];
+
+  it('restores both original factors when the target is the seed', () => {
+    const { color, shade } = tintFactors(seedOf(median, white), median, white, warmShade);
+    expect(color).toEqual([1, 1, 1]);
+    expect(shade).toEqual([0.93, 0.62, 0.71]);
+  });
+
+  it('restores mid factors exactly, despite the seed rounding to 8 bits', () => {
+    const base = [0.7, 0.33, 0.51] as const;
+    const origShade = [0.2, 0.3, 0.4] as const;
+    const { color, shade } = tintFactors(seedOf(median, base), median, base, origShade);
+    expect(color).toEqual([0.7, 0.33, 0.51]);
+    expect(shade).toEqual([0.2, 0.3, 0.4]);
+  });
+
+  it('keeps the original shade-to-base ratio away from the seed, per channel', () => {
+    const { color, shade } = tintFactors([0.4, 0.3, 0.1], median, white, warmShade);
+    expect(color[0]).toBeCloseTo(0.5, 5);
+    expect(color[1]).toBeCloseTo(0.5, 5);
+    expect(color[2]).toBeCloseTo(0.25, 5);
+    expect(shade[0]).toBeCloseTo(0.5 * 0.93, 5);
+    expect(shade[1]).toBeCloseTo(0.5 * 0.62, 5);
+    expect(shade[2]).toBeCloseTo(0.25 * 0.71, 5);
+  });
+
+  it('measures the ratio against the original base, not a base of 1', () => {
+    const base = [0.5, 0.5, 0.5] as const;
+    const { shade } = tintFactors([0.8, 0.6, 0.2], median, base, [0.25, 0.5, 0.1]);
+    expect(shade[0]).toBeCloseTo(1 * 0.5, 5);
+    expect(shade[1]).toBeCloseTo(1 * 1, 5);
+    expect(shade[2]).toBeCloseTo(0.5 * 0.2, 5);
+  });
+
+  it('sets a shade equal to its base on a channel whose original base is 0', () => {
+    // A hair material with a zero factor: the ratio is 0/0, and the shade must not stay black.
+    const { color, shade } = tintFactors([0.4, 0, 0], median, [0, 0, 0], [0, 0, 0]);
+    expect(color).toEqual([0.5, 0, 0]);
+    expect(shade).toEqual([0.5, 0, 0]);
+  });
+
+  it('keeps a nonzero shade on a zero-base channel at its seed', () => {
+    const { color, shade } = tintFactors([0, 0, 0], median, [0, 0, 0], [0.3, 0.2, 0.1]);
+    expect(color).toEqual([0, 0, 0]);
+    expect(shade).toEqual([0.3, 0.2, 0.1]);
+  });
+
+  it('caps the color and shade factors at 4', () => {
+    const { color, shade } = tintFactors([1, 1, 1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.9, 0.9, 0.9]);
+    expect(color).toEqual([4, 4, 4]);
+    expect(shade).toEqual([4, 4, 4]);
+  });
+
+  it('uses the target itself as the factor on a material with no texture', () => {
+    const { color, shade } = tintFactors([0.4, 0.2, 0.1], null, white, [0.5, 0.5, 0.5]);
+    expect(color).toEqual([0.4, 0.2, 0.1]);
+    expect(shade[0]).toBeCloseTo(0.2, 5);
+    expect(shade[1]).toBeCloseTo(0.1, 5);
+    expect(shade[2]).toBeCloseTo(0.05, 5);
   });
 });
 

@@ -10,7 +10,7 @@ import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { HairTypeDef } from '@/types';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { resolveMorphAlias } from '@/lib/bodyMorphs';
-import { medianOpaqueRGB, tintSeedRGB } from '@/lib/textureMedian';
+import { medianOpaqueRGB, tintFactors, tintSeedRGB } from '@/lib/textureMedian';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -216,8 +216,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   };
 
   // GPU tint (no per-pixel work). Textured material: scale the color factor so the texture's median shifts to
-  // `hex` (result ≈ texture × target/median → matches the picker; target==avg is identity). Factor-only material
-  // (no texture, e.g. some Blender exports): set the color factor to `hex` directly.
+  // `hex` (result ≈ texture × target/median → matches the picker). Factor-only material (no texture, e.g. some
+  // Blender exports): set the color factor to `hex` directly.
   const tintByMedian = (material: VrmMaterial, hex: string) => {
     // Remember the untinted colors once, so a revert can restore them exactly.
     if (material.userData.__origColor === undefined)
@@ -225,14 +225,12 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     if (material.userData.__origShade === undefined)
       material.userData.__origShade = material.shadeColorFactor?.isColor ? material.shadeColorFactor.clone() : null;
     const [tr, tg, tb] = hexToRgb(hex).map(v => v / 255);
-    const avg = getMedianRGB(material);
-    let r = tr, g = tg, b = tb;
-    if (avg) {
-      const f = (t: number, a: number) => Math.max(0, Math.min(4, t / Math.max(a, 0.01)));
-      r = f(tr, avg[0]); g = f(tg, avg[1]); b = f(tb, avg[2]);
-    }
-    if (material.color?.isColor) material.color.setRGB(r, g, b);
-    if (material.shadeColorFactor?.isColor) material.shadeColorFactor.setRGB(r, g, b);
+    const origColor: THREE.Color | null = material.userData.__origColor;
+    const origShade: THREE.Color | null = material.userData.__origShade;
+    const base: [number, number, number] = origColor ? [origColor.r, origColor.g, origColor.b] : [1, 1, 1];
+    const { color, shade } = tintFactors([tr, tg, tb], getMedianRGB(material), base, origShade ? [origShade.r, origShade.g, origShade.b] : base);
+    if (material.color?.isColor) material.color.setRGB(...color);
+    if (material.shadeColorFactor?.isColor) material.shadeColorFactor.setRGB(...shade);
     material.needsUpdate = true;
   };
 

@@ -179,6 +179,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **An Avatar's Generated thumbnail now has a white background.** Before, the background was see-through. A thumbnail generated earlier keeps its old look.
   - **Skin color now looks the same on Body and Face.** Body no longer comes out paler than Face for the same skin color, on models with dark areas in the Body texture.
   - **Avatar color pickers now open on the color the model shows.** Before, some models opened the picker on a brighter color, and touching it changed their look.
+  - **Avatar color pickers now keep the model's shadow colors on skin and clothing.** Before, any picked color flattened those shadows. Colors you already saved now show them too.
 - **🛠️ Developer tooling**
   - **An Avatar's Generated thumbnail now shows a close-up of the head.** Tall ears and hats no longer pull the view back to the waist. A thumbnail generated earlier keeps its old view.
   - **Scene Presence:**
