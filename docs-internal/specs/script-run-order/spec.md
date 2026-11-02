@@ -56,6 +56,17 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q27 | (ticket 02) During AI Output's `previous` is the value at the reply's start, for every sentence. A switch run or item event begins when it fires, so its `previous` is the value at that firing |
 | Q28 | (ticket 02) Tests that assert one snapshot flip to the chain result, including the two in the entity stats and output test files, and the five ticket 02 reported: a hub's write hidden from the target's box, the capped ask, the switch landing after the run, two stats switching one trait, and a trait script on two owners. Any other failing test still goes to the spec session first |
 | Q29 | (ticket 02) Penalties stay gate-view only. Each step's gate view applies a penalty to a stat not moved since the timing began, computed from the unpenalized value so it never stacks. The final `gateStats` is exact, so an early gate can read a penalty on a stat a later script moves |
+| Q30 | (ticket 05) The diary stays write-only, with no new read in the sandbox. A diary line chains in that a later `diary` call can name an entity an earlier script discovered, and the lines stay in order |
+| Q31 | (ticket 05) `memories.add` reads as a Custom row, kept and in context, with this turn's number and the advanced clock. A later script's row verb on that row lands on it |
+| Q32 | (ticket 05) Every kind of world write chains, including memory row verbs and `meet`. A described discover joins the cast, and a bare one adds nothing until the pass. Every clock read reflects an earlier advance, and each script adds only its own minutes |
+| Q33 | (ticket 05) A stat re-roll's chain starts over the kept turn state. Later scripts read earlier writes in that chain, and its scene writes then drop as they do today |
+| Q34 | (ticket 03) A nested run clears World Tool triggers and replayed writes, so a Tool runs once. A trait switch from an On Call Tool or its replay fires its switch scripts at once, as Q5 says of any script. They use the prompt host of the Tool's run |
+| Q35 | (ticket 03) A drag at When a Trait Switches holds in every run. Nested switch scripts run in that timing's tab order, and no caller can leave that order out |
+| Q36 | (ticket 03) During AI Output is the one exception to Q5. Its scripts fire nothing per sentence, because Q17 keeps the landing with After the AI. The whole reply's switches fire once there, so a trait switched on and off across one reply fires nothing |
+| Q37 | (ticket 03) Regenerate Choices fires nested runs with silent prompts and discards their writes, so its choices match a real After the AI run |
+| Q38 | (ticket 03) Check Scripts fires no nested runs and keeps its own sample run per switch script. A later script there doesn't read a switch script's write, which can rarely give a false finding. This is a known gap beside story 28 |
+| Q39 | (ticket 03) Tests that assert a switch run lands after the batch flip to the new result and are listed at landing. Any other failing test goes to the spec session first |
+| Q40 | (ticket 03) The depth cap stays, and one action also fires at most 100 switch runs across all depths. Past that, a switch still applies, fires no script and warns once. A looping author bug otherwise grows as a tree: three scripts measured 9,840 runs and 61 s in Node |
 
 ## User Stories
 

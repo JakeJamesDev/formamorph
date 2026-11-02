@@ -17,9 +17,11 @@ Rulings: Q4, Q5, Q6, Q15.
 
 - [ ] A test through `runStatCodeTurn` proves a later script reads an earlier script's `give`, `gain` and equip.
 - [ ] A test proves an item event fired by a script runs before the next script, and the depth cap still stops it.
+- [ ] A test proves a loop of item events and switch runs stays bounded. Nested item events grow as a tree, as switch runs did (Q40), so they share or match that total for one action.
 - [ ] Tests prove two scripts paying from one balance charge the full sum, for a stat Currency and a coin Currency.
 - [ ] A test proves a third script's balance read includes earlier payments and direct writes.
 - [ ] A test proves a script that fails after a `pay` moves no money.
 - [ ] A test proves inventory writes land once in the turn's result, with no double apply when the turn commits or re-rolls.
+- [ ] A test proves a stat re-roll keeps the turn's location, time, scene entities, memories and diary lines. Ticket 05 left this criterion open because its drop has no reachable seam, so this test may need one moved out of the game view.
 - [ ] Each new guard fails when the script's money state reads the start of the timing again.
 - [ ] Scripts Reference's Items and Currencies sections describe this, and the changelog entry from ticket 02 covers it.
