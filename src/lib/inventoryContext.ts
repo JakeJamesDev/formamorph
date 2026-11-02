@@ -1,10 +1,11 @@
 import type { BodySlot, SlotOwner } from './bodies';
+import { balanceText, worthText, type Balance } from './currency';
 import { copiesAt } from './inventory';
 import { copyFace, copyState, isUnidentified, slotRuleMark, usesLeft } from './items';
 import type { ContextFormat } from './statContext';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { xmlEscape } from './utils';
-import type { Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
+import type { Currency, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 
 /** What the inventory block reads: the authored items, every Item Copy, and who and where the scene is. */
 export interface InventoryScene {
@@ -19,6 +20,10 @@ export interface InventoryScene {
   location: { id: string; name: string } | null;
   /** Absent ⇒ the world has no Bodies, and the block names no slot. */
   equipment?: InventoryEquipment;
+  /** What the items are priced in. Absent ⇒ none, and the block names no worth or balance. */
+  currencies?: readonly Currency[];
+  /** What each owner holds in a Currency. Absent ⇒ every owner is untracked. */
+  balanceOf?: (currency: Currency, owner: SlotOwner) => Balance;
 }
 
 /** The world's slots and each owner's slots in force. */
@@ -28,7 +33,7 @@ export interface InventoryEquipment {
 }
 
 /** What the block reads of an item: an authored item, or a runtime item's name and description. */
-type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription' | 'uses' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription' | 'slotRule'>
+type Named = Pick<Item, 'name' | 'aiSummary' | 'aiDescription' | 'uses' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription' | 'slotRule' | 'value' | 'currencyId'>
   & { runtimeDescription?: string };
 
 /** Uses left as the block reads them, as the Inventory tab shows them (Q30). Null when there is nothing to say. */
@@ -43,14 +48,14 @@ function usesMark(item: Named, copy: ItemCopy): string | null {
 const slotText = (name: string, count: number): string => (count > 1 ? `${name} ×${count}` : name);
 
 /** The name an Item Copy goes by in the block (its unidentified face while unidentified): its slot mark, State,
- *  uses left, quantity and hidden state after it. */
-function copyName(item: Named, copy: ItemCopy, slotMark: string): string {
+ *  uses left, quantity, worth and hidden state after it. */
+function copyName(item: Named, copy: ItemCopy, slotMark: string, worth: string | null): string {
   const name = copyFace(item, copy).name;
   const state = copyState(copy);
   const uses = usesMark(item, copy);
   const marks = [
     ...(slotMark ? [slotMark] : []), ...(state ? [state] : []), ...(uses ? [uses] : []),
-    ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(copy.visibility === 'hidden' ? ['hidden'] : []),
+    ...(copy.quantity > 1 ? [`×${copy.quantity}`] : []), ...(worth ? [worth] : []), ...(copy.visibility === 'hidden' ? ['hidden'] : []),
   ];
   return marks.length ? `${name} (${marks.join(', ')})` : name;
 }
@@ -58,11 +63,11 @@ function copyName(item: Named, copy: ItemCopy, slotMark: string): string {
 /** The AI text of an item: its AI Summary, else its AI Description. */
 const aiText = (item: Named): string => (item.aiSummary?.trim() || item.aiDescription?.trim()) ?? '';
 
-/** An unidentified copy's line: the face the player sees, then the true face marked unknown to the player (Q14, Q38). */
-function unidentifiedLine(item: Named, copy: ItemCopy, slotMark: string): string {
+/** An unidentified copy's line: the face the player sees, then the true face and worth marked unknown to the player (Q14, Q38). */
+function unidentifiedLine(item: Named, copy: ItemCopy, slotMark: string, worth: string | null): string {
   const seen = copyFace(item, copy).description?.trim();
   const truth = aiText(item);
-  return `${copyName(item, copy, slotMark)}${seen ? `: ${seen}` : ''} (unknown to the player: it is ${item.name}${truth ? `: ${truth}` : ''})`;
+  return `${copyName(item, copy, slotMark, null)}${seen ? `: ${seen}` : ''} (unknown to the player: it is ${item.name}${worth ? `, ${worth}` : ''}${truth ? `: ${truth}` : ''})`;
 }
 
 /**
@@ -71,7 +76,8 @@ function unidentifiedLine(item: Named, copy: ItemCopy, slotMark: string): string
  * hidden ones marked. A runtime item goes by its name; one with a description gets a line of its own (Q145), as
  * does an unidentified copy, with both faces. In a world with Bodies, each owner block opens with that owner's
  * slots and each equippable item names its Slot Rule (Q52, Q41); the player's block shows even when empty.
- * N/A when nobody present has an item and the world has no Bodies.
+ * A priced item names its worth, each unit's on a stack, and each tracked owner's block names its balances.
+ * N/A when nobody present has an item or a balance and the world has no Bodies.
  */
 export function buildInventoryContext(scene: InventoryScene, format: ContextFormat): string {
   const items = new Map(scene.items.map((item) => [item.id, item]));
@@ -82,8 +88,13 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
   });
   /** The item's Slot Rule; empty for an item with no slot or in a world with no Bodies. */
   const slotMark = (item: Named) => slotRuleMark(item.slotRule, scene.equipment?.slots ?? []);
-  const nameOf = (item: Named, copy: ItemCopy) => copyName(item, copy, slotMark(item));
-  const faceLine = (item: Named, copy: ItemCopy) => unidentifiedLine(item, copy, slotMark(item));
+  const currencies = scene.currencies ?? [];
+  const worthMark = (item: Named, copy: ItemCopy) => {
+    const worth = worthText(item, currencies, scene.items);
+    return worth && `worth ${worth}${copy.quantity > 1 ? ' each' : ''}`;
+  };
+  const nameOf = (item: Named, copy: ItemCopy) => copyName(item, copy, slotMark(item), worthMark(item, copy));
+  const faceLine = (item: Named, copy: ItemCopy) => unidentifiedLine(item, copy, slotMark(item), worthMark(item, copy));
   const md = format === 'markdown';
   const xml = format === 'xml';
   const field = (key: string, value: string) => {
@@ -106,7 +117,11 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
   };
   const ownerBlock = (name: string, where: SlotOwner) => {
     const held = named(where);
-    if (!held.length && !(where.kind === 'you' && scene.equipment)) return '';
+    const balances = currencies.flatMap((currency) => {
+      const balance = scene.balanceOf?.(currency, where);
+      return balance?.tracked ? [field('balance', balanceText(balance.amount, currency, scene.items))] : [];
+    });
+    if (!held.length && !balances.length && !(where.kind === 'you' && scene.equipment)) return '';
     const own = scene.equipment?.slotsOf(where);
     // The owner's slots in force, or `none`; nothing in a world with no Bodies.
     const slotsLine = own ? field('slots', own.length ? own.map((s) => slotText(s.slot.name, s.capacity)).join(', ') : 'none') : '';
@@ -115,7 +130,7 @@ export function buildInventoryContext(scene: InventoryScene, format: ContextForm
       const text = aiText(item);
       return field('equipped', text ? `${nameOf(item, copy)}: ${text}` : nameOf(item, copy));
     });
-    return block('owner', name, slotsLine + equipped.join('') + listed('carried', held.filter(({ copy }) => !copy.equipped)));
+    return block('owner', name, slotsLine + balances.join('') + equipped.join('') + listed('carried', held.filter(({ copy }) => !copy.equipped)));
   };
   const here = scene.location && named({ kind: 'location', id: scene.location.id });
   const out = [

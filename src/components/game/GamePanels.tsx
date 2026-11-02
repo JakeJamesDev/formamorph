@@ -43,6 +43,7 @@ import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
 import { AvatarIcon, EntitiesIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
+import { balanceRows } from '@/lib/currency';
 import { InventoryTab } from './InventoryTab';
 import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { useInventoryPanel, type InventoryPanelSettle } from './useInventoryPanel';
@@ -1402,8 +1403,6 @@ export const RightPanel = ({
     return item && visibleItemImage(item, copy, gateInput);
   }, [worldItems, gateInput]);
   const inventory = useInventoryPanel(inventorySettle, itemImageOf);
-  // A world without items keeps its three tabs.
-  const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0;
   const {
     options: entityOptions, shown: shownEntity, section: entitySection, players: playedOwners, showPicker: entitiesShowStats,
   } = useStatPanelEntity(entityInForce);
@@ -1439,6 +1438,12 @@ export const RightPanel = ({
   const visibleStats = globalStats
     .map((stat, index) => ({ stat, index }))
     .filter(({ stat }) => statEnabled[stat.id] !== false && stat.hidden !== true);
+  // Only stats the player can see count here, so a hidden or switched-off backing stat has no row.
+  const balances = balanceRows(inventory.currencies ?? [], {
+    copies: inventory.copies, placements: [], globalStats: visibleStats.map(({ stat }) => stat), statsOf: () => playedOwners.flatMap((owner) => owner.rows),
+  }, inventory.items);
+  // A world with no items and no money keeps its three tabs.
+  const hasInventory = inventory.items.length > 0 || inventory.copies.length > 0 || balances.length > 0;
   // Whether the descriptor line is part of this world's stat list at all. Held across every row so the list
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
@@ -1618,6 +1623,7 @@ export const RightPanel = ({
             <div className="min-h-0 flex-grow">
               <InventoryTab
                 {...inventory}
+                balances={balances}
                 entityCard={entitiesShowWorn && shownEntity && entitySection && (
                   <PanelOwnerCard
                     key={shownEntity.id}

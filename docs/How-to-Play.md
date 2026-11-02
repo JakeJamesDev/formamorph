@@ -265,7 +265,7 @@ The **Logs** tab lists what the game changed. That includes your starting traits
 | Persona row | Shows who you play. **Change** opens **Change Persona**. See [Change It in Game](Personas#change-it-in-game). |
 | **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Regenerate Stats** asks the AI again. A picker shows the stats of one entity in the scene. Shows only when the world has stats you can see. |
 | **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Entities in the scene follow. Filter them, or switch one on or off. |
-| **Inventory** | What you wear and what you carry. See [How to Use Your Inventory](#how-to-use-your-inventory). Shows only when the world has items. |
+| **Inventory** | What you wear and what you carry. See [How to Use Your Inventory](#how-to-use-your-inventory). Shows only when the world has items or money. |
 | **Location** | Where you are, its description and the places it connects to |
 
 ## How to Use Your Inventory
@@ -290,6 +290,7 @@ The buttons are icons. Their tooltips name the item, such as *Use Healing Potion
 
 Changes apply at once, and the next turn's narration sees them.
 
+- **Money** lists how much you have of each kind of money in the world, such as *1 Gold, 5 Copper*. Hidden and unidentified coins don't count.
 - **Effects** lists the effects you have running, with the time left. A second dose restarts an effect's timer; it doesn't stack.
 - An item with uses shows how many are left under its name.
 - An item can show a State word beside its name, such as *lit* or *sealed*. Copies with different States don't stack.

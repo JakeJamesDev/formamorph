@@ -220,6 +220,9 @@ An item priced in a coin Currency shows one **Value** field per coin. Type 1 in 
 - 🥇 A new item takes the first Currency in the list. Drag a row to change which one comes first.
 - 🔗 The stat list holds your global stats, the stats your Personas link, and each Persona's own stats. A stat that many Personas link shows once.
 - 💰 The player sees an item's worth in its popup, such as "Worth 40 Credits" or "Worth 1 Gold, 5 Copper". An unidentified copy shows no worth.
+- 👛 The **Inventory** tab lists the player's money under **Money**: one row for each Currency with coins or a stat the player has. A **Name Only** Currency has no row. A hidden stat has no row either.
+- 🤖 The **Inventory** chip tells the AI each listed item's worth, and how much money the player and each entity have.
+- 🏪 To limit how much an entity can pay, place one of the coins on it, or give it the stat. An entity with neither has no money to run out of. A Global Stat is the player's money only.
 - 🚫 An item with **No Currency** shows no worth, even with a **Value**.
 
 ## Equipment Settings

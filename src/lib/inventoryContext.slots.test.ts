@@ -39,7 +39,7 @@ const equipment = (bodies: Body[], picks: Record<string, Body | 'none'> = {}): S
 });
 /** The sample scene, at the Landing with Wren and the gull, holding `copies` under `gear`. */
 const scene = (copies: ItemCopy[], gear?: SceneEquipment): ChipScene => ({
-  ...sampleChipScene(), items: ITEMS, itemCopies: copies, ...(gear && { equipment: gear }),
+  ...sampleChipScene(), items: ITEMS, itemCopies: copies, currencies: undefined, ...(gear && { equipment: gear }),
 });
 const render = (copies: ItemCopy[], gear?: SceneEquipment, key = '<INVENTORY|markdown>') => chipValues(scene(copies, gear))(key);
 

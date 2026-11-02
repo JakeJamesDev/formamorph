@@ -523,6 +523,8 @@ const GameViewer = ({
     items: worldItems,
     slots: worldSlots,
     bodies: worldBodies,
+    placements: worldPlacements,
+    currencies: worldCurrencies,
     worldOverview,
     worldId,
     worldLoaded,
@@ -2435,6 +2437,8 @@ const GameViewer = ({
     items: worldItems,
     itemCopies,
     runtimeItems,
+    currencies: worldCurrencies,
+    placements: worldPlacements,
     strangerLabels,
     equipment: sceneEquipment,
   });

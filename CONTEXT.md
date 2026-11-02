@@ -169,6 +169,10 @@ What holds a Currency: a stat, coin items, or nothing, for a name only. A stat b
 A row of a coin-backed Currency: a Stackable item and its worth in the base unit. The smallest coin is worth 1, no two coins share a worth, and an item is a coin of one Currency at most. The Breakdown reads an item's Value as coins, largest first, such as "1 Gold, 5 Copper".
 _Avoid_: denomination
 
+**Balance**:
+What an owner holds in a Currency, or that the owner is untracked, which is never the same as 0. Coins count the visible, identified copies at the owner, and the player always tracks them. An entity tracks them when a Placement of one of the coins starts at it. A stat counts for whoever has it, and a Global Stat counts for the player alone. A name-only Currency tracks no one. Players read it as **Money**.
+_Avoid_: wallet, funds
+
 **Slot**:
 A name in the world's slot list where an item is equipped, such as Main Hand or Ring. A slot has no capacity of its own: each Body that holds it gives it one, and one capacity unit holds one Item Copy. One list serves every Body, so an item's slot works in any Body that has it.
 

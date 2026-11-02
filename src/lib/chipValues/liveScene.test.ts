@@ -7,7 +7,7 @@ import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlann
 import { buildToolSnapshot } from '../tools/toolSnapshot';
 import { renderPromptTemplate } from '../promptTemplate';
 import { layerValues } from '../promptValues';
-import type { Entity, GameLocation, PersonaRef, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
+import type { Currency, Entity, GameLocation, Item, PersonaRef, Placement, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
 const quay: GameLocation = { id: 'quay', name: 'Quay', aiDescription: 'Wet stone and rope.' };
@@ -51,6 +51,33 @@ const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
 });
 
 describe('the live adapter', () => {
+  describe('balances in the Inventory chip', () => {
+    const credits: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
+    const coin: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }] } };
+    const funds = (over: Partial<PlayerStat> = {}): PlayerStat => ({ ...grit, id: 'funds', name: 'Funds', value: 30, ...over });
+    const read = (over: Partial<LiveSceneSources>) => chipValues(liveChipScene(sources({ currencies: [credits], ...over })))('<INVENTORY|markdown>');
+
+    it('reads an entity’s stat, and keeps a hidden stat, which the AI reads', () => {
+      expect(read({ entityStats: { harbormaster: [funds()] } })).toContain('**balance:** 30 Credits');
+      expect(read({ entityStats: { harbormaster: [funds({ hidden: true })] } })).toContain('**balance:** 30 Credits');
+    });
+
+    it('reads a switched-off stat as untracked', () => {
+      expect(read({ entityStats: { harbormaster: [funds({ enabled: false })] } })).not.toContain('balance');
+    });
+
+    it('reads a Global Stat from the switched-on stats play sends, on the player’s block alone', () => {
+      expect(read({ stats: [funds()] })).toBe('- **the player**\n  - **balance:** 30 Credits\n');
+      expect(read({ stats: [grit] })).toBe('N/A');
+    });
+
+    it('reads who the author gave coins through the world’s Placements', () => {
+      const placements: Placement[] = [{ id: 'p', where: { kind: 'entity', id: 'harbormaster' }, quantity: 1, source: { kind: 'item', itemId: 'copper' } }];
+      const items: Item[] = [{ id: 'copper', name: 'Copper', statEffects: [], traitEffects: [], equipRequires: [] }];
+      expect(read({ currencies: [coin], items, placements })).toContain('- **Harbormaster**\n  - **balance:** 0 Copper');
+    });
+  });
+
   it('rosters Here from the full cast and the outer scopes from the authored cast', () => {
     const values = chipValues(liveChipScene(sources({ location: warehouse })));
     expect(values('<ENTITIES|name>')).toBe('Porter, Stray');

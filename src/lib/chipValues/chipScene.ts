@@ -1,5 +1,5 @@
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, PersonaRef, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, DictionaryEntry, Entity, GameLocation, Item, ItemCopy, PersonaRef, Placement, RuntimeItem, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import type { slotsInForce } from '../bodies';
 import type { OwnedStatsInForce, OwnedTraitsInForce, StrangerLabels } from '../locationContext';
@@ -65,6 +65,10 @@ export interface ChipScene {
   itemCopies?: readonly ItemCopy[];
   /** The runtime items the Inventory pass made. None when absent. */
   runtimeItems?: readonly RuntimeItem[];
+  /** The world's Currencies. None when absent. */
+  currencies?: readonly Currency[];
+  /** The world's Placements, which say whose coin balance the author set. None when absent. */
+  placements?: readonly Placement[];
   /** What each owner's slots in force read: the Bodies, the slots, the Body picks, and the played persona. No
    *  slots when absent. */
   equipment?: SceneEquipment;

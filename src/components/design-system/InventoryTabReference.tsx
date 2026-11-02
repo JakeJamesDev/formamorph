@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs } from '@/components/ui/tabs';
 import { Hint, Meta } from '@/components/ui/typography';
 import { InventoryTab } from '@/components/game/InventoryTab';
+import type { BalanceRow } from '@/lib/currency';
 import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { applyInventoryOps, type InventoryOp, type TimedEffectView } from '@/lib/inventory';
 import { ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
@@ -46,6 +47,10 @@ const TIMED: TimedEffectView[] = [
   { key: 'tonic-strength', itemName: 'Healing Tonic', effect: 'Strength +2', hoursLeft: 4 / 3 },
   { key: 'tonic-ward', itemName: 'Healing Tonic', effect: 'Warded', hoursLeft: 26 },
   { key: 'hidden', itemName: null, effect: 'Max Health -5', hoursLeft: 0.25 },
+];
+const BALANCES: BalanceRow[] = [
+  { currencyId: 'crowns', name: 'Crowns', amount: '1 Gold, 5 Copper' },
+  { currencyId: 'credits', name: 'Credits', amount: '40' },
 ];
 const PRESENT = [{ id: 'courier', name: 'Courier' }, { id: 'archivist', name: 'Archivist' }];
 const HERE = 'sample-room';
@@ -90,6 +95,7 @@ export function InventoryTabReference() {
           <li><strong>Drop</strong> and <strong>Give</strong> on a stack ask how many.</li>
           <li><strong>Use</strong> spends one Healing Tonic or one Ash Wand use, and turns off at zero uses.</li>
           <li>The Ash Wand is Bound, so you can&apos;t drop or give it.</li>
+          <li><strong>Money</strong> lists one row per kind of money, with coins as their largest pieces first.</li>
           <li><strong>Effects</strong> lists the After Use effects running, with the time left.</li>
           <li><strong>Give</strong> lists the entities in the scene first, then the rest at the location.</li>
           <li>A card named for the location lists the visible items there, each with <strong>Pick Up</strong>.</li>
@@ -106,6 +112,7 @@ export function InventoryTabReference() {
             copies={copies.filter((c) => c.where.kind === 'you')}
             lying={copies.filter((c) => c.where.kind === 'location')}
             items={ITEMS}
+            balances={BALANCES}
             body={BODIES[0]}
             slots={BODY_SLOTS}
             worldSlots={SLOTS}
