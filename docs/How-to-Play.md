@@ -327,11 +327,11 @@ An **Equipped** list shows what the entity wears, when you can see it. What the 
 
 Select an item's row in the **Inventory** tab, or an item in an entity's **Equipped** list, to open its popup. The popup shows the item's image and description, with its State, count and uses left beside its name. An unidentified item shows only its unidentified name and description.
 
-## Icon Credits
-<!-- keywords: icon credits, who made the icons, game icons, icon license, item icon artists -->
-<!-- route: iconCredits -->
+## Credits
+<!-- keywords: credits, who made the game, who made the icons, icon credits, game icons, icon license, item icon artists, llama.cpp -->
+<!-- route: credits -->
 
-The line that starts **Icons by** at the bottom of the Main Menu names the artists of the item icons. Select it to see the full credit and the license. On mobile, it's in the **⋯** menu.
+Select **Credits** at the bottom of the Main Menu to see who made Formamorph. It names Jake James, FieryLionite, the artists of the item icons with their license, and, on desktop, llama.cpp. On mobile, it's in the **⋯** menu.
 
 ## The Stranger Dialog
 <!-- keywords: stranger, hooded figure, unknown person, who is this, not met, alias -->
