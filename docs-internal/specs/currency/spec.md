@@ -99,6 +99,7 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q72 | (ticket 06) Every pay of a buy's sum that shares a party is dropped, not one per buy. A real second equal pay in that reply counts once |
 | Q74 | (ticket 08) Emberwatch's Rogue and Halfling bonuses are At Game Start scripts on their Blueprint traits, because no trait field grants items. Rogue gives 2 Gold and Halfling 5 Silver. Jory Pike alone holds a tracked purse of about 30 Gold; the other shopkeepers stay untracked. The Currency is named Coin, and Old King's Coin stays a priced non-money item |
 | Q73 | (ticket 06) A stated coin price beats Q64: a name-only item priced "12 Copper" charges 12 Copper. A Value of 0 moves alone only with a Currency that settles. With no Currency it stays priceless and refused (Q13) |
+| Q76 | (after ticket 09) Narrows Q56: a pay with no price or no one on either side says nothing, so a gain, lose or transfer beside it runs. A pay with no price still blocks them when the player is its payer. A pay with a price it can't read, or one refused for funds or a lock, still blocks them. Probes showed Q56 losing a correct bounty in 5 of 15 runs |
 | Q75 | (ticket 09) "Coin" leaves the product and the code. The backing is `{ kind: 'items', items: [{ itemId, worth }] }`, the label is **Items**, and a row is a **Currency Item**, because they are plain items and the author names the Currency. Earlier rulings keep "coin" as history and mean a Currency Item |
 
 ## User Stories

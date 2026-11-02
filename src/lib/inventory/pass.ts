@@ -247,14 +247,13 @@ export function applyInventoryPass(
 
   const payLabel = (op: InventoryPassOp) => `pay "${op.price ?? ''}"`;
 
-  /** The sum a pay states. A reply can name the money as the item or the currency alone, with how many as a quantity above 1. */
-  const statedPay = (op: InventoryPassOp) => {
-    const count = op.quantity > 1 ? op.quantity : undefined;
-    const price = op.price || op.item || (op.currency && count ? String(count) : '');
-    return readStatedPrice(price, op.currency ?? '', moneyCurrencies, moneyNames, count);
-  };
+  /** The words of a pay's sum. A reply can name the money as the item or the currency alone, with how many as a quantity above 1. */
+  const payPrice = (op: InventoryPassOp) => op.price || op.item || (op.currency && op.quantity > 1 ? String(op.quantity) : '');
 
-  /** Settles one pay and answers the Currencies it governs: all of them when its money can't be read. */
+  const statedPay = (op: InventoryPassOp) =>
+    readStatedPrice(payPrice(op), op.currency ?? '', moneyCurrencies, moneyNames, op.quantity > 1 ? op.quantity : undefined);
+
+  /** Settles one pay and answers the Currencies it governs. With no price or no one on either side it says nothing, so it governs none, unless the player pays (Q76). */
   const settlePay = (op: InventoryPassOp): readonly Currency[] => {
     if (!scene.money) {
       skip(`${payLabel(op)}: the world has no Currency`);
@@ -268,11 +267,13 @@ export function applyInventoryPass(
     const stated = statedPay(op);
     if ('refused' in stated) {
       skip(`${payLabel(op)}: ${stated.refused}`);
-      return moneyCurrencies;
+      return !payPrice(op) && partyOf(op.owner)?.kind !== 'you' ? [] : moneyCurrencies;
     }
-    const refused = movePayment(stated.currency, partyOf(op.owner), partyOf(op.to), stated.amount);
+    const payer = partyOf(op.owner);
+    const payee = partyOf(op.to);
+    const refused = movePayment(stated.currency, payer, payee, stated.amount);
     if (refused) skip(`${payLabel(op)}: ${refused}`);
-    return [stated.currency];
+    return payer || payee ? [stated.currency] : [];
   };
 
   /** `key` is the item's Unidentified Name. */

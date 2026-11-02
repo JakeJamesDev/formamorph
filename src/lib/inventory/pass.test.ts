@@ -600,6 +600,19 @@ describe('pay', () => {
     expect(diagnostics).toHaveLength(2);
   });
 
+  it('runs a gain beside a pay with no price or no one on either side (Q76)', () => {
+    for (const bad of [op('pay', '', { quantity: 4, owner: 'here', to: 'you' }), pay('here', '', '4 Copper')]) {
+      const { copies } = settle([], [op('gain', 'Copper', { quantity: 4, owner: 'here', to: 'you' }), bad]);
+      expect(counts(copies, you)).toEqual({ copper: 4 });
+    }
+  });
+
+  it('hands no free money when a pay with no price names the player as payer (Q76)', () => {
+    const start = [copy('c', 'copper', you, { quantity: 3 })];
+    const { copies } = settle(start, [op('pay', '', { owner: 'you', to: 'Mara' }), op('gain', 'Gold', { to: 'you' })]);
+    expect(copies).toEqual(start);
+  });
+
   it('hands a broke player no free money when a refused pay comes with a gain as change (Q56)', () => {
     const start = [copy('c', 'copper', you, { quantity: 3 })];
     const { copies } = settle(start, [pay('you', 'Mara', '1 Gold'), op('gain', 'Gold', { to: 'you' })]);
