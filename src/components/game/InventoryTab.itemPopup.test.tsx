@@ -75,7 +75,7 @@ describe('InventoryTab item popup', () => {
     const worn = copy('s', 'sword', { equipped: { slotId: 'hand', order: 1 } });
     render(<InventoryTab {...props({ copies: [worn], body, slots: bodySlots(body, slots) })} />);
     await userEvent.click(within(screen.getByRole('group', { name: 'Equipped' })).getByRole('button'));
-    await userEvent.click(await screen.findByRole('button', { name: 'Greatsword' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Greatsword' }));
     expect(within(await screen.findByRole('dialog')).getByText('A long blade.')).toBeInTheDocument();
   });
 

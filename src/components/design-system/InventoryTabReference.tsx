@@ -83,9 +83,9 @@ export function InventoryTabReference() {
           Shows the Status panel&apos;s Inventory tab on sample items. <strong>Equip</strong>, <strong>Unequip</strong>, <strong>Use</strong>, <strong>Drop</strong> and <strong>Give</strong> act at once.
         </CardDescription>
         <Hint as="ul" className="list-disc space-y-1 pl-5">
-          <li><strong>Equipped</strong> draws the figure. The Greatsword takes both hands, so its icon shows in each, and its image doesn&apos;t show.</li>
+          <li><strong>Equipped</strong> draws the figure, with a list beside it. The Greatsword takes both hands, so its icon shows in each, its image doesn&apos;t show, and the list gives it one row with both slot names.</li>
           <li>The Silver Ring&apos;s icon is set to None, so its tall image shows and keeps its shape in a wide box. Selecting beside it opens the Greatsword under it.</li>
-          <li>Select a filled box for <strong>Use</strong> and <strong>Unequip</strong>. An empty box names its slot when you hover over it or select it.</li>
+          <li>Select a filled box or a list row&apos;s name for the item&apos;s full name, <strong>Use</strong> and <strong>Unequip</strong>. <strong>Unequip</strong> on the row acts at once. An empty box names its slot when you hover over it or select it.</li>
           <li>Equip the Ash Wand to see an icon from an item&apos;s name. Hover over its box to see the name.</li>
           <li><strong>Drop</strong> and <strong>Give</strong> on a stack ask how many.</li>
           <li><strong>Use</strong> spends one Healing Tonic or one Ash Wand use, and turns off at zero uses.</li>
