@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PROMPT_TEXT_DEFAULTS, defaultSystemPrompt } from '@/components/game/GamePrompts';
-import type { Item, ItemCopy, ItemCopyWhere } from '@/types';
+import type { Currency, Item, ItemCopy, ItemCopyWhere, Placement, PlayerStat } from '@/types';
 import { chipValues } from './chipValues/chipValues';
 import type { ChipScene } from './chipValues/chipScene';
 import { sampleChipScene, sampleWorld } from './chipValues/sampleScene';
@@ -21,9 +21,106 @@ const ITEMS = [
   item('ring', 'Plain Ring'),
   item('coin', 'Copper Coin'),
 ];
-/** The sample scene, at the Landing with Wren and the gull, holding `copies`. */
-const scene = (copies: ItemCopy[]): ChipScene => ({ ...sampleChipScene(), items: ITEMS, itemCopies: copies });
+/** The sample scene with no money, at the Landing with Wren and the gull, holding `copies`. */
+const scene = (copies: ItemCopy[]): ChipScene => ({ ...sampleChipScene(), items: ITEMS, itemCopies: copies, currencies: undefined, placements: undefined });
 const render = (copies: ItemCopy[], key = '<INVENTORY|markdown>') => chipValues(scene(copies))(key);
+
+describe('the Inventory chip’s money', () => {
+  const COPPER = item('copper', 'Copper');
+  const GOLD = item('gold', 'Gold');
+  const COIN: Currency = { id: 'coin', name: 'Coin', backing: { kind: 'coins', coins: [{ itemId: 'copper', worth: 1 }, { itemId: 'gold', worth: 100 }] } };
+  const CREDITS: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
+  const GOATS: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };
+  const BLADE = item('blade', 'Notched Blade', { value: 105, currencyId: 'coin' });
+  const ROPE = item('rope', 'Rope', { value: 12, currencyId: 'goats' });
+  const purse = (where: Placement['where']): Placement => ({ id: 'p1', where, quantity: 1, source: { kind: 'item', itemId: 'gold' } });
+  const money = (copies: ItemCopy[], over: Partial<ChipScene> = {}): ChipScene => ({
+    ...scene(copies), items: [BLADE, ROPE, COPPER, GOLD, ...ITEMS.filter((i) => i.id === 'cloak')], currencies: [COIN, GOATS], placements: [purse({ kind: 'entity', id: 'wren' })], ...over,
+  });
+  const read = (s: ChipScene, key = '<INVENTORY|markdown>') => chipValues(s)(key);
+
+  it('names worth and balances in markdown, and shows an untracked owner none', () => {
+    expect(read(money([
+      copy('copper', { kind: 'you' }, { quantity: 105 }),
+      copy('blade', { kind: 'you' }),
+      copy('gold', { kind: 'entity', id: 'wren' }, { quantity: 2 }),
+      copy('blade', { kind: 'entity', id: 'gull' }),
+      copy('rope', { kind: 'location', id: 'landing' }),
+    ]))).toBe([
+      '- **Traveler**',
+      '  - **balance:** 1 Gold, 5 Copper',
+      '  - **carried:** Copper (×105), Notched Blade (worth 1 Gold, 5 Copper)',
+      '- **Wren**',
+      '  - **balance:** 2 Gold',
+      '  - **carried:** Gold (×2)',
+      '- **a gull**',
+      '  - **carried:** Notched Blade (worth 1 Gold, 5 Copper)',
+      '- **The Landing**',
+      '  - **lying here:** Rope (worth 12 Goats)',
+      '',
+    ].join('\n'));
+  });
+
+  it('names worth and balances in xml', () => {
+    const out = read(money([copy('copper', { kind: 'you' }, { quantity: 7 }), copy('blade', { kind: 'you' })]), '<INVENTORY|xml>');
+    expect(out).toContain('<balance>7 Copper</balance>');
+    expect(out).toContain('<carried>Copper (×7), Notched Blade (worth 1 Gold, 5 Copper)</carried>');
+  });
+
+  it('names worth and balances in plain text', () => {
+    const out = read(money([copy('copper', { kind: 'you' }, { quantity: 7 }), copy('blade', { kind: 'you' })]), '<INVENTORY>');
+    expect(out).toContain('  balance: 7 Copper\n');
+    expect(out).toContain('  carried: Copper (×7), Notched Blade (worth 1 Gold, 5 Copper)\n');
+  });
+
+  it('gives each unit’s worth on a stack', () => {
+    expect(read(money([copy('blade', { kind: 'you' }, { quantity: 3 })]))).toContain('Notched Blade (×3, worth 1 Gold, 5 Copper each)');
+  });
+
+  it('shows a tracked owner with nothing in hand, and at 0', () => {
+    expect(read(money([]))).toBe('- **Traveler**\n  - **balance:** 0 Copper\n- **Wren**\n  - **balance:** 0 Copper\n');
+  });
+
+  it('puts an unidentified copy’s worth with its true face, never its visible one', () => {
+    const cursed = item('cursed', 'Ring of Curses', { value: 7, currencyId: 'coin', aiSummary: 'Drains the wearer.', unidentifiedName: 'Dull Ring', unidentifiedDescription: 'A tarnished band.' });
+    const out = read({ ...money([copy('cursed', { kind: 'you' }, { state: { unidentified: true } })]), items: [cursed, COPPER, GOLD] });
+    expect(out).toContain('Dull Ring: A tarnished band. (unknown to the player: it is Ring of Curses, worth 7 Copper: Drains the wearer.)');
+  });
+
+  it('leaves a hidden coin out of the balance and marks it hidden', () => {
+    const out = read(money([copy('gold', { kind: 'you' }, { visibility: 'hidden' })]));
+    expect(out).toContain('**balance:** 0 Copper');
+    expect(out).toContain('Gold (hidden)');
+  });
+
+  it('reads a stat balance from the played persona, a Global Stat wallet, and a present entity', () => {
+    const funds = (value: number) => ({ id: 'funds', value }) as PlayerStat;
+    const base = money([], { currencies: [CREDITS], placements: [] });
+    expect(read({ ...base, stats: [funds(9)], ownedStats: { wren: [funds(50)] } })).toBe('- **Traveler**\n  - **balance:** 9 Credits\n');
+    expect(read({ ...base, playedStats: [{ ownerId: 'traveler', stats: [funds(40)] }], ownedStats: { wren: [funds(50)] } }))
+      .toBe('- **Traveler**\n  - **balance:** 40 Credits\n- **Wren**\n  - **balance:** 50 Credits\n');
+  });
+
+  it('leaves a played entity’s block to the player, with one balance', () => {
+    const played = money([copy('gold', { kind: 'you' })], { playedEntities: [sampleWorld().entities[0]] });
+    expect(read(played)).toBe('- **Traveler**\n  - **balance:** 1 Gold\n  - **carried:** Gold\n');
+  });
+
+  it('stays byte-equal in a world with no Currencies, whatever an item stores', () => {
+    const priced = { ...scene([copy('blade', { kind: 'you' }, { quantity: 2 })]), items: [BLADE] };
+    expect(read(priced)).toBe('- **Traveler**\n  - **carried:** Notched Blade (×2)\n');
+    expect(read({ ...priced, currencies: [], placements: [purse({ kind: 'entity', id: 'wren' })] })).toBe('- **Traveler**\n  - **carried:** Notched Blade (×2)\n');
+    expect(read({ ...scene([]), items: [BLADE] })).toBe('N/A');
+  });
+
+  it('reads the sample scene’s worth and balances', () => {
+    const out = chipValues(sampleChipScene())('<INVENTORY|markdown>');
+    expect(out).toContain('**balance:** 1 Silver Crown, 4 Copper Bit');
+    expect(out).toContain('**balance:** 3 Silver Crown');
+    expect(out).toContain('Coil of Rope (worth 1 Silver Crown, 2 Copper Bit)');
+    expect(out).toContain('Brass Compass (worth 15 Silver Crown)');
+  });
+});
 
 describe('the Inventory chip', () => {
   it("lists each present owner's equipped items with their summary, then carried items by name", () => {
@@ -123,7 +220,7 @@ describe('the Inventory chip', () => {
 
   it('reads N/A when nobody here has an item', () => {
     expect(render([])).toBe('N/A');
-    expect(chipValues({ ...sampleChipScene(), items: undefined, itemCopies: undefined })('<INVENTORY>')).toBe('N/A');
+    expect(chipValues({ ...sampleChipScene(), items: undefined, itemCopies: undefined, currencies: undefined })('<INVENTORY>')).toBe('N/A');
   });
 
   it('writes the plain and XML shapes', () => {

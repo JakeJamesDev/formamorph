@@ -7,6 +7,7 @@ import {
 } from '../locationContext';
 import { relatedIds, relationshipCast, relationshipLines } from '../entityRelationships';
 import { slotsInForce } from '../bodies';
+import { balanceOf, type BalanceState } from '../currency';
 import { buildInventoryContext, type InventoryScene } from '../inventoryContext';
 import { joinRuns, mark, textOf, type MarkedText } from '../markedText';
 import { personaContextValues } from '../personaContext';
@@ -146,9 +147,18 @@ function inventoryScene(scene: ChipScene): InventoryScene {
     const entity = played.has(id) ? undefined : scene.entities.find((e) => e.id === id);
     return entity ? [{ id, name: entity.name }] : [];
   });
+  const balances: BalanceState = {
+    copies: scene.itemCopies ?? [],
+    placements: scene.placements ?? [],
+    globalStats: scene.stats,
+    // Played entities own through `you`.
+    statsOf: (owner) => (owner.kind === 'you' ? (scene.playedStats ?? []).flatMap((part) => part.stats) : scene.ownedStats?.[owner.id] ?? []),
+  };
   return {
     items: scene.items ?? [],
     copies: scene.itemCopies ?? [],
+    currencies: scene.currencies,
+    balanceOf: (currency, owner) => balanceOf(currency, owner, balances),
     runtimeItems: scene.runtimeItems,
     playerName: scene.playerName == null ? NO_PLAYER : scene.playerName.trim(),
     owners,

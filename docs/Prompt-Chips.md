@@ -71,7 +71,7 @@ The **Now Message** offers **Location**, **Entities**, **Time** and **Notes**.
 ## The Inventory Chip
 <!-- keywords: inventory chip, items in the prompt, what the narrator knows about items, equipped items, carried items, hidden items, items here -->
 
-The **Inventory** chip tells the AI who has which items in the scene.
+The **Inventory** chip tells the AI who has which items in the scene. In a world with Currencies, it also gives each priced item's worth and how much money the player and each entity have.
 
 | Who | What it sends |
 |---|---|

@@ -152,7 +152,7 @@ const devItems = (valueStatId: string | undefined): Item[] => [
 const DEV_PLACEMENTS = ([
   ['dev-item-sword', 1, true], ['dev-item-ring', 1, true], ['dev-item-signet', 1, true], ['dev-item-helmet', 1, true], ['dev-item-amulet', 1, true],
   ['dev-item-cuirass', 1, true], ['dev-item-belt', 1, true], ['dev-item-breeches', 1, true], ['dev-item-boots', 1, true],
-  ['dev-item-tonic', 5], ['dev-item-wand', 1], ['dev-item-stormcaller', 1], ['dev-item-whisper', 1], ['dev-item-elixir', 1], ['dev-item-fish', 3], ['dev-item-trinket', 1],
+  ['dev-item-tonic', 5], ['dev-item-wand', 1], ['dev-item-stormcaller', 1], ['dev-item-whisper', 1], ['dev-item-elixir', 1], ['dev-item-fish', 3], ['dev-item-trinket', 1], ['dev-item-copper', 15], ['dev-item-gold', 1],
 ] as [string, number, boolean?][]).map(([itemId, quantity, equipped]): Placement => ({
   id: `dev-placement-${itemId}`, where: { kind: 'you' }, quantity, source: { kind: 'item', itemId }, ...(equipped ? { equipped: true } : {}),
 }));

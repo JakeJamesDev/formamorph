@@ -11,7 +11,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { formatTimeLeft } from '@/lib/gameClock';
 import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
-import { copyWorthFacts } from '@/lib/currency';
+import { copyWorthFacts, type BalanceRow } from '@/lib/currency';
 import { copyItemIcon } from '@/lib/itemIcons';
 import { byEquipOrder, copyFace, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
@@ -31,6 +31,8 @@ export interface InventoryTabProps {
   items: readonly Item[];
   /** What the items are priced in. Absent ⇒ none. */
   currencies?: readonly Currency[];
+  /** The played Persona's money, one row per tracked Currency. Absent ⇒ none. */
+  balances?: readonly BalanceRow[];
   /** The runtime items the Inventory pass made. Absent ⇒ none. */
   runtimeItems?: readonly RuntimeItem[];
   /** The played Persona's Body in force. Absent = no Body. */
@@ -208,7 +210,7 @@ function EquipButton({ copy, item, name, slots, disabled, resolveText, onOps }: 
 /** The game panel's Inventory tab: the played Persona's figure with their equipped items, then carried items,
  *  then a card for what lies at the location. */
 export function InventoryTab({
-  ownerName, copies, lying, items, currencies = [], runtimeItems = [], body, slots, worldSlots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
+  ownerName, copies, lying, items, currencies = [], balances = [], runtimeItems = [], body, slots, worldSlots, present, locationId, locationName, disabled, resolveText, imageOf, timed = [], onOps, entityCard,
 }: InventoryTabProps) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const runtimeById = new Map(runtimeItems.map((item) => [item.id, item]));
@@ -298,6 +300,19 @@ export function InventoryTab({
             listRow={(copy) => row(copy, equippedActions(copy), { slotLine: occupiedSlots(copy, itemOf(copy)).map(slotNameOf).filter(Boolean).join(', ') })}
             popoverRow={(copy) => row(copy, equippedActions(copy), { wrapName: true })}
           />
+        )}
+        {balances.length > 0 && (
+          <>
+            <PanelSubheader>Money</PanelSubheader>
+            <ul aria-label="Money">
+              {balances.map((balance) => (
+                <li key={balance.currencyId} className="flex min-h-9 items-center gap-2 rounded-md px-2 py-1">
+                  <p className="min-w-0 flex-1 truncate text-label">{resolveText(balance.name)}</p>
+                  <Meta className="shrink-0">{resolveText(balance.amount)}</Meta>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
         <PanelSubheader>Carried</PanelSubheader>
         {carried.length === 0 ? (

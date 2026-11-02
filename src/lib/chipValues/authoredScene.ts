@@ -21,7 +21,7 @@ import { startingCopies } from '../inventory';
 import { openingPlayedEntity, type OpeningPersona } from '../openingState';
 import { startsMet, strangersInPlay } from '../presence';
 import type {
-  Body, Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Slot, Stat,
+  Body, Connection, Currency, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, Placement, PlayerStat, Slot, Stat,
   StatGroup, Trait, TraitGroup, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
@@ -41,6 +41,7 @@ export interface AuthoredWorld {
   placeholders?: Placeholder[];
   items?: Item[];
   placements?: Placement[];
+  currencies?: Currency[];
   slots?: Slot[];
   bodies?: Body[];
 }
@@ -170,6 +171,8 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     resolveEntity,
     placeholders: world.placeholders ?? [],
     items: world.items ?? [],
+    currencies: world.currencies,
+    placements: world.placements,
     // The Item Copies a new game would start with, ids numbered since nothing keeps them.
     itemCopies: startingCopies({ ...world, entities }, undefined, () => `preview-copy-${copyCount++}`),
     // No persona is picked, so the played Body is the Custom Persona entity's.

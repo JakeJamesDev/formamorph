@@ -1,7 +1,9 @@
+import type { SlotOwner } from '@/lib/bodies';
+import { copiesAt } from '@/lib/inventory';
 import { isUnidentified, itemStackable } from '@/lib/items';
 import { canBePlayer } from '@/lib/owners';
 import { globalStatsOf, resolvedEntityStats, statBlueprintIds, type StatLinkWorld } from '@/lib/statLinks';
-import type { Currency, CurrencyBacking, CurrencyCoin, Entity, Item, ItemCopy, Stat } from '@/types';
+import type { Currency, CurrencyBacking, CurrencyCoin, Entity, Item, ItemCopy, Placement, PlayerStat, Stat } from '@/types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 
@@ -85,11 +87,15 @@ export function breakdownText(value: number, currency: Currency, items: readonly
   return coins && coins.map((coin) => `${coin.count} ${coin.name}`).join(', ');
 }
 
+/** `amount` in base units as text: its Breakdown, else the number and the Currency's name. */
+const amountText = (amount: number, currency: Currency, items: readonly ItemName[]): string =>
+  breakdownText(amount, currency, items) ?? `${amount} ${currency.name}`;
+
 /** What `item` is worth as text, such as "40 Gold" or "1 Gold, 5 Copper". Null without a Value and a Currency. */
 export const worthText = (item: Pick<Item, 'value' | 'currencyId'>, currencies: readonly Currency[], items: readonly ItemName[]): string | null => {
   const currency = currencyOf(item, currencies);
   if (!currency || item.value === undefined) return null;
-  return breakdownText(item.value, currency, items) ?? `${item.value} ${currency.name}`;
+  return amountText(item.value, currency, items);
 };
 
 /** The worth an Item Copy shows the player. An unidentified copy shows none, because a price can reveal the item. */
@@ -101,6 +107,66 @@ export const copyWorthFacts = (copy: Pick<ItemCopy, 'state'>, item: Pick<Item, '
   const worth = copyWorthText(copy, item, currencies, items);
   return worth ? [`Worth ${resolveText(worth)}`] : [];
 };
+
+/** What Balance reads. Each stat list holds the stats its reader may count, so a stat left out reads as untracked. */
+export interface BalanceState {
+  copies: readonly ItemCopy[];
+  placements: readonly Placement[];
+  globalStats: readonly Pick<PlayerStat, 'id' | 'value'>[];
+  statsOf: (owner: SlotOwner) => readonly Pick<PlayerStat, 'id' | 'value'>[];
+}
+
+/** What an owner holds in a Currency. Untracked is no amount at all, which is never the same as 0. */
+export type Balance = { tracked: false } | { tracked: true; amount: number };
+
+const UNTRACKED: Balance = { tracked: false };
+
+/** The worth of the coins at `owner`. Only visible, identified copies count, Bound ones included. */
+function coinAmount(coins: readonly CurrencyCoin[], owner: SlotOwner, copies: readonly ItemCopy[]): number {
+  const worthOf = new Map(coins.map((coin) => [coin.itemId, coin.worth]));
+  return copiesAt(copies, owner).reduce((sum, copy) => {
+    const worth = copy.item.kind === 'item' ? worthOf.get(copy.item.itemId) : undefined;
+    return worth !== undefined && copy.visibility === 'visible' && !isUnidentified(copy) ? sum + worth * copy.quantity : sum;
+  }, 0);
+}
+
+/**
+ * What `owner` holds in `currency`. The player always tracks coins, and an entity tracks them from a Placement of
+ * one of the coins at it, hidden or not. A Global Stat counts for the player alone, and any other stat for whoever has it.
+ */
+export function balanceOf(currency: Currency, owner: SlotOwner, state: BalanceState): Balance {
+  const { backing } = currency;
+  if (backing.kind === 'name') return UNTRACKED;
+  if (backing.kind === 'coins') {
+    const authored = owner.kind === 'you' || state.placements.some((placement) => placement.where.kind === 'entity'
+      && placement.where.id === owner.id && backing.coins.some((coin) => coin.itemId === placement.source.itemId));
+    return authored ? { tracked: true, amount: coinAmount(backing.coins, owner, state.copies) } : UNTRACKED;
+  }
+  const global = state.globalStats.find((stat) => stat.id === backing.statId);
+  if (global) return owner.kind === 'you' ? { tracked: true, amount: global.value } : UNTRACKED;
+  const own = state.statsOf(owner).find((stat) => stat.id === backing.statId);
+  return own ? { tracked: true, amount: own.value } : UNTRACKED;
+}
+
+/** A Balance as text, such as "40 Credits" or "1 Gold, 5 Copper". A stat's fraction rounds, as the Stats chip's does. */
+export const balanceText = (amount: number, currency: Currency, items: readonly ItemName[]): string =>
+  amountText(Math.round(amount), currency, items);
+
+/** One row of the Inventory tab's money list. */
+export interface BalanceRow {
+  currencyId: string;
+  name: string;
+  amount: string;
+}
+
+/** The player's tracked Currencies as rows. A coin amount reads as its Breakdown and a stat's as the bare number. */
+export const balanceRows = (currencies: readonly Currency[], state: BalanceState, items: readonly ItemName[]): BalanceRow[] =>
+  currencies.flatMap((currency) => {
+    const balance = balanceOf(currency, { kind: 'you' }, state);
+    if (!balance.tracked) return [];
+    const whole = Math.round(balance.amount);
+    return [{ currencyId: currency.id, name: currency.name, amount: breakdownText(whole, currency, items) ?? `${whole}` }];
+  });
 
 /** Items a coin row can take: Stackable, and no coin of any Currency yet. `keep` always stays, so a row lists its own item. */
 export const coinItemChoices = (items: readonly Item[], currencies: readonly Currency[], keep?: string): Item[] => {
