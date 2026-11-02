@@ -5,9 +5,11 @@ import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 import path from 'path'
 import { readFileSync } from 'fs'
+import { shipNotices } from './scripts/shipNotices.mjs'
 
 const pkg = JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8'))
 const appProxy = process.env.E2E_APP_PROXY_URL
+const notices = shipNotices(import.meta.dirname)
 
 const landingPreview = {
   name: 'landing-preview',
@@ -39,7 +41,7 @@ const landingPreview = {
  * rewrites the account routes onto its index.html.
  */
 export default defineConfig(({ command }) => ({
-  plugins: [react(), landingPreview],
+  plugins: [react(), landingPreview, notices],
   root: 'site',
   cacheDir: path.resolve(import.meta.dirname, 'node_modules/.vite-site'),
   // The shared API endpoints live beside both Vite configs, not under the site entry's root.
@@ -89,5 +91,6 @@ export default defineConfig(({ command }) => ({
   // worker as an ES module; Vite's IIFE default cannot coexist with the route chunk.
   worker: {
     format: 'es',
+    plugins: () => [notices.api.workerPlugin()],
   },
 }))

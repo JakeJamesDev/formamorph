@@ -70,6 +70,8 @@ export function SiteLayout({ title, subtitle, width = 'form', surface = false, c
         <a href="/privacy" className="hover:text-foreground">Privacy</a>
         {' · '}
         <a href="https://github.com/JakeJamesDev/formamorph" className="hover:text-foreground">GitHub</a>
+        {' · '}
+        <a href={`${import.meta.env.BASE_URL}THIRD-PARTY-NOTICES.md`} className="hover:text-foreground">Licenses</a>
         {' · © 2026 Jake James'}
       </footer>
     </div>
