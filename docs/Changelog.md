@@ -161,6 +161,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A failed publish or a too-short password now shows the reason the server gives.** Before, both showed a generic "Failed" line. Several reasons show together on one line.
   - **A failed autosave now says why, and a full disk now reports the failed save.** The message says when the storage is full. Other failures show their cause under View Details.
   - **A failed world, dictionary, entity, save or player avatar import now names the file and says why.** With several failed files the count stays, and **View Details** lists each one. Declining a duplicate avatar is no longer a failure.
+  - **An Avatar's Generated thumbnail now has a white background.** Before, the background was see-through. A thumbnail generated earlier keeps its old look.
 - **🛠️ Developer tooling**
   - **An Avatar's Generated thumbnail now shows a close-up of the head.** Tall ears and hats no longer pull the view back to the waist. A thumbnail generated earlier keeps its old view.
   - **Scene Presence:**

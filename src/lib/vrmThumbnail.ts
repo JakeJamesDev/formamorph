@@ -131,8 +131,8 @@ export async function renderVrmThumbnail(
 
     const canvas = document.createElement('canvas');
     // preserveDrawingBuffer keeps the frame readable by toDataURL after the draw call returns.
-    renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
-    renderer.setClearColor(0x000000, 0);
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    renderer.setClearColor(0xffffff, 1);
     renderer.setSize(width, height, false);
 
     // FOV is vertical in three.js, so `frameModel`'s head-height maths holds at any aspect; a taller frame
