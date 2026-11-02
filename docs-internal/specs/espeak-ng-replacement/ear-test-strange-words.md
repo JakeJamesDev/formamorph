@@ -260,3 +260,16 @@ Kaelith is the one remaining miss. It is an invented name, so it stays with the 
 | crenellated | `kɹˈɛnəlˌAɾɪd` | |
 
 Aethelred and Zephyrine were also rated here. The model's own versions were accepted, `ˈɛθɪlɹd` and `zˈɛfəɹˌin`, so they need no table entry. The hand-written `ˈæθəlɹˌɛd` was rejected.
+
+## British Voices
+
+Rated by the owner on Ticket 05's pages.
+
+| Page | Result | Bar |
+|---|---|---|
+| Strange words | 35 of 40 | At least 30 of 40 |
+| Fantasy words | 22 of 24 rated, 73 unrated | Sample accepted (Q22) |
+| British word list | 19 of 19 | Each accepted by ear |
+| Sentences | 5 of 6 | No bar |
+
+Rejected: Aethelred `ˈɛθəld`, Nyxara `nˈɪksəɹə`, Archon `ˈɑːʧən`, Kaelith `kˈɛlɪθ`, Thessaly `θˈɛsəli`, manticore `mɒntikˈɔːɹi`, Ragnarok `ɹəɡnˈɑːɹək`, and the sentence "You should have told me you were going, because I would have come with you."

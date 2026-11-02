@@ -58,6 +58,7 @@ British voices keep British pronunciation, through rules applied to this America
 | Q19 | Before the model, a regular -s or -'s on a table, CMUdict, or split word takes that word's phonemes plus the regular ending. |
 | Q20 | The phoneme error bars gate landing. The listening bars are the owner's step after landing, on a page the ticket builds. The ticket stays `ready-for-human` until the owner reports. |
 | Q21 | British rules may use a small plain-data list for words no rule can derive. We write each string and accept it by ear. Word table entries stay American and take the rules. |
+| Q22 | The owner accepted a 24-word sample for the British fantasy bar, at 22 of 24, because 97 clips are too many to rate. The final pass at Ticket 06 stays. |
 
 ## Measurements
 

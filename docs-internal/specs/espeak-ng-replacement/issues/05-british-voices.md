@@ -54,3 +54,7 @@ For the next tickets:
 - The British word list, so each entry is accepted by ear (Q21): `.scratch/espeak-ng-replacement-05/frames/rating-british-words/index.html`.
 - Sentences for weak forms, with no bar: `.scratch/espeak-ng-replacement-05/frames/rating-sentences/index.html`.
 - Then merge with `npx vite-node testing/g2p/ratingPage.ts merge <results.json> --accent b`.
+
+## Owner's Ratings
+
+Strange words 35 of 40. Fantasy words 22 of 24 rated, accepted as a sample (Q22). British word list 19 of 19. Sentences 5 of 6.
