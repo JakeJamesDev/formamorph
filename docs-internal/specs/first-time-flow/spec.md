@@ -93,6 +93,7 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q57 | For the proxy retry, thinking is off only when a model entry says so: `reasoning.enabled` false or `reasoning.effort` `none`. A missing field counts as on and never triggers a thinking stop. On a thinking-on model, a thinking frame ends the hold and is forwarded, and nothing retries after it. Ticket 13 ruling. |
 | Q58 | Each attempt gets a fresh idle timer, with no new setting. The turn limit and the day's pause are checked before the retry. If either blocks it, no retry goes out and the answer is `upstream_error`. Ticket 13 ruling. |
 | Q59 | A stopped attempt, including a failed second attempt, costs no allowance and counts on the recorded spend. The admitted call keeps its one turn-cap slot and per-minute count even if both attempts fail, so resent failed calls stay limited. Only the retry is free of those limits. Ticket 13 ruling. |
+| Q62 | A retry that delivers the reply charges the player's allowance, so the player pays once for the one reply received. Q54's "off the allowance" means the stopped attempt. A client that leaves during the retry settles as aborted, as any aborted call does. Ticket 13 ruling. |
 
 ## User Stories
 

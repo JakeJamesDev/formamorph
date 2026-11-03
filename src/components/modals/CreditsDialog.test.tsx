@@ -115,7 +115,7 @@ describe('the Supporters tab', () => {
     selectTab('Supporters');
 
     const panel = screen.getByRole('tabpanel');
-    expect(panel).toHaveTextContent('generous users below');
+    expect(panel).toHaveTextContent('Our Supporters help fund');
     const plus = await within(panel).findByRole('region', { name: 'Supporter+' });
     expect(within(plus).getAllByRole('button').map((name) => name.textContent)).toEqual(['Zed', 'Amy']);
     expect(within(panel).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Supporter+', 'Supporter']);

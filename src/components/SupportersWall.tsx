@@ -11,7 +11,7 @@ import { PatreonService, type Supporter } from '@/services/PatreonService';
 import type { SupporterTier } from '@/types';
 
 /** The line that thanks the people on the wall. Each host places it. */
-export const SUPPORTERS_THANKS = 'Development on Formamorph is only possible thanks to the generous users below. Thank you!';
+export const SUPPORTERS_THANKS = "Our Supporters help fund Formamorph's development. Thank you!";
 
 type State =
   | { status: 'loading' }

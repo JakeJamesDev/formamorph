@@ -114,7 +114,7 @@ describe('SupportersPage', () => {
 
     await screen.findByText(/No supporters are listed yet/);
     expect(screen.getByRole('heading', { level: 1, name: 'Supporters' })).toBeInTheDocument();
-    expect(screen.getByText(/only possible thanks to the generous users below/)).toBeInTheDocument();
+    expect(screen.getByText(/Our Supporters help fund Formamorph's development/)).toBeInTheDocument();
   });
 
   it('leaves no unhandled error when the read fails after it unmounts', async () => {
