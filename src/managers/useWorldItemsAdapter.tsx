@@ -8,7 +8,7 @@ import { usedByText } from '@/lib/usedByText';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import { arrayMove } from '@dnd-kit/sortable';
-import { defaultCurrencyPatch } from '@/lib/currency';
+import { defaultCurrencyPatch } from '@/lib/currency/rows';
 import { blankItem, duplicateItem } from '@/lib/items';
 import { randomUUID } from '@/lib/uuid';
 import type { ItemPanelTab } from '@/views/itemPanelTabs';

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { SlotOwner } from '@/lib/bodies';
 import { applyInventoryOps } from '@/lib/inventory';
 import type { Currency, Item, ItemCopy, ItemCopyWhere, Placement, PlayerStat } from '@/types';
-import { applyPaymentStats, balanceOf, backingStatIds, currenciesSettle, planPayment, readStatedPrice, type PaymentStat, type PaymentState } from './currency';
+import { balanceOf, backingStatIds, currenciesSettle } from './currency';
+import { applyPaymentStats, planPayment, type PaymentStat, type PaymentState } from './currency/payment';
+import { readStatedPrice } from './currency/price';
 
 const item = (id: string, name: string): Item => ({ id, name, statEffects: [], traitEffects: [], equipRequires: [], stackable: true });
 const items = [item('copper', 'Copper'), item('silver', 'Silver Coin'), item('gold', 'Gold'), item('shell', 'Shell')];
@@ -254,8 +256,8 @@ describe('readStatedPrice', () => {
 
   it('gives a lone money word the count it is handed, and asks for a number without one', () => {
     expect(readStatedPrice('Silver', '', currencies, items, 3)).toEqual({ currency: MONEY, amount: 30 });
-    expect(read('Silver')).toHaveProperty('refused');
-    expect(readStatedPrice('Gold, Silver', '', currencies, items, 3)).toHaveProperty('refused');
+    expect(read('Silver')).toHaveProperty('settled', false);
+    expect(readStatedPrice('Gold, Silver', '', currencies, items, 3)).toHaveProperty('settled', false);
   });
 
   it('reads a bare number in the Default, or in the Currency named', () => {
@@ -274,23 +276,23 @@ describe('readStatedPrice', () => {
   });
 
   it('refuses a price drawing on two Currencies, or an item that conflicts with the Currency named (Q26)', () => {
-    expect(read('1 Gold, 1 Shell')).toHaveProperty('refused');
-    expect(read('1 Gold', 'Credits')).toHaveProperty('refused');
-    expect(read('1 Shell', 'Coin')).toHaveProperty('refused');
+    expect(read('1 Gold, 1 Shell')).toHaveProperty('settled', false);
+    expect(read('1 Gold', 'Credits')).toHaveProperty('settled', false);
+    expect(read('1 Shell', 'Coin')).toHaveProperty('settled', false);
   });
 
   it('refuses an unknown Currency, and never falls to the Default', () => {
-    expect(read('5', 'Marks')).toHaveProperty('refused');
-    expect(read('5 Marks')).toHaveProperty('refused');
+    expect(read('5', 'Marks')).toHaveProperty('settled', false);
+    expect(read('5 Marks')).toHaveProperty('settled', false);
   });
 
   it('refuses no price, no Currency, a bare part among items, a zero and a fraction of the base item', () => {
-    expect(read('')).toHaveProperty('refused');
-    expect(read('some coins')).toHaveProperty('refused');
-    expect(read('5', '', [])).toHaveProperty('refused');
-    expect(read('1 Gold, 5')).toHaveProperty('refused');
-    expect(read('0 Gold')).toHaveProperty('refused');
-    expect(read('0.5 Copper')).toHaveProperty('refused');
+    expect(read('')).toHaveProperty('settled', false);
+    expect(read('some coins')).toHaveProperty('settled', false);
+    expect(read('5', '', [])).toHaveProperty('settled', false);
+    expect(read('1 Gold, 5')).toHaveProperty('settled', false);
+    expect(read('0 Gold')).toHaveProperty('settled', false);
+    expect(read('0.5 Copper')).toHaveProperty('settled', false);
   });
 });
 

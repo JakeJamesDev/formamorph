@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Currency, Entity, Stat, StatGroup, StatLink } from '@/types';
-import { copyWorthText, currencyOf, currencyStatGroups, defaultCurrencyPatch, parseCurrencies, worthText } from './currency';
+import { copyWorthText, currencyOf, worthText } from './currency';
+import { parseCurrencies } from './currency/parse';
+import { defaultCurrencyPatch } from './currency/rows';
+import { currencyStatGroups } from './currency/statGroups';
 
 const STAT_CURRENCY: Currency = { id: 'credits', name: 'Credits', backing: { kind: 'stat', statId: 'funds' } };
 const NAME_CURRENCY: Currency = { id: 'goats', name: 'Goats', backing: { kind: 'name' } };

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { blankItem } from '@/lib/items';
 import type { Currency, CurrencyItem, Item } from '@/types';
-import { addCurrencyItem, breakdown, breakdownText, itemFields, currencyItemChoices, copyWorthFacts, lacksBaseItem, setItemWorth, valueOfItems, worthText } from './currency';
+import { breakdown, breakdownText, itemFields, copyWorthFacts, valueOfItems, worthText } from './currency';
+import { addCurrencyItem, currencyItemChoices, lacksBaseItem, setItemWorth } from './currency/rows';
 
 const ITEMS: Item[] = [blankItem('copper', 'Copper'), blankItem('silver', 'Silver'), blankItem('gold', 'Gold'), blankItem('rope', 'Rope')];
 const rows = (...pairs: [string, number][]): CurrencyItem[] => pairs.map(([itemId, worth]) => ({ itemId, worth }));

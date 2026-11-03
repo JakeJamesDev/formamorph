@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { bundledWorldText } from '@/test/bundledWorldFiles';
-import { balanceOf, currencyStatGroups, worthText } from './currency';
+import { balanceOf, worthText } from './currency';
+import { currencyStatGroups } from './currency/statGroups';
 import { sameWhere } from './items';
 import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';

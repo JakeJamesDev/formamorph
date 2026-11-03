@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { WorldInput } from '@/components/editor/WorldField';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useCardCollapse } from '@/lib/cardCollapse';
-import { currencyStatGroups, type CurrencyStatGroup } from '@/lib/currency';
+import { currencyStatGroups, type CurrencyStatGroup } from '@/lib/currency/statGroups';
 import { currencyUsedBy } from '@/lib/currencyDeletes';
 import { fieldFrame } from '@/lib/historyField';
 import { labelPlaceholders } from '@/lib/placementLetters';

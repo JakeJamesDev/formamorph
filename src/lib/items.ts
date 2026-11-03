@@ -34,6 +34,9 @@ export const itemHasUnidentifiedFace = (item: Pick<Item, 'unidentifiedName' | 'u
 /** The Item Copy shows the unidentified face. */
 export const isUnidentified = (copy: Pick<ItemCopy, 'state'>): boolean => copy.state?.unidentified === true;
 
+/** A copy that counts as money: visible and identified. */
+export const isSpendable = (copy: Pick<ItemCopy, 'state' | 'visibility'>): boolean => copy.visibility === 'visible' && !isUnidentified(copy);
+
 /** The name and player description the player sees on `copy`: the unidentified face while it is unidentified,
  *  a blank unidentified field falling back to the normal value (Q16). */
 export function copyFace(item: Pick<Item, 'name' | 'playerDescription' | 'unidentifiedName' | 'unidentifiedDescription'>, copy: Pick<ItemCopy, 'state'>): {

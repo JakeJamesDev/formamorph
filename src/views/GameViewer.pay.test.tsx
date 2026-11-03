@@ -217,6 +217,25 @@ describe('an Items Currency', () => {
   });
 });
 
+describe('a script pay then a pass pay in one turn', () => {
+  const scriptPays = (code: string): Pick<World, 'scripts'> => ({ scripts: [{ id: 'toll', timing: 'before', code }] });
+
+  it('settles both from a stat Currency', async () => {
+    await playOneTurn({ ...statWorld(), ...scriptPays('currencies.Credits.pay(persona, null, 10);') }, pay('you', '', '30'));
+    await waitFor(() => expect(statNow('funds')).toBe(10));
+  });
+
+  it("refuses the pass pay the script's pay left too little for", async () => {
+    await playOneTurn({ ...statWorld(), ...scriptPays('currencies.Credits.pay(persona, null, 10);') }, pay('you', '', '45'));
+    await waitFor(() => expect(statNow('funds')).toBe(40));
+  });
+
+  it('settles both from an Items Currency, spending the change the script made', async () => {
+    await playOneTurn({ ...itemWorld(), ...scriptPays('currencies.Coin.pay(persona, null, 10);') }, pay('you', '', '30 Copper'));
+    await waitFor(() => expect(moneyOf('you')).toEqual({ copper: 60 }));
+  });
+});
+
 describe('a buy at the turn commit', () => {
   const sword: Item = { ...backingItem('sword', 'Iron Sword'), stackable: false, value: 150, currencyId: 'coin' };
   const tonic: Item = { ...backingItem('tonic', 'Tonic'), value: 30, currencyId: 'credits' };

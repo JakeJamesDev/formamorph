@@ -44,7 +44,7 @@ import {
   parseItems, parsePlacements, parseSlots, withoutItemPlacements, withoutPlacementsAt, withoutSlotRefs,
 } from '@/lib/items';
 import { parseBodies, withoutBodyRows, withoutEntityBodyRefs, withoutSlotEntries } from '@/lib/bodies';
-import { parseCurrencies } from '@/lib/currency';
+import { parseCurrencies } from '@/lib/currency/parse';
 import { lostStatIds, withoutBackingStats, withoutCurrencyItem, withoutCurrencyRefs } from '@/lib/currencyDeletes';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';

@@ -9,7 +9,7 @@ import { dragStyle, droppedMove } from '@/lib/sortableDrag';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorldInput } from '@/components/editor/WorldField';
-import { addCurrencyItem, currencyItemChoices, lacksBaseItem, setItemWorth } from '@/lib/currency';
+import { addCurrencyItem, currencyItemChoices, lacksBaseItem, setItemWorth } from '@/lib/currency/rows';
 import { itemStackable } from '@/lib/items';
 import type { Currency, CurrencyItem, Item } from '@/types';
 
