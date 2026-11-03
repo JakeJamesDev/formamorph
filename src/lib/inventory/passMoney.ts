@@ -24,10 +24,10 @@ const payLabel = (op: InventoryPassOp) => `pay "${op.price ?? ''}"`;
 const payPrice = (op: InventoryPassOp) => op.price || op.item || (op.currency && op.quantity > 1 ? String(op.quantity) : '');
 
 /** The money word a bare price counts: the `currency` cell, else the money in `item` (Q80). */
-const payNamed = (op: InventoryPassOp) => op.currency?.trim() || (op.price ? op.item : '');
+const payNamed = (pass: PassRun, op: InventoryPassOp) => op.currency?.trim() || (op.price && op.item ? listedName(pass, op.item) : '');
 
 const statedPay = (pass: PassRun, op: InventoryPassOp): StatedPrice =>
-  readStatedPrice(payPrice(op), payNamed(op), pass.moneyCurrencies, pass.moneyNames, op.quantity > 1 ? op.quantity : undefined);
+  readStatedPrice(payPrice(op), payNamed(pass, op), pass.moneyCurrencies, pass.moneyNames, op.quantity > 1 ? op.quantity : undefined);
 
 /** Settles one pay and answers the Currencies it governs (Q56, Q76). */
 function settlePay(pass: PassRun, op: InventoryPassOp): readonly Currency[] {

@@ -805,7 +805,7 @@ if (!toll.paid) player.toast("You can't pay the toll.");
 - **Stat writes and `give` still work** on a stat or item that backs a Currency.
 - **An unknown Currency or party stops the script with an error.**
 - **A user Tool reads `balance` and can't pay.** Calling `pay` stops the Tool with an error.
-- **Test Code and the Test Bench apply nothing.** **Test Code** lists each `pay` with its result. With no persona in play, `persona` holds no money and a payment from it is refused. To test a payment that settles, select a persona in the Test Bench.
+- **Test Code and the Test Bench apply nothing.** **Test Code** lists each `pay` with its result. With no persona in play, `persona` holds only what the world places on the player, and a Global Stat. A payment it can't afford is refused. To test with a persona's own money, select a persona in the Test Bench.
 
 ### Bodies
 <!-- keywords: body, bodies, transform, wolf form, change slots, set body from code, body in force, base body, unequip on transform, unknown body name -->

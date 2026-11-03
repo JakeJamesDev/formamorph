@@ -246,6 +246,7 @@ describe('executeStatCode currencies', () => {
   it('stops the script on a name no Currency has or a party the game lacks', async () => {
     expect((await run(`currencies.Dollar.balance(persona);`)).error).toMatch(/no Currency named "Dollar"/);
     expect((await run(`currencies.Coin.pay("Nobody", persona, 1);`)).error).toMatch(/needs an entity or the persona the game has/);
+    expect((await run(`currencies.Coin.pay({ id: 'a-location', name: 'Dock' }, persona, 1);`)).error).toMatch(/needs an entity or the persona the game has/);
     expect((await run(`currencies.Coin.balance(null);`)).error).toMatch(/needs an entity or the persona the game has/);
   });
 

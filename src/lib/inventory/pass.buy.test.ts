@@ -345,6 +345,18 @@ describe('a pay that names money in item beside a price (Q80)', () => {
     expect(counts(copies, you)).toEqual({ gold: 1 });
   });
 
+  it('reads the item as Items Here lists it, with its count or description', () => {
+    for (const listed of ['Gold (3)', 'Gold: a coin']) {
+      const { copies, diagnostics } = settle(start, [named(listed, '5')]);
+      expect(diagnostics).toEqual([]);
+      expect(counts(copies, you)).toEqual({ gold: 1 });
+    }
+  });
+
+  it('settles a price that names another item of the same Currency by its own words', () => {
+    expect(settle(start, [named('Gold', '5 Copper')]).diagnostics).toEqual([]);
+  });
+
   it('refuses a price that names another Currency than the item', () => {
     const { copies, diagnostics } = settle([...start, copy('s', 'shell', you, 9)], [named('Gold', '5 Shell')]);
     expect(counts(copies, you)).toEqual({ gold: 6, shell: 9 });
