@@ -115,6 +115,7 @@ The client expires turn ids slightly before the server does and opens a new turn
 
 - **Hosted state** gains `turnLimitSeconds`, which the server adds and the client parses. A null value means no client expiry.
 - **Turn expiry:** `HostedTurn` starts its clock when the opening call is sent, which is before the server starts its own. After the limit less a margin, the turn clears its id and the next call opens a new turn. The margin covers the time a call takes to reach the server.
+- **Only the clock clears an id.** A `turn_expired` refusal does not, so a turn at its call cap keeps failing until the local expiry, and the cap stays a limit on one turn.
 - **A turn in progress can expire**, for example while a During-AI-Output script waits for the player. The passes after that open a new turn and face the budget check.
 - **New refusal and state:** add them to the mirrored refusal list, the state list and every surface that shows the Hosted state. The site's account surface is included if it reads the state. An unconfirmed pledge shows the held tier, Check Again and Switch Back, with no usage line, no Patreon link and no Demo AI offer.
 - **Allowance surface:** one line explains that background work pauses when the week is spent. Fixed copy never names a weekday.
