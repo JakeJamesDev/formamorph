@@ -141,8 +141,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➖ Removed
 
 - **🛠️ Developer tooling**
-  - **Text to Speech:**
-    - **Text to Speech no longer bundles the GPL phoneme engine, and a build check now fails if it returns.** Builds carry our own dictionary and model. The Licenses tab lists CMUdict, the pronunciation model, and the adapted Kokoro client code.
+  - **Text to Speech no longer bundles the GPL phoneme engine, and a build check now fails if it returns.** Builds carry our own dictionary and model. The Licenses tab lists CMUdict, the pronunciation model, and the adapted Kokoro client code.
   - **Removed the hidden Load World file input from the World Editor.** No button opened it, so the input and its handler never ran.
 
 #### 🔧 Fixed

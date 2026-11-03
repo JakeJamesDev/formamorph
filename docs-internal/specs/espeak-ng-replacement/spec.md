@@ -1,6 +1,7 @@
 # Spec: eSpeak NG Replacement
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-11-03, tickets 01-06, last landing cdf96ee33. Review: spec text corrected, trivial fixes in 7b46c3c65. Gates green on 2026-11-03. The owner's final listening pass stays open, and the Steam blocker closes on it.
 Spec session: espeak-ng-replacement — spec
 
 This spec records a reading of the licenses, not legal advice.
@@ -28,9 +29,9 @@ Each word takes the first source that has it:
 | Order | Source | What it covers |
 |---|---|---|
 | 1 | Word table | Hand-checked words, accepted by ear. Beats every other source. |
-| 2 | CMUdict | General English, with our own homograph picks. |
-| 3 | Compound split | Two known words, such as Emberwatch. |
-| 4 | Regular ending | A regular -s or -'s on a word from the sources above, such as wyverns. |
+| 2 | CMUdict | General English, with our own homograph picks. Short capitals read as letters here. |
+| 3 | Regular ending | A regular -s or -'s on a word from the sources above, such as wyverns. |
+| 4 | Compound split | Two known words, such as Emberwatch, with or without a regular ending. |
 | 5 | Our model | Everything else. Trained only on CMUdict. |
 
 British voices keep British pronunciation, through rules applied to this American result.
@@ -59,7 +60,7 @@ British voices keep British pronunciation, through rules applied to this America
 | Q20 | The phoneme error bars gate landing. The listening bars are the owner's step after landing, on a page the ticket builds. The ticket stays `ready-for-human` until the owner reports. |
 | Q21 | British rules may use a small plain-data list for words no rule can derive. We write each string and accept it by ear. Word table entries stay American and take the rules. |
 | Q22 | The owner accepted a 24-word sample for the British fantasy bar, at 22 of 24, because 97 clips are too many to rate. The final pass at Ticket 06 stays. |
-| Q23 | Spoken numbers follow the owner's ear: tens and ones run together, -teen words take one main stress, and "ninety" takes a soft t in American. |
+| Q23 | Spoken numbers follow the owner's ear: tens and cardinal ones run together, while ordinals such as "twenty first" stay apart, -teen words take one main stress, and "ninety" takes a soft t in American. |
 | Q24 | "they" and lowercase "will" join the weak forms. "will" stays strong after a determiner, a possessive, or words such as "free", because there it is the noun. |
 | Q25 | By the owner's ear: "I" never reduces, "you" stays strong at the start of a phrase, and "with" reduces inside one. |
 | Q26 | A passage from play read stranger than eSpeak, because word-by-word scoring cannot see sentence stress. More small words take weak forms, "it" and "them" stay light at a phrase end, and an ending on a listed word comes before a split. |
@@ -74,7 +75,7 @@ The per-word ratings are in [ear-test-strange-words.md](ear-test-strange-words.m
 | Test | eSpeak NG | Without word table | With word table |
 |---|---|---|---|
 | Fantasy words | 76 of 97 | 80 of 97 | 97 of 97 |
-| Strange words | 33 of 40 | 35 of 40 | 39 of 40 |
+| Strange words | 33 of 40 | 35 of 40 | 38 of 40 |
 
 The word table entries were written for the words that failed. So the last column shows coverage, and new words will score closer to the middle column.
 
@@ -86,6 +87,7 @@ The word table entries were written for the words that failed. So the last colum
 | Misaki fallback model | 39.4% | 15.4 |
 | Chosen model, no splits | 40.1% | 14.9 |
 | Chosen model, with splits | 38.8% | 15.3 |
+| Shipped model, no splits | 39.3% | 14.6 |
 | Landed American pipeline | 38.6% | 14.9 |
 
 Compound splits cost a little here, and they win by ear on names: 13 of 13 against eSpeak's 11 of 13.
@@ -105,7 +107,7 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 | Unknown | 42.4% / 14.4 | 44.4% / 13.6 |
 | Known | 91.7% / 2.2 | 94.8% / 1.4 |
 
-**Size:** the shipped model is 7.99 MB in two files and 6.96 MB gzipped. The dictionary adds 3.62 MB. The first trial reached about 72% on its CMUdict validation split, and dropout moved held-out accuracy more than extra epochs did.
+**Size:** the shipped model is 7.54 MB in two files and 6.93 MB gzipped. The dictionary adds 3.62 MB. The first trial reached about 72% on its CMUdict validation split, and dropout moved held-out accuracy more than extra epochs did.
 
 **Speed:** in headless Chromium over a production build, the model loads and answers its first word in 541 ms. An unknown word then takes 21 ms at the median and 33 ms at most. Electron measures 570, 23, and 39 ms.
 
@@ -138,17 +140,17 @@ Compound splits cost a little here, and they win by ear on names: 13 of 13 again
 
 ## Implementation Decisions
 
-**Kokoro client.** A small client of our own, built on `@huggingface/transformers`, replaces `kokoro-js`. It keeps the two calls Text to Speech uses: load the model, and generate from text with a voice and speed. `kokoro-js` inlines `phonemizer`, so a package alias cannot remove eSpeak. Anything adapted from `kokoro-js` keeps its Apache-2.0 notice, in the source and in the notices after the package leaves. Parity with `kokoro-js` is a one-time check quoted in the ticket. No eSpeak output is committed as a test snapshot.
+**Kokoro client.** A small client of our own, built on `@huggingface/transformers`, replaces `kokoro-js`. It keeps the calls Text to Speech uses: load the model, generate from text with a voice and speed, and release the model. `kokoro-js` inlines `phonemizer`, so a package alias cannot remove eSpeak. Anything adapted from `kokoro-js` keeps its Apache-2.0 notice, in the source and in the notices after the package leaves. Parity with `kokoro-js` is a one-time check quoted in the ticket. No eSpeak output is committed as a test snapshot.
 
 **Text to phonemes.** One deep module takes text and a voice's accent and returns the phoneme string for Kokoro. It owns text cleanup, word lookup in the order above, homograph picks, stress handling, and British rules. It holds the Kokoro notation mapping, including flaps, which CMUdict does not mark. Function words take weak forms in a phrase (Q18), because eSpeak reduced them and players would hear the loss.
 
-**Text cleanup.** eSpeak handled numbers, abbreviations, and initialisms itself. The new module must handle them too, and the known-word scoring run covers this.
+**Text cleanup.** eSpeak handled numbers, abbreviations, and initialisms itself. The new module must handle them too. Unit tests cover this, because the known-word set holds single words.
 
 **Compound split.** A word splits into two parts when both are in CMUdict and each has at least 4 letters or is on a short reviewed list of common 3-letter words (Q17). The second part takes secondary stress. CMUdict has no frequency data and holds many surnames, so a false split that remains gets a word table entry.
 
 **Regular ending.** A regular -s or -'s on a known word takes that word's phonemes plus the ending, voiced to match the last sound (Q19). This step needs its own check for false stems, the same as compound splits.
 
-**Model.** A from-scratch BART grapheme-to-phoneme model with the Q9 shape, exported to ONNX as an encoder file and a decoder file, about 7 MB in total. It trains on primary CMUdict entries only. A model loads once and is released with the rest of Text to Speech.
+**Model.** A from-scratch BART grapheme-to-phoneme model with the Q9 shape, exported to ONNX as an encoder file and a decoder file, about 7.5 MB in total, with the exporter's debug text stripped. It trains on primary CMUdict entries only. A model loads once and is released with the rest of Text to Speech.
 
 **Word table.** Plain data in this repo: word and phoneme string. We write each entry and accept it by ear. Entries are never copied from Wiktionary, WikiPron, or Misaki.
 
@@ -200,4 +202,4 @@ The fantasy and strange-word bars do not count a table entry written for a failu
 - **Trial artifacts:** the chosen trial model and scripts are in `.scratch/espeak-ng-replacement/`, which is gitignored and is a handoff only. The first ticket moves what must last into the repo.
 - **Listening pages:** the rated pages are in `.scratch/phonemizer-listening-test/`.
 - **Upstream dispute:** `phonemizer.js` issue 6 disputes that package's Apache label, and no eSpeak revision or build record exists for it. This supports removing it over relabeling it.
-- **Remaining ear miss:** Kaelith is the one strange word left. It is invented, so it stays with the model.
+- **Remaining ear misses:** Nyxara and Kaelith in both accents, and Thessaly in British. The first two are invented, so they stay with the model.

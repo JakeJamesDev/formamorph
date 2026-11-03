@@ -64,7 +64,7 @@ function fromBritishList(lower: string): string | undefined {
 
 /**
  * Builds the text-to-phoneme call. Each word takes the first source that has it:
- * word table, CMUdict with its homograph picks, compound split, a regular ending on one of those, then the model.
+ * word table, CMUdict with its homograph picks, a regular ending on one of those, compound split, then the model.
  * British rules apply to every source's result, so word table entries stay American.
  */
 export function createTextToPhonemes({ dictionary: primary, predict }: TextToPhonemesSources) {
