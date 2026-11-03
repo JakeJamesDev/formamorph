@@ -82,6 +82,7 @@ The client expires turn ids slightly before the server does and opens a new turn
 | Q27 | Tests use the existing seams. |
 | Q30 | The spec states the mechanism plainly, because nothing it protects has shipped and Q32 lands the fix first. Production numbers still stay out. |
 | Q32 | The whole effort blocks the Formamorph AI release. |
+| Q33 | A client blocked by the state re-reads it before refusing a send, and the week's reset triggers a read, because recovery needs no action. Found at the close review. |
 
 ### Spend controls (FormamorphServer)
 
