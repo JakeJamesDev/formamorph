@@ -17,4 +17,4 @@ Model rationale: a transaction subtlety, because the pause must survive a refusa
 - [ ] A continuation that reaches the ceiling starts the pause and is admitted as its grace call.
 - [ ] After a lift, continuations and first calls are admitted again.
 - [ ] Reinstating the turn-id exemption or discarding the pause answer makes a test fail.
-- [ ] The pause alert text, the Pause glossary entries in both repos and the server guide state the new rule.
+- [ ] The pause alert text, the server's Pause glossary entry and the server guide state the new rule. The spec session updates the client glossary after the landing.

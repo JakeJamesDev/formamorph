@@ -281,6 +281,10 @@ _Avoid_: usage chart, cost split (it shows percents, never dollars)
 What Formamorph AI spend is counted against: the Patreon membership for a pledge, or the grant for a staff grant. It is not the account, so relinking Patreon or making a new account keeps the week's spend.
 _Avoid_: account (for spend), payer, customer
 
+**Formamorph AI turn**:
+The calls one player action makes, named by a turn id the server issues on the first call and the client sends back on the rest. A first call is refused once the week's spend reaches the budget. A later call is refused once the week's spend, minus this turn's own, reaches the budget plus a grace of one whole turn's maximum cost, so a turn started under budget can finish and held turn ids buy no extra spend. A turn ends at its time limit or call cap.
+_Avoid_: session, request group
+
 **Permissive License**:
 The verdict that a VRM's embedded 1.0 metadata grants every right the community catalog needs — everyone may use it, it may be redistributed, modified copies may be redistributed, and commercial use is allowed. Read from the file, never declared. A gate on publishing, not a badge.
 _Avoid_: license check (the act), open license, free
