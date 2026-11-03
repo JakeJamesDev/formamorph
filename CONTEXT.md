@@ -286,7 +286,7 @@ The calls one player action makes, named by a turn id the server issues on the f
 _Avoid_: session, request group
 
 **Pause**:
-The stop on Formamorph AI calls once the UTC day's spend reaches the daily ceiling. New turns are refused, and each started turn gets one more call, so a paused day can cut a turn short. An admin can lift it until 00:00 UTC, and the next day starts unpaused.
+The stop on Formamorph AI calls once the UTC day's spend reaches the daily ceiling. Every call is refused, started turns included, so a paused day can cut a turn short. A call already streaming finishes. An admin can lift it until 00:00 UTC, and the next day starts unpaused.
 _Avoid_: outage, shutdown
 
 **Permissive License**:
