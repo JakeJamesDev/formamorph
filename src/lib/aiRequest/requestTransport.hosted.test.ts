@@ -394,7 +394,7 @@ describe('Formamorph AI through the Request Transport', () => {
       vi.spyOn(Date, 'now').mockReturnValue(start + ms);
     };
 
-    it.each(['unconfirmed', 'exhausted', 'paused'])('sends once the state returns from %s', async (blocked) => {
+    it.each(['unconfirmed', 'exhausted', 'paused', 'locked'])('sends once the state returns from %s', async (blocked) => {
       quietErrors();
       let state = blocked;
       const proxy = fakeProxy([() => proxyReply('Back.', 'turn-1')], () => json(200, { success: true, data: { ...READY_STATE, state } }));

@@ -364,8 +364,8 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
       return !session.credential() ? 'signed-out' : state === 'signed-out' || hostedStateSends(state) ? null : state;
     };
     let before = blocked();
-    // A state that ends on its own is read again before it refuses, so recovery needs no action.
-    if (before === 'unconfirmed' || before === 'exhausted' || before === 'paused') {
+    // A state that can end outside this page is read again before it refuses, so recovery needs no action.
+    if (before === 'unconfirmed' || before === 'exhausted' || before === 'paused' || before === 'locked') {
       await session.rereadBlocked(signal);
       if (signal?.aborted) {
         finishReason = ABORTED_FINISH_REASON;
