@@ -34,7 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **World authors can define Currencies on the Items tab and price each item in one.** A Currency is a stat, items or a name only. A new item takes the first Currency, and the item popup shows its worth.
     - **Bribes, fees and bounties in the story now move your money when the turn ends.** The game makes exact change, and a payment you can't afford changes nothing.
   - **First-Time Flow:**
-    - **The Levels scene shows real replies from the Demo AI and Formamorph AI to the same moment in Emberwatch.** Each level's line now states what it adds for your world and your story.
+    - **The Levels scene shows real replies from the Demo AI and Formamorph AI to the same moment in Emberwatch.**
   - **Scripts now run one by one, and each script reads what the scripts above it wrote.** Two scripts that each take 5 Health now take 10, so worlds with stacking writes play differently. To check a world, read the rows on the Test Bench's **Issues** tab in Advanced mode.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
