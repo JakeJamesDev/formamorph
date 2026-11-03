@@ -15,10 +15,11 @@ import { THUMB_FRAME, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { openFeedbackThread } from "@/lib/feedbackOpener";
-import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
+import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, FeedbackMarkdown } from "@/components/menu/FeedbackMarkdown";
+import type { FeedbackLinkPlace } from "@/lib/feedbackLinks";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
-import { ListingCommentPreview } from "@/components/menu/FeedbackPreview";
+import { FeedbackPreview } from "@/components/menu/FeedbackPreview";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { canModerate, isAdmin, isStaff } from "@/lib/roles";
@@ -219,6 +220,7 @@ export function RemoteWorldDetailsModal({
     ...APP_FEEDBACK_LINK_PLACE,
     // The focused chip gets focus back when the dialog closes.
     openThread: (number) => openFeedbackThread(number, document.activeElement instanceof HTMLElement ? document.activeElement : null),
+    threadOpensAbove: true,
     // The link grammar admits only the catalog's listing kinds, so the server's kind string is one of them.
     openListing: onOpenListing && (({ kind, id }) => onOpenListing({ kind: kind as CatalogKind, id })),
   }, [capabilities.commentLinkPlace, onOpenListing]);
@@ -854,7 +856,7 @@ export function RemoteWorldDetailsModal({
                     markdown
                     ariaLabel="Comment"
                     placeholder="Write a comment"
-                    markdownPreview={ListingCommentPreview}
+                    markdownPreview={FeedbackPreview}
                   >
                     <FeedbackSuggestPlugin threadTypes={null} />
                   </PromptField>
@@ -946,7 +948,7 @@ export function RemoteWorldDetailsModal({
                           vocabulary={plainVocab}
                           markdown
                           ariaLabel="Comment text"
-                          markdownPreview={ListingCommentPreview}
+                          markdownPreview={FeedbackPreview}
                         >
                           <FeedbackSuggestPlugin threadTypes={null} />
                         </PromptField>

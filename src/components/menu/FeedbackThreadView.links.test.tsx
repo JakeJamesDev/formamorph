@@ -227,7 +227,6 @@ describe('listing links', () => {
         onBack={() => {}}
         notify={toastFeedbackNotify}
         capabilities={WEBSITE_FEEDBACK_CAPABILITIES}
-        listingHref={({ kind, id }) => `/community/${kind}/${id}`}
       />,
     );
 
@@ -269,7 +268,7 @@ describe('user links', () => {
 
   it.each([
     ['the app', {}],
-    ['the website', { capabilities: WEBSITE_FEEDBACK_CAPABILITIES, profileHref: (name: string) => `/u/${name}` }],
+    ['the website', { capabilities: WEBSITE_FEEDBACK_CAPABILITIES }],
   ])('draws a resolved mention as a user chip and an unavailable one without the typed name in %s', async (_, props) => {
     serve({ thread: thread({ body, targets: [LANTERN, GHOST] }), comments: [] });
 
@@ -330,7 +329,6 @@ describe('thread links on the website', () => {
         notify={toastFeedbackNotify}
         capabilities={WEBSITE_FEEDBACK_CAPABILITIES}
         onOpenThread={open}
-        threadHref={(n) => `/feedback/${n}`}
       />,
     );
 

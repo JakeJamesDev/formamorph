@@ -1,5 +1,5 @@
-import type { FeedbackLinkPlace } from '@/components/menu/FeedbackMarkdown';
 import { WEBSITE_FEEDBACK_CAPABILITIES } from './feedbackCapabilities';
+import type { FeedbackLinkPlace } from './feedbackLinks';
 
 /** The actions a Community Creations shell may expose. */
 export interface CommunityBrowserCapabilities {

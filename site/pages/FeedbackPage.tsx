@@ -5,7 +5,6 @@ import type { FeedbackTab } from '@/components/menu/feedbackTabs';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import { WEBSITE_FEEDBACK_CAPABILITIES, type FeedbackNotify } from '@/lib/feedbackCapabilities';
 import { DetailedError } from '@/lib/errorDetails';
-import { usernameProfilePath } from '@/lib/usernameRule';
 import AuthService from '@/services/AuthService';
 import type { FeedbackThread } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -164,10 +163,7 @@ function FeedbackBoardPage({ target, guest }: FeedbackBoardPageProps) {
                   onLoaded={loaded}
                   onUnavailable={unavailable}
                   onOpenThread={openLinkedThread}
-                  threadHref={feedbackThreadPath}
-                  listingHref={openListingHref}
                   onOpenListing={openLinkedListing}
-                  profileHref={usernameProfilePath}
                 />
               )}
               {/* Hidden, not unmounted, under an open thread: Back returns to the same search, filters and page. */}

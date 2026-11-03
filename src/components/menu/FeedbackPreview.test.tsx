@@ -14,8 +14,9 @@ import FeedbackService from '@/services/FeedbackService';
 import type { FeedbackLinkTarget, FeedbackThread } from '@/types';
 import { FeedbackDialog } from './FeedbackDialog';
 import { FeedbackEditDialog } from './FeedbackEditDialog';
-import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, type FeedbackLinkPlace } from './FeedbackMarkdown';
-import { FeedbackPreview, ListingCommentPreview } from './FeedbackPreview';
+import type { FeedbackLinkPlace } from '@/lib/feedbackLinks';
+import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext } from './FeedbackMarkdown';
+import { FeedbackPreview } from './FeedbackPreview';
 import { FeedbackThreadView } from './FeedbackThreadView';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -67,9 +68,9 @@ function fill(name: string | HTMLElement, text: string) {
 const tab = (name: 'Edit' | 'Preview') => userEvent.setup().click(screen.getByRole('tab', { name }));
 const pane = () => screen.getByTestId('prompt-preview');
 
-function Box({ text, preview = FeedbackPreview }: { text: string; preview?: typeof ListingCommentPreview }) {
+function Box({ text }: { text: string }) {
   const [value, setValue] = useState(text);
-  return <PromptField value={value} onChange={setValue} vocabulary={plainVocabulary()} markdown ariaLabel="Reply" markdownPreview={preview} />;
+  return <PromptField value={value} onChange={setValue} vocabulary={plainVocabulary()} markdown ariaLabel="Reply" markdownPreview={FeedbackPreview} />;
 }
 
 beforeEach(() => {
@@ -308,11 +309,11 @@ describe('the request', () => {
 
 describe('a plain click over a draft', () => {
   const opens = () => ({ openThread: vi.fn(), openListing: vi.fn() });
-  const inPlace = (place: Partial<FeedbackLinkPlace>, preview = FeedbackPreview, text = 'See #7, #9 and https://formamorph.ai/community/world/w2') => {
+  const inPlace = (place: Partial<FeedbackLinkPlace>, text = 'See #7, #9 and https://formamorph.ai/community/world/w2') => {
     resolving([SUGGESTION, BUG, LISTING]);
     return render(
       <FeedbackLinkContext.Provider value={{ ...APP_FEEDBACK_LINK_PLACE, ...place }}>
-        <Box text={text} preview={preview} />
+        <Box text={text} />
       </FeedbackLinkContext.Provider>,
     );
   };
@@ -343,7 +344,7 @@ describe('a plain click over a draft', () => {
 
   it('keeps a thread opener that opens above the box, and still not the listing opener', async () => {
     const place = opens();
-    inPlace(place, ListingCommentPreview);
+    inPlace({ ...place, threadOpensAbove: true });
     await tab('Preview');
 
     fireEvent.click(await within(pane()).findByRole('link', { name: /Pin a stat/ }));

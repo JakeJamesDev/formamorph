@@ -6,30 +6,12 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useUserProfile } from '@/contexts/userProfileStore';
 import { API_BASE_URL } from '@/lib/apiBase';
 import { KIND_ICONS, KIND_LABELS, kindHasThumbnail, kindOf } from '@/lib/catalogKinds';
-import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadChipHref, type FeedbackLinkKind } from '@/lib/feedbackLinks';
+import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadChipHref, type FeedbackLinkKind, type FeedbackLinkPlace } from '@/lib/feedbackLinks';
 import { serverAssetSrc } from '@/lib/serverAssets';
 import { statusStyle } from '@/lib/feedbackPresentation';
 import { remarkFeedbackLinks } from '@/lib/remarkFeedbackLinks';
 import { cn } from '@/lib/utils';
 import type { FeedbackLinkTarget, FeedbackType } from '@/types';
-
-/** Where feedback links go on this surface. */
-export interface FeedbackLinkPlace {
-  /** The boards this surface shows; a thread on any other renders unavailable. */
-  boards: readonly FeedbackType[];
-  /** The address a thread chip carries, for a new tab or a copied link. None means the thread opens only in place. */
-  threadHref: (number: number, type: FeedbackType) => string | undefined;
-  /** Opens a thread here. Without it a chip follows its address. */
-  openThread?: (number: number) => void;
-  /** The address a listing chip carries. */
-  listingHref: (listing: { kind: string; id: string }) => string;
-  /** Opens a listing here. Without it a chip follows its address. */
-  openListing?: (listing: { kind: string; id: string }) => void;
-  /** The address a user chip carries, for a new tab or a copied link. A click opens the profile through the surface's profile provider. */
-  profileHref: (username: string) => string;
-  /** Unsent text sits behind these chips, so an address with no opener here opens in a new tab, whatever its host. */
-  staysOnPage?: boolean;
-}
 
 /** The app's addresses: every board, each link on the website. */
 export const APP_FEEDBACK_LINK_PLACE: FeedbackLinkPlace = {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { feedbackThreadPath as chipThreadPath } from '@/lib/feedbackLinks';
 import { feedbackBoardPath, feedbackTarget, feedbackThreadPath } from './feedbackPath';
 
 const ID = '3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b';
@@ -33,5 +34,9 @@ describe('feedback addresses', () => {
     expect(feedbackTarget(pathname, query)).toEqual({ status: 'board', board: 'questions' });
     expect(feedbackBoardPath('suggestions')).toBe('/feedback');
     expect(feedbackTarget(feedbackThreadPath(23), '')).toEqual({ status: 'thread', number: '23' });
+  });
+
+  it('writes the address a thread chip carries', () => {
+    expect(feedbackThreadPath(23)).toBe(chipThreadPath(23));
   });
 });

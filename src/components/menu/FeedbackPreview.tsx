@@ -1,15 +1,12 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { parseFeedbackLinks } from '@/lib/feedbackLinks';
+import { parseFeedbackLinks, type FeedbackLinkPlace } from '@/lib/feedbackLinks';
 import FeedbackService from '@/services/FeedbackService';
 import type { FeedbackLinkTarget } from '@/types';
-import { FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from './FeedbackMarkdown';
+import { FeedbackLinkContext, FeedbackMarkdown } from './FeedbackMarkdown';
 
-/**
- * The Preview of a comment box: plain markdown, then chips for the text as it stood when the pane opened.
- * `threadOpensAbove` keeps the surface's `openThread`, which opens above the box and leaves the draft alone.
- */
-export function FeedbackPreview({ text, threadOpensAbove = false }: { text: string; threadOpensAbove?: boolean }) {
+/** The Preview of a comment box: plain markdown, then chips for the text as it stood when the pane opened. */
+export function FeedbackPreview({ text }: { text: string }) {
   const place = useContext(FeedbackLinkContext);
   const [openedText] = useState(text);
   const [targets, setTargets] = useState<FeedbackLinkTarget[] | null>(null);
@@ -27,9 +24,9 @@ export function FeedbackPreview({ text, threadOpensAbove = false }: { text: stri
   const draftPlace = useMemo<FeedbackLinkPlace>(() => ({
     ...place,
     staysOnPage: true,
-    openThread: threadOpensAbove ? place.openThread : undefined,
+    openThread: place.threadOpensAbove ? place.openThread : undefined,
     openListing: undefined,
-  }), [place, threadOpensAbove]);
+  }), [place]);
 
   if (!targets || text !== openedText) return <MarkdownRenderer text={text} />;
   return (
@@ -37,9 +34,4 @@ export function FeedbackPreview({ text, threadOpensAbove = false }: { text: stri
       <FeedbackMarkdown text={text} targets={targets} />
     </FeedbackLinkContext.Provider>
   );
-}
-
-/** The listing comment box's Preview: its thread opener is the Feedback dialog, above the modal. */
-export function ListingCommentPreview({ text }: { text: string }) {
-  return <FeedbackPreview text={text} threadOpensAbove />;
 }

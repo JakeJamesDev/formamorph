@@ -1,6 +1,5 @@
-import type { FeedbackLinkPlace } from '@/components/menu/FeedbackMarkdown';
 import type { FeedbackType } from '@/types';
-import { feedbackListingPath, feedbackThreadPath } from './feedbackLinks';
+import { feedbackListingPath, feedbackThreadPath, type FeedbackLinkPlace } from './feedbackLinks';
 import { usernameProfilePath } from './usernameRule';
 
 /** Reports a result to the reader; `error` carries the caught failure behind an `error` line. */

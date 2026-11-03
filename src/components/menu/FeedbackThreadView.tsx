@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
+import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, FeedbackMarkdown } from "@/components/menu/FeedbackMarkdown";
 import PromptField from "@/components/prompt/PromptField";
 import { FeedbackPreview } from "@/components/menu/FeedbackPreview";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
@@ -22,13 +22,13 @@ import FeedbackService from "@/services/FeedbackService";
 import AuthService from "@/services/AuthService";
 import { cn } from "@/lib/utils";
 import {
-  isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus, type FeedbackThread, type FeedbackType,
+  isVotableBoard, type BugDiagnostics, type FeedbackComment, type FeedbackDetail, type FeedbackStatus, type FeedbackThread,
 } from "@/types";
 import { DetailedError } from "@/lib/errorDetails";
 import { Tip } from "@/components/ui/tooltip";
 import { FieldError, Meta } from "@/components/ui/typography";
 import { useMountedRef } from "@/lib/useMountedRef";
-import { feedbackListingUrl, feedbackProfileUrl, feedbackThreadChipHref } from "@/lib/feedbackLinks";
+import type { FeedbackLinkPlace, ListingRef } from "@/lib/feedbackLinks";
 import { useUserProfile } from "@/contexts/userProfileStore";
 import { APP_FEEDBACK_CAPABILITIES, type FeedbackCapabilities, type FeedbackNotify } from "@/lib/feedbackCapabilities";
 
@@ -60,14 +60,8 @@ interface FeedbackThreadViewProps {
   onUnavailable?: () => void;
   /** Opens a linked thread. Without it the link opens in this view. */
   onOpenThread?: (number: number) => void;
-  /** The address a thread link carries; the website's by default, and none for a bug. */
-  threadHref?: (number: number, type: FeedbackType) => string | undefined;
   /** Opens a linked listing. Without it the app's catalog browser opens it, or the link follows its address. */
-  onOpenListing?: (listing: { kind: string; id: string }) => void;
-  /** The address a listing link carries; the website's by default. */
-  listingHref?: (listing: { kind: string; id: string }) => string;
-  /** The address a user link carries; the website's by default. */
-  profileHref?: (username: string) => string;
+  onOpenListing?: (listing: ListingRef) => void;
 }
 
 /** The reporter's diagnostics as filed. Read-only wherever it appears, and never on a suggestion or question. */
@@ -109,11 +103,7 @@ function ReplyByline({ comment }: { comment: FeedbackComment }) {
  * differ in whether triage controls are shown, and the reply box appears only for whoever may write.
  */
 export function FeedbackThreadView(props: FeedbackThreadViewProps) {
-  const {
-    threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread,
-    threadHref = feedbackThreadChipHref,
-    onOpenListing, listingHref = feedbackListingUrl, profileHref = feedbackProfileUrl,
-  } = props;
+  const { threadId, capabilities = APP_FEEDBACK_CAPABILITIES, onOpenThread, onOpenListing } = props;
   const lentListingOpener = useUserProfile().openListing;
   const openListing = onOpenListing ?? lentListingOpener;
   // A thread opened from a link replaces this one until the caller opens another.
@@ -121,13 +111,11 @@ export function FeedbackThreadView(props: FeedbackThreadViewProps) {
   const shownId = linked?.from === threadId ? linked.id : threadId;
 
   const place = useMemo<FeedbackLinkPlace>(() => ({
+    ...(capabilities.linkPlace ?? APP_FEEDBACK_LINK_PLACE),
     boards: capabilities.boards,
-    threadHref,
-    profileHref,
     openThread: onOpenThread ?? ((number) => setLinked({ from: threadId, id: String(number) })),
-    listingHref,
     openListing,
-  }), [capabilities.boards, threadHref, profileHref, onOpenThread, threadId, listingHref, openListing]);
+  }), [capabilities.linkPlace, capabilities.boards, onOpenThread, threadId, openListing]);
 
   return (
     <FeedbackLinkContext.Provider value={place}>
