@@ -26,6 +26,7 @@ This is the first ticket that lets a player reach the scene, so the offer's avai
 
 **Not verified**
 - Nothing in the list above. The E2E ran on the desktop Playwright project; 375 is a frame only. The GameViewer tests hold Pages, and Chat is held by the panel test and one E2E on a real fifth turn. `RoadSceneHost`'s mount gate in `App.tsx` has no test of its own, and the offer's own check covers the same build.
+- The existing E2E suite against the first-run step (spec session's request): no spec needed a seed. The step needs a missing intro record, and every app spec seeds it through `openApp`, `tileDrag` or its own init script. This comes from reading the specs: the full run did not finish. It stops at load on `anonymous-likes`, `authoring-tour` and `opening-narration`, and the other 73 specs passed my 100-minute limit with no results. A sample of one spec per seed path gave 5 passed, 4 skipped and 6 failed: `enter-world` 2, `main-menu-context-menu-reference` 3, `rich-list-reference` 1. None of the six failure pages shows the step. I did not check whether those six also fail before this ticket.
 
 **For you**
 - For you: the card's wording, and whether five turns feels right, in a real game on the Demo AI.
