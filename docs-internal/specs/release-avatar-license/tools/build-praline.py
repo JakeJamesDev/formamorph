@@ -204,9 +204,21 @@ def bust(i):
         r2=sum((v[k]-c[k])**2 for k in range(3));a=math.exp(-r2/(2*bsig*bsig))*g
         d[2]+=front*.055*a;d[0]+=(v[0]-c[0])*.45*a;d[1]+=(v[1]-c[1])*.35*a-.006*a
     return d
+ybc=sy-.02
+SKIRT_W=[sum(w_ for jj,w_ in zip(joints[i],wts[i]) if jj<len(skin) and 'Skirt' in N[skin[jj]]['name']) for i in range(len(pos))]
+SKIRT_DROP=max((ybc-pos[i][1] for i in range(len(pos)) if SKIRT_W[i]>.05),default=1)
+# How much of the waist's push reaches the hem.
+HEM_SHARE=.5;SKIRT_R=.14
+# A skirt drapes over the belly: each point takes the push at its angle around the body, fading toward the hem.
+def drape(i):
+    v=pos[i];zr=v[2]*front-zc;sc=min(1,SKIRT_R/max(1e-6,math.hypot(v[0],zr)));xa=v[0]*sc;za=zr*sc;up=max(0,v[1]-ybc)
+    a=math.exp(-(up/.115)**2-(xa/.13)**2)*ss(-.05,.01,za)*(1-(1-HEM_SHARE)*ss(0,SKIRT_DROP,max(0,ybc-v[1])))
+    return [xa*.62*a,up*.42*a,front*.12*a]
 def belly(i):
-    v=pos[i];ybc=sy-.02;a=math.exp(-((v[1]-ybc)/.115)**2-(v[0]/.13)**2)*ss(.1,.6,tw[i])*ss(zc-.05,zc+.01,v[2]*front)
-    return [v[0]*.62*a,(v[1]-ybc)*.42*a,front*.12*a]
+    v=pos[i];a=math.exp(-((v[1]-ybc)/.115)**2-(v[0]/.13)**2)*ss(.1,.6,tw[i])*ss(zc-.05,zc+.01,v[2]*front)
+    d=[v[0]*.62*a,(v[1]-ybc)*.42*a,front*.12*a];s=min(1,SKIRT_W[i])
+    if s<=0: return d
+    q=drape(i);return [d[k]*(1-s)+q[k]*s for k in range(3)]
 # The tail moves as one piece with the vertex at its root, so it follows the hips without stretching.
 TAIL_ROOT=P('J_Opt_C_FoxTail1_01')
 tail_root=min(sorted(tailv),key=lambda i:sum((pos[i][k]-TAIL_ROOT[k])**2 for k in range(3)))
