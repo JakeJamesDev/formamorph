@@ -110,7 +110,7 @@ On a suggestion or a question, a mention adds the thread to that player's feedba
 ### Suggestions While You Type
 <!-- keywords: autocomplete, suggest a name, suggest a thread, find a player, find a thread number, at sign list, hash list -->
 
-When you type `@` and a letter in a report or a reply, a list of players opens. Players who already posted in the thread come first. In a reply, `@` alone lists those players. When you type `#` and a number or a word, a list of threads you can read opens.
+When you type `@` and a letter in a report, a reply or a listing comment, a list of players opens. Players who already posted in the thread come first. In a reply, `@` alone lists those players. When you type `#` and a number or a word, a list of threads you can read opens.
 
 - Press the arrow keys to move, then press **Enter** or **Tab** to insert the pick. You can also select a row.
 - Press **Escape** to close the list without inserting anything.
