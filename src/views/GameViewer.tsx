@@ -3748,7 +3748,7 @@ const GameViewer = ({
   const liveItemsRef = useRef({ copies: itemCopies, effects: itemEffects, bodies });
   liveItemsRef.current = { copies: itemCopies, effects: itemEffects, bodies };
   // The landing of a script's inventory writes, which needs the settle defined further down.
-  const landScriptInventoryRef = useRef<((ops: readonly InventoryOp[], items: ChainedItems, totals: ActionTotals, over?: TraitRuntimeState) => void) | null>(null);
+  const landScriptInventoryRef = useRef<((ops: readonly InventoryOp[], items: ChainedItems, totals: ActionTotals, over?: TraitRuntimeState, baseWrites?: Record<string, BodyPick>) => void) | null>(null);
   /** A run's inventory step: `written` reads what the run has left so far. */
   const scriptInventoryRef = useRef<((from: readonly ItemCopy[], written: (so: StatCodeTurnResult) => TurnCodeState | null, replay?: QuietReplay) => Pick<InventoryStep, 'apply' | 'settle'>) | null>(null);
   // The settle of the live traits and Item Copies, with the base Bodies a script wrote. Defined further down.
@@ -3967,18 +3967,19 @@ const GameViewer = ({
         /** Lays the run's result onto live state and hands back what it left. */
         const finish = (result: StatCodeTurnResult, totals: ActionTotals = startActionTotals()) => {
           if (timing === 'switch' || isItemTiming(timing)) return landSwitch(result, totals);
-          // A script's Body writes land here, once, and settle at once (Q56).
           const baseWrites = baseWritesOf(result.worldWrites);
-          if (baseWrites) {
-            settleLiveRef.current?.(totals, baseWrites);
-            result = { ...result, worldWrites: withoutBodies(result.worldWrites) };
-          }
           // A script's inventory writes land here, once; the turn's other world writes ride on.
           const inventory = result.worldWrites?.inventory;
           if (inventory?.length && result.items) {
             // The stats and traits land below, and the settle reads them already.
-            landScriptInventoryRef.current?.(inventory, result.items, totals, codeStateOver(writtenBy(result), liveTraitStateRef.current, traits));
+            landScriptInventoryRef.current?.(inventory, result.items, totals, codeStateOver(writtenBy(result), liveTraitStateRef.current, traits), baseWrites);
             result = { ...result, worldWrites: withoutInventory(result.worldWrites) };
+          }
+          // A script's Body writes land here, once, and settle at once (Q56). They land after the inventory writes the
+          // chain checked under them, or this settle would fire the chain's unequips again.
+          if (baseWrites) {
+            settleLiveRef.current?.(totals, baseWrites);
+            result = { ...result, worldWrites: withoutBodies(result.worldWrites) };
           }
           setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
           // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
@@ -4029,7 +4030,8 @@ const GameViewer = ({
           commitTraitState(landed);
           // An item run hands its inventory writes back apart, so only a switch run still holds any.
           const inventory = result.worldWrites?.inventory;
-          if (inventory?.length && result.items) landScriptInventoryRef.current?.(inventory, result.items, totals);
+          const baseWrites = baseWritesOf(result.worldWrites);
+          if (inventory?.length && result.items) landScriptInventoryRef.current?.(inventory, result.items, totals, undefined, baseWrites);
           setCodePins((prev) => withPinWrites(prev, result.pinWrites));
           setLoreToggles((prev) => withLoreWrites(prev, result.loreWrites));
           ranTraits?.log.forEach((line, i) => {
@@ -4038,7 +4040,6 @@ const GameViewer = ({
           });
           addStatDeltas(null, appliedStatDeltas(resolveStatNames(latest.stats, resolvePH), resolveStatNames(landed.stats, resolvePH)));
           // A trait or Body change settles at once between turns, as a Traits tab toggle does (Q56). A running turn settles at its commit.
-          const baseWrites = baseWritesOf(result.worldWrites);
           if (baseWrites || (landed !== latest && !abortControllerRef.current)) settleLiveRef.current?.(totals, baseWrites);
           return { written: null, gateStats: result.gateStats, world: withoutBodies(withoutInventory(result.worldWrites)) };
         };
@@ -5332,30 +5333,40 @@ const GameViewer = ({
     [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, settleWithItems, startActionTotals],
   );
 
-  /** Script inventory writes through the Inventory module, checked against `over`, else the live state (Q41, Q58). */
-  const applyScriptOps = useCallback((copies: readonly ItemCopy[], ops: readonly InventoryOp[], over: TraitRuntimeState = liveTraitStateRef.current, replay?: HeldItems) => applyInventoryOps(copies, ops, {
-    world: inventoryWorldInForce, source: 'script', newId: randomUUID, persona: personaRef,
-    requirement: equipRequirement({ traits: over, ledger: (replay ?? liveItemsRef.current).effects, now: gameTime }, settleWorldOf(worldHolding(gatedWorld(), replay))),
-  }), [inventoryWorldInForce, personaRef, gameTime, settleWorldOf, gatedWorld]);
+  /** Script inventory writes through the Inventory module, checked against `over`, else the live state, and the
+   *  Bodies in force under it with `baseWrites` on top (Q41, Q58). The render's Bodies can be behind a write. */
+  const applyScriptOps = useCallback((copies: readonly ItemCopy[], ops: readonly InventoryOp[], over: TraitRuntimeState = liveTraitStateRef.current, replay?: HeldItems, baseWrites?: Record<string, BodyPick>) => {
+    const { effects, bodies: heldBodies } = replay ?? liveItemsRef.current;
+    return applyInventoryOps(copies, ops, {
+      world: { ...inventoryWorld, traitPicks: traitPicksInPlay(heldBodies, over, gatedWorld()), basePicks: { ...heldBodies.base, ...baseWrites } },
+      source: 'script', newId: randomUUID, persona: personaRef,
+      requirement: equipRequirement({ traits: over, ledger: effects, now: gameTime }, settleWorldOf(worldHolding(gatedWorld(), replay))),
+    });
+  }, [inventoryWorld, personaRef, gameTime, settleWorldOf, gatedWorld]);
   scriptInventoryRef.current = (from, written, replay) => {
     const chainTraits = (so: StatCodeTurnResult) => codeStateOver(written(so) ?? replay?.base ?? null, liveTraitStateRef.current, traits);
     const held = () => replay?.items ?? liveItemsRef.current;
     return {
-      apply: (copies, ops, so) => applyScriptOps(copies, ops, so && chainTraits(so), replay?.items),
-      // Each write's automatic unequips fire one level below it, settled over what the runs so far left.
-      settle: (copies, itemUses, so) => settleInventory({
-        copies, previous: from, traits: chainTraits(so), ledger: held().effects, itemUses, now: gameTime, bodies: held().bodies,
-      }, settleWorldOf(worldHolding(gatedWorld(), replay?.items))),
+      apply: (copies, ops, so) => applyScriptOps(copies, ops, so && chainTraits(so), replay?.items, so && baseWritesOf(so.worldWrites)),
+      // Each write's automatic unequips fire one level below it, settled over what the runs so far left. The
+      // chain's Body writes count, and the landing writes their log line.
+      settle: (copies, itemUses, so) => {
+        const { bodies: heldBodies, effects } = held();
+        return settleInventory({
+          copies, previous: from, traits: chainTraits(so), ledger: effects, itemUses, now: gameTime,
+          bodies: { ...heldBodies, base: { ...heldBodies.base, ...baseWritesOf(so.worldWrites) } },
+        }, settleWorldOf(worldHolding(gatedWorld(), replay?.items)));
+      },
     };
   };
 
   /** `copies` settled over `live` and committed, `previous` naming the items whose grants leave; the
    *  settle fires the switch scripts. Hands back the settle's auto-unequip events. */
   const commitItemCopies = useCallback(
-    (copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], itemUses: readonly ItemUse[], totals: ActionTotals, live: TraitRuntimeState = liveTraitStateRef.current): ItemScriptEvent[] => {
+    (copies: readonly ItemCopy[], previous: readonly ItemCopy[], lines: readonly string[], itemUses: readonly ItemUse[], totals: ActionTotals, live: TraitRuntimeState = liveTraitStateRef.current, baseWrites?: Record<string, BodyPick>): ItemScriptEvent[] => {
       const world = gatedWorld();
       const settled = settleInventory(
-        { copies, previous, traits: live, ledger: liveItemsRef.current.effects, itemUses, now: gameTime, bodies: liveItemsRef.current.bodies },
+        { copies, previous, traits: live, ledger: liveItemsRef.current.effects, itemUses, now: gameTime, bodies: liveItemsRef.current.bodies, ...(baseWrites && { baseWrites }) },
         settleWorldOf(world),
       );
       liveItemsRef.current = { copies: settled.copies, effects: settled.ledger, bodies: settled.bodies };
@@ -5392,15 +5403,18 @@ const GameViewer = ({
       const ran = await runItemScripts(turn, events, items, apply, itemNameOf, { depth, totals, ...(settle ? { settle } : {}) });
       // A discarded turn takes the runs it started with it.
       if (!mounted.current || generation !== itemRunGenerationRef.current) return;
-      if (ran.result) landBetweenTurns(prepared.finish(ran.result, totals).world);
-      if (ran.copies === start) {
+      // Body writes land with the runs' inventory writes, which the chain checked under them.
+      const moved = ran.copies !== start;
+      const baseWrites = moved ? baseWritesOf(ran.result?.worldWrites) : undefined;
+      if (ran.result) landBetweenTurns(prepared.finish(baseWrites ? { ...ran.result, worldWrites: withoutBodies(ran.result.worldWrites) } : ran.result, totals).world);
+      if (!moved) {
         for (const line of ran.diagnostics) addLogEntry(line);
         return;
       }
       // Item Copies that moved during the runs take their writes again, on top.
       const liveCopies = liveItemsRef.current.copies;
-      const landed = sameCopies(liveCopies, start) ? ran : { ...ran, ...applyScriptOps(liveCopies, ran.ops) };
-      const unequips = commitItemCopies(landed.copies, liveCopies, landed.diagnostics, landed.itemUses, totals);
+      const landed = sameCopies(liveCopies, start) ? ran : { ...ran, ...applyScriptOps(liveCopies, ran.ops, undefined, undefined, baseWrites) };
+      const unequips = commitItemCopies(landed.copies, liveCopies, landed.diagnostics, landed.itemUses, totals, undefined, baseWrites);
       if (unequips.length) await runItemEvents(unequips, totals, depth + 1);
     } catch (error) {
       console.error("Error running item scripts:", error);
@@ -5409,10 +5423,10 @@ const GameViewer = ({
 
   /** What a run's inventory writes left, committed once. Its item events ran in the chain; Item Copies that moved during
    *  the run take the writes again, on top. Only the commit's own settle can still fire one. */
-  const landScriptInventory = useCallback((ops: readonly InventoryOp[], items: ChainedItems, totals: ActionTotals, over?: TraitRuntimeState) => {
+  const landScriptInventory = useCallback((ops: readonly InventoryOp[], items: ChainedItems, totals: ActionTotals, over?: TraitRuntimeState, baseWrites?: Record<string, BodyPick>) => {
     const live = liveItemsRef.current.copies;
-    const landed = sameCopies(live, items.from) ? { copies: items.copies, diagnostics: items.log, itemUses: items.itemUses } : applyScriptOps(live, ops, over);
-    const unequips = commitItemCopies(landed.copies, live, landed.diagnostics, landed.itemUses, totals, over);
+    const landed = sameCopies(live, items.from) ? { copies: items.copies, diagnostics: items.log, itemUses: items.itemUses } : applyScriptOps(live, ops, over, undefined, baseWrites);
+    const unequips = commitItemCopies(landed.copies, live, landed.diagnostics, landed.itemUses, totals, over, baseWrites);
     if (unequips.length) void runItemEvents(unequips, totals);
   }, [applyScriptOps, commitItemCopies, runItemEvents]);
   landScriptInventoryRef.current = landScriptInventory;

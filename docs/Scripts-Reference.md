@@ -764,6 +764,7 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 - **During AI Output waits.** Scripts read the Item Copies from sentence to sentence, but item scripts run once, when the reply ends. A stopped reply applies none of it.
 - **An item's stat effects and granted traits wait for the end of the turn.** A later script reads the new Item Copy, but not the effects it brings.
 - **An equip's requirement reads what the scripts above it wrote.** A script can raise a stat, and the next script can equip the item that needs it.
+- **An equip fits the Body that a script above it wrote.** A script can set `persona.body`, then equip an item in a slot of that Body. Items the new Body has no slot for unequip at once.
 - **Bound stops the player only.** A script can remove or move a **Bound** Item Copy.
 - **A script can give to an entity that is not present.**
 - **Under a library persona, the Custom Persona entity means the player.** A `give` or a `pay` that names it reaches the player.
