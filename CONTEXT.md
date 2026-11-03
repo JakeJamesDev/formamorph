@@ -285,6 +285,10 @@ _Avoid_: account (for spend), payer, customer
 The calls one player action makes, named by a turn id the server issues on the first call and the client sends back on the rest. A first call is refused once the week's spend reaches the budget. A later call is refused once the week's spend, minus this turn's own, reaches the budget plus a grace of one whole turn's maximum cost, so a turn started under budget can finish and held turn ids buy no extra spend. A turn ends at its time limit or call cap.
 _Avoid_: session, request group
 
+**Pause**:
+The stop on Formamorph AI calls once the UTC day's spend reaches the daily ceiling. New turns are refused, and each started turn gets one more call, so a paused day can cut a turn short. An admin can lift it until 00:00 UTC, and the next day starts unpaused.
+_Avoid_: outage, shutdown
+
 **Permissive License**:
 The verdict that a VRM's embedded 1.0 metadata grants every right the community catalog needs — everyone may use it, it may be redistributed, modified copies may be redistributed, and commercial use is allowed. Read from the file, never declared. A gate on publishing, not a badge.
 _Avoid_: license check (the act), open license, free
