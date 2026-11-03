@@ -166,6 +166,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Closing the World Editor while the Test Bench is still checking a large world no longer freezes Formamorph.** The check stops when the editor closes.
   - **A damaged WebP image no longer freezes Formamorph during Optimize Images.**
   - **Formaquestion's replies no longer stop short or come back empty after your mascot changes her face.** Some models, such as the default cloud model, started thinking again after the face change and ran out of room for the reply. AI Context still lists the face change, struck through, since the model no longer sees it.
+  - **Text to Speech now reads a world's written first page, not "Hello World" or text from your last game.**
   - **Loading, exporting or deleting a save, and loading the Text to Speech model, now show an error when they fail.** View Details shows the cause.
   - **Help text across Formamorph now says what each control does, in plain words.** The rewrite covers Settings, the World Editor, the game screen, Community, Formaquestion and the help topics. Scene Images points at the turn's More menu, Face Fix lists SD2, and confirm buttons name their action.
   - **The update dialog no longer says "You're up to date" while an update downloads.** It names the version, keeps the new-version notes marker, and offers Close instead of Check for updates.

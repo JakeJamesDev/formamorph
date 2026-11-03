@@ -3448,6 +3448,8 @@ const GameViewer = ({
             role: "assistant",
             content: JSON.stringify({ narration: event.narration, choices: [], stat_changes: [], turnId: currentTurnIdRef.current }),
           }]);
+          // No reveal runs here, so page one sets the live text that Text to Speech and saves read.
+          setGameplayText(event.narration);
           const patch = applyNarrationReading(event.narration);
           if (ttsLoaded) await generateTTS(event.narration);
           return patch;

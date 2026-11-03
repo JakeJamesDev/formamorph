@@ -4,6 +4,7 @@ import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords, getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
+import { getGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { closedTurns } from '@/lib/memoryView';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import type { ChatMessage, PlayerStat, SaveRecord, Script, World } from '@/types';
@@ -106,6 +107,22 @@ async function reload(id: string, world: World) {
 const OPENING = '  [OOC: keep it short] I walk the pier.  ';
 const TRIMMED = OPENING.trim();
 const WADE = 'I wade into the shallows.';
+
+describe('Text to Speech reads an Opening Narration', () => {
+  it('holds page one as the live text, over a past game, and through a save and reload', async () => {
+    setGameplayText('The last playthrough ended here.');
+    const world = narrationWorld();
+    await enter(world);
+    await waitFor(() => expect(closedTurns(history)).toBe(1));
+    await turnDone();
+    expect(getGameplayText()).toBe(PAGE_ONE);
+
+    await saved('narration-text');
+    setGameplayText('');
+    await reload('narration-text', world);
+    expect(getGameplayText()).toBe(PAGE_ONE);
+  });
+});
 
 describe('the save keeps the opening cue', () => {
   it('writes the cue an Opening Action start sent, edited or not', async () => {
