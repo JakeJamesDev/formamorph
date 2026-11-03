@@ -1,7 +1,7 @@
 # Spec: Script Run Order
 
 Status: done
-Status note: Closed 2026-11-03, tickets 01 to 08, last landing 8d21caff3. Review: spec text corrected, with known gaps in Q52. Closed red: `electron/llamaServer.test.mjs` failed under suite load and passes alone. Tickets 09 to 11 follow the close and stay open.
+Status note: Closed 2026-11-03, tickets 01 to 08, last landing 8d21caff3. Review: spec text corrected, with known gaps in Q52. Closed red: `electron/llamaServer.test.mjs` failed under suite load and passes alone. Tickets 09 to 11 landed after the close, last d8d6d19d1, with no full gate since. Ticket 11's failure never reproduced (Q66).
 Spec session: script-run-order — spec
 
 ## Problem Statement
@@ -88,6 +88,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q62 | (ticket 11) The user allowed one bounded stress run to reproduce the failure: about 8 busy-loop processes for about 60 s |
 | Q63 | (ticket 11) `listProcesses` rejects with an Error naming the cause (timeout, spawn error or non-zero exit), instead of resolving an empty or partial table |
 | Q66 | (ticket 11) The bounded stress run didn't reproduce the failure, so the ticket ships Q63 with no repro and runs no more stress. The next failure names its cause. The cause itself stays unproven, and the landing says so |
+| Q67 | (ticket 10) `runItemScripts` takes one inventory step, and its test call sites change arguments only. `CONTEXT.md` defines Script Chain for code and specs. User-facing docs don't use the word: they say what happens, such as "the writes add up" |
 | Q64 | (ticket 09) Regenerate Choices' quiet replay carries script Body writes, so the Inventory pass fix doesn't open a new disagreement with the live turn. Q52's other replay limits stay |
 | Q65 | (ticket 09) A trait a script turns on reaches its Body row only at a settle. This stays out of ticket 09 as a known gap, named at landing |
 | Q52 | (close) The between-turn loop and the persona order get tickets 07 and 08. Two gaps stay known and unticketed: `rowOrder` stays optional with a fallback, though play always passes it; and the Test Bench and Regenerate Choices edges stay, as Check Scripts counts a Blueprint row's write once, and a quiet replay reads live Body picks and enabled stats and fires no script on an item settle's switch |
