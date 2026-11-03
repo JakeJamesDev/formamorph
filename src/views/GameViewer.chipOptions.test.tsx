@@ -10,7 +10,7 @@ import type { Entity } from '@/types';
 
 /** The game host hands Chip Options the live scene, never the sample world's cast (spec Q22). */
 
-// The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
+// The hosted build: the Default preset is the Demo AI, so entering a game shows the line the tests wait for.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -40,8 +40,7 @@ beforeEach(() => {
 describe('Chip Options in a running game', () => {
   it("reads the game's own entities, not the sample world's", async () => {
     renderGameViewer(harborWorld({ entities: [MIRA] }), { children: <requester.Requester /> });
-    fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await screen.findByTestId('demo-ai-entry-line');
 
     requester.send('settings.prompts');
     fireEvent.click(await screen.findByRole('button', { name: SURFACE_LABELS.system }));
@@ -59,8 +58,7 @@ describe('Chip Options in a running game', () => {
 
   it("previews the Dictionary chip from the sample lore, since a turn activates lore per request (Q37)", async () => {
     renderGameViewer(harborWorld({ entities: [MIRA] }), { children: <requester.Requester /> });
-    fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await screen.findByTestId('demo-ai-entry-line');
 
     requester.send('settings.prompts');
     fireEvent.click(await screen.findByRole('button', { name: SURFACE_LABELS.system }));

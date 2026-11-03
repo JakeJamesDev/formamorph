@@ -118,6 +118,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **New installs now start with Aurelia as the bundled Avatar.** If you already play, your current Avatars stay in your library.
   - **The Avatar library now includes Praline on the desktop, web and Android builds.** If you already play, she joins your library and your default stays the same. Sugarscape now shows a Player Avatar dropdown when you start a new game.
   - **A build with no bundled Avatar now shows an empty state in the Avatar library and Avatar Customization.** Each has an Import Avatar button for a .vrm file, and you can finish customizing with no Avatar.
+  - **Your first game on the Demo AI opens straight into the story, with a short line instead of a dialog.** The Demo AI badge still opens the longer explanation.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

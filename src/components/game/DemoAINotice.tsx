@@ -1,15 +1,16 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { badgeVariants } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Meta } from '@/components/ui/typography';
 import { Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { deviceCanRunDesktopApp } from '@/lib/desktopAppOffer';
 import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
 import { wikiPageUrl } from '@/lib/helpTopics';
-import { isDemoAISeen, markDemoAISeen } from './demoAISeen';
+import { markDemoAISeen } from './demoAISeen';
 
 const SITE_URL = 'https://formamorph.ai';
 
@@ -18,22 +19,10 @@ export interface DemoAINoticeHandle {
   open(): void;
 }
 
-interface DemoAINoticeProps {
-  /** The entry order released the Demo AI dialog for this entry. */
-  entry: boolean;
-  /** The entry turn is over: the dialog closed, or it had nothing to show. */
-  onEntryDone?: () => void;
-}
-
-/** The Demo AI dialog and its seen-key. */
-export const DemoAINotice = forwardRef<DemoAINoticeHandle, DemoAINoticeProps>(function DemoAINotice(
-  { entry, onEntryDone },
-  ref,
-) {
-  const { narrationIsDemoAI, requestSettings } = useSettings();
+/** The Demo AI dialog, which the badge opens. */
+export const DemoAINotice = forwardRef<DemoAINoticeHandle>(function DemoAINotice(_, ref) {
+  const { requestSettings } = useSettings();
   const [open, setOpen] = useState(false);
-  const entryOpenRef = useRef(false);
-  const entryHandledRef = useRef(false);
   const connectRef = useRef<HTMLButtonElement>(null);
 
   const openDialog = useCallback(() => {
@@ -42,24 +31,7 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle, DemoAINoticeProps>(fu
   }, []);
   useImperativeHandle(ref, () => ({ open: openDialog }), [openDialog]);
 
-  useEffect(() => {
-    if (!entry || entryHandledRef.current) return;
-    entryHandledRef.current = true;
-    if (narrationIsDemoAI && !isDemoAISeen()) {
-      entryOpenRef.current = true;
-      openDialog();
-    } else {
-      onEntryDone?.();
-    }
-  }, [entry, narrationIsDemoAI, openDialog, onEntryDone]);
-
-  const close = () => {
-    setOpen(false);
-    if (entryOpenRef.current) {
-      entryOpenRef.current = false;
-      onEntryDone?.();
-    }
-  };
+  const close = () => setOpen(false);
 
   const desktopOffer = deviceCanRunDesktopApp();
 
@@ -123,6 +95,16 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle, DemoAINoticeProps>(fu
     </Dialog>
   );
 });
+
+/** The short line a first game entry on the Demo AI shows in the narration area. */
+export function DemoAIEntryLine() {
+  // The right padding keeps the text clear of the badge and options in the frame's corner.
+  return (
+    <Meta as="p" role="status" data-testid="demo-ai-entry-line" className="mb-2 shrink-0 pr-28">
+      You&apos;re on the Demo AI, a small free model. Select its badge to learn more.
+    </Meta>
+  );
+}
 
 /** The Demo AI status badge. It shows while narration resolves to the Demo AI, and a click opens the dialog. */
 export function DemoAIBadge({ onOpen }: { onOpen: () => void }) {

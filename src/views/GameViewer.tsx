@@ -277,17 +277,16 @@ import {
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { AiSetupGate } from "../components/AiSetupGate";
-import { DemoAIBadge, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
-import { useDemoAIDialogPending } from "../components/game/demoAISeen";
+import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
+import { useDemoAIEntryLine } from "../components/game/demoAISeen";
+import { countsAsDemoAITurn } from "@/lib/firstTimeFlow";
+import { isDemoAICardSeen, recordDemoAITurn } from "@/lib/firstTimeFlowStore";
 import { LikePrompt } from "../components/game/LikePrompt";
 import { useLikePrompt } from "../components/game/useLikePrompt";
 import { useNarrationRescan } from "../components/game/useNarrationRescan";
 import { nextEntryDialog } from "@/lib/entryDialogOrder";
 import { useAiReachable } from "../lib/useAiReachable";
 import { useLoopingAudio } from "@/hooks/useLoopingAudio";
-
-/** Where this entry is with the Demo AI dialog. */
-type DemoAIEntryState = 'waiting' | 'open' | 'done';
 
 interface GameViewerProps {
   initialTraits?: string[];
@@ -328,6 +327,8 @@ interface PendingTurn {
   writtenNarration?: string;
   /** A regenerate's images, read before the rewind lets the prune drop them. */
   resentAttachments?: ImageAttachment[];
+  /** The turn replaces the latest one. */
+  regenerate?: boolean;
 }
 
 /** What one playthrough remembers about its openings. Session state only, so a save never carries it. */
@@ -1290,34 +1291,21 @@ const GameViewer = ({
   // nextEntryDialog picks one at a time; a lower one waits until the one above it closes.
   const demoAINoticeRef = useRef<DemoAINoticeHandle>(null);
   const openDemoAIDialog = useCallback(() => demoAINoticeRef.current?.open(), []);
-  const demoAIDue = useDemoAIDialogPending();
-  // 'waiting' until this entry settles the Demo AI dialog, so a later switch to the Demo AI shows nothing.
-  const [demoAIEntry, setDemoAIEntry] = useState<DemoAIEntryState>('waiting');
-  const settleDemoAIEntry = useCallback(() => setDemoAIEntry((s) => (s === 'waiting' ? 'done' : s)), []);
-  const handleDemoAIEntryDone = useCallback(() => setDemoAIEntry('done'), []);
   const settingsRequestPending = settings.settingsRequest !== null;
-  const nextEntry = nextEntryDialog({
-    aiGateDue: aiReachable === null ? null : aiReachable === false && !aiGateShown,
-    demoAIPending: demoAIEntry === 'waiting' && demoAIDue,
-    readmePending,
-  });
+  const aiGateDue = aiReachable === null ? null : aiReachable === false && !aiGateShown;
+  const demoAIEntryLine = useDemoAIEntryLine(aiGateDue);
+  const nextEntry = nextEntryDialog({ aiGateDue, readmePending });
   useEffect(() => {
     if (nextEntry === 'aiGate') {
       setAiGateShown(true);
       setAiGateOpen(true);
-      // The gate takes this entry's turn; the seen-key stays unset, so the Demo AI dialog shows next entry.
-      settleDemoAIEntry();
-    } else if (nextEntry === 'demoAI') {
-      setDemoAIEntry('open');
     } else if (nextEntry === 'readme') {
-      // Connect an AI opens Settings, so the readme waits for it too, from the request on.
-      if (aiGateOpen || demoAIEntry === 'open' || isSettingsOpen || settingsRequestPending) return;
+      // A request to open Settings holds the readme too, from the request on.
+      if (aiGateOpen || isSettingsOpen || settingsRequestPending) return;
       setReadmePending(false);
       setShowReadmeModal(true);
-    } else if (aiReachable !== null) {
-      settleDemoAIEntry();
     }
-  }, [nextEntry, aiGateOpen, demoAIEntry, isSettingsOpen, settingsRequestPending, aiReachable, settleDemoAIEntry]);
+  }, [nextEntry, aiGateOpen, isSettingsOpen, settingsRequestPending]);
 
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
@@ -1784,7 +1772,7 @@ const GameViewer = ({
       );
       return;
     }
-    pendingTurnRef.current = { action, resentAttachments: latestTurnAttachments(actionAttachments, fullMessageHistory) };
+    pendingTurnRef.current = { action, resentAttachments: latestTurnAttachments(actionAttachments, fullMessageHistory), regenerate: true };
     setPendingTurnNonce((n) => n + 1);
   };
 
@@ -2813,6 +2801,8 @@ const GameViewer = ({
       signal: AbortSignal; location: GameLocation | null; participants: string[]; destinations: GameLocation[];
       /** Page one came from an Opening Narration, so no reveal ran and there is none to wait out. */
       written: boolean;
+      /** The turn adds to the story, rather than replacing the latest turn or playing a canned test. */
+      isNewTurn: boolean;
       /** What the commit was computed from, which the later code writes lay over. */
       context: TurnCommitContext;
       /** Where tracked entities stood and who followed when the turn began, where the player stood, and what
@@ -2980,6 +2970,12 @@ const GameViewer = ({
     // The pass's item scripts run over the committed turn, and the snapshot holds their writes.
     await runItemEvents(inventory?.events ?? [], commitTotals);
     armTurnSnapshot();
+    if (countsAsDemoAITurn({
+      narrationIsDemoAI: settings.narrationIsDemoAI,
+      isOpeningTurn: commit.isOpeningTurn,
+      isNewTurn: turn.isNewTurn,
+      cardSeen: isDemoAICardSeen(),
+    })) recordDemoAITurn();
     // The turn committed, so the before box's writes stand.
     beforeBoxUndoRef.current = null;
     turnStartItemsRef.current = null;
@@ -3022,8 +3018,10 @@ const GameViewer = ({
    */
   const sendGameAction = async (
     action: string,
-    { writtenNarration, attachments, resentAttachments, script }: {
+    { writtenNarration, attachments, resentAttachments, regenerate = false, script }: {
       writtenNarration?: string;
+      /** This turn replaces the latest one. */
+      regenerate?: boolean;
       attachments?: ImageAttachment[];
       /** The re-sent turn's images. They are kept even when the turn may not send them. */
       resentAttachments?: ImageAttachment[];
@@ -3679,6 +3677,7 @@ const GameViewer = ({
         participants: turnParticipants,
         destinations,
         written: plan.writtenNarration !== null,
+        isNewTurn: !regenerate && !script,
         context: commitContext,
         entityMove: { start: moveStart, from: moveFrom, applied: turnJoin ?? moveStart },
       });
@@ -3719,7 +3718,7 @@ const GameViewer = ({
     if (pendingTurnNonce === 0) return;
     const pending = pendingTurnRef.current;
     pendingTurnRef.current = null;
-    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration, resentAttachments: pending.resentAttachments });
+    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration, resentAttachments: pending.resentAttachments, regenerate: pending.regenerate });
     // sendGameAction is deliberately not a dependency — we want this render's (post-restore) closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTurnNonce]);
@@ -6017,6 +6016,7 @@ const GameViewer = ({
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
+      narrationLine={demoAIEntryLine ? <DemoAIEntryLine /> : null}
       totalPages={totalPages}
       handlePageChange={handlePageChange}
       handleSendAction={handleSendAction}
@@ -6939,7 +6939,7 @@ const GameViewer = ({
         onReady={handleAiGateReady}
       />
 
-      <DemoAINotice ref={demoAINoticeRef} entry={demoAIEntry === 'open'} onEntryDone={handleDemoAIEntryDone} />
+      <DemoAINotice ref={demoAINoticeRef} />
 
       <LlmSetupGuide
         open={connectionGuideOpen}

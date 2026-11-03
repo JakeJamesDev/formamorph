@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
@@ -9,8 +9,8 @@ import type { World } from '@/types';
 
 /** Take Me There landing on the game screen: the row a request names is scrolled to, focused, and pulsed once. */
 
-// The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
-// Pinned here so a developer's `.env.local` endpoint cannot hide the gate.
+// The hosted build: the Default preset is the Demo AI, so entering a game shows the line the tests wait for.
+// Pinned here so a developer's `.env.local` endpoint cannot hide the line.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -35,10 +35,10 @@ const STORY_FORMAT = 'export#story-format';
 let requester: ReturnType<typeof createSurfaceRequester>;
 const scrolled = recordScrolls();
 
-/** Enter the game and dismiss the AI setup gate the default endpoint raises, as a player does. */
+/** Enter the game, waiting for the Demo AI line that shows once reachability is known. */
 async function enterGame() {
   renderGameViewer(WORLD, { children: <requester.Requester /> });
-  fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
+  await screen.findByTestId('demo-ai-entry-line');
   await waitFor(() => expect(rowOf(ACTION_BOX)).not.toBeNull());
 }
 

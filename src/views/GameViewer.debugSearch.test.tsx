@@ -1,11 +1,11 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
 import { createSurfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import type { World } from '@/types';
 
-// The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
+// The hosted build: the Default preset is the Demo AI, so entering a game shows the line the tests wait for.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -35,8 +35,7 @@ beforeEach(() => {
 describe('the AI Context search box', () => {
   it('clears with the X, drops the counter, and keeps the cursor in the box', async () => {
     renderGameViewer(WORLD, { onExitToMenu: vi.fn(), registry, children: <requester.Requester /> });
-    fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
-    await waitFor(() => expect(registry.get().dialog).toBeNull());
+    await screen.findByTestId('demo-ai-entry-line');
     requester.send('aiContext');
     const box = await screen.findByPlaceholderText('Search terms, separated by spaces');
 

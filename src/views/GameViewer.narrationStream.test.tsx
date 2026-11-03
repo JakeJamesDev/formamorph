@@ -7,8 +7,8 @@ import type { ChatMessage } from '@/types';
 
 /** The partial assistant message a streamed narration persists, seen through the history it writes. */
 
-// The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
-// Pinned here so a developer's `.env.local` endpoint cannot hide the gate.
+// The hosted build: the Default preset is the Demo AI, so entering a game shows the line the tests wait for.
+// Pinned here so a developer's `.env.local` endpoint cannot hide the line.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -80,7 +80,7 @@ function stubModel() {
 
 async function startOpeningTurn() {
   renderGameViewer(harborWorld(), { inGameplay: <HistoryProbe /> });
-  fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
+  await screen.findByTestId('demo-ai-entry-line');
   const model = stubModel();
   const box = await screen.findByPlaceholderText(/Type your action/);
   fireEvent.change(box, { target: { value: 'Look around' } });

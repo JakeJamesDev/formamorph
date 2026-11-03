@@ -8,8 +8,8 @@ import type { World } from '@/types';
 
 /** A request from the help window, answered by a running game. */
 
-// The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
-// Pinned here so a developer's `.env.local` endpoint cannot hide the gate.
+// The hosted build: the Default preset is the Demo AI, so entering a game shows the line the tests wait for.
+// Pinned here so a developer's `.env.local` endpoint cannot hide the line.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -31,11 +31,10 @@ let registry: ReturnType<typeof createSurfaceRegistry>;
 let requester: ReturnType<typeof createSurfaceRequester>;
 let onExitToMenu: Mock<() => void>;
 
-/** Enter the game and dismiss the AI setup gate the default endpoint raises, as a player does. */
+/** Enter the game, waiting for the Demo AI line that shows once reachability is known. */
 async function enterGame() {
   renderGameViewer(WORLD, { onExitToMenu, registry, children: <requester.Requester /> });
-  fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
-  await waitFor(() => expect(registry.get().dialog).toBeNull());
+  await screen.findByTestId('demo-ai-entry-line');
 }
 
 beforeEach(() => {

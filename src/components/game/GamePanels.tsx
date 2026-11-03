@@ -502,6 +502,7 @@ export interface CommandChoices {
 
 export const MiddlePanel = ({
   narrationBadge,
+  narrationLine,
   parseAssistantMessage,
   totalPages,
   handlePageChange,
@@ -543,6 +544,8 @@ export const MiddlePanel = ({
 }: {
   /** A status badge that leads the narration options. */
   narrationBadge?: React.ReactNode;
+  /** A short line at the top of the narration area, in both layouts. */
+  narrationLine?: React.ReactNode;
   parseAssistantMessage: (content: string) => string;
   totalPages: number;
   handlePageChange: (page: number) => void;
@@ -923,6 +926,7 @@ export const MiddlePanel = ({
           {chatLayout ? (
             <div className={`${narrationFrame} flex flex-col`}>
               {optionsControl}
+              {narrationLine}
               {commandPreview ? (
                 <>
                   {commandPreviewHeader}
@@ -972,6 +976,7 @@ export const MiddlePanel = ({
             viewportProps={{ className: narrationFade }}
           >
             {optionsControl}
+            {narrationLine}
             {commandPreview && (
               <>
                 {commandPreviewHeader}

@@ -1,7 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
-import { markDemoAISeen } from '@/components/game/demoAISeen';
 import WorldStorageService from '@/services/WorldStorageService';
 import { WORLD_CHANGE_CHANNEL } from '@/lib/worldChangeSignal';
 import { watchStackedAlerts } from '@/test/stackedDialogs';
@@ -24,8 +23,6 @@ const WORLD = {
   stats: [], locations: [{ id: 'harbor', name: 'Harbor', isStarting: true }], entities: [], traits: [], statUpdates: [],
 } as unknown as World;
 
-// A returning player has met the Demo AI notice; its first-entry dialog would cover the editor.
-beforeEach(() => { markDemoAISeen(); });
 afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();

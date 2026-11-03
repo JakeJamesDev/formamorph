@@ -208,8 +208,9 @@ The game applies your picks and gives out the world's starting items: yours, the
 Then, in order, these can open:
 
 1. A setup dialog, when the game can't reach your AI. See [The Set Up Your AI Dialog](Connect-Your-Own-AI#the-set-up-your-ai-dialog).
-2. **You're Playing on the Demo AI**, on your first game on the Demo AI. See [The Demo AI Notice](How-to-Play#the-demo-ai-notice).
-3. The world's **Readme**, when it has one.
+2. The world's **Readme**, when it has one.
+
+On your first game on the Demo AI, a short line at the top of the story tells you which AI you're on. See [The Demo AI Notice](How-to-Play#the-demo-ai-notice).
 
 ## The Welcome Animation
 <!-- keywords: splash screen, logo, startup, title sequence, boot screen, see it again -->

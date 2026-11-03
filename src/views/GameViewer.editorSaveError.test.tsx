@@ -1,7 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'react-toastify';
-import { markDemoAISeen } from '@/components/game/demoAISeen';
 import { renderGameViewer } from '@/test/gameViewer';
 import { failWritesOnQuota } from '@/test/quotaAbort';
 import { toastTexts } from '@/test/toastText';
@@ -27,8 +26,6 @@ const WORLD = {
 } as unknown as World;
 
 let restore: (() => void) | null = null;
-// A returning player: the Demo AI notice would otherwise open on entry and take the first Escape.
-beforeEach(() => { markDemoAISeen(); });
 afterEach(() => { restore?.(); restore = null; });
 
 describe('Save & Exit on a full disk', () => {
