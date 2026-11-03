@@ -43,6 +43,27 @@ const only = arg('only', '').split(',').filter(Boolean);
 const wanted = new Set(only.length ? only : ALL);
 
 const AVATAR_ALT = 'build-assets/alternate-avatar.vrm';
+
+// The viewer sets no expression, so the served copy holds the relaxed smile as its face's resting morph. Three-vrm would zero a bound morph, so the preset goes.
+function smiling(glb) {
+  const length = glb.readUInt32LE(12);
+  const json = JSON.parse(glb.subarray(20, 20 + length).toString('utf8'));
+  const presets = json.extensions.VRMC_vrm.expressions.preset;
+  const { index } = presets.relaxed.morphTargetBinds[0];
+  const face = json.meshes[json.nodes.find((node) => node.name === 'Face').mesh];
+  face.weights = face.extras.targetNames.map((_, i) => (i === index ? 1 : 0));
+  delete presets.relaxed;
+  const text = Buffer.from(JSON.stringify(json), 'utf8');
+  const chunk = Buffer.concat([text, Buffer.alloc((4 - (text.length % 4)) % 4, 0x20)]);
+  const bin = glb.subarray(20 + length);
+  const head = Buffer.alloc(20);
+  head.write('glTF', 0, 'latin1');
+  head.writeUInt32LE(2, 4);
+  head.writeUInt32LE(20 + chunk.length + bin.length, 8);
+  head.writeUInt32LE(chunk.length, 12);
+  head.write('JSON', 16, 'latin1');
+  return Buffer.concat([head, chunk, bin]);
+}
 const SCENE = JSON.parse(readFileSync(arg('scene', 'scripts/fixtures/site-game.json'), 'utf8'));
 const VERIFY_ONLY = process.argv.includes('--verify-only');
 
@@ -207,7 +228,7 @@ try {
     // Its own context, because the seed happens once per IndexedDB: a page sharing the earlier
     // context would already hold the tracked avatar and never re-fetch.
     const avatarCtx = await newCtx();
-    const alt = readFileSync(AVATAR_ALT);
+    const alt = smiling(readFileSync(AVATAR_ALT));
     await avatarCtx.route('**/default-avatar.vrm', (route) =>
       route.fulfill({ body: alt, contentType: 'application/octet-stream' }));
     const p = await mk(avatarCtx);
