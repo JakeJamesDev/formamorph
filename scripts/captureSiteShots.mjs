@@ -2,6 +2,7 @@
 // the favicon, and the social-embed image. Writes straight into hosting/site/.
 //
 // Needs a dev server (`npm run dev -- --port 5180`). Gameplay loads a prepared save without AI calls.
+// The server must not have served the title card: that puts these shots in Vite's module graph, so writing one reloads the page.
 // Palette is the `data-theme` attribute; theme is an emulated `prefers-color-scheme`, so
 // every pair is pixel-aligned.
 //
@@ -156,6 +157,8 @@ try {
     }, null, { timeout: 180000 });
     await p.mouse.move(VIEWPORT.width / 2, 20);
     await p.waitForTimeout(4000); // the reveal finishes and the pill fades
+    await p.clickIfVisible('No Thanks'); // the Semantic Search offer covers the answer
+    await p.waitForTimeout(800);
     await sweep(p, '01-library');
     await p.close();
   }

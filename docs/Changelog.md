@@ -136,6 +136,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **`npm run test:ledger` writes one record per test, with its time, coverage, failure history and a stale check.** Raw output stays untracked in the git folder, so every worktree reads the same ledger.
   - **Eight source-scanning tests are now ESLint rules.** They leave the always-run test list, so every gate runs fewer tests, and a reintroduced problem fails lint on the file that holds it.
   - **Kept-protection check for moved and deleted tests.** `scripts/keptProtection.mjs` compares ledger coverage and Stryker kills before and after a change, and exits 1 on any loss.
+  - **`npm run title-card` captures the title card and YouTube banner with Aki, Sei and Praline.** The title card page takes `avatar=praline`.
 
 #### ➖ Removed
 

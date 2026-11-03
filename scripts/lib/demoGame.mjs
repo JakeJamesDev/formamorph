@@ -17,6 +17,9 @@ export async function prepareGame(context, scene, source = 'src/defaultworlds/dr
   const entity = world.entities.find((item) => item.name === scene.entity);
   if (!location || !entity || !entity.locations.includes(location.id)) throw new Error('Capture scene does not match the world');
   location.backgroundImage ||= world.locations.find((item) => item.backgroundImage)?.backgroundImage;
+  // The dev boot starts a fresh game before it loads the save, and a written opening lands over the save.
+  for (const item of world.locations) item.openings = [];
+  world.worldOverview.openings = [];
   const sceneTurns = scene.turns ?? [{ action: scene.action, narration: scene.narration }];
   const turns = openingOnly ? [] : sceneTurns;
   const base = {

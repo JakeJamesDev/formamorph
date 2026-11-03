@@ -21,7 +21,7 @@ const banner = arg('layout', '') === 'banner';
 const SIZE = banner ? { width: 2560, height: 1440 } : { width: 1920, height: 1080 };
 const NAME = banner ? 'youtube-banner' : 'title-card';
 const WEBP_QUALITY = 0.9;
-const ALL = ['default', 'alt'];
+const ALL = ['default', 'alt', 'praline'];
 const only = arg('only', '').split(',').filter(Boolean);
 const wanted = only.length ? only : ALL;
 const t = arg('t', '');

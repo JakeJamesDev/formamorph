@@ -6,7 +6,7 @@
     npm run dev -- --port 5180   →   http://localhost:5180/build-assets/title-card/
 
   Query parameters:
-    avatar=default|alt   which bundled VRM to render (alt is the release-channel model beside this folder)
+    avatar=default|alt|praline   which bundled VRM to render (alt and praline are the release-channel models beside this folder)
     t=<seconds>          idle-animation frame to freeze on (default 1.4)
     scale=1              1:1 pixels instead of fit-to-window
     layout=banner        2560x1440 YouTube banner; wordmark and face sit in the 1546x423 all-devices band
@@ -172,7 +172,8 @@
 
   const loader = new GLTFLoader();
   loader.register(p => new VRMLoaderPlugin(p));
-  const modelUrl = params.get('avatar') === 'alt' ? '/build-assets/alternate-avatar.vrm' : '/default-avatar.vrm';
+  const MODEL_URLS = { alt: '/build-assets/alternate-avatar.vrm', praline: '/build-assets/praline-avatar.vrm' };
+  const modelUrl = MODEL_URLS[params.get('avatar')] ?? '/default-avatar.vrm';
   const freezeAt = Number(params.get('t') ?? 1.4);
   let vrm;
   loader.load(modelUrl, gltf => {
