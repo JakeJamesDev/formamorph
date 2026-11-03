@@ -8,6 +8,7 @@
   Query parameters:
     avatar=default|alt|praline   which bundled VRM to render (alt and praline are the release-channel models beside this folder)
     t=<seconds>          idle-animation frame to freeze on (default 1.4)
+    expression=<name>    Aurelia's VRM expression (default happy)
     scale=1              1:1 pixels instead of fit-to-window
     layout=banner        2560x1440 YouTube banner; wordmark and face sit in the 1546x423 all-devices band
     guides=1             outline the banner's TV, desktop and all-devices areas
@@ -174,6 +175,8 @@
   loader.register(p => new VRMLoaderPlugin(p));
   const MODEL_URLS = { alt: '/build-assets/alternate-avatar.vrm', praline: '/build-assets/praline-avatar.vrm' };
   const modelUrl = MODEL_URLS[params.get('avatar')] ?? '/default-avatar.vrm';
+  const EXPRESSIONS = { alt: params.get('expression') ?? 'happy' };
+  const BANNER_HEAD_Y = 1.3144;
   const freezeAt = Number(params.get('t') ?? 1.4);
   let vrm;
   loader.load(modelUrl, gltf => {
@@ -191,6 +194,15 @@
       bone('head').rotation.y += 0.18;
       bone('spine').rotation.y += 0.08;
       vrm.humanoid.update();
+      const expression = EXPRESSIONS[params.get('avatar')];
+      if (expression) vrm.expressionManager?.setValue(expression, 1);
+      // Banner: every head sits at the same height, whatever the model's own height.
+      if (banner) {
+        vrm.scene.updateWorldMatrix(true, true);
+        const dy = vrm.humanoid.getRawBoneNode('head').getWorldPosition(new THREE.Vector3()).y - BANNER_HEAD_Y;
+        camera.position.y += dy;
+        camera.lookAt(-0.62, 1.32 + dy, 0);
+      }
       window.__titleCardReady = true;
     }, undefined, err => console.error('FBX load failed', err));
   }, undefined, err => console.error('VRM load failed', err));
