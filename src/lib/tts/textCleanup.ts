@@ -87,8 +87,8 @@ const TITLES: [RegExp, string][] = [
   [/\bM[Rr]\.(?=\s+[A-Z])/g, "Mister"],
   [/\bM[Rr][Ss]\.(?=\s+[A-Z])/g, "Missus"],
   [/\bM[Ss]\.(?=\s+[A-Z])/g, "Miss"],
-  [/\bD[Rr]\.(?=\s+[A-Z])/g, "Doctor"],
-  [/\bProf\.(?=\s+[A-Z])/g, "Professor"],
+  [/\bD[Rr]\.?(?=\s+[A-Z])/g, "Doctor"],
+  [/\bProf\.?(?=\s+[A-Z])/g, "Professor"],
   [/\bCapt\.(?=\s+[A-Z])/g, "Captain"],
   [/\bSgt\.(?=\s+[A-Z])/g, "Sergeant"],
   [/\bLt\.(?=\s+[A-Z])/g, "Lieutenant"],
@@ -133,7 +133,7 @@ export function cleanText(input: string): string {
   text = text
     .replace(/(?<![\w.])[A-Za-z](?:\.[A-Za-z])+(?![A-Za-z])(\.?)/g, (match: string, dot: string, at: number, whole: string) => spelledLetters(match, dot && !whole.slice(at + match.length).trim() ? "." : ""))
     .replace(/\bAI\b/g, "A-I")
-    .replace(/(?<=\d\s?)([AP])M\b/g, "$1-M")
+    .replace(/(?<=\d\s?)([AaPp])[Mm]\b/g, (_, letter: string) => `${letter.toUpperCase()}-M`)
     .replace(/&/g, " and ")
     .replace(/(?<![$£€\d.,])\b(\d{4})(s?)\b(?![,.]\d)/g, (_, digits: string, suffix: string) => year(digits, suffix))
     .replace(/(?<!:)\b([01]?\d|2[0-3]):([0-5]\d)\b(?!:)/g, (_, h: string, m: string) => clock(h, m))

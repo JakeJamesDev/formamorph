@@ -6,6 +6,7 @@ The comparison also writes word-to-phoneme JSON that scoreCli.mjs reads with --p
 import gzip, json, os, sys
 import numpy as np, onnx, onnxruntime as ort, torch
 from onnx import TensorProto, helper, numpy_helper
+from strip_onnx import strip_model
 from transformers import BartForConditionalGeneration
 
 model_dir, onnx_dir, pred_dir = sys.argv[1:4]
@@ -38,7 +39,7 @@ def export(net, args, names, output, path):
     shapes = tuple({i: torch.export.Dim.AUTO for i in range(a.dim())} for a in args)
     torch.onnx.export(net, args, tmp, input_names=names, output_names=[output], opset_version=18, dynamo=True,
                       dynamic_shapes=shapes, external_data=False, optimize=True)
-    onnx.save(store_half(onnx.load(tmp)), path)
+    onnx.save(strip_model(store_half(onnx.load(tmp))), path)
     os.remove(tmp)
 
 def store_half(graph_model):

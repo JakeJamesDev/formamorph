@@ -235,6 +235,19 @@ describe("function words", () => {
   });
 });
 
+describe("abbreviations with no period, and lowercase times", () => {
+  it("reads a title before a name", async () => {
+    const { say } = setup();
+    expect(await say("Dr Smith")).toBe(`${cmu("doctor")} ${cmu("smith")}`);
+    expect(await say("Prof Smith")).toBe(`${cmu("professor")} ${cmu("smith")}`);
+    expect(await say("the dr")).not.toContain(cmu("doctor"));
+  });
+
+  it.each(["at 3am", "at 3 am", "at 3AM"])("spells the letters in %s", async (text) => {
+    expect(await setup().say(text)).toBe(`æt ${cmu("three")} ˌAˈɛm`);
+  });
+});
+
 describe("dashes", () => {
   it.each(["bent—gone", "bent – gone", "bent--gone", "bent - gone"])("gives %s spaces, so the engine pauses", async (text) => {
     expect(await setup().say(text)).toBe(`${cmu("bent")} — ${cmu("gone")}`);

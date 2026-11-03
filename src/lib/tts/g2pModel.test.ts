@@ -9,6 +9,11 @@ const file = (name: string) => readFileSync(new URL(`./g2p/${name}`, import.meta
 const allowed = new Set(vocab.phonemes);
 
 describe("the shipped model", () => {
+  it.each(["encoder.fp16.onnx", "decoder.fp16.onnx"])("%s holds no local file paths", (name) => {
+    const text = file(name).toString("latin1");
+    expect(text).not.toMatch(/[A-Za-z]:[\\/]+Users|espeak|stack_trace/i);
+  });
+
   let model: G2pModel;
   beforeAll(async () => {
     model = await loadG2pModel(ort as unknown as OrtRuntime, file("encoder.fp16.onnx"), file("decoder.fp16.onnx"));
