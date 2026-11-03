@@ -38,14 +38,14 @@ const commonShort = new Set<string>(compoundWords);
 
 /** Reads the text of `cmudict.dict` into each word's first pronunciation, plus the `word(n)` entries of homographs. */
 export function parseDictionary(text: string): Map<string, string> {
-  const primary = new Map<string, string>();
+  const entries = new Map<string, string>();
   for (const line of text.split("\n")) {
     const entry = parseCmudictLine(line);
     if (!entry) continue;
     const variantOf = /^(.+)\(\d+\)$/.exec(entry[0])?.[1];
-    if (!variantOf || isHomograph(variantOf)) primary.set(entry[0], entry[1]);
+    if (!variantOf || isHomograph(variantOf)) entries.set(entry[0], entry[1]);
   }
-  return primary;
+  return entries;
 }
 
 function endingFor(stem: string): string {
@@ -67,16 +67,16 @@ function fromBritishList(lower: string): string | undefined {
  * word table, CMUdict with its homograph picks, a regular ending on one of those, compound split, then the model.
  * British rules apply to every source's result, so word table entries stay American.
  */
-export function createTextToPhonemes({ dictionary: primary, predict }: TextToPhonemesSources) {
+export function createTextToPhonemes({ dictionary: entries, predict }: TextToPhonemesSources) {
   const said = new Map<string, string>();
   const predicted = new Map<string, Promise<string>>();
 
   const fromDictionary = (word: string): string | undefined => {
-    const entry = primary.get(word);
+    const entry = entries.get(word);
     return entry === undefined ? undefined : arpabetToKokoro(entry);
   };
 
-  const isSplitPart = (part: string) => primary.has(part) && (part.length >= COMMON_PART || commonShort.has(part));
+  const isSplitPart = (part: string) => entries.has(part) && (part.length >= COMMON_PART || commonShort.has(part));
 
   const fromSplit = (word: string): string | undefined => {
     let best: [string, string] | undefined;

@@ -14,7 +14,7 @@ Text to Speech turns a word it has never seen into phonemes with a small model o
 
 ## 🧠 Rebuild the model
 
-Training takes about 70 minutes and holds the GPU. Run it when nobody needs the machine.
+Training takes about 70 minutes and holds the GPU. Run it when nobody needs the machine. Install PyTorch from its CUDA index first if the default build has no GPU support.
 
 ```bash
 python -m venv .scratch/g2p/venv
@@ -26,9 +26,7 @@ npx vite-node testing/g2p/writePairs.ts .scratch/g2p/pairs.json
 
 - Training reads only the pairs file, and that file comes only from the pinned CMUdict. Primary entries only.
 - A rerun repeats the seed and data split. It does not repeat the exact bytes.
-- The export prints how many words differ between ONNX and PyTorch, and the file sizes.
-
-Install PyTorch from its CUDA index first if the default build has no GPU support.
+- The export prints how many words differ between ONNX and PyTorch, and the file sizes. It strips the exporter's debug text, which holds local file paths.
 
 ## 📏 Score a pipeline
 
@@ -69,8 +67,7 @@ npx vite-node testing/g2p/ratingPage.ts tally fantasy new=.scratch/g2p/pred/pipe
 
 - [`sentences`](sets/sentences.json) checks weak forms in whole sentences. It has no carrier and no bar.
 - [`homographs`](sets/homographs.json) checks words such as read and wound in contrasting sentences. It has no carrier and no bar.
-- `britishWords` is the hand-written [British word list](../../src/lib/tts/g2p/britishWords.json). Each entry goes on this rating page.
-
+- `britishWords` is the hand-written [British word list](../../src/lib/tts/g2p/britishWords.json). Each entry takes a clip on the page this set builds.
 - `build` makes a page of blind clips. Pass several `arm=file` pairs to compare, and the page never says which arm said what.
 - A string already rated for that word is carried from [`ratings.json`](ratings.json), so you only hear what is new.
 - Add `--accent b` for British voices, and pass `b` to `writePredictions.ts`. Those ratings are kept apart.

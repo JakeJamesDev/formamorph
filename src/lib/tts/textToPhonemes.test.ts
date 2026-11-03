@@ -216,7 +216,7 @@ describe("function words", () => {
       const base = word.replace(/\(\d+\)$/, "");
       variants.set(base, [...(variants.get(base) ?? []), phones]);
     }
-    // CMUdict has no weak form for these two, and the owner rejected the full vowel by ear.
+    // CMUdict has no weak form for these two, so they hold their own schwa.
     const ownSchwa: Record<string, string> = { had: "HH AH0 D", have: "HH AH0 V" };
     for (const [word, form] of Object.entries(weakForms)) {
       if (word in ownSchwa) {

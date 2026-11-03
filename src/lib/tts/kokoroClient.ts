@@ -89,7 +89,7 @@ export class KokoroClient {
     private readonly deps: KokoroClientDeps = {},
   ) {}
 
-  /** Keeps the kokoro-js name for the load call. */
+  /** Loads the model and its tokenizer. */
   static async from_pretrained(
     modelId: string,
     { dtype = "fp32", device }:KokoroLoadOptions = {},
@@ -98,6 +98,7 @@ export class KokoroClient {
       StyleTextToSpeech2Model.from_pretrained(modelId, { dtype, device }),
       AutoTokenizer.from_pretrained(modelId),
     ]);
+    // The library's types are wider than the calls this client makes.
     return new KokoroClient(model as unknown as KokoroModel, tokenizer as unknown as Tokenizer);
   }
 

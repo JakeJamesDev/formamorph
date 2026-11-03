@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect, it, vi } from "vitest";
 import { createTextToPhonemes, parseDictionary } from "./textToPhonemes";
 
-// No shipped entry is a homograph today, so this one stands in for a future bad clip.
+// No shipped entry is a homograph, so this one stands in for a bad clip.
 vi.mock("./g2p/wordTable.json", () => ({ default: { read: "ɹˈid" } }));
 
 it("a word table entry beats a homograph pick", async () => {

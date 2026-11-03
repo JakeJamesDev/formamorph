@@ -50,7 +50,7 @@ if (command === "build") {
   const words = setWords(set);
   const plan = planClips(arms, words, ratings);
   printTally(arms, words, ratings);
-  // q8 on CPU is what every carried rating was heard through.
+  // Carried ratings assume q8 on CPU.
   const loaded = await KokoroClient.from_pretrained("onnx-community/Kokoro-82M-v1.0-ONNX", { dtype: "q8", device: "cpu" });
   const tts = new KokoroClient(loaded.model, loaded.tokenizer, { phonemize: async (phonemes) => phonemes });
   mkdirSync(resolve(outDir), { recursive: true });

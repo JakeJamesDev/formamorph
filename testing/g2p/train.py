@@ -17,7 +17,7 @@ src = json.load(open(args.pairs, encoding='utf8'))
 random.seed(src['seed']); torch.manual_seed(src['seed'])
 dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Q9 sets the width, layers, heads, and dropout.
+# The spec's ruling Q9 sets the width, layers, heads, and dropout.
 D_MODEL, FFN, LAYERS, HEADS, DROPOUT, ATTN_DROPOUT = 256, 1024, 2, 4, 0.3, 0.1
 BATCH, LR, VAL, MAX_LEN = 256, 1e-3, 3000, 48
 PAD, BOS, EOS, UNK = 0, 1, 2, 3
