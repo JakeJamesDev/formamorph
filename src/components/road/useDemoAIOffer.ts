@@ -6,7 +6,7 @@ import type { HostedSnapshot } from '@/lib/hostedAi/hostedSession';
 import { HOSTED_AI_AVAILABLE } from '@/lib/hostedAi/hostedUrls';
 import { flairTier } from '@/lib/supporterFlair';
 
-/** A known tier or a usable preset state. Anything else, an unread state included, counts as no pledge. */
+/** A known tier or a preset state that holds a pledge. Anything else, an unread state included, counts as no pledge. */
 function isPledged({ hosted, presetState }: HostedSnapshot): boolean {
   return flairTier(hosted?.tier ? { tier: hosted.tier } : null) !== null
     || presetState === 'ready' || presetState === 'warned' || presetState === 'exhausted' || presetState === 'unconfirmed';

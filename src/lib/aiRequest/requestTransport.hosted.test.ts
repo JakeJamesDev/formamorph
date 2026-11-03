@@ -347,7 +347,7 @@ describe('Formamorph AI through the Request Transport', () => {
     expect((next.error as AiStreamError).hosted?.presetState).toBe('exhausted');
   });
 
-  it('finishes a started turn when the day pauses mid-turn, and blocks the next turn', async () => {
+  it('stops a started turn and the next turn when the day pauses', async () => {
     quietErrors();
     const proxy = fakeProxy([() => proxyReply('One.', 'turn-1'), () => refusal('service_paused'), () => proxyReply('Two.', 'turn-1')]);
     const { session } = await signedIn(proxy.fetchImpl);
@@ -360,8 +360,8 @@ describe('Formamorph AI through the Request Transport', () => {
     const later = await send(request({ type: 'statUpdates', silent: true }), context(proxy.fetchImpl, session, { hostedTurn: turn }));
     const next = await send(request(), context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() }));
 
-    expect(later.error).toBeNull();
-    expect(proxy.chatCalls().map((c) => c.headers[TURN_HEADER])).toEqual([undefined, undefined, 'turn-1']);
+    expect((later.error as AiStreamError).hosted?.presetState).toBe('paused');
+    expect(proxy.chatCalls().map((c) => c.headers[TURN_HEADER])).toEqual([undefined, undefined]);
     expect((next.error as AiStreamError).hosted?.presetState).toBe('paused');
   });
 
@@ -608,10 +608,16 @@ describe('Formamorph AI turn expiry', () => {
 
   it('applies a paused day to the next call of an expired turn', async () => {
     quietErrors();
-    const { proxy, session, ctx } = await openedTurn([() => refusal('service_paused')]);
+    let state: Record<string, unknown> = LIMITED_STATE;
+    const proxy = fakeProxy([() => proxyReply('One.', 'turn-1'), () => refusal('service_paused')], () => stateOf(state)());
+    const { session } = await signedIn(proxy.fetchImpl);
+    const ctx = context(proxy.fetchImpl, session, { hostedTurn: session.turnFor('old') });
+    await send(request(), ctx);
     await send(request(), context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() }));
     expect(session.getSnapshot().presetState).toBe('paused');
 
+    // The re-read past the throttle reports the same pause the refusal did.
+    state = { ...LIMITED_STATE, state: 'paused' };
     later(EXPIRES_AT);
     const expired = await send(request({ type: 'statUpdates', silent: true }), ctx);
 

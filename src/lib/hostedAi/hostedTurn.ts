@@ -30,7 +30,7 @@ export class HostedTurn {
     if (Date.now() - this.sentAt >= limitMs - Math.min(MAX_EXPIRY_MARGIN_MS, limitMs / 10)) this.id = null;
   }
 
-  /** The turn holds a server-issued id, so the server admits its remaining calls whatever the allowance. A claim clears an expired id. */
+  /** The turn holds a server-issued id, so the server admits its remaining calls past the budget, up to the grace. A claim clears an expired id. */
   get started(): boolean {
     return this.id !== null;
   }

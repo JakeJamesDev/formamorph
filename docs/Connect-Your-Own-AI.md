@@ -39,6 +39,7 @@ If you are not a Supporter, the preset shows a **Support on Patreon** button.
 The panel also shows when Formamorph AI can't serve you:
 
 - **Paused for everyone:** select **Check Again**. A pause doesn't use your allowance.
+- **Your Patreon pledge can't be confirmed:** Formamorph AI works again as soon as it's confirmed. Select **Check Again**, or **Switch Back** to use your own AI.
 - **Your app is out of date:** select **Update**.
 - **The allowance can't be read:** select **Check Again**. Your turns still send.
 - **Your account is suspended:** the preset can't be used.
