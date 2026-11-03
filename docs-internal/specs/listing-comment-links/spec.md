@@ -75,7 +75,7 @@ A mention in a listing comment is a link only. It sends no alert.
 - `FeedbackMarkdown` is the renderer for listing comments. The name stays, because the link layer belongs to the feedback grammar.
 - A comment with no `targets` field renders as plain markdown. This keeps comments readable against a server that has not been updated. It must never draw every link as unavailable.
 - `FeedbackLinkPlace` gets one value per surface. In the app, the listing modal supplies `openThread`, which opens the shared Feedback dialog, and `openListing`, which uses the modal's listing opener. On the website, the place lists the Votable boards only, so a bug thread renders unavailable, and chips follow their addresses.
-- The shared Feedback dialog opener gains a way to open a thread by number. In the app, the dialog opens above the listing modal, so closing it returns the player to the listing.
+- The shared Feedback dialog opener gains a way to open a thread by number. In the app, the dialog opens above the listing modal, so closing it returns the player to the listing. When a chip opened the thread, Back closes the dialog too, because the player never came from the report form. An unsent draft stays for the next time the form opens.
 - The website's link place uses relative paths with no in-place openers, the same as the Feedback page, so chips load in the same tab and work on a preview host.
 - A thread chip with an address on another host and no opener opens a new tab, the same rule a listing chip has. This keeps a chip from replacing the app window.
 - The website's community page gains a profile provider around the whole page, so a user chip click opens the profile there. Every author and commenter name on that page also starts to open the profile, which the community docs already promise.
@@ -86,6 +86,9 @@ A mention in a listing comment is a link only. It sends no alert.
 - `PromptField` gains an opt-in way to replace its markdown Preview renderer. Prompt editors do not pass it and keep their current Preview.
 - The comment Preview resolves once each time the Preview tab opens, never per keystroke. Text with no links, by the client parser, sends no request.
 - Until targets arrive, and on any failure, Preview shows plain markdown with no toast. A response for text that has since changed is dropped, and an unmounted Preview cancels its request.
+- The Full Screen split pane follows the same rule: it resolves once when the pane opens. After any text change it shows plain markdown and sends nothing until the pane opens again.
+- A plain click on a chip in Preview never leaves the box, so it can't lose the draft. Thread and listing chips open their address in a new tab, and a bug chip does nothing. In the listing box, a thread chip may still open the Feedback dialog above the modal. A user chip opens the profile above the box in the app and in a new tab on the website.
+- The new-thread box uses the same link place rules as the other surfaces: relative addresses and Votable boards on the website.
 
 **Autocomplete**
 
