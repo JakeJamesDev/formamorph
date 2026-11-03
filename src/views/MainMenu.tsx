@@ -1,7 +1,10 @@
 import { randomUUID } from "@/lib/uuid";
 import { newBlankWorld } from "@/lib/blankWorld";
 import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from "@/lib/scripts";
-import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
+import { DEFAULT_WORLDS, isDefaultWorldId, readDeletedDefaultWorlds, seedWorldData } from "@/lib/defaultWorlds";
+import { firstRunStepDue } from "@/lib/firstTimeFlow";
+import { isFirstRunStepSeen, markFirstRunStepSeen } from "@/lib/firstTimeFlowStore";
+import { FirstRunStep } from "@/components/FirstRunStep";
 import { bundledWorlds } from "@/lib/bundledWorldText";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
@@ -193,10 +196,22 @@ interface MainMenuProps {
   onReplayIntro?: () => void;
   /** True while the welcome intro is playing, so the AI setup gate waits its turn instead of racing it. */
   introActive?: boolean;
+  /** The intro-seen record as the app launched with it; the intro writes it when it ends, so a live read can't tell. */
+  introSeenAtLaunch?: boolean;
 }
 
 /** Set once the first-run AI setup prompt has been offered, so it never nags again. The play gate still fires. */
 const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
+
+const aiSetupSeen = (): boolean => {
+  try { return localStorage.getItem(AI_SETUP_SEEN_KEY) !== null; } catch { return false; }
+};
+
+/** What `WorldStorageService.getWorldData` rejects with for an id it holds no record of. */
+const WORLD_NOT_FOUND = 'World not found';
+
+/** The bundled world the first-run step starts. */
+const FIRST_RUN_WORLD_ID = 'emberwatch';
 
 
 /** The library's card-type tabs, with their icon + label, so the top switcher and the mobile bottom bar
@@ -267,7 +282,7 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 /** The Help tab's note sits on the screen side of the tab, whichever edge the tab is on. */
 const HELP_NOTE_SIDE = { right: 'left', left: 'right', top: 'bottom', bottom: 'top' } as const;
 
-const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false, introSeenAtLaunch = true }: MainMenuProps) => {
   const isMountedRef = useRef(true);
   useEffect(() => {
     isMountedRef.current = true;
@@ -452,6 +467,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (['worldEditor', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar'].includes(devRoute?.modal ?? '')) setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
+    if (devRoute?.modal === 'firstRun') setDevFirstRun(true);
     if (devRoute?.modal === 'credits') setShowCredits(true);
     // The prompt viewer reads a world's overrides, so it opens on a canned one rather than on whatever the
     // library happens to hold — a world really selected from a card still wins over it.
@@ -546,6 +562,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setGate({ reason: 'firstRun' });
   }, [introActive, gate, reachable, mode]);
 
+  // First-run step: it follows the intro and the AI setup gate, which comes first on a desktop with no working
+  // AI. The gate is still possible while the engine's state is unknown or the nudge is unseen.
+  const [firstRunStepSeen, setFirstRunStepSeen] = useState(isFirstRunStepSeen);
+  const [devFirstRun, setDevFirstRun] = useState(false);
+  const aiGatePending = mode === 'local' && (reachable === null || (reachable === false && !aiSetupSeen()));
+  const firstRunOpen = !introActive && !gate && !gateOpen && !aiGatePending
+    && (devFirstRun || firstRunStepDue({ introSeenAtLaunch, firstRunStepSeen }));
+  const closeFirstRun = () => {
+    markFirstRunStepSeen();
+    setFirstRunStepSeen(true);
+    setDevFirstRun(false);
+  };
+
   // Cold-load: fetch the save's world into GameData, then hand the save id to App to enter the game.
   // Orphaned saves are blocked inside the dialog, so `worldId` is always an installed world here.
   const handleColdLoad = async (saveId: string, worldId?: string) => {
@@ -609,7 +638,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     ...(!COMMUNITY_ENABLED || !isAuthenticated ? ['main-menu-feedback'] : []),
   ];
   const { active: menuTutorial, nav: menuTutorialNav, dismiss: dismissMenuTutorial } = useTutorial('mainMenu', {
-    active: !introActive,
+    active: !introActive && !firstRunOpen,
     held: heldMenuTutorials,
   });
   // Opening the window, by the tab or by F1, reads the Help tab's note.
@@ -1370,6 +1399,47 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setPlayAfterTour(null);
     startEntryRef.current();
   }, [playAfterTour, selectedWorld]);
+  // Starts a bundled world on Quick Start's defaults. A world the seeder hasn't stored yet loads from the bundled
+  // copy under the same id, so a save of that game belongs to the world the seeder stores next.
+  const [quickStartAfterLoad, setQuickStartAfterLoad] = useState<string | null>(null);
+  const quickStartWorld = async (worldId: string) => {
+    const seed = DEFAULT_WORLDS.find((w) => w.id === worldId);
+    if (!seed) return;
+    try {
+      let stored = true;
+      let data: World;
+      try {
+        data = await WorldStorageService.getWorldData(worldId) as World;
+      } catch (error) {
+        // Only an absent world falls back; a stored copy that won't read is a real failure.
+        if (error !== WORLD_NOT_FOUND) throw error;
+        stored = false;
+        data = seedWorldData(JSON.parse(await bundledWorlds.read(worldId)), seed);
+      }
+      if (!isMountedRef.current) return;
+      const { world: migrated } = loadWorldData(data, true, { stored });
+      const now = new Date().toISOString();
+      setSelectedWorld({
+        id: worldId,
+        name: migrated.worldOverview?.name || seed.defaultName,
+        description: migrated.worldOverview?.description || '',
+        thumbnail: migrated.worldOverview?.thumbnail,
+        createdAt: now,
+        lastAccessed: now,
+        data: migrated,
+      });
+      setQuickStartAfterLoad(worldId);
+    } catch (error) {
+      console.error('Could not start the world:', error);
+      toastError(error, { headline: "Couldn't start that world. Try again." });
+    }
+  };
+  useEffect(() => {
+    if (!quickStartAfterLoad || selectedWorld?.id !== quickStartAfterLoad) return;
+    setQuickStartAfterLoad(null);
+    entryFlow.current?.quickStart();
+  }, [quickStartAfterLoad, selectedWorld]);
+
   /** Closes the World Editor and reloads the world grid, which the caller reads back. */
   const closeWorldEditor = () => {
     setShowWorldEditor(false);
@@ -3014,13 +3084,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             events={activeEvents}
           />
 
+          <FirstRunStep
+            open={firstRunOpen}
+            canPlay={!readDeletedDefaultWorlds().has(FIRST_RUN_WORLD_ID)}
+            onPlay={() => { closeFirstRun(); void quickStartWorld(FIRST_RUN_WORLD_ID); }}
+            onBrowse={closeFirstRun}
+          />
+
           {/* One-time acknowledge poster for an event that has just started or just ended. It waits for
-              the welcome intro to finish, so a first-run player meets the menu before the poster. */}
+              the welcome intro and the first-run step to finish, so a first-run player meets the menu
+              before the poster. */}
           <EventAckModal
             events={announceable}
             isAuthenticated={isAuthenticated}
             onOpenEvent={openEvent}
-            held={introActive || gateOpen}
+            held={introActive || gateOpen || firstRunOpen}
           />
 
           {/* Community Creations. The host reads its own libraries, account and events from the services,

@@ -100,6 +100,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   export: { page: 'How-to-Play', anchor: 'how-to-export-the-story' },
   gameViewer: { page: 'How-to-Play', anchor: 'the-game-screen' },
   intro: { page: 'Starting-a-Game', anchor: 'the-welcome-animation' },
+  firstRun: { page: 'Starting-a-Game', anchor: 'the-first-step' },
   likePrompt: { page: 'How-to-Play', anchor: 'the-like-prompt' },
   location: { page: 'How-to-Play', anchor: 'the-change-location-dialog' },
 

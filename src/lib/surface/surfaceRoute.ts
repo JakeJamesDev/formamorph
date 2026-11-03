@@ -47,6 +47,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
 
   menu: { host: 'mainMenu' },
   intro: { host: 'mainMenu' },
+  firstRun: { host: 'mainMenu' },
   avatar: { host: 'mainMenu' },
   backup: { host: 'mainMenu' },
   aiSetup: { host: 'mainMenu' },

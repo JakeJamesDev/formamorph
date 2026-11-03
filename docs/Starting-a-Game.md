@@ -218,6 +218,19 @@ On your first game on the Demo AI, a short line at the top of the story tells yo
 
 The first time you open Formamorph, a short animation spells out the name, then fades into the main menu. To see it again, select the **©** line at the bottom of the main menu. Its tooltip reads **Replay intro**.
 
+## The First Step
+<!-- keywords: first time, new player, welcome, play emberwatch, browse worlds, start fast, one click, what do i do first -->
+<!-- route: firstRun -->
+
+The first time the animation ends, **Welcome to Formamorph** opens over the main menu. It shows once on a device.
+
+| Button | What it does |
+|---|---|
+| **Browse Worlds** | Closes the step and leaves you on the main menu. **Escape** does the same. |
+| **Play Emberwatch** | Starts Emberwatch at once, with no **Enter World** steps. Its readme still shows in the game. |
+
+If you deleted Emberwatch, only **Browse Worlds** shows. On the desktop app with no AI ready, **Set up your AI** opens first. Event news waits until the step closes.
+
 ## Related
 
 - [🎮 How to Play](How-to-Play): what you do once the story starts

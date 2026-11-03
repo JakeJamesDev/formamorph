@@ -67,6 +67,12 @@ function AppViews() {
     if (window.location.hash.includes('dev')) return null;
     try { return localStorage.getItem(INTRO_SEEN_KEY) ? null : 'cine'; } catch { return null; }
   });
+  // The record as launch found it: the intro writes it when it ends, and a replay must not make the first-run step due.
+  // A dev-router hash counts as seen, so a steered session never meets the step unasked.
+  const [introSeenAtLaunch] = useState(() => {
+    if (typeof window === 'undefined' || window.location.hash.includes('dev')) return true;
+    try { return localStorage.getItem(INTRO_SEEN_KEY) !== null; } catch { return true; }
+  });
   const handleIntroDone = () => {
     setIntroPace(null);
     try { localStorage.setItem(INTRO_SEEN_KEY, '1'); } catch { /* private mode — just don't persist */ }
@@ -202,6 +208,7 @@ function AppViews() {
             onLoadSaveGame={handleLoadSaveGame}
             onReplayIntro={() => setIntroPace('snap')}
             introActive={introPace !== null}
+            introSeenAtLaunch={introSeenAtLaunch}
           />
         </SurfaceLayer>
       )}

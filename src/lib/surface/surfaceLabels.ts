@@ -66,6 +66,7 @@ const ENTRIES: [string, string][] = [
   ['imageSetup', 'Image Setup'],
   ['export', 'Export story'],
   ['intro', 'Introduction'],
+  ['firstRun', 'Welcome to Formamorph'],
   ['location', 'Change Location'],
   ['menu', 'Load Game'],
   ['backup', 'Backup & Restore'],
