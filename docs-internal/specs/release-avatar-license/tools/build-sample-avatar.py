@@ -1,6 +1,6 @@
 # Builds a community upload from VRoid sample B, J or U: picker-ready hair and iris with factors that restore the source look, new body keys, and B's accents on their own mesh.
-# Usage: python build-sample-avatar.py <AvatarSample_X.vrm> <output.vrm> [--name <name>]
-import json,math,os,struct,sys,zlib
+# Usage: python build-sample-avatar.py <AvatarSample_X.vrm> <output.vrm> [--name <name>] [--cloth] [--skin-from <reference.vrm>] [--wordmark-dress]
+import colorsys,json,math,os,struct,sys,zlib
 SRC,OUT=sys.argv[1],sys.argv[2]
 NAME=sys.argv[sys.argv.index('--name')+1] if '--name' in sys.argv else None
 def load(p):
@@ -86,10 +86,48 @@ if len([m for m in j['materials'] if 'HAIR' in m['name'] and 'HairBack' not in m
     hn=[n for n in j['nodes'] if n.get('mesh')==j['meshes'].index(H)][0]
     j['nodes'].append({'name':'Accents','mesh':len(j['meshes'])-1,'skin':hn['skin']})
     j['scenes'][0]['nodes'].append(len(j['nodes'])-1)
-HAIR_MID=128;IRIS_MID=96
+HAIR_MID=128;IRIS_MID=96;CLOTH_MID=96;CLOTH_DARK=64;PINK_HUE=325
 for m in j['materials']:
     if 'HAIR' in m['name']: retex(m,HAIR_MID)
     if 'EyeIris' in m['name']: retex(m,IRIS_MID)
+    # Dark clothing can't reach light tints under the factor cap.
+    if '--cloth' in sys.argv and 'CLOTH' in m['name']:
+        px,w,h,ch=png(view(tex_view(m)))
+        if min(quantile(px,w,h,ch,.5))<CLOTH_DARK: retex(m,CLOTH_MID)
+# Moves green cloth to the wordmark's orchid and violet and pink cloth to its rose side, by hue, so gold trim and gems keep their color. The hue change lives in the texture, so pickers still multiply over it.
+if '--wordmark-dress' in sys.argv:
+    def smooth(a,c,x):
+        t=max(0,min(1,(x-a)/(c-a)));return t*t*(3-2*t)
+    memo={}
+    def dress_color(rgb):
+        if rgb in memo: return memo[rgb]
+        h,l,s=colorsys.rgb_to_hls(*[x/255 for x in rgb]);H=h*360
+        green=smooth(52,72,H)*(1-smooth(165,180,H));pink=max(smooth(320,335,H),1-smooth(12,25,H))
+        w,hue,sat=(green,296-41*smooth(70,150,H),min(1,s*1.1)) if green>=pink else (pink,PINK_HUE,min(1,s*1.25+.05))
+        new=colorsys.hls_to_rgb(hue/360,l,sat)
+        out=tuple(round(rgb[c]+(new[c]*255-rgb[c])*w) for c in range(3));memo[rgb]=out;return out
+    done=set()
+    for m in j['materials']:
+        if 'CLOTH' not in m['name'] or tex_view(m) in done: continue
+        bvi=tex_view(m);done.add(bvi);px,w_,h_,ch=png(view(bvi))
+        for i in range(w_*h_):
+            o=i*ch;px[o:o+3]=bytes(dress_color(tuple(px[o:o+3])))
+        newviews[bvi]=enc(px,w_,h_,ch);print(m['name'],'median',quantile(px,w_,h_,ch,.5),'shade',[round(x,2) for x in m['extensions']['VRMC_materials_mtoon']['shadeColorFactor']])
+# Moves skin to another model's: a curve per channel takes each median to the reference's, so no pixel clips, and the reference's shade color follows.
+if '--skin-from' in sys.argv:
+    rj,rb=load(sys.argv[sys.argv.index('--skin-from')+1])
+    def ref_skin(word):
+        rm=[x for x in rj['materials'] if word in x['name']][0];rv=rj['bufferViews'][rj['images'][rj['textures'][rm['pbrMetallicRoughness']['baseColorTexture']['index']]['source']]['bufferView']];ro=rv.get('byteOffset',0)
+        rp,rw,rh,rc=png(rb[ro:ro+rv['byteLength']]);return quantile(rp,rw,rh,rc,.5),rm['extensions']['VRMC_materials_mtoon']['shadeColorFactor']
+    for word in('Face_00_SKIN','Body_00_SKIN'):
+        m=[x for x in j['materials'] if word in x['name']][0];target,shade=ref_skin(word)
+        bvi=tex_view(m);px,w,h,ch=png(view(bvi));med=quantile(px,w,h,ch,.5)
+        lut=[[min(255,round(255*(v/255)**(math.log(target[c]/255)/math.log(med[c]/255)))) for v in range(256)] for c in range(3)]
+        for i in range(w*h):
+            o=i*ch
+            for c in range(3): px[o+c]=lut[c][px[o+c]]
+        newviews[bvi]=enc(px,w,h,ch);m['extensions']['VRMC_materials_mtoon']['shadeColorFactor']=list(shade)
+        print(word,'median',med,'->',target)
 M=[x for x in j['meshes'] if 'Body' in x['name']][0];pr=M['primitives'];A=pr[0]['attributes']
 assert all(p['attributes']['POSITION']==A['POSITION'] for p in pr)
 def acc(i,fmt,c):
