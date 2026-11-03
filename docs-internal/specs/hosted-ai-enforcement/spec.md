@@ -37,7 +37,7 @@ The client expires turn ids slightly before the server does and opens a new turn
 6. As the owner, I want a first call that would reach the ceiling to be refused, so that the call that starts a pause does not also spend.
 7. As an admin, I want the existing pause lift to keep working, so that I can restore service on a bad day.
 8. As a Supporter, I want a turn I started under budget to finish, so that the allowance running out does not leave me with half a turn.
-9. As a Supporter, I want my story to continue when a paused day cuts some passes from my turn, so that a rare service pause does not lose my narration.
+9. As a Supporter, I want narration that is already streaming to finish when a pause starts, so that a rare service pause does not cut the text I am reading.
 10. As a Supporter, I want new turns refused when my week is spent, so that the limit is the same for everyone.
 11. As a Supporter, I want the allowance surface to say that background work pauses when the week is spent, so that I know why diaries and digests stopped.
 12. As a Supporter, I want background work to resume after the reset, so that the pause costs me nothing permanent.
@@ -65,7 +65,7 @@ The client expires turn ids slightly before the server does and opens a new turn
 | Q | Ruling |
 |---|---|
 | Q1 | Bounded continuation check, not a reservation of the whole turn and not a one-call grace. |
-| Q2, Q24, Q29 | A paused day refuses continuations too, with one grace call per turn. A paused day can cut post-narration passes, and that is accepted. |
+| Q2, Q34 | A paused day refuses every call at once, started turns included, with no grace call. A call already streaming finishes. A turn can fail in planning or lose its post-narration passes, and that is accepted. Q34 replaces the one grace call of Q24 and Q29, because the review showed it rescued only one pass, chosen by timing. |
 | Q3, Q5, Q25 | A pledge unconfirmed for 7 days stops serving Formamorph AI. Flair and the Supporters wall do not change. |
 | Q4, Q7 | Alert admins after 3 consecutive failed hourly reconciles. |
 | Q6 | A new refusal code and its own client text. |
@@ -92,8 +92,8 @@ The client expires turn ids slightly before the server does and opens a new turn
 - **The grace is computed per call** from the turn's model prices and the tier's window, with `worstCase` at window plus margin and the output cap, times `turnCallCap`.
 - **The bound is `budget + 2 × grace` per spend subject.** Other turns stop at budget plus grace, and the last turn can add at most its own maximum. Do not describe it as a smaller figure. It assumes a call settles within its reservation. A prompt that tokenizes denser than `tokenRatio` can settle above it, so real spend can pass the bound by that excess. Settlement is not capped, because the meter must record real cost.
 - **The check stays inside the admission transaction**, so parallel calls still see each other's reservations. It needs one new query for a turn's spend.
-- **A paused day:** a continuation is admitted only when its turn has no call started at or after the pause began. A lifted pause refuses nothing.
-- **Reaching the ceiling:** admission uses the pause check's answer rather than discarding it. A first call whose reservation would reach the ceiling starts the pause and is refused, with no row kept. A continuation that reaches it starts the pause and uses that turn's grace call. The pause must survive the refusal, so the refusal cannot roll it back.
+- **A paused day:** every call is refused with `service_paused`. A call already streaming finishes. A lifted pause refuses nothing.
+- **Reaching the ceiling:** admission uses the pause check's answer rather than discarding it. A call whose reservation would reach the ceiling starts the pause and is refused, with no row kept, whether it is a first call or a continuation. The pause must survive the refusal, so the refusal cannot roll it back.
 - **Tier guard:** a tier outside `TIER_KEYS` yields no config, before any limit is read.
 - **Words to update:** the Turn and Pause glossary entries in both repos, the pause alert text, and the server guide all say started turns finish.
 
