@@ -15,7 +15,7 @@ The list also misleads in smaller ways. Blueprint rows show last but run inside 
 
 ## Solution
 
-Scripts run one by one: by timing, then top-down in the list. Each script reads everything the earlier scripts wrote. This holds for all worlds and every timing, with no new mode and no change to world or save files.
+Scripts run one by one: by timing, then top-down in the list. Each script reads everything the earlier scripts wrote. This holds for all worlds and every timing, with no new mode and no migration. World files don't change, and a save gains one optional field (Q48).
 
 The Scripts tab becomes the truth. A row's place is where it runs, and one Blueprint row runs for all its owners back to back. Timings are listed in the order a turn reaches them.
 
@@ -57,7 +57,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q28 | (ticket 02) Tests that assert one snapshot flip to the chain result, including the two in the entity stats and output test files, and the five ticket 02 reported: a hub's write hidden from the target's box, the capped ask, the switch landing after the run, two stats switching one trait, and a trait script on two owners. Any other failing test still goes to the spec session first |
 | Q29 | (ticket 02) Penalties stay gate-view only. Each step's gate view applies a penalty to a stat not moved since the timing began, computed from the unpenalized value so it never stacks. The final `gateStats` is exact, so an early gate can read a penalty on a stat a later script moves |
 | Q30 | (ticket 05) The diary stays write-only, with no new read in the sandbox. A diary line chains in that a later `diary` call can name an entity an earlier script discovered, and the lines stay in order |
-| Q31 | (ticket 05) `memories.add` reads as a Custom row, kept and in context, with this turn's number and the advanced clock. A later script's row verb on that row lands on it |
+| Q31 | (ticket 05, amended at the close) `memories.add` reads as the turn's own memory row, as the docs define it and the commit stores it. `memories.pin` reads as a Custom row. A later script's row verb on either lands on it. The user kept both calls: an added line is judged and sent when recalled, and a pinned line is always sent |
 | Q32 | (ticket 05) Every kind of world write chains, including memory row verbs and `meet`. A described discover joins the cast, and a bare one adds nothing until the pass. Every clock read reflects an earlier advance, and each script adds only its own minutes |
 | Q33 | (ticket 05) A stat re-roll's chain starts over the kept turn state. Later scripts read earlier writes in that chain, and its scene writes then drop as they do today |
 | Q34 | (ticket 03) A nested run clears World Tool triggers and replayed writes, so a Tool runs once. A trait switch from an On Call Tool or its replay fires its switch scripts at once, as Q5 says of any script. They use the prompt host of the Tool's run |
@@ -78,6 +78,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q49 | (ticket 06) A replayed op that names a copy the same turn made skips with a log line, and the docs name it. Saved writes don't store copy ids |
 | Q50 | (ticket 06) A replayed `give` or coin `pay` fires its item events again, so a rolled result in those scripts can differ. Only the Tool's own writes come back as saved |
 | Q51 | (ticket 06) Regenerate Choices replays quietly from the pre-turn copies: the Before the AI scripts, the On Call saved writes, then the Inventory pass. During AI Output scripts don't replay, so an After the AI script there reads no copy they wrote, and the docs name it |
+| Q52 | (close) The between-turn loop and the persona order get tickets 07 and 08. Two gaps stay known and unticketed: `rowOrder` stays optional with a fallback, though play always passes it; and the Test Bench and Regenerate Choices edges stay, as Check Scripts counts a Blueprint row's write once, and a quiet replay reads live Body picks and enabled stats and fires no script on an item settle's switch |
 
 ## User Stories
 
@@ -125,7 +126,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 
 **In force at the script's turn.** Whether a stat is on and a trait is in force reads at that script's turn, not at the start of the timing. This follows from Q4 and Q5 and is the behavior in stories 16 and 17.
 
-**Writes land per script.** Trait switches, bounds, values and placeholder pins apply after each script, in the existing order. Penalties still apply once per timing to a stat that no script moved. Inventory writes need the apply and settle step at each script, so the turn entry point takes the step that `runItemScripts` already takes.
+**Writes land per script.** Trait switches, bounds, values and placeholder pins apply after each script, in the existing order. Penalties stay in the gate view (Q29). Inventory writes need the apply and settle step at each script, so the turn entry point takes the step that `runItemScripts` already takes.
 
 **During AI Output and stat re-rolls read a chain they don't land.** Later scripts read earlier writes, but what lands stays as it is today. For During AI Output, that is with After the AI. A stat re-roll keeps the turn's location, time, scene entities, memories and diary lines, so its chain can read a location write that the re-roll then discards. The stat re-roll part is derived from Q4, Q14 and the existing keep rule, and the Implement session may raise it with the spec session.
 
@@ -140,7 +141,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 - Scripts Guide: Run Order, A Note on Accumulating Stats, the Scripts tab how-to.
 - Test Bench: Issues.
 
-**Export shape.** Unchanged, in worlds and in saves. `order` already exists. The version doesn't change.
+**Export shape.** Worlds are unchanged, and `order` already exists. A Tool call's saved writes gain an optional `inventory` field (Q48), an additive save change. The version doesn't change.
 
 **Measured cost.** Node, trivial script, median. One script runs in about 6 ms, and a snapshot rebuild adds 0.2 to 0.4 ms. Twenty chained scripts took 124 ms in Slime against 117 ms with one snapshot, and 274 ms in Rampage against 135 ms. That chained whole turn runs, so it is an upper bound. Not measured in a browser, or on Emberwatch or Fantasy Futanari.
 
