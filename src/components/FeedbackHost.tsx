@@ -5,7 +5,7 @@ import { toastFeedbackNotify } from '@/lib/feedbackToast';
 
 /** The Feedback dialog that Error Details and the help window open; mounted once, beside the toast container, so every view shares it. */
 export function FeedbackHost() {
-  const { open, type, fill, opener } = useSyncExternalStore(subscribeFeedback, getFeedbackState);
+  const { open, type, fill, opener, thread } = useSyncExternalStore(subscribeFeedback, getFeedbackState);
   return (
     <FeedbackDialog
       open={open}
@@ -13,6 +13,7 @@ export function FeedbackHost() {
       initialType={type}
       initialTitle={fill?.title}
       initialBody={fill?.body}
+      initialThread={thread ?? undefined}
       returnFocus={opener}
       notify={toastFeedbackNotify}
     />

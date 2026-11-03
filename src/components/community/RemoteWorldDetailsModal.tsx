@@ -14,6 +14,7 @@ import { ActionIcon } from "@/lib/actionIcons";
 import { THUMB_FRAME, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import { openFeedbackThread } from "@/lib/feedbackOpener";
 import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
@@ -215,6 +216,8 @@ export function RemoteWorldDetailsModal({
   const plainVocab = useMemo(() => plainVocabulary(), []);
   const commentLinkPlace = useMemo<FeedbackLinkPlace>(() => capabilities.commentLinkPlace ?? {
     ...APP_FEEDBACK_LINK_PLACE,
+    // The focused chip gets focus back when the dialog closes.
+    openThread: (number) => openFeedbackThread(number, document.activeElement instanceof HTMLElement ? document.activeElement : null),
     // The link grammar admits only the catalog's listing kinds, so the server's kind string is one of them.
     openListing: onOpenListing && (({ kind, id }) => onOpenListing({ kind: kind as CatalogKind, id })),
   }, [capabilities.commentLinkPlace, onOpenListing]);

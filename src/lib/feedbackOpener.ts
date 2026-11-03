@@ -49,9 +49,11 @@ interface FeedbackOpenerState {
   fill: FeedbackFill | null;
   /** The control focus goes back to on close. */
   opener: HTMLElement | null;
+  /** The thread number the dialog opens on, instead of the report form. */
+  thread: number | null;
 }
 
-let state: FeedbackOpenerState = { open: false, type: 'bug', fill: null, opener: null };
+let state: FeedbackOpenerState = { open: false, type: 'bug', fill: null, opener: null, thread: null };
 const listeners = new Set<() => void>();
 const publish = (next: FeedbackOpenerState) => {
   state = next;
@@ -60,7 +62,12 @@ const publish = (next: FeedbackOpenerState) => {
 
 /** Opens the shared Feedback dialog on `type`. A fill over an unsent draft asks before it replaces the draft. */
 export function openFeedback(type: FeedbackType, fill: FeedbackFill | null, opener: HTMLElement | null = null): void {
-  publish({ open: true, type, fill, opener });
+  publish({ open: true, type, fill, opener, thread: null });
+}
+
+/** Opens the shared Feedback dialog on one thread. Back closes the dialog, and an unsent draft is left alone. */
+export function openFeedbackThread(number: number, opener: HTMLElement | null = null): void {
+  publish({ open: true, type: state.type, fill: null, opener, thread: number });
 }
 
 export function closeFeedback(): void {

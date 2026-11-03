@@ -92,6 +92,8 @@ interface FeedbackDialogProps {
   /** Filled-in fields. Over an unsent draft the dialog asks first; a fill it takes becomes the draft. */
   initialTitle?: string;
   initialBody?: string;
+  /** A thread number to open on instead of the form. Back then closes the dialog. */
+  initialThread?: number;
   /** The control focus goes back to on close, for an opener that a dialog makes inert as it opens. */
   returnFocus?: HTMLElement | null;
   /** Reports each result to the reader. */
@@ -137,7 +139,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics: BugDiagnostics }) {
  * about the machine goes with it, which is not two dialogs' worth of difference.
  */
 export function FeedbackDialog({
-  open, onOpenChange, initialType: requestedType = 'bug', onFiled, onOpenThread, initialTitle, initialBody, returnFocus, notify,
+  open, onOpenChange, initialType: requestedType = 'bug', onFiled, onOpenThread, initialTitle, initialBody, initialThread, returnFocus, notify,
   capabilities = APP_FEEDBACK_CAPABILITIES,
 }: FeedbackDialogProps) {
   const { fileTypes } = capabilities;
@@ -196,7 +198,7 @@ export function FeedbackDialog({
     setIsSending(false);
     setSendError(null);
     setFieldNote(null);
-    setOpenThreadId(null);
+    setOpenThreadId(initialThread === undefined ? null : String(initialThread));
     filedRef.current = false;
     setDiagnostics(collectDiagnostics());
   });
@@ -293,7 +295,7 @@ export function FeedbackDialog({
               isAdmin={isStaff(AuthService.getCurrentUser())}
               notify={notify}
               capabilities={capabilities}
-              onBack={() => setOpenThreadId(null)}
+              onBack={() => (initialThread === undefined ? setOpenThreadId(null) : onOpenChange(false))}
               onChanged={() => setSimilarRefresh((n) => n + 1)}
             />
           )}

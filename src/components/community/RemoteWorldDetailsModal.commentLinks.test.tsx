@@ -116,11 +116,11 @@ describe('chips in a listing comment, in the app', () => {
     expect(await screen.findByRole('button', { name: /Map stops panning/ })).not.toHaveAttribute('href');
   });
 
-  it('opens a thread chip with an address beside the app', async () => {
+  it('opens a thread chip in place, so its address carries no new-tab target', async () => {
     list(comment());
     show();
 
-    expect(await screen.findByRole('link', { name: /Pin a stat to the panel/ })).toHaveAttribute('target', '_blank');
+    expect(await screen.findByRole('link', { name: /Pin a stat to the panel/ })).not.toHaveAttribute('target');
   });
 
   it('opens a listing through the modal on a plain click, and leaves a modified click to the browser', async () => {
