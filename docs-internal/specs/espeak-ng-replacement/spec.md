@@ -63,6 +63,7 @@ British voices keep British pronunciation, through rules applied to this America
 | Q24 | "they" and lowercase "will" join the weak forms. "will" stays strong after a determiner, a possessive, or words such as "free", because there it is the noun. |
 | Q25 | By the owner's ear: "I" never reduces, "you" stays strong at the start of a phrase, and "with" reduces inside one. |
 | Q26 | A passage from play read stranger than eSpeak, because word-by-word scoring cannot see sentence stress. More small words take weak forms, "it" and "them" stay light at a phrase end, and an ending on a listed word comes before a split. |
+| Q27 | Dashes reach the engine with spaces around them, because the owner picked that form by ear over no spaces, a comma, and an ellipsis. |
 
 ## Measurements
 

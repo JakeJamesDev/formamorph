@@ -235,6 +235,19 @@ describe("function words", () => {
   });
 });
 
+describe("dashes", () => {
+  it.each(["bent—gone", "bent – gone", "bent--gone", "bent - gone"])("gives %s spaces, so the engine pauses", async (text) => {
+    expect(await setup().say(text)).toBe(`${cmu("bent")} — ${cmu("gone")}`);
+  });
+
+  it("leaves a hyphenated word and a number range alone", async () => {
+    const { say } = setup();
+    expect(await say("well-read")).not.toContain("—");
+    expect(await say("3-5")).toBe(`${cmu("three")} tə ${cmu("five")}`);
+    expect(await say("3–5")).toBe(`${cmu("three")} tə ${cmu("five")}`);
+  });
+});
+
 describe("number rhythm", () => {
   it("reads a year with a light nineteen and a joined ninety-nine", async () => {
     expect(await setup().say("1999")).toBe("nˌIntˈin nˈInɾinˌIn");
@@ -362,7 +375,7 @@ describe("text cleanup", () => {
 
   it("keeps punctuation and drops symbols", async () => {
     const { say } = setup();
-    expect(await say("Yes, (top)! “Hello”—no… [a] *bold*")).toBe(`${cmu("yes")}, (${cmu("top")})! "${cmu("hello")}"—${cmu("no")}… ə ${cmu("bold")}`);
+    expect(await say("Yes, (top)! “Hello”—no… [a] *bold*")).toBe(`${cmu("yes")}, (${cmu("top")})! "${cmu("hello")}" — ${cmu("no")}… ə ${cmu("bold")}`);
   });
 
   it("separates words across a dropped hyphen or slash", async () => {

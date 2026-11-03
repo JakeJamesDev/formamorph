@@ -327,7 +327,11 @@ The owner compared weak and strong first words, blind, on 9 sentences. Weak "I" 
 
 ## Emberwatch Passage
 
-The owner heard strange reading in a passage from play. Across its 31 sentences, the old engine had 166 main stresses and the new pipeline had 210, mostly on small words. Word-by-word scoring cannot see this. After Q26 the new pipeline has 184. The em dash reaches the engine the same way in both, with no spaces around it, so it is not a change. The blind comparison waits for the owner.
+The owner heard strange reading in a passage from play. Across its 31 sentences, the old engine had 166 main stresses and the new pipeline had 210, mostly on small words. Word-by-word scoring cannot see this. After Q26 the new pipeline has 184. The em dash reaches the engine the same way in both, with no spaces around it, so it is not a change.
+
+Rated blind by the owner on 8 sentences, old against new, and called hard to decide on some. Before Q26, old scored 7 of 8 and new scored 2 of 8. After Q26, each scored 4 of 8.
+
+The owner picked spaces around the dash over no spaces, a comma, and an ellipsis (Q27).
 
 ## Final Bar Run
 

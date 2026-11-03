@@ -121,7 +121,10 @@ export function cleanText(input: string): string {
     .replace(/：/g, ": ")
     .replace(/；/g, "; ")
     .replace(/？/g, "? ")
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .replace(/(?<=\d)–(?=\d)/g, "-")
+    // The engine glides over a dash with no spaces around it.
+    .replace(/\s*(?:—|–|-{2,})\s*|\s+-\s+/g, " — ");
 
   for (const [pattern, spoken] of TITLES) text = text.replace(pattern, spoken);
   // All-capital text is shouting, so its US is the word.
