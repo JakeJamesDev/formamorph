@@ -3,6 +3,7 @@ import { PATREON_PAGE_URL } from '@/components/PatreonSection';
 import { useAgeGate } from '@/contexts/AgeGateContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { isPatreonPageOpened, markPatreonPageOpened } from '@/lib/firstTimeFlowStore';
+import { sendFunnelStep } from '@/lib/funnel';
 import { openExternal } from '@/lib/openExternal';
 import { requestSignIn } from '@/lib/signInStore';
 import {
@@ -91,6 +92,7 @@ export function useSupportChecklist({ onDone, facts: given }: { onDone: () => vo
   };
   const openPatreon = () => {
     markPatreonPageOpened();
+    sendFunnelStep('patreon_click');
     setPatreonOpened(true);
     openExternal(PATREON_PAGE_URL);
   };
@@ -116,6 +118,11 @@ export function useSupportChecklist({ onDone, facts: given }: { onDone: () => vo
     },
     back: onDone,
   };
+
+  const finished = given === undefined && checklistRows(facts).every((row) => row.done);
+  useEffect(() => {
+    if (finished) sendFunnelStep('checklist_finished');
+  }, [finished]);
 
   const action = checklistAction(facts);
   const reachable = facts.signedIn && facts.attested;

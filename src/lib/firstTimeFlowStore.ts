@@ -20,7 +20,13 @@ const PATREON_PAGE_OPENED_KEY = 'FORMAMORPH_patreonPageOpened';
 export const isPatreonPageOpened = (): boolean => isSet(PATREON_PAGE_OPENED_KEY);
 export const markPatreonPageOpened = (): void => mark(PATREON_PAGE_OPENED_KEY);
 
-export const isDemoAICardSeen = (): boolean => isSet(DEMO_AI_CARD_SEEN_KEY);
+const FUNNEL_SENT_PREFIX = 'FORMAMORPH_funnelSent_';
+
+/** This device already reported the funnel step. */
+export const isFunnelStepSent = (step: string): boolean => isSet(FUNNEL_SENT_PREFIX + step);
+export const markFunnelStepSent = (step: string): void => mark(FUNNEL_SENT_PREFIX + step);
+
+export const isDemoAICardSeen =(): boolean => isSet(DEMO_AI_CARD_SEEN_KEY);
 export const markDemoAICardSeen = (): void => mark(DEMO_AI_CARD_SEEN_KEY);
 
 /** Zero with no record, whatever the Demo AI seen key says. */

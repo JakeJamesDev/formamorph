@@ -1,3 +1,5 @@
+import { sendFunnelStep } from '@/lib/funnel';
+
 export type RoadSceneView = 'levels' | 'checklist';
 
 let open = false;
@@ -11,6 +13,7 @@ const publish = (next: boolean) => {
 /** Raises the scene from anywhere, on its levels or, with `'checklist'`, on the support checklist. `RoadSceneHost` draws it. */
 export const openRoadScene = (start: RoadSceneView = 'levels'): void => {
   view = start;
+  if (start === 'levels') sendFunnelStep('see_levels');
   publish(true);
 };
 export const closeRoadScene = (): void => publish(false);

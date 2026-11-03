@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { cardDue, offerAvailable } from '@/lib/firstTimeFlow';
 import { isDemoAICardSeen, markDemoAICardSeen } from '@/lib/firstTimeFlowStore';
+import { sendFunnelStep } from '@/lib/funnel';
 import type { HostedSnapshot } from '@/lib/hostedAi/hostedSession';
 import { HOSTED_AI_AVAILABLE } from '@/lib/hostedAi/hostedUrls';
 import { flairTier } from '@/lib/supporterFlair';
@@ -34,6 +35,7 @@ export function useStoryCard({ turnCount, settled }: { turnCount: number; settle
     if (!settled) return;
     if (cardDue({ narrationIsDemoAI, pledged, hostedAvailable, demoAITurnCount: turnCount, cardSeen: isDemoAICardSeen() })) {
       markDemoAICardSeen();
+      sendFunnelStep('offer_shown');
       setEarned(true);
     }
   }, [settled, turnCount, narrationIsDemoAI, pledged, hostedAvailable]);
