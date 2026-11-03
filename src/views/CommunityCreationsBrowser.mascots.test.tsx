@@ -96,6 +96,15 @@ describe('the Mascots section', () => {
     expect(screen.getByPlaceholderText(/^Search mascots/)).toBeInTheDocument();
   });
 
+  it('draws a Mascot card in the portrait layout', async () => {
+    renderBrowser(library());
+
+    await userEvent.click(await screen.findByRole('tab', { name: 'Mascots' }));
+
+    const name = await screen.findByText('Captain Wren');
+    expect(name.closest('[data-layout]')).toHaveAttribute('data-layout', 'split');
+  });
+
   it('keeps Mascots out of the Worlds section', async () => {
     renderBrowser(library());
 

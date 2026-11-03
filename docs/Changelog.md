@@ -170,6 +170,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Scene Presence:**
     - **The Traits tab shows a stranger's traits under the name you know.** Trait names and descriptions use that name, and strangers who share one get numbers.
   - **Community Creations:**
+    - **Mascot cards in Community Creations now use tall art beside the text, like Avatars and entities.** The listing details show the tall art too.
     - **Avatars with added license restrictions can't be published.** A model that limits sexual, violent, political, hateful, credited or commercial use is refused, and the Model Library lists each reason.
   - **Scripts:**
     - **The Scripts tab now lists scripts where they run.** A Blueprint script is one row that runs for all its owners together. Timings follow the order of a turn.
