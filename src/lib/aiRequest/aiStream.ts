@@ -366,7 +366,12 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     let before = blocked();
     // A state that ends on its own is read again before it refuses, so recovery needs no action.
     if (before === 'unconfirmed' || before === 'exhausted' || before === 'paused') {
-      await session.rereadBlocked();
+      await session.rereadBlocked(signal);
+      if (signal?.aborted) {
+        finishReason = ABORTED_FINISH_REASON;
+        yield* finish();
+        return;
+      }
       before = blocked();
     }
     if (before) throw hostedStateFailure(spec, before);

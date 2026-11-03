@@ -39,7 +39,7 @@ const proxyReply = (content: string, turnId: string, usage = { percentUsed: 12, 
 interface Sent { url: string; headers: Record<string, string> }
 
 /** A proxy whose chat route answers each call with the next script entry, recording what each call sent. */
-function fakeProxy(chat: Array<() => Response | Promise<Response>>, state: () => Response = () => json(200, { success: true, data: READY_STATE })) {
+function fakeProxy(chat: Array<() => Response | Promise<Response>>, state: () => Response | Promise<Response> = () => json(200, { success: true, data: READY_STATE })) {
   const sent: Sent[] = [];
   let next = 0;
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
@@ -443,6 +443,30 @@ describe('Formamorph AI through the Request Transport', () => {
       const results = await Promise.all([sendBackground('t2'), sendBackground('t3'), sendBackground('t4')]);
       expect(stateReads()).toBe(2);
       expect(results.every((r) => (r.error as AiStreamError).hosted?.presetState === 'unconfirmed')).toBe(true);
+    });
+
+    it('stops waiting for the read when the send is canceled', async () => {
+      quietErrors();
+      const unconfirmed = () => json(200, { success: true, data: { ...READY_STATE, state: 'unconfirmed' } });
+      let held: Promise<Response> | null = null;
+      const proxy = fakeProxy([], () => held ?? unconfirmed());
+      const { session } = await signedIn(proxy.fetchImpl);
+      let release = () => {};
+      held = new Promise((resolve) => { release = () => resolve(unconfirmed()); });
+
+      clockAfter(THROTTLE_PASSED);
+      const controller = new AbortController();
+      const sending = send(request({ signal: controller.signal }), context(proxy.fetchImpl, session));
+      await vi.waitFor(() => expect(proxy.sent.filter((s) => s.url === HOSTED_STATE_URL)).toHaveLength(2));
+      controller.abort();
+      const canceled = await sending;
+
+      expect(canceled.text).toBe('');
+      expect(canceled.error).toBeNull();
+      expect(canceled.failures).toHaveLength(0);
+      expect(proxy.chatCalls()).toHaveLength(0);
+      release();
+      await session.refresh();
     });
 
     it('refuses with one notice when the read still shows the blocked state', async () => {

@@ -101,7 +101,7 @@ describe('the allowance section: an unconfirmed pledge', () => {
     hostedState(ok({ tier: 'supporter', state: 'unconfirmed', percentUsed: null, turnsLeft: null, resetAt: null }));
     render(<AllowanceSection />);
 
-    expect(await screen.findByText("We can't confirm your Patreon pledge right now. Formamorph AI will work again as soon as we can.")).toBeTruthy();
+    expect(await screen.findByText("We can't confirm your Patreon pledge right now. We'll get Formamorph AI working again as soon as we can.")).toBeTruthy();
     expect(screen.getByText('Support')).toBeTruthy();
     expect(screen.queryByText('Used')).toBeNull();
     expect(screen.queryByRole('link')).toBeNull();

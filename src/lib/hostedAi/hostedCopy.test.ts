@@ -25,7 +25,7 @@ describe('hosted preset copy reads as a donation', () => {
   it('tells an unconfirmed pledge it will recover, offers a recheck and a way out, and blames no one', () => {
     const copy = hostedStateCopy('unconfirmed');
 
-    expect(copy?.reason).toBe("We can't confirm your Patreon pledge right now. Formamorph AI will work again as soon as we can.");
+    expect(copy?.reason).toBe("We can't confirm your Patreon pledge right now. We'll get Formamorph AI working again as soon as we can.");
     expect(copy?.action?.kind).toBe('recheck');
     expect(copy?.extra?.kind).toBe('switchBack');
   });

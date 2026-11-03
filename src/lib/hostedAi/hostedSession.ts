@@ -141,10 +141,20 @@ export class HostedSession {
     return this.reading;
   }
 
-  /** Reads again for a send a blocking state refuses, unless a read ran within the throttle. */
-  rereadBlocked(): Promise<void> {
+  /**
+   * Reads again for a send a blocking state refuses, unless a read ran within the throttle. `signal` stops the
+   * wait and leaves the read running, as other callers may share it.
+   */
+  rereadBlocked(signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) return Promise.resolve();
     if (!this.reading && Date.now() - this.lastReadAt < REREAD_THROTTLE_MS) return Promise.resolve();
-    return this.refresh();
+    const read = this.refresh();
+    if (!signal) return read;
+    return new Promise<void>((resolve, reject) => {
+      const stop = () => resolve();
+      signal.addEventListener('abort', stop, { once: true });
+      read.then(resolve, reject).finally(() => signal.removeEventListener('abort', stop));
+    });
   }
 
   /**
