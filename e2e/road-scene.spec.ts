@@ -18,10 +18,11 @@ const stubTierReply = (page: Page) => page.route('**/patreon/tier-names', (route
 async function openScene(page: Page, tier: string = 'supporter_plus') {
   await stubTierReply(page);
   await openApp(page);
+  // A loading menu starves the frames, so its seeding finishes first.
+  await page.getByText('Loaded default worlds').waitFor({ state: 'visible', timeout: 60_000 });
   await gotoDev(page, 'mainMenu', { modal: 'road', tab: tier });
-  // The dev pane chunk compiles on first use.
-  await expect(page.locator('[data-road-stage]')).toBeVisible({ timeout: 60_000 });
-  // The enter Jelly and the menu's loading work settle first: a loading menu starves the frames.
+  await expect(page.locator('[data-road-stage]')).toBeVisible();
+  // The enter Jelly settles first.
   await page.waitForTimeout(1500);
 }
 

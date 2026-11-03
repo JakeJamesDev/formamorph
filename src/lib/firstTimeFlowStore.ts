@@ -27,8 +27,11 @@ export function demoAITurnCount(): number {
   }
 }
 
-export function recordDemoAITurn(): void {
+/** Adds one turn and returns the new count. */
+export function recordDemoAITurn(): number {
+  const count = demoAITurnCount() + 1;
   try {
-    localStorage.setItem(DEMO_AI_TURN_COUNT_KEY, String(demoAITurnCount() + 1));
+    localStorage.setItem(DEMO_AI_TURN_COUNT_KEY, String(count));
   } catch { /* private mode: the count stays where it is */ }
+  return count;
 }

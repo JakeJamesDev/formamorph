@@ -55,6 +55,7 @@ const EVENT_POSTERS = community('event-posters-and-banners');
 const account = (anchor: string): Required<DocTarget> => ({ page: 'Account', anchor });
 const USER_PROFILE = account('the-user-profile-dialog');
 const ACCOUNT_DELETION = account('account-deletion');
+const THE_FORMAMORPH_AI_OFFER: Required<DocTarget> = { page: 'How-to-Play', anchor: 'the-formamorph-ai-offer' };
 const THE_FEEDBACK_WINDOW: Required<DocTarget> = { page: 'Feedback', anchor: 'the-feedback-window' };
 const THE_LIBRARY_TABS: Required<DocTarget> = { page: 'Library', anchor: 'the-library-tabs' };
 const THE_GROUP_DIALOGS: Required<DocTarget> = { page: 'Library', anchor: 'the-group-dialogs' };
@@ -90,6 +91,8 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   aiContext: { page: 'How-to-Play', anchor: 'the-ai-context-inspector' },
   tts: { page: 'How-to-Play', anchor: 'how-to-read-a-turn-aloud' },
   demoAI: { page: 'How-to-Play', anchor: 'the-demo-ai-notice' },
+  road: THE_FORMAMORPH_AI_OFFER,
+  storyCard: THE_FORMAMORPH_AI_OFFER,
   editText: { page: 'How-to-Play', anchor: 'how-to-edit-narration' },
   entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },
   stranger: { page: 'How-to-Play', anchor: 'the-stranger-dialog' },

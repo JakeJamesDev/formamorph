@@ -503,6 +503,7 @@ export interface CommandChoices {
 export const MiddlePanel = ({
   narrationBadge,
   narrationLine,
+  storyCard,
   parseAssistantMessage,
   totalPages,
   handlePageChange,
@@ -546,6 +547,8 @@ export const MiddlePanel = ({
   narrationBadge?: React.ReactNode;
   /** A short line at the top of the narration area, in both layouts. */
   narrationLine?: React.ReactNode;
+  /** The Formamorph AI card, under the latest narration and above the choices, in both layouts. */
+  storyCard?: React.ReactNode;
   parseAssistantMessage: (content: string) => string;
   totalPages: number;
   handlePageChange: (page: number) => void;
@@ -954,6 +957,7 @@ export const MiddlePanel = ({
                 fadeUnderStrip={statusShowing}
                 latestFooter={
                   <>
+                    {storyCard}
                     <ScriptPromptLine store={scriptPrompts} layout="chat" className="mb-3" />
                     <ChatChoices
                       stream={playedTurn}
@@ -1034,6 +1038,7 @@ export const MiddlePanel = ({
                 onCancel={onCancelSceneImage}
               />
             )}
+            {!commandPreview && !isViewingPast && storyCard}
             {!commandPreview && <ScriptPromptLine store={scriptPrompts} className="mt-4" />}
             {!commandPreview && (
               <ChoiceRows

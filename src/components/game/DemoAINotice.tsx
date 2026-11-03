@@ -6,6 +6,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Meta } from '@/components/ui/typography';
 import { Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { openRoadScene } from '@/components/road/roadSceneStore';
+import { useDemoAIOfferAvailable } from '@/components/road/useDemoAIOffer';
 import { useSettings } from '@/contexts/SettingsContext';
 import { deviceCanRunDesktopApp } from '@/lib/desktopAppOffer';
 import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
@@ -34,6 +36,7 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle>(function DemoAINotice
   const close = () => setOpen(false);
 
   const desktopOffer = deviceCanRunDesktopApp();
+  const offerAvailable = useDemoAIOfferAvailable();
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); }}>
@@ -78,6 +81,14 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle>(function DemoAINotice
                 Want to run a model on your own PC? The desktop app has the AI engine built in, so there&apos;s
                 nothing extra to install. The model you can run depends on your hardware.
               </p>
+            )}
+            {offerAvailable && (
+              <div className="flex items-center justify-between gap-3">
+                <p>Formamorph AI is a stronger AI with no setup, and your support on Patreon includes it.</p>
+                <Button variant="outline" size="sm" className="shrink-0" onClick={() => { close(); openRoadScene(); }}>
+                  See Levels
+                </Button>
+              </div>
             )}
           </div>
         </ScrollArea>

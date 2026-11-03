@@ -43,18 +43,26 @@ export function countsAsDemoAITurn({ narrationIsDemoAI, isOpeningTurn, isNewTurn
   return narrationIsDemoAI && !isOpeningTurn && isNewTurn && !cardSeen;
 }
 
-export interface CardFacts {
+export interface OfferFacts {
   narrationIsDemoAI: boolean;
-  demoAITurnCount: number;
-  cardSeen: boolean;
   /** The player's pledge already includes Formamorph AI. */
   pledged: boolean;
   /** This build has a hosted URL and community accounts. */
   hostedAvailable: boolean;
 }
 
-export function cardDue({ narrationIsDemoAI, demoAITurnCount, cardSeen, pledged, hostedAvailable }: CardFacts): boolean {
-  return narrationIsDemoAI && hostedAvailable && !pledged && !cardSeen && demoAITurnCount >= DEMO_AI_CARD_TURNS;
+/** Whether this player can be offered the levels: the card, and See Levels in the longer Demo AI dialog. */
+export function offerAvailable({ narrationIsDemoAI, pledged, hostedAvailable }: OfferFacts): boolean {
+  return narrationIsDemoAI && hostedAvailable && !pledged;
+}
+
+export interface CardFacts extends OfferFacts {
+  demoAITurnCount: number;
+  cardSeen: boolean;
+}
+
+export function cardDue({ demoAITurnCount, cardSeen, ...offer }: CardFacts): boolean {
+  return offerAvailable(offer) && !cardSeen && demoAITurnCount >= DEMO_AI_CARD_TURNS;
 }
 
 export interface AiSetupFacts {

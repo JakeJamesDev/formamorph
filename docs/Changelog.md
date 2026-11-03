@@ -112,6 +112,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **American Text to Speech voices now say words such as read, lead, and wound to fit their sentence.** "She read it" and "I will read it" now sound different.
   - **First-Time Flow:**
     - **A new player can start Emberwatch with one click after the intro.** Play Emberwatch skips the Enter World steps. Browse Worlds leaves you on the main menu.
+    - **After five turns on the Demo AI, a card under the story offers a look at the Formamorph AI levels.** See Levels opens a full-screen scene and Not Now closes the card for good. The Demo AI dialog's See Levels opens the scene after that.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
   - **AI Context now shows how fast each AI request ran, how long it took, and whether it reached Max Output.** Each request also shows its prompt name and the samplers it sent, with icons in place of repeated labels. Hover a value to see its full name.

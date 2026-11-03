@@ -280,7 +280,10 @@ import { AiSetupGate } from "../components/AiSetupGate";
 import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
 import { useDemoAIEntryLine } from "../components/game/demoAISeen";
 import { countsAsDemoAITurn } from "@/lib/firstTimeFlow";
-import { isDemoAICardSeen, recordDemoAITurn } from "@/lib/firstTimeFlowStore";
+import { demoAITurnCount, isDemoAICardSeen, recordDemoAITurn } from "@/lib/firstTimeFlowStore";
+import { StoryCard } from "../components/road/StoryCard";
+import { openRoadScene } from "../components/road/roadSceneStore";
+import { useStoryCard } from "../components/road/useDemoAIOffer";
 import { LikePrompt } from "../components/game/LikePrompt";
 import { useLikePrompt } from "../components/game/useLikePrompt";
 import { useNarrationRescan } from "../components/game/useNarrationRescan";
@@ -1306,6 +1309,12 @@ const GameViewer = ({
       setShowReadmeModal(true);
     }
   }, [nextEntry, aiGateOpen, isSettingsOpen, settingsRequestPending]);
+
+  const [demoAITurns, setDemoAITurns] = useState(demoAITurnCount);
+  const storyCard = useStoryCard({
+    turnCount: demoAITurns,
+    settled: totalPages > 0 && !isWaitingForAI && !isRevealingNarration && !isViewingPast,
+  });
 
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
@@ -2975,7 +2984,7 @@ const GameViewer = ({
       isOpeningTurn: commit.isOpeningTurn,
       isNewTurn: turn.isNewTurn,
       cardSeen: isDemoAICardSeen(),
-    })) recordDemoAITurn();
+    })) setDemoAITurns(recordDemoAITurn());
     // The turn committed, so the before box's writes stand.
     beforeBoxUndoRef.current = null;
     turnStartItemsRef.current = null;
@@ -6017,6 +6026,9 @@ const GameViewer = ({
       parseAssistantMessage={parseAssistantMessage}
       narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
       narrationLine={demoAIEntryLine ? <DemoAIEntryLine /> : null}
+      storyCard={storyCard.showing || (import.meta.env.DEV && devRoute?.modal === 'storyCard') ? (
+        <StoryCard className="my-4" onNotNow={storyCard.dismiss} onSeeLevels={() => { storyCard.dismiss(); openRoadScene(); }} />
+      ) : null}
       totalPages={totalPages}
       handlePageChange={handlePageChange}
       handleSendAction={handleSendAction}

@@ -7,6 +7,8 @@ import { watchSessionForClaim } from './lib/anonymousLikeClaim';
 import { watchSupporterContent } from './lib/supporterContent';
 import { watchSupporterMascots } from './components/formaquestion/supporterMascots';
 import { COMMUNITY_ENABLED } from './lib/featureFlags';
+import { HOSTED_AI_AVAILABLE } from './lib/hostedAi/hostedUrls';
+import { RoadSceneHost } from './components/road/RoadSceneHost';
 import { useDevRoute, installDevRouter, registerDevHook } from './lib/devRouter';
 import { installViewportHeightVar, APP_HEIGHT_VAR } from './lib/viewportHeight';
 import { type DevView } from './lib/devRoutes';
@@ -292,6 +294,7 @@ function App() {
                       {/* One sign-in for every view, inside the age gate and the privacy prompt it
                           answers to. A view swap never remounts it. */}
                       {COMMUNITY_ENABLED && <SignInHost />}
+                      {HOSTED_AI_AVAILABLE && <RoadSceneHost />}
                       <AppViews />
                     </PrivacyPolicyProvider>
                   </AccountDeletionProvider>

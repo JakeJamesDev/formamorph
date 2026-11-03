@@ -13,6 +13,8 @@ const TURNS: TurnFixture[] = [
   { action: 'I wave at the gull.', narration: 'The gull does not wave back.', turnId: 't3', choices: ['Leave', 'Wait'] },
 ];
 
+const before = (first: Element, second: Element) => (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
 describe('Narration Layout: Pages', () => {
   // Recorded from the Turn Card body, so any Pages change fails here.
   it('renders the latest page unchanged', async () => {
@@ -25,6 +27,19 @@ describe('Narration Layout: Pages', () => {
     const view = renderMiddlePanel({}, { turns: TURNS, page: 2 });
     await screen.findByText('Boards creak. A gull watches you.');
     expect(view.container).toMatchSnapshot();
+  });
+
+  it('puts the story card under the latest narration and above the choices, and off a past page', async () => {
+    const latest = renderMiddlePanel({ storyCard: <div data-testid="story-card" /> }, { turns: TURNS });
+    const narration = await screen.findByText('The gull does not wave back.');
+    const card = screen.getByTestId('story-card');
+    expect(before(narration, card)).toBe(true);
+    expect(before(card, screen.getByRole('button', { name: /Leave/ }))).toBe(true);
+    latest.unmount();
+
+    renderMiddlePanel({ storyCard: <div data-testid="story-card" /> }, { turns: TURNS, page: 2 });
+    await screen.findByText('Boards creak. A gull watches you.');
+    expect(screen.queryByTestId('story-card')).toBeNull();
   });
 });
 
@@ -50,6 +65,15 @@ describe('Narration Layout: Chat', () => {
     expect(within(turns[1]).getByText(TURNS[1].narration)).toBeTruthy();
     expect(within(turns[2]).getByText('I wave at the gull.')).toBeTruthy();
     expect(pager()).toBeNull();
+  });
+
+  it('puts the story card under the latest narration and above the choices, on that turn alone', async () => {
+    renderMiddlePanel({ storyCard: <div data-testid="story-card" /> }, { turns: TURNS, settings: chat });
+    const turns = await screen.findAllByRole('article');
+    const card = within(turns[2]).getByTestId('story-card');
+    expect(screen.getAllByTestId('story-card')).toHaveLength(1);
+    expect(before(within(turns[2]).getByText(TURNS[2].narration), card)).toBe(true);
+    expect(before(card, within(turns[2]).getByRole('button', { name: /Leave/ }))).toBe(true);
   });
 
   it('keeps the Pager in Pages, so the query above can find one', async () => {

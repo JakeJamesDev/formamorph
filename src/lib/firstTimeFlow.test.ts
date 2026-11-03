@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiSetupLeadsWithHostedAi, cardDue, countsAsDemoAITurn, entryLineDue, firstRunStepDue, type CardFacts, type DemoAITurnFacts } from './firstTimeFlow';
+import { aiSetupLeadsWithHostedAi, cardDue, countsAsDemoAITurn, entryLineDue, firstRunStepDue, offerAvailable, type CardFacts, type DemoAITurnFacts } from './firstTimeFlow';
 
 describe('firstRunStepDue', () => {
   it.each([
@@ -69,6 +69,22 @@ describe('cardDue', () => {
     ['a build without hosted AI', { hostedAvailable: false }],
   ])('is never due for %s', (_, change) => {
     expect(cardDue({ ...due, ...change })).toBe(false);
+  });
+});
+
+describe('offerAvailable', () => {
+  const offered = { narrationIsDemoAI: true, pledged: false, hostedAvailable: true };
+
+  it('is available on the Demo AI, unpledged, in a build with hosted AI', () => {
+    expect(offerAvailable(offered)).toBe(true);
+  });
+
+  it.each([
+    ['a pledged player', { pledged: true }],
+    ['a non-Demo endpoint', { narrationIsDemoAI: false }],
+    ['a build without hosted AI', { hostedAvailable: false }],
+  ])('is off for %s', (_, change) => {
+    expect(offerAvailable({ ...offered, ...change })).toBe(false);
   });
 });
 

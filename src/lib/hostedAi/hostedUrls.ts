@@ -1,7 +1,11 @@
 import { API_BASE_URL } from '@/lib/apiBase';
+import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 
 /** The proxy's chat-completions route, or '' on a build with no community server. */
 export const HOSTED_CHAT_URL = API_BASE_URL ? `${API_BASE_URL}/hosted-ai/chat/completions` : '';
+
+/** Whether Formamorph AI can work in this build: it needs the proxy and a community account. A Steam build has neither. */
+export const HOSTED_AI_AVAILABLE = HOSTED_CHAT_URL !== '' && COMMUNITY_ENABLED;
 
 /** Whether a chat URL is Formamorph AI's, which is never probed. */
 export const isHostedChatUrl = (url: string): boolean => HOSTED_CHAT_URL !== '' && url === HOSTED_CHAT_URL;

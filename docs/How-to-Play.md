@@ -428,9 +428,32 @@ In the browser and on Android, Formamorph starts on the **Demo AI**, a small fre
 |---|---|
 | **Keep Playing** | Closes the notice |
 | **Get the Desktop App** | Opens formamorph.ai, where you can get the desktop app. Shows on devices that can run it. |
+| **See Levels** | Opens the levels screen. See [The Formamorph AI Offer](#the-formamorph-ai-offer). |
 | **Connect an AI** | Opens **Settings** → **Endpoints** |
 
 A stronger model writes better narration and keeps each entity consistent. See [Connect Your Own AI](Connect-Your-Own-AI).
+
+## The Formamorph AI Offer
+<!-- keywords: upgrade, see levels, spark, flame, beacon, support on patreon, card under the story, not now, stronger ai, morphie -->
+<!-- route: road -->
+
+After five turns on the Demo AI, a card with Morphie appears once, under the latest narration and above the choices. You can still pick a choice or type your action while it shows.
+
+| Button | What it does |
+|---|---|
+| **Not Now** | Closes the card. It doesn't come back on this device. |
+| **See Levels** | Opens the levels screen and closes the card |
+
+The levels screen shows what each level of support includes. Pick a level to see how much of your story its light reaches, and read the same scene written by the Demo AI and Formamorph AI.
+
+| Button | What it does |
+|---|---|
+| **Keep Playing** | Returns to your turn. Your typed action and your story stay as they were. |
+| **Support on Patreon** | Opens the Patreon page |
+
+To open the levels screen again, select the **Demo AI** badge, then **See Levels**.
+
+The card and **See Levels** don't show when your support already includes Formamorph AI, when you narrate on another AI, or in a build without Formamorph AI.
 
 ## The Like Prompt
 <!-- keywords: enjoying popup, heart, rate this world, thumbs up, upvote, stop asking, favorite, review -->

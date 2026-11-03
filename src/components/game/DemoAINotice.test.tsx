@@ -19,6 +19,7 @@ import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
 import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } from './DemoAINotice';
+import { closeRoadScene, isRoadSceneOpen } from '@/components/road/roadSceneStore';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { DEMO_AI_SEEN_KEY, useDemoAIEntryLine } from './demoAISeen';
 
@@ -279,7 +280,22 @@ describe('DemoAINotice controls', () => {
       .filter((el) => el.textContent !== 'Close')
       .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
       .map((el) => el.textContent);
-    expect(actions).toEqual(['Keep Playing', 'Get the Desktop App', 'Connect an AI']);
+    expect(actions).toEqual(['See Levels', 'Keep Playing', 'Get the Desktop App', 'Connect an AI']);
+  });
+
+  it('See Levels closes the dialog and raises the scene', async () => {
+    mountNotice();
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'See Levels' }));
+    expect(dialog()).toBeNull();
+    expect(isRoadSceneOpen()).toBe(true);
+    closeRoadScene();
+  });
+
+  it('hides See Levels when narration routes away from the Demo AI', () => {
+    mountNotice();
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'See Levels' })).not.toBeNull();
+    act(() => settings.selectTextEndpointPreset(addUserPreset()));
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'See Levels' })).toBeNull();
   });
 
   it('puts the initial focus on Connect an AI', async () => {

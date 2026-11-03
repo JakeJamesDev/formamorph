@@ -57,6 +57,8 @@ const ENTRIES: [string, string][] = [
   ['aiContext', 'AI Context'],
   ['tts', 'Text to Speech'],
   ['demoAI', "You're Playing on the Demo AI"],
+  ['road', 'Formamorph AI Levels'],
+  ['storyCard', 'Formamorph AI Card'],
   ['editText', 'Edit Text'],
   ['entity', 'Entity'],
   ['stranger', 'Stranger'],

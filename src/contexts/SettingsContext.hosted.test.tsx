@@ -7,7 +7,10 @@ import { AgeGateProvider } from './AgeGateContext';
 import { HostedAiStateSync } from '@/components/HostedAiStateSync';
 import { AGE_GATE_VERSION } from '@/lib/ageGate';
 import AuthService from '@/services/AuthService';
-import { textEndpointPresetCodec, FORMAMORPH_AI_PRESET_ID, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
+import { textEndpointPresetCodec, DEFAULT_TEXT_PRESET_ID, FORMAMORPH_AI_PRESET_ID, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
+
+// The Default preset is the Demo AI. Pinned so a developer's `.env.local` cannot change it.
+vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
 import { hostedSession } from '@/lib/hostedAi/hostedSession';
@@ -97,6 +100,7 @@ describe('SettingsContext: the hosted state waits for the age gate', () => {
   }
   const boots: Boot[] = [
     { name: 'Formamorph AI is active', arrange: () => seed(FORMAMORPH_AI_PRESET_ID) },
+    { name: 'narration is on the Demo AI after a switch back', arrange: () => seed(DEFAULT_TEXT_PRESET_ID) },
     {
       name: 'a prompt is pinned to Formamorph AI',
       arrange: () => seed('mine'),
