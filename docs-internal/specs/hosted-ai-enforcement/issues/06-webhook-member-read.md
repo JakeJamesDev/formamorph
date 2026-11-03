@@ -15,7 +15,7 @@ Model rationale: background work after the response, with ordering and failure p
 - [ ] A non-ending delivery changes a tier only through a successful read, and it does not refresh `checked_at` by itself, so a replay cannot extend the 7-day cutoff.
 - [ ] An ending applies at once and stays applied when the read fails.
 - [ ] A non-ending delivery changes nothing when the read fails.
-- [ ] A burst of deliveries makes one read.
+- [ ] A burst of deliveries makes one read, through ticket 05's `refreshLinksFromMembers()`, which throws on failure and does not count.
 - [ ] A failed delivery-triggered read does not count toward the alert.
 - [ ] The signature tests still pass, and an unsigned delivery triggers no read.
 - [ ] The Patreon glossary entries and the server guide state the rule.
