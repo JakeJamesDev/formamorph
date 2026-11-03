@@ -8,7 +8,7 @@
   Query parameters:
     avatar=default|alt|praline   which bundled VRM to render (alt and praline are the release-channel models beside this folder)
     t=<seconds>          idle-animation frame to freeze on (default 1.4)
-    expression=<name>    Aurelia's VRM expression (default happy)
+    expression=<name>    Aurelia's VRM expression (default relaxed, her soft open-eyed smile)
     scale=1              1:1 pixels instead of fit-to-window
     layout=banner        2560x1440 YouTube banner; wordmark and face sit in the 1546x423 all-devices band
     guides=1             outline the banner's TV, desktop and all-devices areas
@@ -175,7 +175,7 @@
   loader.register(p => new VRMLoaderPlugin(p));
   const MODEL_URLS = { alt: '/build-assets/alternate-avatar.vrm', praline: '/build-assets/praline-avatar.vrm' };
   const modelUrl = MODEL_URLS[params.get('avatar')] ?? '/default-avatar.vrm';
-  const EXPRESSIONS = { alt: params.get('expression') ?? 'happy' };
+  const EXPRESSIONS = { alt: params.get('expression') ?? 'relaxed' };
   const BANNER_HEAD_Y = 1.3144;
   const freezeAt = Number(params.get('t') ?? 1.4);
   let vrm;
