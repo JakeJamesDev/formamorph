@@ -27,7 +27,7 @@ const serve = (files: Record<string, string>) => vi.stubGlobal('fetch', vi.fn(as
   const title = files[url];
   return title ? { ok: true, blob: async () => makeVrm1({ name: title }) } : { ok: false, status: 404, blob: async () => new Blob(['<html>']) };
 }));
-const serveBoth = () => serve({ [DEFAULT_URL]: 'Sei', [PRALINE_URL]: 'Praline' });
+const serveBoth = () => serve({ [DEFAULT_URL]: 'Aurelia', [PRALINE_URL]: 'Praline' });
 const fetchedUrls = () => vi.mocked(fetch).mock.calls.map(([url]) => url);
 const libraryIds = async () => (await ModelStorageService.getModelMetadata()).map((model) => model.id);
 
@@ -67,7 +67,7 @@ describe('seeding on an NSFW build', () => {
 
     expect(fetchedUrls().sort()).toEqual([DEFAULT_URL, PRALINE_URL]);
     const names = Object.fromEntries((await ModelStorageService.getModelMetadata()).map((model) => [model.id, model.name]));
-    expect(names).toEqual({ [DEFAULT_AVATAR_ID]: 'Sei', [PRALINE_AVATAR_ID]: 'Praline' });
+    expect(names).toEqual({ [DEFAULT_AVATAR_ID]: 'Aurelia', [PRALINE_AVATAR_ID]: 'Praline' });
   });
 
   it('keeps a deleted Praline gone after a reload', async () => {
@@ -100,7 +100,7 @@ describe('seeding on an NSFW build', () => {
   });
 
   it('retries only the entry whose file failed', async () => {
-    serve({ [DEFAULT_URL]: 'Sei' });
+    serve({ [DEFAULT_URL]: 'Aurelia' });
     await ModelStorageService.seedBundledAvatars(NSFW);
     expect(await libraryIds()).toEqual([DEFAULT_AVATAR_ID]);
 

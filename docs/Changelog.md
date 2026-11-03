@@ -115,7 +115,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **AI Context now shows how fast each AI request ran, how long it took, and whether it reached Max Output.** Each request also shows its prompt name and the samplers it sent, with icons in place of repeated labels. Hover a value to see its full name.
   - **The game's Send and Stop buttons are now narrower on larger screens, leaving more room to type.**
   - **The entity popup shows the picture beside the text on large screens.** The text scrolls on its own, so long descriptions and Equipped have more room. Smaller screens keep the picture above the text.
-  - **New installs now start with Sei as the bundled Avatar.** If you already play, your current Avatars stay in your library.
+  - **New installs now start with Aurelia as the bundled Avatar.** If you already play, your current Avatars stay in your library.
   - **The Avatar library now includes Praline on the desktop, web and Android builds.** If you already play, she joins your library and your default stays the same. Sugarscape now shows a Player Avatar dropdown when you start a new game.
   - **A build with no bundled Avatar now shows an empty state in the Avatar library and Avatar Customization.** Each has an Import Avatar button for a .vrm file, and you can finish customizing with no Avatar.
 - **🛠️ Developer tooling**
@@ -136,7 +136,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **`npm run test:ledger` writes one record per test, with its time, coverage, failure history and a stale check.** Raw output stays untracked in the git folder, so every worktree reads the same ledger.
   - **Eight source-scanning tests are now ESLint rules.** They leave the always-run test list, so every gate runs fewer tests, and a reintroduced problem fails lint on the file that holds it.
   - **Kept-protection check for moved and deleted tests.** `scripts/keptProtection.mjs` compares ledger coverage and Stryker kills before and after a change, and exits 1 on any loss.
-  - **`npm run title-card` captures the title card and YouTube banner with Aki, Sei and Praline.** The title card page takes `avatar=praline`.
+  - **`npm run title-card` captures the title card and YouTube banner with Aki, Aurelia and Praline.** The title card page takes `avatar=praline`.
 
 #### ➖ Removed
 
@@ -157,7 +157,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Scripts:**
     - **The Scripts tab now lists scripts where they run.** A Blueprint script is one row that runs for all its owners together. Timings follow the order of a turn.
   - **Credits:**
-    - **The Licenses tab now lists Aki, Sei and Praline as the bundled Avatars.** Each shows its author, source and license.
+    - **The Licenses tab now lists Aki, Aurelia and Praline as the bundled Avatars.** Each shows its author, source and license.
   - **Entities set to Moves Between Its Locations now walk between those locations and come along with you into them.** Before, they stayed where the new game placed them.
   - **The Entities tab now highlights the selected entity, and its rows work from the keyboard.** The first click selects any entity you've met, even one with no art, and the next opens its details.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.

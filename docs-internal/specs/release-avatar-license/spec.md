@@ -53,6 +53,8 @@ The Permissive License gate becomes fully permissive: if a file adds any restric
 | Q27 | Accept VRoid Hub Article 3(2)'s respect clause as a risk for Sei on NSFW builds. See Further Notes. |
 | Q28 | VRoid Hub Article 4's ban on analyzing Registered Works doesn't cover edits that the modification flag allows. See Further Notes. |
 | Q29 | A tint keeps the material's original shade-to-base ratio. Saved skin and clothing tints render differently, and the user accepted that. |
+| Q30 | Aurelia (sample Q) replaces Sei as the NSFW default, the screenshots and the title card, because she fits an RPG. New evidence: the user rejected Sei's look on 2026-11-03. Existing players keep their copy, as in Q6 and Q25. Sei, Nova, Ume, Cerise and sample S stay in `build-assets/extra-avatars/`, which no build copies. Q27's Hub risk no longer applies to the default, and Q22's reading now covers it. pixiv's sample conditions list pictures and videos as allowed, so store art may show her. |
+| Q31 | The user confirmed on 2026-11-03 that Aurelia reads as an adult. |
 
 **Candidate source:** [明都セイ, maid version](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) by 乙幡皇斗羽, tagged original. The `authors` field stays as it is. The conditions read on 2026-11-02 are saved in `evidence/sei-hub-conditions-2026-11-02.json`.
 

@@ -12,9 +12,9 @@ The Steam build ships no VRM file.
 
 `public/default-avatar.vrm`, in local and Pages dev builds. By pixiv VRoid Project, from VRoid preset sample A (<https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z>), which sets the conditions for the sample data. Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted, credit not required.
 
-### Sei
+### Aurelia
 
-`build-assets/alternate-avatar.vrm`, copied over `public/default-avatar.vrm` in the desktop, web and Android release builds. By 乙幡皇斗羽, from VRoid Hub (<https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999>). Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted, credit not required.
+`build-assets/alternate-avatar.vrm`, copied over `public/default-avatar.vrm` in the desktop, web and Android release builds. By pixiv VRoid Project, from VRoid preset sample Q (<https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z>), which sets the conditions for the sample data. Distributed under its embedded VRM 1.0 license (<https://vrm.dev/licenses/1.0/>): commercial use and redistribution permitted, credit not required.
 
 ### Praline
 

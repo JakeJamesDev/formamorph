@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -91,5 +91,10 @@ describe('the workflows that build the app', () => {
     const pages = readFileSync('.github/workflows/pages.yml', 'utf8');
     expect(pages).not.toContain('FORMAMORPH_AVATARS');
     expect(pages).not.toContain('praline');
+  });
+
+  it('never copy a kept model into a build', () => {
+    const configs = readdirSync('.github/workflows').map((file) => `.github/workflows/${file}`).concat('electron-builder.yml');
+    expect(configs.filter((file) => readFileSync(file, 'utf8').includes('extra-avatars'))).toEqual([]);
   });
 });

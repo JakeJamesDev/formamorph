@@ -1,12 +1,44 @@
 # Bundled Avatar Provenance
 
-The source and license of each model Formamorph bundles. This is a reading of the licenses, not legal advice.
+The source and license of each model Formamorph bundles or keeps in the repo. This is a reading of the licenses, not legal advice.
+
+## 🧝 Aurelia
+
+| | |
+|---|---|
+| **Ships at** | `build-assets/alternate-avatar.vrm` (desktop, web, Android) |
+| **Source** | [VRoid preset sample Q](https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z), exported from VRoid Studio |
+| **Author** | pixiv VRoid Project |
+| **Exported** | 2026-11-03, `AvatarSample_Q.vrm`, 21,734,192 bytes |
+| **Rebuild** | [tools/build-sample-avatar.py](tools/build-sample-avatar.py) with `--name Aurelia --skin-from build-assets/extra-avatars/ume.vrm --wordmark-dress`, then [tools/capture-thumbnail.mjs](tools/capture-thumbnail.mjs) and [tools/embed-thumbnail.py](tools/embed-thumbnail.py) |
+
+**Changes from the export**
+
+- `name` is `Aurelia`. Every other metadata field is unchanged.
+- `Waist`, `Bust` and `Thickness` keys are new and generated.
+- Skin moves from the source's dark tone to Ume's, in the texture and shade color.
+- Green and pink clothing moves to violet and orchid in the texture. Gold trim and gems keep their color.
+- The embedded thumbnail is recaptured on a white background.
+
+## 📦 Kept in the repo, not in any build
+
+These files sit in `build-assets/extra-avatars/`. No build copies them.
+
+| File | Source | Author | Built with |
+|---|---|---|---|
+| `sei.vrm` | Sei, below | 乙幡皇斗羽 | [tools/build-release-avatar.py](tools/build-release-avatar.py) |
+| `nova.vrm` | Sample B | pixiv VRoid Project | [tools/build-sample-avatar.py](tools/build-sample-avatar.py) `--name Nova` |
+| `ume.vrm` | Sample J | pixiv VRoid Project | [tools/build-sample-avatar.py](tools/build-sample-avatar.py) `--name Ume` |
+| `cerise.vrm` | Sample U | pixiv VRoid Project | [tools/build-sample-avatar.py](tools/build-sample-avatar.py) `--name Cerise` |
+| `sample-s.vrm` | Sample S | pixiv VRoid Project | [tools/build-sample-avatar.py](tools/build-sample-avatar.py) `--cloth` |
+
+The samples come from [pixiv's sample page](https://vroid.pixiv.help/hc/en-us/articles/4402394424089-VRoidPreset-A-Z), and their VRM licenses are unchanged.
 
 ## 🧹 Sei
 
 | | |
 |---|---|
-| **Ships at** | `build-assets/alternate-avatar.vrm` (desktop, web, Android) |
+| **Kept at** | `build-assets/extra-avatars/sei.vrm`, in no build |
 | **Source** | [明都セイ, maid version, on VRoid Hub](https://hub.vroid.com/en/characters/3917238075852400462/models/7688062894575397999) |
 | **Author** | 乙幡皇斗羽 |
 | **Downloaded** | 2026-11-02, 15,069,648 bytes |
