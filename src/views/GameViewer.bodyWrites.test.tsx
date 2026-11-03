@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { bodyFixture } from '@/test/bodyFixture';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
@@ -28,6 +28,8 @@ const helm: Item = {
 };
 const placements: Placement[] = [{ id: 'p-helm', where: { kind: 'you' }, quantity: 1, equipped: true, source: { kind: 'item', itemId: 'helm' } }];
 const howl: Trait = { id: 'howl', name: 'Howl', statChanges: [], playerToggle: true };
+const collar: Item = { id: 'collar', name: 'Collar', slotRule: { mode: 'either', slotIds: ['collar'] }, statEffects: [], traitEffects: [], equipRequires: [] };
+const held: Placement = { id: 'p-collar', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'collar' } };
 
 const bodyScript = (code: string): Script => ({ id: 'sw', timing: 'switch', code });
 const worldWith = (code: string): World => ({
@@ -41,6 +43,32 @@ const gameplay = () => {
   return live;
 };
 const worn = () => gameplay().itemCopies.filter((c) => c.equipped).length;
+const wornItems = () => gameplay().itemCopies.filter((c) => c.equipped).map((c) => (c.item.kind === 'item' ? c.item.itemId : ''));
+const logLines = () => gameplay().logEntries.map((e) => e.text);
+
+/** Plays one turn of `world`, the Inventory pass answering `inventoryReply`. Answers the choices requests so far. */
+async function playTurn(world: World, inventoryReply?: string) {
+  renderGameViewer(world, { inGameplay: <Probe /> });
+  const box = await screen.findByPlaceholderText(/Type your action/);
+  await waitFor(() => expect(gameplay().itemCopies.length).toBeGreaterThan(0));
+  const calls = { choices: 0 };
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const system = (JSON.parse(init.body as string) as { messages: { role: string; content: string }[] }).messages
+      .find((m) => m.role === 'system')?.content ?? '';
+    if (inventoryReply && system.includes('inventory keeper')) return sseResponse(sseReply(inventoryReply));
+    if (system.includes('stat tracker')) return sseResponse(sseReply('No changes'));
+    if (system.includes('player choice writer')) {
+      calls.choices += 1;
+      return sseResponse(sseReply('1. Wait\n2. Go'));
+    }
+    return sseResponse(sseReply('The ferry bell rings.'));
+  }));
+  fireEvent.change(box, { target: { value: 'I wait.' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
+  return calls;
+}
 
 beforeEach(async () => {
   for (const { id } of await getAllSaveRecords()) await deleteSaveRecord(id);
@@ -49,6 +77,8 @@ beforeEach(async () => {
   localStorage.setItem('FORMAMORPH_endpointUrl', 'http://127.0.0.1:5190/v1/chat/completions');
   localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
 });
+
+afterEach(() => { vi.unstubAllGlobals(); });
 
 async function clickHowl() {
   gameplay().setActiveTab('traits');
@@ -109,14 +139,12 @@ describe('a Body written by a script between turns', () => {
 
 describe('an equip right after a Body write', () => {
   const EQUIP = 'persona.items.find((copy) => copy.item === "Collar").equip();';
-  const collar: Item = { id: 'collar', name: 'Collar', slotRule: { mode: 'either', slotIds: ['collar'] }, statEffects: [], traitEffects: [], equipRequires: [] };
-  const held: Placement = { id: 'p-collar', where: { kind: 'you' }, quantity: 1, source: { kind: 'item', itemId: 'collar' } };
   const gem: Item = { id: 'gem', name: 'Gem', stackable: false, statEffects: [], traitEffects: [], equipRequires: [], scripts: [] };
   // A give, since a landing can lay a stat write over a second run's.
   const counted: Item = { ...helm, scripts: [{ id: 'off', timing: 'unequipped', code: 'stats.Calm.value += 1; items.Gem.give(location);' }] };
   const onHowl = (code: string): Script => ({ id: 'sw', timing: 'switch', code: `if (trait.name === "Howl" && trait.enabled) { ${code} }` });
-  const worn1 = () => gameplay().itemCopies.filter((c) => c.equipped).map((c) => (c.item.kind === 'item' ? c.item.itemId : ''));
   const calmNow = () => gameplay().globalStats.find((s) => s.id === 'calm')?.value;
+  const bodyLines = () => logLines().filter((line) => line.startsWith('Body:'));
   /** Helm's When Unequipped has run once, and no second run lands after it. */
   const ranOnce = async () => {
     const gems = () => gameplay().itemCopies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'gem').reduce((sum, c) => sum + c.quantity, 0);
@@ -135,21 +163,23 @@ describe('an equip right after a Body write', () => {
 
   it('fits the new Body in an item script the Body’s settle fires', async () => {
     await howlIn({ items: [{ ...helm, scripts: [{ id: 'off', timing: 'unequipped', code: EQUIP }] }, collar], scripts: [onHowl('persona.body = "Wolf";')] });
-    await waitFor(() => expect(worn1()).toEqual(['collar']));
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
   });
 
   it('fits the new Body in the same script, and the old piece’s script runs once', async () => {
     await howlIn({ scripts: [onHowl(`persona.body = "Wolf"; ${EQUIP}`)] });
-    await waitFor(() => expect(worn1()).toEqual(['collar']));
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
     await ranOnce();
     expect(gameplay().saveCurrentGameState().bodies?.base).toEqual({ '': { kind: 'body', id: 'wolf' } });
-    expect(gameplay().logEntries.map((e) => e.text).filter((line) => line.includes('skipped'))).toEqual([]);
+    expect(logLines().filter((line) => line.includes('skipped'))).toEqual([]);
+    expect(bodyLines()).toEqual(['Body: Wolf. Unequipped Helm']);
   });
 
   it('fits the new Body in the next script in the list', async () => {
     await howlIn({ scripts: [onHowl('persona.body = "Wolf";'), { ...onHowl(EQUIP), id: 'sw2' }] });
-    await waitFor(() => expect(worn1()).toEqual(['collar']));
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
     await ranOnce();
+    expect(bodyLines()).toEqual(['Body: Wolf. Unequipped Helm']);
   });
 
   it('fits the new Body when an item script writes both', async () => {
@@ -166,45 +196,71 @@ describe('an equip right after a Body write', () => {
     gameplay().setActiveTab('inventory');
     fireEvent.click(await screen.findByRole('button', { name: /: Helm$/ }));
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Unequip Helm' }));
-    await waitFor(() => expect(worn1()).toEqual(['collar']));
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
     await ranOnce();
     expect(gameplay().saveCurrentGameState().bodies?.base).toEqual({ '': { kind: 'body', id: 'wolf' } });
+    expect(bodyLines()).toEqual(['Body: Wolf. Unequipped Sword']);
   });
 
   it('refuses what only the old Body held', async () => {
-    const lines = () => gameplay().logEntries.map((e) => e.text);
     renderGameViewer({
       ...worldWith(''), items: [counted], placements: [{ ...placements[0], equipped: false }],
       scripts: [onHowl('persona.body = "Wolf"; persona.items.find((copy) => copy.item === "Helm").equip();')],
     }, { inGameplay: <Probe /> });
     await screen.findByPlaceholderText(/Type your action/);
     await clickHowl();
-    await waitFor(() => expect(lines()).toContain('Inventory (script) skipped equip: no Head slot on you'));
-    expect(lines()).toContain('Body: Wolf');
-    expect(worn1()).toEqual([]);
+    await waitFor(() => expect(logLines()).toContain('Inventory (script) skipped equip: no Head slot on you'));
+    expect(logLines()).toContain('Body: Wolf');
+    expect(wornItems()).toEqual([]);
     expect(calmNow()).toBe(50);
   });
 
-  it('fits the new Body in a Before the AI script', async () => {
-    renderGameViewer({
+  it.each(['before', 'output'] as const)('fits the new Body and names what it took off, in a %s script', async (timing) => {
+    await playTurn({
       ...worldWith(''), items: [counted, collar, gem], placements: [...placements, held],
-      scripts: [{ id: 'a', timing: 'before', code: 'persona.body = "Wolf";' }, { id: 'b', timing: 'before', code: EQUIP }],
-    }, { inGameplay: <Probe /> });
-    const box = await screen.findByPlaceholderText(/Type your action/);
-    await waitFor(() => expect(worn()).toBe(1));
-    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
-      if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-      const system = (JSON.parse(init.body as string) as { messages: { role: string; content: string }[] }).messages
-        .find((m) => m.role === 'system')?.content ?? '';
-      if (system.includes('stat tracker')) return sseResponse(sseReply('No changes'));
-      if (system.includes('player choice writer')) return sseResponse(sseReply('1. Wait\n2. Go'));
-      return sseResponse(sseReply('The ferry bell rings.'));
-    }));
-    fireEvent.change(box, { target: { value: 'I wait.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
-    await waitFor(() => expect(worn1()).toEqual(['collar']));
+      scripts: [{ id: 'a', timing, code: 'persona.body = "Wolf";' }, { id: 'b', timing, code: EQUIP }],
+    });
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
     await ranOnce();
-    vi.unstubAllGlobals();
+    expect(bodyLines()).toEqual(['Body: Wolf. Unequipped Helm']);
+  });
+});
+
+describe('the Inventory pass after a script’s Body write', () => {
+  const wolfBefore: Script = { id: 'a', timing: 'before', code: 'persona.body = "Wolf";' };
+  const equipOf = (item: string) => JSON.stringify({ operations: [{ op: 'equip', item, quantity: 1, owner: 'you', to: '' }] });
+  const worldOf = (world: Partial<World>): World => ({ ...worldWith(''), items: [helm, collar], placements: [...placements, held], ...world });
+  const skipped = () => logLines().filter((line) => line.includes('skipped'));
+
+  it('fits an equip to the Body a Before the AI script wrote', async () => {
+    await playTurn(worldOf({ scripts: [wolfBefore] }), equipOf('Collar'));
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
+    expect(skipped()).toEqual([]);
+  });
+
+  it('refuses a slot that Body lacks', async () => {
+    await playTurn(worldOf({ scripts: [wolfBefore], placements: [{ ...placements[0], equipped: false }] }), equipOf('Helm'));
+    await waitFor(() => expect(logLines().some((line) => /skipped equip: no Head slot on you/.test(line))).toBe(true));
+    expect(wornItems()).toEqual([]);
+  });
+
+  it('fits it the same way when Regenerate Stats replays the turn', async () => {
+    await playTurn(worldOf({ scripts: [wolfBefore] }), equipOf('Collar'));
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
+    await waitFor(() => expect(wornItems()).toEqual(['collar']));
+    expect(skipped()).toEqual([]);
+  });
+
+  it('fits it the same way when Regenerate Choices replays the turn', async () => {
+    const after: Script = { id: 'b', timing: 'after', code: 'turn.choices = [...turn.choices, "Worn " + persona.items.filter((copy) => copy.equipped).map((copy) => copy.item).join()];' };
+    const calls = await playTurn(worldOf({ scripts: [wolfBefore, after] }), equipOf('Collar'));
+    await waitFor(() => expect(gameplay().choices).toEqual(['Wait', 'Go', 'Worn Collar']));
+    fireEvent.click(await screen.findByRole('button', { name: 'Regenerate Choices' }));
+    await waitFor(() => expect(calls.choices).toBe(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Choices' })).toBeEnabled());
+    expect(gameplay().choices).toEqual(['Wait', 'Go', 'Worn Collar']);
+    expect(wornItems()).toEqual(['collar']);
   });
 });

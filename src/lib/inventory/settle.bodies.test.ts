@@ -109,6 +109,28 @@ const worn = (play: Play, where: ItemCopyWhere) => play.copies
   .map((c) => (c.item.kind === 'item' ? c.item.itemId : '')).sort();
 const strength = (play: Play, owner: string) => play.traits.entityStats![owner].find((s) => s.id === 'strength')!.value;
 
+describe("a script chain's Body line", () => {
+  const landing = (copies: readonly ItemCopy[], body: string, chainOff: readonly ItemCopy[]) => settleInventory(
+    { copies, traits: start().traits, ledger: undefined, bodies: {}, baseWrites: { '': { kind: 'body', id: body } }, chainOff }, settleWorld(),
+  );
+
+  it('names what the chain took off, once, and fires nothing for it', () => {
+    const [on] = wear(start(), you, 'helm').copies;
+    const { equipped: _on, ...off } = on;
+    const landed = landing([off], 'wolf', [on, on]);
+    expect(landed.bodyLog).toEqual(['Body: Wolf. Unequipped Helm']);
+    expect(landed.events).toEqual([]);
+    expect(landed.bodyUnequipped).toBe(0);
+  });
+
+  it('leaves out a copy the chain equipped again', () => {
+    const { copies } = wear(start(), you, 'helm');
+    const landed = landing(copies, 'cat', copies);
+    expect(worn({ ...start(), copies: landed.copies }, you)).toEqual(['helm']);
+    expect(landed.bodyLog).toEqual(['Body: Cat']);
+  });
+});
+
 describe('trait Body rows', () => {
   it("changes an entity's Body, unequips what it lacks, reverses the effects exactly and fires When Unequipped", () => {
     const armed = wear(start(), rex, 'sword', 'helm');

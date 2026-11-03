@@ -40,6 +40,8 @@ export interface InventorySettleState {
   bodies?: BodyRuntime;
   /** Base Bodies a script wrote since `bodies`, by owner key. They replace the owner's base and settle with the rest. */
   baseWrites?: TraitBodyPicks;
+  /** The Item Copies a Body took off earlier in a script chain, which this settle's Body line names too. */
+  chainOff?: readonly ItemCopy[];
 }
 
 export interface InventorySettleWorld {
@@ -79,6 +81,8 @@ export interface InventorySettleResult {
   bodyLog: string[];
   /** How many Item Copies the owners' Bodies no longer held. */
   bodyUnequipped: number;
+  /** The Item Copies the owners' Bodies no longer held. */
+  offByBody: readonly ItemCopy[];
 }
 
 interface Pass {
@@ -253,11 +257,14 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
     offByBody.push(...misfits);
   }
   const was = world.previousPersona ?? persona;
+  const stillOff = (state.chainOff ?? []).filter((copy) => !copies.some((now) => now.id === copy.id && now.equipped));
+  // A chain's copy that went back on is not off, and one that came off twice names once.
+  const named = [...new Map([...stillOff, ...offByBody].map((copy) => [copy.id, copy])).values()];
   const bodyLog = world.bodies ? bodyChangeLog({
     world: world.bodies,
     before: { picks: picksOf(before, world.traits, state.traits.traits, was), base: baseBefore, persona: was },
     after: { picks, base: baseAfter, persona },
-    offByBody, copyName: read.copyName, resolve: world.resolve ?? same,
+    offByBody: named, copyName: read.copyName, resolve: world.resolve ?? same,
   }) : [];
   const { traitsOn: _was, base: _base, ...rest } = state.bodies ?? {};
   const bodies: BodyRuntime = {
@@ -267,7 +274,7 @@ export function settleInventory(state: InventorySettleState, world: InventorySet
   };
   return {
     copies, traits: current.traits, ledger: current.ledger ?? {}, log, cascade, cascadeNames, events,
-    bodies, bodyLog, bodyUnequipped: offByBody.length,
+    bodies, bodyLog, bodyUnequipped: offByBody.length, offByBody,
   };
 }
 

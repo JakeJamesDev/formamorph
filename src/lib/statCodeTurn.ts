@@ -298,6 +298,8 @@ export interface ChainedItems {
   itemUses: readonly ItemUse[];
   /** The item events a During AI Output write holds for its landing. */
   held: readonly ItemScriptEvent[];
+  /** The Item Copies a Body took off in the chain's settles, which the landing's Body line names. */
+  offByBody: readonly ItemCopy[];
 }
 
 const mergedWorldWrites = (writers: readonly (WorldWrites | undefined)[]): WorldWrites | undefined =>
@@ -599,6 +601,7 @@ interface ActionRuns extends ActionTotals {
   trail: StatCodeTurnResult[];
   log: string[];
   itemUses: ItemUse[];
+  offByBody: ItemCopy[];
 }
 
 /** Where an action's own runs sit. */
@@ -606,7 +609,7 @@ const ACTION_TOP: RunNesting = { switchDepth: 0, itemLevel: 1 };
 
 const actionRunsOf = (root: StatCodeTurn, totals?: ActionTotals): ActionRuns => {
   const log: string[] = [];
-  return { root, trail: [], log, itemUses: [], ...(totals ?? actionTotals((line) => log.push(line))) };
+  return { root, trail: [], log, itemUses: [], offByBody: [], ...(totals ?? actionTotals((line) => log.push(line))) };
 };
 
 /** How deep a run sits: its nested switch rounds, and the level its inventory writes fire their item events at. */
@@ -616,9 +619,12 @@ interface RunNesting {
 }
 
 /** `result` with what its whole action logged and used. */
-function withActionItems(result: StatCodeTurnResult, { log, itemUses }: ActionRuns): StatCodeTurnResult {
+function withActionItems(result: StatCodeTurnResult, { log, itemUses, offByBody }: ActionRuns): StatCodeTurnResult {
   if (!result.items) return result;
-  return { ...result, items: { ...result.items, log: [...result.items.log, ...log], itemUses: [...result.items.itemUses, ...itemUses] } };
+  return {
+    ...result,
+    items: { ...result.items, log: [...result.items.log, ...log], itemUses: [...result.items.itemUses, ...itemUses], offByBody: [...result.items.offByBody, ...offByBody] },
+  };
 }
 
 /** Run one timing's scripts over one turn in the sandbox. Each script's trait switches and inventory writes fire their
@@ -652,10 +658,10 @@ export type ApplyInventory = (copies: readonly ItemCopy[], ops: readonly Invento
 /**
  * The inventory settle over `copies`, as if the runs had stopped there: `itemUses` are every use so far, and
  * `so` is the runs so far as one result. Hands back the Item Copies with the automatic unequips applied, their
- * events, and the settle's log lines.
+ * events, the settle's log lines, and the copies a Body took off.
  */
 export type SettleCopies = (copies: readonly ItemCopy[], itemUses: readonly ItemUse[], so: StatCodeTurnResult) =>
-  { copies: readonly ItemCopy[]; events: readonly ItemScriptEvent[]; log: readonly string[] };
+  { copies: readonly ItemCopy[]; events: readonly ItemScriptEvent[]; log: readonly string[]; offByBody?: readonly ItemCopy[] };
 
 /** How a script's inventory writes apply in the chain. */
 export interface InventoryStep {
@@ -699,6 +705,8 @@ export interface ItemRunsResult {
   /** Every inventory write the runs landed, the settle's unequips among them, in order, for a caller whose Item
    *  Copies moved meanwhile. */
   ops: InventoryOp[];
+  /** The Item Copies a Body took off in the runs' settles. */
+  offByBody: ItemCopy[];
 }
 
 /**
@@ -716,7 +724,7 @@ export async function runItemScripts(
   const action = actionRunsOf(start, totals);
   const steps: StatCodeTurnResult[] = [];
   const end = await itemRuns(start, events, { ...ACTION_TOP, itemLevel: depth }, steps, action);
-  const base = { copies: end.state.itemCopies ?? [], diagnostics: action.log, itemUses: action.itemUses };
+  const base = { copies: end.state.itemCopies ?? [], diagnostics: action.log, itemUses: action.itemUses, offByBody: action.offByBody };
   if (!steps.length) return { ...base, result: null, ops: [] };
   const { items: _landed, worldWrites, ...chained } = chainedResult(start, steps, end);
   const rest = withoutInventory(worldWrites);
@@ -753,6 +761,7 @@ function settledCopies(turn: StatCodeTurn, action: ActionRuns, usedBefore: reado
   if (!settle) return { at: turn, events: [], ops: [] };
   const settled = settle(turn.state.itemCopies ?? [], [...usedBefore, ...action.itemUses], chainedResult(action.root, action.trail, turn));
   action.log.push(...settled.log);
+  action.offByBody.push(...(settled.offByBody ?? []));
   return {
     at: { ...turn, state: { ...turn.state, itemCopies: settled.copies } },
     events: settled.events,
@@ -772,7 +781,7 @@ function landedInventory(
   action.itemUses.push(...landed.itemUses);
   const applied = { ...next, state: { ...next.state, itemCopies: landed.copies } };
   const settled = holds ? { at: applied, events: [], ops: [] } : settledCopies(applied, action);
-  const items: ChainedItems = { from, copies: settled.at.state.itemCopies ?? [], log: [], itemUses: [], held: holds ? landed.events : [] };
+  const items: ChainedItems = { from, copies: settled.at.state.itemCopies ?? [], log: [], itemUses: [], held: holds ? landed.events : [], offByBody: [] };
   const worldWrites = settled.ops.length ? mergeWorldWrites(step.worldWrites, { inventory: settled.ops }) : step.worldWrites;
   return {
     step: { ...step, items, ...(worldWrites ? { worldWrites } : {}) }, next: settled.at,
@@ -936,6 +945,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   const items: ChainedItems | undefined = stepItems.length ? {
     from: stepItems[0].from, copies: now.state.itemCopies ?? [], log: stepItems.flatMap((each) => each.log),
     itemUses: stepItems.flatMap((each) => each.itemUses), held: stepItems.flatMap((each) => each.held),
+    offByBody: stepItems.flatMap((each) => each.offByBody),
   } : undefined;
   return {
     stats: now.state.stats, ...changedStats(start.state.stats, now.state.stats), pinWrites, gateStats: finalStep.gateStats,
