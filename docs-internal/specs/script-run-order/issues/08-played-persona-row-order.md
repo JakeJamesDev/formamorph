@@ -1,6 +1,6 @@
 # 08: Played Persona Row Order
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,7 +15,16 @@ Rulings: Q21, Q22.
 
 ## Acceptance criteria
 
-- [ ] A test through `runStatCodeTurn`, with the tab's row order, proves a played persona with no stats runs in authored owner order in a Blueprint trait row.
-- [ ] A test proves the same order for that persona's own trait rows and its stat rows.
-- [ ] The guard fails when the played persona runs first again.
-- [ ] The `worldScriptEntries` comment and the owner-order comment in the turn runner no longer describe a played-first order.
+- [x] A test through `runStatCodeTurn`, with the tab's row order, proves a played persona with no stats runs in authored owner order in a Blueprint trait row. (`statCodeTurn.runOrder.test.ts`, "runs a Blueprint trait row in authored owner order")
+- [x] A test proves the same order for that persona's own trait rows and its stat rows. (same file, two `it.each` cases, with and without row order)
+- [x] The guard fails when the played persona runs first again. (Blueprint row and own-trait-row cases failed 21 vs 12 before the fix; the old played-first test in `statCodeTurn.traitScripts.test.ts` now expects authored order)
+- [x] The `worldScriptEntries` comment and the owner-order comment in the turn runner no longer describe a played-first order.
+
+## Landed
+
+**Not verified**
+- No test covers a played library persona or a Custom Persona entity in the new sort; the library's place after the list stays pinned by the existing library test.
+- The stat-row cases passed before the fix too, since the caller already lists stat owners in authored order; they pin that.
+
+**For you**
+- None.

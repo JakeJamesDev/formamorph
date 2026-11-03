@@ -7,7 +7,7 @@ import { runStatCodeTurn, type OwnerCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { runRowKeys } from './worldScripts';
-import type { Entity, PersonaRef, PlayerStat, Script, StatGroup } from '@/types';
+import type { Entity, PersonaRef, PlayerStat, Script, StatGroup, TraitGroup } from '@/types';
 import { statCodeTurnOf } from '@/test/statCodeTurnFixture';
 
 const NO_PERSONA: PersonaRef = { source: 'none' };
@@ -108,5 +108,71 @@ describe('runStatCodeTurn run order', () => {
     const world = cast({ edge: 0 });
     // Edge (order 0) runs first; owner order then ends on Odette's Hub, 12.
     expect(await goldAfter(world, { rows: false, library: false })).toBe(12);
+  });
+});
+
+/** Bram, then Mira, the played world persona authored last. Each writes Gold from every script they hold. */
+function castWithPersona({ miraStats = false }: { miraStats?: boolean } = {}) {
+  const gold = stat({ id: 'gold', name: 'Gold', value: 5 });
+  const write = script;
+  const hub = {
+    id: 'hub', name: 'Hub', statChanges: [], groupId: 'tbp', scripts: [write('hub-s', 'stats.Gold.value = owner.name === "Bram" ? 21 : 12;')],
+  };
+  const link = (id: string) => ({ id, originalId: 'hub', kind: 'trait' as const, originalName: 'Hub', groupId: null });
+  const ownTrait = (id: string, name: string, code: string) => ({ id, name, statChanges: [], scripts: [write(`${id}-s`, code)] });
+  const brave = ownTrait('brave', 'Brave', 'stats.Gold.value = 21;');
+  const wise = ownTrait('wise', 'Wise', 'stats.Gold.value = 12;');
+  const grit = stat({ id: 'grit', name: 'Grit', scripts: [write('grit-s', 'stats.Gold.value = 21;')] });
+  const poise = stat({ id: 'poise', name: 'Poise', scripts: [write('poise-s', 'stats.Gold.value = 12;')] });
+  const bram: Entity = { id: 'bram', name: 'Bram', traits: [brave], traitLinks: [link('bram-hub')], stats: [grit] };
+  const mira: Entity = {
+    id: 'mira', name: 'Mira', persona: true, traits: [wise], traitLinks: [link('mira-hub')], ...(miraStats ? { stats: [poise] } : {}),
+  };
+  const entities = [bram, mira];
+  const persona: PersonaRef = { source: 'world', entityId: 'mira' };
+  const traitGroups = [{ id: 'tbp', name: 'Blueprints', parentId: null, system: 'blueprints' } as TraitGroup];
+  const ownerTraits: StatCodeOwners = {
+    acquired: [], disabledTraitIds: [], appliedValues: {},
+    ownedTraits: { bram: { chosen: ['hub', 'brave'] }, mira: { chosen: ['hub', 'wise'] } }, entities, library: [],
+    world: { traits: [hub], groups: traitGroups, entities, persona, ...inPlayOwners({ traits: [hub], traitGroups, entities }, persona, []) },
+  };
+  const turnOf = (id: string, stats: PlayerStat[]): OwnerCodeTurn => ({ id, stats, enabled: {}, previous: stats, regenApplied: {} });
+  const owners = [turnOf('bram', [grit]), ...(miraStats ? [turnOf('mira', [poise])] : [])];
+  const tab = { scripts: [], stats: [gold], statGroups: [], traits: [hub], traitGroups, entities, placeholders: [] };
+  return { gold, owners, ownerTraits, tab };
+}
+
+describe('runStatCodeTurn run order, a played persona authored last', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const goldOf = async ({ gold, owners, ownerTraits, tab }: ReturnType<typeof castWithPersona>, rows: boolean) => {
+    const out = await runStatCodeTurn(statCodeTurnOf({
+      stats: [gold], enabled: {}, previous: [gold], asks: [], regenApplied: {}, clock: {}, ownerTraits, owners,
+      ...(rows ? { rowOrder: runRowKeys(tab, 'after') } : {}), statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    }));
+    return out.stats.find((s) => s.id === 'gold')?.value;
+  };
+
+  it('runs a Blueprint trait row in authored owner order, the persona with no stats last', async () => {
+    const world = castWithPersona();
+    expect(await goldOf(world, true)).toBe(12);
+  });
+
+  it.each([true, false])('runs its own trait rows in authored owner order (rows: %s)', async (rows) => {
+    const world = castWithPersona();
+    world.ownerTraits.world.traits = [];
+    world.ownerTraits.ownedTraits = { bram: { chosen: ['brave'] }, mira: { chosen: ['wise'] } };
+    expect(await goldOf(world, rows)).toBe(12);
+  });
+
+  it.each([true, false])('runs its stat rows in authored owner order (rows: %s)', async (rows) => {
+    const world = castWithPersona({ miraStats: true });
+    world.ownerTraits.world.traits = [];
+    world.ownerTraits.ownedTraits = {};
+    expect(await goldOf(world, rows)).toBe(12);
   });
 });

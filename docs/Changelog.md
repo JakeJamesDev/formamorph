@@ -193,6 +193,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Avatar color pickers now open on the color the model shows.** Before, some models opened the picker on a brighter color, and touching it changed their look.
   - **Avatar color pickers now keep the model's shadow colors on skin and clothing.** Before, any picked color flattened those shadows. Colors you already saved now show them too.
   - **A World Tool that switches a trait now runs once, and that trait's When a Trait Switches scripts run.** Before, the Tool's script ran twice, so its stat changes counted twice, and an On Call Tool skipped those scripts.
+  - **A persona you play no longer runs its scripts before the other characters.** Scripts now run in the order the Scripts tab lists them, whoever plays.
 - **🛠️ Developer tooling**
   - **An Avatar's Generated thumbnail now shows a close-up of the head.** Tall ears and hats no longer pull the view back to the waist. A thumbnail generated earlier keeps its old view.
   - **Scene Presence:**

@@ -94,15 +94,16 @@ export function heldGlobalTraits(traits: readonly Trait[], world: TraitWorld): T
 
 /** The traits in force in two parts: the global part holds the active held global traits; each entity
  *  owner's part holds its active traits, owned or linked, in its tree order. A played entity's traits sit only
- *  under its own id, and every played id has a part. */
+ *  under its own id, and every played id has a part. The parts follow owner order, a played id with no owner last. */
 export function traitForceScope(state: TraitForceState, world: TraitWorld): Scoped<Trait[]> & { played: readonly string[] } {
   const active = activeOwnedTraitIds(state.ownedTraits ?? {});
   const played = world.persona ? playedEntityIds(world.persona, world.entities) : [];
-  const owners: Record<string, Trait[]> = Object.fromEntries(played.map((id) => [id, []]));
+  const owners: Record<string, Trait[]> = {};
   for (const owner of entityOwners(world)) {
     const on = new Set(active[owner.id] ?? []);
     owners[owner.id] = owner.traits.filter((t) => on.has(t.id));
   }
+  for (const id of played) owners[id] ??= [];
   return { global: heldGlobalTraits(activeTraits(state.traits, state.disabledTraitIds), world), owners, played };
 }
 

@@ -110,8 +110,8 @@ export const ownerRowId = (entry: ScriptEntry): string | null => (entry.box ? ro
 /**
  * Every script in the world, blank ones included, in the order the runner reaches owners: the world's, the global
  * stats' in stat order, the global traits', each entity's stats then traits in authored order, then the Blueprints'.
- * A Blueprint script runs under each owner that links it, so its one row comes last. The played persona's move to
- * the front is a play-time fact the editor can't show.
+ * A Blueprint script runs under each owner that links it, so its one row comes last. Who plays doesn't change the
+ * order.
  */
 export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
   const listed = worldScriptList(world, scriptsOf);

@@ -174,15 +174,15 @@ describe('an entity’s trait scripts', () => {
     expect(hpOf(await run(playing(linked('Bram'))))).toBe(51);
   });
 
-  it('run in owner order for an owner with no stats, so a later owner with stats wins a shared write', async () => {
-    // Mira is the played persona, so she runs before Bram, whose own stat writes HP last.
+  it('run in owner order for an owner with no stats, so a later owner wins a shared write', async () => {
+    // Mira is the played persona, authored last, so she runs after Bram and her trait writes HP last.
     const loud = trait('loud', 'Loud', [script('stats.HP.value = 10;')]);
     const mira: Entity = { id: 'mira', name: 'Mira', persona: true, traits: [loud] };
     const writer = stat({ id: 'grit', name: 'Grit', value: 1, scripts: [script('stats.HP.value = 20;')] });
     const persona: PersonaRef = { source: 'world', entityId: 'mira' };
     const traits = ownerTraits({ entities: [{ ...bram, traits: [] }, mira], owned: { mira: { chosen: ['loud'] } }, persona });
     const out = await run(traits, { owners: [{ id: 'bram', stats: [writer], enabled: {}, previous: [writer], regenApplied: {} }] });
-    expect(hpOf(out)).toBe(20);
+    expect(hpOf(out)).toBe(10);
   });
 
   it('run once per owner when two entities hold the trait', async () => {

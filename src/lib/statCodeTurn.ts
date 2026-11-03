@@ -1026,9 +1026,11 @@ function planOf(turn: StatCodeTurn, began: TimingStart, every = false): RunPlan 
     );
   });
   // An owner with no stats of its own still runs its traits' scripts, in owner order: ahead of the next owner
-  // with stats in the played-first owner list, the owners that hold no trait last.
+  // with stats in authored owner order (world entities, then the library's), the owners that hold no trait last.
   const withStats = new Set(entityRuns.map((run) => run.owner.id));
-  const order = [...new Set([...Object.keys(inForce.owners), ...withStats])];
+  const ownerIndex = new Map([...world.entities ?? [], ...state.ownerTraits.library ?? []].map((entity, i) => [entity.id, i]));
+  const indexOf = (id: string) => ownerIndex.get(id) ?? Infinity;
+  const order = [...new Set([...Object.keys(inForce.owners), ...withStats])].sort((a, b) => indexOf(a) - indexOf(b) || 0);
   const ahead = new Map<string, OwnerRun[]>();
   let waiting: OwnerRun[] = [];
   for (const id of order) {
