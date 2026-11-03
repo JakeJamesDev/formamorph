@@ -23,7 +23,7 @@ describe('the repo holds no personal details', () => {
     expect(named).toEqual([]);
   });
 
-  it('lists the project address as the Linux package maintainer', () => {
-    expect(readFileSync('electron-builder.yml', 'utf8')).toMatch(/maintainer: .*<[^>]+@formamorph\.ai>/);
+  it('lists the public address as the Linux package maintainer', () => {
+    expect(readFileSync('electron-builder.yml', 'utf8')).toContain('maintainer: Jake James <jake.james.nsfw@gmail.com>');
   });
 });
