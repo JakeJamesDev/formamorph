@@ -14,6 +14,7 @@ import { ActionIcon } from "@/lib/actionIcons";
 import { THUMB_FRAME, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -78,7 +79,7 @@ interface RemoteWorldDetailsModalProps {
   onContextualDownload?: (world: WorldRecord, state: DownloadState, plan?: DownloadPlan) => void;
   onDeviceDownload?: (world: WorldRecord) => void;
   /** Which mutable app actions this shell exposes. */
-  capabilities?: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'deviceDownloads' | 'likes' | 'comments' | 'moderation' | 'reports'>;
+  capabilities?: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'deviceDownloads' | 'likes' | 'comments' | 'moderation' | 'reports' | 'commentLinkPlace'>;
   /** Who is reading, so the heart is a control only for somebody who could press it. */
   currentUser?: WorldRecord | null;
   /** Records a like. Absent leaves the heart a plain count. */
@@ -211,6 +212,11 @@ export function RemoteWorldDetailsModal({
   const reportsEnabled = capabilities.reports && reportFeatureEnabled;
 
   const plainVocab = useMemo(() => plainVocabulary(), []);
+  const commentLinkPlace = useMemo<FeedbackLinkPlace>(() => capabilities.commentLinkPlace ?? {
+    ...APP_FEEDBACK_LINK_PLACE,
+    // The link grammar admits only the catalog's listing kinds, so the server's kind string is one of them.
+    openListing: onOpenListing && (({ kind, id }) => onOpenListing({ kind: kind as CatalogKind, id })),
+  }, [capabilities.commentLinkPlace, onOpenListing]);
 
   // Token each comments fetch so a slow response for a since-closed world can't land in a different world's
   // modal: opening world B fires a newer request, and world A's late result is discarded.
@@ -946,7 +952,12 @@ export function RemoteWorldDetailsModal({
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-1 min-w-0"><MarkdownRenderer text={c.content || ''} /></div>
+                      <div className="mt-1 min-w-0">
+                        {/* Only a server that resolves links sends targets; without them a link stays as typed. */}
+                        {c.targets
+                          ? <FeedbackLinkContext.Provider value={commentLinkPlace}><FeedbackMarkdown text={c.content || ''} targets={c.targets} /></FeedbackLinkContext.Provider>
+                          : <MarkdownRenderer text={c.content || ''} />}
+                      </div>
                     )}
                   </div>
                 ))}

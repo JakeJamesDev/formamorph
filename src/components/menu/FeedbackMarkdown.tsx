@@ -29,12 +29,19 @@ export interface FeedbackLinkPlace {
   profileHref: (username: string) => string;
 }
 
-export const FeedbackLinkContext = createContext<FeedbackLinkPlace>({
+/** The app's addresses: every board, each link on the website. */
+export const APP_FEEDBACK_LINK_PLACE: FeedbackLinkPlace = {
   boards: ['bug', 'suggestion', 'question'],
   threadHref: feedbackThreadChipHref,
   listingHref: feedbackListingUrl,
   profileHref: feedbackProfileUrl,
-});
+};
+
+export const FeedbackLinkContext = createContext<FeedbackLinkPlace>(APP_FEEDBACK_LINK_PLACE);
+
+/** An address on another host leaves this page, so with no opener here it opens beside it. */
+const opensBeside = (href: string, hasOpener: boolean) =>
+  href.startsWith('http') && !hasOpener ? { target: '_blank', rel: 'noopener noreferrer' } : {};
 
 /** What a chip renderer gets: its target, or none when the server sent none for that ref. */
 export interface FeedbackChipProps {
@@ -85,6 +92,7 @@ function ThreadChip({ linkRef, target }: FeedbackChipProps) {
   return (
     <a
       href={href}
+      {...opensBeside(href, !!openThread)}
       className={CHIP_CLASS}
       onClick={openThread && ((event) => {
         if (!opensInPlace(event)) return;
@@ -119,8 +127,7 @@ function ListingChip({ target }: FeedbackChipProps) {
   return (
     <a
       href={href}
-      // An address on another host leaves this page, so it opens beside it.
-      {...(href.startsWith('http') && !openListing ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      {...opensBeside(href, !!openListing)}
       className={CHIP_CLASS}
       onClick={openListing && ((event) => {
         if (!opensInPlace(event)) return;

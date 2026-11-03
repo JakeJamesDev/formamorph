@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommunityPage } from './CommunityPage';
+import WorldStorageService from '@/services/WorldStorageService';
 import { resetAccountPage } from '../test/support';
 
 const { leaveTo } = vi.hoisted(() => ({ leaveTo: vi.fn() }));
@@ -86,5 +87,28 @@ describe('creation links through the rendered website community route', () => {
     await user.click(await screen.findByRole('button', { name: 'Like — 0 likes' }));
 
     expect(leaveTo).toHaveBeenCalledWith('/login?next=%2Fcommunity%2Fentity%2Fentity-1');
+  });
+
+  it('opens the profile page from a user chip and from a commenter name in a listing comment', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue({
+      success: true,
+      total: 1,
+      pagination: {},
+      data: [{
+        id: 'c1', content: 'Ask @lantern_keeper.', created_at: '2026-02-01T00:00:00.000Z', edited_at: null,
+        author: { id: 'u3', username: 'saltmarsh', role: null },
+        targets: [{ kind: 'user', ref: 'lantern_keeper', available: true, id: 'u9', username: 'Lantern_Keeper', avatarUrl: null }],
+      }],
+    });
+    resetAccountPage('/community/world/world-1');
+    render(<CommunityPage />);
+    await user.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await user.click(await screen.findByRole('link', { name: /Lantern_Keeper/ }));
+    expect(leaveTo).toHaveBeenLastCalledWith('/u/Lantern_Keeper');
+
+    await user.click(screen.getByRole('button', { name: "View saltmarsh's profile" }));
+    expect(leaveTo).toHaveBeenLastCalledWith('/u/saltmarsh');
   });
 });

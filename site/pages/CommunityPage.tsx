@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import CommunityBrowserHost from '@/views/CommunityBrowserHost';
+import { UserProfileContext } from '@/contexts/userProfileStore';
 import { WEBSITE_COMMUNITY_CAPABILITIES } from '@/lib/communityBrowserCapabilities';
 import { kindOf } from '@/lib/catalogKinds';
 import type { WorldRecord } from '@/components/WorldDetails';
 import { leaveTo } from '../leaveSite';
 import { signInTo } from '../nextPath';
+import { PROFILE_LINKS } from '../profileLinks';
 import { SiteAgeGate } from '../components/SiteAgeGate';
 import { SiteLayout } from '../components/SiteLayout';
 import { CommunityOpenInAppLink } from '../components/CommunityOpenInAppLink';
@@ -63,25 +65,27 @@ export function CommunityPage() {
 
   return (
     <SiteAgeGate>
-      <SiteLayout surface>
-        {unavailable && (
-          <p role="alert" className="px-6 py-3 text-label text-destructive">
-            This creation is no longer available.
-          </p>
-        )}
-        <CommunityBrowserHost
-          open
-          onOpenChange={closeBrowser}
-          presentation="embedded"
-          filterPreferences={{ storageKey: 'FORMAMORPH_websiteCommunityFilters', defaultSortField: 'likes' }}
-          capabilities={WEBSITE_COMMUNITY_CAPABILITIES}
-          listing={unavailable ? null : listing}
-          onListingChange={setListing}
-          onListingUnavailable={markUnavailable}
-          onGuestLike={signInToLike}
-          detailsAction={listing && !unavailable ? <CommunityOpenInAppLink listing={listing} /> : undefined}
-        />
-      </SiteLayout>
+      <UserProfileContext.Provider value={PROFILE_LINKS}>
+        <SiteLayout surface>
+          {unavailable && (
+            <p role="alert" className="px-6 py-3 text-label text-destructive">
+              This creation is no longer available.
+            </p>
+          )}
+          <CommunityBrowserHost
+            open
+            onOpenChange={closeBrowser}
+            presentation="embedded"
+            filterPreferences={{ storageKey: 'FORMAMORPH_websiteCommunityFilters', defaultSortField: 'likes' }}
+            capabilities={WEBSITE_COMMUNITY_CAPABILITIES}
+            listing={unavailable ? null : listing}
+            onListingChange={setListing}
+            onListingUnavailable={markUnavailable}
+            onGuestLike={signInToLike}
+            detailsAction={listing && !unavailable ? <CommunityOpenInAppLink listing={listing} /> : undefined}
+          />
+        </SiteLayout>
+      </UserProfileContext.Provider>
     </SiteAgeGate>
   );
 }

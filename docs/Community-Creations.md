@@ -283,6 +283,8 @@ The details window's **Comments** view lists the newest comment first. You must 
 
 Comments have no replies. **Load more** shows older comments. On formamorph.ai, comments are read-only.
 
+A comment shows `@name`, `#123` and pasted listing links as chips, the same as [Feedback](Feedback#mentions). A mention in a comment sends no alert.
+
 ## Profiles and Following
 <!-- keywords: subscribe to creator, alerts for uploads, watch a user, user page, everything by one person, stop subscribing, who i subscribe to, fans count -->
 <!-- route: profile -->

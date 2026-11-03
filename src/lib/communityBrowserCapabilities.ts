@@ -1,3 +1,8 @@
+import type { FeedbackLinkPlace } from '@/components/menu/FeedbackMarkdown';
+import { feedbackListingPath, feedbackThreadPath } from './feedbackLinks';
+import { WEBSITE_FEEDBACK_CAPABILITIES } from './feedbackCapabilities';
+import { usernameProfilePath } from './usernameRule';
+
 /** The actions a Community Creations shell may expose. */
 export interface CommunityBrowserCapabilities {
   localLibrary: boolean;
@@ -11,6 +16,8 @@ export interface CommunityBrowserCapabilities {
   moderation: boolean;
   contestParticipation: boolean;
   reports: boolean;
+  /** Where chips in a listing comment lead. Absent: the app's addresses, with a listing opening in place. */
+  commentLinkPlace?: FeedbackLinkPlace;
 }
 
 /** The complete browser game surface. */
@@ -44,4 +51,10 @@ export const WEBSITE_COMMUNITY_CAPABILITIES: CommunityBrowserCapabilities = {
   moderation: false,
   contestParticipation: false,
   reports: false,
+  commentLinkPlace: {
+    boards: WEBSITE_FEEDBACK_CAPABILITIES.boards,
+    threadHref: feedbackThreadPath,
+    listingHref: feedbackListingPath,
+    profileHref: usernameProfilePath,
+  },
 };

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { MyFeedbackSection } from '@/components/menu/MyFeedbackSection';
 import { FeedbackThreadView } from '@/components/menu/FeedbackThreadView';
 import type { FeedbackTab } from '@/components/menu/feedbackTabs';
-import { UserProfileContext, type UserProfileContextValue } from '@/contexts/userProfileStore';
+import { UserProfileContext } from '@/contexts/userProfileStore';
 import { WEBSITE_FEEDBACK_CAPABILITIES, type FeedbackNotify } from '@/lib/feedbackCapabilities';
 import { DetailedError } from '@/lib/errorDetails';
 import { usernameProfilePath } from '@/lib/usernameRule';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { communityListingPath, type CommunityListing } from '../communityListing';
 import { leaveTo } from '../leaveSite';
 import { signInTo } from '../nextPath';
+import { PROFILE_LINKS } from '../profileLinks';
 import { navigateSite, replaceSite, useSiteLocation } from '../router';
 import {
   DEFAULT_FEEDBACK_BOARD, feedbackBoardPath, feedbackTarget, feedbackThreadPath,
@@ -33,12 +34,6 @@ const openListingHref = (listing: { kind: string; id: string }) => communityList
 
 /** A listing link is a page of its own, reached without a reload. */
 const openLinkedListing = (listing: { kind: string; id: string }) => navigateSite(openListingHref(listing));
-
-/** A name opens the site's own profile page. */
-const PROFILE_LINKS: UserProfileContextValue = {
-  openProfile: (_userId, username) => { if (username) leaveTo(usernameProfilePath(username)); },
-  setListingOpener: () => {},
-};
 
 /** The Votable boards, read-only for a guest. The warning gate stays outside, so nothing fetches before it. */
 export function FeedbackPage() {

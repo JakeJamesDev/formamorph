@@ -1,6 +1,6 @@
 # 03: Chips in Listing Comments
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -20,15 +20,24 @@ In this ticket, an app thread chip follows its address, as the default link plac
 
 ## Acceptance criteria
 
-- [ ] The listing modal draws all three chip kinds, the Unknown user form and the unavailable forms in app mode. Test: the rendered modal with a mocked service.
-- [ ] The same modal in site mode draws chips, with a bug thread shown as Unavailable thread. Test: the rendered modal with site capabilities.
-- [ ] A comment with no `targets` shows its `@name` as plain text, with no unavailable chip. Test: the rendered modal.
-- [ ] A posted and an edited comment draw chips from the write response. Test: the rendered modal with user events.
-- [ ] A plain click on a listing chip calls the modal's listing opener, and a modified click leaves the browser's link. Test: the rendered modal with user events.
-- [ ] A user chip click opens the profile in the app and on the website. Test: the rendered modal in both modes.
-- [ ] The site bundle boundary test stays green with the new provider.
-- [ ] The wiki's mentions section in the community docs says that listing comments draw links and that a listing comment mention sends no alert.
-- [ ] A changelog fragment covers chips in listing comments.
-- [ ] Frames of a comment with all three chip kinds, light and dark, at a realistic width: `.scratch/frames/listing-comment-chips-<theme>.png`.
+- [x] The listing modal draws all three chip kinds, the Unknown user form and the unavailable forms in app mode. Test: the rendered modal with a mocked service. `RemoteWorldDetailsModal.commentLinks.test.tsx`, "in the app".
+- [x] The same modal in site mode draws chips, with a bug thread shown as Unavailable thread. Test: the rendered modal with site capabilities. Same file, "on the website".
+- [x] A comment with no `targets` shows its `@name` as plain text, with no unavailable chip. Test: the rendered modal. Same file, "shows its links as typed".
+- [x] A posted and an edited comment draw chips from the write response. Test: the rendered modal with user events. Same file, "a comment just written".
+- [x] A plain click on a listing chip calls the modal's listing opener, and a modified click leaves the browser's link. Test: the rendered modal with user events. Same file, "opens a listing through the modal".
+- [x] A user chip click opens the profile in the app and on the website. Test: the rendered modal in both modes. Same file in both modes, plus `CommunityPage.links.integration.test.tsx` for the page's provider.
+- [x] The site bundle boundary test stays green with the new provider. `site/bundleBoundary.test.ts` passed.
+- [x] The wiki's mentions section in the community docs says that listing comments draw links and that a listing comment mention sends no alert. `docs/Feedback.md` Mentions and `docs/Community-Creations.md` Comments, by the spec session's ruling.
+- [x] A changelog fragment covers chips in listing comments. `docs-internal/changelog.d/listing-comment-chips.md`.
+- [x] Frames of a comment with all three chip kinds, light and dark, at a realistic width: `.scratch/frames/listing-comment-chips-<theme>.png`. A 1280px preview with a stubbed comments read.
 
-For you: Open a listing with old comments and check that the chips read well there, in the Community browser's comment list.
+## Landed
+
+**Not verified**
+
+- Live server response: the frames and tests use a stubbed comments read, not the deployed server.
+
+**For you**
+
+- Open a listing with old comments and check that the chips read well there, in the Community browser's comment list.
+- Frames: `.scratch/listing-comment-links-03/frames/listing-comment-chips-dark.png` and `.scratch/listing-comment-links-03/frames/listing-comment-chips-light.png`.

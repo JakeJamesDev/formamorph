@@ -20,16 +20,23 @@ export interface FeedbackLink {
 /** The website's host; a pasted URL links only on it. */
 export const FEEDBACK_SITE_HOST = 'formamorph.ai';
 
+/** The path of one thread on the website. */
+export const feedbackThreadPath = (number: string | number): string => `/feedback/${number}`;
+
 /** The website address of one thread. */
-export const feedbackThreadUrl = (number: string | number): string => `https://${FEEDBACK_SITE_HOST}/feedback/${number}`;
+export const feedbackThreadUrl = (number: string | number): string => `https://${FEEDBACK_SITE_HOST}${feedbackThreadPath(number)}`;
 
 /** The address a thread chip carries in the app: none for a bug, which the website never serves. */
 export const feedbackThreadChipHref = (number: number, type: string): string | undefined =>
   type === 'bug' ? undefined : feedbackThreadUrl(number);
 
+/** The path of one community listing on the website. */
+export const feedbackListingPath = ({ kind, id }: { kind: string; id: string }): string =>
+  `/community/${kind}/${encodeURIComponent(id)}`;
+
 /** The site address of one community listing. */
-export const feedbackListingUrl = ({ kind, id }: { kind: string; id: string }): string =>
-  `https://${FEEDBACK_SITE_HOST}/community/${kind}/${encodeURIComponent(id)}`;
+export const feedbackListingUrl = (listing: { kind: string; id: string }): string =>
+  `https://${FEEDBACK_SITE_HOST}${feedbackListingPath(listing)}`;
 
 /** The website address of one player's profile. */
 export const feedbackProfileUrl = (username: string): string => `https://${FEEDBACK_SITE_HOST}${usernameProfilePath(username)}`;

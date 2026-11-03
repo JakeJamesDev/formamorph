@@ -105,6 +105,8 @@ The mention shows as a chip with the player's image and name. Select the chip to
 
 On a suggestion or a question, a mention adds the thread to that player's feedback badge until they open it. Their later replies badge them too. Take the mention out, and the badge goes with it. On a bug report, a mention links but never badges.
 
+[Listing comments](Community-Creations#comments) show mentions, thread numbers and listing links as chips too. A mention in a listing comment sends no alert.
+
 ### Suggestions While You Type
 <!-- keywords: autocomplete, suggest a name, suggest a thread, find a player, find a thread number, at sign list, hash list -->
 
