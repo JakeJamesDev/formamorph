@@ -248,6 +248,22 @@ describe("abbreviations with no period, and lowercase times", () => {
   });
 });
 
+describe("the before a vowel sound", () => {
+  it("says thee by sound, not by spelling", async () => {
+    const { say } = setup();
+    expect(await say("the anvil")).toBe(`ðɪ ${cmu("anvil")}`);
+    expect(await say("the hour")).toBe(`ðɪ ${cmu("hour")}`);
+    expect(await say('"the old," and (the end)')).toBe(`"ðɪ ${cmu("old")}," ənd (ðɪ ${cmu("end")})`);
+    expect(await say("the user")).toBe(`ðə ${cmu("user")}`);
+    expect(await say("the one")).toBe(`ðə ${cmu("one")}`);
+    expect(await say("the door")).toBe(`ðə ${cmu("door")}`);
+  });
+
+  it("takes the same form in a British voice", async () => {
+    expect(await setup().say("the anvil", "b")).toMatch(/^ðɪ /);
+  });
+});
+
 describe("dashes", () => {
   it.each(["bent—gone", "bent – gone", "bent--gone", "bent - gone"])("gives %s spaces, so the engine pauses", async (text) => {
     expect(await setup().say(text)).toBe(`${cmu("bent")} — ${cmu("gone")}`);
@@ -272,6 +288,12 @@ describe("number rhythm", () => {
     expect(await say("21")).toBe(twentyOne);
     expect(await say("twenty one")).toBe(twentyOne);
     expect(await say("twenty-one")).toBe(twentyOne);
+  });
+
+  it("joins an ordinal to its tens", async () => {
+    const { say } = setup();
+    expect(await say("the 21st gate")).toBe(`ðə ${cmu("twenty")}${cmu("first").replace("ˈ", "ˌ")} ${cmu("gate")}`);
+    expect(await say("twenty second")).toBe(`${cmu("twenty")}${cmu("second").replace("ˈ", "ˌ")}`);
   });
 
   it("keeps words apart when they are not tens then ones", async () => {

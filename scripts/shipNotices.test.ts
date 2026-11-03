@@ -182,6 +182,7 @@ describe('the shipped notices file', () => {
     ['LLVM OpenMP', 'LLVM Exceptions'],
     ['CMUdict', 'Carnegie Mellon University'],
     ['Text to Speech pronunciation model', 'Carnegie Mellon University'],
+    ['Kokoro voice model', 'Apache License'],
     ['kokoro-js', 'Apache License'],
     ['phonemize', 'Copyright (c) 2025 Hans'],
     ['phonemize', 'Permission is hereby granted'],

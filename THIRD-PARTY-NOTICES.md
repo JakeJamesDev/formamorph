@@ -1061,6 +1061,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+### Kokoro voice model
+
+The Text to Speech voice model and voices, which download on first use from <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX>. Kokoro-82M by hexgrad (<https://huggingface.co/hexgrad/Kokoro-82M>), Apache License 2.0. They do not ship in the build. The license text is under kokoro-js.
+
 ### kokoro-js
 
 The Text to Speech client and number rules adapt code from kokoro-js (<https://github.com/hexgrad/kokoro>), Apache License 2.0, copyright hexgrad and contributors. The package itself does not ship.

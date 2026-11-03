@@ -27,7 +27,9 @@ const SIBILANT_END = /[szʃʒʧʤ]$/;
 /** -ss and -us endings are the word's own, as in moss and Marcus. */
 const NO_BARE_S = /(?:ss|us)$/i;
 const TENS = /^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)$/i;
-const ONES = /^(?:one|two|three|four|five|six|seven|eight|nine)$/i;
+const ONES = /^(?:one|two|three|four|five|six|seven|eight|nine|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)$/i;
+/** "The" before a vowel sound says "thee". */
+const THE_BEFORE_VOWEL = /(^|[\s"(—])ðə (?=[ˈˌ]?[aeiouAIOQWYæɑɒɔəɐɛɜɪʊʌ])/g;
 /** After these, "will" is the noun, as in "his will". */
 const BEFORE_NOUN_WILL = /^(?:a|an|the|his|her|my|your|our|their|its|own|free|good|ill|last)$/i;
 
@@ -200,6 +202,6 @@ export function createTextToPhonemes({ dictionary: entries, predict }: TextToPho
       }
       previous = word;
     }
-    return out.replace(/ +/g, " ").trim();
+    return out.replace(/ +/g, " ").trim().replace(THE_BEFORE_VOWEL, "$1ðɪ ");
   };
 }

@@ -60,11 +60,12 @@ British voices keep British pronunciation, through rules applied to this America
 | Q20 | The phoneme error bars gate landing. The listening bars are the owner's step after landing, on a page the ticket builds. The ticket stays `ready-for-human` until the owner reports. |
 | Q21 | British rules may use a small plain-data list for words no rule can derive. We write each string and accept it by ear. Word table entries stay American and take the rules. |
 | Q22 | The owner accepted a 24-word sample for the British fantasy bar, at 22 of 24, because 97 clips are too many to rate. The final pass at Ticket 06 stays. |
-| Q23 | Spoken numbers follow the owner's ear: tens and cardinal ones run together, while ordinals such as "twenty first" stay apart, -teen words take one main stress, and "ninety" takes a soft t in American. |
+| Q23 | Spoken numbers follow the owner's ear: tens and ones run together, ordinals included, -teen words take one main stress, and "ninety" takes a soft t in American. |
 | Q24 | "they" and lowercase "will" join the weak forms. "will" stays strong after a determiner, a possessive, or words such as "free", because there it is the noun. |
 | Q25 | By the owner's ear: "I" never reduces, "you" stays strong at the start of a phrase, and "with" reduces inside one. |
 | Q26 | A passage from play read stranger than eSpeak, because word-by-word scoring cannot see sentence stress. More small words take weak forms, "it" and "them" stay light at a phrase end, and an ending on a listed word comes before a split. |
 | Q27 | Dashes reach the engine with spaces around them, because the owner picked that form by ear over no spaces, a comma, and an ellipsis. |
+| Q28 | "the" says "thee" before a vowel sound, judged by phonemes, not spelling. The Licenses tab lists the Kokoro voice model, which downloads on first use. |
 
 ## Measurements
 

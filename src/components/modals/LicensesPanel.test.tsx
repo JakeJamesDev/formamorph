@@ -60,7 +60,7 @@ describe('the Licenses tab', () => {
     expect(within(panel).getAllByRole('heading', { level: 2 }).map((h) => h.textContent))
       .toEqual(['Bundled Assets', 'Standards & Specifications', 'Software']);
     expect(within(panel).getByRole('button', { name: 'Game Icons' })).toBeInTheDocument();
-    for (const name of ['CMUdict', 'Text to Speech pronunciation model', 'kokoro-js']) {
+    for (const name of ['CMUdict', 'Text to Speech pronunciation model', 'Kokoro voice model', 'kokoro-js']) {
       expect(within(panel).getByRole('button', { name })).toBeInTheDocument();
     }
     expect(within(panel).queryByRole('button', { name: 'eSpeak NG' })).toBeNull();
