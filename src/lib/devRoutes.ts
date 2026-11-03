@@ -22,8 +22,9 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  details modal on a canned update (`devPendingUpdate`); `tab=compare` opens its Compare view. Add
  *  `fixture=review` so the held thumbnail and the listing names load. `bodyLayout` mounts the Body Layout editor
  *  on a sample Body; the real rows are at `modal=worldEditor&tab=items&subtab=equipment&fixture=items`.
+ *  `road` shows the full-screen scene on the level `tab=` names (`supporter`, `supporter_plus`, `supporter_top`).
  *  Players never navigate to these. */
-export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate', 'bodyLayout'] as const;
+export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate', 'bodyLayout', 'road'] as const;
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,

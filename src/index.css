@@ -784,6 +784,32 @@ b {
   scroll-margin: 12px;
 }
 
+/* The Road's fire. RoadFire leaves these classes off under reduced motion. */
+@keyframes road-ember {
+  0% { transform: translateY(16px); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateY(-16px); opacity: 0; }
+}
+.road-ember {
+  animation: road-ember 1.6s ease-out infinite;
+}
+@keyframes road-twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  30% { transform: scale(1.22) rotate(10deg); }
+  60% { transform: scale(.86) rotate(-6deg); }
+}
+.road-twinkle {
+  animation: road-twinkle 1.1s ease-in-out infinite;
+  transform-origin: 50px 50px;
+}
+@keyframes road-rays {
+  to { transform: rotate(360deg); }
+}
+.road-rays {
+  animation: road-rays 18s linear infinite;
+  transform-origin: 50px 62px;
+}
+
 /* Karaoke TTS highlighter: soft accent tint on the sentence being narrated (CSS Custom Highlight API). */
 ::highlight(tts-active) {
   background-color: hsl(var(--primary) / 0.25);

@@ -7,8 +7,11 @@ import type { SupporterTier } from '@/types';
 const TIER_NAME_FALLBACK = 'Member';
 
 const CACHE_KEY = 'formamorph.tierNames';
+const PRICES_CACHE_KEY = 'formamorph.tierPrices';
 
 type TierNames = Partial<Record<SupporterTier, string>>;
+/** Integer US cents per tier; a tier with no known price is absent. */
+type TierPrices = Partial<Record<SupporterTier, number>>;
 
 /** Keeps the names that are non-empty strings; anything else is unnamed. */
 function parseNames(raw: unknown): TierNames {
@@ -23,26 +26,43 @@ function parseNames(raw: unknown): TierNames {
   return names;
 }
 
-function readCache(): TierNames {
+/** Keeps the prices that are positive whole cents; anything else is unknown. */
+function parsePrices(raw: unknown): TierPrices {
+  const parsed: TierPrices = {};
+  if (!raw || typeof raw !== 'object') return parsed;
+
+  for (const tier of SUPPORTER_TIERS) {
+    const value = (raw as Record<string, unknown>)[tier];
+    if (typeof value === 'number' && Number.isInteger(value) && value > 0) parsed[tier] = value;
+  }
+
+  return parsed;
+}
+
+function readCache<T>(key: string, parse: (raw: unknown) => T): T {
   try {
-    const stored = localStorage.getItem(CACHE_KEY);
-    return stored ? parseNames(JSON.parse(stored)) : {};
+    const stored = localStorage.getItem(key);
+    return parse(stored ? JSON.parse(stored) : null);
   } catch {
-    return {};
+    return parse(null);
   }
 }
 
 let names: TierNames | null = null;
+let prices: TierPrices | null = null;
 let requested = false;
 const listeners = new Set<() => void>();
 
-const current = (): TierNames => (names ??= readCache());
+const current = (): TierNames => (names ??= readCache(CACHE_KEY, parseNames));
+const currentPrices = (): TierPrices => (prices ??= readCache(PRICES_CACHE_KEY, parsePrices));
 
-function publish(next: TierNames) {
+function publish(next: TierNames, nextPrices: TierPrices) {
   names = next;
+  prices = nextPrices;
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(next));
-  } catch { /* storage blocked: the names still serve this session */ }
+    localStorage.setItem(PRICES_CACHE_KEY, JSON.stringify(nextPrices));
+  } catch { /* storage blocked: the reply still serves this session */ }
   listeners.forEach((listener) => listener());
 }
 
@@ -54,8 +74,10 @@ export function loadTierNames(): Promise<void> {
   return fetch(`${API_BASE_URL}/patreon/tier-names`)
     .then((response) => (response.ok ? response.json() : null))
     .then((payload: { data?: unknown } | null) => {
-      // A tier the server cannot name yet keeps its cached name.
-      if (payload && payload.data && typeof payload.data === 'object') publish({ ...current(), ...parseNames(payload.data) });
+      // A tier the server cannot name yet keeps its cached name. Its answer on prices replaces the cached ones, so a removed price hides.
+      if (payload && payload.data && typeof payload.data === 'object') {
+        publish({ ...current(), ...parseNames(payload.data) }, parsePrices((payload.data as { prices?: unknown }).prices));
+      }
     })
     .catch(() => { /* offline: the cached names stand */ });
 }
@@ -76,16 +98,34 @@ export function useTierName(): (tier: SupporterTier) => string {
   return useCallback((tier) => snapshot[tier] ?? TIER_NAME_FALLBACK, [snapshot]);
 }
 
+/** A tier-to-name function like `useTierName`, undefined for a tier with no name, so the caller can pick its own fallback. */
+export function useTierTitle(): (tier: SupporterTier) => string | undefined {
+  const snapshot = useSyncExternalStore(subscribe, current);
+  useEffect(() => { void loadTierNames(); }, []);
+
+  return useCallback((tier) => snapshot[tier], [snapshot]);
+}
+
+/** A tier-to-cents function, null when the price is unknown. */
+export function useTierPrice(): (tier: SupporterTier) => number | null {
+  const snapshot = useSyncExternalStore(subscribe, currentPrices);
+  useEffect(() => { void loadTierNames(); }, []);
+
+  return useCallback((tier) => snapshot[tier] ?? null, [snapshot]);
+}
+
 /** Forget the session state so a test starts from the cache alone. */
 export function resetTierNamesForTest() {
   names = null;
+  prices = null;
   requested = false;
   listeners.clear();
 }
 
 /** Serve these names and skip the server read, so a component test sees fixed names and no extra request. */
-export function seedTierNamesForTest(seed: TierNames) {
+export function seedTierNamesForTest(seed: TierNames, seedPrices: TierPrices = {}) {
   resetTierNamesForTest();
   names = seed;
+  prices = seedPrices;
   requested = true;
 }

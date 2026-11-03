@@ -19,11 +19,14 @@ import { SuspendDialog } from '@/components/menu/SuspendDialog';
 import { ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { RootCrashScreen } from '@/components/RootCrashScreen';
 import { RevealAnimationDialog } from '@/components/RevealAnimationDemo';
+import { RoadScene } from '@/components/road/RoadScene';
+import { DEFAULT_ROAD_TIER } from '@/components/road/roadLevels';
 import { devContestSamples } from '@/lib/devEventSample';
 import { DEV_LIVE_THUMBNAIL, devApprovedChangelog, devPendingUpdate } from '@/lib/dev/devReviewStub';
 import { devChangelogDraft, devFeedbackThread, devPickerRows, devPresetShareJson } from '@/lib/devPaneSamples';
 import { useDevRoute } from '@/lib/devRouter';
 import { IMAGE_CAPS } from '@/lib/imageSlots';
+import { SUPPORTER_TIERS } from '@/lib/supporterFlair';
 import { APP_VERSION } from '@/lib/version';
 import { FEEDBACK_TYPES } from '@/types';
 
@@ -84,6 +87,13 @@ export default function DevPaneRoutes() {
       </ScrollArea>
     );
     case 'fontTune': return <FontTuneDialog font="system" open onOpenChange={clearRouteOnClose} />;
+    case 'road': return (
+      <RoadScene
+        initialTier={SUPPORTER_TIERS.find((tier) => tier === route.tab) ?? DEFAULT_ROAD_TIER}
+        onKeepPlaying={() => clearRouteOnClose(false)}
+        onSupport={ignore}
+      />
+    );
     case 'revealDemo': return <RevealAnimationDialog open onOpenChange={clearRouteOnClose} kind="narration" />;
     case 'presetImport': return (
       <Pasted text={devPresetShareJson(APP_VERSION)}>
