@@ -176,9 +176,9 @@ describe('RoadScene actions', () => {
     expect(onKeepPlaying).toHaveBeenCalledTimes(1);
   });
 
-  it('stays dark in the light theme', () => {
+  it('follows the theme, with no forced dark page', () => {
     scene();
-    expect(screen.getByRole('dialog').classList.contains('dark')).toBe(true);
+    expect(screen.getByRole('dialog').classList.contains('dark')).toBe(false);
   });
 });
 

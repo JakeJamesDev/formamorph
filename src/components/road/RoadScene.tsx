@@ -52,10 +52,11 @@ function SampleBlock({ label, text, accent }: { label: string; text: string; acc
 }
 
 /**
- * The full-screen scene that shows what each level of support includes. It stays dark in either theme, so the
- * light reads. Picking a level plays the Jelly on Morphie, and the stage swaps to it at the dip.
+ * The full-screen scene that shows what each level of support includes. The page follows the theme, and the stage
+ * stays dark so the light reads. Picking a level plays the Jelly on Morphie, and the stage swaps to it at the dip.
  */
-export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, initialView = 'levels', checklist, onKeepPlaying }: {
+export function RoadScene({ open = true, initialTier = DEFAULT_ROAD_TIER, initialView = 'levels', checklist, onKeepPlaying }: {
+  open?: boolean;
   initialTier?: SupporterTier;
   initialView?: RoadSceneView;
   checklist: SupportChecklistModel;
@@ -64,6 +65,7 @@ export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, initialView = 'leve
   const [tier, setTier] = useState(initialTier);
   const [view, setView] = useState(initialView);
   const checklistView = view === 'checklist';
+  const allDone = checklistView && checklist.main.action === 'back';
   // The Jelly plays on each change of pose: a picked level, or one more finished step.
   const pose = checklistView ? `checklist:${checklist.doneCount}` : `levels:${tier}`;
   const { ref, shown } = useMorphieJelly(pose, { enter: true });
@@ -74,19 +76,23 @@ export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, initialView = 'leve
     : isTier(shownValue) ? shownValue : tier;
   const level = roadLevel(shownTier);
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onKeepPlaying(); }}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onKeepPlaying(); }}>
       <DialogContent
         surface="road"
         hideClose
         unanimated
-        className="dark left-0 top-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 border-0 p-0 text-foreground shadow-none sm:rounded-none"
+        className="left-0 top-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 border-0 p-0 text-foreground shadow-none duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 sm:rounded-none"
       >
         <ScrollArea className="min-h-0 flex-1">
           <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
             <div className="text-center">
-              <DialogTitle className="text-heading">{checklistView ? 'Get Formamorph AI' : 'Better Narration for Your Stories'}</DialogTitle>
+              <DialogTitle className="text-heading">
+                {allDone ? 'You’re All Set' : checklistView ? 'Get Formamorph AI' : 'Better Narration for Your Stories'}
+              </DialogTitle>
               <DialogDescription className="text-body">
-                {checklistView
+                {allDone
+                  ? 'Formamorph AI is on for your stories. Thank you for supporting Formamorph.'
+                  : checklistView
                   ? 'Four steps. Each one shows when it’s done, and you can leave and come back.'
                   : 'Your support keeps Formamorph’s updates coming, and it includes Formamorph AI: sharper narration and more consistent characters, with no setup. Higher levels add more turns each week, then more room for large worlds.'}
               </DialogDescription>
@@ -123,7 +129,7 @@ export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, initialView = 'leve
           <DialogFooter className="mx-auto max-w-4xl gap-2 p-4">
             {checklistView ? (
               <>
-                <Button variant="outline" onClick={onKeepPlaying}>Finish Later</Button>
+                {!allDone && <Button variant="outline" onClick={onKeepPlaying}>Finish Later</Button>}
                 <Button disabled={checklist.main.busy} onClick={checklist.main.run}>{checklist.main.label}</Button>
               </>
             ) : (

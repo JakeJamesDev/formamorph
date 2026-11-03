@@ -36,7 +36,7 @@ const MAIN_LABELS: Record<ChecklistAction, string> = {
   openPatreon: 'Open Patreon',
   link: 'Link Patreon',
   switch: 'Switch to Formamorph AI',
-  back: 'Back to Story',
+  back: 'Done',
 };
 
 const subscribeSession = (listener: () => void) => AuthService.onSessionChanged(listener);
@@ -49,7 +49,7 @@ const readSignedIn = () => AuthService.isAuthenticated();
 export function useSupportChecklist({ onDone, facts: given }: { onDone: () => void; facts?: ChecklistFacts }): SupportChecklistModel {
   const mounted = useMountedRef();
   const { attested, requireAttestation } = useAgeGate();
-  const { activeTextEndpointPresetId, selectTextEndpointPreset } = useSettings();
+  const { activeTextEndpointPresetId, selectTextEndpointPreset, refreshHostedState } = useSettings();
   const signedIn = useSyncExternalStore(subscribeSession, readSignedIn);
   const [patreon, setPatreon] = useState<PatreonStatus | undefined>(undefined);
   const [patreonOpened, setPatreonOpened] = useState(isPatreonPageOpened);
@@ -112,9 +112,10 @@ export function useSupportChecklist({ onDone, facts: given }: { onDone: () => vo
     signIn,
     openPatreon,
     link: () => { void link(); },
+    // The hosted state last read before the link, so the switch reads it again for the first send.
     switch: () => {
       selectTextEndpointPreset(FORMAMORPH_AI_PRESET_ID);
-      onDone();
+      void refreshHostedState();
     },
     back: onDone,
   };

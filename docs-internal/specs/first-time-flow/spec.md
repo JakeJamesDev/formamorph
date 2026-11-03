@@ -20,7 +20,7 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 
 **The offer.** After five completed turns on the Demo AI, a card with Morphie appears once, under the latest narration and above the choices, in both the Chat and Pages layouts. **See Levels** opens the scene. After that, only the Demo AI badge opens it.
 
-**The scene.** A full-screen, always-dark scene called The Road. A fire stands at the newest story moment, and its light reaches back along a path of story moments. Morphie stands beside it and watches, and her interest grows with the fire. Spark, Flame and Beacon each light more of the path. Each level has its own fire and its own look on Morphie. Changing level plays a Jelly on Morphie only, and the new level swaps in at the dip. Below the road, one fixed scene written by both AIs sits side by side.
+**The scene.** A full-screen scene called The Road. The page follows the theme, and the stage stays dark (Q63). A fire stands at the newest story moment, and its light reaches back along a path of story moments. Morphie stands beside it and watches, and her interest grows with the fire. Spark, Flame and Beacon each light more of the path. Each level has its own fire and its own look on Morphie. Changing level plays a Jelly on Morphie only, and the new level swaps in at the dip. Below the road, one fixed scene written by both AIs sits side by side.
 
 **Low VRAM.** On desktop at 8 GB or less, AI setup leads with Formamorph AI, its See Levels opens the same scene, and the local model download stays below it.
 
@@ -94,6 +94,8 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q58 | Each attempt gets a fresh idle timer, with no new setting. The turn limit and the day's pause are checked before the retry. If either blocks it, no retry goes out and the answer is `upstream_error`. Ticket 13 ruling. |
 | Q59 | A stopped attempt, including a failed second attempt, costs no allowance and counts on the recorded spend. The admitted call keeps its one turn-cap slot and per-minute count even if both attempts fail, so resent failed calls stay limited. Only the retry is free of those limits. Ticket 13 ruling. |
 | Q62 | A retry that delivers the reply charges the player's allowance, so the player pays once for the one reply received. Q54's "off the allowance" means the stopped attempt. A client that leaves during the retry settles as aborted, as any aborted call does. Ticket 13 ruling. |
+| Q63 | The scene's page follows the player's theme, and only the stage stays dark so the light reads. It fades in and out like other windows. Replaces the always-dark page. User ruling. |
+| Q64 | Switch to Formamorph AI selects the preset, reads the hosted state and marks its step done, and the flow stays open. Once all four steps are done, the page says so and its one action is Done, which closes it. Replaces Q53's closing Switch. User ruling. |
 
 ## User Stories
 

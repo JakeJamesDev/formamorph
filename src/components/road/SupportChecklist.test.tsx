@@ -14,7 +14,7 @@ const world = vi.hoisted(() => ({
   attested: false,
   activePreset: 'default',
   requireAttestation: vi.fn(),
-  selectTextEndpointPreset: vi.fn(),
+  selectTextEndpointPreset: vi.fn(), refreshHostedState: vi.fn(),
 }));
 
 vi.mock('@/lib/openExternal', () => ({ openExternal: vi.fn() }));
@@ -23,7 +23,7 @@ vi.mock('@/contexts/AgeGateContext', () => ({
   useAgeGate: () => ({ attested: world.attested, requireAttestation: world.requireAttestation }),
 }));
 vi.mock('@/contexts/SettingsContext', () => ({
-  useSettings: () => ({ activeTextEndpointPresetId: world.activePreset, selectTextEndpointPreset: world.selectTextEndpointPreset }),
+  useSettings: () => ({ activeTextEndpointPresetId: world.activePreset, selectTextEndpointPreset: world.selectTextEndpointPreset, refreshHostedState: world.refreshHostedState }),
 }));
 vi.mock('@/services/AuthService', () => ({
   default: { isAuthenticated: () => world.signedIn, onSessionChanged: () => () => {} },
@@ -137,7 +137,7 @@ describe('Support checklist', () => {
     expect(screen.queryByRole('button', { name: 'Link Patreon' })).toBeNull();
   });
 
-  it('a link with a tier finishes the pledge and the link together, and Switch selects Formamorph AI and returns to the story', async () => {
+  it('a link with a tier finishes the pledge and the link together, and Switch selects Formamorph AI, reads its state and stays open', async () => {
     world.signedIn = true;
     world.attested = true;
     status(PLEDGED);
@@ -145,19 +145,22 @@ describe('Support checklist', () => {
     expect(doneRows()).toEqual(['signIn', 'pledge', 'link']);
     fireEvent.click(screen.getByRole('button', { name: 'Switch to Formamorph AI' }));
     expect(world.selectTextEndpointPreset).toHaveBeenCalledWith(FORMAMORPH_AI_PRESET_ID);
-    expect(dialog()).toBeNull();
+    expect(world.refreshHostedState).toHaveBeenCalled();
+    expect(dialog()).not.toBeNull();
   });
 
-  it('every step done: Back to Story closes and changes no preset', async () => {
+  it('every step done: the page says so, and Done closes and changes no preset', async () => {
     world.signedIn = true;
     world.attested = true;
     world.activePreset = FORMAMORPH_AI_PRESET_ID;
     status(PLEDGED);
     await open();
     expect(doneRows()).toEqual(['signIn', 'pledge', 'link', 'switch']);
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Story' }));
+    expect(screen.getByRole('dialog', { name: 'You’re All Set' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Finish Later' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(world.selectTextEndpointPreset).not.toHaveBeenCalled();
-    expect(dialog()).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('re-reads on focus, so a player back from Patreon sees the finished link', async () => {

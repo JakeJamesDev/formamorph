@@ -456,7 +456,8 @@ Each step shows a check when it's done, and the fire beside Morphie grows with e
 | Button | What it does |
 |---|---|
 | **Finish Later** | Returns to your story. Your finished steps stay finished. |
-| **Sign In**, **Open Patreon**, **Link Patreon**, **Switch to Formamorph AI** | Runs the next step. **Switch to Formamorph AI** turns it on and returns to your story. |
+| **Sign In**, **Open Patreon**, **Link Patreon**, **Switch to Formamorph AI** | Runs the next step. **Switch to Formamorph AI** turns it on and marks the step done. |
+| **Done** | Shows when all four steps are done, and returns to your story. |
 
 To open the levels screen again, select the **Demo AI** badge, then **See Levels**.
 
