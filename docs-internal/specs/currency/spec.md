@@ -1,7 +1,7 @@
 # Spec: Currency
 
-Status: ready-for-agent
-Status note: Reopened 2026-11-02 for tickets 10 to 13, from the close review. Tickets 01 to 09 closed the same day at 74f80dc96, with gates green.
+Status: done
+Status note: Closed 2026-11-03. Tickets 01 to 13 landed, last landing 4e6037f05. Review: spec text corrected. Closed red: bundledRevisions.test.ts, bundledWorlds.test.ts, scripts.migration.test.ts, statLookupMigration.test.ts and GameViewer.bundledSaves.test.tsx, whose pinned commits the history rewrite removed. Ticket 11's pay probe was run by the spec session.
 Spec session: currency — spec
 
 ## Problem Statement
@@ -103,12 +103,12 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q77 | (close review) The Currencies entry and its item rows use the Design System's expandable `EditorRow`, with drag reordering in place of arrow buttons |
 | Q78 | (close review) A script's pay naming a location stops the script with an error, like any unknown party |
 | Q79 | (close review) Deleting any Persona or entity whose own stat backs a Currency shows a confirm that names the Currency. With no Currency affected, nothing changes |
-| Q80 | (close review) A pay with a money word in `item` and a bare `price` counts that item, so item Silver and price 5 means 5 Silver |
+| Q80 | (close review) A pay with a money word in `item` and a bare `price` counts that item, so item Silver and price 5 means 5 Silver. A price that names money reads by its own words, so item Gold and price "5 Silver" means 5 Silver. Only money of another Currency conflicts |
 | Q81 | (close review) A played entity's name counts as the player in a pay or buy, for every played entity |
 | Q82 | (close review) A pay's text reply may state its price in the quantity cell, as ticket 05 built it |
 | Q83 | (close review) The structure findings become one refactor ticket, after Script Run Order ticket 04 lands |
 | Q84 | (close review) Test Code and the Test Bench build Currencies. User Tools get a read-only balance. A test covers a script pay followed by a pass pay in one turn |
-| Q85 | (ticket 12) An empty `persona` or a blank `owner` reads as the player with nothing, in every run. An Items balance reads 0, a stat balance reads null, and a `pay` is refused. A stand-in holding a Persona's money is out |
+| Q85 | (ticket 12) An empty `persona` or a blank `owner` reads as the player, in every run. It holds what the world places on the player and any Global Stat. Otherwise an Items balance reads 0, a stat balance reads null, and a `pay` is refused. A stand-in holding a Persona's money is out |
 | Q86 | (ticket 12) Test Code reports one line per `pay` call, settled or refused, with the Currency, amount, parties and refusal reason |
 | Q87 | (ticket 12) A user Tool's `currencies` has `id`, `name`, `kind` and `balance`. The editor marks `pay` unavailable there, and a run stops with an error. World Tools keep `pay` |
 | Q88 | (ticket 13) Internal refusals share `{ settled: false; reason: string }`, and tests move from the `refused` property with it. A script's `{ paid, reason }` and its log row stay, and script money converts at its edge |
