@@ -17,6 +17,7 @@ import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
+import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { canModerate, isAdmin, isStaff } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -849,7 +850,9 @@ export function RemoteWorldDetailsModal({
                     markdown
                     ariaLabel="Comment"
                     placeholder="Write a comment"
-                  />
+                  >
+                    <FeedbackSuggestPlugin threadTypes={null} />
+                  </PromptField>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
@@ -938,7 +941,9 @@ export function RemoteWorldDetailsModal({
                           vocabulary={plainVocab}
                           markdown
                           ariaLabel="Comment text"
-                        />
+                        >
+                          <FeedbackSuggestPlugin threadTypes={null} />
+                        </PromptField>
                         <div className="flex items-center gap-2">
                           <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit || !editDraft.trim()}>
                             {savingEdit ? 'Saving…' : 'Save'}
