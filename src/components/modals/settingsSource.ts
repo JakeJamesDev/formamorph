@@ -47,7 +47,7 @@ export type OutputSettingsSource = Pick<SettingsValue,
 /** What the text-endpoint editor reads and writes: the active preset's fields and the preset list. */
 export type TextEndpointSource = Pick<SettingsValue,
   | 'endpointUrl' | 'setEndpointUrl' | 'apiToken' | 'setApiToken' | 'modelName' | 'setModelName'
-  | 'maxTokens' | 'setMaxTokens' | 'maxOutputOverrideEnabled' | 'setMaxOutputOverrideEnabled'
+  | 'maxTokens' | 'setMaxTokens' | 'maxOutputOverrideEnabled' | 'setMaxOutputOverrideEnabled' | 'hostedMaxOutputCap'
   | 'endpointSamplerOverrides' | 'setEndpointSamplerEnabled' | 'setEndpointSamplerValue' | 'extraParams' | 'setExtraParams'
   | 'contextWindow' | 'contextWindowOverride' | 'setContextWindowOverride'
   | 'detectedContextWindow' | 'detectStatus' | 'detectContextWindow'

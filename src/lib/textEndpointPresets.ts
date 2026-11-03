@@ -8,6 +8,7 @@ import {
   coerceEndpointSamplerOverrides,
   coerceEndpointMaxOutputOverride,
   defaultEndpointSamplerOverrides,
+  hostedEndpointSamplerOverrides,
   type EndpointSampler,
   type EndpointMaxOutputOverride,
   type EndpointSamplerOverride,
@@ -44,6 +45,10 @@ export interface TextEndpointPresetStore {
   defaultSamplerOverrides?: EndpointSamplerOverrides;
   /** Legacy shared-endpoint value retained but ignored for the fixed cap. */
   defaultMaxOutputOverride?: EndpointMaxOutputOverride;
+  /** The player's Formamorph AI sampler tuning; absent means the model's published values. */
+  hostedSamplerOverrides?: EndpointSamplerOverrides;
+  /** The player's Formamorph AI max output; absent means the shipped default. The sent value never passes the server's cap. */
+  hostedMaxTokens?: number;
 }
 
 /** The read-only "Default" preset — the shipped/embedded shared endpoint. Selecting it = "use our endpoint". */
@@ -71,14 +76,15 @@ export const BUILTIN_ENGINE_VALUES: TextEndpointValues = {
 /** Formamorph AI, the endpoint for Supporters. Its window, model and capabilities come from the hosted state. */
 export const FORMAMORPH_AI_PRESET_ID = 'formamorph-ai';
 
-/** Formamorph AI's fixed connection. The model name is nominal: the server picks the model. */
+/** Formamorph AI's fixed connection. The model name is nominal: the server picks the model. Its samplers and
+ *  max output are the shipped starting point; the store holds the player's changes. */
 export const FORMAMORPH_AI_VALUES: TextEndpointValues = {
   endpoint: HOSTED_CHAT_URL,
   apiToken: '',
   model: 'formamorph-ai',
   contextWindowOverride: null,
   maxOutputOverride: { enabled: true, value: DEFAULT_MAX_TOKENS },
-  samplerOverrides: defaultEndpointSamplerOverrides(),
+  samplerOverrides: hostedEndpointSamplerOverrides(),
 };
 
 /** Whether an endpoint URL is the hosted service, in either the base or the completed spelling. */
@@ -194,6 +200,10 @@ export function presetStoreFromEnv(
   return { activeId: presets[0].id, presets };
 }
 
+function positiveInt(raw: unknown): number | undefined {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 ? raw : undefined;
+}
+
 /** localStorage codec; any malformed value falls back to the empty (Default-only) store. */
 export const textEndpointPresetCodec: Codec<TextEndpointPresetStore> = {
   parse: (raw) => {
@@ -214,7 +224,17 @@ export const textEndpointPresetCodec: Codec<TextEndpointPresetStore> = {
           ? legacyStore.defaultMaxTokens
           : DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride.value,
       );
-      return { activeId: parsed.activeId, presets, defaultSamplerOverrides, defaultMaxOutputOverride };
+      const hostedMaxTokens = positiveInt(parsed.hostedMaxTokens);
+      return {
+        activeId: parsed.activeId,
+        presets,
+        defaultSamplerOverrides,
+        defaultMaxOutputOverride,
+        ...(parsed.hostedSamplerOverrides !== undefined && {
+          hostedSamplerOverrides: coerceEndpointSamplerOverrides(parsed.hostedSamplerOverrides, hostedEndpointSamplerOverrides()),
+        }),
+        ...(hostedMaxTokens !== undefined && { hostedMaxTokens }),
+      };
     } catch {
       return emptyStore;
     }
@@ -237,7 +257,11 @@ export function isEngineActive(store: TextEndpointPresetStore): boolean {
  *  preset missing a future key falls back cleanly. An unknown id resolves to Default. */
 export function valuesForId(store: TextEndpointPresetStore, id: string): TextEndpointValues {
   if (id === BUILTIN_ENGINE_PRESET_ID) return BUILTIN_ENGINE_VALUES;
-  if (isFormamorphAiId(id)) return FORMAMORPH_AI_VALUES;
+  if (isFormamorphAiId(id)) return {
+    ...FORMAMORPH_AI_VALUES,
+    maxOutputOverride: { enabled: true, value: store.hostedMaxTokens ?? FORMAMORPH_AI_VALUES.maxOutputOverride.value },
+    samplerOverrides: coerceEndpointSamplerOverrides(store.hostedSamplerOverrides, hostedEndpointSamplerOverrides()),
+  };
   if (id === DEFAULT_TEXT_PRESET_ID) return {
     ...DEFAULT_TEXT_ENDPOINT_VALUES,
     samplerOverrides: coerceEndpointSamplerOverrides(store.defaultSamplerOverrides),
@@ -285,10 +309,17 @@ export function deletePreset(store: TextEndpointPresetStore, id: string): TextEn
 
 /** Reset a user preset's values back to the built-in defaults. No-op under the Default built-in. */
 export function resetPreset(store: TextEndpointPresetStore, id: string): TextEndpointPresetStore {
+  if (isFormamorphAiId(id)) return resetHostedTuning(store);
   return {
     ...store,
     presets: store.presets.map((p) => (p.id === id ? { ...p, values: { ...DEFAULT_TEXT_ENDPOINT_VALUES } } : p)),
   };
+}
+
+/** Return Formamorph AI's samplers and max output to their shipped starting point. */
+export function resetHostedTuning(store: TextEndpointPresetStore): TextEndpointPresetStore {
+  const { hostedSamplerOverrides: _samplers, hostedMaxTokens: _maxTokens, ...rest } = store;
+  return rest;
 }
 
 /** Change one external endpoint's sampler state without making its connection fields editable. */
@@ -298,7 +329,11 @@ export function updateSamplerOverride(
   sampler: EndpointSampler,
   override: EndpointSamplerOverride,
 ): TextEndpointPresetStore {
-  if (id === BUILTIN_ENGINE_PRESET_ID || isFormamorphAiId(id)) return store;
+  if (id === BUILTIN_ENGINE_PRESET_ID) return store;
+  if (isFormamorphAiId(id)) {
+    const current = valuesForId(store, id).samplerOverrides;
+    return { ...store, hostedSamplerOverrides: { ...current, [sampler]: override } };
+  }
   const current = id === DEFAULT_TEXT_PRESET_ID
     ? coerceEndpointSamplerOverrides(store.defaultSamplerOverrides)
     : coerceEndpointSamplerOverrides(store.presets.find((preset) => preset.id === id)?.values.samplerOverrides);
@@ -318,7 +353,9 @@ export function updateMaxOutputOverride(
   id: string,
   override: EndpointMaxOutputOverride,
 ): TextEndpointPresetStore {
-  if (id === BUILTIN_ENGINE_PRESET_ID || id === DEFAULT_TEXT_PRESET_ID || isFormamorphAiId(id)) return store;
+  if (id === BUILTIN_ENGINE_PRESET_ID || id === DEFAULT_TEXT_PRESET_ID) return store;
+  // Formamorph AI always sends a cap, so only its number changes.
+  if (isFormamorphAiId(id)) return { ...store, hostedMaxTokens: override.value };
   return {
     ...store,
     presets: store.presets.map((preset) => (preset.id === id
@@ -346,18 +383,22 @@ export function editPreset(
   change: (values: TextEndpointValues) => Partial<TextEndpointValues>,
 ): TextEndpointPresetStore {
   if (id === BUILTIN_ENGINE_PRESET_ID) return store;
-  if (id !== DEFAULT_TEXT_PRESET_ID && !store.presets.some((p) => p.id === id)) return store;
+  const hosted = isFormamorphAiId(id);
+  if (!hosted && id !== DEFAULT_TEXT_PRESET_ID && !store.presets.some((p) => p.id === id)) return store;
   const current = valuesForId(store, id);
-  const { samplerOverrides, ...fields } = change(current);
+  const { samplerOverrides, maxOutputOverride, ...fields } = change(current);
   let next = store;
+  // Formamorph AI's connection fields stay the account's: only its tuning takes a change.
+  if (hosted && maxOutputOverride) next = updateMaxOutputOverride(next, id, maxOutputOverride);
   if (samplerOverrides) {
     for (const sampler of Object.keys(samplerOverrides) as EndpointSampler[]) {
       next = updateSamplerOverride(next, id, sampler, samplerOverrides[sampler]);
     }
   }
-  if (id === DEFAULT_TEXT_PRESET_ID || Object.keys(fields).length === 0) return next;
+  const edits = { ...fields, ...(maxOutputOverride && { maxOutputOverride }) };
+  if (hosted || id === DEFAULT_TEXT_PRESET_ID || Object.keys(edits).length === 0) return next;
   return {
     ...next,
-    presets: next.presets.map((p) => (p.id === id ? { ...p, values: { ...p.values, ...fields } } : p)),
+    presets: next.presets.map((p) => (p.id === id ? { ...p, values: { ...p.values, ...edits } } : p)),
   };
 }

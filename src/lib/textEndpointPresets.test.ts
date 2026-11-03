@@ -239,19 +239,21 @@ describe('the Formamorph AI preset', () => {
     const store = m.setActive(m.emptyStore, m.FORMAMORPH_AI_PRESET_ID);
     expect(m.isBuiltInActive(store)).toBe(true);
     expect(store.presets).toEqual([]);
-    expect(m.activeValues(store)).toBe(m.FORMAMORPH_AI_VALUES);
+    expect(m.activeValues(store)).toEqual(m.FORMAMORPH_AI_VALUES);
     expect(m.FORMAMORPH_AI_VALUES.endpoint).toMatch(/\/hosted-ai\/chat\/completions$/);
     expect(m.FORMAMORPH_AI_VALUES.extraParams).toBeUndefined();
   });
 
-  it('takes no edit to its endpoint, model, window, output limit or samplers', async () => {
+  it('takes no edit to its endpoint, model or window, and keeps its output limit on', async () => {
     const m = await import('./textEndpointPresets');
     const id = m.FORMAMORPH_AI_PRESET_ID;
     const store = m.setActive(m.emptyStore, id);
-    expect(m.editPreset(store, id, () => ({ endpoint: 'https://elsewhere.test/v1', model: 'x', contextWindowOverride: 99999, extraParams: '{}' }))).toBe(store);
+    expect(m.editPreset(store, id, () => ({ endpoint: 'https://elsewhere.test/v1', model: 'x', contextWindowOverride: 99999, extraParams: '{}' }))).toEqual(store);
     expect(m.updateValue(store, 'endpoint', 'https://elsewhere.test/v1')).toBe(store);
-    expect(m.updateMaxOutputOverride(store, id, { enabled: false, value: 1 })).toBe(store);
-    expect(m.updateSamplerOverride(store, id, 'temperature', { enabled: true, value: 2 })).toBe(store);
+    const capped = m.updateMaxOutputOverride(store, id, { enabled: false, value: 1 });
+    expect(m.valuesForId(capped, id).maxOutputOverride).toEqual({ enabled: true, value: 1 });
+    const tuned = m.updateSamplerOverride(store, id, 'temperature', { enabled: false, value: 2 });
+    expect(m.valuesForId(tuned, id).samplerOverrides.temperature).toEqual({ enabled: false, value: 2 });
   });
 
   it('is absent from a build with no community server', async () => {

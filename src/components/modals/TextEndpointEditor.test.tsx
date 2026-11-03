@@ -20,6 +20,8 @@ vi.mock('@/lib/contextLength', async () => ({
   fetchContextLength: () => Promise.resolve(null),
 }));
 
+// The status panel reads the age gate and privacy contexts; these cases test the tuning fields beside it.
+vi.mock('./HostedPresetStatus', () => ({ HostedPresetStatus: () => null }));
 vi.mock('@/lib/useEndpointReachable', () => ({ useEndpointReachable: vi.fn() }));
 
 const preset = (id: string, endpoint: string) => ({ id, name: id, values: { ...DEFAULT_TEXT_ENDPOINT_VALUES, endpoint } });
@@ -248,6 +250,54 @@ describe('TextEndpointEditor', () => {
     const reset = screen.getByRole('button', { name: 'Reset AI Endpoint' });
     expect(reset.closest('[data-radix-scroll-area-viewport]')).toBeNull();
     expect(screen.getByLabelText(/Endpoint URL/).closest('[data-radix-scroll-area-viewport]')).not.toBeNull();
+  });
+
+  describe('on Formamorph AI', () => {
+    const renderHosted = (model: TextEndpointEditorModel) =>
+      render(<SettingsProvider><TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} /></SettingsProvider>);
+    const hostedModel = (cap = 2048) => {
+      const model = modelOn('formamorph-ai');
+      model.edited = { ...model.edited, builtIn: true, hosted: true };
+      model.fields = { ...model.fields, maxTokens: 1024, maxOutputOverrideEnabled: true, hostedMaxOutputCap: cap };
+      return model;
+    };
+
+    it('shows the sampler sliders and Max Output, and leaves the connection fields out', () => {
+      renderHosted(hostedModel());
+      expect(screen.getByRole('slider', { name: 'Temperature' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Max Output Tokens')).toHaveValue(1024);
+      expect(screen.queryByLabelText(/Endpoint URL/)).toBeNull();
+      expect(screen.queryByLabelText('Extra Parameters')).toBeNull();
+      expect(screen.queryByLabelText(/Model Name/)).toBeNull();
+      expect(screen.queryByLabelText(/Override Endpoint Limit/)).toBeNull();
+    });
+
+    it('clamps Max Output to 1 below and to the cap above', async () => {
+      const model = hostedModel(2048);
+      renderHosted(model);
+      const field = screen.getByLabelText('Max Output Tokens');
+      const user = userEvent.setup();
+      await user.clear(field);
+      expect(model.edit.setMaxTokens).toHaveBeenLastCalledWith(1);
+      await user.type(field, '9');
+      await user.clear(field);
+      await user.type(field, '99999');
+      expect(model.edit.setMaxTokens).toHaveBeenLastCalledWith(2048);
+      expect(screen.getByText('Up to 2,048 tokens')).toBeInTheDocument();
+    });
+
+    it('shows a stored value above a lowered cap as the cap', () => {
+      const model = hostedModel(512);
+      renderHosted(model);
+      expect(screen.getByLabelText('Max Output Tokens')).toHaveValue(512);
+    });
+
+    it('resets the tuning through the preset reset', async () => {
+      const model = hostedModel();
+      renderHosted(model);
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Reset to Defaults' }));
+      expect(model.onReset).toHaveBeenCalledWith('formamorph-ai');
+    });
   });
 
   it('opens the connection guide through its handler', async () => {

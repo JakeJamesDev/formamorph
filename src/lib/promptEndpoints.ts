@@ -1,6 +1,6 @@
 import type { AIRequestType } from '@/types';
 import {
-  DEFAULT_TEXT_PRESET_ID, BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES, FORMAMORPH_AI_VALUES,
+  DEFAULT_TEXT_PRESET_ID, BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES,
   canonicalPresetId, isBuiltInPresetId, isFormamorphAiId, valuesForId,
   type TextEndpointPresetStore, type TextEndpointValues,
 } from './textEndpointPresets';
@@ -56,8 +56,8 @@ export interface ActiveEndpointState {
    *  loaded regardless of the name asked for, but sending the real id keeps `/models` probes and the
    *  AI-context viewer honest about which model actually answered. */
   engineModelId: string;
-  /** Formamorph AI's output cap and served model, from the hosted state. */
-  hosted?: { maxTokens: number; modelId: string };
+  /** The server's output cap for Formamorph AI and its served model, from the hosted state. */
+  hosted?: { cap: number; modelId: string };
 }
 
 /**
@@ -103,15 +103,17 @@ export function resolvePromptEndpoint(
   const id = routed ?? active.activeId;
 
   if (isFormamorphAiId(id)) {
-    const v = FORMAMORPH_AI_VALUES;
+    const v = valuesForId(store, id);
     return {
       presetId: routed,
       endpointId: id,
       endpoint: v.endpoint,
       apiToken: v.apiToken,
       model: active.hosted?.modelId || v.model,
-      maxTokens: active.hosted?.maxTokens ?? v.maxOutputOverride.value,
+      // The player's number, held to the server's cap even when the cap dropped after it was set.
+      maxTokens: Math.min(v.maxOutputOverride.value, active.hosted?.cap ?? v.maxOutputOverride.value),
       samplerOverrides: v.samplerOverrides,
+      // The connection is the account's, so no Extra Parameters ride along.
       contextWindowOverride: null,
       isBuiltIn: true,
       localEngine: false,

@@ -156,6 +156,18 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
     };
   });
 
+  const samplingSection = (
+    <Section title="Sampling">
+      <Hint>
+        Your per-prompt settings and built-in prompt values take priority over <strong>Temperature</strong> and <strong>Repetition Penalty</strong>. Leave a checkbox unchecked to send no override.
+      </Hint>
+      <div className="grid gap-4 pt-3">
+        {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
+      </div>
+    </Section>
+  );
+  const hostedCap = fields.hostedMaxOutputCap ?? DEFAULT_MAX_TOKENS;
+
   const readOnlyField = builtIn ? 'opacity-60 cursor-not-allowed' : undefined;
 
   return (
@@ -201,7 +213,34 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
       )}
       <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
-      {edited.engine ? <LocalModelPanel /> : edited.hosted ? <HostedPresetStatus state={hostedState} lockedPanel /> : (
+      {edited.engine ? <LocalModelPanel /> : edited.hosted ? (
+        <ScrollArea landingRoom className="flex-1 min-h-0">
+          <HostedPresetStatus state={hostedState} lockedPanel />
+          {advanced && (
+            <div className="grid gap-4 pb-4">
+              <Row htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
+                <div className="space-y-2">
+                  <Input
+                    id="maxTokens"
+                    type="number"
+                    min={1}
+                    max={hostedCap}
+                    value={Math.min(maxTokens, hostedCap)}
+                    onChange={(e) => setMaxTokens(Math.min(hostedCap, numInput(e.target.value, 1)))}
+                  />
+                  <Hint>Up to {hostedCap.toLocaleString()} tokens</Hint>
+                </div>
+              </Row>
+              {samplingSection}
+              <Row>
+                <Button variant="outline" className="justify-self-start" onClick={() => onReset(edited.id)}>
+                  {SETTINGS_BUTTONS.resetToDefaults}
+                </Button>
+              </Row>
+            </div>
+          )}
+        </ScrollArea>
+      ) : (
         <ScrollArea landingRoom className="flex-1 min-h-0">
           <div className="grid gap-4 py-4">
             <Row top htmlFor="endpointUrl" target={targetAttribute('settingsEndpoints.text', 'endpoint-url')} {...rowCopy('endpointUrl')}>
@@ -294,14 +333,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
                   </div>
                 </div>
               </Row>
-              <Section title="Sampling">
-                <Hint>
-                  Your per-prompt settings and built-in prompt values take priority over <strong>Temperature</strong> and <strong>Repetition Penalty</strong>. Leave a checkbox unchecked to send no override.
-                </Hint>
-                <div className="grid gap-4 pt-3">
-                  {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
-                </div>
-              </Section>
+              {samplingSection}
               <Row top htmlFor="extraParams" {...rowCopy('extraParams')}>
                 <Textarea
                   id="extraParams"

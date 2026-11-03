@@ -295,7 +295,8 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
 
   return {
     // The player's Extra Parameters go first, so every field the app sets for this call wins over them.
-    ...extraParamsOf(target.extraParams),
+    // Formamorph AI's request is the proxy's contract, so nothing the player wrote rides along.
+    ...(!target.hosted && extraParamsOf(target.extraParams)),
     model: target.model,
     messages: buildMessages(snapshot, call),
     ...(maxTokens !== undefined && { max_tokens: maxTokens }),

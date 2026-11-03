@@ -35,10 +35,23 @@ export function defaultEndpointSamplerOverrides(): EndpointSamplerOverrides {
   ) as EndpointSamplerOverrides;
 }
 
-/** Repair a stored override record while preserving valid zero values. */
-export function coerceEndpointSamplerOverrides(raw: unknown): EndpointSamplerOverrides {
+/** Formamorph AI starts on its model's published values: Temperature 1.0, Top-p 0.95, Top-k 64, the rest off. */
+export function hostedEndpointSamplerOverrides(): EndpointSamplerOverrides {
+  return {
+    temperature: { enabled: true, value: 1 },
+    repetitionPenalty: { enabled: false, value: DEFAULT_GEN_REPETITION_PENALTY },
+    topP: { enabled: true, value: 0.95 },
+    topK: { enabled: true, value: 64 },
+    minP: { enabled: false, value: DEFAULT_GEN_MIN_P },
+  };
+}
+
+/** Repair a stored override record while preserving valid zero values. A missing sampler takes `defaults`. */
+export function coerceEndpointSamplerOverrides(
+  raw: unknown,
+  defaults: EndpointSamplerOverrides = defaultEndpointSamplerOverrides(),
+): EndpointSamplerOverrides {
   const stored = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
-  const defaults = defaultEndpointSamplerOverrides();
   return Object.fromEntries(ENDPOINT_SAMPLERS.map((sampler) => {
     const value = stored[sampler];
     if (!value || typeof value !== 'object') return [sampler, defaults[sampler]];

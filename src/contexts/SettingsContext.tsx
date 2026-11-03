@@ -569,7 +569,7 @@ function useProvideSettings() {
   const hostedModelId = hostedState?.model?.id ?? '';
   const hostedCapability = hostedSnapshot.capability;
   const hostedTarget = useMemo(() => ({
-    maxTokens: Math.min(DEFAULT_MAX_TOKENS, hostedState?.maxTokens ?? DEFAULT_MAX_TOKENS),
+    cap: hostedState?.maxTokens ?? DEFAULT_MAX_TOKENS,
     modelId: hostedModelId,
   }), [hostedState?.maxTokens, hostedModelId]);
 
@@ -1845,6 +1845,7 @@ function useProvideSettings() {
     maxTokens,
     setMaxTokens,
     maxOutputOverrideEnabled: maxOutputOverride.enabled,
+    hostedMaxOutputCap: hostedTarget.cap,
     setMaxOutputOverrideEnabled,
     endpointSamplerOverrides: textValues.samplerOverrides,
     extraParams: textValues.extraParams,
