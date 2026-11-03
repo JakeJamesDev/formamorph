@@ -115,16 +115,18 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
     return known === undefined || known === fromCapitals(word) ? fromCapitals(word, toBritish) : undefined;
   };
 
-  const fromKnown = (word: string): string | undefined => {
+  const fromListed = (word: string): string | undefined => {
     const lower = word.toLowerCase();
-    return table.get(lower) ?? fromDictionary(lower) ?? fromCapitals(word) ?? fromSplit(lower);
+    return table.get(lower) ?? fromDictionary(lower) ?? fromCapitals(word);
   };
 
-  const fromEnding = (word: string): string | undefined => {
+  const fromKnown = (word: string): string | undefined => fromListed(word) ?? fromSplit(word.toLowerCase());
+
+  const fromEnding = (word: string, source: (stem: string) => string | undefined): string | undefined => {
     const owned = /^(.+)'s$/i.exec(word)?.[1];
     const stem = owned ?? (/s$/i.test(word) && !NO_BARE_S.test(word) ? word.slice(0, -1) : undefined);
     if (!stem || stem.length < MIN_PART) return undefined;
-    const known = fromKnown(stem);
+    const known = source(stem);
     return known === undefined ? undefined : known + endingFor(known);
   };
 
@@ -144,7 +146,8 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
   const sayWord = async (word: string): Promise<string> => {
     const hit = said.get(word);
     if (hit !== undefined) return hit;
-    const phonemes = fromKnown(word) ?? fromEnding(word) ?? await fromModel(word);
+    // An ending on a listed word comes before a split, so barrow's never reads as bar + row's.
+    const phonemes = fromListed(word) ?? fromEnding(word, fromListed) ?? fromSplit(word.toLowerCase()) ?? fromEnding(word, fromKnown) ?? await fromModel(word);
     said.set(word, phonemes);
     return phonemes;
   };
@@ -184,7 +187,9 @@ export function createTextToPhonemes({ dictionary: primary, predict }: TextToPho
         const fullWill = /^will$/i.test(word) && (word !== "will" || BEFORE_NOUN_WILL.test(previous));
         // A weak "you" at the start of a phrase sounds cut off.
         const fullYou = previous === "" && /^you$/i.test(word);
-        const reduced = strong || shouted || fullWill || fullYou ? undefined : weak.get(word.toLowerCase());
+        // "It" and "them" stay light at a phrase end, as in "melt it", unless they stand alone.
+        const lightEnd = previous !== "" && /^(?:it|them)$/i.test(word);
+        const reduced = (strong && !lightEnd) || shouted || fullWill || fullYou ? undefined : weak.get(word.toLowerCase());
         const listed = accent === "b" && reduced === undefined ? fromBritishList(word.toLowerCase()) ?? britishCapitals(word) : undefined;
         const start = matches[i].index + token.indexOf(word);
         const pick = table.has(word.toLowerCase()) ? undefined : picks.get(start);

@@ -141,13 +141,13 @@ describe("function words", () => {
     const { say } = setup();
     expect(await say("You must go")).toBe(`${cmu("you")} ${cmu("must")} ${cmu("go")}`);
     expect(await say("yes, you must go")).toBe(`${cmu("yes")}, ${cmu("you")} ${cmu("must")} ${cmu("go")}`);
-    expect(await say("as you said it")).toBe(`æz ju ${cmu("said")} ${cmu("it")}`);
+    expect(await say("as you said it")).toBe(`æz ju ${cmu("said")} ɪt`);
   });
 
   it("reduces with inside a phrase and keeps it strong at the end", async () => {
     const { say } = setup();
     expect(await say("come with you")).toBe(`${cmu("come")} wɪð ${cmu("you")}`);
-    expect(await say("who I came with.")).toBe(`hˈu ${cmu("i")} ${cmu("came")} ${cmu("with")}.`);
+    expect(await say("who I came with.")).toBe(`hu ${cmu("i")} ${cmu("came")} ${cmu("with")}.`);
   });
 
   it("keeps shouted words strong and the pronoun I strong", async () => {
@@ -168,7 +168,22 @@ describe("function words", () => {
   });
 
   it("takes weak forms inside a phrase", async () => {
-    expect(await setup().say("went to the top of it")).toBe(`${cmu("went")} tə ðə ${cmu("top")} əv ${cmu("it")}`);
+    expect(await setup().say("went to the top of it")).toBe(`${cmu("went")} tə ðə ${cmu("top")} əv ɪt`);
+  });
+
+  it("keeps small words light in a phrase, as in the Emberwatch passage", async () => {
+    const { say } = setup();
+    expect(await say("this might not be what those got")).toBe(`ðɪs mIt nɑt bi wət ðOz ${cmu("got")}`);
+    expect(await say("that's it, and it's gone")).toBe(`ðæts ɪt, ənd ɪts ${cmu("gone")}`);
+    expect(await say("melt them.")).toBe(`${cmu("melt")} ðəm.`);
+    expect(await say("Them.")).toBe(`${cmu("them")}.`);
+  });
+
+  it("a regular ending on a listed word beats a split", async () => {
+    const { say, predict } = setup();
+    expect(await say("barrow's")).toBe(`${cmu("barrow")}z`);
+    expect(await say("Emberwatch's")).toBe(`${cmu("ember")}${cmu("watch").replace("ˈ", "ˌ")}ɪz`);
+    expect(predict).not.toHaveBeenCalled();
   });
 
   it("reduces they and the helper will", async () => {
@@ -188,7 +203,9 @@ describe("function words", () => {
   it("stays strong at a phrase end and alone", async () => {
     const { say } = setup();
     expect(await say("to")).toBe(cmu("to"));
-    expect(await say("what is it for?")).toBe(`${cmu("what")} ɪz ɪt ${cmu("for")}?`);
+    expect(await say("what is it for?")).toBe(`wət ɪz ɪt ${cmu("for")}?`);
+    expect(await say("it")).toBe(cmu("it"));
+    expect(await say("what.")).toBe(`${cmu("what")}.`);
     expect(await say("It was for, as you said, him.")).toBe(`ɪt wəz ${cmu("for")}, æz ju ${cmu("said")}, ${cmu("him")}.`);
   });
 
@@ -213,8 +230,8 @@ describe("function words", () => {
 
   it("reduces have and had to a schwa inside a phrase", async () => {
     const { say } = setup();
-    expect(await say("they have it and had it")).toBe(`ðA həv ɪt ənd həd ${cmu("it")}`);
-    expect(await say("what they have")).toBe(`${cmu("what")} ðA ${cmu("have")}`);
+    expect(await say("they have it and had it")).toBe("ðA həv ɪt ənd həd ɪt");
+    expect(await say("what they have")).toBe(`wət ðA ${cmu("have")}`);
   });
 });
 

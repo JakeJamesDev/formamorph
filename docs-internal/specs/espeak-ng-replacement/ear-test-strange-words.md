@@ -325,6 +325,10 @@ The owner compared weak and strong first words, blind, on 9 sentences. Weak "I" 
 
 "I" now stays strong, "you" stays strong at a phrase start, and "with" reduces (Q25). The owner then accepted all six test sentences, including "You should have told me…" and "I will read the letter tonight."
 
+## Emberwatch Passage
+
+The owner heard strange reading in a passage from play. Across its 31 sentences, the old engine had 166 main stresses and the new pipeline had 210, mostly on small words. Word-by-word scoring cannot see this. After Q26 the new pipeline has 184. The em dash reaches the engine the same way in both, with no spaces around it, so it is not a change. The blind comparison waits for the owner.
+
 ## Final Bar Run
 
 Recorded 2026-11-02, Ticket 06, on the final pipeline with the old engine out of every build. `scoreCli.mjs --module testing/g2p/pipeline.ts`, against the stored eSpeak numbers.
