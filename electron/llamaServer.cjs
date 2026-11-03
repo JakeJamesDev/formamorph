@@ -262,20 +262,27 @@ function parseProcessRows(text) {
   return rows;
 }
 
-/** Every process as { pid, ppid, name }. Answers [] when the listing fails or hangs. */
+/** Every process as { pid, ppid, name }. Rejects with the cause when the listing can't start, hangs, or fails. */
 function listProcesses({ platform = process.platform, spawn = require('node:child_process').spawn, timeoutMs = 15000 } = {}) {
   const [command, args] = platform === 'win32'
     ? ['powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "Get-CimInstance Win32_Process | ForEach-Object { '{0} {1} {2}' -f $_.ProcessId, $_.ParentProcessId, $_.Name }"]]
     : ['ps', ['-A', '-o', 'pid=', '-o', 'ppid=', '-o', 'comm=']];
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let out = '';
+    let err = '';
+    let timedOut = false;
     let child;
-    try { child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); } catch { return resolve([]); }
-    const timer = setTimeout(() => { try { child.kill(); } catch { /* already gone */ } }, timeoutMs);
+    try { child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); } catch (e) { return reject(new Error(`Could not start ${command}: ${errorText(e)}`)); }
+    const timer = setTimeout(() => { timedOut = true; try { child.kill(); } catch { /* already gone */ } }, timeoutMs);
     child.stdout?.on('data', (c) => { out += c; });
-    child.stderr?.on('data', () => { /* drained, never read */ });
-    child.once('error', () => { clearTimeout(timer); resolve([]); });
-    child.once('close', () => { clearTimeout(timer); resolve(parseProcessRows(out)); });
+    child.stderr?.on('data', (c) => { err += c; });
+    child.once('error', (e) => { clearTimeout(timer); reject(new Error(`Could not run ${command}: ${errorText(e)}`)); });
+    child.once('close', (code) => {
+      clearTimeout(timer);
+      if (timedOut) return reject(new Error(`${command} did not answer within ${timeoutMs} ms`));
+      if (code !== 0) return reject(new Error(`${command} exited with code ${code}${err.trim() ? `: ${err.trim().slice(-200)}` : ''}`));
+      resolve(parseProcessRows(out));
+    });
   });
 }
 

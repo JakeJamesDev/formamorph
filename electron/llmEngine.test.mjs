@@ -921,6 +921,29 @@ describe('VRAM viewer fields from the load log', () => {
     expect(engine.getState().serverPid).toBeNull();
   });
 
+  it('stays ready with no pid when the process listing rejects', async () => {
+    const { fake } = setup();
+    const lookups = [];
+    engine = createEngine({
+      spawn: fake.spawn, binaryPath: () => 'llama-server', platform: 'win32', workRoot,
+      listProcesses: () => { const p = Promise.reject(new Error('powershell.exe did not answer within 15000 ms')); lookups.push(p); return p; },
+    });
+    built.push({ engine, workRoot });
+    const unhandled = [];
+    const onUnhandled = (e) => unhandled.push(e);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const s = await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
+      expect(s.status).toBe('ready');
+      expect(lookups).toHaveLength(1);
+      await new Promise((r) => setImmediate(r));
+      expect(engine.getState()).toMatchObject({ status: 'ready', serverPid: null });
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
+
   it('finds the instance under the POSIX supervising shell', async () => {
     const { fake, seen } = setup({}, { platform: 'linux' });
     await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });

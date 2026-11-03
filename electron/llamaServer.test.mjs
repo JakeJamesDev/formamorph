@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -86,6 +87,45 @@ describe('instancePid', () => {
 
   it('keeps a name with spaces whole', () => {
     expect(parseProcessRows('12 3 Formamorph Engine Helper.exe')).toEqual([{ pid: 12, ppid: 3, name: 'Formamorph Engine Helper.exe' }]);
+  });
+});
+
+describe('listProcesses failure causes', () => {
+  /** A spawn double: `script(child)` drives the child the listing sees. */
+  const spawning = (script) => () => {
+    const child = Object.assign(new EventEmitter(), { stdout: new EventEmitter(), stderr: new EventEmitter(), kill: vi.fn(() => child.emit('close', null)) });
+    queueMicrotask(() => script(child));
+    return child;
+  };
+
+  it('answers the rows of a clean exit', async () => {
+    const spawn = spawning((c) => { c.stdout.emit('data', '5 1 node\n'); c.emit('close', 0); });
+    await expect(llamaServer.listProcesses({ spawn })).resolves.toEqual([{ pid: 5, ppid: 1, name: 'node' }]);
+  });
+
+  it('rejects when the listing command cannot start', async () => {
+    const spawn = () => { throw new Error('EAGAIN'); };
+    await expect(llamaServer.listProcesses({ spawn, platform: 'linux' })).rejects.toThrow('Could not start ps: EAGAIN');
+  });
+
+  it('rejects on a spawn error event', async () => {
+    const spawn = spawning((c) => c.emit('error', new Error('ENOENT')));
+    await expect(llamaServer.listProcesses({ spawn, platform: 'linux' })).rejects.toThrow('Could not run ps: ENOENT');
+  });
+
+  it('rejects with the timeout, not the partial rows, when the listing hangs', async () => {
+    const spawn = spawning((c) => c.stdout.emit('data', '5 1 node\n'));
+    await expect(llamaServer.listProcesses({ spawn, platform: 'win32', timeoutMs: 20 })).rejects.toThrow('powershell.exe did not answer within 20 ms');
+  });
+
+  it('rejects on a non-zero exit with the stderr tail', async () => {
+    const spawn = spawning((c) => { c.stdout.emit('data', '5 1 node\n'); c.stderr.emit('data', 'Get-CimInstance : Access denied\n'); c.emit('close', 1); });
+    await expect(llamaServer.listProcesses({ spawn, platform: 'win32' })).rejects.toThrow('powershell.exe exited with code 1: Get-CimInstance : Access denied');
+  });
+
+  it('names the exit code alone when stderr is empty', async () => {
+    const spawn = spawning((c) => c.emit('close', 2));
+    await expect(llamaServer.listProcesses({ spawn, platform: 'linux' })).rejects.toThrow(/^ps exited with code 2$/);
   });
 });
 
