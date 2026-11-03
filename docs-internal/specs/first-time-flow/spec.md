@@ -66,6 +66,9 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q32 | The first-run rule takes the intro-seen record as read at launch, plus the first-run step's own record, because the intro writes its record when it ends. A replayed intro never makes the step due. Ticket 01 ruling. |
 | Q33 | A first-entry readme opens at once, as it does for returning players, without waiting for the reachability probe. A failed probe opens the gate over it. Ticket 01 ruling. |
 | Q34 | Opening the longer dialog from the badge sets the seen key, so that player never sees the entry line. Ticket 01 ruling. |
+| Q35 | The tier-names reply keeps its title keys and adds a sibling `prices` field: integer cents per tier key, `null` when unknown, in the campaign's US dollars with no currency code. Prices refresh by the same rule as titles. Ticket 03 ruling. |
+| Q36 | Play Emberwatch uses the stored world. If the seeder hasn't stored it yet, Play starts from the bundled copy, and a save from that game must still reach the same world id. If the player deleted Emberwatch, the step offers Browse Worlds only, so a deletion stays respected. Ticket 02 ruling. |
+| Q37 | Play, Browse Worlds, Escape and an outside click all close the first-run step and mark it seen. Ticket 02 ruling. |
 
 ## User Stories
 

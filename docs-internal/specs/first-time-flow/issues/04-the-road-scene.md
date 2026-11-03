@@ -22,7 +22,7 @@ const ENTER_JELLY = { durationMs: 480, squash: 0.14, overshoot: 0.09, settle: 2 
 - [ ] Each level has its own fire per Q25, as inline SVG with no new image files.
 - [ ] A level change plays the Jelly on Morphie only, through `mascotTransitionAt`. Playwright per-frame samples show the height's dip and peak, the swap at the dip, an interrupted change landing on the last pick, and no transform on any widget.
 - [ ] Reduced motion swaps at once and stops the fire's motion, proven by a test.
-- [ ] Level names come from the existing tier-names module, and prices come from the route in ticket 03. The scene shows no turn counts or allowance amounts.
+- [ ] Level names come from the existing tier-names module, and prices come from `prices` on the same reply (integer US cents, Q35). A missing field or a `null` price hides the price and breaks nothing, because a server may not have deployed ticket 03 or filled the setting yet. The scene shows no turn counts or allowance amounts.
 - [ ] The scene is always dark, whatever the app theme, and the fire uses one warm light color.
 - [ ] On a mobile width the text and the road don't overlap, and every action is reachable. Frames at `.scratch/frames/road-1280.png` and `.scratch/frames/road-375.png`, one set per level.
 - [ ] The scene has a `surface` entry and a dev route.
