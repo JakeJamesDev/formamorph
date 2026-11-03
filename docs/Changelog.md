@@ -76,6 +76,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Formamorph AI now tells you when Patreon can't confirm your pledge.** The status, ring and account page say so, and service returns on its own.
     - **Scene images, diaries and character descriptions on Formamorph AI keep working after a turn's time runs out.** They start a new turn. Background requests pause when you've used this week's allowance, and the allowance display says so.
     - **Formamorph AI now has the same sampler sliders and Max Output as other endpoints in Settings.** They start on the model's recommended values. Max Output goes up to the server's limit, and Reset to Defaults brings the starting values back.
+    - **Fewer lost turns on Formamorph AI.** When a call fails before any reply text, the server now tries it once more, so you don't have to send the action again.
   - **Main Menu:**
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.
