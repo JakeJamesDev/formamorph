@@ -50,8 +50,8 @@ export function StoryCard({
           <Meta as="p">{body}</Meta>
         </div>
       </div>
-      {/* Negative first, so See Levels sits on the right. */}
-      <div className="flex shrink-0 justify-end gap-2">
+      {/* Negative first, so See Levels sits on the right, and on top below `sm`. */}
+      <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         {onNotNow && <Button variant="ghost" size="sm" onClick={onNotNow}>Not Now</Button>}
         <Button size="sm" onClick={onSeeLevels}>See Levels</Button>
       </div>

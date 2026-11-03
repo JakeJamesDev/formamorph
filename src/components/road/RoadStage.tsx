@@ -46,7 +46,7 @@ export function RoadStage({ tier, morphieRef }: { tier: SupporterTier; morphieRe
         viewBox={`0 0 ${STAGE.width} ${STAGE.height}`}
         className="absolute inset-0 h-full w-full"
         role="img"
-        aria-label={`${level.lit} of ${ROAD.length} story moments lit`}
+        aria-label="A fire lighting a road"
       >
         <defs>
           <radialGradient id={lightId}>

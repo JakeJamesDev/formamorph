@@ -567,8 +567,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [firstRunStepSeen, setFirstRunStepSeen] = useState(isFirstRunStepSeen);
   const [devFirstRun, setDevFirstRun] = useState(false);
   const aiGatePending = mode === 'local' && (reachable === null || (reachable === false && !aiSetupSeen()));
-  const firstRunOpen = !introActive && !gate && !gateOpen && !aiGatePending
-    && (devFirstRun || firstRunStepDue({ introSeenAtLaunch, firstRunStepSeen }));
+  const firstRunDue = devFirstRun || firstRunStepDue({ introSeenAtLaunch, firstRunStepSeen });
+  const firstRunOpen = !introActive && !gate && !gateOpen && !aiGatePending && firstRunDue;
   const closeFirstRun = () => {
     markFirstRunStepSeen();
     setFirstRunStepSeen(true);
@@ -638,7 +638,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     ...(!COMMUNITY_ENABLED || !isAuthenticated ? ['main-menu-feedback'] : []),
   ];
   const { active: menuTutorial, nav: menuTutorialNav, dismiss: dismissMenuTutorial } = useTutorial('mainMenu', {
-    active: !introActive && !firstRunOpen,
+    active: !introActive && !firstRunDue,
     held: heldMenuTutorials,
   });
   // Opening the window, by the tab or by F1, reads the Help tab's note.
@@ -3098,7 +3098,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             events={announceable}
             isAuthenticated={isAuthenticated}
             onOpenEvent={openEvent}
-            held={introActive || gateOpen || firstRunOpen}
+            held={introActive || gateOpen || firstRunDue}
           />
 
           {/* Community Creations. The host reads its own libraries, account and events from the services,
