@@ -4,6 +4,7 @@ import { jellyDipMs } from '@/lib/formaquestion/mascotTransition';
 import { resetTierNamesForTest, seedTierNamesForTest } from '@/lib/tierNames';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { RoadScene } from './RoadScene';
+import { ROAD_LEVELS, ROAD_SAMPLES } from './roadLevels';
 import { RoadFire } from './RoadFire';
 import { CHANGE_JELLY, ENTER_JELLY } from './useMorphieJelly';
 
@@ -63,7 +64,8 @@ describe('RoadScene levels', () => {
   it('states what the picked level includes, with the server names', () => {
     scene();
     expect(screen.getByText('Your support includes:')).toBeTruthy();
-    expect(screen.getByText("Formamorph AI, with twice Ember's memory, so it keeps more of your story in mind")).toBeTruthy();
+    expect(screen.getByText('More turns each week')).toBeTruthy();
+    expect(screen.getByText("Formamorph AI, with twice Ember's memory, so a large world still has room for your story")).toBeTruthy();
     expect(screen.getByText('A Blaze badge and name color, and a place on the Supporters wall')).toBeTruthy();
   });
 
@@ -78,14 +80,34 @@ describe('RoadScene levels', () => {
   it('shows no turn count or allowance amount', () => {
     scene();
     const text = document.body.textContent ?? '';
-    expect(text).not.toMatch(/\bturns?\b/i);
-    expect(text).not.toMatch(/\d+\s*(tokens|messages)/i);
+    expect(text).not.toMatch(/\d[\d,]*\s*(turns?|tokens|messages)/i);
   });
 
-  it('renders the side-by-side block from its fixed data', () => {
+  it('shows the player action above both replies, unedited apart from the rendered italics', () => {
     scene();
-    expect(screen.getByText('A sample from the Demo AI goes here.')).toBeTruthy();
-    expect(screen.getByText('A sample from Formamorph AI goes here.')).toBeTruthy();
+    const action = screen.getByText(ROAD_SAMPLES.action);
+    const demo = screen.getByText('Demo AI').parentElement!;
+    const hosted = screen.getByText('Formamorph AI').parentElement!;
+    expect(action.compareDocumentPosition(demo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(demo.compareDocumentPosition(hosted) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const words = (text: string) => text.replace(/\*/g, '').split(/\s+/).filter(Boolean);
+    for (const [block, sample] of [[demo, ROAD_SAMPLES.demo], [hosted, ROAD_SAMPLES.hosted]] as const) {
+      const shown = [...block.querySelectorAll('p')].map((paragraph) => paragraph.textContent).join(' ');
+      expect(words(shown)).toEqual(words(sample.text));
+      expect(block.querySelectorAll('p').length).toBe(sample.text.split('\n\n').length);
+      expect(block.textContent).not.toContain('*');
+    }
+    expect(demo.querySelector('em')?.textContent).toBe('humility');
+  });
+
+  it('says on every level that the latest scenes stay word for word, beside its own line', () => {
+    stubReducedMotion();
+    scene({ initialTier: 'supporter' });
+    ROAD_LEVELS.forEach((level) => {
+      pick(NAMES[level.tier]);
+      expect(screen.getByText(level.line)).toBeTruthy();
+      expect(screen.getByText('Every level keeps the latest scenes word for word')).toBeTruthy();
+    });
   });
 });
 

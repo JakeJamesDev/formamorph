@@ -8,7 +8,7 @@ import { closeRoadScene, openRoadScene } from './roadSceneStore';
 
 vi.mock('@/lib/openExternal', () => ({ openExternal: vi.fn() }));
 
-const scene = () => screen.queryByRole('dialog', { name: /Keep in Mind/ });
+const scene = () => screen.queryByRole('dialog', { name: /How Far Should Your Story Go/ });
 
 /** The host beside a view switch, as the app mounts it. */
 let swapView: (view: string) => void;

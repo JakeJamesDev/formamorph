@@ -122,7 +122,7 @@ test.describe('The Road scene layout', () => {
         await page.waitForTimeout(800);
 
         const stage = (await page.locator('[data-road-stage]').boundingBox())!;
-        const title = (await page.getByRole('heading', { name: /Keep in Mind/ }).boundingBox())!;
+        const title = (await page.getByRole('heading', { name: /How Far Should Your Story Go/ }).boundingBox())!;
         const picker = (await page.getByRole('radiogroup', { name: 'Level' }).boundingBox())!;
         expect(title.y + title.height).toBeLessThanOrEqual(stage.y);
         expect(stage.y + stage.height).toBeLessThanOrEqual(picker.y);

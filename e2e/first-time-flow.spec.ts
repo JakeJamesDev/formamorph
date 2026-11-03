@@ -26,7 +26,7 @@ async function stubServers(page: Page) {
 
 const actionBox = (page: Page) => page.getByPlaceholder(/^Type your action/);
 const card = (page: Page) => page.getByTestId('story-card');
-const scene = (page: Page) => page.getByRole('dialog', { name: /Keep in Mind/ });
+const scene = (page: Page) => page.getByRole('dialog', { name: /How Far Should Your Story Go/ });
 
 /** Sends the box and waits for the turn to settle: its text gone, and the re-roll awake with the choices back. */
 async function sendAndSettle(page: Page) {
