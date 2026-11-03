@@ -68,7 +68,7 @@ A mention in a listing comment is a link only. It sends no alert.
 
 - Listing comment reads, creates and edits return `targets`, the same shape feedback uses, resolved for the reader making the request.
 - The existing target resolver takes any list of texts, so a page of comments resolves in one batch. No schema change. Stored comment text stays as typed.
-- New route: `POST /api/feedback/links/resolve`. It takes `{ text }` and returns `{ targets }`. It requires sign-in, has a per-account rate limit, and accepts text up to the longest feedback body. It sits with the feedback search routes and shares the resolver, so it reveals nothing the search routes don't.
+- New route: `POST /api/feedback/links/resolve`. It takes `{ text }` and returns `{ success: true, data: { targets } }`, the envelope every feedback route uses. It requires sign-in and has its own limiter of 60 requests a minute per account, so Preview never uses up the autocomplete budget. It accepts text up to the longest feedback body (4,000 characters). Missing or non-string text and text over the limit return 400; empty text returns 200 with no targets. It sits with the feedback search routes and shares the resolver, so it reveals nothing the search routes don't.
 
 **App and site**
 
