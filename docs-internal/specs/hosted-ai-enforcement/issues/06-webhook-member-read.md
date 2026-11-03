@@ -12,7 +12,7 @@ Model rationale: background work after the response, with ordering and failure p
 **What to build:** a stale or repeated webhook delivery cannot restore an ended tier, because the member list decides. A signed delivery with a tier trigger asks for a read of the member list. An ending trigger also clears the tier at once from the delivery. The server answers before the read finishes, and a burst shares one read.
 
 - [ ] A repeated create delivery after an ending does not restore the tier when the list shows none.
-- [ ] A non-ending delivery changes a tier only through a successful read.
+- [ ] A non-ending delivery changes a tier only through a successful read, and it does not refresh `checked_at` by itself, so a replay cannot extend the 7-day cutoff.
 - [ ] An ending applies at once and stays applied when the read fails.
 - [ ] A non-ending delivery changes nothing when the read fails.
 - [ ] A burst of deliveries makes one read.
