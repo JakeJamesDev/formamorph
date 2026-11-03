@@ -76,7 +76,10 @@ A mention in a listing comment is a link only. It sends no alert.
 - A comment with no `targets` field renders as plain markdown. This keeps comments readable against a server that has not been updated. It must never draw every link as unavailable.
 - `FeedbackLinkPlace` gets one value per surface. In the app, the listing modal supplies `openThread`, which opens the shared Feedback dialog, and `openListing`, which uses the modal's listing opener. On the website, the place lists the Votable boards only, so a bug thread renders unavailable, and chips follow their addresses.
 - The shared Feedback dialog opener gains a way to open a thread by number. In the app, the dialog opens above the listing modal, so closing it returns the player to the listing.
-- The website's community page gains a profile provider, so a user chip click opens the profile there.
+- The website's link place uses relative paths with no in-place openers, the same as the Feedback page, so chips load in the same tab and work on a preview host.
+- A thread chip with an address on another host and no opener opens a new tab, the same rule a listing chip has. This keeps a chip from replacing the app window.
+- The website's community page gains a profile provider around the whole page, so a user chip click opens the profile there. Every author and commenter name on that page also starts to open the profile, which the community docs already promise.
+- Docs: the Mentions section of the Feedback wiki page gets the sentence on listing comments, and the Comments section of the Community Creations page gets one line.
 
 **Preview**
 
