@@ -176,25 +176,43 @@ const LINKS: RemarkPlugin = [remarkFeedbackLinks, { kinds: new Set(Object.keys(C
 // Streamdown's own anchor, so an ordinary link keeps the leave-site check.
 const DefaultAnchor = defaultComponents.a as ComponentType<ComponentPropsWithoutRef<'a'> & ExtraProps>;
 
+interface LinkTargets {
+  targets?: FeedbackLinkTarget[];
+  typedUntilResolved: boolean;
+}
+
+// A context, because the renderer redraws an unchanged block for its consumers but not for new `components`.
+const LinkTargetsContext = createContext<LinkTargets>({ typedUntilResolved: false });
+
+function LinkAnchor(props: ComponentPropsWithoutRef<'a'> & ExtraProps) {
+  const { targets, typedUntilResolved } = useContext(LinkTargetsContext);
+  const mark = String(props.node?.properties?.[LINK_MARK_PROPERTY] ?? '');
+  const separator = mark.indexOf(':');
+  const kind = mark.slice(0, separator) as FeedbackLinkKind;
+  const Chip = separator > 0 ? CHIPS[kind] : undefined;
+  if (!Chip) return <DefaultAnchor {...props} />;
+
+  const linkRef = mark.slice(separator + 1);
+  const target = targets?.find((t) => t.kind === kind && t.ref === linkRef);
+  if (!target && typedUntilResolved) return <>{props.children}</>;
+  return <Chip linkRef={linkRef} target={target} />;
+}
+
+const COMPONENTS: MarkdownComponents = { a: LinkAnchor };
+
 /**
  * A feedback body or comment, with each link of a kind in `CHIPS` drawn as a chip from `targets`, the links
- * the server resolved for this reader.
+ * the server resolved for this reader. `typedUntilResolved` leaves a link with no target as typed, for text
+ * the server has not seen yet.
  */
 export const FeedbackMarkdown = memo(function FeedbackMarkdown(
-  { text, targets }: { text: string; targets?: FeedbackLinkTarget[] },
+  { text, targets, typedUntilResolved = false }: { text: string; targets?: FeedbackLinkTarget[]; typedUntilResolved?: boolean },
 ) {
-  const components = useMemo<MarkdownComponents>(() => ({
-    a: (props: ComponentPropsWithoutRef<'a'> & ExtraProps) => {
-      const mark = String(props.node?.properties?.[LINK_MARK_PROPERTY] ?? '');
-      const separator = mark.indexOf(':');
-      const kind = mark.slice(0, separator) as FeedbackLinkKind;
-      const Chip = separator > 0 ? CHIPS[kind] : undefined;
-      if (!Chip) return <DefaultAnchor {...props} />;
+  const linkTargets = useMemo(() => ({ targets, typedUntilResolved }), [targets, typedUntilResolved]);
 
-      const linkRef = mark.slice(separator + 1);
-      return <Chip linkRef={linkRef} target={targets?.find((t) => t.kind === kind && t.ref === linkRef)} />;
-    },
-  }), [targets]);
-
-  return <MarkdownRenderer text={text} components={components} links={LINKS} />;
+  return (
+    <LinkTargetsContext.Provider value={linkTargets}>
+      <MarkdownRenderer text={text} components={COMPONENTS} links={LINKS} />
+    </LinkTargetsContext.Provider>
+  );
 });

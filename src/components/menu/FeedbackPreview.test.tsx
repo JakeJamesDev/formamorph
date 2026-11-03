@@ -16,7 +16,7 @@ import { FeedbackDialog } from './FeedbackDialog';
 import { FeedbackEditDialog } from './FeedbackEditDialog';
 import type { FeedbackLinkPlace } from '@/lib/feedbackLinks';
 import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext } from './FeedbackMarkdown';
-import { FeedbackPreview } from './FeedbackPreview';
+import { FeedbackPreview, PREVIEW_LOOKUP_PAUSE_MS } from './FeedbackPreview';
 import { FeedbackThreadView } from './FeedbackThreadView';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -64,6 +64,8 @@ function fill(name: string | HTMLElement, text: string) {
     }, { discrete: true });
   });
 }
+
+const pastThePause = () => act(() => new Promise<void>((done) => { setTimeout(done, PREVIEW_LOOKUP_PAUSE_MS + 100); }));
 
 const tab = (name: 'Edit' | 'Preview') => userEvent.setup().click(screen.getByRole('tab', { name }));
 const pane = () => screen.getByTestId('prompt-preview');
@@ -252,19 +254,112 @@ describe('the request', () => {
     expect(within(pane()).queryByText(/Unavailable thread/)).not.toBeInTheDocument();
   });
 
-  it('shows plain markdown and sends nothing when the text changes under an open pane', async () => {
+  it('writes no state and sends nothing when the pane closes during a pause', async () => {
     const resolve = resolving();
     const field = (value: string) => <PromptField value={value} onChange={() => {}} vocabulary={plainVocabulary()} markdown ariaLabel="Reply" markdownPreview={FeedbackPreview} />;
-    const { rerender } = render(field('Ask @wren'));
+    const { rerender, unmount } = render(field('Ask @wren'));
     await tab('Preview');
     await within(pane()).findByRole('link', { name: /wren/ });
 
-    rerender(field('Ask @wren and @rowan'));
+    rerender(field('Ask @wren and @rowan now'));
+    unmount();
+    await pastThePause();
 
-    await waitFor(() => expect(pane()).toHaveTextContent('Ask @wren and @rowan'));
-    expect(within(pane()).queryByRole('link')).not.toBeInTheDocument();
+    expect(resolve).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('text that changes under an open pane', () => {
+  const ROWAN: FeedbackLinkTarget = { kind: 'user', ref: 'rowan', available: true, id: 'u4', username: 'rowan', avatarUrl: null };
+  const field = (value: string) => <PromptField value={value} onChange={() => {}} vocabulary={plainVocabulary()} markdown ariaLabel="Reply" markdownPreview={FeedbackPreview} />;
+
+  const openOn = async (text: string) => {
+    const view = render(field(text));
+    await tab('Preview');
+    await within(pane()).findByRole('link', { name: /wren/ });
+    return view;
+  };
+
+  it('keeps a known chip and leaves a link still being typed as typed', async () => {
+    const resolve = resolving();
+    const { rerender } = await openOn('Ask @wren');
+
+    rerender(field('Ask @wren and @rowan'));
+    await pastThePause();
+
+    expect(pane()).toHaveTextContent('and @rowan');
+    expect(within(pane()).getByRole('link', { name: /wren/ })).toBeInTheDocument();
     expect(within(pane()).queryByText('Unknown user')).not.toBeInTheDocument();
     expect(resolve).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['a space', 'Ask @wren and @rowan '],
+    ['a period', 'Ask @wren and @rowan.'],
+    ['a comma', 'Ask @wren and @rowan, please'],
+  ])('asks for only the new link once %s ends it, after a pause', async (_, text) => {
+    const resolve = resolving();
+    const { rerender } = await openOn('Ask @wren');
+    resolve.mockResolvedValue([ROWAN]);
+
+    rerender(field(text));
+    expect(resolve).toHaveBeenCalledTimes(1);
+
+    expect(await within(pane()).findByRole('link', { name: /rowan/ })).toBeInTheDocument();
+    expect(within(pane()).getByRole('link', { name: /wren/ })).toBeInTheDocument();
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(resolve.mock.calls[1][0]).toBe('@rowan');
+  });
+
+  it('waits for the pause, so typing into a sentence asks once', async () => {
+    const resolve = resolving();
+    const { rerender } = await openOn('Ask @wren now');
+    resolve.mockResolvedValue([ROWAN]);
+
+    for (const name of ['@ro', '@row', '@rowa', '@rowan']) {
+      rerender(field(`Ask ${name} @wren now`));
+      await act(() => new Promise<void>((done) => { setTimeout(done, PREVIEW_LOOKUP_PAUSE_MS / 10); }));
+    }
+    await within(pane()).findByRole('link', { name: /rowan/ });
+
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(resolve.mock.calls[1][0]).toBe('@rowan');
+  });
+
+  it('draws Unknown user for a finished name with no account', async () => {
+    const resolve = resolving();
+    const { rerender } = await openOn('Ask @wren');
+    resolve.mockResolvedValue([{ kind: 'user', ref: 'rowan', available: false }]);
+
+    rerender(field('Ask @wren and @rowan '));
+
+    expect(await within(pane()).findByText('Unknown user')).toBeInTheDocument();
+  });
+
+  it('does not ask again for a link it knows', async () => {
+    const resolve = resolving();
+    const { rerender } = await openOn('Ask @wren');
+
+    rerender(field('Ask @wren, and more text after it.'));
+    await pastThePause();
+
+    expect(resolve).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a failed link as typed, with no toast and no second try', async () => {
+    const resolve = resolving();
+    const { rerender } = await openOn('Ask @wren');
+    resolve.mockRejectedValue(new Error('Too many requests'));
+
+    rerender(field('Ask @wren and @rowan now'));
+    await waitFor(() => expect(resolve).toHaveBeenCalledTimes(2));
+    rerender(field('Ask @wren and @rowan now, and more'));
+    await pastThePause();
+
+    expect(pane()).toHaveTextContent('and @rowan now');
+    expect(within(pane()).queryByText('Unknown user')).not.toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(resolve).toHaveBeenCalledTimes(2);
   });
 
   it('cancels at unmount and writes nothing when the answer lands later', async () => {

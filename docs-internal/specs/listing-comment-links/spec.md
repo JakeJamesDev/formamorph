@@ -1,7 +1,7 @@
 # Spec: Links in Listing Comments
 
 Status: done
-Status note: Closed 2026-11-03; tickets 01–06, last landing 36cb262d2. Review: spec text corrected. Closed with gaps: ticket 04's dark frame does not exist, and an undo back to the opened text redraws chips in the split pane. Gates green on 2026-11-03.
+Status note: Closed 2026-11-03; tickets 01–06, last landing 36cb262d2. Review: spec text corrected. Closed with a gap: ticket 04's dark frame does not exist. Gates green on 2026-11-03.
 Spec session: listing-comment-links — spec
 
 Builds on `docs-internal/specs/feedback-links/spec.md`, whose grammar and chip rulings apply here. That spec left world comments out of scope; this one brings them in. Server work happens in the FormamorphServer repo, and this spec holds its contract.
@@ -85,9 +85,9 @@ A mention in a listing comment is a link only. It sends no alert.
 **Preview**
 
 - `PromptField` gains an opt-in way to replace its markdown Preview renderer. Prompt editors do not pass it and keep their current Preview.
-- The comment Preview resolves once each time the Preview tab opens, never per keystroke. Text with no links, by the client parser, sends no request.
-- Until targets arrive, and on any failure, Preview shows plain markdown with no toast. A response for text that has since changed is dropped, and an unmounted Preview cancels its request.
-- The Full Screen split pane follows the same rule: it resolves once when the pane opens. After any text change it shows plain markdown and sends nothing until the pane opens again.
+- The comment Preview resolves its whole text each time the pane opens. Text with no links, by the client parser, sends no request. An unmounted Preview cancels its request.
+- Q11: A link with no target stays as typed in Preview, with no toast, until the server answers for it. A chip stays while the text around it changes.
+- Q12: In the Full Screen split pane, a link counts as finished when any text follows it. After a 500ms pause in typing, Preview asks for only the finished links it has not asked for, never per keystroke. A link that fails stays as typed until the pane opens again. Picks from autocomplete take the same path.
 - A plain click on a chip in Preview never leaves the box, so it can't lose the draft. Thread and listing chips open their address in a new tab, and a bug chip does nothing. In the listing box, a thread chip may still open the Feedback dialog above the modal. A user chip opens the profile above the box in the app and in a new tab on the website.
 - The new-thread box uses the same link place rules as the other surfaces: relative addresses and Votable boards on the website.
 
