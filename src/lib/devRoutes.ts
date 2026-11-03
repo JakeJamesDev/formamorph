@@ -35,7 +35,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  that has seen it. `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
  *  MainMenu's Avatar Customization step directly (a MainMenu sub-state, like `worldEditor`).
- *  `aiSetup` opens the AI setup gate on MainMenu in its skippable (first-run) form. `entityEditor` and
+ *  `aiSetup` opens the AI setup gate on MainMenu in its skippable (first-run) form; add `vram=<MB>` to fake the GPU read (`#dev?modal=aiSetup&vram=6144` shows the low-VRAM lead). `entityEditor` and
  *  `dictionaryEditor` are the *library* editors (MainMenu), distinct from the in-game `entity` modal; both
  *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to
  *  that: a VRM preview has nothing to show without a stored model, so it opens the library's first model and

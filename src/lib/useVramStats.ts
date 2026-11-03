@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { isDesktop, desktopVramStats } from "./imageGen/desktop";
+import { useDevRoute } from "./devRouter";
 
 export interface VramGpu {
   index: number | null;
@@ -128,5 +129,13 @@ export function useVramStats(helperUrl: string, { enabled = true, intervalMs = 2
     };
   }, [helperUrl, enabled, intervalMs]);
 
+  // DEV only: `#dev?vram=<MB>` stands in for a GPU read.
+  const devMB = Number(useDevRoute()?.vram);
+  if (import.meta.env.DEV && Number.isFinite(devMB) && devMB > 0) {
+    return {
+      status: "online", processes: [], selfPid: null, lastUpdated: 0,
+      gpus: [{ index: 0, name: "Dev GPU", totalMB: devMB, usedMB: 0, freeMB: devMB }],
+    };
+  }
   return stats;
 }

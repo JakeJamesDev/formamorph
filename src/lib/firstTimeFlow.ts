@@ -69,8 +69,10 @@ export interface AiSetupFacts {
   /** The reported total in MB; null when VRAM is unknown, as in a browser. */
   totalVramMb: number | null;
   hostedAvailable: boolean;
+  /** The player's pledge already includes Formamorph AI. */
+  pledged: boolean;
 }
 
-export function aiSetupLeadsWithHostedAi({ totalVramMb, hostedAvailable }: AiSetupFacts): boolean {
-  return hostedAvailable && totalVramMb !== null && totalVramMb <= LOW_VRAM_LIMIT_MB;
+export function aiSetupLeadsWithHostedAi({ totalVramMb, hostedAvailable, pledged }: AiSetupFacts): boolean {
+  return hostedAvailable && !pledged && totalVramMb !== null && totalVramMb <= LOW_VRAM_LIMIT_MB;
 }

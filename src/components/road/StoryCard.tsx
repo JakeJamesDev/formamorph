@@ -9,11 +9,19 @@ import { cn } from '@/lib/utils';
 /** Morphie's drawn height in px; her width follows the base image's aspect. */
 const MORPHIE_HEIGHT = 72;
 
-/** The offer in the story: under the latest narration, above the choices. It never takes focus. */
-export function StoryCard({ onNotNow, onSeeLevels, className }: {
-  onNotNow: () => void;
+/** The offer in the story: under the latest narration, above the choices. It never takes focus. AI setup reuses it
+ *  with its own words and no Not Now. */
+export function StoryCard({
+  onNotNow, onSeeLevels, className, testId = 'story-card',
+  title = 'Want the AI to Keep More of This Story in Mind?',
+  body = 'Formamorph AI is a stronger AI, and your support includes it.',
+}: {
+  onNotNow?: () => void;
   onSeeLevels: () => void;
   className?: string;
+  testId?: string;
+  title?: string;
+  body?: string;
 }) {
   const [base, setBase] = useState<MascotSize | null>(null);
   // Always the stock Morphie, whatever Mascot the player picks.
@@ -22,7 +30,7 @@ export function StoryCard({ onNotNow, onSeeLevels, className }: {
     <div
       role="group"
       aria-label="Formamorph AI"
-      data-testid="story-card"
+      data-testid={testId}
       className={cn(
         'flex flex-col gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center',
         'animate-in fade-in slide-in-from-bottom-1 motion-reduce:animate-none',
@@ -38,13 +46,13 @@ export function StoryCard({ onNotNow, onSeeLevels, className }: {
           />
         </div>
         <div className="min-w-0">
-          <div className="text-label font-semibold">Want the AI to Keep More of This Story in Mind?</div>
-          <Meta as="p">Formamorph AI is a stronger AI, and your support includes it.</Meta>
+          <div className="text-label font-semibold">{title}</div>
+          <Meta as="p">{body}</Meta>
         </div>
       </div>
       {/* Negative first, so See Levels sits on the right. */}
       <div className="flex shrink-0 justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onNotNow}>Not Now</Button>
+        {onNotNow && <Button variant="ghost" size="sm" onClick={onNotNow}>Not Now</Button>}
         <Button size="sm" onClick={onSeeLevels}>See Levels</Button>
       </div>
     </div>

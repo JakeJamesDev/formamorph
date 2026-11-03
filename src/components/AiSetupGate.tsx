@@ -15,6 +15,11 @@ import {
 import { fmtGB, useVramStats } from '@/lib/useVramStats';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useSettings } from '@/contexts/SettingsContext';
+import { StoryCard } from '@/components/road/StoryCard';
+import { openRoadScene } from '@/components/road/roadSceneStore';
+import { isPledged } from '@/components/road/useDemoAIOffer';
+import { aiSetupLeadsWithHostedAi } from '@/lib/firstTimeFlow';
+import { HOSTED_AI_AVAILABLE } from '@/lib/hostedAi/hostedUrls';
 import { isCrossOriginEmbed, isLocalEndpoint, openInOwnTab, shouldOfferPopOut } from '@/lib/localNetworkEmbed';
 import type { AiBlocker, AiMode } from '@/lib/useAiReachable';
 import {
@@ -126,7 +131,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   const engine = useLocalLlmStatus();
   // Read from context rather than taken as a prop: it must be the exact URL the probe used, and a
   // caller passing its own copy is how the two would drift apart.
-  const { activeEndpointUrl } = useSettings();
+  const { activeEndpointUrl, hostedAi } = useSettings();
   const vram = useVramStats('', { enabled: open && mode === 'local' });
   const [tier, setTier] = useState<VramTier>('tier8');
   const [showAll, setShowAll] = useState(false);
@@ -300,6 +305,9 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   const inFlow = localFlow && phase !== 'choose';
 
   const gpu = vram.status === 'online' ? vram.gpus[0] : undefined;
+  const leadsWithHostedAi = localFlow && phase === 'choose' && aiSetupLeadsWithHostedAi({
+    totalVramMb: gpu?.totalMB ?? null, hostedAvailable: HOSTED_AI_AVAILABLE, pledged: isPledged(hostedAi),
+  });
   const tierLabel = VRAM_TIERS.find((t) => t.value === tier)?.label;
   const detected = gpu?.name && gpu.totalMB ? (
     <Meta as="p">
@@ -357,6 +365,16 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
         </DialogHeader>
 
         {error && <FieldError>{error}</FieldError>}
+
+        {leadsWithHostedAi && (
+          <StoryCard
+            testId="ai-setup-lead"
+            className={cn(expanded && 'shrink-0')}
+            title="Play With a Stronger AI"
+            body="Formamorph AI gives you more turns each week. It also keeps large worlds and long stories in mind."
+            onSeeLevels={openRoadScene}
+          />
+        )}
 
         {inFlow && phase === 'downloading' ? (
           <div className="space-y-2">

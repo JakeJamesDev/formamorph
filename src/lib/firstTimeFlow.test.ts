@@ -96,10 +96,14 @@ describe('aiSetupLeadsWithHostedAi', () => {
     [14000, false],
     [null, false],
   ])('at a reported total of %s MB leads: %s', (totalVramMb, leads) => {
-    expect(aiSetupLeadsWithHostedAi({ totalVramMb, hostedAvailable: true })).toBe(leads);
+    expect(aiSetupLeadsWithHostedAi({ totalVramMb, hostedAvailable: true, pledged: false })).toBe(leads);
   });
 
   it('never leads in a build without hosted AI', () => {
-    expect(aiSetupLeadsWithHostedAi({ totalVramMb: 8000, hostedAvailable: false })).toBe(false);
+    expect(aiSetupLeadsWithHostedAi({ totalVramMb: 8000, hostedAvailable: false, pledged: false })).toBe(false);
+  });
+
+  it('never leads for a pledged player', () => {
+    expect(aiSetupLeadsWithHostedAi({ totalVramMb: 8000, hostedAvailable: true, pledged: true })).toBe(false);
   });
 });

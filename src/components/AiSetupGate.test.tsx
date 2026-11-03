@@ -4,7 +4,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AiSetupGate } from './AiSetupGate';
-import { LOCAL_MODELS, groupModelsByFit, type LocalModelInfo } from '@/lib/localModels';
+import { LOCAL_MODELS, groupModelsByFit, tierForVram, type LocalModelInfo } from '@/lib/localModels';
+import { closeRoadScene, isRoadSceneOpen } from '@/components/road/roadSceneStore';
 import { downloadLocalModel, type LocalDownloadProgress } from '@/lib/imageGen/desktop';
 import { toast } from 'react-toastify';
 import { openLatestDetails, toastTexts } from '@/test/toastText';
@@ -19,6 +20,13 @@ const rig = vi.hoisted(() => ({
   emitProgress: null as null | ((p: LocalDownloadProgress) => void),
   settleDownload: null as null | (() => void),
   failDownload: null as null | ((message: string) => void),
+  hostedAvailable: true,
+  presetState: 'unavailable' as string,
+}));
+
+vi.mock('@/lib/hostedAi/hostedUrls', async (orig) => ({
+  ...(await orig<typeof import('@/lib/hostedAi/hostedUrls')>()),
+  get HOSTED_AI_AVAILABLE() { return rig.hostedAvailable; },
 }));
 
 vi.mock('@/lib/useLocalLlmStatus', () => ({
@@ -59,7 +67,10 @@ vi.mock('react-toastify', () => ({
 
 // The gate reads one field off settings; the provider itself is a different surface's concern.
 vi.mock('@/contexts/SettingsContext', () => ({
-  useSettings: () => ({ activeEndpointUrl: 'http://localhost:8977/v1/chat/completions' }),
+  useSettings: () => ({
+    activeEndpointUrl: 'http://localhost:8977/v1/chat/completions',
+    hostedAi: { hosted: null, presetState: rig.presetState },
+  }),
 }));
 
 const onOpenChange = vi.fn();
@@ -107,6 +118,89 @@ beforeEach(() => {
   rig.emitProgress = null;
   rig.settleDownload = null;
   rig.failDownload = null;
+  rig.hostedAvailable = true;
+  rig.presetState = 'unavailable';
+  closeRoadScene();
+});
+
+describe('AiSetupGate — the low-VRAM lead', () => {
+  const lead = () => screen.queryByTestId('ai-setup-lead');
+
+  it('leads with Formamorph AI at 8,500 MB, above the local download', async () => {
+    rig.gpuTotalMB = 8500;
+    mountGate();
+    const card = await screen.findByTestId('ai-setup-lead');
+    expect(within(card).getByRole('button', { name: 'See Levels' })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Not Now' })).toBeNull();
+    const recommended = groupModelsByFit(tierForVram(8500)).recommended as LocalModelInfo;
+    const download = screen.getByText(recommended.name);
+    expect(card.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps today’s layout at 8,501 MB', async () => {
+    rig.gpuTotalMB = 8501;
+    mountGate();
+    expect(await screen.findByText(/8\.\d GB VRAM/)).toBeInTheDocument();
+    expect(lead()).toBeNull();
+  });
+
+  it('keeps today’s layout when VRAM is unknown', async () => {
+    rig.gpuTotalMB = null;
+    mountGate();
+    expect(await screen.findByText('Set up your AI')).toBeInTheDocument();
+    expect(lead()).toBeNull();
+  });
+
+  it('keeps today’s layout in a build without hosted AI', async () => {
+    rig.gpuTotalMB = 6144;
+    rig.hostedAvailable = false;
+    mountGate();
+    expect(await screen.findByText(/6\.0 GB VRAM/)).toBeInTheDocument();
+    expect(lead()).toBeNull();
+  });
+
+  it('hides the lead for a pledged player', async () => {
+    rig.gpuTotalMB = 6144;
+    rig.presetState = 'ready';
+    mountGate();
+    expect(await screen.findByText(/6\.0 GB VRAM/)).toBeInTheDocument();
+    expect(lead()).toBeNull();
+  });
+
+  it('opens the scene from See Levels and keeps the recommendation unchanged', async () => {
+    rig.gpuTotalMB = 6144;
+    const withLead = mountGate();
+    const card = await screen.findByTestId('ai-setup-lead');
+    const recommended = groupModelsByFit(tierForVram(6144)).recommended as LocalModelInfo;
+    await userEvent.click(within(card).getByRole('button', { name: 'See Levels' }));
+    expect(isRoadSceneOpen()).toBe(true);
+    await userEvent.click(within(row(recommended)).getByRole('button', { name: 'Download' }));
+    expect(downloadLocalModel).toHaveBeenCalledWith(expect.objectContaining({ fileName: recommended.fileName }));
+    withLead.unmount();
+  });
+
+  it('leads in a world too, and in the full model list', async () => {
+    rig.gpuTotalMB = 6144;
+    mountGate({ reason: 'play' });
+    expect(await screen.findByTestId('ai-setup-lead')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Show all models' }));
+    expect(screen.getByTestId('ai-setup-lead')).toBeInTheDocument();
+    expect(screen.getByText('Best for Your GPU')).toBeInTheDocument();
+  });
+
+  it('shows no lead when the model is installed but the engine did not load', async () => {
+    rig.gpuTotalMB = 6144;
+    mountGate({ blocker: 'engineDown' });
+    expect(await screen.findByText('Your model didn’t load')).toBeInTheDocument();
+    expect(lead()).toBeNull();
+  });
+
+  it('shows no lead on a custom endpoint', async () => {
+    rig.gpuTotalMB = 6144;
+    mountGate({ mode: 'custom', blocker: 'unreachable' });
+    expect(await screen.findByText('Can’t reach your endpoint')).toBeInTheDocument();
+    expect(lead()).toBeNull();
+  });
 });
 
 describe('AiSetupGate — the local setup walk', () => {

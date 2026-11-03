@@ -2087,8 +2087,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <AiSetupGate
         open={gate !== null}
         reason={gate?.reason ?? 'firstRun'}
-        mode={mode}
-        blocker={blocker}
+        mode={import.meta.env.DEV && devRoute?.vram ? 'local' : mode}
+        blocker={import.meta.env.DEV && devRoute?.vram ? 'noModel' : blocker}
         reachable={reachable}
         recheck={recheck}
         onOpenChange={(v) => { if (!v) setGate(null); }}
