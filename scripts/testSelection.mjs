@@ -35,6 +35,7 @@ export const touchedSince = (base) => (base.startsWith('@') ? listedFiles(base) 
 export const ALWAYS_RUN = {
   'scripts/buildDecision.test.mjs': 'scans every tracked source file and glob import to keep the build skip set honest',
   'scripts/changelogFormat.test.mjs': 'reads docs/Changelog.md and runs scripts/extractReleaseNotes.mjs as a child process',
+  'scripts/noPersonalPaths.test.mjs': 'scans every tracked text file for personal details',
   'scripts/testSelection.test.mjs': 'scans every test and source file to keep these lists complete',
   'site/bundleBoundary.test.ts': 'scans the site and app sources for imports',
   'site/supporterTokens.test.ts': 'reads the app and site stylesheets',

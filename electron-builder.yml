@@ -39,7 +39,7 @@ linux:
     - AppImage
   category: Game
   artifactName: Formamorph-${version}.AppImage
-  maintainer: Jake James <jake.james.nsfw@gmail.com>
+  maintainer: Jake James <privacy@formamorph.ai>
   icon: public/icon.png
 mac:
   # Both architectures ship; the engine picks by process.arch.
