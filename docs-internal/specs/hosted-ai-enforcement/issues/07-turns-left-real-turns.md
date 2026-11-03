@@ -1,6 +1,6 @@
 # 07: Turns Left Counts Real Turns
 
-Status: ready-for-human
+Status: done
 Base: 2946224
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

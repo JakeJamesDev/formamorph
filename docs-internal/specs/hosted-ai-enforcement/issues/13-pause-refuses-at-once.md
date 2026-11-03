@@ -1,6 +1,6 @@
 # 13: Pause Refuses Every Call at Once
 
-Status: ready-for-human
+Status: done
 Base: 78e47aa
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

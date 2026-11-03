@@ -1,6 +1,6 @@
 # 01: Weekly Budget on Every Call
 
-Status: ready-for-human
+Status: done
 Base: 6a1f462
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -21,7 +21,7 @@ This ticket owns the spend suite and the new query for a turn's spend. Ticket 02
 - [x] The check runs inside the admission transaction, and the parallel first-call test still passes. `admitCall` in `hostedMeter.js`; `npm test` green.
 - [x] The audit probes for the stockpile fold into one spend suite: the red repro turns green, and the two agent stockpile probes are folded in and recycled. The repro's `budget * 2` limit became the spec's `budget + 2 × grace`. The cases that pinned the old overrun became bound assertions. The pause case stays with ticket 02.
 - [x] Reinstating the old `if/else` makes the spend suite fail. Mutation run: 10 of `hostedAiSpend` go red. Nine other mutations of the guard and the grace also go red.
-- [ ] The Turn entry in the server glossary and in the client glossary states the new rule. Server entry done in `CONTEXT.md`. The client entry moved to the spec session.
+- [x] The Turn entry in the server glossary and in the client glossary states the new rule. Server entry done in `CONTEXT.md`. The client entry moved to the spec session.
 
 ## Landed
 

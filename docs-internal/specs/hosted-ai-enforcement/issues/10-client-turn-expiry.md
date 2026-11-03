@@ -1,6 +1,6 @@
 # 10: Client Expires Turn Ids
 
-Status: ready-for-human
+Status: done
 Blocked by: 08
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

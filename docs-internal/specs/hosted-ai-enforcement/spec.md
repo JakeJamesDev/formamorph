@@ -1,8 +1,8 @@
 # Spec: Formamorph AI Enforcement
 
-Status: ready-for-agent
+Status: done
 Spec session: hosted-ai-enforcement — spec
-Status note: Grilled 2026-11-03 (Q1–Q32). Blocks the Formamorph AI release in full (Q32). Real budgets, caps and prices stay in the local hosted-tier note, never in this repo.
+Status note: Closed 2026-11-03. Tickets 01–13, last landing c7404159e in the client and fb384d513 in the server, with close fixes 17aa37c18 and cebac1c. Review: spec text corrected, and gaps became tickets 12 and 13. Gates green on 2026-11-03. Blocks the release through blocker 07 until both repos are deployed and the user sets `turnCallCap`. Real budgets, caps and prices stay in the local hosted-tier note, never in this repo.
 
 An audit of the Formamorph AI proxy found that entitlement holds and the weekly allowance does not. This effort makes the allowance and the daily ceiling hold against any client, keeps entitlement honest during a Patreon outage, and fixes what the audit showed about how the client handles turn ids.
 
@@ -106,7 +106,7 @@ The client expires turn ids slightly before the server does and opens a new turn
 - **Recovery needs no action.** Any successful read refreshes `checked_at`, and service resumes on the next call.
 - **Reconcile alert:** count consecutive failed hourly runs in a stored setting, as the balance alert does, so a restart does not reset the count. Alert once on the third failure with `alertAdmins`. A success clears the count and allows a later alert. The boot run counts as an hourly run, and a failed tier-name refresh does not count. An unconfigured server runs nothing and counts nothing.
 - **Webhook deliveries:** the signature check does not change. An ending trigger clears the tier at once from the delivery, which keeps the rule that a lapse ends access at once. Every tier trigger, ending included, then asks for a read of the member list. The server answers before the read finishes, and a burst of deliveries shares one read after a short debounce. Delivery reads and hourly runs share one flight, and a delivery that lands during a read schedules one trailing read, because that read may have fetched the list before the change.
-- **A read decides.** A successful read sets links through the reconcile path. If it fails, an ending stays applied and other deliveries change nothing, until the next hourly run. Only hourly runs count toward the alert.
+- **A read decides.** A successful read sets links through the reconcile path. A delivery during a read voids that read's list, so it writes nothing and the trailing read decides. If it fails, an ending stays applied and other deliveries change nothing, until the next hourly run. Only hourly runs count toward the alert.
 
 ### Turns-left correctness (FormamorphServer)
 
@@ -155,4 +155,3 @@ The client expires turn ids slightly before the server does and opens a new turn
 - **Unverified: Patreon's member list may lag behind a webhook.** If it does, an upgrade can wait for a later read, and a read can restore an ended tier until the next one. The webhook ticket checks this on the first real delivery it can observe and reports back.
 - **Undocumented by Patreon:** headers beyond `X-Patreon-Event` and `X-Patreon-Signature`, whether a retry is byte-identical, how accumulated events arrive, and what counts as a failed delivery. Nothing here depends on them.
 - **No export-shape change.** World and save files do not change. The Hosted state and the refusal list change, and neither has been released.
-- The red repro and the audit probes are untracked in the server's `tests/` folder until their tickets fold them in. Do not commit them before the fix.

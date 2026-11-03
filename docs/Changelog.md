@@ -172,8 +172,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Scripts tab now lists scripts where they run.** A Blueprint script is one row that runs for all its owners together. Timings follow the order of a turn.
   - **Credits:**
     - **The Licenses tab now lists Aki, Aurelia and Praline as the bundled Avatars.** Each shows its author, source and license.
-  - **Formamorph AI:**
-    - **Formamorph AI starts working again on its own when your allowance resets or a pause ends.** An open app checks at the reset time, and a send that a block refuses checks first.
+  - **Formamorph AI starts working again on its own when your allowance resets or a pause ends.** An open app checks at the reset time, and a send that a block refuses checks first.
   - **Entities set to Moves Between Its Locations now walk between those locations and come along with you into them.** Before, they stayed where the new game placed them.
   - **The Entities tab now highlights the selected entity, and its rows work from the keyboard.** The first click selects any entity you've met, even one with no art, and the next opens its details.
   - **A world with a stat-pass Tool now sends one stat request per turn, not two.** The stat tracker may list only the stats that moved. Before, that reply was thrown away and asked for again, which could drop a real change.
