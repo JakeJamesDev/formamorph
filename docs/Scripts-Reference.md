@@ -263,7 +263,7 @@ Every stat entry on every path takes writes to the same five fields as `self`: `
 
 | Rule | What it means |
 | --- | --- |
-| Scripts tab order | Writes apply in the order of the **Scripts** tab, and a later write to a field replaces an earlier one. A Blueprint script's row runs for all its owners, one after another. A library entity's scripts run after every row, in the order the player picked them |
+| Scripts tab order | Writes apply in the order of the **Scripts** tab, and a later write to a field overwrites an earlier one. A Blueprint script's row runs for all its owners, one after another. A library entity's scripts run after every row, in the order the player picked them |
 | Stat order inside one owner | With no **order** set, one owner's stats run in the order of that owner's stat list. A write through `self` and a write through any other path count the same. The target's own box is one of the writers |
 | Each script reads the one before it | If Health is lower in the list than a hub, Health's own script reads the hub's write on the same turn, in `value` and `delta.actual`. If Health is higher, its script reads the write on the next turn |
 | Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` sets that owner's own copy of Mana. A write through `stats` sets the global stat |
@@ -918,7 +918,7 @@ if (trait.name === 'Wounded' && trait.enabled) stats.Vigor.value -= 5;
 
 A stat or world script sees every switch through `trait`. A trait's own script sees its own switches, with `self` as the trait and `trait` as the same entry.
 
-When a script switches a trait, its **When a Trait Switches** scripts run at once, before the next script in the list. The next script reads their full result. A switch that one of these scripts makes runs the same way, up to 8 levels deep. One action runs these scripts at most 100 times in all, counting the runs it starts between turns. Past either limit, the switch still applies, but it runs no script, and the console reports it. See [Order of Effects](#order-of-effects).
+When a script switches a trait, its **When a Trait Switches** scripts run at once, before the next script in the list. The next script reads their full result. A switch that one of these scripts makes runs the same way, up to 8 levels deep. One action runs these scripts at most 100 times in all, counting the runs it starts between turns. Past either limit, the switch still applies, its scripts are skipped, and the console reports it. See [Order of Effects](#order-of-effects).
 
 **Test Code** reads a sample. In a trait's own script, `trait` is that trait. In other scripts, it is the world's first trait in tree order, read as switched on, or a blank trait.
 
@@ -938,9 +938,9 @@ After each script, its effects apply in this order:
 
 A bound that a stat writes applies at the written number, after that script's trait switches have changed the bounds.
 
-- **Later writes replace earlier ones.** The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats).
+- **Later writes overwrite earlier ones.** The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats).
 - **A failed script adds nothing.** The scripts below it still run, and they read the state as if it never ran.
-- **A switch applies to the scripts below it.** A script that an earlier script switched off doesn't run. A script that an earlier script switched on runs if it is lower in the list.
+- **A switch applies to the scripts below it.** A script that an earlier script switched off is skipped. A script that an earlier script switched on runs if it is lower in the list.
 - **`previous` holds the start value.** In After the AI, it is the value at the start of the turn. In every other timing, it is the value when the timing began. `value` and `delta.actual` include earlier scripts' writes. `delta.ai` and `delta.regen` keep their meaning.
 - **During AI Output scripts read each other's writes on each sentence.** The writes still land with After the AI, and a stopped turn applies none.
 - **A World Tool's writes come first.** On a re-roll, its saved writes apply before the list, and every script reads them.

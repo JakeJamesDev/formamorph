@@ -433,7 +433,7 @@ The script reads and writes everything a world script does: stats, traits, place
 - **`player` works in On Call and After the AI only**, as in the script timings.
 - **A regenerate or a cancel discards everything a Tool did that turn**, On Call writes included. A stop that keeps its narration keeps the On Call writes, because they shaped the kept text.
 - **A stat re-roll keeps a Tool's effects.** An After the AI Tool runs again with the AI's call. An On Call Tool's writes come back unchanged, so a random result still matches the story. A During AI Output Tool is skipped, the same as a During AI Output script.
-- **An On Call Tool's item changes come back too.** On a stat re-roll, the items it gave and the coins it paid change once, and their item scripts run again. If the Tool changed an item that a script gave earlier in that turn, the change is skipped and the log says so.
+- **An On Call Tool's item changes come back too.** On a stat re-roll, the items it gave and the Currency items it paid change once, and their item scripts run again. If the Tool changed an item that a script gave earlier in that turn, the change is skipped and the log says so.
 - **A During AI Output Tool makes the reveal show only complete sentences**, on every turn that offers the Tool.
 
 World Tools need two things: a text endpoint that supports Tools, and **Tools** on in Settings → **Output**, in **Advanced** mode. Without them, the AI gets no World Tools, and the game goes on without them. Write the world so it still works without its Tools. See [Endpoints Without Tool Support](Tools#endpoints-without-tool-support).

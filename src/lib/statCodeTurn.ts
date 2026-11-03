@@ -587,8 +587,8 @@ export interface ActionTotals {
 
 /** Full totals for one action. `reportItems` takes the item total's one line. */
 export const actionTotals = (reportItems: (line: string) => void): ActionTotals => ({
-  switches: runTotal(SWITCH_RUN_TOTAL, `Trait switches fired ${SWITCH_RUN_TOTAL} runs in one action; further switches fired no script`),
-  itemRuns: runTotal(ITEM_RUN_TOTAL, `Item scripts fired ${ITEM_RUN_TOTAL} runs in one action; further events fired no script`, reportItems),
+  switches: runTotal(SWITCH_RUN_TOTAL, `Trait switches fired ${SWITCH_RUN_TOTAL} runs in one action; further switches skipped their scripts`),
+  itemRuns: runTotal(ITEM_RUN_TOTAL, `Item scripts fired ${ITEM_RUN_TOTAL} runs in one action; further events skipped their scripts`, reportItems),
 });
 
 /** What every run nested inside one action shares. */
@@ -831,7 +831,7 @@ async function switchRuns(
 ): Promise<StatCodeTurn> {
   const depth = switchDepth + 1;
   if (depth > SWITCH_DEPTH_CAP) {
-    console.warn(`Trait switches nested past ${SWITCH_DEPTH_CAP} rounds; ${events.length} switch(es) fired no script`);
+    console.warn(`Trait switches nested past ${SWITCH_DEPTH_CAP} rounds; ${events.length} switch(es) skipped their scripts`);
     return turn;
   }
   let now = turn;

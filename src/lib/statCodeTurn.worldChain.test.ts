@@ -27,6 +27,7 @@ const castOf = (): StatCodeOwners => {
   };
 };
 
+// These tests read no art, so the backdrop is a stub.
 const wolf = (id: string, name: string): Body => ({ id, name, entries: [], backdrop: { kind: 'none' } as unknown as Body['backdrop'], aspect: 1 });
 
 const places = (at: 'dock' | 'hill') => ({

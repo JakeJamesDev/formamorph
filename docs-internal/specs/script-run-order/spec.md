@@ -1,7 +1,7 @@
 # Spec: Script Run Order
 
 Status: done
-Status note: Closed 2026-11-03, tickets 01 to 08, last landing 0825859ee. Review: spec text corrected, with known gaps in Q52. Closed red: `electron/llamaServer.test.mjs` failed under suite load and passes alone.
+Status note: Closed 2026-11-03, tickets 01 to 08, last landing 8d21caff3. Review: spec text corrected, with known gaps in Q52. Closed red: `electron/llamaServer.test.mjs` failed under suite load and passes alone.
 Spec session: script-run-order — spec
 
 ## Problem Statement
@@ -81,7 +81,7 @@ Settled with the user on 2026-11-02. A ruling reopens on new evidence, never on 
 | Q51 | (ticket 06) Regenerate Choices replays quietly from the pre-turn copies: the Before the AI scripts, the On Call saved writes, then the Inventory pass. During AI Output scripts don't replay, so an After the AI script there reads no copy they wrote, and the docs name it |
 | Q55 | (ticket 07) Only the two totals (Q40, Q45) carry across the passes of one action. The depth caps stay per pass, so a legal long chain still runs. Each total warns once per action through its own channel: a console warning for switches, one log line for items |
 | Q56 | (ticket 07) One action is one between-turn root: a trait toggle, an inventory panel commit, a persona change, one turn's commit settle, or one script landing during a turn. A turn's sandbox runs keep their own totals, and a second player toggle gets its own. This loop never reached a release, so it needs no changelog line |
-| Q57 | (after the close, per Q4) A script's equip fits a Body an earlier script wrote in the chain, in `526840b94`. Two gaps stay known: the Body log line leaves out what the chain unequipped when one chain has both write kinds, and the AI Inventory pass still reads the render's Bodies |
+| Q57 | (after the close, per Q4) A script's equip fits a Body an earlier script wrote in the chain, in `56d46add1`. Two gaps stay known: the Body log line leaves out what the chain unequipped when one chain has both write kinds, and the AI Inventory pass still reads the render's Bodies |
 | Q52 | (close) The between-turn loop and the persona order get tickets 07 and 08. Two gaps stay known and unticketed: `rowOrder` stays optional with a fallback, though play always passes it; and the Test Bench and Regenerate Choices edges stay, as Check Scripts counts a Blueprint row's write once, and a quiet replay reads live Body picks and enabled stats and fires no script on an item settle's switch |
 
 ## User Stories
