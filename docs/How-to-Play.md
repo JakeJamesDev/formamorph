@@ -444,7 +444,7 @@ After five turns on the Demo AI, a card with Morphie appears once, under the lat
 | **Not Now** | Closes the card. It doesn't come back on this device. |
 | **See Levels** | Opens the levels screen and closes the card |
 
-The levels screen shows what each level of support includes. Pick a level to see how much of your story its light reaches, and read the same scene written by the Demo AI and Formamorph AI.
+The levels screen shows what each level of support includes. Pick a level to see its perks, and read the same scene written by the Demo AI and Formamorph AI.
 
 | Button | What it does |
 |---|---|

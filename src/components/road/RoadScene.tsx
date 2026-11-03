@@ -11,7 +11,7 @@ import type { RoadSceneView } from './roadSceneStore';
 import { RoadStage } from './RoadStage';
 import { SupportChecklist } from './SupportChecklist';
 import type { SupportChecklistModel } from './useSupportChecklist';
-import { DEFAULT_ROAD_TIER, ROAD_LEVELS, ROAD_SAMPLES, ROAD_SHARED_LINE, roadLevel, useRoadLevelName, useRoadLevelPrice } from './roadLevels';
+import { DEFAULT_ROAD_TIER, ROAD_LEVELS, ROAD_SAMPLES, roadLevel, useRoadLevelName, useRoadLevelPrice } from './roadLevels';
 import { useMorphieJelly } from './useMorphieJelly';
 
 const isTier = (value: string): value is SupporterTier => (SUPPORTER_TIERS as readonly string[]).includes(value);
@@ -84,21 +84,18 @@ export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, initialView = 'leve
         <ScrollArea className="min-h-0 flex-1">
           <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
             <div className="text-center">
-              <DialogTitle className="text-heading">{checklistView ? 'Get Formamorph AI' : 'How Far Should Your Story Go?'}</DialogTitle>
+              <DialogTitle className="text-heading">{checklistView ? 'Get Formamorph AI' : 'Better Narration for Your Stories'}</DialogTitle>
               <DialogDescription className="text-body">
                 {checklistView
                   ? 'Four steps. Each one shows when it’s done, and you can leave and come back.'
-                  : 'Your support includes Formamorph AI. Every level adds more turns and more room for your world and your story.'}
+                  : 'Your support keeps Formamorph’s updates coming, and it includes Formamorph AI: sharper narration and more consistent characters, with no setup. Higher levels add more turns each week, then more room for large worlds.'}
               </DialogDescription>
             </div>
             <RoadStage tier={shownTier} morphieRef={ref} />
             {checklistView ? <SupportChecklist checklist={checklist} /> : (
               <>
                 <RoadLevelPicker tier={tier} onPick={setTier} />
-                <div className="text-center">
-                  <p className="text-label">{level.line}</p>
-                  <p className="text-meta text-muted-foreground">{ROAD_SHARED_LINE}</p>
-                </div>
+                <p className="text-center text-label">{level.line(name)}</p>
                 <div>
                   <p className="mb-1 text-label font-medium">Your support includes:</p>
                   <ul className="list-disc space-y-1 pl-5 text-body">
@@ -118,6 +115,11 @@ export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, initialView = 'leve
           </div>
         </ScrollArea>
         <div className="shrink-0 border-t border-border">
+          {!checklistView && (
+            <p className="mx-auto max-w-4xl px-4 pt-3 text-center text-meta text-muted-foreground">
+              Whatever the perks are worth to you, every pledge helps keep the updates coming.
+            </p>
+          )}
           <DialogFooter className="mx-auto max-w-4xl gap-2 p-4">
             {checklistView ? (
               <>

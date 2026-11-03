@@ -11,7 +11,7 @@ vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({ activeTextEndpointPresetId: 'default', selectTextEndpointPreset: vi.fn() }),
 }));
 
-const scene = () => screen.queryByRole('dialog', { name: /How Far Should Your Story Go/ });
+const scene = () => screen.queryByRole('dialog', { name: /Better Narration for Your Stories/ });
 
 /** The host beside a view switch, as the app mounts it. */
 let swapView: (view: string) => void;
@@ -75,7 +75,7 @@ describe('RoadSceneHost', () => {
   it('opens on the levels unless the ask names the checklist', () => {
     render(<App />);
     act(() => openRoadScene());
-    expect(screen.getByRole('heading', { name: 'How Far Should Your Story Go?' })).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Better Narration for Your Stories' })).not.toBeNull();
     act(() => closeRoadScene());
     act(() => openRoadScene('checklist'));
     expect(screen.getByRole('heading', { name: 'Get Formamorph AI' })).not.toBeNull();

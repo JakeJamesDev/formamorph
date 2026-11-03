@@ -22,7 +22,7 @@ const vigor: PlayerStat = { id: 'vigor', name: 'Vigor', type: 'number', descript
 const WORLD = harborWorld({ stats: [vigor] });
 
 const card = () => screen.queryByTestId('story-card');
-const scene = () => screen.queryByRole('dialog', { name: /How Far Should Your Story Go/ });
+const scene = () => screen.queryByRole('dialog', { name: /Better Narration for Your Stories/ });
 const box = () => screen.getByPlaceholderText(/Type your action/);
 
 function enter() {

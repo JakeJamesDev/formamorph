@@ -76,7 +76,7 @@ describe('RoadScene levels', () => {
     scene();
     expect(screen.getByText('Your support includes:')).toBeTruthy();
     expect(screen.getByText('More turns each week')).toBeTruthy();
-    expect(screen.getByText("Formamorph AI, with twice Ember's memory, so a large world still has room for your story")).toBeTruthy();
+    expect(screen.getByText("Twice Ember's room for large worlds and long stories")).toBeTruthy();
     expect(screen.getByText('A Blaze badge and name color, and a place on the Supporters wall')).toBeTruthy();
   });
 
@@ -111,14 +111,22 @@ describe('RoadScene levels', () => {
     expect(demo.querySelector('em')?.textContent).toBe('humility');
   });
 
-  it('says on every level that the latest scenes stay word for word, beside its own line', () => {
+  it('shows each level its own line with the server names, and no word-for-word line', () => {
     stubReducedMotion();
     scene({ initialTier: 'supporter' });
     ROAD_LEVELS.forEach((level) => {
       pick(NAMES[level.tier]);
-      expect(screen.getByText(level.line)).toBeTruthy();
-      expect(screen.getByText('Every level keeps the latest scenes word for word')).toBeTruthy();
+      expect(screen.getByText(level.line((tier) => NAMES[tier]))).toBeTruthy();
+      expect(screen.queryByText(/word for word/)).toBeNull();
     });
+    pick(NAMES.supporter_plus);
+    expect(screen.getByText("More turns each week, and twice Ember's room for large worlds")).toBeTruthy();
+  });
+
+  it('leads with narration quality and names support as a reason to pledge', () => {
+    scene();
+    expect(screen.getByRole('heading', { name: 'Better Narration for Your Stories' })).toBeTruthy();
+    expect(screen.getByText('Whatever the perks are worth to you, every pledge helps keep the updates coming.')).toBeTruthy();
   });
 });
 

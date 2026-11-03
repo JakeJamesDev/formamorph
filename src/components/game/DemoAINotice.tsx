@@ -57,8 +57,8 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle>(function DemoAINotice
               can try the app with no setup.
             </DialogDescription>
             <p>
-              The AI writes everything you read. A stronger model writes sharper narration, remembers more of your
-              story, and keeps each entity consistent. Nothing else in Formamorph changes your game as much.
+              The AI writes everything you read. A stronger model writes sharper narration, keeps each entity
+              consistent, and remembers more of your story. Nothing else in Formamorph changes your game as much.
             </p>
             <p>If a world seems dull, try it on a stronger model before you judge it.</p>
             <p>
@@ -84,7 +84,7 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle>(function DemoAINotice
             )}
             {offerAvailable && (
               <div className="flex items-center justify-between gap-3">
-                <p>Formamorph AI is a stronger AI with no setup, and your support on Patreon includes it.</p>
+                <p>Formamorph AI is a stronger AI with no setup. Your support on Patreon includes it and helps fund new updates.</p>
                 <Button variant="outline" size="sm" className="shrink-0" onClick={() => { close(); openRoadScene(); }}>
                   See Levels
                 </Button>

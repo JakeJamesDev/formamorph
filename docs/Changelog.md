@@ -122,6 +122,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Set up your AI offers Formamorph AI first on desktop GPUs with 8 GB of memory or less.** See Levels opens the levels scene. The local model download stays below the card.
     - **Support on Patreon in the Levels scene now opens a checklist that takes you to Formamorph AI.** It covers sign-in, your pledge, linking Patreon and switching. Each step shows when it's done, and Finish Later keeps your progress.
     - **Formamorph AI in AI settings shows Morphie and the three levels when you can't use it yet.** A fire changes with the level you pick. See Levels opens the scene, and Support on Patreon opens the checklist.
+    - **Every Formamorph AI offer now leads with sharper narration and no setup.** The levels screen says higher levels add more turns each week, then more room for large worlds. It also says your pledge helps fund updates.
   - **Listing Comment Links:**
     - **Listing comments in Community Creations show `@name`, `#123` and pasted listing links as chips.** Old comments show them too, and a new or edited comment shows them at once. On the website, author and commenter names now open their profile pages.
     - **Typing @ or # in a listing comment lists matching players and threads.** Pick one to insert `@name` or `#12`. It works when you write a comment and when you edit one.

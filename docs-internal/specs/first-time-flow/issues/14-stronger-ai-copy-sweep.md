@@ -1,6 +1,6 @@
 # 14: Stronger AI Copy Sweep
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -31,12 +31,24 @@ The user approved this wording. Use it as written:
 
 Level names in these lines use the server's name, as the level table does today. The shared perks (Mascots, badge, Supporters wall) stay after these.
 
-- [ ] Each surface above shows this wording, and the tests that pin the old wording use the new one.
-- [ ] The line "Every level keeps the latest scenes word for word" is gone from the scene.
-- [ ] The locked preset panel from ticket 11 shows the new level lines through the shared table.
-- [ ] The road's art, its lit counts and the side-by-side sample don't change.
-- [ ] A search of `src/` and `docs/` finds no offer that leads with story held, and no "more turns" outside a comparison of levels.
-- [ ] `docs/How-to-Play.md` no longer says a level's light shows how much of your story it reaches.
-- [ ] The existing In Progress changelog line that says each level's line states what it adds for your world and your story is correct after this change, and a changelog fragment states what changed for the player.
+- [x] Each surface above shows this wording, and the tests that pin the old wording use the new one. (Table-by-table diff review; `RoadScene.test.tsx`, `DemoAINotice.test.tsx`, `RoadSceneHost.test.tsx`)
+- [x] The line "Every level keeps the latest scenes word for word" is gone from the scene. (`RoadScene.test.tsx`: no `word for word` text on any level)
+- [x] The locked preset panel from ticket 11 shows the new level lines through the shared table. (`LockedPresetPanel` calls `roadLevel(tier).line(name)`)
+- [x] The road's art, its lit counts and the side-by-side sample don't change. (Diff touches no `lit`, fire or `ROAD_SAMPLES` value)
+- [x] A search of `src/` and `docs/` finds no offer that leads with story held, and no "more turns" outside a comparison of levels. (Grep, and the spec review)
+- [x] `docs/How-to-Play.md` no longer says a level's light shows how much of your story it reaches.
+- [ ] The existing In Progress changelog line that says each level's line states what it adds for your world and your story is correct after this change, and a changelog fragment states what changed for the player. (Fragment written; the old line is not corrected, see Landed)
 
 For you: whether `.scratch/tier-art/patreon-tier-text.md` follows, because the Flame and Beacon perks there use the old memory lines. The AI setup card's comparison with local models has no side-by-side behind it yet.
+
+## Landed
+
+**Not verified**
+- The old In Progress line in `docs/Changelog.md` ("Each level's line now states what it adds for your world and your story") is now wrong. A ticket branch cannot edit the changelog, so it still says that. Edit it by hand to match the new level lines.
+- The footer line's placement above Support on Patreon. Tests check the text only, and no frame was taken.
+- Jsdom tests ran only in prepare's gates, not in the review gates.
+
+**For you**
+- Whether `.scratch/tier-art/patreon-tier-text.md` follows, because the Flame and Beacon perks there use the old memory lines. The AI setup card's comparison with local models has no side-by-side behind it yet.
+- The approved wording says "characters" where the Writing Guide says "entity", and it mixes "support" and "pledge". Look at the story card, the AI setup card and the levels screen (`#dev?modal=aiSetup&vram=6144`).
+- "Twice Spark's room" and "four times Spark's room" are level multipliers kept from the approved table.

@@ -13,8 +13,8 @@ const MORPHIE_HEIGHT = 72;
  *  with its own words and no Not Now. */
 export function StoryCard({
   onNotNow, onSeeLevels, className, testId = 'story-card',
-  title = 'Want the AI to Keep More of This Story in Mind?',
-  body = 'Formamorph AI is a stronger AI, and your support includes it.',
+  title = 'Want Better Narration for This Story?',
+  body = 'Formamorph AI writes sharper narration and keeps characters consistent. Your support includes it, and it helps fund new updates.',
 }: {
   onNotNow?: () => void;
   onSeeLevels: () => void;

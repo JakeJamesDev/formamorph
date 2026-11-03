@@ -207,7 +207,7 @@ describe('DemoAINotice content', () => {
     expect(screen.getByRole('heading', { name: TITLE })).toBeInTheDocument();
     for (const text of [
       "You're playing on Formamorph's free built-in AI. It's a small model, and it's here so you can try the app with no setup.",
-      'The AI writes everything you read. A stronger model writes sharper narration, remembers more of your story, and keeps each entity consistent. Nothing else in Formamorph changes your game as much.',
+      'The AI writes everything you read. A stronger model writes sharper narration, keeps each entity consistent, and remembers more of your story. Nothing else in Formamorph changes your game as much.',
       'If a world seems dull, try it on a stronger model before you judge it.',
       'For the full experience, connect your own AI in Settings. Any OpenAI-compatible endpoint works, local or hosted. How to set up your own AI',
       DESKTOP_PITCH,

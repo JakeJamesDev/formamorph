@@ -8,13 +8,13 @@ export interface RoadLevel {
   readonly tier: SupporterTier;
   /** The name until the server gives one, so the levels can always be told apart. */
   readonly fallbackName: string;
-  /** Story moments the light reaches, newest first. */
+  /** Story moments lit on the road, newest first. Art only. */
   readonly lit: number;
   /** The fire's width in stage units. */
   readonly fireWidth: number;
   /** The light's radius in stage units. */
   readonly lightRadius: number;
-  readonly line: string;
+  readonly line: (name: (tier: SupporterTier) => string) => string;
   /** Morphie's layers over her base, bottom first. */
   readonly look: readonly MascotAssetName[];
   readonly perks: (name: (tier: SupporterTier) => string) => readonly string[];
@@ -34,9 +34,14 @@ export const ROAD_LEVELS: readonly RoadLevel[] = [
     lit: 3,
     fireWidth: 76,
     lightRadius: 210,
-    line: 'Room for your world and a long story',
+    line: () => 'Sharper narration and consistent characters, with no setup',
     look: [NO_WAVE, 'arms-no-thinking', 'mouth-small-o'],
-    perks: (name) => ['A weekly allowance of turns', 'Formamorph AI, ready to play with no setup', ...sharedPerks(name('supporter'))],
+    perks: (name) => [
+      'Sharper narration and more consistent characters',
+      'A weekly allowance of turns',
+      'Ready to play with no setup',
+      ...sharedPerks(name('supporter')),
+    ],
   },
   {
     tier: 'supporter_plus',
@@ -44,11 +49,11 @@ export const ROAD_LEVELS: readonly RoadLevel[] = [
     lit: 7,
     fireWidth: 150,
     lightRadius: 400,
-    line: 'More turns, and room for a large world and a much longer story',
+    line: (name) => `More turns each week, and twice ${name('supporter')}'s room for large worlds`,
     look: [NO_WAVE, 'arms-thinking', 'eyes-wide', 'mouth-small-o'],
     perks: (name) => [
       'More turns each week',
-      `Formamorph AI, with twice ${name('supporter')}'s memory, so a large world still has room for your story`,
+      `Twice ${name('supporter')}'s room for large worlds and long stories`,
       ...sharedPerks(name('supporter_plus')),
     ],
   },
@@ -58,18 +63,15 @@ export const ROAD_LEVELS: readonly RoadLevel[] = [
     lit: 12,
     fireWidth: 196,
     lightRadius: 900,
-    line: 'The most turns, and room for the largest worlds and the longest stories',
+    line: (name) => `The most turns each week, and four times ${name('supporter')}'s room for large worlds`,
     look: [NO_WAVE, 'arms-no-thinking', 'eyes-heart', 'mouth-open'],
     perks: (name) => [
       'The most turns each week',
-      `Formamorph AI, with four times ${name('supporter')}'s memory, for the largest worlds and the longest stories`,
+      `Four times ${name('supporter')}'s room for the largest worlds and longest stories`,
       ...sharedPerks(name('supporter_top')),
     ],
   },
 ];
-
-/** True of every level, because a larger window holds more summaries of older turns, not more whole turns. */
-export const ROAD_SHARED_LINE = 'Every level keeps the latest scenes word for word';
 
 export const DEFAULT_ROAD_TIER: SupporterTier = 'supporter_plus';
 

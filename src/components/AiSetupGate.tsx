@@ -370,8 +370,8 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
           <StoryCard
             testId="ai-setup-lead"
             className={cn(expanded && 'shrink-0')}
-            title="Play With a Stronger AI"
-            body="Formamorph AI gives you more turns each week. It also keeps large worlds and long stories in mind."
+            title="Better Narration, Nothing to Download"
+            body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your GPU. Your support also helps fund new updates."
             onSeeLevels={openRoadScene}
           />
         )}
