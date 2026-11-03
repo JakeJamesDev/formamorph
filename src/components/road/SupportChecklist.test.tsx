@@ -37,7 +37,7 @@ const UNLINKED: PatreonStatus = { linked: false };
 const NO_TIER: PatreonStatus = { linked: true, tier: null, since: null, showFlair: true };
 const PLEDGED: PatreonStatus = { linked: true, tier: 'supporter', since: null, showFlair: true };
 
-const dialog = () => screen.queryByRole('dialog', { name: 'Get Formamorph AI' });
+const dialog = () => screen.queryByRole('dialog', { name: 'Set Up Formamorph AI' });
 const row = (id: string) => document.querySelector(`[data-step="${id}"]`)!;
 const doneRows = () => [...document.querySelectorAll('[data-step][data-done="true"]')].map((el) => el.getAttribute('data-step'));
 const status = (next: PatreonStatus) => vi.mocked(PatreonService.getStatus).mockResolvedValue(next);

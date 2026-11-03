@@ -1,7 +1,7 @@
 # 05 — Formamorph AI needs the Weekly Allowance first
 
 Type: task
-Status: needs-info
+Status: done
 Blocks: release
 
 ## Problem
@@ -15,3 +15,7 @@ Origin: [Weekly Allowance](../../weekly-allowance/spec.md), Q20.
 - The Weekly Allowance effort has landed in both repos.
 - Each tier's weekly budget is set in server settings.
 - The Patreon tier descriptions say weekly.
+
+## Answer
+
+Resolved 2026-11-03. The effort landed in both repos, the live setting holds each tier's weekly budget, and the user updated the Patreon tier descriptions.

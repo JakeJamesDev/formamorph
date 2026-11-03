@@ -68,7 +68,7 @@ describe('RoadSceneHost', () => {
     render(<App />);
     act(() => openRoadScene());
     fireEvent.click(screen.getByRole('button', { name: 'Support on Patreon' }));
-    expect(screen.getByRole('heading', { name: 'Get Formamorph AI' })).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Set Up Formamorph AI' })).not.toBeNull();
     expect(openExternal).not.toHaveBeenCalled();
   });
 
@@ -78,6 +78,6 @@ describe('RoadSceneHost', () => {
     expect(screen.getByRole('heading', { name: 'Better Narration for Your Stories' })).not.toBeNull();
     act(() => closeRoadScene());
     act(() => openRoadScene('checklist'));
-    expect(screen.getByRole('heading', { name: 'Get Formamorph AI' })).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Set Up Formamorph AI' })).not.toBeNull();
   });
 });

@@ -13,7 +13,7 @@ test.describe('The support checklist layout', () => {
 
       for (const sample of ['start', 'visited', 'noPledge', 'linked', 'finished']) {
         await gotoDev(page, 'mainMenu', { modal: 'road', tab: 'checklist', subtab: sample });
-        await expect(page.getByRole('heading', { name: 'Get Formamorph AI' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Set Up Formamorph AI' })).toBeVisible();
         await page.waitForTimeout(1200);
 
         // Rows hold one fixed order whatever is done, and none overlaps the next.
@@ -25,7 +25,7 @@ test.describe('The support checklist layout', () => {
         for (let i = 1; i < boxes.length; i += 1) expect(boxes[i].y).toBeGreaterThanOrEqual(boxes[i - 1].y + boxes[i - 1].height);
 
         const stage = (await page.locator('[data-road-stage]').boundingBox())!;
-        const title = (await page.getByRole('heading', { name: 'Get Formamorph AI' }).boundingBox())!;
+        const title = (await page.getByRole('heading', { name: 'Set Up Formamorph AI' }).boundingBox())!;
         expect(title.y + title.height).toBeLessThanOrEqual(stage.y);
         expect(stage.y + stage.height).toBeLessThanOrEqual(boxes[0].y);
 

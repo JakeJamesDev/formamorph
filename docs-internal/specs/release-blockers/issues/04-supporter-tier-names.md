@@ -1,7 +1,7 @@
 # 04 — Supporter tier names are not decided
 
 Type: task
-Status: needs-info
+Status: done
 Blocks: release
 
 ## Problem
@@ -22,3 +22,7 @@ Origin: [Formamorph AI](../../hosted-ai/spec.md), ticket 02. The code work is th
 - The user has set final tier names in Patreon.
 - The app and site read tier names from Patreon, with "Member" as the fallback.
 - A copy sweep finds no wording that frames support as payment for a service.
+
+## Answer
+
+Resolved 2026-11-03. The user set the Patreon titles Spark, Flame and Beacon, and the app and site read them. The copy sweep changed the checklist heading to "Set Up Formamorph AI" and found no other wording that frames support as payment.

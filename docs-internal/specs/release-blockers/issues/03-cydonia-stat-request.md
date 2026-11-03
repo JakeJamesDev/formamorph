@@ -1,7 +1,7 @@
 # 03 — Stat request invents changes on Cydonia
 
 Type: task
-Status: needs-triage
+Status: done
 Blocks: release
 
 ## Problem
@@ -19,3 +19,7 @@ Owning effort: [Entity Stats](../../entity-stats/spec.md), rulings Q45, Q56, Q64
 
 - The entity stats probe meets Q28 and Q45 on Cydonia without a drop on the cloud model.
 - Or the user rules the blocker closed.
+
+## Answer
+
+The user ruled it closed for 3.6.0 on 2026-11-03. The probe bar is not met: Cydonia still invents stat changes, and 3.6.0 ships with that gap.

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Meta } from '@/components/ui/typography';
 import { SUPPORTER_TIERS } from '@/lib/supporterFlair';
 import type { SupporterTier } from '@/types';
 import { checklistFireTier } from '@/lib/supportChecklist';
@@ -87,7 +88,7 @@ export function RoadScene({ open = true, initialTier = DEFAULT_ROAD_TIER, initia
           <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
             <div className="text-center">
               <DialogTitle className="text-heading">
-                {allDone ? 'You’re All Set' : checklistView ? 'Get Formamorph AI' : 'Better Narration for Your Stories'}
+                {allDone ? 'You’re All Set' : checklistView ? 'Set Up Formamorph AI' : 'Better Narration for Your Stories'}
               </DialogTitle>
               <DialogDescription className="text-body">
                 {allDone
@@ -122,9 +123,9 @@ export function RoadScene({ open = true, initialTier = DEFAULT_ROAD_TIER, initia
         </ScrollArea>
         <div className="shrink-0 border-t border-border">
           {!checklistView && (
-            <p className="mx-auto max-w-4xl px-4 pt-3 text-center text-meta text-muted-foreground">
-              Whatever the perks are worth to you, every pledge helps keep the updates coming.
-            </p>
+            <Meta as="p" className="mx-auto max-w-4xl px-4 pt-3 text-center">
+              Whatever the perks are worth to you, every pledge helps keep the updates coming
+            </Meta>
           )}
           <DialogFooter className="mx-auto max-w-4xl gap-2 p-4">
             {checklistView ? (

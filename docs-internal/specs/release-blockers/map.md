@@ -27,13 +27,13 @@ Everything in `issues/` is closed, so nothing on this list stands between the cu
   `useCatalogSync` — a miss only counts once a refresh lands during the current open. 9 new tests,
   mutation-proven. Details in [02](issues/02-update-available-uncached-world.md).
 - **06 — Release builds still ship the Elaina Avatar** resolved 2026-11-02. Sei replaces Elaina on release builds, and a build with no bundled Avatar holds no `.vrm`. Details in [06](issues/06-release-avatar-license.md).
+- **03 — Stat request invents changes on Cydonia: closed for 3.6.0 by user ruling, 2026-11-03.** The probe bar is not met, and the release ships with the gap. Details in [03](issues/03-cydonia-stat-request.md).
+- **05 — Formamorph AI needs the Weekly Allowance first: resolved 2026-11-03.** Weekly budgets are live, and the Patreon tier descriptions say weekly. Details in [05](issues/05-weekly-allowance.md).
+- **07 — Formamorph AI needs its limits enforced first: resolved 2026-11-03.** The enforcement effort is deployed, and the live turn call cap is set. Details in [07](issues/07-formamorph-ai-enforcement.md).
+- **04 — Supporter tier names are not decided: resolved 2026-11-03.** The Patreon titles are set, the app and site read them, and the copy sweep is done. Details in [04](issues/04-supporter-tier-names.md).
 
 ## Open blockers
 
-- **03 — Stat request invents changes on Cydonia** (from Entity Stats, Q66). The shipped stat request scores 30% exact with 122 invented changes on Cydonia 24B; the cloud model clears its bar. Details in [03](issues/03-cydonia-stat-request.md).
-- **04 — Supporter tier names are not decided** (from Formamorph AI). Names come from Patreon titles with "Member" as the fallback, and copy reads as a donation. Details in [04](issues/04-supporter-tier-names.md).
-- **05 — Formamorph AI needs the Weekly Allowance first** (from Weekly Allowance). No member may start on a monthly allowance. Details in [05](issues/05-weekly-allowance.md).
-- **07 — Formamorph AI needs its limits enforced first** (from Formamorph AI Enforcement). An entitled account can spend past its allowance today. Details in [07](issues/07-formamorph-ai-enforcement.md).
 
 _(none)_
 

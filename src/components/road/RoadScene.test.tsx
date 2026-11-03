@@ -126,7 +126,7 @@ describe('RoadScene levels', () => {
   it('leads with narration quality and names support as a reason to pledge', () => {
     scene();
     expect(screen.getByRole('heading', { name: 'Better Narration for Your Stories' })).toBeTruthy();
-    expect(screen.getByText('Whatever the perks are worth to you, every pledge helps keep the updates coming.')).toBeTruthy();
+    expect(screen.getByText('Whatever the perks are worth to you, every pledge helps keep the updates coming')).toBeTruthy();
   });
 });
 
@@ -165,7 +165,7 @@ describe('RoadScene actions', () => {
     fireEvent.click(keep);
     expect(onKeepPlaying).toHaveBeenCalledTimes(1);
     fireEvent.click(support);
-    expect(screen.getByRole('heading', { name: 'Get Formamorph AI' })).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Set Up Formamorph AI' })).not.toBeNull();
     expect(onKeepPlaying).toHaveBeenCalledTimes(1);
   });
 

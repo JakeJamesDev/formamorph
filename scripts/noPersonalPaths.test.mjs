@@ -2,10 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-/** Tracked text files matching a pattern; git grep exits 1 when none do. */
+/** Tracked and new unignored text files matching a pattern; git grep exits 1 when none do. */
 function tracked(pattern) {
   try {
-    return execFileSync('git', ['grep', '-I', '-l', '-E', pattern], { encoding: 'utf8' }).split('\n').filter(Boolean);
+    return execFileSync('git', ['grep', '--untracked', '-I', '-l', '-E', pattern], { encoding: 'utf8' }).split('\n').filter(Boolean);
   } catch {
     return [];
   }

@@ -109,7 +109,7 @@ async function scenario({ bin, modelPath, settings, chat }) {
     for (let i = 0; i < depth; i++) e = JSON.stringify(e).slice(1, -1);
     return e;
   }).reverse();
-  const swaps = [[presetPath, '<preset>'], [bin, '<bin>'], [modelPath, '<model>'], [modelPath.replace(/\\/g, '/'), '<model>'], [modelId, '<modelId>']];
+  const swaps = [[presetPath, '<preset>'], [bin, '<bin>'], [modelPath, '<model>'], [modelPath.replace(/\\/g, '/'), '<model>'], [modelId, '<modelId>'], [os.homedir(), 'C:\\Users\\user']];
   const scrub = (v) => {
     let text = JSON.stringify(v);
     for (const [from, to] of swaps) for (const e of escapes(from)) text = text.split(e).join(to);

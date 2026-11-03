@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import type { SupportChecklistModel } from './useSupportChecklist';
 
@@ -35,7 +36,7 @@ export function SupportChecklist({ checklist }: { checklist: SupportChecklistMod
                 {row.title}
                 <span className="sr-only">{row.done ? ', done' : ''}</span>
               </p>
-              <p className="text-meta text-muted-foreground">{row.hint}</p>
+              <Meta as="p">{row.hint}</Meta>
             </div>
             {row.id === 'pledge' && openPatreon && (
               <Button variant="link" className="shrink-0" onClick={openPatreon}>Open Patreon</Button>
