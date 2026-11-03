@@ -32,7 +32,7 @@ To see your allowance in settings, open Settings → **Endpoints** → **Text** 
 - Each turn on any device counts against one shared allowance.
 - The allowance resets every week. The panel shows the day and time in your local time.
 - A notice appears after a turn when you reach the highest warning level, with a **Support on Patreon** link. It shows once a week across all your devices.
-- When the allowance runs out, Formamorph AI stops until the reset. A notice says so after the turn and stays until you close it. Select **Switch Back** to return to your last preset, or **Support on Patreon** to open the Patreon page.
+- When the allowance runs out, Formamorph AI stops until the reset, including background requests such as diaries. A notice says so after the turn and stays until you close it. Select **Switch Back** to return to your last preset, or **Support on Patreon** to open the Patreon page.
 
 If you are not a Supporter, the preset shows a **Support on Patreon** button.
 

@@ -20,6 +20,8 @@ export interface HostedStateCopy {
 export const HOSTED_SUPPORT_LABEL = 'Support on Patreon';
 export const HOSTED_SWITCH_BACK_LABEL = 'Switch Back';
 
+const RECHECK: HostedStateAction = { kind: 'recheck', label: 'Check Again' };
+
 const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
   ready: null,
   warned: null,
@@ -38,17 +40,17 @@ const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
   },
   paused: {
     reason: "Formamorph AI is paused for everyone right now. This doesn't use your allowance.",
-    action: { kind: 'recheck', label: 'Check Again' },
+    action: RECHECK,
   },
   unconfirmed: {
     reason: HOSTED_UNCONFIRMED_REASON,
-    action: { kind: 'recheck', label: 'Check Again' },
+    action: RECHECK,
     extra: { kind: 'switchBack', label: HOSTED_SWITCH_BACK_LABEL },
   },
   outdated: { reason: 'Update Formamorph to keep using Formamorph AI', action: { kind: 'update', label: 'Update' } },
   unavailable: {
     reason: "Formamorph AI can't report your allowance right now. Your turns still send.",
-    action: { kind: 'recheck', label: 'Check Again' },
+    action: RECHECK,
   },
 };
 

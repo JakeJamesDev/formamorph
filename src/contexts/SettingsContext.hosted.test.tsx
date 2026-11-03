@@ -163,6 +163,22 @@ describe('SettingsContext: the hosted state waits for the age gate', () => {
   });
 });
 
+describe('HostedAiStateSync: the recovery timer', () => {
+  it('watches for recovery while mounted and stops at unmount', () => {
+    const stop = vi.fn();
+    const watch = vi.spyOn(hostedSession, 'watchRecovery').mockReturnValue(stop);
+    seed('mine');
+
+    const { unmount } = renderHook(() => useSettings(), { wrapper });
+    expect(watch).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
+
+    unmount();
+    expect(stop).toHaveBeenCalledTimes(1);
+    watch.mockRestore();
+  });
+});
+
 describe('SettingsContext: Formamorph AI', () => {
   it('takes the active window, cap, model and capabilities from the hosted state, and probes nothing', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

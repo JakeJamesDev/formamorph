@@ -460,9 +460,9 @@ describe('Formamorph AI through the Request Transport', () => {
     });
   });
 
-  it('tells the player once per state change when a background pass is blocked', async () => {
+  it.each(['locked', 'unconfirmed'])('tells the player once per state change when a background pass is blocked by %s', async (blockedState) => {
     quietErrors();
-    let state = 'locked';
+    let state = blockedState;
     const proxy = fakeProxy([], () => json(200, { success: true, data: { ...READY_STATE, state } }));
     const { session } = await signedIn(proxy.fetchImpl);
     const background = (turn: string) =>
@@ -473,7 +473,7 @@ describe('Formamorph AI through the Request Transport', () => {
     // The preset sends again, then locks again: that is a new state change.
     state = 'ready';
     await session.refresh();
-    state = 'locked';
+    state = blockedState;
     await session.refresh();
     shownPerTurn.push((await background('t4')).failures.length);
 

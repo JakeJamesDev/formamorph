@@ -13,6 +13,9 @@ const settled = (turnId: string): HostedTurnClaim => ({ turnId, opened: () => {}
 /** The largest margin taken off a turn's limit, to cover the time a call takes to reach the server. */
 const MAX_EXPIRY_MARGIN_MS = 30_000;
 
+/** The share of a turn's limit taken off it, up to the largest margin. */
+const EXPIRY_MARGIN_SHARE = 0.1;
+
 /**
  * One player turn on Formamorph AI. The first call goes alone and carries no id; the others wait for its
  * response headers and send the id the server issued. A first call that fails hands the turn to the next.
@@ -27,7 +30,7 @@ export class HostedTurn {
   private clearIfExpired(limitSeconds: number | null) {
     if (this.id === null || limitSeconds === null) return;
     const limitMs = limitSeconds * 1000;
-    if (Date.now() - this.sentAt >= limitMs - Math.min(MAX_EXPIRY_MARGIN_MS, limitMs / 10)) this.id = null;
+    if (Date.now() - this.sentAt >= limitMs - Math.min(MAX_EXPIRY_MARGIN_MS, limitMs * EXPIRY_MARGIN_SHARE)) this.id = null;
   }
 
   /** The turn holds a server-issued id, so the server admits its remaining calls past the budget, up to the grace. A claim clears an expired id. */
