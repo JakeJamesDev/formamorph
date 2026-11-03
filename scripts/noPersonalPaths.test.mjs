@@ -13,8 +13,13 @@ function tracked(pattern) {
 
 describe('the repo holds no personal details', () => {
   it('names no Windows user folder other than the placeholder', () => {
-    const paths = tracked('[A-Za-z]:[\\\\/]+Users[\\\\/]+[A-Za-z]');
-    const named = paths.filter((file) => /[A-Za-z]:[\\/]+Users[\\/]+(?!user\b)[A-Za-z]/.test(readFileSync(file, 'utf8')));
+    const paths = tracked('([A-Za-z]:[\\\\/]+|/[a-z]/)Users[\\\\/]+[A-Za-z]');
+    const named = paths.filter((file) => /(?:[A-Za-z]:[\\/]+|\/[a-z]\/)Users[\\/]+(?!user\b)[A-Za-z]/.test(readFileSync(file, 'utf8')));
+    expect(named).toEqual([]);
+  });
+
+  it('names no Linux home folder other than the placeholder, CI runners, and the cloud endpoint', () => {
+    const named = tracked('/home/[a-z]').filter((file) => /\/home\/(?!user\b|runner\b|fiery\b)[a-z]/.test(readFileSync(file, 'utf8')));
     expect(named).toEqual([]);
   });
 
