@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Writes the Test Ledger: timed suite runs, per-file coverage of each module under test, and failure history.
 // Raw output stays untracked in <git common dir>/test-ledger, which outlives a ticket worktree.
-// Usage: node scripts/testLedger.mjs [--runs <n>] [--coverage] [--coverage-workers <n>] [--history] [--files <list file>] [--dir <path>]
+// Usage: node scripts/testLedger.mjs [--runs <n>] [--coverage] [--coverage-workers <n>] [--coverage-module <path>] [--history] [--files <list file>] [--dir <path>]
 //        node scripts/testLedger.mjs --stale | --report | --real-bug
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -93,11 +93,11 @@ export function coverageEntry(final, module) {
 }
 
 /** Runs one test file alone with coverage on its module. A hang is killed and stored as an error. */
-function coverageOne(file, evidence, dir) {
+function coverageOne(file, evidence, module, dir) {
   const reports = mkdtempSync(path.join(os.tmpdir(), 'test-ledger-coverage-'));
   const project = file.endsWith('.test.ts') ? 'node' : 'dom';
   const args = [vitest, 'run', file, '--project', project, '--reporter=dot', '--coverage.enabled', '--coverage.provider=v8',
-    `--coverage.include=${evidence.moduleUnderTest.path}`, '--coverage.reporter=json', `--coverage.reportsDirectory=${reports}`, '--coverage.reportOnFailure'];
+    `--coverage.include=${module}`, '--coverage.reporter=json', `--coverage.reportsDirectory=${reports}`, '--coverage.reportOnFailure'];
   return new Promise((resolve) => {
     const started = Date.now();
     const child = spawn(process.execPath, args, { stdio: 'ignore', windowsHide: true });
@@ -109,29 +109,31 @@ function coverageOne(file, evidence, dir) {
     child.on('close', (status) => {
       clearTimeout(timer);
       const final = readJson(path.join(reports, 'coverage-final.json'), null);
-      const entry = final && coverageEntry(final, evidence.moduleUnderTest.path);
+      const entry = final && coverageEntry(final, module);
       rmSync(reports, { recursive: true, force: true });
-      const result = { file, hash: evidence.hash, ms: Date.now() - started, status, ...(entry ?? { error: hung ? 'hung' : 'no coverage for the module' }) };
+      const result = { file, hash: evidence.hash, moduleHash: evidenceHash([module], readOrNull), ms: Date.now() - started, status, ...(entry ?? { error: hung ? 'hung' : 'no coverage for the module' }) };
       writeFileSync(coverageFile(dir, file), JSON.stringify(result));
       resolve(result);
     });
   });
 }
 
-export const needsCoverage = (stored, hash) => stored.hash !== hash || Boolean(stored.error);
+export const needsCoverage = (stored, hash, module) => stored.hash !== hash || stored.module !== module || Boolean(stored.error);
 
-/** Coverage for every test file with no good entry at its hash, so an interrupted pass resumes. */
-async function coverageRuns(dir, files, workers, tree) {
+/** Coverage for every test file with no good entry at its hash, so an interrupted pass resumes. `moduleOverride` measures that module instead of each file's own. */
+async function coverageRuns(dir, files, workers, tree, moduleOverride) {
   mkdirSync(path.join(dir, 'coverage'), { recursive: true });
-  const queue = files.map((file) => ({ file, evidence: evidenceOf(file, tree) }))
-    .filter(({ file, evidence }) => evidence.moduleUnderTest.path && needsCoverage(readJson(coverageFile(dir, file), {}), evidence.hash));
+  const queue = files.map((file) => {
+    const evidence = evidenceOf(file, tree);
+    return { file, evidence, module: moduleOverride ?? evidence.moduleUnderTest.path };
+  }).filter(({ file, evidence, module }) => module && needsCoverage(readJson(coverageFile(dir, file), {}), evidence.hash, module));
   const total = queue.length;
   const started = Date.now();
   let done = 0;
   let errors = 0;
   const worker = async () => {
     for (let item = queue.shift(); item; item = queue.shift()) {
-      const result = await coverageOne(item.file, item.evidence, dir);
+      const result = await coverageOne(item.file, item.evidence, item.module, dir);
       done++;
       if (result.error) errors++;
       if (done % 50 === 0 || done === total) console.log(`Coverage ${done}/${total}, ${errors} errors, ${((Date.now() - started) / 1000).toFixed(0)} s.`);
@@ -140,7 +142,7 @@ async function coverageRuns(dir, files, workers, tree) {
   await Promise.all(Array.from({ length: workers }, worker));
 }
 
-function readDirJson(dir) {
+export function readDirJson(dir) {
   return existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith('.json')).map((name) => JSON.parse(readFileSync(path.join(dir, name), 'utf8'))) : [];
 }
 
@@ -161,6 +163,7 @@ async function main() {
       runs: { type: 'string' },
       coverage: { type: 'boolean', default: false },
       'coverage-workers': { type: 'string', default: '8' },
+      'coverage-module': { type: 'string' },
       history: { type: 'boolean', default: false },
       files: { type: 'string' },
       dir: { type: 'string' },
@@ -169,6 +172,7 @@ async function main() {
       'real-bug': { type: 'boolean', default: false },
     },
   });
+  if (values['coverage-module'] && !values.dir) throw new Error('--coverage-module needs --dir.');
   const commonDir = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' }).trim();
   const dir = path.resolve(values.dir ?? path.join(commonDir, 'test-ledger'));
   mkdirSync(dir, { recursive: true });
@@ -195,10 +199,12 @@ async function main() {
 
   const files = values.files ? readFileSync(values.files, 'utf8').split('\n').map((line) => line.trim()).filter(Boolean) : [];
   const tree = treeGraph();
-  for (let run = 0; run < Number(values.runs ?? 0); run++) timedRun(dir, files, tree);
+  // An empty list is a proof whose files are all gone, never the whole suite.
+  const emptyList = values.files && !files.length;
+  for (let run = 0; !emptyList && run < Number(values.runs ?? 0); run++) timedRun(dir, files, tree);
   if (values.coverage) {
-    const testFiles = files.length ? files : [...tree.graph.keys()].filter((file) => TEST_FILE.test(file));
-    await coverageRuns(dir, testFiles, Number(values['coverage-workers']), tree);
+    const testFiles = values.files ? files : [...tree.graph.keys()].filter((file) => TEST_FILE.test(file));
+    await coverageRuns(dir, testFiles, Number(values['coverage-workers']), tree, values['coverage-module']);
   }
   if (values.history) {
     const history = await gatherHistory({ dir, commonDir, cwd: process.cwd() });

@@ -365,6 +365,8 @@ describe('needsCoverage', () => {
     expect(needsCoverage({ hash: 'old' }, 'h')).toBe(true);
     expect(needsCoverage({ hash: 'h', error: 'hung' }, 'h')).toBe(true);
     expect(needsCoverage({}, 'h')).toBe(true);
+    expect(needsCoverage({ hash: 'h', module: 'a.ts' }, 'h', 'a.ts')).toBe(false);
+    expect(needsCoverage({ hash: 'h', module: 'a.ts' }, 'h', 'b.ts')).toBe(true);
   });
 });
 

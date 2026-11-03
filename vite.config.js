@@ -181,7 +181,7 @@ export default defineConfig({
   },
   test: {
     // e2e/ belongs to Playwright; .scratch/ contains untracked working copies and experiments; marketing/ packages run their own checks.
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.scratch/**', '.claude/worktrees/**', 'marketing/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.scratch/**', '.stryker-tmp/**', '.claude/worktrees/**', 'marketing/**'],
     setupFiles: ['./src/test/setup.ts'],
     // A change to one of these makes `--changed` and `related` run the full suite. They replace vitest's `**/`
     // defaults, which can't match inside a ticket worktree: picomatch's `**` skips the `.claude` folder.

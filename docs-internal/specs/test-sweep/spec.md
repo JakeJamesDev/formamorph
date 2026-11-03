@@ -132,7 +132,7 @@ Close-spec compares final numbers against the owner's targets.
 ### Mutation runs
 
 - Stryker is the candidate tool. The pool must be forks, since threads fail real tests here. Scanner tests are excluded, because they may read instrumented source.
-- Runs use incremental mode and start with a one-module smoke test. A Q5 pass may take about 9 hours, which is unverified, so runs cover only modules that hold candidates.
+- Runs use incremental mode and cover only modules that hold candidates. [Kept-Protection Check](kept-protection.md) has the recipe, the smoke result and each Q5 module's projected cost.
 
 ### Test selection
 

@@ -15,6 +15,7 @@ out
 # The site entry's build. The deploy lays it over the tracked hosting dir; nothing here is committed.
 site-dist
 coverage
+.stryker-tmp
 release
 docs-api
 # Local GGUF models the desktop engine loads (dev drops them beside the project root).

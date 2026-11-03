@@ -65,7 +65,7 @@ export default tseslint.config(
   // 'android' is the native project; `cap sync` copies the built bundle into it.
   // `.claude/worktrees` holds other sessions' checkouts; each lints itself.
   // 'marketing' holds standalone packages with their own dependencies and scripts.
-  { ignores: ['dist', 'site-dist', 'out', 'coverage', 'release', 'electron', 'docs-api', '.scratch', 'testing/open-speed/.build', 'testing/editor-speed/.build', 'android', '.claude/worktrees', 'marketing'] },
+  { ignores: ['dist', 'site-dist', 'out', 'coverage', 'release', 'electron', 'docs-api', '.scratch', '.stryker-tmp', 'testing/open-speed/.build', 'testing/editor-speed/.build', 'android', '.claude/worktrees', 'marketing'] },
   {
     files: ['*.config.js'],
     languageOptions: {
