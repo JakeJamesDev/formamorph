@@ -1,8 +1,8 @@
 # Spec: First-Time Flow
 
-Status: ready-for-agent
+Status: done
 Spec session: first-time-flow — spec
-Status note: Grilled 2026-11-03 (Q1–Q28). Prototype verdict: Scene A, The Road. Eleven tickets. Blocked at runtime by the Formamorph AI release, so the offer must stay off in a build without it.
+Status note: Closed 2026-11-03. Tickets 01–14, last landing 62040bdcb, with follow-ups through a77be5a55. Closed with gaps: Q48 sample is a replay, no Steam build flag guards the offer (Steam checklist item 7), Q41 count can fire from the levels screen. Spec text corrected. Gates green on 2026-11-03.
 
 A new player reaches a first story in one click. A player on the Demo AI, or on a desktop with 8 GB of VRAM or less, learns about Formamorph AI through Morphie and a scene worth looking at, not through a popup they close at once. Spans both repos: the client and FormamorphServer.
 
@@ -26,7 +26,7 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 
 **Locked preset.** A player who selects Formamorph AI in AI settings with no access sees a panel with Morphie, the fire and the three levels, in place of plain text and a button. See Levels opens the same scene.
 
-**After Support on Patreon.** A guided checklist takes the player through sign-in with the 18+ check, the pledge, the Patreon link and the switch to Formamorph AI. The checklist reads real state, so a finished step shows as finished. The fire beside Morphie grows with each step.
+**After Support on Patreon.** A guided checklist takes the player through sign-in with the 18+ check, the pledge, the Patreon link and the switch to Formamorph AI. The checklist reads real state, so a finished step shows as finished. The fire beside Morphie grows with the finished steps (Q53).
 
 ## Rulings
 
@@ -96,6 +96,8 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q62 | A retry that delivers the reply charges the player's allowance, so the player pays once for the one reply received. Q54's "off the allowance" means the stopped attempt. A client that leaves during the retry settles as aborted, as any aborted call does. Ticket 13 ruling. |
 | Q63 | The scene's page follows the player's theme, and only the stage stays dark so the light reads. It fades in and out like other windows. Replaces the always-dark page. User ruling. |
 | Q64 | Switch to Formamorph AI selects the preset, reads the hosted state and marks its step done, and the flow stays open. Once all four steps are done, the page says so and its one action is Done, which closes it. Replaces Q53's closing Switch. User ruling. |
+| Q65 | Q61's "narration quality leads the perks" applies to the shared text and Spark's perks. Flame and Beacon's perks open with turns, because every level has the same narration. User ruling. |
+| Q66 | Q44's pledged player also includes the `unconfirmed` state, so a player whose pledge can't be confirmed for now gets no offer. User ruling. |
 
 ## User Stories
 
@@ -131,7 +133,7 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 30. As a signed-out player, I want sign-in and the 18+ check as the first step, so that I don't pay and then fail the check.
 31. As a player who left for Patreon, I want the checklist to pick up where I was when I return, so that I don't start over.
 32. As a player who pledged but didn't link, I want the link step to show as next, so that I get what my support includes.
-33. As a player who finishes the checklist, I want to switch to Formamorph AI and return to my story, so that I can use it at once.
+33. As a player who finishes the checklist, I want to switch to Formamorph AI, see the flow finish, and return to my story, so that I can use it at once.
 34. As a player who stops partway, I want Finish Later, so that I can go back to my story without losing progress.
 35. As a desktop player with 8 GB of VRAM or less, I want Formamorph AI first in AI setup, so that I don't download a weak model by mistake.
 36. As a desktop player with 8 GB or less, I want the local download still available, so that the choice stays mine.
@@ -160,9 +162,9 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 
 **Entry line.** The Demo AI dialog leaves the entry order (`nextEntryDialog`). The order becomes the AI gate, then the readme. The short line renders in the narration area and needs no dismissal. The badge still opens the existing dialog, and the dialog gains See Levels where the offer is available.
 
-**Card.** One component rendered in both layouts. Chat places it through `latestFooter`. Pages has no such slot, so the Pager gains one under the latest page's narration, above the choices. The card never takes focus and never blocks input.
+**Card.** One component rendered in both layouts. `MiddlePanel` renders it under the latest narration, above the choices, in both layouts. The card never takes focus and never blocks input.
 
-**Scene.** A full-screen surface with a `surface` entry and a dev route, forced to dark tokens so the light reads. The fire uses one warm light color, not the theme accent. Level data lives in one table: lit moments, fire width, light radius and the level's line. Names come from the existing tier-names module. Each level's price comes from Patreon through the same server route as its title, so a price change needs no build; the ticket confirms the field on Patreon's Tier resource. The scene shows no turn counts or allowance amounts.
+**Scene.** A full-screen surface with a `surface` entry and a dev route. The page follows the theme, and the stage keeps its own dark colors so the light reads (Q63). The fire uses one warm light color, not the theme accent. Level data lives in one table: lit moments, fire width, light radius and the level's line. Names come from the existing tier-names module. Each level's price comes from Patreon through the same server route as its title, so a price change needs no build; the ticket confirms the field on Patreon's Tier resource. The scene shows no turn counts or allowance amounts.
 
 **Jelly.** Reuses `mascotTransitionAt`, the shared timing function, with new tuning. The prototype's values (from the prototype; tune by eye):
 
@@ -177,13 +179,13 @@ A value swaps at `jellyDipMs`. An interrupted run starts from the height on scre
 
 **Side-by-side sample.** Two real, unedited model outputs for one Emberwatch moment, captured once and shipped as fixed text. The Demo AI and Formamorph AI samples come from the same prompt. Picks must be honest: typical outputs, not the Demo AI's worst. The user approves the pair.
 
-**Level lines.** Each line states what the level adds: a stronger AI with no setup on Spark, then more turns on Flame and Beacon (Q55). Room for larger worlds is a perk, stated plainly. The road's lit counts are art, and no text ties them to story held.
+**Level lines.** Each line states what the level adds: narration quality with no setup on Spark, then more turns and room for larger worlds on Flame and Beacon (Q60). The road's lit counts are art, and no text ties them to story held.
 
-**Checklist.** Reads `AuthService`, `useAgeGate`, `PatreonService.getStatus()` and the hosted state through `useSettings().hostedAi`. It re-reads on focus, as `PatreonSection` does. Each action reuses the existing path: `requireAttestation`, the Patreon page, `startLink`, and `selectTextEndpointPreset`, which already records the preset to switch back to. On a build that can't open Patreon inside the app, the existing `openExternal` path applies.
+**Checklist.** Reads `AuthService`, `useAgeGate`, `PatreonService.getStatus()` and the active preset, and reads the hosted state again on Switch (Q64). It re-reads on focus, as `PatreonSection` does. Each action reuses the existing path: `requireAttestation`, the Patreon page, `startLink`, and `selectTextEndpointPreset`, which already records the preset to switch back to. On a build that can't open Patreon inside the app, the existing `openExternal` path applies.
 
 **Low-VRAM lead.** AI setup reads `useVramStats` on desktop. The lead card shows at a total of 8,500 MB or less, whatever `tierForVram` groups it in, because that function puts cards up to 14 GB in one group. An unknown VRAM keeps today's layout. Above the limit, Formamorph AI stays available and does not lead.
 
-**Locked preset panel.** Replaces the reason text and button in `HostedPresetStatus` for the Q28 cases. It reuses the scene's level table and fire, with no second copy.
+**Locked preset panel.** Replaces the button in `HostedPresetStatus` for the Q28 cases, and keeps the state's reason line above the stage. It reuses the scene's level table and fire, with no second copy.
 
 **Anonymous totals (FormamorphServer).** A public POST route takes one step name from a fixed list: offer shown, See Levels, Patreon click, checklist finished. It increments a per-day total and stores no IP, install ID or account. It uses a per-route limiter, following `likeLimiter`. The client sends each step once per device. A failed send is dropped. The privacy policy text in the server gains a line, and the user approves its wording. The route deploys before the client ships.
 
