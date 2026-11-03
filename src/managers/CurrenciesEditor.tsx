@@ -131,7 +131,7 @@ function SortableCurrency({ currency, currencies, items, groups, isDefault, expa
         attached={expanded}
         label={title}
         meta={<span className="block truncate max-sm:max-w-20">{[isDefault ? 'Default' : '', KIND_LABEL[backing.kind]].filter(Boolean).join(' · ')}</span>}
-        actions={[{ icon: <X className="h-4 w-4" />, destructive: true, title: `Delete ${currency.name || 'Currency'}`, onClick: onRemove }]}
+        actions={[{ icon: <X className="h-4 w-4" />, destructive: true, title: `Delete ${title}`, onClick: onRemove }]}
       />
       {expanded && (
         <div className="grid gap-3 rounded-b-md border border-t-0 border-border p-3">

@@ -112,6 +112,9 @@ The player sees an item's worth in its popup and each balance in the Inventory t
 | Q86 | (ticket 12) Test Code reports one line per `pay` call, settled or refused, with the Currency, amount, parties and refusal reason |
 | Q87 | (ticket 12) A user Tool's `currencies` has `id`, `name`, `kind` and `balance`. The editor marks `pay` unavailable there, and a run stops with an error. World Tools keep `pay` |
 | Q88 | (ticket 13) Internal refusals share `{ settled: false; reason: string }`, and tests move from the `refused` property with it. A script's `{ paid, reason }` and its log row stay, and script money converts at its edge |
+| Q89 | (close review) A played entity's name reads as the player for the whole Inventory pass, not only pay and buy |
+| Q90 | (close review) Each Currency row shows Default and backing kind meta, as Bodies does |
+| Q91 | (close review) A Currency's name field stays in its expanded body |
 | Q76 | (after ticket 09) Narrows Q56: a pay with no `price`, or with a readable price and no one on either side, says nothing, so a gain, lose or transfer beside it runs. A pay with no price still blocks them when the player is its payer. A pay with a price it can't read, or one refused for funds or a lock, still blocks them. Probes showed Q56 losing a correct bounty in 5 of 15 runs |
 | Q75 | (ticket 09) "Coin" leaves the product and the code. The backing is `{ kind: 'items', items: [{ itemId, worth }] }`, the label is **Items**, and a row is a **Currency Item**, because they are plain items and the author names the Currency. Earlier rulings keep "coin" as history and mean a Currency Item |
 
