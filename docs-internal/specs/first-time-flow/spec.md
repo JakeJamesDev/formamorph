@@ -85,7 +85,8 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q52 | The low-VRAM lead hides for a pledged player (Q44), through a pledged fact in the rules module. It shows only in the bundled-engine choose step, for both setup reasons and both the short and Show-all views. Its one action is See Levels, and the text below it stays as it is. Ticket 07 ruling. |
 | Q53 | The checklist renders in the scene's body under the mounted stage, with no new dialog. The fire shows progress, not the player's level: Spark at 0-1 finished steps, Flame at 2-3, Beacon at 4. No self-reported pledge: the pledge step finishes only when a link shows a tier. Opening the Patreon page is a per-device record that makes Link Patreon the main action. A link with no tier finishes the link step and returns the main action to the pledge. Ticket 11 calls one exported opener. Switch selects the preset and closes the scene, and Finish Later writes nothing. Ticket 06 ruling. |
 | Q54 | When thinking is off for the active model and a call starts thinking, or its stream fails before any reply text, the proxy stops it and retries once, unseen by the client. The retry stays off the turn call cap and the player's allowance, and on the recorded spend. Full-turn runs showed these calls almost never end cleanly and can lose a turn. User ruling. |
-| Q47 | The offer sells two things, in this order: more turns each week, the biggest reason to upgrade, then large worlds and long stories together. Formamorph trims context on purpose so long stories stay consistent, and a larger window means a large world still has room for memory. Copy never sells memory alone. Copy says "more turns" with no numbers. User ruling. |
+| Q47 | The offer sells two things, in this order: more turns each week, the biggest reason to upgrade, then large worlds and long stories together. Formamorph trims context on purpose so long stories stay consistent, and a larger window means a large world still has room for memory. Copy never sells memory alone. Copy says "more turns" with no numbers. User ruling. Q55 replaces this. |
+| Q55 | The offer sells a stronger AI: stronger than the Demo AI and than a model that fits 8 GB, with no setup. How much story a level holds is a feature, listed as a perk and never the pitch. "More turns" compares levels only, never Formamorph AI against a local model or the Demo AI, because a local model has no weekly limit. The road's art stays, and no text says what its light means. Replaces Q47 and the level-line part of Q45. User ruling. |
 
 ## User Stories
 
@@ -107,7 +108,7 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 16. As an existing Demo AI player, I want the card once after my next five turns, so that I learn about the option.
 17. As a player already pledged, I want no offer, so that I'm not asked for what I already give.
 18. As a player on my own endpoint, I want no offer, so that my setup is left alone.
-19. As a player on the scene, I want to see what each level keeps of my story, so that I understand what the levels change.
+19. As a player on the scene, I want to see what each level includes, so that I understand what the levels change.
 20. As a player changing levels, I want Morphie to react, so that the choice feels alive.
 21. As a player, I want each level's fire to look different, so that the names read at a glance.
 22. As a player, I want the page's widgets to hold still, so that I can keep reading while Morphie moves.
@@ -167,7 +168,7 @@ A value swaps at `jellyDipMs`. An interrupted run starts from the height on scre
 
 **Side-by-side sample.** Two real, unedited model outputs for one Emberwatch moment, captured once and shipped as fixed text. The Demo AI and Formamorph AI samples come from the same prompt. Picks must be honest: typical outputs, not the Demo AI's worst. The user approves the pair.
 
-**Level lines.** The prototype's lines ("Keeps whole chapters in mind") and lit-moment counts are placeholders. Before they ship, each line is checked against what that level's context window really keeps on a typical world, and the road's proportions must not overstate the difference.
+**Level lines.** Each line states what the level adds: a stronger AI with no setup on Spark, then more turns on Flame and Beacon (Q55). Room for larger worlds is a perk, stated plainly. The road's lit counts are art, and no text ties them to story held.
 
 **Checklist.** Reads `AuthService`, `useAgeGate`, `PatreonService.getStatus()` and the hosted state through `useSettings().hostedAi`. It re-reads on focus, as `PatreonSection` does. Each action reuses the existing path: `requireAttestation`, the Patreon page, `startLink`, and `selectTextEndpointPreset`, which already records the preset to switch back to. On a build that can't open Patreon inside the app, the existing `openExternal` path applies.
 
