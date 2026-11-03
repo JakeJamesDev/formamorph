@@ -25,6 +25,9 @@ export const HOSTED_PRESET_STATES = [
 
 export type HostedPresetState = (typeof HOSTED_PRESET_STATES)[number];
 
+/** The states of a player with no access yet, who has no usage to show. */
+export const HOSTED_NO_ACCESS_STATES: readonly HostedPresetState[] = ['signed-out', 'age-gate', 'locked'];
+
 /** Whether a call may be sent in this state. The server stays the authority while the state is unknown. */
 export function hostedStateSends(state: HostedPresetState): boolean {
   return state === 'ready' || state === 'warned' || state === 'unavailable';

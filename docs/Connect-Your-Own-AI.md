@@ -27,10 +27,10 @@ The first time a device sees your support, Formamorph selects **Formamorph AI** 
 
 While you play, the ring beside **Send** shows your allowance. See [How to Check Your Formamorph AI Allowance](How-to-Play#how-to-check-your-formamorph-ai-allowance).
 
-To see your allowance in settings, open Settings → **Endpoints** → **Text** and select **Formamorph AI**. The panel shows your support, the percent used, about how many turns are left, and when it resets, in your local time. The numbers update after each turn.
+To see your allowance in settings, open Settings → **Endpoints** → **Text**, select **Formamorph AI**, and select the ring beside it. The ring shows your support, the percent used, about how many turns are left, and when it resets, in your local time. The numbers update after each turn.
 
 - Each turn on any device counts against one shared allowance.
-- The allowance resets every week. The panel shows the day and time in your local time.
+- The allowance resets every week. The ring shows the day and time in your local time.
 - A notice appears after a turn when you reach the highest warning level, with a **Support on Patreon** link. It shows once a week across all your devices.
 - When the allowance runs out, Formamorph AI stops until the reset, including background requests such as diaries. A notice says so after the turn and stays until you close it. Select **Switch Back** to return to your last preset, or **Support on Patreon** to open the Patreon page.
 

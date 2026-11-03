@@ -14,6 +14,7 @@ import {
 } from '@/lib/hostedAi/allowanceFigure';
 import { DEV_ALLOWANCE_ROUTES, DEV_HOSTED_SAMPLES, type DevAllowanceRoute } from '@/lib/hostedAi/devHostedSamples';
 import type { HostedSnapshot } from '@/lib/hostedAi/hostedSession';
+import { HOSTED_NO_ACCESS_STATES, type HostedPresetState } from '@/lib/hostedAi/refusals';
 import { useDevRoute } from '@/lib/devRouter';
 import { cn } from '@/lib/utils';
 
@@ -33,10 +34,12 @@ function useHeldFigure(snapshot: HostedSnapshot, busy: boolean): AllowanceFigure
 const ringLabel = (percent: number | null) =>
   percent === null ? 'Formamorph AI Allowance' : `Formamorph AI Allowance: ${Math.round(percent)}% used`;
 
-function RingControl({ figure, preview, busy, className }: {
+function RingControl({ figure, preview, busy, inDialog = false, className }: {
   figure: AllowanceFigure;
   preview?: DevAllowanceRoute;
   busy: boolean;
+  /** Opens down and stays in the dialog's subtree, because its scroll lock swallows the wheel on anything portaled out. */
+  inDialog?: boolean;
   className?: string;
 }) {
   const { refreshHostedState } = useSettings();
@@ -65,14 +68,14 @@ function RingControl({ figure, preview, busy, className }: {
           </Button>
         </PopoverTrigger>
       </Tip>
-      <PopoverContent side="top" align="end" className="w-80 p-0">
+      <PopoverContent side={inDialog ? 'bottom' : 'top'} align="end" portal={!inDialog} className="w-80 p-0">
         <ScrollArea className="max-h-[min(32rem,var(--radix-popover-content-available-height))]">
           <div className="flex flex-col gap-3 p-4">
             <div className="flex items-center justify-between gap-2">
               <SectionTitle>Formamorph AI</SectionTitle>
               <HelpButton topicId="game.allowance" className="h-6 w-6" skipFirstTimeTint />
             </div>
-            <HostedPresetStatus state={preview?.state} sample={preview?.sample} className="py-0" usageHelp={false} />
+            <HostedPresetStatus state={preview?.state} sample={preview?.sample} className="py-0" />
           </div>
         </ScrollArea>
       </PopoverContent>
@@ -81,7 +84,7 @@ function RingControl({ figure, preview, busy, className }: {
 }
 
 /** DEV: the ring in one canned state, for the dev route. Reads nothing. */
-function AllowanceRingPreview({ preview, className }: { preview: DevAllowanceRoute; className?: string }) {
+function AllowanceRingPreview({ preview, inDialog, className }: { preview: DevAllowanceRoute; inDialog?: boolean; className?: string }) {
   const { hostedAi } = useSettings();
   const sample = preview.sample ?? DEV_HOSTED_SAMPLES[preview.state];
   const figure = allowanceFigure({
@@ -90,7 +93,15 @@ function AllowanceRingPreview({ preview, className }: { preview: DevAllowanceRou
     // A sample holds only the usage fields, and the figure reads no others.
     hosted: sample ? { ...hostedAi.hosted, ...sample } as HostedSnapshot['hosted'] : null,
   });
-  return <RingControl figure={figure} preview={preview} busy={false} className={className} />;
+  return <RingControl figure={figure} preview={preview} busy={false} inDialog={inDialog} className={className} />;
+}
+
+/** The same ring on the Preset row in AI settings, for a player with access. `state` overrides the live one: the dev-router. */
+export function PresetAllowanceRing({ state }: { state?: HostedPresetState }) {
+  const { hostedAi } = useSettings();
+  if (HOSTED_NO_ACCESS_STATES.includes(state ?? hostedAi.presetState)) return null;
+  if (import.meta.env.DEV && state) return <AllowanceRingPreview preview={{ state }} inDialog />;
+  return <RingControl figure={allowanceFigure(hostedAi)} busy={false} inDialog />;
 }
 
 /** How much of the week's Formamorph AI allowance is used, between Help and Send. Shows only while a prompt can use it. */

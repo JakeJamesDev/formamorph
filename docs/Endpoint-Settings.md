@@ -15,7 +15,7 @@ In the tables below, **Advanced** marks a row that shows in Advanced mode only. 
 The **Preset** list holds your saved endpoints:
 
 - **Demo AI** is the shared cloud endpoint. You can't edit it.
-- **Formamorph AI** is the preset for Patreon Supporters. It shows your allowance in place of the fields. See [Formamorph AI for Supporters](Connect-Your-Own-AI#formamorph-ai-for-supporters).
+- **Formamorph AI** is the preset for Patreon Supporters. A ring beside the preset shows your allowance. See [Formamorph AI for Supporters](Connect-Your-Own-AI#formamorph-ai-for-supporters).
 - On the desktop app, **Built-In Engine** runs a model on your PC.
 
 **Add New Preset…** makes a new preset. **Duplicate** copies **Demo AI** or a preset you made. **Rename**, **Reset** and **Delete** act on a preset you made.

@@ -22,6 +22,7 @@ import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { EndpointReachabilityBadge, HostedReachabilityBadge } from './EndpointReachabilityBadge';
 import { PresetNameDialog } from './PresetNameDialog';
+import { PresetAllowanceRing } from '@/components/game/AllowanceRing';
 import { HostedPresetStatus } from './HostedPresetStatus';
 import type { HostedPresetState } from '@/lib/hostedAi/refusals';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
@@ -179,25 +180,28 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
             ? {
                 label: SETTINGS_COPY.textPreset.label,
                 select: (
-                  <Select value={edited.id} onValueChange={handlePresetSelect}>
-                    <SelectTrigger
-                      aria-label={SETTINGS_COPY.textPreset.label}
-                      className="flex-1 min-w-0"
-                      {...targetAttribute('settingsEndpoints.text', 'text-preset')}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {presets.builtIn.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                      ))}
-                      {presets.user.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                      ))}
-                      <SelectSeparator />
-                      <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <>
+                    <Select value={edited.id} onValueChange={handlePresetSelect}>
+                      <SelectTrigger
+                        aria-label={SETTINGS_COPY.textPreset.label}
+                        className="flex-1 min-w-0"
+                        {...targetAttribute('settingsEndpoints.text', 'text-preset')}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {presets.builtIn.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                        {presets.user.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                        <SelectSeparator />
+                        <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {edited.hosted && <PresetAllowanceRing state={hostedState} />}
+                  </>
                 ),
               }
             : { heading })}
@@ -215,9 +219,9 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
       {edited.engine ? <LocalModelPanel /> : edited.hosted ? (
         <ScrollArea landingRoom className="flex-1 min-h-0">
-          <HostedPresetStatus state={hostedState} lockedPanel />
+          <HostedPresetStatus state={hostedState} lockedPanel showUsage={false} className="pb-0" />
           {advanced && (
-            <div className="grid gap-4 pb-4">
+            <div className="grid gap-4 py-4">
               <Row htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
                 <div className="space-y-2">
                   <Input

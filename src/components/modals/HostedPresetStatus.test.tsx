@@ -91,6 +91,20 @@ describe('HostedPresetStatus locked panel', () => {
     expect(roadSceneStart()).toBe('checklist');
   });
 
+  it.each(['ready', 'warned'] as const)('draws nothing for %s when a ring holds the usage', (state) => {
+    const { container } = render(<HostedPresetStatus state={state} showUsage={false} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('keeps the reason and actions but not the usage when a ring holds it', () => {
+    render(<HostedPresetStatus state="exhausted" showUsage={false} />);
+    expect(document.querySelector('[data-hosted-usage]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Switch Back' })).toBeTruthy();
+    cleanup();
+    render(<HostedPresetStatus state="exhausted" />);
+    expect(document.querySelector('[data-hosted-usage]')).not.toBeNull();
+  });
+
   it('shows the normal state once the player gains access', () => {
     const view = render(<HostedPresetStatus lockedPanel />);
     expect(panel()).not.toBeNull();

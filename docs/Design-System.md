@@ -1106,7 +1106,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 
 ## Pattern: Allowance Ring
 
-**Approved by the user on 2026-11-02.** A small ring between Help and Send fills as the week's Formamorph AI allowance is used. Selecting it opens a popover with the usage lines and the breakdown, or the state's reason and actions.
+**Approved by the user on 2026-11-02.** A small ring between Help and Send fills as the week's Formamorph AI allowance is used. The same ring ends the Preset row in AI settings for a player with access. Selecting it opens a popover with the usage lines and the breakdown, or the state's reason and actions.
 
 **Density:** Compact. A 40px outline icon button holding a 24px ring. Help and the ring share the plain outline. Help's icon and Send's icon are 20px in this row.
 

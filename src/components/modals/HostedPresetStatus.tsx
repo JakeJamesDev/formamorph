@@ -9,29 +9,26 @@ import { useAgeGate } from '@/contexts/AgeGateContext';
 import { usePrivacyPolicy } from '@/contexts/PrivacyPolicyContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { DEV_HOSTED_SAMPLES, type DevHostedSample } from '@/lib/hostedAi/devHostedSamples';
-import { hostedStateCopy, hostedUsageCopy, HOSTED_BACKGROUND_HELP, HOSTED_USAGE_HELP, type HostedAction } from '@/lib/hostedAi/hostedCopy';
+import { hostedStateCopy, hostedUsageCopy, type HostedAction } from '@/lib/hostedAi/hostedCopy';
 import type { HostedState } from '@/lib/hostedAi/hostedState';
-import type { HostedPresetState } from '@/lib/hostedAi/refusals';
+import { HOSTED_NO_ACCESS_STATES, type HostedPresetState } from '@/lib/hostedAi/refusals';
 import { openExternal } from '@/lib/openExternal';
 import { requestSignIn } from '@/lib/signInStore';
 import { flairTier } from '@/lib/supporterFlair';
 import { useTierName } from '@/lib/tierNames';
 import { cn } from '@/lib/utils';
 
-// The states of a player with no access yet; the panel stands in for their reason and button.
-const LOCKED_PANEL_STATES: readonly HostedPresetState[] = ['signed-out', 'age-gate', 'locked'];
-
 /**
  * Formamorph AI's state: its allowance, its reason and its actions. `state` overrides the live one, with `sample`
- * as its usage. `lockedPanel` draws the levels panel for a player with no access. `usageHelp` shows the lines that
- * explain the allowance, for a host with no help of its own.
+ * as its usage. `lockedPanel` draws the levels panel for a player with no access. `showUsage` draws the allowance,
+ * for a host with no ring beside it.
  */
-export function HostedPresetStatus({ state, sample: givenSample, className, lockedPanel = false, usageHelp = true }: {
+export function HostedPresetStatus({ state, sample: givenSample, className, lockedPanel = false, showUsage = true }: {
   state?: HostedPresetState;
   sample?: DevHostedSample;
   className?: string;
   lockedPanel?: boolean;
-  usageHelp?: boolean;
+  showUsage?: boolean;
 }) {
   const { hostedAi, refreshHostedState, switchBackFromHostedAi } = useSettings();
   const { requireAttestation } = useAgeGate();
@@ -48,7 +45,8 @@ export function HostedPresetStatus({ state, sample: givenSample, className, lock
   const copy = hostedStateCopy(shown, hosted?.resetAt);
   const knownTier = flairTier(hosted?.tier ? { tier: hosted.tier } : null);
   const tierLabel = knownTier ? tierNameOf(knownTier) : null;
-  const usage = shown === 'ready' || shown === 'warned' || shown === 'exhausted' ? hostedUsageCopy(hosted, tierLabel) : null;
+  const usage = showUsage && (shown === 'ready' || shown === 'warned' || shown === 'exhausted') ? hostedUsageCopy(hosted, tierLabel) : null;
+  const tierLine = shown === 'unconfirmed' ? tierLabel : null;
 
   const run: Record<HostedAction, () => void> = {
     signIn: () => requestSignIn({ onSignedIn: () => { void refreshHostedState(); } }),
@@ -60,21 +58,20 @@ export function HostedPresetStatus({ state, sample: givenSample, className, lock
     switchBack: () => { if (!state) switchBackFromHostedAi(); },
   };
 
-  if (lockedPanel && copy && LOCKED_PANEL_STATES.includes(shown)) {
+  if (lockedPanel && copy && HOSTED_NO_ACCESS_STATES.includes(shown)) {
     return (
       <div className={cn('py-4', className)} data-hosted-state={shown}>
         <LockedPresetPanel reason={copy.reason} />
       </div>
     );
   }
+  if (!usage && !tierLine && !copy) return null;
 
   return (
     <div className={cn('flex flex-col items-start gap-3 py-4', className)} data-hosted-state={shown}>
       {usage && (
         <div className="flex flex-col gap-1" data-hosted-usage>
           <Meta>{[usage.tier, usage.used, usage.turnsLeft, usage.resets].filter(Boolean).join(' · ')}</Meta>
-          {usageHelp && <Hint>{HOSTED_USAGE_HELP}</Hint>}
-          {usageHelp && <Hint>{HOSTED_BACKGROUND_HELP}</Hint>}
           {hosted?.breakdown && (
             <div className="mt-3 w-full max-w-sm">
               <HostedBreakdown breakdown={hosted.breakdown} threshold={hosted.breakdownThreshold} />
@@ -82,7 +79,7 @@ export function HostedPresetStatus({ state, sample: givenSample, className, lock
           )}
         </div>
       )}
-      {shown === 'unconfirmed' && tierLabel && <Meta data-hosted-tier>{tierLabel}</Meta>}
+      {tierLine && <Meta data-hosted-tier>{tierLine}</Meta>}
       {copy && <Hint>{copy.reason}</Hint>}
       {copy?.action && (
         <div className="flex gap-2">

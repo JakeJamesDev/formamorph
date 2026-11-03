@@ -21,7 +21,9 @@ vi.mock('@/lib/contextLength', async () => ({
 }));
 
 // The status panel reads the age gate and privacy contexts; these cases test the tuning fields beside it.
-vi.mock('./HostedPresetStatus', () => ({ HostedPresetStatus: () => null }));
+vi.mock('./HostedPresetStatus', () => ({
+  HostedPresetStatus: ({ showUsage = true }: { showUsage?: boolean }) => (showUsage ? <div data-testid="pane-usage" /> : null),
+}));
 vi.mock('@/lib/useEndpointReachable', () => ({ useEndpointReachable: vi.fn() }));
 
 const preset = (id: string, endpoint: string) => ({ id, name: id, values: { ...DEFAULT_TEXT_ENDPOINT_VALUES, endpoint } });
@@ -261,6 +263,24 @@ describe('TextEndpointEditor', () => {
       model.fields = { ...model.fields, maxTokens: 1024, maxOutputOverrideEnabled: true, hostedMaxOutputCap: cap };
       return model;
     };
+
+    const ring = () => screen.queryByRole('button', { name: /^Formamorph AI Allowance/ });
+
+    it.each(['ready', 'warned', 'exhausted', 'paused'] as const)('puts the ring on the Preset row for %s', (hostedState) => {
+      render(<SettingsProvider><TextEndpointEditor model={hostedModel()} advanced onOpenConnectionGuide={() => {}} hostedState={hostedState} /></SettingsProvider>);
+      expect(screen.getByRole('combobox', { name: 'Preset' }).parentElement).toContainElement(ring());
+      expect(screen.queryByTestId('pane-usage')).toBeNull();
+    });
+
+    it.each(['signed-out', 'age-gate', 'locked'] as const)('shows no ring for %s, who has no usage', (hostedState) => {
+      render(<SettingsProvider><TextEndpointEditor model={hostedModel()} advanced onOpenConnectionGuide={() => {}} hostedState={hostedState} /></SettingsProvider>);
+      expect(ring()).toBeNull();
+    });
+
+    it('shows no ring on another preset', () => {
+      render(<SettingsProvider><TextEndpointEditor model={modelOn('vllm')} advanced onOpenConnectionGuide={() => {}} /></SettingsProvider>);
+      expect(ring()).toBeNull();
+    });
 
     it('shows the sampler sliders and Max Output, and leaves the connection fields out', () => {
       renderHosted(hostedModel());

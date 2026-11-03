@@ -81,12 +81,6 @@ export function hostedUsageCopy(hosted: HostedState | null, tierLabel: string | 
   };
 }
 
-/** The help line under the usage display. */
-export const HOSTED_USAGE_HELP = 'Counts turns on every device and resets every week';
-
-/** The line that says what stops when the week's allowance is spent. */
-export const HOSTED_BACKGROUND_HELP = "Pauses background requests, such as diaries, when you've used this week's allowance";
-
 /** A threshold notice's text. */
 export function hostedWarningText(threshold: number, hosted: HostedState | null): string {
   const date = formatResetTime(hosted?.resetAt ?? null);
