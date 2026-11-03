@@ -5,6 +5,11 @@ import { HOSTED_STATE_URL, hostedAckUrl } from './hostedUrls';
 import { hostedStateSends, readHostedRefusal, type HostedPresetState, type HostedRefusal } from './refusals';
 import { HostedTurn, HostedTurnRegistry } from './hostedTurn';
 
+/** The shortest gap between reads that a blocked send starts. */
+const REREAD_THROTTLE_MS = 30_000;
+/** The longest delay setTimeout takes. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
 /** What the session knows, replaced whole on every change. */
 export interface HostedSnapshot {
   /** The last hosted state this session read, kept while a later read fails. */
@@ -40,6 +45,7 @@ export class HostedSession {
   /** A refusal's state, which holds until the next successful read. */
   private refused: HostedPresetState | null = null;
   private reading: Promise<void> | null = null;
+  private lastReadAt = -Infinity;
   private readCount = 0;
   private snapshot: HostedSnapshot;
   /** Capability records by served model id, so a model the server switches to reads its own. */
@@ -75,6 +81,7 @@ export class HostedSession {
     this.hosted = null;
     this.stale = true;
     this.refused = null;
+    this.lastReadAt = -Infinity;
     // Notices are per account, so the next account starts with none shown.
     this.shown.clear();
     this.exhaustedShownFor = null;
@@ -134,7 +141,52 @@ export class HostedSession {
     return this.reading;
   }
 
+  /** Reads again for a send a blocking state refuses, unless a read ran within the throttle. */
+  rereadBlocked(): Promise<void> {
+    if (!this.reading && Date.now() - this.lastReadAt < REREAD_THROTTLE_MS) return Promise.resolve();
+    return this.refresh();
+  }
+
+  /**
+   * Reads the state when a spent allowance resets or a pause ends, once per wake time. Re-arms on every
+   * change; the returned function stops it.
+   */
+  watchRecovery(): () => void {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let firedFor: string | null = null;
+    const arm = () => {
+      clearTimeout(timer);
+      const wake = this.recoveryWake();
+      if (!wake || wake.key === firedFor) return;
+      timer = setTimeout(() => {
+        // A clamped or early timer waits out the rest of the delay.
+        if (Date.now() < wake.at) { arm(); return; }
+        firedFor = wake.key;
+        void this.refresh();
+      }, Math.min(Math.max(wake.at - Date.now(), 0), MAX_TIMER_MS));
+    };
+    arm();
+    const unsubscribe = this.subscribe(arm);
+    return () => { unsubscribe(); clearTimeout(timer); };
+  }
+
+  /** When the blocking state is due to end: the reset date, or the next 00:00 UTC for a pause. */
+  private recoveryWake(): { at: number; key: string } | null {
+    const state = this.snapshot.presetState;
+    if (state === 'exhausted') {
+      const at = Date.parse(this.hosted?.resetAt ?? '');
+      return Number.isNaN(at) ? null : { at, key: `exhausted:${at}` };
+    }
+    if (state === 'paused') {
+      const now = new Date();
+      const at = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+      return { at, key: `paused:${at}` };
+    }
+    return null;
+  }
+
   private async read() {
+    this.lastReadAt = Date.now();
     const token = this.credential();
     if (!token || !this.stateUrl) { this.changed(); return; }
     try {

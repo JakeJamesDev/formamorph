@@ -22,6 +22,8 @@ export function HostedAiStateSync() {
 
   useEffect(() => AuthService.onSessionChanged(() => hostedSession.accountChanged()), []);
 
+  useEffect(() => hostedSession.watchRecovery(), []);
+
   // A new account reads once the gate has its answer.
   useEffect(() => {
     if (!readState || attestedSession === null || !HOSTED_STATE_URL) return;

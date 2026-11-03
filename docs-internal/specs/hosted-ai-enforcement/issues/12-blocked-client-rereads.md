@@ -1,6 +1,6 @@
 # 12: Blocked Client Re-Reads the Hosted State
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

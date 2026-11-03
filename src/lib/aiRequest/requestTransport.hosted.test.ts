@@ -387,6 +387,79 @@ describe('Formamorph AI through the Request Transport', () => {
     expect((error as AiStreamError).hosted?.presetState).toBe('unconfirmed');
   });
 
+  describe('a blocked send re-reads the state', () => {
+    const THROTTLE_PASSED = 31_000;
+    const clockAfter = (ms: number) => {
+      const start = Date.now();
+      vi.spyOn(Date, 'now').mockReturnValue(start + ms);
+    };
+
+    it.each(['unconfirmed', 'exhausted', 'paused'])('sends once the state returns from %s', async (blocked) => {
+      quietErrors();
+      let state = blocked;
+      const proxy = fakeProxy([() => proxyReply('Back.', 'turn-1')], () => json(200, { success: true, data: { ...READY_STATE, state } }));
+      const { session } = await signedIn(proxy.fetchImpl);
+      expect(session.getSnapshot().presetState).toBe(blocked);
+
+      state = 'ready';
+      clockAfter(THROTTLE_PASSED);
+      const { text } = await send(request(), context(proxy.fetchImpl, session));
+
+      expect(text).toBe('Back.');
+      expect(session.getSnapshot().presetState).toBe('ready');
+    });
+
+    it('re-reads a started turn that the unconfirmed state blocks', async () => {
+      quietErrors();
+      let state = 'ready';
+      const proxy = fakeProxy([() => proxyReply('One.', 'turn-1'), () => proxyReply('Two.', 'turn-1')], () => json(200, { success: true, data: { ...READY_STATE, state } }));
+      const { session } = await signedIn(proxy.fetchImpl);
+      const turn = new HostedTurn();
+      await send(request(), context(proxy.fetchImpl, session, { hostedTurn: turn }));
+
+      state = 'unconfirmed';
+      await session.refresh();
+      state = 'ready';
+      clockAfter(THROTTLE_PASSED);
+      const later = await send(request({ type: 'statUpdates', silent: true }), context(proxy.fetchImpl, session, { hostedTurn: turn }));
+
+      expect(later.error).toBeNull();
+    });
+
+    it('makes one read for blocked sends inside the throttle', async () => {
+      quietErrors();
+      const proxy = fakeProxy([], () => json(200, { success: true, data: { ...READY_STATE, state: 'unconfirmed' } }));
+      const { session } = await signedIn(proxy.fetchImpl);
+      const stateReads = () => proxy.sent.filter((s) => s.url === HOSTED_STATE_URL).length;
+      expect(stateReads()).toBe(1);
+
+      const sendBackground = (turn: string) =>
+        send(request({ type: 'summary', silent: true, attachTurnId: turn }), context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() }));
+      // Inside the throttle of the first read, a blocked send reads nothing.
+      await sendBackground('t1');
+      expect(stateReads()).toBe(1);
+
+      clockAfter(THROTTLE_PASSED);
+      const results = await Promise.all([sendBackground('t2'), sendBackground('t3'), sendBackground('t4')]);
+      expect(stateReads()).toBe(2);
+      expect(results.every((r) => (r.error as AiStreamError).hosted?.presetState === 'unconfirmed')).toBe(true);
+    });
+
+    it('refuses with one notice when the read still shows the blocked state', async () => {
+      quietErrors();
+      const proxy = fakeProxy([], () => json(200, { success: true, data: { ...READY_STATE, state: 'exhausted' } }));
+      const { session } = await signedIn(proxy.fetchImpl);
+
+      clockAfter(THROTTLE_PASSED);
+      const ctx = context(proxy.fetchImpl, session);
+      const first = await send(request(), ctx);
+
+      expect(proxy.chatCalls()).toHaveLength(0);
+      expect(first.failures).toHaveLength(1);
+      expect((first.error as AiStreamError).hosted?.presetState).toBe('exhausted');
+    });
+  });
+
   it('tells the player once per state change when a background pass is blocked', async () => {
     quietErrors();
     let state = 'locked';
