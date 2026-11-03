@@ -11,6 +11,7 @@ Model rationale: a new Pager slot, the card in both layouts, and the effort's E2
 
 This is the first ticket that lets a player reach the scene, so the offer's availability rule ships here: never in a build without hosted AI, for a pledged player, or on a non-Demo endpoint.
 
+- [ ] One host opens the scene from anywhere in the app, and it stays open across a view change. This ticket owns it, and tickets 06, 07 and 11 use it with no second copy.
 - [ ] Chat places the card through `latestFooter`. The Pager gains a slot under the latest page's narration, above the choices, and Pages uses it (Q19).
 - [ ] The card never takes focus, and the choices and input stay usable while it shows.
 - [ ] The card appears once through the rules module, and Not Now is recorded per device.

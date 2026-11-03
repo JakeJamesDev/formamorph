@@ -1,7 +1,7 @@
 # 07: Low-VRAM Lead
 
 Status: ready-for-agent
-Blocked by: 01, 04
+Blocked by: 01, 04, 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
 

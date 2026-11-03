@@ -1,7 +1,7 @@
 # 06: Support Checklist
 
 Status: ready-for-agent
-Blocked by: 04
+Blocked by: 04, 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
 
