@@ -262,11 +262,11 @@ The tie between one Formamorph account and one Patreon user, made in the account
 _Avoid_: Patreon login, connection (the AI endpoint word), integration
 
 **Formamorph AI**:
-The built-in endpoint preset for Supporters, next to the Demo AI. Turns go through Formamorph's server to an AI provider, against a weekly allowance. Its model, context window and output limit come from the Hosted state and can't be edited. It is never stored and never probed.
+The built-in endpoint preset for Supporters, next to the Demo AI. Turns go through Formamorph's server to an AI provider, against a weekly allowance. Its model, context window and output limit come from the Hosted state and can't be edited. It is never stored and never probed. Background work pauses once the week's allowance is spent, and the allowance surface says so.
 _Avoid_: hosted tier (in copy), premium AI, the proxy
 
 **Hosted state**:
-What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, unconfirmed, locked or age gate; unconfirmed keeps the tier and means Patreon has not confirmed the pledge for 7 days), its context window and output cap, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
+What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, unconfirmed, locked or age gate; unconfirmed keeps the tier and means Patreon has not confirmed the pledge for 7 days), its context window and output cap, its turn time limit, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
 _Avoid_: usage, quota, entitlement (the Patreon word)
 
 **Allowance Ring**:
@@ -282,7 +282,7 @@ What Formamorph AI spend is counted against: the Patreon membership for a pledge
 _Avoid_: account (for spend), payer, customer
 
 **Formamorph AI turn**:
-The calls one player action makes, named by a turn id the server issues on the first call and the client sends back on the rest. A first call is refused once the week's spend reaches the budget. A later call is refused once the week's spend, minus this turn's own, reaches the budget plus a grace of one whole turn's maximum cost, so a turn started under budget can finish and held turn ids buy no extra spend. A turn ends at its time limit or call cap.
+The calls one player action makes, named by a turn id the server issues on the first call and the client sends back on the rest. A first call is refused once the week's spend reaches the budget. A later call is refused once the week's spend, minus this turn's own, reaches the budget plus a grace of one whole turn's maximum cost, so a turn started under budget can finish and held turn ids buy no extra spend. A turn ends at its time limit or call cap. The client's clock starts when the first call is sent, and it clears the id slightly before the limit, so a late call opens a new turn and faces the first-call check. A null limit means no client expiry.
 _Avoid_: session, request group
 
 **Pause**:

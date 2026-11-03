@@ -99,6 +99,10 @@ describe('the preset state from the hosted state', () => {
 });
 
 describe('the window and capabilities from the hosted state', () => {
+  it.each([[600, 600], [null, null], [undefined, null], [0, null], [-5, null], ['600', null]])('reads a turn limit of %s as %s', (given, read) => {
+    expect(parseHostedState({ ...STATE, turnLimitSeconds: given })?.turnLimitSeconds).toBe(read);
+  });
+
   it('budgets prompts to the window less the margin', () => {
     expect(hostedPromptWindow(parseHostedState(STATE))).toBe(29000);
     expect(hostedPromptWindow(parseHostedState({ ...STATE, window: null }))).toBeNull();

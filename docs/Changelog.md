@@ -74,6 +74,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Formamorph AI shows Reachable and Recheck in Settings, like other endpoints.** Checking it spends none of your allowance.
     - **On a phone, the action field now fills the row while you type.** Help and the allowance ring hide until you leave the field. Send stays in place.
     - **Formamorph AI now tells you when Patreon can't confirm your pledge.** The status, ring and account page say so, and service returns on its own.
+    - **Scene images, diaries and character descriptions on Formamorph AI keep working after a turn's time runs out.** They start a new turn. Background requests pause when you've used this week's allowance, and the allowance display says so.
   - **Main Menu:**
     - **The Main Menu's library tabs show every label when they fit, and fold to icons when they don't.** With less room only the selected tab keeps its label, then icons alone show. A highlight slides to each new pick. Hover an icon to see its name.
     - **The Main Menu top bar folds library tabs first, then action buttons, then event badges, when space runs out.** Nothing overlaps or shrinks out of view. Event badges fold into one chip with a count, which lists them.

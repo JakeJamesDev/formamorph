@@ -365,13 +365,13 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     };
     const before = blocked();
     if (before) throw hostedStateFailure(spec, before);
-    claim = await turn.claim(signal);
+    claim = await turn.claim(signal, session.getSnapshot().hosted?.turnLimitSeconds ?? null);
     if (!claim) {
       finishReason = ABORTED_FINISH_REASON;
       yield* finish();
       return;
     }
-    // Read after the wait, so a sign-out while this call queued behind the turn's first never sends the old token.
+    // Read after the claim: a sign-out during the wait never sends the old token, and an expired turn reads as not started.
     const token = session.credential();
     const after = blocked();
     if (after || !token) {
@@ -400,10 +400,14 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   }
 
   if (!response.ok) {
-    claim?.failed();
-    const failure = await httpFailure(response, spec);
-    if (failure.hosted) session?.noteRefusal(failure.hosted);
-    throw failure;
+    // The refusal is noted before waiters wake, so they read the new state and send nothing.
+    try {
+      const failure = await httpFailure(response, spec);
+      if (failure.hosted) session?.noteRefusal(failure.hosted);
+      throw failure;
+    } finally {
+      claim?.failed();
+    }
   }
   claim?.opened(response.headers.get(TURN_HEADER));
   noteImagesDropped(response);

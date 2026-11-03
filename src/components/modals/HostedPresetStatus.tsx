@@ -8,7 +8,7 @@ import { useAgeGate } from '@/contexts/AgeGateContext';
 import { usePrivacyPolicy } from '@/contexts/PrivacyPolicyContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { DEV_HOSTED_SAMPLES, type DevHostedSample } from '@/lib/hostedAi/devHostedSamples';
-import { hostedStateCopy, hostedUsageCopy, HOSTED_USAGE_HELP, type HostedAction } from '@/lib/hostedAi/hostedCopy';
+import { hostedStateCopy, hostedUsageCopy, HOSTED_BACKGROUND_HELP, HOSTED_USAGE_HELP, type HostedAction } from '@/lib/hostedAi/hostedCopy';
 import type { HostedState } from '@/lib/hostedAi/hostedState';
 import type { HostedPresetState } from '@/lib/hostedAi/refusals';
 import { openExternal } from '@/lib/openExternal';
@@ -56,6 +56,7 @@ export function HostedPresetStatus({ state, sample: givenSample, className }: {
         <div className="flex flex-col gap-1" data-hosted-usage>
           <Meta>{[usage.tier, usage.used, usage.turnsLeft, usage.resets].filter(Boolean).join(' · ')}</Meta>
           <Hint>{HOSTED_USAGE_HELP}</Hint>
+          <Hint>{HOSTED_BACKGROUND_HELP}</Hint>
           {hosted?.breakdown && (
             <div className="mt-3 w-full max-w-sm">
               <HostedBreakdown breakdown={hosted.breakdown} threshold={hosted.breakdownThreshold} />

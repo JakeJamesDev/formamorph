@@ -22,6 +22,8 @@ export interface HostedState {
   tier: string | null;
   state: ServerState;
   window: number | null;
+  /** How long a turn id stays valid; null means the client never expires one. */
+  turnLimitSeconds: number | null;
   maxTokens: number | null;
   tokenMargin: number | null;
   model: { id: string; capabilities: HostedCapabilities } | null;
@@ -77,10 +79,12 @@ export function parseHostedState(raw: unknown): HostedState | null {
   const threshold = num(data.breakdownThreshold);
   // The two travel together: a map with no usable threshold, or the reverse, shows no breakdown.
   const usable = breakdown && threshold !== null && Number.isInteger(threshold) && threshold >= 1 && threshold <= 100;
+  const turnLimit = num(data.turnLimitSeconds);
   return {
     tier: str(data.tier),
     state: state as ServerState,
     window: num(data.window),
+    turnLimitSeconds: turnLimit !== null && turnLimit > 0 ? turnLimit : null,
     maxTokens: num(data.maxTokens),
     tokenMargin: num(data.tokenMargin),
     model: model && id ? { id, capabilities: (recordOf(model.capabilities) ?? {}) as HostedCapabilities } : null,

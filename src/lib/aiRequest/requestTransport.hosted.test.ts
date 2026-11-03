@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { HostedSession } from '@/lib/hostedAi/hostedSession';
@@ -441,5 +441,144 @@ describe('Formamorph AI through the Request Transport', () => {
 
     expect(error).toBeInstanceOf(AiStreamError);
     expect(failures).toHaveLength(0);
+  });
+});
+
+describe('Formamorph AI turn expiry', () => {
+  // A 600 second limit less the 30 second margin: an id is good for 570 seconds from the opening send.
+  const LIMITED_STATE = { ...READY_STATE, turnLimitSeconds: 600 };
+  const EXPIRES_AT = 570_000;
+  const stateOf = (data: Record<string, unknown>) => () => json(200, { success: true, data });
+  const later = (ms: number) => vi.setSystemTime(Date.now() + ms);
+
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  /** A turn on a limited state whose opening call has finished, with the chat script's later replies queued. */
+  async function openedTurn(replies: Array<() => Response | Promise<Response>>, state: Record<string, unknown> = LIMITED_STATE) {
+    const proxy = fakeProxy([() => proxyReply('One.', 'turn-1'), ...replies], stateOf(state));
+    const { session } = await signedIn(proxy.fetchImpl);
+    const ctx = context(proxy.fetchImpl, session, { hostedTurn: session.turnFor('old') });
+    await send(request(), ctx);
+    return { proxy, session, ctx };
+  }
+  const turnIds = (proxy: { chatCalls: () => Sent[] }) => proxy.chatCalls().map((c) => c.headers[TURN_HEADER]);
+
+  it('sends the id just before the margin and opens a new turn at the margin', async () => {
+    const { proxy, ctx } = await openedTurn([() => proxyReply('Two.', 'turn-1'), () => proxyReply('Three.', 'turn-2'), () => proxyReply('Four.', 'turn-2')]);
+
+    later(EXPIRES_AT - 1);
+    await send(request({ type: 'choices' }), ctx);
+    later(1);
+    await send(request({ type: 'choices' }), ctx);
+    await send(request({ type: 'choices' }), ctx);
+
+    expect(turnIds(proxy)).toEqual([undefined, 'turn-1', undefined, 'turn-2']);
+  });
+
+  it('runs the clock from the send of the opening call, not from its response', async () => {
+    const slowOpen = () => { later(100_000); return proxyReply('One.', 'turn-1'); };
+    const proxy = fakeProxy([slowOpen, () => proxyReply('Two.', 'turn-2')], stateOf(LIMITED_STATE));
+    const { session } = await signedIn(proxy.fetchImpl);
+    const ctx = context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() });
+    await send(request(), ctx);
+
+    later(EXPIRES_AT - 100_000);
+    await send(request({ type: 'choices' }), ctx);
+
+    expect(turnIds(proxy)).toEqual([undefined, undefined]);
+  });
+
+  it('shares one new turn among concurrent calls after expiry', async () => {
+    const { proxy, ctx } = await openedTurn([() => proxyReply('Two.', 'turn-2'), () => proxyReply('Three.', 'turn-2'), () => proxyReply('Four.', 'turn-2')]);
+
+    later(EXPIRES_AT);
+    const results = await Promise.all([
+      send(request({ type: 'statUpdates', silent: true }), ctx), send(request({ type: 'choices' }), ctx), send(request({ type: 'summary', silent: true }), ctx),
+    ]);
+
+    expect(results.map((r) => r.error)).toEqual([null, null, null]);
+    expect(turnIds(proxy)).toEqual([undefined, undefined, 'turn-2', 'turn-2']);
+  });
+
+  it.each([
+    ['a null limit', { ...READY_STATE, turnLimitSeconds: null }],
+    ['no limit field', READY_STATE],
+  ])('never expires the id with %s', async (_name, state) => {
+    const { proxy, ctx } = await openedTurn([() => proxyReply('Two.', 'turn-1')], state);
+
+    later(365 * 24 * 3600 * 1000);
+    await send(request({ type: 'choices' }), ctx);
+
+    expect(turnIds(proxy)).toEqual([undefined, 'turn-1']);
+  });
+
+  it('applies a spent week to the next call of an expired turn, and to no call before it expires', async () => {
+    quietErrors();
+    const spent = { percentUsed: 100, turnsLeft: 0, resetAt: '2026-11-01T00:00:00.000Z' };
+    const proxy = fakeProxy([() => proxyReply('One.', 'turn-1', spent), () => proxyReply('Two.', 'turn-1')], stateOf(LIMITED_STATE));
+    const { session } = await signedIn(proxy.fetchImpl);
+    const ctx = context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() });
+    await send(request(), ctx);
+    session.settleTurn();
+    expect(session.getSnapshot().presetState).toBe('exhausted');
+
+    later(EXPIRES_AT - 1);
+    const live = await send(request({ type: 'statUpdates', silent: true }), ctx);
+    later(1);
+    const expired = await send(request({ type: 'statUpdates', silent: true }), ctx);
+
+    expect(live.error).toBeNull();
+    expect((expired.error as AiStreamError).hosted?.presetState).toBe('exhausted');
+    expect(turnIds(proxy)).toEqual([undefined, 'turn-1']);
+  });
+
+  it('applies a paused day to the next call of an expired turn', async () => {
+    quietErrors();
+    const { proxy, session, ctx } = await openedTurn([() => refusal('service_paused')]);
+    await send(request(), context(proxy.fetchImpl, session, { hostedTurn: new HostedTurn() }));
+    expect(session.getSnapshot().presetState).toBe('paused');
+
+    later(EXPIRES_AT);
+    const expired = await send(request({ type: 'statUpdates', silent: true }), ctx);
+
+    expect((expired.error as AiStreamError).hosted?.presetState).toBe('paused');
+    expect(proxy.chatCalls()).toHaveLength(2);
+  });
+
+  it('lets a server refusal of the new turn stop the calls waiting on it', async () => {
+    quietErrors();
+    const { proxy, ctx } = await openedTurn([() => refusal('budget_exhausted')]);
+
+    later(EXPIRES_AT);
+    const results = await Promise.all([send(request({ type: 'statUpdates', silent: true }), ctx), send(request({ type: 'summary', silent: true }), ctx)]);
+
+    expect(results.map((r) => (r.error as AiStreamError).hosted?.presetState)).toEqual(['exhausted', 'exhausted']);
+    expect(turnIds(proxy)).toEqual([undefined, undefined]);
+  });
+
+  it.each(['summary', 'sceneTags'] as const)('finishes a late %s call on an old turn under budget', async (type) => {
+    const { proxy, ctx } = await openedTurn([() => proxyReply('Late.', 'turn-2')]);
+
+    later(EXPIRES_AT + 3600_000);
+    const { text, error } = await send(request({ type, silent: true, attachTurnId: 'old' }), ctx);
+
+    expect(error).toBeNull();
+    expect(text).toBe('Late.');
+    expect(turnIds(proxy)).toEqual([undefined, undefined]);
+  });
+
+  it('shortens the margin for a short limit, so the turn keeps most of its time', async () => {
+    const { proxy, ctx } = await openedTurn(
+      [() => proxyReply('Two.', 'turn-1'), () => proxyReply('Three.', 'turn-2')],
+      { ...READY_STATE, turnLimitSeconds: 60 },
+    );
+
+    later(53_999);
+    await send(request({ type: 'choices' }), ctx);
+    later(1);
+    await send(request({ type: 'choices' }), ctx);
+
+    expect(turnIds(proxy)).toEqual([undefined, 'turn-1', undefined]);
   });
 });

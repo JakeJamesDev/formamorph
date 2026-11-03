@@ -10,33 +10,50 @@ export interface HostedTurnClaim {
 
 const settled = (turnId: string): HostedTurnClaim => ({ turnId, opened: () => {}, failed: () => {} });
 
+/** The largest margin taken off a turn's limit, to cover the time a call takes to reach the server. */
+const MAX_EXPIRY_MARGIN_MS = 30_000;
+
 /**
  * One player turn on Formamorph AI. The first call goes alone and carries no id; the others wait for its
  * response headers and send the id the server issued. A first call that fails hands the turn to the next.
+ * A turn past its limit clears its id, so the next call opens a new one. A null limit never expires.
  */
 export class HostedTurn {
   private id: string | null = null;
+  private sentAt = 0;
   private pending: Promise<void> | null = null;
   private messageShown = false;
 
-  /** The turn has its server-issued id, so the server admits its remaining calls whatever the allowance. */
+  private clearIfExpired(limitSeconds: number | null) {
+    if (this.id === null || limitSeconds === null) return;
+    const limitMs = limitSeconds * 1000;
+    if (Date.now() - this.sentAt >= limitMs - Math.min(MAX_EXPIRY_MARGIN_MS, limitMs / 10)) this.id = null;
+  }
+
+  /** The turn holds a server-issued id, so the server admits its remaining calls whatever the allowance. A claim clears an expired id. */
   get started(): boolean {
     return this.id !== null;
   }
 
-  /** Waits for the turn's id, or takes the turn when no call holds it. Null when `signal` stops the wait. */
-  async claim(signal?: AbortSignal): Promise<HostedTurnClaim | null> {
+  /** Waits for the turn's id, or takes the turn when no call holds a live one. Null when `signal` stops the wait. */
+  async claim(signal: AbortSignal | undefined, limitSeconds: number | null): Promise<HostedTurnClaim | null> {
     const stopped = new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve(), { once: true }));
     for (;;) {
       if (signal?.aborted) return null;
+      this.clearIfExpired(limitSeconds);
       if (this.id !== null) return settled(this.id);
       if (!this.pending) break;
       await Promise.race([this.pending, stopped]);
     }
     let release = () => {};
     this.pending = new Promise<void>((resolve) => { release = resolve; });
+    // The clock starts before the server's does.
+    const sentAt = Date.now();
     const end = (id: string | null) => {
-      if (id) this.id = id;
+      if (id) {
+        this.id = id;
+        this.sentAt = sentAt;
+      }
       this.pending = null;
       release();
     };

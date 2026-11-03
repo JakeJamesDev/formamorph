@@ -298,6 +298,20 @@ describe('Allowance Ring: the popover', () => {
     expect(within(dialog).getByRole('button', { name: 'Support on Patreon' })).toBeTruthy();
   });
 
+  it.each([
+    ['ready', 33],
+    ['warned', 80],
+    ['exhausted', 100],
+  ])('says background work pauses on a spent week, and names no weekday, when %s', async (state, percentUsed) => {
+    served = { ...STATE, state, percentUsed };
+    await hostedSession.refresh();
+    await renderRing();
+    const dialog = await openPopover();
+    const line = await within(dialog).findByText(/Pauses background requests/);
+    expect(line.closest('[data-hosted-usage]')).toBeTruthy();
+    expect(line.textContent).not.toMatch(/(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day/);
+  });
+
   it('routes every dev state the ring can show', () => {
     expect([...DEV_MODAL_TABS.gameViewerAllowance].sort()).toEqual(Object.keys(DEV_ALLOWANCE_ROUTES).sort());
   });
