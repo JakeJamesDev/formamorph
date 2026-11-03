@@ -1,6 +1,6 @@
 # 01: Server Comment Targets
 
-Status: ready-for-human
+Status: done
 Base: a6002e4
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

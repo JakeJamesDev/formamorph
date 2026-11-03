@@ -118,8 +118,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A new player can start Emberwatch with one click after the intro.** Play Emberwatch skips the Enter World steps. Browse Worlds leaves you on the main menu.
     - **After five turns on the Demo AI, a card under the story offers a look at the Formamorph AI levels.** See Levels opens a full-screen scene and Not Now closes the card for good. The Demo AI dialog's See Levels opens the scene after that.
   - **Listing Comment Links:**
+    - **Listing comments in Community Creations show `@name`, `#123` and pasted listing links as chips.** Old comments show them too, and a new or edited comment shows them at once. On the website, author and commenter names now open their profile pages.
     - **Typing @ or # in a listing comment lists matching players and threads.** Pick one to insert `@name` or `#12`. It works when you write a comment and when you edit one.
-    - **Clicking a thread link in a listing comment opens that thread in the Feedback window.** Bug threads open too. Back closes the window and returns you to the listing.
+    - **Clicking a thread link in a listing comment opens that thread in the Feedback window.** Bug threads open too. **Back** closes the window and returns you to the listing.
     - **Preview in listing and feedback comment boxes shows `@name`, `#123` and pasted listing links as chips.** Check a link before you post. If the lookup fails, **Preview** shows your text as written.
   - **Tabs in editors and game side panels show every label, then only the selected tab's, then icons as room shrinks.** Each strip folds by its own width, not the window's, so no label gets cut off. Hover an icon to see its name.
   - **Formaquestion's new Sort Questions setting sends small talk, how-tos, code and world questions only what each needs.** It's off by default; turn it on in Formaquestion Settings → General, and pick a small model under Sorting Endpoint.
@@ -130,7 +131,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Avatar library now includes Praline on the desktop, web and Android builds.** If you already play, she joins your library and your default stays the same. Sugarscape now shows a Player Avatar dropdown when you start a new game.
   - **A build with no bundled Avatar now shows an empty state in the Avatar library and Avatar Customization.** Each has an Import Avatar button for a .vrm file, and you can finish customizing with no Avatar.
   - **Your first game on the Demo AI opens straight into the story, with a short line instead of a dialog.** The Demo AI badge still opens the longer explanation.
-  - **Listing comments in Community Creations show `@name`, `#123` and pasted listing links as chips.** Old comments show them too, and a new or edited comment shows them at once. On the website, author and commenter names now open their profile pages.
 - **🛠️ Developer tooling**
   - **Inventory:**
     - **`inventory-pass-probe.cli.ts` scores the Inventory pass and the stat request's item line.** It checks seven item operations and two no-change guards in both reply modes, and a potion double-add beside a runtime item.

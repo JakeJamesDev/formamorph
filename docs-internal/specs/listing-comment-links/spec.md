@@ -1,6 +1,7 @@
 # Spec: Links in Listing Comments
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-03; tickets 01–06, last landing 36cb262d2. Review: spec text corrected. Closed with gaps: ticket 04's dark frame does not exist, and an undo back to the opened text redraws chips in the split pane. Gates green on 2026-11-03.
 Spec session: listing-comment-links — spec
 
 Builds on `docs-internal/specs/feedback-links/spec.md`, whose grammar and chip rulings apply here. That spec left world comments out of scope; this one brings them in. Server work happens in the FormamorphServer repo, and this spec holds its contract.
@@ -66,9 +67,9 @@ A mention in a listing comment is a link only. It sends no alert.
 
 **Server**
 
-- Listing comment reads, creates and edits return `targets`, the same shape feedback uses, resolved for the reader making the request.
+- Listing comment list reads, creates and edits return `targets`, the same shape feedback uses, resolved for the reader making the request.
 - The existing target resolver takes any list of texts, so a page of comments resolves in one batch. No schema change. Stored comment text stays as typed.
-- New route: `POST /api/feedback/links/resolve`. It takes `{ text }` and returns `{ success: true, data: { targets } }`, the envelope every feedback route uses. It requires sign-in and has its own limiter of 60 requests a minute per account, so Preview never uses up the autocomplete budget. It accepts text up to the longest feedback body (4,000 characters). Missing or non-string text and text over the limit return 400; empty text returns 200 with no targets. It sits with the feedback search routes and shares the resolver, so it reveals nothing the search routes don't.
+- New route: `POST /api/feedback/links/resolve`. It takes `{ text }` and returns `{ success: true, data: { targets } }`, the envelope every feedback route uses. It requires sign-in and has its own limiter of 60 requests a minute per account, so Preview never uses up the autocomplete budget. It accepts text up to the longest feedback body (4,000 characters). Missing or non-string text and text over the limit return 400; empty text returns 200 with no targets. It sits with the feedback search routes and shares the resolver, so it reveals nothing the search routes don't. Every signed-in reader can read every thread, so on this route only a missing thread or a hidden listing resolves as unavailable.
 
 **App and site**
 
@@ -76,7 +77,7 @@ A mention in a listing comment is a link only. It sends no alert.
 - A comment with no `targets` field renders as plain markdown. This keeps comments readable against a server that has not been updated. It must never draw every link as unavailable.
 - `FeedbackLinkPlace` gets one value per surface. In the app, the listing modal supplies `openThread`, which opens the shared Feedback dialog, and `openListing`, which uses the modal's listing opener. On the website, the place lists the Votable boards only, so a bug thread renders unavailable, and chips follow their addresses.
 - The shared Feedback dialog opener gains a way to open a thread by number. In the app, the dialog opens above the listing modal, so closing it returns the player to the listing. When a chip opened the thread, Back closes the dialog too, because the player never came from the report form. An unsent draft stays for the next time the form opens.
-- The website's link place uses relative paths with no in-place openers, the same as the Feedback page, so chips load in the same tab and work on a preview host.
+- The website's link place uses relative paths, the same as the Feedback page, and no in-place openers, so chips load in the same tab and work on a preview host.
 - A thread chip with an address on another host and no opener opens a new tab, the same rule a listing chip has. This keeps a chip from replacing the app window.
 - The website's community page gains a profile provider around the whole page, so a user chip click opens the profile there. Every author and commenter name on that page also starts to open the profile, which the community docs already promise.
 - Docs: the Mentions section of the Feedback wiki page gets the sentence on listing comments, and the Comments section of the Community Creations page gets one line.
@@ -99,7 +100,7 @@ A mention in a listing comment is a link only. It sends no alert.
 - Report and audit snippets stay plain text.
 - Export shape: none. Comments are server data, not part of world or save files.
 - No new user-facing strings. The chips reuse their existing copy.
-- Changelog: one player-facing entry for chips in listing comments and one for chips in Preview.
+- Changelog: one player-facing group, with entries for chips in listing comments, autocomplete, thread chip clicks and chips in Preview.
 
 ## Testing Decisions
 
