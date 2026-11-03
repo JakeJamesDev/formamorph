@@ -1,12 +1,15 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PATREON_PAGE_URL } from '@/components/PatreonSection';
 import { openExternal } from '@/lib/openExternal';
 import { RoadSceneHost } from './RoadSceneHost';
 import { closeRoadScene, openRoadScene } from './roadSceneStore';
 
 vi.mock('@/lib/openExternal', () => ({ openExternal: vi.fn() }));
+vi.mock('@/contexts/AgeGateContext', () => ({ useAgeGate: () => ({ attested: false, requireAttestation: vi.fn() }) }));
+vi.mock('@/contexts/SettingsContext', () => ({
+  useSettings: () => ({ activeTextEndpointPresetId: 'default', selectTextEndpointPreset: vi.fn() }),
+}));
 
 const scene = () => screen.queryByRole('dialog', { name: /How Far Should Your Story Go/ });
 
@@ -61,11 +64,20 @@ describe('RoadSceneHost', () => {
     expect(scene()).toBeNull();
   });
 
-  it('sends Support on Patreon to the Patreon page and stays open behind it', () => {
+  it('opens the checklist from Support on Patreon and leaves the Patreon page closed', () => {
     render(<App />);
     act(() => openRoadScene());
     fireEvent.click(screen.getByRole('button', { name: 'Support on Patreon' }));
-    expect(openExternal).toHaveBeenCalledWith(PATREON_PAGE_URL);
-    expect(scene()).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Get Formamorph AI' })).not.toBeNull();
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it('opens on the levels unless the ask names the checklist', () => {
+    render(<App />);
+    act(() => openRoadScene());
+    expect(screen.getByRole('heading', { name: 'How Far Should Your Story Go?' })).not.toBeNull();
+    act(() => closeRoadScene());
+    act(() => openRoadScene('checklist'));
+    expect(screen.getByRole('heading', { name: 'Get Formamorph AI' })).not.toBeNull();
   });
 });

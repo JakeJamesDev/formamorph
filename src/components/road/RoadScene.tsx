@@ -6,7 +6,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { SUPPORTER_TIERS } from '@/lib/supporterFlair';
 import type { SupporterTier } from '@/types';
+import { checklistFireTier } from '@/lib/supportChecklist';
+import type { RoadSceneView } from './roadSceneStore';
 import { RoadStage } from './RoadStage';
+import { SupportChecklist } from './SupportChecklist';
+import type { SupportChecklistModel } from './useSupportChecklist';
 import { DEFAULT_ROAD_TIER, ROAD_LEVELS, ROAD_SAMPLES, ROAD_SHARED_LINE, roadLevel, useRoadLevelName, useRoadLevelPrice } from './roadLevels';
 import { useMorphieJelly } from './useMorphieJelly';
 
@@ -51,15 +55,24 @@ function SampleBlock({ label, text, accent }: { label: string; text: string; acc
  * The full-screen scene that shows what each level of support includes. It stays dark in either theme, so the
  * light reads. Picking a level plays the Jelly on Morphie, and the stage swaps to it at the dip.
  */
-export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, onKeepPlaying, onSupport }: {
+export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, initialView = 'levels', checklist, onKeepPlaying }: {
   initialTier?: SupporterTier;
+  initialView?: RoadSceneView;
+  checklist: SupportChecklistModel;
   onKeepPlaying: () => void;
-  onSupport: () => void;
 }) {
   const [tier, setTier] = useState(initialTier);
-  const { ref, shown } = useMorphieJelly(tier, { enter: true });
+  const [view, setView] = useState(initialView);
+  const checklistView = view === 'checklist';
+  // The Jelly plays on each change of pose: a picked level, or one more finished step.
+  const pose = checklistView ? `checklist:${checklist.doneCount}` : `levels:${tier}`;
+  const { ref, shown } = useMorphieJelly(pose, { enter: true });
   const name = useRoadLevelName();
-  const level = roadLevel(shown);
+  const [shownView, shownValue = ''] = shown.split(':');
+  const shownTier = shownView === 'checklist'
+    ? checklistFireTier(Number(shownValue))
+    : isTier(shownValue) ? shownValue : tier;
+  const level = roadLevel(shownTier);
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onKeepPlaying(); }}>
       <DialogContent
@@ -71,37 +84,52 @@ export function RoadScene({ initialTier = DEFAULT_ROAD_TIER, onKeepPlaying, onSu
         <ScrollArea className="min-h-0 flex-1">
           <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
             <div className="text-center">
-              <DialogTitle className="text-heading">How Far Should Your Story Go?</DialogTitle>
+              <DialogTitle className="text-heading">{checklistView ? 'Get Formamorph AI' : 'How Far Should Your Story Go?'}</DialogTitle>
               <DialogDescription className="text-body">
-                Your support includes Formamorph AI. Every level adds more turns and more room for your world and your story.
+                {checklistView
+                  ? 'Four steps. Each one shows when it’s done, and you can leave and come back.'
+                  : 'Your support includes Formamorph AI. Every level adds more turns and more room for your world and your story.'}
               </DialogDescription>
             </div>
-            <RoadStage tier={shown} morphieRef={ref} />
-            <RoadLevelPicker tier={tier} onPick={setTier} />
-            <div className="text-center">
-              <p className="text-label">{level.line}</p>
-              <p className="text-meta text-muted-foreground">{ROAD_SHARED_LINE}</p>
-            </div>
-            <div>
-              <p className="mb-1 text-label font-medium">Your support includes:</p>
-              <ul className="list-disc space-y-1 pl-5 text-body">
-                {level.perks(name).map((perk) => <li key={perk}>{perk}</li>)}
-              </ul>
-            </div>
-            <div>
-              <p className="text-label font-medium">Your Action</p>
-              <p className="mb-2 text-body">{ROAD_SAMPLES.action}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SampleBlock {...ROAD_SAMPLES.demo} />
-                <SampleBlock {...ROAD_SAMPLES.hosted} accent />
-              </div>
-            </div>
+            <RoadStage tier={shownTier} morphieRef={ref} />
+            {checklistView ? <SupportChecklist checklist={checklist} /> : (
+              <>
+                <RoadLevelPicker tier={tier} onPick={setTier} />
+                <div className="text-center">
+                  <p className="text-label">{level.line}</p>
+                  <p className="text-meta text-muted-foreground">{ROAD_SHARED_LINE}</p>
+                </div>
+                <div>
+                  <p className="mb-1 text-label font-medium">Your support includes:</p>
+                  <ul className="list-disc space-y-1 pl-5 text-body">
+                    {level.perks(name).map((perk) => <li key={perk}>{perk}</li>)}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-label font-medium">Your Action</p>
+                  <p className="mb-2 text-body">{ROAD_SAMPLES.action}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <SampleBlock {...ROAD_SAMPLES.demo} />
+                    <SampleBlock {...ROAD_SAMPLES.hosted} accent />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </ScrollArea>
         <div className="shrink-0 border-t border-border">
           <DialogFooter className="mx-auto max-w-4xl gap-2 p-4">
-            <Button variant="outline" onClick={onKeepPlaying}>Keep Playing</Button>
-            <Button onClick={onSupport}>Support on Patreon</Button>
+            {checklistView ? (
+              <>
+                <Button variant="outline" onClick={onKeepPlaying}>Finish Later</Button>
+                <Button disabled={checklist.main.busy} onClick={checklist.main.run}>{checklist.main.label}</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={onKeepPlaying}>Keep Playing</Button>
+                <Button onClick={() => setView('checklist')}>Support on Patreon</Button>
+              </>
+            )}
           </DialogFooter>
         </div>
       </DialogContent>

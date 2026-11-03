@@ -449,7 +449,14 @@ The levels screen shows what each level of support includes. Pick a level to see
 | Button | What it does |
 |---|---|
 | **Keep Playing** | Returns to your turn. Your typed action and your story stay as they were. |
-| **Support on Patreon** | Opens the Patreon page |
+| **Support on Patreon** | Opens a checklist with four steps: **Sign In**, **Pledge on Patreon**, **Link Patreon** and **Switch to Formamorph AI** |
+
+Each step shows a check when it's done, and the fire beside Morphie grows with every step. When you come back from Patreon, the checklist picks up where you left off. The pledge step finishes once your linked Patreon account shows a pledge.
+
+| Button | What it does |
+|---|---|
+| **Finish Later** | Returns to your story. Your finished steps stay finished. |
+| **Sign In**, **Open Patreon**, **Link Patreon**, **Switch to Formamorph AI** | Runs the next step. **Switch to Formamorph AI** turns it on and returns to your story. |
 
 To open the levels screen again, select the **Demo AI** badge, then **See Levels**.
 

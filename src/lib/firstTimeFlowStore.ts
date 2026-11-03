@@ -14,6 +14,12 @@ function mark(key: string): void {
 export const isFirstRunStepSeen = (): boolean => isSet(FIRST_RUN_STEP_SEEN_KEY);
 export const markFirstRunStepSeen = (): void => mark(FIRST_RUN_STEP_SEEN_KEY);
 
+const PATREON_PAGE_OPENED_KEY = 'FORMAMORPH_patreonPageOpened';
+
+/** This device opened the Patreon page from the support checklist. */
+export const isPatreonPageOpened = (): boolean => isSet(PATREON_PAGE_OPENED_KEY);
+export const markPatreonPageOpened = (): void => mark(PATREON_PAGE_OPENED_KEY);
+
 export const isDemoAICardSeen = (): boolean => isSet(DEMO_AI_CARD_SEEN_KEY);
 export const markDemoAICardSeen = (): void => mark(DEMO_AI_CARD_SEEN_KEY);
 

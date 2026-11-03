@@ -3,16 +3,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jellyDipMs } from '@/lib/formaquestion/mascotTransition';
 import { resetTierNamesForTest, seedTierNamesForTest } from '@/lib/tierNames';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { checklistRows } from '@/lib/supportChecklist';
 import { RoadScene } from './RoadScene';
 import { ROAD_LEVELS, ROAD_SAMPLES } from './roadLevels';
 import { RoadFire } from './RoadFire';
 import { CHANGE_JELLY, ENTER_JELLY } from './useMorphieJelly';
+import type { SupportChecklistModel } from './useSupportChecklist';
 
 const NAMES = { supporter: 'Ember', supporter_plus: 'Blaze', supporter_top: 'Pyre' };
 const PRICES = { supporter: 500, supporter_plus: 1000, supporter_top: 2050 };
 
+const model = (doneCount: number, run = vi.fn()): SupportChecklistModel => ({
+  rows: checklistRows({ signedIn: doneCount > 0, attested: doneCount > 0, patreon: undefined, patreonOpened: false, onFormamorphAi: false }),
+  doneCount,
+  main: { action: 'signIn', label: 'Sign In', busy: false, run },
+  linkNow: null,
+  openPatreon: null,
+  notice: null,
+});
+
 const scene = (props: Partial<Parameters<typeof RoadScene>[0]> = {}) =>
-  render(<RoadScene onKeepPlaying={vi.fn()} onSupport={vi.fn()} {...props} />);
+  render(<RoadScene onKeepPlaying={vi.fn()} checklist={model(0)} {...props} />);
 
 const litCount = () => document.querySelectorAll('[data-moment][data-lit="true"]').length;
 const shownFire = () => document.querySelector('[data-fire]')?.getAttribute('data-fire');
@@ -139,15 +150,15 @@ describe('RoadScene prices', () => {
 describe('RoadScene actions', () => {
   it('keeps the negative action first, and each action calls its handler', () => {
     const onKeepPlaying = vi.fn();
-    const onSupport = vi.fn();
-    scene({ onKeepPlaying, onSupport });
+    scene({ onKeepPlaying });
     const keep = screen.getByRole('button', { name: 'Keep Playing' });
     const support = screen.getByRole('button', { name: 'Support on Patreon' });
     expect(keep.compareDocumentPosition(support) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(keep);
-    fireEvent.click(support);
     expect(onKeepPlaying).toHaveBeenCalledTimes(1);
-    expect(onSupport).toHaveBeenCalledTimes(1);
+    fireEvent.click(support);
+    expect(screen.getByRole('heading', { name: 'Get Formamorph AI' })).not.toBeNull();
+    expect(onKeepPlaying).toHaveBeenCalledTimes(1);
   });
 
   it('treats Escape as Keep Playing', () => {
@@ -232,5 +243,48 @@ describe('RoadScene reduced motion', () => {
     for (const moment of document.querySelectorAll<SVGElement>('[data-moment], [data-light]')) {
       expect(moment.style.transition).toBe('');
     }
+  });
+});
+
+describe('RoadScene checklist', () => {
+  const rerender = (view: ReturnType<typeof render>, done: number) =>
+    view.rerender(<RoadScene onKeepPlaying={vi.fn()} initialView="checklist" checklist={model(done)} />);
+
+  it('keeps Finish Later before the main action', () => {
+    const run = vi.fn();
+    const onKeepPlaying = vi.fn();
+    scene({ initialView: 'checklist', checklist: model(0, run), onKeepPlaying });
+    const later = screen.getByRole('button', { name: 'Finish Later' });
+    const main = screen.getByRole('button', { name: 'Sign In' });
+    expect(later.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(later);
+    fireEvent.click(main);
+    expect(onKeepPlaying).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([[0, 'supporter'], [1, 'supporter'], [2, 'supporter_plus'], [3, 'supporter_plus'], [4, 'supporter_top']])(
+    'shows the %s-step fire for %s',
+    (done, tier) => {
+      stubReducedMotion();
+      scene({ initialView: 'checklist', checklist: model(done) });
+      expect(shownFire()).toBe(tier);
+    },
+  );
+
+  it('plays the Jelly on each finished step and moves no row', () => {
+    vi.useFakeTimers();
+    const view = render(<RoadScene onKeepPlaying={vi.fn()} initialView="checklist" checklist={model(0)} />);
+    act(() => { vi.advanceTimersByTime(ENTER_JELLY.durationMs + 100); });
+    const order = () => [...document.querySelectorAll('[data-step]')].map((row) => row.getAttribute('data-step'));
+    const before = order();
+    rerender(view, 1);
+    act(() => { vi.advanceTimersByTime(jellyDipMs(CHANGE_JELLY) - 1); });
+    expect(morphie().style.transform).toMatch(/^scale\(/);
+    expect(order()).toEqual(before);
+    act(() => { vi.advanceTimersByTime(CHANGE_JELLY.durationMs + 100); });
+    expect(morphie().style.transform).toBe('');
+    expect(document.querySelector('[data-step="signIn"]')?.getAttribute('data-done')).toBe('true');
+    expect(order()).toEqual(before);
   });
 });

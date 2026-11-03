@@ -118,6 +118,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A new player can start Emberwatch with one click after the intro.** Play Emberwatch skips the Enter World steps. Browse Worlds leaves you on the main menu.
     - **After five turns on the Demo AI, a card under the story offers a look at the Formamorph AI levels.** See Levels opens a full-screen scene and Not Now closes the card for good. The Demo AI dialog's See Levels opens the scene after that.
     - **Set up your AI offers Formamorph AI first on desktop GPUs with 8 GB of memory or less.** See Levels opens the levels scene. The local model download stays below the card.
+    - **Support on Patreon in the Levels scene now opens a checklist that takes you to Formamorph AI.** It covers sign-in, your pledge, linking Patreon and switching. Each step shows when it's done, and Finish Later keeps your progress.
   - **Listing Comment Links:**
     - **Listing comments in Community Creations show `@name`, `#123` and pasted listing links as chips.** Old comments show them too, and a new or edited comment shows them at once. On the website, author and commenter names now open their profile pages.
     - **Typing @ or # in a listing comment lists matching players and threads.** Pick one to insert `@name` or `#12`. It works when you write a comment and when you edit one.
