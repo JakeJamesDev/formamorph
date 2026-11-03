@@ -96,6 +96,18 @@ describe('the allowance section: an entitled account', () => {
   });
 });
 
+describe('the allowance section: an unconfirmed pledge', () => {
+  it('says so plainly, keeps the tier, and shows no usage or Patreon link', async () => {
+    hostedState(ok({ tier: 'supporter', state: 'unconfirmed', percentUsed: null, turnsLeft: null, resetAt: null }));
+    render(<AllowanceSection />);
+
+    expect(await screen.findByText("We can't confirm your Patreon pledge right now. Formamorph AI will work again as soon as we can.")).toBeTruthy();
+    expect(screen.getByText('Support')).toBeTruthy();
+    expect(screen.queryByText('Used')).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+});
+
 describe('the allowance section: an account without access', () => {
   it('shows the Patreon line and link', async () => {
     hostedState(ok({ tier: null, state: 'locked', percentUsed: null, turnsLeft: null, resetAt: null }));

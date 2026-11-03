@@ -40,6 +40,7 @@ describe('the refusal code list', () => {
       invalid_request: 400,
       age_gate_required: 403,
       not_entitled: 403,
+      pledge_unconfirmed: 403,
       service_paused: 503,
       rate_limited: 429,
       turn_expired: 409,
@@ -65,7 +66,7 @@ describe('the refusal code list', () => {
 });
 
 describe('the preset state from the hosted state', () => {
-  it.each(['ready', 'warned', 'exhausted', 'paused', 'locked', 'age-gate'] as const)('reads %s as reported', async (state) => {
+  it.each(['ready', 'warned', 'exhausted', 'paused', 'unconfirmed', 'locked', 'age-gate'] as const)('reads %s as reported', async (state) => {
     const session = sessionOn(ok({ ...STATE, state }));
     await session.refresh();
     expect(session.getSnapshot().presetState).toBe(state);

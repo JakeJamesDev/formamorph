@@ -266,7 +266,7 @@ The built-in endpoint preset for Supporters, next to the Demo AI. Turns go throu
 _Avoid_: hosted tier (in copy), premium AI, the proxy
 
 **Hosted state**:
-What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, locked or age gate), its context window and output cap, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
+What Formamorph's server reports about one account's Formamorph AI: its tier, its state (ready, warned, exhausted, paused, unconfirmed, locked or age gate; unconfirmed keeps the tier and means Patreon has not confirmed the pledge for 7 days), its context window and output cap, the served model and its capabilities, and the allowance used. The client sets the preset's state from it, and from the refusals the server sends.
 _Avoid_: usage, quota, entitlement (the Patreon word)
 
 **Allowance Ring**:

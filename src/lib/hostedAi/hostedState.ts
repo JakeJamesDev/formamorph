@@ -5,7 +5,7 @@ import {
 } from '@/lib/reasoningEffort';
 
 /** The states the hosted-state route itself reports. */
-const SERVER_STATES = ['age-gate', 'locked', 'paused', 'exhausted', 'warned', 'ready'] as const;
+const SERVER_STATES = ['age-gate', 'locked', 'unconfirmed', 'paused', 'exhausted', 'warned', 'ready'] as const;
 type ServerState = (typeof SERVER_STATES)[number];
 
 /** The served model's capability record, as the admin entered it. */

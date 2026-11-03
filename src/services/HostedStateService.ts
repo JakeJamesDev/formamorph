@@ -5,7 +5,7 @@ import { SUPPORTER_TIERS } from '@/lib/supporterFlair';
 import type { SupporterTier } from '@/types';
 
 /** The states the server reports. The app adds its own (signed out, outdated and the rest) from refusals. */
-const ALLOWANCE_STATES = ['ready', 'warned', 'exhausted', 'paused', 'locked', 'age-gate'] as const;
+const ALLOWANCE_STATES = ['ready', 'warned', 'exhausted', 'paused', 'locked', 'age-gate', 'unconfirmed'] as const;
 
 export type HostedAllowanceState = (typeof ALLOWANCE_STATES)[number];
 

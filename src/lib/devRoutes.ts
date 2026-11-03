@@ -283,7 +283,7 @@ export const DEV_MODAL_TABS = {
   gameViewerAttach: [DEV_ATTACH_SAMPLE],
   // The Allowance Ring in one state, reached with `allowance=…` (`#dev?view=gameViewer&fixture=whiteRoom&allowance=warned`).
   // `warned` sits past the lower threshold and `warned-high` past the highest. Nothing is read or saved.
-  gameViewerAllowance: ['ready', 'warned', 'warned-high', 'exhausted', 'paused', 'locked', 'signed-out', 'privacy-required', 'suspended', 'age-gate', 'outdated', 'unavailable'],
+  gameViewerAllowance: ['ready', 'warned', 'warned-high', 'exhausted', 'paused', 'unconfirmed', 'locked', 'signed-out', 'privacy-required', 'suspended', 'age-gate', 'outdated', 'unavailable'],
   // The Formaquestion window's parts (`#dev?modal=formaquestion&tab=guide`). `subtab=…` takes a docs
   // section id and opens it in the reader. `mode=wide` or `mode=narrow` picks the layout. `fullscreen=1`
   // opens the Guide full screen over the window.

@@ -9,7 +9,7 @@ import { flairTier } from '@/lib/supporterFlair';
 /** A known tier or a usable preset state. Anything else, an unread state included, counts as no pledge. */
 function isPledged({ hosted, presetState }: HostedSnapshot): boolean {
   return flairTier(hosted?.tier ? { tier: hosted.tier } : null) !== null
-    || presetState === 'ready' || presetState === 'warned' || presetState === 'exhausted';
+    || presetState === 'ready' || presetState === 'warned' || presetState === 'exhausted' || presetState === 'unconfirmed';
 }
 
 function useOfferFacts() {

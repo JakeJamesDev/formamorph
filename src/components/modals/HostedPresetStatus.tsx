@@ -63,6 +63,7 @@ export function HostedPresetStatus({ state, sample: givenSample, className }: {
           )}
         </div>
       )}
+      {shown === 'unconfirmed' && tierLabel && <Meta data-hosted-tier>{tierLabel}</Meta>}
       {copy && <Hint>{copy.reason}</Hint>}
       {copy?.action && (
         <div className="flex gap-2">

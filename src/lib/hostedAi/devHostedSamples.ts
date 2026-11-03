@@ -20,6 +20,9 @@ export const DEV_HOSTED_SAMPLES: Partial<Record<HostedPresetState, DevHostedSamp
     tier: 'supporter_plus', percentUsed: 100, turnsLeft: 0, resetAt: RESET_AT, warnThresholds: WARN_THRESHOLDS, breakdownThreshold: 10,
     breakdown: { narration: 60.0, thinking: 20.0, choices: 20.0 },
   },
+  unconfirmed: {
+    tier: 'supporter_plus', percentUsed: null, turnsLeft: null, resetAt: null, warnThresholds: null, breakdown: null, breakdownThreshold: null,
+  },
 };
 
 /** One `allowance=…` dev route: the state it shows and, where the state's own sample won't do, its usage. */
@@ -35,6 +38,7 @@ export const DEV_ALLOWANCE_ROUTES: Record<string, DevAllowanceRoute> = {
   'warned-high': { state: 'warned', sample: { ...DEV_HOSTED_SAMPLES.warned!, percentUsed: 93, turnsLeft: 3 } },
   exhausted: { state: 'exhausted' },
   paused: { state: 'paused' },
+  unconfirmed: { state: 'unconfirmed' },
   locked: { state: 'locked' },
   'signed-out': { state: 'signed-out' },
   'privacy-required': { state: 'privacy-required' },

@@ -75,6 +75,13 @@ describe('who counts as pledged', () => {
     expect(isDemoAICardSeen()).toBe(false);
   });
 
+  it('offers nothing while the pledge is unconfirmed, even with no tier read', async () => {
+    await readState({ ...STATE, tier: null, state: 'unconfirmed' });
+    mount();
+    expect(available()).toBe(false);
+    expect(showing()).toBe(false);
+  });
+
   it('offers to a signed-in player with no pledge', async () => {
     await readState({ ...STATE, tier: null, state: 'locked' });
     mount();

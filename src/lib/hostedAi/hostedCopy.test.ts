@@ -3,7 +3,7 @@ import { HOSTED_SUPPORT_LABEL, hostedStateCopy } from './hostedCopy';
 import type { HostedPresetState } from './refusals';
 
 const STATES: HostedPresetState[] = [
-  'ready', 'warned', 'signed-out', 'privacy-required', 'suspended', 'age-gate', 'locked', 'exhausted', 'paused', 'outdated', 'unavailable',
+  'ready', 'warned', 'signed-out', 'privacy-required', 'suspended', 'age-gate', 'locked', 'exhausted', 'paused', 'unconfirmed', 'outdated', 'unavailable',
 ];
 
 /** Support is a donation, so no line sells a plan. */
@@ -20,5 +20,14 @@ describe('hosted preset copy reads as a donation', () => {
   it('offers Support on Patreon when the account has no support and when the allowance is spent', () => {
     expect(hostedStateCopy('locked')?.action?.label).toBe(HOSTED_SUPPORT_LABEL);
     expect(hostedStateCopy('exhausted')?.extra?.label).toBe(HOSTED_SUPPORT_LABEL);
+  });
+
+  it('tells an unconfirmed pledge it will recover, offers a recheck and a way out, and blames no one', () => {
+    const copy = hostedStateCopy('unconfirmed');
+
+    expect(copy?.reason).toBe("We can't confirm your Patreon pledge right now. Formamorph AI will work again as soon as we can.");
+    expect(copy?.action?.kind).toBe('recheck');
+    expect(copy?.extra?.kind).toBe('switchBack');
+    expect(copy?.reason).not.toMatch(/\b(no pledge|not paying|unpaid|lapsed|expired)\b/i);
   });
 });

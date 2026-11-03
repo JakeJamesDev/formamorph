@@ -98,6 +98,7 @@ const FILES = [
   'src/lib/deletionCancellation.ts',
   'src/lib/fetchTarget.ts',
   'src/lib/filesFrom.ts',
+  'src/lib/hostedAi/unconfirmedCopy.ts',
   'src/lib/elementIcons.ts',
   'src/lib/errorDetails.ts',
   'src/lib/letterMask.ts',

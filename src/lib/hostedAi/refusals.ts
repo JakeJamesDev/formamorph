@@ -7,6 +7,7 @@ export const HOSTED_REFUSALS = {
   invalid_request: 400,
   age_gate_required: 403,
   not_entitled: 403,
+  pledge_unconfirmed: 403,
   service_paused: 503,
   rate_limited: 429,
   turn_expired: 409,
@@ -19,7 +20,7 @@ export const HOSTED_REFUSALS = {
 /** Every state the Formamorph AI preset can be in. */
 export const HOSTED_PRESET_STATES = [
   'signed-out', 'privacy-required', 'suspended', 'age-gate', 'locked',
-  'ready', 'warned', 'exhausted', 'paused', 'outdated', 'unavailable',
+  'ready', 'warned', 'exhausted', 'paused', 'unconfirmed', 'outdated', 'unavailable',
 ] as const;
 
 export type HostedPresetState = (typeof HOSTED_PRESET_STATES)[number];
@@ -46,6 +47,7 @@ export interface HostedRefusal {
 
 const PRESET_STATE_BY_CODE: Partial<Record<string, HostedPresetState>> = {
   not_entitled: 'locked',
+  pledge_unconfirmed: 'unconfirmed',
   age_gate_required: 'age-gate',
   service_paused: 'paused',
   budget_exhausted: 'exhausted',

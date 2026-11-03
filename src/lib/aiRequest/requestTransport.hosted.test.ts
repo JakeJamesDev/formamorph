@@ -242,6 +242,7 @@ describe('Formamorph AI through the Request Transport', () => {
 
   it.each([
     ['not_entitled', 'locked'],
+    ['pledge_unconfirmed', 'unconfirmed'],
     ['age_gate_required', 'age-gate'],
     ['service_paused', 'paused'],
     ['budget_exhausted', 'exhausted'],
@@ -372,6 +373,18 @@ describe('Formamorph AI through the Request Transport', () => {
     const { text } = await send(request(), context(proxy.fetchImpl, session));
 
     expect(text).toBe('One.');
+  });
+
+  it('sends no call while the pledge is unconfirmed, and says why', async () => {
+    quietErrors();
+    const proxy = fakeProxy([], () => json(200, { success: true, data: { ...READY_STATE, state: 'unconfirmed' } }));
+    const { session } = await signedIn(proxy.fetchImpl);
+
+    const { error, failures } = await send(request(), context(proxy.fetchImpl, session));
+
+    expect(proxy.chatCalls()).toHaveLength(0);
+    expect(failures).toHaveLength(1);
+    expect((error as AiStreamError).hosted?.presetState).toBe('unconfirmed');
   });
 
   it('tells the player once per state change when a background pass is blocked', async () => {

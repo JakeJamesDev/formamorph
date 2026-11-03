@@ -1,6 +1,7 @@
 import { formatResetTime } from '@/lib/resetTime';
 import type { HostedState } from './hostedState';
 import type { HostedPresetState } from './refusals';
+import { HOSTED_UNCONFIRMED_REASON } from './unconfirmedCopy';
 
 /** What a state's action does. */
 export type HostedAction = 'signIn' | 'privacy' | 'ageGate' | 'patreon' | 'update' | 'recheck' | 'switchBack';
@@ -38,6 +39,11 @@ const COPY: Record<HostedPresetState, HostedStateCopy | null> = {
   paused: {
     reason: "Formamorph AI is paused for everyone right now. This doesn't use your allowance.",
     action: { kind: 'recheck', label: 'Check Again' },
+  },
+  unconfirmed: {
+    reason: HOSTED_UNCONFIRMED_REASON,
+    action: { kind: 'recheck', label: 'Check Again' },
+    extra: { kind: 'switchBack', label: HOSTED_SWITCH_BACK_LABEL },
   },
   outdated: { reason: 'Update Formamorph to keep using Formamorph AI', action: { kind: 'update', label: 'Update' } },
   unavailable: {

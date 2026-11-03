@@ -66,6 +66,7 @@ const ALLOWED = [
   '@/lib/apiBase',
   '@/lib/communityCaches',
   '@/lib/deletionCancellation',
+  '@/lib/hostedAi/unconfirmedCopy',
   '@/lib/refusalWatch',
   '@/lib/serverDate',
   '@/lib/useMountedRef',
@@ -200,7 +201,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 73: `typography`, the text roles the age gate, creations list, Patreon section and delete-account dialog read; it reads only `utils`.
     // 74: `resetTime`, the pure leaf that formats the local reset weekday and time for the allowance section.
     // 75: `SupportersWall`, the wall the page and the game's Credits dialog share; it reads only leaves already listed.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(75);
+    // 76: `unconfirmedCopy`, the one sentence for an unconfirmed pledge, which the app and the allowance section share.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(76);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

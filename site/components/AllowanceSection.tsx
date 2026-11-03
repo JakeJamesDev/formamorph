@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
+import { HOSTED_UNCONFIRMED_REASON } from '@/lib/hostedAi/unconfirmedCopy';
 import { formatResetTime } from '@/lib/resetTime';
 import { useTierName } from '@/lib/tierNames';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -84,6 +85,13 @@ export function AllowanceSection() {
         <div className="space-y-2">
           <p className="text-helper text-muted-foreground">Formamorph AI is paused. Try again later.</p>
           {reading.percentUsed !== null && <Figures reading={reading} reset={reset} />}
+        </div>
+      );
+    case 'unconfirmed':
+      return (
+        <div className="space-y-2">
+          <p className="text-helper text-muted-foreground">{HOSTED_UNCONFIRMED_REASON}</p>
+          <Figures reading={reading} reset={null} />
         </div>
       );
     case 'exhausted':
