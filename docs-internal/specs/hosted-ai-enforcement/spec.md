@@ -98,9 +98,9 @@ The client expires turn ids slightly before the server does and opens a new turn
 
 ### Entitlement freshness (FormamorphServer)
 
-- **The cutoff lives in `entitlement()`.** A pledge whose `checked_at` is older than 7 days, or null while it holds a tier, does not count. The cutoff is a server constant.
+- **The cutoff lives in `entitlement()`.** A pledge whose `checked_at` is older than 7 days, or null or unparseable while it holds a tier, does not count. Exactly 7 days still serves. The cutoff is a server constant.
 - **A live grant still counts**, so a grant can serve an account whose pledge is unconfirmed, on the grant's own spend subject.
-- **The result says why.** The proxy refuses with a new refusal code, and the Hosted state reports a matching new state, so the client can show it before any call. Tickets name both in the glossary's words.
+- **The result says why.** The proxy refuses with a new refusal code, and the Hosted state reports a matching new state, so the client can show it before any call. The refusal is `pledge_unconfirmed`, status 403. The state is `unconfirmed`, ranks after the age gate, keeps the held tier, and leaves other fields null.
 - **Only the proxy and the Hosted state change.** Flair and the wall keep reading the tier.
 - **Recovery needs no action.** Any successful read refreshes `checked_at`, and service resumes on the next call.
 - **Reconcile alert:** count consecutive failed hourly runs in a stored setting, as the balance alert does, so a restart does not reset the count. Alert once on the third failure with `alertAdmins`. A success clears the count and allows a later alert. An unconfigured server runs nothing and counts nothing.
@@ -133,7 +133,7 @@ The client expires turn ids slightly before the server does and opens a new turn
   - The signed webhook route and the reconcile job with the Patreon client swapped (prior art: the webhook and reconcile suites).
   - The hosted stream call with a fake fetch and clock (prior art: the request transport and hosted turn tests).
 - **The spend suite** runs the stockpile attack with the budget spent through real calls, and asserts total spend stays within the stated bound however many turns are held. It also shows that an honest turn under budget finishes past the budget.
-- **The entitlement suite** keeps the bypass probes as a permanent guard: tier fields in the body and headers, retired tokens, route variants, suspended accounts and forged or misused link tokens.
+- **The entitlement suite** keeps the bypass probes as a permanent guard: tier fields in the body and headers, retired tokens, route variants, suspended accounts and forged or misused link tokens. Audit probes that pin a gap this effort closes do not carry over.
 - **Prove each guard bites.** Reinstate each bug and watch its test fail.
 - **Existing tests that must stay green:** a started turn finishes past the budget, and an unknown or foreign turn id gets `turn_expired`.
 - **Tests that may change:** any test that asserts a call reaching the ceiling is admitted, or that a paused day lets a turn run on without limit. Only these rulings justify the change.
