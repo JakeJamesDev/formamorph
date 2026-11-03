@@ -60,6 +60,12 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q26 | Morphie watches the fire and never holds it. Her interest grows with the level, using her existing layers: Spark has resting arms and a small "o" mouth, Flame has a hand to her chin, wide eyes and a small "o" mouth, and Beacon has resting arms, heart eyes and an open mouth. Her art stays unmirrored, so she faces left, toward the fire. No blush and no wave. No new art. |
 | Q27 | Selecting Formamorph AI with no access shows an inline panel in AI settings with Morphie, the fire and the three levels. See Levels opens the scene. Selecting the preset never opens the scene by itself. |
 | Q28 | The panel shows for a signed-out player, a player without the 18+ check, and a signed-in player with no pledge. Support on Patreon opens the checklist, which starts at the first unfinished step. Every other preset state keeps today's text. |
+| Q29 | The entry line shows while narration is on the Demo AI and the seen key is unset. Showing it sets the key, so it appears on one game entry per device and stays until the player leaves that game view. When the AI gate is due, the line and the key wait for a later entry. Ticket 01 ruling. |
+| Q30 | The line states a fact about the Demo AI, so it ignores hosted availability and pledge. Only the card and the AI setup lead use those. Ticket 01 ruling. |
+| Q31 | A counted turn is one that follows a player action. The opening never counts, whether the AI or the author wrote it, so "five turns" means five player actions in every world. Rollback then a new action counts. A regenerate or a loaded save does not. Ticket 01 ruling. |
+| Q32 | The first-run rule takes the intro-seen record as read at launch, plus the first-run step's own record, because the intro writes its record when it ends. A replayed intro never makes the step due. Ticket 01 ruling. |
+| Q33 | A first-entry readme opens at once, as it does for returning players, without waiting for the reachability probe. A failed probe opens the gate over it. Ticket 01 ruling. |
+| Q34 | Opening the longer dialog from the badge sets the seen key, so that player never sees the entry line. Ticket 01 ruling. |
 
 ## User Stories
 
