@@ -69,6 +69,10 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q35 | The tier-names reply keeps its title keys and adds a sibling `prices` field: integer cents per tier key, `null` when unknown, in the campaign's US dollars with no currency code. Prices refresh by the same rule as titles. Ticket 03 ruling. |
 | Q36 | Play Emberwatch uses the stored world. If the seeder hasn't stored it yet, Play starts from the bundled copy, and a save from that game must still reach the same world id. If the player deleted Emberwatch, the step offers Browse Worlds only, so a deletion stays respected. Ticket 02 ruling. |
 | Q37 | Play, Browse Worlds, Escape and an outside click all close the first-run step and mark it seen. Ticket 02 ruling. |
+| Q38 | The scene states each level's perks with the "Your support includes" list from the approved Patreon text, and leaves out the Fantasy Futanari block and the 18+ line. Copy may land as a draft while no player can reach the scene; the user approves it before release. Ticket 04 ruling. |
+| Q39 | The road carries no story text: lit moments, the fire and Morphie only, as in the approved art. The scene opens on Flame, and the locked preset panel uses the same default. Ticket 04 ruling. |
+| Q40 | With no level names from the server, the scene falls back to Spark, Flame and Beacon from its level table, because three levels reading "Member" can't be told apart. The "Member" fallback stands everywhere else. Ticket 04 ruling. |
+| Q41 | Funnel steps on the wire are `offer_shown`, `see_levels`, `patreon_click` and `checklist_finished`, at `POST /api/funnel/:step`, with an in-memory per-IP limiter that stores no IP. The totals read at `GET /api/funnel` is admin-only, newest day first, because these are business numbers. The privacy line needs no re-accept unless the user says otherwise. Ticket 08 ruling. |
 
 ## User Stories
 

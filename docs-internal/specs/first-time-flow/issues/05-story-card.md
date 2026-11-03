@@ -18,6 +18,7 @@ This is the first ticket that lets a player reach the scene, so the offer's avai
 - [ ] A build without hosted AI shows no card and no See Levels. A test guards this, and removing the check fails it (Q6).
 - [ ] One Playwright run goes from a fresh profile through the intro, Play Emberwatch, five turns on a stubbed endpoint, the card and the scene.
 - [ ] Frames at `.scratch/frames/card-chat-1280.png`, `.scratch/frames/card-pages-1280.png` and `.scratch/frames/card-pages-375.png`, in both themes.
+- [ ] The scene's surface entry moves from the `dev` exclusion to a docs target, and that docs section describes the offer and the scene.
 - [ ] A changelog fragment states what changed for the player.
 
 For you: the card's wording, and whether five turns feels right, in a real game on the Demo AI.
