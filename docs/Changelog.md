@@ -70,7 +70,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Formamorph AI shows your allowance, warns you twice, and offers one click back when it runs out.** Settings shows the percent used, about how many turns are left and the reset date. A new Supporter device switches to it once.
     - **Your Formamorph AI allowance now resets every week, and Formamorph shows the reset in your local time.** Settings and your formamorph.ai account page name the weekday and time. One notice appears at the highest warning level each week.
     - **AI settings shows where this week's Formamorph AI use went.** Seven groups appear by percent, and any single prompt with a large share is named under its group.
-    - **A ring beside Send shows how much of this week's Formamorph AI allowance you've used.** Select it for the percent used, about how many turns are left, the reset time and where your use went.
+    - **A ring beside Send shows how much of this week's Formamorph AI allowance you've used.** Select it for the percent used, about how many turns are left, the reset time and where your use went. A **?** in its header explains how the allowance works.
     - **Formamorph AI shows Reachable and Recheck in Settings, like other endpoints.** Checking it spends none of your allowance.
     - **On a phone, the action field now fills the row while you type.** Help and the allowance ring hide until you leave the field. Send stays in place.
     - **Formamorph AI now tells you when Patreon can't confirm your pledge.** The status, ring and account page say so, and service returns on its own.

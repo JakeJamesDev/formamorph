@@ -103,6 +103,16 @@ A later write to a field overwrites an earlier one, so the run order decides whi
 };
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {
+  'game.allowance': {
+    title: 'Formamorph AI Allowance',
+    wikiPage: 'How-to-Play',
+    wikiAnchor: 'how-to-check-your-formamorph-ai-allowance',
+    body: `Your allowance counts turns on every device and resets every week.
+
+The list shows where this week's use went.
+
+When you've used this week's allowance, Formamorph AI stops until the reset. Background requests, such as diaries, pause too.`,
+  },
   'game.howToPlay': {
     title: 'How to Play',
     wikiPage: 'How-to-Play',

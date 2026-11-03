@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { HelpButton } from '@/components/HelpButton';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -67,8 +68,11 @@ function RingControl({ figure, preview, busy, className }: {
       <PopoverContent side="top" align="end" className="w-80 p-0">
         <ScrollArea className="max-h-[min(32rem,var(--radix-popover-content-available-height))]">
           <div className="flex flex-col gap-3 p-4">
-            <SectionTitle>Formamorph AI</SectionTitle>
-            <HostedPresetStatus state={preview?.state} sample={preview?.sample} className="py-0" />
+            <div className="flex items-center justify-between gap-2">
+              <SectionTitle>Formamorph AI</SectionTitle>
+              <HelpButton topicId="game.allowance" className="h-6 w-6" skipFirstTimeTint />
+            </div>
+            <HostedPresetStatus state={preview?.state} sample={preview?.sample} className="py-0" usageHelp={false} />
           </div>
         </ScrollArea>
       </PopoverContent>

@@ -54,7 +54,7 @@ afterEach(() => {
 
 const onHosted = (settings: Settings) => settings.selectTextEndpointPreset(FORMAMORPH_AI_PRESET_ID);
 
-const ring = () => screen.findByRole('button', { name: /Formamorph AI Allowance/ });
+const ring = () => screen.findByRole('button', { name: /^Formamorph AI Allowance/ });
 const fillTone = (el: HTMLElement) => el.querySelector('[data-allowance-fill]')?.getAttribute('data-allowance-fill') ?? null;
 
 async function renderRing() {
@@ -79,7 +79,7 @@ describe('Allowance Ring: when it shows', () => {
   it('shows for one prompt pinned to Formamorph AI', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS });
     await screen.findByRole('button', { name: 'Send' });
-    expect(screen.queryByRole('button', { name: /Formamorph AI Allowance/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Formamorph AI Allowance/ })).toBeNull();
     // Routing lives on a user prompt preset, so one is made active first.
     act(() => { view.settings().selectPreset(view.settings().addPreset('Routed')); });
     act(() => { view.settings().setPromptEndpoint('choices', FORMAMORPH_AI_PRESET_ID); });
@@ -89,7 +89,7 @@ describe('Allowance Ring: when it shows', () => {
   it('stays away, and reads nothing, when no prompt uses Formamorph AI', async () => {
     renderMiddlePanel({}, { turns: TURNS });
     await screen.findByRole('button', { name: 'Send' });
-    expect(screen.queryByRole('button', { name: /Formamorph AI Allowance/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Formamorph AI Allowance/ })).toBeNull();
     expect(stateReads).toBe(0);
   });
 
@@ -246,14 +246,14 @@ describe('Allowance Ring: the popover', () => {
     served = { ...STATE, percentUsed: 45 };
     const dialog = await openPopover();
     await waitFor(() => expect(dialog.textContent).toContain('45% used'));
-    expect(screen.getByRole('button', { name: /Formamorph AI Allowance/, hidden: true }).getAttribute('aria-label')).toContain('32%');
+    expect(screen.getByRole('button', { name: /^Formamorph AI Allowance/, hidden: true }).getAttribute('aria-label')).toContain('32%');
     const reads = stateReads;
     served = { ...STATE, percentUsed: 47 };
     setBusy(view, false);
     await waitFor(() => expect(dialog.textContent).toContain('47% used'));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
     expect(stateReads).toBe(reads + 1);
-    expect(screen.getByRole('button', { name: /Formamorph AI Allowance/, hidden: true }).getAttribute('aria-label')).toContain('47%');
+    expect(screen.getByRole('button', { name: /^Formamorph AI Allowance/, hidden: true }).getAttribute('aria-label')).toContain('47%');
   });
 
   it('reads nothing at a turn end while closed', async () => {
@@ -302,14 +302,20 @@ describe('Allowance Ring: the popover', () => {
     ['ready', 33],
     ['warned', 80],
     ['exhausted', 100],
-  ])('says background work pauses on a spent week, and names no weekday, when %s', async (state, percentUsed) => {
+  ])('keeps the explanation behind the help button, and it names no weekday, when %s', async (state, percentUsed) => {
     served = { ...STATE, state, percentUsed };
     await hostedSession.refresh();
     await renderRing();
-    const dialog = await openPopover();
-    const line = await within(dialog).findByText(/Pauses background requests/);
-    expect(line.closest('[data-hosted-usage]')).toBeTruthy();
-    expect(line.textContent).not.toMatch(/(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day/);
+    const popover = await openPopover();
+    await within(popover).findByRole('list', { name: /this week/ });
+    expect(popover.textContent).not.toMatch(/background requests|every device/i);
+
+    await userEvent.click(within(popover).getByRole('button', { name: 'About Formamorph AI Allowance' }));
+    const help = await screen.findByRole('dialog', { name: 'Formamorph AI Allowance' });
+    expect(help.textContent).toMatch(/Background requests, such as diaries, pause/);
+    expect(help.textContent).not.toMatch(/(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day/);
+    // The popover stays open behind the help, so closing it returns to the usage.
+    expect(screen.getByRole('list', { name: /this week/, hidden: true })).toBeTruthy();
   });
 
   it('routes every dev state the ring can show', () => {

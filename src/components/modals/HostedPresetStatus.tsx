@@ -23,13 +23,15 @@ const LOCKED_PANEL_STATES: readonly HostedPresetState[] = ['signed-out', 'age-ga
 
 /**
  * Formamorph AI's state: its allowance, its reason and its actions. `state` overrides the live one, with `sample`
- * as its usage. `lockedPanel` draws the levels panel for a player with no access.
+ * as its usage. `lockedPanel` draws the levels panel for a player with no access. `usageHelp` shows the lines that
+ * explain the allowance, for a host with no help of its own.
  */
-export function HostedPresetStatus({ state, sample: givenSample, className, lockedPanel = false }: {
+export function HostedPresetStatus({ state, sample: givenSample, className, lockedPanel = false, usageHelp = true }: {
   state?: HostedPresetState;
   sample?: DevHostedSample;
   className?: string;
   lockedPanel?: boolean;
+  usageHelp?: boolean;
 }) {
   const { hostedAi, refreshHostedState, switchBackFromHostedAi } = useSettings();
   const { requireAttestation } = useAgeGate();
@@ -71,8 +73,8 @@ export function HostedPresetStatus({ state, sample: givenSample, className, lock
       {usage && (
         <div className="flex flex-col gap-1" data-hosted-usage>
           <Meta>{[usage.tier, usage.used, usage.turnsLeft, usage.resets].filter(Boolean).join(' · ')}</Meta>
-          <Hint>{HOSTED_USAGE_HELP}</Hint>
-          <Hint>{HOSTED_BACKGROUND_HELP}</Hint>
+          {usageHelp && <Hint>{HOSTED_USAGE_HELP}</Hint>}
+          {usageHelp && <Hint>{HOSTED_BACKGROUND_HELP}</Hint>}
           {hosted?.breakdown && (
             <div className="mt-3 w-full max-w-sm">
               <HostedBreakdown breakdown={hosted.breakdown} threshold={hosted.breakdownThreshold} />
