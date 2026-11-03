@@ -576,32 +576,37 @@ export function runTotal(total: number, refused: string, report: (line: string) 
   };
 }
 
-const switchRunTotal = () => runTotal(SWITCH_RUN_TOTAL, `Trait switches fired ${SWITCH_RUN_TOTAL} runs in one action; further switches fired no script`);
-
 /** Item runs one action fires across all levels before a further event fires no script. */
 export const ITEM_RUN_TOTAL = 100;
 
+/** The limits every run of one action spends, across each between-turn pass it starts (Q40, Q45, Q55). */
+export interface ActionTotals {
+  switches: RunTotal;
+  itemRuns: RunTotal;
+}
+
+/** Full totals for one action. `reportItems` takes the item total's one line. */
+export const actionTotals = (reportItems: (line: string) => void): ActionTotals => ({
+  switches: runTotal(SWITCH_RUN_TOTAL, `Trait switches fired ${SWITCH_RUN_TOTAL} runs in one action; further switches fired no script`),
+  itemRuns: runTotal(ITEM_RUN_TOTAL, `Item scripts fired ${ITEM_RUN_TOTAL} runs in one action; further events fired no script`, reportItems),
+});
+
 /** What every run nested inside one action shares. */
-interface ActionRuns {
+interface ActionRuns extends ActionTotals {
   /** The turn the action began from, which a settle reads the runs so far over. */
   root: StatCodeTurn;
   /** Every script's landing so far, in order. */
   trail: StatCodeTurnResult[];
   log: string[];
   itemUses: ItemUse[];
-  switches: RunTotal;
-  itemRuns: RunTotal;
 }
 
 /** Where an action's own runs sit. */
 const ACTION_TOP: RunNesting = { switchDepth: 0, itemLevel: 1 };
 
-const actionRunsOf = (root: StatCodeTurn): ActionRuns => {
+const actionRunsOf = (root: StatCodeTurn, totals?: ActionTotals): ActionRuns => {
   const log: string[] = [];
-  return {
-    root, trail: [], log, itemUses: [], switches: switchRunTotal(),
-    itemRuns: runTotal(ITEM_RUN_TOTAL, `Item scripts fired ${ITEM_RUN_TOTAL} runs in one action; further events fired no script`, (line) => log.push(line)),
-  };
+  return { root, trail: [], log, itemUses: [], ...(totals ?? actionTotals((line) => log.push(line))) };
 };
 
 /** How deep a run sits: its nested switch rounds, and the level its inventory writes fire their item events at. */
@@ -677,6 +682,8 @@ export interface ItemRunOptions {
   depth?: number;
   /** Absent = no settle between writes. */
   settle?: SettleCopies;
+  /** The totals of the action this batch is a pass of. Absent = the batch is its own action. */
+  totals?: ActionTotals;
 }
 
 /** What the item runs of one batch of events left. */
@@ -703,10 +710,10 @@ export interface ItemRunsResult {
  */
 export async function runItemScripts(
   turn: StatCodeTurn, events: readonly ItemScriptEvent[], items: InventoryStep['items'],
-  apply: ApplyInventory, itemNameOf: (item: Pick<Item, 'name'>) => string, { depth = 1, settle }: ItemRunOptions = {},
+  apply: ApplyInventory, itemNameOf: (item: Pick<Item, 'name'>) => string, { depth = 1, settle, totals }: ItemRunOptions = {},
 ): Promise<ItemRunsResult> {
   const start: StatCodeTurn = { ...turn, inventory: { items, apply, itemNameOf, ...(settle ? { settle } : {}) } };
-  const action = actionRunsOf(start);
+  const action = actionRunsOf(start, totals);
   const steps: StatCodeTurnResult[] = [];
   const end = await itemRuns(start, events, { ...ACTION_TOP, itemLevel: depth }, steps, action);
   const base = { copies: end.state.itemCopies ?? [], diagnostics: action.log, itemUses: action.itemUses };
@@ -789,12 +796,14 @@ export function withoutBodies(writes: WorldWrites | undefined): WorldWrites | un
 
 export { baseWritesOf } from './worldWrites';
 
-/** One switch run per event, over `turn`, the state the switches left (Q12, Q47). */
-export async function runSwitchScripts(turn: StatCodeTurn, events: readonly TraitSwitchEvent[]): Promise<StatCodeTurnResult | null> {
+/** One switch run per event, over `turn`, the state the switches left (Q12, Q47). `totals` are those of the action
+ *  this batch is a pass of; absent = the batch is its own action. Null when no run fired. */
+export async function runSwitchScripts(turn: StatCodeTurn, events: readonly TraitSwitchEvent[], totals?: ActionTotals): Promise<StatCodeTurnResult | null> {
   if (!events.length) return null;
-  const action = actionRunsOf(turn);
+  const action = actionRunsOf(turn, totals);
   const steps: StatCodeTurnResult[] = [];
   const now = await switchRuns(turn, events, ACTION_TOP, steps, action);
+  if (!steps.length) return null;
   return withActionItems(chainedResult(turn, steps, now), action);
 }
 

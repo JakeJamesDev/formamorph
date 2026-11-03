@@ -760,7 +760,7 @@ Change the inventory through verbs. A target is an entity, the persona or a loca
 
 - **The writes apply when the script ends**, in run order, through the same checks as the panel. A check that fails skips that write and logs the reason.
 - **The next script reads the Item Copies with these writes applied.** A `give` in one script is in `items` and `persona.items` in the scripts below it. So is an equip, and any item that unequips as a result.
-- **The item scripts a write fires run before the next script.** **When Gained** and the other item timings run at once, up to 3 levels deep. One action runs item scripts at most 100 times in all. Past either limit, the write still applies and no item script runs. The log says so.
+- **The item scripts a write fires run before the next script.** **When Gained** and the other item timings run at once, up to 3 levels deep. One action runs item scripts at most 100 times in all, counting the runs it starts between turns. Past either limit, the write still applies and no item script runs. The log says so.
 - **During AI Output waits.** Scripts read the Item Copies from sentence to sentence, but item scripts run once, when the reply ends. A stopped reply applies none of it.
 - **An item's stat effects and granted traits wait for the end of the turn.** A later script reads the new Item Copy, but not the effects it brings.
 - **An equip's requirement reads what the scripts above it wrote.** A script can raise a stat, and the next script can equip the item that needs it.
@@ -917,7 +917,7 @@ if (trait.name === 'Wounded' && trait.enabled) stats.Vigor.value -= 5;
 
 A stat or world script sees every switch through `trait`. A trait's own script sees its own switches, with `self` as the trait and `trait` as the same entry.
 
-When a script switches a trait, its **When a Trait Switches** scripts run at once, before the next script in the list. The next script reads their full result. A switch that one of these scripts makes runs the same way, up to 8 levels deep. One action runs these scripts at most 100 times in all. Past either limit, the switch still applies, but it runs no script, and the console reports it. See [Order of Effects](#order-of-effects).
+When a script switches a trait, its **When a Trait Switches** scripts run at once, before the next script in the list. The next script reads their full result. A switch that one of these scripts makes runs the same way, up to 8 levels deep. One action runs these scripts at most 100 times in all, counting the runs it starts between turns. Past either limit, the switch still applies, but it runs no script, and the console reports it. See [Order of Effects](#order-of-effects).
 
 **Test Code** reads a sample. In a trait's own script, `trait` is that trait. In other scripts, it is the world's first trait in tree order, read as switched on, or a blank trait.
 

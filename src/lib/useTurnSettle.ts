@@ -4,9 +4,10 @@ import type { GateStats } from './traitGates';
 import { useMountedRef } from './useMountedRef';
 import type { Trait } from '@/types';
 
-interface PendingSettle {
+interface PendingSettle<Action> {
   nonce: number;
   gateStats: GateStats | null;
+  action: Action;
   resolve: () => void;
   /** The settle has committed; the next render holds its result. */
   committed?: true;
@@ -20,16 +21,16 @@ interface PendingSettle {
  * It resolves once a render holds what the settle committed, so a snapshot armed after it captures that.
  * Null `gateStats` reads the stats as they landed. A settle that moves nothing commits nothing. An unmount
  * resolves a pending settle without settling, and a settle asked for after it resolves at once. A commit that
- * answers a promise holds the settle until it resolves.
+ * answers a promise holds the settle until it resolves. `action` reaches the commit as the caller passed it.
  */
-export function useTurnSettle(
+export function useTurnSettle<Action = void>(
   state: TraitRuntimeState,
   world: () => TraitWorld,
   nameOf: (trait: Trait) => string,
-  commit: (result: GatedTraitResult) => void | Promise<void>,
+  commit: (result: GatedTraitResult, action: Action) => void | Promise<void>,
   settle: TraitSettle = settleTraits,
-): (gateStats: GateStats | null) => Promise<void> {
-  const pending = useRef<PendingSettle | null>(null);
+): (gateStats: GateStats | null, action: Action) => Promise<void> {
+  const pending = useRef<PendingSettle<Action> | null>(null);
   const [nonce, setNonce] = useState(0);
   const nonceRef = useRef(0);
   const bump = () => {
@@ -54,7 +55,7 @@ export function useTurnSettle(
       at.resolve();
       return;
     }
-    const landing = commit(result);
+    const landing = commit(result, at.action);
     pending.current = { ...at, committed: true, nonce: bump(), ...(landing ? { landing } : {}) };
   }, [nonce, state, world, nameOf, commit, settle]);
 
@@ -64,13 +65,13 @@ export function useTurnSettle(
     pending.current = null;
   }, []);
 
-  return useCallback((gateStats: GateStats | null) => new Promise<void>((resolve) => {
+  return useCallback((gateStats: GateStats | null, action: Action) => new Promise<void>((resolve) => {
     pending.current?.resolve();
     pending.current = null;
     if (!mounted.current) {
       resolve();
       return;
     }
-    pending.current = { nonce: bump(), gateStats, resolve };
+    pending.current = { nonce: bump(), gateStats, action, resolve };
   }), [mounted]);
 }
