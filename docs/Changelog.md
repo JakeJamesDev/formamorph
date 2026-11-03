@@ -33,8 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Currencies:**
     - **World authors can define Currencies on the Items tab and price each item in one.** A Currency is a stat, items or a name only. A new item takes the first Currency, and the item popup shows its worth.
     - **Bribes, fees and bounties in the story now move your money when the turn ends.** The game makes exact change, and a payment you can't afford changes nothing.
-  - **Scripts:**
-    - **Scripts now run one by one, and each script reads what the scripts above it wrote.** Two scripts that each take 5 Health now take 10, so worlds with stacking writes play differently. To check a world, read the rows on the Test Bench's **Issues** tab in Advanced mode.
+  - **Scripts now run one by one, and each script reads what the scripts above it wrote.** Two scripts that each take 5 Health now take 10, so worlds with stacking writes play differently. To check a world, read the rows on the Test Bench's **Issues** tab in Advanced mode.
   - **Supporters can play on the new Formamorph AI endpoint preset with no key or setup.** Select it next to the Demo AI in Settings. Your Patreon support sets the context window.
 - **🛠️ Developer tooling**
   - **World files now list Bodies, and each entity equips into the slots of its own Body.** A slot is a name only; each Body entry gives it a capacity. An entity picks a Body, the first one, or None. See World Format.
