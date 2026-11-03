@@ -93,7 +93,7 @@ The **Issues** tab is the World Doctor. It checks your world's structure: broken
 - **Mark All Seen** clears the **New** tags. Closing the bench also marks the list seen. A row whose text changes shows as **New** again.
 - This browser remembers seen and dismissed rows for each world. An update to a downloaded world clears the seen marks.
 - A world with no findings shows **No Problems Found**.
-- In **Advanced** mode, a row lists the scripts that write one stat field, in the order they run. Each script reads what the one before it wrote, so check that the writes stack the way you want.
+- In **Advanced** mode, a row lists the scripts that write one stat field, in the order they run. Each script reads what the one before it wrote, so check that the writes add up the way you want.
 
 Some checks run only when you ask:
 

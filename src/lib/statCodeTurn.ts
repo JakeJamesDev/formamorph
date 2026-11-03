@@ -268,7 +268,7 @@ export interface StatCodeTurnResult {
   traits?: StatCodeTraitResult;
   /** Each entity owner's result by owner id; absent when the turn named none. */
   owners?: Readonly<Record<string, OwnerCodeResult>>;
-  /** The one stat snapshot every settle in the run read (Q19): asks, regen, `penalties` and code writes landed,
+  /** The one stat snapshot every settle in the run read (Q19): asks, regen, `penalties` and code writes applied,
    *  before any trait switch moved a stat. */
   gateStats: GateStats;
   /** The sentence an `output` run left: as it came when no script changed it. Absent on any other run. */
@@ -296,9 +296,9 @@ export interface ChainedItems {
   log: readonly string[];
   /** The uses the writes made, which start their After Use effects. */
   itemUses: readonly ItemUse[];
-  /** The item events a During AI Output write holds for its landing. */
-  held: readonly ItemScriptEvent[];
-  /** The Item Copies a Body took off in the chain's settles, which the landing's Body line names. */
+  /** The item events a During AI Output write holds back until the After batch. */
+  heldEvents: readonly ItemScriptEvent[];
+  /** The Item Copies a Body took off in the chain's settles, which the commit's Body line names. */
   offByBody: readonly ItemCopy[];
 }
 
@@ -597,8 +597,8 @@ export const actionTotals = (reportItems: (line: string) => void): ActionTotals 
 interface ActionRuns extends ActionTotals {
   /** The turn the action began from, which a settle reads the runs so far over. */
   root: StatCodeTurn;
-  /** Every script's landing so far, in order. */
-  trail: StatCodeTurnResult[];
+  /** Every script's result so far, in order. */
+  runsSoFar: StatCodeTurnResult[];
   log: string[];
   itemUses: ItemUse[];
   offByBody: ItemCopy[];
@@ -609,7 +609,7 @@ const ACTION_TOP: RunNesting = { switchDepth: 0, itemLevel: 1 };
 
 const actionRunsOf = (root: StatCodeTurn, totals?: ActionTotals): ActionRuns => {
   const log: string[] = [];
-  return { root, trail: [], log, itemUses: [], offByBody: [], ...(totals ?? actionTotals((line) => log.push(line))) };
+  return { root, runsSoFar: [], log, itemUses: [], offByBody: [], ...(totals ?? actionTotals((line) => log.push(line))) };
 };
 
 /** How deep a run sits: its nested switch rounds, and the level its inventory writes fire their item events at. */
@@ -629,7 +629,7 @@ function withActionItems(result: StatCodeTurnResult, { log, itemUses, offByBody 
 
 /** Run one timing's scripts over one turn in the sandbox. Each script's trait switches and inventory writes fire their
  *  runs at once, before the next script (Q5). An `output` run's fire with the After batch instead, where its writes
- *  land (Q42). */
+ *  apply (Q42). */
 export const runStatCodeTurn = (turn: StatCodeTurn): Promise<StatCodeTurnResult> => runScripts(turn);
 
 /** An `output` run's `result` with the runs its switches and inventory writes fire, as one result over `turn`. */
@@ -637,16 +637,16 @@ export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnRes
   const after = afterRun(turn, result);
   const fired = switchesBetween(turn, after);
   if (!fired.length && !result.items) return result;
-  const action = { ...actionRunsOf(turn), trail: [result] };
+  const action = { ...actionRunsOf(turn), runsSoFar: [result] };
   const steps = [result];
   let now = fired.length ? await switchRuns(after, fired, ACTION_TOP, steps, action) : after;
   if (result.items) {
     const unequips = settledCopies(now, action, result.items.itemUses);
     if (unequips.ops.length) steps[0] = { ...result, worldWrites: mergeWorldWrites(result.worldWrites, { inventory: unequips.ops }) };
-    now = await itemRuns(unequips.at, [...result.items.held, ...unequips.events], ACTION_TOP, steps, action);
+    now = await itemRuns(unequips.at, [...result.items.heldEvents, ...unequips.events], ACTION_TOP, steps, action);
   }
   const chained = withActionItems(chainedResult(turn, steps, now), action);
-  return chained.items ? { ...chained, items: { ...chained.items, held: [] } } : chained;
+  return chained.items ? { ...chained, items: { ...chained.items, heldEvents: [] } } : chained;
 }
 
 /** How many levels of item events fire item scripts: a turn's or a panel's event is level 1 (Q66). */
@@ -682,12 +682,10 @@ export const stateInventory = ({ items = [], slots, bodies }: Pick<SandboxState,
   itemNameOf: (item) => item.name,
 });
 
-/** Where a batch of item events starts, and how it settles after each write. */
+/** Where a batch of item events starts. */
 export interface ItemRunOptions {
   /** The level the events fire at. Absent = 1. */
   depth?: number;
-  /** Absent = no settle between writes. */
-  settle?: SettleCopies;
   /** The totals of the action this batch is a pass of. Absent = the batch is its own action. */
   totals?: ActionTotals;
 }
@@ -702,7 +700,7 @@ export interface ItemRunsResult {
   diagnostics: string[];
   /** The uses the runs' writes made, which start their After Use effects. */
   itemUses: ItemUse[];
-  /** Every inventory write the runs landed, the settle's unequips among them, in order, for a caller whose Item
+  /** Every inventory write the runs applied, the settle's unequips among them, in order, for a caller whose Item
    *  Copies moved meanwhile. */
   ops: InventoryOp[];
   /** The Item Copies a Body took off in the runs' settles. */
@@ -711,16 +709,15 @@ export interface ItemRunsResult {
 
 /**
  * Each event's item scripts, in order, over the state the run before left; `turn.state.itemCopies` is the state
- * the events left. A run's inventory writes land through `apply` at once, and their events nest one level deeper,
- * with the automatic unequips `settle` finds after that write (Q66). Past {@link ITEM_EVENT_DEPTH} the writes still
- * land, but their events fire nothing (Q66, Q140). A run's own trait switches fire their switch runs at once, whose
- * inventory writes land with the run's.
+ * the events left. A run's inventory writes go through the step's `apply` at once, and their events nest one level
+ * deeper, with the automatic unequips its `settle` finds after that write (Q66). Past {@link ITEM_EVENT_DEPTH} the
+ * writes still apply, but their events fire nothing (Q66, Q140). A run's own trait switches fire their switch runs
+ * at once, whose inventory writes apply with the run's.
  */
 export async function runItemScripts(
-  turn: StatCodeTurn, events: readonly ItemScriptEvent[], items: InventoryStep['items'],
-  apply: ApplyInventory, itemNameOf: (item: Pick<Item, 'name'>) => string, { depth = 1, settle, totals }: ItemRunOptions = {},
+  turn: StatCodeTurn, events: readonly ItemScriptEvent[], inventory: InventoryStep, { depth = 1, totals }: ItemRunOptions = {},
 ): Promise<ItemRunsResult> {
-  const start: StatCodeTurn = { ...turn, inventory: { items, apply, itemNameOf, ...(settle ? { settle } : {}) } };
+  const start: StatCodeTurn = { ...turn, inventory };
   const action = actionRunsOf(start, totals);
   const steps: StatCodeTurnResult[] = [];
   const end = await itemRuns(start, events, { ...ACTION_TOP, itemLevel: depth }, steps, action);
@@ -759,7 +756,7 @@ async function itemRuns(
 function settledCopies(turn: StatCodeTurn, action: ActionRuns, usedBefore: readonly ItemUse[] = []): { at: StatCodeTurn; events: readonly ItemScriptEvent[]; ops: InventoryOp[] } {
   const { settle } = turn.inventory;
   if (!settle) return { at: turn, events: [], ops: [] };
-  const settled = settle(turn.state.itemCopies ?? [], [...usedBefore, ...action.itemUses], chainedResult(action.root, action.trail, turn));
+  const settled = settle(turn.state.itemCopies ?? [], [...usedBefore, ...action.itemUses], chainedResult(action.root, action.runsSoFar, turn));
   action.log.push(...settled.log);
   action.offByBody.push(...(settled.offByBody ?? []));
   return {
@@ -771,21 +768,22 @@ function settledCopies(turn: StatCodeTurn, action: ActionRuns, usedBefore: reado
 
 /**
  * `step` with the script's inventory writes applied over `next`, the state they left, and the item events they
- * fire. An `output` run's events wait in `step` for its landing, and its settle with them (Q36).
+ * fire. An `output` run's events wait in `step` for the After batch, and its settle with them (Q36).
  */
 function landedInventory(
-  next: StatCodeTurn, step: StatCodeTurnResult, ops: readonly InventoryOp[], from: readonly ItemCopy[], holds: boolean, action: ActionRuns,
+  next: StatCodeTurn, step: StatCodeTurnResult, action: ActionRuns,
+  { ops, from, holdsEvents }: { ops: readonly InventoryOp[]; from: readonly ItemCopy[]; holdsEvents: boolean },
 ): { step: StatCodeTurnResult; next: StatCodeTurn; events: readonly ItemScriptEvent[] } {
-  const landed = next.inventory.apply(next.state.itemCopies ?? [], ops, chainedResult(action.root, action.trail, next));
+  const landed = next.inventory.apply(next.state.itemCopies ?? [], ops, chainedResult(action.root, action.runsSoFar, next));
   action.log.push(...landed.diagnostics);
   action.itemUses.push(...landed.itemUses);
   const applied = { ...next, state: { ...next.state, itemCopies: landed.copies } };
-  const settled = holds ? { at: applied, events: [], ops: [] } : settledCopies(applied, action);
-  const items: ChainedItems = { from, copies: settled.at.state.itemCopies ?? [], log: [], itemUses: [], held: holds ? landed.events : [], offByBody: [] };
+  const settled = holdsEvents ? { at: applied, events: [], ops: [] } : settledCopies(applied, action);
+  const items: ChainedItems = { from, copies: settled.at.state.itemCopies ?? [], log: [], itemUses: [], heldEvents: holdsEvents ? landed.events : [], offByBody: [] };
   const worldWrites = settled.ops.length ? mergeWorldWrites(step.worldWrites, { inventory: settled.ops }) : step.worldWrites;
   return {
     step: { ...step, items, ...(worldWrites ? { worldWrites } : {}) }, next: settled.at,
-    events: holds ? [] : [...landed.events, ...settled.events],
+    events: holdsEvents ? [] : [...landed.events, ...settled.events],
   };
 }
 
@@ -802,8 +800,6 @@ export function withoutBodies(writes: WorldWrites | undefined): WorldWrites | un
   const { bodies: _landed, ...rest } = writes;
   return Object.keys(rest).length ? rest : undefined;
 }
-
-export { baseWritesOf } from './worldWrites';
 
 /** One switch run per event, over `turn`, the state the switches left (Q12, Q47). `totals` are those of the action
  *  this batch is a pass of; absent = the batch is its own action. Null when no run fired. */
@@ -823,14 +819,20 @@ const switchesBetween = (from: StatCodeTurn, to: StatCodeTurn): TraitSwitchEvent
 /** `turn` as the switch run of `switched` runs over it: only the state and the turn's readings carry over. A World
  *  Tool's call, a sentence and an item event belong to the run that fired it. */
 function switchRunOf(turn: StatCodeTurn, switched: TraitSwitchEvent): StatCodeTurn {
-  const { triggers: _t, replayed: _r, triggersOnly: _o, itemEvent: _i, narration: _n, timingStart: _s, ...rest } = turn;
+  const { itemEvent: _i, ...rest } = nestedRunBase(turn);
   return { ...rest, timing: 'switch', switched, rowOrder: turn.switchRowOrder };
 }
 
 /** `turn` as the item run of `itemEvent` runs over it. Like a switch run, only the state and the turn's readings carry over. */
 function itemRunOf(turn: StatCodeTurn, itemEvent: ItemEventRun): StatCodeTurn {
-  const { triggers: _t, replayed: _r, triggersOnly: _o, switched: _w, switchedFrom: _f, narration: _n, timingStart: _s, ...rest } = turn;
+  const { switched: _w, switchedFrom: _f, ...rest } = nestedRunBase(turn);
   return { ...rest, timing: itemEvent.event.timing, itemEvent };
+}
+
+/** `turn` without what only the run that fired a nested run owns. */
+function nestedRunBase(turn: StatCodeTurn) {
+  const { triggers: _t, replayed: _r, triggersOnly: _o, narration: _n, timingStart: _s, ...rest } = turn;
+  return rest;
 }
 
 /** Runs `events` in order, each over the state the run before left, one round below `nesting`, while the total
@@ -893,7 +895,7 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
       ownerTraits,
       placeholders: set && { ...set, codePins, ...(pins ? { pins } : {}) },
       ...(result.loreWrites ? { loreToggles: withLoreWrites(state.loreToggles ?? {}, result.loreWrites) } : {}),
-      // A landing's switch runs read the choices the batch left.
+      // The switch runs of a commit read the choices the batch left.
       ...(result.choices && state.turn ? { turn: { ...state.turn, choices: result.choices } } : {}),
     },
   };
@@ -944,7 +946,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   const stepItems = steps.flatMap((step) => (step.items ? [step.items] : []));
   const items: ChainedItems | undefined = stepItems.length ? {
     from: stepItems[0].from, copies: now.state.itemCopies ?? [], log: stepItems.flatMap((each) => each.log),
-    itemUses: stepItems.flatMap((each) => each.itemUses), held: stepItems.flatMap((each) => each.held),
+    itemUses: stepItems.flatMap((each) => each.itemUses), heldEvents: stepItems.flatMap((each) => each.heldEvents),
     offByBody: stepItems.flatMap((each) => each.offByBody),
   } : undefined;
   return {
@@ -1000,7 +1002,7 @@ function keyedPlan(entries: readonly PlannedUnit[]): Map<string, PlannedUnit> {
 /** What `turn`'s `previous` reads at a timing that reads the turn start. */
 const beganOf = (turn: StatCodeTurn): TimingStart => turn.timingStart ?? timingStartOf(turn.state);
 
-/** Whether a script's writes change anything the next script reads or the turn lands. */
+/** Whether a script's writes change anything the next script reads or the turn commits. */
 const landsAnything = ({ stats, placeholders, traits, world, lore }: ScriptWrites) =>
   stats.size > 0 || placeholders.length > 0 || !!traits || !!world || !!lore?.length;
 
@@ -1009,16 +1011,16 @@ export const chainSnapshotOf = (turn: StatCodeTurn, options: Omit<SnapshotOption
   snapshotOf(turn.state, { ...options, readings: planOf(turn, beganOf(turn)).readings });
 
 /**
- * What `turn`'s state would run. `every` plans every script the state could come to run, each stat on and each
+ * What `turn`'s state would run. `allScripts` plans every script the state could come to run, each stat on and each
  * trait in force, which fixes where a script switched on later falls in the order.
  */
-function planOf(turn: StatCodeTurn, began: TimingStart, every = false): RunPlan {
+function planOf(turn: StatCodeTurn, began: TimingStart, allScripts = false): RunPlan {
   const { state } = turn;
   const timing = turn.timing ?? 'after';
   const placeholderDefs = state.placeholders?.placeholders ?? [];
   const startReads = readsTurnStart(timing);
   const globalTurn: RunOwner = {
-    id: null, stats: state.stats, enabled: every ? {} : state.enabled, previous: startReads ? began.stats : turn.previous,
+    id: null, stats: state.stats, enabled: allScripts ? {} : state.enabled, previous: startReads ? began.stats : turn.previous,
     asks: turn.asks, regenApplied: turn.regenApplied,
   };
   const world = state.ownerTraits.world;
@@ -1027,8 +1029,8 @@ function planOf(turn: StatCodeTurn, began: TimingStart, every = false): RunPlan 
   // and runs in the world's tree order, not pick order (Q38).
   const force = traitForceScope(runtimeStateOf(state), world);
   const authored = new Map(world.traits.map((trait) => [trait.id, trait]));
-  const globalTraits = every ? [...world.traits, ...force.global.filter((trait) => !authored.has(trait.id))] : force.global;
-  const ownerTraits = every
+  const globalTraits = allScripts ? [...world.traits, ...force.global.filter((trait) => !authored.has(trait.id))] : force.global;
+  const ownerTraits = allScripts
     ? Object.fromEntries(Object.entries(force.owners).map(([id, held]) => [id, [...world.owners?.find((owner) => owner.id === id)?.traits ?? held]]))
     : force.owners;
   const inForce = scriptTraits(timing, turn.switched, {
@@ -1040,7 +1042,7 @@ function planOf(turn: StatCodeTurn, began: TimingStart, every = false): RunPlan 
     const own = turn.ownerTurns?.[owner.id];
     const previous = (startReads ? undefined : own?.previous) ?? began.owners[owner.id] ?? [];
     return ownerRun(
-      { ...owner, ...(every && { enabled: {} }), regenApplied: {}, ...own, previous },
+      { ...owner, ...(allScripts && { enabled: {} }), regenApplied: {}, ...own, previous },
       timing, placeholderDefs, [], inForce.owners[owner.id],
     );
   });
@@ -1090,7 +1092,7 @@ const scriptWritesFrom = (stat: PlayerStat | null, result: StatCodeResult, owner
 const switcherName = (turn: StatCodeTurn, { stat, trait, itemName, script }: ScriptUnit) =>
   (stat ? turn.statNameOf(stat) : trait ? turn.traitNameOf(trait) : itemName ?? scriptLabel(script, WORLD_OWNER));
 
-/** `turn` with `unit`'s writes landed, as the next script finds it. */
+/** `turn` with `unit`'s writes applied, as the next script finds it. */
 function afterWrites(turn: StatCodeTurn, began: TimingStart, unit: ScriptUnit, writes: ScriptWrites, snapshot: SandboxSnapshot): { step: StatCodeTurnResult; next: StatCodeTurn } {
   const written = writes.traits ? snapshot.switchesOf(unit, { traits: writes.traits.world, entities: writes.traits.entities }) : [];
   const step = settledStep(turn, began, writes, traitSwitchesOf(switcherName(turn, unit), written));
@@ -1123,7 +1125,7 @@ export function afterScript(turn: StatCodeTurn, { unit, run }: PlannedUnit, resu
  * Run one timing's scripts one by one, each over a fresh snapshot of what the script before left: the replayed
  * writes, the triggers, then the world's and every owner's in run order. Which scripts run reads at each script's
  * turn. A failing script is logged and adds nothing. A script's trait switches and inventory writes fire their runs
- * before the next script, a level deeper; an `output` run's wait for its landing (Q42). `parent` is the action a
+ * before the next script, a level deeper; an `output` run's wait for the After batch (Q42). `parent` is the action a
  * nested run belongs to.
  */
 async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, parent?: ActionRuns): Promise<StatCodeTurnResult> {
@@ -1134,7 +1136,7 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
   /** A World Tool call's unit. */
   const toolUnit = (name: string, code: string, rest: Pick<ScriptUnit, 'args' | 'writes'>): ScriptUnit =>
     ({ home: { kind: 'tool' }, stat: null, script: { id: `tool:${name}`, name, timing, code }, ...rest });
-  // A choices-only run runs no World Tool: its choice writes drop (Q21), and nothing else it writes lands.
+  // A choices-only run runs no World Tool: its choice writes drop (Q21), and nothing else it writes is kept.
   const triggers = (turn.choicesOnly ? [] : turn.triggers ?? []).map(({ name, code, args }) => toolUnit(name, code, { args }));
   const replayed = (turn.choicesOnly ? [] : turn.replayed ?? []).map(({ name, writes }) => toolUnit(name, '', { writes: scriptWritesOf(writes) }));
   /** A script's name in the logs: its stat's or trait's, else its own name or the world-and-timing fallback. */
@@ -1154,11 +1156,11 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
   const planNow = () => (plan ??= planOf(now, began));
   const land = async (unit: ScriptUnit, writes: ScriptWrites, snapshot: SandboxSnapshot) => {
     const { step, next } = afterWrites(now, began, unit, writes, snapshot);
-    action.trail.push(step);
+    action.runsSoFar.push(step);
     const fired = step.traits && timing !== 'output' ? switchesBetween(now, next) : [];
     const ops = writes.world?.inventory;
     const landed = ops?.length
-      ? landedInventory(next, step, ops, now.state.itemCopies ?? [], timing === 'output', action) : { step, next, events: [] };
+      ? landedInventory(next, step, action, { ops, from: now.state.itemCopies ?? [], holdsEvents: timing === 'output' }) : { step, next, events: [] };
     steps.push(landed.step);
     now = landed.next;
     plan = undefined;
@@ -1214,8 +1216,8 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
     const entry = inPlay.keyed.get(key);
     if (entry) await runUnit(entry.unit, entry.run.owner.id);
   }
-  // The one settle carries the gate snapshot and the penalties when no script landed a write. A choices-only run
-  // chains its scripts' writes and switch runs to build the choices, then lands none of them.
+  // The one settle carries the gate snapshot and the penalties when no script applied a write. A choices-only run
+  // chains its scripts' writes and switch runs to build the choices, then keeps none of them.
   const settled = (turn.choicesOnly && !parent) || !steps.length ? settledStep(turn, began) : undefined;
   const ran = settled ? chainedResult(turn, [settled], afterRun(turn, settled)) : chainedResult(turn, steps, now);
   const chained = parent ? ran : withActionItems(ran, action);
@@ -1228,7 +1230,7 @@ async function runScripts(turn: StatCodeTurn, nesting: RunNesting = ACTION_TOP, 
   };
 }
 
-/** `turn` with one script's writes and trait switches landed, as one run's result. Absent writes land nothing. */
+/** `turn` with one script's writes and trait switches applied, as one run's result. Absent writes change nothing. */
 function settledStep(
   turn: StatCodeTurn, began: TimingStart, writes?: ScriptWrites, switches: readonly CodeTraitSwitch[] = [],
 ): StatCodeTurnResult {
@@ -1246,7 +1248,7 @@ function settledStep(
   const byOwner = statWritesByOwner(writes);
   const mainWrites = byOwner.get(null) ?? new Map<string, SettledWrite>();
   const ownerWrites = new Map(owned.map((owner) => [owner.id, byOwner.get(owner.id) ?? new Map<string, SettledWrite>()]));
-  // The snapshot every settle below reads: the code writes landed with no switch yet, then the penalties.
+  // The snapshot every settle below reads: the code writes applied with no switch yet, then the penalties.
   const landedMain = withPenalties(
     settleWrites(state.stats, state.stats, mainWrites, ownerStatTraitsInForce(before, world, null)).stats, turn.penalties, turn.penaltyStart ?? began.stats,
   );
@@ -1288,9 +1290,9 @@ function settledStep(
   };
 }
 
-/** The landed stats with each penalty taken from a stat no script has moved since the timing began, clamped into
+/** The settled stats with each penalty taken from a stat no script has moved since the timing began, clamped into
  *  its bounds. A stat the code moved keeps the code's value, as the overlay keeps it over a penalty applied
- *  meanwhile. `landed` never holds a penalty, so a chain's steps never stack one (Q29). */
+ *  meanwhile. `landed` never holds a penalty, so a chain never takes one penalty twice (Q29). */
 function withPenalties(
   landed: PlayerStat[], penalties: StatCodeTurn['penalties'], began: readonly PlayerStat[],
 ): PlayerStat[] {
@@ -1349,7 +1351,7 @@ function traitSwitchesOf(by: string, written: readonly TraitSwitchWrite[]): Code
   return [...out.values()];
 }
 
-/** One script's placeholder writes keyed by placeholder id. Each write already names the placeholder it landed on,
+/** One script's placeholder writes keyed by placeholder id. Each write already names the placeholder it wrote to,
  *  whichever path the code reached it by. */
 function pinWritesOf(writes: readonly PlaceholderWrite[]): PinWrites {
   const out: Record<string, string | string[] | null> = {};

@@ -48,7 +48,7 @@ describe('runItemScripts', () => {
     const box = item('i-box', 'Gift Box', [['gained', 'stats.Gold.value += 1; self.give(locations.Vault);']]);
     const start = [copy('c-0', 'i-box', { kind: 'location', id: 'loc-vault' })];
     const out = await runItemScripts(
-      turnOf([box], start), [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], [box], applyWith([box]), (i) => i.name,
+      turnOf([box], start), [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], { items: [box], apply: applyWith([box]), itemNameOf: (i) => i.name },
     );
     // Levels 1, 2 and 3 run; each gives one box, so the level-4 event lands its box but runs nothing.
     expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(ITEM_EVENT_DEPTH);
@@ -75,7 +75,7 @@ describe('runItemScripts', () => {
       (copies.filter((c) => c.item.kind === 'item' && c.item.itemId === 'i-box').length < boxes ? { copies, events: [], log: [] } : unequip(copies));
     const runWith = (settle: SettleCopies) => runItemScripts(
       turnOf([box, ring], [copy('c-0', 'i-box', { kind: 'location', id: 'loc-vault' }), worn]),
-      [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], [box, ring], applyWith([box, ring]), (i) => i.name, { settle },
+      [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], { items: [box, ring], apply: applyWith([box, ring]), itemNameOf: (i) => i.name, settle },
     );
     const unequipOp = { kind: 'unequip', copyId: 'c-ring' };
 
@@ -111,7 +111,7 @@ describe('runItemScripts', () => {
     const coin = item('i-coin', 'Coin', [['lost', 'stats.Gold.value += self.event.copy.quantity;']]);
     const start = [{ ...copy('c-1', 'i-coin', { kind: 'you' }), quantity: 4 }];
     const lost = applyWith([coin])(start, [{ kind: 'lose', copyId: 'c-1' }]);
-    const out = await runItemScripts(turnOf([coin], lost.copies), lost.events, [coin], applyWith([coin]), (i) => i.name);
+    const out = await runItemScripts(turnOf([coin], lost.copies), lost.events, { items: [coin], apply: applyWith([coin]), itemNameOf: (i) => i.name });
     expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(4);
   });
 
@@ -119,7 +119,7 @@ describe('runItemScripts', () => {
     const box = item('i-box', 'Gift Box', [['gained', 'self.give(locations.Vault);']]);
     const start = [copy('c-0', 'i-box', { kind: 'location', id: 'loc-vault' })];
     const out = await runItemScripts(
-      turnOf([box], start), [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], [box], applyWith([box]), (i) => i.name, { depth: ITEM_EVENT_DEPTH },
+      turnOf([box], start), [event('gained', 'i-box', 'c-0', { kind: 'location', id: 'loc-vault' })], { items: [box], apply: applyWith([box]), itemNameOf: (i) => i.name }, { depth: ITEM_EVENT_DEPTH },
     );
     expect(out.ops).toEqual([{ kind: 'gain', itemId: 'i-box', to: { kind: 'location', id: 'loc-vault' }, quantity: 1 }]);
     expect(out.diagnostics).toEqual(['Item scripts nested past 3 levels; When Gained of Gift Box did not run']);
@@ -129,7 +129,7 @@ describe('runItemScripts', () => {
     const ring = item('i-ring', 'Ring', [['equipped', 'stats.Gold.value += 10;'], ['lost', 'stats.Gold.value += 1;']]);
     const out = await runItemScripts(
       turnOf([ring], [copy('c-1', 'i-ring', { kind: 'you' })]),
-      [event('equipped', 'i-ring', 'c-1', { kind: 'you' })], [ring], applyWith([ring]), (i) => i.name,
+      [event('equipped', 'i-ring', 'c-1', { kind: 'you' })], { items: [ring], apply: applyWith([ring]), itemNameOf: (i) => i.name },
     );
     expect(out.result?.stats.find((s) => s.id === 'gold')?.value).toBe(10);
   });
@@ -138,12 +138,12 @@ describe('runItemScripts', () => {
     const lamp = item('i-lamp', 'Lamp', [['gained', 'stats.Gold.value += owner.name === "Keeper" ? 5 : owner.name === "" ? 1 : 100;']]);
     const held = await runItemScripts(
       turnOf([lamp], [copy('c-1', 'i-lamp', { kind: 'entity', id: 'e-keeper' })]),
-      [event('gained', 'i-lamp', 'c-1', { kind: 'entity', id: 'e-keeper' })], [lamp], applyWith([lamp]), (i) => i.name,
+      [event('gained', 'i-lamp', 'c-1', { kind: 'entity', id: 'e-keeper' })], { items: [lamp], apply: applyWith([lamp]), itemNameOf: (i) => i.name },
     );
     expect(held.result?.stats.find((s) => s.id === 'gold')?.value).toBe(5);
     const lying = await runItemScripts(
       turnOf([lamp], [copy('c-1', 'i-lamp', { kind: 'location', id: 'loc-vault' })]),
-      [event('gained', 'i-lamp', 'c-1', { kind: 'location', id: 'loc-vault' })], [lamp], applyWith([lamp]), (i) => i.name,
+      [event('gained', 'i-lamp', 'c-1', { kind: 'location', id: 'loc-vault' })], { items: [lamp], apply: applyWith([lamp]), itemNameOf: (i) => i.name },
     );
     expect(lying.result?.stats.find((s) => s.id === 'gold')?.value).toBe(1);
   });
@@ -152,7 +152,7 @@ describe('runItemScripts', () => {
     const curse = { ...item('i-curse', 'Curse', [['gained', 'self.event.copy.lose();']]), bound: true };
     const out = await runItemScripts(
       turnOf([curse], [copy('c-1', 'i-curse', { kind: 'you' })]),
-      [event('gained', 'i-curse', 'c-1', { kind: 'you' })], [curse], applyWith([curse]), (i) => i.name,
+      [event('gained', 'i-curse', 'c-1', { kind: 'you' })], { items: [curse], apply: applyWith([curse]), itemNameOf: (i) => i.name },
     );
     expect(out.copies).toEqual([]);
     expect(out.diagnostics).toEqual([]);
@@ -165,7 +165,7 @@ describe('runItemScripts', () => {
       lamp.setState('lit');
     `]]);
     const start = [{ ...copy('c-0', 'i-lantern', { kind: 'you' }), state: { state: 'unlit' } }];
-    const out = await runItemScripts(turnOf([lantern], start), [event('gained', 'i-lantern', 'c-0', { kind: 'you' })], [lantern], applyWith([lantern]), (i) => i.name);
+    const out = await runItemScripts(turnOf([lantern], start), [event('gained', 'i-lantern', 'c-0', { kind: 'you' })], { items: [lantern], apply: applyWith([lantern]), itemNameOf: (i) => i.name });
     expect(out.diagnostics).toEqual([]);
     expect(out.copies.map((c) => c.state)).toEqual([{ state: 'lit' }]);
   });
@@ -178,7 +178,7 @@ describe('runItemScripts', () => {
       `]]), unidentifiedName: 'Plain Ring',
     };
     const start = [{ ...copy('c-1', 'i-ring', { kind: 'you' }), state: { unidentified: true as const } }];
-    const out = await runItemScripts(turnOf([ring], start), [event('gained', 'i-ring', 'c-1', { kind: 'you' })], [ring], applyWith([ring]), (i) => i.name);
+    const out = await runItemScripts(turnOf([ring], start), [event('gained', 'i-ring', 'c-1', { kind: 'you' })], { items: [ring], apply: applyWith([ring]), itemNameOf: (i) => i.name });
     expect(out.diagnostics).toEqual([]);
     expect(out.copies).toEqual([copy('c-1', 'i-ring', { kind: 'you' })]);
   });
@@ -186,14 +186,14 @@ describe('runItemScripts', () => {
   it('names an unidentified copy’s item by its unidentified face in a run’s lines (Q17)', async () => {
     const ring = { ...item('i-ring', 'Ring of Curses', [['gained', 'self.give(persona);']]), unidentifiedName: 'Plain Ring' };
     const start = [{ ...copy('c-1', 'i-ring', { kind: 'you' }), state: { unidentified: true as const } }];
-    const out = await runItemScripts(turnOf([ring], start), [event('gained', 'i-ring', 'c-1', { kind: 'you' })], [ring], applyWith([ring]), (i) => i.name, { depth: ITEM_EVENT_DEPTH + 1 });
+    const out = await runItemScripts(turnOf([ring], start), [event('gained', 'i-ring', 'c-1', { kind: 'you' })], { items: [ring], apply: applyWith([ring]), itemNameOf: (i) => i.name }, { depth: ITEM_EVENT_DEPTH + 1 });
     expect(out.diagnostics).toEqual(['Item scripts nested past 3 levels; When Gained of Plain Ring did not run']);
   });
 
   it('runs nothing and keeps the copies when the item has no script for the timing', async () => {
     const plain = item('i-plain', 'Plain', []);
     const start = [copy('c-1', 'i-plain', { kind: 'you' })];
-    const out = await runItemScripts(turnOf([plain], start), [event('gained', 'i-plain', 'c-1', { kind: 'you' })], [plain], applyWith([plain]), (i) => i.name);
+    const out = await runItemScripts(turnOf([plain], start), [event('gained', 'i-plain', 'c-1', { kind: 'you' })], { items: [plain], apply: applyWith([plain]), itemNameOf: (i) => i.name });
     expect(out).toEqual({ result: null, copies: start, diagnostics: [], itemUses: [], ops: [], offByBody: [] });
   });
 });

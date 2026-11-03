@@ -293,7 +293,7 @@ The [Test Bench](Test-Bench#issues) warns when more than one box writes the same
 - `persona.stats` resolves to every entity that the player can play, because the world does not know which one the player picks.
 - A Blueprint stat's box counts once for each owner. The check reads each owner's own copy of the stat separately, so two owners do not clash on their own stats. A Blueprint box that writes a global stat's field gets the warning when it has two or more owners (see [A Note on Accumulating Stats](ScriptsGuide#a-note-on-accumulating-stats)).
 
-A warning is not an error. The finding shows who writes a field and in what order, so you can check how the writes stack. Drag the rows in the **Scripts** tab to change the order.
+A warning is not an error. The finding shows who writes a field and in what order, so you can check how the writes add up. Drag the rows in the **Scripts** tab to change the order.
 
 ### Hiding and Showing a Stat
 <!-- keywords: reveal a stat, unhide, unlock a stat, show a stat later, secret stat, stat appears mid story, hide a stat, remove from panel, hidden stat, show to the player -->
@@ -949,8 +949,8 @@ A bound that a stat writes applies at the written number, after that script's tr
 - **During AI Output switches wait.** A switch in this timing runs its scripts once, with After the AI. A later script on the sentence doesn't read their result.
 - **An inventory write runs its item scripts at once.** They run before the next script in the list, and the next script reads their result. See [Items](#items).
 - **A later script reads the earlier scripts' Body, location, clock, memory, discovery and entity writes.** `location` with its `present` and `exits`, `clock`, `memories`, `entities` and `body` read as the earlier scripts left them.
-- **Where a write applies does not change.** A script that fails adds nothing to what later scripts read.
-- **A diary line has no read.** A later script can write to the diary of an entity that an earlier script discovered.
+- **A failed script still adds nothing.** Later scripts read none of its writes.
+- **A script can write to the diary of an entity that an earlier script discovered.** The diary has no value to read, so only the write applies.
 
 The timings run in order against each other. Everything a Before the AI script wrote is in place when an After the AI script reads. On the opening turn, an At Game Start script's writes are in place when Before the AI reads.
 
@@ -1027,7 +1027,7 @@ An After the AI script can change the choices the player sees. Edit `turn.choice
 - **A bad item fails the run.** Every item must be text that is not blank. Otherwise the script fails, and none of its writes apply. The list stays as the scripts before it left it.
 - **An empty list is allowed.** The turn then shows no choices, and the player types an action.
 - **It is read-only at other timings.** Before the AI, At Game Start, During AI Output, When a Trait Switches, Tools and runs between turns read the list. A change there is ignored and reported. With the player's choices off, a change is ignored too.
-- **A stats re-roll starts again.** It runs the scripts on the AI's own choices. Edits never stack. The save keeps both lists.
+- **A stats re-roll starts again.** It runs the scripts on the AI's own choices. Edits never add up. The save keeps both lists.
 - **Regenerate Choices runs the scripts again.** They read the new list and the AI's stat changes for the turn. Only their choice edits apply. The new list shows once they finish.
 - **Regenerate Choices reads items as the turn did.** The scripts read the items from Before the AI, On Call Tools and the story's item changes. They don't read an item that a During AI Output script wrote.
 - **A `player` call shows nothing on that run.** `tell` and `toast` show nothing, `confirm` answers `false`, `ask` answers `null` (`[]` with `multiple`), and `input` answers `""`. The script runs on.

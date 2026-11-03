@@ -288,7 +288,7 @@ describe('what the result holds', () => {
     const items = [box, ...COIN_ITEMS];
     const apply = vi.fn(stateInventory({ items }).apply);
     const out = await runItemScripts(
-      turnOf({ items, ownerTraits: world([brave]), itemCopies: [copy('c-gold', 'gold'), copy('c-box', 'box')] }), [event], items, apply, (i) => i.name,
+      turnOf({ items, ownerTraits: world([brave]), itemCopies: [copy('c-gold', 'gold'), copy('c-box', 'box')] }), [event], { items, apply, itemNameOf: (i) => i.name },
     );
     expect(apply).toHaveBeenCalledTimes(1);
     expect(out.copies.find((c) => c.id === 'c-gold')?.quantity).toBe(3);
@@ -310,10 +310,10 @@ describe('During AI Output', () => {
     await run?.rewrite('Two.', { ...sentence, index: 1 });
     // 1 after the first sentence, 2 after the second, and no item event yet.
     expect(echoOf(run?.result())).toBe(3);
-    expect(run?.result()?.items?.held).toHaveLength(2);
+    expect(run?.result()?.items?.heldEvents).toHaveLength(2);
     const landed = await run?.landing();
     expect(echoOf(landed)).toBe(203);
-    expect(landed?.items?.held).toEqual([]);
+    expect(landed?.items?.heldEvents).toEqual([]);
     expect(landed && heldOf(landed, 'gem')).toBe(2);
   });
 

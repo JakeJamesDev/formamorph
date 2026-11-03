@@ -92,7 +92,7 @@ describe('a script that switches a trait', () => {
     const brave = trait('brave', 'Brave', scripts('switch', 'stats.HP.value = 7;'));
     const out = await runItemScripts(
       turnOf({ ownerTraits: held([brave]), items: [gem], itemCopies: [{ id: 'c', item: { kind: 'item', itemId: 'gem' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' }] }),
-      [event], [gem], apply, (item) => item.name,
+      [event], { items: [gem], apply, itemNameOf: (item) => item.name },
     );
     expect(valueOf(out.result, 'echo')).toBe(7);
   });
@@ -164,7 +164,7 @@ describe('the total of switch runs in one action', () => {
     const apply: ApplyInventory = (copies, ops) => applyInventoryOps(copies, ops, { world: { items: [gem, ring] }, source: 'script', newId: () => 'new' });
     const out = await runItemScripts(
       turnOf({ ownerTraits: held(manyTraits(120)), items: [gem, ring], worldScripts: scripts('switch', COUNT) }),
-      [event('gem'), event('ring')], [gem, ring], apply, (item) => item.name,
+      [event('gem'), event('ring')], { items: [gem, ring], apply, itemNameOf: (item) => item.name },
     );
     expect(valueOf(out.result, 'echo')).toBe(SWITCH_RUN_TOTAL);
   });

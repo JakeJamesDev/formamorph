@@ -369,7 +369,7 @@ describe('two scripts on one item event', () => {
     const apply: ApplyInventory = (copies, ops) => applyInventoryOps(copies, ops, { world: { items: [gem] }, source: 'script', newId: () => 'new' });
     const out = await runItemScripts(
       turnOf({ stats: [hp(), echo()], items: [gem], itemCopies: [{ id: 'c', item: { kind: 'item', itemId: 'gem' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' }] }),
-      [event], [gem], apply, (item) => item.name,
+      [event], { items: [gem], apply, itemNameOf: (item) => item.name },
     );
     expect(valueOf(out.result?.stats, 'echo')).toBe(45);
   });

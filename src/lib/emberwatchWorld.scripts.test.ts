@@ -180,7 +180,7 @@ describe("Haldren's Crown scripts", () => {
     const out = await runItemScripts(
       { ...base, state: { ...base.state, items, itemCopies: copies } },
       [{ timing: 'gained', itemId: arrived.id, copyId: copies[0].id, where, quantity: 1 }],
-      items, applyNothing, (item) => item.name,
+      { items, apply: applyNothing, itemNameOf: (item) => item.name },
     );
     return out.result?.loreWrites ?? [];
   };
@@ -226,7 +226,7 @@ describe('the Flask of Lamp Oil script', () => {
     const out = await runItemScripts(
       { ...base, state: { ...base.state, items, itemCopies: copies } },
       [{ timing: 'used', itemId: flask.id, copyId: 'flask', where: usedAt, quantity: 1, was, ...(target && { target }) }],
-      items, apply, (item) => item.name,
+      { items, apply, itemNameOf: (item) => item.name },
     );
     return Object.fromEntries(out.copies.filter((copy) => copy.item.kind === 'item' && copy.item.itemId === lantern.id)
       .map((copy) => [copy.id, copy.state?.uses ?? lantern.uses]));

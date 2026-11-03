@@ -515,6 +515,10 @@ _Avoid_: stat code, code box, formula (a returned number is one use), macro
 When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. An item's scripts have five Timings of their own, the item timings. The Timing menu is the only way to move a script between timings. Inside one timing, scripts run one by one in the Scripts tab's order, and an optional `order` decides who runs first.
 _Avoid_: hook, phase, trigger (a Test Bench Instrument), event
 
+**Script Chain**:
+The Scripts of one Timing run one after another, each over the state the one before left. Its trait switches and inventory writes fire their own runs at once, before the next Script. Code and specs use the word; player-facing text says what happens instead ("the writes add up").
+_Avoid_: script stack, pipeline
+
 **Sandbox Snapshot**:
 A frozen read of one playthrough state that one Script runs against: the stats and which are on, the Owners and their stats, the traits in force, the placeholders, the dictionaries, the places, the discovered cast and the clock. Play takes one per Script, over what the Script before it left. Test Code and the Test Bench start from the authored world at turn one, so an editor run and a real turn read the same board. Taken once per Script, read by that Script alone.
 _Avoid_: sandbox context, run options, script world, code scene
