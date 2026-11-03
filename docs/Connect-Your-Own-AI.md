@@ -34,7 +34,9 @@ To see your allowance in settings, open Settings → **Endpoints** → **Text** 
 - A notice appears after a turn when you reach the highest warning level, with a **Support on Patreon** link. It shows once a week across all your devices.
 - When the allowance runs out, Formamorph AI stops until the reset, including background requests such as diaries. A notice says so after the turn and stays until you close it. Select **Switch Back** to return to your last preset, or **Support on Patreon** to open the Patreon page.
 
-If you are not a Supporter, the preset shows a **Support on Patreon** button.
+If you are signed out, have not confirmed that you are 18 or older, or are not a Supporter, the preset shows Morphie, a fire and the three levels.
+
+Pick a level to see its fire change. **See Levels** opens the full scene. **Support on Patreon** opens a checklist that starts at the first step you have not finished.
 
 The panel also shows when Formamorph AI can't serve you:
 

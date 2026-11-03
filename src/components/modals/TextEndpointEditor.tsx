@@ -201,7 +201,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
       )}
       <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
-      {edited.engine ? <LocalModelPanel /> : edited.hosted ? <HostedPresetStatus state={hostedState} /> : (
+      {edited.engine ? <LocalModelPanel /> : edited.hosted ? <HostedPresetStatus state={hostedState} lockedPanel /> : (
         <ScrollArea landingRoom className="flex-1 min-h-0">
           <div className="grid gap-4 py-4">
             <Row top htmlFor="endpointUrl" target={targetAttribute('settingsEndpoints.text', 'endpoint-url')} {...rowCopy('endpointUrl')}>

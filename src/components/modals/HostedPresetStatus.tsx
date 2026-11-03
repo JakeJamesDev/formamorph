@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Hint, Meta } from '@/components/ui/typography';
 import { HostedBreakdown } from '@/components/modals/HostedBreakdown';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
+import { LockedPresetPanel } from '@/components/road/LockedPresetPanel';
 import { requestClientUpdate } from '@/components/modals/UpdateRequiredDialog';
 import { useAgeGate } from '@/contexts/AgeGateContext';
 import { usePrivacyPolicy } from '@/contexts/PrivacyPolicyContext';
@@ -17,11 +18,18 @@ import { flairTier } from '@/lib/supporterFlair';
 import { useTierName } from '@/lib/tierNames';
 import { cn } from '@/lib/utils';
 
-/** Formamorph AI's state: its allowance, its reason and its actions. `state` overrides the live one, with `sample` as its usage. */
-export function HostedPresetStatus({ state, sample: givenSample, className }: {
+// The states of a player with no access yet; the panel stands in for their reason and button.
+const LOCKED_PANEL_STATES: readonly HostedPresetState[] = ['signed-out', 'age-gate', 'locked'];
+
+/**
+ * Formamorph AI's state: its allowance, its reason and its actions. `state` overrides the live one, with `sample`
+ * as its usage. `lockedPanel` draws the levels panel for a player with no access.
+ */
+export function HostedPresetStatus({ state, sample: givenSample, className, lockedPanel = false }: {
   state?: HostedPresetState;
   sample?: DevHostedSample;
   className?: string;
+  lockedPanel?: boolean;
 }) {
   const { hostedAi, refreshHostedState, switchBackFromHostedAi } = useSettings();
   const { requireAttestation } = useAgeGate();
@@ -49,6 +57,14 @@ export function HostedPresetStatus({ state, sample: givenSample, className }: {
     recheck: () => { void refreshHostedState(); },
     switchBack: () => { if (!state) switchBackFromHostedAi(); },
   };
+
+  if (lockedPanel && copy && LOCKED_PANEL_STATES.includes(shown)) {
+    return (
+      <div className={cn('py-4', className)} data-hosted-state={shown}>
+        <LockedPresetPanel reason={copy.reason} />
+      </div>
+    );
+  }
 
   return (
     <div className={cn('flex flex-col items-start gap-3 py-4', className)} data-hosted-state={shown}>
