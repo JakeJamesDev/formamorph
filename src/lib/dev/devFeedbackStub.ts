@@ -11,7 +11,7 @@ export const DEV_FEEDBACK_FIXTURE = 'feedback';
 
 const STUBBED_KEYS = [
   'file', 'list', 'fetchThread', 'comment', 'editComment', 'removeComment', 'setVote', 'update',
-  'setStatus', 'setLocked', 'setAnswer', 'remove', 'fetchUnreadCount', 'searchUsers', 'searchThreads',
+  'setStatus', 'setLocked', 'setAnswer', 'remove', 'fetchUnreadCount', 'searchUsers', 'searchThreads', 'resolveLinks',
 ] as const satisfies readonly (keyof typeof FeedbackService)[];
 type Stubbed = Pick<typeof FeedbackService, (typeof STUBBED_KEYS)[number]>;
 
@@ -273,6 +273,9 @@ export function devFeedbackMethods(board: FeedbackDetail[]): Stubbed {
         .map((p) => ({ id: p.id, username: p.username, avatarUrl: p.avatarUrl ?? null, role: p.role ?? null, supporter: p.supporter ?? null, participant: participants.has(p.id) }))
         .sort((a, b) => Number(b.participant) - Number(a.participant) || a.username.localeCompare(b.username))
         .slice(0, 8);
+    },
+    async resolveLinks(text) {
+      return targetsOf(text);
     },
     async searchThreads(query, types) {
       const words = query.toLowerCase().split(/\s+/).filter(Boolean);

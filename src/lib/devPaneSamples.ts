@@ -2,6 +2,7 @@
  * DEV only: canned props for the panes the dev router opens on their own (see `DevPaneRoutes`). Each one is
  * long enough to overflow its pane at a desktop viewport, so the pane's scrolling is checkable.
  */
+import type { WorldRecord } from '@/components/WorldDetails';
 import type { ChipRow } from '@/lib/chipVocabulary';
 import type { ChangelogDraft } from '@/lib/listingChangelog';
 import { encodePlaceholderToken } from '@/lib/placeholders';
@@ -98,3 +99,12 @@ export function devGalleryEntity(id: string): Entity {
     ],
   };
 }
+
+/** A listing to comment on, and a signed-in reader for the box. */
+export const devListingSample = () => ({
+  world: {
+    id: 'dev-harbor', name: 'Brinewell Harbor', description: 'A drowned coastal town.', kind: 'world',
+    author: { id: 'dev-author', username: 'Sample Author' }, tags: [], downloads: 7, comment_count: 0, likes: 3,
+  } as WorldRecord,
+  currentUser: { id: 'dev-user', username: 'Sample Player', accountType: 'normal' } as WorldRecord,
+});

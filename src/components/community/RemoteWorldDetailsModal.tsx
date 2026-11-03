@@ -18,6 +18,7 @@ import { openFeedbackThread } from "@/lib/feedbackOpener";
 import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
+import { ListingCommentPreview } from "@/components/menu/FeedbackPreview";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { canModerate, isAdmin, isStaff } from "@/lib/roles";
@@ -846,16 +847,19 @@ export function RemoteWorldDetailsModal({
 
               {capabilities.comments && isAuthenticated ? (
                 <div className="space-y-2 min-w-0">
-                  <PromptField
-                    value={commentText}
-                    onChange={(next) => setCommentText(next.slice(0, COMMENT_MAX))}
-                    vocabulary={plainVocab}
-                    markdown
-                    ariaLabel="Comment"
-                    placeholder="Write a comment"
-                  >
-                    <FeedbackSuggestPlugin threadTypes={null} />
-                  </PromptField>
+                  <FeedbackLinkContext.Provider value={commentLinkPlace}>
+                    <PromptField
+                      value={commentText}
+                      onChange={(next) => setCommentText(next.slice(0, COMMENT_MAX))}
+                      vocabulary={plainVocab}
+                      markdown
+                      ariaLabel="Comment"
+                      placeholder="Write a comment"
+                      markdownPreview={ListingCommentPreview}
+                    >
+                      <FeedbackSuggestPlugin threadTypes={null} />
+                    </PromptField>
+                  </FeedbackLinkContext.Provider>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
@@ -938,15 +942,18 @@ export function RemoteWorldDetailsModal({
 
                     {capabilities.comments && editingId === c.id ? (
                       <div className="mt-2 space-y-2 min-w-0">
-                        <PromptField
-                          value={editDraft}
-                          onChange={(next) => setEditDraft(next.slice(0, COMMENT_MAX))}
-                          vocabulary={plainVocab}
-                          markdown
-                          ariaLabel="Comment text"
-                        >
-                          <FeedbackSuggestPlugin threadTypes={null} />
-                        </PromptField>
+                        <FeedbackLinkContext.Provider value={commentLinkPlace}>
+                          <PromptField
+                            value={editDraft}
+                            onChange={(next) => setEditDraft(next.slice(0, COMMENT_MAX))}
+                            vocabulary={plainVocab}
+                            markdown
+                            ariaLabel="Comment text"
+                            markdownPreview={ListingCommentPreview}
+                          >
+                            <FeedbackSuggestPlugin threadTypes={null} />
+                          </PromptField>
+                        </FeedbackLinkContext.Provider>
                         <div className="flex items-center gap-2">
                           <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit || !editDraft.trim()}>
                             {savingEdit ? 'Saving…' : 'Save'}

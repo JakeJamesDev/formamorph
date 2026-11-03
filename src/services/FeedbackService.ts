@@ -2,7 +2,7 @@ import AuthService from './AuthService';
 import { authHeaders, unwrap } from './authRequest';
 import { collectDiagnostics } from '@/lib/bugDiagnostics';
 import type {
-  FeedbackCategory, FeedbackComment, FeedbackDetail, FeedbackDraft, FeedbackStatus, FeedbackThread,
+  FeedbackCategory, FeedbackComment, FeedbackDetail, FeedbackDraft, FeedbackLinkTarget, FeedbackStatus, FeedbackThread,
   FeedbackThreadSuggestion, FeedbackType, FeedbackUserSuggestion,
 } from '@/types';
 
@@ -104,6 +104,18 @@ class FeedbackService {
     const response = await fetch(`${this.apiUrl}/feedback/search/threads?${params}`, { headers: authHeaders(), signal });
     const body = await unwrap<{ data: FeedbackThreadSuggestion[] }>(response, 'Failed to search threads');
     return body.data;
+  }
+
+  /** The links in unposted text, resolved for the caller. */
+  async resolveLinks(text: string, signal?: AbortSignal): Promise<FeedbackLinkTarget[]> {
+    const response = await fetch(`${this.apiUrl}/feedback/links/resolve`, {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify({ text }),
+      signal,
+    });
+    const body = await unwrap<{ data: { targets: FeedbackLinkTarget[] } }>(response, 'Failed to resolve links');
+    return body.data.targets;
   }
 
   /** Add a comment to a thread. */

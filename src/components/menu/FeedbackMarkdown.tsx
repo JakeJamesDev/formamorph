@@ -27,6 +27,8 @@ export interface FeedbackLinkPlace {
   openListing?: (listing: { kind: string; id: string }) => void;
   /** The address a user chip carries, for a new tab or a copied link. A click opens the profile through the surface's profile provider. */
   profileHref: (username: string) => string;
+  /** Unsent text sits behind these chips, so an address with no opener here opens beside the page, whatever its host. */
+  keepsDraft?: boolean;
 }
 
 /** The app's addresses: every board, each link on the website. */
@@ -39,9 +41,11 @@ export const APP_FEEDBACK_LINK_PLACE: FeedbackLinkPlace = {
 
 export const FeedbackLinkContext = createContext<FeedbackLinkPlace>(APP_FEEDBACK_LINK_PLACE);
 
-/** An address on another host leaves this page, so with no opener here it opens beside it. */
-const opensBeside = (href: string, hasOpener: boolean) =>
-  href.startsWith('http') && !hasOpener ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+const BESIDE = { target: '_blank', rel: 'noopener noreferrer' };
+
+/** An address on another host, or any address over a draft, opens beside this page when it has no opener here. */
+const opensBeside = (href: string, hasOpener: boolean, keepsDraft?: boolean) =>
+  (href.startsWith('http') || keepsDraft) && !hasOpener ? BESIDE : {};
 
 /** What a chip renderer gets: its target, or none when the server sent none for that ref. */
 export interface FeedbackChipProps {
@@ -92,7 +96,7 @@ function ThreadChip({ linkRef, target }: FeedbackChipProps) {
   return (
     <a
       href={href}
-      {...opensBeside(href, !!openThread)}
+      {...opensBeside(href, !!openThread, place.keepsDraft)}
       className={CHIP_CLASS}
       onClick={openThread && ((event) => {
         if (!opensInPlace(event)) return;
@@ -127,7 +131,7 @@ function ListingChip({ target }: FeedbackChipProps) {
   return (
     <a
       href={href}
-      {...opensBeside(href, !!openListing)}
+      {...opensBeside(href, !!openListing, place.keepsDraft)}
       className={CHIP_CLASS}
       onClick={openListing && ((event) => {
         if (!opensInPlace(event)) return;
@@ -148,7 +152,7 @@ function ListingChip({ target }: FeedbackChipProps) {
 
 function UserChip({ target }: FeedbackChipProps) {
   const place = useContext(FeedbackLinkContext);
-  const { openProfile } = useUserProfile();
+  const { openProfile, profileLeavesPage } = useUserProfile();
 
   // The typed name is never drawn: a typo and a deleted account look the same.
   if (target?.kind !== 'user' || !target.available) {
@@ -160,12 +164,14 @@ function UserChip({ target }: FeedbackChipProps) {
     );
   }
 
+  const beside = place.keepsDraft && profileLeavesPage;
   return (
     <a
       href={place.profileHref(target.username)}
+      {...(beside ? BESIDE : {})}
       className={CHIP_CLASS}
       onClick={(event) => {
-        if (!opensInPlace(event)) return;
+        if (beside || !opensInPlace(event)) return;
         event.preventDefault();
         openProfile(target.id, target.username);
       }}

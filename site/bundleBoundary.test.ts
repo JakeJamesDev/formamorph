@@ -297,7 +297,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 101: the editors' @ and # suggestions (the plugin, its query rule, the shared suggestion list and its
     // wheel hook, the caret anchor).
     // 102: `tierNames`, read by the Supporter badge on the profile cards.
-    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(102);
+    // 103: `FeedbackPreview`, the comment boxes' Preview.
+    expect(reachableFrom([FEEDBACK_PAGE]).size).toBeLessThanOrEqual(103);
   });
 
   it('scans every shared component the lazy feedback route reaches', () => {

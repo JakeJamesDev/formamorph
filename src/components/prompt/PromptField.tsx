@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
   COMMAND_PRIORITY_LOW, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND, FORMAT_TEXT_COMMAND,
@@ -410,10 +410,11 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
  *  will — with each value tinted its chip's color, the same as the plain pane. The renderer takes a string,
  *  so each value carries its color through the parse as sentinel characters and comes back out as a mark
  *  (see previewTint). Author text and values are scrubbed first, so neither can forge a pairing. */
-function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
+function MarkdownPreviewPane({ value, previewValues, vocab, renderer: Renderer, scrollRef, onScroll }: {
   value: string;
   previewValues?: TokenValues;
   vocab: ChipVocabulary;
+  renderer?: ComponentType<{ text: string }>;
   scrollRef?: React.Ref<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
 }) {
@@ -426,7 +427,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
     .join('');
   return (
     <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-label">
-      <MarkdownRenderer text={resolved} tinted />
+      {Renderer ? <Renderer text={resolved} /> : <MarkdownRenderer text={resolved} tinted />}
     </div>
   );
 }
@@ -440,7 +441,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField, children }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, markdownPreview, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField, children }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -472,6 +473,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   hint?: ReactNode;
   /** Prose field: adds a markdown formatting toolbar and renders the Preview as markdown. */
   markdown?: boolean;
+  /** Replaces the markdown Preview's renderer, for a field with no `previewValues`. Mounts each time the pane opens. */
+  markdownPreview?: ComponentType<{ text: string }>;
   /** Let the author drag the field taller/shorter. Only for fields in a content-height container (the
    *  world editor's scroll panes) — in a height-pinned pane the dragged box would just overflow its slot. */
   resizable?: boolean;
@@ -733,7 +736,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const previewSurface = (
     <div className="relative flex flex-1 min-h-0 flex-col">
       {markdown ? (
-        <MarkdownPreviewPane value={value} previewValues={previewValues} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
+        <MarkdownPreviewPane value={value} previewValues={previewValues} vocab={vocab} renderer={markdownPreview} scrollRef={previewScrollRef} onScroll={handleScroll} />
       ) : (
         <PreviewPane value={value} previewValues={previewValues ?? {}} vocab={vocab} scrollRef={previewScrollRef} onScroll={handleScroll} />
       )}

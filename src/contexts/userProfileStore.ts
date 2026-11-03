@@ -22,6 +22,8 @@ export interface UserProfileContextValue {
   setListingOpener: (open: ListingOpener | null) => void;
   /** Opens a listing in the catalog browser, or absent while nobody has lent one. */
   openListing?: ListingOpener;
+  /** `openProfile` navigates away from this page rather than opening over it. */
+  profileLeavesPage?: boolean;
 }
 
 /** Separate from the provider so that file exports a component and nothing else, which is what keeps

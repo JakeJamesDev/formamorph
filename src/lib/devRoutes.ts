@@ -18,13 +18,14 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  server, so they show their empty state without one. `feedbackForm` opens on the branch `tab=` names
  *  (`bug`, `suggestion`, `question`), on a canned fill; over a stored draft it opens the Replace-draft confirm.
  *  `feedbackThread` opens the answered question from the feedback fixture (add `fixture=feedback`); `tab=staff`
- *  reads it as staff, with the triage controls. `pendingUpdate` shows the author's Pending Update section of the
+ *  reads it as staff, with the triage controls. `listingComment` opens a listing's details signed in, for its
+ *  comment box (add `fixture=feedback` so Preview resolves chips). `pendingUpdate` shows the author's Pending Update section of the
  *  details modal on a canned update (`devPendingUpdate`); `tab=compare` opens its Compare view. Add
  *  `fixture=review` so the held thumbnail and the listing names load. `bodyLayout` mounts the Body Layout editor
  *  on a sample Body; the real rows are at `modal=worldEditor&tab=items&subtab=equipment&fixture=items`.
  *  `road` shows the full-screen scene on the level `tab=` names (`supporter`, `supporter_plus`, `supporter_top`).
  *  Players never navigate to these. */
-export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate', 'bodyLayout'] as const;
+export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'listingComment', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate', 'bodyLayout'] as const;
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,

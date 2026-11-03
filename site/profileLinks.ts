@@ -7,4 +7,5 @@ export const PROFILE_LINKS = {
     if (username) leaveTo(usernameProfilePath(username));
   },
   setListingOpener: () => {},
+  profileLeavesPage: true,
 };

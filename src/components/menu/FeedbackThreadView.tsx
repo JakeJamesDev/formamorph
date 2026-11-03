@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from "@/components/menu/FeedbackMarkdown";
 import PromptField from "@/components/prompt/PromptField";
+import { FeedbackPreview } from "@/components/menu/FeedbackPreview";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
@@ -571,6 +572,7 @@ function ThreadPane({
                       onChange={(next) => setEditDraft(next.slice(0, COMMENT_MAX))}
                       vocabulary={plainVocab}
                       markdown
+                      markdownPreview={FeedbackPreview}
                       ariaLabel="Comment text"
                       className="h-[280px]"
                     >
@@ -619,6 +621,7 @@ function ThreadPane({
           onChange={(next) => setReply(next.slice(0, COMMENT_MAX))}
           vocabulary={plainVocab}
           markdown
+          markdownPreview={FeedbackPreview}
           ariaLabel="Reply"
           placeholder="Write a reply"
           className="h-[280px]"

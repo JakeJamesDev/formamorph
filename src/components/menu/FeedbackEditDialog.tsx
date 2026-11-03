@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FieldError, Meta } from "@/components/ui/typography";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PromptField from "@/components/prompt/PromptField";
+import { FeedbackPreview } from "@/components/menu/FeedbackPreview";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { CATEGORY_OPTIONS, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
@@ -135,6 +136,7 @@ export function FeedbackEditDialog({
                     onChange={(body) => setDraft((prev) => ({ ...prev, body: body.slice(0, BODY_MAX) }))}
                     vocabulary={plainVocab}
                     markdown
+                    markdownPreview={FeedbackPreview}
                     ariaLabel="Description"
                     className="h-[240px]"
                   >

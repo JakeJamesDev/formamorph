@@ -13,6 +13,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PromptField from "@/components/prompt/PromptField";
+import { APP_FEEDBACK_LINK_PLACE, FeedbackLinkContext } from "@/components/menu/FeedbackMarkdown";
+import { FeedbackPreview } from "@/components/menu/FeedbackPreview";
 import { FeedbackSuggestPlugin } from "@/components/menu/FeedbackSuggestPlugin";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
@@ -362,17 +364,20 @@ export function FeedbackDialog({
                 <span className="text-label font-medium">{copy.bodyLabel}</span>
                 <Meta>{body.length} / {FEEDBACK_BODY_MAX}</Meta>
               </div>
-              <PromptField
-                value={body}
-                onChange={(next) => setBody(next.slice(0, FEEDBACK_BODY_MAX))}
-                vocabulary={plainVocab}
-                markdown
-                ariaLabel={copy.bodyLabel}
-                placeholder={copy.bodyPlaceholder}
-                className="h-[260px]"
-              >
-                <FeedbackSuggestPlugin threadTypes={capabilities.threadSearchTypes} />
-              </PromptField>
+              <FeedbackLinkContext.Provider value={capabilities.linkPlace ?? APP_FEEDBACK_LINK_PLACE}>
+                <PromptField
+                  value={body}
+                  onChange={(next) => setBody(next.slice(0, FEEDBACK_BODY_MAX))}
+                  vocabulary={plainVocab}
+                  markdown
+                  markdownPreview={FeedbackPreview}
+                  ariaLabel={copy.bodyLabel}
+                  placeholder={copy.bodyPlaceholder}
+                  className="h-[260px]"
+                >
+                  <FeedbackSuggestPlugin threadTypes={capabilities.threadSearchTypes} />
+                </PromptField>
+              </FeedbackLinkContext.Provider>
               {fieldNote?.field === 'body' && <FieldError role="alert">{fieldNote.text}</FieldError>}
             </div>
 

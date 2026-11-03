@@ -1,4 +1,7 @@
+import type { FeedbackLinkPlace } from '@/components/menu/FeedbackMarkdown';
 import type { FeedbackType } from '@/types';
+import { feedbackListingPath, feedbackThreadPath } from './feedbackLinks';
+import { usernameProfilePath } from './usernameRule';
 
 /** Reports a result to the reader; `error` carries the caught failure behind an `error` line. */
 export type FeedbackNotify = (message: string, kind: 'success' | 'error', error?: unknown) => void;
@@ -19,6 +22,8 @@ export interface FeedbackCapabilities {
   inlineNotes: boolean;
   /** The boards `#` suggestions search, or null for every board the reader may read. */
   threadSearchTypes: readonly FeedbackType[] | null;
+  /** Where chips lead outside a thread. Absent: the app's addresses. */
+  linkPlace?: FeedbackLinkPlace;
 }
 
 /** The complete in-app feedback surface. */
@@ -32,13 +37,21 @@ export const APP_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
   threadSearchTypes: null,
 };
 
+const VOTABLE_BOARDS: readonly FeedbackType[] = ['suggestion', 'question'];
+
 /** The website board: Votable boards only, no staff powers, no unread marks. */
 export const WEBSITE_FEEDBACK_CAPABILITIES: FeedbackCapabilities = {
-  boards: ['suggestion', 'question'],
-  fileTypes: ['suggestion', 'question'],
+  boards: VOTABLE_BOARDS,
+  fileTypes: VOTABLE_BOARDS,
   staffControls: false,
   unreadBadge: false,
   followThreads: false,
   inlineNotes: true,
-  threadSearchTypes: ['suggestion', 'question'],
+  threadSearchTypes: VOTABLE_BOARDS,
+  linkPlace: {
+    boards: VOTABLE_BOARDS,
+    threadHref: feedbackThreadPath,
+    listingHref: feedbackListingPath,
+    profileHref: usernameProfilePath,
+  },
 };
