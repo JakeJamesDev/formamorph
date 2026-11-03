@@ -1,7 +1,8 @@
 # Spec: First-Time Flow
 
 Status: ready-for-agent
-Status note: Grilled 2026-11-03 (Q1–Q22). Prototype verdict: Scene A, The Road. No tickets yet. Blocked at runtime by the Formamorph AI release, so the offer must stay off in a build without it.
+Spec session: first-time-flow — spec
+Status note: Grilled 2026-11-03 (Q1–Q28). Prototype verdict: Scene A, The Road. Eleven tickets. Blocked at runtime by the Formamorph AI release, so the offer must stay off in a build without it.
 
 A new player reaches a first story in one click. A player on the Demo AI, or on a desktop with 8 GB of VRAM or less, learns about Formamorph AI through Morphie and a scene worth looking at, not through a popup they close at once. Spans both repos: the client and FormamorphServer.
 
@@ -19,11 +20,13 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 
 **The offer.** After five completed turns on the Demo AI, a card with Morphie appears once, under the latest narration and above the choices, in both the Chat and Pages layouts. **See Levels** opens the scene. After that, only the Demo AI badge opens it.
 
-**The scene.** A full-screen, always-dark scene called The Road. Morphie stands at the newest story moment and holds a fire, and the light reaches back along a path of story moments. Spark, Flame and Beacon each light more of the path. Each level has its own fire. Changing level plays a Jelly on Morphie and her fire only, and the new level swaps in at the dip. Below the road, one fixed scene written by both AIs sits side by side.
+**The scene.** A full-screen, always-dark scene called The Road. A fire stands at the newest story moment, and its light reaches back along a path of story moments. Morphie stands beside it and watches, and her interest grows with the fire. Spark, Flame and Beacon each light more of the path. Each level has its own fire and its own look on Morphie. Changing level plays a Jelly on Morphie only, and the new level swaps in at the dip. Below the road, one fixed scene written by both AIs sits side by side.
 
 **Low VRAM.** On desktop at 8 GB or less, AI setup leads with Formamorph AI, its See Levels opens the same scene, and the local model download stays below it.
 
-**After Support on Patreon.** A guided checklist takes the player through sign-in with the 18+ check, the pledge, the Patreon link and the switch to Formamorph AI. The checklist reads real state, so a finished step shows as finished. Morphie's fire grows with each step.
+**Locked preset.** A player who selects Formamorph AI in AI settings with no access sees a panel with Morphie, the fire and the three levels, in place of plain text and a button. See Levels opens the same scene.
+
+**After Support on Patreon.** A guided checklist takes the player through sign-in with the 18+ check, the pledge, the Patreon link and the switch to Formamorph AI. The checklist reads real state, so a finished step shows as finished. The fire beside Morphie grows with each step.
 
 ## Rulings
 
@@ -54,6 +57,9 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 | Q23 | The confirm action sits on the right, following Paired Footer Actions in the Design System. |
 | Q24 | The Jelly plays on Morphie only, never on widgets. |
 | Q25 | Each level has its own fire, not a plain circle: Spark twinkles, Flame has layered moving tongues and embers, Beacon is a tall flame in a brazier with rays. |
+| Q26 | Morphie watches the fire and never holds it. Her interest grows with the level, using her existing layers: Spark has resting arms and a small "o" mouth, Flame has a hand to her chin, wide eyes and a small "o" mouth, and Beacon has resting arms, heart eyes and an open mouth. Her art stays unmirrored, so she faces left, toward the fire. No blush and no wave. No new art. |
+| Q27 | Selecting Formamorph AI with no access shows an inline panel in AI settings with Morphie, the fire and the three levels. See Levels opens the scene. Selecting the preset never opens the scene by itself. |
+| Q28 | The panel shows for a signed-out player, a player without the 18+ check, and a signed-in player with no pledge. Support on Patreon opens the checklist, which starts at the first unfinished step. Every other preset state keeps today's text. |
 
 ## User Stories
 
@@ -97,6 +103,8 @@ A player on the Demo AI meets a small model and may blame the app or the world f
 38. As a Steam player, I want no offer, so that I never see a path that can't work on my build.
 39. As the developer, I want anonymous totals for each funnel step, so that I can tell whether the flow works without tracking anyone.
 40. As a player, I want the privacy policy to state what is counted, so that I can trust the count.
+41. As a player who selects Formamorph AI with no access, I want to see what the levels include right there, so that I understand why it's locked and what to do next.
+42. As a player browsing presets, I want selecting one to stay inside AI settings, so that a full-screen scene doesn't interrupt me.
 
 ## Implementation Decisions
 
@@ -129,7 +137,7 @@ const ENTER_JELLY = { durationMs: 480, squash: 0.14, overshoot: 0.09, settle: 2 
 
 A value swaps at `jellyDipMs`. An interrupted run starts from the height on screen. Timers carry the swap and the rest, so a suspended animation frame can't strand an old level. Reduced motion swaps at once and drops the fire's motion.
 
-**Fire.** Inline SVG with code-driven motion and no new image files. Flame and Beacon morph between outlines with matching path commands, in three layers. Morphie needs a new layer or pose holding the fire, so the prototype's fire beside her hand does not ship. This art is the user's call.
+**Fire.** Inline SVG with code-driven motion and no new image files. Flame and Beacon morph between outlines with matching path commands, in three layers. The fire stands on its own, and the prototype's fire at her hand does not ship (Q26). The approved Patreon tier art shows the target composition.
 
 **Side-by-side sample.** Two real, unedited model outputs for one Emberwatch moment, captured once and shipped as fixed text. The Demo AI and Formamorph AI samples come from the same prompt. Picks must be honest: typical outputs, not the Demo AI's worst. The user approves the pair.
 
@@ -138,6 +146,8 @@ A value swaps at `jellyDipMs`. An interrupted run starts from the height on scre
 **Checklist.** Reads `AuthService`, `useAgeGate`, `PatreonService.getStatus()` and the hosted state through `useSettings().hostedAi`. It re-reads on focus, as `PatreonSection` does. Each action reuses the existing path: `requireAttestation`, the Patreon page, `startLink`, and `selectTextEndpointPreset`, which already records the preset to switch back to. On a build that can't open Patreon inside the app, the existing `openExternal` path applies.
 
 **Low-VRAM lead.** AI setup reads `useVramStats` on desktop. The lead card shows at a total of 8,500 MB or less, whatever `tierForVram` groups it in, because that function puts cards up to 14 GB in one group. An unknown VRAM keeps today's layout. Above the limit, Formamorph AI stays available and does not lead.
+
+**Locked preset panel.** Replaces the reason text and button in `HostedPresetStatus` for the Q28 cases. It reuses the scene's level table and fire, with no second copy.
 
 **Anonymous totals (FormamorphServer).** A public POST route takes one step name from a fixed list: offer shown, See Levels, Patreon click, checklist finished. It increments a per-day total and stores no IP, install ID or account. It uses a per-route limiter, following `likeLimiter`. The client sends each step once per device. A failed send is dropped. The privacy policy text in the server gains a line, and the user approves its wording. The route deploys before the client ships.
 
