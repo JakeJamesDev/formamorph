@@ -27,8 +27,8 @@ export interface FeedbackLinkPlace {
   openListing?: (listing: { kind: string; id: string }) => void;
   /** The address a user chip carries, for a new tab or a copied link. A click opens the profile through the surface's profile provider. */
   profileHref: (username: string) => string;
-  /** Unsent text sits behind these chips, so an address with no opener here opens beside the page, whatever its host. */
-  keepsDraft?: boolean;
+  /** Unsent text sits behind these chips, so an address with no opener here opens in a new tab, whatever its host. */
+  staysOnPage?: boolean;
 }
 
 /** The app's addresses: every board, each link on the website. */
@@ -41,11 +41,11 @@ export const APP_FEEDBACK_LINK_PLACE: FeedbackLinkPlace = {
 
 export const FeedbackLinkContext = createContext<FeedbackLinkPlace>(APP_FEEDBACK_LINK_PLACE);
 
-const BESIDE = { target: '_blank', rel: 'noopener noreferrer' };
+const NEW_TAB = { target: '_blank', rel: 'noopener noreferrer' };
 
-/** An address on another host, or any address over a draft, opens beside this page when it has no opener here. */
-const opensBeside = (href: string, hasOpener: boolean, keepsDraft?: boolean) =>
-  (href.startsWith('http') || keepsDraft) && !hasOpener ? BESIDE : {};
+/** An address on another host, or any address over a draft, opens in a new tab when it has no opener here. */
+const newTabAttrs = (href: string, hasOpener: boolean, staysOnPage?: boolean) =>
+  (href.startsWith('http') || staysOnPage) && !hasOpener ? NEW_TAB : {};
 
 /** What a chip renderer gets: its target, or none when the server sent none for that ref. */
 export interface FeedbackChipProps {
@@ -96,7 +96,7 @@ function ThreadChip({ linkRef, target }: FeedbackChipProps) {
   return (
     <a
       href={href}
-      {...opensBeside(href, !!openThread, place.keepsDraft)}
+      {...newTabAttrs(href, !!openThread, place.staysOnPage)}
       className={CHIP_CLASS}
       onClick={openThread && ((event) => {
         if (!opensInPlace(event)) return;
@@ -131,7 +131,7 @@ function ListingChip({ target }: FeedbackChipProps) {
   return (
     <a
       href={href}
-      {...opensBeside(href, !!openListing, place.keepsDraft)}
+      {...newTabAttrs(href, !!openListing, place.staysOnPage)}
       className={CHIP_CLASS}
       onClick={openListing && ((event) => {
         if (!opensInPlace(event)) return;
@@ -164,14 +164,14 @@ function UserChip({ target }: FeedbackChipProps) {
     );
   }
 
-  const beside = place.keepsDraft && profileLeavesPage;
+  const inNewTab = place.staysOnPage && profileLeavesPage;
   return (
     <a
       href={place.profileHref(target.username)}
-      {...(beside ? BESIDE : {})}
+      {...(inNewTab ? NEW_TAB : {})}
       className={CHIP_CLASS}
       onClick={(event) => {
-        if (beside || !opensInPlace(event)) return;
+        if (inNewTab || !opensInPlace(event)) return;
         event.preventDefault();
         openProfile(target.id, target.username);
       }}

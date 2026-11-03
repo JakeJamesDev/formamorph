@@ -6,10 +6,8 @@ import type { FeedbackLinkTarget } from '@/types';
 import { FeedbackLinkContext, FeedbackMarkdown, type FeedbackLinkPlace } from './FeedbackMarkdown';
 
 /**
- * The Preview of a comment box: plain markdown, then chips once the server resolves the text.
- *
- * The request runs once per mount, and a pane mounts each time it opens. Text changed since then stays plain.
- * `threadOpensAbove` says the surface's `openThread` opens above the box, so it keeps the draft and stays.
+ * The Preview of a comment box: plain markdown, then chips for the text as it stood when the pane opened.
+ * `threadOpensAbove` keeps the surface's `openThread`, which opens above the box and leaves the draft alone.
  */
 export function FeedbackPreview({ text, threadOpensAbove = false }: { text: string; threadOpensAbove?: boolean }) {
   const place = useContext(FeedbackLinkContext);
@@ -28,7 +26,7 @@ export function FeedbackPreview({ text, threadOpensAbove = false }: { text: stri
 
   const draftPlace = useMemo<FeedbackLinkPlace>(() => ({
     ...place,
-    keepsDraft: true,
+    staysOnPage: true,
     openThread: threadOpensAbove ? place.openThread : undefined,
     openListing: undefined,
   }), [place, threadOpensAbove]);
