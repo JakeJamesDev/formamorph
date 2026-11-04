@@ -69,6 +69,7 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 | Q42 | Real-bug history means a `Fix` commit that touches source and adds the test, or a CI red followed by commits to the module before the next green. Each record names the rule and the commit, so Q9 knows which bug to reinstate. Transcript failures never count. |
 | Q43 | A family is the test's module under test, or its file's base name when the module is null. |
 | Q44 | Each checkout keeps its own Vitest module cache. The owner ruled this lands before the Reference Run, so the run measures the setup we keep. Cache keys include the checkout's root, so a ticket worktree's first gate always starts cold; Q37 measures that cost. |
+| Q45 | The first pause starts once in-flight work lands, as Q19 says. Checked 2026-11-04: v3.6.0 is out, only tickets 06 and 15 run, and the other `in-progress` statuses date from September and October with no worktree behind them. The pause starts with ticket 07. |
 
 ## User Stories
 
