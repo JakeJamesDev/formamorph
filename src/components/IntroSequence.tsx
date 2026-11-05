@@ -2,6 +2,15 @@ import { useEffect, useRef } from 'react';
 import { INTRO_FONT_BASE64, INTRO_FONT_FAMILY } from '@/lib/introFont';
 import { useBackStop } from '@/hooks/useBackStop';
 
+/** A frame under this counts as steady; it passes 60 Hz and anything faster. */
+const SETTLE_FRAME_MS = 20;
+/** Steady frames in a row that mean the menu has settled. */
+const SETTLE_FRAMES = 8;
+/** The longest the intro waits for steady frames. */
+const SETTLE_MAX_MS = 2500;
+/** The overlay's opacity ceiling. Below 1, the menu underneath rasterizes while covered, not all at once when the fade starts. */
+const NEVER_OPAQUE = 0.999;
+
 /**
  * First-run welcome animation: a field of gooey blobs popcorns in, magnetizes into place, and merges into
  * chunky liquid letters that spell "Formamorph", then scatters as it hands off to the menu underneath.
@@ -229,7 +238,7 @@ export function IntroSequence({
 
       // Fade the whole overlay (opaque backdrop + scattering goo) out on hand-off, so it dissolves smoothly
       // into the real menu underneath instead of popping away when the component unmounts at the end.
-      root.style.opacity = String(1 - easeOut(hz));
+      root.style.opacity = String(Math.min(NEVER_OPAQUE, 1 - easeOut(hz)));
       if (hz > 0 && PACE === 'cine') kicker.style.opacity = String((1 - easeOut(hz)) * 0.7);
 
       const popMs = PACE === 'cine' ? 300 : 140;
@@ -283,6 +292,26 @@ export function IntroSequence({
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let staticTimer = 0;
 
+    // Hold on the backdrop until the menu mounting underneath stops costing frames, so boot work doesn't
+    // land inside the animation. Capped, so a slow machine still gets the intro.
+    let settleSince = 0, steady = 0, lastSettle = 0;
+    const settle = (now: number) => {
+      if (cancelled) return;
+      if (!settleSince) {
+        settleSince = now;
+        readColors();
+        background();
+      }
+      steady = lastSettle && now - lastSettle < SETTLE_FRAME_MS ? steady + 1 : 0;
+      lastSettle = now;
+      if (steady >= SETTLE_FRAMES || now - settleSince >= SETTLE_MAX_MS) {
+        start = performance.now();
+        rafId = requestAnimationFrame(frame);
+        return;
+      }
+      rafId = requestAnimationFrame(settle);
+    };
+
     // Load the puffy face, then start (canvas sampling needs it ready or it silently falls back to mono).
     const startAfterFont = () => {
       if (cancelled) return;
@@ -294,8 +323,7 @@ export function IntroSequence({
         staticTimer = window.setTimeout(finish, PACE === 'cine' ? 1600 : 900);
         return;
       }
-      start = performance.now();
-      rafId = requestAnimationFrame(frame);
+      rafId = requestAnimationFrame(settle);
     };
     new FontFace(INTRO_FONT_FAMILY, `url(data:font/woff2;base64,${INTRO_FONT_BASE64})`, { weight: '700' })
       .load()
@@ -318,6 +346,7 @@ export function IntroSequence({
     <div
       ref={rootRef}
       className="fixed inset-0 z-[120] overflow-hidden bg-background"
+      style={{ opacity: NEVER_OPAQUE }}
       aria-hidden="true"
     >
       <svg width="0" height="0" className="absolute" aria-hidden="true">

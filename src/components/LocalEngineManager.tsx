@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import {
   isDesktop,
@@ -21,9 +21,14 @@ import {
  * back on picks up a stopped engine right away. Context Overflow needs no reload, so every change goes
  * straight to the engine. No-op off desktop; renders nothing.
  * Mount once near the app root (inside SettingsProvider).
+ *
+ * `bootHeld` keeps the engine untouched until it first turns false: loading a model stalls the GPU, so the
+ * welcome intro plays first. Later changes to it are ignored.
  */
-export function LocalEngineManager() {
+export function LocalEngineManager({ bootHeld = false }: { bootHeld?: boolean }) {
   const { engineWanted, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests, localUnifiedKvCache, localKCacheType, localVCacheType, localKvCacheInRam, localGpuDevice, localAutoLoad, localContextOverflow } = useSettings();
+  const [released, setReleased] = useState(!bootHeld);
+  useEffect(() => { if (!bootHeld) setReleased(true); }, [bootHeld]);
 
   useEffect(() => {
     if (!isDesktop()) return;
@@ -31,7 +36,7 @@ export function LocalEngineManager() {
   }, [localContextOverflow]);
 
   useEffect(() => {
-    if (!isDesktop()) return;
+    if (!isDesktop() || !released) return;
     let cancelled = false;
     (async () => {
       if (!engineWanted) {
@@ -51,7 +56,7 @@ export function LocalEngineManager() {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setting changes apply via Save & Reload, not here
-  }, [engineWanted, localAutoLoad]);
+  }, [engineWanted, localAutoLoad, released]);
 
   return null;
 }

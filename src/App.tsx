@@ -187,6 +187,7 @@ function AppViews() {
   return (
     <>
       <DevFixtureLoader onPicked={setInitialCharacters} />
+      <LocalEngineManager bootHeld={introPace !== null} />
       {/* Android only: elsewhere there is no hardware back button and the plugin has nothing to send.
           The DEV route mounts it anyway, so the exit prompt's copy is reachable without a phone. */}
       {(Capacitor.isNativePlatform() || (import.meta.env.DEV && devRoute?.modal === 'exitApp')) && (
@@ -268,7 +269,6 @@ function App() {
           instant-open window, so no screen can time its own differently. */}
       <TooltipProvider>
         <SettingsProvider>
-          <LocalEngineManager />
           <GameDataProvider>
             {/* Above the view switch: a playthrough's placeholder rolls are drawn in the enter-world flow,
                 which the main menu owns, and read again by the game view. */}
