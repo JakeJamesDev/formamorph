@@ -24,6 +24,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The game's panels reach the top, with Save, Load and Settings as direct buttons.** Back and Music move to the left panel's top row. Edit World, AI Context and Send Feedback move to a `...` menu.
   - **The main menu has direct Load Game and Settings buttons, and Backup & Restore is in the Settings Data tab.** A narrow window folds the action buttons, Load Game and Settings into one **More Actions** menu at the right. The World Editor's search centers whenever both sides have room.
   - **The Windows desktop app's window buttons stay readable over bright world art, and fade behind popups.** A soft shade sits behind them in game. They return to full color once every popup closes.
+  - **A Getting Ready bar shows when the first launch takes a moment before the welcome animation.** On a fast computer it never appears.
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.

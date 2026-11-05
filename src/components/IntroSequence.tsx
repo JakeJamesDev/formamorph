@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { INTRO_FONT_BASE64, INTRO_FONT_FAMILY } from '@/lib/introFont';
 import { useBackStop } from '@/hooks/useBackStop';
+import IndeterminateProgress from '@/components/ui/indeterminate-progress';
 
 /** A frame under this counts as steady; it passes 60 Hz and anything faster. */
 const SETTLE_FRAME_MS = 20;
@@ -8,6 +9,8 @@ const SETTLE_FRAME_MS = 20;
 const SETTLE_FRAMES = 8;
 /** The longest the intro waits for `ready` and steady frames. */
 const SETTLE_MAX_MS = 4000;
+/** How long the hold lasts before the waiting bar shows, so a fast machine never sees it. */
+const WAIT_HINT_MS = 600;
 /** The overlay's opacity ceiling. Below 1, the menu underneath rasterizes while covered, not all at once when the fade starts. */
 const NEVER_OPAQUE = 0.999;
 
@@ -41,6 +44,7 @@ export function IntroSequence({
   const kickerRef = useRef<HTMLDivElement>(null);
   const kickerTextRef = useRef<HTMLSpanElement>(null);
   const caretRef = useRef<HTMLSpanElement>(null);
+  const waitRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(onComplete);
   doneRef.current = onComplete;
 
@@ -55,7 +59,8 @@ export function IntroSequence({
     const kicker = kickerRef.current;
     const kickerText = kickerTextRef.current;
     const caret = caretRef.current;
-    if (!root || !canvas || !gooCanvas || !kicker || !kickerText || !caret) return;
+    const wait = waitRef.current;
+    if (!root || !canvas || !gooCanvas || !kicker || !kickerText || !caret || !wait) return;
     const ctx = canvas.getContext('2d');
     const gooCtx = gooCanvas.getContext('2d');
     if (!ctx || !gooCtx) return;
@@ -309,7 +314,9 @@ export function IntroSequence({
       }
       steady = readyRef.current && lastSettle && now - lastSettle < SETTLE_FRAME_MS ? steady + 1 : 0;
       lastSettle = now;
+      if (now - settleSince >= WAIT_HINT_MS) wait.style.opacity = '1';
       if (steady >= SETTLE_FRAMES || now - settleSince >= SETTLE_MAX_MS) {
+        wait.style.opacity = '0';
         start = performance.now();
         rafId = requestAnimationFrame(frame);
         return;
@@ -373,6 +380,13 @@ export function IntroSequence({
         <span ref={caretRef} className="ml-0.5 inline-block animate-pulse text-primary">
           ▌
         </span>
+      </div>
+      <div
+        ref={waitRef}
+        className="pointer-events-none absolute inset-x-0 bottom-[22%] mx-auto flex w-48 flex-col items-center gap-2 opacity-0 transition-opacity duration-300"
+      >
+        <span className="text-meta text-muted-foreground">Getting Ready…</span>
+        <IndeterminateProgress />
       </div>
     </div>
   );
