@@ -6,6 +6,9 @@ import path from 'node:path';
 /** Above this many characters of paths, a gate runs on everything: Windows caps a command line at 32,767. */
 export const MAX_ARGS_LENGTH = 30000;
 
+/** Whether these paths fit on one command line. */
+export const fitsCommandLine = (paths) => paths.join(' ').length <= MAX_ARGS_LENGTH;
+
 /** A git command's NUL-separated file list. */
 export const gitFiles = (command, ...args) =>
   execFileSync('git', [command, '-z', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\0').filter(Boolean);
@@ -82,6 +85,9 @@ export const GRAPH_COVERED = {
   'scripts/runTests.mjs': 'reads only its own temp reports and runs vitest and git in the folder its caller passes',
   'scripts/runTests.test.mjs': 'reads only its own temp folder',
   'scripts/runOutcomeReporter.mjs': 'writes only the file its runner names; a test of it runs real vitest',
+  'scripts/selectionReplay.mjs': 'reads its clone and its results; a test runs it on its own temp repo',
+  'scripts/selectionReplay.test.mjs': 'reads only its own temp folders',
+  'scripts/selectedTestsReporter.mjs': 'writes only the file its command names; a test of it runs real vitest',
   'scripts/testLedger.mjs': 'reads the tree and its raw output in its command-line run; a test reads only its own temp ledger',
   'scripts/testLedger.test.mjs': 'reads only its own temp folders',
   'scripts/testLedgerHistory.mjs': 'reads gh and transcripts only in gatherHistory, which no test calls; a test runs gatherFixes on its own temp repo',
@@ -154,6 +160,8 @@ export const PATH_TRIGGERS = {
   'vite.config.js': ['scripts/espeakCheck.test.mjs'],
   // The runner test loads this reporter by path through real vitest.
   'scripts/runOutcomeReporter.mjs': ['scripts/runTests.test.mjs'],
+  // The replay test loads this reporter by path through real vitest.
+  'scripts/selectedTestsReporter.mjs': ['scripts/selectionReplay.test.mjs'],
 };
 
 const REQUIRE_CALL = /\brequire\(\s*([^)]*?)\s*\)/g;

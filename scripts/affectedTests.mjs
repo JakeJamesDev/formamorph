@@ -3,7 +3,7 @@
 // `--project <name>` runs only that vitest project's share.
 // Usage: node scripts/affectedTests.mjs <base> [--list | --project <name>]
 import { existsSync, readFileSync } from 'node:fs';
-import { MAX_ARGS_LENGTH, gateOptions, gitFiles, relatedFiles, requirersOf, touchedSince } from './testSelection.mjs';
+import { fitsCommandLine, gateOptions, gitFiles, relatedFiles, requirersOf, touchedSince } from './testSelection.mjs';
 import { runTests } from './runTests.mjs';
 
 const [base, ...rest] = process.argv.slice(2);
@@ -23,7 +23,7 @@ if (options.list) {
   process.exit(0);
 }
 
-const tooLong = related.join(' ').length > MAX_ARGS_LENGTH;
+const tooLong = !fitsCommandLine(related);
 console.log(tooLong
   ? `The ${related.length} related paths don't fit on one command line; running the full suite.`
   : `${changed.length} changed files since ${base}; running tests related to ${related.length} paths.`);
