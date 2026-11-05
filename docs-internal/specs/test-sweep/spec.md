@@ -78,6 +78,7 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 | Q51 | Bundled saves may leave the view for a context-level test when every case still loads through the real context and runs the real settle on load. The view keeps a case for each revision and for a stat cut, each playing a turn. |
 | Q52 | `GameViewer.tsx` is too large for a whole-file mutation run. A move off that view proves kills on the context it lands on, a coverage pair on the view and one reinstated bug in the view's path, and the ticket states the gap. |
 | Q53 | A kept view test may seed a count through its real store and play only the turn its assertion needs, with assertions byte-identical. One test keeps the real path from zero, and breaking that path must turn it red. |
+| Q54 | Q52 also covers `MainMenu.tsx`, and Q50 covers the Q5 code a moved test still calls, with no mutation run when the module it lands on is outside Q5. A test that exists to check per-key typing keeps real typing. A Q5 suite that stays unchanged needs no mutation run, so `MainMenu.ageGate` and `sessionSync` stay put. |
 
 ## User Stories
 
