@@ -19,7 +19,7 @@ When a player reaches 15 turns in a world they downloaded from the community, a 
 
 When a guest signs in, the Install's Anonymous Likes move to the account, so a new account starts with a liked list. The server remembers which account claimed the Install, so signing out does not give a second like on the same listing.
 
-The number ranks nothing competitive, because staff pick contest podiums by hand. It is still guarded: an address can give one listing at most three Anonymous Likes, the route has its own rate limit, staff see Anonymous Likes grouped by shared address and can remove them, and one server setting switches the feature off.
+The public number ranks nothing competitive, because staff pick contest podiums by hand. **Contests count account likes only:** the Podium dialog sorts and marks ties by account likes, and shows Anonymous Likes apart. Staff read the account count as `account_likes` on catalog rows of contest entries. Players and authors never get that field, and `likes` stays the sum, also after results. A claimed Like counts as an account like. The number is still guarded: an address can give one listing at most three Anonymous Likes, the route has its own rate limit, staff see Anonymous Likes grouped by shared address and can remove them, and one server setting switches the feature off.
 
 The public website keeps sending guests to sign-in.
 

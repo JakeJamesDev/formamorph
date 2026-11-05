@@ -65,7 +65,9 @@ interface Entry {
   name: string;
   authorName: string;
   authorId: string | null;
+  /** Account likes only: what the standings and ties are read from. */
   likes: number;
+  anonymousLikes: number;
   /** When the listing was published, in milliseconds. The tiebreaker on both orders in this dialog. */
   publishedAt: number;
   /** Either the stored file the catalog caches by name, or an inline data URL. */
@@ -147,13 +149,17 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
           const authorId = record.author?.id === undefined || record.author?.id === null
             ? null
             : String(record.author.id);
+          const total = Number(record.likes ?? 0) || 0;
+          // A server without the field has no split to show, so its sum stands.
+          const accountLikes = Number(record.account_likes ?? total) || 0;
 
           return {
             id: String(record._id || record.id),
             name: String(record.name || 'Untitled'),
             authorName: String(record.author?.username || 'Unknown'),
             authorId,
-            likes: Number(record.likes ?? 0) || 0,
+            likes: accountLikes,
+            anonymousLikes: Math.max(total - accountLikes, 0),
             publishedAt: publishedAtOf(record),
             thumbnailFile: typeof record.thumbnail_file === 'string' ? record.thumbnail_file : null,
             thumbnail: typeof record.thumbnail === 'string' && record.thumbnail ? record.thumbnail : null,
@@ -238,8 +244,9 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             {editing ? 'Edit Podium' : 'Announce Results'} — {contest.title}
           </DialogTitle>
           <DialogDescription>
-            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most likes first. A{' '}
-            <strong>Tied</strong> badge marks entries with the same like count. Click an entry to place it,
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most account likes first.
+            Anonymous Likes show under the count and don&apos;t change the order. A{' '}
+            <strong>Tied</strong> badge marks entries with the same account likes. Click an entry to place it,
             and click again to move it down a place. Select <strong>Tie With Above</strong> to share the
             place above. A tie doesn&apos;t use up a place: after two worlds on 1st, the next row takes 2nd.
             You can&apos;t place your own entry or a quarantined world.
@@ -386,11 +393,16 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
                                 tie, so it has to read the same to everyone. */}
                             {tied && (
                               <span className="rounded border px-1 font-semibold text-foreground">
-                                Tied<span className="sr-only"> on {entry.likes} likes</span>
+                                Tied<span className="sr-only"> on {entry.likes} account likes</span>
                               </span>
                             )}
                           </span>
                         </div>
+                        {entry.anonymousLikes > 0 && (
+                          <div className="text-meta text-muted-foreground text-right">
+                            + {entry.anonymousLikes} Anonymous
+                          </div>
+                        )}
                       </div>
                     </button>
                   );

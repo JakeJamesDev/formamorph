@@ -190,13 +190,72 @@ describe('the standings in the grid', () => {
     expect(within(screen.getByRole('group', { name: 'Entries' })).queryByText('Tied')).toBeNull();
   });
 
+  it('ranks by account likes when Anonymous Likes would put another entry first', async () => {
+    catalog(ranked({
+      w1: { likes: 40, account_likes: 3 },
+      w2: { likes: 12, account_likes: 10 },
+      w3: { likes: 9, account_likes: 9 },
+    }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(gridOrder(names)).toEqual([
+      'Ninth Wave Shoals', 'Salt-Bright Reaches', 'Pearl of the Undertow',
+    ]);
+  });
+
+  it('marks a tie on account likes, whatever the summed counts say', async () => {
+    catalog(ranked({
+      w1: { likes: 40, account_likes: 9 },
+      w2: { likes: 12, account_likes: 9 },
+      w3: { likes: 12, account_likes: 7 },
+    }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(within(entry('Pearl of the Undertow')).getByText('Tied')).toBeTruthy();
+    expect(within(entry('Ninth Wave Shoals')).getByText('Tied')).toBeTruthy();
+    expect(within(entry('Salt-Bright Reaches')).queryByText('Tied')).toBeNull();
+  });
+
+  it('shows the Anonymous Likes apart, and only on an entry that has some', async () => {
+    catalog(ranked({
+      w1: { likes: 40, account_likes: 3 },
+      w2: { likes: 12, account_likes: 12 },
+    }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(within(entry('Pearl of the Undertow')).getByText('+ 37 Anonymous')).toBeTruthy();
+    expect(within(entry('Ninth Wave Shoals')).queryByText(/Anonymous/)).toBeNull();
+  });
+
+  it('ranks an entry with no account likes at zero rather than on its sum', async () => {
+    catalog(ranked({
+      w1: { likes: 50, account_likes: 0 },
+      w2: { likes: 1, account_likes: 1 },
+      w3: { likes: 2, account_likes: 2 },
+    }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(gridOrder(names)).toEqual([
+      'Salt-Bright Reaches', 'Ninth Wave Shoals', 'Pearl of the Undertow',
+    ]);
+    expect(within(entry('Pearl of the Undertow')).getByText('+ 50 Anonymous')).toBeTruthy();
+  });
+
   it('says the mark in words, so it does not rest on a color alone', async () => {
     catalog(ranked({ w1: { likes: 12 } }));
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
     await screen.findByText('Pearl of the Undertow');
 
-    expect(screen.getByRole('button', { name: /Pearl of the Undertow.*Tied on 12 likes/s })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Pearl of the Undertow.*Tied on 12 account likes/s })).toBeTruthy();
   });
 
   it('sorts an entry nobody may place with the rest, still wearing its reason', async () => {
