@@ -75,6 +75,8 @@ function AppViews() {
     if (typeof window === 'undefined' || window.location.hash.includes('dev')) return true;
     try { return localStorage.getItem(INTRO_SEEN_KEY) !== null; } catch { return true; }
   });
+  // The intro waits for the menu's world library, so first-run seeding stays out of the animation.
+  const [libraryReady, setLibraryReady] = useState(false);
   const handleIntroDone = () => {
     setIntroPace(null);
     try { localStorage.setItem(INTRO_SEEN_KEY, '1'); } catch { /* private mode — just don't persist */ }
@@ -212,12 +214,13 @@ function AppViews() {
             onReplayIntro={() => setIntroPace('snap')}
             introActive={introPace !== null}
             introSeenAtLaunch={introSeenAtLaunch}
+            onLibraryReady={() => setLibraryReady(true)}
           />
         </SurfaceLayer>
       )}
       {currentView === 'mainMenu' && introPace && (
         <SurfaceLayer id="intro">
-          <IntroSequence pace={introPace} onComplete={handleIntroDone} />
+          <IntroSequence pace={introPace} ready={libraryReady} onComplete={handleIntroDone} />
         </SurfaceLayer>
       )}
       {currentView === 'gameViewer' && (

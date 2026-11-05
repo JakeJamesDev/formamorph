@@ -6,8 +6,8 @@ import { useBackStop } from '@/hooks/useBackStop';
 const SETTLE_FRAME_MS = 20;
 /** Steady frames in a row that mean the menu has settled. */
 const SETTLE_FRAMES = 8;
-/** The longest the intro waits for steady frames. */
-const SETTLE_MAX_MS = 2500;
+/** The longest the intro waits for `ready` and steady frames. */
+const SETTLE_MAX_MS = 4000;
 /** The overlay's opacity ceiling. Below 1, the menu underneath rasterizes while covered, not all at once when the fade starts. */
 const NEVER_OPAQUE = 0.999;
 
@@ -24,11 +24,16 @@ const NEVER_OPAQUE = 0.999;
  */
 export function IntroSequence({
   pace = 'cine',
+  ready = true,
   onComplete,
 }: {
   pace?: 'cine' | 'snap';
+  /** False while boot work the intro should not overlap is still running. */
+  ready?: boolean;
   onComplete: () => void;
 }) {
+  const readyRef = useRef(ready);
+  readyRef.current = ready;
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLCanvasElement>(null);
   const gooRef = useRef<HTMLCanvasElement>(null);
@@ -292,7 +297,7 @@ export function IntroSequence({
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let staticTimer = 0;
 
-    // Hold on the backdrop until the menu mounting underneath stops costing frames, so boot work doesn't
+    // Hold on the backdrop until `ready` and the menu underneath stops costing frames, so boot work doesn't
     // land inside the animation. Capped, so a slow machine still gets the intro.
     let settleSince = 0, steady = 0, lastSettle = 0;
     const settle = (now: number) => {
@@ -302,7 +307,7 @@ export function IntroSequence({
         readColors();
         background();
       }
-      steady = lastSettle && now - lastSettle < SETTLE_FRAME_MS ? steady + 1 : 0;
+      steady = readyRef.current && lastSettle && now - lastSettle < SETTLE_FRAME_MS ? steady + 1 : 0;
       lastSettle = now;
       if (steady >= SETTLE_FRAMES || now - settleSince >= SETTLE_MAX_MS) {
         start = performance.now();

@@ -201,6 +201,8 @@ interface MainMenuProps {
   introActive?: boolean;
   /** The intro-seen record as the app launched with it; the intro writes it when it ends, so a live read can't tell. */
   introSeenAtLaunch?: boolean;
+  /** Called once the bundled worlds are seeded and the world list has loaded, so the intro can wait for it. */
+  onLibraryReady?: () => void;
 }
 
 /** Set once the first-run AI setup prompt has been offered, so it never nags again. The play gate still fires. */
@@ -286,8 +288,10 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 /** The Help tab's note sits on the screen side of the tab, whichever edge the tab is on. */
 const HELP_NOTE_SIDE = { right: 'left', left: 'right', top: 'bottom', bottom: 'top' } as const;
 
-const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false, introSeenAtLaunch = true }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false, introSeenAtLaunch = true, onLibraryReady }: MainMenuProps) => {
   const isMountedRef = useRef(true);
+  const onLibraryReadyRef = useRef(onLibraryReady);
+  onLibraryReadyRef.current = onLibraryReady;
   useEffect(() => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
@@ -952,6 +956,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         console.error('Error seeding default worlds:', error);
       }
       await refreshWorlds();
+      if (isMountedRef.current) onLibraryReadyRef.current?.();
     };
 
     initializeWorlds();
