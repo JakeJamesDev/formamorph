@@ -64,6 +64,9 @@ export function requestLabel(status: RequestStatus): string {
   return `Generating ${status.name}…`;
 }
 
+/** A running turn held by a script's question to the player. */
+export const WAITING_FOR_ANSWER_STATUS: { label: string; glyph: StatusGlyphKey } = { label: 'Waiting for your answer…', glyph: 'hourglass' };
+
 /** Each background pass's label and glyph, in display precedence: the first running pass shows. */
 export const BACKGROUND_PASS_STATUS: Record<BackgroundPassKind, { label: string; glyph: StatusGlyphKey }> = {
   digest: { label: 'Summarizing turn…', glyph: REQUEST_STATUS.summary.glyph },

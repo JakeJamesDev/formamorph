@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createScriptPromptStore, PromptCanceled, type ScriptPromptRequest } from '@/lib/scriptPrompts';
 import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 
@@ -11,6 +11,66 @@ function open(request: ScriptPromptRequest) {
   act(() => { answer = store.prompt(request); });
   return { store, answer };
 }
+
+describe('ScriptPromptLine in a scroller', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** An open prompt in a stub scroller, whose offset `at` sets. */
+  function openInScroller() {
+    const grow: (() => void)[] = [];
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { grow.push(callback); }
+      observe() {}
+      disconnect() { grow.length = 0; }
+    });
+    const store = createScriptPromptStore();
+    render(
+      <div data-testid="frame">
+        <div data-radix-scroll-area-viewport="" data-testid="viewport">
+          <ScriptPromptLine store={store} />
+        </div>
+      </div>,
+    );
+    const viewport = screen.getByTestId('viewport');
+    const at = { offset: 600 };
+    const rect = (top: number, bottom: number) => ({ top, bottom }) as DOMRect;
+    vi.spyOn(viewport, 'getBoundingClientRect').mockImplementation(() => rect(0, 400));
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this === viewport ? rect(0, 400) : rect(at.offset - viewport.scrollTop, at.offset + 40 - viewport.scrollTop);
+    });
+    act(() => { void store.prompt({ kind: 'confirm', question: 'Open the door?' }).catch(() => {}); });
+    return { viewport, at, grow: () => grow.forEach((callback) => callback()), frame: screen.getByTestId('frame') };
+  }
+
+  it('scrolls the prompt clear of the fade when it opens', () => {
+    const { viewport } = openInScroller();
+    // 600 + 40 tall + 56 clearance - 400 of view.
+    expect(viewport.scrollTop).toBe(296);
+  });
+
+  it('follows the prompt as the content above it grows', () => {
+    const { viewport, at, grow } = openInScroller();
+    at.offset = 900;
+    grow();
+    expect(viewport.scrollTop).toBe(596);
+  });
+
+  it('stops following once the player scrolls', () => {
+    const { viewport, at, grow, frame } = openInScroller();
+    fireEvent.wheel(frame);
+    at.offset = 900;
+    grow();
+    expect(viewport.scrollTop).toBe(296);
+  });
+
+  it('keeps following after a press on the content', () => {
+    const { viewport, at, grow } = openInScroller();
+    fireEvent.pointerDown(screen.getByText('Open the door?'));
+    at.offset = 900;
+    grow();
+    expect(viewport.scrollTop).toBe(596);
+  });
+});
 
 describe('ScriptPromptLine', () => {
   it('answers a confirm on one press of a pill', async () => {

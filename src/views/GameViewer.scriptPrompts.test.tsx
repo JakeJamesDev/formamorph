@@ -79,6 +79,20 @@ describe('script prompts in play', () => {
     expect(screen.queryByTestId('script-prompt')).toBeNull();
   });
 
+  it('names the wait on the status strip while the question is open', async () => {
+    renderGameViewer(world(), { inGameplay: <Probe /> });
+    stubEndpoint();
+
+    await send('I wait.');
+    await screen.findByRole('group', { name: 'Ring it?' });
+    expect(screen.getByText('Waiting for your answer…')).toBeInTheDocument();
+    expect(screen.queryByText(/^Generating /)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    await waitFor(() => expect(screen.queryByText('Waiting for your answer…')).toBeNull());
+    await settled();
+  });
+
   it('keeps each tell with its turn, pages it with that turn, and never sends it', async () => {
     renderGameViewer(world(), { inGameplay: <Probe /> });
     const bodies = stubEndpoint();

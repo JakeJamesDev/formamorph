@@ -65,7 +65,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { Meta } from "@/components/ui/typography";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
-import { cancelOpenPrompts, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
+import { cancelOpenPrompts, isNotice, noticeHost, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
 import { useScriptPromptListener } from "@/lib/useScriptPromptListener";
@@ -183,7 +183,7 @@ import {
 import { describeItemRequest, withItemDescription } from "@/lib/inventory/describe";
 import { BackgroundPassStatus } from "../components/game/BackgroundPassStatus";
 import { RequestStatusRow } from "../components/game/RequestStatusRow";
-import { TOOL_GLYPH, requestLabel, requestStatus } from "../components/game/statusGlyphs/glyphMap";
+import { TOOL_GLYPH, WAITING_FOR_ANSWER_STATUS, requestLabel, requestStatus } from "../components/game/statusGlyphs/glyphMap";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
@@ -529,6 +529,8 @@ interface TurnScript {
 
 /** The passes a scripted turn runs; every other one would ask a real endpoint. */
 const SCRIPTED_PASSES = new Set(['narration', 'choices']);
+
+const isQuestionOpen = () => scriptPrompts.pending().some(({ request }) => !isNotice(request));
 
 /** Calls `render` only while mounted, so a closed dialog's body costs the parent's render nothing. */
 function RenderMounted({ render }: { render: () => React.ReactNode }) {
@@ -5841,7 +5843,12 @@ const GameViewer = ({
   else busyStartedAtRef.current ??= Date.now();
   const turnStartedAt = busyStartedAtRef.current ?? undefined;
 
+  const questionOpen = useSyncExternalStore(scriptPrompts.subscribe, isQuestionOpen);
+
   const progressBar = (() => {
+    if (isWaitingForAI && questionOpen) {
+      return <RequestStatusRow label={WAITING_FOR_ANSWER_STATUS.label} glyph={WAITING_FOR_ANSWER_STATUS.glyph} startedAt={turnStartedAt} />;
+    }
     // The active turn's request takes the status row; a silent memory digest (which runs between turns)
     // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled. Tool
     // rounds are silent requests, so their line follows the same setting.

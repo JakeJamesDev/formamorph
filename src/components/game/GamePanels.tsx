@@ -23,7 +23,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, PLAYER_ACTION_BUBBLE, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
 import { RequestStatusStrip } from './RequestStatusRow';
-import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
+import { NARRATION_END_SPACE, NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
 import { ChatChoices } from './ChatChoices';
 import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
@@ -1053,6 +1053,7 @@ export const MiddlePanel = ({
                 actions={pageChoicesActions}
               />
             )}
+            <div aria-hidden className={NARRATION_END_SPACE} />
           </ScrollArea>
           )}
           <ConfirmDialog

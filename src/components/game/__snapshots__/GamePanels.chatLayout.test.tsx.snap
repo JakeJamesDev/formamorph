@@ -270,6 +270,10 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                   </button>
                 </div>
               </div>
+              <div
+                aria-hidden="true"
+                class="h-14"
+              />
             </div>
           </div>
         </div>
@@ -883,6 +887,10 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   </div>
                 </div>
               </div>
+              <div
+                aria-hidden="true"
+                class="h-14"
+              />
             </div>
           </div>
         </div>

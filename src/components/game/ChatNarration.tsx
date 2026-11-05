@@ -10,7 +10,7 @@ import { parseTurnContent } from '@/lib/turnDigest';
 import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
+import { NARRATION_END_SPACE, NARRATION_FADE, NARRATION_FADE_UNDER_STRIP, useEdgeFades } from './narrationFade';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
@@ -257,6 +257,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                 )}
                 <ScriptTellLines tells={turnTells(scriptTells, turnId)} layout="chat" className="mt-3" />
                 {isLatest && latestFooter}
+                {isLatest && <div aria-hidden className={NARRATION_END_SPACE} />}
                 <div data-content-end />
               </article>
             );

@@ -1,15 +1,20 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Meta } from '@/components/ui/typography';
+import { revealDelta } from '@/lib/scrollEdgeFade';
 import { cn } from '@/lib/utils';
 import { isNotice, type ScriptPromptAnswer, type ScriptPromptRequest, type ScriptPromptStore } from '@/lib/scriptPrompts';
+import { NARRATION_END_SPACE_REM } from './narrationFade';
 
 /** The most options a single `ask` shows as pills; past that it is a dropdown (Q17). */
 const PILL_LIMIT = 4;
 
 const CONFIRM_OPTIONS = ['Yes', 'No'];
+
+// Input that means the player moves the view.
+const PLAYER_SCROLL_EVENTS = ['wheel', 'touchstart', 'pointerdown'] as const;
 
 /** Where the line sits: Pages spans the column, Chat centers it at bubble width. */
 export type PromptLineLayout = 'pages' | 'chat';
@@ -50,12 +55,40 @@ export function ScriptPromptLine({ store, layout = 'pages', className }: { store
   return <PromptLine key={prompt.id} store={store} id={prompt.id} request={prompt.request} className={cn(LAYOUT[layout], className)} />;
 }
 
+/** Keeps `ref` in its scroller's view as the content around it grows, until the player scrolls. */
+function useKeepInView(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const node = ref.current;
+    const viewport = node?.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
+    if (!node || !viewport) return;
+    const reveal = () => {
+      const clearance = NARRATION_END_SPACE_REM * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+      viewport.scrollTop += revealDelta(node.getBoundingClientRect(), viewport.getBoundingClientRect(), clearance);
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(viewport);
+    if (viewport.firstElementChild) observer.observe(viewport.firstElementChild);
+    // The frame holds the scroller and its scrollbar, and a press on the content is a click.
+    const scrollFrame = viewport.parentElement ?? viewport;
+    const release = (event: Event) => {
+      if (event.type !== 'pointerdown' || !viewport.contains(event.target as Node)) observer.disconnect();
+    };
+    for (const type of PLAYER_SCROLL_EVENTS) scrollFrame.addEventListener(type, release, { passive: true });
+    return () => {
+      observer.disconnect();
+      for (const type of PLAYER_SCROLL_EVENTS) scrollFrame.removeEventListener(type, release);
+    };
+  }, [ref]);
+}
+
 function PromptLine({ store, id, request, className }: { store: ScriptPromptStore; id: string; request: Asked; className?: string }) {
   const frame = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const node = frame.current;
     if (node && !node.contains(document.activeElement)) node.focus();
   }, []);
+  useKeepInView(frame);
 
   // The prompt can close under a second press, so only a prompt still open takes the answer.
   const answer: Answer = (value) => {
