@@ -1,6 +1,7 @@
 // Must load before importing anything that opens IndexedDB.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { refuseReads } from '@/test/idbRefusal';
 
 // The worker's own op, run in-process: jsdom and node have no Worker.
 vi.mock('@/lib/jsonFileWorkerUtils', async () => {
@@ -206,31 +207,11 @@ describe('backup round trip (IndexedDB)', () => {
 
   it('backs up the other worlds when one world file is lost', async () => {
     await seed('worldsDB', 'worlds', [{ id: 'w1', name: 'Keep' }, { id: 'lost', name: 'Lost' }]);
-    // The real requests run in their live transactions; the browser reports a lost file as their error.
-    const refuse = (request: IDBRequest) => {
-      Object.defineProperty(request, 'error', { get: () => new DOMException('Data lost', 'NotReadableError'), set: () => {} });
-      Object.defineProperty(request, 'onsuccess', {
-        get: () => () => request.onerror?.({ target: request, preventDefault() {}, stopPropagation() {} } as unknown as Event),
-        set: () => {},
-      });
-      return request;
-    };
-    const get = IDBObjectStore.prototype.get;
-    const getAll = IDBObjectStore.prototype.getAll;
-    const spies = [
-      vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
-        const request = get.call(this, key);
-        return this.name === 'worlds' && key === 'lost' ? refuse(request) : request;
-      }),
-      vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (this: IDBObjectStore, ...args) {
-        const request = getAll.apply(this, args);
-        return this.name === 'worlds' ? refuse(request) : request;
-      }),
-    ];
+    const restore = refuseReads({ worlds: ['lost'] });
 
     const bundle = await buildBackup({ worlds: new Set(['w1', 'lost']) });
 
-    spies.forEach((spy) => spy.mockRestore());
+    restore();
     expect(bundle.data.worlds.map((r) => r.id)).toEqual(['w1']);
   });
 

@@ -3,6 +3,8 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { LibraryRecordNotFoundError, LibraryStore, type StoredRecord } from './LibraryStore';
 import { failWritesOnQuota } from '@/test/quotaAbort';
+import { refuseReads } from '@/test/idbRefusal';
+import { transactionDone } from '@/lib/idb';
 
 interface Payload {
   entries?: string[];
@@ -35,6 +37,54 @@ const record = (over: Partial<StoredRecord<Payload>> = {}): StoredRecord<Payload
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('an unreadable record', () => {
+  it('leaves the other records listed when one file is lost', async () => {
+    const store = makeStore();
+    await store.store(record({ id: 'a1', name: 'Alpha' }));
+    await store.store(record({ id: 'b2', name: 'Beta' }));
+    const restore = refuseReads({ things: ['a1'] });
+
+    const listed = await store.getMetadata();
+
+    restore();
+    expect(listed.map((meta) => meta.id)).toEqual(['b2']);
+  });
+
+  it('leaves the other records listed when one reads back as null', async () => {
+    const dbName = `testDB-${++dbSeq}`;
+    const raw = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(dbName, 1);
+      // Out-of-line keys are the one way to store a value that reads back as null.
+      request.onupgradeneeded = () => request.result.createObjectStore('things');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = raw.transaction(['things'], 'readwrite');
+    tx.objectStore('things').put(null, 'a1');
+    tx.objectStore('things').put(record({ id: 'b2', name: 'Beta' }), 'b2');
+    await transactionDone(tx);
+    raw.close();
+    const store = new LibraryStore<Payload, Meta>({
+      dbName, storeName: 'things', noun: 'Widget',
+      toMetadata: (stored) => ({ id: stored.id, name: stored.name, count: 0 }),
+    });
+
+    expect((await store.getMetadata()).map((meta) => meta.id)).toEqual(['b2']);
+  });
+
+  it('can be deleted, and the list stays clean', async () => {
+    const store = makeStore();
+    await store.store(record({ id: 'a1', name: 'Alpha' }));
+    await store.store(record({ id: 'b2', name: 'Beta' }));
+    const restore = refuseReads({ things: ['a1'] });
+
+    await store.delete('a1');
+
+    restore();
+    expect((await store.getMetadata()).map((meta) => meta.id)).toEqual(['b2']);
+  });
 });
 
 describe('store + getData', () => {

@@ -15,6 +15,7 @@ import {
   WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, putWorldRecords, worldMetaOf, type WorldMetaRecord,
 } from './worldLibrary';
 import { bundledWorlds } from '@/lib/bundledWorldText';
+import { refuseReads } from '@/test/idbRefusal';
 
 /** Open the library database the way a version 1 build did. */
 function openVersion1(): Promise<IDBDatabase> {
@@ -342,37 +343,9 @@ describe('a library with unreadable rows', () => {
     expect(getUnreadableWorlds().map((w) => w.id)).toEqual(['lost']);
   });
 
-  /** Have the browser refuse whole-store reads and each listed id's read, per store, the way a lost file does. */
-  function refused(lost: Record<string, string[]>): void {
-    // The real request runs inside its live transaction; its success arrives as the browser's error.
-    const failing = (request: IDBRequest) => {
-      const error = new DOMException('Data lost', 'NotReadableError');
-      Object.defineProperty(request, 'error', { get: () => error, set: () => {} });
-      Object.defineProperty(request, 'onsuccess', {
-        get: () => () => {
-          request.onerror?.({ target: request, preventDefault() {}, stopPropagation() {} } as unknown as Event);
-          // Chromium aborts a read-write transaction on this refusal, even after preventDefault.
-          if (request.transaction?.mode === 'readwrite') request.transaction.abort();
-        },
-        set: () => {},
-      });
-      return request;
-    };
-    const get = IDBObjectStore.prototype.get;
-    const getAll = IDBObjectStore.prototype.getAll;
-    vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
-      const request = get.call(this, key);
-      return lost[this.name]?.includes(String(key)) ? failing(request) : request;
-    });
-    vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (this: IDBObjectStore, ...args) {
-      const request = getAll.apply(this, args);
-      return lost[this.name] ? failing(request) : request;
-    });
-  }
-
   it('lists the other worlds and rebuilds the row when one metadata file is lost', async () => {
     await seedLibrary([world('a'), world('b')]);
-    refused({ [WORLD_META_STORE]: ['a'] });
+    refuseReads({ [WORLD_META_STORE]: ['a'] });
 
     const meta = await WorldStorageService.getWorldMetadata();
 
@@ -382,7 +355,7 @@ describe('a library with unreadable rows', () => {
 
   it('reports a world whose metadata and record files are both lost', async () => {
     await seedLibrary([world('lost'), world('b')]);
-    refused({ [WORLD_META_STORE]: ['lost'], [WORLD_STORE]: ['lost'] });
+    refuseReads({ [WORLD_META_STORE]: ['lost'], [WORLD_STORE]: ['lost'] });
 
     expect((await WorldStorageService.getWorldMetadata()).map((m) => m.id)).toEqual(['b']);
     expect(getUnreadableWorlds().map((w) => w.id)).toEqual(['lost']);
@@ -390,7 +363,7 @@ describe('a library with unreadable rows', () => {
 
   it('rebuilds a healthy world that follows a lost one in the same read', async () => {
     await seedLibrary([world('a-lost'), world('b-good')], ['a-lost', 'b-good']);
-    refused({ [WORLD_STORE]: ['a-lost'] });
+    refuseReads({ [WORLD_STORE]: ['a-lost'] });
 
     expect((await WorldStorageService.getWorldMetadata()).map((m) => m.id)).toEqual(['b-good']);
     expect(getUnreadableWorlds().map((w) => w.id)).toEqual(['a-lost']);
@@ -426,7 +399,7 @@ describe('a library with unreadable rows', () => {
 
   it('removes an entry whose files are lost, and a later list read is clean', async () => {
     await seedLibrary([world('lost'), world('b')]);
-    refused({ [WORLD_META_STORE]: ['lost'], [WORLD_STORE]: ['lost'] });
+    refuseReads({ [WORLD_META_STORE]: ['lost'], [WORLD_STORE]: ['lost'] });
 
     expect(await WorldStorageService.removeUnreadableWorld('lost')).toBe(true);
 

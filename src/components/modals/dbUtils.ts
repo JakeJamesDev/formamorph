@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { cachedConnection, promisifyRequest, transactionDone } from '@/lib/idb';
+import { cachedConnection, getAllReadable, promisifyRequest, transactionDone } from '@/lib/idb';
 import type { SaveRecord } from '@/types';
 
 export const DB_NAME = 'FORMAMORPH_DB';
@@ -37,23 +37,23 @@ export const getSaveRecord = async (id: string) =>
 /** Keys of unreadable rows already warned about this session. */
 const warnedUnreadable = new Set<IDBValidKey>();
 
-/** Every save the browser can read. A row that reads back as a non-object (a value it failed to load) is
- *  skipped and left in place, since the stored bytes may still be recoverable. */
+/** Every save the browser can read. An unreadable row is skipped and left in place, since the stored bytes
+ *  may still be recoverable. */
 export const getAllSaveRecords = async (): Promise<SaveRecord[]> => {
-  const values = await promisifyRequest((await store(STORE_NAME, 'readonly')).getAll() as IDBRequest<unknown[]>);
-  const readable = values.filter((value): value is SaveRecord => value !== null && typeof value === 'object');
-  if (readable.length < values.length) void warnUnreadable(values);
+  const readable = await getAllReadable<SaveRecord>(await initDB(), STORE_NAME);
+  void warnUnreadable(readable);
   return readable;
 };
 
-/** Warns once per key for each unreadable row; keys come in getAll's order. */
-async function warnUnreadable(values: unknown[]): Promise<void> {
+/** Warns once per key for each stored row the read left out. */
+async function warnUnreadable(readable: SaveRecord[]): Promise<void> {
   const keys = await promisifyRequest((await store(STORE_NAME, 'readonly')).getAllKeys());
-  values.forEach((value, i) => {
-    if ((value !== null && typeof value === 'object') || warnedUnreadable.has(keys[i])) return;
-    warnedUnreadable.add(keys[i]);
-    console.warn(`Skipped an unreadable save record (id ${String(keys[i])})`);
-  });
+  const ids = new Set<IDBValidKey>(readable.map((record) => record.id));
+  for (const key of keys) {
+    if (ids.has(key) || warnedUnreadable.has(key)) continue;
+    warnedUnreadable.add(key);
+    console.warn(`Skipped an unreadable save record (id ${String(key)})`);
+  }
 }
 
 export const deleteSaveRecord = async (id: string) => {
@@ -63,15 +63,13 @@ export const deleteSaveRecord = async (id: string) => {
 /**
  * One-time migration of any pre-folders `saves` rows into the id-keyed store: mint a stable `id`, and
  * best-effort stamp `worldId` by matching the save's `worldName` against installed worlds (`nameToId`).
- * Unmatched saves keep no `worldId` and group by name. Idempotent — the legacy store is cleared after a
- * successful copy, so a second call is a no-op.
+ * Unmatched saves keep no `worldId` and group by name. Idempotent — each copied row leaves the legacy store
+ * after a successful copy, so a second call is a no-op. An unreadable row stays there.
  */
 export const migrateLegacySaves = async (
   nameToId: (worldName: string | null | undefined) => string | undefined,
 ): Promise<void> => {
-  const legacy = (await promisifyRequest(
-    (await store(LEGACY_STORE, 'readonly')).getAll(),
-  )) as Array<Record<string, unknown>>;
+  const legacy = await getAllReadable<Record<string, unknown>>(await initDB(), LEGACY_STORE);
   if (!legacy.length) return;
 
   const rw = await store(STORE_NAME, 'readwrite');
@@ -86,7 +84,9 @@ export const migrateLegacySaves = async (
     } as unknown as SaveRecord;
     await promisifyRequest(rw.put(record));
   }
-  await promisifyRequest((await store(LEGACY_STORE, 'readwrite')).clear());
+  const copied = await store(LEGACY_STORE, 'readwrite');
+  for (const old of legacy) copied.delete(old.name as string);
+  await transactionDone(copied.transaction);
 };
 
 // --- Ordering store (device-local) ---------------------------------------------------------------

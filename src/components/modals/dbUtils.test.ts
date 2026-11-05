@@ -1,6 +1,8 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
-import { transactionDone } from '@/lib/idb';
+import { promisifyRequest, transactionDone } from '@/lib/idb';
+import { refuseReads } from '@/test/idbRefusal';
+import type { SaveRecord } from '@/types';
 
 /**
  * The save DB opens a connection per operation unless `initDB` caches it. Autosave issues several
@@ -54,6 +56,48 @@ describe('getAllSaveRecords', () => {
     expect(warn).toHaveBeenCalledTimes(1); // once per key, not on every read
     keyReads.mockRestore();
     warn.mockRestore();
+  });
+});
+
+describe('a save whose file is lost', () => {
+  const save = (id: string) => ({ id, name: id, worldId: 'w1', version: '3', currentState: {} }) as unknown as SaveRecord;
+
+  it('lists the other saves and warns once for the lost one', async () => {
+    for (const id of ['a', 'b', 'c']) await db.putSaveRecord(save(id));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const restore = refuseReads({ [db.STORE_NAME]: ['b'] });
+
+    expect((await db.getAllSaveRecords()).map((r) => r.id)).toEqual(['a', 'c']);
+
+    restore();
+    await vi.waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
+    expect(warn.mock.calls[0][0]).toContain('id b');
+    warn.mockRestore();
+  });
+
+  it('keeps every readable save on a later read', async () => {
+    for (const id of ['a', 'b']) await db.putSaveRecord(save(id));
+    const restore = refuseReads({ [db.STORE_NAME]: ['b'] });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await db.getAllSaveRecords();
+    restore();
+
+    expect((await db.getAllSaveRecords()).map((r) => r.id)).toEqual(['a', 'b']);
+  });
+
+  it('migrates the readable legacy saves and leaves the lost row in place', async () => {
+    const conn = await db.initDB();
+    const seed = conn.transaction([db.LEGACY_STORE], 'readwrite');
+    for (const name of ['old-a', 'old-lost']) seed.objectStore(db.LEGACY_STORE).put({ name, worldName: 'Marsh' });
+    await transactionDone(seed);
+    const restore = refuseReads({ [db.LEGACY_STORE]: ['old-lost'] });
+
+    await db.migrateLegacySaves(() => 'w1');
+
+    restore();
+    const left = await promisifyRequest(conn.transaction([db.LEGACY_STORE]).objectStore(db.LEGACY_STORE).getAllKeys());
+    expect(left).toEqual(['old-lost']);
+    expect((await db.getAllSaveRecords()).map((r) => [r.name, r.worldId])).toEqual([['old-a', 'w1']]);
   });
 });
 
