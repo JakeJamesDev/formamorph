@@ -1,6 +1,7 @@
 # Edge-to-Edge Window
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-05: tickets 01–07 done, last landing b171679fe. Review clean. Gates green on 2026-11-05.
 Spec session: edge-to-edge-window — spec
 
 ## Problem Statement
