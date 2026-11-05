@@ -170,6 +170,50 @@
   .brand img { width: 26px; height: 26px; border-radius: 6px; }
   .thanks { font-weight: 500; color: var(--ink); }
 
+  #posts {
+    width: var(--card-w);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    font-size: 14px;
+  }
+  #posts[hidden] { display: none; }
+  .post { min-width: 0; padding: 12px; border: 1px solid #4a4f5c; border-radius: 8px; background: #2b2e37; }
+  .post.wide { grid-column: 1 / -1; }
+  .post-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .post-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .post-head .count { margin-left: auto; color: var(--ink-soft); }
+  .post-head .count.over { color: #ff8a8a; font-weight: 600; }
+  .post-head button {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid #4a4f5c;
+    border-radius: 6px;
+    background: #31353f;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+  }
+  .post-head h2 + button { margin-left: auto; }
+  .post textarea, .post .preview {
+    display: block;
+    width: 100%;
+    height: 230px;
+    padding: 10px;
+    overflow: auto;
+    border: 1px solid #4a4f5c;
+    border-radius: 6px;
+    background: #1d2027;
+    color: var(--ink);
+    font: 14px/1.45 Inter, system-ui, sans-serif;
+    resize: vertical;
+  }
+  .post.wide textarea { height: 96px; }
+  .post textarea[readonly] { font-family: Consolas, monospace; font-size: 13px; }
+  .preview h1 { margin: 0 0 8px; font: 700 20px/1.25 Inter, system-ui, sans-serif; color: var(--ink); text-shadow: none; }
+  .preview p { margin: 0 0 10px; }
+  .preview a { color: #7fb8ff; }
+
   [contenteditable] { outline: none; border-radius: 4px; cursor: text; }
   [contenteditable]:focus { box-shadow: 0 0 0 2px rgba(255, 255, 255, .5); }
 </style>
@@ -183,9 +227,40 @@
   </div>
   <div id="status" class="status" role="status">Loading results…</div>
   <div id="card" hidden></div>
+  <section id="posts" hidden aria-label="Post Text">
+    <div class="post wide">
+      <div class="post-head">
+        <h2>X Post</h2>
+        <span id="x-count" class="count"></span>
+        <button id="copy-x" type="button">Copy</button>
+      </div>
+      <textarea id="x-text" spellcheck="false" aria-label="X Post"></textarea>
+    </div>
+    <div class="post">
+      <div class="post-head">
+        <h2>Long Post: Formatted</h2>
+        <button id="copy-formatted" type="button">Copy Formatted</button>
+      </div>
+      <div id="long-preview" class="preview"></div>
+    </div>
+    <div class="post">
+      <div class="post-head">
+        <h2>Long Post: Markdown</h2>
+        <span id="long-count" class="count"></span>
+        <button id="copy-markdown" type="button">Copy Markdown</button>
+      </div>
+      <textarea id="long-markdown" readonly spellcheck="false" aria-label="Long Post Markdown"></textarea>
+    </div>
+  </section>
 
 <script>
 const API = 'https://api.formamorph.ai';
+const SITE = 'https://formamorph.ai';
+const COMMUNITY_URL = `${SITE}/community`;
+const PLACE_MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
+const X_LIMIT = 280;
+const X_URL_WEIGHT = 23;
+const DISCORD_LIMIT = 2000;
 const PLACE_LABELS = { 1: '1st Place', 2: '2nd Place', 3: '3rd Place' };
 const CONFETTI_COLORS = ['#f7c948', '#ff6b8a', '#6fe3d6', '#b48cff', '#ff9f5a', '#ffffff', '#7fb8ff'];
 const CONFETTI_ATTEMPTS = 260;
@@ -291,7 +366,9 @@ function goldTile(entry) {
   const tile = element('div', 'gold');
   const frame = artFor(entry);
   frame.append(element('div', 'place', PLACE_LABELS[1]));
-  tile.append(frame, editable('div', 'name', entry.name), editable('div', 'author', `by ${entry.author}`));
+  entry.nameNode = editable('div', 'name', entry.name);
+  entry.authorNode = editable('div', 'author', `by ${entry.author}`);
+  tile.append(frame, entry.nameNode, entry.authorNode);
   return tile;
 }
 
@@ -299,11 +376,9 @@ function otherRow(entry) {
   const row = element('div', 'row');
   row.dataset.place = entry.place;
   const text = element('div', 'text');
-  text.append(
-    element('div', 'place', PLACE_LABELS[entry.place]),
-    editable('div', 'name', entry.name),
-    editable('div', 'author', `by ${entry.author}`),
-  );
+  entry.nameNode = editable('div', 'name', entry.name);
+  entry.authorNode = editable('div', 'author', `by ${entry.author}`);
+  text.append(element('div', 'place', PLACE_LABELS[entry.place]), entry.nameNode, entry.authorNode);
   row.append(artFor(entry), text);
   return row;
 }
@@ -342,6 +417,110 @@ function drawCard(contest, entries, seed) {
   card.append(header, podium, footer);
   card.hidden = false;
   card.insertAdjacentHTML('afterbegin', confettiSvg(`${contest.id}:${seed}`, 1200, 675, confettiKeepOut(card)));
+}
+
+const worldUrl = (entry) => (entry.worldId ? `${SITE}/community/world/${encodeURIComponent(entry.worldId)}` : null);
+
+/** What the card says right now, so a corrected name reaches the post text too. */
+const postEntries = (entries) => entries.map((entry) => ({
+  place: entry.place,
+  name: entry.nameNode.textContent.trim(),
+  author: entry.authorNode.textContent.trim().replace(/^by\s+/i, ''),
+  url: worldUrl(entry),
+}));
+
+const listWords = (items) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`);
+
+function xPost(title, entries) {
+  const golds = entries.filter((entry) => entry.place === 1);
+  const credits = listWords(golds.map((entry) => `${entry.name} by ${entry.author}`));
+  const link = golds.length === 1 && golds[0].url ? golds[0].url : COMMUNITY_URL;
+  return `🏆 ${title} ${golds.length === 1 ? 'winner' : 'winners'}: ${credits}. Congratulations!\n\n${link}`;
+}
+
+/** Counts a post the way X does: every URL costs the same, and emoji and most non-Latin text cost double. */
+function xLength(text) {
+  const links = text.match(/https?:\/\/\S+/g) ?? [];
+  const rest = text.replace(/https?:\/\/\S+/g, '').replace(/\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*/gu, 'EE');
+  let weight = links.length * X_URL_WEIGHT;
+  for (const char of rest) {
+    const code = char.codePointAt(0);
+    const light = code <= 4351 || (code >= 8192 && code <= 8205) || (code >= 8208 && code <= 8223) || (code >= 8242 && code <= 8247);
+    weight += light ? 1 : 2;
+  }
+  return weight;
+}
+
+const escapeMarkdown = (text) => text.replace(/[\\`*_~|[\]<>]/g, '\\$&');
+const escapeHtml = (text) => text.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+
+/** The same long post in both forms. Angle brackets keep Discord from adding a preview per link. */
+function longPost(title, headline, thanks, entries) {
+  const markdownLines = entries.map((entry) => {
+    const name = escapeMarkdown(entry.name);
+    const label = entry.url ? `[${name}](<${entry.url}>)` : name;
+    return `${PLACE_MEDALS[entry.place]} **${label}** by ${escapeMarkdown(entry.author)}`;
+  });
+  const htmlLines = entries.map((entry) => {
+    const name = escapeHtml(entry.name);
+    const label = entry.url ? `<a href="${escapeHtml(entry.url)}">${name}</a>` : name;
+    return `${PLACE_MEDALS[entry.place]} <strong>${label}</strong> by ${escapeHtml(entry.author)}`;
+  });
+  return {
+    markdown: [
+      `# 🏆 ${escapeMarkdown(title)}: The Results`,
+      `**${escapeMarkdown(headline)}**`,
+      '',
+      ...markdownLines,
+      '',
+      escapeMarkdown(thanks),
+      `Find more worlds: <${COMMUNITY_URL}>`,
+    ].join('\n'),
+    html: [
+      `<h1>🏆 ${escapeHtml(title)}: The Results</h1>`,
+      `<p><strong>${escapeHtml(headline)}</strong></p>`,
+      `<p>${htmlLines.join('<br>')}</p>`,
+      `<p>${escapeHtml(thanks)}<br>Find more worlds: <a href="${COMMUNITY_URL}">${COMMUNITY_URL.replace('https://', '')}</a></p>`,
+    ].join(''),
+  };
+}
+
+function showCount(node, length, limit) {
+  node.textContent = `${length} / ${limit}`;
+  node.classList.toggle('over', length > limit);
+}
+
+function drawPosts(contest, entries) {
+  const card = document.getElementById('card');
+  const live = postEntries(entries);
+  const xText = document.getElementById('x-text');
+  xText.value = xPost(contest.title, live);
+  showCount(document.getElementById('x-count'), xLength(xText.value), X_LIMIT);
+
+  const long = longPost(
+    contest.title,
+    card.querySelector('h1').textContent.trim(),
+    card.querySelector('.thanks').textContent.trim(),
+    live,
+  );
+  document.getElementById('long-preview').innerHTML = long.html;
+  document.getElementById('long-markdown').value = long.markdown;
+  showCount(document.getElementById('long-count'), long.markdown.length, DISCORD_LIMIT);
+  document.getElementById('posts').hidden = false;
+}
+
+function copyButton(id, write) {
+  const button = document.getElementById(id);
+  const label = button.textContent;
+  button.addEventListener('click', async () => {
+    try {
+      await write();
+      button.textContent = 'Copied';
+    } catch {
+      button.textContent = "Couldn't Copy";
+    }
+    setTimeout(() => { button.textContent = label; }, 1500);
+  });
 }
 
 const worldArt = new Map();
@@ -394,6 +573,7 @@ async function start() {
     const contest = contests.find((event) => event.id === picker.value);
     const entries = await Promise.all(contest.placements.map(async (placement) => ({
       place: placement.place,
+      worldId: placement.worldId,
       name: cleanWorldName(placement.worldName),
       author: placement.authorName,
       art: await artOf(placement.worldId),
@@ -402,9 +582,23 @@ async function start() {
     current = { contest, entries };
     status.hidden = true;
     drawCard(contest, entries, seed);
+    drawPosts(contest, entries);
   };
 
   picker.addEventListener('change', show);
+  document.getElementById('card').addEventListener('input', () => {
+    if (current) drawPosts(current.contest, current.entries);
+  });
+  document.getElementById('x-text').addEventListener('input', (event) => {
+    showCount(document.getElementById('x-count'), xLength(event.target.value), X_LIMIT);
+  });
+  copyButton('copy-x', () => navigator.clipboard.writeText(document.getElementById('x-text').value));
+  copyButton('copy-markdown', () => navigator.clipboard.writeText(document.getElementById('long-markdown').value));
+  // The plain-text half is the Markdown, for apps that ignore rich text but read Markdown.
+  copyButton('copy-formatted', () => navigator.clipboard.write([new ClipboardItem({
+    'text/html': new Blob([document.getElementById('long-preview').innerHTML], { type: 'text/html' }),
+    'text/plain': new Blob([document.getElementById('long-markdown').value], { type: 'text/plain' }),
+  })]));
   document.getElementById('reshuffle').addEventListener('click', () => {
     seed += 1;
     // Replaces only the confetti, so text edits stay on the card.
