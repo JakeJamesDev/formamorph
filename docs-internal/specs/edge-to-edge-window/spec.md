@@ -87,6 +87,9 @@ The owner settled these in the prototype session. A ruling reopens on new eviden
 - **Q23. Main menu tabs and centering.** The bar still folds only when the whole row doesn't fit, and the buttons drift off center before anything folds. The library tabs keep their full labels while the row fits. At 1280 wide, the buttons sit about 68px right of center. They center exactly wherever both sides have room.
 - **Q24. Backup & Restore in game.** The Settings Data row shows only in main menu Settings. Restore reloads the app, which would drop a running game, so Take Me There from a game still asks to exit first.
 - **Q25. The full-screen `...` in the drift test.** The main menu's full-screen More Actions button is the one named exception to Q14. Its neighbors in the right cell sit its width plus the gap further left than on web, and near the fold point desktop can fold one step earlier. Every other control matches within 1px.
+- **Q26. Full-window Surfaces never dim the window buttons.** Ruled after the close. While a full-window dialog zooms in, the window buttons keep full color. Only popups that leave the page visible dim them.
+- **Q27. The corner gradient stays with Hide UI.** Ruled after the close. It keeps the window buttons readable over bright art.
+- **Q28. The full screen editor title uses the dialog title size.** Ruled after the close, keeping the size from the Q22 revision.
 
 ### Modules
 

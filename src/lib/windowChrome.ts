@@ -28,12 +28,18 @@ function themeForeground(root: HTMLElement, host: HTMLElement): Rgba {
   return [r, g, b, 255];
 }
 
+/** Whether the layer's own dialog fills the window. Layout size ignores the opening zoom's scale. */
+function coversWindow(layer: Element): boolean {
+  const dialog = layer.parentElement?.querySelector<HTMLElement>(':scope > [role="dialog"], :scope > [role="alertdialog"]');
+  return !!dialog && dialog.offsetWidth >= window.innerWidth - 1 && dialog.offsetHeight >= window.innerHeight - 1;
+}
+
 /** Whether an open dimming layer is what the window buttons sit over. A closing one is see-through. */
 function cornerIsDimmed(): boolean {
   for (const el of document.elementsFromPoint(window.innerWidth - 20, 10)) {
     const layer = el.closest(DIM_LAYER);
     if (!layer) return false;
-    if (layer.getAttribute('data-state') !== 'closed') return true;
+    if (layer.getAttribute('data-state') !== 'closed') return !coversWindow(layer);
   }
   return false;
 }

@@ -150,6 +150,20 @@ describe('installWindowChrome', () => {
       await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith('#ffffff'));
     });
 
+    it('keeps full color while a full-window dialog zooms in over its dimming layer', async () => {
+      const send = install();
+      const { layer, dialog } = mountPopup();
+      // Layout size, which the zoom's scale leaves at the full window.
+      Object.defineProperty(dialog, 'offsetWidth', { value: window.innerWidth });
+      Object.defineProperty(dialog, 'offsetHeight', { value: window.innerHeight });
+      // Mid-zoom, the scaled dialog doesn't reach the corner yet.
+      atCorner = [layer];
+      await vi.waitFor(() => expect(hits).toHaveBeenCalled());
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenLastCalledWith('#ffffff');
+    });
+
     it('runs no corner check while narration streams into the page', async () => {
       install();
       const panel = document.createElement('div');
