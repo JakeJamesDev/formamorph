@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { HelpButton } from '@/components/HelpButton';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,7 +51,10 @@ export default function EntityRelationshipsField({ entity, entities, labelOf, on
 
   return (
     <div className="space-y-2" {...fieldFrame('relationships')}>
-      <Label className="block">Relationships</Label>
+      <div className="flex items-center gap-2">
+        <Label>Relationships</Label>
+        <HelpButton topicId="worldEditor.relationships" className="h-6 w-6" />
+      </div>
       <Hint>Type each entity’s role to this one, such as mother or rival</Hint>
       {relationships.map(({ targetId, label }) => {
         const target = rowOf(targetId);

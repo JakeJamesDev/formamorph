@@ -277,6 +277,33 @@ The **Aliases** field shows in **Advanced** mode only, but aliases work in both 
 
 Give an entity the one or two names the narration uses. The AI reads every alias of an entity in the scene, so a long list adds prompt text for no gain.`,
   },
+  'worldEditor.relationships': {
+    title: 'Relationships',
+    wikiPage: 'World-Editor-Entities',
+    wikiAnchor: 'relationships',
+    body: `Each row says what another entity is to the one you're editing. Pick the other entity in **Add a relationship**, then type its role in the box beside its name.
+
+**Example**
+
+You're editing *Mara*, and *Tom* is her son.
+
+1. On Mara's **Profile** tab, pick **Tom** in **Add a relationship**.
+2. In the box beside **Tom**, type *son*.
+
+The AI reads *"Tom is Mara's son."* If you type *mother* there, the AI reads that Tom is Mara's mother.
+
+**Read each row as a sentence**
+
+*The name in the row* is *the entity you're editing*'s *what you type*.
+
+**Persona**
+
+The **Persona** row says what the player's character is to this entity. With *friend* beside **Persona** on Mara, the AI reads that the player's character is Mara's friend.
+
+**One row per pair**
+
+You don't need a second row on Tom for Mara. If both rows exist, the AI reads only one of them, so make sure they agree.`,
+  },
   'worldEditor.strangerName': {
     title: 'Stranger Name',
     wikiPage: 'World-Editor-Entities',

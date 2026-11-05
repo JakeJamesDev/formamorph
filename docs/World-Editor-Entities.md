@@ -81,7 +81,7 @@ Select an entity to open its panel.
 
 The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only** and **Custom Persona**. It decides whether the player can play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). For an entity marked **Playable** or **Persona-Only**, its **Locations** are also where the player can start as it.
 
-**Relationships** lists how the entity relates to others. Pick a target, **Persona** or another entity, then type the role. Each row reaches the AI as a relationship line.
+**Relationships** lists how the entity relates to others. Pick a target, **Persona** or another entity, then type what the target is to this entity. See [Relationships](#relationships).
 
 **Presence**, **Movement** and **Known In** are set from the location side: on a location's **Presence** tab, or on the full-screen Locations Canvas. See [World Editor: Locations](World-Editor-Locations#entities).
 
@@ -189,6 +189,23 @@ Each entity stores its own locations in one field. The location's **Entities** p
 The default prompt sends entities from four places, as separate blocks: the player's **current location**, its **sub-locations**, **reachable** locations, and **Known Here**. The sub-location and reachable blocks list only entities whose **Known In** is **Nearby**.
 
 > ⚠️ **Each entity at the player's location is sent on every turn.** A crowded location uses context all the time. Two or three entities that matter to the scene are better than a full village.
+
+## Relationships
+<!-- keywords: family, mother, son, rival, friend, which way, wrong direction, backwards, relationship line -->
+
+Each row on the **Profile** tab says what another entity is to the one you're editing. Read a row as a sentence:
+
+> *The name in the row* is *the entity you're editing*'s *what you type*.
+
+**Example:** you're editing *Mara*, and *Tom* is her son.
+
+1. On Mara's **Profile** tab, pick **Tom** in **Add a relationship**.
+2. In the box beside **Tom**, type *son*.
+
+The AI reads *"Tom is Mara's son."* If you type *mother* there, the AI reads that Tom is Mara's mother.
+
+- 🧑 **Persona** — the row says what the player's character is to this entity.
+- 🔁 **One row per pair** — you don't need a second row on Tom for Mara. If both exist, the AI reads only one of them, so make sure they agree.
 
 ## Entity Stats
 <!-- keywords: npc stat, ally health, trust stat, give an entity a stat, entity owns stats, stats tab on entity -->
