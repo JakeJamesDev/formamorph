@@ -83,16 +83,13 @@ describe('Take Me There landing on the main menu', () => {
     expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(false);
   });
 
-  it('lands in the Backup & Restore dialog once it has opened', async () => {
+  it('lands on the Restore button in the Settings Data tab', async () => {
     await renderMenu();
-    requester.send('backup', 'start-restore');
-    const button = await landed('backup#start-restore');
+    requester.send('settings.data', 'start-restore');
+    const button = await landed('settings.data#start-restore');
     expect(button).toHaveTextContent('Restore');
     expect(document.activeElement).toBe(button);
-    expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(true);
-    expect(ringOn(rowOf('backup#start-backup'), LANDING_PULSE_CLASS)).toBe(false);
-    // Settings stays open below, on the Data tab.
-    expect(document.getElementById('autosaveEnabled')).not.toBeNull();
+    expect(ringOn(rowOf('settings.data#start-backup'), LANDING_PULSE_CLASS)).toBe(false);
   });
 
   it('lands on the Import button of the Load Game dialog', async () => {

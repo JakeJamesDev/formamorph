@@ -38,7 +38,7 @@ type Props = Partial<Parameters<typeof SettingsModal>[0]>;
 const tree = (props: Props) => (
   <ThemeProvider>
     <SettingsProvider>
-      <SettingsModal isOpen onOpenChange={() => {}} forcedMode="advanced" onStartAuthoringTour={() => {}} {...props} />
+      <SettingsModal isOpen onOpenChange={() => {}} forcedMode="advanced" onStartAuthoringTour={() => {}} onOpenBackup={() => {}} {...props} />
     </SettingsProvider>
   </ThemeProvider>
 );

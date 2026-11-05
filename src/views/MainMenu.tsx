@@ -157,7 +157,7 @@ import { linkedSourceCopies, sourceBlockReason } from "@/lib/sourceChecks";
 import { readSourceCheck } from "@/lib/sourceCheckStore";
 import { buildAvatarPublish } from "@/lib/avatarPublish";
 import { buildWorldPublish, type WorldPublishTarget } from "@/lib/worldPublish";
-import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
+import { BackupRestoreDialog, type BackupStart } from "@/components/menu/BackupRestoreDialog";
 import { UnreadableWorldsDialog } from "@/components/menu/UnreadableWorldsDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
@@ -715,17 +715,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     openPublish(attempt.payload, world.id, typeof world.sourceId === 'string' ? world.sourceId : undefined);
   };
   const [showBackup, setShowBackup] = useState(false);
-  // Backup & Restore asked for with Settings closed. It waits a task, so Settings hides the page before it
+  const [backupStart, setBackupStart] = useState<BackupStart>({ kind: 'backup' });
+  const openBackup = (start: BackupStart) => { setBackupStart(start); setShowBackup(true); };
+  // The dev route opens Backup with Settings closed. It waits a task, so Settings hides the page before it
   // opens and never hides Backup & Restore itself.
   const [backupAfterSettings, setBackupAfterSettings] = useState(false);
-  const openBackupOverSettings = () => {
-    setSettingsTab('data');
-    setShowSettings(true);
-    setBackupAfterSettings(true);
-  };
   useEffect(() => {
     if (!backupAfterSettings) return;
-    const timer = setTimeout(() => { setBackupAfterSettings(false); setShowBackup(true); }, 0);
+    const timer = setTimeout(() => { setBackupAfterSettings(false); setBackupStart({ kind: 'backup' }); setShowBackup(true); }, 0);
     return () => clearTimeout(timer);
   }, [backupAfterSettings]);
 
@@ -1524,8 +1521,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       case 'auth': if (!isAuthenticated) requestSignIn(); break;
       case 'feedbackHub': setShowFeedback(true); break;
       case 'menu': setShowLoadDialog(true); break;
-      // It opens from the Data tab, so closing it leaves the player there.
-      case 'backup': openBackupOverSettings(); break;
+      // Backup and Restore start from the Data tab's buttons.
+      case 'backup': setSettingsTab('data'); setShowSettings(true); break;
       case 'avatar': setShowCharacterCustomization(true); break;
       case 'aiSetup': setGate({ reason: 'firstRun' }); break;
       case 'intro': onReplayIntro?.(); break;
@@ -2116,7 +2113,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         requestKey={surfaceNav.key}
         onWorldsRestored={refreshWorlds}
         onStartAuthoringTour={() => { setShowSettings(false); void handleCreateNewWorld({ tour: true }); }}
-        onOpenBackup={() => setShowBackup(true)}
+        onOpenBackup={openBackup}
       />
       <AiSetupGate
         open={gate !== null}
@@ -2129,7 +2126,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         onOpenSettings={() => { setGate(null); setSettingsTab('endpoints'); setShowSettings(true); }}
         onReady={handleGateReady}
       />
-      <BackupRestoreDialog open={showBackup} onOpenChange={setShowBackup} />
+      <BackupRestoreDialog open={showBackup} start={backupStart} onOpenChange={setShowBackup} />
 
       {/* The component-file import review, and the update review a file of a source you already hold
           opens in its place. */}

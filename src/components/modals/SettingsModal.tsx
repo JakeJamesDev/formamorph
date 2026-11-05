@@ -8,6 +8,7 @@ import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTab
 import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { SurfaceTab } from '@/components/ui/surface';
 import { findTargetRow, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
+import { BackupRestoreButtons, type BackupStart } from '@/components/menu/BackupRestoreDialog';
 import { useLanding } from '@/lib/surface/useLanding';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
@@ -236,7 +237,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   /** Starts the Authoring Tour on a new world. Only the main menu supplies it, so a running game hides the row. */
   onStartAuthoringTour?: () => void;
   /** Opens Backup & Restore. Only the main menu supplies it, because a restore reloads the app and drops a running game. */
-  onOpenBackup?: () => void;
+  onOpenBackup?: (start: BackupStart) => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in game; absent → no Preview. */
   previewValues?: TokenValues;
   /** The open world as a Tool Snapshot, for Try It. Supplied only in game; absent, Try It uses the sample world. */
@@ -2124,9 +2125,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               {onOpenBackup && (
               <Section title="Backup">
               <Row {...rowCopy('backupRestore')}>
-                <Button variant="outline" size="sm" onClick={onOpenBackup}>
-                  {SETTINGS_BUTTONS.openBackup}
-                </Button>
+                <BackupRestoreButtons onStart={onOpenBackup} backUpLabel={SETTINGS_BUTTONS.backUp} restoreLabel={SETTINGS_BUTTONS.restoreBackup} />
               </Row>
               </Section>
               )}

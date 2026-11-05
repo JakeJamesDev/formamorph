@@ -235,7 +235,7 @@ Backup, saves, the Authoring Tour, and stored data.
 
 ### Backup
 
-**Backup & Restore** saves your worlds, saves, library entities and library dictionaries to a file, or restores them from one. Select **Open Backup & Restore** to open [the dialog](Saves-and-Backup#the-backup--restore-dialog) over **Settings**. The row shows only on the main menu, because a restore reloads the app. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
+**Backup & Restore** saves your worlds, saves, library entities and library dictionaries to a file, or restores them from one. Select **Back Up** or **Restore** to open [the dialog](Saves-and-Backup#the-backup--restore-dialog) over **Settings**. **Restore** asks for the backup file first. The row shows only on the main menu, because a restore reloads the app. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 
 ### Saves
 

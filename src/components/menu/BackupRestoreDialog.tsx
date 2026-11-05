@@ -64,7 +64,10 @@ function OptimizeSelect({ label, value, onChange }: { label: string; value: Opti
   );
 }
 
-type Step = 'home' | 'backup-what' | 'backup-done' | 'restore-what' | 'restore-done';
+type Step = 'backup-what' | 'backup-done' | 'restore-reading' | 'restore-what' | 'restore-done';
+
+/** What the dialog opens on: the backup list, or the restore list for a picked file. */
+export type BackupStart = { kind: 'backup' } | { kind: 'restore'; file: File };
 
 /** A category and the selectable rows under it; `exists` marks a restore item that collides with a stored one. */
 interface Group {
@@ -149,15 +152,33 @@ function CategoryTree({
   );
 }
 
-/**
- * Backup & Restore wizard. Backup: choose which individual worlds/saves/entities/dictionaries to
- * include (grouped, per-item), then save to a file (native picker, download fallback). Restore: pick a
- * file, then choose which items to bring back — items that already exist are tagged, and each group's
- * "Overwrite existing" decides whether those are replaced.
- */
-export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+/** The Settings Data row's Back Up and Restore buttons. Restore picks the file before the dialog opens. */
+export function BackupRestoreButtons({ onStart, backUpLabel, restoreLabel }: { onStart: (start: BackupStart) => void; backUpLabel: string; restoreLabel: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState<Step>('home');
+  const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const [file] = filesFrom(event);
+    if (file) onStart({ kind: 'restore', file });
+  };
+  return (
+    <div className="flex flex-wrap gap-2">
+      <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFile} />
+      <Button variant="outline" size="sm" onClick={() => onStart({ kind: 'backup' })} {...targetAttribute('settings.data', 'start-backup')}>
+        {backUpLabel}
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} {...targetAttribute('settings.data', 'start-restore')}>
+        {restoreLabel}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Backup & Restore. Backup picks the worlds, saves, entities and dictionaries to save to a file. Restore
+ * reads the file `start` carries, then picks what to bring back; each group's Overwrite existing governs
+ * its stored items.
+ */
+export function BackupRestoreDialog({ open, start, onOpenChange }: { open: boolean; start: BackupStart; onOpenChange: (o: boolean) => void }) {
+  const [step, setStep] = useState<Step>(start.kind === 'backup' ? 'backup-what' : 'restore-reading');
   const [busy, setBusy] = useState(false);
   const mounted = useMountedRef();
 
@@ -174,7 +195,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
   const [entityOpt, setEntityOpt] = useState<OptimizeMode>('off');
 
   const reset = () => {
-    setStep('home');
+    setStep(start.kind === 'backup' ? 'backup-what' : 'restore-reading');
     setBusy(false);
     setItems(null);
     setExportSel(emptySel());
@@ -186,13 +207,12 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     setEntityOpt('off');
   };
 
-  // Reset to the home step when the dialog opens (before paint), not when it closes — resetting on close
-  // would swap the content back to the home options mid fade-out, flashing them during the exit animation.
+  // Resets on open, before paint; a reset on close would swap the content during the exit animation.
   useResetOnOpen(open, reset);
 
-  // Load items (and select them all by default) when entering the backup step.
+  // Load items (and select them all by default) each time the dialog opens on the backup step.
   useEffect(() => {
-    if (step !== 'backup-what') return;
+    if (!open || step !== 'backup-what') return;
     let live = true;
     setItems(null);
     listBackupItems()
@@ -207,7 +227,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     return () => {
       live = false;
     };
-  }, [step]);
+  }, [open, step]);
 
   const toggleItem = (setter: React.Dispatch<React.SetStateAction<SelState>>) => (c: BackupCategory, id: string, on: boolean) =>
     setter((prev) => {
@@ -239,29 +259,35 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     }));
   const restoreCount = BACKUP_CATEGORIES.reduce((n, c) => n + restoreSel[c].size, 0);
 
-  const pickFile = () => fileRef.current?.click();
-
-  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(event);
-    if (!file) return;
-    setBusy(true);
-    try {
-      const read = await readBackupIndex(file);
-      const analyzed = await analyzeBackup(read);
-      if (!mounted.current) return;
-      setIndex(read);
-      setPlans(analyzed);
-      const sel = emptySel();
-      for (const p of analyzed) sel[p.category] = new Set([...p.fresh, ...p.conflicts].map((r) => r.id));
-      setRestoreSel(sel);
-      setOverwrite(emptyFlags());
-      setStep('restore-what');
-    } catch (err) {
-      toastError(err, 'Failed to read the backup');
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
-  };
+  // Reads the picked file once the dialog opens on it. A file that fails to read closes the dialog.
+  const restoreFile = open && start.kind === 'restore' ? start.file : null;
+  useEffect(() => {
+    if (!restoreFile) return;
+    let live = true;
+    (async () => {
+      try {
+        const read = await readBackupIndex(restoreFile);
+        const analyzed = await analyzeBackup(read);
+        if (!live) return;
+        setIndex(read);
+        setPlans(analyzed);
+        const sel = emptySel();
+        for (const p of analyzed) sel[p.category] = new Set([...p.fresh, ...p.conflicts].map((r) => r.id));
+        setRestoreSel(sel);
+        setOverwrite(emptyFlags());
+        setStep('restore-what');
+      } catch (err) {
+        if (!live) return;
+        toastError(err, 'Failed to read the backup');
+        onOpenChange(false);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+    // onOpenChange is a fresh closure each render; the read belongs to the file alone.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoreFile]);
 
   const handleSave = async () => {
     setBusy(true);
@@ -311,24 +337,13 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Archive className="h-4 w-4" /> Backup &amp; Restore</DialogTitle>
           <DialogDescription>
-            {step === 'home' &&
-              'Save your worlds, saves, entities, and dictionaries to a file, or restore them from one. Back up before updating, especially in the itch app.'}
             {step.startsWith('backup') && 'Backup'}
             {step.startsWith('restore') && 'Restore'}
           </DialogDescription>
         </DialogHeader>
 
-        <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFile} />
-
         <div className="py-2">
-          {step === 'home' && (
-            <div className="flex flex-col gap-3">
-              <Button onClick={() => setStep('backup-what')} {...targetAttribute('backup', 'start-backup')}>Backup</Button>
-              <Button variant="outline" onClick={pickFile} disabled={busy} {...targetAttribute('backup', 'start-restore')}>
-                Restore
-              </Button>
-            </div>
-          )}
+          {step === 'restore-reading' && <Meta as="p">Reading the backup…</Meta>}
 
           {step === 'backup-what' &&
             (items === null ? (
@@ -385,16 +400,16 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
         </div>
 
         <DialogFooter>
-          {step === 'home' && (
+          {step === 'restore-reading' && (
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Close
+              Cancel
             </Button>
           )}
 
           {step === 'backup-what' && (
             <>
-              <Button variant="ghost" onClick={() => setStep('home')} disabled={busy}>
-                Back
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+                Cancel
               </Button>
               <Button onClick={handleSave} disabled={busy || exportCount === 0}>
                 Save backup
@@ -406,8 +421,8 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
 
           {step === 'restore-what' && (
             <>
-              <Button variant="ghost" onClick={() => setStep('home')} disabled={busy}>
-                Back
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+                Cancel
               </Button>
               <Button onClick={handleRestore} disabled={busy || restoreCount === 0}>
                 Restore

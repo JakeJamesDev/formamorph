@@ -63,8 +63,8 @@ describe('the bundled Docs Index', () => {
     ['Avatars#how-to-customize-your-avatar', 'avatar', 'finalize-character'],
     ['Personas#how-to-import-sillytavern-personas', 'mainMenu.entities', 'import-entity'],
     ['Saves-and-Backup#how-to-import-a-save', 'menu', 'import-save'],
-    ['Saves-and-Backup#how-to-make-a-backup', 'backup', 'start-backup'],
-    ['Saves-and-Backup#how-to-restore-a-backup', 'backup', 'start-restore'],
+    ['Saves-and-Backup#how-to-make-a-backup', 'settings.data', 'start-backup'],
+    ['Saves-and-Backup#how-to-restore-a-backup', 'settings.data', 'start-restore'],
     ['Saves-and-Backup#how-to-update-the-desktop-app', 'mainMenu', 'app-version'],
     ['Install-on-Android#how-to-update-the-app', 'mainMenu', 'app-version'],
     // The Release channel select sits in the update dialog the version row opens.

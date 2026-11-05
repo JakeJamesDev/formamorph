@@ -233,16 +233,16 @@ test.describe('web', () => {
     await expect(page.getByRole('button', { name: 'Exit Full Screen' })).toHaveCount(0);
   });
 
-  test('opens Backup & Restore over the Settings Data tab', async ({ page }) => {
+  test('opens Backup over the Settings Data tab', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openApp(page);
     await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'data' });
-    await page.getByRole('button', { name: 'Open Backup & Restore' }).click();
+    await page.getByRole('button', { name: 'Back Up' }).click();
     const backup = page.getByRole('dialog', { name: 'Backup & Restore' });
     await expect(backup).toBeVisible();
-    await backup.getByRole('button', { name: 'Close' }).first().click();
+    await backup.getByRole('button', { name: 'Cancel' }).click();
     await expect(backup).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Open Backup & Restore' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Back Up' })).toBeVisible();
   });
 
   for (const mode of ['simple', 'advanced']) {

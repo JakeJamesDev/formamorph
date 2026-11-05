@@ -58,7 +58,8 @@ describe('a surface request in a running game', () => {
     await waitFor(() => expect(registry.get().tabs).toEqual(['settings.data']));
     // The tab's own row, so the absence below reads a rendered tab.
     await waitFor(() => expect(document.getElementById('autosaveEnabled')).not.toBeNull());
-    expect(screen.queryByRole('button', { name: 'Open Backup & Restore' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back Up' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
   });
 
   it('selects a side panel tab on the game screen', async () => {

@@ -136,27 +136,41 @@ describe('a surface request on the main menu', () => {
 
     requester.send('backup');
     fireEvent.click(await screen.findByRole('button', { name: 'Exit Without Saving' }));
-    await waitFor(() => expect(registry.get().dialog).toBe('backup'));
-  });
-
-  it('opens Backup & Restore over the Settings Data tab, and closing it leaves the player there', async () => {
-    renderMenu();
-    await screen.findByText('Sedge Landing');
-    requester.send('backup');
-    await waitFor(() => expect(registry.get().dialog).toBe('backup'));
-    // The dialog's footer button; its corner X has the same name.
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Close' })).at(-1)!);
     await waitFor(() => expect(registry.get()).toEqual({ screen: 'mainMenu', dialog: 'settings', tabs: ['settings.data'] }));
   });
 
-  it('opens Backup & Restore from its row on the Settings Data tab', async () => {
+  it('opens Backup straight from the Settings Data tab, and closing it leaves the player there', async () => {
+    renderMenu();
+    await screen.findByText('Sedge Landing');
+    requester.send('backup');
+    await waitFor(() => expect(registry.get()).toEqual({ screen: 'mainMenu', dialog: 'settings', tabs: ['settings.data'] }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back Up' }));
+    await waitFor(() => expect(registry.get().dialog).toBe('backup'));
+    // The list loads on open; "Checking your library…" alone means it never loaded.
+    expect(await screen.findByText(/Select what to back up|Nothing to back up yet/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(registry.get()).toEqual({ screen: 'mainMenu', dialog: 'settings', tabs: ['settings.data'] }));
+  });
+
+  it('reads the picked file and opens Restore on it', async () => {
+    renderMenu();
+    await screen.findByText('Sedge Landing');
+    requester.send('backup');
+    const restore = await screen.findByRole('button', { name: 'Restore' });
+    const input = restore.parentElement!.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(input, { target: { files: [new File(['not json'], 'broken.json', { type: 'application/json' })] } });
+    // A file that isn't a backup closes the dialog and leaves the Data tab open.
+    await waitFor(() => expect(registry.get()).toEqual({ screen: 'mainMenu', dialog: 'settings', tabs: ['settings.data'] }));
+  });
+
+  it('opens Backup from its row on the Settings Data tab', async () => {
     renderMenu();
     await screen.findByText('Sedge Landing');
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Data' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Open Backup & Restore' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back Up' }));
     await waitFor(() => expect(registry.get().dialog).toBe('backup'));
-    expect(await screen.findByRole('button', { name: 'Restore' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Save backup' })).toBeInTheDocument();
     // Settings stays open below, on the Data tab.
     expect(document.getElementById('autosaveEnabled')).not.toBeNull();
   });

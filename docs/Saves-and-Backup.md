@@ -50,22 +50,21 @@ Each save joins the folder of its world. The dialog opens that folder, and a mes
 
 ## How to Make a Backup
 <!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, archive, snapshot, switch browser, before clearing cache, format pc, full dump, bulk, sync devices, protect data -->
-<!-- route: backup#start-backup -->
+<!-- route: settings.data#start-backup -->
 
-1. On the main menu, open **Settings**, select the **Data** tab, then select **Open Backup & Restore**.
-2. Select the **Backup** button.
-3. Clear the checkbox of each item you do not want. All items start selected.
-4. Select **Save backup**. You get a file named `formamorph-backup-` and the date.
-5. Keep the file in a safe place, away from the app's own folder.
+1. On the main menu, open **Settings**, select the **Data** tab, then select **Back Up** in the **Backup & Restore** row.
+2. Clear the checkbox of each item you do not want. All items start selected.
+3. Select **Save backup**. You get a file named `formamorph-backup-` and the date.
+4. Keep the file in a safe place, away from the app's own folder.
 
 Make a backup before you update the app or move to a new device. See [What a Backup Holds](#what-a-backup-holds).
 
 ## How to Restore a Backup
 <!-- keywords: recover, bring back, get back, import, reinstall, new device, lost data, migrate, load archive, everything gone, wiped, merge, duplicates, disappeared, old computer, put back -->
-<!-- route: backup#start-restore -->
+<!-- route: settings.data#start-restore -->
 
-1. On the main menu, open **Settings**, select the **Data** tab, then select **Open Backup & Restore**.
-2. Select the **Restore** button, then select a backup `.json` file.
+1. On the main menu, open **Settings**, select the **Data** tab, then select **Restore** in the **Backup & Restore** row.
+2. Select a backup `.json` file.
 3. Clear the checkbox of each item you do not want.
 4. Items you already have show an **exists** tag. To replace them, select **Overwrite existing** in their group.
 5. Select **Restore**. The app reloads when it is done.
@@ -179,11 +178,11 @@ A stored world can get damaged on disk. Formamorph hides it, and your other worl
 <!-- keywords: what is included, settings not included, avatars missing, optimize, downscale, invalid file, select all, compress pictures, skip duplicates -->
 <!-- route: backup -->
 
-Open it from the **Data** tab of **Settings** on the main menu. It opens over **Settings**. It has three buttons: **Backup**, **Restore** and **Close**.
+The **Back Up** and **Restore** buttons in the **Data** tab of **Settings** open it on the main menu. It opens over **Settings**. **Cancel** closes it.
 
-**Backup** lists what you have in up to four groups: **Worlds**, **Saves**, **Entities** and **Dictionaries**. A group shows only when it has items. Each group has a checkbox that selects all of its items, and a count of the items you selected. **Save backup** is off when nothing is selected.
+**Back Up** lists what you have in up to four groups: **Worlds**, **Saves**, **Entities** and **Dictionaries**. A group shows only when it has items. Each group has a checkbox that selects all of its items, and a count of the items you selected. **Save backup** is off when nothing is selected.
 
-**Restore** reads a backup file and shows the groups that the file holds.
+**Restore** asks for a backup file first, then shows the groups that the file holds.
 
 | Control | What it does |
 |---|---|
