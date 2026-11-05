@@ -1,6 +1,6 @@
 # 03: Audit summary and Bursts
 
-Status: ready-for-human
+Status: done
 Base: 7d97017
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

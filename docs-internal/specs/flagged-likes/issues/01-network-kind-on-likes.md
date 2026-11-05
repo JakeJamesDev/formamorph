@@ -1,6 +1,6 @@
 # 01: Network Kind on likes
 
-Status: ready-for-human
+Status: done
 Base: f63e6bd
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

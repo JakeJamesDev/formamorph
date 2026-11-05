@@ -1,6 +1,6 @@
 # 04: Catalog marker and Flagged Likes filter
 
-Status: ready-for-human
+Status: done
 Base: 10e9a24
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
