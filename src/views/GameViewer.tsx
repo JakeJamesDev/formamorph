@@ -6177,6 +6177,8 @@ const GameViewer = ({
           overlayHidden={uiHidden}
         />
       )}
+      {/* Above the location art, behind the panels and buttons. Windows desktop only. */}
+      <div aria-hidden data-window-corner-gradient="" className="window-corner-gradient -z-[5] hidden [[data-window-overlay]_&]:block" />
       <ThemedToastContainer />
 
       {isMobile && !uiHidden && (

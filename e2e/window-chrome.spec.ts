@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process';
 import { mkdtempSync, mkdirSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
 import { gotoDev, openApp } from './app';
 
@@ -280,6 +282,7 @@ test.describe('web', () => {
       await surface.ready(page).first().waitFor();
       await settle(page);
       await test.step(surface.name, () => expectOnLine(page, surface.line, surface.lineStartsAt?.(page)));
+      if (surface.name === 'game') await expect(page.locator('[data-window-corner-gradient]')).toBeHidden();
     }
   });
 
@@ -672,5 +675,251 @@ test.describe('the Windows desktop app', () => {
     await settle(page);
     expect(await hitTest([{ x: 16, y: 12 }])).toEqual([HT.caption]);
     await gotoDev(page, 'mainMenu');
+  });
+
+  /** Every symbol color the page sends, read in the main process where it reaches the overlay. */
+  const watchSymbols = async () => {
+    await app.evaluate(({ BrowserWindow }) => {
+      const g = globalThis as unknown as { symbols?: string[] };
+      if (g.symbols) return;
+      const win = BrowserWindow.getAllWindows()[0] as unknown as { setTitleBarOverlay(o: { symbolColor: string }): void };
+      const real = win.setTitleBarOverlay.bind(win);
+      g.symbols = [];
+      win.setTitleBarOverlay = (o) => { g.symbols?.push(o.symbolColor); real(o); };
+    });
+    return () => app.evaluate(() => (globalThis as unknown as { symbols: string[] }).symbols.at(-1));
+  };
+  const DIMMED = '#ffffff40';
+  const foreground = () => page.evaluate(() => {
+    const [r, g, b] = getComputedStyle(document.body).color.match(/\d+/g)!.map(Number);
+    return `#${[r, g, b].map((p) => p.toString(16).padStart(2, '0')).join('')}`;
+  });
+  const setTheme = (theme: string) => page.evaluate((t) => {
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(t);
+  }, theme);
+  /** The window as Windows paints it, native symbols included, even while another window covers it. */
+  const captureWindow = async (path: string) => {
+    const hwnd = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getNativeWindowHandle().readBigUInt64LE().toString());
+    const script = `
+      Add-Type -AssemblyName System.Drawing
+      Add-Type -Namespace Fm -Name Cap -MemberDefinition '
+        [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+        [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr c);
+        [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
+        [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint f);'
+      [void][Fm.Cap]::SetThreadDpiAwarenessContext([IntPtr]::new(-4))
+      $h = [IntPtr]::new([long]${hwnd})
+      $r = New-Object Fm.Cap+RECT
+      [void][Fm.Cap]::GetClientRect($h, [ref]$r)
+      $bmp = New-Object System.Drawing.Bitmap ($r.R - $r.L), ($r.B - $r.T)
+      $g = [System.Drawing.Graphics]::FromImage($bmp)
+      $dc = $g.GetHdc()
+      # Client area only, with the full composited content.
+      [void][Fm.Cap]::PrintWindow($h, $dc, 3)
+      $g.ReleaseHdc($dc)
+      $bmp.Save('${resolve(path).replace(/'/g, "''")}', [System.Drawing.Imaging.ImageFormat]::Png)`;
+    await new Promise<void>((resolve, reject) => {
+      execFile('powershell.exe', ['-NoProfile', '-Command', script], (error) => (error ? reject(error) : resolve()));
+    });
+  };
+
+  test('game: the corner gradient sits in the top-right corner, behind the header and the right column', async () => {
+    await setSize(1280, 800);
+    await openGame();
+    const gradient = page.locator('[data-window-corner-gradient]');
+    await expect(gradient).toBeVisible();
+    const box = await gradient.boundingBox();
+    expect(box && Math.round(box.x + box.width)).toBe(1280);
+    expect(box?.y).toBe(0);
+    // Behind every control: each one paints over it where they overlap.
+    const covered = await page.evaluate(() => {
+      const g = document.querySelector('[data-window-corner-gradient]')!.getBoundingClientRect();
+      return ['Save Game', 'Load Game', 'Settings', 'More Actions'].map((name) => {
+        const el = document.querySelector(`[aria-label="${name}"]`) ?? [...document.querySelectorAll('button')].find((b) => b.textContent === name);
+        if (!el) return `${name}: missing`;
+        const r = el.getBoundingClientRect();
+        const overlaps = r.right > g.left && r.top < g.bottom;
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return overlaps && !!hit && (hit === el || el.contains(hit)) ? 'ok' : `${name}: not over the gradient`;
+      });
+    });
+    expect(covered).toEqual(['ok', 'ok', 'ok', 'ok']);
+    const z = await page.evaluate(() => {
+      const zOf = (el: Element | null) => (el ? Number(getComputedStyle(el).zIndex) || 0 : NaN);
+      return { gradient: zOf(document.querySelector('[data-window-corner-gradient]')), art: zOf(document.querySelector('[data-testid="location-backdrop-image"]')) };
+    });
+    expect(z.gradient).toBeLessThan(0);
+    if (!Number.isNaN(z.art)) expect(z.gradient).toBeGreaterThan(z.art);
+  });
+
+  test('dims the window buttons under Settings in game, and restores the theme color after', async () => {
+    const lastSymbol = await watchSymbols();
+    await setSize(1280, 800);
+    await openGame();
+    for (const theme of ['dark', 'light']) {
+      await setTheme(theme);
+      const full = await foreground();
+      await expect.poll(lastSymbol).toBe(full);
+      await page.getByRole('button', { name: 'Settings' }).click();
+      await page.getByRole('dialog').first().waitFor();
+      await expect.poll(lastSymbol).toBe(DIMMED);
+      if (FRAMES_DIR) {
+        mkdirSync(FRAMES_DIR, { recursive: true });
+        await settle(page);
+        await captureWindow(join(FRAMES_DIR, `legibility-dimmed-${theme}.png`));
+      }
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect.poll(lastSymbol).toBe(full);
+      if (FRAMES_DIR) {
+        await settle(page);
+        await captureWindow(join(FRAMES_DIR, `legibility-art-${theme}.png`));
+      }
+    }
+    await setTheme('dark');
+  });
+
+  test('frames the window buttons over bundled world art', async () => {
+    test.skip(!FRAMES_DIR, 'Frames only on request');
+    mkdirSync(FRAMES_DIR as string, { recursive: true });
+    await setSize(1280, 800);
+    for (const [id, name] of [['rampage', 'City Rampage'], ['sugarscape', 'Sugarscape Survival'], ['veilwood', 'Veilwood']]) {
+      await gotoDev(page, 'mainMenu');
+      await settle(page);
+      await page.getByRole('heading', { name, exact: true }).click();
+      await page.getByRole('button', { name: 'Quick Start' }).first().click();
+      // A world opens on its Readme, and the play gate may follow.
+      const save = page.getByRole('button', { name: 'Save Game' });
+      await expect(async () => {
+        if (await page.getByRole('dialog', { name: 'Readme' }).isVisible()) await page.keyboard.press('Escape');
+        const gate = page.getByRole('button', { name: 'Continue anyway' });
+        if (await gate.isVisible()) await gate.click();
+        await expect(save).toBeVisible({ timeout: 1000 });
+      }).toPass({ timeout: 30_000 });
+      await page.waitForTimeout(1500);
+      for (const theme of ['dark', 'light']) {
+        await setTheme(theme);
+        await settle(page);
+        await captureWindow(join(FRAMES_DIR as string, `legibility-${id}-${theme}.png`));
+      }
+      await setTheme('dark');
+      await page.getByRole('button', { name: 'Exit to Main Menu' }).click();
+      await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm' }).click();
+      await expect(save).toBeHidden();
+    }
+  });
+
+  test('dims the window buttons under an alert dialog and a nested dialog', async () => {
+    const lastSymbol = await watchSymbols();
+    await setSize(1280, 800);
+    await openGame();
+    await page.getByRole('button', { name: 'Exit to Main Menu' }).click();
+    await page.getByRole('alertdialog').waitFor();
+    await expect.poll(lastSymbol).toBe(DIMMED);
+    await page.keyboard.press('Escape');
+    await expect.poll(lastSymbol).toBe(await foreground());
+
+    // Chip Options opens over Settings.
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    await gotoDev(page, 'mainMenu', { modal: 'chipOptions' });
+    // The top dialog hides Settings from the accessibility tree, so count the elements.
+    await expect(page.locator('[role="dialog"]')).toHaveCount(2);
+    await settle(page);
+    await expect.poll(lastSymbol).toBe(DIMMED);
+    // Closing Chip Options leaves Settings, so its layer keeps them dim.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[role="dialog"]')).toHaveCount(1);
+    await settle(page);
+    expect(await lastSymbol()).toBe(DIMMED);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+    await expect.poll(lastSymbol).toBe(await foreground());
+  });
+
+  for (const surface of SURFACES.filter((s) => s.name === 'World Editor' || s.name === 'full screen editor')) {
+    test(`keeps the window buttons at full color over the ${surface.name}`, async () => {
+      const lastSymbol = await watchSymbols();
+      await setSize(1280, 800);
+      await surface.open(page);
+      await surface.ready(page).first().waitFor();
+      // Past the dialog's opening animation, when its dimming layer could still show at the corner.
+      await settle(page);
+      const full = await foreground();
+      await expect.poll(lastSymbol).toBe(full);
+      await page.waitForTimeout(400);
+      expect(await lastSymbol()).toBe(full);
+      await gotoDev(page, 'mainMenu');
+    });
+  }
+});
+
+test.describe('corner checks', () => {
+  test('runs no repeated corner checks while narration streams', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop', 'One viewport is enough');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    // The real window chrome over a stub bridge: the count is the page's own work. Only the window chrome
+    // sees the stub, so the rest of the app stays the web build.
+    await page.addInitScript(() => {
+      const stub = { windowOverlay: true, setWindowSymbolColor: async () => {} };
+      Object.defineProperty(window, 'formamorphDesktop', {
+        configurable: true,
+        get: () => (new Error().stack?.includes('installWindowChrome') ? stub : undefined),
+      });
+    });
+    // It sends one word every 10ms, so the turn streams for about three seconds.
+    const server = createServer((req, res) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      if (req.method === 'OPTIONS') { res.end(); return; }
+      if (req.url?.endsWith('/models')) { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ data: [{ id: 'e2e-model' }] })); return; }
+      if (!req.url?.endsWith('/chat/completions')) { res.statusCode = 404; res.end(); return; }
+      res.setHeader('Content-Type', 'text/event-stream');
+      let i = 0;
+      const timer = setInterval(() => {
+        if (i === 300) { clearInterval(timer); res.end('data: [DONE]\n\n'); return; }
+        res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: `word${i} ` }, finish_reason: null }] })}\n\n`);
+        i += 1;
+      }, 10);
+      res.on('close', () => clearInterval(timer));
+    });
+    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    const { port } = server.address() as AddressInfo;
+    try {
+      await openApp(page, {
+        'vite-ui-theme': 'dark',
+        FORMAMORPH_endpointUrl: `http://127.0.0.1:${port}/v1/chat/completions`,
+        FORMAMORPH_thinkingMode: 'off', FORMAMORPH_choicesEnabled: false,
+        FORMAMORPH_locationChangeEnabled: false, FORMAMORPH_memoryDigests: false, FORMAMORPH_aiClock: false,
+        FORMAMORPH_autosaveEnabled: false,
+      }, { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+      const action = page.getByPlaceholder(/Type your action/);
+      await action.waitFor();
+      await settle(page);
+      // The AI setup dialog has a download button, so nothing here presses a key while it could be open.
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.dataset.windowOverlay)).toBe('');
+      // Each corner check is one hit test; count every one the page makes.
+      await page.evaluate(() => {
+        const w = window as unknown as { cornerChecks: number };
+        w.cornerChecks = 0;
+        const real = document.elementsFromPoint.bind(document);
+        document.elementsFromPoint = (x, y) => {
+          w.cornerChecks += 1;
+          return real(x, y);
+        };
+      });
+      await action.fill('I wait.');
+      await page.getByRole('button', { name: 'Send' }).click();
+      await expect(page.getByText('word299').first()).toBeVisible({ timeout: 30_000 });
+      // The turn's later passes stream from the same endpoint.
+      await expect(page.getByRole('button', { name: 'Send' })).toBeVisible({ timeout: 30_000 });
+      const checks = await page.evaluate(() => (window as unknown as { cornerChecks: number }).cornerChecks);
+      // A popup or tooltip can open during a turn; three hundred chunks must not add one each.
+      expect(checks).toBeLessThanOrEqual(4);
+    } finally {
+      server.close();
+    }
   });
 });

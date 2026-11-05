@@ -8,7 +8,16 @@ const setBridge = (bridge: unknown) => {
 
 const setForeground = (hsl: string) => document.documentElement.style.setProperty('--foreground', hsl);
 
-beforeEach(() => setForeground('0 0% 100%'));
+// jsdom has no layout or hit test, so each test says what the corner's hit test finds, topmost first.
+let atCorner: Element[] = [];
+const hits = vi.fn(() => atCorner);
+Object.defineProperty(document, 'elementsFromPoint', { configurable: true, value: hits });
+
+beforeEach(() => {
+  setForeground('0 0% 100%');
+  atCorner = [];
+  hits.mockClear();
+});
 
 afterEach(() => {
   delete (window as { formamorphDesktop?: unknown }).formamorphDesktop;
@@ -50,6 +59,113 @@ describe('installWindowChrome', () => {
     document.documentElement.className = 'light';
     await vi.waitFor(() => expect(setWindowSymbolColor).toHaveBeenLastCalledWith('#000000'));
     expect(setWindowSymbolColor).toHaveBeenCalledTimes(2);
+  });
+
+  describe('dimming', () => {
+    const DIMMED = '#ffffff40';
+
+    afterEach(() => document.body.replaceChildren());
+
+    const install = () => {
+      const setWindowSymbolColor = vi.fn();
+      setBridge({ windowOverlay: true, setWindowSymbolColor });
+      installWindowChrome();
+      return setWindowSymbolColor;
+    };
+
+    /** A popup portaled to the body: its dimming layer and, above it, the dialog. */
+    const mountPopup = () => {
+      const portal = document.createElement('div');
+      const layer = document.createElement('div');
+      layer.dataset.dimLayer = '';
+      layer.dataset.state = 'open';
+      const dialog = document.createElement('div');
+      dialog.setAttribute('role', 'dialog');
+      portal.append(layer, dialog);
+      document.body.append(portal);
+      return { portal, layer, dialog };
+    };
+
+    it('fades the symbols to white at 25% while a dimming layer reaches the corner', async () => {
+      const send = install();
+      const { layer } = mountPopup();
+      atCorner = [layer];
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith(DIMMED));
+      // In steps, not one jump.
+      expect(send.mock.calls.length).toBeGreaterThan(3);
+    });
+
+    it('returns to the theme color when the popup closes', async () => {
+      const send = install();
+      const { portal, layer } = mountPopup();
+      atCorner = [layer];
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith(DIMMED));
+      portal.remove();
+      atCorner = [];
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith('#ffffff'));
+    });
+
+    it('undims as the layer starts closing', async () => {
+      const send = install();
+      const { layer } = mountPopup();
+      atCorner = [layer];
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith(DIMMED));
+      layer.dataset.state = 'closed';
+      layer.dispatchEvent(new Event('animationstart', { bubbles: true }));
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith('#ffffff'));
+    });
+
+    it('stays dim while a nested dialog closes over its parent', async () => {
+      const send = install();
+      const outer = mountPopup();
+      const inner = mountPopup();
+      atCorner = [inner.layer, outer.layer];
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith(DIMMED));
+      const sent = send.mock.calls.length;
+      inner.layer.dataset.state = 'closed';
+      inner.layer.dispatchEvent(new Event('animationstart', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(send).toHaveBeenCalledTimes(sent);
+    });
+
+    it('keeps full color over a full-window dialog', async () => {
+      const send = install();
+      const { layer, dialog } = mountPopup();
+      atCorner = [dialog, layer];
+      await vi.waitFor(() => expect(hits).toHaveBeenCalled());
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenLastCalledWith('#ffffff');
+    });
+
+    it('rechecks once a dialog finishes opening over its dimming layer', async () => {
+      const send = install();
+      const { layer, dialog } = mountPopup();
+      // Mid-zoom, the dialog doesn't reach the corner yet.
+      atCorner = [layer];
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith(DIMMED));
+      atCorner = [dialog, layer];
+      dialog.dispatchEvent(new Event('animationend', { bubbles: true }));
+      await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith('#ffffff'));
+    });
+
+    it('runs no corner check while narration streams into the page', async () => {
+      install();
+      const panel = document.createElement('div');
+      // Mounting the panel is a body change, so let its check run before counting.
+      document.body.append(panel);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      hits.mockClear();
+      for (let i = 0; i < 50; i += 1) {
+        const word = document.createElement('span');
+        word.textContent = `word ${i}`;
+        panel.append(word);
+        word.dispatchEvent(new Event('animationend', { bubbles: true }));
+        word.dispatchEvent(new Event('transitionend', { bubbles: true }));
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+      expect(hits).not.toHaveBeenCalled();
+    });
   });
 
   it('sends nothing when a class change leaves the color the same', async () => {

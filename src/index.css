@@ -538,6 +538,16 @@
 [data-window-overlay] .game-right-column-drag {
   app-region: drag;
 }
+/* Keeps the window buttons readable over world art. Its parent sets where it shows. */
+.window-corner-gradient {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 120px;
+  pointer-events: none;
+  background: radial-gradient(ellipse farthest-side at top right, hsl(var(--background) / 0.92) 0%, hsl(var(--background) / 0.7) 45%, transparent 100%);
+}
 /* Controls only, because a dialog has a role too. A modal's `aria-hidden` page can't take a click anyway. */
 [data-window-overlay] :is([data-window-no-drag], [data-fq-drag], [data-fq-body], [data-fq-resize], [data-fq-mascot-resize], button, a, input, select, textarea, label, summary, canvas, video, [role='button'], [role='tab'], [role='menuitem'], [role='switch'], [role='combobox'], [role='checkbox'], [role='radio'], [role='slider'], [role='link'], [role='option'], [role='textbox'], [tabindex]:not([tabindex='-1']), [contenteditable='true']):not([aria-hidden='true'] *) {
   app-region: no-drag;

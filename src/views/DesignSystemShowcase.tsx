@@ -60,6 +60,7 @@ import { EntityPopupReference } from '@/components/design-system/EntityPopupRefe
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
 import { TwoSegmentButtonReference } from '@/components/design-system/TwoSegmentButtonReference';
+import { WindowCornerReference } from '@/components/design-system/WindowCornerReference';
 import { AllowanceRingReference } from '@/components/design-system/AllowanceRingReference';
 import { UsageReportReference } from '@/components/design-system/UsageReportReference';
 import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
@@ -380,6 +381,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Two-Segment Button',
     description: 'Two related actions as one round pill',
     Component: TwoSegmentButtonReference,
+  },
+  {
+    id: 'window-corner',
+    label: 'Window Corner',
+    description: 'The corner gradient and window button dimming',
+    Component: WindowCornerReference,
   },
   {
     id: 'allowance-ring',

@@ -1225,6 +1225,26 @@ Labels use title case. Times state their zone once, at the top of the report.
 - 📐 In the Windows desktop app, the right column is at least 312px wide (`--game-right-column-min`), so those buttons never reach the center panel.
 - 🖱️ Only the top margin and the strip above the right column drag the window, so panel text stays selectable.
 
+## Pattern: Window Corner
+
+**Purpose:** Keep the window buttons readable over any world art, and let them fade with the page behind a popup.
+
+**Rule:**
+
+- 🌅 **Corner gradient.** In game, a soft gradient in the theme's background color sits in the top-right corner. It's above the location art and behind the panels and buttons, and it has no hard edge.
+- 🧱 Other screens get no gradient, because each has a solid background under the corner.
+- 🌫️ **Dimming.** While a dimming layer reaches the window buttons, their symbols fade to white at 25%, in step with the page. They return to the theme color when the popup closes.
+- 🪟 A full-window dialog covers its own dimming layer, so the symbols keep full color over it. While a nested dialog closes, its parent's layer keeps them dim.
+- 🪟 Both apply only in the Windows desktop app. A dimming layer carries `data-dim-layer`; the dialog, alert dialog and drawer overlays already do.
+
+### Production mapping
+
+| Piece | Where |
+|---|---|
+| The dimming check and fade | [`windowChrome.ts`](../src/lib/windowChrome.ts) |
+| The gradient | `.window-corner-gradient` in [`index.css`](../src/index.css), placed by [`GameViewer.tsx`](../src/views/GameViewer.tsx) |
+| The live reference | [`WindowCornerReference.tsx`](../src/components/design-system/WindowCornerReference.tsx) |
+
 ## Pattern: Two-Segment Button
 
 **Purpose:** Show two related actions as one control, while each still takes one click.
