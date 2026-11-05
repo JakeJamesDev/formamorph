@@ -20,6 +20,7 @@ One Playwright test opens the same dev-router routes in full-screen Electron and
 - [ ] Entering full screen removes the empty space, and the header's right-side buttons reach the window edge, on the main menu and game Surface.
 - [ ] Leaving full screen restores the room for the window buttons.
 - [ ] Reloading while in full screen keeps the full-screen layout.
+- [ ] The corner gradient from ticket 05 is gone in full screen. It shows under `[data-window-overlay]`, so clear that flag in full screen or hide `[data-window-corner-gradient]` there.
 - [ ] Exit Full Screen shows in `...` only while in full screen on Windows, and leaves it, on the main menu and game Surface. It never shows on macOS, Linux or web.
 - [ ] The drift test covers the main menu and game Surface at 1707×960 and one narrower size, within 1px per control.
 - [ ] Reinstating desktop-only room in full screen makes the drift test fail.
