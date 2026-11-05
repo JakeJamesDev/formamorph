@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { Minimize2, X } from 'lucide-react';
-import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, dialogCornerButton, dialogFullHeight } from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, dialogCornerButton, dialogFullHeight, dialogSafeArea } from '@/components/ui/dialog';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
@@ -74,6 +74,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
         className={cn(
           'flex flex-col gap-4 overflow-hidden border-0 p-4 md:pt-0',
           dialogFullHeight,
+          dialogSafeArea,
           'w-screen max-w-none left-0 translate-x-0 rounded-none sm:rounded-none',
           morph.boxClassName,
           className,

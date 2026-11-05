@@ -97,5 +97,8 @@ describe('full-height dialog shells anchor to the top', () => {
     expect(classes).toContain('max-sm:top-[var(--app-top,0px)]');
     expect(classes).toContain('max-sm:translate-y-0');
     expect(classes).toContain('max-sm:h-[var(--app-h,100dvh)]');
+    // Full screen on mobile, so it clears the status bar and the gesture bar.
+    expect(classes).toContain('max-sm:border-t-[length:env(safe-area-inset-top)]');
+    expect(classes).toContain('max-sm:border-b-[length:env(safe-area-inset-bottom)]');
   });
 });

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogFullHeight, dialogSafeArea } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Meta } from '@/components/ui/typography';
@@ -82,7 +83,11 @@ export function RoadScene({ open = true, initialTier = DEFAULT_ROAD_TIER, initia
         surface="road"
         hideClose
         unanimated
-        className="left-0 top-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 border-0 p-0 text-foreground shadow-none duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 sm:rounded-none"
+        className={cn(
+          'left-0 flex w-screen max-w-none translate-x-0 flex-col gap-0 border-0 p-0 text-foreground shadow-none duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 sm:rounded-none',
+          dialogFullHeight,
+          dialogSafeArea,
+        )}
       >
         <ScrollArea className="min-h-0 flex-1">
           <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">

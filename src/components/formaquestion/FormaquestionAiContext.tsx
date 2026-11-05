@@ -20,7 +20,7 @@ import type { HelpExchange } from './useHelpChat';
 const DIALOG_SIZE = cn(
   'flex flex-col overflow-hidden sm:max-w-[95vw] sm:w-[95vw] sm:h-[90dvh]',
   dialogFullHeightMobile,
-  'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0',
+  'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none',
 );
 
 /** A question that an AI answered, so it has a trace. */

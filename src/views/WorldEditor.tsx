@@ -1433,7 +1433,7 @@ const WorldEditorInner = ({
 
   return (
     <CodeCardNavigationContext.Provider value={codeCardNavigation}>
-    <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
+    <div className={`${embedded ? "h-full" : "app-viewport pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
           position="top-right"

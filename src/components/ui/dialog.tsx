@@ -37,6 +37,12 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
  */
 export const dialogFullHeight = 'top-[var(--app-top,0px)] translate-y-0 h-[var(--app-h,100dvh)]';
 
+/**
+ * Keeps a full-screen box's contents and close button clear of the status bar, cutout and gesture bar.
+ * A transparent border rather than padding, so it adds to the caller's padding and moves absolute children too.
+ */
+export const dialogSafeArea = 'border-x-0 border-y-transparent border-t-[length:env(safe-area-inset-top)] border-b-[length:env(safe-area-inset-bottom)]';
+
 const closeButtonBase = 'absolute inline-flex h-11 w-11 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground';
 
 /** The full-screen window's button: a 44px target whose 20px icon centers 24px from the corner, and on the header line at `md` and wider. */
@@ -61,7 +67,7 @@ export const dialogHeaderBar = 'border-b px-6 py-[11px]';
 export const dialogHeaderBarTitle = 'leading-[2.75rem]';
 
 /** The same, applied only below the `sm` breakpoint — for dialogs that keep a window on wider screens. */
-export const dialogFullHeightMobile = 'max-sm:top-[var(--app-top,0px)] max-sm:translate-y-0 max-sm:h-[var(--app-h,100dvh)]';
+export const dialogFullHeightMobile = 'max-sm:top-[var(--app-top,0px)] max-sm:translate-y-0 max-sm:h-[var(--app-h,100dvh)] max-sm:border-x-0 max-sm:border-y-transparent max-sm:border-t-[length:env(safe-area-inset-top)] max-sm:border-b-[length:env(safe-area-inset-bottom)]';
 
 /**
  * The stock open/close animation minus the slide, for a dialog centered by its margins rather than by
