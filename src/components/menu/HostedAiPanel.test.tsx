@@ -1,4 +1,4 @@
-import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { HostedAiPanel } from './HostedAiPanel';
@@ -39,10 +39,7 @@ beforeEach(() => {
     revokeGrant: vi.fn(async () => grant({ revokedAt: '2026-02-01T00:00:00.000Z' })),
     fetchPause: vi.fn(async () => ({ paused: true, pausedAt: '2026-01-01T09:30:00.000Z', liftedAt: null, until: '2026-01-02T00:00:00.000Z' })),
     liftPause: vi.fn(async () => ({ paused: false, pausedAt: '2026-01-01T09:30:00.000Z', liftedAt: '2026-01-01T10:00:00.000Z', until: '2026-01-02T00:00:00.000Z' })),
-    fetchSpendReport: vi.fn(async () => [
-      { day: '2026-01-01', calls: 12, costMicros: 1_500_000, providerMicros: 1_600_000 },
-      { day: '2026-01-02', calls: 3, costMicros: 250_000, providerMicros: null },
-    ]),
+    fetchUsageReport: vi.fn(async () => { throw new Error('The panel does not read the usage report'); }),
   };
 });
 
@@ -283,15 +280,3 @@ describe('the pause', () => {
   });
 });
 
-describe('the spend report', () => {
-  it('shows recorded and provider spend per day, and a dash where the provider has none', async () => {
-    await mount();
-
-    const table = await screen.findByRole('table');
-    const rows = within(table).getAllByRole('row').slice(1).map((row) => within(row).getAllByRole('cell').map((cell) => cell.textContent));
-    expect(rows).toEqual([
-      ['2026-01-01', '12', '$1.50', '$1.60'],
-      ['2026-01-02', '3', '$0.25', '—'],
-    ]);
-  });
-});

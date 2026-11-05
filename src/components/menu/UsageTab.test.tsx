@@ -1,0 +1,208 @@
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { UsagePanel } from './UsageTab';
+import type { HostedUsageReport } from '@/services/HostedAiAdminService';
+import { toastTexts } from '@/test/toastText';
+import { seedSampleTierNames } from '@/test/tierNames';
+
+const toastErrorMock = vi.fn();
+vi.mock('react-toastify', () => ({ toast: { error: (...args: unknown[]) => toastErrorMock(...args) } }));
+
+const downloads = vi.hoisted(() => [] as { blob: Blob; name: string }[]);
+vi.mock('@/lib/downloadBlob', () => ({ downloadBlob: (blob: Blob, name: string) => { downloads.push({ blob, name }); } }));
+
+const promptType = (promptTypeName: string | null, costMicros: number, calls: number) => ({
+  promptType: promptTypeName, calls, costMicros, avgPromptTokens: 4000, avgOutputTokens: 100, cachedShare: 0.5,
+  firstTokenP50Ms: 1500, tokensPerSecondP50: 50, maxGapP90Ms: 2000, failed: 0,
+});
+
+const report = (patch: Partial<HostedUsageReport> = {}): HostedUsageReport => ({
+  since: '2026-01-01T00:00:00.000Z',
+  totals: { calls: 40, turns: 8, accounts: 3, costMicros: 2_000_000, failed: 2, providerMicros: 2_100_000, cachedShare: 0.5 },
+  days: [
+    { day: '2026-01-01', calls: 30, turns: 6, accounts: 2, costMicros: 1_500_000, providerMicros: 1_600_000 },
+    { day: '2026-01-02', calls: 10, turns: 2, accounts: 1, costMicros: 500_000, providerMicros: null },
+  ],
+  promptTypes: [promptType('narration', 1_500_000, 10), promptType('choices', 500_000, 30)],
+  endings: [{ status: 'ok', calls: 38 }, { status: 'error', calls: 2 }],
+  failures: [{ failure: 'status_503', calls: 2 }],
+  tiers: [{ tier: 'supporter', entitled: 4, active: 3, turns: 8, costMicros: 2_000_000, topBudgetShare: 0.74 }],
+  slowest: [{ startedAt: '2026-01-01T18:44:00.000Z', promptType: 'narration', firstTokenMs: 38_000, maxGapMs: 31_000, tokensPerSecond: 9, status: 'ok', failure: null }],
+  heaviest: [{ tier: 'supporter', turns: 5, costMicros: 1_000_000, budgetShare: 0.74 }],
+  offer: [{ step: 'offer_shown', count: 100 }, { step: 'see_levels', count: 40 }, { step: 'patreon_click', count: 0 }, { step: 'checklist_finished', count: 0 }],
+  ...patch,
+});
+
+const mount = async (value = report()) => {
+  const api = { fetchUsageReport: vi.fn(async () => value) };
+  render(<UsagePanel active api={api} />);
+  await screen.findByRole('table', { name: 'Per Day' });
+  return api;
+};
+
+const rowsOf = (name: string) => {
+  const table = screen.getByRole('table', { name });
+  return within(table).getAllByRole('row').slice(1).map((row) => within(row).getAllByRole('cell', { hidden: false }).map((cell) => cell.textContent));
+};
+const rowHeaders = (name: string) => within(screen.getByRole('table', { name })).getAllByRole('rowheader').map((cell) => cell.textContent);
+
+beforeEach(() => {
+  seedSampleTierNames();
+  toastErrorMock.mockClear();
+  downloads.length = 0;
+});
+
+afterEach(cleanup);
+
+describe('the figures', () => {
+  it('leads with the range totals', async () => {
+    await mount();
+
+    // The tiles come first; a table further down can share a label.
+    const tile = (label: string) => screen.getAllByText(label)[0].parentElement?.textContent;
+    expect(tile('Spend')).toContain('$2.00');
+    expect(tile('Spend')).toContain('$2.10 Provider');
+    expect(tile('Cost Per Turn')).toContain('$0.2500');
+    expect(tile('Cost Per Turn')).toContain('5.0 Calls Per Turn');
+    expect(tile('Failed Calls')).toContain('5%');
+    expect(tile('Active Accounts')).toContain('4 Entitled');
+  });
+
+  it('lists each day newest first, with a dash where the provider has not been read', async () => {
+    await mount();
+
+    expect(rowHeaders('Per Day')).toEqual(['2026-01-02', '2026-01-01']);
+    expect(rowsOf('Per Day')).toEqual([
+      ['10', '2', '1', '$0.5000', '—'],
+      ['30', '6', '2', '$1.50', '$1.60'],
+    ]);
+  });
+
+  it('says a charted day under the pointer, and the latest day otherwise', async () => {
+    await mount();
+
+    expect(screen.getByText('Jan 2: $0.5000 Recorded, Provider Not Read Yet')).toBeTruthy();
+
+    const column = document.querySelector('[data-day="2026-01-01"]') as HTMLElement;
+    fireEvent.pointerEnter(column);
+    expect(screen.getByText('Jan 1: $1.50 Recorded, $1.60 Provider')).toBeTruthy();
+
+    fireEvent.pointerLeave(column.parentElement as HTMLElement);
+    expect(screen.getByText('Jan 2: $0.5000 Recorded, Provider Not Read Yet')).toBeTruthy();
+  });
+
+  it('draws the Provider tick only where the provider has a figure', async () => {
+    await mount();
+
+    const ticks = (day: string) => document.querySelector(`[data-day="${day}"]`)?.querySelectorAll('.bg-muted-foreground').length;
+    expect(ticks('2026-01-01')).toBe(1);
+    expect(ticks('2026-01-02')).toBe(0);
+  });
+
+  it('gives each offer step its share of the step before it', async () => {
+    await mount();
+
+    expect(screen.getByText('40 (40%)')).toBeTruthy();
+  });
+
+  it('names a failure cause and a tier, and never an account', async () => {
+    await mount();
+
+    expect(screen.getByText('Provider Error 503')).toBeTruthy();
+    expect(rowsOf('Heaviest Accounts')[0]).toEqual([expect.any(String), '5', '$1.00', '74%']);
+    expect(rowHeaders('Heaviest Accounts')).toEqual(['1']);
+  });
+});
+
+describe('the prompt type table', () => {
+  it('opens costliest first, and sorts by the column the reader picks', async () => {
+    const user = userEvent.setup();
+    await mount();
+
+    expect(rowHeaders('Prompt Types')).toEqual(['Narration', 'Choices']);
+
+    await user.click(screen.getByRole('button', { name: 'Sort by Calls' }));
+    expect(rowHeaders('Prompt Types')).toEqual(['Choices', 'Narration']);
+
+    await user.click(screen.getByRole('button', { name: 'Sort by Calls' }));
+    expect(rowHeaders('Prompt Types')).toEqual(['Narration', 'Choices']);
+
+    await user.click(screen.getByRole('button', { name: 'Sort by Type' }));
+    expect(rowHeaders('Prompt Types')).toEqual(['Choices', 'Narration']);
+  });
+});
+
+describe('the range', () => {
+  it('reads 14 days first and reads again when the range changes', async () => {
+    const user = userEvent.setup();
+    const api = await mount();
+
+    expect(api.fetchUsageReport).toHaveBeenCalledWith(14);
+
+    await user.click(screen.getAllByRole('radio', { name: '30 Days' })[0]);
+    await waitFor(() => expect(api.fetchUsageReport).toHaveBeenCalledWith(30));
+  });
+
+  it('ignores a slower answer for a range the reader has left', async () => {
+    const user = userEvent.setup();
+    let finishSlow: (value: HostedUsageReport) => void = () => {};
+    const fetchUsageReport = vi.fn((days: number) => (days === 14
+      ? new Promise<HostedUsageReport>((resolve) => { finishSlow = resolve; })
+      : Promise.resolve(report({ totals: { ...report().totals, costMicros: 7_000_000 } }))));
+    render(<UsagePanel active api={{ fetchUsageReport }} />);
+
+    await user.click(screen.getAllByRole('radio', { name: '30 Days' })[0]);
+    await screen.findByText('$7.00');
+
+    finishSlow(report({ totals: { ...report().totals, costMicros: 9_000_000 } }));
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+
+    expect(screen.queryByText('$9.00')).toBeNull();
+    expect(screen.getByText('$7.00')).toBeTruthy();
+  });
+
+  it('reads nothing while the tab is not on screen', () => {
+    const fetchUsageReport = vi.fn(async () => report());
+    render(<UsagePanel active={false} api={{ fetchUsageReport }} />);
+
+    expect(fetchUsageReport).not.toHaveBeenCalled();
+  });
+});
+
+describe('the exports', () => {
+  it('saves each table as its own file, named for the range', async () => {
+    const user = userEvent.setup();
+    await mount();
+
+    await user.click(screen.getByRole('button', { name: 'Export Per Day As CSV' }));
+    await user.click(screen.getByRole('button', { name: 'Export Prompt Types As CSV' }));
+
+    expect(downloads.map((entry) => entry.name)).toEqual(['usage-days-14.csv', 'usage-prompt-types-14.csv']);
+    expect(await downloads[0].blob.text()).toContain('2026-01-01,30,6,2,1.5,1.6');
+    expect(await downloads[1].blob.text()).toContain('Narration,10,1.5,');
+  });
+});
+
+describe('an empty or failed read', () => {
+  it('says so in each section rather than drawing empty tables', async () => {
+    await mount(report({
+      totals: { calls: 0, turns: 0, accounts: 0, costMicros: 0, failed: 0, providerMicros: 0, cachedShare: null },
+      promptTypes: [], endings: [], failures: [], slowest: [], heaviest: [],
+      offer: [{ step: 'offer_shown', count: 0 }],
+    }));
+
+    expect(screen.getByText('No failures in this range')).toBeTruthy();
+    expect(screen.getByText('No timed calls in this range')).toBeTruthy();
+    expect(screen.getByText('No offer steps in this range')).toBeTruthy();
+    expect(screen.queryByRole('table', { name: 'Prompt Types' })).toBeNull();
+  });
+
+  it('reports a read that fails', async () => {
+    const fetchUsageReport = vi.fn(async () => { throw new Error('refused'); });
+    render(<UsagePanel active api={{ fetchUsageReport }} />);
+
+    expect(await screen.findByText('The usage report could not be read')).toBeTruthy();
+    expect(toastTexts(toastErrorMock).join(' ')).toContain('refused');
+  });
+});

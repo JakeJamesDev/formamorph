@@ -35,6 +35,7 @@ Everything in `issues/` is closed, so nothing on this list stands between the cu
 ## Open blockers
 
 - [08 — Remove the doubled offer count address](issues/08-remove-doubled-funnel-address.md): do this with the next release.
+- [09 — Remove the old spend report route](issues/09-remove-spend-report-route.md): do this with the next release.
 
 ## Fog
 

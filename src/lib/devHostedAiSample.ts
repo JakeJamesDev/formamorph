@@ -1,5 +1,5 @@
 import type {
-  HostedAiAdminApi, HostedAiSettings, HostedGrant, HostedPause, HostedSpendDay,
+  HostedAiAdminApi, HostedAiSettings, HostedGrant, HostedPause,
 } from '@/services/HostedAiAdminService';
 
 /**
@@ -32,10 +32,6 @@ export function createDevHostedAiApi(): HostedAiAdminApi {
     { id: 2, userId: 'u2', username: 'sample-tester', tier: 'supporter_plus', endsAt: '2099-01-01T23:59:59.000Z', createdAt: '2026-01-01T00:00:00.000Z', revokedAt: null, subject: 'grant:2' },
     { id: 1, userId: 'u1', username: 'sample-winner', tier: 'supporter', endsAt: '2099-01-01T23:59:59.000Z', createdAt: '2026-01-01T00:00:00.000Z', revokedAt: '2026-01-02T00:00:00.000Z', subject: 'grant:1' },
   ];
-  const report: HostedSpendDay[] = [
-    { day: '2026-01-01', calls: 120, costMicros: 1_500_000, providerMicros: 1_600_000 },
-    { day: '2026-01-02', calls: 80, costMicros: 900_000, providerMicros: null },
-  ];
 
   return {
     fetchSettings: async () => structuredClone(settings),
@@ -56,6 +52,6 @@ export function createDevHostedAiApi(): HostedAiAdminApi {
     },
     fetchPause: async () => ({ ...pause }),
     liftPause: async () => { pause = { ...pause, paused: false, liftedAt: new Date().toISOString() }; return { ...pause }; },
-    fetchSpendReport: async () => structuredClone(report),
+    fetchUsageReport: async () => { throw new Error('The Usage tab has its own fixture'); },
   };
 }

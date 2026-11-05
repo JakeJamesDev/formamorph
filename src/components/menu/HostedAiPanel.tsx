@@ -14,18 +14,14 @@ import { SUPPORTER_TIERS } from "@/lib/supporterFlair";
 import { useTierName } from "@/lib/tierNames";
 import type { SupporterTier } from "@/types/supporter";
 import type {
-  HostedAiAdminApi, HostedAiSettings, HostedGrant, HostedModel, HostedPause, HostedSpendDay, HostedTier,
+  HostedAiAdminApi, HostedAiSettings, HostedGrant, HostedModel, HostedPause, HostedTier,
 } from "@/services/HostedAiAdminService";
 
-/** Days the spend report covers. */
-const REPORT_DAYS = 14;
 
 /** The reasoning dialects a model can name. `unknown` and `engine` describe the client's own probing. */
 const MODEL_DIALECTS = REASONING_DIALECTS.filter((id) => id !== 'unknown' && id !== 'engine');
 
 const NO_REASONING = 'none';
-
-const dollars = (micros: number | null) => (micros === null ? '—' : `$${(micros / 1_000_000).toFixed(2)}`);
 
 /** A number field that keeps what the admin typed, so "0." survives until it is a number. Empty is null. */
 function NumberField({ id, label, value, onChange, step = 1 }: {
@@ -186,7 +182,7 @@ const LIMITS: readonly { key: LimitKey; label: string; hint: string; step?: numb
   { key: 'retentionDays', label: 'Retention', hint: 'Days a usage row is kept' },
 ];
 
-/** Formamorph AI for administrators: tiers, limits, models, grants, the pause and the spend report. */
+/** Formamorph AI for administrators: tiers, limits, models, grants and the pause. */
 export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiAdminApi }) {
   const mounted = useMountedRef();
   const tierNameOf = useTierName();
@@ -199,7 +195,6 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
   const [modelError, setModelError] = useState<string | null>(null);
   const [grants, setGrants] = useState<HostedGrant[] | null>(null);
   const [pause, setPause] = useState<HostedPause | null>(null);
-  const [report, setReport] = useState<HostedSpendDay[] | null>(null);
   const [grantUser, setGrantUser] = useState('');
   const [grantTier, setGrantTier] = useState<SupporterTier>(SUPPORTER_TIERS[0]);
   const [grantEnd, setGrantEnd] = useState('');
@@ -214,7 +209,6 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
       .catch((error: unknown) => { if (current && mounted.current) { setUnreadable(true); toastError(error, 'Failed to read the hosted AI settings'); } });
     api.listGrants().then((list) => { if (current && mounted.current) setGrants(list); }).catch(fail('Failed to read the grants'));
     api.fetchPause().then((state) => { if (current && mounted.current) setPause(state); }).catch(fail('Failed to read the pause'));
-    api.fetchSpendReport(REPORT_DAYS).then((days) => { if (current && mounted.current) setReport(days); }).catch(fail('Failed to read the spend report'));
     return () => { current = false; };
   }, [active, api, mounted]);
 
@@ -445,23 +439,6 @@ export function HostedAiPanel({ active, api }: { active: boolean; api: HostedAiA
               <Button type="button" size="sm" variant="outline" disabled={!pause.paused || busy} onClick={lift}>Lift Pause</Button>
             </div>
           </Row>
-        )}
-      </Section>
-
-      <Section title="Spend Report" hint={`Recorded spend and the provider’s figure per UTC day, last ${REPORT_DAYS} days`}>
-        {report === null ? <Skeleton className="h-4 w-48" /> : report.length === 0 ? <Meta>No spend yet</Meta> : (
-          <table className="w-full text-left tabular-nums">
-            <thead>
-              <tr><th scope="col">Day</th><th scope="col">Calls</th><th scope="col">Recorded</th><th scope="col">Provider</th></tr>
-            </thead>
-            <tbody>
-              {report.map((day) => (
-                <tr key={day.day}>
-                  <td>{day.day}</td><td>{day.calls}</td><td>{dollars(day.costMicros)}</td><td>{dollars(day.providerMicros)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         )}
       </Section>
     </div>

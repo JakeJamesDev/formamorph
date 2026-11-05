@@ -86,7 +86,7 @@ async function chooser(page: import('@playwright/test').Page) {
   };
 }
 
-const ADMIN_TABS = ['Users', 'Broadcasts', 'Policies', 'Server', 'Events', 'Feedback', 'Moderation', 'Log'];
+const ADMIN_TABS = ['Users', 'Broadcasts', 'Policies', 'Server', 'Usage', 'Events', 'Feedback', 'Moderation', 'Log'];
 const MODERATOR_TABS = ['Users', 'Events', 'Feedback', 'Moderation', 'Log'];
 
 /** Each strip label inside its own trigger. */
@@ -99,14 +99,14 @@ async function expectLabelsFit(page: import('@playwright/test').Page, names: str
 }
 
 /**
- * The widest label the strip ever draws is "Moderation", 96px in OpenDyslexic. Eight equal cells hold it
+ * The widest label the strip ever draws is "Moderation", 96px in OpenDyslexic. Nine equal cells hold it
  * once the dialog reaches its 1000px cap; five hold it from `md`. So the two roles cannot share one
  * switch width.
  *
- * | viewport | strip | 8 cells | 5 cells |
+ * | viewport | strip | 9 cells | 5 cells |
  * | -------- | ----- | ------- | ------- |
- * | 768      | 718   | 89      | 143     |
- * | 1000+    | 950   | 118     | 190     |
+ * | 768      | 718   | 79      | 143     |
+ * | 1000+    | 950   | 105     | 190     |
  *
  * 999 and 1000 are the corners of the administrator's switch; 767 and 768 are the moderator's.
  */

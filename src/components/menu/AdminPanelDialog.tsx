@@ -17,6 +17,7 @@ import { FeedbackTab } from "@/components/menu/FeedbackTab";
 import { ModerationTab } from "@/components/menu/ModerationTab";
 import { type ModerationTab as ModerationSubTab } from "@/components/menu/moderationTabs";
 import { AuditLogTab } from "@/components/menu/AuditLogTab";
+import { UsageTab } from "@/components/menu/UsageTab";
 import { ServerSettingsTab } from "@/components/menu/ServerSettingsTab";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
@@ -61,9 +62,10 @@ export function AdminPanelDialog({
   open, onOpenChange, initialTab = 'users', initialPoliciesTab, initialFeedbackTab, initialModerationTab,
   initialReviewItemId, onOpenListing, onQueuesChanged,
 }: AdminPanelDialogProps) {
-  // Broadcasts, Policies and Server are an administrator's: speaking to everyone at once, writing what
-  // the site requires, and changing what the server does are not moderation. The server's own routes
-  // allow any staff, so hiding the tab is a courtesy rather than the guard.
+  // Broadcasts, Policies, Server and Usage are an administrator's: speaking to everyone at once, writing
+  // what the site requires, changing what the server does, and reading what it costs are not moderation.
+  // The server's own routes allow any staff for the first three, so hiding those tabs is a courtesy
+  // rather than the guard.
   // The rest of the panel is the everyday work, open to any staff —
   // Events included: the calendar is worth reading whether or not a viewer may act on it.
   const owner = isAdmin(AuthService.getCurrentUser());
@@ -136,8 +138,8 @@ export function AdminPanelDialog({
           {/* The labels do not fit a narrow dialog, so the strip becomes a select of the current tab, as
               the Settings dialog does. Both drive the same `tab` state.
               The switch width follows the tab count, because the two roles need different room. The
-              widest label is "Moderation", 96px in OpenDyslexic. The administrator's eight cells switch at
-              the dialog's 1000px cap (118px cells), the moderator's five at `md` (143px).
+              widest label is "Moderation", 96px in OpenDyslexic. The administrator's nine cells switch at
+              the dialog's 1000px cap (105px cells), the moderator's five at `md` (143px).
               `admin-panel-widths.spec.ts` holds the measurement in every selectable font. */}
           <Select value={tab} onValueChange={(value) => setTab(value as AdminPanelTab)}>
             <SelectTrigger
@@ -153,7 +155,7 @@ export function AdminPanelDialog({
           <TabsList
             className={cn(
               'hidden w-full flex-shrink-0',
-              owner ? 'min-[1000px]:grid grid-cols-8' : 'md:grid grid-cols-5',
+              owner ? 'min-[1000px]:grid grid-cols-9' : 'md:grid grid-cols-5',
             )}
           >
             {visibleTabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
@@ -187,6 +189,14 @@ export function AdminPanelDialog({
             <TabsContent value="serverSettings" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               <ScrollArea className="flex-1 min-h-0 px-1">
                 <ServerSettingsTab active={open && tab === 'serverSettings'} />
+              </ScrollArea>
+            </TabsContent>
+          )}
+
+          {owner && (
+            <TabsContent value="usage" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <UsageTab active={open && tab === 'usage'} />
               </ScrollArea>
             </TabsContent>
           )}
