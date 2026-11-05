@@ -162,6 +162,20 @@ To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Se
 
 **Quick Start** starts a new game with the world's defaults. It does not load a save. See [How to Start with the Defaults](Starting-a-Game#how-to-start-with-the-defaults).
 
+## When a World Can't Be Read
+<!-- keywords: world won't load, world missing, damaged world, corrupted world, ghost world, null, can't be read, library error, broken save data, repair -->
+<!-- route: unreadableWorlds -->
+
+A stored world can get damaged on disk. Formamorph hides it, and your other worlds still load. A notice opens once each session. Select **Review** to see each damaged world and its fix:
+
+| Button | Shows for | What it does |
+| --- | --- | --- |
+| **Restore** | A world that ships with Formamorph | Replaces it with the original. Your edits to it are lost. |
+| **Download Again** | A world from Community Creations | Removes your copy and opens its listing. |
+| **Remove** | Any other world | Removes it from your library. |
+
+💡 If you have a backup of the world, restore it before you select **Remove**. See [How to Restore a Backup](#how-to-restore-a-backup).
+
 ## The Backup & Restore Dialog
 <!-- keywords: what is included, settings not included, avatars missing, optimize, downscale, invalid file, select all, compress pictures, skip duplicates -->
 <!-- route: backup -->

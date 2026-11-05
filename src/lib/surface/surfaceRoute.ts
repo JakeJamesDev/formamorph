@@ -58,6 +58,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   adminPanel: { host: 'mainMenu' },
   changelog: { ancestor: 'mainMenu' },
   credits: { ancestor: 'mainMenu' },
+  unreadableWorlds: { ancestor: 'mainMenu' },
   entityEditor: { ancestor: 'mainMenu.entities' },
   dictionaryEditor: { ancestor: 'mainMenu.dictionaries' },
   modelDetails: { ancestor: 'mainMenu.models' },

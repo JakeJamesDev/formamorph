@@ -157,6 +157,7 @@ import { readSourceCheck } from "@/lib/sourceCheckStore";
 import { buildAvatarPublish } from "@/lib/avatarPublish";
 import { buildWorldPublish, type WorldPublishTarget } from "@/lib/worldPublish";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
+import { UnreadableWorldsDialog } from "@/components/menu/UnreadableWorldsDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
@@ -2965,6 +2966,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       </Dialog>
 
       <CreditsDialog open={showCredits} onOpenChange={setShowCredits} />
+
+      <UnreadableWorldsDialog onChanged={() => void refreshWorlds()} onOpenListing={handleOpenListing} />
 
       {/* DEV only: the component update review on canned worlds. Its worlds are in memory, so Apply writes
           nothing; `devUpdates` is never set in prod. */}

@@ -7,7 +7,7 @@
  * Settings, downloaded models, and caches are intentionally excluded: they're either device-local or
  * re-derivable, not irreplaceable authored content.
  */
-import { promisifyRequest } from '@/lib/idb';
+import { getAllReadable } from '@/lib/idb';
 import { WORLD_META_STORE } from '@/lib/worldLibrary';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { indexBackupInWorker, restoreBackupInWorker, serializeJsonBlobSplit } from '@/lib/jsonFileWorkerUtils';
@@ -51,11 +51,7 @@ export const CATEGORY_LABELS: Record<BackupCategory, string> = {
 async function readStore(target: StoreTarget): Promise<IdRecord[]> {
   const db = await target.open();
   try {
-    const rows = await promisifyRequest<unknown[]>(
-      db.transaction([target.store], 'readonly').objectStore(target.store).getAll(),
-    );
-    // A value the browser can't read back comes out null.
-    return rows.filter((row): row is IdRecord => !!row && typeof row === 'object');
+    return await getAllReadable<IdRecord>(db, target.store);
   } finally {
     db.close();
   }

@@ -9,9 +9,10 @@ import { buildPublishBodyInWorker } from '@/lib/jsonFileWorkerUtils';
 import { toast } from 'react-toastify';
 import { promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
 import {
-  WORLD_META_STORE, WORLD_STORE, deleteWorldRecord, libraryTransaction, listFieldsOf, openWorldLibrary,
+  WORLD_META_STORE, WORLD_STORE, deleteUnreadableWorld, deleteWorldRecord, libraryTransaction, listFieldsOf, openWorldLibrary,
   putWorldRecord, readAllWorldMeta, readWorldMeta, type LinkedCopy, type WorldMetaRecord,
 } from '@/lib/worldLibrary';
+import { clearUnreadableWorld, reportUnreadableWorld, syncUnreadableWorlds } from '@/lib/unreadableWorlds';
 import { contentHash } from '@/lib/contentHash';
 import { announceWorldDeleted, announceWorldSaved } from '@/lib/worldChangeSignal';
 import {
@@ -110,8 +111,6 @@ export type ListingDetailsRead =
 /** The toast shown while another tab on an older build holds the library upgrade back. */
 const LIBRARY_BLOCKED_TOAST = 'world-library-upgrade-blocked';
 export const LIBRARY_BLOCKED_MESSAGE = 'Your world library is waiting to update. Close other Formamorph tabs to finish.';
-const UNREADABLE_WORLDS_TOAST = 'world-library-unreadable';
-export const UNREADABLE_WORLDS_MESSAGE = 'A world in your library can\'t be read, so it is hidden. Your other worlds still load.';
 
 /** The publish refused because this author already has an entry in the contest. */
 export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
@@ -305,10 +304,7 @@ class WorldStorageService {
   private async readMeta(): Promise<WorldMetaRecord[]> {
     await this.ensureInitialized();
     const { meta, unreadable } = await readAllWorldMeta(this.db!);
-    if (unreadable.length > 0) {
-      console.error('Unreadable worlds in the library:', unreadable);
-      toast.error(UNREADABLE_WORLDS_MESSAGE, { toastId: UNREADABLE_WORLDS_TOAST });
-    }
+    syncUnreadableWorlds(unreadable);
     return meta;
   }
 
@@ -466,11 +462,14 @@ class WorldStorageService {
               resolve(worldData);
             }
           } else {
+            if (request.result === null) void this.noteUnreadableOnOpen(worldId);
             reject('World not found');
           }
         };
         request.onerror = (event) => {
           console.error('Database error:', (event.target as IDBRequest).error);
+          const refusal = (event.target as IDBRequest).error?.name;
+          if (refusal === 'NotReadableError' || refusal === 'UnknownError') void this.noteUnreadableOnOpen(worldId);
           reject(`Failed to get world data: ${(event.target as IDBRequest).error}`);
         };
       } catch (error) {
@@ -518,6 +517,7 @@ class WorldStorageService {
       });
     });
     announceWorldSaved(world.id);
+    clearUnreadableWorld(world.id);
     // A default deleted in another tab and saved back here exists again.
     forgetDeletedDefaultWorld(world.id);
   }
@@ -632,9 +632,30 @@ class WorldStorageService {
     deleteWorldRecord(transaction, worldId);
     await transactionDone(transaction);
     announceWorldDeleted(worldId);
+    clearUnreadableWorld(worldId);
     // Deleting a default is permanent: without this the next seed pass sees it missing and re-creates it.
     // A no-op for any non-default id.
     tombstoneDefaultWorld(worldId);
+  }
+
+  /** List a world whose record failed to open, with what its metadata still says about it. */
+  private async noteUnreadableOnOpen(worldId: string): Promise<void> {
+    const meta = await this.readMetaOf(worldId);
+    reportUnreadableWorld({ id: worldId, name: meta?.name, sourceId: meta?.sourceId });
+  }
+
+  /**
+   * Remove an entry whose record can't be read. A bundled world gets no tombstone, so the seeder restores it.
+   *
+   * @param worldId - The entry to remove
+   * @returns False when the record reads again and stays stored
+   */
+  async removeUnreadableWorld(worldId: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const removed = await deleteUnreadableWorld(this.db!, worldId);
+    if (removed) announceWorldDeleted(worldId);
+    clearUnreadableWorld(worldId);
+    return removed;
   }
 
   /**

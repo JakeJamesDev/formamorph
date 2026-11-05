@@ -72,6 +72,7 @@ const ENTRIES: [string, string][] = [
   ['location', 'Change Location'],
   ['menu', 'Load Game'],
   ['backup', 'Backup & Restore'],
+  ['unreadableWorlds', "Worlds That Can't Be Read"],
   ['updateRequired', 'Update Formamorph'],
   ['changelog', "What's new"],
   ['avatar', 'Avatar Customization'],

@@ -110,6 +110,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   // `menu` is the main menu's Load Game dialog.
   menu: { page: 'Saves-and-Backup', anchor: 'the-load-game-dialog' },
   backup: { page: 'Saves-and-Backup', anchor: 'the-backup--restore-dialog' },
+  unreadableWorlds: { page: 'Saves-and-Backup', anchor: 'when-a-world-cant-be-read' },
   updateRequired: { page: 'Saves-and-Backup', anchor: 'the-update-required-dialog' },
   changelog: { page: 'Saves-and-Backup', anchor: 'whats-new' },
   mainMenu: { page: 'Library', anchor: '-library' },

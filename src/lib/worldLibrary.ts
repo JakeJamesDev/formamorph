@@ -9,7 +9,7 @@ import type { ContentLink, WorldMetadata } from '@/types';
 import { describePlaceholders } from './placeholders';
 import { allPlaceholders, type PlaceholderHomesWorld } from './placeholderHomes';
 import { migrateCarriedPlaceholders } from './version';
-import { promisifyRequest, transactionDone } from './idb';
+import { getAllReadable, isReadable, promisifyRequest, readOrNull, transactionDone } from './idb';
 import { announceWorldSaved } from './worldChangeSignal';
 
 export const WORLD_LIBRARY_DB = 'worldsDB';
@@ -191,12 +191,9 @@ export async function putWorldRecords(db: IDBDatabase, records: readonly StoredW
   for (const record of records) announceWorldSaved(record.id);
 }
 
-/** A stored value the browser can't read back comes out null. */
-const isReadable = (value: unknown): value is object => !!value && typeof value === 'object';
-
 /** One world's metadata record, or undefined when it is not stored or can't be read. */
 export async function readWorldMeta(db: IDBDatabase, id: string): Promise<WorldMetaRecord | undefined> {
-  const meta = await promisifyRequest<unknown>(
+  const meta = await readOrNull<unknown>(
     db.transaction([WORLD_META_STORE], 'readonly').objectStore(WORLD_META_STORE).get(id),
   );
   return isReadable(meta) ? meta as WorldMetaRecord : undefined;
@@ -208,24 +205,25 @@ export interface WorldMetaRead {
   unreadable: string[];
 }
 
-/** Derive and store metadata for `ids` from their world records, in one transaction over both stores. */
+/** Read `ids` from the world store. A refused read aborts a read-write transaction, so reads run read-only. */
+function readWorldRecords(db: IDBDatabase, ids: string[]): Promise<unknown[]> {
+  const worlds = db.transaction([WORLD_STORE], 'readonly').objectStore(WORLD_STORE);
+  return Promise.all(ids.map((id) => readOrNull<unknown>(worlds.get(id))));
+}
+
+/** Derive and store metadata for `ids` from their world records. */
 async function rebuildWorldMeta(db: IDBDatabase, ids: string[]): Promise<WorldMetaRead> {
-  const transaction = libraryTransaction(db, 'readwrite');
-  const worlds = transaction.objectStore(WORLD_STORE);
+  const records = await readWorldRecords(db, ids);
   const read: WorldMetaRead = { meta: [], unreadable: [] };
-  for (const id of ids) {
-    const request = worlds.get(id);
-    request.onsuccess = () => {
-      if (!isReadable(request.result)) {
-        read.unreadable.push(id);
-        return;
-      }
-      const meta = worldMetaOf(request.result as StoredWorldShape);
-      transaction.objectStore(WORLD_META_STORE).put(meta);
-      read.meta.push(meta);
-    };
+  records.forEach((record, index) => {
+    if (isReadable(record)) read.meta.push(worldMetaOf(record as StoredWorldShape));
+    else read.unreadable.push(ids[index]);
+  });
+  if (read.meta.length > 0) {
+    const transaction = libraryTransaction(db, 'readwrite');
+    for (const meta of read.meta) transaction.objectStore(WORLD_META_STORE).put(meta);
+    await transactionDone(transaction);
   }
-  await transactionDone(transaction);
   return read;
 }
 
@@ -236,13 +234,10 @@ async function rebuildWorldMeta(db: IDBDatabase, ids: string[]): Promise<WorldMe
  * row would otherwise hide the whole library.
  */
 export async function readAllWorldMeta(db: IDBDatabase): Promise<WorldMetaRead> {
-  const transaction = db.transaction([WORLD_STORE, WORLD_META_STORE], 'readonly');
-  const metaStore = transaction.objectStore(WORLD_META_STORE);
-  const [rows, worldIds] = await Promise.all([
-    promisifyRequest<unknown[]>(metaStore.getAll()),
-    promisifyRequest(transaction.objectStore(WORLD_STORE).getAllKeys()),
+  const [meta, worldIds] = await Promise.all([
+    getAllReadable<WorldMetaRecord>(db, WORLD_META_STORE),
+    promisifyRequest(db.transaction([WORLD_STORE], 'readonly').objectStore(WORLD_STORE).getAllKeys()),
   ]);
-  const meta = rows.filter(isReadable) as WorldMetaRecord[];
   const listed = new Set(meta.map((m) => m.id));
   const missing = worldIds.map(String).filter((id) => !listed.has(id));
   if (missing.length === 0) return { meta, unreadable: [] };
@@ -252,4 +247,18 @@ export async function readAllWorldMeta(db: IDBDatabase): Promise<WorldMetaRead> 
     meta: [...meta, ...rebuilt.meta].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
     unreadable: rebuilt.unreadable,
   };
+}
+
+/**
+ * Delete a world's entry only while its record still can't be read.
+ *
+ * @returns False when the record reads again, as after a backup restore, and nothing was deleted
+ */
+export async function deleteUnreadableWorld(db: IDBDatabase, id: string): Promise<boolean> {
+  const [record] = await readWorldRecords(db, [id]);
+  if (isReadable(record)) return false;
+  const transaction = libraryTransaction(db, 'readwrite');
+  deleteWorldRecord(transaction, id);
+  await transactionDone(transaction);
+  return true;
 }

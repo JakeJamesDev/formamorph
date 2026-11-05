@@ -204,6 +204,36 @@ describe('backup round trip (IndexedDB)', () => {
     expect(items.dictionaries).toEqual([]);
   });
 
+  it('backs up the other worlds when one world file is lost', async () => {
+    await seed('worldsDB', 'worlds', [{ id: 'w1', name: 'Keep' }, { id: 'lost', name: 'Lost' }]);
+    // The real requests run in their live transactions; the browser reports a lost file as their error.
+    const refuse = (request: IDBRequest) => {
+      Object.defineProperty(request, 'error', { get: () => new DOMException('Data lost', 'NotReadableError'), set: () => {} });
+      Object.defineProperty(request, 'onsuccess', {
+        get: () => () => request.onerror?.({ target: request, preventDefault() {}, stopPropagation() {} } as unknown as Event),
+        set: () => {},
+      });
+      return request;
+    };
+    const get = IDBObjectStore.prototype.get;
+    const getAll = IDBObjectStore.prototype.getAll;
+    const spies = [
+      vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
+        const request = get.call(this, key);
+        return this.name === 'worlds' && key === 'lost' ? refuse(request) : request;
+      }),
+      vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (this: IDBObjectStore, ...args) {
+        const request = getAll.apply(this, args);
+        return this.name === 'worlds' ? refuse(request) : request;
+      }),
+    ];
+
+    const bundle = await buildBackup({ worlds: new Set(['w1', 'lost']) });
+
+    spies.forEach((spy) => spy.mockRestore());
+    expect(bundle.data.worlds.map((r) => r.id)).toEqual(['w1']);
+  });
+
   it('exports only the selected ids', async () => {
     await seed('worldsDB', 'worlds', [{ id: 'w1', name: 'Keep' }, { id: 'w2', name: 'Drop' }]);
     await seed('entitiesDB', 'entities', [{ id: 'e1', name: 'Mara' }]);

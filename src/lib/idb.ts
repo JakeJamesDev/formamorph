@@ -87,6 +87,39 @@ export function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+/** A stored value the browser can't deserialize comes out null. */
+export const isReadable = (value: unknown): value is object => !!value && typeof value === 'object';
+
+/** Settle a read with its value, or null when the browser refuses it. The transaction stays alive. */
+export function readOrNull<T>(request: IDBRequest<T>): Promise<T | null> {
+  return new Promise((resolve) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      resolve(null);
+    };
+  });
+}
+
+/**
+ * Every value in a store that reads back.
+ *
+ * A record whose file is lost fails `getAll` for the whole store, so that case reads one key at a time.
+ */
+export async function getAllReadable<T extends object>(db: IDBDatabase, storeName: string): Promise<T[]> {
+  const store = () => db.transaction([storeName], 'readonly').objectStore(storeName);
+  let rows: unknown[];
+  try {
+    rows = await promisifyRequest<unknown[]>(store().getAll());
+  } catch {
+    const keyed = store();
+    const keys = await promisifyRequest(keyed.getAllKeys());
+    rows = await Promise.all(keys.map((key) => readOrNull<unknown>(keyed.get(key))));
+  }
+  return rows.filter(isReadable) as T[];
+}
+
 /**
  * Resolve when `transaction` commits; reject with its error when it fails or aborts.
  *
