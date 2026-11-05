@@ -308,6 +308,35 @@ test.describe('web', () => {
     await showToast(page);
     await expectToastBelowHeader(page);
   });
+
+  test('keeps the Avatar card and the tall dialogs where they were', async ({ page }) => {
+    await openApp(page);
+    await gotoDev(page, 'mainMenu', { modal: 'avatar' });
+    const card = page.getByRole('heading', { name: 'Avatar Customization' }).locator('xpath=ancestor::*[contains(@class, "overflow-hidden")][1]');
+    await card.waitFor();
+    await settle(page);
+    expect((await card.boundingBox())?.y).toBeLessThan(20);
+    await page.goto('/');
+    await page.waitForFunction(() => '__fmDev' in window);
+    await page.setViewportSize({ width: 800, height: 600 });
+    await gotoDev(page, 'mainMenu', { modal: 'settings' });
+    const dialog = page.getByRole('dialog').first();
+    await dialog.waitFor();
+    await settle(page);
+    // The room exists only under the desktop flag, so a web dialog keeps the height the flag would cap.
+    const box = await dialog.boundingBox();
+    expect(box?.y).toBeLessThan(56);
+    expect(box?.height).toBeGreaterThan(600 - 2 * 56 + 8);
+    if (FRAMES_DIR) {
+      mkdirSync(FRAMES_DIR, { recursive: true });
+      await page.setViewportSize({ width: 1280, height: 860 });
+      for (const [name, opts] of [['web-avatar-1280', { modal: 'avatar' }], ['web-dialog-1280', { modal: 'settings' }]] as const) {
+        await gotoDev(page, 'mainMenu', opts);
+        await page.waitForTimeout(1500);
+        await page.screenshot({ path: join(FRAMES_DIR, `${name}.png`) });
+      }
+    }
+  });
 });
 
 test.describe('mobile', () => {
@@ -1132,6 +1161,70 @@ test.describe('the Windows desktop app', () => {
       await gotoDev(page, 'mainMenu');
     });
   }
+
+  /** One frame per theme in the frames folder, when set. */
+  const frame = async (name: string) => {
+    if (!FRAMES_DIR) return;
+    mkdirSync(FRAMES_DIR, { recursive: true });
+    for (const theme of ['dark', 'light']) {
+      await page.evaluate((t) => {
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(t);
+      }, theme);
+      await settle(page);
+      await page.screenshot({ path: join(FRAMES_DIR, `${name}-${theme}.png`) });
+    }
+    await page.evaluate(() => {
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add('dark');
+    });
+  };
+
+  test('Avatar Customization: the controls card starts below the window buttons', async () => {
+    for (const [width, height] of [[1280, 800], [800, 600]]) {
+      await setSize(width, height);
+      await gotoDev(page, 'mainMenu', { modal: 'avatar' });
+      const card = page.getByRole('heading', { name: 'Avatar Customization' }).locator('xpath=ancestor::*[contains(@class, "overflow-hidden")][1]');
+      await card.waitFor();
+      await settle(page);
+      const box = await card.boundingBox();
+      if (!box) throw new Error('The controls card has no box');
+      expect(box.y, `controls card top at ${width}`).toBeGreaterThanOrEqual(56);
+      // The card's top-right corner is inside the window buttons' stretch.
+      expect(box.x + box.width).toBeGreaterThan(width - (await buttonsWidth(page)));
+      if (width === 800) await frame('clearance-avatar');
+    }
+    await setSize(1280, 800);
+  });
+
+  test('a full-height dialog keeps its close button clear of the window buttons at 800x600', async ({ baseURL }) => {
+    await setSize(800, 600);
+    await page.goto(baseURL as string);
+    await page.waitForFunction(() => '__fmDev' in window);
+    await gotoDev(page, 'mainMenu', { modal: 'settings' });
+    const dialog = page.getByRole('dialog').first();
+    await dialog.waitFor();
+    await settle(page);
+    const close = await dialog.getByRole('button', { name: 'Close' }).first().boundingBox();
+    if (!close) throw new Error('The dialog has no close button');
+    const wall = 800 - (await buttonsWidth(page));
+    expect(close.y >= 56 || close.x + close.width <= wall, 'the close button sits below the buttons or left of them').toBe(true);
+    expect(await hitTest([{ x: close.x + close.width / 2, y: close.y + close.height / 2 }])).toEqual([HT.client]);
+    await frame('clearance-dialog');
+    await setSize(1280, 800);
+  });
+
+  test('the help window frame', async ({ baseURL }) => {
+    test.skip(!FRAMES_DIR, 'Frames only on request');
+    await setSize(800, 600);
+    await page.goto(baseURL as string);
+    await page.waitForFunction(() => '__fmDev' in window);
+    await gotoDev(page, 'mainMenu', { modal: 'formaquestion' });
+    await page.getByRole('dialog', { name: 'Formaquestion' }).waitFor();
+    await settle(page);
+    await frame('clearance-help');
+    await setSize(1280, 800);
+  });
 });
 
 test.describe('corner checks', () => {

@@ -43,6 +43,16 @@ export const dialogFullHeight = 'top-[var(--app-top,0px)] translate-y-0 h-[var(-
  */
 export const dialogSafeArea = 'border-x-0 border-y-transparent border-t-[length:env(safe-area-inset-top)] border-b-[length:env(safe-area-inset-bottom)]';
 
+/**
+ * On the desktop flag, a centered dialog never rises above the header line, so its close button clears the
+ * window buttons. The box keeps its size: it centers in the room below the line, and a box taller than that
+ * room sits at the line. The percentage in `translate` is the box's own height.
+ */
+const WINDOW_BUTTON_ROOM = '[[data-window-overlay]_&]:top-[var(--header-line)] [[data-window-overlay]_&]:translate-y-[max(0px,calc((var(--app-h,100dvh)-2*var(--header-line))/2-50%))]';
+
+/** A caller that places its own box at `md` and wider, such as a full-height shell, keeps that place. A `max-*` place is mobile only. */
+const placesItself = (className?: string) => /(^|\s)((?!max-)[^\s:]+:)*(top|translate-y)-/.test(className ?? '');
+
 const closeButtonBase = 'absolute inline-flex h-11 w-11 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground';
 
 /** The full-screen window's button: a 44px target whose 20px icon centers 24px from the corner, and on the header line at `md` and wider. */
@@ -97,6 +107,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg grid-cols-[minmax(0,1fr)] translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+        !placesItself(className) && WINDOW_BUTTON_ROOM,
         !unanimated && "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}

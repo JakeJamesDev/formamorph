@@ -1209,6 +1209,7 @@ Labels use title case. Times state their zone once, at the top of the report.
 - 🖱️ Empty parts of the line drag the window, including over a dialog's dimming layer. Controls take clicks, and a modal's hidden page never blocks the drag.
 - 🔔 Top-right toasts start below the line.
 - 🖼️ A full screen editor's top row and its corner button share the line. The row clears the button and the window buttons.
+- 🪟 On the desktop flag, a centered dialog never rises above the line, so its close button clears the window buttons. It keeps its size. A scrolling card or scene that reaches the top edge starts below the line.
 - 📱 Mobile keeps its own layout.
 
 ### Production mapping

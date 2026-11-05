@@ -183,7 +183,8 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
       <SurfaceLayer id="avatar" />
       {uploadInput}
       {viewer}
-      <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
+      {/* Its scrolling controls start below the header line, clear of the window buttons. */}
+      <Card className="w-1/3 m-4 flex flex-col overflow-hidden [[data-window-overlay]_&]:mt-[var(--header-line)]">
         <ScrollArea className="flex-1 min-h-0">
           <CardHeader>
             <CardTitle>Avatar Customization</CardTitle>

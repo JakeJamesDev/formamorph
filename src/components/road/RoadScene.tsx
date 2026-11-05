@@ -89,7 +89,7 @@ export function RoadScene({ open = true, initialTier = DEFAULT_ROAD_TIER, initia
           dialogSafeArea,
         )}
       >
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea className="min-h-0 flex-1 [[data-window-overlay]_&]:mt-[var(--header-line)]">
           <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
             <div className="text-center">
               <DialogTitle className="text-heading">
