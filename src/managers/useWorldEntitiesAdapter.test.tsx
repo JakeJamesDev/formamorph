@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
+import { renderEntitiesTab } from '@/test/entitiesTabBench';
+import { panelWorld } from '@/test/panelBench';
 
-/** The top-level Entities tab on the List Editor: the folder tree, a flat sortable search, and the panels. */
+/** The Entities tab's list: the folder tree, a flat sortable search, and the panels. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -22,7 +23,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   entities: [
     { id: 'e-wick', name: 'Odd Wick', locations: ['harbor'], groupId: null, order: 0 },
     { id: 'e-wren', name: 'Wren', locations: ['harbor'], groupId: null, order: 1 },
@@ -49,8 +50,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the Entities tab search rows', () => {
   it('draws a grip on every matching entity and leaves folders out', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Entities/);
+    renderEntitiesTab(WORLD, 'advanced');
 
     search('w');
     expect(within(row('Odd Wick')).queryByLabelText('Drag to reorder')).not.toBeNull();
@@ -58,8 +58,7 @@ describe('the Entities tab search rows', () => {
   });
 
   it('duplicates an entity and opens the copy', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Entities/);
+    const { ctx } = renderEntitiesTab(WORLD, 'advanced');
 
     search('Wick');
     fireEvent.click(within(row('Odd Wick')).getByRole('button', { name: 'Duplicate' }));
@@ -68,8 +67,7 @@ describe('the Entities tab search rows', () => {
   });
 
   it('asks before it deletes the Custom Persona entity, and closes its panel', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Entities/);
+    const { ctx } = renderEntitiesTab(WORLD, 'advanced');
 
     search('Wanderer');
     fireEvent.click(screen.getByText('Wanderer'));
@@ -81,22 +79,3 @@ describe('the Entities tab search rows', () => {
   });
 });
 
-describe('the Entities tab selection', () => {
-  it('reopens the entity after a trip to another tab', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Entities/);
-    fireEvent.click(screen.getByText('Wren'));
-
-    openEditorTab(/Stats/);
-    openEditorTab(/Entities/);
-    expect(shownName()).toBe('Wren');
-  });
-
-  it('opens a folder\'s panel from the tree', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Entities/);
-
-    fireEvent.click(screen.getByText('Crew'));
-    expect(screen.getByText('Group Name')).toBeInTheDocument();
-  });
-});

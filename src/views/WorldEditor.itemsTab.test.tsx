@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
-import { screen, fireEvent, within, act } from '@testing-library/react';
+import { screen, fireEvent, within } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { blankItem } from '@/lib/items';
 import type { Body, Entity, Item, Placement, Slot, World } from '@/types';
 
-/** How the view holds the Items tab: its place in the rail, the shared search, and the entity Body select. */
+/** How the view holds the Items tab: its place in the rail, the shared search, and the Equipment entry. The entity Body select is in EntityBodyField.test.tsx. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -48,25 +48,6 @@ const openEquipment = () => {
   fireEvent.click(screen.getByRole('button', { name: 'Select Equipment Settings' }));
 };
 
-const openEntityItems = (name: string) => {
-  openEditorTab(/Entities/);
-  fireEvent.click(screen.getByText(name));
-  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name: 'Items' }));
-};
-
-/** Open a Radix select by keyboard: a click needs pointer capture, which jsdom has not got. */
-const pickOption = (combobox: HTMLElement, option: string) => {
-  act(() => { fireEvent.keyDown(combobox, { key: 'Enter' }); });
-  fireEvent.keyDown(screen.getByRole('option', { name: option }), { key: 'Enter' });
-};
-
-const options = (combobox: HTMLElement) => {
-  act(() => { fireEvent.keyDown(combobox, { key: 'Enter' }); });
-  const names = screen.getAllByRole('option').map((o) => o.textContent);
-  fireEvent.keyDown(screen.getAllByRole('option')[0], { key: 'Escape' });
-  return names;
-};
-
 beforeEach(() => { localStorage.clear(); });
 
 describe('the Items list', () => {
@@ -100,35 +81,5 @@ describe('the Equipment Settings entry', () => {
     const editor = screen.getByTestId('equipment-editor');
     expect([...editor.querySelectorAll('label')].map((l) => l.textContent)).toEqual(expect.arrayContaining(['Slots', 'Bodies', 'Persona Items']));
     expect(within(section('Persona Items')).getByLabelText('Lamp Quantity')).toHaveProperty('value', '1');
-  });
-});
-
-describe('the entity Body select', () => {
-  const bodySelect = () => screen.getByRole('combobox', { name: 'Body' });
-
-  it('lists Default with the first Body, None, then each Body, and saves the pick', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEntityItems('Odd Wick');
-    expect(options(bodySelect())).toEqual(['Default (Humanoid)', 'None', 'Humanoid', 'Imp']);
-    pickOption(bodySelect(), 'None');
-    expect(ctx().entities.find((e) => e.id === 'resident')?.body).toEqual({ kind: 'none' });
-    pickOption(bodySelect(), 'Humanoid');
-    expect(ctx().entities.find((e) => e.id === 'resident')?.body).toEqual({ kind: 'body', id: 'humanoid' });
-    pickOption(bodySelect(), 'Default (Humanoid)');
-    expect(ctx().entities.find((e) => e.id === 'resident')).not.toHaveProperty('body');
-  });
-
-  it("says on the Custom Persona entity that its pick also sets the player's Body", () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEntityItems('Custom Persona');
-    expect(section('Body').textContent).toContain("Also sets the player's Body under None or a library persona");
-    expect(bodySelect()).toBeTruthy();
-  });
-
-  it('points at Equipment in a world without Bodies', () => {
-    renderWorldEditorBench(benchEditorWorld({}), 'simple');
-    openEntityItems('Odd Wick');
-    expect(screen.queryByRole('combobox', { name: 'Body' })).toBeNull();
-    expect(section('Body').textContent).toContain('Add a Body in Equipment Settings');
   });
 });

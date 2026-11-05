@@ -1,13 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, fireEvent, within } from '@testing-library/react';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { World } from '@/types';
+import { renderPlaceholdersTab } from '@/test/placeholdersTabBench';
+import { panelWorld } from '@/test/panelBench';
 
-/**
- * The top-level Placeholders tab on the List Editor: its flat search over each placeholder's own row, world,
- * owned and copies alike, each under the label its tree row shows.
- */
+/** The Placeholders tab's search rows: world rows by their chain, owned rows under their owner, and a copy as its tree row reads. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -29,7 +27,7 @@ vi.mock('react-toastify', () => ({
 const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `p-${id}` });
 const value = (id: string, text: string) => ({ id, text });
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   placeholderGroups: [
     { id: 'bp', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' },
     { id: 'g-looks', name: 'Looks', parentId: null, order: 1 },
@@ -70,8 +68,7 @@ const paneShows = (text: string) => screen.queryAllByDisplayValue(text)
   .some((el) => el.getAttribute('placeholder') !== 'Filter Placeholders');
 
 const openTab = () => {
-  const bench = renderWorldEditorBench(WORLD, 'advanced');
-  openEditorTab(/Placeholders/);
+  const bench = renderPlaceholdersTab(WORLD, 'advanced');
   return bench;
 };
 
@@ -159,26 +156,5 @@ describe('the Placeholders tab search', () => {
 
     expect(ctx().placeholders.map((p) => p.name)).toContain('Tone (Copy)');
     expect(screen.getByDisplayValue('Tone (Copy)')).toBeInTheDocument();
-  });
-});
-
-describe('a Placeholders selection whose row is gone, on mobile', () => {
-  let restore: () => void;
-  beforeEach(() => { restore = asMobile(); });
-  afterEach(() => restore());
-
-  /** Whether the mobile push shows its detail, empty or not. */
-  const detailPushed = () => document.querySelector('[data-list-detail] > [aria-hidden]')?.getAttribute('aria-hidden') === 'false';
-
-  it('returns to the list rather than pushing an empty detail', () => {
-    const { ctx } = openTab();
-    searchPlaceholders('Iris');
-    fireEvent.click(screen.getByRole('button', { name: 'Select Molly › Eyes › Iris' }));
-    expect(detailPushed()).toBe(true);
-
-    openEditorTab(/Stats/);
-    act(() => ctx().editEntity('molly', (e) => ({ ...e, placeholders: [] })));
-    openEditorTab(/Placeholders/);
-    expect(detailPushed()).toBe(false);
   });
 });

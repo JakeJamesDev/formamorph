@@ -1,14 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench, pickEditorMode, searchWorldField } from '@/test/worldEditorBench';
+import { screen, fireEvent, within } from '@testing-library/react';
 import type { World } from '@/types';
+import { renderDictionaryTab } from '@/test/dictionaryTabBench';
+import { asMobile, panelWorld, panelTabLayout } from '@/test/panelBench';
 
-/**
- * What the World Editor's dictionary book panel puts on screen, driven through the real editor.
- *
- * Details holds the book's own fields and Placeholders its scoped editor. Placeholders is Advanced only, so
- * Simple mode keeps one tab and no strip at all.
- */
+/** What the dictionary book panel puts on screen, in its own tabs. Placeholders is Advanced only, so Simple mode keeps one tab and no strip. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -29,7 +25,7 @@ vi.mock('react-toastify', () => ({
 
 /** Two books, so the persistence case can move from one book to another. The first book's description holds
  *  a word found nowhere else, so a Find query lands on that field. */
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   dictionaries: [
     {
       id: 'b1', name: 'Fen Lore', enabled: true, description: 'Marsh sayings.',
@@ -38,9 +34,6 @@ const WORLD: World = benchEditorWorld({
     { id: 'b2', name: 'Harbor Lore', enabled: true, entries: [] },
   ],
 } as Partial<World>);
-
-// On mobile the editor's tabs sit behind the Sections bar, which the shared helper opens.
-const openTab = openEditorTab;
 
 /** The book panel's own strip, read by its name: the editor's top-level strip is on the same screen. */
 const panelStrip = () => screen.queryByRole('tablist', { name: 'Dictionary Fields' });
@@ -56,7 +49,6 @@ const panelTab = (name: string) =>
 const openPanelTab = (name: string) => fireEvent.mouseDown(panelTab(name));
 
 const selectBook = (name: string) => {
-  openTab(/Dictionary/);
   fireEvent.click(screen.getByText(name));
 };
 
@@ -77,7 +69,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor dictionary book panel tabs', () => {
   it('offers Details and Placeholders in Advanced mode and opens on Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectBook('Fen Lore');
     expect(panelTabNames()).toEqual(['Details', 'Placeholders']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
@@ -86,7 +78,7 @@ describe('the World Editor dictionary book panel tabs', () => {
   });
 
   it('puts the scoped placeholder editor on Placeholders, and nothing from Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectBook('Fen Lore');
     openPanelTab('Placeholders');
     expect(placeholderEditorShown()).toBe(true);
@@ -94,7 +86,7 @@ describe('the World Editor dictionary book panel tabs', () => {
   });
 
   it('leaves Simple mode one tab, so no strip and no placeholder editor', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderDictionaryTab(WORLD, 'simple');
     selectBook('Fen Lore');
     expect(panelStrip()).toBeNull();
     // Enabled is Advanced only, as it was before the split.
@@ -103,7 +95,7 @@ describe('the World Editor dictionary book panel tabs', () => {
   });
 
   it('keeps the chosen tab when the author selects another book', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectBook('Fen Lore');
     openPanelTab('Placeholders');
     fireEvent.click(screen.getByText('Harbor Lore'));
@@ -111,30 +103,6 @@ describe('the World Editor dictionary book panel tabs', () => {
     expect(placeholderEditorShown()).toBe(true);
   });
 
-  it('opens Details for a Find hit in the book description', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectBook('Fen Lore');
-    openPanelTab('Placeholders');
-
-    fireEvent.change(searchWorldField(), { target: { value: 'Marsh sayings' } });
-
-    await waitFor(() => expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true'));
-    await waitFor(() => expect(document.querySelector('.editor-find-target')).not.toBeNull());
-  });
-
-  it('lands on Details when Simple mode takes Placeholders away', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectBook('Fen Lore');
-    openPanelTab('Placeholders');
-
-    pickEditorMode('Simple');
-    expect(panelStrip()).toBeNull();
-    expect(detailsShown()).toEqual({ ...ALL_DETAILS, enabled: false });
-
-    // The switch wears the hidden-data marker, whose own label joins its accessible name.
-    pickEditorMode('Advanced');
-    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-  });
 });
 
 const layout = () => panelTabLayout('Dictionary Fields');
@@ -146,7 +114,7 @@ describe('the World Editor dictionary book panel height', () => {
   ])('keeps the strip fixed, fills the pane for Placeholders, and scrolls Details on %s', (_, setUp) => {
     const undo = setUp();
     try {
-      renderWorldEditorBench(WORLD, 'advanced');
+      renderDictionaryTab(WORLD, 'advanced');
       selectBook('Fen Lore');
       expect(layout()).toEqual({ strip: 'fixed', body: 'scroll' });
       openPanelTab('Placeholders');

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { World } from '@/types';
+import { renderPlaceholdersTab } from '@/test/placeholdersTabBench';
+import { panelWorld } from '@/test/panelBench';
 
-/** The Placeholders tab's Blueprints group and the copies entities hold of its blueprints. */
+/** The Placeholders tab's Blueprints group, and a copy under the blueprint's live name. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -25,11 +26,11 @@ vi.mock('react-toastify', () => ({
 
 const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `p-${id}` });
 
-const BARE: World = benchEditorWorld({
+const BARE: World = panelWorld({
   placeholders: [{ id: 'eyes', name: 'Eyes', values: [{ id: 'v-amber', text: 'amber' }] }],
 } as Partial<World>);
 
-const WITH_COPY: World = benchEditorWorld({
+const WITH_COPY: World = panelWorld({
   placeholders: [
     { id: 'garb', name: 'Class Garb', groupId: 'bp', values: [{ id: 'v-tabard', text: 'a tabard' }, { id: 'v-plate', text: 'plate' }] },
   ],
@@ -55,8 +56,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the Placeholders tab Blueprints group', () => {
   it('adds one Blueprints group at the top level from the + menu, then stops offering it', () => {
-    const { ctx } = renderWorldEditorBench(BARE, 'advanced');
-    openEditorTab(/Placeholders/);
+    const { ctx } = renderPlaceholdersTab(BARE, 'advanced');
     openAddMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Add Blueprints Group' }));
     expect(ctx().placeholderGroups).toEqual([expect.objectContaining({ name: 'Blueprints', parentId: null, system: 'blueprints' })]);
@@ -69,8 +69,7 @@ describe('the Placeholders tab Blueprints group', () => {
   });
 
   it('keeps the group while trait text and copies use its blueprints, naming the uses', () => {
-    const { ctx } = renderWorldEditorBench(WITH_COPY, 'advanced');
-    openEditorTab(/Placeholders/);
+    const { ctx } = renderPlaceholdersTab(WITH_COPY, 'advanced');
     fireEvent.click(within(treeRow('Blueprints')!).getByRole('button', { name: 'Remove Blueprints' }));
     const notice = screen.getAllByRole('status').find((el) => el.textContent?.includes('Blueprints stays'))!;
     expect(notice).toHaveTextContent('Blueprints stays, because Trait: Paladin and Copy: Albus.Class Garb use its blueprints.');
@@ -80,8 +79,7 @@ describe('the Placeholders tab Blueprints group', () => {
   });
 
   it('removes an unused group, its placeholders going to the top level', () => {
-    const { ctx } = renderWorldEditorBench({ ...WITH_COPY, traits: [], entities: [] }, 'advanced');
-    openEditorTab(/Placeholders/);
+    const { ctx } = renderPlaceholdersTab({ ...WITH_COPY, traits: [], entities: [] }, 'advanced');
     fireEvent.click(within(treeRow('Blueprints')!).getByRole('button', { name: 'Remove Blueprints' }));
     expect(ctx().placeholderGroups).toEqual([]);
     expect(ctx().placeholders[0]).not.toHaveProperty('groupId');
@@ -90,8 +88,7 @@ describe('the Placeholders tab Blueprints group', () => {
 
 describe('a copy on the Placeholders tab', () => {
   it("reads as the owner's copy under the blueprint's live name, with no Duplicate", () => {
-    const { ctx } = renderWorldEditorBench(WITH_COPY, 'advanced');
-    openEditorTab(/Placeholders/);
+    const { ctx } = renderPlaceholdersTab(WITH_COPY, 'advanced');
     const row = treeRow('Albus.Class Garb')!;
     expect(row).toBeDefined();
     expect(within(row).queryByRole('button', { name: 'Duplicate' })).toBeNull();
@@ -102,8 +99,7 @@ describe('a copy on the Placeholders tab', () => {
   });
 
   it('opens the copy editor, and Edit Blueprint opens the blueprint', () => {
-    renderWorldEditorBench(WITH_COPY, 'advanced');
-    openEditorTab(/Placeholders/);
+    renderPlaceholdersTab(WITH_COPY, 'advanced');
     fireEvent.click(within(treeRow('Albus.Class Garb')!).getByText('Albus.Class Garb'));
     expect(screen.getByLabelText('Name')).toHaveValue('Albus.Class Garb');
     expect(screen.getByRole('button', { name: 'Reset to Blueprint' })).toBeDisabled();

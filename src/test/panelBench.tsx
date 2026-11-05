@@ -1,5 +1,5 @@
 /** Mounts one World Editor panel or list tab over the data providers. It never imports the view, which a moved suite exists to avoid. */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { CodeRenameProvider } from '@/components/editor/CodeRenameOffer';
@@ -14,6 +14,7 @@ import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { useWorldHistory, useWorldHistoryMoves } from '@/contexts/worldRecorder';
 import { writeEditorMode, type EditorMode } from '@/lib/editorMode';
+import { Harness } from '@/test/worldHarness';
 import type { World } from '@/types';
 
 // jsdom has no matchMedia; SettingsProvider (theme) and useIsMobile (layout) both read it on mount.
@@ -45,20 +46,6 @@ export const panelWorld = (over: Partial<World>): World => ({
 type GameDataHandle = ReturnType<typeof useGameData>;
 type HistoryMoves = ReturnType<typeof useWorldHistoryMoves>;
 type HistoryState = ReturnType<typeof useWorldHistory>;
-
-// eslint-disable-next-line react-refresh/only-export-components -- test-only module; nothing is hot-reloaded
-const Harness = ({ world, children, onReady }: {
-  world: World;
-  children: ReactNode;
-  onReady: (ctx: GameDataHandle, moves: HistoryMoves, state: HistoryState) => void;
-}) => {
-  const ctx = useGameData();
-  const moves = useWorldHistoryMoves();
-  const state = useWorldHistory();
-  useEffect(() => { ctx.loadWorldData(world); /* once */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  onReady(ctx, moves, state);
-  return <>{children}</>;
-};
 
 /** Mount `panel` over `world` in `mode`. `ctx()` reads the live GameData handle, as the view's bench does. */
 export const renderPanelBench = (world: World, mode: EditorMode, panel: ReactNode) => {
@@ -163,3 +150,35 @@ export const renderListTab = (
 export const openTraitFieldsTab = (name: string) => fireEvent.mouseDown(
   within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name }),
 );
+
+/** Report mobile to `useIsMobile`, which reads the width once and then the media query. Returns the undo. */
+export const asMobile = () => {
+  const realMatchMedia = window.matchMedia;
+  const realWidth = window.innerWidth;
+  window.innerWidth = 400;
+  // A stub with only the members the two readers call.
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('max-width: 767px'),
+    media: query, onchange: null,
+    addEventListener: () => {}, removeEventListener: () => {},
+    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = realMatchMedia;
+    window.innerWidth = realWidth;
+  };
+};
+
+/** Where a detail panel's parts sit: its strip fixed above any scroll, and the open tab's body scrolling on
+ *  its own or filling the pane for a body that scrolls inside itself. */
+export const panelTabLayout = (stripLabel: string) => {
+  const strip = screen.getByRole('tablist', { name: stripLabel });
+  const open = within(strip).getByRole('tab', { selected: true });
+  const body = document.getElementById(open.getAttribute('aria-controls') ?? '');
+  const fixed = !strip.closest('[data-radix-scroll-area-viewport]') && !!strip.closest('[data-detail-fill]');
+  return { strip: fixed ? 'fixed' : 'scrolls', body: body?.querySelector('[data-panel-tab-body]') ? 'scroll' : 'fill' };
+};
+
+/** The entity panel's own tab, apart from the editor's tab of the same name. */
+export const entityFieldsTab = (name: string) =>
+  within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });

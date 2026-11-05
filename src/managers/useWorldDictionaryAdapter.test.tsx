@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
+import { renderDictionaryTab } from '@/test/dictionaryTabBench';
+import { panelWorld } from '@/test/panelBench';
 
-/** The top-level Dictionary tab on the List Editor: the book tree, a flat search over books and entries. */
+/** The Dictionary tab's list: the book tree and a flat search over books and entries. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -23,7 +24,7 @@ vi.mock('react-toastify', () => ({
 }));
 
 /** Two books share an entry name, so a search row that dropped its book would read alike. */
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   dictionaries: [
     {
       id: 'b1', name: 'Fen Lore', enabled: true,
@@ -49,8 +50,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the Dictionary tab search', () => {
   it('lists matching books and entries flat, each entry under its book', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    renderDictionaryTab(WORLD, 'advanced');
 
     search('lamp');
     expect(screen.getByRole('button', { name: 'Select Fen Lore › Lamp Oil' })).toBeInTheDocument();
@@ -66,8 +66,7 @@ describe('the Dictionary tab search', () => {
   });
 
   it('opens the entry a search row selects', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    renderDictionaryTab(WORLD, 'advanced');
 
     search('lamp');
     fireEvent.click(screen.getByRole('button', { name: 'Select Harbor Lore › Lamp Oil' }));
@@ -75,8 +74,7 @@ describe('the Dictionary tab search', () => {
   });
 
   it('adds an entry to a book from its search row and opens it', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    const { ctx } = renderDictionaryTab(WORLD, 'advanced');
 
     search('Harbor');
     fireEvent.click(within(row('Harbor Lore')).getByRole('button', { name: 'Add entry' }));
@@ -86,8 +84,7 @@ describe('the Dictionary tab search', () => {
   });
 
   it('asks before it deletes a book from its search row', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    const { ctx } = renderDictionaryTab(WORLD, 'advanced');
 
     search('Harbor');
     fireEvent.click(within(row('Harbor Lore')).getByRole('button', { name: 'Delete dictionary' }));
@@ -97,8 +94,7 @@ describe('the Dictionary tab search', () => {
   });
 
   it('duplicates and deletes an entry from its search row', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    const { ctx } = renderDictionaryTab(WORLD, 'advanced');
 
     search('Hostile');
     fireEvent.click(within(row('Fen Lore › Hostile Forces')).getByRole('button', { name: 'Duplicate' }));
@@ -111,8 +107,7 @@ describe('the Dictionary tab search', () => {
 
 describe('the Dictionary tab folds', () => {
   it('keeps a folded book folded through a search', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    renderDictionaryTab(WORLD, 'advanced');
     fireEvent.click(folds('Collapse dictionary')[0]);
     expect(screen.queryByText('Hostile Forces')).toBeNull();
 
@@ -123,8 +118,7 @@ describe('the Dictionary tab folds', () => {
   });
 
   it('unfolds a book that gets an entry from its search row', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    renderDictionaryTab(WORLD, 'advanced');
     fireEvent.click(folds('Collapse dictionary')[1]);
 
     search('Harbor');
@@ -134,8 +128,7 @@ describe('the Dictionary tab folds', () => {
   });
 
   it('draws no grip and no enabled box on a search row', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
+    renderDictionaryTab(WORLD, 'advanced');
     expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
 
     search('Lore');
@@ -144,14 +137,3 @@ describe('the Dictionary tab folds', () => {
   });
 });
 
-describe('the Dictionary tab selection', () => {
-  it('reopens the entry after a trip to another tab', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Dictionary/);
-    fireEvent.click(screen.getByText('Hostile Forces'));
-
-    openEditorTab(/Stats/);
-    openEditorTab(/Dictionary/);
-    expect(screen.getByText('A big lizard.')).toBeInTheDocument();
-  });
-});

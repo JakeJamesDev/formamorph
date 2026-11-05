@@ -1,16 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
+import { renderEntitiesTab } from '@/test/entitiesTabBench';
+import { asMobile, panelWorld, panelTabLayout } from '@/test/panelBench';
 
-/**
- * What the World Editor's entity panel puts on screen, driven through the real editor.
- *
- * The panel splits its field groups across its own tabs, so a group that loses a field, gains a duplicate,
- * lands out of order, or lands on the wrong tab shows up here as a changed label list. The tab an author
- * picks belongs to the editor rather than the panel, so the cases that click through the list prove it
- * survives the per-entity remount.
- */
+/** What the entity panel puts on screen, in its own tabs. The tab an author picks belongs to the host rather than the panel, so the cases that click through the list prove it survives the per-entity remount. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -29,20 +23,17 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   entities: [
     { id: 'e1', name: 'Wren', aiDescription: 'A lamp-keeper.', locations: ['harbor'] },
     { id: 'e2', name: 'Marsh Tom', aiDescription: 'A ferryman.', locations: ['harbor'] },
   ],
 });
 
-const GROUPED_WORLD: World = benchEditorWorld({
+const GROUPED_WORLD: World = panelWorld({
   entities: [{ id: 'e1', name: 'Wren', aiDescription: 'A lamp-keeper.', locations: ['harbor'] }],
   entityGroups: [{ id: 'g1', name: 'Fen Folk', parentId: null }],
 });
-
-// On mobile the editor's tabs sit behind the Sections bar, which the shared helper opens.
-const openTab = openEditorTab;
 
 const FIELD_LABELS =
   /^(Name|Aliases|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Image|Image Tags|3D Model)$/;
@@ -50,7 +41,7 @@ const FIELD_LABELS =
 /** Every field label the panel shows, in document order. The editor's own Locations tab shares a label with
  *  the picker, so the match is taken from the panel body rather than the whole editor. */
 const panelLabels = () =>
-  screen.getAllByText(FIELD_LABELS)
+  screen.queryAllByText(FIELD_LABELS)
     .filter((el) => !el.closest('[role="tablist"]'))
     .map((el) => el.textContent);
 
@@ -69,7 +60,6 @@ const panelTab = (name: string) =>
 const openPanelTab = (name: string) => fireEvent.mouseDown(panelTab(name));
 
 const selectEntity = (name: string) => {
-  openTab(/Entities/);
   fireEvent.click(screen.getByText(name));
 };
 
@@ -77,20 +67,20 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor entity panel tabs', () => {
   it('offers seven tabs in Advanced mode and opens on Profile', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
     expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Traits', 'Stats', 'Placeholders', 'Openings']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('offers three tabs in Simple mode', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderEntitiesTab(WORLD, 'simple');
     selectEntity('Wren');
     expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
   });
 
   it('puts the identity fields, the picture and its tags on Profile, and no description', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
     expect(panelLabels()).toEqual([
       'Image', 'Name', 'Aliases', 'Type', 'Image Tags', 'Locations', '3D Model',
@@ -98,7 +88,7 @@ describe('the World Editor entity panel tabs', () => {
   });
 
   it('puts the three prose fields and nothing else on Descriptions', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
     openPanelTab('Descriptions');
     expect(panelLabels()).toEqual([
@@ -107,7 +97,7 @@ describe('the World Editor entity panel tabs', () => {
   });
 
   it('puts the scoped placeholder editor on Placeholders', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
     openPanelTab('Placeholders');
     expect(panelLabels()).toEqual([]);
@@ -115,7 +105,7 @@ describe('the World Editor entity panel tabs', () => {
   });
 
   it('drops the Advanced-only fields from both tabs in Simple mode, keeping Generate with AI', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderEntitiesTab(WORLD, 'simple');
     selectEntity('Wren');
     expect(panelLabels()).toEqual(['Image', 'Name', 'Locations']);
     expect(screen.getByRole('button', { name: /Generate with AI/ })).toBeInTheDocument();
@@ -124,7 +114,7 @@ describe('the World Editor entity panel tabs', () => {
   });
 
   it('keeps the chosen tab when the author selects another entity', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
     openPanelTab('Descriptions');
     fireEvent.click(screen.getByText('Marsh Tom'));
@@ -134,19 +124,8 @@ describe('the World Editor entity panel tabs', () => {
     ]);
   });
 
-  it('falls back to Profile when Simple mode takes the chosen tab away', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectEntity('Wren');
-    openPanelTab('Placeholders');
-    pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
-    expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Image', 'Name', 'Locations']);
-  });
-
   it('shows the group panel with no tab strip when the author selects a group', () => {
-    renderWorldEditorBench(GROUPED_WORLD, 'advanced');
-    openTab(/Entities/);
+    renderEntitiesTab(GROUPED_WORLD, 'advanced');
     fireEvent.click(screen.getByText('Fen Folk'));
     expect(screen.getByText('Group Name')).toBeInTheDocument();
     expect(panelTabNames()).toEqual([]);
@@ -164,7 +143,7 @@ describe('the World Editor entity panel height', () => {
   ])('keeps the strip fixed, fills the pane for Traits and Placeholders, and scrolls the other tabs on %s', (_, setUp) => {
     const undo = setUp();
     try {
-      renderWorldEditorBench(WORLD, 'advanced');
+      renderEntitiesTab(WORLD, 'advanced');
       selectEntity('Wren');
       expect(layout()).toEqual(FIXED_SCROLL);
       openPanelTab('Traits');

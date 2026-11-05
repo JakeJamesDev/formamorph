@@ -49,7 +49,7 @@ A test that goes to another tab (Go to, a chip that opens a row, the Entities ta
 
 ### Leave `worldEditorBench` unchanged
 
-Its hash is an input of the 96 view files' records that import it, so an edit makes their coverage stale. `panelWorld` and the harness repeat its code until the view moves end, and ticket 09 removes the copies.
+Its hash is an input of the 96 view files' records that import it, so an edit makes their coverage stale. `panelWorld` and the harness repeat its code until the view moves end, and ticket 09 removed the copies; `worldEditorBench` now imports them.
 
 ## Traps
 

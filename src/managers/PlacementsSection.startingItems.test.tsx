@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within, act } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { blankItem } from '@/lib/items';
 import type { Placement, World } from '@/types';
+import { renderEntitiesTab } from '@/test/entitiesTabBench';
+import { renderItemsTab } from '@/test/itemsTabBench';
+import { renderLocationsTab } from '@/test/locationsTabBench';
+import { panelWorld, renderPanelBench } from '@/test/panelBench';
 
 /** Starting items: the Persona Items section in Equipment, and the Items tab on entities and locations. */
 
@@ -23,7 +26,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   items: [blankItem('lamp', 'Lamp'), blankItem('rope', 'Rope')],
   placements: [
     { id: 'p-wick', where: { kind: 'entity', id: 'resident' }, quantity: 2, source: { kind: 'item', itemId: 'rope' } },
@@ -37,13 +40,11 @@ const panelTab = (strip: string, name: string) =>
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: strip })).getByRole('tab', { name }));
 
 const openEntityItems = () => {
-  openEditorTab(/Entities/);
   fireEvent.click(screen.getByText('Odd Wick'));
   panelTab('Entity Fields', 'Items');
 };
 
 const openLocationItems = () => {
-  fireEvent.mouseDown(screen.getByRole('tab', { name: /^Locations/ }));
   const row = screen.getAllByText('Harbor Steps').map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]')).find(Boolean);
   fireEvent.click(row as HTMLElement);
   panelTab('Location Fields', 'Items');
@@ -56,7 +57,6 @@ const pickOption = (combobox: HTMLElement, option: string) => {
 };
 
 const openEquipment = () => {
-  openEditorTab(/Items/);
   fireEvent.click(screen.getByRole('button', { name: 'Select Equipment Settings' }));
 };
 
@@ -66,7 +66,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('Persona Items in Equipment', () => {
   it('adds a starting item for the player, sets its quantity, item and Hidden, and exports it', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    const { ctx } = renderItemsTab(WORLD, 'simple');
     openEquipment();
     const persona = section('Persona Items');
     fireEvent.click(within(persona).getByRole('button', { name: 'Add Item' }));
@@ -84,7 +84,7 @@ describe('Persona Items in Equipment', () => {
   });
 
   it('asks for items first in a world without any', () => {
-    renderWorldEditorBench(benchEditorWorld({}), 'simple');
+    renderItemsTab(panelWorld({}), 'simple');
     openEquipment();
     const persona = section('Persona Items');
     expect(persona.textContent).toContain('Add items on the Items tab first');
@@ -94,7 +94,7 @@ describe('Persona Items in Equipment', () => {
 
 describe('the Items tab', () => {
   it("lists only that entity's starting items and adds to them", () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    const { ctx } = renderEntitiesTab(WORLD, 'simple');
     openEntityItems();
     expect(screen.getByLabelText('Rope Quantity')).toHaveProperty('value', '2');
     expect(screen.queryByLabelText('Lamp Quantity')).toBeNull();
@@ -103,7 +103,7 @@ describe('the Items tab', () => {
   });
 
   it("lists only that location's starting items, Hidden and all", () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    const { ctx } = renderLocationsTab(WORLD, 'simple');
     openLocationItems();
     expect(screen.getByRole('checkbox', { name: 'Lamp Hidden' })).toHaveProperty('ariaChecked', 'true');
     fireEvent.change(screen.getByLabelText('Lamp Quantity'), { target: { value: '4' } });
@@ -113,7 +113,7 @@ describe('the Items tab', () => {
 
 describe('placements of a deleted owner', () => {
   it('go with the entity or location they were on', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    const { ctx } = renderPanelBench(WORLD, 'simple', null);
     act(() => { ctx().removeEntity('resident'); });
     expect(ctx().placements.map((p) => p.id)).toEqual(['p-steps']);
     act(() => { ctx().removeLocation('harbor'); });

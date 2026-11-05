@@ -4,43 +4,20 @@
  * in the test files — `vi.mock` is hoisted per file — but the fixture, the mount, and its lint exception
  * live here once.
  */
-import { useEffect, type ComponentProps, type ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
-import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
+import { GameDataProvider, type useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistory, useWorldHistoryMoves } from '@/contexts/worldRecorder';
 import { writeEditorMode, type EditorMode } from '@/lib/editorMode';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import WorldEditor from '@/views/WorldEditor';
+import { panelWorld } from '@/test/panelBench';
+import { Harness } from '@/test/worldHarness';
 import type { World } from '@/types';
 
-// jsdom has no matchMedia; SettingsProvider (theme) and useIsMobile (layout) both read it on mount.
-if (typeof window.matchMedia !== 'function') {
-  window.matchMedia = ((query: string) => ({
-    matches: false, media: query, onchange: null,
-    addEventListener: () => {}, removeEventListener: () => {},
-    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-}
-
-/** Report mobile to `useIsMobile`, which reads the width once and then the media query. Returns the undo. */
-export const asMobile = () => {
-  const realMatchMedia = window.matchMedia;
-  const realWidth = window.innerWidth;
-  window.innerWidth = 400;
-  // A stub with only the members the two readers call.
-  window.matchMedia = ((query: string) => ({
-    matches: query.includes('max-width: 767px'),
-    media: query, onchange: null,
-    addEventListener: () => {}, removeEventListener: () => {},
-    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-  return () => {
-    window.matchMedia = realMatchMedia;
-    window.innerWidth = realWidth;
-  };
-};
+export { asMobile, entityFieldsTab, openTraitFieldsTab, panelTabLayout } from '@/test/panelBench';
 
 /** What the Save face's live region says; the region follows the split button. */
 export const saveAnnouncement = (face: HTMLElement) => face.parentElement?.nextElementSibling?.textContent ?? null;
@@ -55,44 +32,12 @@ export const finishSheetExit = (sheet: HTMLElement) => {
   act(() => { sheet.dispatchEvent(end); });
 };
 
-/** A loadable world with the base a suite doesn't care about filled in — a named overview with a prompt and
- *  readme, a flagged starting location, and one described resident keeping it occupied — clean under the full
- *  rule registry, so a suite's Issues list shows only the defects it authors in. The cast is deliberate — a
- *  suite supplies only the slices its tests are about, the way hand-authored world JSON arrives with fields
- *  the types call required simply absent. */
-export const benchEditorWorld = (over: Partial<World>): World => ({
-  id: 'w1',
-  worldOverview: {
-    name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
-  },
-  stats: [],
-  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
-  entities: [{
-    id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',
-    aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'],
-  }],
-  placeholders: [], traits: [], statUpdates: [],
-  ...over,
-} as unknown as World);
+/** A loadable world with the base a suite doesn't care about filled in. It is the panel bench's world, so a view suite and a panel suite start from the same one. */
+export const benchEditorWorld = panelWorld;
 
 type GameDataHandle = ReturnType<typeof useGameData>;
 type HistoryMoves = ReturnType<typeof useWorldHistoryMoves>;
 type HistoryState = ReturnType<typeof useWorldHistory>;
-
-// eslint-disable-next-line react-refresh/only-export-components -- test-only module; nothing is hot-reloaded
-const Harness = ({ world, children, onReady }: {
-  world: World;
-  children?: ReactNode;
-  onReady: (ctx: GameDataHandle, moves: HistoryMoves, state: HistoryState) => void;
-}) => {
-  const ctx = useGameData();
-  const moves = useWorldHistoryMoves();
-  const state = useWorldHistory();
-  useEffect(() => { ctx.loadWorldData(world); /* once */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  onReady(ctx, moves, state);
-  return <>{children}</>;
-};
 
 /**
  * Mount the editor over `world` in `mode`; `ctx()` reads the live GameData handle for state assertions.
@@ -171,15 +116,6 @@ export const pickEditorMode = (name: 'Simple' | 'Advanced') => {
   fireEvent.keyDown(screen.getByRole('option', { name: new RegExp(`^${name}`) }), { key: 'Enter' });
 };
 
-/** The entity panel's own tab, apart from the editor's tab of the same name. */
-export const entityFieldsTab = (name: string) =>
-  within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });
-
-/** Open one tab of the trait panel's own strip. These tabs switch on mouseDown, not click. */
-export const openTraitFieldsTab = (name: string) => fireEvent.mouseDown(
-  within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name }),
-);
-
 /** Click the editor header's flask — whose first stop is the quick-triage popover, not the full panel. */
 export const clickFlask = async () => {
   fireEvent.click(await screen.findByRole('button', { name: /^Test Bench/ }));
@@ -189,14 +125,4 @@ export const clickFlask = async () => {
 export const clickOpenBench = async () => {
   await clickFlask();
   fireEvent.click(await screen.findByRole('button', { name: 'Open Test Bench' }));
-};
-
-/** Where a detail panel's parts sit: its strip fixed above any scroll, and the open tab's body scrolling on
- *  its own or filling the pane for a body that scrolls inside itself. */
-export const panelTabLayout = (stripLabel: string) => {
-  const strip = screen.getByRole('tablist', { name: stripLabel });
-  const open = within(strip).getByRole('tab', { selected: true });
-  const body = document.getElementById(open.getAttribute('aria-controls') ?? '');
-  const fixed = !strip.closest('[data-radix-scroll-area-viewport]') && !!strip.closest('[data-detail-fill]');
-  return { strip: fixed ? 'fixed' : 'scrolls', body: body?.querySelector('[data-panel-tab-body]') ? 'scroll' : 'fill' };
 };

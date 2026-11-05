@@ -1,16 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
+import { renderLocationsTab } from '@/test/locationsTabBench';
+import { panelWorld } from '@/test/panelBench';
 
-/**
- * What the World Editor's location panel puts on screen, driven through the real editor.
- *
- * The panel groups its fields across its own tabs, so a field that goes missing, gains a duplicate, lands out
- * of order, or lands on the wrong tab shows up here as a changed label list. The tab an author picks belongs
- * to the editor rather than the panel, so the cases that click through the tree prove it survives the
- * per-location remount.
- */
+/** What the location panel puts on screen, in its own tabs. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -31,7 +25,7 @@ vi.mock('react-toastify', () => ({
 
 /** A parent with every field filled and a child under it, so the persistence case can cross the tree rather
  *  than only step between siblings. The connection gives Presence something authored to draw. */
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   locations: [
     {
       id: 'veil', name: 'The Veilwood', isStarting: true,
@@ -81,10 +75,7 @@ const treeRow = (name: string) => {
   return row;
 };
 
-const openLocations = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /^Locations/ }));
-
 const selectLocation = (name: string) => {
-  openLocations();
   fireEvent.click(treeRow(name));
 };
 
@@ -92,20 +83,20 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor location panel tabs', () => {
   it('offers six tabs in Advanced mode, Openings last, and opens on Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media', 'Pins', 'Openings']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('offers four tabs in Simple mode', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderLocationsTab(WORLD, 'simple');
     selectLocation('The Veilwood');
     expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media']);
   });
 
   it('puts the name, the starting box and the three descriptions on Details, and nothing else', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     expect(panelLabels()).toEqual([
       'Name', 'Player-Facing Description', 'AI-Facing Description', 'AI-Facing Summary',
@@ -114,14 +105,14 @@ describe('the World Editor location panel tabs', () => {
   });
 
   it('puts the roster and the connections on Presence', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     openPanelTab('Presence');
     expect(panelLabels()).toEqual(['Entities', 'Connections']);
   });
 
   it('puts the picture, its tags, the Generate button and the sound on Media', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     openPanelTab('Media');
     expect(panelLabels()).toEqual(['Background Image', 'Image Tags', 'Ambient Sound']);
@@ -129,7 +120,7 @@ describe('the World Editor location panel tabs', () => {
   });
 
   it('puts the pin rows and their help control on Pins', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     openPanelTab('Pins');
     expect(panelLabels()).toEqual(['Placeholder Pins']);
@@ -137,7 +128,7 @@ describe('the World Editor location panel tabs', () => {
   });
 
   it('drops the Advanced-only fields in Simple mode, keeping Generate with AI', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderLocationsTab(WORLD, 'simple');
     selectLocation('The Veilwood');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
     expect(screen.getByRole('checkbox', { name: /Starting Location/ })).toBeInTheDocument();
@@ -149,7 +140,7 @@ describe('the World Editor location panel tabs', () => {
   });
 
   it('keeps the chosen tab when the author selects a child location', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderLocationsTab(WORLD, 'advanced');
     selectLocation('The Veilwood');
     openPanelTab('Presence');
     fireEvent.click(treeRow('The Hollow'));
@@ -157,22 +148,4 @@ describe('the World Editor location panel tabs', () => {
     expect(panelLabels()).toEqual(['Entities', 'Connections']);
   });
 
-  it('falls back to Details when Simple mode takes the chosen tab away', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectLocation('The Veilwood');
-    openPanelTab('Pins');
-    pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media']);
-    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
-  });
-
-  it('gives the Canvas view the same panel as the tree', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectLocation('The Veilwood');
-    openPanelTab('Media');
-    fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
-    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media', 'Pins', 'Openings']);
-    expect(panelTab('Media')).toHaveAttribute('aria-selected', 'true');
-  });
 });

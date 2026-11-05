@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, entityFieldsTab, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
+import { renderOverviewTab } from '@/test/overviewBench';
+import { renderEntitiesTab } from '@/test/entitiesTabBench';
+import { panelWorld, entityFieldsTab } from '@/test/panelBench';
 
-/** The Openings panels on the List Editor's toolbar: a search over the cards and a + that adds one (Q20, Q40). */
+/** The Openings panels' toolbar: the world panel on the Overview tab, and the entity's Openings tab. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -22,7 +24,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
     systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
@@ -49,7 +51,6 @@ const cards = () => screen.queryAllByTestId('opening-row').map((row) => within(r
 const openWorldOpenings = () => fireEvent.click(screen.getByRole('radio', { name: 'Openings' }));
 
 const openEntityOpenings = () => {
-  openEditorTab(/Entities/);
   fireEvent.click(screen.getByText('Odd Wick'));
   fireEvent.mouseDown(entityFieldsTab('Openings'));
 };
@@ -58,7 +59,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the world Openings panel toolbar', () => {
   it('filters every group by card text and hides a group with no match', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderOverviewTab(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openWorldOpenings();
     expect(cards()).toEqual(['Opening 1', 'Opening 2', 'Opening 1', 'Opening 2']);
@@ -75,7 +76,7 @@ describe('the world Openings panel toolbar', () => {
   });
 
   it('shows a no-match line when no card matches', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderOverviewTab(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openWorldOpenings();
 
@@ -85,7 +86,7 @@ describe('the world Openings panel toolbar', () => {
   });
 
   it('adds a world opening with the +, clears the box, and keeps the chances', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderOverviewTab(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openWorldOpenings();
 
@@ -99,7 +100,7 @@ describe('the world Openings panel toolbar', () => {
   });
 
   it('keeps each entity group’s own add button', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderOverviewTab(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openWorldOpenings();
 
@@ -111,7 +112,7 @@ describe('the world Openings panel toolbar', () => {
 
 describe('the entity Openings tab toolbar', () => {
   it('filters the entity’s cards and shows a no-match line', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderEntitiesTab(WORLD, 'advanced');
     openEntityOpenings();
     expect(cards()).toEqual(['Opening 1', 'Opening 2']);
 
@@ -124,7 +125,7 @@ describe('the entity Openings tab toolbar', () => {
   });
 
   it('adds to the entity with the + and clears the box', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderEntitiesTab(WORLD, 'advanced');
     openEntityOpenings();
 
     search('Search openings', 'gull');

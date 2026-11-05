@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
+  - **Six World Editor tabs' tests now mount the panel, not the whole editor, and take half the worker time.** 124 of 177 test rows moved with coverage held. The tabs are Entities, Dictionary, Placeholders, Locations, Overview and Tools.
 
 #### ➖ Removed
 

@@ -1,13 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { renderLocationsTab } from '@/test/locationsTabBench';
+import { panelWorld } from '@/test/panelBench';
 
-/**
- * Guards what a location delete leaves behind, through the editor's own delete buttons.
- *
- * `GameDataContext.test.tsx` covers `removeLocation` in isolation. These cases fail when a delete button
- * writes the locations array alone, which leaves the dead id on entities and Connections.
- */
+/** Deleting a location from the tree and from the filtered list: its id leaves entities and Connections. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -26,7 +22,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD = benchEditorWorld({
+const WORLD = panelWorld({
   locations: [
     { id: 'harbor', name: 'Harbor Steps', isStarting: true },
     { id: 'wood', name: 'The Veilwood' },
@@ -51,13 +47,12 @@ const row = (name: string) => {
 };
 
 const openLocations = async () => {
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Locations/ }));
   await screen.findAllByText('The Veilwood');
 };
 
 const deleteRow = (name: string) => fireEvent.click(within(row(name)).getByRole('button', { name: 'Delete' }));
 
-const expectCleanDelete = (ctx: ReturnType<ReturnType<typeof renderWorldEditorBench>['ctx']>) => {
+const expectCleanDelete = (ctx: ReturnType<ReturnType<typeof renderLocationsTab>['ctx']>) => {
   expect(ctx.locations.map((l) => l.id)).toEqual(['harbor', 'hollow']);
   // The sub-location moves up to the deleted location's parent.
   expect(ctx.locations.find((l) => l.id === 'hollow')?.parentId ?? null).toBeNull();
@@ -68,7 +63,7 @@ const expectCleanDelete = (ctx: ReturnType<ReturnType<typeof renderWorldEditorBe
 
 describe('World Editor — deleting a location', () => {
   it('drops the id from entities and Connections when deleted from the tree', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderLocationsTab(WORLD, 'advanced');
     await openLocations();
 
     deleteRow('The Veilwood');
@@ -77,7 +72,7 @@ describe('World Editor — deleting a location', () => {
   });
 
   it('does the same when deleted from the filtered list', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderLocationsTab(WORLD, 'advanced');
     await openLocations();
     fireEvent.change(screen.getByPlaceholderText('Filter Locations'), { target: { value: 'Veil' } });
 
@@ -86,18 +81,4 @@ describe('World Editor — deleting a location', () => {
     expectCleanDelete(ctx());
   });
 
-  it('restores the location, its membership, and its Connections on Exit Without Saving', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    await openLocations();
-    deleteRow('The Veilwood');
-
-    fireEvent.click(document.querySelector('.lucide-arrow-left')!.closest('button')!);
-    fireEvent.click(await screen.findByRole('button', { name: 'Exit Without Saving' }));
-
-    expect(ctx().locations.map((l) => l.id)).toEqual(['harbor', 'wood', 'hollow']);
-    expect(ctx().locations.find((l) => l.id === 'hollow')?.parentId).toBe('wood');
-    expect(ctx().entities[0].locations).toEqual(['harbor', 'wood']);
-    expect(ctx().connections.map((c) => c.id)).toEqual(['c1', 'c2']);
-    expect(ctx().isWorldDirty).toBe(false);
-  });
 });

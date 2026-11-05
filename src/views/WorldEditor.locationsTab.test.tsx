@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
-import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
+import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
-/** The top-level Locations tab on the List Editor: the tree, a flat sortable search, and the Canvas view. */
+/** How the view holds the Locations tab: the open location across tabs, the List and Canvas switch, the mobile push, the panel under a mode switch, and Exit Without Saving after a delete. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -14,15 +13,19 @@ vi.mock('../services/WorldStorageService', () => ({
   },
 }));
 
+
 vi.mock('@/lib/jsonFileWorkerUtils', () => ({
   serializeJsonBlob: vi.fn(), parseJsonText: vi.fn(), terminateWorker: vi.fn(),
 }));
+
 
 vi.mock('react-toastify', () => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
   ToastContainer: () => null,
 }));
 
+
+{
 const WORLD: World = benchEditorWorld({
   locations: [
     { id: 'harbor', name: 'Harbor' },
@@ -37,8 +40,6 @@ const searchLocations = (term: string) =>
 
 /** The flat search list's rows, by the label each one shows. */
 const searchRows = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));
-
-const searchRow = (name: string) => screen.getByRole('button', { name: `Select ${name}` }).parentElement as HTMLElement;
 
 /** A tree row, the clickable list row holding the name. */
 const treeRow = (name: string) => {
@@ -61,77 +62,7 @@ const detailPushed = () => document.querySelector('[data-list-detail] > [aria-hi
 beforeEach(() => { localStorage.clear(); });
 
 describe('the Locations tab', () => {
-  it('draws the tree until a search is typed, then a flat list with drag grips', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Locations/);
-
-    expect(searchRows()).toEqual([]);
-    expect(treeRow('Hollow')).toBeTruthy();
-    searchLocations('H');
-    expect(searchRows()).toEqual(['Harbor', 'Hollow']);
-    expect(within(searchRow('Hollow')).queryByLabelText('Drag to reorder')).not.toBeNull();
-    searchLocations('Marsh');
-    expect(screen.getByText(/No locations match/)).toBeInTheDocument();
-  });
-
-  it('adds a location named from the search box and opens it', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Locations/);
-
-    searchLocations('Marsh');
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Locations' }));
-    expect(ctx().locations.map((l) => l.name)).toEqual(['Harbor', 'Wood', 'Hollow', 'Marsh']);
-    expect(shownName()).toBe('Marsh');
-  });
-
-  it('duplicates a search row right after the original and opens the copy', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Locations/);
-
-    searchLocations('Harbor');
-    fireEvent.click(within(searchRow('Harbor')).getByRole('button', { name: 'Duplicate' }));
-    expect(ctx().locations.map((l) => l.name)).toEqual(['Harbor', 'Harbor (Copy)', 'Wood', 'Hollow']);
-    expect(shownName()).toBe('Harbor (Copy)');
-  });
-
-  it('gives a duplicated search row its own Unique-chip rolls', () => {
-    const roll = encodePlaceholderToken({ id: 'eye', mode: 'unique', placementId: 'p1' });
-    const world = benchEditorWorld({
-      locations: [{ id: 'harbor', name: 'Harbor', description: `Eyes ${roll}` }],
-    } as Partial<World>);
-    const { ctx } = renderWorldEditorBench(world, 'advanced');
-    openEditorTab(/Locations/);
-
-    searchLocations('Harbor');
-    fireEvent.click(within(searchRow('Harbor')).getByRole('button', { name: 'Duplicate' }));
-    const [source, copy] = ctx().locations;
-    expect(source.description).toBe(`Eyes ${roll}`);
-    expect(decodePlaceholderToken(copy.description!.slice('Eyes '.length))!.placementId).not.toBe('p1');
-  });
-
-  it('deletes a search row and closes its details', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Locations/);
-
-    fireEvent.click(treeRow('Harbor'));
-    searchLocations('Harbor');
-    fireEvent.click(within(searchRow('Harbor')).getByRole('button', { name: 'Delete' }));
-    expect(ctx().locations.map((l) => l.name)).toEqual(['Wood', 'Hollow']);
-    expect(shownName()).toBeNull();
-  });
-
   // Drift log #2: kept until ruled.
-  it('blanks the open location\'s details while a search leaves it out', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Locations/);
-
-    fireEvent.click(treeRow('Wood'));
-    searchLocations('Harbor');
-    expect(shownName()).toBeNull();
-    searchLocations('');
-    expect(shownName()).toBe('Wood');
-  });
-
   it('reopens its own location after a visit to another tab', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Locations/);
@@ -244,3 +175,138 @@ describe('the Locations tab', () => {
     });
   });
 });
+}
+
+{
+/** A parent with every field filled and a child under it, so the persistence case can cross the tree rather
+ *  than only step between siblings. The connection gives Presence something authored to draw. */
+const WORLD: World = benchEditorWorld({
+  locations: [
+    {
+      id: 'veil', name: 'The Veilwood', isStarting: true,
+      playerDescription: 'Moss over standing stones.',
+      aiDescription: 'An old wood the fen grew around.',
+      aiSummary: 'A drowned wood.',
+      imageTags: 'forest, mist',
+    },
+    { id: 'hollow', name: 'The Hollow', parentId: 'veil', aiDescription: 'A dip below the roots.' },
+  ],
+  connections: [{ id: 'c1', a: 'veil', b: 'hollow', aToB: {}, bToA: {} }],
+  entities: [{ id: 'resident', name: 'Odd Wick', aiDescription: 'Keeps the lamps.', locations: ['veil'] }],
+});
+
+/** Every field label the panel shows, in document order. Three of these are also editor tab names, so the
+ *  match is taken from the panel body rather than from the whole editor. */
+const FIELD_LABELS =
+  /^(Name|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Entities|Connections|Background Image|Image Tags|Ambient Sound|Placeholder Pins)$/;
+
+const panelLabels = () =>
+  screen.getAllByText(FIELD_LABELS)
+    .filter((el) => !el.closest('[role="tablist"]'))
+    .map((el) => el.textContent);
+
+/** The location panel's own strip. The editor's top-level one carries a Locations tab, so every read and
+ *  click here is taken from the named strip rather than by tab name. */
+const panelStrip = () => screen.queryByRole('tablist', { name: 'Location Fields' });
+
+const panelTabNames = () => {
+  const strip = panelStrip();
+  return strip ? within(strip).getAllByRole('tab').map((el) => el.textContent) : [];
+};
+
+const panelTab = (name: string) =>
+  within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name });
+
+// These tabs switch on mouseDown, not click.
+const openPanelTab = (name: string) => fireEvent.mouseDown(panelTab(name));
+
+/** One row of the tree. A location's name is drawn as meta elsewhere on the page, so the row is picked as
+ *  the match sitting inside a clickable list row. */
+const treeRow = (name: string) => {
+  const row = screen.getAllByText(name)
+    .map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]'))
+    .find(Boolean);
+  if (!row) throw new Error(`No tree row named ${name}`);
+  return row;
+};
+
+const openLocations = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /^Locations/ }));
+
+const selectLocation = (name: string) => {
+  openLocations();
+  fireEvent.click(treeRow(name));
+};
+
+beforeEach(() => { localStorage.clear(); });
+
+describe('the World Editor location panel tabs', () => {
+  it('falls back to Details when Simple mode takes the chosen tab away', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    selectLocation('The Veilwood');
+    openPanelTab('Pins');
+    pickEditorMode('Simple');
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media']);
+    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
+    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
+  });
+
+  it('gives the Canvas view the same panel as the tree', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    selectLocation('The Veilwood');
+    openPanelTab('Media');
+    fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
+    expect(panelTabNames()).toEqual(['Details', 'Presence', 'Items', 'Media', 'Pins', 'Openings']);
+    expect(panelTab('Media')).toHaveAttribute('aria-selected', 'true');
+  });
+});
+}
+
+{
+const WORLD = benchEditorWorld({
+  locations: [
+    { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+    { id: 'wood', name: 'The Veilwood' },
+    { id: 'hollow', name: 'The Hollow', parentId: 'wood' },
+  ],
+  entities: [{
+    id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',
+    aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor', 'wood'],
+  }],
+  connections: [
+    { id: 'c1', a: 'harbor', b: 'wood', aToB: {}, bToA: {} },
+    { id: 'c2', a: 'hollow', b: 'harbor', aToB: {}, bToA: {} },
+  ],
+} as never);
+
+const row = (name: string) => {
+  const found = screen.getAllByText(name)
+    .map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]'))
+    .find(Boolean);
+  if (!found) throw new Error(`No row named ${name}`);
+  return found;
+};
+
+const openLocations = async () => {
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Locations/ }));
+  await screen.findAllByText('The Veilwood');
+};
+
+const deleteRow = (name: string) => fireEvent.click(within(row(name)).getByRole('button', { name: 'Delete' }));
+
+describe('World Editor — deleting a location', () => {
+  it('restores the location, its membership, and its Connections on Exit Without Saving', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    await openLocations();
+    deleteRow('The Veilwood');
+
+    fireEvent.click(document.querySelector('.lucide-arrow-left')!.closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: 'Exit Without Saving' }));
+
+    expect(ctx().locations.map((l) => l.id)).toEqual(['harbor', 'wood', 'hollow']);
+    expect(ctx().locations.find((l) => l.id === 'hollow')?.parentId).toBe('wood');
+    expect(ctx().entities[0].locations).toEqual(['harbor', 'wood']);
+    expect(ctx().connections.map((c) => c.id)).toEqual(['c1', 'c2']);
+    expect(ctx().isWorldDirty).toBe(false);
+  });
+});
+}

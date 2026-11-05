@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
+import { renderDictionaryTab } from '@/test/dictionaryTabBench';
+import { panelWorld } from '@/test/panelBench';
 
-/**
- * What the World Editor's dictionary entry panel puts on screen, driven through the real editor.
- *
- * The panel splits its fields across its own tabs, so a field that lands on the wrong tab, goes missing, or
- * turns up twice shows here as a changed label list. Matching is Advanced only, so Simple mode keeps one tab
- * and no strip at all.
- */
+/** What the dictionary entry panel puts on screen, in its own tabs. Matching is Advanced only, so Simple mode keeps one tab and no strip. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -29,7 +24,7 @@ vi.mock('react-toastify', () => ({
 }));
 
 /** Two books, so the persistence case can cross a book boundary the way an author reviewing values does. */
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   dictionaries: [
     {
       id: 'b1', name: 'Fen Lore', enabled: true,
@@ -50,7 +45,7 @@ const WORLD: World = benchEditorWorld({
 
 /** The same books over a world that has a placeholder, so the keyword fields are chip-capable and the
  *  Regex switch has a vocabulary to take away. */
-const CHIP_WORLD: World = benchEditorWorld({
+const CHIP_WORLD: World = panelWorld({
   ...(WORLD as Partial<World>),
   placeholders: [{ id: 'p1', name: 'Hair Color', values: [{ id: 'v1', text: 'copper' }] }],
 } as Partial<World>);
@@ -58,9 +53,6 @@ const CHIP_WORLD: World = benchEditorWorld({
 /** Whether a keyword field takes chips. `KeywordChips` swaps its plain input for a chip editor exactly when
  *  the vocabulary is on, and only the chip editor carries an accessible name. */
 const takesChips = (name: string) => screen.queryByLabelText(name) !== null;
-
-// These tabs switch on mouseDown, not click.
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
 const FIELD_LABELS =
   /^(Name|Trigger Keywords|Value|Scan Depth|Secondary Keywords)$/;
@@ -92,7 +84,6 @@ const panelTab = (name: string) =>
 const openPanelTab = (name: string) => fireEvent.mouseDown(panelTab(name));
 
 const selectEntry = (name: string) => {
-  openTab(/Dictionary/);
   fireEvent.click(screen.getByText(name));
 };
 
@@ -100,21 +91,21 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor dictionary entry panel tabs', () => {
   it('offers two tabs in Advanced mode and opens on Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectEntry('Hostile Forces');
     expect(panelTabNames()).toEqual(['Details', 'Matching']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('puts the name, the keywords with their two switches, and the value on Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectEntry('Hostile Forces');
     expect(panelLabels()).toEqual(['Name', 'Trigger Keywords', 'Value']);
     expect(panelSwitches()).toEqual(['Whole Words', 'Case-Sensitive']);
   });
 
   it('puts the set-once rules on Matching, with the secondary gate whole', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectEntry('Hostile Forces');
     openPanelTab('Matching');
     expect(panelLabels()).toEqual(['Scan Depth', 'Secondary Keywords']);
@@ -126,7 +117,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
   });
 
   it('leaves Simple mode one tab, so no strip and no matching rules at all', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderDictionaryTab(WORLD, 'simple');
     selectEntry('Hostile Forces');
     expect(panelStrip()).toBeNull();
     expect(panelLabels()).toEqual(['Name', 'Trigger Keywords', 'Value']);
@@ -134,7 +125,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
   });
 
   it('keeps the chosen tab when the author selects another entry, book or not', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectEntry('Hostile Forces');
     openPanelTab('Matching');
     fireEvent.click(screen.getByText('Quiet Folk'));
@@ -146,23 +137,8 @@ describe('the World Editor dictionary entry panel tabs', () => {
     expect(panelLabels()).toEqual(['Scan Depth', 'Secondary Keywords']);
   });
 
-  it('lands on Details when Simple mode takes Matching away, and restores the strip', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectEntry('Hostile Forces');
-    openPanelTab('Matching');
-
-    pickEditorMode('Simple');
-    expect(panelStrip()).toBeNull();
-    expect(panelLabels()).toEqual(['Name', 'Trigger Keywords', 'Value']);
-
-    // The switch wears the hidden-data marker, whose own label joins its accessible name.
-    pickEditorMode('Advanced');
-    expect(panelTabNames()).toEqual(['Details', 'Matching']);
-    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-  });
-
   it('drops the comma split from both keyword fields once Regex is on', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderDictionaryTab(WORLD, 'advanced');
     selectEntry('Quiet Folk');
     // With Regex off the offer is there to lose: a comma-bearing keyword is offered as a list.
     const before = screen.getByPlaceholderText('Add keyword');
@@ -185,7 +161,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
   });
 
   it('drops the chip vocabulary from both keyword fields once Regex is on', () => {
-    renderWorldEditorBench(CHIP_WORLD, 'advanced');
+    renderDictionaryTab(CHIP_WORLD, 'advanced');
     selectEntry('Quiet Folk');
     expect(takesChips('Add keyword')).toBe(true);
 
@@ -200,17 +176,8 @@ describe('the World Editor dictionary entry panel tabs', () => {
     expect(screen.getByPlaceholderText('Add keyword')).toBeInTheDocument();
   });
 
-  it('puts the placeholder palette bar above the strip, so chips insert on either tab', () => {
-    renderWorldEditorBench(CHIP_WORLD, 'advanced');
-    selectEntry('Hostile Forces');
-    const palette = screen.getByRole('button', { name: 'Placeholders' });
-    // Ahead of the strip in document order, which is what "above" means to the author.
-    expect(palette.compareDocumentPosition(panelStrip()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
   it('shows a book its own panel with no strip', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Dictionary/);
+    renderDictionaryTab(WORLD, 'advanced');
     fireEvent.click(screen.getByText('Fen Lore'));
     expect(panelStrip()).toBeNull();
     // The book panel's own first field, which the Label sits over rather than labels.
