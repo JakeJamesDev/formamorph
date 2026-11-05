@@ -958,7 +958,8 @@ const GameViewer = ({
     [traitLibrary, allEntities],
   );
   // The Map's live roster: the Met set where each entity stands. A runtime character stands where it was met.
-  const { met: metPresence } = usePresence();
+  const presence = usePresence();
+  const { met: metPresence } = presence;
   const metRoster = useMemo(() => metRosterByLocation(metPresence), [metPresence]);
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
   // narration name extractor so a place, a stat, a trait, a lore term, a wildcard value or the player
@@ -3908,7 +3909,7 @@ const GameViewer = ({
           }, world),
           ownerTraits: {
             ...held, world, entities: codeEntities.world, library: libraryIn(world), discovered: laterDiscovered(discoveredEntities),
-            inSceneIds: liveScene().inSceneIds,
+            inSceneIds: presence.inScene.map(({ entity }) => entity.id),
             metIds: metIdsNow(),
           },
           placeholders: {
@@ -4064,7 +4065,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, resolvePH, resolveFor, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, scriptTabWorld, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn, locations, currentLocation, discoveredEntities,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, resolvePH, resolveFor, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, scriptTabWorld, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, presence, libraryIn, locations, currentLocation, discoveredEntities,
       entityPositions, entityFollowers, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState,
       worldItems, worldSlots, inventoryWorld, personaRef, startActionTotals],
   );

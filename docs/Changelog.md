@@ -29,6 +29,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Popup titles, their icons and the close button now line up on one line.** Controls in the title row, such as the Simple and Advanced select in **Settings**, line up too.
+  - **A script's `inScene` now matches In Scene on the Entities tab.** An entity also listed at your new location no longer reads true after you move.
 - **🛠️ Developer tooling**
   - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
   - **Media, Stats and Traits tab tests now mount the panel, not the World Editor, and use half the test time.** 159 tests moved with coverage held; the editor view keeps the cross-tab cases.

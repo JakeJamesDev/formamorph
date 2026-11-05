@@ -540,7 +540,7 @@ When the player plays no entity, `persona` is an empty entry:
 | `name` | The entity's code name. Read-only |
 | `type` | The entity's type, or `''` when it has none. Read-only |
 | `pronouns` | The entity's pronouns, or `''` when it has none. Read-only |
-| `inScene` | True when the entity is in this turn's scene. Read-only |
+| `inScene` | True when the **Entities** tab lists the entity under **In Scene**. An entity under **Also Here** reads false. Read-only |
 | `met` | True when the player has met the entity. Never turns false. Read-only |
 | `location` | The code name of the location the entity is at. A follower reads the player's location. Empty when the entity has no position of its own and is at every location it lists. Read-only |
 | `following` | True when the entity follows the player. Read-only |

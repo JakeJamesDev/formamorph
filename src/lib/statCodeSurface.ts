@@ -264,7 +264,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'name', detail: 'string', info: 'Code name of the entity' },
   { name: 'type', detail: 'string', info: 'Type text of the entity, or empty when it has none' },
   { name: 'pronouns', detail: 'string', info: 'Pronouns text of the entity, or empty when it has none' },
-  { name: 'inScene', detail: 'boolean', info: 'True when the entity is in this turn’s scene' },
+  { name: 'inScene', detail: 'boolean', info: 'True when the Entities tab lists the entity under In Scene' },
   { name: 'met', detail: 'boolean', info: 'True when the player has met the entity, so they see its name, and never false again' },
   { name: 'location', detail: 'string', info: 'Code name of the entity’s location, the player’s for a follower, or empty at every location it lists' },
   { name: 'following', detail: 'boolean', info: 'True when the entity follows the player' },

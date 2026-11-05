@@ -193,6 +193,7 @@ An author can give an entity an optional **Stranger Name** and **Stranger Descri
 - **Q87:** Relationship sentences and Inventory owner headings are references, not rosters, so they keep the true name alone. The entity's own roster block pairs that name with the label.
 - **Q88:** Prompt previews match play. The Test Bench's opening preview and the AI Context preview show the stranger label for each entity the start-met rule leaves unmet (ticket 15).
 - **Q89 (user ruling, 2026-11-01, refines entity-stats Q13 and Q49):** The right panel follows one selected entity. The Stats, Traits and Inventory tabs share the picker and In Scene as its list. Traits draws the world's, the player's and the selected entity's nodes; an out-of-scene library owner stays, since no picker row reaches it. Inventory adds a read-only card of the entity's visible equipped items (inventory Q31). With no pick and no art in the scene, the panel falls back to the first met In Scene entity. Also Here entities stay out of the picker.
+- **Q90 (user ruling, 2026-11-05, refines stat-code-entities Q9):** A script's `inScene` reads the In Scene set, so it agrees with the panels, the move cutoff included. `location.present` and the prompts' In Scene chip keep their own reads (Q26).
 
 - **Open (for the user):** with planning off, no planner seeds the alias, so the narrator sees the stranger's true name in its roster. This effort leaves that as is.
 
