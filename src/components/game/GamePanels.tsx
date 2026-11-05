@@ -41,7 +41,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
+import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
 import { AvatarIcon, EntitiesIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { balanceRows } from '@/lib/currency';
 import { InventoryTab } from './InventoryTab';
@@ -88,6 +88,11 @@ import type { TraitCascade } from './SetupTraitList';
 import { daypartAt, formatAbsolute, formatClock } from '@/lib/gameClock';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
+import { useSlidePresence } from "@/lib/useSlidePresence";
+
+/** The Entity View slide, on the nav rail's curve. */
+const ENTITY_VIEW_SLIDE_MS = 200;
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { LocationTabBody } from './LocationTabBody';
 import { EntityListRow, EntityListSection } from './EntityListRow';
@@ -190,6 +195,9 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   const firstShowable = lookAround.find((row) => row.met && showable(row.entity))?.entity;
   const isMobile = useIsMobile();
   const [showEntityView, setShowEntityView] = React.useState(true);
+  const reducedMotion = usePrefersReducedMotion();
+  const entityViewSlide = useSlidePresence(showEntityView, ENTITY_VIEW_SLIDE_MS, reducedMotion);
+  const slideTransition = (property: string) => (reducedMotion ? 'none' : `${property} ${ENTITY_VIEW_SLIDE_MS}ms cubic-bezier(0.2, 0, 0, 1)`);
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
   const landingKey = useRequestKey(requestKey);
   React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, landingKey]);
@@ -313,11 +321,22 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
                 size="icon"
                 onClick={() => setShowEntityView((s) => !s)}
               >
-                {showEntityView ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                <ChevronUp
+                  className="h-5 w-5"
+                  style={{ transform: showEntityView ? 'none' : 'rotate(180deg)', transition: slideTransition('transform') }}
+                />
               </Button>
             </Tip>
           </div>
-          {showEntityView && entityView && <div className="mt-2">{entityView}</div>}
+          {/* The grid row slides; the content keeps its full size and clips, so a model never resizes. */}
+          {entityViewSlide.mounted && entityView && (
+            <div
+              className="grid"
+              style={{ gridTemplateRows: entityViewSlide.open ? '1fr' : '0fr', transition: slideTransition('grid-template-rows') }}
+            >
+              <div className="min-h-0 overflow-hidden"><div className="mt-2">{entityView}</div></div>
+            </div>
+          )}
         </div>
       )}
 

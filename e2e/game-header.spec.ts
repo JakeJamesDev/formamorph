@@ -30,7 +30,8 @@ test('the left panel row reads Back, Music and the toggle, 8px above the entity 
   await back.waitFor();
   const gap = () => toggle.evaluate((el) => {
     const row = el.parentElement as HTMLElement;
-    const view = row.nextElementSibling;
+    // The section's grid clip holds the 8px margin, so measure the box inside it.
+    const view = row.nextElementSibling?.firstElementChild?.firstElementChild;
     return view?.querySelector('img') ? view.getBoundingClientRect().top - row.getBoundingClientRect().bottom : null;
   });
   await expect.poll(gap).toBe(8);
