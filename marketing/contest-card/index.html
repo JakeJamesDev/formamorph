@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Contest Winner Card</title>
+<link rel="icon" href="../../public/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #f7c948;
+    --silver: #c3cbd6;
+    --bronze: #e29a62;
+    --ink: #f4f6fb;
+    --ink-soft: #b7bfd2;
+    --card-w: 1200px;
+    --card-h: 675px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 16px;
+    background: #23262e;
+    color: var(--ink);
+    font-family: Inter, system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Tools sit outside the card, so a screenshot of the card never includes them. */
+  .tools {
+    width: var(--card-w);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .tools label { display: flex; align-items: center; gap: 8px; }
+  .tools select, .tools button {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid #4a4f5c;
+    border-radius: 6px;
+    background: #31353f;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+  }
+  .tools input[type="color"] {
+    width: 32px;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid #4a4f5c;
+    border-radius: 6px;
+    background: #31353f;
+    cursor: pointer;
+  }
+  .tools .hint { margin-left: auto; }
+  .status { font-size: 16px; color: var(--ink-soft); }
+
+  #card {
+    position: relative;
+    flex: none;
+    width: var(--card-w);
+    height: var(--card-h);
+    padding: 26px 40px 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(70% 60% at 50% 0%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%),
+      radial-gradient(60% 70% at 0% 100%, rgba(120, 74, 214, .38), transparent 70%),
+      radial-gradient(60% 70% at 100% 100%, rgba(38, 150, 170, .34), transparent 70%),
+      #0d1124;
+  }
+  #confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #card > :not(#confetti) { position: relative; }
+
+  header { text-align: center; margin-bottom: 16px; }
+  .eyebrow {
+    font: 600 20px/1.2 Fredoka, sans-serif;
+    letter-spacing: .04em;
+    color: var(--ink);
+    text-shadow: 0 1px 8px rgba(5, 8, 22, .9);
+  }
+  h1 {
+    margin: 2px 0 0;
+    font: 700 62px/1.08 Fredoka, sans-serif;
+    color: var(--accent);
+    text-shadow: 0 3px 0 rgba(5, 8, 22, .55), 0 0 28px rgba(5, 8, 22, .75);
+  }
+
+  .podium { flex: 1; min-height: 0; display: flex; gap: 24px; }
+  .golds { flex: 0 0 600px; display: grid; gap: 16px; align-content: center; }
+  .golds.tied { grid-template-columns: 1fr 1fr; }
+  .podium.solo { justify-content: center; }
+  .others { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+
+  .art {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: linear-gradient(135deg, #2b3158, #181c38);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+  }
+  .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .gold .art { border-radius: 14px; border: 4px solid var(--accent); box-shadow: 0 0 32px color-mix(in srgb, var(--accent) 45%, transparent), 0 10px 26px rgba(0, 0, 0, .5); }
+  .gold .place {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #1c1604;
+    font: 700 19px/1.2 Fredoka, sans-serif;
+  }
+  .gold .name { margin-top: 10px; font: 600 30px/1.14 Fredoka, sans-serif; text-align: center; }
+  .gold .author { margin-top: 1px; font-size: 18px; color: var(--ink-soft); text-align: center; }
+  .golds.tied .name { font-size: 24px; }
+  .golds.tied .author { font-size: 16px; }
+  .golds.tied .place { font-size: 15px; top: 8px; left: 8px; }
+
+  .row {
+    flex: 0 1 100px;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 7px;
+    border-radius: 12px;
+    background: rgba(13, 17, 36, .72);
+    border: 1px solid rgba(255, 255, 255, .13);
+  }
+  .row .art { height: 100%; flex: none; border-radius: 8px; font-size: 24px; }
+  .row .text { min-width: 0; flex: 1; }
+  .row .place { font: 700 15px/1.2 Fredoka, sans-serif; }
+  .row[data-place="2"] .place { color: var(--silver); }
+  .row[data-place="3"] .place { color: var(--bronze); }
+  .row .name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font: 600 20px/1.16 Fredoka, sans-serif;
+  }
+  .row .author { font-size: 14px; color: var(--ink-soft); }
+  .name { overflow-wrap: anywhere; }
+  .eyebrow, h1, .gold .name, .gold .author { width: fit-content; margin-inline: auto; }
+
+  footer {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    font-size: 15px;
+    color: var(--ink-soft);
+  }
+  .brand { justify-self: start; }
+  .brand { display: flex; align-items: center; gap: 8px; font: 600 18px/1 Fredoka, sans-serif; color: var(--ink); }
+  .brand img { width: 26px; height: 26px; border-radius: 6px; }
+  .thanks { font-weight: 500; color: var(--ink); }
+
+  [contenteditable] { outline: none; border-radius: 4px; cursor: text; }
+  [contenteditable]:focus { box-shadow: 0 0 0 2px rgba(255, 255, 255, .5); }
+</style>
+</head>
+<body>
+  <div class="tools">
+    <label>Contest <select id="contest"></select></label>
+    <label>Color <input id="accent" type="color" value="#f7c948"></label>
+    <button id="reshuffle" type="button">Reshuffle Confetti</button>
+    <span class="hint">Click any text on the card to edit it</span>
+  </div>
+  <div id="status" class="status" role="status">Loading results…</div>
+  <div id="card" hidden></div>
+
+<script>
+const API = 'https://api.formamorph.ai';
+const PLACE_LABELS = { 1: '1st Place', 2: '2nd Place', 3: '3rd Place' };
+const CONFETTI_COLORS = ['#f7c948', '#ff6b8a', '#6fe3d6', '#b48cff', '#ff9f5a', '#ffffff', '#7fb8ff'];
+const CONFETTI_ATTEMPTS = 260;
+const CONFETTI_CLEARANCE = 6;
+
+const NOISE_WORD = 'updated?|patch(?:ed)?|hot ?fix(?:ed)?|bug ?fix(?:ed)?|fix(?:ed)?|re-?upload(?:ed)?|wip|w\\.i\\.p\\.?|alpha|beta|demo|final|new|old|original|copy|modded|complete';
+const VERSION = '(?:\\bver(?:sion)?\\.?\\s*|\\bv\\.?\\s*)\\d+(?:\\.\\d+)*\\.?(?![\\w])|\\b\\d+(?:\\.\\d+)+\\.?(?![\\w])|\\bupdate\\s+\\d+\\b';
+const NOISY_BRACKET = new RegExp(`[(\\[][^()\\[\\]]*(?:${VERSION}|\\b(?:${NOISE_WORD})\\b)[^()\\[\\]]*[)\\]]`, 'gi');
+const VERSION_TOKEN = new RegExp(VERSION, 'gi');
+const TRAILING_NOISE = new RegExp(`[\\s\\-–—:|,]+(?:${NOISE_WORD})\\s*$`, 'i');
+
+/** Drops version numbers and release notes from a listing name. */
+function cleanWorldName(raw) {
+  let name = raw.replace(NOISY_BRACKET, ' ').replace(VERSION_TOKEN, ' ');
+  while (TRAILING_NOISE.test(name)) name = name.replace(TRAILING_NOISE, '');
+  name = name.replace(/\s+/g, ' ').trim();
+  // A name with nothing to remove keeps its own punctuation.
+  if (name === raw.replace(/\s+/g, ' ').trim()) return name;
+  name = name.replace(/[\s\-–—:|,]+(?=[(\[])/g, ' ').replace(/[\s\-–—:|,.]+$/, '');
+  return name || raw.trim();
+}
+
+const element = (tag, className, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+
+const editable = (tag, className, text) => {
+  const node = element(tag, className, text);
+  node.contentEditable = 'plaintext-only';
+  node.spellcheck = false;
+  return node;
+};
+
+/** A seeded generator, so one contest shows the same confetti until it is reshuffled. */
+function seededRandom(seedText) {
+  let state = 0;
+  for (const char of seedText) state = (Math.imul(state, 31) + char.charCodeAt(0)) | 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let mixed = Math.imul(state ^ (state >>> 15), 1 | state);
+    mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Where confetti must not land: every text block and tile, measured as drawn. */
+function confettiKeepOut(card) {
+  const origin = card.getBoundingClientRect();
+  return [...card.querySelectorAll('.eyebrow, h1, .gold .art, .gold .name, .gold .author, .row, footer > *')].map((node) => {
+    const box = node.getBoundingClientRect();
+    return {
+      left: box.left - origin.left - CONFETTI_CLEARANCE,
+      right: box.right - origin.left + CONFETTI_CLEARANCE,
+      top: box.top - origin.top - CONFETTI_CLEARANCE,
+      bottom: box.bottom - origin.top + CONFETTI_CLEARANCE,
+    };
+  });
+}
+
+function confettiSvg(seedText, width, height, keepOut) {
+  const random = seededRandom(seedText);
+  const pieces = [];
+  for (let index = 0; index < CONFETTI_ATTEMPTS; index++) {
+    // Squaring the height pulls the confetti toward the top of the card.
+    const x = random() * width;
+    const y = random() ** 1.8 * height;
+    const size = 5 + random() * 9;
+    const reach = size * 1.3;
+    if (keepOut.some((box) => x + reach > box.left && x - reach < box.right && y + reach > box.top && y - reach < box.bottom)) continue;
+    const color = CONFETTI_COLORS[Math.floor(random() * CONFETTI_COLORS.length)];
+    const turn = Math.round(random() * 360);
+    const shape = random();
+    const place = `transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${turn})"`;
+    if (shape < 0.5) {
+      pieces.push(`<rect ${place} x="${-size / 2}" y="${-size / 4}" width="${size}" height="${size / 2}" rx="1" fill="${color}"/>`);
+    } else if (shape < 0.75) {
+      pieces.push(`<circle ${place} r="${(size / 3).toFixed(1)}" fill="${color}"/>`);
+    } else {
+      const s = size * 1.3;
+      pieces.push(`<path ${place} d="M${-s} 0q${s / 2} ${-s} ${s} 0t${s} 0" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"/>`);
+    }
+  }
+  return `<svg id="confetti" viewBox="0 0 ${width} ${height}" aria-hidden="true">${pieces.join('')}</svg>`;
+}
+
+function artFor(entry) {
+  const frame = element('div', 'art');
+  if (entry.art) {
+    const image = element('img');
+    image.src = entry.art;
+    image.alt = '';
+    frame.append(image);
+  } else {
+    frame.textContent = '🏆';
+  }
+  return frame;
+}
+
+function goldTile(entry) {
+  const tile = element('div', 'gold');
+  const frame = artFor(entry);
+  frame.append(element('div', 'place', PLACE_LABELS[1]));
+  tile.append(frame, editable('div', 'name', entry.name), editable('div', 'author', `by ${entry.author}`));
+  return tile;
+}
+
+function otherRow(entry) {
+  const row = element('div', 'row');
+  row.dataset.place = entry.place;
+  const text = element('div', 'text');
+  text.append(
+    element('div', 'place', PLACE_LABELS[entry.place]),
+    editable('div', 'name', entry.name),
+    editable('div', 'author', `by ${entry.author}`),
+  );
+  row.append(artFor(entry), text);
+  return row;
+}
+
+function drawCard(contest, entries, seed) {
+  const card = document.getElementById('card');
+  const golds = entries.filter((entry) => entry.place === 1);
+  const others = entries.filter((entry) => entry.place !== 1);
+
+  card.innerHTML = '';
+
+  const header = element('header');
+  header.append(
+    editable('div', 'eyebrow', `${contest.title} · The Results Are In`),
+    editable('h1', '', entries.length === 1 ? `Congratulations, ${entries[0].author}!` : 'Congratulations to Our Winners!'),
+  );
+
+  const podium = element('div', others.length ? 'podium' : 'podium solo');
+  const goldColumn = element('div', golds.length > 1 ? 'golds tied' : 'golds');
+  goldColumn.append(...golds.map(goldTile));
+  podium.append(goldColumn);
+  if (others.length) {
+    const otherColumn = element('div', 'others');
+    otherColumn.append(...others.map(otherRow));
+    podium.append(otherColumn);
+  }
+
+  const footer = element('footer');
+  const brand = element('div', 'brand');
+  const logo = element('img');
+  logo.src = '../../public/icon.png';
+  logo.alt = '';
+  brand.append(logo, element('span', '', 'formamorph.ai'));
+  footer.append(brand, editable('div', 'thanks', 'Thank you to everyone who entered!'));
+
+  card.append(header, podium, footer);
+  card.hidden = false;
+  card.insertAdjacentHTML('afterbegin', confettiSvg(`${contest.id}:${seed}`, 1200, 675, confettiKeepOut(card)));
+}
+
+const worldArt = new Map();
+
+/** Reads a listing's thumbnail. A deleted listing has no art, so its tile shows a trophy. */
+async function artOf(worldId) {
+  if (!worldId) return null;
+  if (!worldArt.has(worldId)) {
+    worldArt.set(worldId, fetch(`${API}/api/worlds/${worldId}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        const world = body?.data;
+        if (world?.thumbnailUrl) return `${API}${world.thumbnailUrl}`;
+        return world?.thumbnail || null;
+      })
+      .catch(() => null));
+  }
+  return worldArt.get(worldId);
+}
+
+async function start() {
+  const status = document.getElementById('status');
+  const picker = document.getElementById('contest');
+  let contests;
+  try {
+    const response = await fetch(`${API}/api/events?slim=1`);
+    if (!response.ok) throw new Error(`The server answered ${response.status}`);
+    const body = await response.json();
+    contests = body.data
+      .filter((event) => event.resultsAnnouncedAt && event.placements?.length)
+      .sort((a, b) => b.resultsAnnouncedAt.localeCompare(a.resultsAnnouncedAt));
+  } catch (error) {
+    status.textContent = `Couldn't load the contests. ${error.message}`;
+    return;
+  }
+  if (contests.length === 0) {
+    status.textContent = 'No contest has announced results yet.';
+    return;
+  }
+
+  picker.append(...contests.map((contest) => {
+    const option = element('option', '', contest.title);
+    option.value = contest.id;
+    return option;
+  }));
+
+  let seed = 0;
+  let current = null;
+  const show = async () => {
+    const contest = contests.find((event) => event.id === picker.value);
+    const entries = await Promise.all(contest.placements.map(async (placement) => ({
+      place: placement.place,
+      name: cleanWorldName(placement.worldName),
+      author: placement.authorName,
+      art: await artOf(placement.worldId),
+    })));
+    if (contest.id !== picker.value) return;
+    current = { contest, entries };
+    status.hidden = true;
+    drawCard(contest, entries, seed);
+  };
+
+  picker.addEventListener('change', show);
+  document.getElementById('reshuffle').addEventListener('click', () => {
+    seed += 1;
+    // Replaces only the confetti, so text edits stay on the card.
+    if (current) {
+      const card = document.getElementById('card');
+      document.getElementById('confetti').outerHTML = confettiSvg(`${current.contest.id}:${seed}`, 1200, 675, confettiKeepOut(card));
+    }
+  });
+  document.getElementById('accent').addEventListener('input', (event) => {
+    document.documentElement.style.setProperty('--accent', event.target.value);
+  });
+  // Keep-out boxes are measured, so the fonts must be in place first.
+  await document.fonts.ready;
+  await show();
+}
+
+start();
+</script>
+</body>
+</html>
