@@ -47,7 +47,6 @@ test('seven turns keeping five leave the five latest autosaves, named by turn, a
   expect(turns[4] - turns[0]).toBe(4);
 
   // Lowered in Settings: a warning until Settings closes, then the next autosave leaves two.
-  await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByRole('button', { name: 'Settings' }).click();
   const settings = page.getByRole('dialog', { name: 'Settings' });
   await settings.getByRole('tab', { name: 'Data' }).click();
@@ -59,7 +58,6 @@ test('seven turns keeping five leave the five latest autosaves, named by turn, a
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
   // Reopened, 2 is where it now stands: nothing was lowered this time, so no warning.
-  await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByRole('button', { name: 'Settings' }).click();
   await settings.getByRole('tab', { name: 'Data' }).click();
   await expect(settings.locator('#autosaveSlots').getByRole('slider')).toHaveAttribute('aria-valuenow', '2');

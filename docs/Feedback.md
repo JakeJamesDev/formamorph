@@ -16,7 +16,7 @@ Use the **Feedback** window to report a bug, suggest something or ask a question
 5. Fill in **Title**, **Category** and the description.
 6. Select **Send Report**, **Send Suggestion** or **Post Question**.
 
-In a game, **Send Feedback** in the menu opens the form directly. See [The Feedback Window](#the-feedback-window).
+In a game, **Send Feedback** in **More Actions** (`...`) opens the form directly. See [The Feedback Window](#the-feedback-window).
 
 ---
 

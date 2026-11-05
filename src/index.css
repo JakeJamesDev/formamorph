@@ -510,10 +510,13 @@
 :root {
   --header-line: 56px;
   --window-buttons-width: 0px;
+  --game-right-column-min: 0px;
 }
 /* A host page can define these `env()` values too, so only the flag reads them. */
 [data-window-overlay] {
   --window-buttons-width: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  /* Keeps the header's buttons, beside the window buttons, above the right column. */
+  --game-right-column-min: 312px;
 }
 @media (min-width: 768px) {
   .Toastify__toast-container--top-right {
@@ -526,6 +529,13 @@
   height: var(--header-line);
   z-index: -1;
   pointer-events: none;
+  app-region: drag;
+}
+/* The raised panels' text stays selectable. */
+[data-window-overlay]:has([data-game-raised-panels]) .window-drag-area {
+  height: 1rem;
+}
+[data-window-overlay] .game-right-column-drag {
   app-region: drag;
 }
 /* Controls only, because a dialog has a role too. A modal's `aria-hidden` page can't take a click anyway. */

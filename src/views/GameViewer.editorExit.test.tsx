@@ -28,9 +28,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const openEditor = async () => {
+  fireEvent.click(await screen.findByRole('button', { name: 'More Actions' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+};
+
 /** Opens the editor over the game and renames the world, which leaves one pending edit. */
 const editName = async (name: string) => {
-  fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+  await openEditor();
   const editor = await screen.findByRole('dialog', { name: 'World Editor' });
   fireEvent.change(within(editor).getByDisplayValue('Sedge Landing'), { target: { value: name } });
   // The editor reads the edit as pending once Save lights up, as a person would wait for it.
@@ -47,7 +52,7 @@ describe('Exit Without Saving in the in-play editor', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Exit Without Saving' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'World Editor' })).toBeNull());
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+    await openEditor();
     const reopened = await screen.findByRole('dialog', { name: 'World Editor' });
     expect(within(reopened).getByDisplayValue('Sedge Landing')).toBeInTheDocument();
     expect(within(reopened).queryByDisplayValue('Brinewell')).toBeNull();

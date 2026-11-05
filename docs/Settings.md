@@ -4,7 +4,7 @@
 
 Settings controls how the app looks, what the AI writes each turn, which AI it connects to, and some stored data. Your settings stay on this device.
 
-To open it, select **Menu** on the main menu, then **Settings**. During a game, open the **Menu** and select **Settings**.
+To open it, select **Menu** on the main menu, then **Settings**. During a game, select **Settings** at the top right. On mobile, select **More Actions** (`...`), then **Settings**.
 
 > The **Endpoints**, **Prompts** and **Tools** tabs have their own pages: [Endpoint Settings](Endpoint-Settings), [Prompts](Prompts) and [Tools](Tools). This page covers the other three tabs.
 

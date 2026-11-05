@@ -57,7 +57,7 @@ import { ClearSearchButton } from "@/components/ui/search-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
+import { ArrowLeft, Music, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, dialogTitleRow } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -277,6 +277,7 @@ import {
 } from "../components/game/GamePanels";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
 import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
 import { useDemoAIEntryLine } from "../components/game/demoAISeen";
@@ -1263,6 +1264,7 @@ const GameViewer = ({
   // Filing needs an account, so the in-game entry point is only offered to someone signed in.
   const [showBugReport, setShowBugReport] = useState(false);
   const canReportBug = COMMUNITY_ENABLED && Boolean(AuthService.token);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Lend that composer to the account-deletion flow, which stands above this screen and tells a
   // suspended account to ask the team here. The Privacy Policy prompt can raise the flow mid-game, so
@@ -6010,6 +6012,20 @@ const GameViewer = ({
 
   const leftPanel = (
     <LeftPanel
+      rowStart={
+        <Tip tip="Exit to Main Menu">
+          <Button variant="ghost" size="icon" onClick={() => setShowExitConfirm(true)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Tip>
+      }
+      rowEnd={
+        <Tip tip={bgmEnabled ? "Turn Music Off" : "Turn Music On"}>
+          <Button variant="ghost" size="icon" onClick={() => setBgmEnabled(!bgmEnabled)}>
+            {bgmEnabled ? <Music className="h-5 w-5" /> : <MusicOffIcon className="h-5 w-5 text-muted-foreground" />}
+          </Button>
+        </Tip>
+      }
       // Runtime-discovered characters must be in this list or they render as disabled, portrait-less
       // rows the player can't open — and the Discovered badge/remove control never resolves them.
       entities={allEntities}
@@ -6134,22 +6150,25 @@ const GameViewer = ({
     }
     return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
   };
-  const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
+  const menuModal = (directActions: boolean) => (
     <MenuModal
+      directActions={directActions}
       onSettingsClick={() => setIsSettingsOpen(true)}
       onReportBug={canReportBug ? () => setShowBugReport(true) : undefined}
       onSave={handleMenuSave}
       onLoad={handleMenuLoad}
       worldOverview={worldOverview}
       worldId={worldId ? String(worldId) : undefined}
-      onExitToMenu={onExitToMenu}
-      {...extra}
+      onExit={() => setShowExitConfirm(true)}
+      onEditWorld={() => setIsEditingWorld(true)}
+      onShowAiContext={() => setIsDebugOpen(true)}
     />
   );
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : "p-4 pt-[var(--header-line)]"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : "p-4"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
+      data-game-raised-panels={!isMobile && !uiHidden ? "" : undefined}
     >
       {locationBackground && (
         <LocationBackdrop
@@ -6179,8 +6198,8 @@ const GameViewer = ({
               {t.label}
             </button>
           ))}
-          {/* Menu joins the tab row on mobile; Edit World + AI Context fold into it (their header buttons hide). */}
-          {menuModal({ onEditWorld: () => setIsEditingWorld(true), onShowAiContext: () => setIsDebugOpen(true) })}
+          {/* The single menu joins the tab row on mobile. */}
+          {menuModal(false)}
         </div>
       )}
 
@@ -6213,43 +6232,20 @@ const GameViewer = ({
       </Tip>
       )}
 
-      {/* BGM + AI-context buttons — desktop only. On mobile the music toggle is dropped and AI context moves
-          into the tab-row menu. */}
+      {/* The right column's header. */}
       {!uiHidden && !isMobile && (
-      <div className="absolute top-16 left-2 md:top-2 flex gap-2">
-        <Button
-          onClick={() => setBgmEnabled(!bgmEnabled)}
-          className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-        >
-          <Music
-            className={`h-5 w-5 ${bgmEnabled ? "" : "text-muted-foreground"}`}
-          />
-        </Button>
-        <Tip tip="Show the full AI context sent each turn">
-          <Button
-            onClick={() => setIsDebugOpen(true)}
-            className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-          >
-            <ScrollText className="h-5 w-5" />
-          </Button>
-        </Tip>
+      <div className="absolute top-2 right-[calc(0.5rem+var(--window-buttons-width))] flex gap-2">
+        {menuModal(true)}
       </div>
       )}
-
-      {/* Edit-world + Menu buttons — desktop only. On mobile both fold into the tab-row menu. */}
-      {!uiHidden && !isMobile && (
-      <div className="absolute top-16 right-[calc(0.5rem+var(--window-buttons-width))] md:top-2 flex gap-2">
-        <Tip tip="Edit World">
-          <Button
-            onClick={() => setIsEditingWorld(true)}
-            className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-          >
-            <SquarePen className="h-5 w-5" />
-          </Button>
-        </Tip>
-        {menuModal()}
-      </div>
-      )}
+      <ConfirmDialog
+        open={showExitConfirm}
+        onOpenChange={setShowExitConfirm}
+        title={EXIT_TO_MENU_PROMPT.title}
+        icon={<DoorOpen className="h-4 w-4" />}
+        description={EXIT_TO_MENU_PROMPT.description}
+        onConfirm={onExitToMenu}
+      />
 
       {/* Modals */}
       {readmeText && (

@@ -9,11 +9,10 @@ A save keeps one game's progress. A backup keeps your worlds, saves, library ent
 <!-- keywords: progress, keep, file, store, checkpoint, quit, stop playing, manual, slot, bookmark, come back later, overwrite, preserve, session, avoid losing -->
 <!-- route: gameViewer -->
 
-1. In the game, select the **Menu** button at the top right.
-2. Select **Save Game**.
-3. Type a name in the box. The box shows the name of the save you loaded or saved last.
-4. Select the **Save** button, or press Enter.
-5. If a save with that name is in this world, **Save already exists** opens. Select **Overwrite** to replace it, or **Keep both** to add a second save.
+1. In the game, select **Save Game** at the top right. On mobile, select **More Actions** (`...`), then **Save Game**.
+2. Type a name in the box. The box shows the name of the save you loaded or saved last.
+3. Select the **Save** button, or press Enter.
+4. If a save with that name is in this world, **Save already exists** opens. Select **Overwrite** to replace it, or **Keep both** to add a second save.
 
 The **Logs** tab records *Game saved as …*. To keep scene images in the save, select their checkbox. See [The Save Game Dialog](#the-save-game-dialog).
 
@@ -22,7 +21,7 @@ The **Logs** tab records *Game saved as …*. To keep scene images in the save, 
 <!-- route: menu -->
 
 1. Open **Load Game**:
-   - In the game, select **Menu**, then **Load Game**.
+   - In the game, select **Load Game** at the top right. On mobile, select **More Actions** (`...`), then **Load Game**.
    - On the main menu, select the **Menu** button at the top right, then **Load Game**. On a narrow screen, the item is in the **Menu** button at the top center.
 2. Select the folder of the world. In the game, the dialog opens on the current world's folder; select **Back** to see the others.
 3. Select a save. The game opens at the turn you saved.
@@ -280,7 +279,7 @@ On the web, the version number at the bottom left of the main menu opens **What'
 
 ## Related
 
-- [🎮 How to Play](How-to-Play): the game menu and the **Logs** tab
+- [🎮 How to Play](How-to-Play): the game's actions and the **Logs** tab
 - [⚙️ Settings](Settings): the **Autosave** setting and the **Data** tab
 - [📚 Library](Library): import and export worlds, entities, dictionaries and avatars
 - [📱 Install on Android](Install-on-Android): updates and exports on Android

@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The Windows desktop app now fills the whole window, with its minimize, maximize and close buttons over the content.** Drag the window by the empty parts of the header. Every screen's top row now lines up at one height, on the web too, and toasts start below it. The window stops shrinking at 800×600.
+  - **The game's panels reach the top, with Save, Load and Settings as direct buttons.** Back and Music move to the left panel's top row. Edit World, AI Context and Send Feedback move to a `...` menu.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.

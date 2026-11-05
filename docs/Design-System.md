@@ -1219,6 +1219,29 @@ Labels use title case. Times state their zone once, at the top of the report.
 | The window options | [`windowChrome.cjs`](../electron/windowChrome.cjs) |
 | The tokens and the drag rules | [`index.css`](../src/index.css) |
 
+### In the game
+
+- 🪜 The left and center panels start at the top margin, at `y=16`. The right column starts below the line, and the buttons above it read as its header.
+- 📐 In the Windows desktop app, the right column is at least 312px wide (`--game-right-column-min`), so those buttons never reach the center panel.
+- 🖱️ Only the top margin and the strip above the right column drag the window, so panel text stays selectable.
+
+## Pattern: Two-Segment Button
+
+**Purpose:** Show two related actions as one control, while each still takes one click.
+
+**Rule:**
+
+- 💊 One round pill, 40px tall, with a thin line between the halves. Each half is its own button with its own tooltip.
+- 🧩 Use it for a pair a player reads together, such as **Save Game** and **Load Game**. An action with its own meaning gets its own round button.
+- 🚫 Don't use it to pick an option. A choice between states is a [segmented option](#pattern-aligned-settings-stack).
+
+### Production mapping
+
+| Piece | Where |
+|---|---|
+| The button | `TwoSegmentButton` in [`two-segment-button.tsx`](../src/components/ui/two-segment-button.tsx) |
+| The showcase | [`TwoSegmentButtonReference.tsx`](../src/components/design-system/TwoSegmentButtonReference.tsx) |
+
 ## Pattern: Surface App Bar
 
 **Purpose:** Put a surface's identity, its everyday tools and its whole-surface actions in one row above everything they act on.

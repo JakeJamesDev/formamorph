@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tip } from "@/components/ui/tooltip";
-import { Menu, Save, FolderOpen, SquarePen, ScrollText, Settings, MessageSquarePlus, DoorOpen } from "lucide-react";
-import { ConfirmDialog } from '../ConfirmDialog';
+import { TwoSegmentButton } from "@/components/ui/two-segment-button";
+import { MoreHorizontal, Save, FolderOpen, SquarePen, ScrollText, Settings, MessageSquarePlus, DoorOpen, type LucideIcon } from "lucide-react";
 import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
 import { LoadGameDialog } from './LoadGameDialog';
@@ -14,11 +14,12 @@ import { useGameplay } from '../../contexts/GameplayContext';
 import { useClosingSnapshot } from '@/lib/useClosingSnapshot';
 import { sceneImageWeight } from '@/lib/sceneImages';
 import { formatBytes } from '@/lib/imageOptim';
-import { EXIT_TO_MENU_PROMPT } from '@/lib/leavePrompts';
 import type { WorldOverview, SaveRecord } from "@/types";
 import { Hint } from '@/components/ui/typography';
 
-export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
+export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExit, onEditWorld, onShowAiContext }: {
+  /** Save, Load and Settings sit in the row as buttons, and the menu holds the rest. */
+  directActions?: boolean;
   onSettingsClick: () => void;
   /** Opens the feedback form. Omitted when the community server is off or nobody is signed in. */
   onReportBug?: () => void;
@@ -28,10 +29,10 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
   worldOverview?: WorldOverview;
   /** Stable id of the currently loaded world (from GameData) — the current world's folder key. */
   worldId?: string;
-  onExitToMenu: () => void;
-  /** Optional extra items — used on mobile, where these live in the menu instead of their own header buttons. */
-  onEditWorld?: () => void;
-  onShowAiContext?: () => void;
+  /** Asks whether to leave the game. Only the full menu offers it. */
+  onExit: () => void;
+  onEditWorld: () => void;
+  onShowAiContext: () => void;
 }) => {
   const current = React.useMemo(
     () => ({ id: worldId ? String(worldId) : '__none__', name: worldOverview?.name ?? 'Current World' }),
@@ -45,7 +46,6 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
   React.useEffect(() => {
     if (import.meta.env.DEV && devRoute?.modal === 'menu') setShowLoadDialog(true);
   }, [devRoute?.modal]);
-  const [showExitConfirm, setShowExitConfirm] = React.useState(false);
   const [saveName, setSaveName] = React.useState('');
   const [records, setRecords] = React.useState<SaveRecord[]>([]);
   const [dupConflict, setDupConflict] = React.useState<{ name: string; existingId: string } | null>(null);
@@ -95,60 +95,51 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
     else await commitSave(name);
   };
 
+  const menuItem = (Icon: LucideIcon, label: string, run: () => void) => (
+    <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); run(); }}>
+      <Icon className="mr-2 h-4 w-4" /> {label}
+    </Button>
+  );
+
   return (
     <>
+      {directActions && (
+        <>
+          <TwoSegmentButton
+            segments={[
+              { label: 'Save Game', icon: Save, onClick: () => setShowSaveDialog(true) },
+              { label: 'Load Game', icon: FolderOpen, onClick: () => setShowLoadDialog(true) },
+            ]}
+          />
+          <Tip tip="Settings">
+            <Button onClick={onSettingsClick} className="flex items-center justify-center rounded-full w-10 h-10 p-0">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </Tip>
+        </>
+      )}
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-        <Tip tip="Menu">
+        <Tip tip="More Actions">
           <PopoverTrigger asChild>
             <Button className="flex items-center justify-center rounded-full w-10 h-10 p-0">
-              <Menu className="h-5 w-5" />
+              <MoreHorizontal className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
         </Tip>
         {/* Wide enough for `Exit to Main Menu` plus its icon with room to spare — at w-48 it had 14px. */}
         <PopoverContent align="end" className="w-60 p-1">
           <div className="flex flex-col">
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowSaveDialog(true); }}>
-              <Save className="mr-2 h-4 w-4" /> Save Game
-            </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowLoadDialog(true); }}>
-              <FolderOpen className="mr-2 h-4 w-4" /> Load Game
-            </Button>
-            {onEditWorld && (
-              <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onEditWorld(); }}>
-                {/* Matches the header's Edit World button, which this folds into on mobile. */}
-                <SquarePen className="mr-2 h-4 w-4" /> Edit World
-              </Button>
-            )}
-            {onShowAiContext && (
-              <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onShowAiContext(); }}>
-                <ScrollText className="mr-2 h-4 w-4" /> AI Context
-              </Button>
-            )}
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onSettingsClick(); }}>
-              <Settings className="mr-2 h-4 w-4" /> Settings
-            </Button>
+            {!directActions && menuItem(Save, 'Save Game', () => setShowSaveDialog(true))}
+            {!directActions && menuItem(FolderOpen, 'Load Game', () => setShowLoadDialog(true))}
+            {menuItem(SquarePen, 'Edit World', onEditWorld)}
+            {menuItem(ScrollText, 'AI Context', onShowAiContext)}
+            {!directActions && menuItem(Settings, 'Settings', onSettingsClick)}
             {/* Opened from here so a bug can be reported where it happened, rather than backing out first. */}
-            {onReportBug && (
-              <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); onReportBug(); }}>
-                <MessageSquarePlus className="mr-2 h-4 w-4" /> Send Feedback
-              </Button>
-            )}
-            <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); setShowExitConfirm(true); }}>
-              <DoorOpen className="mr-2 h-4 w-4" /> Exit to Main Menu
-            </Button>
+            {onReportBug && menuItem(MessageSquarePlus, 'Send Feedback', onReportBug)}
+            {!directActions && menuItem(DoorOpen, 'Exit to Main Menu', onExit)}
           </div>
         </PopoverContent>
       </Popover>
-
-      <ConfirmDialog
-        open={showExitConfirm}
-        onOpenChange={setShowExitConfirm}
-        title={EXIT_TO_MENU_PROMPT.title}
-        icon={<DoorOpen className="h-4 w-4" />}
-        description={EXIT_TO_MENU_PROMPT.description}
-        onConfirm={onExitToMenu}
-      />
 
       {/* Save Game popup: the same browser as Load, but clicking a save fills the name box (to overwrite it)
           rather than loading. The name input + Save button ride at the top. */}

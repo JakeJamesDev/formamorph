@@ -47,7 +47,7 @@ const buttonsWidth = (page: Page): Promise<number> =>
   });
 
 /** The five Surfaces, each with the control its opening waits on and the line its top row centers on. */
-const SURFACES: { name: string; frame?: string; line: number; open: (page: Page) => Promise<void>; ready: (page: Page) => Locator }[] = [
+const SURFACES: { name: string; frame?: string; line: number; lineStartsAt?: (page: Page) => Locator; open: (page: Page) => Promise<void>; ready: (page: Page) => Locator }[] = [
   {
     name: 'main menu',
     frame: 'window-menu',
@@ -59,6 +59,8 @@ const SURFACES: { name: string; frame?: string; line: number; open: (page: Page)
     name: 'game',
     frame: 'window-game',
     line: 28,
+    // The left and center panels rise past the line, so only the right column's header sits on it.
+    lineStartsAt: (page) => page.getByRole('button', { name: 'Save Game' }),
     // The seeded endpoint never answers, so the play gate opens; a player would continue past it.
     open: async (page) => {
       await gotoDev(page, 'gameViewer');
@@ -93,8 +95,9 @@ const SURFACES: { name: string; frame?: string; line: number; open: (page: Page)
 /** Lets the Surface settle: a dialog's exit or the header fold can move a control for a few frames. */
 const settle = (page: Page) => page.waitForTimeout(400);
 
-const expectOnLine = async (page: Page, line: number) => {
-  const controls = await headerControls(page);
+const expectOnLine = async (page: Page, line: number, lineStart?: Locator) => {
+  const from = (await lineStart?.boundingBox())?.x ?? 0;
+  const controls = (await headerControls(page)).filter((c) => c.x >= from);
   expect(controls.length).toBeGreaterThan(0);
   for (const c of controls) {
     expect(Math.abs((c.y + c.bottom) / 2 - line), `${c.name} centers within 1px of y=${line}`).toBeLessThanOrEqual(1);
@@ -124,7 +127,7 @@ test.describe('web', () => {
       await surface.open(page);
       await surface.ready(page).first().waitFor();
       await settle(page);
-      await test.step(surface.name, () => expectOnLine(page, surface.line));
+      await test.step(surface.name, () => expectOnLine(page, surface.line, surface.lineStartsAt?.(page)));
     }
   });
 
@@ -290,7 +293,7 @@ test.describe('the Windows desktop app', () => {
       await surface.open(page);
       await surface.ready(page).first().waitFor();
       await settle(page);
-      await expectOnLine(page, surface.line);
+      await expectOnLine(page, surface.line, surface.lineStartsAt?.(page));
 
       for (const width of [1280, 900]) {
         await setSize(width, 800);
@@ -330,6 +333,83 @@ test.describe('the Windows desktop app', () => {
       }
     });
   }
+
+  const openGame = async () => {
+    // From the menu: the play gate only opens on entering the game.
+    await gotoDev(page, 'mainMenu');
+    await SURFACES.find((surface) => surface.name === 'game')?.open(page);
+    await page.getByRole('button', { name: 'Save Game' }).waitFor();
+    await settle(page);
+  };
+
+  /** The three panels, left to right: the root's children in the page's flow. The right column's panel is its last child. */
+  const gamePanels = () => page.locator('[data-game-raised-panels]').evaluate((root) => {
+    const inFlow = [...root.children].filter((el) => !['absolute', 'fixed'].includes(getComputedStyle(el).position) && el.getBoundingClientRect().height > 200);
+    const box = (el: Element | null | undefined) => {
+      if (!el) throw new Error('A game panel is missing');
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, right: r.right, width: r.width };
+    };
+    return { left: box(inFlow[0]), center: box(inFlow[1]), right: box(inFlow[2]?.lastElementChild) };
+  });
+
+  test('game: panels rise, the header stays above the right column', async () => {
+    await openGame();
+    for (const width of [1280, 1000, 800]) {
+      await setSize(width, 800);
+      await settle(page);
+      const { left, center, right: card } = await gamePanels();
+      expect(left.y, `left panel at ${width}`).toBe(16);
+      expect(center.y, `center panel at ${width}`).toBe(16);
+      expect(card.y, `right column at ${width}`).toBe(56);
+      expect(card.width, `right column minimum at ${width}`).toBeGreaterThanOrEqual(312);
+      const save = await page.getByRole('button', { name: 'Save Game' }).boundingBox();
+      const more = await page.getByRole('button', { name: 'More Actions' }).boundingBox();
+      if (!save || !more) throw new Error('The header has no buttons');
+      expect(save.x, `Save Game stays above the right column at ${width}`).toBeGreaterThanOrEqual(card.x);
+      expect(save.x, `Save Game clears the center panel at ${width}`).toBeGreaterThanOrEqual(center.right);
+      expect(more.x + more.width, `More Actions clears the window buttons at ${width}`).toBeLessThanOrEqual(width - (await buttonsWidth(page)));
+    }
+    await setSize(1280, 800);
+  });
+
+  test('game: drags from the margin and above the right column, never from panel content', async () => {
+    await openGame();
+    await setSize(1280, 800);
+    await settle(page);
+    const { left, center, right: card } = await gamePanels();
+    const save = await page.getByRole('button', { name: 'Save Game' }).boundingBox();
+    if (!save) throw new Error('The header has no Save Game');
+    const hits = await hitTest([
+      { x: left.x + 60, y: 10 },
+      { x: center.x + 60, y: 10 },
+      { x: card.x + 10, y: 40 },
+      { x: left.x + 60, y: 40 },
+      { x: center.x + 60, y: 40 },
+      { x: card.x + 10, y: 70 },
+      { x: save.x + save.width / 2, y: save.y + save.height / 2 },
+    ]);
+    expect(hits).toEqual([HT.caption, HT.caption, HT.caption, HT.client, HT.client, HT.client, HT.client]);
+    if (FRAMES_DIR) {
+      mkdirSync(FRAMES_DIR, { recursive: true });
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate((t) => {
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(t);
+        }, theme);
+        for (const width of [1280, 800]) {
+          await setSize(width, 800);
+          await settle(page);
+          await page.screenshot({ path: join(FRAMES_DIR, width === 800 ? `game-800-${theme}.png` : `game-header-${theme}.png`) });
+        }
+      }
+      await page.evaluate(() => {
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add('dark');
+      });
+      await setSize(1280, 800);
+    }
+  });
 
   test('reports the three window buttons', async () => {
     await gotoDev(page, 'mainMenu');

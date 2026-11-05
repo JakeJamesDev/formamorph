@@ -154,13 +154,13 @@ You move at once. Travel costs no turn and writes no narration. The narrator can
 2. Select **Export Story**.
 3. Select **Plain text (.txt)** or **Markdown (.md)**.
 
-The file holds every turn's narration. Markdown keeps the formatting; plain text doesn't. To keep your progress, use **Save Game** in the game menu instead.
+The file holds every turn's narration. Markdown keeps the formatting; plain text doesn't. To keep your progress, use **Save Game** at the top right instead.
 
 ## How to See What the AI Read
 <!-- keywords: context, prompt, debug, inspector, raw, request, sent, tokens, log, behind the scenes, payload, full input, troubleshoot, what model saw, why did it, under the hood, api call -->
 <!-- route: aiContext -->
 
-1. Select the **Show the full AI context sent each turn** button at the top left. On mobile, open the **Menu** and select **AI Context**.
+1. Select **More Actions** (`...`) at the top right, then **AI Context**.
 2. Use the turn pager to pick a turn.
 3. Open a request to read its **Raw Input** and **Raw Output**.
 
@@ -202,11 +202,11 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 | The story | The narration, the choices and the action box. While the AI works, a status strip over the bottom of the narration names the running request, such as *Generating Narration…*. A small animated icon for that request shows beside it. |
 | The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. The entity view shows the selected entity's Avatar, 3D model or image. See [In the Game](Avatars#in-the-game). |
 | The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits**, **Inventory** and **Location** tabs |
-| Top left | The music button and the AI Context button |
-| Top right | **Edit World** and the **Menu** |
+| Top of the left panel | **Exit to Main Menu**, the music button and the entity view's toggle |
+| Top right | **Save Game**, **Load Game**, **Settings** and **More Actions** (`...`) |
 | Bottom left | **Hide UI**, which hides the panels so only the story shows |
 
-On mobile, three tabs at the top switch between **Story** (the left panel), **Game** (the story) and **Status** (the right panel). The **Story** tab also has a **View** tab that holds the entity view. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
+On mobile, three tabs at the top switch between **Story** (the left panel), **Game** (the story) and **Status** (the right panel). The **Story** tab also has a **View** tab that holds the entity view. The top-right buttons and **Exit to Main Menu** move into **More Actions** (`...`). **Hide UI** and the music button don't show.
 
 ## Turn Actions
 <!-- keywords: buttons under text, more menu, copy to clipboard, message options, toolbar, icons below, three dots, long press -->
@@ -363,20 +363,20 @@ You meet a stranger when the story says its real name. After that, the full enti
 
 The dialog opens on the tab you used last.
 
-## The Game Menu
-<!-- keywords: pause menu, quit, leave, hamburger, back to title, options, exit without saving, suggestion -->
+## Game Actions
+<!-- keywords: pause menu, game menu, quit, leave, hamburger, three dots, more actions, back arrow, back to title, options, exit without saving, suggestion -->
 
-Select the **Menu** button at the top right.
+| Action | What it does | Where it is |
+|---|---|---|
+| **Save Game** | Saves your progress under a name | Top right |
+| **Load Game** | Opens a saved game | Top right |
+| **Settings** | Opens **Settings** | Top right |
+| **Edit World** | Opens the World Editor on this world | **More Actions** (`...`), top right |
+| **AI Context** | Opens the AI Context inspector | **More Actions** |
+| **Send Feedback** | Sends a bug report or a suggestion. Shows when you are logged in to Community Creations. | **More Actions** |
+| **Exit to Main Menu** | Leaves the game, after it asks. Unsaved progress is lost. | The back arrow on the left panel's top row |
 
-| Item | What it does |
-|---|---|
-| **Save Game** | Saves your progress under a name |
-| **Load Game** | Opens a saved game |
-| **Edit World** | Opens the World Editor on this world. Mobile only; desktop has its own button. |
-| **AI Context** | Opens the AI Context inspector. Mobile only. |
-| **Settings** | Opens **Settings** |
-| **Send Feedback** | Sends a bug report or a suggestion. Shows when you are logged in to Community Creations. |
-| **Exit to Main Menu** | Leaves the game. Unsaved progress is lost. |
+On mobile, every action is in **More Actions**, in the tab row at the top.
 
 ## Narration Layout
 <!-- keywords: difference between, paginated, continuous, scrolling feed, what each shows, jump to newest, dashed bubbles -->

@@ -119,7 +119,11 @@ type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' }
 const PLAYED_SIDE: Pick<Entity, 'id' | 'name'> = { id: '__you', name: 'You' };
 
 
-export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
+export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
+  /** Landscape only: controls at the start of the top row. */
+  rowStart?: React.ReactNode;
+  /** Landscape only: controls beside the top row's Entity View toggle. */
+  rowEnd?: React.ReactNode;
   entities: Entity[];
   /** A tab an outside request selects. */
   requestedTab?: string;
@@ -296,22 +300,24 @@ export const LeftPanel = ({ entities, onEntityClick, onStrangerClick, onRegenera
   return (
   <Card className="w-full md:w-1/4 md:shrink-0 md:mr-1 grow md:grow-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
     <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
-      {/* Landscape: the entity view on top with a show/hide toggle in the upper right */}
+      {/* Landscape: the top row above the entity view, with its show/hide toggle at the end */}
       {!isMobile && (
         <div className="mb-2">
-          <div className="relative flex items-center justify-center min-h-10">
+          <div className="flex items-center gap-1 min-h-10">
+            {rowStart}
+            <div className="flex-1" />
+            {rowEnd}
             <Tip tip={showEntityView ? "Hide Entity View" : "Show Entity View"}>
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-0"
                 onClick={() => setShowEntityView((s) => !s)}
               >
                 {showEntityView ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
             </Tip>
           </div>
-          {showEntityView && entityView}
+          {showEntityView && entityView && <div className="mt-2">{entityView}</div>}
         </div>
       )}
 
@@ -1495,7 +1501,10 @@ export const RightPanel = ({
     : currentLocation;
 
   return (
-    <Card className="w-full md:w-1/4 md:shrink-0 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
+    <div className="relative w-full md:w-1/4 md:min-w-[var(--game-right-column-min)] md:shrink-0 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full md:pt-[calc(var(--header-line)-1rem)]">
+    {/* The empty strip above the column, from the window's top edge. */}
+    <div aria-hidden className="game-right-column-drag hidden md:block absolute inset-x-0 -top-4 h-[var(--header-line)] pointer-events-none" />
+    <Card className="w-full grow min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">
         <div className="flex items-center gap-2 pl-2">
@@ -1675,5 +1684,6 @@ export const RightPanel = ({
       )}
     </CardContent>
   </Card>
+    </div>
   );
 };
