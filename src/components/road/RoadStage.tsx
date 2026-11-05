@@ -1,4 +1,4 @@
-import { useId, type RefObject } from 'react';
+import { useEffect, useId, useRef, type RefObject } from 'react';
 import { mascotAssetUrl } from '@/lib/formaquestion/mascotAssets';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import type { SupporterTier } from '@/types';
@@ -21,8 +21,13 @@ const percentOf = (value: number, whole: number) => `${(value / whole) * 100}%`;
 
 /** Morphie, whatever the player's active Mascot: every level's look stays mounted, so a swap draws at once. */
 function MorphieLooks({ tier }: { tier: SupporterTier }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Hidden layers decode on first paint, mid-Jelly, so decode them all while the player reads.
+  useEffect(() => {
+    rootRef.current?.querySelectorAll('img').forEach((img) => { void img.decode?.().catch(() => {}); });
+  }, []);
   return (
-    <div className="relative" role="img" aria-label="Morphie">
+    <div ref={rootRef} className="relative" role="img" aria-label="Morphie">
       <img src={mascotAssetUrl('base')} alt="" draggable={false} className="block h-auto w-full select-none" />
       {ROAD_LEVELS.map((level) => (
         <div key={level.tier} data-look={level.tier} hidden={level.tier !== tier} className="absolute inset-0">

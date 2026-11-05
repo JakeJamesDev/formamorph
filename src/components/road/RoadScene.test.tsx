@@ -57,6 +57,17 @@ describe('RoadScene levels', () => {
     expect(visibleLayers()).toEqual(layers);
   });
 
+  it('decodes every look\'s layers on open, so a first swap has nothing to decode', () => {
+    const decoded: string[] = [];
+    const decode = vi.fn(function (this: HTMLImageElement) { decoded.push(this.dataset.layer ?? 'base'); return Promise.resolve(); });
+    // jsdom has no decode().
+    Object.defineProperty(HTMLImageElement.prototype, 'decode', { value: decode, configurable: true });
+    try { scene(); } finally { Reflect.deleteProperty(HTMLImageElement.prototype, 'decode'); }
+    const every = [...document.querySelectorAll<HTMLImageElement>('[data-morphie] img')].map((img) => img.dataset.layer ?? 'base');
+    expect(decoded.sort()).toEqual(every.sort());
+    expect(every.length).toBe(1 + ROAD_LEVELS.reduce((sum, level) => sum + level.look.length, 0));
+  });
+
   it('opens on the middle level', () => {
     scene();
     expect(screen.getByRole('radio', { name: /Blaze/ }).getAttribute('data-state')).toBe('on');
