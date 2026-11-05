@@ -1,6 +1,6 @@
 import { screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import { renderMainMenu } from '@/test/mainMenu';
+import { renderEnterWorld } from '@/test/enterWorldBench';
 import WorldStorageService from '@/services/WorldStorageService';
 import { DEFAULT_WORLDS, tombstoneDefaultWorld } from '@/lib/defaultWorlds';
 import { acceptAgeGate } from '@/lib/ageGate';
@@ -66,7 +66,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 async function enterAs(name: string) {
   const onStartGame = vi.fn();
-  renderMainMenu({ onStartGame });
+  renderEnterWorld({ onStartGame });
   fireEvent.click(await screen.findByText('Avatar World'));
   fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
   await screen.findByRole('dialog', { name: 'Enter Avatar World' });
@@ -126,7 +126,7 @@ describe('Quick Start', () => {
   const quickStart = async (name: string) => {
     rememberWorldPersona('avatar-world', { source: 'world', entityId: name });
     const onStartGame = vi.fn();
-    renderMainMenu({ onStartGame });
+    renderEnterWorld({ onStartGame });
     fireEvent.click(await screen.findByText('Avatar World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());

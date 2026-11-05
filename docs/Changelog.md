@@ -17,6 +17,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **🛠️ Developer tooling**
+  - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
   - **Six World Editor tabs' tests now mount the panel, not the whole editor, and take half the worker time.** 124 of 177 test rows moved with coverage held. The tabs are Entities, Dictionary, Placeholders, Locations, Overview and Tools.
 

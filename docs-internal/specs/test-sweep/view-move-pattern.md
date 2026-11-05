@@ -38,6 +38,8 @@ Keep two to four wiring tests per tab.
 
 [`itemsTabBench`](../../../src/test/itemsTabBench.tsx) is the example of a `useTab` host. `statsTabBench`, `traitsTabBench` and `mediaTabBench` follow it; the adapter hosts get the view's shared `search` in their selection.
 
+Ticket 11 added [`enterWorldBench`](../../../src/test/enterWorldBench.tsx) for Enter World without the menu, and [`askPanelBench`](../../../src/test/askPanelBench.tsx) for the Ask part of the help window on the real chat.
+
 A test that goes to another tab (Go to, a chip that opens a row, the Entities tab) stays on the view: the hosts leave navigation idle, and a no-op would rig the test. Undo in a moved test goes through `history().undo()`.
 
 ### What the bench does not give you
@@ -46,6 +48,8 @@ A test that goes to another tab (Go to, a chip that opens a row, the Entities ta
 - ⚠️ **`ListEditor` is not how the view lays out its parts.** The view composes them itself through `ListDetail`. A test about layout stays in the view.
 - ✅ **`useWorldMediaEditor` returns list parts, not an adapter.** Ticket 08 added `renderListParts` for it.
 - ⚠️ **Name a new test file after a module, and check the name is free.** `StatManager.test.tsx` already held another suite, so the panel tests are `StatManager.panelTabs.test.tsx`.
+
+- ⚠️ **`enterWorldBench` loads the libraries before the worlds.** The menu has no such order, so a test about a world picked before its libraries arrive stays in the view. It also leaves out the menu's source gate and its check for a world being optimized.
 
 ### Leave `worldEditorBench` unchanged
 

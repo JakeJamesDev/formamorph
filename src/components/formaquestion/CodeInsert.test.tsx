@@ -1,23 +1,22 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
-import { registerScriptInsert, reportScriptInsert } from '@/lib/formaquestion/scriptInsert';
+import { registerScriptInsert } from '@/lib/formaquestion/scriptInsert';
 import { sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { storeFramedWindow, stubHelpStream } from '@/test/helpFixtures';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { renderAskPanel, sendQuestion } from '@/test/askPanelBench';
 import type { HelpAi } from './useHelpAi';
 
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
 vi.mock('./useHelpAi', () => ({ useHelpAi: () => ai.current }));
-import { Formaquestion } from './Formaquestion';
 
 const PAGES = {
   Stats: '# 📊 Stats\n\nA stat is a number.\n\n## How to Write Stat Code\n\n<!-- route: worldEditor.stats -->\n\n1. Open the **Code** tab.\n2. Type a script:\n\n```javascript\nreturn stats.hp + 1;\n```\n',
 };
-const loadFixture = () => Promise.resolve(createDocsIndex({ pages: PAGES, sidebar: '- [Stats](Stats)\n' }));
+const index = createDocsIndex({ pages: PAGES, sidebar: '- [Stats](Stats)\n' });
 const TWO_BLOCKS = [
   'Open the **Code** tab. Put this in **Before the AI**:',
   '```javascript before\nself.value = 2;\n```',
@@ -28,17 +27,12 @@ const UNTAGGED = 'Open the **Code** tab. Use this:\n\n```javascript\nreturn 1;\n
 
 const conversation = () => screen.getByRole('log', { name: 'Conversation' });
 const insertButtons = () => within(conversation()).getAllByRole('button', { name: 'Insert' });
-const helpWindow = () => document.getElementById('formaquestion-window');
 
-/** Opens the window, asks one question, and waits for the answer to finish. */
+/** Asks one question, and waits for the answer to finish. */
 async function ask(reply: string) {
   stubHelpStream(sseReply(reply));
-  // The app's root provider, which a tip needs to open.
-  render(<TooltipProvider><Formaquestion loadIndex={loadFixture} /></TooltipProvider>);
-  fireEvent.click(screen.getByRole('button', { name: 'Help' }));
-  const field = await screen.findByRole('textbox', { name: 'Ask a Question' });
-  await userEvent.type(field, 'How do I write stat code?');
-  await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+  renderAskPanel(index);
+  await sendQuestion('How do I write stat code?');
   await screen.findByRole('button', { name: 'Send' });
 }
 
@@ -166,43 +160,5 @@ describe('Insert on a help answer', () => {
     expect(insertButtons()[0]).not.toHaveAttribute('aria-disabled');
     stat.close();
     expect(insertButtons()[0]).toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('leaves guide pages with Copy alone', async () => {
-    const stat = openStat();
-    closeStat = stat.close;
-    await ask('Open the **Code** tab.');
-    const sources = await within(conversation()).findByRole('group', { name: 'Sources' });
-    await userEvent.click(within(sources).getByRole('button', { name: /How to Write Stat Code/ }));
-    const article = screen.getByRole('article', { name: '📊 Stats: How to Write Stat Code' });
-    expect(within(article).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
-    expect(within(article).queryByRole('button', { name: 'Insert' })).toBeNull();
-  });
-
-  it('closes the sheet on a mobile-size screen when the panel reports a write', async () => {
-    vi.stubGlobal('innerWidth', 375);
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
-    }));
-    storeFramedWindow({ sourcesOpen: true, chatStyle: 'minimal' });
-    const stat = openStat();
-    closeStat = stat.close;
-    stat.insert.mockImplementation(() => reportScriptInsert('written'));
-    await ask(UNTAGGED);
-    await userEvent.click(insertButtons()[0]);
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Before the AI' }));
-    expect(stat.insert).toHaveBeenCalledOnce();
-    await waitFor(() => expect(helpWindow()?.dataset.state ?? 'closed').toBe('closed'));
-  });
-
-  it('keeps the desktop window open on a write', async () => {
-    const stat = openStat();
-    closeStat = stat.close;
-    stat.insert.mockImplementation(() => reportScriptInsert('written'));
-    await ask(UNTAGGED);
-    await userEvent.click(insertButtons()[0]);
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'After the AI' }));
-    expect(stat.insert).toHaveBeenCalledOnce();
-    expect(helpWindow()).toHaveAttribute('data-state', 'open');
   });
 });
