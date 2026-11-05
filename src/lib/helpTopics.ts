@@ -290,11 +290,11 @@ You're editing *Mara*, and *Tom* is her son.
 1. On Mara's **Profile** tab, pick **Tom** in **Add a relationship**.
 2. In the box beside **Tom**, type *son*.
 
-The AI reads *"Tom is Mara's son."* If you type *mother* there, the AI reads that Tom is Mara's mother.
+**How the AI reads a row**
 
-**Read each row as a sentence**
-
-*The name in the row* is *the entity you're editing*'s *what you type*.
+| Name in the row | | Entity you're editing | Role you type |
+|---|---|---|---|
+| Tom | is | Mara's | son |
 
 **Persona**
 

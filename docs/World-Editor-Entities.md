@@ -193,16 +193,18 @@ The default prompt sends entities from four places, as separate blocks: the play
 ## Relationships
 <!-- keywords: family, mother, son, rival, friend, which way, wrong direction, backwards, relationship line -->
 
-Each row on the **Profile** tab says what another entity is to the one you're editing. Read a row as a sentence:
-
-> *The name in the row* is *the entity you're editing*'s *what you type*.
+Each row on the **Profile** tab says what another entity is to the one you're editing.
 
 **Example:** you're editing *Mara*, and *Tom* is her son.
 
 1. On Mara's **Profile** tab, pick **Tom** in **Add a relationship**.
 2. In the box beside **Tom**, type *son*.
 
-The AI reads *"Tom is Mara's son."* If you type *mother* there, the AI reads that Tom is Mara's mother.
+**How the AI reads a row**
+
+| Name in the row | | Entity you're editing | Role you type |
+|---|---|---|---|
+| Tom | is | Mara's | son |
 
 - 🧑 **Persona** — the row says what the player's character is to this entity.
 - 🔁 **One row per pair** — you don't need a second row on Tom for Mara. If both exist, the AI reads only one of them, so make sure they agree.
