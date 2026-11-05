@@ -5,7 +5,8 @@
 <title>Contest Winner Card</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/dist/index.js"></script>
 <style>
   :root {
     --accent: #f7c948;
@@ -222,6 +223,7 @@
     <label>Contest <select id="contest"></select></label>
     <label>Color <input id="accent" type="color" value="#f7c948"></label>
     <button id="reshuffle" type="button">Reshuffle Confetti</button>
+    <button id="save-image" type="button">Save Image</button>
     <span class="hint">Click any text on the card to edit it</span>
   </div>
   <div id="status" class="status" role="status">Loading results…</div>
@@ -262,6 +264,7 @@ const PLACE_MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const X_LIMIT = 280;
 const X_URL_WEIGHT = 23;
 const DISCORD_LIMIT = 2000;
+const IMAGE_SCALE = 2;
 const PLACE_LABELS = { 1: '1st Place', 2: '2nd Place', 3: '3rd Place' };
 const CONFETTI_COLORS = ['#f7c948', '#ff6b8a', '#6fe3d6', '#b48cff', '#ff9f5a', '#ffffff', '#7fb8ff'];
 const CONFETTI_ATTEMPTS = 260;
@@ -510,6 +513,30 @@ function drawPosts(contest, entries) {
   document.getElementById('posts').hidden = false;
 }
 
+/** Copies through the copy event, which needs only the click and no clipboard permission. */
+function copyToClipboard(data) {
+  const fill = (event) => {
+    event.preventDefault();
+    for (const [type, value] of Object.entries(data)) event.clipboardData.setData(type, value);
+  };
+  document.addEventListener('copy', fill);
+  const copied = document.execCommand('copy');
+  document.removeEventListener('copy', fill);
+  if (!copied) throw new Error('The browser refused the copy');
+}
+
+/** Saves the card at a fixed pixel size, so window size and display scaling never change the file. */
+async function saveCardImage(title) {
+  document.activeElement?.blur();
+  await document.fonts.ready;
+  const blob = await modernScreenshot.domToBlob(document.getElementById('card'), { scale: IMAGE_SCALE, type: 'image/png' });
+  const link = element('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-winners.png`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+}
+
 function copyButton(id, write) {
   const button = document.getElementById(id);
   const label = button.textContent;
@@ -593,13 +620,26 @@ async function start() {
   document.getElementById('x-text').addEventListener('input', (event) => {
     showCount(document.getElementById('x-count'), xLength(event.target.value), X_LIMIT);
   });
-  copyButton('copy-x', () => navigator.clipboard.writeText(document.getElementById('x-text').value));
-  copyButton('copy-markdown', () => navigator.clipboard.writeText(document.getElementById('long-markdown').value));
+  copyButton('copy-x', () => copyToClipboard({ 'text/plain': document.getElementById('x-text').value }));
+  copyButton('copy-markdown', () => copyToClipboard({ 'text/plain': document.getElementById('long-markdown').value }));
   // The plain-text half is the Markdown, for apps that ignore rich text but read Markdown.
-  copyButton('copy-formatted', () => navigator.clipboard.write([new ClipboardItem({
-    'text/html': new Blob([document.getElementById('long-preview').innerHTML], { type: 'text/html' }),
-    'text/plain': new Blob([document.getElementById('long-markdown').value], { type: 'text/plain' }),
-  })]));
+  copyButton('copy-formatted', () => copyToClipboard({
+    'text/html': document.getElementById('long-preview').innerHTML,
+    'text/plain': document.getElementById('long-markdown').value,
+  }));
+  const saveButton = document.getElementById('save-image');
+  saveButton.addEventListener('click', async () => {
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving…';
+    try {
+      await saveCardImage(current.contest.title);
+      saveButton.textContent = 'Saved';
+    } catch {
+      saveButton.textContent = "Couldn't Save";
+    }
+    saveButton.disabled = false;
+    setTimeout(() => { saveButton.textContent = 'Save Image'; }, 1500);
+  });
   document.getElementById('reshuffle').addEventListener('click', () => {
     seed += 1;
     // Replaces only the confetti, so text edits stay on the card.
