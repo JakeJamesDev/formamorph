@@ -8,6 +8,13 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   // Main passes this argument only where it hides the title bar. See windowChrome.cjs.
   windowOverlay: process.argv.includes('--formamorph-window-overlay'),
   setWindowSymbolColor: (color) => ipcRenderer.invoke('window-symbol-color', color),
+  isFullScreen: () => ipcRenderer.sendSync('window-is-full-screen'),
+  onFullScreen: (cb) => {
+    const handler = (_event, on) => cb(on);
+    ipcRenderer.on('window-full-screen', handler);
+    return () => ipcRenderer.removeListener('window-full-screen', handler);
+  },
+  leaveFullScreen: () => ipcRenderer.invoke('window-leave-full-screen'),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
   // The ComfyUI server whose Origin check the main process passes for this window; null for none.
   setComfyEndpoint: (url) => ipcRenderer.invoke('comfy-endpoint', url),

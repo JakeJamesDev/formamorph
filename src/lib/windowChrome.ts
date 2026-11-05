@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 type Rgba = [number, number, number, number];
 
 /** White at 25%: the symbols' color while a dimming layer reaches them. */
@@ -36,17 +38,40 @@ function cornerIsDimmed(): boolean {
   return false;
 }
 
+let fullScreen = false;
+const fullScreenListeners = new Set<() => void>();
+const subscribeFullScreen = (listener: () => void) => {
+  fullScreenListeners.add(listener);
+  return () => fullScreenListeners.delete(listener);
+};
+
+/** Whether full screen hid the window buttons. Only ever true on the Windows desktop build. */
+export const useWindowFullScreen = (): boolean => useSyncExternalStore(subscribeFullScreen, () => fullScreen, () => false);
+
+export function leaveWindowFullScreen(): void {
+  void window.formamorphDesktop?.leaveFullScreen?.();
+}
+
 /** Sets the desktop flag and starts the window's drag area and symbol color. Only the Windows desktop build sets it. */
 export function installWindowChrome(): void {
   const bridge = window.formamorphDesktop;
   if (!bridge?.windowOverlay) return;
 
   const root = document.documentElement;
-  root.dataset.windowOverlay = '';
-
   const dragArea = document.createElement('div');
   dragArea.className = 'window-drag-area';
   document.body.prepend(dragArea);
+
+  // Full screen hides the window buttons, so the flag and the room it holds for them go too.
+  const setFullScreen = (on: boolean) => {
+    fullScreen = on;
+    if (on) delete root.dataset.windowOverlay;
+    else root.dataset.windowOverlay = '';
+    dragArea.hidden = on;
+    fullScreenListeners.forEach((listener) => listener());
+  };
+  setFullScreen(bridge.isFullScreen?.() ?? false);
+  bridge.onFullScreen?.(setFullScreen);
 
   let sent = '';
   const send = (color: Rgba) => {

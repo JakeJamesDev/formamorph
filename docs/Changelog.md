@@ -19,6 +19,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Edge To Edge Window:**
     - **The Entity View slides open and shut in game.** Its arrow turns as the section moves, and the tabs below follow. With reduced motion, it changes at once.
+    - **Full screen in the Windows desktop app now uses the whole width, with Exit Full Screen in More Actions.** The room held for the window buttons goes away in full screen, so the layout matches the browser. **F11** still works.
   - **The Windows desktop app now fills the whole window, with its minimize, maximize and close buttons over the content.** Drag the window by the empty parts of the header. Every screen's top row now lines up at one height, on the web too, and toasts start below it. The window stops shrinking at 800×600.
   - **The game's panels reach the top, with Save, Load and Settings as direct buttons.** Back and Music move to the left panel's top row. Edit World, AI Context and Send Feedback move to a `...` menu.
   - **The main menu has direct Load Game and Settings buttons, and Backup & Restore is in the Settings Data tab.** A narrow window folds the action buttons, Load Game and Settings into one **More Actions** menu at the right. The World Editor's search centers whenever both sides have room.

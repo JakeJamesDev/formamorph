@@ -54,3 +54,59 @@ describe('the symbol color', () => {
     expect(() => setWindowSymbolColor(null, '#123456', 'win32')).not.toThrow();
   });
 });
+
+describe('full screen', () => {
+  const { FULL_SCREEN_CHANNEL, watchFullScreen, isFullScreen, leaveFullScreen } = windowChrome;
+
+  /** A window that runs the listeners it was given when `emit` names their event. */
+  const windowDouble = ({ full = false, destroyed = false } = {}) => {
+    const listeners = {};
+    return {
+      on: (event, cb) => { listeners[event] = cb; },
+      emit: (event) => listeners[event]?.(),
+      isDestroyed: () => destroyed,
+      isFullScreen: () => full,
+      setFullScreen: vi.fn(),
+      webContents: { send: vi.fn() },
+    };
+  };
+
+  it('tells the page on entering and on leaving', () => {
+    const win = windowDouble();
+    watchFullScreen(win, 'win32');
+    win.emit('enter-full-screen');
+    expect(win.webContents.send).toHaveBeenLastCalledWith(FULL_SCREEN_CHANNEL, true);
+    win.emit('leave-full-screen');
+    expect(win.webContents.send).toHaveBeenLastCalledWith(FULL_SCREEN_CHANNEL, false);
+  });
+
+  it('sends nothing to a closed window', () => {
+    const win = windowDouble({ destroyed: true });
+    watchFullScreen(win, 'win32');
+    win.emit('enter-full-screen');
+    expect(win.webContents.send).not.toHaveBeenCalled();
+  });
+
+  it('reports full screen on Windows only', () => {
+    expect(isFullScreen(windowDouble({ full: true }), 'win32')).toBe(true);
+    expect(isFullScreen(windowDouble({ full: false }), 'win32')).toBe(false);
+    expect(isFullScreen(windowDouble({ full: true }), 'darwin')).toBe(false);
+    expect(isFullScreen(null, 'win32')).toBe(false);
+  });
+
+  it('leaves full screen on Windows only', () => {
+    const win = windowDouble({ full: true });
+    leaveFullScreen(win, 'win32');
+    expect(win.setFullScreen).toHaveBeenCalledWith(false);
+    const mac = windowDouble({ full: true });
+    leaveFullScreen(mac, 'darwin');
+    expect(mac.setFullScreen).not.toHaveBeenCalled();
+  });
+
+  it('tells a page with a native title bar nothing', () => {
+    const mac = windowDouble();
+    watchFullScreen(mac, 'darwin');
+    mac.emit('enter-full-screen');
+    expect(mac.webContents.send).not.toHaveBeenCalled();
+  });
+});

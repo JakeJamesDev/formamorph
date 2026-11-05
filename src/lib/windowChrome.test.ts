@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installWindowChrome } from './windowChrome';
+import { act, renderHook } from '@testing-library/react';
+import { installWindowChrome, leaveWindowFullScreen, useWindowFullScreen } from './windowChrome';
 
 const setBridge = (bridge: unknown) => {
   (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = bridge;
@@ -176,5 +177,59 @@ describe('installWindowChrome', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(setWindowSymbolColor).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('full screen', () => {
+  /** A desktop bridge whose main process starts in `start` and can report a change later. */
+  const fullScreenBridge = (start: boolean) => {
+    let report: (on: boolean) => void = () => {};
+    setBridge({
+      windowOverlay: true,
+      setWindowSymbolColor: vi.fn(),
+      isFullScreen: () => start,
+      onFullScreen: (cb: (on: boolean) => void) => { report = cb; return () => {}; },
+    });
+    return (on: boolean) => act(() => report(on));
+  };
+  const dragArea = () => document.querySelector<HTMLElement>('.window-drag-area');
+
+  it('drops the flag and the drag area on entering, and brings them back on leaving', () => {
+    const report = fullScreenBridge(false);
+    installWindowChrome();
+    const { result } = renderHook(() => useWindowFullScreen());
+    expect(result.current).toBe(false);
+
+    report(true);
+    expect(document.documentElement.dataset.windowOverlay).toBeUndefined();
+    expect(dragArea()?.hidden).toBe(true);
+    expect(result.current).toBe(true);
+
+    report(false);
+    expect(document.documentElement.dataset.windowOverlay).toBe('');
+    expect(dragArea()?.hidden).toBe(false);
+    expect(result.current).toBe(false);
+  });
+
+  it('starts without the flag after a reload in full screen', () => {
+    fullScreenBridge(true);
+    installWindowChrome();
+    expect(document.documentElement.dataset.windowOverlay).toBeUndefined();
+    expect(renderHook(() => useWindowFullScreen()).result.current).toBe(true);
+  });
+
+  it('never reports full screen on the web build', async () => {
+    // A fresh module, as a page load has: the earlier tests left this one in full screen.
+    vi.resetModules();
+    const fresh = await import('./windowChrome');
+    fresh.installWindowChrome();
+    expect(renderHook(() => fresh.useWindowFullScreen()).result.current).toBe(false);
+  });
+
+  it('asks the main process to leave', () => {
+    const leaveFullScreen = vi.fn(async () => {});
+    setBridge({ windowOverlay: true, leaveFullScreen });
+    leaveWindowFullScreen();
+    expect(leaveFullScreen).toHaveBeenCalledTimes(1);
   });
 });

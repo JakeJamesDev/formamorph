@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tip } from "@/components/ui/tooltip";
 import { TwoSegmentButton } from "@/components/ui/two-segment-button";
-import { MoreHorizontal, Save, FolderOpen, SquarePen, ScrollText, Settings, MessageSquarePlus, DoorOpen, type LucideIcon } from "lucide-react";
+import { MoreHorizontal, Save, FolderOpen, SquarePen, ScrollText, Settings, MessageSquarePlus, DoorOpen, Minimize2, type LucideIcon } from "lucide-react";
 import { getAllSaveRecords } from './dbUtils';
 import { useDevRoute } from '../../lib/devRouter';
 import { LoadGameDialog } from './LoadGameDialog';
@@ -16,6 +16,7 @@ import { sceneImageWeight } from '@/lib/sceneImages';
 import { formatBytes } from '@/lib/imageOptim';
 import type { WorldOverview, SaveRecord } from "@/types";
 import { Hint } from '@/components/ui/typography';
+import { leaveWindowFullScreen, useWindowFullScreen } from '@/lib/windowChrome';
 
 export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExit, onEditWorld, onShowAiContext }: {
   /** Save, Load and Settings sit in the row as buttons, and the menu holds the rest. */
@@ -39,6 +40,7 @@ export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug,
     [worldId, worldOverview],
   );
 
+  const fullScreen = useWindowFullScreen();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
@@ -136,6 +138,7 @@ export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug,
             {!directActions && menuItem(Settings, 'Settings', onSettingsClick)}
             {/* Opened from here so a bug can be reported where it happened, rather than backing out first. */}
             {onReportBug && menuItem(MessageSquarePlus, 'Send Feedback', onReportBug)}
+            {fullScreen && menuItem(Minimize2, 'Exit Full Screen', leaveWindowFullScreen)}
             {!directActions && menuItem(DoorOpen, 'Exit to Main Menu', onExit)}
           </div>
         </PopoverContent>

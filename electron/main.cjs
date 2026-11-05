@@ -22,7 +22,7 @@ const { corsResponse } = require('./corsShim.cjs');
 const { httpOrigin, stripOrigin } = require('./originStrip.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
 const { confirmLeave } = require('./leavePrompt.cjs');
-const { windowChromeOptions, setWindowSymbolColor } = require('./windowChrome.cjs');
+const { windowChromeOptions, setWindowSymbolColor, watchFullScreen, isFullScreen, leaveFullScreen } = require('./windowChrome.cjs');
 const updater = require('./updater.cjs');
 const perfMeter = require('./perfMeter.cjs');
 
@@ -231,6 +231,7 @@ function createWindow() {
     },
   });
   mainWindow = win;
+  watchFullScreen(win, process.platform);
 
   // External links (footer socials, the update dialog's "Full changelog") open in the system browser, not a
   // new in-app window — deny the popup and hand http(s) URLs to the OS.
@@ -286,6 +287,13 @@ function createWindow() {
 
 ipcMain.handle('window-symbol-color', (event, color) => {
   setWindowSymbolColor(BrowserWindow.fromWebContents(event.sender), color, process.platform);
+});
+// Sync, so a reload in full screen lays out without the room for the window buttons from its first frame.
+ipcMain.on('window-is-full-screen', (event) => {
+  event.returnValue = isFullScreen(BrowserWindow.fromWebContents(event.sender), process.platform);
+});
+ipcMain.handle('window-leave-full-screen', (event) => {
+  leaveFullScreen(BrowserWindow.fromWebContents(event.sender), process.platform);
 });
 
 // Desktop-only network bridge: renderer → main HTTP fetch that isn't bound by browser CORS. Used by

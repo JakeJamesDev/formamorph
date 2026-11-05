@@ -146,6 +146,8 @@ Each tab has a **New** button, such as **New World**, and an **Import** button, 
 
 On a narrow screen, the top bar hides the tab labels first, then the buttons, then the event badges. The hidden buttons move to the **More Actions** button (`...`) at the top right, with **Load Game** and **Settings**. The event badges become one chip with a count.
 
+In the Windows desktop app, **F11** enters and leaves full screen. While in full screen, **More Actions** shows at every width and holds **Exit Full Screen**.
+
 The **Entities** tab also has an **All** and **Personas** switch. **Personas** shows only the entities you can play as. See [Personas](Personas). While **Personas** is on, you cannot move tiles, change their size or change Groups.
 
 ## The Board

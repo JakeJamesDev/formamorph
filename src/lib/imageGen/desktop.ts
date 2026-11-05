@@ -190,6 +190,12 @@ declare global {
       windowOverlay?: boolean;
       /** Paints the native window buttons in a `#rrggbb` color. */
       setWindowSymbolColor?: (color: string) => Promise<void>;
+      /** Whether full screen hides the window buttons, answered before the page lays out. */
+      isFullScreen?: () => boolean;
+      /** Hears full screen hide or bring back the window buttons. */
+      onFullScreen?: (cb: (on: boolean) => void) => () => void;
+      /** Leaves full screen, where the window buttons are hidden. */
+      leaveFullScreen?: () => Promise<void>;
       /** Live nvidia-smi VRAM numbers from the main process (same shape as the standalone helper's JSON). */
       vramStats?: () => Promise<unknown>;
       /** Tell the main process which ComfyUI server to remove this window's Origin for; null for none. */

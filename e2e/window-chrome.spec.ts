@@ -201,6 +201,23 @@ test.describe('web', () => {
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
   });
 
+  test('never offers Exit Full Screen', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 800 });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    await page.getByRole('button', { name: 'More Actions' }).first().click();
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Exit Full Screen' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoDev(page, 'gameViewer');
+    await page.getByRole('button', { name: 'Continue anyway' }).click();
+    await page.getByRole('button', { name: 'More Actions' }).click();
+    await expect(page.getByRole('button', { name: 'Edit World' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Exit Full Screen' })).toHaveCount(0);
+  });
+
   test('opens Backup & Restore over the Settings Data tab', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openApp(page);
@@ -629,6 +646,268 @@ test.describe('the Windows desktop app', () => {
       await gotoDev(page, 'mainMenu');
     });
   }
+
+  type Surface = 'main menu' | 'game';
+  /** The two Surfaces full screen is checked on. */
+  const SURFACE_PAIR: Surface[] = ['main menu', 'game'];
+  const overlayFlagged = () => page.evaluate(() => document.documentElement.dataset.windowOverlay !== undefined);
+  const isFullScreen = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFullScreen());
+  /** The right edge of the rightmost control on the header line. */
+  const headerRight = async () => Math.max(...(await headerControls(page)).map((c) => c.right));
+  const openSurface = async (name: Surface) => {
+    if (name === 'game') return openGame();
+    // A fresh load: the World Editor is an in-place modal that routing to the menu leaves open.
+    await page.evaluate(() => {
+      history.replaceState(null, '', location.pathname);
+      location.reload();
+    });
+    await page.locator('[data-fold-live="toggle"]').waitFor();
+    await gotoDev(page, 'mainMenu');
+    await expect(page.getByText('World Editor', { exact: true })).toHaveCount(0);
+    await settle(page);
+  };
+
+  for (const name of SURFACE_PAIR) {
+    test(`${name}: full screen gives the window buttons' room to the header, and leaving brings it back`, async () => {
+      await setSize(1280, 800);
+      await openSurface(name);
+      const gradient = page.locator('[data-window-corner-gradient]');
+      await setFullScreen(true);
+      expect(await overlayFlagged()).toBe(false);
+      expect(await buttonsWidth(page)).toBe(0);
+      const width = await page.evaluate(() => window.innerWidth);
+      // Only the bar's own margin is left: 1rem on the main menu, 0.5rem in game.
+      expect(width - (await headerRight()), 'the header reaches the window edge').toBeLessThanOrEqual(16);
+      if (name === 'game') await expect(gradient).toBeHidden();
+      if (FRAMES_DIR) {
+        mkdirSync(FRAMES_DIR, { recursive: true });
+        for (const theme of ['dark', 'light']) {
+          await setTheme(theme);
+          await settle(page);
+          await page.screenshot({ path: join(FRAMES_DIR, `full-${name === 'game' ? 'game' : 'menu'}-${theme}.png`) });
+        }
+        await setTheme('dark');
+      }
+
+      await setFullScreen(false);
+      await setSize(1280, 800);
+      await settle(page);
+      expect(await overlayFlagged()).toBe(true);
+      const room = await buttonsWidth(page);
+      expect(room).toBeGreaterThan(0);
+      expect(await headerRight(), 'the header clears the window buttons again').toBeLessThanOrEqual(1280 - room);
+      if (name === 'game') await expect(gradient).toBeVisible();
+    });
+  }
+
+  test('keeps the full-screen layout through a reload', async () => {
+    await setSize(1280, 800);
+    await openSurface('main menu');
+    await setFullScreen(true);
+    // Records the flag from the page's first script, so a frame laid out with the room shows up.
+    await page.addInitScript(() => {
+      const w = window as unknown as { overlaySeen?: boolean };
+      // The root element doesn't exist yet when this runs.
+      new MutationObserver(() => {
+        if (document.documentElement?.dataset.windowOverlay !== undefined) w.overlaySeen = true;
+      }).observe(document, { attributes: true, subtree: true, attributeFilter: ['data-window-overlay'] });
+    });
+    await page.reload();
+    await page.locator('[data-fold-live="toggle"]').waitFor();
+    await settle(page);
+    expect(await page.evaluate(() => (window as unknown as { overlaySeen?: boolean }).overlaySeen ?? false)).toBe(false);
+    expect(await overlayFlagged()).toBe(false);
+    expect(await buttonsWidth(page)).toBe(0);
+    await expect(page.getByRole('button', { name: 'More Actions' })).toBeVisible();
+    await setFullScreen(false);
+    expect(await overlayFlagged()).toBe(true);
+  });
+
+  for (const name of SURFACE_PAIR) {
+    test(`${name}: Exit Full Screen shows in More Actions only in full screen, and leaves it`, async () => {
+      await setSize(1280, 800);
+      await openSurface(name);
+      const more = page.getByRole('button', { name: 'More Actions' });
+      const exit = page.getByRole('button', { name: 'Exit Full Screen' });
+      // The main menu has no More Actions at full width; the game's never holds the item outside full screen.
+      if (name === 'main menu') await expect(more).toHaveCount(0);
+      else {
+        await more.click();
+        await expect(page.getByRole('button', { name: 'Edit World' })).toBeVisible();
+        await expect(exit).toHaveCount(0);
+        await page.keyboard.press('Escape');
+      }
+      await setFullScreen(true);
+      await more.click();
+      await exit.click();
+      await expect.poll(isFullScreen).toBe(false);
+      await settle(page);
+      expect(await overlayFlagged()).toBe(true);
+      await expect(exit).toHaveCount(0);
+      await setSize(1280, 800);
+    });
+  }
+
+  /** Controls only one build shows in full screen, each with why. Any other difference is drift. */
+  const ONE_BUILD_ONLY: { surface: Surface; name: string; build: 'desktop' | 'web'; reason: string; pushes?: string; sameSlotAs?: string }[] = [
+    {
+      surface: 'main menu',
+      name: 'More Actions',
+      build: 'desktop',
+      reason: 'Holds Exit Full Screen (Q17, Q25). The web has no menu at full width.',
+      // Its cell is right-aligned, so the controls left of it in the cell sit its width plus the bar's gap further left.
+      pushes: '[data-fold-right]',
+    },
+    {
+      surface: 'main menu',
+      name: 'Check for updates',
+      build: 'desktop',
+      reason: 'The footer version opens the updater where a build can update itself, and the changelog on the web.',
+      sameSlotAs: 'What’s new',
+    },
+  ];
+  const PUSHED_CELLS = ONE_BUILD_ONLY.flatMap((k) => (k.pushes ? [k.pushes] : []));
+
+  type Control = Box & { cells: string[]; tile: boolean };
+
+  /** Every control a player can see, keyed by name and occurrence, with the pushed cells it sits in. */
+  const allControls = (p: Page): Promise<Control[]> =>
+    p.evaluate(([selector, cellSelectors]) => {
+      const counts = new Map<string, number>();
+      return [...document.querySelectorAll(selector)].flatMap((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.y > window.innerHeight) return [];
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        if (!hit || (el !== hit && !el.contains(hit))) return [];
+        const base = el.getAttribute('aria-label') || (el as HTMLElement).innerText?.trim().slice(0, 30) || el.tagName;
+        const n = (counts.get(base) ?? 0) + 1;
+        counts.set(base, n);
+        const cells = cellSelectors.filter((cell) => el.closest(cell));
+        return [{ name: n > 1 ? `${base} #${n}` : base, x: r.x, y: r.y, right: r.right, bottom: r.bottom, cells, tile: !!el.closest('[data-tile-id]') }];
+      });
+    }, [CONTROLS, PUSHED_CELLS] as const);
+
+  /** Lists every control that differs by more than 1px, after the named exceptions. */
+  const drift = (surface: Surface, desktop: Control[], web: Control[]): string[] => {
+    const known = ONE_BUILD_ONLY.filter((k) => k.surface === surface);
+    const pushers = desktop.flatMap((b) => {
+      const cell = known.find((k) => k.build === 'desktop' && k.name === b.name)?.pushes;
+      return cell ? [{ ...b, cell }] : [];
+    });
+    const webByName = new Map(web.map((b) => [b.name, b]));
+    // By center: the two Chromium builds round some text widths apart by under a pixel, evenly on both sides.
+    const near = (a: Box, b: Box) =>
+      Math.abs(a.x + a.right - b.x - b.right) / 2 <= 1 && Math.abs(a.y + a.bottom - b.y - b.bottom) / 2 <= 1;
+    const at = (b: Box) => `(${b.x.toFixed(1)}–${b.right.toFixed(1)}, ${b.y.toFixed(1)}–${b.bottom.toFixed(1)})`;
+    const unmatchedDesktop: Control[] = [];
+    for (const d of desktop) {
+      const exception = known.find((k) => k.build === 'desktop' && k.name === d.name);
+      if (exception && !exception.sameSlotAs) continue;
+      // A desktop-only control in a right-aligned cell moves only the controls left of it in that cell.
+      const push = pushers
+        .filter((p) => d.cells.includes(p.cell) && d.right <= p.x + 1)
+        .reduce((sum, p) => sum + (p.right - p.x) + 8, 0);
+      const spot = { ...d, x: d.x + push, right: d.right + push };
+      const name = exception?.sameSlotAs ?? d.name;
+      const w = webByName.get(name);
+      if (w && near(spot, w)) webByName.delete(name);
+      else unmatchedDesktop.push({ ...spot, name });
+    }
+    const unmatchedWeb = [...webByName.values()].filter((w) => !known.some((k) => k.build === 'web' && k.name === w.name));
+    const problems: string[] = [];
+    for (const d of unmatchedDesktop) {
+      // Each profile orders its library by its own play history, so a tile may hold another world's name.
+      const i = d.tile ? unmatchedWeb.findIndex((w) => w.tile && near(d, w)) : -1;
+      if (i >= 0) {
+        unmatchedWeb.splice(i, 1);
+        continue;
+      }
+      const twin = unmatchedWeb.findIndex((w) => w.name === d.name);
+      if (twin < 0) {
+        problems.push(`${d.name}: desktop ${at(d)}, no web control there`);
+        continue;
+      }
+      problems.push(`${d.name}: desktop ${at(d)} vs web ${at(unmatchedWeb[twin])}`);
+      unmatchedWeb.splice(twin, 1);
+    }
+    for (const w of unmatchedWeb) problems.push(`${w.name}: web ${at(w)}, no desktop control there`);
+    return problems;
+  };
+
+  // The desktop `...` folds the main menu each step 48px wider, so the narrower size sits where both builds fold alike.
+  for (const size of [{ width: 1707, height: 960 }, { width: 1200, height: 800 }]) {
+    test(`full screen lays out as the browser does at ${size.width}x${size.height}`, async ({ browser }) => {
+      await setSize(1280, 800);
+      await gotoDev(page, 'mainMenu');
+      await setFullScreen(true);
+      // The screen sets a full-screen window's size, so the page's viewport takes each size under test.
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Emulation.setDeviceMetricsOverride', { ...size, deviceScaleFactor: 0, mobile: false });
+      // The same pixel ratio, since text widths round to device pixels.
+      const web = await browser.newPage({ viewport: size, deviceScaleFactor: await page.evaluate(() => window.devicePixelRatio) });
+      try {
+        await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(size.width);
+        await openApp(web);
+        await gotoDev(web, 'mainMenu');
+        // Both libraries hold the bundled worlds before any comparison.
+        await web.getByText('Veilwood').first().waitFor();
+        await page.getByText('Veilwood').first().waitFor();
+        // A first load's toast would count as a control on one side only.
+        await expect(web.locator('.Toastify__toast')).toHaveCount(0, { timeout: 20_000 });
+        await expect(page.locator('.Toastify__toast')).toHaveCount(0, { timeout: 20_000 });
+        for (const surface of SURFACE_PAIR) {
+          await openSurface(surface);
+          if (surface === 'game') {
+            await gotoDev(web, 'gameViewer');
+            await web.getByRole('button', { name: 'Continue anyway' }).click();
+            await web.getByRole('button', { name: 'Save Game' }).waitFor();
+          } else {
+            await gotoDev(web, 'mainMenu');
+            await web.locator('[data-fold-live="toggle"]').waitFor();
+          }
+          await settle(page);
+          await settle(web);
+          const problems = drift(surface, await allControls(page), await allControls(web));
+          expect(problems, `${surface} at ${size.width}x${size.height}`).toEqual([]);
+        }
+      } finally {
+        await web.close();
+        await cdp.send('Emulation.clearDeviceMetricsOverride');
+        await cdp.detach();
+        await setFullScreen(false);
+        await setSize(1280, 800);
+      }
+    });
+  }
+
+  // Playwright's key presses reach the page, not the native menu, so the test runs the menu item F11 triggers.
+  test('F11 is still the full-screen key, and the page follows it', async () => {
+    await setSize(1280, 800);
+    await openSurface('main menu');
+    const toggle = () => app.evaluate(({ BrowserWindow, Menu }) => {
+      type RoleItem = Electron.MenuItem & { getDefaultRoleAccelerator?: () => string | undefined };
+      const find = (items: Electron.MenuItem[]): RoleItem | undefined => {
+        for (const item of items) {
+          if (item.role?.toLowerCase() === 'togglefullscreen') return item;
+          const inner = item.submenu && find(item.submenu.items);
+          if (inner) return inner;
+        }
+        return undefined;
+      };
+      const item = find(Menu.getApplicationMenu()?.items ?? []);
+      if (!item) return null;
+      const win = BrowserWindow.getAllWindows()[0];
+      item.click(undefined, win, win.webContents);
+      return item.accelerator || item.getDefaultRoleAccelerator?.() || null;
+    });
+    expect(await toggle()).toBe('F11');
+    await expect.poll(isFullScreen).toBe(true);
+    await expect.poll(overlayFlagged).toBe(false);
+    await toggle();
+    await expect.poll(isFullScreen).toBe(false);
+    await expect.poll(overlayFlagged).toBe(true);
+    await setSize(1280, 800);
+  });
 
   test('reports the three window buttons', async () => {
     await gotoDev(page, 'mainMenu');

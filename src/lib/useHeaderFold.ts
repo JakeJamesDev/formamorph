@@ -50,7 +50,7 @@ export function useHeaderFold(bar: RefObject<HTMLElement | null>, tabs: Record<S
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(read);
     observer.observe(node);
-    node.querySelectorAll('[data-fold-measure], [data-fold-live]').forEach((e) => observer.observe(e));
+    node.querySelectorAll('[data-fold-measure], [data-fold-live], [data-fold-window-buttons]').forEach((e) => observer.observe(e));
     return () => observer.disconnect();
   }, [bar, tabs, layoutKey]);
 

@@ -375,6 +375,7 @@ The dialog opens on the tab you used last.
 | **AI Context** | Opens the AI Context inspector | **More Actions** |
 | **Send Feedback** | Sends a bug report or a suggestion. Shows when you are logged in to Community Creations. | **More Actions** |
 | **Exit to Main Menu** | Leaves the game, after it asks. Unsaved progress is lost. | The back arrow on the left panel's top row |
+| **Exit Full Screen** | Leaves full screen. Windows desktop app only. **F11** also enters and leaves it. | **More Actions**, while in full screen |
 
 On mobile, every action is in **More Actions**, in the tab row at the top.
 

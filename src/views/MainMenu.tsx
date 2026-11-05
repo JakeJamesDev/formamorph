@@ -15,6 +15,7 @@ import { useSurfaceTab } from '@/components/ui/surface';
 import { CollapsingToggleGroup } from '@/components/ui/collapsing-toggle-group';
 import type { SegmentFold } from '@/lib/collapsingSegments';
 import { useHeaderFold } from '@/lib/useHeaderFold';
+import { leaveWindowFullScreen, useWindowFullScreen } from '@/lib/windowChrome';
 import { MEASURE_LAYER } from '@/lib/measureLayer';
 import { KIND_BY_CARD_TYPE, KIND_LABELS } from '@/lib/catalogKinds';
 import { MAIN_MENU_CARD_OPTIONS, MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
@@ -30,7 +31,7 @@ import { Hint, Meta } from "@/components/ui/typography";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, BookOpen, ChevronLast, MoreHorizontal, MessageSquarePlus, FolderOpen, Settings, ScrollText, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, BookOpen, ChevronLast, MoreHorizontal, MessageSquarePlus, FolderOpen, Settings, ScrollText, Minimize2, type LucideIcon } from "lucide-react";
 import { DefaultAvatarMenuItem, DefaultBadge, DefaultPersonaMenuItem } from '@/components/library/LibraryDefault';
 import { AvatarThumbnailMenuItems } from '@/components/library/AvatarThumbnail';
 import { useAvatarThumbnails } from '@/lib/useAvatarThumbnails';
@@ -1734,6 +1735,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // The top bar folds its parts in order by whether they fit side by side; see `headerFold`.
   const topBarRef = useRef<HTMLDivElement>(null);
   const [tabSteps, setTabSteps] = useState<Record<SegmentFold, number> | null>(null);
+  const windowFullScreen = useWindowFullScreen();
+  const [moreOpen, setMoreOpen] = useState(false);
   const topBarFold = useHeaderFold(topBarRef, tabSteps, `${COMMUNITY_ENABLED && banners.chips.length > 0}:${isAuthenticated && isStaff(currentUser)}`);
 
   // The staff half of the badge story. Its own channel because it counts work rather than news: it is
@@ -1991,7 +1994,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
         {/* Event badges + grid/detailed view toggle + direct buttons or menu. No min-w-0: every part keeps its
             width, and the bar folds a step instead of squeezing one. */}
-        <div className="flex-1 flex items-center justify-end gap-2">
+        <div data-fold-right="" className="flex-1 flex items-center justify-end gap-2">
           {/* Dismissed banners, centered in the slack this cell was already holding rather than pushed
               against the buttons beside it; one count chip once the bar folds them. */}
           {COMMUNITY_ENABLED && (topBarFold.badges === 'full'
@@ -2028,8 +2031,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </button>
             </Tip>
           </div>
-          <div className={topBarFold.center === 'menu' ? 'block shrink-0' : 'hidden'}>
-            <Popover>
+          {/* Full screen hides the window buttons, so the menu shows at every width to hold Exit Full Screen. */}
+          <div className={topBarFold.center === 'menu' || windowFullScreen ? 'block shrink-0' : 'hidden'}>
+            <Popover open={moreOpen} onOpenChange={setMoreOpen}>
               <Tip tip="More Actions">
                 <PopoverTrigger asChild>
                   <button className={TOP_BAR_ROUND_BUTTON}>
@@ -2038,14 +2042,23 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </PopoverTrigger>
               </Tip>
               <PopoverContent align="end" className="flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0">
-                {actionButtons}
-                <div className="h-hairline bg-border my-1" />
-                <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
-                  <FolderOpen className="mr-2 h-4 w-4" /> Load Game
-                </Button>
-                <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>
-                  <Settings className="mr-2 h-4 w-4" /> Settings
-                </Button>
+                {topBarFold.center === 'menu' && (
+                  <>
+                    {actionButtons}
+                    <div className="h-hairline bg-border my-1" />
+                    <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
+                      <FolderOpen className="mr-2 h-4 w-4" /> Load Game
+                    </Button>
+                    <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>
+                      <Settings className="mr-2 h-4 w-4" /> Settings
+                    </Button>
+                  </>
+                )}
+                {windowFullScreen && (
+                  <Button variant="ghost" className="justify-start" onClick={() => { setMoreOpen(false); leaveWindowFullScreen(); }}>
+                    <Minimize2 className="mr-2 h-4 w-4" /> Exit Full Screen
+                  </Button>
+                )}
               </PopoverContent>
             </Popover>
           </div>
@@ -2059,7 +2072,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           {MAIN_MENU_CARD_TABS.map((tab) => (
             <div key={tab} data-fold-measure="center" className="flex w-max items-center gap-4">{renderActionButtons(tab, true)}</div>
           ))}
-          <div data-fold-measure="right-direct" className="flex w-max gap-2"><span className={TOP_BAR_ROUND_BUTTON} /><span className={TOP_BAR_ROUND_BUTTON} /></div>
+          <div data-fold-measure="right-direct" className="flex w-max gap-2">
+            <span className={TOP_BAR_ROUND_BUTTON} /><span className={TOP_BAR_ROUND_BUTTON} />
+            {windowFullScreen && <span className={TOP_BAR_ROUND_BUTTON} />}
+          </div>
           <span data-fold-measure="right-more" className={TOP_BAR_ROUND_BUTTON} />
           {COMMUNITY_ENABLED && banners.chips.length > 0 && (
             <>
