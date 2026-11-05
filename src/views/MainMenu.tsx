@@ -31,7 +31,7 @@ import { Hint, Meta } from "@/components/ui/typography";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, BookOpen, ChevronLast, MoreHorizontal, MessageSquarePlus, FolderOpen, Settings, ScrollText, Minimize2, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, BookOpen, ChevronLast, Menu, MoreHorizontal, MessageSquarePlus, FolderOpen, Settings, ScrollText, Minimize2, type LucideIcon } from "lucide-react";
 import { DefaultAvatarMenuItem, DefaultBadge, DefaultPersonaMenuItem } from '@/components/library/LibraryDefault';
 import { AvatarThumbnailMenuItems } from '@/components/library/AvatarThumbnail';
 import { useAvatarThumbnails } from '@/lib/useAvatarThumbnails';
@@ -208,6 +208,8 @@ interface MainMenuProps {
 /** Set once the first-run AI setup prompt has been offered, so it never nags again. The play gate still fires. */
 const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
 const TOP_BAR_ROUND_BUTTON = 'flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground shadow-lg transition-colors hover:bg-secondary/80';
+/** The menu a folded top bar opens: the action buttons, then Load Game and Settings. */
+const FOLDED_MENU = 'flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0';
 
 const aiSetupSeen = (): boolean => {
   try { return localStorage.getItem(AI_SETUP_SEEN_KEY) !== null; } catch { return false; }
@@ -1951,6 +1953,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     );
   };
   const actionButtons = renderActionButtons(cardType);
+  const foldedMenuItems = (
+    <>
+      {actionButtons}
+      <div className="h-hairline bg-border my-1" />
+      <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
+        <FolderOpen className="mr-2 h-4 w-4" /> Load Game
+      </Button>
+      <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>
+        <Settings className="mr-2 h-4 w-4" /> Settings
+      </Button>
+    </>
+  );
 
   // One place in the tree, so the entry draft survives the Avatar step taking the whole screen.
   const flow = (
@@ -1992,9 +2006,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           <CollapsingToggleGroup options={CARD_TABS} value={cardType} onValueChange={setCardType} aria-label="Library" fold={topBarFold.tabs} onStepWidths={setTabSteps} />
         </div>
 
-        {/* Action buttons: a row, until the bar folds them into the right-side menu. */}
+        {/* Action buttons: a row, until the bar folds them into a menu. */}
         <div className={topBarFold.center === 'full' ? 'flex items-center gap-4 justify-center' : 'hidden'}>
           {actionButtons}
+        </div>
+        {/* Mobile folds them into a hamburger at the left; wider windows use the right-side menu. */}
+        <div className={topBarFold.center === 'menu' ? 'flex md:hidden' : 'hidden'}>
+          <Popover>
+            <PopoverTrigger asChild>
+              <GradientButton tone="purple" aria-label="Menu">
+                <Menu className="h-5 w-5" />
+              </GradientButton>
+            </PopoverTrigger>
+            <PopoverContent align="start" className={FOLDED_MENU}>{foldedMenuItems}</PopoverContent>
+          </Popover>
         </div>
 
         {/* Event badges + grid/detailed view toggle + direct buttons or menu. No min-w-0: every part keeps its
@@ -2037,7 +2062,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             </Tip>
           </div>
           {/* Full screen hides the window buttons, so the menu shows at every width to hold Exit Full Screen. */}
-          <div className={topBarFold.center === 'menu' || windowFullScreen ? 'block shrink-0' : 'hidden'}>
+          <div className={windowFullScreen ? 'block shrink-0' : topBarFold.center === 'menu' ? 'hidden md:block shrink-0' : 'hidden'}>
             <Popover open={moreOpen} onOpenChange={setMoreOpen}>
               <Tip tip="More Actions">
                 <PopoverTrigger asChild>
@@ -2046,19 +2071,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   </button>
                 </PopoverTrigger>
               </Tip>
-              <PopoverContent align="end" className="flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0">
-                {topBarFold.center === 'menu' && (
-                  <>
-                    {actionButtons}
-                    <div className="h-hairline bg-border my-1" />
-                    <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
-                      <FolderOpen className="mr-2 h-4 w-4" /> Load Game
-                    </Button>
-                    <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>
-                      <Settings className="mr-2 h-4 w-4" /> Settings
-                    </Button>
-                  </>
-                )}
+              <PopoverContent align="end" className={FOLDED_MENU}>
+                {topBarFold.center === 'menu' && foldedMenuItems}
                 {windowFullScreen && (
                   <Button variant="ghost" className="justify-start" onClick={() => { setMoreOpen(false); leaveWindowFullScreen(); }}>
                     <Minimize2 className="mr-2 h-4 w-4" /> Exit Full Screen

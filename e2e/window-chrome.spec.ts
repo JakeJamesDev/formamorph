@@ -201,6 +201,21 @@ test.describe('web', () => {
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
   });
 
+  test('folds into a left hamburger on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    await expect(page.getByRole('button', { name: 'More Actions' })).toBeHidden();
+    const hamburger = page.getByRole('button', { name: 'Menu' });
+    expect((await hamburger.boundingBox())?.x).toBeLessThan(40);
+    await hamburger.click();
+    const menu = page.getByRole('dialog');
+    for (const name of ['Community Creations', 'New World', 'Import World', 'Load Game', 'Settings']) {
+      await expect(menu.getByRole('button', { name })).toBeVisible();
+    }
+  });
+
   test('never offers Exit Full Screen', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 800 });
     await openApp(page);
