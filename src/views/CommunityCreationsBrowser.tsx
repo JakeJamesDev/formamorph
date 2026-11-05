@@ -180,7 +180,7 @@ const BrowserShell = ({ presentation, open, onOpenChange, children }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent surface="community" aria-describedby={undefined}
+      <DialogContent surface="community" placement="own" aria-describedby={undefined}
         hideClose
         className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
       >
@@ -1421,7 +1421,7 @@ const CommunityCreationsBrowser = ({
               ) : (
                 // The title row fills its header, so the search box grows into the free space. Refresh ends
                 // the row, after the sort select and the order toggle.
-                <div className="flex min-h-14 items-center py-2 pr-[var(--window-buttons-width)]">
+                <div className="flex min-h-[var(--header-line)] items-center py-2 pr-[var(--window-buttons-width)]">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
                     <div className="flex items-center gap-1">
                       <BackButton onClick={() => onOpenChange(false)} />

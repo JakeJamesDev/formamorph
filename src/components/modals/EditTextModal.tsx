@@ -49,6 +49,7 @@ export const EditTextModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         surface="editText"
+        placement="own"
         ref={morphRef}
         hideClose
         // The stock slide is a half-width offset that assumes a transform-centered dialog; this one is

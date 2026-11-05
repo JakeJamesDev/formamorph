@@ -14,7 +14,7 @@ export function SurfaceAppBar({ start, center, end }: { start: ReactNode; center
   const [endRef, { width: endWidth }] = useElementSize();
   return (
     <div
-      className="grid min-h-14 items-center gap-3 px-3 py-2"
+      className="grid min-h-[var(--header-line)] items-center gap-3 px-3 py-2"
       style={{ gridTemplateColumns: `minmax(0,1fr) minmax(10rem,min(26rem,calc(100% - ${2 * (endWidth + GAP)}px))) minmax(max-content,1fr)` }}
     >
       <div className="flex min-w-0 items-center gap-1">{start}</div>

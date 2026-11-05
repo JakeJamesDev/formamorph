@@ -111,7 +111,7 @@ export const GRAPH_COVERED = {
  */
 export const PATH_TRIGGERS = {
   'docs/*.md': ['src/lib/docs/bundledDocsIndex.ts', 'src/lib/docs/docsCoverage.test.ts', 'src/lib/docs/bundledDocsIndex.test.ts', 'src/lib/codeGuideLinks.test.ts'],
-  'src/index.css': ['src/lib/landingPulse.test.ts'],
+  'src/index.css': ['src/lib/landingPulse.test.ts', 'electron/windowChrome.test.mjs'],
   'THIRD-PARTY-NOTICES.md': ['src/lib/itemIcons.test.ts', 'scripts/shipNotices.test.ts', 'src/lib/noticesFormat.test.ts', 'src/components/modals/LicensesPanel.test.tsx'],
   'index.html': ['src/components/themeBootstrap.test.ts'],
   'src/lib/tts/g2p/cmudict.dict': ['src/lib/tts/phonemeStep.ts', 'src/lib/tts/arpabet.test.ts', 'src/lib/tts/textToPhonemes.test.ts', 'src/lib/tts/homographs.test.ts', 'src/lib/tts/homographs.wordTable.test.ts'],

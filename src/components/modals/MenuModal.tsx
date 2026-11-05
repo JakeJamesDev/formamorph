@@ -18,6 +18,8 @@ import type { WorldOverview, SaveRecord } from "@/types";
 import { Hint } from '@/components/ui/typography';
 import { leaveWindowFullScreen, useWindowFullScreen } from '@/lib/windowChrome';
 
+const ROUND_BUTTON = 'flex items-center justify-center rounded-full w-10 h-10 p-0';
+
 export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExit, onEditWorld, onShowAiContext }: {
   /** Save, Load and Settings sit in the row as buttons, and the menu holds the rest. */
   directActions?: boolean;
@@ -97,11 +99,19 @@ export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug,
     else await commitSave(name);
   };
 
-  const menuItem = (Icon: LucideIcon, label: string, run: () => void) => (
-    <Button variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); run(); }}>
-      <Icon className="mr-2 h-4 w-4" /> {label}
-    </Button>
-  );
+  // `direct` items are row buttons when `directActions` is set, so the menu leaves them out.
+  const menuItems: { icon: LucideIcon; label: string; run: () => void; direct?: boolean; shown?: boolean }[] = [
+    { icon: Save, label: 'Save Game', run: () => setShowSaveDialog(true), direct: true },
+    { icon: FolderOpen, label: 'Load Game', run: () => setShowLoadDialog(true), direct: true },
+    { icon: SquarePen, label: 'Edit World', run: onEditWorld },
+    { icon: ScrollText, label: 'AI Context', run: onShowAiContext },
+    { icon: Settings, label: 'Settings', run: onSettingsClick, direct: true },
+    // Opened from here so a bug can be reported where it happened, rather than backing out first.
+    { icon: MessageSquarePlus, label: 'Send Feedback', run: () => onReportBug?.(), shown: !!onReportBug },
+    { icon: Minimize2, label: 'Exit Full Screen', run: leaveWindowFullScreen, shown: fullScreen },
+    // The row's Back button exits on desktop.
+    { icon: DoorOpen, label: 'Exit to Main Menu', run: onExit, direct: true },
+  ];
 
   return (
     <>
@@ -114,7 +124,7 @@ export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug,
             ]}
           />
           <Tip tip="Settings">
-            <Button onClick={onSettingsClick} className="flex items-center justify-center rounded-full w-10 h-10 p-0">
+            <Button onClick={onSettingsClick} className={ROUND_BUTTON}>
               <Settings className="h-5 w-5" />
             </Button>
           </Tip>
@@ -123,7 +133,7 @@ export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug,
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <Tip tip="More Actions">
           <PopoverTrigger asChild>
-            <Button className="flex items-center justify-center rounded-full w-10 h-10 p-0">
+            <Button className={ROUND_BUTTON}>
               <MoreHorizontal className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
@@ -131,15 +141,13 @@ export const MenuModal = ({ directActions = false, onSettingsClick, onReportBug,
         {/* Wide enough for `Exit to Main Menu` plus its icon with room to spare — at w-48 it had 14px. */}
         <PopoverContent align="end" className="w-60 p-1">
           <div className="flex flex-col">
-            {!directActions && menuItem(Save, 'Save Game', () => setShowSaveDialog(true))}
-            {!directActions && menuItem(FolderOpen, 'Load Game', () => setShowLoadDialog(true))}
-            {menuItem(SquarePen, 'Edit World', onEditWorld)}
-            {menuItem(ScrollText, 'AI Context', onShowAiContext)}
-            {!directActions && menuItem(Settings, 'Settings', onSettingsClick)}
-            {/* Opened from here so a bug can be reported where it happened, rather than backing out first. */}
-            {onReportBug && menuItem(MessageSquarePlus, 'Send Feedback', onReportBug)}
-            {fullScreen && menuItem(Minimize2, 'Exit Full Screen', leaveWindowFullScreen)}
-            {!directActions && menuItem(DoorOpen, 'Exit to Main Menu', onExit)}
+            {menuItems
+              .filter((item) => item.shown !== false && !(directActions && item.direct))
+              .map(({ icon: Icon, label, run }) => (
+                <Button key={label} variant="ghost" className="w-full justify-start" onClick={() => { setMenuOpen(false); run(); }}>
+                  <Icon className="mr-2 h-4 w-4" /> {label}
+                </Button>
+              ))}
           </div>
         </PopoverContent>
       </Popover>

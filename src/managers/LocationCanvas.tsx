@@ -1554,7 +1554,7 @@ const CanvasInner = ({
           <Panel
             position="top-right"
             // Full screen drops the column under the window's corner button.
-            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-16 md:max-h-[calc(100%-4.5rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
+            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-[calc(var(--header-line)+0.5rem)] md:max-h-[calc(100%-var(--header-line)-1rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
           >
             {shownMapPanel && worldOverview && (
               <MapBackgroundPanel

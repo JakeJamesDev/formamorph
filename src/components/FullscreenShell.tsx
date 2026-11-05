@@ -43,6 +43,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
     <Dialog open={morph.mounted} onOpenChange={(next) => { if (!next) morph.close(); }}>
       <DialogContent
         ref={morph.boxRef}
+        placement="own"
         unanimated
         hideClose
         overlayClassName={morph.overlayClassName}

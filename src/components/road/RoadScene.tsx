@@ -81,6 +81,7 @@ export function RoadScene({ open = true, initialTier = DEFAULT_ROAD_TIER, initia
     <Dialog open={open} onOpenChange={(next) => { if (!next) onKeepPlaying(); }}>
       <DialogContent
         surface="road"
+        placement="own"
         hideClose
         unanimated
         className={cn(

@@ -16,6 +16,29 @@ const classesFor = (shell: string) => {
   return screen.getByLabelText('shell').className.split(/\s+/);
 };
 
+describe('room for the window buttons', () => {
+  const ROOM = '[[data-window-overlay]_&]:top-[var(--header-line)]';
+  const placed = (placement?: 'centered' | 'own') => {
+    render(
+      <Dialog open>
+        <DialogContent hideClose placement={placement} aria-label="placed" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">placed</DialogTitle>
+          body
+        </DialogContent>
+      </Dialog>,
+    );
+    return screen.getByLabelText('placed').className.split(/\s+/);
+  };
+
+  it('keeps a centered dialog below the header line', () => {
+    expect(placed()).toContain(ROOM);
+  });
+
+  it('leaves a box the caller places itself where the caller put it', () => {
+    expect(placed('own')).not.toContain(ROOM);
+  });
+});
+
 describe('the stock open animation', () => {
   const contentClasses = (unanimated?: boolean) => {
     render(

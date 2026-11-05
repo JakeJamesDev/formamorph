@@ -2,6 +2,7 @@
 
 // The sandboxed preload can't require this module, so main passes the desktop flag as an argument.
 const WINDOW_OVERLAY_ARG = '--formamorph-window-overlay';
+// Matches `--header-line` in src/index.css; windowChrome.test.mjs holds them equal.
 const WINDOW_BUTTONS_HEIGHT = 56;
 const FULL_SCREEN_CHANNEL = 'window-full-screen';
 const TRANSPARENT = '#00000000';

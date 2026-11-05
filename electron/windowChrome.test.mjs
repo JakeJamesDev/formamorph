@@ -1,13 +1,18 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi } from 'vitest';
 import windowChrome from './windowChrome.cjs';
 
 const { WINDOW_OVERLAY_ARG, windowChromeOptions, setWindowSymbolColor } = windowChrome;
 
+/** The page's header line, the one value the window buttons' height must match. Vitest runs from the repo root. */
+const headerLine = () => Number(readFileSync('src/index.css', 'utf8').match(/--header-line:\s*(\d+)px/)?.[1]);
+
 describe('the window options', () => {
-  it('hides the title bar on Windows and keeps its buttons at the header height', () => {
+  it('hides the title bar on Windows and keeps its buttons at the page header line', () => {
     const options = windowChromeOptions('win32');
     expect(options.titleBarStyle).toBe('hidden');
-    expect(options.titleBarOverlay).toMatchObject({ color: '#00000000', height: 56 });
+    expect(headerLine()).toBeGreaterThan(0);
+    expect(options.titleBarOverlay).toMatchObject({ color: '#00000000', height: headerLine() });
   });
 
   it('holds the Windows content area to half of a 1080p screen', () => {
