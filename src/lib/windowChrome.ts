@@ -88,6 +88,7 @@ export function installWindowChrome(): void {
     let step = 0;
     const advance = () => {
       step += 1;
+      // map keeps the tuple's four parts.
       current = from.map((part, i) => part + (target[i] - part) * (step / FADE_STEPS)) as Rgba;
       send(current);
       if (step < FADE_STEPS) fadeTimer = window.setTimeout(advance, FADE_STEP_MS);

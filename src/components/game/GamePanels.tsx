@@ -90,9 +90,6 @@ import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { useSlidePresence } from "@/lib/useSlidePresence";
-
-/** The Entity View slide, on the nav rail's curve. */
-const ENTITY_VIEW_SLIDE_MS = 200;
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { LocationTabBody } from './LocationTabBody';
 import { EntityListRow, EntityListSection } from './EntityListRow';
@@ -116,6 +113,9 @@ import { parseSavedReasoning } from '@/lib/savedReasoning';
 import { scriptPrompts } from '@/lib/scriptPrompts';
 import { turnTells } from '@/lib/scriptTells';
 import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
+
+/** The Entity View slide, on the nav rail's curve. */
+const ENTITY_VIEW_SLIDE_MS = 200;
 
 /** What the entity view shows: an entity, or the played side when no entity is played. */
 type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' };

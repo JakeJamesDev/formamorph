@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 
 const ART = [
-  { name: 'Bright art', background: 'linear-gradient(160deg, #fff7d6 0%, #ffd27a 55%, #f39c4a 100%)' },
-  { name: 'Dark art', background: 'linear-gradient(160deg, #0b1026 0%, #1d2a5c 55%, #3b2a6b 100%)' },
+  { name: 'Bright Art', background: 'linear-gradient(160deg, #fff7d6 0%, #ffd27a 55%, #f39c4a 100%)' },
+  { name: 'Dark Art', background: 'linear-gradient(160deg, #0b1026 0%, #1d2a5c 55%, #3b2a6b 100%)' },
 ] as const;
 
 /** A drawing of the game's top-right corner. Windows paints the real symbols. */

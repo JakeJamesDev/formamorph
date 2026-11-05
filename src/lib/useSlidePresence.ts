@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 
-/** Drives a section that slides open and shut. `mounted` holds through the close so the slide can play,
- *  then drops; `open` is the visual state and flips one frame after mount so the open slide starts from closed.
- *  `instant` skips the slide for reduced motion. */
+/** Drives a slide: `mounted` holds through the close, and `open` flips one frame after mount. */
 export function useSlidePresence(want: boolean, ms: number, instant: boolean): { mounted: boolean; open: boolean } {
   const [mounted, setMounted] = useState(want);
   const [open, setOpen] = useState(want);

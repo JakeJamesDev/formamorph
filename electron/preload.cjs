@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   setWindowSymbolColor: (color) => ipcRenderer.invoke('window-symbol-color', color),
   isFullScreen: () => ipcRenderer.sendSync('window-is-full-screen'),
   onFullScreen: (cb) => {
+    // FULL_SCREEN_CHANNEL in windowChrome.cjs; the sandboxed preload can't require it.
     const handler = (_event, on) => cb(on);
     ipcRenderer.on('window-full-screen', handler);
     return () => ipcRenderer.removeListener('window-full-screen', handler);

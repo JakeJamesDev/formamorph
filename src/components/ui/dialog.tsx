@@ -43,11 +43,7 @@ export const dialogFullHeight = 'top-[var(--app-top,0px)] translate-y-0 h-[var(-
  */
 export const dialogSafeArea = 'border-x-0 border-y-transparent border-t-[length:env(safe-area-inset-top)] border-b-[length:env(safe-area-inset-bottom)]';
 
-/**
- * On the desktop flag, a centered dialog never rises above the header line, so its close button clears the
- * window buttons. The box keeps its size: it centers in the room below the line, and a box taller than that
- * room sits at the line. The percentage in `translate` is the box's own height.
- */
+/** On the desktop flag, a centered dialog centers below the header line, and a taller one sits at the line. */
 const WINDOW_BUTTON_ROOM = '[[data-window-overlay]_&]:top-[var(--header-line)] [[data-window-overlay]_&]:translate-y-[max(0px,calc((var(--app-h,100dvh)-2*var(--header-line))/2-50%))]';
 
 /** A caller that places its own box at `md` and wider, such as a full-height shell, keeps that place. A `max-*` place is mobile only. */
