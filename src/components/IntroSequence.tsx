@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { INTRO_FONT_BASE64, INTRO_FONT_FAMILY } from '@/lib/introFont';
 import { useBackStop } from '@/hooks/useBackStop';
 import IndeterminateProgress from '@/components/ui/indeterminate-progress';
@@ -37,6 +37,12 @@ export function IntroSequence({
 }) {
   const readyRef = useRef(ready);
   readyRef.current = ready;
+  // The boot bar in index.html was on screen, so this bar takes over from it at once. Read once, then cleared.
+  const [bootWaitShown] = useState(() => {
+    const shown = document.documentElement.dataset.bootWait === 'shown';
+    delete document.documentElement.dataset.bootWait;
+    return shown;
+  });
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLCanvasElement>(null);
   const gooRef = useRef<HTMLCanvasElement>(null);
@@ -383,7 +389,8 @@ export function IntroSequence({
       </div>
       <div
         ref={waitRef}
-        className="pointer-events-none absolute inset-x-0 bottom-[22%] mx-auto flex w-48 flex-col items-center gap-2 opacity-0 transition-opacity duration-300"
+        className="pointer-events-none absolute inset-x-0 bottom-[22%] mx-auto flex w-48 flex-col items-center gap-2 transition-opacity duration-300"
+        style={{ opacity: bootWaitShown ? 1 : 0 }}
       >
         <span className="text-meta text-muted-foreground">Getting Ready…</span>
         <IndeterminateProgress />
