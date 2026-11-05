@@ -22,3 +22,4 @@ Rulings: Q7, Q22, Q23.
 - [ ] Only tests the note assigned to this batch moved.
 - [ ] Time before and after is recorded in the ticket.
 - [ ] Q5 tests keep their mutation kills; other tests show held coverage and one reinstated bug turning red.
+- [ ] The `panelWorld` and harness copies in `panelBench` are gone once the view moves end, and `worldEditorBench` changes only then.
