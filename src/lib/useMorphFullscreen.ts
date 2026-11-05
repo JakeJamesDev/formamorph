@@ -10,6 +10,9 @@ const REVEAL_MS = 200;
 /** Decelerate: quick to leave the field, slow to settle at full size. */
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)';
 
+/** The box's edge in flight. A ring, not a border, so it never replaces the window's safe-area border. */
+export const MORPH_TRAVEL_EDGE = 'ring-1 ring-border shadow-2xl';
+
 export type MorphPhase = 'closed' | 'entering' | 'open' | 'leaving';
 
 /**
@@ -343,9 +346,9 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
   // distinguishable — the dim behind it has barely built up. Leaving, it also stops catching the
   // pointer, since the docked view under it is live again.
   const boxClassName = phase === 'entering'
-    ? 'border shadow-2xl'
+    ? MORPH_TRAVEL_EDGE
     : phase === 'leaving'
-      ? 'border shadow-2xl pointer-events-none'
+      ? `${MORPH_TRAVEL_EDGE} pointer-events-none`
       : '';
 
   const contentInOverlay = phase === 'entering' || phase === 'open';

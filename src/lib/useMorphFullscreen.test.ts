@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { useMorphFullscreen, useMorphResize } from './useMorphFullscreen';
+import { MORPH_TRAVEL_EDGE, useMorphFullscreen, useMorphResize } from './useMorphFullscreen';
 
 const rect = (left: number, top: number, width: number, height: number) => ({
   left, top, width, height, right: left + width, bottom: top + height, x: left, y: top,
@@ -89,7 +89,7 @@ describe('useMorphFullscreen', () => {
     expect(result.current.phase).toBe('leaving');
     expect(result.current.contentInOverlay).toBe(false);
     expect(result.current.veilClassName).toContain('opacity-100');
-    expect(result.current.boxClassName).toContain('border');
+    expect(result.current.boxClassName).toContain(MORPH_TRAVEL_EDGE);
     act(() => vi.advanceTimersByTime(50));
     expect(writes[writes.length - 1]).toBe('translate(20px, 40px) scale(0.2, 0.075)');
     // The box then fades over the widget after landing, so the settle waits out shrink plus reveal.
