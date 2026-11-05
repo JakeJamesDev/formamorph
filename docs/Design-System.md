@@ -1136,6 +1136,53 @@ The ring keeps its size at every width. The popover opens above the input, align
 | No usage figure (paused, locked, app-derived) | The track alone. The accessible name holds no percent. |
 | During a turn | The figure holds, and moves when the turn ends. |
 
+## Pattern: Usage Report
+
+**Approved by the user on 2026-11-05.** A staff report that reads top to bottom: a row of figure tiles, charts for change over time and rank, then the tables that hold the exact figures.
+
+**Density:** Compact. Tiles use the `text-display` figure with `Meta` lines. Sections use `SectionHeading`, not cards.
+
+**Color:** Every bar uses `bg-primary`, so it follows the selected theme. Never use the fixed `--chart-*` tokens here. They only change between light and dark.
+
+**Contrast:** `--primary` reads at 1.5 to 2:1 in the pale light themes. A chart never stands alone, so a table beside it holds the same figures.
+
+### Composition
+
+| Part | Treatment |
+| --- | --- |
+| Figure tile | Label, one large figure, and one line of context. Six across on a wide panel. |
+| Day chart | One column per day on a round axis, with a line at the top and at the midpoint. The readout above names the day under the pointer. |
+| Second figure | A 2px `muted-foreground` tick across the column, named in a legend. One axis only. |
+| Ranked bars | Label, a 12px bar, and the figure. Rows sort longest first. |
+| Table | Figures align right and words align left. A wide table scrolls sideways inside its own frame. |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The report, its charts and tables | `UsagePanel` in [`UsageTab.tsx`](../src/components/menu/UsageTab.tsx) |
+| Figure formats and CSV export | [`usageReport.ts`](../src/lib/usageReport.ts) |
+| Isolated reference | [`UsageReportReference.tsx`](../src/components/design-system/UsageReportReference.tsx) |
+
+### Responsive behavior
+
+Tiles drop to three columns, then two. Paired sections stack on mobile. Charts keep their height and narrow their columns.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Column under the pointer | Full opacity, and the readout names its day. |
+| Other columns | 75% opacity. The latest day stays full while the pointer is away. |
+| Before the first answer | A `Skeleton` block. |
+| Report cannot be read | One `Meta` line, and an error toast. |
+| No rows in a section | One `Meta` line in place of the bars or table. |
+| A figure has no value | An em dash. A share under 1% reads `<1%`, never `0%`. |
+
+### Writing review
+
+Labels use title case. Times state their zone once, at the top of the report.
+
 ## Pattern: Surface App Bar
 
 **Purpose:** Put a surface's identity, its everyday tools and its whole-surface actions in one row above everything they act on.

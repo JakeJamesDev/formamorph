@@ -60,6 +60,7 @@ import { EntityPopupReference } from '@/components/design-system/EntityPopupRefe
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
 import { AllowanceRingReference } from '@/components/design-system/AllowanceRingReference';
+import { UsageReportReference } from '@/components/design-system/UsageReportReference';
 import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
 import { HistoryControlsReference } from '@/components/design-system/HistoryControlsReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
@@ -378,6 +379,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Allowance Ring',
     description: 'A filling ring beside Send, and its breakdown bars',
     Component: AllowanceRingReference,
+  },
+  {
+    id: 'usage-report',
+    label: 'Usage Report',
+    description: 'Figure tiles, day charts, ranked bars and their tables',
+    Component: UsageReportReference,
   },
   {
     id: 'surface-app-bar',
