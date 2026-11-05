@@ -8,5 +8,5 @@ import { cn } from '@/lib/utils';
 export const SETTINGS_DIALOG_SIZE = cn(
   'flex flex-col overflow-hidden sm:max-w-[900px]',
   dialogFullHeightMobile,
-  'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
+  'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none sm:h-[90dvh]',
 );
