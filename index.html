@@ -36,11 +36,12 @@
     <style>
       :where(html.light) { background: hsl(220 12% 97%); }
       :where(html.dark) { background: hsl(220 12% 10%); }
-      /* The boot bar: the indeterminate bar while the app code loads. React's first render replaces it. */
-      .fm-boot-wait { position: fixed; left: 0; right: 0; bottom: 22%; margin: 0 auto; width: 12rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; pointer-events: none; opacity: 0; animation: fm-boot-show 300ms 600ms forwards; }
-      .fm-boot-wait span { font-size: 0.75rem; line-height: 1rem; color: hsl(var(--muted-foreground, 220 9% 46%)); }
-      .fm-boot-track { position: relative; width: 100%; height: 0.25rem; overflow: hidden; background: hsl(var(--secondary, 220 12% 90%)); }
-      .fm-boot-fill { position: absolute; top: 0; bottom: 0; left: 0; width: 33.333%; background: hsl(var(--primary, 220 12% 15%)); animation: fm-boot-slide 1s infinite linear; }
+      /* The boot bar: the indeterminate bar while the app code loads. React's first render replaces it.
+         Hidden until index.css sets --fm-boot-display, so it only ever shows in the theme's colors. */
+      .fm-boot-wait { position: fixed; left: 0; right: 0; bottom: 22%; margin: 0 auto; width: 12rem; display: var(--fm-boot-display, none); flex-direction: column; align-items: center; gap: 0.5rem; pointer-events: none; opacity: 0; animation: fm-boot-show 300ms 600ms forwards; }
+      .fm-boot-wait span { font-size: 0.75rem; line-height: 1rem; color: hsl(var(--muted-foreground)); }
+      .fm-boot-track { position: relative; width: 100%; height: 0.25rem; overflow: hidden; background: hsl(var(--secondary)); }
+      .fm-boot-fill { position: absolute; top: 0; bottom: 0; left: 0; width: 33.333%; background: hsl(var(--primary)); animation: fm-boot-slide 1s infinite linear; }
       @keyframes fm-boot-show { to { opacity: 1; } }
       @keyframes fm-boot-slide { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
     </style>
@@ -55,7 +56,9 @@
     </div>
     <!-- Tells the welcome intro the boot bar was on screen, so it keeps the bar up instead of flashing it off. -->
     <script>
-      setTimeout(() => { if (document.querySelector('.fm-boot-wait')) document.documentElement.dataset.bootWait = 'shown'; }, 600);
+      document.querySelector('.fm-boot-wait').addEventListener('animationstart', (e) => {
+        if (e.animationName === 'fm-boot-show') document.documentElement.dataset.bootWait = 'shown';
+      });
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

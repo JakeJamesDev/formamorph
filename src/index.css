@@ -511,6 +511,8 @@
   --header-line: 56px;
   --window-buttons-width: 0px;
   --game-right-column-min: 0px;
+  /* Shows the boot bar in index.html; it stays hidden until these tokens exist. */
+  --fm-boot-display: flex;
 }
 /* A host page can define these `env()` values too, so only the flag reads them. */
 [data-window-overlay] {
