@@ -73,6 +73,7 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 | Q46 | `ownerTreeParity` splits. The drops half retires if coverage holds, and the links half stays as Q5 import behavior. `helpSession.parity` stays, because help answers are prompts. `perTurnSettle.parity` retires if coverage on `settleTraits` holds. |
 | Q47 | The history rewrite of 2026-11-03 invalidated every older sha and left no ledger, so the real-bug table in `reference-run.md` no longer resolves. Its times and targets stand. A full ledger rebuild runs in an AFK window after ticket 06's replay and before ticket 07, which picks its group from the ledger. |
 | Q48 | A replay sample of 36 bugs that turn a test red is enough. Ticket 13's zero-miss bar needs at least 36, about 8 hours, for an 8.3% upper bound. |
+| Q49 | Rule (b) can't read CI runs whose head sha predates the history rewrite. The two tests that `reference-run.md` names as caught by CI keep real-bug history under Q8 and Q9, even when the rebuilt ledger drops them. Parity describes inside a larger test file go through the family sweep under Q8, not Q11. |
 
 ## User Stories
 
