@@ -28,7 +28,7 @@ const RANGES = [
 type Range = (typeof RANGES)[number]['value'];
 
 const CHART_HEIGHT = 120;
-const CHART_FILL = 'bg-[hsl(var(--chart-1))]';
+const CHART_FILL = 'bg-primary';
 
 /** A heading and its content, with an optional control on the heading's rule. */
 function UsageSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
