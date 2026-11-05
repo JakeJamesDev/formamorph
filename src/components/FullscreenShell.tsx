@@ -5,8 +5,8 @@ import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
 
-/** Keeps a row that reaches the window's top edge clear of the corner button. At `md` and wider, content starts below the header line. */
-export const FULLSCREEN_CORNER_CLEAR = 'max-md:pr-9';
+/** For the window's top row: clears the corner button and the window buttons, and centers on the header line at `md` and wider. */
+export const FULLSCREEN_CORNER_CLEAR = 'pr-[calc(2.25rem+var(--window-buttons-width))] md:min-h-[var(--header-line)] md:content-center';
 
 /**
  * The window an editor opens into when it goes full screen.
@@ -72,7 +72,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
           if (returnFocus) setTimeout(() => returnFocus()?.focus?.({ preventScroll: true }), 0);
         }}
         className={cn(
-          'flex flex-col gap-4 overflow-hidden border-0 p-4 md:pt-[var(--header-line)]',
+          'flex flex-col gap-4 overflow-hidden border-0 p-4 md:pt-0',
           dialogFullHeight,
           'w-screen max-w-none left-0 translate-x-0 rounded-none sm:rounded-none',
           morph.boxClassName,
@@ -81,11 +81,10 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
       >
         <div className="flex flex-col flex-1 min-h-0 gap-4">
           {/* The title is always here, only sometimes seen: a dialog without one is unnamed to a screen
-              reader, and `sr-only` keeps that promise without spending the row. At the size of a field
-              caption when shown, not a dialog heading — it names a box inside the app. */}
+              reader, and `sr-only` keeps that promise without spending the row. */}
           {/* Centered on mobile, so the gutter goes on both sides there. */}
-          <DialogHeader className={cn(FULLSCREEN_CORNER_CLEAR, 'max-sm:pl-9', !showTitle && 'sr-only')}>
-            <DialogTitle className="text-label">{title}</DialogTitle>
+          <DialogHeader className={cn(FULLSCREEN_CORNER_CLEAR, 'md:justify-center max-sm:pl-9', !showTitle && 'sr-only')}>
+            <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
           {children}
         </div>

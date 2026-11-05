@@ -1208,7 +1208,7 @@ Labels use title case. Times state their zone once, at the top of the report.
 - ↔️ The room for those buttons is `--window-buttons-width`, added to the right end of the row. It's 0 on web, macOS and Linux, because only the desktop flag reads the overlay's `env()` values.
 - 🖱️ Empty parts of the line drag the window, including over a dialog's dimming layer. Controls take clicks, and a modal's hidden page never blocks the drag.
 - 🔔 Top-right toasts start below the line.
-- 🖼️ A full screen editor's content starts below the line, and its corner button sits on it.
+- 🖼️ A full screen editor's top row and its corner button share the line. The row clears the button and the window buttons.
 - 📱 Mobile keeps its own layout.
 
 ### Production mapping

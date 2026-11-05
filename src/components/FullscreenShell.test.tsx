@@ -45,11 +45,10 @@ describe('FullscreenShell', () => {
     expect(screen.getByText('Stat code').closest('div')?.className).toContain('sr-only');
   });
 
-  it('shows a heading only when asked, sized as a field caption and centered on mobile', () => {
+  it('shows a heading only when asked, sized as a dialog title and centered on mobile', () => {
     render(<FullscreenShell morph={openMorph()} title="Prompts" showTitle>body</FullscreenShell>);
     const heading = screen.getByText('Prompts');
-    // A caption, not a dialog heading: it names a box inside the app.
-    expect(heading.className).toContain('text-label');
+    expect(heading.className).toContain('text-title');
     expect(heading.parentElement?.className).toContain('text-center');
     expect(heading.parentElement?.className).toContain('sm:text-left');
   });

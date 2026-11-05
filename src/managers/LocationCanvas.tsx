@@ -648,8 +648,8 @@ const CanvasToolbar = ({
 }) => (
   // Scrolls sideways rather than spilling off a narrow window: every tool stays reachable at any width, and
   // the row keeps its own height so the search box beneath it has a fixed place to sit. Centered, it keeps
-  // the window's corner button clear on both sides.
-  <Panel position="top-center" className="!m-2 max-w-[calc(100%-4.5rem)] overflow-x-auto">
+  // the window's corner button and the window buttons clear on both sides. Centered on the header line at `md`.
+  <Panel position="top-center" className="!m-2 md:!mt-[5px] max-w-[calc(100%-4.5rem-2*var(--window-buttons-width))] overflow-x-auto">
     <div
       role="toolbar"
       aria-label="Canvas Tools"
@@ -1554,7 +1554,7 @@ const CanvasInner = ({
           <Panel
             position="top-right"
             // Full screen drops the column under the window's corner button.
-            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
+            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-16 md:max-h-[calc(100%-4.5rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
           >
             {shownMapPanel && worldOverview && (
               <MapBackgroundPanel
