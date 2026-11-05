@@ -85,6 +85,7 @@ The owner settled these in the prototype session. A ruling reopens on new eviden
 - **Q22. Full screen editor shell.** At `md` and wider, its content starts at y=56 on desktop and web, and its corner button sits on the header line. Web gives up 40px of editor height, so the two layouts stay one layout.
 - **Q23. Main menu tabs and centering.** The bar still folds only when the whole row doesn't fit, and the buttons drift off center before anything folds. The library tabs keep their full labels while the row fits. At 1280 wide, the buttons sit about 68px right of center. They center exactly wherever both sides have room.
 - **Q24. Backup & Restore in game.** The Settings Data row shows only in main menu Settings. Restore reloads the app, which would drop a running game, so Take Me There from a game still asks to exit first.
+- **Q25. The full-screen `...` in the drift test.** The main menu's full-screen More Actions button is the one named exception to Q14. Its neighbors in the right cell sit its width plus the gap further left than on web, and near the fold point desktop can fold one step earlier. Every other control matches within 1px.
 
 ### Modules
 
