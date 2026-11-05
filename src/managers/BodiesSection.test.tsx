@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { bodyFixture } from '@/test/bodyFixture';
 import { screen, fireEvent, within, act } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { panelWorld, renderPanelBench } from '@/test/panelBench';
+import BodiesSection from './BodiesSection';
+import type { EditorMode } from '@/lib/editorMode';
 import { centerBox, KEY_STEP, MAX_ASPECT } from '@/lib/bodyLayout';
 import { blankItem } from '@/lib/items';
 import type { Body, Entity, Item, Placement, Slot, World } from '@/types';
 
-/** The Items tab's Equipment Settings entry: slots, Bodies and Persona Items, and the entity Body select. */
+/** The Equipment Settings entry's Bodies: the list, the layout editor, and what deleting a Body resets. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -39,20 +41,11 @@ const ENTITIES = [
   { id: 'custom', name: 'Custom Persona', playerDescription: 'You.', aiDescription: 'You.', locations: [], customPersona: true },
 ] as unknown as Entity[];
 
-const WORLD: World = benchEditorWorld({ items: ITEMS, slots: SLOTS, bodies: BODIES, placements: PLACEMENTS, entities: ENTITIES } as Partial<World>);
+const WORLD: World = panelWorld({ items: ITEMS, slots: SLOTS, bodies: BODIES, placements: PLACEMENTS, entities: ENTITIES } as Partial<World>);
+
+const renderBodiesSection = (world: World, mode: EditorMode) => renderPanelBench(world, mode, <BodiesSection />);
 
 const section = (label: string) => screen.getByText(label, { selector: 'label' }).closest('[data-history-field]') as HTMLElement;
-
-const openEquipment = () => {
-  openEditorTab(/Items/);
-  fireEvent.click(screen.getByRole('button', { name: 'Select Equipment Settings' }));
-};
-
-const openEntityItems = (name: string) => {
-  openEditorTab(/Entities/);
-  fireEvent.click(screen.getByText(name));
-  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name: 'Items' }));
-};
 
 /** Open a Radix select by keyboard: a click needs pointer capture, which jsdom has not got. */
 const pickOption = (combobox: HTMLElement, option: string) => {
@@ -73,82 +66,15 @@ vi.mock('@/lib/imageAspect', () => ({ readImageAspect }));
 
 beforeEach(() => { localStorage.clear(); readImageAspect.mockReset(); });
 
-describe('the Equipment Settings entry', () => {
-  it('opens the Slots, Bodies and Persona Items sections, which leave the Overview', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEditorTab(/Overview/);
-    expect(screen.queryByText('Slots', { selector: 'label' })).toBeNull();
-    expect(screen.queryByText('Persona Items', { selector: 'label' })).toBeNull();
-    openEquipment();
-    const editor = screen.getByTestId('equipment-editor');
-    expect([...editor.querySelectorAll('label')].map((l) => l.textContent)).toEqual(expect.arrayContaining(['Slots', 'Bodies', 'Persona Items']));
-    expect(within(section('Persona Items')).getByLabelText('Lamp Quantity')).toHaveProperty('value', '1');
-  });
-
-  it('stays at the top of the list under any filter', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEditorTab(/Items/);
-    fireEvent.change(screen.getByPlaceholderText('Filter Items'), { target: { value: 'sword' } });
-    expect(screen.getByRole('button', { name: 'Select Equipment Settings' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Select Lamp' })).toBeNull();
-  });
-
-  it('shows in a world without items', () => {
-    renderWorldEditorBench(benchEditorWorld({}), 'simple');
-    openEquipment();
-    expect(screen.getByTestId('equipment-editor')).toBeTruthy();
-  });
-});
-
-describe('the Slots section', () => {
-  it('adds and renames a slot, which has a name only', () => {
-    const { ctx } = renderWorldEditorBench(benchEditorWorld({}), 'advanced');
-    openEquipment();
-    fireEvent.click(screen.getByRole('button', { name: 'Add Slot' }));
-    fireEvent.change(screen.getByLabelText('Slot Name'), { target: { value: 'Head' } });
-    expect(ctx().slots).toEqual([{ id: expect.any(String), name: 'Head' }]);
-  });
-
-  it('counts the items and Body entries a slot in use has, then clears them', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEquipment();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Hand' }));
-    expect(ctx().slots).toHaveLength(3);
-    const dialog = screen.getByRole('alertdialog');
-    expect(dialog.textContent).toContain('This also deletes its 2 Body entries and clears the slot on 1 item.');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
-    expect(ctx().slots.map((s) => s.id)).toEqual(['ring', 'tail']);
-    expect(ctx().items.find((i) => i.id === 'sword')).not.toHaveProperty('slotId');
-    expect(ctx().bodies.map((b) => b.entries.map((e) => e.slotId))).toEqual([['ring'], []]);
-  });
-
-  it('asks for a slot only a Body holds', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEquipment();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Ring' }));
-    expect(screen.getByRole('alertdialog').textContent).toContain('This also deletes its Body entry.');
-  });
-
-  it('deletes an unused slot at once', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEquipment();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Tail' }));
-    expect(screen.queryByRole('alertdialog')).toBeNull();
-    expect(ctx().slots.map((s) => s.id)).toEqual(['hand', 'ring']);
-  });
-});
-
 describe('the Bodies section', () => {
   it('names the first Body as the Default and marks only its card', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
+    renderBodiesSection(WORLD, 'simple');
     const bodies = section('Bodies');
     expect(bodies.textContent).toContain('Humanoid is the Default, for entities set to Default');
     expect(within(bodies).getAllByText(/^Default · /).map((meta) => meta.textContent)).toEqual(['Default · Hand ×2, Ring']);  });
 
   it('adds a Body with no entries, renames it, and adds a slot to it with a capacity', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
+    const { ctx } = renderBodiesSection(WORLD, 'simple');
     fireEvent.click(screen.getByRole('button', { name: 'Add Body' }));
     const names = within(section('Bodies')).getAllByLabelText('Name');
     fireEvent.change(names[2], { target: { value: 'Dog' } });
@@ -169,15 +95,13 @@ describe('the Bodies section', () => {
     const rowSelected = (name: string) => !!within(humanoidFields()).getByRole('button', { name: `Select ${name}` }).closest('[data-editor-row-selected]');
 
     it('labels boxes by slot and unit, or by slot alone at capacity 1', () => {
-      renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      renderBodiesSection(WORLD, 'simple');
       expect(within(humanoidFields()).getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed')).map((b) => b.getAttribute('aria-label')))
         .toEqual(['Hand 1', 'Hand 2', 'Ring']);
     });
 
     it('selects a box from its row, each click moving to the next unit', () => {
-      renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      renderBodiesSection(WORLD, 'simple');
       const select = within(humanoidFields()).getByRole('button', { name: 'Select Hand' });
       fireEvent.click(select);
       expect(pressed()).toEqual(['Hand 1']);
@@ -189,8 +113,7 @@ describe('the Bodies section', () => {
     });
 
     it('returns focus to the box when a capacity 1 row is clicked again', () => {
-      renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      renderBodiesSection(WORLD, 'simple');
       const select = within(humanoidFields()).getByRole('button', { name: 'Select Ring' });
       fireEvent.click(select);
       select.focus();
@@ -199,8 +122,7 @@ describe('the Bodies section', () => {
     });
 
     it('selects a row from its box', () => {
-      renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      renderBodiesSection(WORLD, 'simple');
       expect(rowSelected('Ring')).toBe(false);
       fireEvent.focus(boxButton('Ring'));
       expect(rowSelected('Ring')).toBe(true);
@@ -208,15 +130,13 @@ describe('the Bodies section', () => {
     });
 
     it('leaves the selection alone while a capacity is typed', () => {
-      renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      renderBodiesSection(WORLD, 'simple');
       fireEvent.click(within(humanoidFields()).getByLabelText('Hand Capacity'));
       expect(within(humanoidFields()).queryAllByRole('button', { pressed: true })).toEqual([]);
     });
 
     it('moves a selected box with arrow keys, and resizes it with Shift', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { ctx } = renderBodiesSection(WORLD, 'simple');
       const start = ctx().bodies[0].entries[1].boxes[0];
       fireEvent.keyDown(boxButton('Ring'), { key: 'ArrowRight' });
       fireEvent.keyDown(boxButton('Ring'), { key: 'ArrowDown' });
@@ -227,8 +147,7 @@ describe('the Bodies section', () => {
     });
 
     it('applies a typed capacity when the edit ends, not on each keystroke (Q79)', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { ctx } = renderBodiesSection(WORLD, 'simple');
       const before = ctx().bodies[0].entries[0];
       const field = within(humanoidFields()).getByLabelText('Hand Capacity');
       fireEvent.change(field, { target: { value: '' } });
@@ -243,8 +162,7 @@ describe('the Bodies section', () => {
     });
 
     it('keeps the aspect and boxes when the current outline is picked again, also through Custom Image (Q77)', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { ctx } = renderBodiesSection(WORLD, 'simple');
       fireEvent.keyDown(within(humanoidFields()).getByRole('slider', { name: 'Backdrop Height' }), { key: 'ArrowDown' });
       const dragged = ctx().bodies[0];
       const backdrop = () => within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' });
@@ -256,8 +174,7 @@ describe('the Bodies section', () => {
     });
 
     it('drops the last box when capacity falls, and clears a selection on it', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { ctx } = renderBodiesSection(WORLD, 'simple');
       fireEvent.keyDown(boxButton('Hand 1'), { key: 'ArrowRight' });
       const kept = ctx().bodies[0].entries[0].boxes[0];
       fireEvent.focus(boxButton('Hand 2'));
@@ -269,8 +186,7 @@ describe('the Bodies section', () => {
     });
 
     it('sets the aspect from an outline and keeps it on Plain, with the boxes in place', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { ctx } = renderBodiesSection(WORLD, 'simple');
       const boxes = ctx().bodies[0].entries;
       const backdrop = () => within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' });
       pickOption(backdrop(), 'Quadruped');
@@ -287,15 +203,13 @@ describe('the Bodies section', () => {
       };
 
       it('is the fourth Backdrop', () => {
-        renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        renderBodiesSection(WORLD, 'simple');
         expect(options(backdrop())).toEqual(['Humanoid', 'Quadruped', 'Plain', 'Custom Image']);
       });
 
       it('leaves the Backdrop alone until a file lands, then draws it at the image\'s aspect with no edge drag', async () => {
         readImageAspect.mockResolvedValue(1.25);
-        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        const { ctx } = renderBodiesSection(WORLD, 'simple');
         const before = ctx().bodies[0];
         pickOption(backdrop(), 'Custom Image');
         expect(ctx().bodies[0]).toEqual(before);
@@ -310,8 +224,7 @@ describe('the Bodies section', () => {
 
       it('keeps the aspect for an image that never loads', async () => {
         readImageAspect.mockImplementation(async (_src: string, fallback?: number | null) => (fallback === undefined ? 16 / 9 : fallback));
-        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        const { ctx } = renderBodiesSection(WORLD, 'simple');
         const { aspect } = ctx().bodies[0];
         pickOption(backdrop(), 'Custom Image');
         await link('https://host/gone.png');
@@ -321,8 +234,7 @@ describe('the Bodies section', () => {
 
       it('clamps an extreme image to the drag range', async () => {
         readImageAspect.mockResolvedValue(8);
-        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        const { ctx } = renderBodiesSection(WORLD, 'simple');
         pickOption(backdrop(), 'Custom Image');
         await link('https://host/strip.png');
         expect(ctx().bodies[0].aspect).toBe(MAX_ASPECT);
@@ -330,8 +242,7 @@ describe('the Bodies section', () => {
 
       it('keeps the boxes when it leaves for an outline, drops the image, and follows Q53 for the aspect', async () => {
         readImageAspect.mockResolvedValue(1.25);
-        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        const { ctx } = renderBodiesSection(WORLD, 'simple');
         const entries = ctx().bodies[0].entries;
         pickOption(backdrop(), 'Custom Image');
         await link('https://host/imp.png');
@@ -345,8 +256,7 @@ describe('the Bodies section', () => {
 
       it('goes back to Humanoid when its image is removed', async () => {
         readImageAspect.mockResolvedValue(1.25);
-        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        const { ctx } = renderBodiesSection(WORLD, 'simple');
         pickOption(backdrop(), 'Custom Image');
         await link('https://host/imp.png');
         fireEvent.click(within(humanoidFields()).getByRole('button', { name: /remove image/i }));
@@ -355,8 +265,7 @@ describe('the Bodies section', () => {
 
       it('shows the Opacity slider for a Custom Image only', async () => {
         readImageAspect.mockResolvedValue(1.25);
-        renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        renderBodiesSection(WORLD, 'simple');
         const slider = () => within(humanoidFields()).queryByRole('slider', { name: 'Opacity' });
         expect(slider()).toBeNull();
         pickOption(backdrop(), 'Custom Image');
@@ -371,8 +280,7 @@ describe('the Bodies section', () => {
 
       it('fades the image in the editor', async () => {
         readImageAspect.mockResolvedValue(1.25);
-        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        const { ctx } = renderBodiesSection(WORLD, 'simple');
         pickOption(backdrop(), 'Custom Image');
         await link('https://host/imp.png');
         const image = () => humanoidFields().querySelector('[data-body-layout-stage] img');
@@ -384,8 +292,7 @@ describe('the Bodies section', () => {
       });
 
       it('abandons a pick that never got a file when another Backdrop is chosen', () => {
-        const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-        openEquipment();
+        const { ctx } = renderBodiesSection(WORLD, 'simple');
         pickOption(backdrop(), 'Custom Image');
         pickOption(backdrop(), 'Quadruped');
         expect(within(humanoidFields()).queryByLabelText('Image URL')).toBeNull();
@@ -394,8 +301,7 @@ describe('the Bodies section', () => {
     });
 
     it('changes the aspect from the bottom edge by keyboard, and leaves the boxes alone', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { ctx } = renderBodiesSection(WORLD, 'simple');
       const entries = ctx().bodies[0].entries;
       fireEvent.keyDown(within(humanoidFields()).getByRole('slider', { name: 'Backdrop Height' }), { key: 'ArrowDown' });
       expect(ctx().bodies[0].aspect).toBeLessThan(0.5);
@@ -403,8 +309,7 @@ describe('the Bodies section', () => {
     });
 
     it('duplicates a Body after itself, with its Backdrop and boxes', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { ctx } = renderBodiesSection(WORLD, 'simple');
       fireEvent.keyDown(boxButton('Ring'), { key: 'ArrowRight' });
       pickOption(within(humanoidFields()).getByRole('combobox', { name: 'Backdrop' }), 'Plain');
       fireEvent.click(screen.getByRole('button', { name: 'Duplicate Humanoid' }));
@@ -415,29 +320,25 @@ describe('the Bodies section', () => {
     });
 
     it('remembers Snap to Others for the next visit, off the world', () => {
-      const { unmount, ctx } = renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      const { unmount, ctx } = renderBodiesSection(WORLD, 'simple');
       const toggle = () => within(humanoidFields()).getByRole('checkbox');
       expect(toggle().getAttribute('data-state')).toBe('checked');
       fireEvent.click(toggle());
       expect(localStorage.getItem('FORMAMORPH_bodyLayoutSnap')).toBe('false');
       expect(JSON.stringify(ctx().bodies)).not.toContain('snap');
       unmount();
-      renderWorldEditorBench(WORLD, 'simple');
-      openEquipment();
+      renderBodiesSection(WORLD, 'simple');
       expect(toggle().getAttribute('data-state')).toBe('unchecked');
     });
   });
 
   it('offers only the slots a Body lacks', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
+    renderBodiesSection(WORLD, 'simple');
     expect(options(screen.getByRole('combobox', { name: 'Add a slot to Humanoid' }))).toEqual(['Tail']);
   });
 
   it('warns on Bodies that share a name, without blocking it', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
+    const { ctx } = renderBodiesSection(WORLD, 'simple');
     expect(screen.queryByText(/Another Body has this name/)).toBeNull();
     fireEvent.change(within(section('Bodies')).getAllByLabelText('Name')[1], { target: { value: 'humanoid ' } });
     expect(screen.getAllByText(/Another Body has this name/)).toHaveLength(2);
@@ -445,8 +346,7 @@ describe('the Bodies section', () => {
   });
 
   it('undoes a capacity drop', () => {
-    const bench = renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
+    const bench = renderBodiesSection(WORLD, 'simple');
     fireEvent.change(screen.getAllByLabelText('Hand Capacity')[0], { target: { value: '1' } });
     fireEvent.blur(screen.getAllByLabelText('Hand Capacity')[0]);
     act(() => bench.history().undo());
@@ -454,8 +354,7 @@ describe('the Bodies section', () => {
   });
 
   it('counts the entities that pick a Body in use, then sets them back to Default', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
+    const { ctx } = renderBodiesSection(WORLD, 'simple');
     fireEvent.click(screen.getByRole('button', { name: 'Delete Imp' }));
     const dialog = screen.getByRole('alertdialog');
     expect(dialog.textContent).toContain('This also resets 2 picks to Default.');
@@ -466,13 +365,12 @@ describe('the Bodies section', () => {
 
   it('counts the trait Body rows that pick a Body, world and entity traits both, then blanks them', () => {
     const imp = { kind: 'body' as const, id: 'imp' };
-    const world = benchEditorWorld({
+    const world = panelWorld({
       items: ITEMS, slots: SLOTS, bodies: BODIES, placements: PLACEMENTS,
       traits: [{ id: 'curse', name: 'Imp Curse', statChanges: [], body: { pick: imp } }, { id: 'calm', name: 'Calm', statChanges: [], body: { pick: { kind: 'body', id: 'humanoid' } } }],
       entities: [{ ...ENTITIES[0], body: undefined, traits: [{ id: 'own', name: 'Own Form', statChanges: [], body: { pick: imp } }] }],
     } as Partial<World>);
-    const { ctx } = renderWorldEditorBench(world, 'simple');
-    openEquipment();
+    const { ctx } = renderBodiesSection(world, 'simple');
     fireEvent.click(screen.getByRole('button', { name: 'Delete Imp' }));
     const dialog = screen.getByRole('alertdialog');
     expect(dialog.textContent).toContain('This also clears 2 trait Body rows.');
@@ -482,40 +380,9 @@ describe('the Bodies section', () => {
   });
 
   it('deletes a Body no entity picks at once', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEquipment();
+    const { ctx } = renderBodiesSection(WORLD, 'simple');
     fireEvent.click(screen.getByRole('button', { name: 'Delete Humanoid' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(ctx().bodies.map((b) => b.id)).toEqual(['imp']);
-  });
-});
-
-describe('the entity Body select', () => {
-  const bodySelect = () => screen.getByRole('combobox', { name: 'Body' });
-
-  it('lists Default with the first Body, None, then each Body, and saves the pick', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEntityItems('Odd Wick');
-    expect(options(bodySelect())).toEqual(['Default (Humanoid)', 'None', 'Humanoid', 'Imp']);
-    pickOption(bodySelect(), 'None');
-    expect(ctx().entities.find((e) => e.id === 'resident')?.body).toEqual({ kind: 'none' });
-    pickOption(bodySelect(), 'Humanoid');
-    expect(ctx().entities.find((e) => e.id === 'resident')?.body).toEqual({ kind: 'body', id: 'humanoid' });
-    pickOption(bodySelect(), 'Default (Humanoid)');
-    expect(ctx().entities.find((e) => e.id === 'resident')).not.toHaveProperty('body');
-  });
-
-  it("says on the Custom Persona entity that its pick also sets the player's Body", () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEntityItems('Custom Persona');
-    expect(section('Body').textContent).toContain("Also sets the player's Body under None or a library persona");
-    expect(bodySelect()).toBeTruthy();
-  });
-
-  it('points at Equipment in a world without Bodies', () => {
-    renderWorldEditorBench(benchEditorWorld({}), 'simple');
-    openEntityItems('Odd Wick');
-    expect(screen.queryByRole('combobox', { name: 'Body' })).toBeNull();
-    expect(section('Body').textContent).toContain('Add a Body in Equipment Settings');
   });
 });

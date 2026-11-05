@@ -24,6 +24,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **Rename guards and parity tests for released changes no longer run in the gates.** 122 tests go, with three always-run entries, and coverage held on every module that stays.
 
+#### 🔧 Fixed
+
+- **🛠️ Developer tooling**
+  - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
+
 ---
 
 <details>

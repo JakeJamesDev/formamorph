@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within, act } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { renderItemsTab } from '@/test/itemsTabBench';
+import { panelWorld } from '@/test/panelBench';
 import { $createParagraphNode, $createTextNode, $getRoot, getNearestEditorFromDOMNode } from 'lexical';
 import { blankItem } from '@/lib/items';
 import type { Item, Slot, World } from '@/types';
@@ -31,11 +32,10 @@ const ITEMS: Item[] = [
   { ...blankItem('stale', 'Old Axe'), icon: 'retired-icon' },
   { ...blankItem('lit', 'Old Lamp'), icon: 'lantern' },
 ];
-const WORLD: World = benchEditorWorld({ items: ITEMS, slots: SLOTS } as Partial<World>);
+const WORLD: World = panelWorld({ items: ITEMS, slots: SLOTS } as Partial<World>);
 
 const render = (name: string) => {
-  const bench = renderWorldEditorBench(WORLD, 'simple');
-  openEditorTab(/Items/);
+  const bench = renderItemsTab(WORLD, 'simple');
   fireEvent.click(screen.getByText(name));
   const id = ITEMS.find((i) => i.name === name)?.id;
   return { ...bench, stored: () => bench.ctx().items.find((i) => i.id === id) as Item };
