@@ -134,6 +134,13 @@ describe('applyOwnedStatDrop', () => {
     expect(entityOut(out, 'bob')).not.toHaveProperty('stats');
   });
 
+  it('keeps every field outside the stat tree on each entity it writes', () => {
+    const rest = { aliases: ['Ember'], pronouns: 'they/them', persona: true };
+    const out = drop(world([{ ...ash, ...rest }, { ...bob, ...rest }]), b('nerve'), a('grit'), 0);
+    expect(entityOut(out, 'ash')).toMatchObject({ name: ash.name, ...rest });
+    expect(entityOut(out, 'bob')).toMatchObject({ name: bob.name, ...rest });
+  });
+
   it('moves a group across owners with its whole subtree, every id kept', () => {
     const out = drop(world([ash, bob]), a('bond'), b('nerve'), 0, [a('bond')]);
     expect(entityOut(out, 'bob')?.statGroups).toEqual([group('bond', null, 1)]);

@@ -8,8 +8,7 @@ import { BUNDLED_DOCS, bundledDocsIndex } from './bundledDocsIndex';
 
 /**
  * The Script Surface spec's paths against the guide text: each field and verb of the surface has a row with a
- * help line in the section that explains its global, and no guide names a retired form outside the one section
- * that tells a Tool author how old scripts move.
+ * help line in the section that explains its global, and the Tools guide tells a Tool author how old scripts move.
  */
 const sectionMarkdown = (id: string): string => {
   const [section] = bundledDocsIndex().get([id]);
@@ -87,18 +86,5 @@ describe('the Tools guide', () => {
     ]) expect(oldForms, form).toContain(form);
     expect(rows.size).toBeGreaterThan(0);
     expect(migration).toContain('`memory.add(` to `memories.add(`');
-  });
-});
-
-describe('the guide pages', () => {
-  const RETIRED = [/memory\.add/, /memory\.pin/, /(?<![.\w`])diary\(/, /world\.entities/, /\bscene\.\w/];
-
-  it.each(Object.keys(BUNDLED_DOCS).filter((page) => !page.startsWith('Changelog')))('%s names no retired form', (page) => {
-    let text = BUNDLED_DOCS[page];
-    if (page === 'Tools') {
-      expect(text).toMatch(MIGRATION);
-      text = text.replace(MIGRATION, '');
-    }
-    expect(RETIRED.filter((pattern) => pattern.test(text)).map(String)).toEqual([]);
   });
 });

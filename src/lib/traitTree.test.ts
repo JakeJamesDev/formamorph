@@ -445,6 +445,13 @@ describe('applyOwnedTraitDrop', () => {
     expect(entity?.traitPlacement).toBeUndefined();
   });
 
+  it('keeps every field outside the trait tree on each entity it writes', () => {
+    const rest = { aliases: ['Ember'], pronouns: 'they/them', persona: true };
+    const out = applyOwnedTraitDrop(worldTraits, [{ ...ash, ...rest }, { ...bob, ...rest }], [], 'gruff', 'pack', 0, 24);
+    expect(entityOut(out, 'ash')).toMatchObject({ name: ash.name, ...rest });
+    expect(entityOut(out, 'bob')).toMatchObject({ name: bob.name, ...rest });
+  });
+
   it('still moves world items among themselves, touching no entity', () => {
     const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'loner', 'paladin', 0, 24);
     expect(moved(out)?.entities).toEqual([]);

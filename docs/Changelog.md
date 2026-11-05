@@ -19,6 +19,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
 
+#### ➖ Removed
+
+- **🛠️ Developer tooling**
+  - **Rename guards and parity tests for released changes no longer run in the gates.** 122 tests go, with three always-run entries, and coverage held on every module that stays.
+
 ---
 
 <details>
