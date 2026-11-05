@@ -463,7 +463,7 @@ describe('Flagged Likes', () => {
     renderBrowser();
     await screen.findByText('Marked Two');
 
-    expect(document.querySelector('[data-likes-marker="burst flagged_share"]')?.textContent).toContain('Burst of likes and many flagged likes');
+    expect(document.querySelector('[data-likes-marker="burst flagged_share"]')?.textContent).toContain('Burst of Likes and Many Flagged Likes');
     fireEvent.click(document.querySelector('[data-likes-marker="burst"]') as HTMLElement);
 
     await waitFor(() => expect(audit.fetchLikersAudit).toHaveBeenCalledWith('marked'));
@@ -507,7 +507,7 @@ describe('Flagged Likes', () => {
       await removeFromMarked(['flagged_share']);
 
       await waitFor(() => expect(document.querySelector('[data-likes-marker="flagged_share"]')?.textContent)
-        .toContain('Many flagged likes'));
+        .toContain('Many Flagged Likes'));
       expect(document.querySelector('[data-likes-marker="burst"]')).toBeNull();
     });
   });

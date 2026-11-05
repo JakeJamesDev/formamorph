@@ -1,6 +1,6 @@
 // Must load before the service singleton, whose constructor opens IndexedDB.
 import 'fake-indexeddb/auto';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { RemoteWorldDetailsModal } from './RemoteWorldDetailsModal';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -208,7 +208,7 @@ describe('the Likes Marker in the details', () => {
     answer(['flagged_share']);
     show({ currentUser: account('m1', 'mod') });
 
-    fireEvent.click(await screen.findByRole('button', { name: /Many flagged likes\. Audit the likes/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Many Flagged Likes\. Audit the likes/ }));
 
     await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
     expect(likersProps.last?.auditOnOpen).toBe(true);
@@ -231,6 +231,36 @@ describe('the Likes Marker in the details', () => {
 
     await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
     expect(likersProps.last?.auditOnOpen).toBe(false);
+  });
+
+  it('keeps a late marker read for one listing off the next listing', async () => {
+    answer([]);
+    const onMarkerChanged = vi.fn();
+    const props = {
+      onOpenChange: () => {},
+      collapsed: false,
+      onToggleCollapsed: () => {},
+      isAuthenticated: true,
+      openImageViewer: () => {},
+      downloadStateForWorld: () => 'none' as const,
+      downloadProgress: {},
+      onContextualDownload: () => {},
+      currentUser: account('m1', 'mod'),
+      onLike: async () => {},
+      onMarkerChanged,
+    };
+    const first = world();
+    const { rerender } = render(<RemoteWorldDetailsModal open world={first} {...props} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Show who liked this/ }));
+    await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
+    const lateAnswer = likersProps.last?.onMarkerChanged as (reasons: string[]) => void;
+
+    rerender(<RemoteWorldDetailsModal open world={world({ id: 'w2', _id: 'w2', name: 'Harrow Court' })} {...props} />);
+    await screen.findByText('Harrow Court');
+    act(() => lateAnswer(['burst']));
+
+    expect(marker()).toBeNull();
+    expect(onMarkerChanged).toHaveBeenCalledWith(first, ['burst']);
   });
 
   it('shows a player nothing, even when the answer carries a marker', async () => {

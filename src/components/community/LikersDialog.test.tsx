@@ -984,7 +984,7 @@ describe('what the audit says about network kinds and Bursts', () => {
     show();
     await runAudit();
 
-    expect(await screen.findByText('Why it’s marked: Burst of likes and many flagged likes')).toBeTruthy();
+    expect(await screen.findByText('Why it’s marked: Burst of Likes and Many Flagged Likes')).toBeTruthy();
     expect(screen.getByText(/ · 9 likers$/)).toBeTruthy();
     expect(screen.getByText(/ · 8 likers$/)).toBeTruthy();
   });
@@ -1060,7 +1060,7 @@ describe('the Likes Marker after a removal', () => {
 
     await waitFor(() => expect(onMarkerChanged).toHaveBeenCalledWith(['flagged_share']));
     expect(read).toHaveBeenCalledWith('w1');
-    expect(await screen.findByText('Why it’s marked: Many flagged likes')).toBeTruthy();
+    expect(await screen.findByText('Why it’s marked: Many Flagged Likes')).toBeTruthy();
   });
 
   it('reports an empty list when the removal cleared the last reason', async () => {
@@ -1073,6 +1073,64 @@ describe('the Likes Marker after a removal', () => {
     show({ auditOnOpen: true, onMarkerChanged });
     await removeFirst();
 
+    await waitFor(() => expect(onMarkerChanged).toHaveBeenCalledWith([]));
+  });
+
+  it('keeps the newer read when an older one answers last', async () => {
+    const second: LikerAuditRow = { ...auditRow(), id: 'u2', username: 'moss_quill' };
+    marked([auditRow(), second], ['burst']);
+    const answers: Array<(markers: LikesSummary['reasons']) => void> = [];
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockImplementation(() => new Promise((resolve) => {
+      answers.push((likesMarker) => resolve({
+        status: 'ok', details: { changelog: [], anonymousLikes: false, likesMarker },
+      }));
+    }));
+    const onMarkerChanged = vi.fn();
+
+    show({ auditOnOpen: true, onMarkerChanged });
+    await removeFirst();
+    await waitFor(() => expect(answers).toHaveLength(1));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by moss_quill' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(answers).toHaveLength(2));
+
+    answers[1]([]);
+    await waitFor(() => expect(onMarkerChanged).toHaveBeenCalledWith([]));
+    answers[0](['burst']);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(onMarkerChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('still corrects the marker when an anonymous removal answers after the dialog moved on', async () => {
+    const row: AnonymousLikeRow = { likedAt: '2026-08-30 12:00:00', browserFamily: 'Chrome', groupId: 1, linkedToAuthor: false, addressKey: 'key-a', networkKind: null };
+    vi.spyOn(WorldStorageService, 'fetchLikers').mockResolvedValue({ total: 0, rows: [], anonymous: 2 });
+    vi.spyOn(WorldStorageService, 'fetchLikersAudit').mockResolvedValue({
+      total: 0, rows: [], anonymous: 2, anonymousRows: [row, row],
+      summary: { windowDays: 90, flagged: 6, total: 10, share: 0.6, bursts: [], reasons: ['burst'] },
+    });
+    let land: (answer: { removed: number; likes: number; anonymous: number }) => void = () => {};
+    vi.spyOn(WorldStorageService, 'removeAnonymousLikeGroup').mockImplementation(
+      () => new Promise((resolve) => { land = resolve; })
+    );
+    const read = vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({
+      status: 'ok', details: { changelog: [], anonymousLikes: false, likesMarker: [] },
+    });
+    const onMarkerChanged = vi.fn();
+
+    const view = show({ auditOnOpen: true, onMarkerChanged });
+    fireEvent.click(await screen.findByRole('button', { name: /from this address/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(WorldStorageService.removeAnonymousLikeGroup).toHaveBeenCalled());
+
+    view.rerender(
+      <UserProfileContext.Provider value={{ openProfile, setListingOpener: () => {} }}>
+        <LikersDialog open onOpenChange={() => {}} listingId="w2" listingName="Another Listing" currentUser={admin} />
+      </UserProfileContext.Provider>
+    );
+    land({ removed: 2, likes: 8, anonymous: 0 });
+
+    await waitFor(() => expect(read).toHaveBeenCalledWith('w1'));
     await waitFor(() => expect(onMarkerChanged).toHaveBeenCalledWith([]));
   });
 

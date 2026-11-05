@@ -190,6 +190,9 @@ export function RemoteWorldDetailsModal({
   // Whether the likers list was opened from the Likes Marker, which lands it on the audit.
   const [auditLikers, setAuditLikers] = useState(false);
   const [freshLikesMarker, setFreshLikesMarker] = useState<LikesMarkerReason[] | undefined>(undefined);
+  // The listing on screen, for a marker read that lands after the modal moved to another one.
+  const shownListing = useRef<string | null>(null);
+  shownListing.current = world ? String(world._id || world.id) : null;
 
   // What this world requires and what it is offered as an add-on, read only while the listing is open.
   const downloadPlan = useWorldDownloadPlan(world, open && capabilities.localLibrary);
@@ -1016,7 +1019,11 @@ export function RemoteWorldDetailsModal({
             listingName={world?.name}
             currentUser={currentUser}
             onLikesChanged={(likes) => { if (world) onLikesChanged?.(world, likes); }}
-            onMarkerChanged={(reasons) => { setFreshLikesMarker(reasons); if (world) onMarkerChanged?.(world, reasons); }}
+            onMarkerChanged={(reasons) => {
+              if (!world) return;
+              if (shownListing.current === String(world._id || world.id)) setFreshLikesMarker(reasons);
+              onMarkerChanged?.(world, reasons);
+            }}
           />
         )}
 

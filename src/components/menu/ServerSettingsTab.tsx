@@ -56,7 +56,7 @@ const SETTINGS: readonly ServerSetting[] = [
     key: NETWORK_KIND,
     label: 'Network Check',
     hint: 'Flags new likes from VPN, hosting and Tor networks',
-    info: 'Staff see the result in the likes audit and on the likes marker. Likes and counts don’t change for players.',
+    info: 'Staff see the result in the likes audit and on marked listing cards. Likes and counts don’t change for players.',
   },
 ];
 
@@ -77,7 +77,7 @@ const NUMBER_SETTINGS: readonly ServerNumberSetting[] = [
     key: LIKES_MARKER_MIN_FLAGGED,
     label: 'Minimum Flagged Likes',
     hint: 'Sets the fewest flagged likes that mark a listing',
-    info: 'Counts flagged likes from the last 90 days. The listing also needs the share below.',
+    info: 'A flagged like is one Network Check found on a VPN, hosting or Tor network. Counts the last 90 days. The listing also needs the share below.',
   },
   {
     key: LIKES_MARKER_SHARE,
@@ -90,7 +90,7 @@ const NUMBER_SETTINGS: readonly ServerNumberSetting[] = [
     key: BURST_SIZE,
     label: 'Burst Size',
     hint: 'Sets how many different likers make a burst',
-    info: 'Counts different likers on one listing inside the window below. One address counts once, so a household doesn’t make a burst.',
+    info: 'Counts different likers on one listing inside the window below. Each account counts once, and guest likes count once per address.',
   },
   {
     key: BURST_WINDOW_MINUTES,
@@ -136,6 +136,12 @@ function NumberSettingRow({ setting, active }: { setting: ServerNumberSetting; a
     const typed = Number(text);
     if (text.trim() === '' || Number.isNaN(typed) || toShown(stored, scale) === typed) {
       setText(String(toShown(stored, scale)));
+      return;
+    }
+    // The server's range is in stored units, which would mislead beside a percent field.
+    if (scale !== 1 && (typed <= 0 || typed > scale)) {
+      setText(String(toShown(stored, scale)));
+      toastError(new Error(`${setting.label} must be above 0 and at most ${scale}`), `Failed to write ${setting.label}`);
       return;
     }
 

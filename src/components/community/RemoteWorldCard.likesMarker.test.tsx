@@ -37,13 +37,13 @@ describe('the Likes Marker on a card', () => {
   it('names the reason that fired', () => {
     show(world({ likes_marker: ['burst'] }), admin, { onOpenLikes: () => {} });
 
-    expect(screen.getByRole('button', { name: /^Burst of likes\. Audit the likes$/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Burst of Likes\. Audit the likes$/ })).toBeTruthy();
   });
 
   it('names both reasons when both fired', () => {
     show(world({ likes_marker: ['burst', 'flagged_share'] }), admin, { onOpenLikes: () => {} });
 
-    expect(screen.getByRole('button', { name: /^Burst of likes and many flagged likes\. Audit the likes$/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Burst of Likes and Many Flagged Likes\. Audit the likes$/ })).toBeTruthy();
   });
 
   it('is absent on an unmarked listing', () => {

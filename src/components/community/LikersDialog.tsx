@@ -206,6 +206,8 @@ export function LikersDialog({
   const shown = useRef<string | null>(null);
   /** Set once the audit answered, so a slower plain list cannot overwrite its rows. */
   const auditLanded = useRef(false);
+  /** The newest marker read per listing, so an older answer cannot restore a marker a newer one cleared. */
+  const latestMarkerRead = useRef(new Map<string, number>());
 
   useEffect(() => {
     if (!open || !listingId) return;
@@ -271,7 +273,11 @@ export function LikersDialog({
   const refreshMarker = async (asked: string) => {
     if (!onMarkerChanged) return;
 
+    const readId = (latestMarkerRead.current.get(asked) ?? 0) + 1;
+    latestMarkerRead.current.set(asked, readId);
+
     const read = await WorldStorageService.readListingDetails(asked);
+    if (latestMarkerRead.current.get(asked) !== readId) return;
     if (read.status !== 'ok' || !read.details.likesMarker) return;
 
     // The parent's copy is corrected even when this dialog has closed; only its own state needs it mounted.
@@ -361,11 +367,11 @@ export function LikersDialog({
         ? await WorldStorageService.removeAnonymousLikes(asked)
         : await WorldStorageService.removeAnonymousLikeGroup(asked, action.addressKey);
 
+      void refreshMarker(asked);
       if (!mounted.current || shown.current !== asked) return;
 
       setAnonymous(result.anonymous);
       onLikesChanged?.(result.likes);
-      void refreshMarker(asked);
 
       if (result.removed === 0) {
         void (marks ? runAudit() : refreshList());
@@ -686,7 +692,7 @@ export function LikersDialog({
             )}
             {summary.bursts.length > 0 && (
               <>
-                <p className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">Bursts of likes</p>
+                <p className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">Bursts of Likes</p>
                 <Meta as="p">Many different likers in a short time</Meta>
                 <ul className="space-y-0.5">
                   {summary.bursts.map((burst) => (

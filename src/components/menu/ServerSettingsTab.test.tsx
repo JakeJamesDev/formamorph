@@ -320,6 +320,21 @@ describe('the threshold rows', () => {
     expect(catalogStale.marked()).toBe(0);
   });
 
+  it('refuses a percent out of range in percent, without asking the server', async () => {
+    answerByKey();
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(field('Flagged Share').value).toBe('50'));
+    const writesBefore = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'PUT').length;
+
+    fireEvent.change(field('Flagged Share'), { target: { value: '101' } });
+    fireEvent.blur(field('Flagged Share'));
+
+    await waitFor(() => expect(toastTexts(toastErrorMock).join()).toContain('Flagged Share must be above 0 and at most 100'));
+    expect(field('Flagged Share').value).toBe('50');
+    expect(fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'PUT').length).toBe(writesBefore);
+  });
+
   it('writes nothing for an unchanged or empty field', async () => {
     answerByKey();
 
