@@ -22,8 +22,8 @@ describe('likesMarkerOf', () => {
 
 describe('describeLikesMarker', () => {
   it('names one reason or both', () => {
-    expect(describeLikesMarker(['burst'])).toBe('Burst');
-    expect(describeLikesMarker(['flagged_share'])).toBe('Flagged share');
-    expect(describeLikesMarker(['burst', 'flagged_share'])).toBe('Burst and Flagged share');
+    expect(describeLikesMarker(['burst'])).toBe('Burst of likes');
+    expect(describeLikesMarker(['flagged_share'])).toBe('Many flagged likes');
+    expect(describeLikesMarker(['burst', 'flagged_share'])).toBe('Burst of likes and many flagged likes');
   });
 });

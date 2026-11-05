@@ -102,6 +102,8 @@ interface RemoteWorldDetailsModalProps {
   onOpenContest?: (contestId: string) => void;
   /** Records a new like count after a staff removal, so the card behind this modal agrees. */
   onLikesChanged?: (world: WorldRecord, likes: number) => void;
+  /** Records the Likes Marker reasons read after a staff removal, so the card behind this modal agrees. */
+  onMarkerChanged?: (world: WorldRecord, reasons: LikesMarkerReason[]) => void;
   /** Called when this reader's write starts or drops the listing's pending update. */
   onPendingUpdateChange?: (world: WorldRecord, pending: boolean) => void;
   /** Pins the listing, or unpins it when it is pinned. Staff only. */
@@ -143,7 +145,7 @@ export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onAnonymousLikes,
-  contests = [], onOpenContest, onLikesChanged, onPendingUpdateChange, onTogglePin, onToggleSupporterOnly, openLikersOnMount = false,
+  contests = [], onOpenContest, onLikesChanged, onMarkerChanged, onPendingUpdateChange, onTogglePin, onToggleSupporterOnly, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
   detailsAction, onOpenListing, presetUse,
 }: RemoteWorldDetailsModalProps) {
@@ -1014,6 +1016,7 @@ export function RemoteWorldDetailsModal({
             listingName={world?.name}
             currentUser={currentUser}
             onLikesChanged={(likes) => { if (world) onLikesChanged?.(world, likes); }}
+            onMarkerChanged={(reasons) => { setFreshLikesMarker(reasons); if (world) onMarkerChanged?.(world, reasons); }}
           />
         )}
 

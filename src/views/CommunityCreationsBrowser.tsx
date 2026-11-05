@@ -104,6 +104,7 @@ import { EditorSectionsBar } from "@/components/editor/EditorSectionsBar";
 import { badgeVariants } from "@/components/ui/badge";
 import { useTutorial } from "@/lib/tutorials";
 import { likeStateOf, optimisticLikeState, type LikeState } from "@/lib/likeCount";
+import type { LikesMarkerReason } from "@/types";
 
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
@@ -284,8 +285,8 @@ const CommunityCreationsBrowser = ({
   const [quarantining, setQuarantining] = useState<WorldRecord | null>(null);
   const [isQuarantiningNow, setIsQuarantiningNow] = useState(false);
   const [quarantineNotice, setQuarantineNotice] = useState<QuarantineTarget | null>(null);
-  // Admin-only view of just what is hidden — the whole catalog is already in memory, so this is a filter
-  // over it rather than another request.
+  // The staff Show choice: all listings, only quarantined ones, or only ones with a Likes Marker. The whole
+  // catalog is already in memory, so each is a filter over it rather than another request.
   const [moderationView, setModerationView] = useState<ModerationView>('all');
   // The listing whose likes audit a Likes Marker opened.
   const [auditing, setAuditing] = useState<WorldRecord | null>(null);
@@ -612,14 +613,14 @@ const CommunityCreationsBrowser = ({
       count: flaggedCount,
       applies: moderationHere,
       disabled: flaggedCount === 0 && !flaggedOnly,
-      help: 'Show only listings whose likes are flagged',
+      help: 'Show only listings marked for a burst or many flagged likes',
     },
   ];
   const moderationControl = (
     <ModerationMenu
       choices={moderationChoices}
       view={staffView}
-      onViewChange={setModerationView}
+      onViewChange={(next) => { setModerationView(next); setCurrentPage(1); }}
       pin={{
         applies: staffHere,
         checked: showPending,
@@ -793,6 +794,19 @@ const CommunityCreationsBrowser = ({
 
     setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? { ...w, likes } : w)));
     setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? { ...prev, likes } : prev));
+  };
+
+  /**
+   * Take a Likes Marker read fresh after a staff removal.
+   *
+   * Patched in place like the count, so the card, the details window and the Flagged Likes count agree
+   * without a catalog reload. The reasons come from the server's read, never from arithmetic here.
+   */
+  const handleMarkerChanged = (world: WorldRecord, reasons: LikesMarkerReason[]) => {
+    const worldId = String(world._id || world.id);
+
+    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? { ...w, likes_marker: reasons } : w)));
+    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? { ...prev, likes_marker: reasons } : prev));
   };
 
   const handlePendingUpdateChange = (world: WorldRecord, pending: boolean) => {
@@ -1453,7 +1467,7 @@ const CommunityCreationsBrowser = ({
                 contest={shownContest}
                 contests={contests}
                 onSelect={setSelectedContestId}
-                entryCount={catalogInView.length}
+                entryCount={contestEntries.length}
               />
               {contestPhase(shownContest) === 'decided' && <ContestPodium contest={shownContest} />}
             </>
@@ -1549,6 +1563,7 @@ const CommunityCreationsBrowser = ({
         serverTakesLikes={anonymousLikes}
         onAnonymousLikes={setAnonymousLikes}
         onLikesChanged={handleLikesChanged}
+        onMarkerChanged={handleMarkerChanged}
         onPendingUpdateChange={handlePendingUpdateChange}
         onTogglePin={handleTogglePin}
         onToggleSupporterOnly={handleToggleSupporterOnly}
@@ -1721,6 +1736,7 @@ const CommunityCreationsBrowser = ({
           listingName={auditing?.name}
           currentUser={currentUser}
           onLikesChanged={(likes) => { if (auditing) handleLikesChanged(auditing, likes); }}
+          onMarkerChanged={(reasons) => { if (auditing) handleMarkerChanged(auditing, reasons); }}
           auditOnOpen
         />
       )}

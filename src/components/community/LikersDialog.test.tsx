@@ -961,7 +961,7 @@ describe('what the audit says about network kinds and Bursts', () => {
     show();
     await runAudit();
 
-    expect(await screen.findByText('12 of 40 likes flagged in the last 90 days (30%)')).toBeTruthy();
+    expect(await screen.findByText('12 of 40 likes flagged (30%) in the last 90 days')).toBeTruthy();
   });
 
   it('shows no summary line when the window holds no likes', async () => {
@@ -984,7 +984,7 @@ describe('what the audit says about network kinds and Bursts', () => {
     show();
     await runAudit();
 
-    expect(await screen.findByText('Marked for: Burst and Flagged share')).toBeTruthy();
+    expect(await screen.findByText('Why it’s marked: Burst of likes and many flagged likes')).toBeTruthy();
     expect(screen.getByText(/ · 9 likers$/)).toBeTruthy();
     expect(screen.getByText(/ · 8 likers$/)).toBeTruthy();
   });
@@ -1012,5 +1012,81 @@ describe('what the audit says about network kinds and Bursts', () => {
     expect(fetchAudit).toHaveBeenCalledTimes(1);
     expect(screen.getByText('wren_hallow')).toBeTruthy();
     expect(screen.queryByText('plain_copy')).toBeNull();
+  });
+
+  it('writes nothing and toasts nothing when the dialog unmounts before the audit fails', async () => {
+    vi.spyOn(WorldStorageService, 'fetchLikers').mockResolvedValue({ total: 1, rows: [liker()], anonymous: 0 });
+    let reject: (reason: Error) => void = () => {};
+    vi.spyOn(WorldStorageService, 'fetchLikersAudit').mockImplementation(
+      () => new Promise((_resolve, fail) => { reject = fail; }),
+    );
+
+    const view = show({ auditOnOpen: true });
+    await waitFor(() => expect(WorldStorageService.fetchLikersAudit).toHaveBeenCalled());
+    view.unmount();
+    reject(new Error('Audit failed'));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('the Likes Marker after a removal', () => {
+  const marked = (rows: LikerAuditRow[], reasons: LikesSummary['reasons']) => {
+    vi.spyOn(WorldStorageService, 'fetchLikers').mockResolvedValue({ total: rows.length, rows, anonymous: 0 });
+    vi.spyOn(WorldStorageService, 'fetchLikersAudit').mockResolvedValue({
+      total: rows.length, rows, anonymous: 0, anonymousRows: [],
+      summary: { windowDays: 90, flagged: 6, total: 10, share: 0.6, bursts: [], reasons },
+    });
+    vi.spyOn(WorldStorageService, 'removeLike').mockResolvedValue(9);
+  };
+
+  const removeFirst = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by wren_hallow' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+  };
+
+  const auditRow = (): LikerAuditRow => ({ ...liker(), groupId: null, linkedToAuthor: false, networkKind: null });
+
+  it('reports the reasons the server reads after the removal, not a guess', async () => {
+    marked([auditRow()], ['burst', 'flagged_share']);
+    const read = vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({
+      status: 'ok', details: { changelog: [], anonymousLikes: false, likesMarker: ['flagged_share'] },
+    });
+    const onMarkerChanged = vi.fn();
+
+    show({ auditOnOpen: true, onMarkerChanged });
+    await removeFirst();
+
+    await waitFor(() => expect(onMarkerChanged).toHaveBeenCalledWith(['flagged_share']));
+    expect(read).toHaveBeenCalledWith('w1');
+    expect(await screen.findByText('Why it’s marked: Many flagged likes')).toBeTruthy();
+  });
+
+  it('reports an empty list when the removal cleared the last reason', async () => {
+    marked([auditRow()], ['burst']);
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({
+      status: 'ok', details: { changelog: [], anonymousLikes: false, likesMarker: [] },
+    });
+    const onMarkerChanged = vi.fn();
+
+    show({ auditOnOpen: true, onMarkerChanged });
+    await removeFirst();
+
+    await waitFor(() => expect(onMarkerChanged).toHaveBeenCalledWith([]));
+  });
+
+  it('leaves the marker alone when the fresh read fails', async () => {
+    marked([auditRow()], ['burst']);
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'unreachable' });
+    const onMarkerChanged = vi.fn();
+    const onLikesChanged = vi.fn();
+
+    show({ auditOnOpen: true, onMarkerChanged, onLikesChanged });
+    await removeFirst();
+
+    await waitFor(() => expect(onLikesChanged).toHaveBeenCalledWith(9));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(onMarkerChanged).not.toHaveBeenCalled();
   });
 });

@@ -37,13 +37,13 @@ describe('the Likes Marker on a card', () => {
   it('names the reason that fired', () => {
     show(world({ likes_marker: ['burst'] }), admin, { onOpenLikes: () => {} });
 
-    expect(screen.getByRole('button', { name: /Likes marker: Burst/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Burst of likes\. Audit the likes$/ })).toBeTruthy();
   });
 
   it('names both reasons when both fired', () => {
     show(world({ likes_marker: ['burst', 'flagged_share'] }), admin, { onOpenLikes: () => {} });
 
-    expect(screen.getByRole('button', { name: /Likes marker: Burst and Flagged share/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Burst of likes and many flagged likes\. Audit the likes$/ })).toBeTruthy();
   });
 
   it('is absent on an unmarked listing', () => {
@@ -69,7 +69,7 @@ describe('the Likes Marker on a card', () => {
     const onView = vi.fn();
     show(world({ likes_marker: ['burst'] }), admin, { onOpenLikes, onView });
 
-    fireEvent.click(screen.getByRole('button', { name: /Likes marker/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Audit the likes/ }));
 
     expect(onOpenLikes).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }));
     expect(onView).not.toHaveBeenCalled();

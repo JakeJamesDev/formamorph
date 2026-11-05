@@ -93,7 +93,7 @@ export function ModerationMenu({ choices, view, onViewChange, pin, defaultOpen, 
       <PopoverContent portal={false} align="end" side="bottom" className="w-64 p-2">
         {shown.length > 0 && (
           <>
-            <p className="px-2 pb-1 text-caption font-medium text-muted-foreground">Show</p>
+            <p className="px-2 pb-1 text-meta font-medium text-muted-foreground">Show</p>
             <RadioGroup value={view} onValueChange={(v) => isModerationView(v) && onViewChange(v)} className="gap-0">
               {shown.map(({ value, label, icon: Icon, count, disabled, help }) => (
                 <MenuRow key={value} tip={help} disabled={disabled}>

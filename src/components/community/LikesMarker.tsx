@@ -17,19 +17,19 @@ export function LikesMarker({ reasons, onOpen, className }: LikesMarkerProps) {
   const reason = describeLikesMarker(reasons);
 
   return (
-    <Tip tip="Open the likes audit" labelsChild={false}>
+    <Tip tip="Audit the likes" labelsChild={false}>
       <button
         type="button"
         data-likes-marker={reasons.join(' ')}
         onClick={(e) => { e.stopPropagation(); onOpen(); }}
-        aria-label={`Likes marker: ${reason}. Open the likes audit`}
+        aria-label={`${reason}. Audit the likes`}
         className={cn(
           "flex w-full items-start gap-1 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-left text-meta font-medium hover:bg-warning/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           className,
         )}
       >
         <Flag className="mt-0.5 h-3 w-3 shrink-0 text-warning" aria-hidden />
-        <span>Likes: {reason}</span>
+        <span>{reason}</span>
       </button>
     </Tip>
   );

@@ -276,6 +276,17 @@ describe('Flagged Likes on the contest tab', () => {
     expect(document.querySelector('[data-likes-marker="burst"]')).not.toBeNull();
   });
 
+  it('keeps the bar’s entry count at the full count while Flagged Likes narrows the grid', async () => {
+    renderBrowser({ currentUser: admin });
+    await openContestTab();
+    await waitFor(() => expect(screen.getByText('2 entries')).toBeInTheDocument());
+
+    fireEvent.click(await flaggedOption());
+
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh']));
+    expect(screen.getByText('2 entries')).toBeInTheDocument();
+  });
+
   it('keeps the option on when the reader moves from the catalog to the contest tab', async () => {
     renderBrowser({ currentUser: admin });
     await screen.findByRole('tab', { name: 'Contest' });

@@ -16,12 +16,13 @@ import { StatusPill } from "@/components/StatusPill";
 import { describeAccountAge, isFreshAccount } from "@/lib/accountAge";
 import { describeLikesMarker } from "@/lib/likesMarker";
 import { canModerate } from "@/lib/roles";
+import { useMountedRef } from "@/lib/useMountedRef";
 import { formatServerDate, formatServerDateTime } from "@/lib/serverDate";
 import { cn } from "@/lib/utils";
 import WorldStorageService from "@/services/WorldStorageService";
 import type { WorldRecord } from "@/components/WorldDetails";
 import type {
-  AnonymousLikeRow, LikerAuditRow, LikerRow, LikesSummary, NetworkKind,
+  AnonymousLikeRow, LikerAuditRow, LikerRow, LikesMarkerReason, LikesSummary, NetworkKind,
 } from "@/types";
 
 /** What the audit knows about one liker, once it has been asked for. Keyed by account id. */
@@ -52,12 +53,12 @@ const NetworkKindBadge = ({ kind }: { kind?: NetworkKind | null }) => {
   );
 };
 
-/** "12 of 40 likes (30%)" style reading of the 90-day window. Null when the window holds no likes. */
+/** "12 of 40 likes flagged (30%) in the last 90 days". Null when the window holds no likes. */
 const describeSummary = (summary: LikesSummary) => {
   if (summary.total === 0) return null;
 
   const share = summary.share === null ? '' : ` (${Math.round(summary.share * 100)}%)`;
-  return `${summary.flagged} of ${summary.total} ${summary.total === 1 ? 'like' : 'likes'} flagged in the last ${summary.windowDays} days${share}`;
+  return `${summary.flagged} of ${summary.total} ${summary.total === 1 ? 'like' : 'likes'} flagged${share} in the last ${summary.windowDays} days`;
 };
 
 /**
@@ -90,6 +91,8 @@ interface LikersDialogProps {
   onLikesChanged?: (likes: number) => void;
   /** Runs the audit as the dialog opens, so a Likes Marker lands on the evidence. */
   auditOnOpen?: boolean;
+  /** Reports the listing's Likes Marker reasons, read fresh after a removal, so the marker behind this agrees. */
+  onMarkerChanged?: (reasons: LikesMarkerReason[]) => void;
 }
 
 /** "3 Anonymous Likes", or "1 Anonymous Like". */
@@ -181,8 +184,9 @@ const RemoveLikeButton = ({ tip, label, onClick }: { tip: string; label: string;
  * one to anything else on the screen.
  */
 export function LikersDialog({
-  open, onOpenChange, listingId, listingName, currentUser, onLikesChanged, auditOnOpen = false,
+  open, onOpenChange, listingId, listingName, currentUser, onLikesChanged, auditOnOpen = false, onMarkerChanged,
 }: LikersDialogProps) {
+  const mounted = useMountedRef();
   const [rows, setRows] = useState<LikerRow[]>([]);
   const [total, setTotal] = useState(0);
   /** How many Anonymous Likes the listing has, as the server last counted them. */
@@ -258,16 +262,38 @@ export function LikersDialog({
     }
   }, [listingId]);
 
+  /**
+   * Read the listing's Likes Marker again after a removal and report it.
+   *
+   * The server works the reasons out on read, so the client takes them from a fresh read rather than
+   * guessing which reason a removal cleared. A failed read leaves the marker as it was.
+   */
+  const refreshMarker = async (asked: string) => {
+    if (!onMarkerChanged) return;
+
+    const read = await WorldStorageService.readListingDetails(asked);
+    if (read.status !== 'ok' || !read.details.likesMarker) return;
+
+    // The parent's copy is corrected even when this dialog has closed; only its own state needs it mounted.
+    const reasons = read.details.likesMarker;
+    onMarkerChanged(reasons);
+    if (mounted.current && shown.current === asked) setSummary((prev) => (prev ? { ...prev, reasons } : prev));
+  };
+
   const remove = async (row: LikerRow) => {
     if (!listingId) return;
 
+    const asked = listingId;
     try {
-      const likes = await WorldStorageService.removeLike(listingId, row.id);
-      setRows((prev) => prev.filter((r) => r.id !== row.id));
-      setTotal((prev) => Math.max(prev - 1, 0));
+      const likes = await WorldStorageService.removeLike(asked, row.id);
+      if (mounted.current) {
+        setRows((prev) => prev.filter((r) => r.id !== row.id));
+        setTotal((prev) => Math.max(prev - 1, 0));
+      }
       onLikesChanged?.(likes);
+      void refreshMarker(asked);
     } catch (e) {
-      toastError(e, 'Failed to remove that like');
+      if (mounted.current) toastError(e, 'Failed to remove that like');
     }
   };
 
@@ -277,17 +303,18 @@ export function LikersDialog({
    * A press rather than part of the load: the server writes an audit row for every call, so opening a
    * like list to read it must not file a look at the people in it.
    */
-  const runAudit = useCallback(async () => {
+  const runAudit = useCallback(async (run?: { cancelled: boolean }) => {
     if (!listingId) return;
 
     // The dialog can move to another listing while this is out. Its answer is about the listing it was
     // asked for, and "no two of these accounts share an address" over somebody else's likes is a lie a
-    // moderation screen must never tell.
+    // moderation screen must never tell. A closed or unmounted dialog takes no answer either.
     const asked = listingId;
+    const stale = () => !mounted.current || run?.cancelled === true || shown.current !== asked;
     setIsAuditing(true);
     try {
       const result = await WorldStorageService.fetchLikersAudit(asked);
-      if (shown.current !== asked) return;
+      if (stale()) return;
 
       setRows(result.rows);
       setTotal(result.total);
@@ -301,15 +328,20 @@ export function LikersDialog({
         { groupId: row.groupId, linkedToAuthor: row.linkedToAuthor, networkKind: row.networkKind },
       ])));
     } catch (e) {
-      if (shown.current === asked) toastError(e, 'Failed to audit these likes');
+      if (!stale()) toastError(e, 'Failed to audit these likes');
     } finally {
-      if (shown.current === asked) setIsAuditing(false);
+      if (mounted.current && shown.current === asked) setIsAuditing(false);
     }
-  }, [listingId]);
+  }, [listingId, mounted]);
 
   // A marker opens the dialog on the evidence. The plain list loads beside it and yields to the audit.
+  // Closing the dialog or moving to another listing cancels the run's write.
   useEffect(() => {
-    if (open && listingId && auditOnOpen) void runAudit();
+    if (!open || !listingId || !auditOnOpen) return;
+
+    const run = { cancelled: false };
+    void runAudit(run);
+    return () => { run.cancelled = true; };
   }, [open, listingId, auditOnOpen, runAudit]);
 
   /**
@@ -329,10 +361,11 @@ export function LikersDialog({
         ? await WorldStorageService.removeAnonymousLikes(asked)
         : await WorldStorageService.removeAnonymousLikeGroup(asked, action.addressKey);
 
-      if (shown.current !== asked) return;
+      if (!mounted.current || shown.current !== asked) return;
 
       setAnonymous(result.anonymous);
       onLikesChanged?.(result.likes);
+      void refreshMarker(asked);
 
       if (result.removed === 0) {
         void (marks ? runAudit() : refreshList());
@@ -648,12 +681,13 @@ export function LikersDialog({
           <div data-bursts="true" className="space-y-1 rounded-md border bg-muted/30 p-2">
             {summary.reasons.length > 0 && (
               <Meta as="p">
-                Marked for: {describeLikesMarker(summary.reasons)}
+                Why it’s marked: {describeLikesMarker(summary.reasons)}
               </Meta>
             )}
             {summary.bursts.length > 0 && (
               <>
-                <p className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">Bursts</p>
+                <p className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">Bursts of likes</p>
+                <Meta as="p">Many different likers in a short time</Meta>
                 <ul className="space-y-0.5">
                   {summary.bursts.map((burst) => (
                     <Meta as="li" key={burst.startedAt}>

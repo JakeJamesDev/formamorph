@@ -208,7 +208,7 @@ describe('the Likes Marker in the details', () => {
     answer(['flagged_share']);
     show({ currentUser: account('m1', 'mod') });
 
-    fireEvent.click(await screen.findByRole('button', { name: /Likes marker: Flagged share/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Many flagged likes\. Audit the likes/ }));
 
     await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
     expect(likersProps.last?.auditOnOpen).toBe(true);
@@ -225,7 +225,7 @@ describe('the Likes Marker in the details', () => {
   it('opens the plain list, not the audit, from the likes count', async () => {
     answer(['burst']);
     show({ currentUser: account('m1', 'mod') });
-    await screen.findByRole('button', { name: /Likes marker/ });
+    await screen.findByRole('button', { name: /Audit the likes/ });
 
     fireEvent.click(screen.getByRole('button', { name: /Show who liked this/ }));
 

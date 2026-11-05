@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toastError } from "@/lib/linkToast";
-import { Section, CheckRow, RowLabel, HintInfo } from "@/components/SettingsRows";
+import { Section, CheckRow, Row, RowLabel, HintInfo } from "@/components/SettingsRows";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Meta } from "@/components/ui/typography";
 import { useMountedRef } from "@/lib/useMountedRef";
@@ -9,7 +10,10 @@ import { setListingReviewEnabled, useListingReviewMeta } from "@/lib/useListingR
 import { useDevRoute } from "@/lib/devRouter";
 import { HostedAiPanel } from "@/components/menu/HostedAiPanel";
 import HostedAiAdminService, { type HostedAiAdminApi } from "@/services/HostedAiAdminService";
-import ServerSettingsService, { ANONYMOUS_LIKES, LISTING_REVIEW, type ServerSettingKey } from "@/services/ServerSettingsService";
+import ServerSettingsService, {
+  ANONYMOUS_LIKES, LISTING_REVIEW, NETWORK_KIND, LIKES_MARKER_MIN_FLAGGED, LIKES_MARKER_SHARE, BURST_SIZE,
+  BURST_WINDOW_MINUTES, type ServerSettingKey, type ServerNumberKey,
+} from "@/services/ServerSettingsService";
 
 /** One on/off setting with a control here. A second setting is another entry, not another component. */
 interface ServerSetting {
@@ -48,7 +52,140 @@ const SETTINGS: readonly ServerSetting[] = [
     needsReview: true,
     onStored: setListingReviewEnabled,
   },
+  {
+    key: NETWORK_KIND,
+    label: 'Network Check',
+    hint: 'Flags new likes from VPN, hosting and Tor networks',
+    info: 'Staff see the result in the likes audit and on the likes marker. Likes and counts don’t change for players.',
+  },
 ];
+
+/** One number with a control here. The server stores it; `scale` is how many shown units make one stored unit. */
+interface ServerNumberSetting {
+  key: ServerNumberKey;
+  /** Title case, as every settings label is. */
+  label: string;
+  hint: string;
+  info: string;
+  /** Shown value = stored value × this. The flagged share is stored as 0 to 1 and shown as a percent. */
+  scale?: number;
+}
+
+/** The thresholds behind the likes marker. The server refuses a value outside its range and says why. */
+const NUMBER_SETTINGS: readonly ServerNumberSetting[] = [
+  {
+    key: LIKES_MARKER_MIN_FLAGGED,
+    label: 'Minimum Flagged Likes',
+    hint: 'Sets the fewest flagged likes that mark a listing',
+    info: 'Counts flagged likes from the last 90 days. The listing also needs the share below.',
+  },
+  {
+    key: LIKES_MARKER_SHARE,
+    label: 'Flagged Share',
+    hint: 'Sets the percent of recent likes that must be flagged',
+    info: 'Counts likes from the last 90 days. The listing also needs the number of flagged likes above.',
+    scale: 100,
+  },
+  {
+    key: BURST_SIZE,
+    label: 'Burst Size',
+    hint: 'Sets how many different likers make a burst',
+    info: 'Counts different likers on one listing inside the window below. One address counts once, so a household doesn’t make a burst.',
+  },
+  {
+    key: BURST_WINDOW_MINUTES,
+    label: 'Burst Window',
+    hint: 'Sets how many minutes a burst may span',
+    info: 'The longest window is 1,440 minutes, which is one day.',
+  },
+];
+
+/** A stored number as the row shows it, free of float noise from the percent scale. */
+const toShown = (stored: number, scale: number) => Number((stored * scale).toFixed(4));
+
+/** One number: read when the tab opens, written on Enter or when the field loses focus, and never ahead of the server. */
+function NumberSettingRow({ setting, active }: { setting: ServerNumberSetting; active: boolean }) {
+  const scale = setting.scale ?? 1;
+  // Null until the server answers, as in SettingRow.
+  const [stored, setStored] = useState<number | null>(null);
+  const [text, setText] = useState('');
+  const [unreadable, setUnreadable] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const mounted = useMountedRef();
+
+  useEffect(() => {
+    if (!active) return;
+    let current = true;
+    ServerSettingsService.fetchNumber(setting.key)
+      .then((value) => {
+        if (!current || !mounted.current) return;
+        setStored(value);
+        setText(String(toShown(value, scale)));
+      })
+      .catch((error: unknown) => {
+        if (!current || !mounted.current) return;
+        setUnreadable(true);
+        toastError(error, `Failed to read ${setting.label}`);
+      });
+    return () => { current = false; };
+  }, [active, setting.key, setting.label, scale, mounted]);
+
+  // A field left empty or unchanged writes nothing. A refusal puts the stored value back in the field.
+  const commit = () => {
+    if (stored === null || writing) return;
+    const typed = Number(text);
+    if (text.trim() === '' || Number.isNaN(typed) || toShown(stored, scale) === typed) {
+      setText(String(toShown(stored, scale)));
+      return;
+    }
+
+    setWriting(true);
+    void ServerSettingsService.saveNumber(setting.key, typed / scale)
+      .then((next) => {
+        if (!mounted.current) return;
+        setStored(next);
+        setText(String(toShown(next, scale)));
+        // The catalog response carries the markers these thresholds decide.
+        markCatalogStale();
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setText(String(toShown(stored, scale)));
+        toastError(error, `Failed to write ${setting.label}`);
+      })
+      .finally(() => { if (mounted.current) setWriting(false); });
+  };
+
+  const rowId = `server-setting-${setting.key}`;
+
+  if (stored === null) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+        <RowLabel info={<HintInfo>{setting.info}</HintInfo>}>{setting.label}</RowLabel>
+        {unreadable
+          ? <Meta>This server didn’t answer for this setting</Meta>
+          : <Skeleton className="h-4 w-48" />}
+      </div>
+    );
+  }
+
+  return (
+    <Row label={setting.label} htmlFor={rowId} hint={setting.hint} info={<HintInfo>{setting.info}</HintInfo>}>
+      <Input
+        id={rowId}
+        type="number"
+        inputMode="decimal"
+        step={1}
+        className="w-32"
+        value={text}
+        disabled={writing}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+      />
+    </Row>
+  );
+}
 
 /** One setting: read when the tab opens, written on a press, and never ahead of the server. */
 function SettingRow({ setting, active }: { setting: ServerSetting; active: boolean }) {
@@ -141,6 +278,9 @@ export function ServerSettingsTab({ active }: { active: boolean }) {
       <Section title="Server Settings" hint="Changes apply to everyone at once, with no confirmation">
         {SETTINGS.filter((setting) => !setting.needsReview || review.supported).map((setting) => (
           <SettingRow key={setting.key} setting={setting} active={active} />
+        ))}
+        {NUMBER_SETTINGS.map((setting) => (
+          <NumberSettingRow key={setting.key} setting={setting} active={active} />
         ))}
       </Section>
       {hostedApi && <HostedAiPanel active={active} api={hostedApi} />}

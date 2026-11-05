@@ -170,6 +170,7 @@ export const DEV_MODAL_TABS = {
   // follows the session. `tab=moderation` needs a live server for reports — it opens empty otherwise.
   // `tab=serverSettings` is the Server tab: one box per server setting, read from the live server, so
   // against a server without the settings routes each row reports that it went unanswered.
+  // `fixture=serverSettings` serves every row from memory (`devServerSettingsStub.ts`); a Burst Size under 2 is refused.
   // `fixture=hostedAi` adds the Formamorph AI panel over canned routes (`devHostedAiSample.ts`).
   // `tab=usage&fixture=usage` draws the Usage tab over canned figures (`devUsageSample.ts`).
   adminPanel: ['users', 'broadcasts', 'policies', 'serverSettings', 'usage', 'events', 'feedback', 'moderation', 'log'],

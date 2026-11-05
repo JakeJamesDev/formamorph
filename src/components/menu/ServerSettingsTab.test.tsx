@@ -41,6 +41,15 @@ const never = () => new Promise<Response>(() => {});
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
+/** Answers each read by key (switches off, numbers 1 unless given); a PUT takes the next prepared answer. */
+const answerKeyed = (stored: Record<string, unknown> = {}, writes: Response[] = []) =>
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') return writes.shift() as Response;
+    const key = url.split('/').pop() as string;
+    const isSwitch = ['anonymous_likes', 'listing_review', 'network_kind'].includes(key);
+    return settingBody(key in stored ? stored[key] : (isSwitch ? false : 1));
+  });
+
 beforeEach(() => {
   reviewMeta.supported = false;
   recorded.mockClear();
@@ -78,13 +87,14 @@ describe('reading the setting', () => {
 
   it('reports a read it could not make, and still shows no box', async () => {
     // A dimmed empty box after a failed read is indistinguishable from a setting that is off.
-    fetchMock.mockResolvedValueOnce(refusal('Not staff'));
+    fetchMock.mockResolvedValue(refusal('Not staff'));
 
     render(<ServerSettingsTab active />);
 
     await waitFor(() => expect(toastTexts(toastErrorMock)).toContain('Not staffView Details →'));
     expect(screen.queryByRole('checkbox')).toBeNull();
-    expect(screen.getByText('This server didn’t answer for this setting')).toBeTruthy();
+    // One notice per row that went unanswered: the two switches and the four numbers.
+    expect(screen.getAllByText('This server didn’t answer for this setting')).toHaveLength(6);
   });
 
   it('asks for nothing while the tab is not the one on screen', () => {
@@ -96,7 +106,7 @@ describe('reading the setting', () => {
 
 describe('writing the setting', () => {
   it('follows the value the server stored', async () => {
-    fetchMock.mockResolvedValueOnce(settingBody(false)).mockResolvedValueOnce(settingBody(true));
+    answerKeyed({ anonymous_likes: false }, [settingBody(true)]);
 
     render(<ServerSettingsTab active />);
     await waitFor(() => expect(anonymousLikes().hasAttribute('disabled')).toBe(false));
@@ -104,14 +114,14 @@ describe('writing the setting', () => {
     fireEvent.click(anonymousLikes());
 
     await waitFor(() => expect(anonymousLikes().getAttribute('data-state')).toBe('checked'));
-    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls.find(([, options]) => (options as RequestInit | undefined)?.method === 'PUT') as [string, RequestInit];
     expect(url).toBe('https://server.test/api/settings/anonymous_likes');
     expect(init.method).toBe('PUT');
     expect(init.body).toBe(JSON.stringify({ value: true }));
   });
 
   it('calls the catalog in hand out of date, so this session’s hearts follow the new value', async () => {
-    fetchMock.mockResolvedValueOnce(settingBody(true)).mockResolvedValueOnce(settingBody(false));
+    answerKeyed({ anonymous_likes: true }, [settingBody(false)]);
 
     render(<ServerSettingsTab active />);
     await waitFor(() => expect(anonymousLikes().hasAttribute('disabled')).toBe(false));
@@ -123,7 +133,7 @@ describe('writing the setting', () => {
   });
 
   it('restores the box and says why when the write is refused', async () => {
-    fetchMock.mockResolvedValueOnce(settingBody(true)).mockResolvedValueOnce(refusal('No such setting'));
+    answerKeyed({ anonymous_likes: true }, [refusal('No such setting')]);
 
     render(<ServerSettingsTab active />);
     await waitFor(() => expect(anonymousLikes().getAttribute('data-state')).toBe('checked'));
@@ -136,7 +146,9 @@ describe('writing the setting', () => {
   });
 
   it('takes no second press while the first is in the air', async () => {
-    fetchMock.mockResolvedValueOnce(settingBody(false)).mockReturnValueOnce(never());
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => (init?.method === 'PUT'
+      ? never()
+      : Promise.resolve(settingBody(url.endsWith('anonymous_likes') || url.endsWith('network_kind') ? false : 1))));
 
     render(<ServerSettingsTab active />);
     await waitFor(() => expect(anonymousLikes().hasAttribute('disabled')).toBe(false));
@@ -209,6 +221,117 @@ describe('the Listing Review switch', () => {
     await waitFor(() => expect(listingReview()).toBeTruthy());
 
     expect(screen.getByText(/Pending items stay in the queue when it’s off/)).toBeTruthy();
+  });
+});
+
+describe('the Network Check switch', () => {
+  const networkCheck = () => screen.getByRole('checkbox', { name: 'Network Check' });
+
+  /** Answers each read by key; a PUT takes the next prepared answer. */
+  const answerByKey = (values: Record<string, unknown>, writes: Response[] = []) =>
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') return writes.shift() as Response;
+      return settingBody(values[url.split('/').pop() as string]);
+    });
+
+  it('reads and writes the network_kind key', async () => {
+    answerByKey({ anonymous_likes: false, network_kind: false }, [settingBody(true)]);
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(networkCheck().hasAttribute('disabled')).toBe(false));
+    expect(networkCheck().getAttribute('data-state')).toBe('unchecked');
+
+    fireEvent.click(networkCheck());
+
+    await waitFor(() => expect(networkCheck().getAttribute('data-state')).toBe('checked'));
+    const write = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PUT') as [string, RequestInit];
+    expect(write[0]).toBe('https://server.test/api/settings/network_kind');
+    expect(write[1].body).toBe(JSON.stringify({ value: true }));
+  });
+});
+
+describe('the threshold rows', () => {
+  const STORED = {
+    anonymous_likes: false, network_kind: false,
+    likes_marker_min_flagged: 5, likes_marker_share: 0.5, burst_size: 8, burst_window_minutes: 15,
+  };
+
+  const field = (name: string) => screen.getByRole('spinbutton', { name }) as HTMLInputElement;
+
+  const answerByKey = (writes: Response[] = []) =>
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') return writes.shift() as Response;
+      return settingBody(STORED[url.split('/').pop() as keyof typeof STORED]);
+    });
+
+  const writes = () => fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'PUT') as [string, RequestInit][];
+
+  it('shows each stored value, the share as a percent', async () => {
+    answerByKey();
+
+    render(<ServerSettingsTab active />);
+
+    await waitFor(() => expect(field('Minimum Flagged Likes').value).toBe('5'));
+    expect(field('Flagged Share').value).toBe('50');
+    expect(field('Burst Size').value).toBe('8');
+    expect(field('Burst Window').value).toBe('15');
+  });
+
+  it('writes on blur, converting the percent back to the stored share', async () => {
+    answerByKey([settingBody(0.35)]);
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(field('Flagged Share').value).toBe('50'));
+
+    fireEvent.change(field('Flagged Share'), { target: { value: '35' } });
+    fireEvent.blur(field('Flagged Share'));
+
+    await waitFor(() => expect(field('Flagged Share').value).toBe('35'));
+    expect(writes()[0][0]).toBe('https://server.test/api/settings/likes_marker_share');
+    expect(writes()[0][1].body).toBe(JSON.stringify({ value: 0.35 }));
+    expect(catalogStale.marked()).toBe(1);
+  });
+
+  it('writes on Enter', async () => {
+    answerByKey([settingBody(10)]);
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(field('Burst Size').value).toBe('8'));
+
+    fireEvent.change(field('Burst Size'), { target: { value: '10' } });
+    field('Burst Size').focus();
+    fireEvent.keyDown(field('Burst Size'), { key: 'Enter' });
+
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0][1].body).toBe(JSON.stringify({ value: 10 }));
+  });
+
+  it('shows the server’s reason and puts the stored value back when a value is refused', async () => {
+    answerByKey([refusal('The Burst size must be a whole number of at least 2')]);
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(field('Burst Size').value).toBe('8'));
+
+    fireEvent.change(field('Burst Size'), { target: { value: '1' } });
+    fireEvent.blur(field('Burst Size'));
+
+    await waitFor(() => expect(toastTexts(toastErrorMock)).toContain('The Burst size must be a whole number of at least 2View Details →'));
+    expect(field('Burst Size').value).toBe('8');
+    expect(catalogStale.marked()).toBe(0);
+  });
+
+  it('writes nothing for an unchanged or empty field', async () => {
+    answerByKey();
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(field('Burst Size').value).toBe('8'));
+
+    fireEvent.blur(field('Burst Size'));
+    fireEvent.change(field('Burst Size'), { target: { value: '' } });
+    fireEvent.blur(field('Burst Size'));
+
+    expect(writes()).toHaveLength(0);
+    expect(field('Burst Size').value).toBe('8');
   });
 });
 

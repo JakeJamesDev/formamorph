@@ -16,6 +16,8 @@ const audit = vi.hoisted(() => ({
     total: 0, rows: [], anonymous: 0, anonymousRows: [],
     summary: { windowDays: 90, flagged: 0, total: 0, share: null, bursts: [], reasons: [] },
   })),
+  removeLike: vi.fn(async () => 0),
+  readListingDetails: vi.fn(async () => ({ status: 'unreachable' })),
 }));
 
 vi.mock('@/services/WorldStorageService', () => ({
@@ -461,9 +463,65 @@ describe('Flagged Likes', () => {
     renderBrowser();
     await screen.findByText('Marked Two');
 
-    expect(document.querySelector('[data-likes-marker="burst flagged_share"]')?.textContent).toContain('Burst and Flagged share');
+    expect(document.querySelector('[data-likes-marker="burst flagged_share"]')?.textContent).toContain('Burst of likes and many flagged likes');
     fireEvent.click(document.querySelector('[data-likes-marker="burst"]') as HTMLElement);
 
     await waitFor(() => expect(audit.fetchLikersAudit).toHaveBeenCalledWith('marked'));
+  });
+
+  describe('after the audit removes a like', () => {
+    const likerRow = {
+      id: 'u1', username: 'wren_hallow', avatarUrl: null, status: 'active', createdAt: '2026-03-14 00:00:00',
+      likedAt: '2026-08-30 12:00:00', accountAgeAtLikeSeconds: 400 * 86_400, groupId: null, linkedToAuthor: false,
+      networkKind: null,
+    };
+
+    /** Opens the audit from the 'marked' card and removes its one liker, with the fresh read answering `reasons`. */
+    const removeFromMarked = async (reasons: string[]) => {
+      audit.fetchLikersAudit.mockResolvedValueOnce({
+        total: 1, rows: [likerRow], anonymous: 0, anonymousRows: [],
+        summary: { windowDays: 90, flagged: 1, total: 1, share: 1, bursts: [], reasons: ['burst'] },
+      } as never);
+      audit.removeLike.mockResolvedValueOnce(0);
+      audit.readListingDetails.mockResolvedValueOnce({
+        status: 'ok', details: { changelog: [], anonymousLikes: false, likesMarker: reasons },
+      } as never);
+
+      renderBrowser();
+      await screen.findByText('Marked Two');
+      fireEvent.click(document.querySelector('[data-likes-marker="burst"]') as HTMLElement);
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by wren_hallow' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+      await waitFor(() => expect(audit.readListingDetails).toHaveBeenCalledWith('marked'));
+    };
+
+    it('clears the card marker and the Flagged Likes count when no reason is left', async () => {
+      await removeFromMarked([]);
+
+      await waitFor(() => expect(document.querySelector('[data-likes-marker="burst"]')).toBeNull());
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+      expect(await view('Flagged Likes (1)')).toBeTruthy();
+    });
+
+    it('keeps the marker and names what remains when a reason is left', async () => {
+      await removeFromMarked(['flagged_share']);
+
+      await waitFor(() => expect(document.querySelector('[data-likes-marker="flagged_share"]')?.textContent)
+        .toContain('Many flagged likes'));
+      expect(document.querySelector('[data-likes-marker="burst"]')).toBeNull();
+    });
+  });
+
+  it('returns to page 1 when a Show view is picked from a later page', async () => {
+    catalog.items = Array.from({ length: 60 }, (_, i) => listing(`m${i}`, `Marked ${i}`, {
+      likes_marker: ['burst'], updated_at: day(1 + (i % 28)),
+    }));
+    renderBrowser();
+    fireEvent.click(await screen.findByLabelText('Go to next page'));
+    await screen.findByRole('button', { name: /^Page 2 of/ });
+
+    fireEvent.click(await view(/^Flagged Likes/));
+
+    expect(await screen.findByRole('button', { name: /^Page 1 of/ })).toBeTruthy();
   });
 });
