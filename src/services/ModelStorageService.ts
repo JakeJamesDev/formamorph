@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import { promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
+import { getAllReadable, promisifyRequest, readOrNull, transactionDone, writeAfterRead } from '@/lib/idb';
 import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
@@ -118,9 +118,7 @@ class ModelStorageService {
   /** Every stored record, wrapper included — `LibraryStore` only exposes projected metadata or bare payloads. */
   private async allRecords(): Promise<StoredModelRecord[]> {
     await this.store.ensureInitialized();
-    return promisifyRequest<StoredModelRecord[]>(
-      this.store.db!.transaction(['models'], 'readonly').objectStore('models').getAll(),
-    );
+    return getAllReadable<StoredModelRecord>(this.store.db!, 'models');
   }
 
   /**
@@ -141,10 +139,10 @@ class ModelStorageService {
     return present;
   }
 
-  /** One stored record with its wrapper, or null. */
+  /** One stored record with its wrapper, or null when it is absent or can't be read. */
   private async getRecord(id: string): Promise<StoredModelRecord | null> {
     await this.store.ensureInitialized();
-    const record = await promisifyRequest<StoredModelRecord | undefined>(
+    const record = await readOrNull<StoredModelRecord | undefined>(
       this.store.db!.transaction(['models'], 'readonly').objectStore('models').get(id),
     );
     return record ?? null;
@@ -159,10 +157,7 @@ class ModelStorageService {
     this.migration ??= (async () => {
       await this.store.ensureInitialized();
       const db = this.store.db!;
-      const raw = await promisifyRequest<unknown[]>(
-        db.transaction(['models'], 'readonly').objectStore('models').getAll(),
-      );
-      const flat = raw.filter(isFlat);
+      const flat = (await getAllReadable<object>(db, 'models')).filter(isFlat);
       if (flat.length) {
         const write = db.transaction(['models'], 'readwrite').objectStore('models');
         await Promise.all(
@@ -292,12 +287,17 @@ class ModelStorageService {
     const hashed = await Promise.all(records.filter((record) => record.data?.blob).map(async (record) => {
       let hash = record.data.hash;
       if (!hash) {
-        hash = await blobHash(record.data.blob);
+        try {
+          hash = await blobHash(record.data.blob);
+        } catch (error) {
+          console.warn(`Skipped a model whose file can't be read (id ${record.id})`, error);
+          return null;
+        }
         await this.updateDataIfPresent(record.id, { ...record.data, hash });
       }
       return [record.id, { name: record.name, hash }] as const;
     }));
-    return new Map(hashed);
+    return new Map(hashed.filter((entry) => entry !== null));
   }
 
   /** The id of the model holding `blob`'s bytes: an existing record with the same hash, else a new one. */
@@ -468,10 +468,11 @@ class ModelStorageService {
     // transactions over the store, so two concurrent deletes can't both see count > 1 and then both delete —
     // which a read-then-delete across separate transactions would allow, emptying the library.
     const store = this.store.db!.transaction(['models'], 'readwrite').objectStore('models');
-    // Requests in one transaction run in order, so the count has its result when the get's arrives.
+    // Requests in one transaction run in order, so the count has its result when the key's arrives.
+    // The key alone: a refused value read aborts a read-write transaction, which would keep a lost model.
     const count = store.count();
-    return writeAfterRead(store.transaction, store.get(id), (record) => {
-      if (BUNDLED_DEFAULT_URL && count.result <= 1 && record) {
+    return writeAfterRead(store.transaction, store.getKey(id), (key) => {
+      if (BUNDLED_DEFAULT_URL && count.result <= 1 && key !== undefined) {
         throw new Error('Cannot delete the last player avatar: the library must always have at least one.');
       }
       store.delete(id);

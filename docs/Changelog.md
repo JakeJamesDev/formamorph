@@ -32,7 +32,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The game's last choices and a script's question no longer hide behind the status strip.** You can always scroll the last row clear of it. A script's question stays in view as text appears, and the strip shows **Waiting for your answer…** until you answer.
-  - **One save, entity or dictionary with a missing or damaged file no longer empties its list.** The others keep loading, and Backup & Restore can still back them up.
+  - **One save, entity, dictionary or avatar with a missing or damaged file no longer empties its list.** The others keep loading, and Backup & Restore can still back them up.
   - **A world your library can't read now shows one notice with a way to fix it.** Review lists each damaged world, and you can restore, download again or remove it. Your other worlds keep loading, including when a world's stored file is missing.
   - **Popup titles, their icons and the close button now line up on one line.** Controls in the title row, such as the Simple and Advanced select in **Settings**, line up too.
   - **A script's `inScene` now matches In Scene on the Entities tab.** An entity also listed at your new location no longer reads true after you move.

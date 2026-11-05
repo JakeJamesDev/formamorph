@@ -5,6 +5,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ModelStorageService, { type StoredModelRecord } from './ModelStorageService';
 import { LibraryRecordNotFoundError } from './LibraryStore';
 import { promisifyRequest } from '@/lib/idb';
+import { refuseReads } from '@/test/idbRefusal';
+import { LEGACY_DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
 import { makeVrm1, THUMB_DATA_URL } from '@/test/glbFixture';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
@@ -573,5 +575,74 @@ describe('bundledAvatarHashes', () => {
   it('ignores a response that is not the file', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, blob: async () => new Blob(['<html>']) }));
     await expect(ModelStorageService.bundledAvatarHashes()).resolves.toEqual([]);
+  });
+});
+
+describe('a model that can not be read', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  const stored = (id: string, hash?: string) => ({ id, name: id, data: { type: 'model/vrm', blob: blob(id), size: 1, ...(hash ? { hash } : {}) } });
+
+  it('leaves every operation working past a record whose file is lost', async () => {
+    await putRaw(stored('lost', 'h-lost'));
+    await putRaw(stored('good', 'h-good'));
+    const restore = refuseReads({ [STORE]: ['lost'] });
+
+    const listed = await ModelStorageService.getModelMetadata();
+    const hashes = await ModelStorageService.getModelHashes();
+    const duplicate = await ModelStorageService.findDuplicate(blob('no match'));
+    const thumbnail = await ModelStorageService.ensureThumbnail('lost');
+
+    restore();
+    expect(listed.map((model) => model.id)).toEqual(['good']);
+    expect([...hashes.keys()]).toEqual(['good']);
+    expect(duplicate).toBeNull();
+    expect(thumbnail).toBeUndefined();
+  });
+
+  it('removes a record whose file is lost', async () => {
+    await putRaw(stored('lost', 'h-lost'));
+    await putRaw(stored('good', 'h-good'));
+    const restore = refuseReads({ [STORE]: ['lost'] });
+
+    await ModelStorageService.deleteModel('lost');
+
+    restore();
+    expect((await ModelStorageService.getModelMetadata()).map((model) => model.id)).toEqual(['good']);
+  });
+
+  it('still folds a flat record forward past a lost one', async () => {
+    await putRaw(stored('lost', 'h-lost'));
+    await putRaw({ id: 'flat', name: 'Flat', type: 'model/vrm', blob: blob('flat'), size: 4, addedAt: '2026-01-01' });
+    const restore = refuseReads({ [STORE]: ['lost'] });
+
+    await ModelStorageService.getModelMetadata();
+
+    restore();
+    expect((await getRaw('flat')).data).toBeTruthy();
+  });
+
+  it('runs the migration when the legacy default record is lost', async () => {
+    await putRaw(stored('good', 'h-good'));
+    await putRaw(stored(LEGACY_DEFAULT_AVATAR_ID, 'h-lost'));
+    const restore = refuseReads({ [STORE]: [LEGACY_DEFAULT_AVATAR_ID] });
+
+    const listed = await ModelStorageService.getModelMetadata();
+
+    restore();
+    expect(listed.map((model) => model.id)).toContain('good');
+  });
+
+  it('leaves out a model whose blob fails to read, and imports the rest', async () => {
+    await putRaw(stored('good', 'h-good'));
+    // The structured clone strips `arrayBuffer()`, so hashing this blob fails as a lost file does.
+    await putRaw({ id: 'gone', name: 'gone', data: { type: 'model/vrm', blob: blob('gone'), size: 1 } });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const hashes = await ModelStorageService.getModelHashes();
+
+    expect([...hashes.keys()]).toEqual(['good']);
+    expect(warn.mock.calls[0][0]).toContain('gone');
+    warn.mockRestore();
   });
 });
