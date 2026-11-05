@@ -23,7 +23,7 @@ The room for the window buttons sits in the right-hand cell, so the side cells s
 - [ ] Entering and leaving full screen doesn't move the main menu buttons' center relative to the window. Ticket 06 removes the reserved room, so check this against the window center at each size.
 - [ ] Below the fold width, the bar shows the view toggle and one right-side `...` holding the action buttons, Load Game and Settings.
 - [ ] Load Game and Settings each open in one click at full width.
-- [ ] The fold logic subtracts the room held for the window buttons, and a guard fails when that subtraction is removed.
+- [ ] The fold logic subtracts the room held for the window buttons, and a guard fails when that subtraction is removed. Ticket 01 lands both, so keep them working through the new buttons.
 - [ ] Backup & Restore opens from the Settings Data tab, over Settings.
 - [ ] Take Me There reaches Backup & Restore at its new location.
 - [ ] With the World Editor in Simple and Advanced mode, its search centers within 1px wherever both sides have room, measured at 1690 wide and in full screen.

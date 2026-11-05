@@ -81,6 +81,8 @@ The owner settled these in the prototype session. A ruling reopens on new eviden
 - **Q18. Mobile.** Mobile keeps its single menu, with Save Game, Load Game, Edit World, AI Context, Settings, Send Feedback and Exit. Only its icon changes to `...`.
 - **Q19. Minimum window size.** The desktop window's minimum content size is 800×600. This allows half-screen snapping on a 1080p display. The owner accepts that the World Editor's title cuts off and the game panels get cramped near that size.
 - **Q20. Windows only.** The hidden title bar, window buttons, minimum size, corner gradient, symbol dimming and Exit Full Screen apply only on Windows. The macOS and Linux desktop builds keep the native title bar and use the web layout from Q16, because macOS puts its buttons on the left and we can't test either platform here.
+- **Q21. Clearance beyond the five Surfaces.** Story 11 covers every player Surface and dialog. Ticket 01 covers the main menu, game Surface, World Editor, Community Creations and full screen editor. Ticket 07 covers the rest, including tall dialogs at small window sizes. The popup sweep owns title bar alignment, not clearance. The dev-only Design System page is exempt.
+- **Q22. Full screen editor shell.** At `md` and wider, its content starts at y=56 on desktop and web, and its corner button sits on the header line. Web gives up 40px of editor height, so the two layouts stay one layout.
 
 ### Modules
 
