@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, openTraitFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { panelWorld, openTraitFieldsTab } from '@/test/panelBench';
+import { renderTraitsTab } from '@/test/traitsTabBench';
 import type { World } from '@/types';
 
 /** The Traits tab's link panel: a selected link edits its own overrides, and Edit Blueprint opens the original. */
@@ -24,7 +25,7 @@ vi.mock('react-toastify', () => ({
 
 // Albus and Mira both link Paladin, a Blueprints original that the player cannot toggle.
 const linkTo = (id: string) => ({ id, originalId: 't-paladin', kind: 'trait' as const, originalName: 'Paladin', groupId: null, order: 0 });
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   entities: [
     { id: 'e-albus', name: 'Albus', groupId: null, order: 0, traitLinks: [linkTo('l-albus')] },
     { id: 'e-mira', name: 'Mira', groupId: null, order: 1, traitLinks: [linkTo('l-mira')] },
@@ -45,8 +46,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('a selected link in the Traits tab', () => {
   it("writes an edit on that link only, and Reset to Blueprint in the footer drops it, in Basic too", () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openEditorTab(/Traits/);
+    const { ctx } = renderTraitsTab(WORLD, 'simple');
     fireEvent.click(within(linkRow('Albus')).getByText('Paladin'));
     openTraitFieldsTab('Availability');
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'In Game' })).getByRole('radio', { name: 'Toggleable' }));
@@ -62,8 +62,7 @@ describe('a selected link in the Traits tab', () => {
   });
 
   it('opens the original on Edit Blueprint, where edits reach every link', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEditorTab(/Traits/);
+    renderTraitsTab(WORLD, 'simple');
     fireEvent.click(within(linkRow('Mira')).getByText('Paladin'));
     expect(screen.getByText(/^Linked from/)).toHaveTextContent('Linked from Blueprints › Paladin');
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
+import { panelWorld } from '@/test/panelBench';
+import { renderTraitsTab } from '@/test/traitsTabBench';
 import type { World } from '@/types';
 
 /**
@@ -28,7 +29,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   stats: [
     { id: 's1', name: 'Warmth', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [] },
     { id: 's2', name: 'Damp', type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [] },
@@ -46,9 +47,6 @@ const WORLD: World = benchEditorWorld({
     { id: 't2', name: 'Marsh-Wed', groupId: 'g1', statChanges: [] },
   ],
 } as Partial<World>);
-
-// These tabs switch on mouseDown, not click.
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
 const FIELD_LABELS =
   /^(Name|Player-Facing Description|AI-Facing Description|Requires|Stat Changes|Stat Availability|Placeholder Pins)$/;
@@ -78,7 +76,6 @@ const panelTab = (name: string) =>
 const openPanelTab = (name: string) => fireEvent.mouseDown(panelTab(name));
 
 const selectTrait = (name: string) => {
-  openTab(/Traits/);
   fireEvent.click(screen.getByText(name));
 };
 
@@ -86,21 +83,21 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor trait panel tabs', () => {
   it('offers five tabs in Advanced mode and opens on Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('puts what the trait is on Details, and nothing else', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
     expect(screen.queryByRole('radiogroup', { name: 'Starts' })).toBeNull();
   });
 
   it('puts the Mode, Starts and In Game rows and Requires on Availability, and nothing else', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     openPanelTab('Availability');
     expect(panelLabels()).toEqual(['Requires']);
@@ -108,7 +105,7 @@ describe('the World Editor trait panel tabs', () => {
   });
 
   it('puts both stat sections whole on Stats, each with its Add button', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     openPanelTab('Stats');
     expect(panelLabels()).toEqual(['Stat Changes', 'Stat Availability']);
@@ -119,7 +116,7 @@ describe('the World Editor trait panel tabs', () => {
   });
 
   it('puts the pin section whole on Pins', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     openPanelTab('Pins');
     expect(panelLabels()).toEqual(['Placeholder Pins']);
@@ -128,7 +125,7 @@ describe('the World Editor trait panel tabs', () => {
   });
 
   it('puts the script section on Scripts, where Add Script gives the trait a Before the AI script', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     openPanelTab('Scripts');
     // The help topic keeps its stat code title until the help catches up.
@@ -150,7 +147,7 @@ describe('the World Editor trait panel tabs', () => {
   });
 
   it('leaves Simple mode three tabs, with Stat Availability gone from Stats', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderTraitsTab(WORLD, 'simple');
     selectTrait('Sedge-Born');
     expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats']);
     openPanelTab('Stats');
@@ -160,7 +157,7 @@ describe('the World Editor trait panel tabs', () => {
   });
 
   it('keeps the chosen tab when the author selects another trait, group or not', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     openPanelTab('Stats');
     // Marsh-Wed sits in a group of its own, so this crosses a group boundary as well as a trait.
@@ -169,23 +166,8 @@ describe('the World Editor trait panel tabs', () => {
     expect(panelLabels()).toEqual(['Stat Changes', 'Stat Availability']);
   });
 
-  it('lands on Details when Simple mode takes the Pins tab away, and restores the strip', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectTrait('Sedge-Born');
-    openPanelTab('Pins');
-
-    pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats']);
-    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
-
-    // The switch wears the hidden-data marker, whose own label joins its accessible name.
-    pickEditorMode('Advanced');
-    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
-  });
-
   it('shows a trait group its own panel with no strip', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Upbringing');
     expect(panelStrip()).toBeNull();
     expect(screen.getByLabelText('Group Name')).toBeInTheDocument();

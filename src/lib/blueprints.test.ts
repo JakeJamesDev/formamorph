@@ -3,7 +3,7 @@ import type { BlueprintOverrides, Entity, Placeholder, PlaceholderValue, Trait, 
 import {
   lookupCopy, copyOf, copyValueState, customPersonaEntity, effectiveCopy, effectiveLinkTrait, effectiveRecord, isCopy,
   linkTraitState, readerFor, removeCopyValue, resetCopyOverrides, resetCopyValue, resetLinkOverride, resetLinkOverrides,
-  resetLinkTraitOverrides, setCopyValueText, setCopyValueWeight, setLinkEdits, setLinkOverride, withOverride, withoutOverride,
+  resetLinkTraitOverrides, setCopyValueText, setCopyValueWeight, setLinkEdits, setLinkOverride, withEffectiveCopies, withOverride, withoutOverride,
 } from './blueprints';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -286,5 +286,23 @@ describe('copy lookup', () => {
     expect(lookupCopy(world, 'garb', readerFor({ source: 'none' }, hesk, false))).toBe(garb);
     const bare = { ...albus, placeholders: [] };
     expect(lookupCopy(world, 'garb', readerFor({ source: 'world', entityId: 'albus' }, bare, true))).toBe(garb);
+  });
+});
+
+describe('withEffectiveCopies', () => {
+  const garb = ph('garb', 'Class Garb', [value('tabard', 'white tabard')]);
+  const copy = ph('garb-copy', 'Class Garb', [], { blueprintId: 'garb', valueOverrides: { tabard: { text: { value: 'a plain tabard', blueprint: 'white tabard' } } } });
+
+  it('hands back the same list when it holds no copy', () => {
+    const plain = [garb, ph('mood', 'Mood', [value('calm', 'calm')])];
+    expect(withEffectiveCopies(plain)).toBe(plain);
+  });
+
+  it('reads a copy through its blueprint and leaves the other placeholders as they are', () => {
+    const list = [garb, copy];
+    const read = withEffectiveCopies(list);
+    expect(read).not.toBe(list);
+    expect(read[0]).toBe(garb);
+    expect(read[1].values.map((v) => v.text)).toEqual(['a plain tabard']);
   });
 });

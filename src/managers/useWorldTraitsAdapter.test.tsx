@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, clickFlask, openEditorTab, renderWorldEditorBench, searchWorldField } from '@/test/worldEditorBench';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, fireEvent, within } from '@testing-library/react';
+import { panelWorld } from '@/test/panelBench';
+import { renderTraitsTab } from '@/test/traitsTabBench';
 import type { World } from '@/types';
 
 /**
@@ -25,7 +26,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   stats: [
     { id: 's-warmth', name: 'Warmth', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [] },
     { id: 's-damp', name: 'Damp', type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [] },
@@ -64,12 +65,6 @@ const searchRows = () => screen.queryAllByRole('button', { name: /^Select / }).m
 
 const searchRow = (label: string) => screen.getByRole('button', { name: `Select ${label}` }).parentElement as HTMLElement;
 
-/** A tree row's label. A linked group repeats its original's rows, so the world's own row comes first. */
-const clickTreeRow = (name: string) => fireEvent.click(screen.getAllByText(name)[0]);
-
-/** Whether the mobile push shows its detail, empty or not. The pane hides whichever side is off screen. */
-const detailPushed = () => document.querySelector('[data-list-detail] > [aria-hidden]')?.getAttribute('aria-hidden') === 'false';
-
 /** The open detail's Name field, which every trait and stat panel leads with. */
 const shownName = () => {
   const field = screen.getByLabelText('Name');
@@ -80,16 +75,14 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the Traits tab search', () => {
   it('lists world traits bare and owned traits and Links under their owner, as flat rows', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
 
     searchTraits('Tame');
     expect(searchRows()).toEqual(['Beast Tamer', 'Ash › Tamed', 'Rook › Beast Tamer']);
   });
 
   it('leaves groups and entity nodes out, a group Link included only as its own row', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
 
     searchTraits('Bond');
     expect(searchRows()).toEqual([]);
@@ -104,8 +97,7 @@ describe('the Traits tab search', () => {
   });
 
   it('opens an owned trait and a Link from their search rows', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
 
     searchTraits('Tamed');
     fireEvent.click(screen.getByRole('button', { name: 'Select Ash › Tamed' }));
@@ -117,8 +109,7 @@ describe('the Traits tab search', () => {
   });
 
   it('keeps the drag grip on world trait rows only', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
 
     searchTraits('Tame');
     expect(within(searchRow('Beast Tamer')).queryByLabelText('Drag to reorder')).not.toBeNull();
@@ -127,91 +118,10 @@ describe('the Traits tab search', () => {
   });
 
   it('removes an owned trait from its search row', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Traits/);
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
 
     searchTraits('Tamed');
     fireEvent.click(within(searchRow('Ash › Tamed')).getByRole('button', { name: 'Delete' }));
     expect(ctx().entities.find((e) => e.id === 'ash')!.traits ?? []).toEqual([]);
-  });
-});
-
-describe('one selection per tab', () => {
-  it('reopens each tab on its own selection', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Traits/);
-    clickTreeRow('Paladin');
-    expect(shownName()).toBe('Paladin');
-
-    openEditorTab(/Stats/);
-    expect(screen.queryByLabelText('Name')).toBeNull();
-    fireEvent.click(screen.getByText('Damp'));
-    expect(shownName()).toBe('Damp');
-
-    openEditorTab(/Traits/);
-    expect(shownName()).toBe('Paladin');
-    openEditorTab(/Stats/);
-    expect(shownName()).toBe('Damp');
-  });
-
-  it('lands a Find hit on its own tab and leaves the other tabs\' selections alone', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Traits/);
-    clickTreeRow('Paladin');
-
-    fireEvent.change(searchWorldField(), { target: { value: 'Damp' } });
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Stats/, selected: true })).toBeInTheDocument());
-    expect(shownName()).toBe('Damp');
-    fireEvent.keyDown(searchWorldField(), { key: 'Escape' });
-
-    openEditorTab(/Traits/);
-    expect(shownName()).toBe('Paladin');
-  });
-
-  it('opens a Bench finding on its own tab and leaves the other tabs\' selections alone', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Stats/);
-    fireEvent.click(screen.getByText('Damp'));
-
-    await clickFlask();
-    // The popover names the finding's trait on its row and its dismiss control; the row is the first.
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Hollow Oath' }))[0]);
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Traits/, selected: true })).toBeInTheDocument());
-    expect(shownName()).toBe('Hollow Oath');
-
-    openEditorTab(/Stats/);
-    expect(shownName()).toBe('Damp');
-  });
-
-  describe('on mobile', () => {
-    let restore: () => void;
-    beforeEach(() => { restore = asMobile(); });
-    afterEach(() => restore());
-
-    it('shows the next tab\'s list, not a pushed empty detail', () => {
-      renderWorldEditorBench(WORLD, 'advanced');
-      openEditorTab(/Traits/);
-      clickTreeRow('Paladin');
-      expect(screen.getByRole('button', { name: 'Back to Traits' })).toBeInTheDocument();
-
-      openEditorTab(/Stats/);
-      expect(detailPushed()).toBe(false);
-
-      openEditorTab(/Traits/);
-      expect(screen.getByRole('button', { name: 'Back to Traits' })).toBeInTheDocument();
-      expect(shownName()).toBe('Paladin');
-    });
-
-    it('forgets a selection whose item is gone rather than pushing an empty detail', () => {
-      const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-      openEditorTab(/Traits/);
-      clickTreeRow('Tamed');
-      expect(detailPushed()).toBe(true);
-      openEditorTab(/Stats/);
-      act(() => ctx().editEntity('ash', (e) => ({ ...e, traits: [] })));
-
-      openEditorTab(/Traits/);
-      expect(detailPushed()).toBe(false);
-    });
   });
 });

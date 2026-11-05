@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { benchEditorWorld, entityFieldsTab, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { panelWorld } from '@/test/panelBench';
+import { renderStatsTab } from '@/test/statsTabBench';
 import { StatDropRefusalNotice } from '@/managers/WorldStatTree';
 import type { StatDropRefusal } from '@/lib/ownedStatTree';
 import type { Stat, World } from '@/types';
@@ -27,11 +28,10 @@ vi.mock('react-toastify', () => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
   ToastContainer: () => null,
 }));
-
 const stat = (id: string, name: string, over: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [], ...over });
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   stats: [stat('hp', 'Health'), stat('luck', 'Luck')],
   entities: [
     { id: 'wick', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'] },
@@ -44,7 +44,6 @@ const WORLD: World = benchEditorWorld({
     { id: 'bram', name: 'Bram', playerDescription: 'A smith.', aiDescription: 'A smith.', locations: ['harbor'], stats: [stat('trust', 'Trust')] },
   ],
 } as Partial<World>);
-
 /** A tree row found by its drag grip, so the panel's own copy of the name never matches. */
 const treeRows = (name: string) => screen.getAllByLabelText('Drag to reorder or nest')
   .map((grip) => grip.parentElement as HTMLElement)
@@ -54,18 +53,14 @@ const treeRows = (name: string) => screen.getAllByLabelText('Drag to reorder or 
 const entityNodeRow = (name: string) => screen.queryAllByRole('button', { name: /(Collapse|Expand) entity/ })
   .map((chevron) => chevron.parentElement as HTMLElement)
   .find((row) => within(row).queryByText(name));
-
 const entity = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!;
-
 /** The stat panel's Max input, beside its label. */
 const maxInput = () => screen.getAllByText('Max').find((el) => el.tagName === 'LABEL')!.parentElement!.querySelector('input')!;
-
 beforeEach(() => { localStorage.clear(); });
 
 describe('entity nodes on the Stats tab', () => {
   it('shows a node with a user icon for each entity that owns a stat, and none for one that owns nothing', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Stats/);
+    renderStatsTab(WORLD, 'advanced');
     const node = entityNodeRow('Ash')!;
     expect(node).toHaveTextContent(/AshPlayable$/);
     expect(node.querySelector('.lucide-user')).not.toBeNull();
@@ -74,8 +69,7 @@ describe('entity nodes on the Stats tab', () => {
   });
 
   it('gives a node a drag grip, and no delete or duplicate', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Stats/);
+    renderStatsTab(WORLD, 'advanced');
     const node = entityNodeRow('Ash')!;
     expect(within(node).getByLabelText('Drag to reorder or nest')).toBeInTheDocument();
     expect(within(node).queryByTitle('Delete')).toBeNull();
@@ -83,25 +77,11 @@ describe('entity nodes on the Stats tab', () => {
   });
 
   it('shows the nodes in Simple mode too', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    openEditorTab(/Stats/);
+    renderStatsTab(WORLD, 'simple');
     expect(entityNodeRow('Ash')).toBeDefined();
   });
-
-  it('opens the node on a panel with its name and a way to the entity\'s Stats tab', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Stats/);
-    fireEvent.click(entityNodeRow('Ash')!);
-    // The tree draws Vigor once: nothing beside it repeats Ash's stats.
-    expect(screen.getAllByText('Vigor')).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Open Entity' }));
-    expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
-    expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
-  });
-
   it('opens an entity\'s own stat apart from a world stat with its id, and edits it on the entity', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Stats/);
+    const { ctx } = renderStatsTab(WORLD, 'advanced');
     const [, ashHealth] = treeRows('Health');
     fireEvent.click(ashHealth);
     expect(maxInput().value).toBe('40');
@@ -112,8 +92,7 @@ describe('entity nodes on the Stats tab', () => {
   });
 
   it('edits and deletes an entity\'s own group and stat on the entity', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Stats/);
+    const { ctx } = renderStatsTab(WORLD, 'advanced');
     fireEvent.click(treeRows('Bond')[0]);
     expect(screen.getByLabelText('Group Name')).toHaveTextContent('Bond');
     fireEvent.click(within(treeRows('Vigor')[0]).getByRole('button', { name: 'Delete' }));
@@ -130,8 +109,7 @@ describe('entity nodes on the Stats tab', () => {
         ? { ...e, statLinks: [{ id: 'l1', originalId: 'bp-fear', kind: 'stat' as const, originalName: 'Fear', groupId: null, order: 1 }] }
         : e)),
     };
-    const { ctx } = renderWorldEditorBench(linked, 'advanced');
-    openEditorTab(/Stats/);
+    const { ctx } = renderStatsTab(linked, 'advanced');
     const [, bramFear] = treeRows('Fear');
     fireEvent.click(bramFear);
     expect(screen.getByText(/^Linked from/)).toHaveTextContent('Linked from Blueprints › Fear');
@@ -142,8 +120,7 @@ describe('entity nodes on the Stats tab', () => {
   });
 
   it('keeps the search to world stats (Q12)', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openEditorTab(/Stats/);
+    renderStatsTab(WORLD, 'advanced');
     // Ash's Health and Bram's Trust match too, but only world stats list.
     fireEvent.change(screen.getByPlaceholderText('Filter Stats'), { target: { value: 't' } });
     const found = screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label'));
@@ -167,8 +144,7 @@ describe('the Off marker on a disabled stat', () => {
   };
 
   it('dims a disabled world stat and an entity-owned stat in the world tree, and marks each Off', () => {
-    renderWorldEditorBench(OFF_WORLD, 'advanced');
-    openEditorTab(/Stats/);
+    renderStatsTab(OFF_WORLD, 'advanced');
     const [worldHealth, ashHealth] = treeRows('Health');
     const [vigor] = treeRows('Vigor');
     expect(worldHealth).toHaveTextContent(/Off/);
@@ -182,23 +158,11 @@ describe('the Off marker on a disabled stat', () => {
   });
 
   it('drops the marker when the stat is enabled again', () => {
-    const { ctx } = renderWorldEditorBench(OFF_WORLD, 'advanced');
-    openEditorTab(/Stats/);
+    const { ctx } = renderStatsTab(OFF_WORLD, 'advanced');
     expect(treeRows('Health')[0]).toHaveTextContent(/Off/);
     act(() => ctx().updateStat({ ...ctx().stats[0], enabled: true }));
     expect(treeRows('Health')[0]).not.toHaveTextContent(/Off/);
     expect(opacityOf(treeRows('Health')[0])).toBe('1');
-  });
-
-  it('marks an entity\'s own disabled stat on the entity Stats tab', () => {
-    renderWorldEditorBench(OFF_WORLD, 'advanced');
-    openEditorTab(/Entities/);
-    fireEvent.click(screen.getByText('Ash'));
-    fireEvent.mouseDown(entityFieldsTab('Stats'));
-    const [vigor] = treeRows('Vigor');
-    expect(vigor).toHaveTextContent(/Off/);
-    expect(opacityOf(vigor)).toBe('0.5');
-    expect(treeRows('Health')[0]).not.toHaveTextContent(/Off/);
   });
 });
 

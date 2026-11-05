@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, openTraitFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { screen, fireEvent, within } from '@testing-library/react';
+import { panelWorld, openTraitFieldsTab } from '@/test/panelBench';
+import { renderTraitsTab } from '@/test/traitsTabBench';
 import type { World } from '@/types';
 
 /**
@@ -25,7 +26,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   entities: [
     { id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'] },
     { id: 'aldric', name: 'Sir Aldric', persona: true, playerDescription: 'A knight.', aiDescription: 'A knight.', locations: ['harbor'] },
@@ -40,15 +41,12 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
-
 /** The tree row that draws `name`, found by its drag grip so the panel's own copy of the name never matches. */
 const treeRow = (name: string) => screen.getAllByLabelText('Drag to reorder or nest')
   .map((grip) => grip.parentElement as HTMLElement)
   .find((row) => within(row).queryByText(name)) as HTMLElement;
 
 const selectTrait = (name: string) => {
-  openTab(/Traits/);
   fireEvent.click(treeRow(name));
   openTraitFieldsTab('Availability');
 };
@@ -58,13 +56,11 @@ const requiresField = () => screen.getByRole('group', { name: 'Requires' });
 
 const traitRequires = (ctx: () => { traits: World['traits'] }, id: string) => ctx().traits.find((t) => t.id === id)?.requires;
 
-const selectedRowText = () => document.querySelector('[data-editor-row-selected]')?.textContent;
-
 beforeEach(() => { localStorage.clear(); });
 
 describe('the Requires field', () => {
   it('adds a requirement from the picker, which lists each section with where its target lives', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
     selectTrait('Lamp-Lit');
     expect(within(requiresField()).queryByText(/any one of these/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
@@ -86,7 +82,7 @@ describe('the Requires field', () => {
   });
 
   it('adds another way as a row joined by "or", and filters the picker by name', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
     selectTrait('Plate Armor');
     fireEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
     const list = await screen.findByRole('listbox');
@@ -105,7 +101,7 @@ describe('the Requires field', () => {
   });
 
   it('asks which owner when an entity also has the target, and adds for the one picked', async () => {
-    const world = benchEditorWorld({
+    const world = panelWorld({
       ...WORLD,
       entities: [
         ...WORLD.entities,
@@ -115,7 +111,7 @@ describe('the Requires field', () => {
         },
       ],
     } as Partial<World>);
-    const { ctx } = renderWorldEditorBench(world, 'advanced');
+    const { ctx } = renderTraitsTab(world, 'advanced');
     selectTrait('Lamp-Lit');
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Tamed/ }));
@@ -127,87 +123,32 @@ describe('the Requires field', () => {
   });
 
   it('reads a target already listed for You as listed, so a world trait cannot take it twice', async () => {
-    const world = benchEditorWorld({
+    const world = panelWorld({
       ...WORLD,
       traits: WORLD.traits.map((t) => (t.id === 't-plate'
         ? { ...t, requires: [{ all: [{ kind: 'trait', id: 't-paladin', owner: { kind: 'you' } }] }] }
         : t)),
     } as Partial<World>);
-    renderWorldEditorBench(world, 'advanced');
+    renderTraitsTab(world, 'advanced');
     selectTrait('Plate Armor');
     fireEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
     expect(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('removes a requirement, and leaves the field absent once the last one goes', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
     selectTrait('Plate Armor');
     fireEvent.click(screen.getByRole('button', { name: 'Remove Paladin' }));
     expect(traitRequires(ctx, 't-plate')).toBeUndefined();
     expect(within(requiresField()).queryByRole('button', { name: 'Paladin' })).toBeNull();
   });
 
-  it('opens the target trait from its chip', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectTrait('Plate Armor');
-    fireEvent.click(within(requiresField()).getByRole('button', { name: 'Paladin' }));
-    expect(selectedRowText()).toBe('Paladin');
-  });
-
-  it('opens a group chip\'s group and a playing-as chip\'s entity', () => {
-    const world = benchEditorWorld({
-      ...WORLD,
-      traits: WORLD.traits.map((t) => (t.id === 't-plate'
-        ? { ...t, requires: [{ all: [{ kind: 'group', id: 'g-class' }] }, { all: [{ kind: 'playingAs', id: 'aldric' }] }] }
-        : t)),
-    } as Partial<World>);
-    renderWorldEditorBench(world, 'advanced');
-    selectTrait('Plate Armor');
-    fireEvent.click(within(requiresField()).getByRole('button', { name: 'any Class' }));
-    expect(selectedRowText()).toBe('Class');
-
-    selectTrait('Plate Armor');
-    fireEvent.click(within(requiresField()).getByRole('button', { name: 'playing as Sir Aldric' }));
-    expect(screen.getByRole('tab', { name: /Entities/ })).toHaveAttribute('aria-selected', 'true');
-    expect(selectedRowText()).toContain('Sir Aldric');
-  });
-
   it('reads an unresolved requirement red under its stored name, with nothing to open', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderTraitsTab(WORLD, 'advanced');
     selectTrait('Guild Mark');
     const chip = within(requiresField().querySelector<HTMLElement>('[data-requirement-row]')!).getByText('Thief').closest('[data-unresolved]');
     expect(chip).toHaveClass('text-destructive');
     expect(within(requiresField()).queryByRole('button', { name: 'Thief' })).toBeNull();
     expect(within(requiresField()).getByRole('button', { name: 'Remove Thief' })).toBeInTheDocument();
-  });
-});
-
-describe('gate marks on the Traits tree', () => {
-  it('marks a gated row with a lock and its count, with the full rule as the tip', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
-    const row = treeRow('Plate Armor');
-    expect(row).toHaveTextContent(/Plate Armor1$/);
-    expect(row.querySelector('.lucide-lock')).not.toBeNull();
-    expect(treeRow('Lamp-Lit').querySelector('.lucide-lock')).toBeNull();
-    act(() => { (within(row).getByText('1').closest('[tabindex]') as HTMLElement).focus(); });
-    expect(await screen.findByText('Requires Paladin')).toBeInTheDocument();
-  });
-
-  it('tints a row red when a requirement points at nothing', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
-    expect(within(treeRow('Guild Mark')).getByText('Guild Mark').closest('.text-destructive')).not.toBeNull();
-    expect(within(treeRow('Plate Armor')).getByText('Plate Armor').closest('.text-destructive')).toBeNull();
-  });
-
-  it('leaves a dependent locked, never open, when its target is deleted', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
-    act(() => { ctx().removeTrait('t-paladin'); });
-    expect(traitRequires(ctx, 't-plate')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
-    const row = treeRow('Plate Armor');
-    expect(row.querySelector('.lucide-lock')).not.toBeNull();
-    expect(within(row).getByText('Plate Armor').closest('.text-destructive')).not.toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { renderMediaTab, undoMediaEdit } from '@/test/mediaTabBench';
 import { fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
 import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import { firstMapFrame } from '@/lib/mapBackground';
@@ -50,8 +50,7 @@ const mapWorld = (map: MapBackground | null = { images: [{ data: DRAWN }, { data
 };
 
 const open = (world = mapWorld()) => {
-  const bench = renderWorldEditorBench(world, 'simple');
-  openEditorTab(/^Media$/);
+  const bench = renderMediaTab(world, 'simple');
   return bench;
 };
 
@@ -65,7 +64,7 @@ const lastLabel = (bench: ReturnType<typeof open>) => {
   return steps[cursor - 1]?.label;
 };
 const step = (action: () => void) => act(async () => { action(); });
-const undo = () => step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
+const undo = undoMediaEdit;
 const webp = () => new File(['new-map'], 'map.webp', { type: 'image/webp' });
 
 describe('Media tab Map Background', () => {
@@ -136,14 +135,6 @@ describe('Media tab Map Background', () => {
     fireEvent.click(single);
     await step(() => fireEvent.click(within(framed()!).getByRole('button', { name: 'Remove' })));
     expect(map(bench)).toBeUndefined();
-  });
-
-  it('jumps to the Locations canvas from Go to Locations', () => {
-    open();
-    fireEvent.click(section().querySelector<HTMLElement>('[data-media-card="stack"]')!);
-    fireEvent.click(inPanel().getByRole('button', { name: 'Go to Locations' }));
-
-    expect(screen.getByRole('radio', { name: 'Canvas' })).toHaveAttribute('aria-checked', 'true');
   });
 });
 

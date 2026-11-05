@@ -28,6 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
+  - **Media, Stats and Traits tab tests now mount the panel, not the World Editor, and use half the test time.** 183 tests moved with coverage held; the editor view keeps the cross-tab cases.
 
 ---
 

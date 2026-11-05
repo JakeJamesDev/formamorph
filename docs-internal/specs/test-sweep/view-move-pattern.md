@@ -32,15 +32,20 @@ Keep two to four wiring tests per tab.
 |---|---|
 | `renderPanelBench(world, mode, <Panel />)` | A panel that reads only `useGameData` |
 | `renderListTab(world, mode, useTab)` | A tab with a List Editor adapter. `useTab` holds the panel state the view holds |
+| `renderListParts(world, mode, useParts)` | A tab that builds its List Editor parts itself, like the Media tab. `useParts` returns `{ parts }` |
+| `withEditorProviders` | The rename, preview-rolls and chip-insert providers the view adds. Both list renderers wrap with it by default |
 | `panelWorld(over)` | The same base world as `benchEditorWorld` |
 
-[`itemsTabBench`](../../../src/test/itemsTabBench.tsx) is the example of a `useTab` host.
+[`itemsTabBench`](../../../src/test/itemsTabBench.tsx) is the example of a `useTab` host. `statsTabBench`, `traitsTabBench` and `mediaTabBench` follow it; the adapter hosts get the view's shared `search` in their selection.
+
+A test that goes to another tab (Go to, a chip that opens a row, the Entities tab) stays on the view: the hosts leave navigation idle, and a no-op would rig the test. Undo in a moved test goes through `history().undo()`.
 
 ### What the bench does not give you
 
 - ⚠️ **It leaves out four of the view's providers.** They are `CodeRenameProvider`, `EditorPreviewRollsProvider`, `ChipInsertTargetProvider` and `CodeCardNavigationContext`. A panel that reads one gets a quiet fallback and no error, so an assertion that a rename offer is absent passes for the wrong reason. Stat, trait, entity, location and placeholder managers use `useRenameField`: wrap those mounts in the provider, or keep the test in the view.
 - ⚠️ **`ListEditor` is not how the view lays out its parts.** The view composes them itself through `ListDetail`. A test about layout stays in the view.
-- ⚠️ **`useWorldMediaEditor` returns list parts, not an adapter,** so ticket 08 adds a parts host to `panelBench`.
+- ✅ **`useWorldMediaEditor` returns list parts, not an adapter.** Ticket 08 added `renderListParts` for it.
+- ⚠️ **Name a new test file after a module, and check the name is free.** `StatManager.test.tsx` already held another suite, so the panel tests are `StatManager.panelTabs.test.tsx`.
 
 ### Leave `worldEditorBench` unchanged
 

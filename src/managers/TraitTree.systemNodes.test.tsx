@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, openTraitFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { panelWorld, openTraitFieldsTab } from '@/test/panelBench';
+import { renderTraitsTab } from '@/test/traitsTabBench';
 import type { World } from '@/types';
 
 /** The Traits tab's system nodes: adding and removing Blueprints, the Custom Persona entity's node, and Basic visibility. */
@@ -22,11 +23,11 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const BARE: World = benchEditorWorld({
+const BARE: World = panelWorld({
   traits: [{ id: 't-brave', name: 'Brave', statChanges: [] }],
 } as Partial<World>);
 
-const FULL: World = benchEditorWorld({
+const FULL: World = panelWorld({
   traits: [
     { id: 't-brave', name: 'Brave', statChanges: [] },
     { id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'g-blueprints' },
@@ -40,7 +41,6 @@ const FULL: World = benchEditorWorld({
 } as Partial<World>);
 const marked = (ctx: () => { entities: World['entities'] }) => ctx().entities.find((e) => e.id === 'e-you')!;
 
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 const openAddMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Add to Traits' }));
 
 /** A tree row found by its drag grip, so the panel's own copy of the name never matches. */
@@ -54,8 +54,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the + menu', () => {
   it('adds a Blueprints group at most once', () => {
-    const { ctx } = renderWorldEditorBench(BARE, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(BARE, 'advanced');
     openAddMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Add Blueprints Group' }));
     expect(ctx().traitGroups).toEqual([expect.objectContaining({ name: 'Blueprints', parentId: null, system: 'blueprints' })]);
@@ -67,8 +66,7 @@ describe('the + menu', () => {
   });
 
   it('offers no Blueprints group in Basic', () => {
-    renderWorldEditorBench(BARE, 'simple');
-    openTab(/Traits/);
+    renderTraitsTab(BARE, 'simple');
     openAddMenu();
     expect(screen.queryByRole('button', { name: 'Add Blueprints Group' })).toBeNull();
   });
@@ -87,8 +85,7 @@ describe('removing a system node', () => {
         { id: 'l-vex', originalId: 't-wizard', kind: 'trait' as const, originalName: 'Wizard', groupId: null, order: 0 },
       ] }],
     } as World;
-    const { ctx } = renderWorldEditorBench(world, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(world, 'advanced');
     const blueprints = treeRow('Blueprints')!;
     expect(within(blueprints).queryByRole('button', { name: 'Duplicate' })).toBeNull();
     fireEvent.click(within(blueprints).getByRole('button', { name: 'Remove Blueprints' }));
@@ -106,23 +103,20 @@ describe('removing a system node', () => {
   });
 
   it('removes Blueprints with no links without mentioning them', () => {
-    renderWorldEditorBench({ ...FULL, entities: [] }, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab({ ...FULL, entities: [] }, 'advanced');
     fireEvent.click(within(treeRow('Blueprints')!).getByRole('button', { name: 'Remove Blueprints' }));
     expect(screen.getByText('Its traits move to the top level, where the player can pick them.')).toBeInTheDocument();
   });
 
   it('removes an empty Blueprints group without asking', () => {
-    const { ctx } = renderWorldEditorBench({ ...FULL, traits: BARE.traits }, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab({ ...FULL, traits: BARE.traits }, 'advanced');
     fireEvent.click(within(treeRow('Blueprints')!).getByRole('button', { name: 'Remove Blueprints' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(ctx().traitGroups).toEqual([]);
   });
 
   it("removes a link from the Custom Persona entity's node alone, leaving the originals", () => {
-    const { ctx } = renderWorldEditorBench(FULL, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(FULL, 'advanced');
     expect(treeRow('Wanderer')).toBeDefined();
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
@@ -133,8 +127,7 @@ describe('removing a system node', () => {
   });
 
   it("writes a Custom Persona entity link's own default as an override against the original's value", () => {
-    const { ctx } = renderWorldEditorBench(FULL, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(FULL, 'advanced');
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
       .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
@@ -147,8 +140,7 @@ describe('removing a system node', () => {
 
 describe('system nodes in Basic', () => {
   it("shows Blueprints and the Custom Persona entity's node, still editable", () => {
-    const { ctx } = renderWorldEditorBench(FULL, 'simple');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(FULL, 'simple');
     expect(treeRow('Blueprints')).toBeDefined();
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
@@ -158,8 +150,7 @@ describe('system nodes in Basic', () => {
   });
 
   it('hides an empty Blueprints group and a Custom Persona entity that has nothing', () => {
-    renderWorldEditorBench({ ...BARE, traitGroups: FULL.traitGroups, entities: [{ id: 'e-you', name: 'Wanderer', customPersona: true }] }, 'simple');
-    openTab(/Traits/);
+    renderTraitsTab({ ...BARE, traitGroups: FULL.traitGroups, entities: [{ id: 'e-you', name: 'Wanderer', customPersona: true }] }, 'simple');
     expect(treeRow('Brave')).toBeDefined();
     expect(treeRow('Blueprints')).toBeUndefined();
     expect(treeRow('Wanderer')).toBeUndefined();

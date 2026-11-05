@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { panelWorld } from '@/test/panelBench';
+import { renderTraitsTab } from '@/test/traitsTabBench';
 import type { World } from '@/types';
 
 /** The Traits tab's faster authoring: the + menu's add-to-entity drill-in and the link button's flyout. */
@@ -24,7 +25,7 @@ vi.mock('react-toastify', () => ({
 
 // Entities tab: Heroes (Albus, who links Paladin; Mira; City Guard (Tomas)), Vex, then Wanderer, the Custom
 // Persona entity. Brave sits at the top level.
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   entities: [
     { id: 'e-vex', name: 'Vex', groupId: null, order: 1 },
     { id: 'e-you', name: 'Wanderer', customPersona: true, groupId: null, order: 2 },
@@ -44,7 +45,6 @@ const WORLD: World = benchEditorWorld({
   traitGroups: [{ id: 'g-blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' }],
 } as Partial<World>);
 
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 const openTraitTab = (name: string) =>
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name }));
 const openAddMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Add to Traits' }));
@@ -64,8 +64,7 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the + menu', () => {
   it('offers both drill-ins in Advanced', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     openAddMenu();
     expect(menuButton('Add Trait')).toBeInTheDocument();
     expect(menuButton('Add Trait to Entity')).toBeInTheDocument();
@@ -73,16 +72,14 @@ describe('the + menu', () => {
   });
 
   it('adds a trait in one click in Basic, even with entities to offer', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(WORLD, 'simple');
     openAddMenu();
     expect(menuButton('Add Trait to Entity')).toBeNull();
     expect(ctx().traits.map((t) => t.name)).toContain('New Trait');
   });
 
   it('adds an owned trait to an entity with no node, which gets one with the new row selected', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
     expect(treeRow('Mira')).toBeUndefined();
     openAddMenu();
     fireEvent.click(menuButton('Add Trait to Entity')!);
@@ -101,8 +98,7 @@ describe('the + menu', () => {
   });
 
   it('adds an owned group in Advanced, revealing it inside a collapsed entity node', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
     fireEvent.click(within(treeRow('Albus')!).getByRole('button', { name: 'Collapse entity' }));
     expect(treeRow('Oath')).toBeUndefined();
     openAddMenu();
@@ -118,8 +114,7 @@ describe('the + menu', () => {
   });
 
   it('goes back one level at a time, from a nested group to the menu', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     openAddMenu();
     fireEvent.click(menuButton('Add Trait to Entity')!);
     fireEvent.click(flyoutRow('Entities', 'Heroes'));
@@ -139,8 +134,7 @@ describe('the link button', () => {
   const openLinkFlyout = () => fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
 
   it('lists entities by group with the Custom Persona entity marked, and owners that have the original checked and disabled', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    const { ctx } = renderTraitsTab(WORLD, 'advanced');
     fireEvent.click(within(treeRow('Paladin')!).getByText('Paladin'));
     openLinkFlyout();
     expect(flyoutRows('Link To')).toEqual(['#Heroes', 'Vex', 'Wanderer']);
@@ -172,8 +166,7 @@ describe('the link button', () => {
   });
 
   it('is absent on a top-level trait, since only Blueprints items link (Q1)', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     fireEvent.click(within(treeRow('Brave')!).getByText('Brave'));
     expect(screen.queryByRole('button', { name: 'Link To…' })).not.toBeInTheDocument();
     fireEvent.click(within(treeRow('Paladin')!).getByText('Paladin'));
@@ -181,8 +174,7 @@ describe('the link button', () => {
   });
 
   it('shows on a selected link, acting on its original', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
       .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
@@ -194,8 +186,7 @@ describe('the link button', () => {
   });
 
   it('sits below every panel tab, not only Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     fireEvent.click(within(treeRow('Paladin')!).getByText('Paladin'));
     // Frozen: the button is outside every scroll viewport, so the tab content scrolls under it.
     expect(menuButton('Link To…')!.closest('[data-radix-scroll-area-viewport]')).toBeNull();
@@ -209,8 +200,7 @@ describe('the link button', () => {
   });
 
   it('shows on a selected link on a non-Details tab, with the Linked-from line left on Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
       .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
@@ -221,29 +211,25 @@ describe('the link button', () => {
   });
 
   it('never shows on a non-Details tab in Basic or on an owned trait', () => {
-    const { unmount } = renderWorldEditorBench(WORLD, 'simple');
-    openTab(/Traits/);
+    const { unmount } = renderTraitsTab(WORLD, 'simple');
     fireEvent.click(within(treeRow('Brave')!).getByText('Brave'));
     openTraitTab('Stats');
     expect(menuButton('Link To…')).toBeNull();
     unmount();
 
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     fireEvent.click(within(treeRow('Oath')!).getByText('Oath'));
     openTraitTab('Pins');
     expect(menuButton('Link To…')).toBeNull();
   });
 
   it('never shows in Basic, on an owned trait, or on Blueprints', () => {
-    const { unmount } = renderWorldEditorBench(WORLD, 'simple');
-    openTab(/Traits/);
+    const { unmount } = renderTraitsTab(WORLD, 'simple');
     fireEvent.click(within(treeRow('Brave')!).getByText('Brave'));
     expect(menuButton('Link To…')).toBeNull();
     unmount();
 
-    renderWorldEditorBench(WORLD, 'advanced');
-    openTab(/Traits/);
+    renderTraitsTab(WORLD, 'advanced');
     fireEvent.click(within(treeRow('Oath')!).getByText('Oath'));
     expect(screen.getByText(/Owned by/)).toBeInTheDocument();
     expect(menuButton('Link To…')).toBeNull();

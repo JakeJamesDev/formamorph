@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { benchEditorWorld, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
+import { panelWorld } from '@/test/panelBench';
+import { renderStatsTab } from '@/test/statsTabBench';
 import type { World } from '@/types';
 
 /**
@@ -37,7 +38,7 @@ vi.mock('@/components/prompt/CodeArea', () => ({
   ),
 }));
 
-const WORLD: World = benchEditorWorld({
+const WORLD: World = panelWorld({
   stats: [
     {
       id: 's1', name: 'Warmth', type: 'number', description: 'How thawed the traveler is.',
@@ -48,10 +49,6 @@ const WORLD: World = benchEditorWorld({
     { id: 's3', name: 'Resolve', type: 'percentage', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] },
   ],
 } as Partial<World>);
-
-// These tabs switch on mouseDown, not click.
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
-
 const FIELD_LABELS =
   /^(Name|Type|Description|Min|Max|Base Value|Base Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Scripts|Warmth · After the AI)$/;
 
@@ -91,7 +88,6 @@ const panelTab = (name: string) =>
 const openPanelTab = (name: string) => fireEvent.mouseDown(panelTab(name));
 
 const selectStat = (name: string) => {
-  openTab(/Stats/);
   fireEvent.click(screen.getByText(name));
 };
 
@@ -99,14 +95,14 @@ beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor stat panel tabs', () => {
   it('offers three tabs in Advanced mode and opens on Details', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     expect(panelTabNames()).toEqual(['Details', 'Descriptors', 'Scripts']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('puts what the stat is and how it behaves on Details, and nothing else', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     expect(panelLabels()).toEqual([
       'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
@@ -118,7 +114,7 @@ describe('the World Editor stat panel tabs', () => {
   });
 
   it('carries both meanings of Availability on one short line, with the definitions behind the info control', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     const help = screen.getByText(/Enabled keeps the stat active/);
     expect(help.textContent).toMatch(/Hidden hides it from the player only/);
@@ -129,7 +125,7 @@ describe('the World Editor stat panel tabs', () => {
   });
 
   it('puts the descriptor section whole on Descriptors', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     openPanelTab('Descriptors');
     expect(panelLabels()).toEqual(['Stat Descriptors']);
@@ -138,7 +134,7 @@ describe('the World Editor stat panel tabs', () => {
   });
 
   it('puts the scripts section whole on Scripts', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     openPanelTab('Scripts');
     // The shipped after box loads as one script, captioned by its stat and timing.
@@ -151,7 +147,7 @@ describe('the World Editor stat panel tabs', () => {
   });
 
   it('leaves Simple mode no strip and only the fields that mode has always shown', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+    renderStatsTab(WORLD, 'simple');
     selectStat('Warmth');
     expect(panelTabNames()).toEqual([]);
     expect(panelLabels()).toEqual([
@@ -164,33 +160,15 @@ describe('the World Editor stat panel tabs', () => {
   });
 
   it('keeps the chosen tab when the author selects another stat', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     openPanelTab('Descriptors');
     fireEvent.click(screen.getByText('Damp'));
     expect(panelTab('Descriptors')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Stat Descriptors']);
   });
-
-  it('lands on Details with no strip when Simple mode takes the Scripts tab away, and restores it', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    selectStat('Warmth');
-    openPanelTab('Scripts');
-
-    pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual([]);
-    expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
-    ]);
-
-    // The switch wears the hidden-data marker, whose own label joins its accessible name.
-    pickEditorMode('Advanced');
-    expect(panelTabNames()).toEqual(['Details', 'Descriptors', 'Scripts']);
-    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-  });
-
   it('gives a Percentage stat the same three tabs over its pinned range', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+    renderStatsTab(WORLD, 'advanced');
     selectStat('Resolve');
     expect(panelTabNames()).toEqual(['Details', 'Descriptors', 'Scripts']);
     expect(panelLabels()).toEqual([
@@ -203,7 +181,6 @@ describe('the World Editor stat panel tabs', () => {
     expect([min.disabled, max.disabled]).toEqual([true, true]);
   });
 });
-
 describe('the Regen field', () => {
   const regenBox = () => screen.getByRole('spinbutton', { name: 'Regen' });
   /** The unit the trigger shows, without the hidden labels that hold its width. */
@@ -217,7 +194,7 @@ describe('the Regen field', () => {
   const warmth = (ctx: () => { stats: World['stats'] }) => ctx().stats.find((s) => s.id === 's1')!;
 
   it('reads per hour by default and stores what is typed as the per-hour rate', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     expect(shownUnit()).toBe('Hour');
     fireEvent.change(regenBox(), { target: { value: '2' } });
@@ -225,7 +202,7 @@ describe('the Regen field', () => {
   });
 
   it('keeps the number shown when the unit changes, so 2 then Day is 2 per day', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    const { ctx } = renderStatsTab(WORLD, 'advanced');
     selectStat('Warmth');
     fireEvent.change(regenBox(), { target: { value: '2' } });
     pickRegenUnit('Day');
@@ -235,10 +212,10 @@ describe('the Regen field', () => {
   });
 
   it('shows a stored per-hour rate in the stat’s own unit', () => {
-    const world = benchEditorWorld({
+    const world = panelWorld({
       stats: [{ ...WORLD.stats[0], regen: 0.5, regenUnit: 'days' }],
     } as Partial<World>);
-    renderWorldEditorBench(world, 'advanced');
+    renderStatsTab(world, 'advanced');
     selectStat('Warmth');
     expect(regenBox()).toHaveValue(12);
     expect(shownUnit()).toBe('Day');

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { renderMediaTab, undoMediaEdit } from '@/test/mediaTabBench';
 import { fakeDataUrl, mediaFixtureWorld } from '@/test/mediaFixture';
 import { measureInWorker, encodeInWorker } from '@/lib/imageOptimWorkerClient';
 import ModelStorageService from '@/services/ModelStorageService';
@@ -50,8 +50,7 @@ const panelWorld = (edit: (w: World) => void = () => {}): World => {
 };
 
 const open = (mode: 'simple' | 'advanced' = 'simple', world = panelWorld()) => {
-  const bench = renderWorldEditorBench(world, mode);
-  openEditorTab(/^Media$/);
+  const bench = renderMediaTab(world, mode);
   return bench;
 };
 
@@ -67,7 +66,7 @@ const lastLabel = (bench: ReturnType<typeof open>) => {
   return steps[cursor - 1]?.label;
 };
 const step = (action: () => void) => act(async () => { action(); });
-const undo = () => step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
+const undo = undoMediaEdit;
 const replaceWith = async (file: File) => {
   const input = framed()!.querySelector<HTMLInputElement>('input[data-media-replace]')!;
   await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
@@ -106,27 +105,6 @@ describe('Media tab image panel framing', () => {
     expect(inPanel().getByRole('link', { name: 'Open Link' })).toBeInTheDocument();
   });
 
-  it('frames the empty slot from the add tile and follows the upload that lands there', async () => {
-    const bench = open();
-    fireEvent.click(card('Entities', 'stack'));
-    fireEvent.click(inPanel().getByLabelText('Add an Image'));
-    expect(framed()).toBeNull();
-
-    const input = document.getElementById('image-upload-media-entity-image-wick-4') as HTMLInputElement;
-    await act(async () => { fireEvent.change(input, { target: { files: [webp()] } }); });
-
-    await waitFor(() => expect(wick(bench).images).toHaveLength(5));
-    await waitFor(() => expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:4'));
-    expect(framed()).toHaveTextContent(/^Image 5/);
-
-    // The new image holds the selection, so an edit to it returns here on undo.
-    fireEvent.click(within(framed()!).getByRole('button', { name: 'Add Requirement' }));
-    fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
-    openEditorTab(/^Overview$/);
-    await undo();
-    expect(panel()).toHaveAttribute('data-media-panel', 'entity:wick:image:4');
-    expect(wick(bench).images![4].requires).toBeUndefined();
-  });
 });
 
 describe('Media tab image panel actions', () => {
@@ -211,54 +189,6 @@ describe('Media tab image panel actions', () => {
   });
 });
 
-describe('Media tab image panel Visibility rules', () => {
-  it('shows a rule set in the panel on the Profile tab', async () => {
-    const bench = open();
-    fireEvent.click(card('Entities', 'stack'));
-    fireEvent.click(inPanel().getByRole('button', { name: 'Add Requirement' }));
-    fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
-    expect(wick(bench).images![0].requires).toHaveLength(1);
-
-    fireEvent.click(inPanel().getByRole('button', { name: 'Go to Odd Wick' }));
-
-    expect(screen.getByRole('button', { name: 'Primary image, has a Visibility rule' })).toBeInTheDocument();
-  });
-
-  it("shows a rule cleared on the Profile tab in the panel's editor", async () => {
-    const bench = open();
-    fireEvent.click(card('Entities', 'stack'));
-    fireEvent.click(inPanel().getByRole('button', { name: 'Go to Odd Wick' }));
-    const cog = within(screen.getByRole('button', { name: 'Image 2, has a Visibility rule' }).parentElement!)
-      .getByRole('button', { name: 'Visibility Rule' });
-    fireEvent.click(cog);
-    fireEvent.click(await screen.findByRole('button', { name: /^Remove row/ }));
-    expect(wick(bench).images![1].requires).toBeUndefined();
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
-
-    openEditorTab(/^Media$/);
-    fireEvent.click(card('Entities', 'stack'));
-    fireEvent.click(tile('Image 2'));
-
-    expect(within(framed()!).queryByRole('button', { name: /^Remove row/ })).toBeNull();
-    expect(within(framed()!).getByRole('button', { name: 'Add Requirement' })).toBeInTheDocument();
-  });
-
-  it('hides the strip cog and the framed summary in the panel, and keeps both on the Profile tab', () => {
-    open();
-    fireEvent.click(card('Entities', 'stack'));
-    fireEvent.click(tile(/^Image 2/));
-    expect(panel()!.querySelector('[data-image-rule-cog]')).toBeNull();
-    expect(panel()!.querySelector('[data-image-rule-summary]')).toBeNull();
-    expect(within(framed()!).getByRole('button', { name: /^Remove row/ })).toBeInTheDocument();
-
-    fireEvent.click(inPanel().getByRole('button', { name: 'Go to Odd Wick' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Image 2, has a Visibility rule' }));
-
-    expect(document.querySelectorAll('[data-image-rule-cog]')).toHaveLength(4);
-    expect(document.querySelector('[data-image-rule-summary]')).toHaveTextContent('Shown while');
-  });
-});
-
 describe('Media tab image panel location rules', () => {
   const SECOND = fakeDataUrl('image/webp', 700, 'w');
   /** Marsh with two images, and Odd Wick as a persona whose Health a rule can read. */
@@ -285,18 +215,6 @@ describe('Media tab image panel location rules', () => {
     expect(second.requires).toEqual([{ all: [expect.objectContaining({ kind: 'stat', id: 'health' })] }]);
     expect(second.requires![0].all[0]).not.toHaveProperty('owner');
     expect(within(framed()!).getByText(/^Persona: Health/)).toBeInTheDocument();
-  });
-
-  it("shows the location panel's gallery with a rule cog on each image", () => {
-    open('simple', locationWorld());
-    fireEvent.click(card('Locations', 'stack'));
-    fireEvent.click(inPanel().getByRole('button', { name: 'Go to Marsh' }));
-    // Radix tabs switch on mouse down.
-    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Location Fields' })).getByRole('tab', { name: 'Media' }));
-
-    expect(screen.getByRole('button', { name: 'Primary image' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Image 2' })).toBeInTheDocument();
-    expect(document.querySelectorAll('[data-image-rule-cog]')).toHaveLength(2);
   });
 });
 

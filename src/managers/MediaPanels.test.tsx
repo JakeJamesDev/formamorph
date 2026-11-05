@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
+import { renderMediaTab, undoMediaEdit } from '@/test/mediaTabBench';
 import { mediaFixtureWorld } from '@/test/mediaFixture';
 import { formatMediaBytes, mediaSections, sectionTitle, totalBytes, type MediaItem } from '@/lib/mediaIndex';
 import type { useGameData } from '@/contexts/GameDataContext';
@@ -45,12 +45,10 @@ const panel = () => document.querySelector<HTMLElement>('[data-media-panel]');
 const panelButton = (name: string) => within(panel()!).queryByRole('button', { name });
 
 const step = (action: () => void) => act(async () => { action(); });
-const undo = () => step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
-const redo = () => step(() => { fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true }); });
+const undo = undoMediaEdit;
 
 const openMedia = (mode: 'simple' | 'advanced' = 'simple') => {
-  const bench = renderWorldEditorBench(mediaFixtureWorld(), mode);
-  openEditorTab(/^Media$/);
+  const bench = renderMediaTab(mediaFixtureWorld(), mode);
   return bench;
 };
 
@@ -175,42 +173,13 @@ describe('Media tab Replace', () => {
   it('embeds a file over a linked image', async () => {
     const world = mediaFixtureWorld();
     world.locations.find((l) => l.id === 'marsh')!.images = [{ data: 'https://example.com/marsh.png' }];
-    const bench = renderWorldEditorBench(world, 'simple');
-    openEditorTab(/^Media$/);
+    const bench = renderMediaTab(world, 'simple');
     fireEvent.click(card('Locations', 'image'));
     expect(panel()!.querySelector('a[href="https://example.com/marsh.png"]')).toHaveTextContent('Open Link');
 
     await pickFile(webp());
 
     await waitFor(() => expect(bench.ctx().locations.find((l) => l.id === 'marsh')!.images?.[0]?.data).toMatch(/^data:image\/webp;base64,/));
-  });
-});
-
-describe('Media tab history reveal', () => {
-  it('returns to the Media tab with the card selected when its edit is undone from another tab', async () => {
-    openMedia();
-    fireEvent.click(card('Locations › Harbor Steps', 'sound'));
-    await step(() => fireEvent.click(panelButton('Remove')!));
-    openEditorTab(/^Overview$/);
-
-    await undo();
-
-    expect(shownEditorTab()).toBe('Media');
-    expect(panel()).toHaveAttribute('data-media-panel', 'location:lamp:ambientSound');
-  });
-
-  it('opens the Media tab with no card when the redo takes the card away', async () => {
-    openMedia();
-    fireEvent.click(card('Locations › Harbor Steps', 'sound'));
-    await step(() => fireEvent.click(panelButton('Remove')!));
-    await undo();
-    openEditorTab(/^Overview$/);
-
-    await redo();
-
-    expect(shownEditorTab()).toBe('Media');
-    expect(panel()).toBeNull();
-    expect(cardsOf('Locations › Harbor Steps', 'sound')).toHaveLength(0);
   });
 });
 
