@@ -33,8 +33,8 @@ function Bar({ badges, centers, windowButtons }: { badges: boolean; centers: num
       <div data-fold-live="toggle" data-w="96" />
       {windowButtons !== undefined && <div data-fold-window-buttons="" data-w={windowButtons} />}
       {centers.map((w, i) => <div key={i} data-fold-measure="center" data-w={w} />)}
-      <div data-fold-measure="center-menu" data-w="56" />
-      <div data-fold-measure="right-menu" data-w="48" />
+      <div data-fold-measure="right-direct" data-w="48" />
+      <div data-fold-measure="right-more" data-w="56" />
       {badges && <div data-fold-measure="badges-full" data-w="220" />}
       {badges && <div data-fold-measure="badges-count" data-w="64" />}
     </div>

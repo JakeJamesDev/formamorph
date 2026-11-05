@@ -114,8 +114,160 @@ const showToast = (page: Page) =>
 const expectToastBelowHeader = (page: Page) =>
   expect.poll(async () => (await page.locator('.Toastify__toast').first().boundingBox())?.y).toBeGreaterThanOrEqual(56);
 
+const middle = (box: { x: number; width: number } | null): number => {
+  if (!box) throw new Error('The element has no box');
+  return box.x + box.width / 2;
+};
+
+/** The main menu's row of action buttons; the hidden measuring copies don't count. */
+const actionRow = (page: Page) => page.locator('button:visible', { hasText: 'New World' }).first().locator('..');
+const actionCenter = async (page: Page) => middle(await actionRow(page).boundingBox());
+const windowCenter = (page: Page) => page.evaluate(() => window.innerWidth / 2);
+
+const expectActionsCentered = async (page: Page) => {
+  expect(Math.abs((await actionCenter(page)) - (await windowCenter(page)))).toBeLessThanOrEqual(1);
+};
+
+/** Holds at every width: the search stays on center while it's over its floor, and nothing in the bar overlaps. */
+const expectEditorBarHolds = async (page: Page, width: number) => {
+  const search = await page.getByRole('search').first().boundingBox();
+  if (!search) throw new Error('The World Editor has no search');
+  expect(search.width, `the search keeps its floor at ${width}`).toBeGreaterThanOrEqual(159.5);
+  if (search.width > 160.5) expect(Math.abs(middle(search) - width / 2), `the search centers at ${width}`).toBeLessThanOrEqual(1);
+  const title = await page.getByText('World Editor', { exact: true }).first().boundingBox();
+  expect(search.x, `the search clears the title at ${width}`).toBeGreaterThanOrEqual((title?.x ?? 0) + (title?.width ?? 0));
+  const right = search.x + search.width;
+  // The search's own controls sit inside its box; any other control has to clear it.
+  const overlapping = (await headerControls(page)).filter((c) => c.right > search.x + 1 && c.x < right - 1 && (c.x < search.x - 1 || c.right > right + 1));
+  expect(overlapping.map((c) => c.name), `nothing overlaps the search at ${width}`).toEqual([]);
+};
+
 test.describe('web', () => {
   test.beforeEach(({ page: _page }, info) => test.skip(info.project.name !== 'desktop', 'One viewport is enough'));
+
+  test('centers the main menu buttons wherever both sides have room', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    await expectActionsCentered(page);
+    await page.setViewportSize({ width: 1920, height: 1000 });
+    await settle(page);
+    await expectActionsCentered(page);
+  });
+
+  test('moves the main menu buttons only as far as the tabs need', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    const tabs = await page.locator('[data-fold-left] > *').first().boundingBox();
+    const row = await actionRow(page).boundingBox();
+    if (!tabs || !row) throw new Error('The bar has no tabs or buttons');
+    // The bar's gap, and no more: any further would be drift the tabs don't ask for.
+    expect(Math.abs(row.x - (tabs.x + tabs.width) - 8)).toBeLessThanOrEqual(1);
+    test.info().annotations.push({ type: 'offset at 1280', description: String((await actionCenter(page)) - 640) });
+  });
+
+  test('opens Load Game and Settings in one click at full width', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu');
+    await page.getByRole('button', { name: 'Load Game' }).click();
+    await expect(page.getByRole('dialog', { name: 'Load Game' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  });
+
+  test('folds into one right-side menu', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 800 });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    await expect(page.getByRole('button', { name: 'Load Game' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Menu' })).toHaveCount(0);
+    const more = page.getByRole('button', { name: 'More Actions' }).first();
+    const toggle = await page.locator('[data-fold-live="toggle"]').boundingBox();
+    expect((await more.boundingBox())?.x).toBeGreaterThan((toggle?.x ?? 0) + (toggle?.width ?? 0) - 1);
+    await more.click();
+    const menu = page.getByRole('dialog');
+    for (const name of ['Community Creations', 'New World', 'Import World', 'Load Game', 'Settings']) {
+      await expect(menu.getByRole('button', { name })).toBeVisible();
+    }
+    await menu.getByRole('button', { name: 'Settings' }).click();
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  });
+
+  test('opens Backup & Restore over the Settings Data tab', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'data' });
+    await page.getByRole('button', { name: 'Open Backup & Restore' }).click();
+    const backup = page.getByRole('dialog', { name: 'Backup & Restore' });
+    await expect(backup).toBeVisible();
+    await backup.getByRole('button', { name: 'Close' }).first().click();
+    await expect(backup).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Open Backup & Restore' })).toBeVisible();
+  });
+
+  for (const mode of ['simple', 'advanced']) {
+    test(`keeps the World Editor search centered in ${mode} mode`, async ({ page }) => {
+      await page.setViewportSize({ width: 1690, height: 900 });
+      await openApp(page, { 'formamorph.worldEditorMode': mode });
+      await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'overview' });
+      await page.getByRole('search').first().waitFor();
+      for (const width of [1690, 1920, 1440, 1280, 1100, 1000]) {
+        await page.setViewportSize({ width, height: 900 });
+        await settle(page);
+        await expectEditorBarHolds(page, width);
+      }
+      await page.setViewportSize({ width: 1690, height: 900 });
+      await settle(page);
+      const search = await page.getByRole('search').first().boundingBox();
+      expect(Math.abs(middle(search) - 845)).toBeLessThanOrEqual(1);
+    });
+  }
+
+  test('frames', async ({ page }) => {
+    test.skip(!FRAMES_DIR, 'Frames only on request');
+    test.setTimeout(120_000);
+    mkdirSync(FRAMES_DIR as string, { recursive: true });
+    await openApp(page);
+    await gotoDev(page, 'mainMenu');
+    // The first load's toast would cover the corner these frames show.
+    await page.getByText('Veilwood').first().waitFor();
+    await expect(page.locator('.Toastify__toast')).toHaveCount(0, { timeout: 20_000 });
+    const shots: { name: string; width: number; open: () => Promise<void> }[] = [
+      { name: 'menu-full', width: 1600, open: () => gotoDev(page, 'mainMenu') },
+      {
+        name: 'menu-narrow',
+        width: 900,
+        open: async () => {
+          await gotoDev(page, 'mainMenu');
+          await settle(page);
+          await page.getByRole('button', { name: 'More Actions' }).first().click();
+        },
+      },
+      { name: 'settings-backup', width: 1280, open: () => gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'data' }) },
+      { name: 'settings-backup-open', width: 1280, open: () => gotoDev(page, 'mainMenu', { modal: 'backup' }) },
+      { name: 'editor-search', width: 1690, open: () => gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'overview' }) },
+    ];
+    for (const shot of shots) {
+      await page.setViewportSize({ width: shot.width, height: 900 });
+      await gotoDev(page, 'mainMenu');
+      await shot.open();
+      await page.waitForTimeout(1500);
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate((t) => {
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(t);
+        }, theme);
+        await settle(page);
+        await page.screenshot({ path: join(FRAMES_DIR as string, `${shot.name}-${theme}.png`) });
+      }
+    }
+  });
 
   test('takes the header line without the desktop flag', async ({ page }) => {
     await openApp(page);
@@ -410,6 +562,70 @@ test.describe('the Windows desktop app', () => {
       await setSize(1280, 800);
     }
   });
+
+  const setFullScreen = async (on: boolean) => {
+    await app.evaluate(({ BrowserWindow }, value) => BrowserWindow.getAllWindows()[0].setFullScreen(value), on);
+    await settle(page);
+    await settle(page);
+  };
+
+  test('centers the main menu buttons on the window, in and out of full screen', async () => {
+    await setSize(1600, 900);
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    await expectActionsCentered(page);
+    await setFullScreen(true);
+    await expectActionsCentered(page);
+    await setFullScreen(false);
+    await setSize(1600, 900);
+    await settle(page);
+    await expectActionsCentered(page);
+  });
+
+  test('lays the main menu out as the web does, apart from the room for the window buttons', async ({ browser }) => {
+    await setSize(1600, 900);
+    await gotoDev(page, 'mainMenu');
+    await settle(page);
+    const read = async (p: Page) => ({
+      tabs: (await p.locator('[data-fold-left] > *').first().boundingBox())?.x ?? -1,
+      actions: await actionCenter(p),
+      settings: (await p.getByRole('button', { name: 'Settings' }).boundingBox())?.x ?? -1,
+    });
+    const desktop = await read(page);
+    const web = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    await openApp(web);
+    await gotoDev(web, 'mainMenu');
+    await settle(web);
+    const browserLayout = await read(web);
+    await web.close();
+    expect(Math.abs(desktop.tabs - browserLayout.tabs)).toBeLessThanOrEqual(1);
+    expect(Math.abs(desktop.actions - browserLayout.actions)).toBeLessThanOrEqual(1);
+    // The spacer gives up the bar's own 8px gap to the edge, so the shift is the room less that gap.
+    expect(Math.abs(browserLayout.settings - desktop.settings - ((await buttonsWidth(page)) - 8))).toBeLessThanOrEqual(1);
+  });
+
+  for (const mode of ['simple', 'advanced']) {
+    test(`keeps the World Editor search centered in ${mode} mode, in and out of full screen`, async ({ baseURL }) => {
+      await openApp(page, { 'vite-ui-theme': 'dark', FORMAMORPH_aiSetupSeen: 'true', 'formamorph.worldEditorMode': mode }, { url: baseURL as string });
+      await setSize(1690, 900);
+      await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'overview' });
+      await page.getByRole('search').first().waitFor();
+      await settle(page);
+      await expectEditorBarHolds(page, 1690);
+      expect(Math.abs(middle(await page.getByRole('search').first().boundingBox()) - 845)).toBeLessThanOrEqual(1);
+      await setFullScreen(true);
+      const width = await page.evaluate(() => window.innerWidth);
+      await expectEditorBarHolds(page, width);
+      expect(Math.abs(middle(await page.getByRole('search').first().boundingBox()) - width / 2)).toBeLessThanOrEqual(1);
+      await setFullScreen(false);
+      for (const narrow of [1280, 1100, 1000]) {
+        await setSize(narrow, 800);
+        await settle(page);
+        await expectEditorBarHolds(page, narrow);
+      }
+      await gotoDev(page, 'mainMenu');
+    });
+  }
 
   test('reports the three window buttons', async () => {
     await gotoDev(page, 'mainMenu');

@@ -742,6 +742,11 @@ Each chip adds its own clause and is left out when it has no value. Any mix of c
     description: 'Waits this long after your last edit before saving',
     info: 'A longer pause saves less often, so more edits stay unsaved',
   },
+  backupRestore: {
+    label: 'Backup & Restore',
+    description: 'Saves your data to a file, or restores it from one',
+    info: 'A backup holds your worlds, saves, library entities and library dictionaries. Make one before you update the app or move to a new device.',
+  },
   authoringTour: {
     label: 'Authoring Tour',
     description: 'Guides you through building a new world, one field at a time',
@@ -757,6 +762,7 @@ export const SETTINGS_BUTTONS = {
   clearCachedImages: 'Clear Cached Images',
   resetTutorials: 'Reset Tutorials',
   startAuthoringTour: 'Start Authoring Tour',
+  openBackup: 'Open Backup & Restore',
   resetAiEndpoint: 'Reset AI Endpoint',
   troubleConnecting: 'Trouble Connecting?',
   howToSetUp: 'How to Set Up',

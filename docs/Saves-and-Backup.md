@@ -22,7 +22,7 @@ The **Logs** tab records *Game saved as …*. To keep scene images in the save, 
 
 1. Open **Load Game**:
    - In the game, select **Load Game** at the top right. On mobile, select **More Actions** (`...`), then **Load Game**.
-   - On the main menu, select the **Menu** button at the top right, then **Load Game**. On a narrow screen, the item is in the **Menu** button at the top center.
+   - On the main menu, select the **Load Game** button at the top right. On a narrow screen, select **More Actions** (`...`) at the top right, then **Load Game**.
 2. Select the folder of the world. In the game, the dialog opens on the current world's folder; select **Back** to see the others.
 3. Select a save. The game opens at the turn you saved.
 
@@ -52,7 +52,7 @@ Each save joins the folder of its world. The dialog opens that folder, and a mes
 <!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, archive, snapshot, switch browser, before clearing cache, format pc, full dump, bulk, sync devices, protect data -->
 <!-- route: backup#start-backup -->
 
-1. On the main menu, select the **Menu** button, then **Backup & Restore**.
+1. On the main menu, open **Settings**, select the **Data** tab, then select **Open Backup & Restore**.
 2. Select the **Backup** button.
 3. Clear the checkbox of each item you do not want. All items start selected.
 4. Select **Save backup**. You get a file named `formamorph-backup-` and the date.
@@ -64,7 +64,7 @@ Make a backup before you update the app or move to a new device. See [What a Bac
 <!-- keywords: recover, bring back, get back, import, reinstall, new device, lost data, migrate, load archive, everything gone, wiped, merge, duplicates, disappeared, old computer, put back -->
 <!-- route: backup#start-restore -->
 
-1. On the main menu, select the **Menu** button, then **Backup & Restore**.
+1. On the main menu, open **Settings**, select the **Data** tab, then select **Open Backup & Restore**.
 2. Select the **Restore** button, then select a backup `.json` file.
 3. Clear the checkbox of each item you do not want.
 4. Items you already have show an **exists** tag. To replace them, select **Overwrite existing** in their group.
@@ -179,7 +179,7 @@ A stored world can get damaged on disk. Formamorph hides it, and your other worl
 <!-- keywords: what is included, settings not included, avatars missing, optimize, downscale, invalid file, select all, compress pictures, skip duplicates -->
 <!-- route: backup -->
 
-Open it from the main menu's **Menu** button. It has three buttons: **Backup**, **Restore** and **Close**.
+Open it from the **Data** tab of **Settings** on the main menu. It opens over **Settings**. It has three buttons: **Backup**, **Restore** and **Close**.
 
 **Backup** lists what you have in up to four groups: **Worlds**, **Saves**, **Entities** and **Dictionaries**. A group shows only when it has items. Each group has a checkbox that selects all of its items, and a count of the items you selected. **Save backup** is off when nothing is selected.
 

@@ -142,9 +142,9 @@ The Group's tiles go back to the board. In the grid view, each tile goes to the 
 
 On a wide screen, the tabs are at the top left. On mobile, they are at the bottom of the screen. When the labels don't fit, only the selected tab keeps its label. With less room, the tabs show icons only. Hover an icon to read its name.
 
-Each tab has a **New** button, such as **New World**, and an **Import** button, such as **Import World**. **Avatars** has only **Import Avatar**. **Community Creations** is beside them. The **Menu** button at the top right holds **Load Game**, **Backup & Restore** and **Settings**.
+Each tab has a **New** button, such as **New World**, and an **Import** button, such as **Import World**. **Avatars** has only **Import Avatar**. **Community Creations** is beside them. **Load Game** and **Settings** are the round buttons at the top right.
 
-On a narrow screen, the top bar hides the tab labels first, then the buttons, then the event badges. The hidden buttons move to the **Menu** button at the top center. The event badges become one chip with a count.
+On a narrow screen, the top bar hides the tab labels first, then the buttons, then the event badges. The hidden buttons move to the **More Actions** button (`...`) at the top right, with **Load Game** and **Settings**. The event badges become one chip with a count.
 
 The **Entities** tab also has an **All** and **Personas** switch. **Personas** shows only the entities you can play as. See [Personas](Personas). While **Personas** is on, you cannot move tiles, change their size or change Groups.
 

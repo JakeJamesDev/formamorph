@@ -4,7 +4,7 @@
 
 Settings controls how the app looks, what the AI writes each turn, which AI it connects to, and some stored data. Your settings stay on this device.
 
-To open it, select **Menu** on the main menu, then **Settings**. During a game, select **Settings** at the top right. On mobile, select **More Actions** (`...`), then **Settings**.
+To open it, select **Settings** at the top right of the main menu. On a narrow screen, select **More Actions** (`...`), then **Settings**. During a game, select **Settings** at the top right. On mobile, select **More Actions** (`...`), then **Settings**.
 
 > The **Endpoints**, **Prompts** and **Tools** tabs have their own pages: [Endpoint Settings](Endpoint-Settings), [Prompts](Prompts) and [Tools](Tools). This page covers the other three tabs.
 
@@ -231,9 +231,11 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 <!-- keywords: clear cache, free up space, tutorial again, show tips again, wipe downloaded pictures, guided tour, auto saving toggle, housekeeping -->
 <!-- route: settings.data -->
 
-Saves, the Authoring Tour, and stored data.
+Backup, saves, the Authoring Tour, and stored data.
 
-To back up your worlds, saves, library entities and library dictionaries, use [Backup & Restore](Saves-and-Backup#the-backup--restore-dialog) in the main menu's **Menu**. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
+### Backup
+
+**Backup & Restore** saves your worlds, saves, library entities and library dictionaries to a file, or restores them from one. Select **Open Backup & Restore** to open [the dialog](Saves-and-Backup#the-backup--restore-dialog) over **Settings**. The row shows only on the main menu, because a restore reloads the app. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 
 ### Saves
 

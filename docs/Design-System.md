@@ -1250,7 +1250,7 @@ Labels use title case. Times state their zone once, at the top of the report.
 
 - The bar spans the window above the surface's panels. Anything that belongs to the bar, such as the Authoring Tour bar, sits under it.
 - Left to right: back, the title, then the surface's subject; the search field; the mode; the surface actions; the primary action last.
-- The search field sits on the window's center line when space allows, and never overlaps the side columns. The bar splits into three equal columns, and the field is at most 26rem wide.
+- The search field sits on the window's center line when space allows, and never overlaps the side columns. The bar measures its end cell and keeps the side columns equal while the field has room. The field is at most 26rem wide and at least 10rem wide.
 - The end column always fits its controls. When it needs more than a third of the bar, the field narrows to a floor of 10rem and moves off center.
 - A plain line splits the mode from the actions after it.
 - The bar shows no save-state text beside Save. The Save face is the only save signal: it shows Save, Saving…, Saved or Failed.
@@ -2365,7 +2365,7 @@ The top bar folds its parts together, in a fixed order, by whether its three cel
 | Order | Part | Steps |
 |---|---|---|
 | 1 | Library tabs | Every label → selected label → icons |
-| 2 | Action buttons | A row → one menu button. The right menu joins that menu. |
+| 2 | Action buttons | A row, with direct **Load Game** and **Settings** at the right → one **More Actions** menu at the right that holds all of them |
 | 3 | Event badges | One chip per event → one chip with a count, which opens the chips in a list |
 
 - 🎯 **Center drifts first.** The action buttons sit at the bar's center while there is room. They slide toward the side with free space before anything folds.

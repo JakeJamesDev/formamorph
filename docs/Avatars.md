@@ -14,7 +14,7 @@ An Avatar is a 3D model that an entity can show. It is a VRM file, or a plain `.
 <!-- route: mainMenu.models#import-avatar -->
 
 1. On the main menu, select the **Avatars** tab.
-2. Select **Import Avatar**. On a narrow screen, the button is in the **Menu** button at the top center.
+2. Select **Import Avatar**. On a narrow screen, the button is in the **More Actions** button (`...`) at the top right.
 3. Select one or more `.vrm` or `.glb` files.
 
 The Avatar gets the title in its file, or the file name. A message counts the Avatars it imported.

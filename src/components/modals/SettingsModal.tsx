@@ -228,13 +228,15 @@ const MODE_SELECT_TARGETS: Record<string, TargetAttribute> & { data: TargetAttri
   data: targetAttribute('settings.data', 'settings-mode'),
 };
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, initialTarget, requestKey: landingKey, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, initialTarget, requestKey: landingKey, onWorldsRestored, onStartAuthoringTour, onOpenBackup, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
   onWorldsRestored?: () => void;
   /** Starts the Authoring Tour on a new world. Only the main menu supplies it, so a running game hides the row. */
   onStartAuthoringTour?: () => void;
+  /** Opens Backup & Restore. Only the main menu supplies it, because a restore reloads the app and drops a running game. */
+  onOpenBackup?: () => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in game; absent → no Preview. */
   previewValues?: TokenValues;
   /** The open world as a Tool Snapshot, for Try It. Supplied only in game; absent, Try It uses the sample world. */
@@ -2119,6 +2121,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           <TabsContent value="data" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea landingRoom className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
+              {onOpenBackup && (
+              <Section title="Backup">
+              <Row {...rowCopy('backupRestore')}>
+                <Button variant="outline" size="sm" onClick={onOpenBackup}>
+                  {SETTINGS_BUTTONS.openBackup}
+                </Button>
+              </Row>
+              </Section>
+              )}
+
               <Section title="Saves">
               <CheckRow
                 htmlFor="autosaveEnabled"

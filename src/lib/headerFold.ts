@@ -8,10 +8,10 @@ export interface HeaderWidths {
   gap: number;
   /** Absent where the library tabs are hidden, below `md`. */
   tabs: Record<SegmentFold, number> | null;
-  /** The action buttons in a row, at the widest library tab's labels; or the menu button that holds them. */
-  center: { full: number; menu: number };
-  /** The view toggle, and the menu button that shows beside it while the action buttons are in a row. */
-  right: { toggle: number; menu: number };
+  /** The action buttons in a row, at the widest library tab's labels. */
+  center: number;
+  /** The view toggle, the direct buttons beside it while the action buttons are in a row, and the menu that replaces them. */
+  right: { toggle: number; direct: number; more: number };
   /** Absent while no event badge shows. */
   badges: { full: number; count: number } | null;
 }
@@ -39,8 +39,9 @@ const row = (parts: (number | null)[], gap: number) => {
 
 /** The whole bar's width at one fold: every cell side by side, with no room left to center the middle. */
 export function headerRowWidth(w: HeaderWidths, fold: HeaderFold): number {
-  const right = row([w.badges ? w.badges[fold.badges] : null, w.right.toggle, fold.center === 'full' ? w.right.menu : null], w.gap);
-  return row([w.tabs ? w.tabs[fold.tabs] : null, w.center[fold.center], right], w.gap);
+  const inRow = fold.center === 'full';
+  const right = row([w.badges ? w.badges[fold.badges] : null, w.right.toggle, inRow ? w.right.direct : w.right.more], w.gap);
+  return row([w.tabs ? w.tabs[fold.tabs] : null, inRow ? w.center : null, right], w.gap);
 }
 
 /** The first fold, in order, at which the bar's cells fit side by side; the last fold when none does. */

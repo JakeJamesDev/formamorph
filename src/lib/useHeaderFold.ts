@@ -13,7 +13,7 @@ const sameFold = (a: HeaderFold, b: HeaderFold) => a.tabs === b.tabs && a.center
  *
  * The bar marks its parts with data attributes: `data-fold-left` on the library tabs' cell,
  * `data-fold-live="toggle"` on the view toggle, `data-fold-window-buttons` on its spacer, and hidden copies marked `data-fold-measure` as `center`
- * (one per library tab), `center-menu`, `right-menu`, `badges-full` and `badges-count`.
+ * (one per library tab), `right-direct`, `right-more`, `badges-full` and `badges-count`.
  *
  * @param bar - The top bar
  * @param tabs - The library tabs' width at each step, from the tabs themselves
@@ -37,8 +37,8 @@ export function useHeaderFold(bar: RefObject<HTMLElement | null>, tabs: Record<S
         bar: node.clientWidth - width('[data-fold-window-buttons]'),
         gap: GAP,
         tabs: tabsShown ? tabs ?? UNMEASURED_TABS : null,
-        center: { full: Math.max(0, ...centers), menu: width('[data-fold-measure="center-menu"]') },
-        right: { toggle: width('[data-fold-live="toggle"]'), menu: width('[data-fold-measure="right-menu"]') },
+        center: Math.max(0, ...centers),
+        right: { toggle: width('[data-fold-live="toggle"]'), direct: width('[data-fold-measure="right-direct"]'), more: width('[data-fold-measure="right-more"]') },
         badges: hasBadges ? { full: width('[data-fold-measure="badges-full"]'), count: width('[data-fold-measure="badges-count"]') } : null,
       };
       const next = headerFold(widths);

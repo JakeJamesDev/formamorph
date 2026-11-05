@@ -91,6 +91,8 @@ describe('Take Me There landing on the main menu', () => {
     expect(document.activeElement).toBe(button);
     expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(true);
     expect(ringOn(rowOf('backup#start-backup'), LANDING_PULSE_CLASS)).toBe(false);
+    // Settings stays open below, on the Data tab.
+    expect(document.getElementById('autosaveEnabled')).not.toBeNull();
   });
 
   it('lands on the Import button of the Load Game dialog', async () => {

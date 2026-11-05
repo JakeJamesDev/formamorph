@@ -139,6 +139,28 @@ describe('a surface request on the main menu', () => {
     await waitFor(() => expect(registry.get().dialog).toBe('backup'));
   });
 
+  it('opens Backup & Restore over the Settings Data tab, and closing it leaves the player there', async () => {
+    renderMenu();
+    await screen.findByText('Sedge Landing');
+    requester.send('backup');
+    await waitFor(() => expect(registry.get().dialog).toBe('backup'));
+    // The dialog's footer button; its corner X has the same name.
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Close' })).at(-1)!);
+    await waitFor(() => expect(registry.get()).toEqual({ screen: 'mainMenu', dialog: 'settings', tabs: ['settings.data'] }));
+  });
+
+  it('opens Backup & Restore from its row on the Settings Data tab', async () => {
+    renderMenu();
+    await screen.findByText('Sedge Landing');
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Data' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Backup & Restore' }));
+    await waitFor(() => expect(registry.get().dialog).toBe('backup'));
+    expect(await screen.findByRole('button', { name: 'Restore' })).toBeInTheDocument();
+    // Settings stays open below, on the Data tab.
+    expect(document.getElementById('autosaveEnabled')).not.toBeNull();
+  });
+
   it('opens Settings over the World Editor without asking', async () => {
     renderMenu();
     await openWorld();

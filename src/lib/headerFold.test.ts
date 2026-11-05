@@ -5,8 +5,8 @@ const widths = (bar: number, over: Partial<HeaderWidths> = {}): HeaderWidths => 
   bar,
   gap: 8,
   tabs: { full: 422, active: 254, icons: 168 },
-  center: { full: 590, menu: 56 },
-  right: { toggle: 96, menu: 48 },
+  center: 590,
+  right: { toggle: 96, direct: 48, more: 56 },
   badges: { full: 220, count: 64 },
   ...over,
 });
@@ -22,8 +22,8 @@ describe('headerFold', () => {
     expect(headerFold(widths(1200))).toEqual({ tabs: 'icons', center: 'full', badges: 'full' });
   });
 
-  it('folds the action buttons only once the tabs are icons, and takes the right menu with them', () => {
-    // Level 2 needs 168 + 590 + 380 + 16 = 1154; level 3 needs 168 + 56 + 324 + 16 = 564.
+  it('folds the action buttons only once the tabs are icons, and swaps the direct buttons for the menu', () => {
+    // Level 2 needs 168 + 590 + 380 + 16 = 1154; level 3 needs 168 + (220 + 96 + 56 + 16) + 8 = 564.
     expect(headerFold(widths(1153))).toEqual({ tabs: 'icons', center: 'menu', badges: 'full' });
     expect(headerRowWidth(widths(0), HEADER_FOLD_LEVELS[3])).toBe(564);
   });

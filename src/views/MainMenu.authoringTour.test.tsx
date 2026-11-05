@@ -48,8 +48,7 @@ describe('Start Authoring Tour from Settings', () => {
     renderMainMenu();
     await screen.findByText('Kept World');
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Menu' })[0]);
-    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     const settings = await screen.findByRole('dialog', { name: /Settings/ });
     fireEvent.mouseDown(within(settings).getByRole('tab', { name: 'Data' }));
     fireEvent.click(await within(settings).findByRole('button', { name: 'Start Authoring Tour' }));

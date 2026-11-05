@@ -52,6 +52,15 @@ describe('a surface request in a running game', () => {
     expect(requester.pending()).toBeNull();
   });
 
+  it('leaves Backup & Restore off the Settings Data tab, because a restore reloads the app', async () => {
+    await enterGame();
+    requester.send('settings.data');
+    await waitFor(() => expect(registry.get().tabs).toEqual(['settings.data']));
+    // The tab's own row, so the absence below reads a rendered tab.
+    await waitFor(() => expect(document.getElementById('autosaveEnabled')).not.toBeNull());
+    expect(screen.queryByRole('button', { name: 'Open Backup & Restore' })).toBeNull();
+  });
+
   it('selects a side panel tab on the game screen', async () => {
     await enterGame();
     requester.send('gameViewer.memory');

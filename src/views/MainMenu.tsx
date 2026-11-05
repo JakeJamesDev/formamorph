@@ -30,7 +30,7 @@ import { Hint, Meta } from "@/components/ui/typography";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, BookOpen, ChevronLast, MoreHorizontal, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, BookOpen, ChevronLast, MoreHorizontal, MessageSquarePlus, FolderOpen, Settings, ScrollText, type LucideIcon } from "lucide-react";
 import { DefaultAvatarMenuItem, DefaultBadge, DefaultPersonaMenuItem } from '@/components/library/LibraryDefault';
 import { AvatarThumbnailMenuItems } from '@/components/library/AvatarThumbnail';
 import { useAvatarThumbnails } from '@/lib/useAvatarThumbnails';
@@ -204,6 +204,7 @@ interface MainMenuProps {
 
 /** Set once the first-run AI setup prompt has been offered, so it never nags again. The play gate still fires. */
 const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
+const TOP_BAR_ROUND_BUTTON = 'flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground shadow-lg transition-colors hover:bg-secondary/80';
 
 const aiSetupSeen = (): boolean => {
   try { return localStorage.getItem(AI_SETUP_SEEN_KEY) !== null; } catch { return false; }
@@ -457,7 +458,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (!import.meta.env.DEV) return;
     if (devRoute?.modal === 'settings' || devRoute?.modal === 'settingsCompare' || devRoute?.modal === 'chipOptions') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
-    if (devRoute?.modal === 'backup') setShowBackup(true);
+    if (devRoute?.modal === 'backup') { setSettingsTab('data'); setShowSettings(true); setBackupAfterSettings(true); }
     if (devRoute?.modal === 'community') openCommunityBrowser();
     // The likers list opens from a listing's details, so this route opens the catalog.
     if (devRoute?.modal === 'likers') openCommunityBrowser();
@@ -707,6 +708,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     openPublish(attempt.payload, world.id, typeof world.sourceId === 'string' ? world.sourceId : undefined);
   };
   const [showBackup, setShowBackup] = useState(false);
+  // Backup & Restore asked for with Settings closed. It waits a task, so Settings hides the page before it
+  // opens and never hides Backup & Restore itself.
+  const [backupAfterSettings, setBackupAfterSettings] = useState(false);
+  const openBackupOverSettings = () => {
+    setSettingsTab('data');
+    setShowSettings(true);
+    setBackupAfterSettings(true);
+  };
+  useEffect(() => {
+    if (!backupAfterSettings) return;
+    const timer = setTimeout(() => { setBackupAfterSettings(false); setShowBackup(true); }, 0);
+    return () => clearTimeout(timer);
+  }, [backupAfterSettings]);
 
   // A listing the reader asked for from somewhere else — a notification feed row. Held here because the
   // jump crosses two dialogs: the profile closes, the browser opens, and the browser opens the details.
@@ -1502,7 +1516,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       case 'auth': if (!isAuthenticated) requestSignIn(); break;
       case 'feedbackHub': setShowFeedback(true); break;
       case 'menu': setShowLoadDialog(true); break;
-      case 'backup': setShowBackup(true); break;
+      // It opens from the Data tab, so closing it leaves the player there.
+      case 'backup': openBackupOverSettings(); break;
       case 'avatar': setShowCharacterCustomization(true); break;
       case 'aiSetup': setGate({ reason: 'firstRun' }); break;
       case 'intro': onReplayIntro?.(); break;
@@ -1866,7 +1881,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     ? `From group “${selectedGroupPreset.group.name}”: ${selectedGroupPreset.name}`
     : null;
 
-  // The menu's action buttons, shared between the full landscape row and the portrait hamburger popover.
+  // The menu's action buttons, shared between the full row and the right-side menu.
   // New/Import are contextual to the card type. A `measuring` copy is inert and carries no landing target.
   const renderActionButtons = (tab: MainMenuCardTab, measuring = false) => {
     const cardNoun = KIND_LABELS[KIND_BY_CARD_TYPE[tab]].one;
@@ -1958,9 +1973,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           scroll frame rather than covering anything; the root's top padding already clears the fixed bar. */}
       {COMMUNITY_ENABLED && <EventBanner banners={banners} onOpenEvent={openEvent} />}
 
-      {/* Top control bar: card-type switcher (left) + action buttons/hamburger (center) + view toggle &
-          settings (right). items-center keeps every control on the settings cog's centerline (the cog is
-          tallest). The side cells are equal flex-1 so the center section sits at true viewport-center when
+      {/* Top control bar: card-type switcher (left) + action buttons (center) + view toggle, Load Game &
+          Settings (right). items-center keeps every control on the header line. The side cells are equal flex-1 so the center section sits at true viewport-center when
           there's room, and drifts off center before anything folds. `useHeaderFold` folds the parts in order
           once the cells no longer fit side by side: library tabs, then action buttons, then event badges. */}
       <div ref={topBarRef} className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] md:top-[env(safe-area-inset-top)] md:h-[var(--header-line)] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
@@ -1970,38 +1984,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           <CollapsingToggleGroup options={CARD_TABS} value={cardType} onValueChange={setCardType} aria-label="Library" fold={topBarFold.tabs} onStepWidths={setTabSteps} />
         </div>
 
-        {/* Action buttons: a row, or one menu button once the bar folds them. Folded, the right-cell menu
-            (Load Game / Settings) joins this same popover so there's one menu, not two. */}
+        {/* Action buttons: a row, until the bar folds them into the right-side menu. */}
         <div className={topBarFold.center === 'full' ? 'flex items-center gap-4 justify-center' : 'hidden'}>
           {actionButtons}
         </div>
-        <div className={topBarFold.center === 'menu' ? 'flex' : 'hidden'}>
-          <Popover>
-            <PopoverTrigger asChild>
-              <GradientButton
-                tone="purple"
-                aria-label="Menu"
-              >
-                <Menu className="h-5 w-5" />
-              </GradientButton>
-            </PopoverTrigger>
-            <PopoverContent align="center" className="flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0">
-              {actionButtons}
-              <div className="h-hairline bg-border my-1" />
-              <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
-                <FolderOpen className="mr-2 h-4 w-4" /> Load Game
-              </Button>
-              <Button variant="ghost" className="justify-start" onClick={() => setShowBackup(true)}>
-                <Archive className="mr-2 h-4 w-4" /> Backup &amp; Restore
-              </Button>
-              <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>
-                <Settings className="mr-2 h-4 w-4" /> Settings
-              </Button>
-            </PopoverContent>
-          </Popover>
-        </div>
 
-        {/* Event badges + grid/detailed view toggle + menu (right-most). No min-w-0: every part keeps its
+        {/* Event badges + grid/detailed view toggle + direct buttons or menu. No min-w-0: every part keeps its
             width, and the bar folds a step instead of squeezing one. */}
         <div className="flex-1 flex items-center justify-end gap-2">
           {/* Dismissed banners, centered in the slack this cell was already holding rather than pushed
@@ -2028,30 +2016,36 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </ToggleGroupItem>
             </Tip>
           </ToggleGroup>
-          {/* Right menu: gone once the action buttons fold, since its items join that menu; the view toggle
-              then becomes the right-most control. */}
-          <div className={topBarFold.center === 'full' ? 'block shrink-0' : 'hidden'}>
+          <div className={topBarFold.center === 'full' ? 'flex shrink-0 gap-2' : 'hidden'}>
+            <Tip tip="Load Game">
+              <button className={TOP_BAR_ROUND_BUTTON} onClick={() => setShowLoadDialog(true)}>
+                <FolderOpen className="h-5 w-5" />
+              </button>
+            </Tip>
+            <Tip tip="Settings">
+              <button className={TOP_BAR_ROUND_BUTTON} onClick={() => setShowSettings(true)}>
+                <Settings className="h-5 w-5" />
+              </button>
+            </Tip>
+          </div>
+          <div className={topBarFold.center === 'menu' ? 'block shrink-0' : 'hidden'}>
             <Popover>
-              <Tip tip="Menu">
+              <Tip tip="More Actions">
                 <PopoverTrigger asChild>
-                  <button className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors">
-                    <Menu className="h-6 w-6" />
+                  <button className={TOP_BAR_ROUND_BUTTON}>
+                    <MoreHorizontal className="h-5 w-5" />
                   </button>
                 </PopoverTrigger>
               </Tip>
-              {/* Sized for `Backup & Restore` plus its icon; w-48 left it scrunched. */}
-              <PopoverContent align="end" className="w-60 p-1">
-                <div className="flex flex-col">
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowLoadDialog(true)}>
-                    <FolderOpen className="mr-2 h-4 w-4" /> Load Game
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowBackup(true)}>
-                    <Archive className="mr-2 h-4 w-4" /> Backup &amp; Restore
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowSettings(true)}>
-                    <Settings className="mr-2 h-4 w-4" /> Settings
-                  </Button>
-                </div>
+              <PopoverContent align="end" className="flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0">
+                {actionButtons}
+                <div className="h-hairline bg-border my-1" />
+                <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
+                  <FolderOpen className="mr-2 h-4 w-4" /> Load Game
+                </Button>
+                <Button variant="ghost" className="justify-start" onClick={() => setShowSettings(true)}>
+                  <Settings className="mr-2 h-4 w-4" /> Settings
+                </Button>
               </PopoverContent>
             </Popover>
           </div>
@@ -2065,8 +2059,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           {MAIN_MENU_CARD_TABS.map((tab) => (
             <div key={tab} data-fold-measure="center" className="flex w-max items-center gap-4">{renderActionButtons(tab, true)}</div>
           ))}
-          <GradientButton data-fold-measure="center-menu" tone="purple" tabIndex={-1}><Menu className="h-5 w-5" /></GradientButton>
-          <span data-fold-measure="right-menu" className="block w-max p-3"><Menu className="h-6 w-6" /></span>
+          <div data-fold-measure="right-direct" className="flex w-max gap-2"><span className={TOP_BAR_ROUND_BUTTON} /><span className={TOP_BAR_ROUND_BUTTON} /></div>
+          <span data-fold-measure="right-more" className={TOP_BAR_ROUND_BUTTON} />
           {COMMUNITY_ENABLED && banners.chips.length > 0 && (
             <>
               <div data-fold-measure="badges-full" className="w-max"><EventBannerChips banners={banners} /></div>
@@ -2087,6 +2081,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         requestKey={surfaceNav.key}
         onWorldsRestored={refreshWorlds}
         onStartAuthoringTour={() => { setShowSettings(false); void handleCreateNewWorld({ tour: true }); }}
+        onOpenBackup={() => setShowBackup(true)}
       />
       <AiSetupGate
         open={gate !== null}

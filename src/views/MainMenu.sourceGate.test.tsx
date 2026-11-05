@@ -92,14 +92,10 @@ describe('a world whose required source was removed', () => {
     recordCheck('not_found');
     await openWorld();
 
-    // Load Game lives in the menu popover, which only mounts once opened — and the world window has to be
-    // out of the way first, since Radix hides the rest of the tree while it is up.
+    // The world window has to be out of the way first, since Radix hides the rest of the tree while it is up.
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    // Both viewport branches render under jsdom, which has no CSS to hide either; each has its own trigger.
-    for (const trigger of await screen.findAllByRole('button', { name: 'Menu' })) fireEvent.click(trigger);
 
-    const resume = await screen.findAllByRole('button', { name: /Load Game/ });
-    for (const button of resume) expect(button).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Load Game' })).toBeEnabled();
   });
 
   it('offers the way to the repair from the blocked action itself', async () => {
