@@ -59,6 +59,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
 import { ArrowLeft, Music, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, dialogTitleRow } from "@/components/ui/dialog";
+import { AI_CONTEXT_DIALOG_SIZE } from "@/components/aiContext/aiContextDialogSize";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
@@ -6378,7 +6379,7 @@ const GameViewer = ({
 
       {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
-        <DialogContent surface="aiContext" aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] flex flex-col overflow-hidden">
+        <DialogContent surface="aiContext" aria-describedby={undefined} className={AI_CONTEXT_DIALOG_SIZE}>
           <RenderMounted render={() => {
             const palette = HIGHLIGHT_PALETTE;
             // Stable per-entry color + name lookups (by the live dictionary's order), shared by the legend,

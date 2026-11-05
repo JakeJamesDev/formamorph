@@ -3,25 +3,19 @@ import { ChevronsDownUp, ChevronsUpDown, ScrollText } from 'lucide-react';
 import { AiContextExportButton } from '@/components/aiContext/AiContextExportButton';
 import { AiContextRequestCard, AiContextSection, type AiContextCardSection } from '@/components/aiContext/AiContextRequestCard';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, dialogFullHeightMobile } from '@/components/ui/dialog';
+import { AI_CONTEXT_DIALOG_SIZE } from '@/components/aiContext/aiContextDialogSize';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Pager } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { HelpQueryTrace, HelpRequestTrace, HelpTrace, HelpTraceSource } from '@/lib/formaquestion/helpTrace';
 import { isWorldSource, sourceKey } from '@/lib/formaquestion/helpWorldSource';
-import { cn } from '@/lib/utils';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { routeText } from '@/lib/surface/surfaceTargets';
 import { answerRoute } from './answerRoute';
 import { AI_CONTEXT_COPY, GENERAL_COPY } from './formaquestionSettingsTabs';
 import type { HelpExchange } from './useHelpChat';
 
-/** The game view's AI Context size, and the whole screen on mobile. */
-const DIALOG_SIZE = cn(
-  'flex flex-col overflow-hidden sm:max-w-[95vw] sm:w-[95vw] sm:h-[90dvh]',
-  dialogFullHeightMobile,
-  'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none',
-);
 
 /** A question that an AI answered, so it has a trace. */
 type TracedExchange = HelpExchange & { trace: HelpTrace };
@@ -138,7 +132,7 @@ export function FormaquestionAiContext({ open, onOpenChange, exchanges }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent surface="formaquestionAiContext" aria-describedby={undefined} className={DIALOG_SIZE}>
+      <DialogContent surface="formaquestionAiContext" aria-describedby={undefined} className={AI_CONTEXT_DIALOG_SIZE}>
         <DialogTitle className="flex flex-shrink-0 items-center gap-1.5 pr-8">
           <ScrollText className="h-4 w-4" />
           {AI_CONTEXT_COPY.title}
