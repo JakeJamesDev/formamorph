@@ -24,13 +24,14 @@ afterEach(() => {
 const TABS: Record<SegmentFold, number> = { full: 422, active: 254, icons: 168 };
 let seen: HeaderFold | null = null;
 
-function Bar({ badges, centers }: { badges: boolean; centers: number[] }) {
+function Bar({ badges, centers, windowButtons }: { badges: boolean; centers: number[]; windowButtons?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   seen = useHeaderFold(ref, TABS, String(badges));
   return (
     <div ref={ref}>
       <div data-fold-left="" />
       <div data-fold-live="toggle" data-w="96" />
+      {windowButtons !== undefined && <div data-fold-window-buttons="" data-w={windowButtons} />}
       {centers.map((w, i) => <div key={i} data-fold-measure="center" data-w={w} />)}
       <div data-fold-measure="center-menu" data-w="56" />
       <div data-fold-measure="right-menu" data-w="48" />
@@ -51,6 +52,13 @@ describe('useHeaderFold', () => {
   it('sizes the action buttons by the widest library tab, so a narrower one never decides the fold', () => {
     barWidth = 1400;
     render(<Bar badges centers={[500, 590, 520]} />);
+    expect(seen).toEqual({ tabs: 'active', center: 'full', badges: 'full' });
+  });
+
+  it('folds sooner by the room held for the window buttons', () => {
+    // Level 0 needs 1408, which this bar has only before the 130px of room comes off.
+    barWidth = 1408;
+    render(<Bar badges centers={[500, 590, 520]} windowButtons={130} />);
     expect(seen).toEqual({ tabs: 'active', center: 'full', badges: 'full' });
   });
 

@@ -5,8 +5,8 @@ import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
 
-/** Keeps a row that reaches the window's top edge clear of the corner button. */
-export const FULLSCREEN_CORNER_CLEAR = 'pr-9';
+/** Keeps a row that reaches the window's top edge clear of the corner button. At `md` and wider, content starts below the header line. */
+export const FULLSCREEN_CORNER_CLEAR = 'max-md:pr-9';
 
 /**
  * The window an editor opens into when it goes full screen.
@@ -72,7 +72,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
           if (returnFocus) setTimeout(() => returnFocus()?.focus?.({ preventScroll: true }), 0);
         }}
         className={cn(
-          'flex flex-col gap-4 overflow-hidden border-0 p-4',
+          'flex flex-col gap-4 overflow-hidden border-0 p-4 md:pt-[var(--header-line)]',
           dialogFullHeight,
           'w-screen max-w-none left-0 translate-x-0 rounded-none sm:rounded-none',
           morph.boxClassName,

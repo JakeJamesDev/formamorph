@@ -6149,7 +6149,7 @@ const GameViewer = ({
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : "p-4"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : "p-4 pt-[var(--header-line)]"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
     >
       {locationBackground && (
         <LocationBackdrop
@@ -6238,7 +6238,7 @@ const GameViewer = ({
 
       {/* Edit-world + Menu buttons — desktop only. On mobile both fold into the tab-row menu. */}
       {!uiHidden && !isMobile && (
-      <div className="absolute top-16 right-2 md:top-2 flex gap-2">
+      <div className="absolute top-16 right-[calc(0.5rem+var(--window-buttons-width))] md:top-2 flex gap-2">
         <Tip tip="Edit World">
           <Button
             onClick={() => setIsEditingWorld(true)}

@@ -1197,6 +1197,28 @@ Tiles drop to three columns, then two. Paired sections stack on mobile. Charts k
 
 Labels use title case. Times state their zone once, at the top of the report.
 
+## Pattern: Header Line
+
+**Purpose:** Line every Surface's top row up on one height, so the app reads as one header and nothing sits under the window buttons.
+
+**Rule:**
+
+- 📏 At `md` and wider, a Surface's top row centers on `y=28`, in a 56px line (`--header-line`). The World Editor bar may sit at `y=29`, because of its border.
+- 🪟 The Windows desktop app hides the title bar. Content reaches the top edge, and Windows draws its own minimize, maximize and close buttons over it, 56px tall.
+- ↔️ The room for those buttons is `--window-buttons-width`, added to the right end of the row. It's 0 on web, macOS and Linux, because only the desktop flag reads the overlay's `env()` values.
+- 🖱️ Empty parts of the line drag the window, including over a dialog's dimming layer. Controls take clicks, and a modal's hidden page never blocks the drag.
+- 🔔 Top-right toasts start below the line.
+- 🖼️ A full screen editor's content starts below the line, and its corner button sits on it.
+- 📱 Mobile keeps its own layout.
+
+### Production mapping
+
+| Piece | Where |
+|---|---|
+| The flag, the drag area and the symbol color | [`windowChrome.ts`](../src/lib/windowChrome.ts) |
+| The window options | [`windowChrome.cjs`](../electron/windowChrome.cjs) |
+| The tokens and the drag rules | [`index.css`](../src/index.css) |
+
 ## Pattern: Surface App Bar
 
 **Purpose:** Put a surface's identity, its everyday tools and its whole-surface actions in one row above everything they act on.
@@ -2315,7 +2337,7 @@ Open `#dev?modal=designSystem&tab=collapsing-segmented` for the library tabs in 
 
 ✅ Approved by the user on 2026-10-30.
 
-The top bar folds its parts together, in a fixed order, by whether its three cells fit side by side. No part folds by its own leftover room.
+The top bar folds its parts together, in a fixed order, by whether its three cells fit side by side. No part folds by its own leftover room. The room for the window buttons (see Header Line) counts against the bar's width.
 
 | Order | Part | Steps |
 |---|---|---|

@@ -1948,7 +1948,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     />
   );
   const menu = (
-    <div className="pt-[calc(5rem+env(safe-area-inset-top))] relative flex flex-col app-viewport overflow-hidden">
+    <div className="pt-[calc(5rem+env(safe-area-inset-top))] md:pt-[calc(4.5rem+env(safe-area-inset-top))] relative flex flex-col app-viewport overflow-hidden">
       {downscaleDialog}
       {updateDialog}
       {worldExportDialog}
@@ -1963,7 +1963,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           tallest). The side cells are equal flex-1 so the center section sits at true viewport-center when
           there's room, and drifts off center before anything folds. `useHeaderFold` folds the parts in order
           once the cells no longer fit side by side: library tabs, then action buttons, then event badges. */}
-      <div ref={topBarRef} className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
+      <div ref={topBarRef} className="fixed z-10 flex items-center gap-2 top-[calc(1rem+env(safe-area-inset-top))] md:top-[env(safe-area-inset-top)] md:h-[var(--header-line)] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))]">
         {/* Card-type switcher, at the step the bar picks. Hidden on mobile, where the bottom tab bar takes
             over. No min-w-0: the cell keeps the switcher's width, which pushes the center off center. */}
         <div data-fold-left="" className="flex-1 hidden md:flex items-center justify-start">
@@ -2055,6 +2055,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </PopoverContent>
             </Popover>
           </div>
+          {/* A spacer, because flex grows from padding, which would stop the side cells matching. */}
+          <div aria-hidden data-fold-window-buttons="" className="-ml-2 w-[max(0px,calc(var(--window-buttons-width)-0.5rem))] shrink-0" />
         </div>
 
         {/* Hidden copies of every step the bar can fold to, for `useHeaderFold` to measure. The action

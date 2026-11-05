@@ -1421,7 +1421,7 @@ const CommunityCreationsBrowser = ({
               ) : (
                 // The title row fills its header, so the search box grows into the free space. Refresh ends
                 // the row, after the sort select and the order toggle.
-                <div className="flex min-h-14 items-center py-2">
+                <div className="flex min-h-14 items-center py-2 pr-[var(--window-buttons-width)]">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
                     <div className="flex items-center gap-1">
                       <BackButton onClick={() => onOpenChange(false)} />

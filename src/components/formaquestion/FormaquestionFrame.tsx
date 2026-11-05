@@ -40,6 +40,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
     aria-modal="false"
     aria-label="Formaquestion"
     tabIndex={-1}
+    data-window-no-drag=""
     className={cn(
       'flex flex-col bg-background text-foreground outline-none',
       // The handles straddle the frame's edges, so the frame itself clips nothing; its body clips to the rounded corners.

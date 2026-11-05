@@ -12,7 +12,7 @@ const sameFold = (a: HeaderFold, b: HeaderFold) => a.tabs === b.tabs && a.center
  * Picks the main menu top bar's fold from its measured parts.
  *
  * The bar marks its parts with data attributes: `data-fold-left` on the library tabs' cell,
- * `data-fold-live="toggle"` on the view toggle, and hidden copies marked `data-fold-measure` as `center`
+ * `data-fold-live="toggle"` on the view toggle, `data-fold-window-buttons` on its spacer, and hidden copies marked `data-fold-measure` as `center`
  * (one per library tab), `center-menu`, `right-menu`, `badges-full` and `badges-count`.
  *
  * @param bar - The top bar
@@ -33,7 +33,8 @@ export function useHeaderFold(bar: RefObject<HTMLElement | null>, tabs: Record<S
       const centers = Array.from(node.querySelectorAll<HTMLElement>('[data-fold-measure="center"]'), (e) => e.offsetWidth);
       const hasBadges = !!node.querySelector('[data-fold-measure="badges-full"]');
       const widths: HeaderWidths = {
-        bar: node.clientWidth,
+        // The spacer holds the room for the window buttons, so it can't hold a control.
+        bar: node.clientWidth - width('[data-fold-window-buttons]'),
         gap: GAP,
         tabs: tabsShown ? tabs ?? UNMEASURED_TABS : null,
         center: { full: Math.max(0, ...centers), menu: width('[data-fold-measure="center-menu"]') },

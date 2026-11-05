@@ -186,6 +186,10 @@ declare global {
   interface Window {
     formamorphDesktop?: {
       fetch: (req: DesktopFetchRequest) => Promise<DesktopFetchResponse>;
+      /** True only where the main process hides the title bar. */
+      windowOverlay?: boolean;
+      /** Paints the native window buttons in a `#rrggbb` color. */
+      setWindowSymbolColor?: (color: string) => Promise<void>;
       /** Live nvidia-smi VRAM numbers from the main process (same shape as the standalone helper's JSON). */
       vramStats?: () => Promise<unknown>;
       /** Tell the main process which ComfyUI server to remove this window's Origin for; null for none. */

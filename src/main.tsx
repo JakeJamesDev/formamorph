@@ -6,12 +6,14 @@ import './fonts'
 import './index.css'
 import './lib/buildInfo'
 import { trackDevicePixelRatio } from './lib/devicePixelGrid'
+import { installWindowChrome } from './lib/windowChrome'
 import { installGlobalErrorHandlers } from './lib/globalErrorHandlers'
 import { installDevFeedbackStub } from './lib/dev/devFeedbackStub'
 import { installDevReviewStub } from './lib/dev/devReviewStub'
 import { installDevLikesStub } from './lib/dev/devLikesStub'
 import { installDevServerSettingsStub } from './lib/dev/devServerSettingsStub'
 
+installWindowChrome()
 trackDevicePixelRatio()
 installGlobalErrorHandlers()
 // Static, so the stub is in place before the first list fetches.

@@ -22,6 +22,7 @@ const { corsResponse } = require('./corsShim.cjs');
 const { httpOrigin, stripOrigin } = require('./originStrip.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
 const { confirmLeave } = require('./leavePrompt.cjs');
+const { windowChromeOptions, setWindowSymbolColor } = require('./windowChrome.cjs');
 const updater = require('./updater.cjs');
 const perfMeter = require('./perfMeter.cjs');
 
@@ -216,14 +217,17 @@ function watchRenderer(win) {
 }
 
 function createWindow() {
+  const { webPreferences: chromePreferences, ...chrome } = windowChromeOptions(process.platform);
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     autoHideMenuBar: true,
+    ...chrome,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      ...chromePreferences,
     },
   });
   mainWindow = win;
@@ -279,6 +283,10 @@ function createWindow() {
     });
   }
 }
+
+ipcMain.handle('window-symbol-color', (event, color) => {
+  setWindowSymbolColor(BrowserWindow.fromWebContents(event.sender), color, process.platform);
+});
 
 // Desktop-only network bridge: renderer → main HTTP fetch that isn't bound by browser CORS. Used by
 // cloud image providers (OpenAI-style) whose APIs can't be reached directly from the web build.

@@ -506,6 +506,33 @@
   }
 }
 
+/* Every Surface's top row centers on this line, at `md` and wider. */
+:root {
+  --header-line: 56px;
+  --window-buttons-width: 0px;
+}
+/* A host page can define these `env()` values too, so only the flag reads them. */
+[data-window-overlay] {
+  --window-buttons-width: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+}
+@media (min-width: 768px) {
+  .Toastify__toast-container--top-right {
+    top: calc(var(--header-line) + 0.5rem);
+  }
+}
+.window-drag-area {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--header-line);
+  z-index: -1;
+  pointer-events: none;
+  app-region: drag;
+}
+/* Controls only, because a dialog has a role too. A modal's `aria-hidden` page can't take a click anyway. */
+[data-window-overlay] :is([data-window-no-drag], [data-fq-drag], [data-fq-body], [data-fq-resize], [data-fq-mascot-resize], button, a, input, select, textarea, label, summary, canvas, video, [role='button'], [role='tab'], [role='menuitem'], [role='switch'], [role='combobox'], [role='checkbox'], [role='radio'], [role='slider'], [role='link'], [role='option'], [role='textbox'], [tabindex]:not([tabindex='-1']), [contenteditable='true']):not([aria-hidden='true'] *) {
+  app-region: no-drag;
+}
+
 /* The app's frame: exactly the area the user can see, measured rather than inferred from a viewport
    unit (see `viewportHeight.ts` for why units don't survive the keyboard and the Fullscreen API).
    Fixed, so it is unaffected by how tall the document or a fullscreened body happens to be, and

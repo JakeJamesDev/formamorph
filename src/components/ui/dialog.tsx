@@ -38,8 +38,8 @@ export const dialogFullHeight = 'top-[var(--app-top,0px)] translate-y-0 h-[var(-
 
 const closeButtonBase = 'absolute inline-flex h-11 w-11 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground';
 
-/** The full-screen window's button: a 44px target whose 20px icon centers 24px from the corner. */
-export const dialogCornerButton = `${closeButtonBase} right-0.5 top-0.5`;
+/** The full-screen window's button: a 44px target whose 20px icon centers 24px from the corner, and on the header line at `md` and wider. */
+export const dialogCornerButton = `${closeButtonBase} right-[calc(0.125rem+var(--window-buttons-width))] top-0.5 md:top-1.5`;
 
 /**
  * The close button: a 44px target centered on the title line of a `p-6` dialog, its 20px icon flush with

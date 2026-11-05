@@ -11,7 +11,7 @@ export function SurfaceAppBar({ start, center, end }: { start: ReactNode; center
     <div className="grid min-h-14 grid-cols-[minmax(0,1fr)_minmax(10rem,1fr)_minmax(max-content,1fr)] items-center gap-3 px-3 py-2">
       <div className="flex min-w-0 items-center gap-1">{start}</div>
       <div className="flex min-w-0 items-center justify-center gap-1">{center}</div>
-      <div className="flex items-center justify-end gap-1">{end}</div>
+      <div className="flex items-center justify-end gap-1 pr-[var(--window-buttons-width)]">{end}</div>
     </div>
   );
 }

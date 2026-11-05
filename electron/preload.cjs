@@ -5,6 +5,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('formamorphDesktop', {
   fetch: (req) => ipcRenderer.invoke('net-fetch', req),
+  // Main passes this argument only where it hides the title bar. See windowChrome.cjs.
+  windowOverlay: process.argv.includes('--formamorph-window-overlay'),
+  setWindowSymbolColor: (color) => ipcRenderer.invoke('window-symbol-color', color),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
   // The ComfyUI server whose Origin check the main process passes for this window; null for none.
   setComfyEndpoint: (url) => ipcRenderer.invoke('comfy-endpoint', url),
