@@ -19,7 +19,7 @@ Rulings: Q2, Q6, Q12, Q13.
 
 ## Acceptance criteria
 
-- [ ] The harness reports zero misses on the narrowed selection, with its sample size and upper bound.
+- [ ] The harness reports zero misses on the narrowed selection, on at least 36 bugs that turn a test red (Q48), with its sample size and upper bound.
 - [ ] Precision before and after, and affected-gate time before and after, are recorded.
 - [ ] Each rule has a test that goes red when the rule is removed.
 

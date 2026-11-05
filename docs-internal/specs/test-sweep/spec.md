@@ -71,7 +71,8 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 | Q44 | Each checkout keeps its own Vitest module cache. The owner ruled this lands before the Reference Run, so the run measures the setup we keep. Cache keys include the checkout's root, so a ticket worktree's first gate always starts cold; Q37 measures that cost. |
 | Q45 | The first pause starts once in-flight work lands, as Q19 says. Checked 2026-11-04: v3.6.0 is out, only tickets 06 and 15 run, and the other `in-progress` statuses date from September and October with no worktree behind them. The pause starts with ticket 07. |
 | Q46 | `ownerTreeParity` splits. The drops half retires if coverage holds, and the links half stays as Q5 import behavior. `helpSession.parity` stays, because help answers are prompts. `perTurnSettle.parity` retires if coverage on `settleTraits` holds. |
-| Q47 | The history rewrite of 2026-11-03 invalidated every older sha and left no ledger, so the real-bug table in `reference-run.md` no longer resolves. Its times and targets stand. A full ledger rebuild runs in the next AFK window, before ticket 07, which picks its group from the ledger. |
+| Q47 | The history rewrite of 2026-11-03 invalidated every older sha and left no ledger, so the real-bug table in `reference-run.md` no longer resolves. Its times and targets stand. A full ledger rebuild runs in an AFK window after ticket 06's replay and before ticket 07, which picks its group from the ledger. |
+| Q48 | A replay sample of 36 bugs that turn a test red is enough. Ticket 13's zero-miss bar needs at least 36, about 8 hours, for an 8.3% upper bound. |
 
 ## User Stories
 
