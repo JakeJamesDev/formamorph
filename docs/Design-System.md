@@ -833,6 +833,20 @@ The name after `allow` is one row of the table below. The text after the colon s
 
 Remove the comment when the file holds no native scroller.
 
+## Standard: Dialog Title Line
+
+The title, its icon and the close button share one center line, 34px below the top of the dialog. The X icon's top and right gaps match the 24px content padding.
+
+| Header | Use |
+| --- | --- |
+| Title alone | [`DialogHeader`](../src/components/ui/dialog.tsx) and `DialogTitle` on a `p-6` dialog. Nothing else is needed. |
+| Title with controls beside it | `dialogTitleRow`. The title sets the line's height, and taller controls stay centered on it. |
+| Icon or small control inside the title | Use a 16px icon. A control in the title takes `dialogTitleControl`. |
+| Bordered bar on a `p-0` dialog | `dialogHeaderBar` on the header and `dialogHeaderBarTitle` on the title. |
+| Plain header on a `p-0` dialog | `px-6 pt-6` on the header. |
+
+`AlertDialogTitle` uses the same line metrics, so an alert's title sits at the same height. Full-screen shells and windows that draw their own bar keep their own close placement.
+
 ## Pattern: Paired Footer Actions
 
 **Purpose:** Make acceptance predictable by keeping a negative action before its affirmative partner.

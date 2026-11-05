@@ -140,7 +140,7 @@ export function FormaquestionAiContext({ open, onOpenChange, exchanges }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent surface="formaquestionAiContext" aria-describedby={undefined} className={DIALOG_SIZE}>
         <DialogTitle className="flex flex-shrink-0 items-center gap-1.5 pr-8">
-          <ScrollText className="h-5 w-5" />
+          <ScrollText className="h-4 w-4" />
           {AI_CONTEXT_COPY.title}
         </DialogTitle>
         {/* The question line and the view controls share one row, as the game view's turn line does. */}

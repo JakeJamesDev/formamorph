@@ -51,7 +51,7 @@ export function AgeGateDialog({
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-500" aria-hidden />
+            <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" aria-hidden />
             Adult Content Ahead
           </DialogTitle>
           <DialogDescription>

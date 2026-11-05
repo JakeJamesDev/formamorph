@@ -58,7 +58,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
 import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, dialogTitleRow } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
 import { Meta } from "@/components/ui/typography";
@@ -6642,11 +6643,11 @@ const GameViewer = ({
             };
             return (
               <>
-                {/* The header row: the title beside the search field; pr-8 keeps it clear of the
-                    dialog's Close button. Below md the title goes back to being screen-reader-only. */}
-                <div className="flex items-center gap-2 flex-shrink-0 pr-8">
+                {/* The header row: the title beside the search field. Below md the title goes back to
+                    being screen-reader-only. */}
+                <div className={cn(dialogTitleRow, 'gap-2 flex-shrink-0')}>
                   <DialogTitle className="sr-only md:not-sr-only md:flex md:flex-shrink-0 md:items-center md:gap-1.5">
-                    <ScrollText className="h-5 w-5" />
+                    <ScrollText className="h-4 w-4" />
                     AI Context
                   </DialogTitle>
                   {/* The find controls share the search field's frame, so the toolbar keeps its one row. */}

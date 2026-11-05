@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, memorySentTip, CLEAR_PIN_LABEL, type MemoryRow, type MemoryFilter } from '@/lib/memoryView';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, dialogTitleControl } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/ui/search-field';
 import { Textarea } from '@/components/ui/textarea';
@@ -198,7 +198,7 @@ export const MemoryManagerModal = ({
         <DialogHeader className="space-y-1">
           <DialogTitle className="flex items-center gap-2">
             Memories
-            <HelpButton topicId="game.memoryManager" />
+            <HelpButton topicId="game.memoryManager" className={dialogTitleControl} />
           </DialogTitle>
           <DialogDescription>
             {filter === 'all'

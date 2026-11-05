@@ -47,7 +47,7 @@ import { revealEditorChip, cancelEditorReveals } from '@/lib/editorFieldFocus';
 import type { AnatomyViewMode } from '@/components/game/RequestAnatomyView';
 import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogTitleRow } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { PanelShell } from "@/components/PanelShell";
 import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
@@ -1123,8 +1123,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         className={SETTINGS_DIALOG_SIZE}
       >
         <DialogHeader className="flex-shrink-0">
-          {/* The close cross is absolutely placed over this row, so the select is kept clear of it. */}
-          <div className="flex items-center justify-between gap-4 pr-8">
+          <div className={cn(dialogTitleRow, 'justify-between gap-4')}>
             <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
             <TutorialPopover entry={tutorial} nav={tutorialNav}>
               <ModeSelect

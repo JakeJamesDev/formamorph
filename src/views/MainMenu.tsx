@@ -49,6 +49,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  dialogTitleRow,
 } from "@/components/ui/dialog";
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { asSettingsTab, type SettingsTabId } from '../components/modals/settingsTabs';
@@ -3002,11 +3003,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <Dialog open={showWorldPrompts} onOpenChange={setShowWorldPrompts}>
         <DialogContent surface="worldPrompts" className="sm:max-w-[700px] h-[85dvh] flex flex-col">
           <DialogHeader className="shrink-0">
-            {/* The mode switch shares the title row (pr-6 clears the dialog's X), and the description
+            {/* The mode switch shares the title row, and the description
                 doubles as the legend — its "added"/"removed" carry the diff's actual colors — so the
                 chrome costs no row of its own. */}
-            <div className="flex items-center justify-between gap-3 pr-6">
-              <DialogTitle className="leading-normal">Custom Prompts</DialogTitle>
+            <div className={cn(dialogTitleRow, 'justify-between gap-3')}>
+              <DialogTitle>Custom Prompts</DialogTitle>
               <PromptDiffModeToggle mode={promptView} onModeChange={setPromptView} />
             </div>
           </DialogHeader>

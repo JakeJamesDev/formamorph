@@ -36,8 +36,28 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
  */
 export const dialogFullHeight = 'top-[var(--app-top,0px)] translate-y-0 h-[var(--app-h,100dvh)]';
 
-/** The close button's slot: a 44px target whose 20px icon centers 24px from the corner. */
-export const dialogCornerButton = 'absolute right-0.5 top-0.5 inline-flex h-11 w-11 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground';
+const closeButtonBase = 'absolute inline-flex h-11 w-11 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground';
+
+/** The full-screen window's button: a 44px target whose 20px icon centers 24px from the corner. */
+export const dialogCornerButton = `${closeButtonBase} right-0.5 top-0.5`;
+
+/**
+ * The close button: a 44px target centered on the title line of a `p-6` dialog, its 20px icon flush with
+ * the content's right edge. A row beside it takes `pr-8` to clear the target.
+ */
+const dialogCloseButton = `${closeButtonBase} right-3 top-[11px]`;
+
+/** For a control in the title line: the title sets the line's height, so the control stays centered on the close button. */
+export const dialogTitleControl = '-my-4';
+
+/** A title with controls beside it. Every sibling takes `dialogTitleControl`, and the line clears the close button. */
+export const dialogTitleRow = 'flex min-h-[1.125rem] items-center pr-8 [&>:not(h2)]:-my-4';
+
+/** A bordered header on a `p-0` dialog. With `dialogHeaderBarTitle`, its first line sits on the close button's center. */
+export const dialogHeaderBar = 'border-b px-6 py-[11px]';
+
+/** The title in a `dialogHeaderBar`. The tall line box also keeps `truncate` from cropping descenders. */
+export const dialogHeaderBarTitle = 'leading-[2.75rem]';
 
 /** The same, applied only below the `sm` breakpoint — for dialogs that keep a window on wider screens. */
 export const dialogFullHeightMobile = 'max-sm:top-[var(--app-top,0px)] max-sm:translate-y-0 max-sm:h-[var(--app-h,100dvh)]';
@@ -82,7 +102,7 @@ const DialogContent = React.forwardRef<
       onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}>
       <SurfaceLayer id={surface}>{children}</SurfaceLayer>
       {!hideClose && (
-        <DialogPrimitive.Close className={dialogCornerButton}>
+        <DialogPrimitive.Close className={dialogCloseButton}>
           <X className="h-5 w-5" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

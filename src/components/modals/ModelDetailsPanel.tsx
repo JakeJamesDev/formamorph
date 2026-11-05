@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogHeaderBar, dialogHeaderBarTitle } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X } from 'lucide-react';
@@ -127,10 +128,8 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent surface="modelDetails" aria-describedby={undefined} className="max-w-[900px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-4 py-3 border-b">
-          {/* `leading-normal` replaces DialogTitle's `leading-none`, whose one-em line box crops
-              descenders under `truncate`'s overflow clip. */}
-          <DialogTitle className="truncate leading-normal">{name}</DialogTitle>
+        <DialogHeader className={dialogHeaderBar}>
+          <DialogTitle className={cn('truncate pr-8', dialogHeaderBarTitle)}>{name}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 flex flex-row">

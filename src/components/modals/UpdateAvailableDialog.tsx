@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, dialogTitleControl,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -285,7 +285,7 @@ export function UpdateAvailableDialog({
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             Update Available
-            <HelpButton topicId="library.linkedContent" initialTab="Updates" />
+            <HelpButton topicId="library.linkedContent" initialTab="Updates" className={dialogTitleControl} />
           </DialogTitle>
           <DialogDescription>
             {failed.length

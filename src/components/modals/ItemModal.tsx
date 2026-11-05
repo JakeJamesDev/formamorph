@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogTitleControl } from '@/components/ui/dialog';
 import { ItemRowArt } from '@/components/ItemIconArt';
 import { Meta } from '@/components/ui/typography';
 import type { ShownItemIcon } from '@/lib/itemIcons';
@@ -27,8 +27,8 @@ export function ItemModal({ id, name, icon, image, description, facts, isOpen, o
         className={image ? 'sm:max-w-[800px] lg:max-w-[1040px] h-[90dvh] flex flex-col' : 'sm:max-w-[520px] h-[40dvh] flex flex-col'}
       >
         <DialogHeader className="flex-shrink-0">
-          <div className="flex flex-wrap items-center justify-center gap-x-2 pr-6 sm:justify-start">
-            {icon.kind === 'icon' && <ItemRowArt shown={icon} />}
+          <div className="flex flex-wrap items-center justify-center gap-x-2 pr-8 sm:justify-start">
+            {icon.kind === 'icon' && <span className={dialogTitleControl}><ItemRowArt shown={icon} /></span>}
             <DialogTitle>{name}</DialogTitle>
             {facts.map((fact) => <Meta key={fact}>{fact}</Meta>)}
           </div>

@@ -3,7 +3,7 @@ import { HelpButton } from '@/components/HelpButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, dialogTitleControl,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -109,7 +109,7 @@ export function WorldUpdateReviewDialog({ open, review, onApply, onCancel }: Wor
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             Update This World
-            <HelpButton topicId="library.linkedContent" initialTab="Updates" />
+            <HelpButton topicId="library.linkedContent" initialTab="Updates" className={dialogTitleControl} />
           </DialogTitle>
           <DialogDescription>
             {`Updating “${review?.localName ?? ''}” overwrites it with the author's current version. `}

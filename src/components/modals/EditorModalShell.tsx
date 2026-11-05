@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogHeaderBar, dialogHeaderBarTitle } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
@@ -59,10 +60,8 @@ const EditorModalShell = ({
             {/* Below `sm` the title and the strip each take a full row. Above it, the title and the spacer
                 share the free room, so the strip stays centered; the title truncates to its floor before the
                 strip folds. */}
-            <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row flex-wrap items-center justify-center gap-3 space-y-0">
-              {/* `leading-normal` replaces DialogTitle's `leading-none`, whose one-em line box crops
-                  descenders under `truncate`'s overflow clip. */}
-              <DialogTitle className="truncate basis-full sm:basis-0 sm:flex-1 sm:min-w-32 leading-normal">{title}</DialogTitle>
+            <DialogHeader className={cn(dialogHeaderBar, 'shrink-0 flex-row flex-wrap items-center justify-center gap-3 space-y-0')}>
+              <DialogTitle className={cn('truncate basis-full sm:basis-0 sm:flex-1 sm:min-w-32', dialogHeaderBarTitle)}>{title}</DialogTitle>
               {!loading && <CollapsingTabsList hug tabs={tabs} value={tab} aria-label="Sections" />}
               <div className="hidden sm:block sm:flex-1" />
             </DialogHeader>

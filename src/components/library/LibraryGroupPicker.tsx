@@ -41,7 +41,7 @@ export function LibraryGroupPicker({ name, groups, currentGroupId, initialPanel 
       >
         <ScrollArea className="max-h-[calc(var(--app-h,100dvh)-1rem-2px)]">
         <div className="flex max-h-[calc(var(--app-h,100dvh)-1rem-2px)] flex-col gap-4 p-6">
-        <DialogTitle className="shrink-0 pr-6">{panel === 'picker' ? 'Add To Group' : 'Create New Group'}</DialogTitle>
+        <DialogTitle className="shrink-0 pr-8">{panel === 'picker' ? 'Add To Group' : 'Create New Group'}</DialogTitle>
         <DialogDescription className="shrink-0 break-words [overflow-wrap:anywhere]">{name}</DialogDescription>
         {panel === 'picker' ? <>
           <SearchField ref={input} className="shrink-0" aria-label="Find a Group" placeholder="Find a Group" value={query} onChange={setQuery} />

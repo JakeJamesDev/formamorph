@@ -402,7 +402,7 @@ export function ChipOptionsDialog({ open, onOpenChange, trigger, token, vocab, r
         onClick={(event) => event.stopPropagation()}
         {...{ [HISTORY_OVERLAY_ATTRIBUTE]: '' }}
       >
-        <DialogHeader className="shrink-0 px-5 pb-3 pt-5">
+        <DialogHeader className="shrink-0 px-6 pb-3 pt-6">
           <DialogTitle>Chip Options</DialogTitle>
           <DialogDescription className="flex items-center gap-2 sm:justify-start justify-center">
             <span className="inline-block h-3 w-3 shrink-0 rounded-sm border" style={{ backgroundColor: color }} aria-hidden />

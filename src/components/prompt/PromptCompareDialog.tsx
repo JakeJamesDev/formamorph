@@ -2,10 +2,11 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { PromptDiffModeToggle, PromptDiffView, type PromptDiffMode } from '@/components/game/PromptDiff';
 import { TokenChip } from '@/components/prompt/TokenChip';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, dialogTitleRow } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SurfaceIdName } from '@/components/ui/surface';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
+import { cn } from '@/lib/utils';
 import { RESET_COMPARE_COPY } from './promptResetCompareCopy';
 
 /** `text` with each chip the vocabulary knows drawn as its pill. */
@@ -35,9 +36,9 @@ export function PromptCompareDialog({ open, onOpenChange, name, defaultText, tex
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent surface={surface} className="flex h-[85dvh] flex-col sm:max-w-[700px]">
-        <DialogHeader className="shrink-0">
-          <div className="flex items-center justify-between gap-3 pr-6">
-            <DialogTitle className="leading-normal">{RESET_COMPARE_COPY.compare.title(name)}</DialogTitle>
+        <DialogHeader className="shrink-0 space-y-3">
+          <div className={cn(dialogTitleRow, 'justify-between gap-3')}>
+            <DialogTitle>{RESET_COMPARE_COPY.compare.title(name)}</DialogTitle>
             <PromptDiffModeToggle mode={mode} onModeChange={setMode} />
           </div>
           <DialogDescription>

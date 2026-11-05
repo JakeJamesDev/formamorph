@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { toastError } from "@/lib/linkToast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogTitleControl, dialogTitleRow } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
@@ -631,11 +631,11 @@ export function RemoteWorldDetailsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined} className={cn("h-[85dvh] flex flex-col", collapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
         <DialogHeader className="shrink-0">
-          <div className="flex items-center gap-2">
+          <div className={cn(dialogTitleRow, 'gap-2')}>
             <DialogTitle className="min-w-0 flex-1">
               {/* `leading-normal` overrides DialogTitle's `leading-none`, whose one-em line box crops
-                  descenders under `truncate`'s overflow clip. Fits the row's existing height. */}
-              <span className="truncate leading-normal">{world?.name || `${KIND_LABELS[world ? kindOf(world) : 'world'].one} Details`}</span>
+                  descenders under `truncate`'s overflow clip. */}
+              <span className={cn('block truncate leading-normal', dialogTitleControl)}>{world?.name || `${KIND_LABELS[world ? kindOf(world) : 'world'].one} Details`}</span>
             </DialogTitle>
             {detailsAction && <div className="shrink-0">{detailsAction}</div>}
             {world && onTogglePin && capabilities.moderation && isStaff(currentUser) && (
