@@ -12,7 +12,7 @@ export function sendFunnelStep(step: FunnelStep): void {
   if (!HOSTED_AI_AVAILABLE || !API_BASE_URL || isFunnelStepSent(step)) return;
   markFunnelStepSent(step);
   try {
-    fetch(`${API_BASE_URL}/api/funnel/${step}`, { method: 'POST', credentials: 'omit', keepalive: true })
+    fetch(`${API_BASE_URL}/funnel/${step}`, { method: 'POST', credentials: 'omit', keepalive: true })
       .catch(() => { /* Dropped on purpose. */ });
   } catch { /* A synchronous refusal is dropped too. */ }
 }

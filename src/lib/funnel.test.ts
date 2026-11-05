@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const flags = vi.hoisted(() => ({ available: true }));
-vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://api.test' }));
+// The real base ends in `/api`, so the route must not add it again.
+vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://api.test/api' }));
 vi.mock('@/lib/hostedAi/hostedUrls', () => ({
   get HOSTED_AI_AVAILABLE() { return flags.available; },
 }));
