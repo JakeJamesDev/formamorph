@@ -27,6 +27,7 @@ import { withImportedWorldTools } from '@/lib/tools/worldTools';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
+import { PersonaIcon } from '@/lib/elementIcons';
 import { Hint, Meta } from "@/components/ui/typography";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
@@ -2249,15 +2250,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           placeholderOf={(entity) => <EntityPlaceholderArt id={entity.id} sourceId={entity.sourceId} name={entity.name} />}
           filter={entityPredicate}
           toolbar={(
-            <ToggleGroup
-              type="single"
-              value={entityFilter}
-              aria-label="Entity Filter"
-              onValueChange={(v) => { if (v) setEntityFilter(entityLibraryFilterCodec.parse(v)); }}
+            <Button
+              variant={entityFilter === 'personas' ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={entityFilter === 'personas'}
+              onClick={() => setEntityFilter(entityFilter === 'personas' ? 'all' : 'personas')}
             >
-              <ToggleGroupItem value="all">All</ToggleGroupItem>
-              <ToggleGroupItem value="personas">Personas</ToggleGroupItem>
-            </ToggleGroup>
+              <PersonaIcon className="h-4 w-4 mr-2" /> Personas
+            </Button>
           )}
           emptyState={isLoadingEntities ? undefined : entityPredicate ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">

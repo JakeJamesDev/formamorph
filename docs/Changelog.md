@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A Getting Ready bar shows whenever Formamorph takes a moment to start, and before the first launch's welcome animation.** On a fast computer it never appears.
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
   - **The Supporters list in Credits and on the Supporters page shows names in a grid under each tier's badge.** The grid fits as many columns as there is room for. Point at a name to see how long that person has supported.
+  - **The Entities library has one Personas button in place of the All and Personas switch.** Turn it on to show only your personas, and off to show everyone.
   - **Settings and Formaquestion Settings tabs now have icons, and on mobile a Sections list replaces the dropdown.** On a wide screen the highlight slides to the tab you pick. On mobile, tap **Sections** to see every tab in groups, as in the World Editor.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
