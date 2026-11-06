@@ -86,6 +86,14 @@ Each side panel collapses on its own to a thin rail of labeled tab icons. A thin
 - A dot appears only for a change made while that side is collapsed. A change while the panel is docked shows in the panel itself.
 - Dots live in memory for the game session. They aren't saved and don't persist.
 
+**Ticket rulings (spec session, 2026-11-06):**
+
+- T01-1: a rail lists exactly the tabs its docked panel lists, under the same conditions. For example, Stats hides when no stat shows, and Inventory hides when the world has none.
+- T01-2: the rail labels Logs as plain "Logs", with no count.
+- T01-3: ticket 01 renders the rail icons as real buttons with no action. Ticket 02 adds the action.
+- T01-4: the reading width is 56rem on desktop (md and up). Mobile keeps full width.
+- T01-5: Back and Music on the left rail are the docked row's icon buttons and tooltips, icon only, above a divider.
+
 **Modules:**
 
 - **Panel rail.** It renders a side's tab icons with labels, the open-tab highlight and the dots. The left rail also takes the Back and Music controls at its top. It is new, desktop only, and replaces the docked panel in the GameViewer row when that side is collapsed.
