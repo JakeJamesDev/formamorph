@@ -50,6 +50,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Picking a level on the Formamorph AI levels screen no longer stutters the first time.** Morphie's look for every level loads while you read, most visibly on mobile.
   - **Windows and popups on Android no longer sit under the status bar or the gesture bar.** This fixes the World Editor, full-screen editors, Edit Text, bottom sheets and windows that fill the screen. Popups stay clear when the keyboard opens.
   - **In the Windows desktop app, dialogs and the Avatar screen no longer slide under the window buttons.** Tall dialogs in a small window keep their close button clear. Avatar Customization and the supporter road start below the buttons.
+  - **An avatar with an image that can't load now still loads.** It shows without that one image instead of failing.
 - **🛠️ Developer tooling**
   - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
   - **Media, Stats and Traits tab tests now mount the panel, not the World Editor, and use half the test time.** 159 tests moved with coverage held; the editor view keeps the cross-tab cases.

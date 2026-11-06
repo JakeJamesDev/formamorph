@@ -4968,12 +4968,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### @pixiv/three-vrm-core@3.1.0
+### @pixiv/three-vrm-core@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -4997,12 +4997,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/three-vrm-materials-hdr-emissive-multiplier@3.1.0
+### @pixiv/three-vrm-materials-hdr-emissive-multiplier@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5026,12 +5026,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/three-vrm-materials-mtoon@3.1.0
+### @pixiv/three-vrm-materials-mtoon@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5055,12 +5055,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/three-vrm-materials-v0compat@3.1.0
+### @pixiv/three-vrm-materials-v0compat@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5084,12 +5084,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/three-vrm-node-constraint@3.1.0
+### @pixiv/three-vrm-node-constraint@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5113,12 +5113,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/three-vrm-springbone@3.1.0
+### @pixiv/three-vrm-springbone@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5142,12 +5142,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/three-vrm@3.1.0
+### @pixiv/three-vrm@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5171,12 +5171,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/types-vrm-0.0@3.1.0
+### @pixiv/types-vrm-0.0@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5200,12 +5200,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/types-vrmc-materials-hdr-emissive-multiplier-1.0@3.1.0
+### @pixiv/types-vrmc-materials-hdr-emissive-multiplier-1.0@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5229,12 +5229,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/types-vrmc-materials-mtoon-1.0@3.1.0
+### @pixiv/types-vrmc-materials-mtoon-1.0@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5258,12 +5258,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/types-vrmc-node-constraint-1.0@3.1.0
+### @pixiv/types-vrmc-node-constraint-1.0@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5287,12 +5287,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/types-vrmc-springbone-1.0@3.1.0
+### @pixiv/types-vrmc-springbone-1.0@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5316,12 +5316,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/types-vrmc-springbone-extended-collider-1.0@3.1.0
+### @pixiv/types-vrmc-springbone-extended-collider-1.0@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 
@@ -5345,12 +5345,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @pixiv/types-vrmc-vrm-1.0@3.1.0
+### @pixiv/types-vrmc-vrm-1.0@3.5.5
 
 - License: **MIT** · pixiv/three-vrm
 
 ```
-Copyright (c) 2019-2024 pixiv Inc.
+Copyright (c) 2019-2026 pixiv Inc.
 
 MIT License
 

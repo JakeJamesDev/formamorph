@@ -144,7 +144,7 @@ export const PATH_TRIGGERS = {
   // The pin load test runs the generator as a child process.
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
   // The notices test checks that each avatar file the notices name exists.
-  'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts', 'scripts/shipNotices.test.ts'],
+  'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts', 'scripts/shipNotices.test.ts', 'src/lib/vrmTextureFailure.test.ts'],
   'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'scripts/shipNotices.test.ts'],
   'build-assets/praline-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts', 'src/lib/avatarPublish.praline.test.ts', 'scripts/shipNotices.test.ts'],
   // The notices test reads this config and, through the real root, this map.
