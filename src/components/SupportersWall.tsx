@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { PATREON_PAGE_URL } from '@/components/PatreonSection';
 import { SupporterBadge } from '@/components/SupporterBadge';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/ui/button';
+import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
-import { SUPPORTER_NAME_STYLES } from '@/lib/supporterFlair';
-import { useTierName } from '@/lib/tierNames';
+import { SUPPORTER_NAME_STYLES, supporterTenureTip } from '@/lib/supporterFlair';
 import { cn } from '@/lib/utils';
 import { PatreonService, type Supporter } from '@/services/PatreonService';
 import type { SupporterTier } from '@/types';
@@ -22,8 +22,8 @@ type State =
 const SECTIONS: SupporterTier[] = ['supporter_top', 'supporter_plus', 'supporter'];
 
 interface SupportersWallProps {
-  /** Draws one name, so the host decides what selecting it does. */
-  renderName: (supporter: Supporter, className: string) => ReactNode;
+  /** Draws one name as a single element, so the host decides what selecting it does. */
+  renderName: (supporter: Supporter, className: string) => ReactElement;
   /** Where the rows come from. A dev route swaps in a canned wall. */
   load?: () => Promise<Supporter[]>;
 }
@@ -37,7 +37,6 @@ interface SupportersWallProps {
 export function SupportersWall({ renderName, load = PatreonService.getSupporters }: SupportersWallProps) {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const tierNameOf = useTierName();
 
   useEffect(() => {
     let canceled = false;
@@ -95,8 +94,10 @@ export function SupportersWall({ renderName, load = PatreonService.getSupporters
 
         return (
           <section key={tier} aria-labelledby={`supporters-${tier}`} className="space-y-3">
-            <h2 id={`supporters-${tier}`} className="text-title font-semibold">{tierNameOf(tier)}</h2>
-            <ul className="space-y-3">
+            <h2 id={`supporters-${tier}`}>
+              <SupporterBadge tier={tier} size="lg" />
+            </h2>
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-x-4 gap-y-3">
               {rows.map((row) => (
                 <li key={row.id} className="flex items-center gap-3 min-w-0">
                   <UserAvatar
@@ -105,8 +106,9 @@ export function SupportersWall({ renderName, load = PatreonService.getSupporters
                     supporter={{ tier: row.tier, since: row.since }}
                     size="md"
                   />
-                  {renderName(row, cn('truncate rounded-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset', SUPPORTER_NAME_STYLES[row.tier]))}
-                  <SupporterBadge tier={row.tier} since={row.since} beatKey={row.id} />
+                  <Tip tip={supporterTenureTip(row.since)} labelsChild={false}>
+                    {renderName(row, cn('truncate rounded-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset', SUPPORTER_NAME_STYLES[row.tier]))}
+                  </Tip>
                 </li>
               ))}
             </ul>

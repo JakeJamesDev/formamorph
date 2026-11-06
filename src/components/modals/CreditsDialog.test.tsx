@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { AgeGateProvider, useAgeGate } from '@/contexts/AgeGateContext';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import { acceptAgeGate } from '@/lib/ageGate';
@@ -159,6 +161,21 @@ describe('the Supporters tab', () => {
     acceptAgeGate();
     renderDialog();
     expect(screen.queryByRole('tab', { name: 'Supporters' })).toBeNull();
+  });
+
+  it('titles each tier with its badge and states the tenure on the name', async () => {
+    const since = new Date(Date.now() - 400 * 86_400_000).toISOString();
+    vi.mocked(fetch).mockResolvedValueOnce(json({ success: true, data: [{ ...wallRows[0], since }] }));
+    acceptAgeGate();
+    render(<TooltipProvider>{tree(true)}</TooltipProvider>);
+    selectTab('Supporters');
+
+    const name = await screen.findByRole('button', { name: 'Bo' });
+    expect(screen.getByRole('heading', { level: 2, name: 'Supporter' })).toBeInTheDocument();
+    expect(within(screen.getByRole('tabpanel')).getAllByText('Supporter')).toHaveLength(1);
+
+    await userEvent.hover(name);
+    expect(await screen.findByText('Supporting for 1 year, 1 month')).toBeInTheDocument();
   });
 
   it('opens the in-app profile when a name is selected', async () => {

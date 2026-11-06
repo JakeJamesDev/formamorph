@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Heart, HeartHandshake, HeartPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
-import { SUPPORTER_BADGE_STYLES, supporterTenure } from "@/lib/supporterFlair";
+import { SUPPORTER_BADGE_STYLES, supporterTenureTip } from "@/lib/supporterFlair";
 import { useTierName } from "@/lib/tierNames";
 import type { SupporterTier } from "@/types";
 
@@ -24,8 +24,15 @@ interface SupporterBadgeProps {
   since?: string | null;
   /** The account, for the once-per-page-load arrival beat. Absent means no arrival beat. */
   beatKey?: string | null;
+  /** `lg` is the heading size, for a group title. */
+  size?: 'sm' | 'lg';
   className?: string;
 }
+
+const SIZE_STYLES = {
+  sm: { pill: 'gap-1 px-2 py-0.5 text-[10px] leading-[14px]', icon: 'h-2.5 w-2.5' },
+  lg: { pill: 'gap-1.5 px-3 py-1 text-label', icon: 'h-3.5 w-3.5' },
+} as const;
 
 /**
  * A small pill saying somebody supports the project on Patreon.
@@ -36,7 +43,7 @@ interface SupporterBadgeProps {
  * The heart beats when the badge first appears for an account, then only on hover and focus (supporter-heart.css).
  * Mounting a badge for a key that already beat stays still, so a scrolled list does not replay it.
  */
-export function SupporterBadge({ tier, since, beatKey, className }: SupporterBadgeProps) {
+export function SupporterBadge({ tier, since, beatKey, size = 'sm', className }: SupporterBadgeProps) {
   const Icon = TIER_ICONS[tier];
   const tierNameOf = useTierName();
   // Read at mount, recorded in an effect: Strict Mode runs both twice and the first mount still beats.
@@ -45,14 +52,15 @@ export function SupporterBadge({ tier, since, beatKey, className }: SupporterBad
     if (beatKey) arrived.add(beatKey);
   }, [beatKey]);
 
-  const tenure = supporterTenure(since);
+  const tenureTip = supporterTenureTip(since);
 
   const badge = (
     // A tab stop, so a keyboard reaches the tenure tooltip and the beat; it opens nothing, so not a button.
     <span
       tabIndex={0}
       className={cn(
-        'supporter-badge inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] leading-[14px] font-semibold tracking-wide',
+        'supporter-badge inline-flex shrink-0 items-center rounded-full font-semibold tracking-wide',
+        SIZE_STYLES[size].pill,
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         SUPPORTER_BADGE_STYLES[tier],
         className
@@ -60,7 +68,7 @@ export function SupporterBadge({ tier, since, beatKey, className }: SupporterBad
     >
       <Icon
         aria-hidden="true"
-        className={cn('supporter-heart h-2.5 w-2.5', arriving && 'supporter-heart-arrive')}
+        className={cn('supporter-heart', SIZE_STYLES[size].icon, arriving && 'supporter-heart-arrive')}
         // The class comes off so a later hover starts the same animation again.
         onAnimationEnd={() => setArriving(false)}
       />
@@ -68,5 +76,5 @@ export function SupporterBadge({ tier, since, beatKey, className }: SupporterBad
     </span>
   );
 
-  return tenure ? <Tip tip={`Supporting for ${tenure}`} labelsChild={false}>{badge}</Tip> : badge;
+  return tenureTip ? <Tip tip={tenureTip} labelsChild={false}>{badge}</Tip> : badge;
 }

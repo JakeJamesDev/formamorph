@@ -29,6 +29,12 @@ export function supporterTenure(since: string | null | undefined, now: Date = ne
   return rest === 0 ? plural(years, 'year') : `${plural(years, 'year')}, ${plural(rest, 'month')}`;
 }
 
+/** The tenure tooltip text, or null when there is no tenure to show. */
+export function supporterTenureTip(since: string | null | undefined): string | null {
+  const tenure = supporterTenure(since);
+  return tenure ? `Supporting for ${tenure}` : null;
+}
+
 /** Name color per tier. */
 export const SUPPORTER_NAME_STYLES: Record<SupporterTier, string> = {
   supporter: 'text-supporter',

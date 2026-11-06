@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Full screen in the Windows desktop app now uses the whole width, with Exit Full Screen in More Actions.** The room held for the window buttons goes away in full screen, so the layout matches the browser. **F11** still works.
   - **A Getting Ready bar shows whenever Formamorph takes a moment to start, and before the first launch's welcome animation.** On a fast computer it never appears.
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
+  - **The Supporters list in Credits and on the Supporters page shows names in a grid under each tier's badge.** The grid fits as many columns as there is room for. Point at a name to see how long that person has supported.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
