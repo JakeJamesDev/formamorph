@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readNarration, readEditedNarration, selectVisitorAdditions, splitParticipants, presentSceneEntities } from './narrationReading';
+import { stripQuotedSpeech } from '@/lib/entityMatch';
 import type { Entity, GameLocation } from '@/types';
 
 const ent = (id: string, name: string): Entity => ({ id, name });
@@ -37,6 +38,12 @@ describe('readNarration', () => {
       'She steps forward again and pats your cheek. "Come inside."',
     ].join('\n\n');
     expect(read(narration, { entities: [MAREN, SERANA, ent('e3', 'Lyria')] }).participants).toEqual(['Lyria']);
+  });
+
+  it('counts an entity the prose calls by its full Stranger Name', () => {
+    const hooded = { ...SERANA, strangerName: 'a hooded woman' };
+    expect(read('A hooded woman waits at the door.', { entities: [MAREN, hooded] }).participants)
+      .toEqual(['Professor Serana']);
   });
 
   it('confirms a director candidate loosely and an ad-hoc one strictly', () => {
@@ -106,6 +113,16 @@ describe('selectVisitorAdditions', () => {
 
   it('refuses a partial name, so a loose match cannot teleport someone in', () => {
     expect(visitors('Maren steps onto the boards.')).toEqual([]);
+  });
+
+  it('counts a full Stranger Name as a full-name hit, and one word of it as none', () => {
+    const hooded = { ...MAREN, strangerName: 'a hooded woman' };
+    const pull = (prose: string) => selectVisitorAdditions({
+      prose: stripQuotedSpeech(prose), entities: [hooded], allEntities: [hooded], location: here, locations, presentIds: [], discovered: [], turnId: 't1',
+    });
+    expect(pull('A hooded woman steps onto the boards.').map((d) => d.entity.name)).toEqual(['Maren Vosk']);
+    expect(pull('The woman steps onto the boards, hooded against the rain.')).toEqual([]);
+    expect(pull('The deckhand mutters, "a hooded woman steps onto the boards."')).toEqual([]);
   });
 
   it('never adds someone already anchored here', () => {

@@ -172,6 +172,7 @@ const resolveEntity = (entity: Entity, placeholders: TriggerWorld['placeholders'
   ...entity,
   name: resolveLensText(entity.name, placeholders, pins),
   aliases: entity.aliases?.map((a) => resolveLensText(a, placeholders, pins)),
+  ...(entity.strangerName?.trim() && { strangerName: resolveLensText(entity.strangerName, placeholders, pins) }),
 });
 
 /** Where one specific keyword of `entry` hits, under that entry's own flags. Probing through `matchHits`

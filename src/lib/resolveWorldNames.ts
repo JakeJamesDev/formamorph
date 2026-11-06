@@ -38,6 +38,15 @@ export function resolveEntityNames(entities: Entity[], resolve: (text: string, e
   });
 }
 
+/** Each entity's Stranger Name resolved with that entity as its owner, so the prose matcher reads the form
+ *  the player sees. A blank one stays as authored. */
+export function resolveStrangerNames(entities: Entity[], resolve: (entity: Entity, text: string) => string): Entity[] {
+  return mapPreservingIdentity(entities, (e) => {
+    if (!e.strangerName?.trim() || !hasPlaceholders(e.strangerName)) return e;
+    return { ...e, strangerName: resolve(e, e.strangerName) };
+  });
+}
+
 /** Resolves one entity's own text with that entity as the Entity Name. */
 export type ResolveEntityText = (entity: Entity, text: string) => string;
 

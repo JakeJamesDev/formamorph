@@ -56,8 +56,9 @@ export interface TextSpan {
   text: string;
 }
 
-/** How a detection was earned: the whole written name, one distinctive word of a multi-word name, or an alias. */
-export type MatchVia = 'name' | 'partial' | 'alias';
+/** How a detection was earned: the whole written name, one distinctive word of a multi-word name, an alias,
+ *  or the whole Stranger Name. */
+export type MatchVia = 'name' | 'partial' | 'alias' | 'stranger';
 
 /** One name's detection with the evidence behind it. */
 export interface NameMatch {
@@ -253,12 +254,26 @@ export function stripQuotedSpeech(text: string): string {
 export const isEverydayName = (name: string): boolean =>
   name.trim().split(/\s+/).every((w) => COMMON_WORDS.has(w.toLowerCase()));
 
+const LEADING_ARTICLE_RE = /^(?:a|an|the)(?:\s+|$)/i;
+
+/** Where the whole Stranger Name occurs in `text`, never a word of it alone. The leading article is dropped
+ *  on the name's side, so "a hooded woman" is also written "the hooded woman". */
+function strangerSpans(text: string, strangerName: string | undefined, requireCapital: boolean): TextSpan[] {
+  const bare = strangerName?.trim().replace(LEADING_ARTICLE_RE, '').trim();
+  if (!bare) return [];
+  const words = bare.toLowerCase().split(/\s+/);
+  return words.length === 1
+    ? wordSpans(text, bare, { capitalizedOnly: requireCapital })
+    : inOrderSpans(text, words);
+}
+
 /**
  * The defined entities that appear in `text`, each with the written form that matched and where it hit.
- * An entity counts when its **name** matches (via `findNameMatches`) OR any of its **aliases** matches
- * (case-sensitive, word-bounded). Name hits come first in name order, alias-only hits follow in entity
- * order; one entry per canonical name. Two entities laying claim to the same words are both reported,
- * spans and all — that overlap is the evidence a collision leaves.
+ * An entity counts when its **name** matches (via `findNameMatches`), its whole **Stranger Name** matches,
+ * OR any of its **aliases** matches (case-sensitive, word-bounded). Name hits come first in name order,
+ * Stranger Name and alias-only hits follow in entity order; one entry per canonical name. Two entities
+ * laying claim to the same words are both reported, spans and all — that overlap is the evidence a
+ * collision leaves.
  */
 export function findEntityMatches(
   text: string,
@@ -268,19 +283,25 @@ export function findEntityMatches(
   const nameHits = new Map<string, NameMatch>();
   for (const hit of findNameMatches(text, entities.map((e) => e.name), opts)) nameHits.set(hit.name, hit);
   const byName: EntityMatch[] = [];
-  const byAlias: EntityMatch[] = [];
+  const byOtherForm: EntityMatch[] = [];
   for (const entity of entities) {
     const hit = nameHits.get(entity.name);
     if (hit) {
       byName.push({ ...hit, entityId: entity.id, name: entity.name });
       continue;
     }
+    const strangerName = entity.strangerName?.trim();
+    const stranger = strangerSpans(text, strangerName, opts?.requireCapital ?? true);
+    if (strangerName && stranger.length) {
+      byOtherForm.push({ entityId: entity.id, name: entity.name, matched: strangerName, via: 'stranger', spans: stranger });
+      continue;
+    }
     const alias = strongestAliasMatch(text, entity.aliases);
     if (alias) {
-      byAlias.push({ entityId: entity.id, name: entity.name, matched: alias.alias, via: 'alias', spans: alias.spans });
+      byOtherForm.push({ entityId: entity.id, name: entity.name, matched: alias.alias, via: 'alias', spans: alias.spans });
     }
   }
-  return [...byName, ...byAlias];
+  return [...byName, ...byOtherForm];
 }
 
 /**

@@ -174,6 +174,8 @@ Give an entity a **Stranger Name** to hide who it is until the player meets it. 
 - The entity's popup in the **Entities** tab shows the **Stranger Description** in place of the **Player-Facing Description**. Leave the Stranger Description blank to show no description.
 - The Map doesn't show the entity. The Help window shows it only under that other name, with no description.
 
+**The story's use of the Stranger Name brings the entity into the scene.** When the narration writes the whole Stranger Name, such as "a hooded woman" or "the hooded woman", the entity takes part in the turn, as it does for its Name or an alias. One word of it never counts on its own, and a Stranger Name inside quoted dialogue doesn't count.
+
 **Entities the player has already met.** The player has met an entity from the start when it has no Stranger Name, or when either of these is true:
 
 - It has a relationship with the persona, in either direction.

@@ -36,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Take Me There and tutorial steps into a collapsed side panel now open that tab's drawer.** A request for a tab on a docked right panel now selects the tab too.
   - **In game on desktop, pick how wide the story is in its ⋯ menu.** Full Width and Full Height fill the space a collapsed panel leaves, and Reading Width keeps it centered. Each device remembers its choice.
   - **In game on desktop, a dot on the collapsed Stats, Traits or Inventory icon shows that tab changed.** The dot stays until you open that tab.
+  - **A character joins the scene when the story uses their full Stranger Name.** One word of the Stranger Name never counts on its own.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.

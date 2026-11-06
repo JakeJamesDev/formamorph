@@ -5,7 +5,7 @@ import { phValues } from '@/test/placeholderValues';
 import { buildStatContext } from './statContext';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
-  resolveDictionaryEntryNames, resolveEntityTexts,
+  resolveDictionaryEntryNames, resolveEntityTexts, resolveStrangerNames,
 } from './resolveWorldNames';
 
 // Real defs + tokens rather than a stub replacer, so these also pin the codec the editor writes.
@@ -31,6 +31,16 @@ describe('resolveWorldNames', () => {
     );
     expect(e.name).toBe('Keeper Vera');
     expect(e.aliases).toEqual(['barkeep', 'the Sedge keeper']);
+  });
+
+  it('resolves a Stranger Name that holds a chip, and leaves a blank or plain one as it is', () => {
+    const chipped = entity({ id: 'a', strangerName: `the ${tok(TOWN.id)} keeper` });
+    const plain = entity({ id: 'b', strangerName: 'a hooded woman' });
+    const blank = entity({ id: 'c', strangerName: ' ' });
+    const out = resolveStrangerNames([chipped, plain, blank], (_e, text) => resolve(text));
+    expect(out[0].strangerName).toBe('the Sedge keeper');
+    expect(out[1]).toBe(plain);
+    expect(out[2]).toBe(blank);
   });
 
   it('resolves a location name, leaving the rest of the record alone', () => {

@@ -38,6 +38,7 @@ const VIA_LABEL: Record<EntityMatch['via'], string> = {
   name: 'Name',
   partial: 'Part of Name',
   alias: 'Alias',
+  stranger: 'Stranger Name',
 };
 
 /** Which of the prompt's two lorebook blocks a rendered block is, as the prompt itself names them. */

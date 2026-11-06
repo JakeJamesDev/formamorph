@@ -306,6 +306,54 @@ describe('findEntityMatches — per-entity evidence', () => {
   });
 });
 
+describe('findEntityMatches — Stranger Name', () => {
+  const SYLVIE: Entity = { id: 'sylvie', name: 'Sylvie Thornwhistle', strangerName: 'a hooded woman' };
+  const ELDER: Entity = { id: 'elder', name: 'Orrin Vale', strangerName: 'the ashen elder' };
+
+  it('names the entity when the prose holds the full Stranger Name', () => {
+    expect(findEntityNames('A hooded woman waits by the gate.', [SYLVIE])).toEqual(['Sylvie Thornwhistle']);
+    const [hit] = findEntityMatches('A hooded woman waits by the gate.', [SYLVIE]);
+    expect(hit).toMatchObject({ via: 'stranger', matched: 'a hooded woman', entityId: 'sylvie' });
+  });
+
+  it('reads the Stranger Name past its leading article', () => {
+    expect(findEntityNames('You follow the hooded woman inside.', [SYLVIE])).toEqual(['Sylvie Thornwhistle']);
+    expect(findEntityNames('You follow hooded women inside.', [SYLVIE])).toEqual(['Sylvie Thornwhistle']);
+  });
+
+  it('never matches one word of a multi-word Stranger Name', () => {
+    // "ashen" and "elder" are both on the page, but never as the phrase.
+    const prose = 'An elder of the ashen tribe speaks. The tribe is ashen with grief, and an elder nods.';
+    expect(findEntityNames(prose, [ELDER])).toEqual([]);
+    expect(findEntityNames('Ashen faces turn toward you.', [ELDER])).toEqual([]);
+    expect(findEntityNames('The woman is hooded.', [SYLVIE])).toEqual([]);
+  });
+
+  it('matches a one-word Stranger Name only with a capital', () => {
+    const shade: Entity = { id: 'shade', name: 'Kael', strangerName: 'the Shade' };
+    expect(findEntityNames('The Shade steps forward.', [shade])).toEqual(['Kael']);
+    expect(findEntityNames('A shade of grey falls across the floor.', [shade])).toEqual([]);
+  });
+
+  it('names no one from a Stranger Name inside quoted speech', () => {
+    const prose = stripQuotedSpeech('The guard mutters, "I saw a hooded woman at the gate."');
+    expect(findEntityNames(prose, [SYLVIE])).toEqual([]);
+  });
+
+  it('ignores a blank Stranger Name and a bare article', () => {
+    const blank: Entity = { id: 'b', name: 'Bram', strangerName: '  ' };
+    const article: Entity = { id: 'a', name: 'Ada', strangerName: 'the' };
+    expect(findEntityNames('The gate opens. A guard waits.', [blank, article])).toEqual([]);
+  });
+
+  it('keeps the name first and aliases on their own case-sensitive rule', () => {
+    const both: Entity = { ...SYLVIE, aliases: ['Matron'] };
+    expect(findEntityMatches('Sylvie Thornwhistle nods.', [both])[0].via).toBe('name');
+    expect(findEntityNames('the matron nods.', [both])).toEqual([]);
+    expect(findEntityMatches('The Matron nods.', [both])[0].via).toBe('alias');
+  });
+});
+
 describe('sameCharacterName (conservative de-dupe)', () => {
   it('is true for equal names (case/space-insensitive)', () => {
     expect(sameCharacterName('Mira', ' mira ')).toBe(true);
