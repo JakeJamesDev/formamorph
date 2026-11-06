@@ -163,3 +163,143 @@ describe('the collapsed state', () => {
     noRails();
   });
 });
+
+describe('the drawer', () => {
+  const icon = (railName: 'Story' | 'Status', name: string) => within(rail(railName)!).getByRole('button', { name });
+  const selectedTab = (list: 'Story' | 'Status') =>
+    within(screen.getByRole('tablist', { name: list })).getByRole('tab', { selected: true });
+  const collapse = async (side: 'left' | 'right') => fireEvent.click(await strip(side, 'Collapse Panel'));
+
+  it('opens each left rail icon on its tab, pressed, and switches tabs without closing', async () => {
+    renderGameViewer(harborWorld());
+    await collapse('left');
+    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+
+    fireEvent.click(icon('Story', 'Notes'));
+    expect(selectedTab('Story')).toHaveAccessibleName('Notes');
+    expect(icon('Story', 'Notes')).toHaveAttribute('aria-pressed', 'true');
+    // Back and Music stay on the rail; the drawer shows the panel without them.
+    expect(screen.getAllByRole('button', { name: 'Exit to Main Menu' })).toHaveLength(1);
+
+    for (const name of ['Entities', 'Memory', 'Logs']) {
+      fireEvent.click(icon('Story', name));
+      expect(selectedTab('Story')).toHaveAccessibleName(new RegExp(`^${name}`));
+      expect(icon('Story', name)).toHaveAttribute('aria-pressed', 'true');
+      expect(icon('Story', 'Notes')).toHaveAttribute('aria-pressed', 'false');
+    }
+  });
+
+  it('opens each right rail icon on its tab', async () => {
+    renderGameViewer(harborWorld({ stats: [vigor] }));
+    await collapse('right');
+    for (const name of ['Stats', 'Traits', 'Location']) {
+      fireEvent.click(icon('Status', name));
+      expect(selectedTab('Status')).toHaveAccessibleName(name);
+      expect(icon('Status', name)).toHaveAttribute('aria-pressed', 'true');
+    }
+  });
+
+  it("moves the rail highlight with the drawer's own tab strip", async () => {
+    const user = userEvent.setup();
+    renderGameViewer(harborWorld());
+    await collapse('left');
+    fireEvent.click(icon('Story', 'Notes'));
+
+    await user.click(within(screen.getByRole('tablist', { name: 'Story' })).getByRole('tab', { name: 'Memory' }));
+    expect(selectedTab('Story')).toHaveAccessibleName('Memory');
+    expect(icon('Story', 'Memory')).toHaveAttribute('aria-pressed', 'true');
+    expect(icon('Story', 'Notes')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('closes on a second click on its icon, on Escape, and on a click on the narration', async () => {
+    const user = userEvent.setup();
+    renderGameViewer(harborWorld());
+    await collapse('left');
+    const isOpen = () => screen.queryByRole('tablist', { name: 'Story' }) !== null;
+
+    await user.click(icon('Story', 'Notes'));
+    await user.click(icon('Story', 'Notes'));
+    expect(isOpen()).toBe(false);
+    expect(icon('Story', 'Notes')).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(icon('Story', 'Notes'));
+    await user.keyboard('{Escape}');
+    expect(isOpen()).toBe(false);
+
+    await user.click(icon('Story', 'Notes'));
+    // A click inside the drawer keeps it open.
+    await user.click(within(screen.getByRole('tablist', { name: 'Story' })).getByRole('tab', { name: 'Memory' }));
+    expect(isOpen()).toBe(true);
+    await user.click(screen.getByRole('textbox'));
+    expect(isOpen()).toBe(false);
+  });
+
+  it('stays open under a dialog opened from it; Escape closes the dialog first, then the drawer', async () => {
+    const user = userEvent.setup();
+    renderGameViewer(harborWorld());
+    await collapse('right');
+    await user.click(icon('Status', 'Location'));
+
+    await user.click(screen.getByRole('button', { name: /Current Location: Harbor/ }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(dialog);
+    // The modal hides the page behind it from assistive technology; the drawer is still there.
+    expect(screen.getByRole('tablist', { name: 'Status', hidden: true })).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('tablist', { name: 'Status' })).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('tablist', { name: 'Status' })).toBeNull();
+  });
+
+  it('shows one drawer at a time', async () => {
+    const user = userEvent.setup();
+    renderGameViewer(harborWorld());
+    await collapse('left');
+    await collapse('right');
+
+    await user.click(icon('Story', 'Notes'));
+    await user.click(icon('Status', 'Traits'));
+    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+    expect(selectedTab('Status')).toHaveAccessibleName('Traits');
+    expect(icon('Story', 'Notes')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('stays closed after a trip to the mobile layout', async () => {
+    const user = userEvent.setup();
+    renderGameViewer(harborWorld());
+    await collapse('left');
+    fireEvent.click(icon('Story', 'Notes'));
+
+    // A tab change inside the drawer re-renders the view in the mobile layout, and a mobile tab back again.
+    device.mobile = true;
+    await user.click(within(screen.getByRole('tablist', { name: 'Story' })).getByRole('tab', { name: 'Memory' }));
+    const gameTab = await screen.findByRole('button', { name: 'Game' });
+    device.mobile = false;
+    fireEvent.click(gameTab);
+
+    expect(await strip('left', 'Dock Panel')).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+    expect(icon('Story', 'Memory')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it("docks from its strip onto the drawer's tab, on each side", async () => {
+    const user = userEvent.setup();
+    renderGameViewer(harborWorld({ stats: [vigor] }));
+    await collapse('left');
+    await collapse('right');
+
+    await user.click(icon('Story', 'Memory'));
+    await user.click(await strip('left', 'Dock Panel'));
+    expect(rail('Story')).toBeNull();
+    expect(selectedTab('Story')).toHaveAccessibleName('Memory');
+
+    await user.click(icon('Status', 'Location'));
+    await user.click(await strip('right', 'Dock Panel'));
+    expect(rail('Status')).toBeNull();
+    expect(selectedTab('Status')).toHaveAccessibleName('Location');
+    expect(screen.getAllByRole('tablist', { name: 'Status' })).toHaveLength(1);
+  });
+});

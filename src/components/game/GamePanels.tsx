@@ -72,7 +72,7 @@ import { MemoryPanel } from './MemoryPanel';
 import { SceneImagePanel } from './SceneImagePanel';
 import { ScenePlate } from './ScenePlate';
 import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from './panelTabs';
-import { PanelRail, type RailTab } from './PanelRail';
+import { PanelRail, type PanelPlacement, type RailTab } from './PanelRail';
 import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -123,7 +123,13 @@ type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' }
 const PLAYED_SIDE: Pick<Entity, 'id' | 'name'> = { id: '__you', name: 'You' };
 
 
-export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
+export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrangerClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey, initialTab, onTabChange, placement = 'docked' }: {
+  /** `drawer`: fills the side's drawer instead of a quarter of the row. */
+  placement?: PanelPlacement;
+  /** The tab a fresh mount opens on when no request names one. */
+  initialTab?: string;
+  /** Each tab the panel shows, as it changes. */
+  onTabChange?: (tab: string) => void;
   /** Landscape only: controls at the start of the top row. */
   rowStart?: React.ReactNode;
   /** Landscape only: controls beside the top row's Entity View toggle. */
@@ -197,9 +203,10 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   const reducedMotion = usePrefersReducedMotion();
   const entityViewSlide = useSlidePresence(showEntityView, ENTITY_VIEW_SLIDE_MS, reducedMotion);
   const slideTransition = (property: string) => (reducedMotion ? 'none' : `${property} ${ENTITY_VIEW_SLIDE_MS}ms cubic-bezier(0.2, 0, 0, 1)`);
-  const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
+  const [leftTab, setLeftTab] = React.useState(requestedTab ?? initialTab ?? (isMobile ? "model" : "notes"));
   const landingKey = useRequestKey(requestKey);
   React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, landingKey]);
+  React.useEffect(() => { onTabChange?.(leftTab); }, [leftTab, onTabChange]);
 
   // The shared pick when it has something to show, else the played entity, else the first showable scene
   // entity. The stat panel's (None) and a pick with nothing to show both leave the view on that fallback.
@@ -305,7 +312,10 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   ) : null;
 
   return (
-  <Card className="w-full md:w-1/4 md:shrink-0 md:mr-1 grow md:grow-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
+  <Card className={cn(
+    'min-h-0 flex flex-col bg-background/60 border-border overflow-hidden',
+    placement === 'drawer' ? 'w-full grow' : 'w-full md:w-1/4 md:shrink-0 md:mr-1 grow md:grow-0',
+  )}>
     <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
       {/* Landscape: the top row above the entity view, with its show/hide toggle at the end */}
       {!isMobile && (
@@ -1286,10 +1296,16 @@ const entityItems = (options: StatPanelOption[]) =>
 
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
-  inventorySettle, collapsed,
+  inventorySettle, collapsed, placement = 'docked', railOpen, onRailOpen, onRailClose,
 }: {
   /** Desktop: shows the panel's rail in place of the panel. */
   collapsed?: boolean;
+  /** `drawer`: fills the side's drawer instead of the right column. */
+  placement?: PanelPlacement;
+  /** The rail's drawer is open, on the tab the panel shows. */
+  railOpen?: boolean;
+  onRailOpen?: (tab: string) => void;
+  onRailClose?: () => void;
   onLocationClick: () => void;
   /** The live game's equip check and inventory settle for a panel write. Absent ⇒ the operations alone land. */
   inventorySettle?: InventoryPanelSettle;
@@ -1525,12 +1541,21 @@ export const RightPanel = ({
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
 
-  if (collapsed) return <PanelRail side="right" label="Status" tabs={statusTabs} />;
+  if (collapsed) {
+    return (
+      <PanelRail side="right" label="Status" tabs={statusTabs} openTab={railOpen ? shownTab : undefined} onOpen={onRailOpen} onClose={onRailClose} />
+    );
+  }
 
+  const inDrawer = placement === 'drawer';
   return (
-    <div className="relative w-full md:w-1/4 md:min-w-[var(--game-right-column-min)] md:shrink-0 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full md:pt-[calc(var(--header-line)-1rem)]">
+    <div className={cn(
+      'relative w-full min-h-0 flex flex-col',
+      !inDrawer && 'md:w-1/4 md:min-w-[var(--game-right-column-min)] md:shrink-0 md:ml-1 grow md:grow-0 md:h-full md:pt-[calc(var(--header-line)-1rem)]',
+      inDrawer && 'grow',
+    )}>
     {/* The empty strip above the column, from the window's top edge. */}
-    <div aria-hidden className="game-right-column-drag hidden md:block absolute inset-x-0 -top-4 h-[var(--header-line)] pointer-events-none" />
+    {!inDrawer && <div aria-hidden className="game-right-column-drag hidden md:block absolute inset-x-0 -top-4 h-[var(--header-line)] pointer-events-none" />}
     <Card className="w-full grow min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">

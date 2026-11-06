@@ -276,7 +276,7 @@ import {
   RightPanel,
   type CommandChoices,
 } from "../components/game/GamePanels";
-import { EdgeToggle, PanelRail } from "@/components/game/PanelRail";
+import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_PROPS, PanelDrawer, PanelRail, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
 import { LEFT_PANEL_TABS } from "@/components/game/panelTabs";
 import { useGameLeftCollapsed, useGameRightCollapsed } from "@/lib/gamePanelPrefs";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
@@ -854,6 +854,7 @@ const GameViewer = ({
     openingAction: openingTurnAction,
     setOpeningAction: setOpeningTurnAction,
     itemCopies: heldItemCopies,
+    setActiveTab: setRightTab,
   } = useGameplay();
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -1403,6 +1404,16 @@ const GameViewer = ({
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [leftCollapsed, setLeftCollapsed] = useGameLeftCollapsed();
   const [rightCollapsed, setRightCollapsed] = useGameRightCollapsed();
+  // The side whose drawer is open; its tab is the left panel's tab below, or the right panel's active tab.
+  const [drawerSide, setDrawerSide] = useState<PanelSide | null>(null);
+  const [leftTab, setLeftTab] = useState<string | undefined>(undefined);
+  /** Opens a collapsed side's drawer on one of its tabs, closing the other side's. */
+  const openDrawer = useCallback((side: PanelSide, tab: string) => {
+    if (side === 'left') setLeftTab(tab);
+    else setRightTab(tab);
+    setDrawerSide(side);
+  }, [setRightTab]);
+  const closeDrawer = useCallback(() => setDrawerSide(null), []);
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
   const [lastPromptChars, setLastPromptChars] = useState(0);
   const [suggestedLocation, setSuggestedLocation] = useState<GameLocation | null>(null);
@@ -6018,10 +6029,12 @@ const GameViewer = ({
       </Button>
     </Tip>
   );
-  const leftPanel = (
+  const leftPanelAt = (placement: PanelPlacement) => (
     <LeftPanel
-      rowStart={backButton}
-      rowEnd={musicButton}
+      placement={placement}
+      // In the drawer, Back and Music stay on the rail.
+      rowStart={placement === 'docked' ? backButton : undefined}
+      rowEnd={placement === 'docked' ? musicButton : undefined}
       // Runtime-discovered characters must be in this list or they render as disabled, portrait-less
       // rows the player can't open — and the Discovered badge/remove control never resolves them.
       entities={allEntities}
@@ -6034,10 +6047,14 @@ const GameViewer = ({
       }}
       onRegenerateMemory={regenerateMemory}
       narrationPrompt={systemPrompt}
-      requestedTab={surfaceNav.tab('gameViewer')}
+      requestedTab={placement === 'drawer' ? leftTab : surfaceNav.tab('gameViewer')}
       requestKey={surfaceNav.key}
+      // Docking after the drawer, or after a collapse, opens on the tab last shown. Mobile keeps its own default.
+      initialTab={isMobile ? undefined : leftTab}
+      onTabChange={setLeftTab}
     />
   );
+  const leftPanel = leftPanelAt('docked');
 
   // The scene images belonging to the page being viewed (one turn per page).
   const viewedTurn = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "");
@@ -6091,10 +6108,14 @@ const GameViewer = ({
     />
   );
 
-  const rightPanel = (
+  const rightPanelAt = (placement: PanelPlacement) => (
     <RightPanel
+      placement={placement}
       // The panel draws its own rail: only it knows which tabs it shows.
-      collapsed={!isMobile && rightCollapsed}
+      collapsed={placement === 'docked' && !isMobile && rightCollapsed}
+      railOpen={drawerSide === 'right'}
+      onRailOpen={(tab) => openDrawer('right', tab)}
+      onRailClose={closeDrawer}
       onLocationClick={() => setIsLocationModalOpen(true)}
       onToggleTrait={toggleTrait}
       inventorySettle={inventorySettle}
@@ -6105,6 +6126,29 @@ const GameViewer = ({
       sceneImageJob={sceneImageJob}
     />
   );
+  const rightPanel = rightPanelAt('docked');
+
+  // Only a collapsed desktop side has a drawer.
+  const openDrawerSide = !isMobile && (drawerSide === 'left' ? leftCollapsed : drawerSide === 'right' && rightCollapsed) ? drawerSide : null;
+  // A side that docks, or a switch to mobile, closes its drawer for good, so a later collapse opens none.
+  if (drawerSide && !openDrawerSide) setDrawerSide(null);
+  const sideDrawer = (side: PanelSide) => openDrawerSide === side && (
+    <PanelDrawer
+      side={side}
+      onClose={closeDrawer}
+      onDock={() => {
+        setDrawerSide(null);
+        if (side === 'left') setLeftCollapsed(false);
+        else setRightCollapsed(false);
+      }}
+    >
+      {side === 'left' ? leftPanelAt('drawer') : rightPanelAt('drawer')}
+    </PanelDrawer>
+  );
+  const sideStrip = (side: PanelSide, collapsed: boolean, setCollapsed: (update: (c: boolean) => boolean) => void) =>
+    openDrawerSide === side
+      ? <EdgeToggleSpacer />
+      : <EdgeToggle side={side} collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />;
 
   // The location whose background the scene shows — the paged turn's when browsing history, else live.
   const viewLocation = isViewingPast
@@ -6165,6 +6209,7 @@ const GameViewer = ({
     <div
       className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : "p-4"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
       data-game-raised-panels={!isMobile && !uiHidden ? "" : undefined}
+      {...GAME_VIEW_PROPS}
     >
       {locationBackground && (
         <LocationBackdrop
@@ -6210,15 +6255,29 @@ const GameViewer = ({
       ) : (
         <>
           {leftCollapsed
-            ? <PanelRail side="left" label="Story" tabs={LEFT_PANEL_TABS} top={<>{backButton}{musicButton}</>} />
+            ? (
+              <>
+                <PanelRail
+                  side="left"
+                  label="Story"
+                  tabs={LEFT_PANEL_TABS}
+                  top={<>{backButton}{musicButton}</>}
+                  openTab={openDrawerSide === 'left' ? leftTab : undefined}
+                  onOpen={(tab) => openDrawer('left', tab)}
+                  onClose={closeDrawer}
+                />
+                {sideDrawer('left')}
+              </>
+            )
             : leftPanel}
-          <EdgeToggle side="left" collapsed={leftCollapsed} onToggle={() => setLeftCollapsed((c) => !c)} />
+          {sideStrip('left', leftCollapsed, setLeftCollapsed)}
           {/* The narration keeps its reading width, centered between the sides. */}
           <div className="flex min-h-0 min-w-0 basis-0 flex-grow justify-center">
             {middlePanel}
           </div>
-          <EdgeToggle side="right" collapsed={rightCollapsed} onToggle={() => setRightCollapsed((c) => !c)} />
+          {sideStrip('right', rightCollapsed, setRightCollapsed)}
           {rightPanel}
+          {sideDrawer('right')}
         </>
       ))}
 
@@ -6227,7 +6286,7 @@ const GameViewer = ({
       {!isMobile && (
       <Tip tip={uiHidden ? "Show UI" : "Hide UI"}>
         <Button
-          onClick={() => setUiHidden((h) => !h)}
+          onClick={() => { setUiHidden((h) => !h); closeDrawer(); }}
           className={`absolute bottom-2 left-2 z-30 flex items-center justify-center rounded-full w-10 h-10 p-0 transition-opacity ${
             uiHidden ? "opacity-0 hover:opacity-100" : "opacity-100"
           }`}
