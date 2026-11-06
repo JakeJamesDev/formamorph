@@ -80,6 +80,8 @@ The work runs in steps, each with a stop gate. The owner can stop after any step
 | Q53 | A kept view test may seed a count through its real store and play only the turn its assertion needs, with assertions byte-identical. One test keeps the real path from zero, and breaking that path must turn it red. |
 | Q54 | Q52 also covers `MainMenu.tsx`, and Q50 covers the Q5 code a moved test still calls, with no mutation run when the module it lands on is outside Q5. A test that exists to check per-key typing keeps real typing. A Q5 suite that stays unchanged needs no mutation run, so `MainMenu.ageGate` and `sessionSync` stay put. |
 | Q55 | Step 4 passed its stop gate on 2026-11-06: 464 s of view-move body time fell to 215 s, and no proof lost anything. The step 4 feature pause ends here (Q20). |
+| Q56 | A lazy production import passes Q15 only when the player sees no change in the common path. For the date picker, the common path is a cursor hover before the click, so it preloads on pointer-enter and focus. The ticket reports the chunk's cold load time (web and desktop) and whether a hovered open shows a blank. The owner rules on those numbers. |
+| Q57 | Ticket 12 measures before and after with three alternating runs each on a fixed sample, at 4 workers, with CPU recorded. The sample includes the files each change targets. Close-spec's Reference Run gives the whole-suite numbers. |
 
 ## User Stories
 
