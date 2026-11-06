@@ -1,3 +1,5 @@
+import { Database, MessageSquareText, Monitor, Plug, ScrollText, Wrench } from 'lucide-react';
+
 /** The top-level Settings tabs, in order. Single source of truth: `SettingsModal`'s TabsList renders from
  *  this, and the dev-router coverage ledger (`DEV_MODAL_TABS.settings`) is guarded against it in
  *  `devRouter.test.ts` — so a tab added or renamed here without covering it there fails the test.
@@ -6,15 +8,15 @@
  *  the code for it lives: what you see or hear, what the AI produces, what it connects to, and the
  *  housekeeping that touches stored data. */
 export const SETTINGS_TABS = [
-  { value: 'display', label: 'Display' },
-  { value: 'output', label: 'Output' },
+  { value: 'display', label: 'Display', icon: Monitor, group: 'play' },
+  { value: 'output', label: 'Output', icon: ScrollText, group: 'play' },
   // Prompts sits next to Output because it is the same subject at a lower level: Output decides which
   // passes run, Prompts is the text each one sends.
-  { value: 'prompts', label: 'Prompts', advancedOnly: true },
+  { value: 'prompts', label: 'Prompts', icon: MessageSquareText, group: 'ai', advancedOnly: true },
   // Tools belong to the same preset as the prompts that offer them.
-  { value: 'tools', label: 'Tools', advancedOnly: true },
-  { value: 'endpoints', label: 'Endpoints' },
-  { value: 'data', label: 'Data' },
+  { value: 'tools', label: 'Tools', icon: Wrench, group: 'ai', advancedOnly: true },
+  { value: 'endpoints', label: 'Endpoints', icon: Plug, group: 'ai' },
+  { value: 'data', label: 'Data', icon: Database, group: 'data' },
 ] as const;
 
 /** Every tab id, so a caller asking Settings to open somewhere is compile-checked against this list. */
@@ -50,4 +52,10 @@ export function endpointTabsFor(advanced: boolean, imageGenOn: boolean) {
 /** The tabs one settings mode shows. Simple drops the `advancedOnly` ones. */
 export function settingsTabsFor(advanced: boolean) {
   return SETTINGS_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
+}
+
+/** The tabs one settings mode shows, split into the Sections bar's groups. */
+export function settingsTabGroupsFor(advanced: boolean) {
+  const tabs = settingsTabsFor(advanced);
+  return (['play', 'ai', 'data'] as const).map((id) => ({ id, tabs: tabs.filter((t) => t.group === id) }));
 }

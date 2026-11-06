@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from '../theme-provider';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
-import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
+import { endpointTabForRoute, endpointTabsFor, settingsTabGroupsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { SurfaceTab } from '@/components/ui/surface';
 import { findTargetRow, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
@@ -32,6 +32,8 @@ import { DisplaySettingsSection } from './DisplaySettingsSection';
 import { OutputSettingsSection } from './OutputSettingsSection';
 import type { SettingsSource } from './settingsSource';
 import { useEmbeddingDownload } from './useEmbeddingDownload';
+import { SectionTabs } from '@/components/SectionTabs';
+import { useSectionTabsRoot } from '@/components/useSectionTabsRoot';
 import { ModeSelect } from '@/components/ui/mode-select';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { usePresetPublish } from '@/components/modals/usePresetPublish';
@@ -309,6 +311,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestKey]);
   const visibleTabs = useMemo(() => settingsTabsFor(advanced), [advanced]);
+  const visibleTabGroups = useMemo(() => settingsTabGroupsFor(advanced), [advanced]);
+  const sectionTabs = useSectionTabsRoot();
   const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('settings', { active: isOpen });
   const dismissTutorial = useCallback(() => { if (tutorial) dismiss(tutorial.id); }, [tutorial, dismiss]);
   const [activeTab, setActiveTab] = useState<string>(initialTab ?? visibleTabs[0].value);
@@ -1143,26 +1147,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
             </TutorialPopover>
           </div>
         </DialogHeader>
-        <Tabs surfaceTabs="settings" value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
-          {/* The tab labels don't fit narrow mobile, so below sm the tab strip becomes a dropdown of the
-              active tab; sm+ keeps the full row. Both drive the same activeTab state. */}
-          <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-full flex-shrink-0 sm:hidden">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {visibleTabs.map((t) => (
-                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <TabsList
-            className={cn('hidden w-full flex-shrink-0 sm:grid', advanced ? 'grid-cols-6' : 'grid-cols-4')}
-          >
-            {visibleTabs.map((t) => (
-              <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
-            ))}
-          </TabsList>
+        <Tabs {...sectionTabs.rootProps} surfaceTabs="settings" value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
+          <SectionTabs isMobile={sectionTabs.isMobile} groups={visibleTabGroups} value={activeTab} label="Settings Sections" bodyId="settings-sections" />
 
           <TabsContent value="display" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea landingRoom className="flex-1 min-h-0">

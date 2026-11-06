@@ -99,15 +99,23 @@ describe('Formaquestion Settings', () => {
     expect(screen.getByRole('textbox', { name: 'Ask a Question' })).toHaveFocus();
   });
 
-  it('switches tabs from the dropdown that stands in for the tab strip on a narrow screen', async () => {
+  it('switches tabs from the Sections bar on a mobile-size screen, which folds shut on the pick', async () => {
+    vi.stubGlobal('innerWidth', 375);
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
+    }));
     await openAsk();
     const dialog = await openSettings();
-    const picker = within(dialog).getByRole('combobox', { name: 'Tab' });
-    expect(picker).toHaveTextContent('General');
-    await userEvent.click(picker);
-    await userEvent.click(await screen.findByRole('option', { name: 'Mascot' }));
-    expect(within(dialog).getByRole('tab', { name: 'Mascot' })).toHaveAttribute('data-state', 'active');
-    expect(picker).toHaveTextContent('Mascot');
+    const bar = within(dialog).getByRole('button', { name: /Sections/ });
+    expect(bar).toHaveTextContent('General');
+    expect(bar).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(bar);
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
+    // The folded list is hidden, so the tab is found through it.
+    expect(within(dialog).getByRole('tab', { name: 'Mascot', hidden: true })).toHaveAttribute('data-state', 'active');
+    expect(within(dialog).getByRole('tabpanel', { name: 'Mascot' })).toBeInTheDocument();
+    expect(bar).toHaveTextContent('Mascot');
+    expect(bar).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('reports the dialog and its tab to the surface registry', async () => {

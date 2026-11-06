@@ -13,7 +13,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { SectionTabs } from '@/components/SectionTabs';
+import { useSectionTabsRoot } from '@/components/useSectionTabsRoot';
 import {
   chatChrome, HELP_HISTORY_MAX, SCRIM_OPACITY_MAX, SCRIM_OPACITY_MIN, SCRIM_OPACITY_STEP, type HelpSettings, type HelpSettingsChange,
 } from '@/lib/formaquestion/helpSettings';
@@ -33,7 +35,7 @@ import { ModelDownloadBar } from './ModelDownloadBar';
 import { isMascotPlacement, isVerticalPlacement, type MascotPlacement, type WindowChrome } from '@/lib/formaquestion/windowBox';
 import { useMascotDraft } from './useMascotDraft';
 import type { SemanticSearch } from './useSemanticSearch';
-import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, placementOptions, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
+import { FORMAQUESTION_SETTINGS_TAB_GROUPS, GENERAL_COPY, placementOptions, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 
 /** The placement the dropdown marks: Bubble draws a stored Above or Below as Outside, so the dropdown says so. */
 const shownPlacement = (placement: MascotPlacement, chrome: WindowChrome): MascotPlacement =>
@@ -247,6 +249,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
 }) {
   const mascotDraft = useMascotDraft(settings, onChange);
   const changeTab = (next: FormaquestionSettingsTab) => mascotDraft.guard(() => onTabChange(next));
+  const sectionTabs = useSectionTabsRoot();
   // The Mascot tab's off-state link lands on the switch it names, as Take Me There lands on a row.
   const land = useRouteLanding();
   const openGeneralAtMascot = () => mascotDraft.guard(() => {
@@ -271,23 +274,19 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
             <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Formaquestion Settings</DialogTitle>
           </DialogHeader>
           <Tabs
+            {...sectionTabs.rootProps}
             surfaceTabs="formaquestionSettings"
             value={tab}
             onValueChange={(value) => changeTab(value as FormaquestionSettingsTab)}
             className="flex min-h-0 w-full flex-1 flex-col"
           >
-            {/* Below sm the tab strip is a dropdown of the active tab, as in Settings; both drive one value. */}
-            <Select value={tab} onValueChange={(value) => changeTab(value as FormaquestionSettingsTab)}>
-              <SelectTrigger aria-label="Tab" className="w-full flex-shrink-0 sm:hidden">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FORMAQUESTION_SETTINGS_TABS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <TabsList className="hidden w-full flex-shrink-0 grid-cols-5 sm:grid">
-              {FORMAQUESTION_SETTINGS_TABS.map((entry) => <TabsTrigger key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
-            </TabsList>
+            <SectionTabs
+              isMobile={sectionTabs.isMobile}
+              groups={FORMAQUESTION_SETTINGS_TAB_GROUPS}
+              value={tab}
+              label="Formaquestion Settings Sections"
+              bodyId="formaquestion-settings-sections"
+            />
             <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
               <ScrollArea landingRoom className="min-h-0 flex-1">
                 <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} />

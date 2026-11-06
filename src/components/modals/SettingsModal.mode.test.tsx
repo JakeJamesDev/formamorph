@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -71,22 +71,6 @@ describe('settings mode', () => {
     unmount();
     openSettings('advanced');
     expect(tabNames()).toContain('Prompts');
-  });
-
-  // The tab strip becomes a dropdown below sm, and it is a second renderer of the same list.
-  it('omits hidden tabs from the small-screen tab dropdown too', () => {
-    // Radix opens a Select from the keyboard; a click needs pointer capture, which jsdom has not got.
-    const openTabDropdown = () => fireEvent.keyDown(
-      screen.getAllByRole('combobox').find((c) => c.textContent === 'Display')!, { key: 'Enter' });
-    const { unmount } = openSettings('simple');
-    openTabDropdown();
-    expect(screen.queryByRole('option', { name: 'Prompts' })).toBeNull();
-    expect(screen.getByRole('option', { name: 'Data' })).toBeTruthy();
-    unmount();
-
-    openSettings('advanced');
-    openTabDropdown();
-    expect(screen.getByRole('option', { name: 'Prompts' })).toBeTruthy();
   });
 
   // Asking for a tab Simple hides is asking for Advanced — the dev-router must land where it said.

@@ -1,14 +1,18 @@
+import { Bot, MessageSquareText, Plug, SlidersHorizontal, Wrench } from 'lucide-react';
 import { MASCOT_BELOW_CAP, isVerticalPlacement, type MascotPlacement, type WindowChrome } from '@/lib/formaquestion/windowBox';
 import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 
 /** The tabs of Formaquestion Settings, in order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_SETTINGS_TABS = [
-  { value: 'general', label: 'General' },
-  { value: 'endpoint', label: 'Endpoint' },
-  { value: 'prompts', label: 'Prompts' },
-  { value: 'tools', label: 'Tools' },
-  { value: 'mascot', label: 'Mascot' },
+  { value: 'general', label: 'General', icon: SlidersHorizontal },
+  { value: 'endpoint', label: 'Endpoint', icon: Plug },
+  { value: 'prompts', label: 'Prompts', icon: MessageSquareText },
+  { value: 'tools', label: 'Tools', icon: Wrench },
+  { value: 'mascot', label: 'Mascot', icon: Bot },
 ] as const;
+
+/** The Sections bar's groups: one, so the short list draws no splits. */
+export const FORMAQUESTION_SETTINGS_TAB_GROUPS = [{ id: 'all', tabs: FORMAQUESTION_SETTINGS_TABS }];
 
 export type FormaquestionSettingsTab = (typeof FORMAQUESTION_SETTINGS_TABS)[number]['value'];
 
