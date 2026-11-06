@@ -152,3 +152,16 @@ The user asked for this run. Q13 names Cydonia, so this arm does not replace it.
 Kept: `hallway-text` and `cafeteria-run` The Swarm, `sedge-waiting` Rope Ferry (Background); `sunk-silence` Bleeding Tooth, `hospital-cordon` Dr. Ines Varga, Dr. Lena Sorensen in both fort cases (Offstage).
 
 The shipped prompt's Focus rule includes "asks about it". Under these definitions, a topic the player asks a third party about is Background (`hallway-text`), so the prompt contradicts the labels there.
+
+**2026-11-06, pretrained reranker probe (spec session).** Can a pretrained cross-encoder tier the entities with no training? `testing/baseline/harness/focus-reranker-probe.cli.ts` scores every (turn, entity) pair on CPU and fits two thresholds on the tune half. Four models (int8 ONNX) × query (action, or action plus last narration) × entity text (summary or description) × score mode (absolute, or relative to the case's top score). Labels as of the review above.
+
+| Model (size) | Best Focus AUC | Held at 95% tune recall | ms per pair |
+|---|---|---|---|
+| bge-reranker-v2-m3 (571 MB) | 0.862 | recall 95.0%, match 41.0% | 57 |
+| ms-marco-MiniLM-L-6-v2 (23 MB) | 0.837 | recall 90.0%, match 34.4% | 3 |
+| mxbai-rerank-xsmall-v1 (87 MB) | 0.834 | recall 100%, match 32.8% | 9 |
+| gte-reranker-modernbert-base (151 MB) | 0.783 | recall 95.0%, match 37.7% | 30 |
+
+- **Fails.** To hold 95% Focus recall, every model calls most entities Focus, so tier match falls to 33–41%. The prompted LLM classifier reached 78–87%.
+- Topical relevance is not Focus. An entity can be Focus because it acts, or the player acts on it, with little word overlap with the action.
+- A Focus AUC of 0.78–0.86 shows some signal, so fine-tuning a cross-encoder stays open. It needs the labeled data first.
