@@ -65,7 +65,7 @@
       "prevAction": "I read the notice board by the well.",
       "lastNarration": "The notices flap in the wind off the wall. Most are old. The newest, nailed over the rest, is the keep's call for hands, and someone has scrawled a tally of names under it.",
       "action": "I push open the door of the Cinder and Crown and head for the hearth.",
-      "tiers": { "Sylvie Thornwhistle": "Background", "Corvin Vale": "Background", "Wenna Tallow": "Background" }
+      "tiers": { "Sylvie Thornwhistle": "Background", "Corvin Vale": "Background", "Wenna Tallow": "Focus" }
     },
     {
       "id": "keep-bounty", "scene": "keep", "covers": ["addressed by role"],
@@ -135,7 +135,7 @@
       "prevAction": "I slip into the cafeteria through the side door.",
       "lastNarration": "The cafeteria is busy. A girl with a clipboard stands in the main aisle, writing something down. Somewhere out in the hallway, the swarm is calling your name.",
       "action": "I sprint down the main aisle toward the far doors.",
-      "tiers": { "The Swarm": "Background", "Rin Hayama": "Focus", "Mrs. Okabe": "Background", "Haruto Mori": "Background" }
+      "tiers": { "The Swarm": "Focus", "Rin Hayama": "Focus", "Mrs. Okabe": "Background", "Haruto Mori": "Background" }
     },
     {
       "id": "hallway-listen", "scene": "hallway", "covers": ["about to act"],
@@ -184,7 +184,7 @@
       "prevAction": "I stomp up the highway toward the fort.",
       "lastNarration": "Fort Bastion squats on its hill, all concrete and floodlights. Sirens wind up. On the runway, jets are already rolling, and a voice booms over the base speakers, ordering you to halt.",
       "action": "I roar at the fort and tear its radar mast out of the ground.",
-      "tiers": { "Jet Fighter": "Focus", "General Vasquez": "Background", "Aegis-One": "Offstage", "Dr. Lena Sorensen": "Offstage", "Captain Theo Ward": "Offstage", "Artillery Battery": "Offstage", "Cedar Hollow Evacuees": "Offstage" }
+      "tiers": { "Jet Fighter": "Focus", "General Vasquez": "Focus", "Aegis-One": "Offstage", "Dr. Lena Sorensen": "Offstage", "Captain Theo Ward": "Offstage", "Artillery Battery": "Offstage", "Cedar Hollow Evacuees": "Offstage" }
     },
     {
       "id": "fort-hangar", "scene": "fort", "covers": ["thing looked at", "inside a place"],
@@ -198,14 +198,14 @@
       "prevAction": "I tear the radar mast out of the ground.",
       "lastNarration": "The mast comes free in a shower of sparks. Jets scream overhead. Past the fort, the highway toward the suburb is a solid line of headlights, and on the ridge above it, guns flash.",
       "action": "I turn and stare at the jammed highway and the families stuck on it.",
-      "tiers": { "Jet Fighter": "Background", "General Vasquez": "Background", "Aegis-One": "Offstage", "Dr. Lena Sorensen": "Offstage", "Captain Theo Ward": "Offstage", "Artillery Battery": "Background", "Cedar Hollow Evacuees": "Focus" }
+      "tiers": { "Jet Fighter": "Focus", "General Vasquez": "Background", "Aegis-One": "Offstage", "Dr. Lena Sorensen": "Offstage", "Captain Theo Ward": "Offstage", "Artillery Battery": "Background", "Cedar Hollow Evacuees": "Focus" }
     },
     {
       "id": "sunk-wade", "scene": "sunkwater", "covers": ["described only", "hazard"], "narration": true,
       "prevAction": "I follow the channel south into the drowned village.",
       "lastNarration": "Sunkwater's roofs stand out of black water. Frogs sing from every sill. Through the doorway of the nearest house, past water up to the windows, a lumpy white cap clings to the far wall, weeping bright red beads.",
       "action": "I wade into the flooded house to reach the red-weeping mushroom on the far wall.",
-      "tiers": { "Dread Crawler": "Offstage", "Bleeding Tooth": "Focus", "Bark Frogs": "Background", "Mire Leeches": "Focus", "The Drowned Bell": "Offstage" }
+      "tiers": { "Dread Crawler": "Background", "Bleeding Tooth": "Focus", "Bark Frogs": "Background", "Mire Leeches": "Focus", "The Drowned Bell": "Offstage" }
     },
     {
       "id": "sunk-silence", "scene": "sunkwater", "covers": ["about to act", "described only"],

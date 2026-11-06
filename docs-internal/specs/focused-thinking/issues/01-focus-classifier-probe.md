@@ -128,3 +128,24 @@ The user asked for this run. Q13 names Cydonia, so this arm does not replace it.
 - `hallway` has 2 entities here and 5 in sublocations. It meets "3 or more" only when sublocation entities count.
 - Presence patterns are broad (for example `raft|ferry|rope`), so the presence and onstage counts are blunt.
 - The Offstage list rides the sublocation roster chip. A narration template without that chip would drop the list.
+
+## Comments
+
+**2026-11-06, label review (spec session).** The user reviewed the 12 labels that every model run rejected, or 12 of 13 rejected (cloud rev 1, rev 3 and MeroMero). Five changed; the numbers above use the old labels.
+
+| Case | Entity | Was | Now |
+|---|---|---|---|
+| `tavern-arrive` | Wenna Tallow | Background | Focus |
+| `fort-radar` | General Vasquez | Background | Focus |
+| `fort-highway` | Jet Fighter | Background | Focus |
+| `sunk-wade` | Dread Crawler | Offstage | Background |
+| `cafeteria-run` | The Swarm | Background | Focus |
+
+Kept: `hallway-text` The Swarm (Background), `sunk-silence` Bleeding Tooth, `hospital-cordon` Dr. Ines Varga, Dr. Lena Sorensen in both fort cases (all Offstage), `sedge-waiting` Rope Ferry and `cafeteria-kitchen` Rin Hayama (Background).
+
+Rules the rulings imply:
+- A keeper or host on the player's arrival is Focus.
+- The voice that just spoke to the player is Focus.
+- A hazard the player just announced is about to act is Focus.
+- What the player flees is Focus. A topic the player asks a third party about is Background. The shipped prompt's "asks about it" rule contradicts this.
+- An unseen hunter drawn by what the action does (noise) is Background, not Offstage.
