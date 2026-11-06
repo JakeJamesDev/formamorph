@@ -39,9 +39,7 @@ import { useSlashCompletion } from '@/lib/useSlashCompletion';
 import { SuggestionList } from '@/components/SuggestionList';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TokenAutocomplete } from "@/components/TokenAutocomplete";
-import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
+import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
 import { AvatarIcon, EntitiesIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { balanceRows } from '@/lib/currency';
 import { InventoryTab } from './InventoryTab';
@@ -1288,7 +1286,7 @@ const entityItems = (options: StatPanelOption[]) =>
 
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
-  language, setLanguage, inventorySettle,
+  inventorySettle,
 }: {
   onLocationClick: () => void;
   /** The live game's equip check and inventory settle for a panel write. Absent ⇒ the operations alone land. */
@@ -1302,10 +1300,9 @@ export const RightPanel = ({
   onDismissTraitCascade: () => void;
   onRegenerateStats: (page: number) => void;
   sceneImageJob: 'tags' | 'image' | null;
-  language: string;
-  setLanguage: (value: string) => void;
 }) => {
   const { statUpdatesEnabled } = useSettings();
+  const endpointTip = useEndpointTip();
   const {
     // Aliased to the viewed-page values (equal to live on the latest page) so paging back shows that
     // turn's stats/traits/time/deltas read-only. `commitManualStatEdit` writes live and rebaselines the
@@ -1526,22 +1523,10 @@ export const RightPanel = ({
     <Card className="w-full grow min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">
-        <div className="flex items-center gap-2 pl-2">
-          <Languages className="h-6 w-6 shrink-0" />
-          <div className="flex-grow">
-            <TokenAutocomplete
-              single
-              openOnFocus
-              values={language ? [language] : []}
-              onChange={(vals) => setLanguage(vals[0] ?? '')}
-              options={COMMON_LANGUAGES}
-              placeholder="Language or style"
-            />
-          </div>
-        </div>
-        {/* The story's position, not an hour count: elapsed hours read as a stopwatch, and the daypart is
-            what the prose is actually written around. Same wording the memory stamps use. */}
-        <p className="text-center">{formatAbsolute(gameTime, calendar)}</p>
+        {/* The daypart is what the prose is written around; the exact clock waits in the tip. */}
+        <Tip tip={formatClock(gameTime, calendar)} labelsChild={false}>
+          <p tabIndex={0} className="self-center rounded-sm text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">{formatAbsolute(gameTime, calendar)}</p>
+        </Tip>
         <PersonaRow onChange={onPersonaChange} />
       </div>
 
@@ -1625,6 +1610,7 @@ export const RightPanel = ({
               editing={isEditMode}
               onEditingChange={setIsEditMode}
               onRegenerate={statUpdatesEnabled && (globalStats.length > 0 || ownersShowStats) ? () => onRegenerateStats(currentPage) : undefined}
+              endpointLine={endpointTip('statUpdates')}
             />
           </ScrollArea>
         </TabsContent>

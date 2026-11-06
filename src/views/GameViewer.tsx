@@ -623,7 +623,6 @@ const GameViewer = ({
     bgmEnabled,
     setBgmEnabled,
     language,
-    setLanguage,
     paragraphLimit,
     markdownOutput,
     // Applied at every seam that sends narration history.
@@ -6106,8 +6105,6 @@ const GameViewer = ({
       onDismissTraitCascade={() => setTraitCascade(null)}
       onRegenerateStats={handleRegenerateStats}
       sceneImageJob={sceneImageJob}
-      language={language}
-      setLanguage={setLanguage}
     />
   );
 

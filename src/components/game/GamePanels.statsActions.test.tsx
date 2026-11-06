@@ -22,6 +22,18 @@ describe('Stats panel actions', () => {
     expect(view.props.onRegenerateStats).toHaveBeenCalledExactlyOnceWith(2);
   });
 
+  it('names the stat pass endpoint in the Regenerate Stats tooltip', async () => {
+    renderRightPanel({}, options);
+    await userEvent.hover(regenerate());
+    expect(await screen.findByText(/^Regenerate Stats\s+Sends to \S/)).toBeVisible();
+  });
+
+  it('shows the exact clock time in the story position tooltip', async () => {
+    renderRightPanel({}, { ...options, seed: (gameplay) => gameplay.setGameTime(11.25) });
+    await userEvent.hover(screen.getByText('Day 1, evening'));
+    expect(await screen.findByText('Day 1, 19:15')).toBeVisible();
+  });
+
   it('shows the Edit Stats tooltip and keeps its edit toggle', async () => {
     renderRightPanel({}, options);
     const edit = screen.getByRole('button', { name: 'Edit Stats' });

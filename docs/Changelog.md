@@ -29,6 +29,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Supporters list in Credits and on the Supporters page shows names in a grid under each tier's badge.** The grid fits as many columns as there is room for. Point at a name to see how long that person has supported.
   - **The Entities library has one Personas button in place of the All and Personas switch.** Turn it on to show only your personas, and off to show everyone.
   - **Settings and Formaquestion Settings tabs now have icons, and on mobile a Sections list replaces the dropdown.** On a wide screen the highlight slides to the tab you pick. On mobile, tap **Sections** to see every tab in groups, as in the World Editor.
+  - **In game, point at the day and time of day above the Stats panel to see the exact clock time.** For example, *Day 3, evening* shows *Day 3, 19:15*.
+  - **The Regenerate Stats button in the game's Stats panel now names the endpoint it sends to.** It matches the other regenerate buttons.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
@@ -36,6 +38,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ➖ Removed
 
+- **👤 User-facing**
+  - **The language box no longer sits above the game's Stats panel.** Set the language the AI writes in with **AI Language** in **Settings** → **Display**.
 - **🛠️ Developer tooling**
   - **Rename guards and parity tests for released changes no longer run in the gates.** 122 tests go, with three always-run entries, and coverage held on every module that stays.
 

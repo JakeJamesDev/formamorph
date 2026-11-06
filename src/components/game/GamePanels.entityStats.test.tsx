@@ -234,7 +234,7 @@ describe('the entity view and the stat panel', () => {
       <LeftPanel entities={[bram, odette, wick] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />
       <RightPanel
         onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
-        onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null} language="" setLanguage={vi.fn()}
+        onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null}
       />
     </>,
     { ...stage, seed: (g) => { stage.seed(g); if (selected) g.setSelectedEntityId(selected); } },
@@ -269,7 +269,7 @@ describe('the entity view and the stat panel', () => {
         <LeftPanel entities={[bram, plainOdette, wick] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />
         <RightPanel
           onLocationClick={vi.fn()} onToggleTrait={vi.fn()} onPersonaChange={vi.fn()} traitCascade={null}
-          onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null} language="" setLanguage={vi.fn()}
+          onDismissTraitCascade={vi.fn()} onRegenerateStats={vi.fn()} sceneImageJob={null}
         />
       </>,
       { ...stage, world: { entities: [bram, plainOdette, wick, mara], locations: [YARD] } as never },

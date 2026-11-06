@@ -380,8 +380,6 @@ export function renderRightPanel(
     onDismissTraitCascade: vi.fn(),
     onRegenerateStats: vi.fn(),
     sceneImageJob: null,
-    language: '',
-    setLanguage: vi.fn(),
   };
   return renderPanel(defaults, overrides, options, (props) => <RightPanel {...props} />);
 }

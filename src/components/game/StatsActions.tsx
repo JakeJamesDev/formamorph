@@ -1,10 +1,11 @@
 import { Pencil, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
+import { withEndpointLine } from '@/lib/endpointTip';
 import { cn } from '@/lib/utils';
 
 /** The Stats panel's Edit Stats and Regenerate Stats pair, bound to the viewed turn. */
-export function StatsActions({ past, busy, editing, onEditingChange, onRegenerate, className }: {
+export function StatsActions({ past, busy, editing, onEditingChange, onRegenerate, endpointLine = '', className }: {
   /** The viewed turn is a past one. */
   past: boolean;
   /** A reply or scene render runs, or no turn exists yet. */
@@ -13,6 +14,8 @@ export function StatsActions({ past, busy, editing, onEditingChange, onRegenerat
   onEditingChange: (editing: boolean) => void;
   /** Absent when stat updates are off or the world has no stats, which hides Regenerate Stats. */
   onRegenerate?: () => void;
+  /** The stat pass's "Sends to …" line under the Regenerate Stats tip. */
+  endpointLine?: string;
   className?: string;
 }) {
   return (
@@ -31,7 +34,7 @@ export function StatsActions({ past, busy, editing, onEditingChange, onRegenerat
         </Button>
       </Tip>
       {onRegenerate && (
-        <Tip tip="Regenerate Stats">
+        <Tip tip={withEndpointLine('Regenerate Stats', endpointLine)} labelsChild={false}>
           <Button
             variant="ghost"
             size="icon"
