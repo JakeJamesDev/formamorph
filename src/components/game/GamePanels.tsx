@@ -312,7 +312,10 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   ) : null;
 
   return (
-  <Card className={cn(
+  <Card
+    // In the drawer, with no tab strip, the panel is named by the tab it shows.
+    {...(placement === 'drawer' && { role: 'region', 'aria-label': LEFT_PANEL_TABS.find((tab) => tab.value === leftTab)?.label })}
+    className={cn(
     'min-h-0 flex flex-col bg-background/60 border-border overflow-hidden',
     placement === 'drawer' ? 'w-full grow' : 'w-full md:w-1/4 md:shrink-0 md:mr-1 grow md:grow-0',
   )}>
@@ -351,16 +354,19 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
       )}
 
       <Tabs surfaceTabs="gameViewer" value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <CollapsingTabsList
-          aria-label="Story"
-          value={leftTab}
-          tabs={[
-            ...(isMobile ? [{ value: 'model', icon: AvatarIcon, label: 'View' }] : []),
-            ...LEFT_PANEL_TABS.map((tab) => (tab.value === 'logs'
-              ? { ...tab, label: `${tab.label} (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})` }
-              : tab)),
-          ]}
-        />
+        {/* In the drawer, the rail switches tabs. */}
+        {placement !== 'drawer' && (
+          <CollapsingTabsList
+            aria-label="Story"
+            value={leftTab}
+            tabs={[
+              ...(isMobile ? [{ value: 'model', icon: AvatarIcon, label: 'View' }] : []),
+              ...LEFT_PANEL_TABS.map((tab) => (tab.value === 'logs'
+                ? { ...tab, label: `${tab.label} (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})` }
+                : tab)),
+            ]}
+          />
+        )}
         {isMobile && (
           <TabsContent value="model" className="flex-grow overflow-hidden min-h-[100px]">
             {entityView}
@@ -1567,7 +1573,11 @@ export const RightPanel = ({
     )}>
     {/* The empty strip above the column, from the window's top edge. */}
     {!inDrawer && <div aria-hidden className="game-right-column-drag hidden md:block absolute inset-x-0 -top-4 h-[var(--header-line)] pointer-events-none" />}
-    <Card className="w-full grow min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
+    <Card
+      // In the drawer, with no tab strip, the panel is named by the tab it shows.
+      {...(inDrawer && { role: 'region', 'aria-label': statusTabs.find((tab) => tab.value === shownTab)?.label })}
+      className="w-full grow min-h-0 flex flex-col bg-background/60 border-border overflow-hidden"
+    >
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">
         {/* The daypart is what the prose is written around; the exact clock waits in the tip. */}
@@ -1578,11 +1588,14 @@ export const RightPanel = ({
       </div>
 
       <Tabs value={shownTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <CollapsingTabsList
-          aria-label="Status"
-          value={shownTab}
-          tabs={statusTabs}
-        />
+        {/* In the drawer, the rail switches tabs. */}
+        {!inDrawer && (
+          <CollapsingTabsList
+            aria-label="Status"
+            value={shownTab}
+            tabs={statusTabs}
+          />
+        )}
         {/* `flex` is state-scoped for the same reason as on the Entities tab. */}
         <TabsContent value="stats" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
           {entitiesShowStats && entityPicker}

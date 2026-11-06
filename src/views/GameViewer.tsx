@@ -6164,17 +6164,25 @@ const GameViewer = ({
   const openDrawerSide = !isMobile && (drawerSide === 'left' ? leftCollapsed : drawerSide === 'right' && rightCollapsed) ? drawerSide : null;
   // A side that docks, or a switch to mobile, closes its drawer for good, so a later collapse opens none.
   if (drawerSide && !openDrawerSide) setDrawerSide(null);
-  const sideDrawer = (side: PanelSide) => openDrawerSide === side && (
+  const dockFromDrawer = (side: PanelSide) => {
+    setDrawerSide(null);
+    if (side === 'left') setLeftCollapsed(false);
+    else setRightCollapsed(false);
+  };
+  // The left panel keeps one mount docked, in its drawer and stowed, so the Entity View's model never reloads.
+  const leftHost = (
     <PanelDrawer
-      side={side}
+      side="left"
+      mode={!leftCollapsed ? 'docked' : openDrawerSide === 'left' ? 'drawer' : 'stowed'}
       onClose={closeDrawer}
-      onDock={() => {
-        setDrawerSide(null);
-        if (side === 'left') setLeftCollapsed(false);
-        else setRightCollapsed(false);
-      }}
+      onDock={() => dockFromDrawer('left')}
     >
-      {side === 'left' ? leftPanelAt('drawer') : rightPanelAt('drawer')}
+      {leftPanelAt(leftCollapsed ? 'drawer' : 'docked')}
+    </PanelDrawer>
+  );
+  const rightDrawer = openDrawerSide === 'right' && (
+    <PanelDrawer side="right" onClose={closeDrawer} onDock={() => dockFromDrawer('right')}>
+      {rightPanelAt('drawer')}
     </PanelDrawer>
   );
   const sideStrip = (side: PanelSide, collapsed: boolean, setCollapsed: (update: (c: boolean) => boolean) => void) =>
@@ -6291,9 +6299,7 @@ const GameViewer = ({
         </div>
       ) : (
         <>
-          {leftCollapsed
-            ? (
-              <>
+          {leftCollapsed && (
                 <PanelRail
                   side="left"
                   label="Story"
@@ -6313,15 +6319,13 @@ const GameViewer = ({
                   onOpen={(tab) => openDrawer('left', tab)}
                   onClose={closeDrawer}
                 />
-                {sideDrawer('left')}
-              </>
-            )
-            : leftPanel}
+          )}
+          {leftHost}
           {sideStrip('left', leftCollapsed, setLeftCollapsed)}
           <NarrationColumn layout={`${leftCollapsed}-${rightCollapsed}`}>{middlePanel}</NarrationColumn>
           {sideStrip('right', rightCollapsed, setRightCollapsed)}
           {rightPanel}
-          {sideDrawer('right')}
+          {rightDrawer}
         </>
       ))}
 

@@ -186,12 +186,20 @@ export function EdgeToggleSpacer() {
 }
 
 /**
- * One side's panel shown over the narration, flush against that side's rail, with the side's strip on its
- * inner edge. A click elsewhere in the game view or an unclaimed Escape closes it; clicks in portaled
- * dialogs and popovers land outside the game view, so they leave it open.
+ * Where a side's panel lives: in the row while docked, over the narration as a drawer, or stowed out of
+ * sight while the side is collapsed and its drawer closed. The panel keeps one mount through all three,
+ * so its Entity View never reloads its model.
  */
-export function PanelDrawer({ side, onClose, onDock, children }: {
+export type PanelHostMode = 'docked' | 'drawer' | 'stowed';
+
+/**
+ * One side's panel host. As a drawer it sits over the narration, flush against that side's rail, with the
+ * side's strip on its inner edge. A click elsewhere in the game view or an unclaimed Escape closes it;
+ * clicks in portaled dialogs and popovers land outside the game view, so they leave it open.
+ */
+export function PanelDrawer({ side, mode = 'drawer', onClose, onDock, children }: {
   side: PanelSide;
+  mode?: PanelHostMode;
   onClose: () => void;
   /** Docks the side on the drawer's tab. */
   onDock: () => void;
@@ -200,7 +208,9 @@ export function PanelDrawer({ side, onClose, onDock, children }: {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; });
+  const open = mode === 'drawer';
   useEffect(() => {
+    if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element) || ref.current?.contains(target)) return;
@@ -218,26 +228,32 @@ export function PanelDrawer({ side, onClose, onDock, children }: {
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, []);
+  }, [open]);
 
-  const strip = <EdgeToggle side={side} collapsed onToggle={onDock} belowHeader={false} />;
+  const docked = mode === 'docked';
+  const strip = open && <EdgeToggle side={side} collapsed onToggle={onDock} belowHeader={false} />;
+  // Every mode renders the same element tree, so a mode change never remounts the panel.
   return (
     <div
       ref={ref}
-      className={cn(
+      // Stowed, the panel stays mounted but takes no space and leaves the accessibility tree.
+      hidden={mode === 'stowed'}
+      className={docked ? 'contents' : cn(
         // The strip sits on the drawer's surface, so its grip reads over the narration.
         'absolute bottom-4 z-20 flex bg-background/95 shadow-xl backdrop-blur-sm',
         side === 'left' ? 'top-4 rounded-r-xl' : 'top-[var(--header-line)] rounded-l-xl',
+        mode === 'stowed' && '!hidden',
       )}
       // Flush to the rail, and as wide as the docked panel (a quarter of the row, with its own minimum) plus the strip.
-      style={{
+      style={docked ? undefined : {
         [side]: `calc(${VIEW_PADDING} + ${RAIL_WIDTH})`,
         width: `calc((100% - 2 * ${VIEW_PADDING}) / 4 + ${STRIP_WIDTH})`,
         minWidth: side === 'right' ? `calc(var(--game-right-column-min) + ${STRIP_WIDTH})` : undefined,
       }}
     >
       {side === 'right' && strip}
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      {/* Docked, the host adds no box: the panel sits in the row as it always has. */}
+      <div className={docked ? 'contents' : 'flex min-w-0 flex-1 flex-col'}>{children}</div>
       {side === 'left' && strip}
     </div>
   );

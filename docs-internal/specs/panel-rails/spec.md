@@ -93,7 +93,8 @@ Each side panel collapses on its own to a thin rail of labeled tab icons. A thin
 - T01-3: ticket 01 renders the rail icons as real buttons with no action. Ticket 02 adds the action.
 - T01-4: the reading width is 56rem on desktop (md and up). Mobile keeps full width.
 - T01-5: Back and Music on the left rail are the docked row's icon buttons and tooltips, icon only, above a divider.
-- T02-1: the drawer holds the whole docked panel, as in the prototype, minus Back and Music. That includes the tab strip, the left Entity View, and the right clock and persona row. The drawer's tab strip switches tabs, and the rail highlight follows it.
+- T02-1: the drawer holds the whole docked panel, as in the prototype, minus Back and Music and its tab strip. That includes the left Entity View and the right clock and persona row. The rail is the drawer's only tab switcher (user, 2026-11-06, replacing the drawer's own tab strip). The drawer is a region named by the tab it shows.
+- U-1 (user, 2026-11-06): the left panel keeps one mount while docked, in its drawer, and stowed out of sight with the drawer closed, so its Entity View model never reloads across collapse, dock or drawer toggles. Only hiding the Entity View itself unloads the model. A stowed viewer draws no frames.
 - T02-2: only one drawer is open at a time. A click on the other rail's icon closes the open drawer and opens that side's drawer.
 - T02-3: while a drawer is open, its side's edge strip sits on the drawer's inner edge, so a mouse click docks the panel on the drawer's tab. The flush drawer would otherwise cover the strip.
 - T03-1: only the player's changes add a dot: global stats, the player's traits, and the copies the player owns. Entity changes add none.

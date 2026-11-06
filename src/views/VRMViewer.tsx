@@ -380,6 +380,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
       
       const width = mountRef.current.clientWidth;
       const height = mountRef.current.clientHeight;
+      // A stowed or hidden mount has no box; keep the last size until it shows again.
+      if (!width || !height) return;
       const aspectRatio = width / height;
       
       cameraRef.current.aspect = aspectRatio;
@@ -654,7 +656,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         vrmRef.current.update(dt);
       }
 
-      renderer.render(scene, camera);
+      // Out of sight (a stowed panel), the frame isn't drawn.
+      if (mount.clientWidth && mount.clientHeight) renderer.render(scene, camera);
     };
 
     const clock = new THREE.Clock();

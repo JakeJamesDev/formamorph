@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- test-only module; nothing here is hot-reloaded */
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle } from 'react';
 import type { VRMViewerHandle } from '@/views/VRMViewer';
 
 /**
@@ -14,9 +14,13 @@ import type { VRMViewerHandle } from '@/views/VRMViewer';
 /** Props of every render this stub has received, oldest first. Cleared by `resetVrmViewerStub`. */
 export const vrmViewerRenders: Record<string, unknown>[] = [];
 
-/** Forget every recorded render. Call between tests that read `vrmViewerRenders`. */
+/** How many times a viewer has mounted: each mount is a fresh model load in the real viewer. */
+export const vrmViewerMounts = { count: 0 };
+
+/** Forget every recorded render and mount. Call between tests that read them. */
 export function resetVrmViewerStub(): void {
   vrmViewerRenders.length = 0;
+  vrmViewerMounts.count = 0;
 }
 
 /** The most recent props the panel handed the viewer, or undefined if it never rendered one. */
@@ -26,6 +30,7 @@ export function lastVrmViewerProps(): Record<string, unknown> | undefined {
 
 const VRMViewerStub = forwardRef<VRMViewerHandle, Record<string, unknown>>((props, ref) => {
   vrmViewerRenders.push(props);
+  useEffect(() => { vrmViewerMounts.count += 1; }, []);
   useImperativeHandle(ref, () => ({ calcColor: () => null }));
   return <div data-testid="vrm-viewer" />;
 });

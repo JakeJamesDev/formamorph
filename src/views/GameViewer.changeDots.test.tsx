@@ -158,7 +158,7 @@ describe('a dot on the right rail', () => {
     expect(railNames('Status')).toEqual(['Stats', 'Traits', 'Inventory', 'Location']);
   });
 
-  it("clears a dot when the drawer's own tab strip switches to its tab", async () => {
+  it('clears a dot when the rail switches the open drawer to its tab', async () => {
     play();
     fireEvent.click(await strip('right', 'Collapse Panel'));
     replies.inventory = GAIN_KEY;
@@ -167,7 +167,8 @@ describe('a dot on the right rail', () => {
 
     const user = userEvent.setup();
     await user.click(icon(/^Location/));
-    await user.click(within(screen.getByRole('tablist', { name: 'Status' })).getByRole('tab', { name: 'Inventory' }));
+    await user.click(icon(/^Inventory/));
+    expect(screen.getByRole('region', { name: 'Inventory' })).toBeInTheDocument();
     expect(railNames('Status')).toEqual(['Stats', 'Traits', 'Inventory', 'Location']);
   });
 

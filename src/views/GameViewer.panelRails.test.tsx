@@ -3,6 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
+import { lastVrmViewerProps, resetVrmViewerStub, vrmViewerMounts } from '@/test/stubs/vrmViewer';
+import { setUserDefaultAvatar } from '@/lib/defaultAvatar';
+import ModelStorageService from '@/services/ModelStorageService';
+import { makeVrm1 } from '@/test/glbFixture';
+import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
+import sugarscape from '@/defaultworlds/sugarscape.json';
 import type { PlayerStat } from '@/types';
 
 /** The desktop side panels collapse to rails through their edge strips, per device. */
@@ -31,6 +37,13 @@ const strip = async (side: 'left' | 'right', name: 'Collapse Panel' | 'Dock Pane
   return found;
 };
 const rail = (name: 'Story' | 'Status') => screen.queryByRole('navigation', { name });
+/** An open drawer is a region named by the tab it shows. */
+const openDrawer = () => screen.queryByRole('region', { name: /^(Entities|Notes|Memory|Logs|Stats|Traits|Inventory|Location)$/ });
+/** The tab a side shows: its docked tab strip's selection, else its open drawer. */
+const selectedTab = (list: 'Story' | 'Status') => {
+  const tabs = screen.queryByRole('tablist', { name: list });
+  return tabs ? within(tabs).getByRole('tab', { selected: true }) : openDrawer()!;
+};
 const railButtons = (name: 'Story' | 'Status') =>
   within(rail(name)!).getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent?.trim());
 
@@ -167,8 +180,6 @@ describe('the collapsed state', () => {
 
 describe('the drawer', () => {
   const icon = (railName: 'Story' | 'Status', name: string) => within(rail(railName)!).getByRole('button', { name });
-  const selectedTab = (list: 'Story' | 'Status') =>
-    within(screen.getByRole('tablist', { name: list })).getByRole('tab', { selected: true });
   const collapse = async (side: 'left' | 'right') => fireEvent.click(await strip(side, 'Collapse Panel'));
 
   it('opens each left rail icon on its tab, pressed, and switches tabs without closing', async () => {
@@ -200,23 +211,22 @@ describe('the drawer', () => {
     }
   });
 
-  it("moves the rail highlight with the drawer's own tab strip", async () => {
-    const user = userEvent.setup();
-    renderGameViewer(harborWorld());
+  it('shows no tab strip of its own; the rail switches its tabs', async () => {
+    renderGameViewer(harborWorld({ stats: [vigor] }));
     await collapse('left');
+    await collapse('right');
     fireEvent.click(icon('Story', 'Notes'));
-
-    await user.click(within(screen.getByRole('tablist', { name: 'Story' })).getByRole('tab', { name: 'Memory' }));
-    expect(selectedTab('Story')).toHaveAccessibleName('Memory');
-    expect(icon('Story', 'Memory')).toHaveAttribute('aria-pressed', 'true');
-    expect(icon('Story', 'Notes')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+    fireEvent.click(icon('Status', 'Traits'));
+    expect(screen.queryByRole('tablist', { name: 'Status' })).toBeNull();
+    expect(openDrawer()).toHaveAccessibleName('Traits');
   });
 
   it('closes on a second click on its icon, on Escape, and on a click on the narration', async () => {
     const user = userEvent.setup();
     renderGameViewer(harborWorld());
     await collapse('left');
-    const isOpen = () => screen.queryByRole('tablist', { name: 'Story' }) !== null;
+    const isOpen = () => openDrawer() !== null;
 
     await user.click(icon('Story', 'Notes'));
     await user.click(icon('Story', 'Notes'));
@@ -229,9 +239,10 @@ describe('the drawer', () => {
 
     await user.click(icon('Story', 'Notes'));
     // A click inside the drawer keeps it open.
-    await user.click(within(screen.getByRole('tablist', { name: 'Story' })).getByRole('tab', { name: 'Memory' }));
+    await user.click(openDrawer()!);
     expect(isOpen()).toBe(true);
-    await user.click(screen.getByRole('textbox'));
+    // The narration's action box, not the Notes box inside the drawer.
+    await user.click(screen.getAllByRole('textbox').find((box) => !openDrawer()!.contains(box))!);
     expect(isOpen()).toBe(false);
   });
 
@@ -245,14 +256,14 @@ describe('the drawer', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(dialog);
     // The modal hides the page behind it from assistive technology; the drawer is still there.
-    expect(screen.getByRole('tablist', { name: 'Status', hidden: true })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Location', hidden: true })).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('tablist', { name: 'Status' })).toBeInTheDocument();
+    expect(openDrawer()).toHaveAccessibleName('Location');
 
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('tablist', { name: 'Status' })).toBeNull();
+    expect(openDrawer()).toBeNull();
   });
 
   it('shows one drawer at a time', async () => {
@@ -263,7 +274,7 @@ describe('the drawer', () => {
 
     await user.click(icon('Story', 'Notes'));
     await user.click(icon('Status', 'Traits'));
-    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+    expect(screen.getAllByRole('region', { name: /^(Notes|Traits)$/ })).toHaveLength(1);
     expect(selectedTab('Status')).toHaveAccessibleName('Traits');
     expect(icon('Story', 'Notes')).toHaveAttribute('aria-pressed', 'false');
   });
@@ -274,15 +285,15 @@ describe('the drawer', () => {
     await collapse('left');
     fireEvent.click(icon('Story', 'Notes'));
 
-    // A tab change inside the drawer re-renders the view in the mobile layout, and a mobile tab back again.
+    // A tab change from the rail re-renders the view in the mobile layout, and a mobile tab back again.
     device.mobile = true;
-    await user.click(within(screen.getByRole('tablist', { name: 'Story' })).getByRole('tab', { name: 'Memory' }));
+    await user.click(icon('Story', 'Memory'));
     const gameTab = await screen.findByRole('button', { name: 'Game' });
     device.mobile = false;
     fireEvent.click(gameTab);
 
     expect(await strip('left', 'Dock Panel')).toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+    expect(openDrawer()).toBeNull();
     expect(icon('Story', 'Memory')).toHaveAttribute('aria-pressed', 'false');
   });
 
@@ -305,9 +316,36 @@ describe('the drawer', () => {
   });
 });
 
+describe('the Entity View model', () => {
+  it('loads once through collapse, the drawer opening and closing, and docking', async () => {
+    resetVrmViewerStub();
+    // The player's own Avatar, set as the device default, is what the Entity View shows.
+    const added = await ModelStorageService.addModel(new File([makeVrm1({ name: 'Mine' })], 'mine.vrm', { type: 'model/vrm' }));
+    setUserDefaultAvatar(added.id);
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:mine', revokeObjectURL: () => undefined }));
+    const user = userEvent.setup();
+    renderGameViewer(seedWorldData(sugarscape as unknown as Record<string, unknown>, DEFAULT_WORLDS.find(({ id }) => id === 'sugarscape')!));
+    const readme = await screen.findByRole('dialog', { name: 'Readme' });
+    fireEvent.click(within(readme).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Readme' })).toBeNull());
+    // The viewer is keyed on its file, so it mounts again once the Avatar resolves; count from there.
+    await waitFor(() => expect(lastVrmViewerProps()?.modelUrl).toBe('blob:mine'));
+    const loaded = vrmViewerMounts.count;
+
+    await user.click(await strip('left', 'Collapse Panel'));
+    await user.click(within(rail('Story')!).getByRole('button', { name: 'Notes' }));
+    expect(openDrawer()).toHaveAccessibleName('Notes');
+    await user.keyboard('{Escape}');
+    expect(openDrawer()).toBeNull();
+    await user.click(within(rail('Story')!).getByRole('button', { name: 'Memory' }));
+    await user.click(await strip('left', 'Dock Panel'));
+
+    expect(screen.getByTestId('vrm-viewer')).toBeVisible();
+    expect(vrmViewerMounts.count).toBe(loaded);
+  });
+});
+
 describe('a surface request into a side', () => {
-  const selectedTab = (list: 'Story' | 'Status') =>
-    within(screen.getByRole('tablist', { name: list })).getByRole('tab', { selected: true });
   const enter = async () => {
     const requester = createSurfaceRequester();
     renderGameViewer(harborWorld({ stats: [vigor] }), { children: <requester.Requester /> });
@@ -320,7 +358,7 @@ describe('a surface request into a side', () => {
     const requester = await enter();
     await collapse('left');
     requester.send('gameViewer.memory');
-    expect(await screen.findByRole('tablist', { name: 'Story' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Memory' })).toBeInTheDocument();
     expect(selectedTab('Story')).toHaveAccessibleName(/^Memory/);
   });
 
@@ -328,7 +366,7 @@ describe('a surface request into a side', () => {
     const requester = await enter();
     await collapse('right');
     requester.send('gameViewer.traits');
-    expect(await screen.findByRole('tablist', { name: 'Status' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Traits' })).toBeInTheDocument();
     expect(selectedTab('Status')).toHaveAccessibleName('Traits');
   });
 
@@ -337,12 +375,12 @@ describe('a surface request into a side', () => {
     const requester = await enter();
     await collapse('left');
     requester.send('gameViewer.memory');
-    await screen.findByRole('tablist', { name: 'Story' });
+    await screen.findByRole('region', { name: 'Memory' });
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+    expect(openDrawer()).toBeNull();
 
     requester.send('gameViewer.memory');
-    expect(await screen.findByRole('tablist', { name: 'Story' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Memory' })).toBeInTheDocument();
     expect(selectedTab('Story')).toHaveAccessibleName(/^Memory/);
   });
 
