@@ -88,13 +88,10 @@ async function openHelpSettingsTab(page: Page, tab: 'Prompts' | 'Mascot'): Promi
   await page.locator('#formaquestion-window').getByRole('button', { name: 'More Actions' }).click();
   await page.getByRole('menuitem', { name: 'Settings' }).click();
   const dialog = page.getByRole('dialog', { name: 'Formaquestion Settings' });
-  // Below `sm` (640px) the tab strip is a select.
+  // Below `md` (768px) the tabs fold into the Sections bar.
   const goTo = async (name: string) => {
-    if (page.viewportSize()!.width >= 640) await dialog.getByRole('tab', { name }).click();
-    else {
-      await dialog.getByRole('combobox', { name: 'Tab' }).click();
-      await page.getByRole('option', { name }).click();
-    }
+    if (page.viewportSize()!.width < 768) await dialog.getByRole('button', { name: /^Sections/ }).click();
+    await dialog.getByRole('tab', { name }).click();
   };
   // The Mascot tab edits nothing while the Mascot is off; its switch is on General.
   if (tab === 'Mascot') await dialog.getByRole('checkbox', { name: 'Mascot' }).click();

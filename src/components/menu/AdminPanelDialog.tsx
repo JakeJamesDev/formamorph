@@ -7,8 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ManageUsersTab } from "@/components/menu/ManageUsersTab";
 import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
 import { PoliciesTab } from "@/components/menu/PoliciesTab";
@@ -19,12 +18,12 @@ import { type ModerationTab as ModerationSubTab } from "@/components/menu/modera
 import { AuditLogTab } from "@/components/menu/AuditLogTab";
 import { UsageTab } from "@/components/menu/UsageTab";
 import { ServerSettingsTab } from "@/components/menu/ServerSettingsTab";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SectionTabs } from "@/components/SectionTabs";
+import { useSectionTabsRoot } from "@/components/useSectionTabsRoot";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import {
   ADMIN_PANEL_OWNER_TABS,
-  ADMIN_PANEL_TAB_LABELS,
-  ADMIN_PANEL_TABS,
+  adminPanelTabGroupsFor,
   type AdminPanelTab,
 } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
@@ -112,12 +111,9 @@ export function AdminPanelDialog({
     if (!owner && ADMIN_PANEL_OWNER_TABS.includes(tab)) setTab('users');
   }, [owner, tab]);
 
-  // One list drives both the strip and the narrow-width select, so they cannot offer different tabs.
-  // No count on the strip: "Moderation (9+)" overflows a cell in the widest fonts. The counts ride the
-  // Moderation tab's own Reports and Review segments.
-  const visibleTabs = ADMIN_PANEL_TABS
-    .filter((value) => owner || !ADMIN_PANEL_OWNER_TABS.includes(value))
-    .map((value) => ({ value, label: ADMIN_PANEL_TAB_LABELS[value] }));
+  // No count on the strip: the counts ride the Moderation tab's own Reports and Review segments.
+  const tabGroups = adminPanelTabGroupsFor(owner);
+  const sectionTabs = useSectionTabsRoot();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -131,35 +127,12 @@ export function AdminPanelDialog({
         {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets wide content
             widen the dialog past its max width instead of being contained. */}
         <Tabs
+          {...sectionTabs.rootProps}
           value={tab}
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          {/* The labels do not fit a narrow dialog, so the strip becomes a select of the current tab, as
-              the Settings dialog does. Both drive the same `tab` state.
-              The switch width follows the tab count, because the two roles need different room. The
-              widest label is "Moderation", 96px in OpenDyslexic. The administrator's nine cells switch at
-              the dialog's 1000px cap (105px cells), the moderator's five at `md` (143px).
-              `admin-panel-widths.spec.ts` holds the measurement in every selectable font. */}
-          <Select value={tab} onValueChange={(value) => setTab(value as AdminPanelTab)}>
-            <SelectTrigger
-              aria-label="Admin Panel section"
-              className={cn('w-full flex-shrink-0', owner ? 'min-[1000px]:hidden' : 'md:hidden')}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {visibleTabs.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <TabsList
-            className={cn(
-              'hidden w-full flex-shrink-0',
-              owner ? 'min-[1000px]:grid grid-cols-9' : 'md:grid grid-cols-5',
-            )}
-          >
-            {visibleTabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
-          </TabsList>
+          <SectionTabs isMobile={sectionTabs.isMobile} groups={tabGroups} value={tab} label="Admin Panel Sections" bodyId="admin-panel-sections" />
 
           {/* Only the panel body scrolls; the title and tab strip stay put. */}
           <TabsContent value="users" className="flex-1 min-h-0 data-[state=active]:flex flex-col">

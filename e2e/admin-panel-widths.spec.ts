@@ -55,16 +55,19 @@ async function eachFont(page: import('@playwright/test').Page, check: (font: str
 }
 
 /**
- * The label's own text box, which spills outside the trigger long before `scrollWidth` reports it: the
- * trigger's overflow is visible, so an over-wide label simply draws over its neighbor.
+ * The tab's drawn face: its icon and its label's clipping box, which is zero wide while the strip folds
+ * the label away. The trigger's overflow is visible, so an over-wide face draws over its neighbor.
  */
 async function labelFit(page: import('@playwright/test').Page, name: string) {
   return page.getByRole('tab', { name, exact: true }).evaluate((element) => {
     const trigger = element.getBoundingClientRect();
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const label = range.getBoundingClientRect();
-    return { triggerLeft: trigger.left, triggerRight: trigger.right, labelLeft: label.left, labelRight: label.right };
+    const icon = element.querySelector('svg')!.getBoundingClientRect();
+    const label = element.querySelector(':scope > span')!.getBoundingClientRect();
+    return {
+      triggerLeft: trigger.left, triggerRight: trigger.right,
+      labelLeft: Math.min(icon.left, label.left), labelRight: Math.max(icon.right, label.right),
+      labelDrawn: label.width > 1,
+    };
   });
 }
 
@@ -76,51 +79,47 @@ async function openPanel(page: import('@playwright/test').Page, accountType: 'ad
   await expect(page.getByRole('dialog', { name: 'Admin Panel' })).toBeVisible();
 }
 
-/** The section control is one or the other at every width, never both and never neither. */
+const sectionsBar = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /^Sections/ });
+const strip = (page: import('@playwright/test').Page) => page.getByRole('tablist', { name: 'Admin Panel Sections' });
+
+/** The section control is the strip or the Sections bar at every width, never both and never neither. */
 async function chooser(page: import('@playwright/test').Page) {
-  const strip = page.getByRole('tablist');
-  const select = page.getByRole('combobox', { name: 'Admin Panel section' });
-  return {
-    strip: await strip.isVisible(),
-    select: await select.isVisible(),
-  };
+  const bar = await sectionsBar(page).isVisible();
+  return { strip: !bar && await strip(page).isVisible(), bar };
 }
 
 const ADMIN_TABS = ['Users', 'Broadcasts', 'Policies', 'Server', 'Usage', 'Events', 'Feedback', 'Moderation', 'Log'];
 const MODERATOR_TABS = ['Users', 'Events', 'Feedback', 'Moderation', 'Log'];
 
-/** Each strip label inside its own trigger. */
-async function expectLabelsFit(page: import('@playwright/test').Page, names: string[], context: string) {
-  for (const name of names) {
-    const fit = await labelFit(page, name);
-    expect(fit.labelLeft, `${name} ${context}`).toBeGreaterThanOrEqual(fit.triggerLeft - 1);
-    expect(fit.labelRight, `${name} ${context}`).toBeLessThanOrEqual(fit.triggerRight + 1);
+/** Every trigger inside the strip, and the strip inside the dialog: a strip too narrow folds labels away rather than overflowing. */
+async function expectStripFits(page: import('@playwright/test').Page, context: string) {
+  const fit = await strip(page).evaluate((list) => {
+    const dialog = list.closest('[role="dialog"]')!.getBoundingClientRect();
+    const box = list.getBoundingClientRect();
+    const tabs = [...list.querySelectorAll('[role="tab"]')].map((tab) => {
+      const rect = tab.getBoundingClientRect();
+      return { name: tab.getAttribute('aria-label'), left: rect.left, right: rect.right };
+    });
+    return { dialog: { left: dialog.left, right: dialog.right }, box: { left: box.left, right: box.right }, tabs };
+  });
+  expect(fit.box.left, `strip ${context}`).toBeGreaterThanOrEqual(fit.dialog.left - 1);
+  expect(fit.box.right, `strip ${context}`).toBeLessThanOrEqual(fit.dialog.right + 1);
+  for (const tab of fit.tabs) {
+    expect(tab.left, `${tab.name} ${context}`).toBeGreaterThanOrEqual(fit.box.left - 1);
+    expect(tab.right, `${tab.name} ${context}`).toBeLessThanOrEqual(fit.box.right + 1);
   }
 }
 
-/**
- * The widest label the strip ever draws is "Moderation", 96px in OpenDyslexic. Nine equal cells hold it
- * once the dialog reaches its 1000px cap; five hold it from `md`. So the two roles cannot share one
- * switch width.
- *
- * | viewport | strip | 9 cells | 5 cells |
- * | -------- | ----- | ------- | ------- |
- * | 768      | 718   | 79      | 143     |
- * | 1000+    | 950   | 105     | 190     |
- *
- * 999 and 1000 are the corners of the administrator's switch; 767 and 768 are the moderator's.
- */
+/** Below `md` both roles get the Sections bar; from `md` the strip, folding labels to fit. */
 for (const width of [375, 767, 768, 999, 1000, 1280]) {
   test(`an administrator gets one usable section control at ${width}px`, async ({ page }) => {
     await openPanel(page, 'admin', width);
 
     const shown = await chooser(page);
+    if (shown.strip) await expectStripFits(page, `at ${width}px`);
 
-    // Clipping first, so a wrong breakpoint fails on the symptom rather than on the number.
-    if (shown.strip) await expectLabelsFit(page, ADMIN_TABS, `at ${width}px`);
-
-    expect(shown.strip).toBe(width >= 1000);
-    expect(shown.select).toBe(width < 1000);
+    expect(shown.strip).toBe(width >= 768);
+    expect(shown.bar).toBe(width < 768);
 
     const scroll = await page.evaluate(() => ({
       content: document.documentElement.scrollWidth,
@@ -133,31 +132,42 @@ for (const width of [375, 767, 768, 999, 1000, 1280]) {
     await openPanel(page, 'moderator', width);
 
     const shown = await chooser(page);
-
-    if (shown.strip) {
-      await expectLabelsFit(page, MODERATOR_TABS, `at ${width}px`);
-      // A moderator's strip carries no administrator tab.
-      for (const name of ['Broadcasts', 'Policies', 'Server']) {
-        await expect(page.getByRole('tab', { name, exact: true })).toHaveCount(0);
-      }
+    if (shown.strip) await expectStripFits(page, `at ${width}px`);
+    // A moderator's tabs carry no administrator tab, in the strip or the folded Sections list.
+    for (const name of ['Broadcasts', 'Policies', 'Server']) {
+      await expect(page.getByRole('tab', { name, exact: true, includeHidden: true })).toHaveCount(0);
+    }
+    for (const name of MODERATOR_TABS) {
+      await expect(page.getByRole('tab', { name, exact: true, includeHidden: true })).toHaveCount(1);
     }
 
     expect(shown.strip).toBe(width >= 768);
-    expect(shown.select).toBe(width < 768);
+    expect(shown.bar).toBe(width < 768);
   });
 }
 
-/** At each role's narrowest strip, every label fits in every font a player can pick. */
-test('an administrator’s labels fit in every font at 1000px', async ({ page }) => {
-  await openPanel(page, 'admin', 1000);
+/** At the narrowest strip, every font a player can pick folds labels away rather than overflowing. */
+for (const [accountType, names] of [['admin', ADMIN_TABS], ['moderator', MODERATOR_TABS]] as const) {
+  test(`a${accountType === 'admin' ? 'n administrator' : ' moderator'}’s strip fits in every font at 768px`, async ({ page }) => {
+    await openPanel(page, accountType, 768);
+    await eachFont(page, async (font) => {
+      await expectStripFits(page, `in ${font} at 768px`);
+      expect(await strip(page).getByRole('tab').count()).toBe(names.length);
+    });
+  });
+}
 
-  await eachFont(page, (font) => expectLabelsFit(page, ADMIN_TABS, `in ${font} at 1000px`));
-});
-
-test('a moderator’s labels fit in every font at 768px', async ({ page }) => {
-  await openPanel(page, 'moderator', 768);
-
-  await eachFont(page, (font) => expectLabelsFit(page, MODERATOR_TABS, `in ${font} at 768px`));
+/** At the dialog's 1000px cap, each drawn face sits inside its own trigger in every font, and the selected tab keeps its label. */
+test('an administrator’s labels fit in every font at 1280px', async ({ page }) => {
+  await openPanel(page, 'admin', 1280);
+  await eachFont(page, async (font) => {
+    for (const name of ADMIN_TABS) {
+      const fit = await labelFit(page, name);
+      expect(fit.labelLeft, `${name} in ${font}`).toBeGreaterThanOrEqual(fit.triggerLeft - 1);
+      expect(fit.labelRight, `${name} in ${font}`).toBeLessThanOrEqual(fit.triggerRight + 1);
+      if (name === 'Users') expect(fit.labelDrawn, `${name} in ${font}`).toBe(true);
+    }
+  });
 });
 
 /**
@@ -193,13 +203,14 @@ for (const [accountType, width] of [['admin', 375], ['admin', 1000], ['moderator
   });
 }
 
-/** The select changes the panel, so a narrow viewport is not a read-only view of the tabs. */
-test('the select changes the panel at 375px', async ({ page }) => {
+/** The Sections bar changes the panel, so a narrow viewport is not a read-only view of the tabs. */
+test('the Sections bar changes the panel at 375px', async ({ page }) => {
   await openPanel(page, 'admin', 375);
 
-  await page.getByRole('combobox', { name: 'Admin Panel section' }).click();
-  await page.getByRole('option', { name: 'Log' }).click();
+  await sectionsBar(page).click();
+  await page.getByRole('tab', { name: 'Log', exact: true }).click();
 
-  await expect(page.getByRole('combobox', { name: 'Admin Panel section' })).toContainText('Log');
+  await expect(sectionsBar(page)).toContainText('Log');
+  await expect(sectionsBar(page)).toHaveAttribute('aria-expanded', 'false');
   await expect(page.getByRole('tabpanel')).toBeVisible();
 });

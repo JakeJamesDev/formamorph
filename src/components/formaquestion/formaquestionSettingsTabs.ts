@@ -1,4 +1,5 @@
-import { Bot, MessageSquareText, Plug, SlidersHorizontal, Wrench } from 'lucide-react';
+import { MessageSquareText, Plug, SlidersHorizontal, Wrench } from 'lucide-react';
+import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { MASCOT_BELOW_CAP, isVerticalPlacement, type MascotPlacement, type WindowChrome } from '@/lib/formaquestion/windowBox';
 import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 
@@ -8,7 +9,7 @@ export const FORMAQUESTION_SETTINGS_TABS = [
   { value: 'endpoint', label: 'Endpoint', icon: Plug },
   { value: 'prompts', label: 'Prompts', icon: MessageSquareText },
   { value: 'tools', label: 'Tools', icon: Wrench },
-  { value: 'mascot', label: 'Mascot', icon: Bot },
+  { value: 'mascot', label: 'Mascot', icon: ELEMENT_ICONS.mascot },
 ] as const;
 
 /** The Sections bar's groups: one, so the short list draws no splits. */
