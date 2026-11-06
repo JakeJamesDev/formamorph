@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Settings and Formaquestion Settings tabs now have icons, and on mobile a Sections list replaces the dropdown.** On a wide screen the highlight slides to the tab you pick. On mobile, tap **Sections** to see every tab in groups, as in the World Editor.
   - **In game, point at the day and time of day above the Stats panel to see the exact clock time.** For example, *Day 3, evening* shows *Day 3, 19:15*.
   - **The Regenerate Stats button in the game's Stats panel now names the endpoint it sends to.** It matches the other regenerate buttons.
+  - **In game on desktop, each side panel collapses to a rail of labeled tab icons.** Use the thin strip on the panel's inner edge to collapse it or dock it again. Each device remembers its choice, and the story stays centered at a comfortable reading width.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.

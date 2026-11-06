@@ -141,6 +141,11 @@ export const DEFAULT_CANVAS_GRID_VISIBLE = true;
 // Straight lines are the plainest reading of the map, so curves and elbows are opted into.
 export const DEFAULT_CANVAS_CONNECTION_STYLE: ConnectionStyle = 'straight';
 
+// The game's side panels on desktop. Per-device layout preferences, so no VITE_DEFAULT_* override.
+// Both start docked, so a returning player sees the layout they know.
+export const DEFAULT_GAME_LEFT_COLLAPSED = false;
+export const DEFAULT_GAME_RIGHT_COLLAPSED = false;
+
 // Snap to Others in the Body Layout editor. A per-user editor preference like the canvas ones above.
 export const DEFAULT_BODY_LAYOUT_SNAP = true;
 

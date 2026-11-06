@@ -39,8 +39,8 @@ import { useSlashCompletion } from '@/lib/useSlashCompletion';
 import { SuggestionList } from '@/components/SuggestionList';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, NotebookPen, Brain, ScrollText } from "lucide-react";
-import { AvatarIcon, EntitiesIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
+import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal } from "lucide-react";
+import { AvatarIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { balanceRows } from '@/lib/currency';
 import { InventoryTab } from './InventoryTab';
 import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
@@ -71,7 +71,8 @@ import TtsPlaybackBar from './TtsPlaybackBar';
 import { MemoryPanel } from './MemoryPanel';
 import { SceneImagePanel } from './SceneImagePanel';
 import { ScenePlate } from './ScenePlate';
-import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS } from './panelTabs';
+import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from './panelTabs';
+import { PanelRail, type RailTab } from './PanelRail';
 import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -344,10 +345,9 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
           value={leftTab}
           tabs={[
             ...(isMobile ? [{ value: 'model', icon: AvatarIcon, label: 'View' }] : []),
-            { value: 'entities', icon: EntitiesIcon, label: 'Entities' },
-            { value: 'notes', icon: NotebookPen, label: 'Notes' },
-            { value: 'memory', icon: Brain, label: 'Memory' },
-            { value: 'logs', icon: ScrollText, label: `Logs (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})` },
+            ...LEFT_PANEL_TABS.map((tab) => (tab.value === 'logs'
+              ? { ...tab, label: `${tab.label} (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})` }
+              : tab)),
           ]}
         />
         {isMobile && (
@@ -907,7 +907,7 @@ export const MiddlePanel = ({
   );
 
   return (
-    <Card className="w-full flex-grow md:mx-0.5 md:min-w-0 md:basis-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
+    <Card className="w-full flex-grow md:mx-0.5 md:min-w-0 md:max-w-4xl md:basis-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
         {/* Determinate generation progress (sentence X of N) while narration synthesizes; playback
@@ -1286,8 +1286,10 @@ const entityItems = (options: StatPanelOption[]) =>
 
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
-  inventorySettle,
+  inventorySettle, collapsed,
 }: {
+  /** Desktop: shows the panel's rail in place of the panel. */
+  collapsed?: boolean;
   onLocationClick: () => void;
   /** The live game's equip check and inventory settle for a panel write. Absent ⇒ the operations alone land. */
   inventorySettle?: InventoryPanelSettle;
@@ -1483,6 +1485,13 @@ export const RightPanel = ({
   // A world with no stat the player can see gets no Stats tab; the panel then opens on Traits.
   const hasShownStats = globalStats.some((stat) => stat.hidden !== true) || ownersShowStats;
   const shownTab = (!hasShownStats && activeTab === 'stats') || (!hasInventory && activeTab === 'inventory') ? 'traits' : activeTab;
+  // The rail lists the same tabs as the panel.
+  const statusTabs: RailTab[] = [
+    ...(hasShownStats ? [{ value: 'stats', icon: StatIcon, label: 'Stats' }] : []),
+    { value: 'traits', icon: TraitIcon, label: 'Traits' },
+    ...(hasInventory ? [{ value: 'inventory', icon: ItemIcon, label: 'Inventory' }] : []),
+    { value: 'location', icon: LocationIcon, label: 'Location' },
+  ];
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // The author's groups decide where each row sits, so a save made before a regrouping follows it.
   const playerLayout = statPanelLayout(
@@ -1516,6 +1525,8 @@ export const RightPanel = ({
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
 
+  if (collapsed) return <PanelRail side="right" label="Status" tabs={statusTabs} />;
+
   return (
     <div className="relative w-full md:w-1/4 md:min-w-[var(--game-right-column-min)] md:shrink-0 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full md:pt-[calc(var(--header-line)-1rem)]">
     {/* The empty strip above the column, from the window's top edge. */}
@@ -1534,12 +1545,7 @@ export const RightPanel = ({
         <CollapsingTabsList
           aria-label="Status"
           value={shownTab}
-          tabs={[
-            ...(hasShownStats ? [{ value: 'stats', icon: StatIcon, label: 'Stats' }] : []),
-            { value: 'traits', icon: TraitIcon, label: 'Traits' },
-            ...(hasInventory ? [{ value: 'inventory', icon: ItemIcon, label: 'Inventory' }] : []),
-            { value: 'location', icon: LocationIcon, label: 'Location' },
-          ]}
+          tabs={statusTabs}
         />
         {/* `flex` is state-scoped for the same reason as on the Entities tab. */}
         <TabsContent value="stats" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">

@@ -276,6 +276,9 @@ import {
   RightPanel,
   type CommandChoices,
 } from "../components/game/GamePanels";
+import { EdgeToggle, PanelRail } from "@/components/game/PanelRail";
+import { LEFT_PANEL_TABS } from "@/components/game/panelTabs";
+import { useGameLeftCollapsed, useGameRightCollapsed } from "@/lib/gamePanelPrefs";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
@@ -1398,6 +1401,8 @@ const GameViewer = ({
   }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setMemoryNotes]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
+  const [leftCollapsed, setLeftCollapsed] = useGameLeftCollapsed();
+  const [rightCollapsed, setRightCollapsed] = useGameRightCollapsed();
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
   const [lastPromptChars, setLastPromptChars] = useState(0);
   const [suggestedLocation, setSuggestedLocation] = useState<GameLocation | null>(null);
@@ -5998,22 +6003,25 @@ const GameViewer = ({
     </div>
   ) : null;
 
+  // Shared by the left panel's top row and the left rail.
+  const backButton = (
+    <Tip tip="Exit to Main Menu">
+      <Button variant="ghost" size="icon" onClick={() => setShowExitConfirm(true)}>
+        <ArrowLeft className="h-5 w-5" />
+      </Button>
+    </Tip>
+  );
+  const musicButton = (
+    <Tip tip={bgmEnabled ? "Turn Music Off" : "Turn Music On"}>
+      <Button variant="ghost" size="icon" onClick={() => setBgmEnabled(!bgmEnabled)}>
+        {bgmEnabled ? <Music className="h-5 w-5" /> : <MusicOffIcon className="h-5 w-5 text-muted-foreground" />}
+      </Button>
+    </Tip>
+  );
   const leftPanel = (
     <LeftPanel
-      rowStart={
-        <Tip tip="Exit to Main Menu">
-          <Button variant="ghost" size="icon" onClick={() => setShowExitConfirm(true)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Tip>
-      }
-      rowEnd={
-        <Tip tip={bgmEnabled ? "Turn Music Off" : "Turn Music On"}>
-          <Button variant="ghost" size="icon" onClick={() => setBgmEnabled(!bgmEnabled)}>
-            {bgmEnabled ? <Music className="h-5 w-5" /> : <MusicOffIcon className="h-5 w-5 text-muted-foreground" />}
-          </Button>
-        </Tip>
-      }
+      rowStart={backButton}
+      rowEnd={musicButton}
       // Runtime-discovered characters must be in this list or they render as disabled, portrait-less
       // rows the player can't open — and the Discovered badge/remove control never resolves them.
       entities={allEntities}
@@ -6085,6 +6093,8 @@ const GameViewer = ({
 
   const rightPanel = (
     <RightPanel
+      // The panel draws its own rail: only it knows which tabs it shows.
+      collapsed={!isMobile && rightCollapsed}
       onLocationClick={() => setIsLocationModalOpen(true)}
       onToggleTrait={toggleTrait}
       inventorySettle={inventorySettle}
@@ -6199,8 +6209,15 @@ const GameViewer = ({
         </div>
       ) : (
         <>
-          {leftPanel}
-          {middlePanel}
+          {leftCollapsed
+            ? <PanelRail side="left" label="Story" tabs={LEFT_PANEL_TABS} top={<>{backButton}{musicButton}</>} />
+            : leftPanel}
+          <EdgeToggle side="left" collapsed={leftCollapsed} onToggle={() => setLeftCollapsed((c) => !c)} />
+          {/* The narration keeps its reading width, centered between the sides. */}
+          <div className="flex min-h-0 min-w-0 basis-0 flex-grow justify-center">
+            {middlePanel}
+          </div>
+          <EdgeToggle side="right" collapsed={rightCollapsed} onToggle={() => setRightCollapsed((c) => !c)} />
           {rightPanel}
         </>
       ))}
