@@ -93,6 +93,9 @@ Each side panel collapses on its own to a thin rail of labeled tab icons. A thin
 - T01-3: ticket 01 renders the rail icons as real buttons with no action. Ticket 02 adds the action.
 - T01-4: the reading width is 56rem on desktop (md and up). Mobile keeps full width.
 - T01-5: Back and Music on the left rail are the docked row's icon buttons and tooltips, icon only, above a divider.
+- T02-1: the drawer holds the whole docked panel, as in the prototype, minus Back and Music. That includes the tab strip, the left Entity View, and the right clock and persona row. The drawer's tab strip switches tabs, and the rail highlight follows it.
+- T02-2: only one drawer is open at a time. A click on the other rail's icon closes the open drawer and opens that side's drawer.
+- T02-3: while a drawer is open, its side's edge strip sits on the drawer's inner edge, so a mouse click docks the panel on the drawer's tab. The flush drawer would otherwise cover the strip.
 
 **Modules:**
 
