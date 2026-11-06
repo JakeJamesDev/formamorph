@@ -640,7 +640,12 @@ class WorldStorageService {
 
   /** List a world whose record failed to open, with what its metadata still says about it. */
   private async noteUnreadableOnOpen(worldId: string): Promise<void> {
-    const meta = await this.readMetaOf(worldId);
+    let meta: WorldMetaRecord | undefined;
+    try {
+      meta = await this.readMetaOf(worldId);
+    } catch {
+      // A closing connection costs the name and the listing link, not the report.
+    }
     reportUnreadableWorld({ id: worldId, name: meta?.name, sourceId: meta?.sourceId });
   }
 

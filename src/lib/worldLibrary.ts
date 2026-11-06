@@ -214,16 +214,23 @@ function readWorldRecords(db: IDBDatabase, ids: string[]): Promise<unknown[]> {
 /** Derive and store metadata for `ids` from their world records. */
 async function rebuildWorldMeta(db: IDBDatabase, ids: string[]): Promise<WorldMetaRead> {
   const records = await readWorldRecords(db, ids);
-  const read: WorldMetaRead = { meta: [], unreadable: [] };
-  records.forEach((record, index) => {
-    if (isReadable(record)) read.meta.push(worldMetaOf(record as StoredWorldShape));
-    else read.unreadable.push(ids[index]);
-  });
-  if (read.meta.length > 0) {
-    const transaction = libraryTransaction(db, 'readwrite');
-    for (const meta of read.meta) transaction.objectStore(WORLD_META_STORE).put(meta);
-    await transactionDone(transaction);
+  const readable = ids.filter((_, index) => isReadable(records[index]));
+  const read: WorldMetaRead = { meta: [], unreadable: ids.filter((id) => !readable.includes(id)) };
+  if (readable.length === 0) return read;
+
+  // Read again where the write happens, so a save landing between the two passes is never overwritten.
+  const transaction = libraryTransaction(db, 'readwrite');
+  const worlds = transaction.objectStore(WORLD_STORE);
+  for (const id of readable) {
+    const request = worlds.get(id);
+    request.onsuccess = () => {
+      if (!isReadable(request.result)) return;
+      const meta = worldMetaOf(request.result as StoredWorldShape);
+      transaction.objectStore(WORLD_META_STORE).put(meta);
+      read.meta.push(meta);
+    };
   }
+  await transactionDone(transaction);
   return read;
 }
 
@@ -255,10 +262,29 @@ export async function readAllWorldMeta(db: IDBDatabase): Promise<WorldMetaRead> 
  * @returns False when the record reads again, as after a backup restore, and nothing was deleted
  */
 export async function deleteUnreadableWorld(db: IDBDatabase, id: string): Promise<boolean> {
+  try {
+    return await deleteIfNull(db, id);
+  } catch {
+    // A lost file refuses the read and aborts that transaction, so the check runs read-only before the delete.
+  }
   const [record] = await readWorldRecords(db, [id]);
   if (isReadable(record)) return false;
   const transaction = libraryTransaction(db, 'readwrite');
   deleteWorldRecord(transaction, id);
   await transactionDone(transaction);
   return true;
+}
+
+/** Delete the entry if its record reads back as null, with the check and the delete in one transaction. */
+async function deleteIfNull(db: IDBDatabase, id: string): Promise<boolean> {
+  const transaction = libraryTransaction(db, 'readwrite');
+  let deleted = false;
+  const read = transaction.objectStore(WORLD_STORE).get(id);
+  read.onsuccess = () => {
+    if (isReadable(read.result)) return;
+    deleteWorldRecord(transaction, id);
+    deleted = true;
+  };
+  await transactionDone(transaction);
+  return deleted;
 }

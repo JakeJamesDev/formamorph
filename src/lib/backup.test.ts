@@ -1,6 +1,6 @@
 // Must load before importing anything that opens IndexedDB.
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { refuseReads } from '@/test/idbRefusal';
 
 // The worker's own op, run in-process: jsdom and node have no Worker.
@@ -191,6 +191,8 @@ async function applyRecording(index: BackupIndex, overwrite = NO_OVERWRITE) {
 }
 
 describe('backup round trip (IndexedDB)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
   beforeEach(async () => {
     for (const [db, store] of STORES) await wipe(db, store);
   });

@@ -464,15 +464,17 @@ class ModelStorageService {
   async deleteModel(id: string): Promise<void> {
     await this.ensureMigrated();
     await this.store.ensureInitialized();
-    // The count, the existence check, and the delete share one readwrite transaction. IndexedDB serializes
-    // transactions over the store, so two concurrent deletes can't both see count > 1 and then both delete —
-    // which a read-then-delete across separate transactions would allow, emptying the library.
+    // Values are read first and read-only: a refused value read aborts a read-write transaction.
+    const usable = new Set((await getAllReadable<StoredModelRecord>(this.store.db!, 'models')).map((record) => record.id));
+    // The key listing, the existence check, and the delete share one readwrite transaction. IndexedDB
+    // serializes transactions over the store, so two concurrent deletes can't both see another usable model
+    // and then both delete — which a read-then-delete across separate transactions would allow.
     const store = this.store.db!.transaction(['models'], 'readwrite').objectStore('models');
-    // Requests in one transaction run in order, so the count has its result when the key's arrives.
-    // The key alone: a refused value read aborts a read-write transaction, which would keep a lost model.
-    const count = store.count();
+    // Requests in one transaction run in order, so the listing has its result when the key's arrives.
+    const keys = store.getAllKeys();
     return writeAfterRead(store.transaction, store.getKey(id), (key) => {
-      if (BUNDLED_DEFAULT_URL && count.result <= 1 && key !== undefined) {
+      const othersUsable = keys.result.some((other) => String(other) !== id && usable.has(String(other)));
+      if (BUNDLED_DEFAULT_URL && key !== undefined && usable.has(id) && !othersUsable) {
         throw new Error('Cannot delete the last player avatar: the library must always have at least one.');
       }
       store.delete(id);

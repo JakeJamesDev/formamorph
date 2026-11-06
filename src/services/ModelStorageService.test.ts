@@ -600,6 +600,17 @@ describe('a model that can not be read', () => {
     expect(thumbnail).toBeUndefined();
   });
 
+  it('refuses to delete the last usable model while a lost one remains', async () => {
+    await putRaw(stored('lost', 'h-lost'));
+    await putRaw(stored('kept', 'h-kept'));
+    const restore = refuseReads({ [STORE]: ['lost'] });
+
+    await expect(ModelStorageService.deleteModel('kept')).rejects.toThrow('Cannot delete the last player avatar');
+
+    restore();
+    expect(await getRaw('kept')).toBeTruthy();
+  });
+
   it('removes a record whose file is lost', async () => {
     await putRaw(stored('lost', 'h-lost'));
     await putRaw(stored('good', 'h-good'));

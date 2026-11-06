@@ -12,7 +12,7 @@ import { clearDeletedDefaultWorlds, readDeletedDefaultWorlds } from '@/lib/defau
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { promisifyRequest } from '@/lib/idb';
 import {
-  WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, putWorldRecords, worldMetaOf, type WorldMetaRecord,
+  WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, openWorldLibrary, putWorldRecord, putWorldRecords, worldMetaOf, type WorldMetaRecord,
 } from './worldLibrary';
 import { bundledWorlds } from '@/lib/bundledWorldText';
 import { refuseReads } from '@/test/idbRefusal';
@@ -367,6 +367,69 @@ describe('a library with unreadable rows', () => {
 
     expect((await WorldStorageService.getWorldMetadata()).map((m) => m.id)).toEqual(['b-good']);
     expect(getUnreadableWorlds().map((w) => w.id)).toEqual(['a-lost']);
+  });
+
+  /** Run `before` once, just ahead of the first read-write transaction over the metadata store. */
+  function beforeFirstMetaWrite(before: (db: IDBDatabase, open: IDBDatabase['transaction']) => void): void {
+    const open = IDBDatabase.prototype.transaction;
+    let fired = false;
+    vi.spyOn(IDBDatabase.prototype, 'transaction').mockImplementation(function (this: IDBDatabase, names, mode, options) {
+      const stores = typeof names === 'string' ? [names] : [...names];
+      if (!fired && mode === 'readwrite' && stores.includes(WORLD_META_STORE)) {
+        fired = true;
+        before(this, open);
+      }
+      return open.call(this, names, mode, options);
+    });
+  }
+
+  it('keeps a save that lands while missing metadata is rebuilt', async () => {
+    await seedLibrary([world('a')], ['a']);
+    const edited = world('a', { name: 'Edited', dirty: true });
+    // Another save, queued just before the rebuild's write.
+    beforeFirstMetaWrite((db, open) => { putWorldRecord(open.call(db, [WORLD_STORE, WORLD_META_STORE], 'readwrite'), edited); });
+
+    const meta = await WorldStorageService.getWorldMetadata();
+
+    vi.restoreAllMocks();
+    expect(meta.find((m) => m.id === 'a')).toMatchObject({ name: 'Edited', dirty: true });
+    await expectMetaInSync();
+  });
+
+  it('keeps a world that a restore makes readable just before Remove deletes it', async () => {
+    await seedLibrary([world('lost')]);
+    let restored = false;
+    const get = IDBObjectStore.prototype.get;
+    vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
+      const request = get.call(this, key);
+      if (this.name !== WORLD_STORE || key !== 'lost' || restored) return request;
+      let value: unknown;
+      Object.defineProperty(request, 'result', { get: () => (value === undefined ? undefined : null), set: (next) => { value = next; } });
+      return request;
+    });
+    beforeFirstMetaWrite(() => { restored = true; });
+
+    const removed = await WorldStorageService.removeUnreadableWorld('lost');
+
+    vi.restoreAllMocks();
+    expect(removed).toBe(false);
+    expect((await readStore<StoredWorldRecord>(WORLD_STORE)).map((w) => w.id)).toEqual(['lost']);
+  });
+
+  it('still reports a world that fails to open while the connection closes', async () => {
+    await seedLibrary([world('open', { name: 'Marsh' })]);
+    unreadable(WORLD_STORE, ['open']);
+    const open = IDBDatabase.prototype.transaction;
+    vi.spyOn(IDBDatabase.prototype, 'transaction').mockImplementation(function (this: IDBDatabase, names, mode, options) {
+      if (names === WORLD_META_STORE || (Array.isArray(names) && names.length === 1 && names[0] === WORLD_META_STORE)) {
+        throw new DOMException('The connection is closing', 'InvalidStateError');
+      }
+      return open.call(this, names, mode, options);
+    });
+
+    await expect(WorldStorageService.getWorldData('open')).rejects.toBe('World not found');
+
+    await vi.waitFor(() => expect(getUnreadableWorlds()).toEqual([{ id: 'open', foundOnOpen: true }]));
   });
 
   it('stops reporting a world once a later list read finds it healed', async () => {

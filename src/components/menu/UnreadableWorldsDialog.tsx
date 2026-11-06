@@ -121,10 +121,11 @@ export function UnreadableWorldsDialog({ onChanged, onOpenListing }: {
         const { errors } = await WorldStorageService.loadDefaultWorlds([seed], bundledWorlds);
         if (errors.length > 0) throw new AggregateError(errors, 'The original world failed to load');
       }
+      if (!mounted.current) return;
       onChanged();
       if (removed && !seed && world.sourceId) onOpenListing({ id: world.sourceId, kind: 'world' });
     } catch (error) {
-      toastError(error, { headline: `Couldn't repair "${nameOf(world)}".` });
+      if (mounted.current) toastError(error, { headline: `Couldn't repair "${nameOf(world)}".` });
     }
   };
 

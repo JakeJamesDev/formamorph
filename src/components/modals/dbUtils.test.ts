@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { promisifyRequest, transactionDone } from '@/lib/idb';
 import { refuseReads } from '@/test/idbRefusal';
@@ -60,6 +60,8 @@ describe('getAllSaveRecords', () => {
 });
 
 describe('a save whose file is lost', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
   const save = (id: string) => ({ id, name: id, worldId: 'w1', version: '3', currentState: {} }) as unknown as SaveRecord;
 
   it('lists the other saves and warns once for the lost one', async () => {

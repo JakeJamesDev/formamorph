@@ -20,7 +20,7 @@ vi.mock('@/services/WorldStorageService', () => ({
   default: { removeUnreadableWorld: mocks.remove, loadDefaultWorlds: mocks.seed },
 }));
 
-import { DEFAULT_WORLDS } from '@/lib/defaultWorlds';
+import { DEFAULT_WORLDS, readDeletedDefaultWorlds, tombstoneDefaultWorld } from '@/lib/defaultWorlds';
 import { getUnreadableWorlds, reportUnreadableWorld, resetUnreadableWorlds, syncUnreadableWorlds } from '@/lib/unreadableWorlds';
 import { UnreadableWorldsDialog } from './UnreadableWorldsDialog';
 
@@ -35,6 +35,7 @@ const confirmIn = (name: string) => fireEvent.click(within(screen.getByRole('ale
 
 beforeEach(() => {
   resetUnreadableWorlds();
+  localStorage.clear();
   vi.clearAllMocks();
   mocks.remove.mockResolvedValue(true);
   mocks.seed.mockResolvedValue({ failed: [], errors: [], updated: [] });
@@ -111,6 +112,7 @@ describe('UnreadableWorldsDialog', () => {
 
   it('restores a bundled world from its seed', async () => {
     const seed = DEFAULT_WORLDS[0];
+    tombstoneDefaultWorld(seed.id);
     mount();
     act(() => { syncUnreadableWorlds([seed.id]); });
     review();
@@ -120,6 +122,7 @@ describe('UnreadableWorldsDialog', () => {
 
     await waitFor(() => expect(mocks.seed).toHaveBeenCalledWith([seed], {}));
     expect(mocks.remove).toHaveBeenCalledWith(seed.id);
+    expect(readDeletedDefaultWorlds().has(seed.id)).toBe(false);
   });
 
   it('reports a bundled world that fails to reseed', async () => {
@@ -157,6 +160,23 @@ describe('UnreadableWorldsDialog', () => {
     confirmIn('Remove and Open Listing');
 
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(onOpenListing).not.toHaveBeenCalled();
+  });
+
+  it('opens no listing and refreshes nothing once the menu closes mid-repair', async () => {
+    let finish!: (removed: boolean) => void;
+    mocks.remove.mockReturnValue(new Promise<boolean>((resolve) => { finish = resolve; }));
+    const view = mount();
+    act(() => { reportUnreadableWorld({ id: 'copy', name: 'Marsh', sourceId: 'listing-1' }); });
+    review();
+    fireEvent.click(screen.getByRole('button', { name: 'Download Again' }));
+    confirmIn('Remove and Open Listing');
+    await waitFor(() => expect(mocks.remove).toHaveBeenCalled());
+
+    view.unmount();
+    await act(async () => { finish(true); });
+
+    expect(onChanged).not.toHaveBeenCalled();
     expect(onOpenListing).not.toHaveBeenCalled();
   });
 
