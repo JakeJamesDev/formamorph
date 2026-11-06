@@ -33,7 +33,7 @@ The move applies first. Presence and the pull are judged at the place where the 
 8. As a player, I want no extra wait on a turn where I walked somewhere myself, so that the new check costs nothing when the router already moved me.
 9. As a player, I want a story that only looks toward a place, or talks about it, to leave me where I am, so that I do not jump to places I never went.
 10. As a player on a small or cloud model, I want the narrated-move check to be right almost every time, so that it does not move me by mistake.
-11. As a player in Suggest mode, I want nothing to change, so that I still choose each move myself.
+11. As a player in Suggest mode, I want the move offer to read the narration, so that a story that carries me offers that move, and I still choose each move myself.
 12. As a player who turned Location Changes off, I want no narrated moves either, so that the one switch covers every move.
 13. As an author, I want a character set to Stays Put never to be pulled into the scene, so that a fixed shopkeeper stays at her counter.
 14. As an author, I want a Moves Between character pulled only into one of her own places, so that her route stays the one I set.
@@ -53,6 +53,7 @@ The move applies first. Presence and the pull are judged at the place where the 
 Rulings from the grill, numbered as asked:
 
 - **Q1. Stranger Name matching.** A Stranger Name matches only in full, under the strict rule for multi-word names. No single word of it matches alone: on the play log, a loose match fired on 10 turns where only the tribe's race word appeared. Aliases stay the way to match short forms, and they keep their case-sensitive rule. The Stranger Name joins name matching everywhere participants are read, so In Scene, the Entities tab and the pull read the same match.
+  - **Ticket 02 rulings:** a leading a/an/the is ignored on both sides, so "a hooded woman" matches "the hooded woman", with at least 2 words left. A Stranger Name left with one word matches only with an initial capital, as a one-word name does. It keeps matching after the player meets the entity: matching reads presence in prose, not the Met state. A blank Stranger Name is ignored. Matching reads the Stranger Name as the player sees it, with placeholders resolved. The match evidence says it came from the Stranger Name.
 - **Q2. Child pull.** The pull takes a character named in prose who stands in a **direct child** of the player's place. Deeper places are not pulled. Full-name hits only, as today, where a full Stranger Name and an alias count as full hits. Prose only, as today: a name inside dialogue never pulls.
 - **Q3. One Movement rule for the pull,** for siblings and children alike:
   - **Stays Put:** never pulled.
@@ -64,8 +65,11 @@ Rulings from the grill, numbered as asked:
 - **Q7. Skip rule.** The check runs only when the router before the narration answered NONE. One move per turn at most.
 - **Q8. Probe bar.** On the cloud default model, at least 9 of 10 carried narrations move the player, and at most 1 of 10 stay narrations does.
 - **Q9. Prompt.** The check reuses Suggest mode's post-narration location request as is. It gets its own prompt only if the probe misses the bar, and that prompt then ships with its own probe numbers.
+  - **Ticket 01 finding (2026-11-06):** Suggest mode's request never sends the narration. Its user prompt holds only the action, and its system prompt routes "from the stated action alone". So the reused arm is a baseline, and a narrated-move prompt pair (system and user, rendering the action and the narration) runs beside it in the same batches. Ticket 01 adds the pair as exported default prompts only. Ticket 04 wires the settings, the pass and the editor rows.
+  - **Probe rules (ticket 01):** the Q8 bar applies to each set's totals as rates (at least 90% of carried runs move, at most 10% of stay runs move). Per-scene numbers are reported too. A move to a different reachable place than the narration names counts as a miss. The opening sends an empty action. The router's existing action-only cases run in each batch on both arms as the in-batch control.
 - **Q10. Followers.** A narrated move goes through the same move path as a walked move. Followers come along, "stay here" replies stay, and Moves Between characters come along only into their own places.
-- **Q11. Settings.** No new setting. The check runs whenever Location Changes is on and Auto mode applies moves. Suggest mode keeps its own post-narration offer and does not change.
+- **Q11. Settings.** No new setting. The check runs whenever Location Changes is on and Auto mode applies moves. Suggest mode keeps its post-narration offer.
+  - **Suggest mode (2026-11-06, user):** Suggest mode's offer uses the same narrated-move request as Auto mode, so it reads the narration too. It still offers the move and never applies it. Ticket 04 does both modes.
 - The pull still records the moved character through the discovered-entity path, so the move persists, rolls back with its turn and survives reload. No save-shape change is expected. If one turns out to be needed, the change carries the export-shape reminder.
 - Glossary words stay as they are: **In Scene**, **Stranger**, **Met**, **Known In**, **Movement**. A character the story names under her Stranger Name while she is here is met by the existing Met rule, which this spec does not change.
 
@@ -79,7 +83,8 @@ A good test calls the real function or runs a real turn with fake model replies,
   - A named character in a direct child is pulled. One two levels down is not.
   - The Movement rule bites for both siblings and children: Stays Put never, Moves Between only into her own places, Free and Follow always.
 - **Seam 2, the turn runner (fake replies).** Next to the existing turn-runner and plan tests:
-  - The post-narration check runs in Auto mode after NONE. It does not run after a router move, in Suggest mode, or with Location Changes off.
+  - The post-narration check runs in Auto mode after NONE. It does not run after a router move or with Location Changes off.
+  - Suggest mode's offer sends the narration and offers the move without applying it.
   - It runs on the opening.
   - The move applies before the pull: a character in the room the player is carried into is not pulled back out.
   - Followers come along, and "stay here" stays.
@@ -92,7 +97,7 @@ A good test calls the real function or runs a real turn with fake model replies,
 - Pulls from deeper than a direct child, from a parent, or across a Connection.
 - Changing when a Known In pick replaces Nearby.
 - A second narrated move inside one turn (Q7).
-- Suggest mode's behavior.
+- Suggest mode's timing: it keeps offering moves only, and only on turns after the opening, as today.
 
 ## Further Notes
 
