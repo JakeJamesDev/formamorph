@@ -2,6 +2,8 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import AuthService from '@/services/AuthService';
+import AgeGateService from '@/services/AgeGateService';
+import { AGE_GATE_VERSION } from '@/lib/ageGate';
 
 /** The game's direct header buttons, the left panel's row, and the mobile menu that keeps them all. */
 
@@ -18,7 +20,11 @@ vi.mock('@/lib/useIsMobile', async (original) => ({
 }));
 
 const button = (name: string) => screen.findByRole('button', { name });
-const signIn = () => { AuthService.token = 'token'; };
+// The account has accepted the content warning, as the server reports; an unanswered lookup raises the gate.
+const signIn = () => {
+  AuthService.token = 'token';
+  vi.spyOn(AgeGateService, 'read').mockResolvedValue({ accepted: true, requiredVersion: AGE_GATE_VERSION, acceptedAt: null });
+};
 
 /** The labels of the open menu's items, in order. */
 const openMenuItems = async () => {
