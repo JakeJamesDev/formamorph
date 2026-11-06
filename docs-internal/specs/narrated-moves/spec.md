@@ -1,6 +1,7 @@
 # Spec: Narrated Moves and the Scene Pull
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-06, tickets 01–04, last landing 7d85ba01a. Review: spec text corrected. Tests green on 2026-11-06; lint red only on a gitignored local file.
 Spec session: narrated-moves — spec
 
 ## Problem Statement
@@ -60,7 +61,7 @@ Rulings from the grill, numbered as asked:
   - **Moves Between Its Locations:** pulled only when the player's place is one of her locations.
   - **Free** and **Can Follow the Player:** always pulled.
 - **Ticket 03 rulings:** "stands in" and "already present" read where the character is in play: her position when she holds one, else her listed locations. A pulled character who holds a position also gets her position set to the player's place in the same turn commit, so she is present there and the move rolls back with the turn. One without a position keeps the discovered-record path only. The child pull also runs at a top-level place, which has no siblings. A full alias hit counts, a character already present is never pulled again, and a Moves Between character passes whenever the player's place is one of her locations.
-- **Q4. Narrated moves in Auto mode.** A post-narration location request reads the narration and applies its answer at once. It sends the same reachable destination list the router uses.
+- **Q4. Narrated moves in Auto mode.** A post-narration Narrated Move request (its own request type, `narratedMove`) reads the narration and applies its answer at once. It sends the same reachable destination list the router uses.
 - **Q5. The opening** runs this check too, after the opening narration.
   - **Ticket 04 rulings:**
     - The check is its own serial step right after the narration. It runs before choices, stats, inventory, diary, discovery and the scene tags, so those passes read the final place.
@@ -73,14 +74,14 @@ Rulings from the grill, numbered as asked:
 - **Q6. Order.** The narrated move applies before the scene pull and before presence is read. The pull is judged at the place where the player ends the turn.
 - **Q7. Skip rule.** The check runs only when the router before the narration answered NONE. One move per turn at most.
 - **Q8. Probe bar.** On the cloud default model, at least 9 of 10 carried narrations move the player, and at most 1 of 10 stay narrations does.
-- **Q9. Prompt.** The check reuses Suggest mode's post-narration location request as is. It gets its own prompt only if the probe misses the bar, and that prompt then ships with its own probe numbers.
+- **Q9. Prompt.** The check was to reuse Suggest mode's post-narration location request as is, and get its own prompt only if the probe missed the bar. The probe missed, so the check uses the narrated-move prompt pair (see below).
   - **Ticket 01 finding (2026-11-06):** Suggest mode's request never sends the narration. Its user prompt holds only the action, and its system prompt routes "from the stated action alone". So the reused arm is a baseline, and a narrated-move prompt pair (system and user, rendering the action and the narration) runs beside it in the same batches. Ticket 01 adds the pair as exported default prompts only. Ticket 04 wires the settings, the pass and the editor rows.
   - **Probe rules (ticket 01):** the Q8 bar applies to each set's totals as rates (at least 90% of carried runs move, at most 10% of stay runs move). Per-scene numbers are reported too. A move to a different reachable place than the narration names counts as a miss. The opening sends an empty action. The router's existing action-only cases run in each batch on both arms as the in-batch control.
   - **Probe result and ruling (2026-11-06, user):** on the cloud model, the narrated-move prompt moved 80/80 carried runs (the reused request 10/80). It made 10/80 false stay moves (12.5%), all from one scene whose action waits "by the foot of the ladder". The router's own prompt moves on that action alone 10/10, so in Auto mode the router moves first and Q7 skips the post check. Ruling: land with the narrated-move prompt and record the miss. The threshold case is a router follow-up outside this spec.
 - **Q10. Followers.** A narrated move goes through the same move path as a walked move. Followers come along, "stay here" replies stay, and Moves Between characters come along only into their own places.
 - **Q11. Settings.** No new setting. The check runs whenever Location Changes is on and Auto mode applies moves. Suggest mode keeps its post-narration offer.
   - **Suggest mode (2026-11-06, user):** Suggest mode's offer uses the same narrated-move request as Auto mode, so it reads the narration too. It still offers the move and never applies it. Ticket 04 does both modes.
-- The pull still records the moved character through the discovered-entity path, so the move persists, rolls back with its turn and survives reload. No save-shape change is expected. If one turns out to be needed, the change carries the export-shape reminder.
+- The pull sets the position of a pulled character who holds one, and records one without a position through the discovered-entity path, so the move persists, rolls back with its turn and survives reload. No save-shape change is expected. If one turns out to be needed, the change carries the export-shape reminder.
 - Glossary words stay as they are: **In Scene**, **Stranger**, **Met**, **Known In**, **Movement**. A character the story names under her Stranger Name while she is here is met by the existing Met rule, which this spec does not change.
 
 ## Testing Decisions
