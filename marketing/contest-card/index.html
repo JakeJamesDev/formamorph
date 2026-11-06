@@ -224,6 +224,7 @@
     <label>Color <input id="accent" type="color" value="#f7c948"></label>
     <button id="reshuffle" type="button">Reshuffle Confetti</button>
     <button id="save-image" type="button">Save Image</button>
+    <button id="save-png" type="button">Save PNG</button>
     <span class="hint">Click any text on the card to edit it</span>
   </div>
   <div id="status" class="status" role="status">Loading results…</div>
@@ -265,6 +266,7 @@ const X_LIMIT = 280;
 const X_URL_WEIGHT = 23;
 const DISCORD_LIMIT = 2000;
 const IMAGE_SCALE = 2;
+const WEBP_QUALITY = 0.92;
 const PLACE_LABELS = { 1: '1st Place', 2: '2nd Place', 3: '3rd Place' };
 const CONFETTI_COLORS = ['#f7c948', '#ff6b8a', '#6fe3d6', '#b48cff', '#ff9f5a', '#ffffff', '#7fb8ff'];
 const CONFETTI_ATTEMPTS = 260;
@@ -526,13 +528,18 @@ function copyToClipboard(data) {
 }
 
 /** Saves the card at a fixed pixel size, so window size and display scaling never change the file. */
-async function saveCardImage(title) {
+async function saveCardImage(title, format) {
   document.activeElement?.blur();
   await document.fonts.ready;
-  const blob = await modernScreenshot.domToBlob(document.getElementById('card'), { scale: IMAGE_SCALE, type: 'image/png' });
+  const blob = await modernScreenshot.domToBlob(document.getElementById('card'), {
+    scale: IMAGE_SCALE,
+    type: `image/${format}`,
+    quality: WEBP_QUALITY,
+  });
+  if (blob.type !== `image/${format}`) throw new Error(`The browser can't write ${format}`);
   const link = element('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-winners.png`;
+  link.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-winners.${format}`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
@@ -627,19 +634,22 @@ async function start() {
     'text/html': document.getElementById('long-preview').innerHTML,
     'text/plain': document.getElementById('long-markdown').value,
   }));
-  const saveButton = document.getElementById('save-image');
-  saveButton.addEventListener('click', async () => {
-    saveButton.disabled = true;
-    saveButton.textContent = 'Saving…';
-    try {
-      await saveCardImage(current.contest.title);
-      saveButton.textContent = 'Saved';
-    } catch {
-      saveButton.textContent = "Couldn't Save";
-    }
-    saveButton.disabled = false;
-    setTimeout(() => { saveButton.textContent = 'Save Image'; }, 1500);
-  });
+  for (const [id, format] of [['save-image', 'webp'], ['save-png', 'png']]) {
+    const button = document.getElementById(id);
+    const label = button.textContent;
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      button.textContent = 'Saving…';
+      try {
+        await saveCardImage(current.contest.title, format);
+        button.textContent = 'Saved';
+      } catch {
+        button.textContent = "Couldn't Save";
+      }
+      button.disabled = false;
+      setTimeout(() => { button.textContent = label; }, 1500);
+    });
+  }
   document.getElementById('reshuffle').addEventListener('click', () => {
     seed += 1;
     // Replaces only the confetti, so text edits stay on the card.
