@@ -59,6 +59,7 @@ Rulings from the grill, numbered as asked:
   - **Stays Put:** never pulled.
   - **Moves Between Its Locations:** pulled only when the player's place is one of her locations.
   - **Free** and **Can Follow the Player:** always pulled.
+- **Ticket 03 rulings:** "stands in" and "already present" read where the character is in play: her position when she holds one, else her listed locations. A pulled character who holds a position also gets her position set to the player's place in the same turn commit, so she is present there and the move rolls back with the turn. One without a position keeps the discovered-record path only. The child pull also runs at a top-level place, which has no siblings. A full alias hit counts, a character already present is never pulled again, and a Moves Between character passes whenever the player's place is one of her locations.
 - **Q4. Narrated moves in Auto mode.** A post-narration location request reads the narration and applies its answer at once. It sends the same reachable destination list the router uses.
 - **Q5. The opening** runs this check too, after the opening narration.
 - **Q6. Order.** The narrated move applies before the scene pull and before presence is read. The pull is judged at the place where the player ends the turn.
