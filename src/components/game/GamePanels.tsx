@@ -1296,7 +1296,7 @@ const entityItems = (options: StatPanelOption[]) =>
 
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
-  inventorySettle, collapsed, placement = 'docked', railOpen, onRailOpen, onRailClose,
+  inventorySettle, collapsed, placement = 'docked', railOpen, railDots, onShownTab, onRailOpen, onRailClose,
 }: {
   /** Desktop: shows the panel's rail in place of the panel. */
   collapsed?: boolean;
@@ -1304,6 +1304,10 @@ export const RightPanel = ({
   placement?: PanelPlacement;
   /** The rail's drawer is open, on the tab the panel shows. */
   railOpen?: boolean;
+  /** The rail tabs that show a change dot. */
+  railDots?: ReadonlySet<string>;
+  /** Told the tab the panel shows while it is open, and null when it closes or collapses to its rail. */
+  onShownTab?: (tab: string | null) => void;
   onRailOpen?: (tab: string) => void;
   onRailClose?: () => void;
   onLocationClick: () => void;
@@ -1541,9 +1545,15 @@ export const RightPanel = ({
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
 
+  React.useEffect(() => {
+    if (collapsed || !onShownTab) return;
+    onShownTab(shownTab);
+    return () => onShownTab(null);
+  }, [collapsed, shownTab, onShownTab]);
+
   if (collapsed) {
     return (
-      <PanelRail side="right" label="Status" tabs={statusTabs} openTab={railOpen ? shownTab : undefined} onOpen={onRailOpen} onClose={onRailClose} />
+      <PanelRail side="right" label="Status" tabs={statusTabs} openTab={railOpen ? shownTab : undefined} dots={railDots} onOpen={onRailOpen} onClose={onRailClose} />
     );
   }
 

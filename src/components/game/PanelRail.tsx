@@ -26,7 +26,7 @@ export const GAME_VIEW_PROPS = { 'data-game-view': '' } as const;
 const RAIL_TAB_ATTR = 'data-rail-tab';
 
 /** A collapsed side panel: its tabs as labeled icons, with optional controls above them. Desktop only. */
-export function PanelRail({ side, label, tabs, top, openTab, onOpen, onClose }: {
+export function PanelRail({ side, label, tabs, top, openTab, dots, onOpen, onClose }: {
   side: PanelSide;
   /** Names the rail for assistive technology, as the docked panel's tab list is named. */
   label: string;
@@ -35,6 +35,8 @@ export function PanelRail({ side, label, tabs, top, openTab, onOpen, onClose }: 
   top?: React.ReactNode;
   /** The tab its drawer shows, when the drawer is open. */
   openTab?: string;
+  /** Tabs whose content changed since the player last saw them. */
+  dots?: ReadonlySet<string>;
   onOpen?: (tab: string) => void;
   onClose?: () => void;
 }) {
@@ -67,8 +69,16 @@ export function PanelRail({ side, label, tabs, top, openTab, onOpen, onClose }: 
           onClick={() => (value === openTab ? onClose?.() : onOpen?.(value))}
           className="flex h-14 w-full shrink-0 flex-col items-center justify-center gap-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
-          <Icon className="h-5 w-5" />
-          <span className="text-meta leading-none">{tabLabel}</span>
+          <span className="relative">
+            <Icon className="h-5 w-5" />
+            {dots?.has(value) && (
+              <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+            )}
+          </span>
+          <span className="text-meta leading-none">
+            {tabLabel}
+            {dots?.has(value) && <span className="sr-only">, changed</span>}
+          </span>
         </button>
       ))}
     </nav>

@@ -277,6 +277,7 @@ import {
   type CommandChoices,
 } from "../components/game/GamePanels";
 import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_PROPS, PanelDrawer, PanelRail, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
+import { statusSignatures, useChangeDots } from "@/components/game/changeDots";
 import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from "@/components/game/panelTabs";
 import { useGameLeftCollapsed, useGameRightCollapsed } from "@/lib/gamePanelPrefs";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
@@ -2310,6 +2311,20 @@ const GameViewer = ({
   const statEnabled = useMemo(() => activeStatEnabled(globalStats, statTraits), [globalStats, statTraits]);
   const activeStats = useMemo(() => enabledStats(globalStats, statEnabled), [globalStats, statEnabled]);
   statEnabledRef.current = statEnabled;
+  // The right rail's dots: changes to what the player's tabs show, made while that tab is out of sight.
+  const statusSigns = useMemo(() => {
+    const played = personaRef ? playedEntityIds(personaRef, traitEntities) : [];
+    return statusSignatures({
+      stats: globalStats, statEnabled, traits: globalTraits, disabledTraitIds,
+      playedTraits: played.map((id) => ownedTraits[id]), copies: itemCopies,
+    });
+  }, [globalStats, statEnabled, globalTraits, disabledTraitIds, personaRef, traitEntities, ownedTraits, itemCopies]);
+  // The tab the open right panel or drawer shows, as the panel reports it.
+  const [shownRightTab, setShownRightTab] = useState<string | null>(null);
+  const { dots: rightDots, rebase: rebaseRightDots } = useChangeDots(statusSigns, {
+    watching: !isMobile && rightCollapsed,
+    shownTab: shownRightTab,
+  });
 
   /** Each entity's stat traits in force under `owned`, the owned trait state they read, in `world`. */
   const entityInForceUnder = useCallback(
@@ -5677,9 +5692,12 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
+        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits)
+          .then((loaded) => { if (loaded && mounted.current) rebaseRightDots(); });
         return;
       }
+      // The seeded state is the new game's baseline.
+      rebaseRightDots();
 
       // New game, once: a loaded save returned above. The fold reads the authored world, chips and all.
       const opening = openingFold(getWorldData(), { traits: initialTraits, owned: initialOwnedTraits }, {
@@ -5837,6 +5855,7 @@ const GameViewer = ({
     setMemoryEdits,
     setMemoryDeleted,
     setMemoryNotes,
+    rebaseRightDots,
   ]);
 
   const scrollToBottom = useCallback(() => {
@@ -6125,6 +6144,8 @@ const GameViewer = ({
       // The panel draws its own rail: only it knows which tabs it shows.
       collapsed={placement === 'docked' && !isMobile && rightCollapsed}
       railOpen={drawerSide === 'right'}
+      railDots={rightDots}
+      onShownTab={setShownRightTab}
       onRailOpen={(tab) => openDrawer('right', tab)}
       onRailClose={closeDrawer}
       onLocationClick={() => setIsLocationModalOpen(true)}
@@ -6188,18 +6209,23 @@ const GameViewer = ({
         // Use the migrated world for the save restore — the raw one may be a legacy shape whose locations/
         // stats lack the migration fixes (morph bindings, renamed keys) that loadWorldData just applied.
         const { world: migrated } = loadWorldData(world, false, { stored: true });
-        return await loadGame(
+        const loaded = await loadGame(
           id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : [],
           Array.isArray(migrated.entities) ? migrated.entities : [], migrated.worldOverview?.vrmStore,
           Array.isArray(migrated.items) ? migrated.items : [],
         );
+        if (loaded && mounted.current) rebaseRightDots();
+        return loaded;
       } catch (error) {
         console.error('Cross-world load failed:', error);
         toastError(error, { headline: "Couldn't load that save's world." });
         return false;
       }
     }
-    return loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
+    const loaded = await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
+    // A loaded game starts with no dots, from its own state.
+    if (loaded && mounted.current) rebaseRightDots();
+    return loaded;
   };
   const menuModal = (directActions: boolean) => (
     <MenuModal
