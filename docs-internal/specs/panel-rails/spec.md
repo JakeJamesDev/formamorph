@@ -96,6 +96,13 @@ Each side panel collapses on its own to a thin rail of labeled tab icons. A thin
 - T02-1: the drawer holds the whole docked panel, as in the prototype, minus Back and Music. That includes the tab strip, the left Entity View, and the right clock and persona row. The drawer's tab strip switches tabs, and the rail highlight follows it.
 - T02-2: only one drawer is open at a time. A click on the other rail's icon closes the open drawer and opens that side's drawer.
 - T02-3: while a drawer is open, its side's edge strip sits on the drawer's inner edge, so a mouse click docks the panel on the drawer's tab. The flush drawer would otherwise cover the strip.
+- T03-1: only the player's changes add a dot: global stats, the player's traits, and the copies the player owns. Entity changes add none.
+- T03-2: only a change the tab would show adds a dot. Detection reads live state, never the viewed page.
+- T03-3: a change to the tab an open drawer shows adds no dot. A change to another right tab adds its dot. Switching tabs in the drawer's own tab strip clears the shown tab's dot.
+- T03-4: any live change counts, rewind and regenerate included. A new game or a load starts with no dots, and the loaded state is the baseline.
+- T03-5: a dotted icon's accessible name reads "Stats, changed" (and the same for Traits and Inventory). The dot itself is hidden from screen readers.
+- T03-6: the dot is the prototype's: a small primary dot with a background ring at the top-right of the icon glyph, with no count.
+- T04-1: right-side tabs never landed before this effort. On desktop a Surface request's game tab is classified by side. A collapsed side opens the drawer on it. A docked left side keeps its old path. A docked right side now selects the tab too. Mobile is unchanged.
 
 **Modules:**
 
