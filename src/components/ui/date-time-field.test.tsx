@@ -160,6 +160,8 @@ describe('a window that has already opened', () => {
     expect(dateButton().textContent).toMatch(/Aug/);
     await userEvent.click(dateButton());
 
+    // The calendar loads on open, so a missing grid alone could be one still loading.
+    expect(dateButton()).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('grid')).toBeNull();
     expect(timeField()).toHaveAttribute('readonly');
     expect(onChange).not.toHaveBeenCalled();

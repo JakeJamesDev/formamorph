@@ -36,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
   - **Six World Editor tabs' tests now mount the panel, not the whole editor, and take half the worker time.** 124 of 177 test rows moved with coverage held. The tabs are Entities, Dictionary, Placeholders, Locations, Overview and Tools.
   - **Game view tests for bundled saves and the Demo AI card now take under half the worker time.** Every bundled save loads and settles in `GameplayContext.bundledSaves.test.tsx`, and five cases still play a turn in the view.
+  - **Test files now spend about 14% less time importing and 30% less in setup.** Node-environment tests skip Testing Library. The date field's calendar loads when a pointer or focus reaches its button.
 
 #### ➖ Removed
 

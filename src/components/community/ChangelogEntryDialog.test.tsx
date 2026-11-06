@@ -2,6 +2,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { ChangelogEntryDialog } from './ChangelogEntryDialog';
 import { todayForDateInput } from '@/lib/listingChangelog';
+import { pickCalendarDate } from '@/test/calendar';
 
 // jsdom can't drive a real Lexical selection; the editor is stubbed to a textarea so it can be filled.
 vi.mock('@/components/prompt/PromptField', () => ({
@@ -40,30 +41,7 @@ const asShown = (day: string) => {
     .toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-/**
- * Pick a day out of the app's own calendar: open it, page to the month, press the day. Adapted from the
- * event form's helper, which drives the same field.
- */
-const pickDate = (day: string) => {
-  fireEvent.click(dateButton());
-
-  const [year, month, date] = day.split('-').map(Number);
-  const target = new Date(year, month - 1, 1).getTime();
-  // Named with its month, not just its ordinal: `showOutsideDays` puts the next month's first days in the
-  // last row, so "1st, 2026" alone matches two cells — and clicking the wrong one picks the wrong month.
-  const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
-  const suffix = ['th', 'st', 'nd', 'rd'][(date % 100 - 20) % 10] ?? ['th', 'st', 'nd', 'rd'][date % 100] ?? 'th';
-  const label = `${monthName} ${date}${suffix}, ${year}`;
-
-  const cell = () => screen.queryByRole('button', { name: new RegExp(label) });
-  const shown = () => new Date(`${screen.getByRole('grid').getAttribute('aria-label')} 1`).getTime();
-
-  for (let paged = 0; paged < 36 && !cell(); paged++) {
-    fireEvent.click(screen.getByRole('button', { name: target > shown() ? /Next Month/i : /Previous Month/i }));
-  }
-
-  fireEvent.click(cell()!);
-};
+const pickDate = (day: string) => pickCalendarDate(dateButton(), day);
 
 const show = (props: Record<string, unknown> = {}) =>
   render(
@@ -75,10 +53,9 @@ const show = (props: Record<string, unknown> = {}) =>
     />
   );
 
-const fill = (over: { title?: string; body?: string; date?: string } = {}) => {
+const fill = (over: { title?: string; body?: string } = {}) => {
   if (over.title !== undefined) fireEvent.change(titleBox(), { target: { value: over.title } });
   if (over.body !== undefined) fireEvent.change(bodyBox(), { target: { value: over.body } });
-  if (over.date !== undefined) pickDate(over.date);
 };
 
 afterEach(() => {
@@ -122,11 +99,12 @@ describe('opening the popup', () => {
 });
 
 describe('handing the draft back', () => {
-  it('submits the three fields, trimmed', () => {
+  it('submits the three fields, trimmed', async () => {
     const onSubmit = vi.fn();
     show({ onSubmit });
 
-    fill({ title: '  Update 1  ', body: '  The drowned quarter is walkable.  ', date: '2026-08-01' });
+    fill({ title: '  Update 1  ', body: '  The drowned quarter is walkable.  ' });
+    await pickDate('2026-08-01');
     fireEvent.click(submit());
 
     expect(onSubmit).toHaveBeenCalledWith({

@@ -1,68 +1,16 @@
-import { useId, useMemo, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import { DayPicker, type ChevronProps, type DropdownProps } from 'react-day-picker';
+import { lazy, Suspense, useId, useMemo, useState, type ReactNode } from 'react';
+import { CalendarDays, Clock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import 'react-day-picker/style.css';
 
-/**
- * The calendar in the app's own palette.
- *
- * react-day-picker draws itself from CSS variables, so the theme is a handful of token references
- * rather than a re-implementation of its grid — which also means both themes follow the app's without a
- * second declaration.
- */
-const CALENDAR_THEME = {
-  '--rdp-accent-color': 'hsl(var(--primary))',
-  '--rdp-accent-background-color': 'hsl(var(--accent))',
-  '--rdp-today-color': 'hsl(var(--primary))',
-  '--rdp-day-height': '2.25rem',
-  '--rdp-day-width': '2.25rem',
-  '--rdp-day_button-height': '2rem',
-  '--rdp-day_button-width': '2rem',
-  '--rdp-day_button-border-radius': 'var(--radius)',
-  '--rdp-nav_button-height': '1.75rem',
-  '--rdp-nav_button-width': '1.75rem',
-  '--rdp-nav-height': '2rem',
-} as CSSProperties;
-
-/** The chevrons the navigation buttons draw, so the calendar's arrows match every other arrow here. */
-function CalendarChevron({ orientation, className }: ChevronProps) {
-  const Arrow = orientation === 'left' ? ChevronLeft : ChevronRight;
-  return <Arrow className={cn('h-4 w-4', className)} aria-hidden />;
-}
-
-/**
- * The caption's month and year pickers, drawn with the app's own `Select`.
- *
- * react-day-picker hands this slot a `<select>`-shaped contract — a flat option list and a change event
- * carrying the new value — so the adapter's whole job is to hand `onChange` an event shaped like the one
- * a native select would have fired.
- */
-function CalendarDropdown({ options = [], value, onChange, 'aria-label': ariaLabel }: DropdownProps) {
-  return (
-    <Select
-      value={String(value)}
-      onValueChange={(next) =>
-        onChange?.({ target: { value: next } } as unknown as ChangeEvent<HTMLSelectElement>)}
-    >
-      <SelectTrigger aria-label={ariaLabel} className="h-8 w-auto gap-1 border-none px-2 font-medium shadow-none">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent className="max-h-64">
-        {options.map((option) => (
-          <SelectItem key={option.value} value={String(option.value)} disabled={option.disabled}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
+// react-day-picker loads all of date-fns, so the calendar loads when a pointer or focus nears its button.
+let loadedCalendar: typeof import('./date-calendar') | undefined;
+const loadCalendar = () => import('./date-calendar').then((module) => (loadedCalendar = module));
+// `lazy` suspends on its first render even with the module in hand, and React holds a shown fallback a while.
+const LazyCalendar = lazy(loadCalendar);
 
 /** How far either side of this year the caption's year list reaches. */
 const YEAR_REACH = 10;
@@ -266,6 +214,7 @@ export function DateTimeField({
   const { startMonth, endMonth } = useMemo(captionRange, []);
   const hour12 = useMemo(usesTwelveHourClock, []);
 
+  const Calendar = loadedCalendar?.default ?? LazyCalendar;
   const { day, time } = splitLocal(value);
   const selected = dayToDate(day);
 
@@ -289,6 +238,8 @@ export function DateTimeField({
             id={buttonId}
             aria-label={`${label} date`}
             disabled={readOnly}
+            onPointerEnter={() => void loadCalendar()}
+            onFocus={() => void loadCalendar()}
             className={cn(
               'flex h-10 min-w-[9rem] items-center gap-2 rounded-md border border-input bg-background px-3 text-label',
               // Only the pair shares a row, so only the pair has a stretch to divide.
@@ -304,25 +255,18 @@ export function DateTimeField({
         </PopoverTrigger>
         {/* portal={false}: inside a modal Dialog, the scroll lock swallows wheel events on body-portaled content. */}
         <PopoverContent portal={false} className="w-auto p-3" align="start">
-          <DayPicker
-            mode="single"
-            // rdp's cells use `font: inherit`, and the popover inherits body size; text-label matches
-            // the caption dropdowns and the clock columns.
-            className="text-label"
-            selected={selected}
-            defaultMonth={selected}
-            showOutsideDays
-            captionLayout="dropdown"
-            startMonth={startMonth}
-            endMonth={endMonth}
-            style={CALENDAR_THEME}
-            components={{ Chevron: CalendarChevron, Dropdown: CalendarDropdown }}
-            onSelect={(next) => {
-              if (!next) return;
-              emitDay(dateToDay(next));
-              setDateOpen(false);
-            }}
-          />
+          {/* The calendar's own size, so a cold first open holds its place rather than growing the popover. */}
+          <Suspense fallback={<div data-calendar-loading="" className="h-[19rem] w-[17.5rem]" />}>
+            <Calendar
+              selected={selected}
+              startMonth={startMonth}
+              endMonth={endMonth}
+              onSelect={(next) => {
+                emitDay(dateToDay(next));
+                setDateOpen(false);
+              }}
+            />
+          </Suspense>
         </PopoverContent>
       </Popover>
 

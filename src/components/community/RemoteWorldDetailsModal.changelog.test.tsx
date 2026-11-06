@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { RemoteWorldDetailsModal } from './RemoteWorldDetailsModal';
+import { pickCalendarDate } from '@/test/calendar';
 import WorldStorageService from '@/services/WorldStorageService';
 import { changelogOf, type ChangelogEntry } from '@/lib/listingChangelog';
 import { type WorldRecord } from '@/components/WorldDetails';
@@ -74,29 +75,7 @@ const asShown = (day: string) => {
     .toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-/**
- * Pick a day out of the app's own calendar: open it, page to the month, press the day.
- *
- * The cell is named with its month, not just its ordinal: `showOutsideDays` puts the next month's first
- * days in the last row, so "1st, 2026" alone matches two cells and clicking the wrong one picks the
- * wrong month.
- */
-const pickDate = (day: string) => {
-  fireEvent.click(screen.getByRole('button', { name: 'Date date' }));
-
-  const [year, month, date] = day.split('-').map(Number);
-  const target = new Date(year, month - 1, 1).getTime();
-  const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
-  const suffix = ['th', 'st', 'nd', 'rd'][(date % 100 - 20) % 10] ?? ['th', 'st', 'nd', 'rd'][date % 100] ?? 'th';
-  const cell = () => screen.queryByRole('button', { name: new RegExp(`${monthName} ${date}${suffix}, ${year}`) });
-  const shown = () => new Date(`${screen.getByRole('grid').getAttribute('aria-label')} 1`).getTime();
-
-  for (let paged = 0; paged < 36 && !cell(); paged++) {
-    fireEvent.click(screen.getByRole('button', { name: target > shown() ? /Next Month/i : /Previous Month/i }));
-  }
-
-  fireEvent.click(cell()!);
-};
+const pickDate = (day: string) => pickCalendarDate(screen.getByRole('button', { name: 'Date date' }), day);
 
 /**
  * Stand in for the service, faithfully: it answers through the same `changelogOf` the real one does, so
@@ -333,7 +312,7 @@ describe('who may maintain it', () => {
     fireEvent.click(await screen.findByRole('button', { name: /add entry/i }));
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Update 2' } });
     fireEvent.change(screen.getByLabelText('What Changed'), { target: { value: 'The middle news.' } });
-    pickDate('2026-04-01');
+    await pickDate('2026-04-01');
     fireEvent.click(screen.getByRole('button', { name: 'Add Entry' }));
 
     await waitFor(() => expect(WorldStorageService.createChangelogEntry).toHaveBeenCalledWith(
