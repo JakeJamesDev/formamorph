@@ -49,6 +49,11 @@ Settled with the user on 2026-11-06 in the grill.
 | Q20 | The picker label is "Focused (Experimental)" |
 | Q21 | Tier names: Focus, Background, Offstage. "Present" belongs to In Scene's _Avoid_ list |
 | Q22 | One test seam: the turn runner with scripted AI replies. The probe harness covers model quality outside the gates |
+| Q23 | The continuity rubric has two parts. Objective counts per turn: Focus facts kept, Background entities kept in the scene, Offstage entities wrongly put onstage, and invented strangers who duplicate an existing entity. Plus a blind 1–5 continuity score on shuffled, label-stripped full/trimmed pairs. "No worse" means the trimmed mean is within the full arm's confidence interval on both parts |
+| Q24 | The probe sends the classifier temperature 0.2 and repetition penalty 1. Ticket 02 copies these as the pins. A sweep runs only if 0.2 misses the bar |
+| Q25 | The Offstage list follows the sublocation roster under a provisional header. Ticket 02 sets the final wording |
+| Q26 | Ticket 01 may land after the cloud numbers, with the Cydonia criterion unticked. Ticket 02 stays blocked until the Cydonia numbers meet the bar |
+| Q27 | Ticket 01 may revise the classifier prompt up to 3 times. It tunes on a fixed half of the cases and reports the held-out half beside the full set. If the held-out half misses the bar after 3 revisions, the ticket lands with the failing numbers and the spec returns to the grill |
 
 ## User Stories
 
