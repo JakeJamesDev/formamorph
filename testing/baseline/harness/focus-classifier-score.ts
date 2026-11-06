@@ -26,8 +26,13 @@ export function parseFocusReply(reply: string, letters: readonly string[]): Reco
   return letters.every((letter) => tiers[letter]) ? tiers : null;
 }
 
-/** One classified case: the expected and the predicted tier per entity name, or null for a parse failure. */
-export interface LabelOutcome { expected: Record<string, FocusTier>; predicted: Record<string, FocusTier> | null }
+/**
+ * One classified case: the expected and the predicted tier per entity name, or null for a parse failure.
+ * `accepted` names a second tier that also counts as a match for a toss-up label.
+ */
+export interface LabelOutcome {
+  expected: Record<string, FocusTier>; predicted: Record<string, FocusTier> | null; accepted?: Record<string, FocusTier>;
+}
 
 export interface LabelTally {
   replies: number; parseFailures: number;
@@ -38,13 +43,13 @@ export interface LabelTally {
 /** Focus recall and tier match over every reply, counting a parse failure as a miss on every entity. */
 export function tallyLabels(outcomes: readonly LabelOutcome[]): LabelTally {
   const tally: LabelTally = { replies: 0, parseFailures: 0, focusExpected: 0, focusFound: 0, entities: 0, tiersMatched: 0 };
-  for (const { expected, predicted } of outcomes) {
+  for (const { expected, predicted, accepted } of outcomes) {
     tally.replies++;
     if (!predicted) tally.parseFailures++;
     for (const [name, tier] of Object.entries(expected)) {
       tally.entities++;
       const got = predicted?.[name];
-      if (got === tier) tally.tiersMatched++;
+      if (got !== undefined && (got === tier || got === accepted?.[name])) tally.tiersMatched++;
       if (tier === 'Focus') {
         tally.focusExpected++;
         if (got === 'Focus') tally.focusFound++;

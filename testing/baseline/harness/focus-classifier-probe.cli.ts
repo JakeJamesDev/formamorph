@@ -56,6 +56,8 @@ interface Scene { world: string; location: string; here: string[]; sub: Record<s
 interface Case {
   id: string; scene: string; covers: string[]; narration?: boolean;
   prevAction: string; lastNarration: string; action: string; tiers: Record<string, FocusTier>;
+  /** A second tier that also scores as a match, for Background-vs-Offstage toss-ups. */
+  alsoOk?: Record<string, FocusTier>;
 }
 interface Marks { presence: string; facts: string[] }
 const file = JSON.parse(readFileSync(path.resolve('testing/baseline/focus-classifier-cases.json'), 'utf8')) as {
@@ -274,7 +276,7 @@ async function reportClassifier(label: string, system: string, results: Classifi
 
 interface ClassifierResult {
   case: string; run: number; reply: string; predicted: Record<string, FocusTier> | null; expected: Record<string, FocusTier>;
-  fullTokens: number; trimmedTokens: number; classifierTokens: number;
+  accepted?: Record<string, FocusTier>; fullTokens: number; trimmedTokens: number; classifierTokens: number;
 }
 
 // Revisions tune on the even-indexed cases; the odd ones are held out.
@@ -294,7 +296,7 @@ async function classifierArm() {
     const predicted = byLetter && Object.fromEntries(b.roster.map((e) => [e.name, byLetter[e.letter]]));
     const [fullTokens, trimmedTokens] = await Promise.all([narrationTokens(c, null), narrationTokens(c, predicted)]);
     console.log(`${p.label.split(' ')[0]} ${c.id} #${run} ${predicted ? b.roster.map((e) => `${e.letter}=${predicted[e.name][0]}`).join(' ') : `PARSE FAIL ${JSON.stringify(reply.text.slice(0, 120))}`}`);
-    return { arm, result: { case: c.id, run, reply: reply.text, predicted, expected: c.tiers, fullTokens, trimmedTokens, classifierTokens: reply.promptTokens + reply.completionTokens } };
+    return { arm, result: { case: c.id, run, reply: reply.text, predicted, expected: c.tiers, accepted: c.alsoOk, fullTokens, trimmedTokens, classifierTokens: reply.promptTokens + reply.completionTokens } };
   })).flat());
   const done = await inPool(jobs);
   console.log(`\nmodel ${model} · runs ${runs} · cases ${cases.length} · temp ${CLASSIFIER_PINS.temperature}`);

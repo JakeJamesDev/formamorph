@@ -35,6 +35,16 @@ describe('tallyLabels', () => {
     ]);
     expect(tally).toEqual({ replies: 2, parseFailures: 1, focusExpected: 2, focusFound: 1, entities: 4, tiersMatched: 1 });
   });
+
+  it('counts an accepted second tier as a match, and nothing else', () => {
+    const accepted = { Bo: 'Offstage' } as const;
+    const tally = tallyLabels([
+      { expected: { Ann: 'Focus', Bo: 'Background' }, predicted: { Ann: 'Focus', Bo: 'Offstage' }, accepted },
+      { expected: { Ann: 'Focus', Bo: 'Background' }, predicted: { Ann: 'Focus', Bo: 'Focus' }, accepted },
+      { expected: { Ann: 'Focus', Bo: 'Background' }, predicted: null, accepted },
+    ]);
+    expect(tally.tiersMatched).toBe(3);
+  });
 });
 
 describe('pairedDiff', () => {

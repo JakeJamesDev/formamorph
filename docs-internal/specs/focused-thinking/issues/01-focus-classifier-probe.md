@@ -131,21 +131,24 @@ The user asked for this run. Q13 names Cydonia, so this arm does not replace it.
 
 ## Comments
 
-**2026-11-06, label review (spec session).** The user reviewed the 12 labels that every model run rejected, or 12 of 13 rejected (cloud rev 1, rev 3 and MeroMero). Five changed; the numbers above use the old labels.
+**2026-11-06, label review (spec session).** The user reviewed the labels that every model run rejected, or nearly every run (cloud rev 1, rev 3 and MeroMero), then re-checked them against the tier definitions below. The numbers above use the old labels.
+
+**Tier definitions (the user's).**
+- **Focus:** the entity speaks or acts in this turn's narration, or the player acts on it. It needs its full entry so the narration does not get an important fact wrong.
+- **Background:** nearby, but it will not act or speak this turn. It is included so a mention does not get basic details wrong or invent a new character in place of the authored one.
+- **Offstage:** not relevant to this turn. It just left the scene or plays no part, and a mention would go against the narrative. Listing it nudges the narration to ignore it.
+- **Toss-ups:** a genuine Background-vs-Offstage toss-up accepts both. The case file marks the second tier in `alsoOk`, and the scorer counts either as a match.
 
 | Case | Entity | Was | Now |
 |---|---|---|---|
 | `tavern-arrive` | Wenna Tallow | Background | Focus |
 | `fort-radar` | General Vasquez | Background | Focus |
 | `fort-highway` | Jet Fighter | Background | Focus |
+| `fort-highway` | Artillery Battery | Background | Focus |
 | `sunk-wade` | Dread Crawler | Offstage | Background |
-| `cafeteria-run` | The Swarm | Background | Focus |
+| `cafeteria-kitchen` | Rin Hayama | Background | Focus |
+| `sunk-silence`, `sunk-bell` | Mire Leeches | Background | Background, Offstage also accepted |
 
-Kept: `hallway-text` The Swarm (Background), `sunk-silence` Bleeding Tooth, `hospital-cordon` Dr. Ines Varga, Dr. Lena Sorensen in both fort cases (all Offstage), `sedge-waiting` Rope Ferry and `cafeteria-kitchen` Rin Hayama (Background).
+Kept: `hallway-text` and `cafeteria-run` The Swarm, `sedge-waiting` Rope Ferry (Background); `sunk-silence` Bleeding Tooth, `hospital-cordon` Dr. Ines Varga, Dr. Lena Sorensen in both fort cases (Offstage).
 
-Rules the rulings imply:
-- A keeper or host on the player's arrival is Focus.
-- The voice that just spoke to the player is Focus.
-- A hazard the player just announced is about to act is Focus.
-- What the player flees is Focus. A topic the player asks a third party about is Background. The shipped prompt's "asks about it" rule contradicts this.
-- An unseen hunter drawn by what the action does (noise) is Background, not Offstage.
+The shipped prompt's Focus rule includes "asks about it". Under these definitions, a topic the player asks a third party about is Background (`hallway-text`), so the prompt contradicts the labels there.
