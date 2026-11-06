@@ -277,7 +277,7 @@ import {
   type CommandChoices,
 } from "../components/game/GamePanels";
 import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_PROPS, PanelDrawer, PanelRail, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
-import { LEFT_PANEL_TABS } from "@/components/game/panelTabs";
+import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from "@/components/game/panelTabs";
 import { useGameLeftCollapsed, useGameRightCollapsed } from "@/lib/gamePanelPrefs";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -1626,6 +1626,16 @@ const GameViewer = ({
     editorLeave.current = null;
     pending?.cancel();
   }, [worldChangedElsewhere, showEditorExitPrompt]);
+  /** Lands a side panel tab: a collapsed side opens its drawer, a docked right side selects the tab. */
+  const landSideTab = (tab: string | undefined) => {
+    if (!tab) return;
+    if ((GAME_LEFT_PANEL_TABS as readonly string[]).includes(tab)) {
+      if (leftCollapsed) openDrawer('left', tab);
+    } else if ((GAME_RIGHT_PANEL_TABS as readonly string[]).includes(tab)) {
+      if (rightCollapsed) openDrawer('right', tab);
+      else setRightTab(tab);
+    }
+  };
   const openSurfaceHere = (steps: SurfaceSteps) => {
     surfaceNav.land(steps);
     switch (steps.dialog) {
@@ -1633,6 +1643,7 @@ const GameViewer = ({
         if (isMobile && stepTab(steps, 'gameViewer')) setMobilePanel('character');
         // Every game screen target sits in the story panel.
         else if (isMobile && targetRoute(steps)) setMobilePanel('game');
+        else if (!isMobile) landSideTab(stepTab(steps, 'gameViewer'));
         break;
       case 'settings': {
         const landing = settingsLanding(steps);

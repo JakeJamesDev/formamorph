@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
+import { createSurfaceRequester } from '@/test/surfaceRequest';
 import type { PlayerStat } from '@/types';
 
 /** The desktop side panels collapse to rails through their edge strips, per device. */
@@ -301,5 +302,67 @@ describe('the drawer', () => {
     expect(rail('Status')).toBeNull();
     expect(selectedTab('Status')).toHaveAccessibleName('Location');
     expect(screen.getAllByRole('tablist', { name: 'Status' })).toHaveLength(1);
+  });
+});
+
+describe('a surface request into a side', () => {
+  const selectedTab = (list: 'Story' | 'Status') =>
+    within(screen.getByRole('tablist', { name: list })).getByRole('tab', { selected: true });
+  const enter = async () => {
+    const requester = createSurfaceRequester();
+    renderGameViewer(harborWorld({ stats: [vigor] }), { children: <requester.Requester /> });
+    await screen.findByRole('button', { name: 'Hide UI' });
+    return requester;
+  };
+  const collapse = async (side: 'left' | 'right') => fireEvent.click(await strip(side, 'Collapse Panel'));
+
+  it('opens the left drawer on the requested tab when the left side is collapsed', async () => {
+    const requester = await enter();
+    await collapse('left');
+    requester.send('gameViewer.memory');
+    expect(await screen.findByRole('tablist', { name: 'Story' })).toBeInTheDocument();
+    expect(selectedTab('Story')).toHaveAccessibleName(/^Memory/);
+  });
+
+  it('opens the right drawer on the requested tab when the right side is collapsed', async () => {
+    const requester = await enter();
+    await collapse('right');
+    requester.send('gameViewer.traits');
+    expect(await screen.findByRole('tablist', { name: 'Status' })).toBeInTheDocument();
+    expect(selectedTab('Status')).toHaveAccessibleName('Traits');
+  });
+
+  it('opens the drawer again for a repeat request after it was closed', async () => {
+    const user = userEvent.setup();
+    const requester = await enter();
+    await collapse('left');
+    requester.send('gameViewer.memory');
+    await screen.findByRole('tablist', { name: 'Story' });
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
+
+    requester.send('gameViewer.memory');
+    expect(await screen.findByRole('tablist', { name: 'Story' })).toBeInTheDocument();
+    expect(selectedTab('Story')).toHaveAccessibleName(/^Memory/);
+  });
+
+  it('selects the tab in a docked panel, left or right, and opens no drawer', async () => {
+    const requester = await enter();
+    await screen.findByRole('tablist', { name: 'Status' });
+    requester.send('gameViewer.traits');
+    await waitFor(() => expect(selectedTab('Status')).toHaveAccessibleName('Traits'));
+    requester.send('gameViewer.memory');
+    await waitFor(() => expect(selectedTab('Story')).toHaveAccessibleName(/^Memory/));
+    expect(rail('Story')).toBeNull();
+    expect(rail('Status')).toBeNull();
+  });
+
+  it('selects a docked left tab without opening the collapsed right side', async () => {
+    const requester = await enter();
+    await collapse('right');
+    requester.send('gameViewer.notes');
+    await waitFor(() => expect(selectedTab('Story')).toHaveAccessibleName('Notes'));
+    expect(rail('Status')).not.toBeNull();
+    expect(screen.queryByRole('tablist', { name: 'Status' })).toBeNull();
   });
 });

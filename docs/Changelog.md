@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Regenerate Stats button in the game's Stats panel now names the endpoint it sends to.** It matches the other regenerate buttons.
   - **In game on desktop, each side panel collapses to a rail of labeled tab icons.** Use the thin strip on the panel's inner edge to collapse it or dock it again. Each device remembers its choice, and the story stays centered at a comfortable reading width.
   - **In game on desktop, a collapsed panel's rail icons open their tab in a drawer over the story.** Click the icon again, press Escape, or click elsewhere to close it. The strip on the drawer's edge docks the panel on that tab.
+  - **Take Me There and tutorial steps into a collapsed side panel now open that tab's drawer.** A request for a tab on a docked right panel now selects the tab too.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.

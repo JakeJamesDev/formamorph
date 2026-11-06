@@ -1,6 +1,6 @@
 # 04: Landing Into A Collapsed Side
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -13,7 +13,15 @@ When Take Me There, a tutorial step or a dev-route targets a tab on a collapsed 
 
 ## Acceptance criteria
 
-- [ ] A Surface request for a right-side tab with the right side collapsed opens the drawer on that tab.
-- [ ] A Surface request for a left-side tab with the left side collapsed opens the drawer on that tab.
-- [ ] A repeat request for the same tab opens the drawer again after it was closed.
-- [ ] A request into a docked side selects the tab as today, with no drawer.
+- [x] A Surface request for a right-side tab with the right side collapsed opens the drawer on that tab. (GameViewer.panelRails.test: "opens the right drawer on the requested tab")
+- [x] A Surface request for a left-side tab with the left side collapsed opens the drawer on that tab. ("opens the left drawer on the requested tab")
+- [x] A repeat request for the same tab opens the drawer again after it was closed. ("opens the drawer again for a repeat request")
+- [x] A request into a docked side selects the tab, with no drawer. The docked right side did not select before this ticket (T04-1). ("selects the tab in a docked panel")
+
+## Landed
+
+**Not verified**
+- Dev-route landing into a collapsed side: not exercised. The dev-router has its own path that does not go through `openSurfaceHere`.
+
+**For you**
+- Press Take Me There from the help window for a Stats or Memory topic with that side collapsed. The drawer should open on the tab.
