@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -67,7 +67,7 @@ export function PanelRail({ side, label, tabs, top, openTab, dots, onOpen, onClo
           {...{ [RAIL_TAB_ATTR]: '' }}
           aria-pressed={value === openTab}
           onClick={() => (value === openTab ? onClose?.() : onOpen?.(value))}
-          className="flex h-14 w-full shrink-0 flex-col items-center justify-center gap-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className={cn(RAIL_BUTTON, 'aria-pressed:bg-accent aria-pressed:text-foreground')}
         >
           <span className="relative">
             <Icon className="h-5 w-5" />
@@ -82,6 +82,72 @@ export function PanelRail({ side, label, tabs, top, openTab, dots, onOpen, onClo
         </button>
       ))}
     </nav>
+  );
+}
+
+const RAIL_BUTTON = 'flex h-14 w-full shrink-0 flex-col items-center justify-center gap-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
+
+/** A rail control that acts rather than opens a tab, drawn like the rail's tabs. Its tip names the action in full. */
+export function RailAction({ icon, label, tip, onClick }: {
+  icon: React.ReactNode;
+  label: string;
+  tip: string;
+  onClick: () => void;
+}) {
+  return (
+    <Tip tip={tip} side="right">
+      <button type="button" onClick={onClick} className={RAIL_BUTTON}>
+        {icon}
+        <span aria-hidden className="text-meta leading-none">{label}</span>
+      </button>
+    </Tip>
+  );
+}
+
+/** The narrowest the narration gets to stay centered; below it, it shifts toward the wider gap instead. */
+const CENTERED_MIN_REM = 36;
+
+/**
+ * Holds the narration and centers it on the game view, so collapsing one side doesn't move it. It narrows
+ * to stay centered, down to a floor, and never grows past its own maximum.
+ */
+export function NarrationColumn({ layout, children }: {
+  /** Changes when a side collapses or docks, so the column re-centers in the same commit. */
+  layout: string;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inset, setInset] = useState({ left: 0, right: 0 });
+  useLayoutEffect(() => {
+    const column = ref.current;
+    const view = column?.closest('[data-game-view]');
+    const panel = column?.firstElementChild;
+    if (!column || !view || !(panel instanceof HTMLElement)) return;
+    const place = () => {
+      const box = column.getBoundingClientRect();
+      const viewBox = view.getBoundingClientRect();
+      const max = parseFloat(getComputedStyle(panel).maxWidth);
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const floor = Number.isFinite(rem) ? CENTERED_MIN_REM * rem : 0;
+      const center = viewBox.left + viewBox.width / 2;
+      const fits = 2 * Math.min(center - box.left, box.right - center);
+      const width = Math.min(box.width, Number.isFinite(max) ? max : box.width, Math.max(fits, floor));
+      const left = Math.max(0, Math.min(center - width / 2 - box.left, box.width - width));
+      // Without a layout (no size to measure) the column keeps no inset.
+      if (!(width > 0) || !Number.isFinite(left)) { setInset({ left: 0, right: 0 }); return; }
+      setInset({ left: Math.round(left), right: Math.round(box.width - width - left) });
+    };
+    place();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(place);
+    observer.observe(column);
+    observer.observe(view);
+    return () => observer.disconnect();
+  }, [layout]);
+  return (
+    <div ref={ref} className="flex min-h-0 min-w-0 basis-0 flex-grow" style={{ paddingLeft: inset.left, paddingRight: inset.right }}>
+      {children}
+    </div>
   );
 }
 

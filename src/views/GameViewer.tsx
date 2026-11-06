@@ -276,7 +276,7 @@ import {
   RightPanel,
   type CommandChoices,
 } from "../components/game/GamePanels";
-import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_PROPS, PanelDrawer, PanelRail, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
+import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_PROPS, NarrationColumn, PanelDrawer, PanelRail, RailAction, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
 import { statusSignatures, useChangeDots } from "@/components/game/changeDots";
 import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from "@/components/game/panelTabs";
 import { useGameLeftCollapsed, useGameRightCollapsed } from "@/lib/gamePanelPrefs";
@@ -6044,17 +6044,17 @@ const GameViewer = ({
     </div>
   ) : null;
 
-  // Shared by the left panel's top row and the left rail.
+  // The left panel's top row; the rail draws its own labeled pair.
   const backButton = (
     <Tip tip="Exit to Main Menu">
-      <Button variant="ghost" size="icon" onClick={() => setShowExitConfirm(true)}>
+      <Button variant="ghost" size="icon" className="border-transparent" onClick={() => setShowExitConfirm(true)}>
         <ArrowLeft className="h-5 w-5" />
       </Button>
     </Tip>
   );
   const musicButton = (
     <Tip tip={bgmEnabled ? "Turn Music Off" : "Turn Music On"}>
-      <Button variant="ghost" size="icon" onClick={() => setBgmEnabled(!bgmEnabled)}>
+      <Button variant="ghost" size="icon" className="border-transparent" onClick={() => setBgmEnabled(!bgmEnabled)}>
         {bgmEnabled ? <Music className="h-5 w-5" /> : <MusicOffIcon className="h-5 w-5 text-muted-foreground" />}
       </Button>
     </Tip>
@@ -6298,7 +6298,17 @@ const GameViewer = ({
                   side="left"
                   label="Story"
                   tabs={LEFT_PANEL_TABS}
-                  top={<>{backButton}{musicButton}</>}
+                  top={(
+                    <>
+                      <RailAction icon={<ArrowLeft className="h-5 w-5" />} label="Exit" tip="Exit to Main Menu" onClick={() => setShowExitConfirm(true)} />
+                      <RailAction
+                        icon={bgmEnabled ? <Music className="h-5 w-5" /> : <MusicOffIcon className="h-5 w-5" />}
+                        label="Music"
+                        tip={bgmEnabled ? "Turn Music Off" : "Turn Music On"}
+                        onClick={() => setBgmEnabled(!bgmEnabled)}
+                      />
+                    </>
+                  )}
                   openTab={openDrawerSide === 'left' ? leftTab : undefined}
                   onOpen={(tab) => openDrawer('left', tab)}
                   onClose={closeDrawer}
@@ -6308,10 +6318,7 @@ const GameViewer = ({
             )
             : leftPanel}
           {sideStrip('left', leftCollapsed, setLeftCollapsed)}
-          {/* The narration keeps its reading width, centered between the sides. */}
-          <div className="flex min-h-0 min-w-0 basis-0 flex-grow justify-center">
-            {middlePanel}
-          </div>
+          <NarrationColumn layout={`${leftCollapsed}-${rightCollapsed}`}>{middlePanel}</NarrationColumn>
           {sideStrip('right', rightCollapsed, setRightCollapsed)}
           {rightPanel}
           {sideDrawer('right')}

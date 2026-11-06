@@ -328,6 +328,7 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
               <Button
                 variant="ghost"
                 size="icon"
+                className="border-transparent"
                 onClick={() => setShowEntityView((s) => !s)}
               >
                 <ChevronUp
