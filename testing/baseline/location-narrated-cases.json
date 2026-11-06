@@ -1,0 +1,140 @@
+{
+  "_note": "Made-up scenes for the narrated-move probe (harness/location-narrated-probe.cli.ts). Each scene stands the player at `at` in one of the small worlds below, gives the player's action and the narration that followed, and the place the player is in when the narration ends: a destination name, or NONE when they never left. `carried` scenes move the player without the action asking for it, and name the place only by description. `stay` scenes only look toward a place, talk about it, or move someone else. An empty action is an opening.",
+  "worlds": {
+    "fen": [
+      { "name": "The Drowned Fen", "parent": null, "summary": "A wide brown marsh of reed beds, slow channels and stilt villages." },
+      { "name": "Reedmoor Village", "parent": "The Drowned Fen", "summary": "A village of reed huts on stilts, joined by plank walkways over the water." },
+      { "name": "Heron Island", "parent": "The Drowned Fen", "summary": "A wooded island in the fen where the herons nest." },
+      { "name": "Elder's Longhouse", "parent": "Reedmoor Village", "summary": "The village elder's long reed hall, raised highest of all on its stilts and reached by a ladder." },
+      { "name": "Smokehouse", "parent": "Reedmoor Village", "summary": "A low hut where the day's catch hangs over smoldering peat." },
+      { "name": "Mooring Steps", "parent": "Reedmoor Village", "summary": "Wooden steps down to the punts tied at the water's edge." }
+    ],
+    "port": [
+      { "name": "Saltmarch", "parent": null, "summary": "A walled port city of gray stone on a cold northern bay." },
+      { "name": "Harbor Ward", "parent": "Saltmarch", "summary": "The quays, warehouses and taverns along the waterfront." },
+      { "name": "Old Town", "parent": "Saltmarch", "summary": "Narrow lanes of tall houses climbing the hill above the harbor." },
+      { "name": "Customs House", "parent": "Harbor Ward", "summary": "The tollmen's office, where every cargo is weighed and taxed." },
+      { "name": "The Gull's Rest", "parent": "Harbor Ward", "summary": "A crowded sailors' tavern under a painted gull sign." },
+      { "name": "Rope Walk", "parent": "Harbor Ward", "summary": "A long shed where the ropemakers twist hemp into cable." },
+      { "name": "Cellar", "parent": "The Gull's Rest", "summary": "A damp room of barrels under the taproom floor, reached by a trapdoor." }
+    ],
+    "fort": [
+      { "name": "Greyhold Pass", "parent": null, "summary": "A high mountain pass of scree and wind between two peaks." },
+      { "name": "Watch Fort", "parent": "Greyhold Pass", "summary": "A walled fort with a muddy yard that guards the pass." },
+      { "name": "Shepherd's Hollow", "parent": "Greyhold Pass", "summary": "A sheltered dip below the pass where flocks graze in summer." },
+      { "name": "Gatehouse", "parent": "Watch Fort", "summary": "The fortified gate where travelers are stopped and searched." },
+      { "name": "Barracks", "parent": "Watch Fort", "summary": "The soldiers' long sleeping hall, lined with cots." },
+      { "name": "Commander's Tower", "parent": "Watch Fort", "summary": "A tall square tower; the commander keeps her map room at the top." }
+    ]
+  },
+  "scenes": [
+    {
+      "set": "carried", "id": "carried-up", "world": "fen", "at": "Reedmoor Village",
+      "action": "I hold out my empty hands and tell the guards I mean no harm.",
+      "narration": "The two guards trade a look, then each takes one of your arms. They haul you up the long ladder, rung by rung, and through the reed curtain at the top. Inside the great hall the air is thick with smoke. They set you down on a woven mat before the hearth, where an old woman with braided gray hair studies you without a word.",
+      "expect": "Elder's Longhouse"
+    },
+    {
+      "set": "carried", "id": "dragged", "world": "port", "at": "Harbor Ward",
+      "action": "I tell the tollman I will not pay his dock fee.",
+      "narration": "The tollman whistles, and two of his men take you by the collar. They drag you off the quay and through a heavy door into the tollmen's office. Ledgers line every wall, and a set of brass scales stands on the counter. They push you onto a bench in front of a clerk who dips his pen and waits.",
+      "expect": "Customs House"
+    },
+    {
+      "set": "carried", "id": "led", "world": "fort", "at": "Watch Fort",
+      "action": "I ask the sergeant where a traveler can sleep tonight.",
+      "narration": "\"With the rest of us,\" the sergeant says. He leads you across the muddy yard and into the long hall where the soldiers sleep. Rows of cots stretch into the dark, and a stove ticks at the far end. He points at an empty cot, and you sit down on it, your boots still caked with mud.",
+      "expect": "Barracks"
+    },
+    {
+      "set": "carried", "id": "pushed", "world": "port", "at": "The Gull's Rest",
+      "action": "I lean on the bar and ask the keeper about the missing ship.",
+      "narration": "The keeper's smile vanishes. He lifts the trapdoor behind the bar and shoves you down the steps before you can turn. The door bangs shut above you. You stand in the damp dark among the barrels, and you hear his boots cross the boards over your head.",
+      "expect": "Cellar"
+    },
+    {
+      "set": "carried", "id": "carried-down", "world": "fen", "at": "Elder's Longhouse",
+      "action": "I bow to the elder and thank her for the meal.",
+      "narration": "The elder raises one hand, and the guards step forward again. They lift you between them and carry you down the ladder, your feet swinging over the water. At the bottom they set you on the plank walkway among the stilt huts, where children stop their games to stare at you.",
+      "expect": "Reedmoor Village"
+    },
+    {
+      "set": "carried", "id": "carried-in", "world": "port", "at": "Harbor Ward",
+      "action": "I ask the sailor what he is celebrating.",
+      "narration": "He roars with laughter, and three of his shipmates grab you by the arms. They sweep you along the quay and in under the painted gull sign. The room is packed and hot, a fiddler is playing, and someone presses a mug of ale into your hand as they drop you onto a bench by the fire.",
+      "expect": "The Gull's Rest"
+    },
+    {
+      "set": "carried", "id": "led-up", "world": "fort", "at": "Watch Fort",
+      "action": "I ask the aide whether the commander will see me.",
+      "narration": "The aide studies you, then nods. \"Follow me.\" He leads you up a narrow winding stair, around and around, until you step out into a bright room at the very top. Maps cover a broad table, and a woman in a gray cloak looks up from them as you come in.",
+      "expect": "Commander's Tower"
+    },
+    {
+      "set": "carried", "id": "opening", "world": "fen", "at": "Reedmoor Village",
+      "action": "",
+      "narration": "You wake on a straw pallet in a low hut that stinks of peat smoke. Strings of split fish hang from the rafters over a bed of smoldering embers, and the heat has dried your clothes stiff. Through the gap in the reed wall you hear water lapping at the stilts below.",
+      "expect": "Smokehouse"
+    },
+    {
+      "set": "carried", "id": "thrown-out", "world": "port", "at": "The Gull's Rest",
+      "action": "I call the keeper a cheat in front of his customers.",
+      "narration": "The room goes quiet. Two dockhands stand up from their bench, take you under the arms, and heave you through the door. You land hard on the wet cobbles of the waterfront, among coils of rope and stacked crates, and the door slams shut behind you.",
+      "expect": "Harbor Ward"
+    },
+    {
+      "set": "carried", "id": "rowed-across", "world": "fen", "at": "Reedmoor Village",
+      "action": "I ask the old ferryman if he has seen my brother.",
+      "narration": "He does not answer. He only waves you into his punt and pushes off from the stilts. For an hour he poles you across the open channels, until the reeds give way to trees and the punt grinds onto a muddy shore. Tall gray birds lift from the branches above you as you climb out.",
+      "expect": "Heron Island"
+    },
+    {
+      "set": "stay", "id": "look-toward", "world": "fen", "at": "Reedmoor Village",
+      "action": "I wait by the foot of the ladder.",
+      "narration": "You tip your head back and look up at the elder's longhouse, high above every other hut on its tall stilts. Smoke curls from its roof. A figure stands in the doorway at the top of the ladder, watching you, and then turns away into the shadows.",
+      "expect": "NONE"
+    },
+    {
+      "set": "stay", "id": "talk-about", "world": "port", "at": "Harbor Ward",
+      "action": "I ask the porter about the Customs House.",
+      "narration": "The porter spits into the water. \"The Customs House? Thieves with ledgers. They weigh every crate twice and charge you for both.\" He hefts a sack onto his shoulder and nods at the bollard beside you. \"Sit and wait for your captain. He'll pay them, not you.\"",
+      "expect": "NONE"
+    },
+    {
+      "set": "stay", "id": "other-comes", "world": "fort", "at": "Watch Fort",
+      "action": "I wait in the yard by the well.",
+      "narration": "A door opens at the foot of the tower, and the commander comes down into the yard herself. She crosses the mud to the well, stops in front of you, and looks you over from boots to hood. \"You are the one who came over the pass alone,\" she says.",
+      "expect": "NONE"
+    },
+    {
+      "set": "stay", "id": "other-goes", "world": "port", "at": "The Gull's Rest",
+      "action": "I ask the keeper for his best bottle.",
+      "narration": "The keeper grins, lifts the trapdoor behind the bar, and climbs down into the dark below. You hear him shifting barrels and cursing. A moment later he comes back up with a dusty green bottle and sets it on the bar in front of you.",
+      "expect": "NONE"
+    },
+    {
+      "set": "stay", "id": "almost", "world": "fen", "at": "Mooring Steps",
+      "action": "I step off the punt onto the first step.",
+      "narration": "Two guards grab your arms and start to march you toward the elder's ladder. Before you reach the walkway, a sharp voice calls down from above, and they stop. They let go of you at once and step back, leaving you on the wet steps beside the punts.",
+      "expect": "NONE"
+    },
+    {
+      "set": "stay", "id": "plan", "world": "fort", "at": "Barracks",
+      "action": "I ask the sergeant what my duty will be.",
+      "narration": "\"Tomorrow you stand at the gate with Hollis and search the wagons,\" the sergeant says. \"Tonight you sleep.\" He blows out the lamp. You lie back on your cot and listen to the wind batter the shutters.",
+      "expect": "NONE"
+    },
+    {
+      "set": "stay", "id": "view-through", "world": "port", "at": "Harbor Ward",
+      "action": "I sit on a bollard and watch the waterfront.",
+      "narration": "Across the quay the door of the tavern stands open. Through it you see sailors dancing on the tables while a fiddler saws away, and the warm light and noise spill out over the cobbles. You stay on your bollard in the cold and watch the gulls fight over a fish head.",
+      "expect": "NONE"
+    },
+    {
+      "set": "stay", "id": "opening-stay", "world": "fen", "at": "Reedmoor Village",
+      "action": "",
+      "narration": "You stand on a plank walkway among reed huts on stilts. The smell of smoked fish drifts from a low hut nearby, and high above the rest, a long hall looks down over the village. A girl with a fishing spear stops and stares at you.",
+      "expect": "NONE"
+    }
+  ]
+}

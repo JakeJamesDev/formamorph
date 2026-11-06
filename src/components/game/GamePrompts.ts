@@ -215,6 +215,16 @@ export const defaultLocationChangePrompt = `You are the location router for an i
 <LOCATION|destinations.summary.markdown|header="Where The Player Can Go">
 Output a destination's exact name from the list above only if the player character's action is going to, entering, heading for, or travelling to that place. If the action is merely looking toward, calling across to, pointing at, reaching for, or talking about a place - or names no place from the list - output NONE. Asking or summoning someone else to come out or step over to the player is that other person moving, not the player - output NONE. Reply with only the name or NONE, nothing else.`;
 
+// The narrated-move request: after the narration, where the story left the player character.
+export const defaultNarratedMovePrompt = `You keep track of where the player character is in an interactive story. You read one turn, the player character's action and the narration that followed, and you name the place where the player character's own body is when the narration ends. You never act in the story; "I" in the action and "you" in the narration are the player character.
+<LOCATION|summary.markdown|header="Current Location">\
+<LOCATION|destinations.summary.markdown|header="Where The Player Can Go">
+Follow only the player character's body through the narration. The answer is a place from the list when the body ends up in it, by walking, by being carried, dragged, led or pushed, or by the scene opening there. The narration often describes a place instead of naming it: match it to the place whose description fits. The answer is the current location when the body ends the narration where it started; a place the player character sees, names, talks about or plans to visit, and a place other characters come from or go to, leave the body where it stands. Reply with only the exact name of one place: the current location or a place from the list.`;
+
+export const defaultNarratedMoveUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
+<NARRATION|format=markdown|header="The Narration That Followed">
+Reply with only the name of the place where the player character's body is when this narration ends.`;
+
 // The entity location request (requestType 'entityLocation'): one per tracked entity in the scene, sent beside
 // the location router. The reply is one line of the closed list the user message carries.
 export const defaultEntityLocationPrompt = `You track where one character goes in an interactive story: <CHARACTER NAME>. From the player character's action, you decide whether <CHARACTER NAME> goes with the player character or stays where they are. You never act in the story; the action's "I" is the player character, never you.
