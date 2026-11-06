@@ -29,6 +29,7 @@ describe('planTurn', () => {
       'character',
       'storyboard',
       'narration',
+      'narratedMove',
       'choices',
       'statUpdates',
       'summary',
@@ -60,6 +61,7 @@ describe('planTurn', () => {
     expect(passesInStage(plan, 'preNarration').map((p) => p.id)).toEqual(['locationAuto', 'entityLocationAuto']);
     expect(passesInStage(plan, 'planning').map((p) => p.id)).toEqual(['director', 'character', 'storyboard']);
     expect(passesInStage(plan, 'narration').map((p) => p.id)).toEqual(['narration']);
+    expect(passesInStage(plan, 'narratedMove').map((p) => p.id)).toEqual(['narratedMove']);
     expect(planHasPass(plan, 'choices')).toBe(true);
     expect(planHasPass(plan, 'thinking')).toBe(false);
   });
@@ -76,7 +78,7 @@ describe('planTurn', () => {
       expect(serial).not.toContain('diary');
       expect(serial).not.toContain('discoverEntity');
       // The player-facing passes still run either way.
-      expect(serial).toEqual(['locationAuto', 'entityLocationAuto', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'timePassed']);
+      expect(serial).toEqual(['locationAuto', 'entityLocationAuto', 'director', 'character', 'storyboard', 'narration', 'narratedMove', 'choices', 'statUpdates', 'timePassed']);
     });
   });
 
@@ -95,9 +97,10 @@ describe('planTurn', () => {
       expect(ids({ isGameStarted: false }, { aiClock: false })).not.toContain('openingTime');
     });
 
-    it('routes no location change: there is no prior place to leave', () => {
+    it('routes no action before the narration, and follows the opening narration in Auto mode only', () => {
       const opening = ids({ isGameStarted: false });
       expect(opening).not.toContain('locationAuto');
+      expect(opening).toContain('narratedMove');
       expect(ids({ isGameStarted: false }, { locationAutoApply: false })).not.toContain('locationSuggest');
     });
   });
@@ -120,10 +123,21 @@ describe('planTurn', () => {
       expect(ids({ locationCount: 1 }, { locationAutoApply: false })).not.toContain('locationSuggest');
     });
 
-    it('skips both when the feature is off or the prompt is empty', () => {
+    it('skips each when the feature is off or its prompt is empty', () => {
       expect(ids({}, { locationChangeEnabled: false })).not.toContain('locationAuto');
       expect(ids({ prompts: { ...TEST_PROMPTS, locationChange: '' } })).not.toContain('locationAuto');
-      expect(ids({ prompts: { ...TEST_PROMPTS, locationChange: '' } }, { locationAutoApply: false })).not.toContain('locationSuggest');
+      // The offer reads the narration, so it sends the narrated-move prompt.
+      expect(ids({ prompts: { ...TEST_PROMPTS, narratedMove: '' } }, { locationAutoApply: false })).not.toContain('locationSuggest');
+      expect(ids({ prompts: { ...TEST_PROMPTS, locationChange: '' } }, { locationAutoApply: false })).toContain('locationSuggest');
+    });
+
+    it('follows a narrated move in Auto mode only, and never with Location Changes off', () => {
+      expect(ids()).toContain('narratedMove');
+      expect(ids({}, { locationAutoApply: false })).not.toContain('narratedMove');
+      expect(ids({}, { locationChangeEnabled: false })).not.toContain('narratedMove');
+      expect(ids({ destinationCount: 0 })).not.toContain('narratedMove');
+      expect(ids({ hasCurrentLocation: false })).not.toContain('narratedMove');
+      expect(ids({ prompts: { ...TEST_PROMPTS, narratedMove: '' } })).not.toContain('narratedMove');
     });
 
     it('skips the up-front router when the player is nowhere', () => {
@@ -153,7 +167,7 @@ describe('planTurn', () => {
         [{ locationCount: 1 }, {}],
         [{ isGameStarted: false }, {}],
         [{}, { locationChangeEnabled: false }],
-        [{ prompts: { ...TEST_PROMPTS, locationChange: '' } }, {}],
+        [{ prompts: { ...TEST_PROMPTS, narratedMove: '' } }, {}],
       ];
       for (const [over, settings] of suggestOff) {
         expect(ids(over, { ...settings, locationAutoApply: false })).not.toContain('entityLocationSuggest');
@@ -250,8 +264,9 @@ describe('planTurn', () => {
     });
 
     it('applies one prompt flag to every pass that shares its prompt', () => {
-      const plan = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: true, promptAttachments: { locationChange: true } }));
-      expect(plan.attachmentPasses).toEqual(expect.arrayContaining(['locationAuto', 'locationSuggest']));
+      const plan = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: true, promptAttachments: { narratedMove: true } }));
+      expect(plan.attachmentPasses).toEqual(expect.arrayContaining(['narratedMove', 'locationSuggest']));
+      expect(plan.attachmentPasses).not.toContain('locationAuto');
     });
 
     it('includes them nowhere with the setting off', () => {

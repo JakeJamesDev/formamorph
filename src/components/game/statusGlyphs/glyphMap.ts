@@ -33,6 +33,7 @@ export const REQUEST_STATUS: Record<AIRequestType, RequestStatus> = {
   choices: { name: REQUEST_LABELS.choices, glyph: 'split' },
   statUpdates: { name: REQUEST_LABELS.statUpdates, glyph: 'chartColumnIncreasing' },
   locationChange: { name: REQUEST_LABELS.locationChange, glyph: 'mapPin' },
+  narratedMove: { name: REQUEST_LABELS.narratedMove, glyph: 'mapPin' },
   entityLocation: { name: REQUEST_LABELS.entityLocation, glyph: 'mapPin' },
   summary: { name: REQUEST_LABELS.summary, glyph: 'bookOpen' },
   milestoneSelect: { name: REQUEST_LABELS.milestoneSelect, glyph: 'bookOpen' },

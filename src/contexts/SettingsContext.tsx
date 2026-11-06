@@ -941,7 +941,7 @@ function useProvideSettings() {
   const {
     systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
-    choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, entityLocationPrompt, entityLocationUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
+    choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, narratedMovePrompt, narratedMoveUserPrompt, entityLocationPrompt, entityLocationUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
     milestoneSelectPrompt, milestoneSelectUserPrompt, inventoryPrompt, inventoryUserPrompt,
   } = promptValues;
@@ -963,6 +963,8 @@ function useProvideSettings() {
   const setChoicesUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'choicesUserPrompt', v));
   const setStatUpdatesUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
   const setLocationChangeUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
+  const setNarratedMovePrompt = (v: string) => editPresetStore((s) => updateValue(s, 'narratedMovePrompt', v));
+  const setNarratedMoveUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'narratedMoveUserPrompt', v));
   const setEntityLocationPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'entityLocationPrompt', v));
   const setEntityLocationUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'entityLocationUserPrompt', v));
   const setSummaryUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
@@ -2020,6 +2022,10 @@ function useProvideSettings() {
     setStatUpdatesUserPrompt,
     locationChangeUserPrompt,
     setLocationChangeUserPrompt,
+    narratedMovePrompt,
+    setNarratedMovePrompt,
+    narratedMoveUserPrompt,
+    setNarratedMoveUserPrompt,
     entityLocationPrompt,
     setEntityLocationPrompt,
     entityLocationUserPrompt,

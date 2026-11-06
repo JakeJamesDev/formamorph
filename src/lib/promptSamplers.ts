@@ -15,6 +15,7 @@ export const PROMPT_SAMPLER_PINS: Partial<Record<AIRequestType, Partial<Record<P
   // An extraction: it lists what the narration did to items, and a penalty would reword the item names it echoes.
   inventory: { temperature: 0.1, repetitionPenalty: 1 },
   locationChange: { temperature: 0.15 },
+  narratedMove: { temperature: 0.15 },
   entityLocation: { temperature: 0.15 },
   summary: { temperature: 0 },
   milestoneSelect: { temperature: 0 },

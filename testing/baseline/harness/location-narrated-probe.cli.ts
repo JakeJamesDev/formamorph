@@ -85,8 +85,8 @@ const built = Object.fromEntries(Object.entries(worlds).map(([key, places]) => {
 })) as Record<string, ReturnType<typeof migrateWorld>>;
 
 const ARMS = {
-  reused: testInput({ prompts: { ...TEST_PROMPTS, locationChange: defaultLocationChangePrompt, locationChangeUser: defaultLocationChangeUserPrompt } }, { thinkingMode: 'off' }),
-  narrated: testInput({ prompts: { ...TEST_PROMPTS, locationChange: defaultNarratedMovePrompt, locationChangeUser: defaultNarratedMoveUserPrompt } }, { thinkingMode: 'off' }),
+  reused: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: defaultLocationChangePrompt, narratedMoveUser: defaultLocationChangeUserPrompt } }, { thinkingMode: 'off' }),
+  narrated: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: defaultNarratedMovePrompt, narratedMoveUser: defaultNarratedMoveUserPrompt } }, { thinkingMode: 'off' }),
 };
 type Arm = keyof typeof ARMS;
 const pass = TURN_PASSES.find((p) => p.id === 'locationSuggest');

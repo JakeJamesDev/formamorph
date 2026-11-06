@@ -287,12 +287,20 @@ const CAPTIONS: Record<string, string> = {
   diary: EXAMPLE_CAPTION,
 };
 
-/** The location prompt drives two different requests; which one a turn sends is the detection mode's call,
- *  so the hub asks the passes themselves rather than restating the rule. */
+/** The location prompts each drive a request per detection mode; the hub asks the passes themselves which
+ *  one a turn sends rather than restating the rule. */
 const LOCATION_PASSES: { id: TurnPassId; caption: string }[] = [
   { id: 'locationAuto', caption: 'Sent before the narration. The move applies first, so the whole turn runs in the new place.' },
+];
+const NARRATED_MOVE_PASSES: { id: TurnPassId; caption: string }[] = [
+  { id: 'narratedMove', caption: 'Sent after the narration when your action moved you nowhere. The move applies before the rest of the turn.' },
   { id: 'locationSuggest', caption: 'Sent after the narration. The move is offered, and you choose whether to take it.' },
 ];
+
+const LOCATION_HUBS: Record<string, { id: TurnPassId; caption: string }[]> = {
+  location: LOCATION_PASSES,
+  narratedmove: NARRATED_MOVE_PASSES,
+};
 
 /** The entity location prompt rides beside whichever location request the turn sends. */
 const ENTITY_LOCATION_CAPTION = `Sent with the location request, once per entity that can follow you. ${EXAMPLE_CAPTION}`;
@@ -334,8 +342,9 @@ export function buildAnatomyHub(
       blocks: toAnatomyBlocks([{ role: 'system', content: request.systemPrompt }, ...request.messages], request.anatomy),
     };
   };
-  if (tab === 'location') {
-    return LOCATION_PASSES
+  const locationPasses = LOCATION_HUBS[tab];
+  if (locationPasses) {
+    return locationPasses
       .filter(({ id }) => passById(id).isDue(input))
       .map(({ id, caption }) => draw(passById(id), caption));
   }

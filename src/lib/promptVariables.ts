@@ -67,7 +67,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → Output → Turn Extras toggles). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'entitylocation' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover' | 'inventory';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'narratedmove' | 'entitylocation' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover' | 'inventory';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -304,6 +304,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   choices: [...CONTEXT_VARS, LANGUAGE],
   statupdates: [...CONTEXT_VARS],
   location: [...CONTEXT_VARS],
+  narratedmove: [...CONTEXT_VARS],
   entitylocation: [CHARACTER, ...CONTEXT_VARS],
   summary: [...CONTEXT_VARS],
   milestone: [...CONTEXT_VARS],
@@ -325,7 +326,8 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   narration: [PLAYER_ACTION],
   choices: [PLAYER_ACTION, NARRATION],
   statupdates: [PLAYER_ACTION, NARRATION],
-  location: [PLAYER_ACTION, NARRATION],
+  location: [PLAYER_ACTION],
+  narratedmove: [PLAYER_ACTION, NARRATION],
   entitylocation: [CHARACTER, PLAYER_ACTION, NARRATION, MOVE_STATE, MOVE_OPTIONS],
   summary: [PLAYER_ACTION, NARRATION],
   milestone: [REMEMBERED_MOMENTS, NEW_MOMENTS],

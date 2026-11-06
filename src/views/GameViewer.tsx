@@ -692,6 +692,8 @@ const GameViewer = ({
     choicesUserPrompt,
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
+    narratedMovePrompt,
+    narratedMoveUserPrompt,
     entityLocationPrompt,
     entityLocationUserPrompt,
     summaryUserPrompt,
@@ -2674,6 +2676,8 @@ const GameViewer = ({
   const turnPrompts = (): TurnPrompts => ({
     locationChange: locationChangePromptText || "",
     locationChangeUser: locationChangeUserPrompt,
+    narratedMove: narratedMovePrompt,
+    narratedMoveUser: narratedMoveUserPrompt,
     entityLocation: entityLocationPrompt,
     entityLocationUser: entityLocationUserPrompt,
     thinking: thinkingPrompt,
@@ -2871,6 +2875,8 @@ const GameViewer = ({
       /** Where tracked entities stood and who followed when the turn began, where the player stood, and what
        *  the turn already applied when its move committed. */
       entityMove: { start: FollowerState; from: string | undefined; applied: FollowerState };
+      /** The narration outside its dialogue, which pulls the characters it names into the final place. */
+      prose: string;
     },
   ) => {
     const { signal } = turn;
@@ -2978,8 +2984,10 @@ const GameViewer = ({
     const { start, from, applied } = turn.entityMove;
     const meets = final.codeWrites?.entities?.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
     if (meets?.length) setMetEntities((met) => withMet(met, meets));
+    let afterMoves: FollowerState = applied;
     if (from) {
       const { state, offer } = commitEntityMoves(start, final, { from, to: location?.id });
+      afterMoves = state;
       const { peel } = turn.context;
       const turnId = final.turn.turnId ?? currentTurnIdRef.current;
       const anyKnown = new Set<string>();
@@ -2994,6 +3002,22 @@ const GameViewer = ({
       }
       entityOfferRef.current = offer;
       followerPeelRef.current = offer.comeAlong.length && peel ? { peelOff: peel, turnId } : undefined;
+    }
+    // The characters the prose names join the place where the player ends the turn, after every move.
+    if (location && turn.prose) {
+      const pulled = selectVisitorAdditions({
+        prose: turn.prose,
+        entities,
+        allEntities,
+        location,
+        locations,
+        positions: afterMoves.positions,
+        discovered: discoveredEntities,
+        turnId: final.turn.turnId ?? currentTurnIdRef.current,
+      });
+      if (pulled.discovered.length || Object.keys(pulled.positions).length) {
+        applyFollowerState({ followers: afterMoves.followers, positions: pulled.positions }, pulled.discovered);
+      }
     }
 
     setFullMessageHistory((prev) => {
@@ -3173,6 +3197,10 @@ const GameViewer = ({
     let entityIntents = NO_ENTITY_MOVES;
     // The join the narration is written over: followers already beside the player. Null when it moves nobody.
     let turnJoin: FollowerState | null = null;
+    // The narration and its prose outside dialogue, once read; the commit pulls from the prose.
+    let turnNarration = "";
+    let turnProse = "";
+    let placeSettled = false;
     const movingCast = positionedCast(allEntities, personaRef);
     const peel = turnPeelOff(movingCast, randomUUID);
     // The runtime characters the scene list names, the only ones asked unless they already follow.
@@ -3397,18 +3425,9 @@ const GameViewer = ({
         return classified;
       };
 
-      /** What the narration confirms: who took part, who is on screen, and who just walked in. */
+      /** What the narration confirms: who took part and who is on screen. Where the player ends the turn
+       *  settles once any narrated move has answered. */
       const applyNarrationReading = (narration: string): Partial<TurnMaterial> => {
-        // Commit the auto-resolved move now that the narration — already written for the new location —
-        // succeeded, so an aborted/empty turn leaves the location unchanged.
-        if (turnJoin) {
-          applyFollowerState({ followers: turnJoin.followers, positions: movedPositions(turnJoin.positions, moveStart.positions) }, peeledBy(turnJoin));
-        }
-        if (turnLocation && turnLocation.id !== currentLocation?.id) {
-          changeLocation(turnLocation);
-          addLogEntry(`Moved to location: ${turnLocation.name}`);
-        }
-
         const reading = readNarration({
           narration,
           priorNarration,
@@ -3419,36 +3438,47 @@ const GameViewer = ({
           sceneCast,
         });
         turnParticipants = reading.participants;
+        turnNarration = narration;
+        turnProse = reading.prose;
         // Apply the authoritative scene list now (narration is done). Independent of turnParticipants, which
         // still feeds stored participation and choices.
         setVisibleEntities(reading.visibleEntities);
-        meetNamed(narration, turnLocation ?? currentLocation);
         const plannedCast = sceneCast;
         if (plannedCast) setStrangerAliases((prev) => strangerAliasesFromCast(prev, plannedCast, allEntities, isMetAtStart));
-        // Visitors affect the next turn's context (this turn's ctx already ran).
-        const visitorLocation = turnLocation;
-        if (visitorLocation) {
-          const afterMoves = turnJoin ?? moveStart;
-          const pulled = selectVisitorAdditions({
-            prose: reading.prose,
-            entities,
-            allEntities,
-            location: visitorLocation,
-            locations,
-            positions: afterMoves.positions,
-            discovered: discoveredEntities,
-            turnId: currentTurnIdRef.current,
-          });
-          if (pulled.discovered.length || Object.keys(pulled.positions).length) {
-            applyFollowerState({ followers: afterMoves.followers, positions: pulled.positions }, pulled.discovered);
-          }
+        return planHasPass(plan, "narratedMove") ? {} : settlePlace();
+      };
+
+      /** Commit where the player ends the turn, once: the move, who came along, who the player met there,
+       *  and who the choices may act for. */
+      const settlePlace = (): Partial<TurnMaterial> => {
+        if (placeSettled) return {};
+        placeSettled = true;
+        // The narration succeeded, so an aborted or empty turn leaves the location unchanged.
+        if (turnJoin) {
+          applyFollowerState({ followers: turnJoin.followers, positions: movedPositions(turnJoin.positions, moveStart.positions) }, peeledBy(turnJoin));
         }
+        if (turnLocation && turnLocation.id !== currentLocation?.id) {
+          changeLocation(turnLocation);
+          addLogEntry(`Moved to location: ${turnLocation.name}`);
+        }
+        meetNamed(turnNarration, turnLocation ?? currentLocation);
         const sceneEntities = presentSceneEntities(
           allEntities,
           turnParticipants,
           recentParticipants(fullMessageHistory, IN_SCENE_TURNS - 1),
         );
         return { sceneEntityTokens: sceneEntityOverride(turnLocation, sceneEntities) };
+      };
+
+      /** The destination a location request's answer names, if any. */
+      const destinationNamed = (parsed: unknown) =>
+        typeof parsed === "string" ? destinations.find((loc) => loc.name === parsed) : undefined;
+
+      /** Where a router or narrated move takes the turn. Scripts and Tool calls read it from here on. */
+      const moveTurnTo = (target: GameLocation) => {
+        turnLocation = target;
+        scriptLocationRef.current = target;
+        executeTool = turnToolExecutor();
       };
 
       /**
@@ -3553,7 +3583,13 @@ const GameViewer = ({
               historyRuns: history.runs,
             };
           }
+          if (event.stage === "narratedMove") {
+            // A Tool call's move this turn is its one move too.
+            return turnLocation && turnLocation.id !== moveFrom ? { moved: true } : undefined;
+          }
           if (event.stage === "postNarration") {
+            // A narrated move that never ran, or failed, still leaves the place to settle.
+            const place = settlePlace();
             // With no choices pass there is nothing to wait on, so the input unblocks right away.
             if (!planHasPass(plan, "choices")) setChoicesReady(true);
             // The scene's cast, whose text resolved with each owner: the diary pass sends it as is.
@@ -3566,6 +3602,7 @@ const GameViewer = ({
             const ctx = ctxStale ? { ctx: contextValues(turnLocation, sceneBox()) } : {};
             ctxStale = false;
             return {
+              ...place,
               ...ctx,
               subjects: {
                 ...material.subjects, ...fanOut,
@@ -3582,14 +3619,20 @@ const GameViewer = ({
         const [first] = event.outcomes;
         switch (first.id) {
           case "locationAuto": {
-            const matchedName = first.parsed as string | null;
-            const target = matchedName ? destinations.find((loc) => loc.name === matchedName) : undefined;
-            if (target && currentLocation && target.id !== currentLocation.id) {
-              turnLocation = target;
-              scriptLocationRef.current = target;
-              executeTool = turnToolExecutor();
-            }
+            const target = destinationNamed(first.parsed);
+            if (target && currentLocation && target.id !== currentLocation.id) moveTurnTo(target);
             return;
+          }
+          case "narratedMove": {
+            const target = destinationNamed(first.parsed);
+            if (target && moveFrom && target.id !== moveFrom) {
+              moveTurnTo(target);
+              const joined = joinEntityMoves(moveStart, { from: moveFrom, to: target.id }, entityIntents);
+              turnJoin = joined === moveStart ? null : joined;
+              // The passes after the narration read the place the story took the player.
+              ctxStale = true;
+            }
+            return settlePlace();
           }
           case "entityLocationAuto":
             entityIntents = peelIntents(entityMovesOf(event.outcomes), peel);
@@ -3743,6 +3786,7 @@ const GameViewer = ({
         isNewTurn: !regenerate && !script,
         context: commitContext,
         entityMove: { start: moveStart, from: moveFrom, applied: turnJoin ?? moveStart },
+        prose: turnProse,
       });
       // The allowance notice comes after the commit, never while the stream runs.
       showHostedNotices(settings.switchBackFromHostedAi);

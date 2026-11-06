@@ -29,6 +29,7 @@ export function computePromptTabAvailability(flags: PromptTabFlags): Record<stri
     choices: choicesEnabled,
     statupdates: statUpdatesEnabled,
     location: locationChangeEnabled,
+    narratedmove: locationChangeEnabled,
     entitylocation: locationChangeEnabled && entityMovement,
     summary: memoryDigests,
     milestone: memoryDigests,

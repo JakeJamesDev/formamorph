@@ -163,9 +163,30 @@ describe('turn pass requests', () => {
     });
 
     it('suggests from the turn context and the narration it just read', () => {
-      const request = build('locationSuggest');
-      expect(request.systemPrompt).toBe('ROUTER TURN-LOCATION');
-      expect(request.messages[0].content).toBe('Action: I read the notices.');
+      const request = build('locationSuggest', { narration: 'You climb the ladder.' });
+      expect(request.type).toBe('narratedMove');
+      expect(request.systemPrompt).toBe('CARRIED TURN-LOCATION');
+      expect(request.messages[0].content).toBe('Carried: I read the notices. | You climb the ladder.');
+    });
+
+    it('follows a narrated move from the turn context, the action and the narration', () => {
+      const request = build('narratedMove', { narration: 'You climb the ladder.' });
+      expect(request.type).toBe('narratedMove');
+      expect(request.systemPrompt).toBe('CARRIED TURN-LOCATION');
+      expect(request.messages).toEqual([{ role: 'user', content: 'Carried: I read the notices. | You climb the ladder.' }]);
+    });
+
+    it('sends the opening narration with no action', () => {
+      const request = build('narratedMove', { narration: 'You wake in the loft.' }, { isGameStarted: false });
+      expect(request.messages[0].content).toBe('Carried:  | You wake in the loft.');
+    });
+
+    it('waits on the narrated move only while nothing moved the player first', () => {
+      expect(pass('narratedMove').isReady?.(material())).toBe(true);
+      expect(pass('narratedMove').isReady?.(material({ moved: true }))).toBe(false);
+      // The router's own answer is what marks the move.
+      expect(pass('locationAuto').fold?.(pass('locationAuto').parseResponse('NONE', material()))).toEqual({});
+      expect(pass('locationAuto').fold?.(pass('locationAuto').parseResponse('The Far Bank', material()))).toEqual({ moved: true });
     });
 
     it('matches the reply against the turn’s navigable destinations', () => {
@@ -523,9 +544,9 @@ describe('turn pass requests', () => {
     it('skips the storyboard when the director cast nobody — there is nothing to reconcile', () => {
       expect(pass('storyboard').isReady?.(material({ npcCastSize: 0 }))).toBe(false);
       expect(pass('storyboard').isReady?.(material())).toBe(true);
-      // Every other pass but the stat request, which waits for its owners, is ready the moment it is due.
+      // Every other pass but the stat request and the narrated move is ready the moment it is due.
       for (const record of TURN_PASSES) {
-        if (record.id !== 'storyboard' && record.id !== 'statUpdates') expect([record.id, record.isReady]).toEqual([record.id, undefined]);
+        if (record.id !== 'storyboard' && record.id !== 'statUpdates' && record.id !== 'narratedMove') expect([record.id, record.isReady]).toEqual([record.id, undefined]);
       }
     });
 

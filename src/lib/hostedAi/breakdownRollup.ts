@@ -22,7 +22,7 @@ export const BREAKDOWN_GROUPS: readonly { id: string; label: string; types: read
   {
     id: 'tracking',
     label: 'Stats and World Tracking',
-    types: ['statUpdates', 'locationChange', 'entityLocation', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags'],
+    types: ['statUpdates', 'locationChange', 'narratedMove', 'entityLocation', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags'],
   },
   { id: 'inventory', label: 'Inventory', types: ['inventory'] },
   { id: 'memory', label: 'Memory', types: ['summary', 'milestoneSelect', 'diary'] },

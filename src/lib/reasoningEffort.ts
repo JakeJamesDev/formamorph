@@ -317,7 +317,7 @@ export function nativeReasoningSuppressed(mode: ThinkingMode, kind: AIRequestTyp
 /** Every prompt the preset tunes: for checks that consider a shipped default, and for validating an imported kind. */
 export const PROMPT_REQUEST_KINDS = [
   'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
-  'entityLocation', 'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
+  'narratedMove', 'entityLocation', 'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
   'inventory',
 ] as const satisfies readonly AIRequestType[];
 

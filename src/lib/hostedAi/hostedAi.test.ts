@@ -27,7 +27,7 @@ describe('the prompt type list', () => {
   it('matches the server list type for type', () => {
     expect(new Set<string>(ALL_REQUEST_KINDS)).toEqual(new Set([
       'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
-      'entityLocation', 'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime',
+      'narratedMove', 'entityLocation', 'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime',
       'sceneTags', 'inventory', 'descriptionSummary', 'descriptionBridge', 'imageTags', 'help',
     ]));
   });

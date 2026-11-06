@@ -241,12 +241,43 @@ const locationAutoPass: TurnPassRecord<string | null> = {
     userTiled(input.prompts.locationChangeUser, { '<PLAYER ACTION>': material.action }),
   ),
   parseResponse: (raw, material) => matchLocationResponse(raw, material.destinations),
+  fold: (parsed) => (parsed === null ? {} : { moved: true }),
 };
 
-/** After the narration, ask whether the player should move and offer it. Suggest mode only. */
+/** The narrated-move request: where the narration left the player, among the places they can go. The opening
+ *  has no action of the player's. */
+const narratedMoveRequest = (input: TurnPlanInput, material: TurnMaterial, quiet: boolean) => labeledRequest(
+  { type: 'narratedMove', maxTokens: locationChangeCap(material.destinations), silent: false, quiet },
+  systemTiled(input.prompts.narratedMove, material.ctx),
+  userTiled(input.prompts.narratedMoveUser, {
+    '<PLAYER ACTION>': isOpening(input) ? '' : material.action,
+    '<NARRATION>': material.narration,
+  }),
+);
+
+/** After the narration, follow a move the story made. Auto mode only, and only when nothing moved the player
+ *  before the narration. */
+const narratedMovePass: TurnPassRecord<string | null> = {
+  id: 'narratedMove',
+  type: 'narratedMove',
+  stage: 'narratedMove',
+  fanOut: false,
+  companion: true,
+  isDue: (input) =>
+    input.settings.locationAutoApply &&
+    input.settings.locationChangeEnabled &&
+    input.destinationCount > 0 &&
+    input.prompts.narratedMove !== '' &&
+    input.hasCurrentLocation,
+  isReady: (material) => !material.moved,
+  buildRequest: (input, material) => narratedMoveRequest(input, material, false),
+  parseResponse: (raw, material) => matchLocationResponse(raw, material.destinations),
+};
+
+/** After the narration, ask whether the story moved the player and offer it. Suggest mode only. */
 const locationSuggestPass: TurnPassRecord<string | null> = {
   id: 'locationSuggest',
-  type: 'locationChange',
+  type: 'narratedMove',
   stage: 'postNarration',
   fanOut: false,
   // A single-location world has nowhere to move, so don't run it even when enabled.
@@ -255,15 +286,8 @@ const locationSuggestPass: TurnPassRecord<string | null> = {
     !input.settings.locationAutoApply &&
     input.settings.locationChangeEnabled &&
     input.locationCount > 1 &&
-    input.prompts.locationChange !== '',
-  buildRequest: (input, material) => labeledRequest(
-    { type: 'locationChange', maxTokens: locationChangeCap(material.destinations), silent: false, quiet: quietInBatch(input) },
-    systemTiled(input.prompts.locationChange, material.ctx),
-    userTiled(input.prompts.locationChangeUser, {
-      '<PLAYER ACTION>': material.action,
-      '<NARRATION>': material.narration,
-    }),
-  ),
+    input.prompts.narratedMove !== '',
+  buildRequest: (input, material) => narratedMoveRequest(input, material, quietInBatch(input)),
   parseResponse: (raw, material) => matchLocationResponse(raw, material.destinations),
 };
 
@@ -831,6 +855,7 @@ export const TURN_PASSES: TurnPassRecord[] = [
   characterPass,
   storyboardPass,
   narrationPass,
+  narratedMovePass,
   choicesPass,
   statUpdatesPass,
   inventoryPass,

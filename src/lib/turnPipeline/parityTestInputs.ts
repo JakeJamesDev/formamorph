@@ -9,7 +9,7 @@ import {
   defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
   defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt,
   defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultInventoryPrompt, defaultInventoryUserPrompt,
-  defaultLocationChangePrompt, defaultLocationChangeUserPrompt, defaultEntityLocationPrompt, defaultEntityLocationUserPrompt,
+  defaultLocationChangePrompt, defaultLocationChangeUserPrompt, defaultNarratedMovePrompt, defaultNarratedMoveUserPrompt, defaultEntityLocationPrompt, defaultEntityLocationUserPrompt,
   defaultNarrationUserPrompt, defaultOocDirectivePrompt,
   defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, OPENING_SCENE_CUE,
   defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt, textStatUpdatesPrompt, textStatUpdatesUserPrompt,
@@ -60,6 +60,8 @@ export const PARITY_SETTINGS: TurnSettings = {
 export const PARITY_PROMPTS: TurnPrompts = {
   locationChange: defaultLocationChangePrompt,
   locationChangeUser: defaultLocationChangeUserPrompt,
+  narratedMove: defaultNarratedMovePrompt,
+  narratedMoveUser: defaultNarratedMoveUserPrompt,
   entityLocation: defaultEntityLocationPrompt,
   entityLocationUser: defaultEntityLocationUserPrompt,
   thinking: defaultThinkingPrompt,
@@ -174,7 +176,8 @@ export const inputFor = (index: number): TurnPlanInput => ({
   locationCount: 3,
   hasCurrentLocation: true,
   settings: PARITY_SETTINGS,
-  prompts: { ...PARITY_PROMPTS, ...RECORDED_USER_PROMPTS },
+  // The recorded run holds no narrated-move request; an empty prompt keeps the check out.
+  prompts: { ...PARITY_PROMPTS, ...RECORDED_USER_PROMPTS, narratedMove: '' },
 });
 
 export const narrationOf = (turn: ParityTurnRecord): ParityRequestRecord => {

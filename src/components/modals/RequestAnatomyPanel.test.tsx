@@ -199,7 +199,8 @@ describe('RequestAnatomyPanel preview', () => {
 
   it('draws a hub for every prompt in the rail', () => {
     for (const tab of allGroupedTabs()) {
-      show({}, tab);
+      // The Location Change prompt is sent only while Auto mode applies moves.
+      show({ locationAutoApply: tab === 'location' }, tab);
       expect(screen.getAllByText('System Prompt', { selector: 'h3' }).length).toBeGreaterThan(0);
       cleanup();
     }

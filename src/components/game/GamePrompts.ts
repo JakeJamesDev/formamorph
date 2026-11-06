@@ -635,6 +635,8 @@ export const PROMPT_TEXT_DEFAULTS: PromptValues = {
   choicesUserPrompt: defaultChoicesUserPrompt,
   statUpdatesUserPrompt: defaultStatUpdatesUserPrompt,
   locationChangeUserPrompt: defaultLocationChangeUserPrompt,
+  narratedMovePrompt: defaultNarratedMovePrompt,
+  narratedMoveUserPrompt: defaultNarratedMoveUserPrompt,
   entityLocationPrompt: defaultEntityLocationPrompt,
   entityLocationUserPrompt: defaultEntityLocationUserPrompt,
   summaryUserPrompt: defaultSummaryUserPrompt,

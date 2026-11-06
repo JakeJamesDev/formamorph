@@ -88,7 +88,13 @@ Nesting decides where **the story** can take the player. When the AI reads an ac
 
 A [Connection](#connections) between two places replaces these rules for that pair.
 
-By default the story offers the move. The player sees a small **Move to _X_?** prompt with **Go** and **Dismiss**.
+By default the story offers the move. The player sees a small **Move to _X_?** prompt with **Go** and **Dismiss**. The AI reads the action and the scene it led to, so a scene that carries the player somewhere offers that move too.
+
+With **Move Automatically** on in Settings, the game moves the player itself:
+
+- 🚶 **The player's action** moves them before the scene is written, so the scene happens in the new place.
+- 📖 **The narration** moves them too. When the action moves them nowhere but the narration ends with them in a connected place, the game moves them there after the narration. This includes the opening narration.
+- 👥 Followers come along either way, and an entity told to stay stays.
 
 Two results to know:
 

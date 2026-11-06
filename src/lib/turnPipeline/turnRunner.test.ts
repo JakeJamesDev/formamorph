@@ -354,7 +354,7 @@ describe('the entity location requests', () => {
     });
     ok(result);
     const after = types.slice(types.indexOf('narration') + 1);
-    expect(after).toEqual(['choices', 'statUpdates', 'locationChange', 'entityLocation', 'entityLocation', 'timePassed']);
+    expect(after).toEqual(['choices', 'statUpdates', 'narratedMove', 'entityLocation', 'entityLocation', 'timePassed']);
   });
 
   it('ask after the narration in the suggest batch', async () => {
@@ -777,7 +777,7 @@ describe('a written page one', () => {
     const upToNarration = ['locationChange', 'director', 'character', 'storyboard', 'narration'];
     const after = asked.filter((t) => !upToNarration.includes(t));
     // The fixture must really send these on a model-written opening, or the comparison proves nothing.
-    for (const type of ['choices', 'statUpdates', 'summary', 'openingTime', 'diary', 'discoverEntity']) {
+    for (const type of ['narratedMove', 'choices', 'statUpdates', 'summary', 'openingTime', 'diary', 'discoverEntity']) {
       expect(after, type).toContain(type);
     }
     expect([...types].sort()).toEqual([...after].sort());
@@ -803,7 +803,7 @@ describe('a written page one', () => {
         if (event.at === 'stage') order.push(event.stage);
       },
     });
-    expect(order).toEqual(['preNarration', 'planning', 'narration', 'written:true', 'postNarration']);
+    expect(order).toEqual(['preNarration', 'planning', 'narration', 'written:true', 'narratedMove', 'postNarration']);
   });
 
   it('never calls the adapter in the page\'s slot, so nothing can stream it', async () => {
@@ -944,5 +944,72 @@ describe('image attachments', () => {
   it('keeps the narration text-only when the turn has no images', async () => {
     const finished = ok((await run({ settings: { imageAttachments: true } })).result);
     expect(hasParts(outcome(finished, 'narration').request)).toBe(false);
+  });
+});
+
+describe('the narrated move', () => {
+  const NONE = { locationChange: 'NONE', narratedMove: 'The Long Pier' };
+  const afterNarration = (types: string[]) => types.slice(types.indexOf('narration') + 1, types.indexOf('narration') + 3);
+
+  it('follows the narration in Auto mode when the router found no move, before the passes after it', async () => {
+    const { result, types } = await run({ answers: NONE });
+    const finished = ok(result);
+    expect(afterNarration(types)).toEqual(['narratedMove', 'choices']);
+    const check = outcome(finished, 'narratedMove');
+    expect(check.request.messages[0].content).toBe(`Carried: I read the notices. | ${ANSWERS.narration}`);
+    expect(check.parsed).toBe('The Long Pier');
+  });
+
+  it('runs alone before the passes after it when dispatching serially too', async () => {
+    const { result, types } = await run({ answers: NONE, settings: { concurrentTurnRequests: false } });
+    ok(result);
+    expect(afterNarration(types)).toEqual(['narratedMove', 'choices']);
+  });
+
+  it('never runs after the router moved the player: one move per turn', async () => {
+    const { result, types } = await run();
+    ok(result);
+    expect(types).toContain('locationChange');
+    expect(types).not.toContain('narratedMove');
+  });
+
+  it('never runs with Location Changes off', async () => {
+    const { result, types } = await run({ answers: NONE, settings: { locationChangeEnabled: false } });
+    ok(result);
+    expect(types).not.toContain('narratedMove');
+  });
+
+  it("follows the opening narration, with no action of the player's", async () => {
+    const { result, types } = await run({ answers: NONE, input: { isGameStarted: false } });
+    const finished = ok(result);
+    expect(types).not.toContain('locationChange');
+    expect(outcome(finished, 'narratedMove').request.messages[0].content).toBe(`Carried:  | ${ANSWERS.narration}`);
+  });
+
+  it('leaves the turn going when the check fails', async () => {
+    const { result, types } = await run({ answers: { ...NONE, narratedMove: () => { throw new Error('down'); } } });
+    ok(result);
+    expect(types).toContain('choices');
+  });
+});
+
+describe('the Suggest mode offer', () => {
+  it('reads the narration, and offers the move without taking it', async () => {
+    const fake = makeFake({ answers: { narratedMove: 'The Long Pier' } });
+    const plan = planTurn(testInput({}, { locationAutoApply: false }));
+    const result = await runTurn({ plan, material: material(), request: fake.adapter, signal: new AbortController().signal, advance: advanceLikeTheView() });
+    const finished = ok(result);
+    expect(fake.seen.map((s) => s.type)).not.toContain('locationChange');
+    expect(outcome(finished, 'locationSuggest').request.messages[0].content).toBe(`Carried: I read the notices. | ${ANSWERS.narration}`);
+    const commit = computeTurnCommit({
+      result,
+      plan,
+      context: {
+        participants: [], knownDiscoveredNames: [], notes: '', reasoning: { text: '', ms: 0 }, gameTime: 0,
+        locationId: 'dock', currentLocationName: 'The Dock',
+      },
+    });
+    expect(commit?.suggestedLocation).toBe('The Long Pier');
+    expect(commit?.turn.locationId).toBe('dock');
   });
 });

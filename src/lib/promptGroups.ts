@@ -15,7 +15,7 @@ export interface PromptGroup {
 
 export const PROMPT_GROUPS: PromptGroup[] = [
   { label: 'Story', tabs: ['narration', 'thinking', 'director', 'character', 'discover', 'storyboard', 'choices'] },
-  { label: 'Trackers', tabs: ['statupdates', 'inventory', 'location', 'entitylocation', 'timepassed', 'timeopening'] },
+  { label: 'Trackers', tabs: ['statupdates', 'inventory', 'location', 'narratedmove', 'entitylocation', 'timepassed', 'timeopening'] },
   { label: 'Memory', tabs: ['summary', 'milestone', 'diary'] },
   { label: 'Images', tabs: ['scenetags'] },
 ];
@@ -24,7 +24,7 @@ export const PROMPT_GROUPS: PromptGroup[] = [
  *  a map keyed by it is total and a lookup needs no fallback. */
 export type PromptTab =
   | 'narration' | 'thinking' | 'director' | 'character' | 'discover' | 'storyboard' | 'choices'
-  | 'statupdates' | 'inventory' | 'location' | 'entitylocation' | 'timepassed' | 'timeopening'
+  | 'statupdates' | 'inventory' | 'location' | 'narratedmove' | 'entitylocation' | 'timepassed' | 'timeopening'
   | 'summary' | 'milestone' | 'diary'
   | 'scenetags';
 
@@ -40,6 +40,7 @@ export const PROMPT_TAB_REQUESTS: Record<PromptTab, AIRequestType> = {
   statupdates: 'statUpdates',
   inventory: 'inventory',
   location: 'locationChange',
+  narratedmove: 'narratedMove',
   entitylocation: 'entityLocation',
   timepassed: 'timePassed',
   timeopening: 'openingTime',
@@ -62,6 +63,7 @@ export const PROMPT_LABELS: Record<PromptTab, string> = {
   statupdates: 'Stat Updates',
   inventory: 'Inventory',
   location: 'Location Change',
+  narratedmove: 'Narrated Move',
   entitylocation: 'Entity Location',
   summary: 'Summaries',
   milestone: 'Milestone Select',
@@ -95,6 +97,7 @@ export const PROMPT_DESCRIPTIONS: Record<string, string> = {
   statupdates: 'Reads what happened and records which stats it changed',
   inventory: 'Reads what happened and records who gained, lost, moved, used or found an item',
   location: 'Decides whether your action takes you somewhere new',
+  narratedmove: 'Decides whether the narration ends with you somewhere new',
   entitylocation: 'Decides whether each entity here comes with you or stays',
   summary: 'Condenses an older turn into one line the AI can still read later',
   milestone: 'Decides, between turns, which summarized turns stay in long-term memory',

@@ -20,7 +20,7 @@ export function planTurn(input: TurnPlanInput): TurnPlan {
     inlineThinking: input.settings.thinkingMode === 'inline',
     writtenNarration,
     // A written page one needs no router, planner or narrator: each exists only to shape the narration request.
-    passes: writtenNarration === null ? due : due.filter((pass) => pass.stage === 'postNarration'),
+    passes: writtenNarration === null ? due : due.filter((pass) => pass.stage === 'narratedMove' || pass.stage === 'postNarration'),
     attachments: carriesImages ? input.attachments ?? [] : [],
     attachmentPasses: carriesImages
       ? TURN_PASSES.filter((pass) => includesAttachments(input.settings.promptAttachments, pass.type)).map((pass) => pass.id)

@@ -40,14 +40,17 @@ const held = (copies: readonly ItemCopy[]) => copies
   .map((c) => `${c.item.kind === 'item' ? c.item.itemId : 'runtime'}@${c.where.kind}`).sort();
 const vigorNow = () => gameplay().globalStats.find((s) => s.id === 'vigor')?.value;
 
-/** A test can change `inventoryReply` (the pass's answer), `route` (the location router's) and `narration` between turns. */
+/** A test can change `inventoryReply` (the pass's answer), `route` (the location router's and the move offer's) and
+ *  `narration` between turns. */
 function stubEndpoint(inventoryReply = GAIN_KEY) {
   const calls = { inventory: 0, stats: 0, inventoryReply, route: 'NONE', narration: 'You find a brass key under the mat.', askedToMove: [] as string[] };
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     const { messages } = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
     const system = messages.find((m) => m.role === 'system')?.content ?? '';
-    if (system.includes('location router')) return sseResponse(sseReply(calls.route));
+    if (system.includes('location router') || system.includes('You keep track of where the player character is')) {
+      return sseResponse(sseReply(calls.route));
+    }
     if (system.includes('You track where one character goes')) {
       calls.askedToMove.push(system);
       return sseResponse(sseReply('Stay'));

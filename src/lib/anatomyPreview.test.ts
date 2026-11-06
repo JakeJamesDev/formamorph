@@ -59,7 +59,8 @@ const hub = (
   prompts = PROMPTS,
   settingsOver: Partial<AnatomyPreviewSettings> = {},
 ) => {
-  const settings = { ...SETTINGS, ...settingsOver };
+  // The Location Change prompt is sent only while Auto mode applies moves.
+  const settings = { ...SETTINGS, locationAutoApply: tab === 'location', ...settingsOver };
   return buildAnatomyHub(tab, prompts, valuesFor(settings), { ...ALL_ON, ...over }, settings);
 };
 
@@ -392,7 +393,7 @@ describe('anatomyToggleAvailability', () => {
 const SYSTEM_TEMPLATE: Record<string, string> = {
   narration: 'system', thinking: 'thinking', director: 'director', character: 'character',
   storyboard: 'storyboard', choices: 'choices', statupdates: 'statUpdates',
-  location: 'locationChange', entitylocation: 'entityLocation', summary: 'summary', diary: 'diary',
+  location: 'locationChange', narratedmove: 'narratedMove', entitylocation: 'entityLocation', summary: 'summary', diary: 'diary',
   timepassed: 'timePassed', timeopening: 'openingTime', scenetags: 'sceneTags',
   discover: 'discoverEntity', milestone: 'milestoneSelect', inventory: 'inventory',
 };
@@ -451,8 +452,8 @@ describe('the location hub follows the detection mode', () => {
     const requests = hub(tab, {}, asking, { locationAutoApply });
     return {
       keys: requests.map((r) => r.key),
-      narration: requests[0].blocks.some((b) => b.runs.some((r) => r.contextLabel === 'narration')),
-      caption: requests[0].caption,
+      narration: requests[0]?.blocks.some((b) => b.runs.some((r) => r.contextLabel === 'narration')),
+      caption: requests[0]?.caption,
     };
   };
 
@@ -465,8 +466,19 @@ describe('the location hub follows the detection mode', () => {
     expect(caption).toBe('Sent before the narration. The move applies first, so the whole turn runs in the new place.');
   });
 
-  it('draws only the post-narration request when the mode offers the move instead', () => {
-    const { keys, narration, caption } = narrationIn('location', false);
+  it('draws no router request when the mode offers the move instead', () => {
+    expect(narrationIn('location', false).keys).toEqual([]);
+  });
+
+  it('draws the narrated move after the narration in Auto mode', () => {
+    const { keys, narration, caption } = narrationIn('narratedmove', true);
+    expect(keys).toEqual(['narratedMove']);
+    expect(narration).toBe(true);
+    expect(caption).toBe('Sent after the narration when your action moved you nowhere. The move applies before the rest of the turn.');
+  });
+
+  it('draws the offer after the narration when the mode offers the move instead', () => {
+    const { keys, narration, caption } = narrationIn('narratedmove', false);
     expect(keys).toEqual(['locationSuggest']);
     expect(narration).toBe(true);
     expect(caption).toBe('Sent after the narration. The move is offered, and you choose whether to take it.');

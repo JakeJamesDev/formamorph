@@ -16,6 +16,7 @@ const SPEC: Record<AIRequestType, [label: string, glyph: string]> = {
   diary: ['Generating Diary…', 'bookOpen'],
   storyboard: ['Generating Storyboard…', 'scroll'],
   locationChange: ['Generating Location Change…', 'mapPin'],
+  narratedMove: ['Generating Narrated Move…', 'mapPin'],
   entityLocation: ['Generating Entity Location…', 'mapPin'],
   timePassed: ['Generating Clock…', 'hourglass'],
   openingTime: ['Generating Opening…', 'hourglass'],

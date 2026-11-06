@@ -26,6 +26,7 @@ export type TurnPassId =
   | 'character'
   | 'storyboard'
   | 'narration'
+  | 'narratedMove'
   | 'choices'
   | 'statUpdates'
   | 'locationSuggest'
@@ -40,7 +41,7 @@ export type TurnPassId =
   | 'inventory';
 
 /** Where a pass sits relative to the narration. Passes run in stage order, then in plan order. */
-export type TurnStage = 'preNarration' | 'planning' | 'narration' | 'postNarration';
+export type TurnStage = 'preNarration' | 'planning' | 'narration' | 'narratedMove' | 'postNarration';
 
 /** The concurrency knob: whether the post-narration passes are dispatched together or one at a time. */
 export type TurnConcurrency = 'serial' | 'parallel';
@@ -83,6 +84,8 @@ export interface TurnSettings {
 export interface TurnPrompts {
   locationChange: string;
   locationChangeUser: string;
+  narratedMove: string;
+  narratedMoveUser: string;
   entityLocation: string;
   entityLocationUser: string;
   thinking: string;
@@ -182,6 +185,8 @@ export interface TurnMaterial {
   sceneEntityTokens: TokenValues;
   /** Names the location router may answer with. */
   destinations: string[];
+  /** The player already moved this turn, before the narration. */
+  moved?: boolean;
   /**
    * The assembled narration system prompt. Built by the caller: the dictionary scan, banded history and
    * notes fallback that produce it are the narration request's own assembly, not a turn decision.
@@ -297,6 +302,8 @@ export interface TurnPassRecord<TParsed = unknown> {
   companion?: boolean;
   buildRequest(input: TurnPlanInput, material: TurnMaterial): TurnPassRequest<ChatMessage>;
   parseResponse(raw: string, material: TurnMaterial): TParsed;
+  /** What the pass's own answer adds to the material, folded in before the caller's advance. */
+  fold?(parsed: TParsed): Partial<TurnMaterial>;
 }
 
 /** The plan for one turn: its shape, its concurrency, and the passes it will dispatch in order. */

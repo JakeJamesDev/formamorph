@@ -94,8 +94,8 @@ export interface TurnRunnerInput {
   onPassSettled?: (id: TurnPassRecord['id'], outcome: { ok: boolean }) => void;
 }
 
-/** Stage order. Every turn walks all four; a stage with no due passes simply dispatches nothing. */
-const STAGES: TurnStage[] = ['preNarration', 'planning', 'narration', 'postNarration'];
+/** Stage order. Every turn walks all five; a stage with no due passes simply dispatches nothing. */
+const STAGES: TurnStage[] = ['preNarration', 'planning', 'narration', 'narratedMove', 'postNarration'];
 
 /** One request to send: the pass that owns it, the subject it is about, and the built payload. */
 interface PlannedRequest {
@@ -122,6 +122,12 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
   const run = (): TurnRun => ({ material, passes });
 
   const applyAdvance = async (event: TurnAdvanceEvent): Promise<void> => {
+    if (event.at === 'pass') {
+      for (const outcome of event.outcomes) {
+        const fold = outcome.error ? undefined : plan.passes.find((pass) => pass.id === outcome.id)?.fold;
+        if (fold) material = { ...material, ...fold(outcome.parsed) };
+      }
+    }
     const patch = await advance?.(event, material);
     if (patch) material = { ...material, ...patch };
   };
