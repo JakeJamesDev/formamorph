@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => {
   const loaded: string[] = [];
   class MockRenderer {
     domElement = document.createElement('canvas');
+    debug = { checkShaderErrors: true };
+    compileAsync() { return Promise.resolve(); }
+    initTexture() {}
     setSize() {}
     setClearColor() {}
     setPixelRatio() {}
@@ -28,7 +31,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('three', async () => ({ ...await vi.importActual<Record<string, unknown>>('three'), WebGLRenderer: mocks.MockRenderer }));
 vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({ OrbitControls: mocks.MockControls }));
 vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({ GLTFLoader: mocks.MockGltfLoader }));
-vi.mock('three/examples/jsm/loaders/FBXLoader.js', () => ({ FBXLoader: class { load() {} } }));
+vi.mock('three/examples/jsm/loaders/FBXLoader.js', () => ({ FBXLoader: class { load() {} loadAsync() { return new Promise(() => {}); } } }));
 
 /** Mounts the viewer with no model URL, on a build of `avatarSet`. Vitest serves the build's define as a global. */
 const mountOn = async (avatarSet: string) => {

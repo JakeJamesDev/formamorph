@@ -128,6 +128,36 @@ const mixamoVRMRigMap: Record<string, string> = {
   mixamorigRightToeBase: 'rightToes',
 };
 
+/** Parsed animation files, shared by every viewer: retargeting reads them and never changes them. */
+const fbxCache = new Map<string, Promise<THREE.Group>>();
+function loadFbx(path: string): Promise<THREE.Group> {
+  let pending = fbxCache.get(path);
+  if (!pending) {
+    pending = new FBXLoader().loadAsync(path);
+    // A failed load isn't kept, so a later mount tries again.
+    pending.catch(() => fbxCache.delete(path));
+    fbxCache.set(path, pending);
+  }
+  return pending;
+}
+
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+/** Every texture the object's materials use, once each. */
+function texturesOf(root: THREE.Object3D): THREE.Texture[] {
+  const textures = new Set<THREE.Texture>();
+  root.traverse((obj) => {
+    const material = (obj as THREE.Mesh).material;
+    for (const m of Array.isArray(material) ? material : material ? [material] : []) {
+      for (const value of Object.values(m)) if (value instanceof THREE.Texture) textures.add(value);
+      // MToon keeps its maps in uniforms as well.
+      const uniforms = (m as THREE.ShaderMaterial).uniforms;
+      if (uniforms) for (const { value } of Object.values(uniforms)) if (value instanceof THREE.Texture) textures.add(value);
+    }
+  });
+  return [...textures];
+}
+
 const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   bodyMorphValues,
   hairColor,
@@ -413,6 +443,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30.0, 1, 0.1, 20.0);
     const renderer = new THREE.WebGLRenderer();
+    // The check reads every program's logs on its first draw, a long stall for a VRM's many materials.
+    renderer.debug.checkShaderErrors = import.meta.env.DEV;
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
 
@@ -449,6 +481,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     // once all FBX clips land — start the self-rescheduling animation timer chain that cleanup can no
     // longer clear (its clearTimeout already ran while animTimeout was still undefined).
     let cancelled = false;
+    let holdDraw = false;
 
     // Load VRM model
     const loader = new GLTFLoader();
@@ -457,10 +490,11 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     // No URL on a build with no bundled default: the scene stays empty.
     if (modelUrl) loader.load(
       modelUrl,
-      (gltf) => {
+      (gltf) => { void (async () => {
         if (cancelled) return;
         const vrm: VRM = gltf.userData.vrm;
-
+        // No frame draws until the model's shaders and textures are ready.
+        holdDraw = true;
         scene.add(vrm.scene);
         vrmRef.current = vrm;
         gltfRef.current = gltf;
@@ -481,6 +515,17 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         //attachCylinderToHand(vrm);
 
         updateHairStyle(gltf);
+
+        // Compile the shaders off the main thread and upload one texture a frame, so the first draw
+        // doesn't stall the page. This runs after the setup above, which decides the programs drawn.
+        await renderer.compileAsync(scene, camera);
+        for (const texture of texturesOf(vrm.scene)) {
+          if (cancelled) return;
+          renderer.initTexture(texture);
+          await nextFrame();
+        }
+        if (cancelled) return;
+        holdDraw = false;
 
         // Report which customization morphs this model exposes so the UI hides unsupported sliders.
         if (onCapabilities) {
@@ -508,7 +553,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
 
         animationFiles.forEach(file => loadMixamoAnimation(file));
-      },
+      })().catch((error: unknown) => console.error('Error preparing VRM:', error)); },
       (progress) => console.log('Loading model...', 100.0 * (progress.loaded / progress.total), '%'),
       (error) => console.error('Error loading VRM:', error)
     );
@@ -519,8 +564,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     // Load Mixamo animation
     const loadMixamoAnimation = (animationPath: string) => {
       const animationName = (animationPath.split('/').pop() ?? '').split('.')[0]; // Extract name from filename
-      const loader = new FBXLoader();
-      loader.load(animationPath, (asset) => {
+      loadFbx(animationPath).then((asset) => {
         if (cancelled) return;
         const clip = THREE.AnimationClip.findByName(asset.animations, 'mixamo.com');
         
@@ -607,7 +651,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
           startAnimationLoop();
         }
 
-      }, undefined, (error) => console.error(`Error loading ${animationName} animation:`, error));
+      }, (error: unknown) => console.error(`Error loading ${animationName} animation:`, error));
     };
 
     let animTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -656,8 +700,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         vrmRef.current.update(dt);
       }
 
-      // Out of sight (a stowed panel), the frame isn't drawn.
-      if (mount.clientWidth && mount.clientHeight) renderer.render(scene, camera);
+      // Out of sight (a stowed panel), or while the model prepares, the frame isn't drawn.
+      if (!holdDraw && mount.clientWidth && mount.clientHeight) renderer.render(scene, camera);
     };
 
     const clock = new THREE.Clock();
