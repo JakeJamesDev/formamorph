@@ -62,6 +62,14 @@ Rulings from the grill, numbered as asked:
 - **Ticket 03 rulings:** "stands in" and "already present" read where the character is in play: her position when she holds one, else her listed locations. A pulled character who holds a position also gets her position set to the player's place in the same turn commit, so she is present there and the move rolls back with the turn. One without a position keeps the discovered-record path only. The child pull also runs at a top-level place, which has no siblings. A full alias hit counts, a character already present is never pulled again, and a Moves Between character passes whenever the player's place is one of her locations.
 - **Q4. Narrated moves in Auto mode.** A post-narration location request reads the narration and applies its answer at once. It sends the same reachable destination list the router uses.
 - **Q5. The opening** runs this check too, after the opening narration.
+  - **Ticket 04 rulings:**
+    - The check is its own serial step right after the narration. It runs before choices, stats, inventory, diary, discovery and the scene tags, so those passes read the final place.
+    - Any move before the narration skips the check, whether the router, a Before the AI script or an On Call tool made it (Q7).
+    - The pull runs once at the turn commit, at the final place, after the narrated move and any After the AI code move. A turn stopped before the commit pulls nobody.
+    - The prompt pair gets its own request type and its own "Narrated Move" rail row after Location Change. Before it lands, the hosted proxy is checked: it must not reject the new type, and the extra call must not exceed the per-turn call cap. The proxy's prompt-type list gets a follow-up.
+    - The opening sends an empty action, and the check also runs after a written Opening Narration.
+    - The Location Change prompt drops its narration chip, because only the router sends it now.
+    - In Suggest mode the Location Change prompt is never sent. Its rail row stays, with no new availability rule. The Anatomy hub already says the configuration never sends it.
 - **Q6. Order.** The narrated move applies before the scene pull and before presence is read. The pull is judged at the place where the player ends the turn.
 - **Q7. Skip rule.** The check runs only when the router before the narration answered NONE. One move per turn at most.
 - **Q8. Probe bar.** On the cloud default model, at least 9 of 10 carried narrations move the player, and at most 1 of 10 stay narrations does.
