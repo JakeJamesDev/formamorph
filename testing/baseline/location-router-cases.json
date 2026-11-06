@@ -1,5 +1,5 @@
 {
-  "_note": "Fixed gold-case set for probing the location-router prompt. From the player's action ALONE (plus current location + reachable destinations) the model must output an exact destination name when the player is actually moving there, or NONE otherwise. The hard cases are the NONE traps the prompt calls out: looking toward / pointing at / calling across / talking about a place, and asking someone else to come over (that's the other person moving). `expect` is the exact required reply ('NONE' or a destination name). Run via harness/location-router-probe.mjs.",
+  "_note": "Fixed gold-case set for probing the location-router prompt. From the player's action ALONE (plus current location + reachable destinations) the model must output an exact destination name when the player is actually moving there, or NONE otherwise. The hard cases are the NONE traps the prompt calls out: looking toward / pointing at / calling across / talking about a place, and asking someone else to come over (that's the other person moving). `expect` is the exact required reply ('NONE' or a destination name). `set` groups cases: `gold` (the original traps and moves), `threshold` (the player only waits or stands at a place's door, foot, entrance or edge: NONE), `entry` (real entries phrased through that threshold: the place). A case with `world` uses that entry of `worlds` for its current place and destinations. Run via harness/location-router-probe.mjs.",
   "current": {
     "name": "Sedgewater Landing",
     "description": "A muddy river landing of moored punts and drying nets, where the causeway meets the black water."
@@ -11,18 +11,55 @@
     { "name": "North Causeway", "description": "The raised road leading out of the marsh to the north." },
     { "name": "Old Chapel", "description": "A half-sunk stone chapel on the far bank, reached by the footbridge." }
   ],
+  "worlds": {
+    "fen": {
+      "current": { "name": "Reedmoor Village", "description": "A village of reed huts on stilts, joined by plank walkways over the water." },
+      "destinations": [
+        { "name": "Elder's Longhouse", "description": "The village elder's long reed hall, raised highest of all on its stilts and reached by a ladder." },
+        { "name": "Smokehouse", "description": "A low hut where the day's catch hangs over smoldering peat." },
+        { "name": "Mooring Steps", "description": "Wooden steps down to the punts tied at the water's edge." },
+        { "name": "Heron Island", "description": "A wooded island in the fen where the herons nest." }
+      ]
+    }
+  },
   "cases": [
-    { "name": "go-clear", "narration": "I walk down to the Boat Docks and step onto the nearest jetty.", "expect": "Boat Docks" },
-    { "name": "enter", "narration": "I push open the door of the Eel & Lantern and step inside out of the cold.", "expect": "The Eel & Lantern" },
-    { "name": "head-for", "narration": "I shoulder my pack and set off up the North Causeway.", "expect": "North Causeway" },
-    { "name": "turn-and-walk", "narration": "I turn from the rail and make my way over to Fishmonger's Row.", "expect": "Fishmonger's Row" },
-    { "name": "cross-to", "narration": "I take the footbridge across to the Old Chapel to see who tends it.", "expect": "Old Chapel" },
-    { "name": "looking-toward", "narration": "I gaze across the water toward the Old Chapel, wondering who still lights its candles.", "expect": "NONE" },
-    { "name": "pointing-at", "narration": "I point at Fishmonger's Row and ask the boy beside me what they're selling today.", "expect": "NONE" },
-    { "name": "calling-across", "narration": "I cup my hands and shout across to the Boat Docks, hoping the ferryman hears me.", "expect": "NONE" },
-    { "name": "talking-about", "narration": "I ask the old fisherman whether the ale at the Eel & Lantern is worth the walk.", "expect": "NONE" },
-    { "name": "summon-other", "narration": "I wave the fishmonger over from Fishmonger's Row to haggle here where I stand.", "expect": "NONE" },
-    { "name": "reaching", "narration": "I reach toward the Old Chapel's bell rope in my mind's eye, then shake off the thought.", "expect": "NONE" },
-    { "name": "no-place", "narration": "I crouch at the waterline and rinse the river mud from my hands.", "expect": "NONE" }
+    { "name": "go-clear", "narration": "I walk down to the Boat Docks and step onto the nearest jetty.", "expect": "Boat Docks", "set": "gold" },
+    { "name": "enter", "narration": "I push open the door of the Eel & Lantern and step inside out of the cold.", "expect": "The Eel & Lantern", "set": "gold" },
+    { "name": "head-for", "narration": "I shoulder my pack and set off up the North Causeway.", "expect": "North Causeway", "set": "gold" },
+    { "name": "turn-and-walk", "narration": "I turn from the rail and make my way over to Fishmonger's Row.", "expect": "Fishmonger's Row", "set": "gold" },
+    { "name": "cross-to", "narration": "I take the footbridge across to the Old Chapel to see who tends it.", "expect": "Old Chapel", "set": "gold" },
+    { "name": "looking-toward", "narration": "I gaze across the water toward the Old Chapel, wondering who still lights its candles.", "expect": "NONE", "set": "gold" },
+    { "name": "pointing-at", "narration": "I point at Fishmonger's Row and ask the boy beside me what they're selling today.", "expect": "NONE", "set": "gold" },
+    { "name": "calling-across", "narration": "I cup my hands and shout across to the Boat Docks, hoping the ferryman hears me.", "expect": "NONE", "set": "gold" },
+    { "name": "talking-about", "narration": "I ask the old fisherman whether the ale at the Eel & Lantern is worth the walk.", "expect": "NONE", "set": "gold" },
+    { "name": "summon-other", "narration": "I wave the fishmonger over from Fishmonger's Row to haggle here where I stand.", "expect": "NONE", "set": "gold" },
+    { "name": "reaching", "narration": "I reach toward the Old Chapel's bell rope in my mind's eye, then shake off the thought.", "expect": "NONE", "set": "gold" },
+    { "name": "no-place", "narration": "I crouch at the waterline and rinse the river mud from my hands.", "expect": "NONE", "set": "gold" },
+    { "set": "threshold", "name": "ladder-foot", "world": "fen", "narration": "I wait by the foot of the ladder.", "expect": "NONE" },
+    { "set": "threshold", "name": "bottom-rung", "world": "fen", "narration": "I sit on the bottom rung of the ladder to the Elder's Longhouse and catch my breath.", "expect": "NONE" },
+    { "set": "threshold", "name": "outside-wall", "world": "fen", "narration": "I lean against the wall outside the Smokehouse, out of the wind.", "expect": "NONE" },
+    { "set": "threshold", "name": "steps-head", "world": "fen", "narration": "I stand at the top of the Mooring Steps and watch the punts knock together below.", "expect": "NONE" },
+    { "set": "threshold", "name": "door-listen", "narration": "I stand at the door of the Eel & Lantern and listen to the noise inside.", "expect": "NONE" },
+    { "set": "threshold", "name": "knock-wait", "narration": "I knock on the door of the Eel & Lantern and wait for someone to answer.", "expect": "NONE" },
+    { "set": "threshold", "name": "bridge-end", "narration": "I wait at the near end of the footbridge to the Old Chapel until the fog lifts.", "expect": "NONE" },
+    { "set": "entry", "name": "climb-ladder", "world": "fen", "narration": "I climb the ladder up to the Elder's Longhouse.", "expect": "Elder's Longhouse" },
+    { "set": "entry", "name": "foot-then-up", "world": "fen", "narration": "I cross to the foot of the ladder and climb up into the longhouse.", "expect": "Elder's Longhouse" },
+    { "set": "entry", "name": "down-steps", "world": "fen", "narration": "I go down the Mooring Steps to the punts.", "expect": "Mooring Steps" },
+    { "set": "entry", "name": "door-then-in", "narration": "I wait at the door of the Eel & Lantern until the doorman nods, then go in.", "expect": "The Eel & Lantern" },
+    { "set": "threshold", "name": "stoop", "world": "fen", "narration": "I sit down on the stoop of the Smokehouse and pull off my wet boots.", "expect": "NONE" },
+    { "set": "threshold", "name": "archway", "narration": "I linger under the archway of the Old Chapel, rain dripping from the stones.", "expect": "NONE" },
+    { "set": "threshold", "name": "doorway-peek", "narration": "I pause in the doorway of the Eel & Lantern and scan the crowd for the ferryman.", "expect": "NONE" },
+    { "set": "threshold", "name": "jetty-start", "narration": "I wait where the boardwalk meets the Boat Docks, watching the punts come in.", "expect": "NONE" },
+    { "set": "entry", "name": "duck-in", "world": "fen", "narration": "I duck through the low doorway into the Smokehouse.", "expect": "Smokehouse" },
+    { "set": "entry", "name": "up-and-in", "narration": "I hurry up the steps and through the door of the Eel & Lantern.", "expect": "The Eel & Lantern" },
+    { "set": "entry", "name": "under-arch", "narration": "I pass under the archway and into the Old Chapel.", "expect": "Old Chapel" },
+    { "set": "threshold", "name": "porch", "narration": "I shelter on the porch of the Eel & Lantern until the rain eases.", "expect": "NONE" },
+    { "set": "threshold", "name": "read-notice", "narration": "I stand beside the Old Chapel's door and read the notice nailed to it.", "expect": "NONE" },
+    { "set": "threshold", "name": "back-to-wall", "world": "fen", "narration": "I sit with my back against the Smokehouse wall and doze in the sun.", "expect": "NONE" },
+    { "set": "threshold", "name": "one-foot", "world": "fen", "narration": "I put one foot on the ladder to the Elder's Longhouse, then think better of it.", "expect": "NONE" },
+    { "set": "entry", "name": "threshold-step", "world": "fen", "narration": "I step over the threshold of the Smokehouse.", "expect": "Smokehouse" },
+    { "set": "entry", "name": "through-crowd", "narration": "I shoulder past the drinkers at the door and into the Eel & Lantern.", "expect": "The Eel & Lantern" },
+    { "set": "entry", "name": "up-to-fire", "world": "fen", "narration": "I climb up to the Elder's Longhouse and sit by the elder's fire.", "expect": "Elder's Longhouse" },
+    { "set": "entry", "name": "onto-docks", "narration": "I walk out onto the Boat Docks.", "expect": "Boat Docks" }
   ]
 }

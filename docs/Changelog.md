@@ -69,9 +69,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **An avatar now loads in game without freezing the page for a second or more.**
   - **An avatar with an image that can't load now still loads.** It shows without that one image instead of failing.
   - **Editing a big world in the World Editor no longer freezes the page for seconds after each change.** The Test Bench checks your world in the background again.
+  - **Waiting at a place's door, steps or ladder no longer moves you inside it.** You move once your action goes in. Calling across to a place, pointing at it or waving someone over from it also keeps you where you are.
 - **🛠️ Developer tooling**
   - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
   - **Media, Stats and Traits tab tests now mount the panel, not the World Editor, and use half the test time.** 159 tests moved with coverage held; the editor view keeps the cross-tab cases.
+  - **The location router probe now shows the model the destination list again.** It renders headed location chips, runs the cloud endpoint without a profile, and compares two prompt versions in one batch. New cases cover waiting at a doorway.
 
 ---
 
