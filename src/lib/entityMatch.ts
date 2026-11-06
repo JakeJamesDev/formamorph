@@ -1,4 +1,4 @@
-import pluralize from 'pluralize';
+import pluralize from 'pluralize-esm';
 import commonWordsCore from 'wordlist-english/english-words-10.json';
 import commonWordsExtra from 'wordlist-english/english-words-20.json';
 import type { Entity } from '@/types';

@@ -66,6 +66,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In the Windows desktop app, dialogs and the Avatar screen no longer slide under the window buttons.** Tall dialogs in a small window keep their close button clear. Avatar Customization and the supporter road start below the buttons.
   - **An avatar now loads in game without freezing the page for a second or more.**
   - **An avatar with an image that can't load now still loads.** It shows without that one image instead of failing.
+  - **Editing a big world in the World Editor no longer freezes the page for seconds after each change.** The Test Bench checks your world in the background again.
 - **🛠️ Developer tooling**
   - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
   - **Media, Stats and Traits tab tests now mount the panel, not the World Editor, and use half the test time.** 159 tests moved with coverage held; the editor view keeps the cross-tab cases.

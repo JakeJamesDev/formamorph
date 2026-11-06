@@ -11690,14 +11690,14 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### pluralize@8.0.0
+### pluralize-esm@9.0.5
 
-- License: **MIT** · blakeembrey/pluralize
+- License: **MIT** · sanity-io/pluralize-esm
 
 ```
 The MIT License (MIT)
 
-Copyright (c) 2013 Blake Embrey (hello@blakeembrey.com)
+Copyright (c) 2023 Blake Embrey (hello@blakeembrey.com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
