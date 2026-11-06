@@ -13,7 +13,7 @@ import { inAuthoredOrder, isHidden, traitOrderIndex } from '@/lib/traitEffects';
 import { playedEntityIds } from '@/lib/scope';
 import {
   entityStatTraitsInForce, setGrantedTraits, settleTraits, traitForceScope, traitGateInput, traitNameIn, traitSwitchLog,
-  type TraitRuntimeState, type TraitWorld,
+  type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from '@/lib/traitRuntime';
 import type { RowState } from '@/lib/traitGates';
 import type {
@@ -317,5 +317,25 @@ export function equipRequirement(state: Omit<InventorySettleState, 'copies'>, wo
     const rows = read.requirementStates(state, copy, copies);
     if (!rows || rows.some((row) => row.holds)) return null;
     return `${read.copyName(copy)} needs ${rowsText(rows)}`;
+  };
+}
+
+/**
+ * Item grants, item effects, trait gates and equip requirements settled together over `state` (Q48, Q123).
+ * The same state, and no `items`, when nothing moves.
+ */
+export function settleTraitsWithItems(
+  state: TraitRuntimeState, held: Pick<InventorySettleState, 'copies' | 'ledger' | 'now' | 'bodies'>, world: InventorySettleWorld,
+): GatedTraitResult {
+  const settled = settleInventory({ ...held, traits: state }, world);
+  const itemsMoved = settled.copies !== held.copies || JSON.stringify(settled.ledger) !== JSON.stringify(held.ledger ?? {})
+    || JSON.stringify(settled.bodies) !== JSON.stringify(held.bodies) || settled.bodyLog.length > 0;
+  if (settled.traits === state && !itemsMoved) return { state, log: settled.log, cascade: [], cascadeNames: [] };
+  return {
+    state: settled.traits === state ? { ...state } : settled.traits, log: settled.log, cascade: settled.cascade, cascadeNames: settled.cascadeNames,
+    items: {
+      copies: settled.copies, ledger: settled.ledger, bodies: settled.bodies, bodyLog: settled.bodyLog,
+      bodyUnequipped: settled.bodyUnequipped, events: settled.events,
+    },
   };
 }

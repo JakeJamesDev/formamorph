@@ -2,14 +2,17 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { toast } from 'react-toastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
-import { PRE_EXPANSION_SHA, PRE_REFRESH_SHA, worldAt } from '@/test/bundledRevisions';
+import { PRE_EXPANSION_SHA, PRE_REFRESH_SHA, withoutAStat, worldAt } from '@/test/bundledRevisions';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
 import type { SaveRecord, World } from '@/types';
 
-/** A save made against a bundled world's pre-refresh or pre-expansion revision loads against the current file and plays a turn. */
+/**
+ * A save made against a bundled world's pre-refresh or pre-expansion revision loads against the current file and
+ * plays a turn. `GameplayContext.bundledSaves.test.tsx` loads and settles every world at every revision.
+ */
 
 // The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
@@ -20,7 +23,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-const raws = import.meta.glob<string>('@/defaultworlds/*.json', { query: '?raw', import: 'default', eager: true });
+const raws = import.meta.glob<string>('@/defaultworlds/{drone,emberwatch,open-chat,rampage,slime}.json', { query: '?raw', import: 'default', eager: true });
 const currentRaw = (id: string): Record<string, unknown> =>
   JSON.parse(Object.entries(raws).find(([path]) => path.endsWith(`/${id}.json`))![1]);
 
@@ -69,14 +72,6 @@ beforeEach(async () => {
 
 const turnsIn = (save: SaveRecord) => (save.messageHistory ?? []).filter((m) => m.role === 'assistant').length;
 
-/** The world without its first stat: a global one, else the first an entity owns. Null when it has none. */
-function withoutAStat(world: World): World | null {
-  if (world.stats.length) return { ...world, stats: world.stats.slice(1) };
-  const owner = world.entities.find((e) => e.stats?.length);
-  if (!owner) return null;
-  return { ...world, entities: world.entities.map((e) => (e === owner ? { ...e, stats: e.stats!.slice(1) } : e)) };
-}
-
 /** Play a turn on `before`, then load that save against `after` and play one more. */
 async function playSaveAcross(before: World, after: World) {
   const played = renderGameViewer(before, { inGameplay: <Probe /> });
@@ -101,18 +96,36 @@ async function playSaveAcross(before: World, after: World) {
   expect(vi.mocked(toast.error)).not.toHaveBeenCalled();
 }
 
-describe.each(DEFAULT_WORLDS.map((seed) => [seed.id, seed] as const))('a save of %s', (id, seed) => {
-  const before = (sha: string) => seedWorldData(worldAt(sha, id), seed);
-  const after = () => seedWorldData(currentRaw(id), seed);
+const before = (id: string, sha: string) => seedWorldData(worldAt(sha, id), DEFAULT_WORLDS.find((seed) => seed.id === id)!);
+const after = (id: string) => seedWorldData(currentRaw(id), DEFAULT_WORLDS.find((seed) => seed.id === id)!);
 
-  it.each([['pre-refresh', PRE_REFRESH_SHA], ['pre-expansion', PRE_EXPANSION_SHA]])(
-    'made at the %s revision loads against the current world and plays a turn', { timeout: 60_000 }, async (_label, sha) => {
-      await playSaveAcross(before(sha), after());
-    },
-  );
+describe('a save of rampage', () => {
+  it('made at the pre-refresh revision loads against the current world and plays a turn', { timeout: 60_000 }, async () => {
+    await playSaveAcross(before('rampage', PRE_REFRESH_SHA), after('rampage'));
+  });
+});
 
-  // Q10: drift is accepted, so a stat the world cut drops from the save without breaking play.
-  it.runIf(withoutAStat(after()))('plays a turn after the world cuts a stat the save holds', { timeout: 60_000 }, async () => {
-    await playSaveAcross(before(PRE_REFRESH_SHA), withoutAStat(after())!);
+describe('a save of drone', () => {
+  it('made at the pre-expansion revision loads against the current world and plays a turn', { timeout: 60_000 }, async () => {
+    await playSaveAcross(before('drone', PRE_EXPANSION_SHA), after('drone'));
+  });
+});
+
+describe('a save of emberwatch', () => {
+  it('made at the pre-expansion revision loads against the current world and plays a turn', { timeout: 60_000 }, async () => {
+    await playSaveAcross(before('emberwatch', PRE_EXPANSION_SHA), after('emberwatch'));
+  });
+});
+
+describe('a save of open-chat', () => {
+  it('made at the pre-refresh revision loads against the current world and plays a turn', { timeout: 60_000 }, async () => {
+    await playSaveAcross(before('open-chat', PRE_REFRESH_SHA), after('open-chat'));
+  });
+});
+
+describe('a save of slime', () => {
+  // Q10: drift is accepted, so a stat the world cut leaves play unbroken.
+  it('plays a turn after the world cuts a stat the save holds', { timeout: 60_000 }, async () => {
+    await playSaveAcross(before('slime', PRE_REFRESH_SHA), withoutAStat(after('slime'))!);
   });
 });

@@ -1,13 +1,14 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
-import { playTurn, stubDemoAIEndpoint } from '@/test/demoAIPlay';
+import { playTurn, regenerateChoices, regenerateStats, settles, stubDemoAIEndpoint } from '@/test/demoAIPlay';
+import { DEMO_AI_SEEN_KEY } from '@/components/game/demoAISeen';
 import { RoadSceneHost } from '@/components/road/RoadSceneHost';
 import { closeRoadScene } from '@/components/road/roadSceneStore';
-import { isDemoAICardSeen } from '@/lib/firstTimeFlowStore';
+import { demoAITurnCount, isDemoAICardSeen, markDemoAICardSeen, recordDemoAITurn } from '@/lib/firstTimeFlowStore';
 import type { PlayerStat } from '@/types';
 
-/** The Formamorph AI card on a mounted game, through the real commit path. */
+/** The Demo AI turn count, its entry line and the Formamorph AI card on a mounted game, through the real commit path. */
 
 // The hosted build: the Default preset is the Demo AI. Pinned so a developer's `.env.local` cannot change it.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
@@ -17,6 +18,8 @@ vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn(), dismiss: vi.fn(), isActive: vi.fn() }),
   ToastContainer: () => null,
 }));
+
+const ENTRY_LINE = "You're on the Demo AI, a small free model. Select its badge to learn more.";
 
 const vigor: PlayerStat = { id: 'vigor', name: 'Vigor', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
 const WORLD = harborWorld({ stats: [vigor] });
@@ -29,14 +32,35 @@ function enter() {
   return renderGameViewer(WORLD, { children: <RoadSceneHost /> });
 }
 
-/** Enters a game and plays `turns` player actions after the opening. */
-async function play(turns: number) {
+/** Enters a game with the card's scene host and plays the opening. */
+async function enterWithHost() {
   const view = enter();
   await screen.findByPlaceholderText(/Type your action/);
   stubDemoAIEndpoint();
   await playTurn('I step onto the dock.');
+  return view;
+}
+
+/** Enters a game and plays `turns` player actions after the opening. */
+async function playFromStart(turns: number) {
+  const view = await enterWithHost();
   for (let turn = 1; turn <= turns; turn += 1) await playTurn(`Action ${turn}`);
   return view;
+}
+
+/** Reaches a count of `turns`: earlier games left all but the last, which this game plays. */
+async function play(turns: number) {
+  for (let turn = 1; turn < turns; turn += 1) recordDemoAITurn();
+  const view = await enterWithHost();
+  await playTurn(`Action ${turns}`);
+  return view;
+}
+
+async function enterAndOpen() {
+  renderGameViewer(WORLD);
+  await screen.findByPlaceholderText(/Type your action/);
+  stubDemoAIEndpoint();
+  await playTurn('I step onto the dock.');
 }
 
 const follows = (first: Element, second: Element) =>
@@ -55,7 +79,7 @@ afterEach(() => {
 // Pages: jsdom has no boxes for Chat's virtualized list, so `GamePanels.chatLayout.test.tsx` and the E2E run hold Chat.
 describe('the card', () => {
   it('stays away through the fourth turn, then shows on the fifth', async () => {
-    await play(3);
+    await playFromStart(3);
     await playTurn('Action 4');
     expect(card()).toBeNull();
     expect(isDemoAICardSeen()).toBe(false);
@@ -151,4 +175,89 @@ describe('who sees the card', () => {
     expect(screen.queryByRole('button', { name: 'Demo AI' })).toBeNull();
     expect(card()).toBeNull();
   }, 30_000);
+});
+
+describe('the Demo AI turn count', () => {
+  it('skips the opening and counts each later player action', async () => {
+    await enterAndOpen();
+    expect(demoAITurnCount()).toBe(0);
+    await playTurn('I ring the bell.');
+    expect(demoAITurnCount()).toBe(1);
+    await playTurn('I wait at the dock.');
+    expect(demoAITurnCount()).toBe(2);
+  });
+
+  it('does not count a narration regenerate, a choices re-roll or a stats re-roll', async () => {
+    await enterAndOpen();
+    await playTurn('I ring the bell.');
+    expect(demoAITurnCount()).toBe(1);
+
+    await settles('narration', () => fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' })));
+    expect(demoAITurnCount()).toBe(1);
+
+    await settles('choices', () => fireEvent.click(regenerateChoices()));
+    await settles('stats', () => fireEvent.click(regenerateStats()));
+    expect(demoAITurnCount()).toBe(1);
+
+    await playTurn('I wait at the dock.');
+    expect(demoAITurnCount()).toBe(2);
+  });
+
+  it('stops once the card has shown', async () => {
+    await enterAndOpen();
+    await playTurn('I ring the bell.');
+    markDemoAICardSeen();
+    await playTurn('I wait at the dock.');
+    expect(demoAITurnCount()).toBe(1);
+  });
+
+  it('starts at zero for a player with the seen key set, and counts from there', async () => {
+    localStorage.setItem(DEMO_AI_SEEN_KEY, '1');
+    await enterAndOpen();
+    await playTurn('I ring the bell.');
+    expect(demoAITurnCount()).toBe(1);
+  });
+
+  it('keeps the count through a rewind, and counts the new action after it', async () => {
+    await enterAndOpen();
+    await playTurn('I ring the bell.');
+    expect(demoAITurnCount()).toBe(1);
+
+    fireEvent.click(screen.getByLabelText('Go to previous page'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rewind to Here' }));
+    const confirm = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirm).getAllByRole('button').at(-1)!);
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(demoAITurnCount()).toBe(1);
+
+    await playTurn('I wait at the dock.');
+    expect(demoAITurnCount()).toBe(2);
+  });
+});
+
+describe('the Demo AI entry line in the game', () => {
+  it('shows with no dialog, and the input stays usable', async () => {
+    renderGameViewer(WORLD);
+    expect(await screen.findByText(ENTRY_LINE)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const box = await screen.findByPlaceholderText(/Type your action/);
+    expect(box).toBeEnabled();
+    fireEvent.change(box, { target: { value: 'Look around' } });
+    expect(box).toHaveValue('Look around');
+    expect(screen.getByText(ENTRY_LINE)).not.toContainElement(document.activeElement as HTMLElement);
+  });
+
+  it('stays through the first turn with no dismissal', async () => {
+    await enterAndOpen();
+    expect(screen.getByText(ENTRY_LINE)).toBeInTheDocument();
+  });
+
+  it('does not show for a player with the seen key, and the badge still opens the dialog', async () => {
+    localStorage.setItem(DEMO_AI_SEEN_KEY, '1');
+    renderGameViewer(WORLD);
+    const badge = await screen.findByRole('button', { name: 'Demo AI' });
+    expect(screen.queryByText(ENTRY_LINE)).toBeNull();
+    fireEvent.click(badge);
+    expect(await screen.findByRole('heading', { name: "You're Playing on the Demo AI" })).toBeInTheDocument();
+  });
 });

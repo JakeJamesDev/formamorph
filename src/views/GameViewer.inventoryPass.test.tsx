@@ -4,6 +4,7 @@ import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { parseTurnContent } from '@/lib/turnDigest';
+import { IN_SCENE_TURNS } from '@/lib/presence';
 import type { Entity, Item, ItemCopy, PlayerStat, Script, World } from '@/types';
 
 /** The Inventory pass on a mounted game: its item timings, and the stats re-roll that replays it. */
@@ -39,15 +40,18 @@ const held = (copies: readonly ItemCopy[]) => copies
   .map((c) => `${c.item.kind === 'item' ? c.item.itemId : 'runtime'}@${c.where.kind}`).sort();
 const vigorNow = () => gameplay().globalStats.find((s) => s.id === 'vigor')?.value;
 
-/** A test can change `inventoryReply` (the pass's answer) and `route` (the location router's) between turns. */
+/** A test can change `inventoryReply` (the pass's answer), `route` (the location router's) and `narration` between turns. */
 function stubEndpoint(inventoryReply = GAIN_KEY) {
-  const calls = { inventory: 0, stats: 0, inventoryReply, route: 'NONE' };
+  const calls = { inventory: 0, stats: 0, inventoryReply, route: 'NONE', narration: 'You find a brass key under the mat.', askedToMove: [] as string[] };
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     const { messages } = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
     const system = messages.find((m) => m.role === 'system')?.content ?? '';
     if (system.includes('location router')) return sseResponse(sseReply(calls.route));
-    if (system.includes('You track where one character goes')) return sseResponse(sseReply('Stay'));
+    if (system.includes('You track where one character goes')) {
+      calls.askedToMove.push(system);
+      return sseResponse(sseReply('Stay'));
+    }
     if (system.includes('inventory keeper')) {
       calls.inventory += 1;
       return sseResponse(sseReply(calls.inventoryReply));
@@ -57,7 +61,7 @@ function stubEndpoint(inventoryReply = GAIN_KEY) {
       return sseResponse(sseReply('{"Global Stats": {"Vigor": 0, "Vigor max": 0}}'));
     }
     if (system.includes('player choice writer')) return sseResponse(sseReply('1. Open the door\n2. Wait'));
-    return sseResponse(sseReply('You find a brass key under the mat.'));
+    return sseResponse(sseReply(calls.narration));
   }));
   return calls;
 }
@@ -92,6 +96,48 @@ const ferrymanAt = (locationId: string) =>
   ({ id: 'ferryman', name: 'Ferryman', description: 'A gruff ferryman.', locations: [locationId] }) as Entity;
 const GIVE_KEY = JSON.stringify({ operations: [{ op: 'gain', item: 'Brass Key', quantity: 1, owner: '', to: 'Ferryman' }] });
 const placeOf = (itemId: string) => gameplay().itemCopies.find((c) => c.item.kind === 'item' && c.item.itemId === itemId)?.where;
+
+describe('a turn that starts with a discovered character', () => {
+  it('asks whether they move while a recent turn names them, and never discovers them again', async () => {
+    const calls = await playOneTurn(presenceWorld('discover("Ferryman", "A gruff ferryman.");'), JSON.stringify({ operations: [] }));
+    const discovered = () => gameplay().discoveredEntities.map((d) => d.entity.name);
+    const askedAboutFerryman = () => calls.askedToMove.filter((system) => system.includes('Ferryman')).length;
+    const play = async (action: string) => {
+      const asked = calls.stats;
+      fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: action } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await waitFor(() => expect(calls.stats).toBe(asked + 1));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
+    };
+    await waitFor(() => expect(discovered()).toEqual(['Ferryman']));
+
+    // The turn that discovered him names him.
+    await play('I wave to him.');
+    expect(askedAboutFerryman()).toBeGreaterThan(0);
+    expect(discovered()).toEqual(['Ferryman']);
+
+    // He stands here, but the scene moves on until no recent turn names him.
+    calls.narration = 'The tide comes in.';
+    for (let turn = 0; turn < IN_SCENE_TURNS; turn += 1) await play('I watch the water.');
+    const asked = askedAboutFerryman();
+    await play('I watch the water.');
+    expect(askedAboutFerryman()).toBe(asked);
+    expect(discovered()).toEqual(['Ferryman']);
+  }, 30_000);
+
+  it('holds a character the narration names from a reachable place, at the player’s place', async () => {
+    const landing = [
+      { id: 'landing', name: 'Sedge Landing' }, { id: 'harbor', name: 'Harbor', parentId: 'landing', isStarting: true }, { id: 'pier', name: 'Pier', parentId: 'landing' },
+    ];
+    renderGameViewer({ ...presenceWorld('', [ferrymanAt('pier')]), locations: landing } as World, { inGameplay: <Probe /> });
+    const box = await screen.findByPlaceholderText(/Type your action/);
+    const calls = stubEndpoint(JSON.stringify({ operations: [] }));
+    calls.narration = 'Ferryman walks up from the pier.';
+    fireEvent.change(box, { target: { value: 'I call out.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(gameplay().discoveredEntities.map((d) => [d.entity.name, d.locationId])).toEqual([['Ferryman', 'harbor']]));
+  });
+});
 
 describe('the Inventory pass in a turn', () => {
   it("lands the story's item, fires its When Gained script, and stores the operations on the turn", async () => {

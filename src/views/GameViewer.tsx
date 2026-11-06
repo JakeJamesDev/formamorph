@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingPersonaOf, openingStateOf } from '@/lib/openingState';
 import {
-  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
+  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
 import { runRowKeys } from '@/lib/worldScripts';
@@ -5268,22 +5268,10 @@ const GameViewer = ({
     }),
     [worldItems, traitEntities, traitName, resolvePH, inventoryWorld],
   );
-  const settleWithItems = useCallback((state: TraitRuntimeState, world: TraitWorld, nameOf: (trait: Trait) => string, previousPersona?: PersonaRef): GatedTraitResult => {
-    // The turn's settle runs after the clock advances, so this is where timed effects end (Q40).
-    const settled = settleInventory(
-      { copies: itemCopies, traits: state, ledger: itemEffects, now: gameTime, bodies }, settleWorldOf(world, nameOf, previousPersona),
-    );
-    const itemsMoved = settled.copies !== itemCopies || JSON.stringify(settled.ledger) !== JSON.stringify(itemEffects ?? {})
-      || JSON.stringify(settled.bodies) !== JSON.stringify(bodies) || settled.bodyLog.length > 0;
-    if (settled.traits === state && !itemsMoved) return { state, log: settled.log, cascade: [], cascadeNames: [] };
-    return {
-      state: settled.traits === state ? { ...state } : settled.traits, log: settled.log, cascade: settled.cascade, cascadeNames: settled.cascadeNames,
-      items: {
-        copies: settled.copies, ledger: settled.ledger, bodies: settled.bodies, bodyLog: settled.bodyLog,
-        bodyUnequipped: settled.bodyUnequipped, events: settled.events,
-      },
-    };
-  }, [itemCopies, itemEffects, gameTime, bodies, settleWorldOf]);
+  // The turn's settle runs after the clock advances, so this is where timed effects end (Q40).
+  const settleWithItems = useCallback((state: TraitRuntimeState, world: TraitWorld, nameOf: (trait: Trait) => string, previousPersona?: PersonaRef): GatedTraitResult => (
+    settleTraitsWithItems(state, { copies: itemCopies, ledger: itemEffects, now: gameTime, bodies }, settleWorldOf(world, nameOf, previousPersona))
+  ), [itemCopies, itemEffects, gameTime, bodies, settleWorldOf]);
   const commitSettledItems = useCallback((result: GatedTraitResult) => {
     if (!result.items) return;
     liveItemsRef.current = heldItemsOf(result.items);
