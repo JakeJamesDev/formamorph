@@ -1,11 +1,11 @@
 import { randomUUID } from "@/lib/uuid";
-import type { ChatMessage, Entity, GameLocation, DiscoveredEntity } from '@/types';
+import type { ChatMessage, Entity, EntityPositions, GameLocation, DiscoveredEntity } from '@/types';
 import { survivingTurnIds } from '@/lib/turnDigest';
 import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
 import { sameCharacterName } from '@/lib/entityMatch';
-import { entityIdsAtAny } from '@/lib/entityPresence';
+import { entitiesInPlay, entityIdsAtAny } from '@/lib/entityPresence';
 
 /** Labels in the character-note user message. Shared by the request builder and the response cleaner —
  *  a small model often parrots these back into its output. */
@@ -87,12 +87,18 @@ export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): E
   return discovered.map((d) => (d.locationId ? { ...d.entity, locations: [d.locationId] } : d.entity));
 }
 
+/** Whether `entity`'s Movement lets the scene pull bring it to `locationId`. */
+function mayBePulledTo(entity: Entity, locationId: string): boolean {
+  if (entity.movement === 'stays') return false;
+  if (entity.movement === 'between') return entity.locations?.includes(locationId) ?? false;
+  return true;
+}
+
 /**
  * "Bring-them-over": the authored entities that should join the current location as visitors this turn —
- * those living in a **reachable sibling** (a location sharing the current one's non-null parent) that the
- * narration named as participants and that aren't already present. The caller anchors each as a
- * `DiscoveredEntity` at the current location so it flows through the existing present-entity path. Pure.
- * (Matches invented-character discovery's "named in the narration ⇒ in scene" semantics.)
+ * those standing in a sibling (a location sharing the current one's non-null parent) or a direct child,
+ * named by the narration as participants, not already present, and whose Movement lets them come. Where
+ * they stand reads `positions` over their listed locations. Pure.
  */
 export function selectReachableVisitors(
   participants: string[],
@@ -100,13 +106,16 @@ export function selectReachableVisitors(
   locations: GameLocation[],
   authoredEntities: Entity[],
   presentIds: string[],
+  positions: Readonly<EntityPositions> = {},
 ): Entity[] {
-  const parent = current?.parentId ?? null;
-  if (!current || parent === null) return [];
-  const siblings = locations.filter((l) => l.id !== current.id && (l.parentId ?? null) === parent);
-  const reachableIds = new Set(entityIdsAtAny(siblings.map((l) => l.id), authoredEntities));
+  if (!current) return [];
+  const parent = current.parentId ?? null;
+  const pullFrom = locations.filter((l) => l.id !== current.id
+    && (l.parentId === current.id || (parent !== null && (l.parentId ?? null) === parent)));
+  const reachableIds = new Set(entityIdsAtAny(pullFrom.map((l) => l.id), entitiesInPlay(authoredEntities, positions)));
   const present = new Set(presentIds);
   return authoredEntities.filter(
-    (e) => reachableIds.has(e.id) && !present.has(e.id) && participants.some((p) => sameCharacterName(p, e.name)),
+    (e) => reachableIds.has(e.id) && !present.has(e.id) && mayBePulledTo(e, current.id)
+      && participants.some((p) => sameCharacterName(p, e.name)),
   );
 }

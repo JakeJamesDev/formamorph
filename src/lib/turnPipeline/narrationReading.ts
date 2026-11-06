@@ -1,4 +1,5 @@
-import type { Entity, GameLocation, SceneEntity } from "@/types";
+import type { Entity, EntityPositions, GameLocation, SceneEntity } from "@/types";
+import { entitiesInPlay, entityIdsAt } from "../entityPresence";
 import type { DiscoveredEntity } from "@/types/gameplay";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech } from "../entityMatch";
 import { extractCharacterCandidates, collectCandidateEvidence, type CandidateExclusions } from "../characterCandidates";
@@ -112,17 +113,23 @@ export interface VisitorInput {
   allEntities: Entity[];
   location: GameLocation;
   locations: GameLocation[];
-  /** Entity ids already at the location, discovered ones included. */
-  presentIds: string[];
+  /** Where each tracked entity stands after the turn's moves, runtime characters included. */
+  positions: Readonly<EntityPositions>;
   /** Already-anchored discoveries, so a visitor is never added twice. */
   discovered: DiscoveredEntity[];
   turnId: string;
 }
 
+/** The scene pull's writes: anchors for characters without a position, and new positions for those with one. */
+export interface VisitorAdditions {
+  discovered: DiscoveredEntity[];
+  positions: EntityPositions;
+}
+
 /**
- * Bring-them-over: an authored character living in a reachable sibling that the narration named joins the
- * current location as a visitor, anchored via the discovered-entity path so it persists and rolls back with
- * the turn.
+ * Bring-them-over: an authored character standing in a sibling or a direct child that the narration named
+ * joins the current location as a visitor, when its Movement allows. One with a position moves there; one
+ * without is anchored via the discovered-entity path. Both persist and roll back with the turn.
  *
  * Fed by a stricter parse than `participants`: this path physically relocates an authored NPC, so it takes
  * full-name hits only — a loose single-word match must not teleport someone into the scene. Prose-only for the
@@ -131,13 +138,18 @@ export interface VisitorInput {
  * present, so a dialogue-only mention would otherwise walk them into the scene permanently and past the
  * now-line's location filter.
  */
-export function selectVisitorAdditions(input: VisitorInput): DiscoveredEntity[] {
-  const { prose, entities, allEntities, location, locations, presentIds, discovered, turnId } = input;
+export function selectVisitorAdditions(input: VisitorInput): VisitorAdditions {
+  const { prose, entities, allEntities, location, locations, positions, discovered, turnId } = input;
   const visitorParticipants = findEntityNames(prose, allEntities, { partial: false });
-  const visitors = selectReachableVisitors(visitorParticipants, location, locations, entities, presentIds);
-  return visitors
-    .filter((v) => !discovered.some((d) => d.locationId === location.id && sameCharacterName(d.entity.name, v.name)))
-    .map((entity) => ({ entity, locationId: location.id, sourceTurnId: turnId }));
+  const presentIds = entityIdsAt(location.id, entitiesInPlay(allEntities, positions));
+  const visitors = selectReachableVisitors(visitorParticipants, location, locations, entities, presentIds, positions)
+    .filter((v) => !discovered.some((d) => d.locationId === location.id && sameCharacterName(d.entity.name, v.name)));
+  const additions: VisitorAdditions = { discovered: [], positions: {} };
+  for (const entity of visitors) {
+    if (positions[entity.id] === undefined) additions.discovered.push({ entity, locationId: location.id, sourceTurnId: turnId });
+    else additions.positions[entity.id] = location.id;
+  }
+  return additions;
 }
 
 /**

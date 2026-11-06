@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { readNarration, readEditedNarration, selectVisitorAdditions, splitParticipants, presentSceneEntities } from './narrationReading';
-import { stripQuotedSpeech } from '@/lib/entityMatch';
 import type { Entity, GameLocation } from '@/types';
 
 const ent = (id: string, name: string): Entity => ({ id, name });
@@ -93,17 +92,29 @@ describe('selectVisitorAdditions', () => {
   const sibling = loc('l2', 'The Net Shed', { parentId: 'l0' }); // Maren belongs here (see MAREN.locations)
   const locations = [loc('l0', 'Sedge Landing'), here, sibling];
 
-  const visitors = (prose: string, discovered: Parameters<typeof selectVisitorAdditions>[0]['discovered'] = []) =>
+  const cabin = loc('l3', 'The Cabin', { parentId: 'l1' }); // a direct child of the Jetty
+  const bunk = loc('l4', 'The Bunk', { parentId: 'l3' }); // two levels down
+  const world = [...locations, cabin, bunk];
+
+  type Input = Parameters<typeof selectVisitorAdditions>[0];
+  const pullWith = (prose: string, cast: Entity[], over: Partial<Input> = {}) =>
     selectVisitorAdditions({
-      prose,
-      entities: [MAREN, SERANA],
-      allEntities: [MAREN, SERANA],
+      prose: read(prose).prose,
+      entities: cast,
+      allEntities: cast,
       location: here,
-      locations,
-      presentIds: [],
-      discovered,
+      locations: world,
+      positions: {},
+      discovered: [],
       turnId: 't1',
+      ...over,
     });
+  const pulledNames = (additions: ReturnType<typeof selectVisitorAdditions>, cast: Entity[]) => [
+    ...additions.discovered.map((d) => d.entity.name),
+    ...Object.keys(additions.positions).map((id) => cast.find((e) => e.id === id)?.name),
+  ];
+  const visitors = (prose: string, discovered: Input['discovered'] = []) =>
+    pullWith(prose, [MAREN, SERANA], { discovered }).discovered;
 
   it('walks a reachable neighbor over on a full-name hit', () => {
     const added = visitors('Maren Vosk steps onto the boards.');
@@ -117,9 +128,7 @@ describe('selectVisitorAdditions', () => {
 
   it('counts a full Stranger Name as a full-name hit, and one word of it as none', () => {
     const hooded = { ...MAREN, strangerName: 'a hooded woman' };
-    const pull = (prose: string) => selectVisitorAdditions({
-      prose: stripQuotedSpeech(prose), entities: [hooded], allEntities: [hooded], location: here, locations, presentIds: [], discovered: [], turnId: 't1',
-    });
+    const pull = (prose: string) => pullWith(prose, [hooded]).discovered;
     expect(pull('A hooded woman steps onto the boards.').map((d) => d.entity.name)).toEqual(['Maren Vosk']);
     expect(pull('The woman steps onto the boards, hooded against the rain.')).toEqual([]);
     expect(pull('The deckhand mutters, "a hooded woman steps onto the boards."')).toEqual([]);
@@ -128,6 +137,74 @@ describe('selectVisitorAdditions', () => {
   it('never adds someone already anchored here', () => {
     const already = [{ entity: MAREN, locationId: 'l1', sourceTurnId: 't0' }];
     expect(visitors('Maren Vosk steps onto the boards.', already)).toEqual([]);
+  });
+
+  it('pulls a character named in prose from a direct child of the player\'s place', () => {
+    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l3'] };
+    const added = pullWith('Tamsin Reed climbs up from the cabin.', [tamsin]).discovered;
+    expect(added).toEqual([{ entity: tamsin, locationId: 'l1', sourceTurnId: 't1' }]);
+  });
+
+  it('pulls from a child at a top-level place, which has no siblings', () => {
+    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l1'] };
+    const top = loc('l0', 'Sedge Landing');
+    expect(pulledNames(pullWith('Tamsin Reed walks in.', [tamsin], { location: top }), [tamsin])).toEqual(['Tamsin Reed']);
+  });
+
+  it('never pulls a character two levels down', () => {
+    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l4'] };
+    expect(pulledNames(pullWith('Tamsin Reed climbs up from the bunk.', [tamsin]), [tamsin])).toEqual([]);
+  });
+
+  it('never pulls a name spoken only inside dialogue', () => {
+    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l3'] };
+    expect(pulledNames(pullWith('The deckhand calls, "Tamsin Reed, up here!"', [tamsin]), [tamsin])).toEqual([]);
+  });
+
+  describe.each([
+    ['sibling', 'l2'],
+    ['child', 'l3'],
+  ])('Movement, from a %s', (_kind, from) => {
+    const named = 'Tamsin Reed comes over to the jetty.';
+    const pulls = (over: Partial<Entity>, positions: Input['positions'] = {}) => {
+      const tamsin: Entity = { ...ent('e3', 'Tamsin Reed'), locations: [from], ...over };
+      return pulledNames(pullWith(named, [tamsin], { positions }), [tamsin]).length > 0;
+    };
+
+    it('never pulls Stays Put', () => {
+      expect(pulls({ movement: 'stays' })).toBe(false);
+    });
+
+    it('pulls Moves Between only into one of its own locations', () => {
+      expect(pulls({ movement: 'between' }, { e3: from })).toBe(false);
+      expect(pulls({ movement: 'between', locations: [from, 'l1'], presence: 'random' }, { e3: from })).toBe(true);
+    });
+
+    it('always pulls Free and Can Follow the Player', () => {
+      expect(pulls({})).toBe(true);
+      expect(pulls({ movement: 'follow' })).toBe(true);
+      expect(pulls({ movement: 'follow' }, { e3: from })).toBe(true);
+    });
+  });
+
+  describe('where it stands in play', () => {
+    const tamsin: Entity = { ...ent('e3', 'Tamsin Reed'), locations: ['l3', 'l2'], movement: 'between', presence: 'random' };
+    const route: Entity = { ...tamsin, locations: ['l3', 'l1'] };
+    const named = 'Tamsin Reed climbs up to the jetty.';
+
+    it('moves a positioned character to the player\'s place instead of anchoring a copy', () => {
+      const added = pullWith(named, [route], { positions: { e3: 'l3' } });
+      expect(added).toEqual({ discovered: [], positions: { e3: 'l1' } });
+    });
+
+    it('reads its position over its listed locations', () => {
+      const elsewhere = pullWith(named, [{ ...tamsin, movement: undefined }], { positions: { e3: 'l0' } });
+      expect(pulledNames(elsewhere, [tamsin])).toEqual([]);
+    });
+
+    it('never pulls someone whose position is already the player\'s place', () => {
+      expect(pulledNames(pullWith(named, [route], { positions: { e3: 'l1' } }), [route])).toEqual([]);
+    });
   });
 });
 

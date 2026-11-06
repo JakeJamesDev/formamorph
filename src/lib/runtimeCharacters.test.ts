@@ -20,7 +20,7 @@ function turn(fields: { turnId?: string; narration?: string; entities?: string[]
 }
 
 describe('selectReachableVisitors', () => {
-  // town > { houseA (current), Sarah's House (Sarah) } ; a top-level location has no reachable siblings.
+  // town > { houseA (current), Sarah's House (Sarah) } ; a top-level location has no siblings.
   const houseA: GameLocation = { id: 'a', name: 'House A', parentId: 'town' };
   const sarahs: GameLocation = { id: 'b', name: "Sarah's House", parentId: 'town' };
   const locs = [houseA, sarahs];
@@ -39,7 +39,7 @@ describe('selectReachableVisitors', () => {
     expect(selectReachableVisitors([], houseA, locs, authored, ['alice'])).toEqual([]); // nobody named
   });
 
-  it('returns nothing for a top-level location (no reachable siblings)', () => {
+  it('pulls no sibling at a top-level location', () => {
     const top: GameLocation = { id: 'top', name: 'Overworld' };
     expect(selectReachableVisitors(['Sarah'], top, [...locs, top], authored, [])).toEqual([]);
   });

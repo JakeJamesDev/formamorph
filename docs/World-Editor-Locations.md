@@ -207,6 +207,27 @@ The **Entities** picker on the **Presence** tab lists the entities at this locat
 - **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
 - **Nearby Through Connections** adds entities one Connection away to what the AI receives as nearby. It is on for a new location.
 
+### Who Joins the Scene
+<!-- keywords: npc walks in, character comes over, pulled into scene, joins the player, comes down, comes from next room, wont come, stays at counter -->
+
+When the narration names an entity that stands close by, that entity comes to the player's location. Close by means one of two places:
+
+- A location **beside** the player's: it shares the same parent.
+- A location **directly inside** the player's: one level down. Two levels down is too far.
+
+The narration must use the entity's full Name, a full alias, or the full **Stranger Name**. A name said only inside dialogue doesn't count.
+
+The entity's **Movement** decides whether it comes:
+
+| Movement | Comes to the player |
+|---|---|
+| **Free** | Always |
+| **Stays Put** | Never |
+| **Moves Between Its Locations** | Only when the player's location is one of its locations |
+| **Can Follow the Player** | Always |
+
+The entity stays at the player's location after that turn. Undo the turn, and it goes back.
+
 ## Connections
 <!-- keywords: no way back, both directions, trip description, how you get there, return trip wording, arrow labels, trapdoor, shortcut across branches -->
 

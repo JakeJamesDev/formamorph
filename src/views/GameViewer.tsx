@@ -3428,20 +3428,20 @@ const GameViewer = ({
         // Visitors affect the next turn's context (this turn's ctx already ran).
         const visitorLocation = turnLocation;
         if (visitorLocation) {
-          const turnId = currentTurnIdRef.current;
-          setDiscoveredEntities((prev) => {
-            const additions = selectVisitorAdditions({
-              prose: reading.prose,
-              entities,
-              allEntities,
-              location: visitorLocation,
-              locations,
-              presentIds: presentIdsAt(visitorLocation),
-              discovered: prev,
-              turnId,
-            });
-            return additions.length ? [...prev, ...additions] : prev;
+          const afterMoves = turnJoin ?? moveStart;
+          const pulled = selectVisitorAdditions({
+            prose: reading.prose,
+            entities,
+            allEntities,
+            location: visitorLocation,
+            locations,
+            positions: afterMoves.positions,
+            discovered: discoveredEntities,
+            turnId: currentTurnIdRef.current,
           });
+          if (pulled.discovered.length || Object.keys(pulled.positions).length) {
+            applyFollowerState({ followers: afterMoves.followers, positions: pulled.positions }, pulled.discovered);
+          }
         }
         const sceneEntities = presentSceneEntities(
           allEntities,
