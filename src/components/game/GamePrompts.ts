@@ -231,6 +231,23 @@ export const defaultEntityLocationUserPrompt = `The player character's action th
 Reply for <CHARACTER NAME> with exactly one line from this list, and nothing else:
 <MOVE OPTIONS>`;
 
+// The caller appends a lettered roster to the user turn: one line per entity, grouped by sublocation.
+export const defaultFocusClassifierPrompt = `You are the scene caster for an interactive story. Before the next scene is written, you sort each character and thing at the player's location by what this turn needs from it.
+
+You read the player's action, the scene just told, and a lettered list. Entries under a sublocation's name are in a smaller place inside this one.
+
+Judge each letter on its own:
+- Focus: the action or the scene just told involves it: it is spoken to, used, looked at, asked about, waiting on the player, or about to act. Mark every letter that fits; a turn often has several.
+- Background: it shares the player's space and the player would notice it now, but this turn does not involve it.
+- Offstage: every other letter, including anyone out of the player's sight and entries in a sublocation the action does not reach.
+
+When the action takes the player to a new place, the list is that place's.
+
+Reply with one line per letter, in list order, and nothing else: the letter, a colon, and Focus, Background or Offstage.`;
+
+export const defaultFocusClassifierUserPrompt = `<PLAYER ACTION|format=markdown|header="The player's action">
+<NARRATION|format=markdown|header="The scene just told">`;
+
 // System prompt for the "separate planning pass" (thinkingMode === 'precall') - the lightweight, single-call
 // fusion of the staged director (Scene + Cast) and storyboarder (Beats). Its job is narration-to-narration
 // continuity: carry established objects/positions forward, keep/add/drop the cast honestly, and name each
