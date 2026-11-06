@@ -206,7 +206,9 @@ async function complete(messages: ChatMessage[], body: Record<string, unknown>):
     if (res.status < 500 || attempt >= 2) throw new Error(`${res.status} ${await res.text()}`);
   }
 }
-const classify = (c: Case, system: string) => complete(classifierMessages(c, system), {
+// Each run gets its own seed, so a seed-honoring local model gives replicates, not copies.
+const classify = (c: Case, system: string, run: number) => complete(classifierMessages(c, system), {
+  seed: SEED + run,
   temperature: CLASSIFIER_PINS.temperature,
   repetition_penalty: CLASSIFIER_PINS.repetitionPenalty, repeat_penalty: CLASSIFIER_PINS.repetitionPenalty,
   max_tokens: 12 * built.get(c.scene)!.roster.length + 24,
@@ -287,7 +289,7 @@ async function classifierArm() {
   ];
   const jobs = cases.flatMap((c) => Array.from({ length: runs }, (_, run) => prompts.map((p, arm) => async () => {
     const b = built.get(c.scene)!;
-    const reply = await classify(c, p.system);
+    const reply = await classify(c, p.system, run);
     const byLetter = parseFocusReply(reply.text, b.roster.map((e) => e.letter));
     const predicted = byLetter && Object.fromEntries(b.roster.map((e) => [e.name, byLetter[e.letter]]));
     const [fullTokens, trimmedTokens] = await Promise.all([narrationTokens(c, null), narrationTokens(c, predicted)]);
@@ -324,7 +326,7 @@ async function narrationArm() {
   const picked = cases.filter((c) => c.narration);
   const ARMS: Arm[] = ['full', 'trimmed'];
   const jobs = picked.flatMap((c) => Array.from({ length: runs }, (_, run) => ARMS.map((which) => async (): Promise<Passage> => {
-    const reply = await complete(narrationMessages(c, which === 'trimmed' ? c.tiers : null), { max_tokens: 600 });
+    const reply = await complete(narrationMessages(c, which === 'trimmed' ? c.tiers : null), { seed: SEED + run, max_tokens: 600 });
     console.log(`${c.id} #${run} ${which}: ${reply.text.length} chars`);
     return { id: '', case: c.id, run, arm: which, text: reply.text, promptTokens: reply.promptTokens, ...continuity(c, reply.text) };
   })).flat());

@@ -83,6 +83,36 @@ Better-by = trimmed minus full (for Offstage onstage, full minus trimmed), with 
 - Judge run 1's ids followed job order, so an even id was always the full arm. Run 2 re-drew the ids from the passage text, so neither an id nor its position tells the arm. The harness now numbers ids that way.
 - Invented duplicates come from the judge, not from a pattern match.
 
+## Results (MeroMero 31B, local, 2026-11-06)
+
+The user asked for this run. Q13 names Cydonia, so this arm does not replace it. Setup: `g4-meromero-31b` in LM Studio, 12288 context, 2 slots, fully on the GPU (23.2 of 24.5 GB). The text is rev 3, as shipped. Each run uses its own seed (`SEED + run`), so the runs are replicates, not copies.
+
+### Classifier: 30 cases × 3 runs, 0 parse failures
+
+| Half | Focus recall | Tier match |
+|---|---|---|
+| Tune | 93.8% (45/48) | 86.9% (172/198) |
+| Held | 92.6% (50/54) | 79.2% (145/183) |
+| All | 93.1% (95/102) | 83.2% (317/381) |
+
+- **Bar (Q13): missed, narrowly.** Recall is below 95% on both halves. Tier match passes 85% only on the tune half.
+- Classifier call: 465 tokens (243 system + 222 per turn). The narration saves 378 ± 69, so the net is −87 per turn.
+- Missed Focus, 7 of 102: `cafeteria-kitchen` The Swarm → Background 3/3 (about to act); `fort-radar` Jet Fighter → Background 3/3 (about to act); `cafeteria-run` Rin Hayama → Background 1/3 (triggered by a rule).
+- Confusion: Background→Focus 22 and Background→Offstage 16 of 177; Offstage→Background 19 of 102.
+
+### Narration: 6 cases × 6 runs per arm
+
+| Metric | Full | Trimmed | Better-by [95% CI] |
+|---|---|---|---|
+| Focus facts kept | 0.616 | 0.655 | +0.039 [−0.080, 0.158] |
+| Background entities present | 0.292 | 0.347 | +0.056 [−0.067, 0.178] |
+| Offstage entities put onstage | 0 | 0 | 0 |
+| Blind continuity 1–5 | 4.56 | 4.64 | +0.08 [−0.008, 0.175] |
+| Invented duplicates (judged) | 0 | 0 | 0 |
+| Narration prompt tokens | 3290 | 2903 | 388 saved |
+
+- On MeroMero, trimmed narration is no worse, and every point estimate leans toward trimmed.
+
 ## Landed
 
 **Not verified**
@@ -90,7 +120,7 @@ Better-by = trimmed minus full (for Offstage onstage, full minus trimmed), with 
 
 **For you**
 - For you: pick a GPU window for the Cydonia arm. Run: `npx vite-node testing/baseline/harness/focus-classifier-probe.cli.ts -- --arm classifier --endpoint http://127.0.0.1:1234/v1/chat/completions --model cydonia-24b-v4.3@q4_k_m --runs 3`, then the same command with `--arm narration`.
-- For you: read three trimmed-vs-full narration pairs from the probe output and judge whether background characters still feel present. `.scratch/focused-thinking-01/frames/narration-pairs.md`; every run file is beside it.
+- For you: read three trimmed-vs-full narration pairs from the probe output and judge whether background characters still feel present. `.scratch/focused-thinking-01/frames/narration-pairs.md`; every run file is beside it, the MeroMero runs as `meromero-*.json`.
 - For you: the cloud classifier misses the Q13 bar after 3 revisions, and the token net is negative on bundled worlds. Per the spec, Focused Thinking returns to the grill before any build ticket.
 
 **Known limits of this probe**
