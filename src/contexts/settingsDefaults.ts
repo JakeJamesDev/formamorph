@@ -145,6 +145,8 @@ export const DEFAULT_CANVAS_CONNECTION_STYLE: ConnectionStyle = 'straight';
 // Both start docked, so a returning player sees the layout they know.
 export const DEFAULT_GAME_LEFT_COLLAPSED = false;
 export const DEFAULT_GAME_RIGHT_COLLAPSED = false;
+// The story keeps its reading width, centered, until the player picks Full Width.
+export const DEFAULT_GAME_STORY_WIDTH = 'reading' as const;
 
 // Snap to Others in the Body Layout editor. A per-user editor preference like the canvas ones above.
 export const DEFAULT_BODY_LAYOUT_SNAP = true;

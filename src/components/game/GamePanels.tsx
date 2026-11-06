@@ -39,7 +39,8 @@ import { useSlashCompletion } from '@/lib/useSlashCompletion';
 import { SuggestionList } from '@/components/SuggestionList';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal } from "lucide-react";
+import { Send, RefreshCw, Loader2, Headphones, Square, ChevronUp, X, MoreHorizontal, Check } from "lucide-react";
+import type { StoryWidth } from "@/lib/gamePanelPrefs";
 import { AvatarIcon, ItemIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { balanceRows } from '@/lib/currency';
 import { InventoryTab } from './InventoryTab';
@@ -115,6 +116,13 @@ import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 
 /** The Entity View slide, on the nav rail's curve. */
 const ENTITY_VIEW_SLIDE_MS = 200;
+
+
+const STORY_WIDTHS: { value: StoryWidth; label: string }[] = [
+  { value: 'reading', label: 'Reading Width' },
+  { value: 'fullHeight', label: 'Full Height' },
+  { value: 'full', label: 'Full Width' },
+];
 
 /** What the entity view shows: an entity, or the played side when no entity is played. */
 type EntityViewSubject = { kind: 'entity'; entity: Entity } | { kind: 'played' };
@@ -317,7 +325,8 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
     {...(placement === 'drawer' && { role: 'region', 'aria-label': LEFT_PANEL_TABS.find((tab) => tab.value === leftTab)?.label })}
     className={cn(
     'min-h-0 flex flex-col bg-background/60 border-border overflow-hidden',
-    placement === 'drawer' ? 'w-full grow' : 'w-full md:w-1/4 md:shrink-0 md:mr-1 grow md:grow-0',
+    // On desktop its side column sets the width.
+    'w-full grow',
   )}>
     <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
       {/* Landscape: the top row above the entity view, with its show/hide toggle at the end */}
@@ -581,8 +590,13 @@ export const MiddlePanel = ({
   commandAction = null,
   commandRunId = 0,
   onDismissCommandPreview,
-  onRescanNarration
+  onRescanNarration,
+  storyWidth,
+  onStoryWidthChange,
 }: {
+  /** The device's story width, picked in the narration options on desktop. Absent on mobile. */
+  storyWidth?: StoryWidth;
+  onStoryWidthChange?: (width: StoryWidth) => void;
   /** A status badge that leads the narration options. */
   narrationBadge?: React.ReactNode;
   /** A short line at the top of the narration area, in both layouts. */
@@ -869,6 +883,27 @@ export const MiddlePanel = ({
               <ActionIcon.export className="h-4 w-4" />
               Export Story
             </Button>
+            {storyWidth && onStoryWidthChange && (
+              <>
+                <div aria-hidden className="-mx-1 my-1 h-px bg-border" />
+                <p id="story-width-label" className="px-2 py-1 text-meta text-muted-foreground">Story Width</p>
+                <div role="radiogroup" aria-labelledby="story-width-label" className="flex flex-col">
+                  {STORY_WIDTHS.map(({ value, label }) => (
+                    <Button
+                      key={value}
+                      variant="ghost"
+                      role="radio"
+                      aria-checked={storyWidth === value}
+                      className="justify-start gap-2 text-meta h-8"
+                      onClick={() => onStoryWidthChange(value)}
+                    >
+                      <Check className={cn('h-4 w-4', storyWidth !== value && 'invisible')} />
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </PopoverContent>
       </Popover>
@@ -924,7 +959,11 @@ export const MiddlePanel = ({
   );
 
   return (
-    <Card className="w-full flex-grow md:mx-0.5 md:min-w-0 md:max-w-4xl md:basis-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
+    <Card className={cn(
+      'w-full flex-grow md:mx-0.5 md:min-w-0',
+      storyWidth !== 'full' && storyWidth !== 'fullHeight' && 'md:max-w-4xl',
+      'md:basis-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden',
+    )}>
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
         {/* Determinate generation progress (sentence X of N) while narration synthesizes; playback
@@ -1568,7 +1607,8 @@ export const RightPanel = ({
   return (
     <div className={cn(
       'relative w-full min-h-0 flex flex-col',
-      !inDrawer && 'md:w-1/4 md:min-w-[var(--game-right-column-min)] md:shrink-0 md:ml-1 grow md:grow-0 md:h-full md:pt-[calc(var(--header-line)-1rem)]',
+      // On desktop its side column sets the width.
+      !inDrawer && 'grow md:h-full md:pt-[calc(var(--header-line)-1rem)]',
       inDrawer && 'grow',
     )}>
     {/* The empty strip above the column, from the window's top edge. */}

@@ -10,6 +10,8 @@ import type { Item, ItemCopy, PlayerStat, SaveRecord, Script, Trait, World } fro
 /** The right rail's dots: a turn's change to the player's stats, traits or inventory, made while that tab is out of sight. */
 
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
+import { settleSides } from '@/test/sideMotion';
+
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn(), dismiss: vi.fn(), isActive: vi.fn() }),
@@ -95,8 +97,8 @@ async function playTurn(landed: () => void = () => {}) {
 describe('a dot on the right rail', () => {
   it('marks Stats after a turn changes a stat, and only Stats', async () => {
     play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
-    fireEvent.click(await strip('left', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
+    fireEvent.click(await strip('left', 'Collapse Panel')); await settleSides();
     replies.stats = 'Vigor: +5';
     await playTurn();
 
@@ -106,7 +108,7 @@ describe('a dot on the right rail', () => {
 
   it('marks Traits after a script takes a trait', async () => {
     play({ scripts: [takeBrave] });
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     await playTurn();
 
     await waitFor(() => expect(railNames('Status')).toEqual(['Stats', 'Traits, changed', 'Inventory', 'Location']));
@@ -114,7 +116,7 @@ describe('a dot on the right rail', () => {
 
   it('marks Inventory after the inventory pass gives an item', async () => {
     play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     replies.inventory = GAIN_KEY;
     await playTurn();
 
@@ -123,7 +125,7 @@ describe('a dot on the right rail', () => {
 
   it('clears only the dot of the tab the drawer opens', async () => {
     play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     replies.stats = 'Vigor: +5';
     replies.inventory = GAIN_KEY;
     await playTurn();
@@ -138,7 +140,7 @@ describe('a dot on the right rail', () => {
 
   it("adds none for a change to the tab the open drawer shows, and marks the drawer's other tabs", async () => {
     play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     fireEvent.click(icon(/^Stats/));
     replies.stats = 'Vigor: +5';
     replies.inventory = GAIN_KEY;
@@ -154,13 +156,13 @@ describe('a dot on the right rail', () => {
     await playTurn();
     await waitFor(() => expect(screen.getByText('Vigor')).toBeInTheDocument());
 
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     expect(railNames('Status')).toEqual(['Stats', 'Traits', 'Inventory', 'Location']);
   });
 
   it('clears a dot when the rail switches the open drawer to its tab', async () => {
     play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     replies.inventory = GAIN_KEY;
     await playTurn();
     await waitFor(() => expect(railNames('Status')).toEqual(['Stats', 'Traits', 'Inventory, changed', 'Location']));
@@ -174,7 +176,7 @@ describe('a dot on the right rail', () => {
 
   it('clears the dot of the tab the panel docks on, and keeps the others for the next collapse', async () => {
     play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     replies.stats = 'Vigor: +5';
     replies.inventory = GAIN_KEY;
     await playTurn();
@@ -182,29 +184,29 @@ describe('a dot on the right rail', () => {
 
     const user = userEvent.setup();
     await user.click(icon(/^Inventory/));
-    await user.click(await strip('right', 'Dock Panel'));
+    await user.click(await strip('right', 'Dock Panel')); await settleSides();
     await user.click(within(screen.getByRole('tablist', { name: 'Status' })).getByRole('tab', { name: 'Traits' }));
-    await user.click(await strip('right', 'Collapse Panel'));
+    await user.click(await strip('right', 'Collapse Panel')); await settleSides();
     expect(railNames('Status')).toEqual(['Stats, changed', 'Traits', 'Inventory', 'Location']);
   });
 
   it('clears Traits when the panel docks on Traits in place of a missing Stats tab', async () => {
     play({ stats: [], scripts: [takeBrave] });
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     await playTurn(() => expect(live?.globalTraits.map((t) => t.id)).toEqual(['brave']));
     await waitFor(() => expect(railNames('Status')).toEqual(['Traits, changed', 'Inventory', 'Location']));
 
     // The panel's tab is still Stats, which this world lacks, so it docks showing Traits.
-    fireEvent.click(await strip('right', 'Dock Panel'));
+    fireEvent.click(await strip('right', 'Dock Panel')); await settleSides();
     expect(within(screen.getByRole('tablist', { name: 'Status' })).getByRole('tab', { selected: true })).toHaveAccessibleName('Traits');
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     expect(railNames('Status')).toEqual(['Traits', 'Inventory', 'Location']);
   });
 
   it('adds none for a change to a stat the player never sees', async () => {
     const secret: PlayerStat = { ...vigor, id: 'secret', name: 'Secret', hidden: true };
     renderGameViewer(world({ stats: [vigor, secret] }), { inGameplay: <Probe /> });
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     replies.stats = 'Secret: +5';
     await playTurn(() => expect(live?.globalStats.find((s) => s.id === 'secret')?.value).toBe(55));
 
@@ -213,7 +215,7 @@ describe('a dot on the right rail', () => {
 
   it('starts a loaded game with none, on the loaded state', async () => {
     const view = play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     const carried: ItemCopy = { id: 'k', item: { kind: 'item', itemId: 'key' }, where: { kind: 'you' }, quantity: 1, visibility: 'visible' };
     const state = { ...live!.saveCurrentGameState(), fullMessageHistory: undefined, itemCopies: [carried] };
     view.unmount();
@@ -228,7 +230,7 @@ describe('a dot on the right rail', () => {
 
   it('starts a game with none', async () => {
     const first = play();
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     first.unmount();
 
     play();

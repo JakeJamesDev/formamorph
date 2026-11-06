@@ -10,4 +10,6 @@ export const SEGMENT_MOTION = {
   label: `transition-[grid-template-columns,opacity,margin-left] ${TIMING}`,
   /** The pill's slide. */
   pill: `transition-[transform,width] ${TIMING}`,
+  /** A vertical strip's pill: the game rail's open tab. */
+  pillY: `transition-[transform,opacity] ${TIMING}`,
 } as const;

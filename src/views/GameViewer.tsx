@@ -276,10 +276,11 @@ import {
   RightPanel,
   type CommandChoices,
 } from "../components/game/GamePanels";
-import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_PROPS, NarrationColumn, PanelDrawer, PanelRail, RailAction, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
+import { EdgeToggle, EdgeToggleSpacer, GAME_VIEW_CONTAINER, GAME_VIEW_PROPS, NarrationColumn, PanelDrawer, PanelRail, RailAction, SideColumn, useHeaderWidthVar, useSideMotion, type PanelPlacement, type PanelSide } from "@/components/game/PanelRail";
 import { statusSignatures, useChangeDots } from "@/components/game/changeDots";
 import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS, LEFT_PANEL_TABS } from "@/components/game/panelTabs";
-import { useGameLeftCollapsed, useGameRightCollapsed } from "@/lib/gamePanelPrefs";
+import { useGameLeftCollapsed, useGameRightCollapsed, useGameStoryWidth } from "@/lib/gamePanelPrefs";
+import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MusicOffIcon } from "../components/game/MusicOffIcon";
@@ -1405,6 +1406,11 @@ const GameViewer = ({
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [leftCollapsed, setLeftCollapsed] = useGameLeftCollapsed();
   const [rightCollapsed, setRightCollapsed] = useGameRightCollapsed();
+  const [storyWidth, setStoryWidth] = useGameStoryWidth();
+  const reducedMotion = usePrefersReducedMotion();
+  const headerWidthRef = useHeaderWidthVar();
+  const leftMotion = useSideMotion(leftCollapsed, reducedMotion);
+  const rightMotion = useSideMotion(rightCollapsed, reducedMotion);
   // The side whose drawer is open; its tab is the left panel's tab below, or the right panel's active tab.
   const [drawerSide, setDrawerSide] = useState<PanelSide | null>(null);
   const [leftTab, setLeftTab] = useState<string | undefined>(undefined);
@@ -6135,14 +6141,16 @@ const GameViewer = ({
       commandAction={commandChoices ? CHOICES_TEST_ACTION : null}
       onDismissCommandPreview={stopCommandPreview}
       onRescanNarration={rescanNarration}
+      storyWidth={isMobile ? undefined : storyWidth}
+      onStoryWidthChange={setStoryWidth}
     />
   );
 
-  const rightPanelAt = (placement: PanelPlacement) => (
+  const rightPanelAt = (placement: PanelPlacement, asRail = false) => (
     <RightPanel
       placement={placement}
       // The panel draws its own rail: only it knows which tabs it shows.
-      collapsed={placement === 'docked' && !isMobile && rightCollapsed}
+      collapsed={asRail}
       railOpen={drawerSide === 'right'}
       railDots={rightDots}
       onShownTab={setShownRightTab}
@@ -6170,14 +6178,14 @@ const GameViewer = ({
     else setRightCollapsed(false);
   };
   // The left panel keeps one mount docked, in its drawer and stowed, so the Entity View's model never reloads.
-  const leftHost = (
+  const leftHost = (docked: boolean) => (
     <PanelDrawer
       side="left"
-      mode={!leftCollapsed ? 'docked' : openDrawerSide === 'left' ? 'drawer' : 'stowed'}
+      mode={docked ? 'docked' : openDrawerSide === 'left' ? 'drawer' : 'stowed'}
       onClose={closeDrawer}
       onDock={() => dockFromDrawer('left')}
     >
-      {leftPanelAt(leftCollapsed ? 'drawer' : 'docked')}
+      {leftPanelAt(docked ? 'docked' : 'drawer')}
     </PanelDrawer>
   );
   const rightDrawer = openDrawerSide === 'right' && (
@@ -6252,7 +6260,7 @@ const GameViewer = ({
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : "p-4"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : `p-4 ${GAME_VIEW_CONTAINER}`} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
       data-game-raised-panels={!isMobile && !uiHidden ? "" : undefined}
       {...GAME_VIEW_PROPS}
     >
@@ -6299,32 +6307,42 @@ const GameViewer = ({
         </div>
       ) : (
         <>
-          {leftCollapsed && (
-                <PanelRail
-                  side="left"
-                  label="Story"
-                  tabs={LEFT_PANEL_TABS}
-                  top={(
-                    <>
-                      <RailAction icon={<ArrowLeft className="h-5 w-5" />} label="Exit" tip="Exit to Main Menu" onClick={() => setShowExitConfirm(true)} />
-                      <RailAction
-                        icon={bgmEnabled ? <Music className="h-5 w-5" /> : <MusicOffIcon className="h-5 w-5" />}
-                        label="Music"
-                        tip={bgmEnabled ? "Turn Music Off" : "Turn Music On"}
-                        onClick={() => setBgmEnabled(!bgmEnabled)}
-                      />
-                    </>
-                  )}
-                  openTab={openDrawerSide === 'left' ? leftTab : undefined}
-                  onOpen={(tab) => openDrawer('left', tab)}
-                  onClose={closeDrawer}
-                />
-          )}
-          {leftHost}
+          <SideColumn
+            side="left"
+            motion={leftMotion}
+            rail={(
+              <PanelRail
+                side="left"
+                label="Story"
+                tabs={LEFT_PANEL_TABS}
+                top={(
+                  <>
+                    <RailAction icon={<ArrowLeft className="h-5 w-5" />} label="Exit" tip="Exit to Main Menu" onClick={() => setShowExitConfirm(true)} />
+                    <RailAction
+                      icon={bgmEnabled ? <Music className="h-5 w-5" /> : <MusicOffIcon className="h-5 w-5" />}
+                      label="Music"
+                      tip={bgmEnabled ? "Turn Music Off" : "Turn Music On"}
+                      onClick={() => setBgmEnabled(!bgmEnabled)}
+                    />
+                  </>
+                )}
+                openTab={openDrawerSide === 'left' ? leftTab : undefined}
+                onOpen={(tab) => openDrawer('left', tab)}
+                onClose={closeDrawer}
+              />
+            )}
+            panel={leftHost}
+          />
           {sideStrip('left', leftCollapsed, setLeftCollapsed)}
-          <NarrationColumn layout={`${leftCollapsed}-${rightCollapsed}`}>{middlePanel}</NarrationColumn>
+          <NarrationColumn left={leftMotion} right={rightMotion} width={storyWidth}>{middlePanel}</NarrationColumn>
           {sideStrip('right', rightCollapsed, setRightCollapsed)}
-          {rightPanel}
+          <SideColumn
+            side="right"
+            motion={rightMotion}
+            rail={rightPanelAt('docked', true)}
+            // Collapsed, the right side's drawer is its own mount, outside the column.
+            panel={(docked) => docked && rightPanel}
+          />
           {rightDrawer}
         </>
       ))}
@@ -6346,7 +6364,7 @@ const GameViewer = ({
 
       {/* The right column's header. */}
       {!uiHidden && !isMobile && (
-      <div className="absolute top-2 right-[calc(0.5rem+var(--window-buttons-width))] flex gap-2">
+      <div ref={headerWidthRef} className="absolute top-2 right-[calc(0.5rem+var(--window-buttons-width))] flex gap-2">
         {menuModal(true)}
       </div>
       )}

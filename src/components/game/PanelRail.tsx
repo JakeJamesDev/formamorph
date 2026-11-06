@@ -1,8 +1,12 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
+import { SEGMENT_MOTION } from '@/components/ui/segmentMotion';
 import type { CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
+import type { StoryWidth } from '@/lib/gamePanelPrefs';
 
 export type PanelSide = 'left' | 'right';
 
@@ -40,6 +44,28 @@ export function PanelRail({ side, label, tabs, top, openTab, dots, onOpen, onClo
   onOpen?: (tab: string) => void;
   onClose?: () => void;
 }) {
+  // One pill marks the open tab and slides between tabs, as a segmented strip's does.
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
+  const reducedMotion = usePrefersReducedMotion();
+  // The rail marks a click itself, in a render of its own, so the pill starts before the drawer's heavier render.
+  const [pressed, setPressed] = useState(openTab);
+  const [seenOpenTab, setSeenOpenTab] = useState(openTab);
+  if (seenOpenTab !== openTab) { setSeenOpenTab(openTab); setPressed(openTab); }
+  const press = (value: string) => {
+    const next = value === pressed ? undefined : value;
+    flushSync(() => setPressed(next));
+    if (next) onOpen?.(next); else onClose?.();
+  };
+  const [pill, setPill] = useState<{ top: number; height: number; slide: boolean } | null>(null);
+  const shownRef = useRef(false);
+  useLayoutEffect(() => {
+    const button = pressed ? buttons.current.get(pressed) : undefined;
+    // It slides only from one open tab to the next; opening from a closed rail, it fades in at its tab.
+    if (button) setPill({ top: button.offsetTop, height: button.offsetHeight, slide: shownRef.current });
+    else setPill((p) => p && { ...p, slide: true });
+    shownRef.current = !!button;
+  }, [pressed, tabs]);
+  const pillShown = !!pressed && buttons.current.has(pressed);
   return (
     <nav
       aria-label={label}
@@ -47,7 +73,7 @@ export function PanelRail({ side, label, tabs, top, openTab, dots, onOpen, onClo
       className={cn(
         'relative flex min-h-0 shrink-0 flex-col items-center gap-1 rounded-xl border border-border bg-background/60 p-1',
         // The left rail's foot clears the Hide UI button.
-        side === 'left' ? 'mr-1 pb-12' : cn('ml-1', BELOW_HEADER),
+        side === 'left' ? 'pb-12' : BELOW_HEADER,
       )}
     >
       {/* The window drag band above the right column, as the docked panel keeps it. */}
@@ -60,14 +86,29 @@ export function PanelRail({ side, label, tabs, top, openTab, dots, onOpen, onClo
           <div aria-hidden className="my-1 h-px w-3/4 bg-border" />
         </>
       )}
+      {pill && (
+        <span
+          aria-hidden
+          data-rail-pill=""
+          className={cn('pointer-events-none absolute inset-x-1 top-0 rounded-md bg-accent shadow-sm', !reducedMotion && SEGMENT_MOTION.pillY)}
+          style={{
+            height: pill.height,
+            transform: `translateY(${pill.top}px)`,
+            opacity: pillShown ? 1 : 0,
+            ...(!pill.slide && { transitionProperty: 'opacity' }),
+          }}
+        />
+      )}
       {tabs.map(({ value, icon: Icon, label: tabLabel }) => (
         <button
           key={value}
+          ref={(el) => { if (el) buttons.current.set(value, el); else buttons.current.delete(value); }}
           type="button"
           {...{ [RAIL_TAB_ATTR]: '' }}
-          aria-pressed={value === openTab}
-          onClick={() => (value === openTab ? onClose?.() : onOpen?.(value))}
-          className={cn(RAIL_BUTTON, 'aria-pressed:bg-accent aria-pressed:text-foreground')}
+          aria-pressed={value === pressed}
+          onClick={() => press(value)}
+          // Above the pill, which alone fills the open tab.
+          className={cn(RAIL_BUTTON, 'relative aria-pressed:text-foreground')}
         >
           <span className="relative">
             <Icon className="h-5 w-5" />
@@ -85,7 +126,8 @@ export function PanelRail({ side, label, tabs, top, openTab, dots, onOpen, onClo
   );
 }
 
-const RAIL_BUTTON = 'flex h-14 w-full shrink-0 flex-col items-center justify-center gap-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
+// A hover only lights the text, as on a segmented strip, so it never reads as the open tab.
+const RAIL_BUTTON = 'flex h-14 w-full shrink-0 flex-col items-center justify-center gap-1 rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset';
 
 /** A rail control that acts rather than opens a tab, drawn like the rail's tabs. Its tip names the action in full. */
 export function RailAction({ icon, label, tip, onClick }: {
@@ -104,49 +146,137 @@ export function RailAction({ icon, label, tip, onClick }: {
   );
 }
 
-/** The narrowest the narration gets to stay centered; below it, it shifts toward the wider gap instead. */
-const CENTERED_MIN_REM = 36;
+/** The game view's root is the size container the docked widths read (`cqw`). */
+export const GAME_VIEW_CONTAINER = '[container-type:inline-size]';
+
+/** A docked side's width: a quarter of the row, as the panels always took, with the right one's minimum. */
+const DOCKED_WIDTH: Record<PanelSide, string> = {
+  left: '25cqw',
+  right: 'max(25cqw, var(--game-right-column-min))',
+};
+const sideWidth = (side: PanelSide, docked: boolean) => (docked ? DOCKED_WIDTH[side] : RAIL_WIDTH);
+
+/** A side's width move, and the fade-in of what arrives, start on the click and take this long. */
+const MOVE_MS = 200;
+const EASE = 'cubic-bezier(0.2, 0, 0, 1)';
+
+/** Where a side is in a collapse or dock. */
+export interface SideMotion {
+  /** Shows the docked panel; false shows the rail. */
+  docked: boolean;
+  /** The width moves and the new content fades in. */
+  moving: boolean;
+  reducedMotion: boolean;
+}
+
+/** Steps one side through a collapse or dock: the width moves at once, as the new content fades in. */
+export function useSideMotion(collapsed: boolean, reducedMotion: boolean): SideMotion {
+  const [shownCollapsed, setShownCollapsed] = useState(collapsed);
+  const [moving, setMoving] = useState(false);
+  // Set while rendering, so the move's first frame already clips and positions the column.
+  if (shownCollapsed !== collapsed) {
+    setShownCollapsed(collapsed);
+    if (!reducedMotion) setMoving(true);
+  }
+  useEffect(() => {
+    if (!moving) return;
+    const end = setTimeout(() => setMoving(false), MOVE_MS);
+    return () => clearTimeout(end);
+  }, [moving, shownCollapsed]);
+  return { docked: !collapsed, moving, reducedMotion };
+}
+
+const moveTransition = (motion: SideMotion, property: string) =>
+  (motion.reducedMotion ? 'none' : `${property} ${MOVE_MS}ms ${EASE}`);
+
+/** The narrowest the story gets to stay centered; below it, it shifts toward the wider gap instead. */
+const CENTERED_MIN = '36rem';
+
+/** A ref for the game header's buttons: keeps their width in `--game-header-width` on the game view. */
+export function useHeaderWidthVar() {
+  const observer = useRef<ResizeObserver | null>(null);
+  return React.useCallback((el: HTMLElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    const view = el?.parentElement;
+    if (!el || !view) return;
+    const set = () => view.style.setProperty('--game-header-width', `${el.offsetWidth}px`);
+    set();
+    if (typeof ResizeObserver === 'undefined') return;
+    observer.current = new ResizeObserver(set);
+    observer.current.observe(el);
+  }, []);
+}
+
+/** How far the header's buttons reach in from the view's right edge, with a gap before the story. */
+const HEADER_REACH = 'calc(0.5rem + var(--window-buttons-width, 0px) + var(--game-header-width, 0px) + 0.5rem)';
 
 /**
- * Holds the narration and centers it on the game view, so collapsing one side doesn't move it. It narrows
- * to stay centered, down to a floor, and never grows past its own maximum.
+ * Holds the narration. At Reading Width it stays centered on the game view as the sides change: padding on
+ * the narrower side makes up the difference, worked out from the same widths and moved on the same curve, so
+ * the story holds still. It narrows to stay centered, down to a floor. Beside the right rail, Full Width starts
+ * below the header's buttons, and Full Height stops short of them.
  */
-export function NarrationColumn({ layout, children }: {
-  /** Changes when a side collapses or docks, so the column re-centers in the same commit. */
-  layout: string;
+export function NarrationColumn({ left, right, width, children }: {
+  left: SideMotion;
+  right: SideMotion;
+  width: StoryWidth;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inset, setInset] = useState({ left: 0, right: 0 });
-  useLayoutEffect(() => {
-    const column = ref.current;
-    const view = column?.closest('[data-game-view]');
-    const panel = column?.firstElementChild;
-    if (!column || !view || !(panel instanceof HTMLElement)) return;
-    const place = () => {
-      const box = column.getBoundingClientRect();
-      const viewBox = view.getBoundingClientRect();
-      const max = parseFloat(getComputedStyle(panel).maxWidth);
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-      const floor = Number.isFinite(rem) ? CENTERED_MIN_REM * rem : 0;
-      const center = viewBox.left + viewBox.width / 2;
-      const fits = 2 * Math.min(center - box.left, box.right - center);
-      const width = Math.min(box.width, Number.isFinite(max) ? max : box.width, Math.max(fits, floor));
-      const left = Math.max(0, Math.min(center - width / 2 - box.left, box.width - width));
-      // Without a layout (no size to measure) the column keeps no inset.
-      if (!(width > 0) || !Number.isFinite(left)) { setInset({ left: 0, right: 0 }); return; }
-      setInset({ left: Math.round(left), right: Math.round(box.width - width - left) });
-    };
-    place();
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(place);
-    observer.observe(column);
-    observer.observe(view);
-    return () => observer.disconnect();
-  }, [layout]);
+  const l = sideWidth('left', left.docked);
+  const r = sideWidth('right', right.docked);
+  // The column between the sides: the row less both sides, both strips and both side margins.
+  const column = `(100cqw - ${l} - ${r} - 2 * ${STRIP_WIDTH} - 0.5rem)`;
+  const pad = (wider: string, narrower: string) => `clamp(0px, calc(${wider} - ${narrower}), calc(${column} - ${CENTERED_MIN}))`;
+  // Where the column ends, measured in from the view's right edge: the view padding, the right side, its margin and strip.
+  const columnEnd = `(${VIEW_PADDING} + ${r} + 0.25rem + ${STRIP_WIDTH})`;
+  const motion = left.moving ? left : right;
+  const beside = !right.docked;
+  const padding: React.CSSProperties = width === 'reading'
+    ? { paddingLeft: pad(r, l), paddingRight: pad(l, r) }
+    : { paddingLeft: 0, paddingRight: width === 'fullHeight' && beside ? `max(0px, calc(${HEADER_REACH} - ${columnEnd}))` : 0 };
   return (
-    <div ref={ref} className="flex min-h-0 min-w-0 basis-0 flex-grow" style={{ paddingLeft: inset.left, paddingRight: inset.right }}>
+    <div
+      className="flex min-h-0 min-w-0 basis-0 flex-grow justify-center"
+      style={{
+        ...padding,
+        marginTop: width === 'full' && beside ? 'calc(var(--header-line) - 1rem)' : 0,
+        transition: motion.reducedMotion ? 'none' : `${moveTransition(motion, 'padding')}, ${moveTransition(motion, 'margin-top')}`,
+      }}
+    >
       {children}
+    </div>
+  );
+}
+
+/**
+ * One side of the game row, docked or as its rail, stepped by `useSideMotion`. The panel keeps one mount
+ * through every change, so a model in it never reloads.
+ */
+export function SideColumn({ side, motion, rail, panel }: {
+  side: PanelSide;
+  motion: SideMotion;
+  rail: React.ReactNode;
+  /** The panel, told whether it shows docked; collapsed, it is the side's drawer or stowed. */
+  panel: (docked: boolean) => React.ReactNode;
+}) {
+  const { docked, moving, reducedMotion } = motion;
+  const fade: React.CSSProperties = !reducedMotion && moving ? { animation: `side-fade-in ${MOVE_MS}ms ${EASE}` } : {};
+  return (
+    <div
+      data-side-column={side}
+      // Positioned only while it holds the docked panel or moves; a collapsed side's drawer places itself on the view.
+      className={cn('flex min-h-0 shrink-0', (docked || moving) && 'relative', moving && 'overflow-hidden', side === 'left' ? 'mr-1' : 'ml-1')}
+      style={{ width: sideWidth(side, docked), transition: moveTransition(motion, 'width') }}
+    >
+      {!docked && <div className="flex min-h-0 shrink-0" style={{ ...fade, width: RAIL_WIDTH }}>{rail}</div>}
+      {/* Docked, the panel keeps its full width while the column grows, so it reveals rather than squeezes. */}
+      <div
+        className={docked ? cn('absolute inset-y-0 flex', side === 'left' ? 'left-0' : 'right-0') : 'contents'}
+        style={docked ? { ...fade, width: DOCKED_WIDTH[side] } : undefined}
+      >
+        {panel(docked)}
+      </div>
     </div>
   );
 }
@@ -240,7 +370,9 @@ export function PanelDrawer({ side, mode = 'drawer', onClose, onDock, children }
       hidden={mode === 'stowed'}
       className={docked ? 'contents' : cn(
         // The strip sits on the drawer's surface, so its grip reads over the narration.
-        'absolute bottom-4 z-20 flex bg-background/95 shadow-xl backdrop-blur-sm',
+        'absolute bottom-4 z-20 flex bg-background/95 shadow-xl backdrop-blur-sm motion-reduce:animate-none',
+        // Shown again from `hidden`, it replays the open.
+        side === 'left' ? 'animate-[drawer-open-left_150ms_cubic-bezier(0,0,0.2,1)]' : 'animate-[drawer-open-right_150ms_cubic-bezier(0,0,0.2,1)]',
         side === 'left' ? 'top-4 rounded-r-xl' : 'top-[var(--header-line)] rounded-l-xl',
         mode === 'stowed' && '!hidden',
       )}

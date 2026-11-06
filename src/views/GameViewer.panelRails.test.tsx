@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
+import { settleSides } from '@/test/sideMotion';
 import { lastVrmViewerProps, resetVrmViewerStub, vrmViewerMounts } from '@/test/stubs/vrmViewer';
 import { setUserDefaultAvatar } from '@/lib/defaultAvatar';
 import ModelStorageService from '@/services/ModelStorageService';
@@ -59,13 +60,13 @@ describe('the left side', () => {
     expect(await screen.findByRole('tablist', { name: 'Story' })).toBeInTheDocument();
     expect(rail('Story')).toBeNull();
 
-    fireEvent.click(await strip('left', 'Collapse Panel'));
+    fireEvent.click(await strip('left', 'Collapse Panel')); await settleSides();
     expect(railButtons('Story')).toEqual(['Exit to Main Menu', 'Turn Music Off', 'Entities', 'Notes', 'Memory', 'Logs']);
     expect(screen.queryByRole('tablist', { name: 'Story' })).toBeNull();
     // The other side stays docked.
     expect(screen.getByRole('tablist', { name: 'Status' })).toBeInTheDocument();
 
-    fireEvent.click(await strip('left', 'Dock Panel'));
+    fireEvent.click(await strip('left', 'Dock Panel')); await settleSides();
     expect(rail('Story')).toBeNull();
     expect(screen.getByRole('tablist', { name: 'Story' })).toBeInTheDocument();
   });
@@ -73,7 +74,7 @@ describe('the left side', () => {
   it('keeps Back asking before it leaves, and Music toggling, on the rail', async () => {
     const onExitToMenu = vi.fn();
     renderGameViewer(harborWorld(), { onExitToMenu });
-    fireEvent.click(await strip('left', 'Collapse Panel'));
+    fireEvent.click(await strip('left', 'Collapse Panel')); await settleSides();
     const story = rail('Story')!;
 
     fireEvent.click(within(story).getByRole('button', { name: 'Turn Music Off' }));
@@ -93,10 +94,12 @@ describe('the left side', () => {
 
     collapse.focus();
     await user.keyboard('{Enter}');
+    await settleSides();
     expect(rail('Story')).not.toBeNull();
 
     (await strip('left', 'Dock Panel')).focus();
     await user.keyboard(' ');
+    await settleSides();
     expect(rail('Story')).toBeNull();
   });
 });
@@ -106,18 +109,18 @@ describe('the right side', () => {
     renderGameViewer(harborWorld({ stats: [vigor] }));
     expect(await screen.findByRole('tablist', { name: 'Status' })).toBeInTheDocument();
 
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     expect(railButtons('Status')).toEqual(['Stats', 'Traits', 'Location']);
     expect(screen.queryByRole('tablist', { name: 'Status' })).toBeNull();
     expect(screen.getByRole('tablist', { name: 'Story' })).toBeInTheDocument();
 
-    fireEvent.click(await strip('right', 'Dock Panel'));
+    fireEvent.click(await strip('right', 'Dock Panel')); await settleSides();
     expect(rail('Status')).toBeNull();
   });
 
   it('leaves Stats off the rail when the panel has no Stats tab', async () => {
     renderGameViewer(harborWorld());
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     expect(railButtons('Status')).toEqual(['Traits', 'Location']);
   });
 });
@@ -133,7 +136,7 @@ describe('the collapsed state', () => {
 
   it('survives a remount on the same device', async () => {
     const first = renderGameViewer(harborWorld());
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     first.unmount();
 
     renderGameViewer(harborWorld());
@@ -144,7 +147,7 @@ describe('the collapsed state', () => {
 
   it('hides with Hide UI and comes back as it was with Show UI', async () => {
     renderGameViewer(harborWorld());
-    fireEvent.click(await strip('left', 'Collapse Panel'));
+    fireEvent.click(await strip('left', 'Collapse Panel')); await settleSides();
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide UI' }));
     expect(rail('Story')).toBeNull();
@@ -158,8 +161,8 @@ describe('the collapsed state', () => {
 
   it('shows no rail or strip on mobile, even when the device has sides collapsed', async () => {
     const desktop = renderGameViewer(harborWorld());
-    fireEvent.click(await strip('left', 'Collapse Panel'));
-    fireEvent.click(await strip('right', 'Collapse Panel'));
+    fireEvent.click(await strip('left', 'Collapse Panel')); await settleSides();
+    fireEvent.click(await strip('right', 'Collapse Panel')); await settleSides();
     desktop.unmount();
 
     device.mobile = true;
@@ -180,7 +183,7 @@ describe('the collapsed state', () => {
 
 describe('the drawer', () => {
   const icon = (railName: 'Story' | 'Status', name: string) => within(rail(railName)!).getByRole('button', { name });
-  const collapse = async (side: 'left' | 'right') => fireEvent.click(await strip(side, 'Collapse Panel'));
+  const collapse = async (side: 'left' | 'right') => { fireEvent.click(await strip(side, 'Collapse Panel')); await settleSides(); };
 
   it('opens each left rail icon on its tab, pressed, and switches tabs without closing', async () => {
     renderGameViewer(harborWorld());
@@ -304,15 +307,55 @@ describe('the drawer', () => {
     await collapse('right');
 
     await user.click(icon('Story', 'Memory'));
-    await user.click(await strip('left', 'Dock Panel'));
+    await user.click(await strip('left', 'Dock Panel')); await settleSides();
     expect(rail('Story')).toBeNull();
     expect(selectedTab('Story')).toHaveAccessibleName('Memory');
 
     await user.click(icon('Status', 'Location'));
-    await user.click(await strip('right', 'Dock Panel'));
+    await user.click(await strip('right', 'Dock Panel')); await settleSides();
     expect(rail('Status')).toBeNull();
     expect(selectedTab('Status')).toHaveAccessibleName('Location');
     expect(screen.getAllByRole('tablist', { name: 'Status' })).toHaveLength(1);
+  });
+});
+
+describe('the collapse motion', () => {
+  it('shows the rail on the click, and the panel on the dock, with no wait first', async () => {
+    renderGameViewer(harborWorld());
+    fireEvent.click(await strip('left', 'Collapse Panel'));
+    expect(rail('Story')).not.toBeNull();
+    fireEvent.click(await strip('left', 'Dock Panel'));
+    expect(rail('Story')).toBeNull();
+    expect(screen.getByRole('tablist', { name: 'Story' })).toBeInTheDocument();
+  });
+});
+
+describe('Story Width', () => {
+  const options = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'More narration options' }));
+    return screen.findByRole('radiogroup', { name: 'Story Width' });
+  };
+  const checked = async () => within(await options()).getByRole('radio', { checked: true });
+
+  it('starts at Reading Width, and Full Width stays picked on the device', async () => {
+    const view = renderGameViewer(harborWorld());
+    const group = await options();
+    expect(within(group).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Reading Width', 'Full Height', 'Full Width']);
+    expect(within(group).getByRole('radio', { checked: true })).toHaveAccessibleName('Reading Width');
+    fireEvent.click(within(group).getByRole('radio', { name: 'Full Width' }));
+    expect(within(group).getByRole('radio', { checked: true })).toHaveAccessibleName('Full Width');
+    view.unmount();
+
+    renderGameViewer(harborWorld());
+    expect(await checked()).toHaveAccessibleName('Full Width');
+  });
+
+  it('is not offered on mobile', async () => {
+    device.mobile = true;
+    renderGameViewer(harborWorld());
+    fireEvent.click(await screen.findByRole('button', { name: 'More narration options' }));
+    await screen.findByRole('button', { name: 'Export Story' });
+    expect(screen.queryByRole('radiogroup', { name: 'Story Width' })).toBeNull();
   });
 });
 
@@ -332,13 +375,13 @@ describe('the Entity View model', () => {
     await waitFor(() => expect(lastVrmViewerProps()?.modelUrl).toBe('blob:mine'));
     const loaded = vrmViewerMounts.count;
 
-    await user.click(await strip('left', 'Collapse Panel'));
+    await user.click(await strip('left', 'Collapse Panel')); await settleSides();
     await user.click(within(rail('Story')!).getByRole('button', { name: 'Notes' }));
     expect(openDrawer()).toHaveAccessibleName('Notes');
     await user.keyboard('{Escape}');
     expect(openDrawer()).toBeNull();
     await user.click(within(rail('Story')!).getByRole('button', { name: 'Memory' }));
-    await user.click(await strip('left', 'Dock Panel'));
+    await user.click(await strip('left', 'Dock Panel')); await settleSides();
 
     expect(screen.getByTestId('vrm-viewer')).toBeVisible();
     expect(vrmViewerMounts.count).toBe(loaded);
@@ -352,7 +395,7 @@ describe('a surface request into a side', () => {
     await screen.findByRole('button', { name: 'Hide UI' });
     return requester;
   };
-  const collapse = async (side: 'left' | 'right') => fireEvent.click(await strip(side, 'Collapse Panel'));
+  const collapse = async (side: 'left' | 'right') => { fireEvent.click(await strip(side, 'Collapse Panel')); await settleSides(); };
 
   it('opens the left drawer on the requested tab when the left side is collapsed', async () => {
     const requester = await enter();

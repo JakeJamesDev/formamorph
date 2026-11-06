@@ -721,6 +721,22 @@ b {
   .place-chip-shine::after { animation: none; display: none; }
 }
 
+/* A game drawer opening out of its rail (`PanelDrawer`). */
+@keyframes drawer-open-left {
+  from { opacity: 0; transform: translateX(-0.75rem); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes drawer-open-right {
+  from { opacity: 0; transform: translateX(0.75rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* A game side's content arriving after a collapse or dock (`SideColumn`). */
+@keyframes side-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* Streamdown animates each word in a bare inline <span>; transforms (move/scale) need a transformable
    box, so promote the animated words to inline-block within narration. Axis-scale anchors its growth
    to an edge via --rl-origin (set on the container); everything else uses center. */
