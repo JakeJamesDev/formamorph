@@ -64,47 +64,55 @@ The abort cause is already recorded and is not part of this spec. The status `ab
 
 **Refusal totals**
 
-- A new table holds one row per UTC day, account and refusal code. Its columns: day, account id (nullable after erasure), spend subject (nullable), tier (nullable), code, count, first time, last time. An integer id is the primary key. A unique index on day, account id and code makes each refusal an upsert that adds one and moves the last time.
-- One recording point covers every refusal the Formamorph AI routes send: the entitlement checks before admission, the pause, the rate limits, a bad request and every admission refusal. The shared refuse helper is that point, so a new refusal code is recorded with no extra work.
-- The subject and tier are stored when the request has them. An entitlement refusal has neither.
+- A new table holds one row per UTC day, account, refusal code and tier. Its columns: day, account id (nullable after erasure), spend subject (nullable), tier (nullable), code, count, first time, last time. An integer id is the primary key. A unique index on day, account id, code and tier makes each refusal an upsert that adds one and moves the last time. The subject keeps its latest value. SQLite treats NULLs as distinct in a unique index, so an entitlement refusal (no tier) stores an empty-string tier in the key, never NULL.
+- The shared refuse helper is the one recording point. It covers the entitlement checks, the pause, the rate limits, a bad request and every admission refusal, so a new refusal code is recorded with no extra work.
+- `upstream_error` is not recorded. It is a provider failure, not a refusal of the player, and the usage row already holds it as `error`. The mid-stream error event and the 500 path of the route error handler are not recorded either.
+- A 401 from the auth check and a 426 from the client-version minimum never reach the helper and are not recorded. The 426 shows in the request log.
+- A missing configuration also answers `service_paused`. The totals cannot tell it from a pause. That is accepted, since a missing configuration is a deploy fault the boot check shows.
+- The subject and tier are stored when the request has them. An entitlement refusal has neither. Every refusal has an account, because the auth check runs first.
 - The write is wrapped so that a failure is logged and the refusal still answers unchanged.
 - The `rate_limited` path must stay cheap. One upsert is the whole cost.
-- The existing usage sweep deletes refusal totals older than `retentionDays`, by day.
+- The existing usage sweep deletes refusal totals whose first time is older than `retentionDays`. Deleting on the first time means no stored time is ever older than the policy allows. The sweep's return value gains a refusal-deletion count.
 - Account erasure nulls the account id on refusal totals, as it does on usage rows.
+- CONTEXT.md gains a **Refusal total** entry.
 
 **Usage row fields**
 
 - An additive schema step adds four nullable columns to the usage table: capped `max_tokens`, reservation in micro-dollars, client version and upstream provider.
 - The capped `max_tokens` and the reservation are the values admission already computes. They are written when the row opens, and settling never changes them.
-- The client version comes from the request's parsed client header. A missing or invalid header stores null.
+- The client version comes from the request's parsed client header. The parser answers version zero (`0.0.0`) for a missing or unreadable header. Version zero stores null, so it never reads as a real build.
 - The upstream provider is read from the upstream reply and written when the row settles. The first ticket step checks with `npm run live:hosted-ai` that the reply names the provider, in which field, and in both stream and whole modes. If no reply names it, that part is dropped, and the spec is updated to say so.
-- The usage model's open and settle shapes gain these fields. Retries keep their own values.
+- The provider value is upstream free text. It is stored only when it matches a fixed short pattern, as the finish reason is today. Anything else stores null.
+- The usage model's open and settle shapes gain these fields. The admitted call carries the capped `max_tokens` and the client version, so a retry row gets them too. A retry stores its own reservation and provider.
 
 **Admin usage report**
 
 The existing report route gains four sections over the same range:
 
-- `refusals`: per day and code, the total count and the distinct accounts. Also per tier and code, and the number of distinct accounts refused for `budget_exhausted` in the range.
-- `reservations`: per prompt type and overall, the summed reservation, the summed settled cost and their ratio. Only settled rows that have a reservation count.
-- `clients`: per client version, calls, turns, cost and turns with no narration call. Rows with no version count under a null version.
-- `providers`: per provider, calls, median and worst first-token time. Rows with no provider count under null.
+- `refusals`: per day and code, the total count and the distinct accounts. Also per tier and code, and the number of distinct accounts refused for `budget_exhausted` in the range. Distinct accounts count by account id. Erased totals add to the counts but not to the distinct accounts.
+- `reservations`: per prompt type and overall, the summed reservation, the summed settled cost and their ratio. Only rows with status `ok`, cost source `upstream`, `stopped = 0` and a reservation count. Swept rows and estimated costs would force the ratio toward 1.
+- `clients`: per client version, calls, turns, cost and closed turns with no narration call. A closed turn has no `open` row. Rows with no version count under a null version.
+- `providers`: per provider, calls, median and worst first-token time. Only streams have a first-token time. Rows with no provider count under null.
+- Calls count every row, retries included, as the existing report sections do.
 
 No new section returns a subject or an account id. That follows how `heaviest` drops `subject` today.
 
 **Privacy policy**
 
 - The Formamorph AI section's list of recorded fields adds the app version and the provider that served the call.
-- It adds that a refused call is counted with its reason, per day.
-- The retention line covers the refusal totals.
+- It adds that each refused call is counted per day with its reason, your account, your Patreon user id or staff grant, your tier, and the first and last time that day.
+- The retention line and the erasure line cover the refusal totals. The Patreon user id stays on them until the 30 days end, as on usage rows.
 - The policy publishes through the existing publish step. Deploy the policy with or before the first build that records the new fields.
 
 ## Testing Decisions
 
-- **One seam.** Tests drive the real app over HTTP. They send chat completions through the Formamorph AI route against the existing fake upstream, then read the admin usage report. Retention and erasure are tested through their existing entry points, the usage sweep and account erasure. No test reads a table or calls a model directly.
-- A good test asserts what the report returns for a call the test made. It never asserts on SQL or on the row shape.
-- **Refusals.** Each refusal family shows up under its code: entitlement, pause, rate limit, bad request and allowance. A refused request repeated many times adds to one total and does not add rows. The refusal reply body and status are unchanged. A refusal whose write fails still answers the same refusal.
+- **One seam.** Tests drive the real app over HTTP. They send chat completions through the Formamorph AI route against the per-file fake upstream, then read the admin usage report. Retention and erasure are tested through their existing entry points, the usage sweep with an explicit `now` and account erasure.
+- A good test asserts what the report returns for a call the test made. Two cases cannot show in the report and use the mechanisms the hosted AI tests already use:
+  - **Erasure** reads the refusal table directly, because the report never returns an account id.
+  - **Retention** makes refusals at different days with fake system time around the HTTP call.
+- **Refusals.** Each refusal family shows up under its code: entitlement, pause, rate limit, bad request and allowance. `upstream_error` does not show up. A refused request repeated many times adds to one total and does not add rows. The refusal reply body and status are unchanged. A refusal whose write fails still answers the same refusal. The test makes the refusal model's write throw with a spy.
 - **Reservation.** A call's reservation in the report matches the worst case of its estimated prompt and capped `max_tokens`. The settled cost stays apart from it.
-- **Client version.** A call with a valid client header reports under that version. A call without one reports under null. A turn with no narration call is counted for its version.
+- **Client version.** A call with a valid client header reports under that version. A call without one, or with an unreadable one, reports under null and never under `0.0.0`. A turn with no narration call is counted for its version.
 - **Provider.** A fake upstream reply that names a provider reports under it. One that names none reports under null.
 - **Retention and erasure.** The sweep removes refusal totals past retention and keeps newer ones. Erasure detaches the account and keeps the totals.
 - **Privacy.** No new report section contains a subject or an account id.
@@ -121,6 +129,8 @@ No new section returns a subject or an account id. That follows how `heaviest` d
 
 ## Further Notes
 
+- **The policy's provider wording is the user's call.** The policy names one "third-party AI provider". If the provider field shows that the upstream routes calls to several providers, the third-party section may need to say so. That is a policy decision, and it is outside this spec's text.
+- The reservation shows how much headroom each call holds. Admission compares the week's spend, open reservations included, so an early refusal comes from other calls' open reservations, not from the new call's own.
 - **Re-acceptance is the user's call.** Publishing the edited policy can require players to accept it again or not. Batch all policy text in this spec into one publish so that players see at most one re-accept.
 - The schema step is additive. The deploy skill's backup rule still applies because the step touches `src/schema/`.
 - Today's evidence: real/estimate is between 0.63 and 0.79 on all 20 prompt types, and the cache serves about 40% of prompt tokens. The reservation section should make the first number exact.
