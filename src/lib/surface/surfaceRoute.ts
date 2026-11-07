@@ -58,6 +58,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   adminPanel: { host: 'mainMenu' },
   changelog: { ancestor: 'mainMenu' },
   credits: { ancestor: 'mainMenu' },
+  profileMerge: { ancestor: 'mainMenu' },
   unreadableWorlds: { ancestor: 'mainMenu' },
   entityEditor: { ancestor: 'mainMenu.entities' },
   dictionaryEditor: { ancestor: 'mainMenu.dictionaries' },
@@ -160,6 +161,7 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
 
   formaquestion: { parent: 'formaquestion' },
   formaquestionSettings: { parent: 'formaquestionSettings' },
+  profileMerge: { ancestor: 'mainMenu' },
 };
 
 const KNOWN: ReadonlySet<string> = new Set(SURFACE_IDS);

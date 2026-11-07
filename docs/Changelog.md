@@ -40,6 +40,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **An entity the narration names in a location just inside yours now joins your scene.** Its Movement decides, for a location inside yours or beside it. Stays Put never comes, and Moves Between Its Locations comes only into its own locations.
   - **With Move Automatically on, the game moves you when the narration ends with you somewhere new, the opening included.** Followers come along, and an entity told to stay stays. Without it, the **Move to…?** offer reads the narration too.
   - **Windows now tells you when you start Formamorph from the file inside the app folder.** A message box shows the main Formamorph.exe path and offers Show in Folder, then the game opens.
+  - **On Windows, the main menu offers to merge worlds, saves, entities and dictionaries left from starts outside the app folder.** Where both copies hold an item, the newer one stays. Choose **Merge**, **Not Now** or **Don't Merge**. Nothing is deleted, and a stopped merge is offered again.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.

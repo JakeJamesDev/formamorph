@@ -61,6 +61,7 @@ export const GRAPH_COVERED = {
   'electron/modelDownload.test.mjs': 'reads only its own temp folder',
   'electron/modelMove.test.mjs': 'reads only its own temp folder',
   'electron/modelScan.test.mjs': 'reads only its own temp folder',
+  'electron/profileMerge.test.mjs': 'reads only its own temp folder',
   'scripts/typecheck.test.mjs': 'reads only its own temp folder',
   'scripts/slowTestReporter.mjs': 'reads only its timing cache in node_modules/.cache',
   'scripts/versionSiteImages.test.mjs': 'reads only its own temp folder',

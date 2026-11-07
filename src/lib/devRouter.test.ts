@@ -28,6 +28,7 @@ import { GAME_LEFT_PANEL_TABS, GAME_RIGHT_PANEL_TABS } from '@/components/game/p
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
 import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
+import { PROFILE_MERGE_STEPS } from '@/components/menu/profileMergeView';
 import { POLICIES_TABS } from '@/components/menu/policiesTabs';
 import { FEEDBACK_TABS } from '@/components/menu/feedbackTabs';
 import { MODERATION_TABS } from '@/components/menu/moderationTabs';
@@ -62,6 +63,9 @@ function parseHash(hash: string): ParsedRoute | null {
 }
 
 describe('dev-router hash parsing', () => {
+  it('covers every profile merge dialog step', () => {
+    expect([...DEV_MODAL_TABS.profileMerge]).toEqual([...PROFILE_MERGE_STEPS]);
+  });
   it('covers every library dictionary editor tab', () => {
     expect([...DEV_MODAL_TABS.dictionaryEditor]).toEqual(DICTIONARY_EDITOR_TABS.map((tab) => tab.value));
   });
@@ -286,7 +290,7 @@ describe('dev-router coverage guard', () => {
     // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
     // is an in-place MainMenu modal (no longer a top-level view).
     expect(DEV_MODALS).toEqual([
-      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'firstRun', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'usernameRename', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', 'stranger', 'item', 'credits', 'unreadableWorlds', 'tts', 'road', 'storyCard',
+      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'firstRun', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'usernameRename', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'deleteWorldAvatar', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', 'stranger', 'item', 'credits', 'unreadableWorlds', 'tts', 'road', 'storyCard', 'profileMerge',
       'customCode', 'eventForm', 'podium', 'sentMessages', 'suspend', 'feedbackForm', 'feedbackEdit', 'feedbackThread', 'listingComment', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash', 'pendingUpdate', 'bodyLayout',
     ]);
   });

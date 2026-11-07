@@ -159,6 +159,11 @@ import { readSourceCheck } from "@/lib/sourceCheckStore";
 import { buildAvatarPublish } from "@/lib/avatarPublish";
 import { buildWorldPublish, type WorldPublishTarget } from "@/lib/worldPublish";
 import { BackupRestoreDialog, type BackupStart } from "@/components/menu/BackupRestoreDialog";
+import { ProfileMergeDialog } from "@/components/menu/ProfileMergeDialog";
+import type { ProfileMergeView } from "@/components/menu/profileMergeView";
+import { useProfileMerge } from "@/components/menu/useProfileMerge";
+import { profileMergeBridge } from "@/lib/profileMerge/bridge";
+import { mergeCategories } from "@/lib/profileMerge/categories";
 import { UnreadableWorldsDialog } from "@/components/menu/UnreadableWorldsDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
@@ -1032,6 +1037,29 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     void refreshEntities();
     void refreshDictionaries();
   }, [refreshWorlds, refreshEntities, refreshDictionaries]);
+
+  // A launcher start offers to merge the AppData profile's data. The dev route shows a canned step instead.
+  const reloadMergedLists = useCallback(() => {
+    void refreshWorlds();
+    void refreshEntities();
+    void refreshDictionaries();
+  }, [refreshWorlds, refreshEntities, refreshDictionaries]);
+  const devMergeStep = import.meta.env.DEV && devRoute?.modal === 'profileMerge' ? devRoute.tab ?? 'offer' : null;
+  const profileMerge = useProfileMerge({
+    bridge: devMergeStep ? null : profileMergeBridge(),
+    categoriesOf: mergeCategories,
+    onMerged: reloadMergedLists,
+  });
+  const [devMergeView, setDevMergeView] = useState<ProfileMergeView | null>(null);
+  const closeDevMerge = useCallback(() => setDevMergeView(null), []);
+  useEffect(() => {
+    if (!devMergeStep) return;
+    let live = true;
+    void import('@/lib/devProfileMergeSample').then(({ devProfileMergeView }) => {
+      if (live) setDevMergeView(devProfileMergeView(devMergeStep));
+    });
+    return () => { live = false; };
+  }, [devMergeStep]);
 
   // Importing a component file: the worlds it says it suits, and the update review a file whose source is
   // already in the library opens instead.
@@ -2128,6 +2156,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         onReady={handleGateReady}
       />
       <BackupRestoreDialog open={showBackup} start={backupStart} onOpenChange={setShowBackup} />
+      <ProfileMergeDialog
+        view={devMergeStep ? devMergeView : profileMerge.view}
+        onMerge={devMergeStep ? closeDevMerge : () => void profileMerge.merge()}
+        onNotNow={devMergeStep ? closeDevMerge : profileMerge.notNow}
+        onDecline={devMergeStep ? closeDevMerge : profileMerge.decline}
+        onDone={devMergeStep ? closeDevMerge : profileMerge.done}
+      />
 
       {/* The component-file import review, and the update review a file of a source you already hold
           opens in its place. */}

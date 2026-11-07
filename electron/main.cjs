@@ -18,6 +18,8 @@ const modelDownload = require('./modelDownload.cjs');
 const { scanModels, resolveModelRef, isRootRef, projectorFileName } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
+const { mergeSource, writeMarker, SOURCE_STORES } = require('./profileMerge.cjs');
+const { openSource } = require('./profileMergeSource.cjs');
 const { corsResponse } = require('./corsShim.cjs');
 const { httpOrigin, stripOrigin } = require('./originStrip.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
@@ -61,12 +63,17 @@ if (process.platform === 'win32' && process.env.FORMAMORPH_ROOT) app.setAppUserM
 // otherwise dump the Chromium profile into the repo). Must run before app-ready — module load qualifies. On
 // the first post-change launch, migrate the persistent stores out of the old default location once.
 const portableProfile = portableUserDataDir();
+// The AppData profile whose data the launcher start offers to merge. See profileMerge.cjs.
+let mergeOffer = null;
 if (portableProfile) {
   const defaultUserData = app.getPath('userData'); // capture BEFORE overriding
   const fresh = !fs.existsSync(portableProfile) || fs.readdirSync(portableProfile).length === 0;
   try { fs.mkdirSync(portableProfile, { recursive: true }); } catch { /* ignore */ }
   if (fresh && fs.existsSync(defaultUserData)) migratePersistentStores(defaultUserData, portableProfile);
   app.setPath('userData', portableProfile);
+  mergeOffer = mergeSource({
+    platform: process.platform, env: process.env, sourceDir: defaultUserData, targetDir: portableProfile, fsApi: fs,
+  });
 }
 
 const DIST = path.join(__dirname, '..', 'dist');
@@ -294,6 +301,7 @@ function createWindow() {
   });
 
   watchRenderer(win);
+  win.on('closed', () => { void closeMergeReader(); });
 
   // Closing the window with unsaved world edits: the page cancels the unload, so ask. See leavePrompt.cjs.
   win.webContents.on('will-prevent-unload', confirmLeave(win, dialog));
@@ -549,6 +557,43 @@ ipcMain.handle('llm-delete-model', async (_event, fileName) => {
   modelDownload.discardPartial(modelsDir(), projector);
   try { fs.unlinkSync(path.join(modelsDir(), projector)); } catch { /* the model has none */ }
   try { fs.unlinkSync(target); return true; } catch { return false; }
+});
+
+// Profile merge: the renderer reads the AppData profile's records through these and writes them itself.
+let mergeReader = null;
+const openMergeReader = () => {
+  mergeReader ??= openSource({ electron: { session, BrowserWindow }, dir: mergeOffer.dir })
+    .catch((err) => { mergeReader = null; throw err; });
+  return mergeReader;
+};
+// The hidden window would keep the app running once the main window closes.
+function closeMergeReader() {
+  const pending = mergeReader;
+  mergeReader = null;
+  return pending ? pending.then((reader) => reader.close(), () => {}) : Promise.resolve();
+}
+// Not Now, or a merge that stopped, holds the offer until the next start.
+let mergeLater = false;
+ipcMain.handle('merge-offer', () => (mergeOffer && !mergeLater ? { merged: mergeOffer.merged } : null));
+ipcMain.handle('merge-summaries', async (_event, categories) => {
+  if (!mergeOffer || !Array.isArray(categories)) return {};
+  const stores = categories.filter((key) => Object.hasOwn(SOURCE_STORES, key)).map((key) => ({ key, ...SOURCE_STORES[key] }));
+  return (await openMergeReader()).summaries(stores);
+});
+ipcMain.handle('merge-record', async (_event, { category, id }) => {
+  if (!mergeOffer || !Object.hasOwn(SOURCE_STORES, category) || typeof id !== 'string') return null;
+  return (await openMergeReader()).record({ ...SOURCE_STORES[category], id });
+});
+ipcMain.handle('merge-later', () => {
+  mergeLater = true;
+  return closeMergeReader();
+});
+ipcMain.handle('merge-mark', async (_event, { state, categories }) => {
+  if (!mergeOffer) return false;
+  writeMarker(mergeOffer.dir, state, fs, Array.isArray(categories) ? categories : []);
+  mergeOffer = null;
+  await closeMergeReader();
+  return true;
 });
 
 // Desktop auto-updater IPC (per-platform download/apply; detection is renderer-side). getWindow returns the

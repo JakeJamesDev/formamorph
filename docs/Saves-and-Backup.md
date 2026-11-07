@@ -222,6 +222,26 @@ The web version asks the browser to keep its storage. A browser can still clear 
 
 On Windows and Linux, copy the whole folder to move your data to a new place.
 
+## The Merge Your Other Data Dialog
+<!-- keywords: merge, appdata, missing worlds, missing saves, taskbar pin, shortcut, data disappeared, two copies, don't merge -->
+<!-- route: profileMerge -->
+
+On Windows, starting the `Formamorph.exe` inside the `app` folder keeps your data in AppData instead of the `userdata` folder. When you next start the main `Formamorph.exe`, this dialog opens on the main menu and offers to bring that data over.
+
+| Column | Meaning |
+|---|---|
+| **new** | Items only the other copy has. Merge adds them. |
+| **replaces yours** | Items both copies have, where the other copy is newer. Merge replaces yours. |
+| **kept** | Items both copies have, where yours is newer or the age is unknown. Yours stays. |
+
+| Button | What it does |
+|---|---|
+| **Merge** | Copies the items, smallest first. A bar shows each group's progress, and the dialog can't be closed until it finishes. |
+| **Not Now** | Closes the dialog. It opens again the next time you start Formamorph. |
+| **Don't Merge** | Closes the dialog for good. |
+
+When the merge finishes, the dialog lists what it added, replaced and kept, and any item it couldn't bring over, with the reason. Imported saves go to the end of each world's save list as ordinary saves. The copy in AppData is never deleted. If the merge stops partway, it's offered again on the next start.
+
 ## App Updates
 <!-- keywords: release notes, whats new, changelog, stable or beta, check manually, forced to, rollback, failed to start, current version, web reload -->
 

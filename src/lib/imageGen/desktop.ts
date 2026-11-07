@@ -4,6 +4,7 @@
 
 import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
 import type { ProjectorSource } from '@/lib/localModels';
+import type { ProfileMergeBridge } from '@/lib/profileMerge/bridge';
 import type { UpdateDownloadResult } from '@/lib/updates/updateBridge';
 import type { WindowChromeBridge } from '@/lib/windowChromeBridge';
 
@@ -241,6 +242,8 @@ declare global {
         /** Subscribe to download progress; returns an unsubscribe fn. */
         onDownloadProgress: (cb: (progress: LocalDownloadProgress) => void) => () => void;
       };
+      /** The AppData profile merge (electron/profileMergeSource.cjs). */
+      profileMerge?: ProfileMergeBridge;
       /** Desktop auto-updater bridge (implemented in preload.cjs / electron/updater.cjs). Detection is done
        *  renderer-side via UpdateService; these drive the per-platform download + apply and stream progress. */
       update?: {

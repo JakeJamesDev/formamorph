@@ -63,6 +63,15 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
       return () => ipcRenderer.removeListener('llm-download-progress', handler);
     },
   },
+  // Profile merge: whether the AppData profile waits to merge, its record summaries and records, and the
+  // marker that ends the offer.
+  profileMerge: {
+    offer: () => ipcRenderer.invoke('merge-offer'),
+    summaries: (categories) => ipcRenderer.invoke('merge-summaries', categories),
+    record: (category, id) => ipcRenderer.invoke('merge-record', { category, id }),
+    later: () => ipcRenderer.invoke('merge-later'),
+    mark: (state, categories) => ipcRenderer.invoke('merge-mark', { state, categories }),
+  },
   // Desktop auto-updater: detection is renderer-side (via the fetch bridge); these drive the per-platform
   // download/apply and stream progress + completion back from the main process.
   update: {
