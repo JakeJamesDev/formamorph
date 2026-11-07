@@ -1,6 +1,7 @@
 # Hidden Gems
 
 Status: ready-for-agent
+Spec session: hidden-gems — spec
 
 Three well-liked worlds with few downloads get slots on page 1 of Community Creations, and the picks rotate every 12 hours. Designed on 2026-11-07 against production data and both repos. The work spans both repos. The server half is `docs-internal/specs/hidden-gems/spec.md` in FormamorphServer, and it lands first.
 
