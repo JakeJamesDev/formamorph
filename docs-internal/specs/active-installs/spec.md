@@ -87,6 +87,11 @@ Each copy of the app tells the server once per UTC day that it was opened. The s
 - A table of daily rows holds the UTC day, the hash, the platform and the version. The hash is HMAC-SHA256 of the Install id under the month key. A unique index on day and hash makes a repeated send a no-op, so the first version that day is kept.
 - A totals table holds closed periods: period kind (`day` or `month`), period, platform, version and count. A unique index on kind, period, platform and version makes a close safe to repeat. A month that already has totals is never closed again.
 - **Month close** runs from the existing hourly retention sweep, at boot and every hour, with an explicit `now`. It has its own try/catch and runs even when the sweep's other steps return early. Its count joins the sweep's result. For every month before the current one that still has rows, it writes each day's totals and the month's total, then deletes that month's rows and its key, in one transaction. The month total counts each hash once, under the platform and version of its first row that month.
+- Ticket 02 rulings:
+  - A past month that already has totals but still has rows: the close deletes the rows and the key and writes nothing. The existing totals stay final.
+  - The close deletes every key of a month before the current one, whether or not it has rows.
+  - Where totals and live rows both exist for a period, the totals win.
+  - The totals table is `active_install_totals`, and the sweep result gains `months`, the number of months closed.
 - An admin route returns `{ days: [{ day, total, breakdown: [{ platform, version, count }] }], months: [{ month, total, breakdown }] }`, newest first. Closed periods come from the totals table. **Every month that still has rows** is counted live, so a month waiting for its close never drops out. `?days=N` sets how many days back `days` covers, with the same default and cap as the usage report. Days with no sends are listed with a total of 0. `months` lists every month.
 - No row in any of these tables holds an account id, an address or a raw Install id.
 
