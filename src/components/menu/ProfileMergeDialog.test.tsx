@@ -67,6 +67,14 @@ describe('ProfileMergeDialog', () => {
     expect(screen.getByText(/enough storage space/)).toBeTruthy();
   });
 
+  it('leaves out a category that had nothing to merge', () => {
+    const empty = { key: 'models', label: 'Local Models', added: 0, replaced: 0, kept: 0, skipped: [] };
+    const worlds = { key: 'worlds', label: 'Worlds', added: 1, replaced: 0, kept: 0, skipped: [] };
+    render(<ProfileMergeDialog view={{ step: 'result', results: [worlds, empty] }} {...handlers()} />);
+    expect(screen.getByText('Worlds')).toBeTruthy();
+    expect(screen.queryByText('Local Models')).toBeNull();
+  });
+
   it('lists a skipped local model with its reason in the result', () => {
     render(<ProfileMergeDialog view={devProfileMergeView('result')} {...handlers()} />);
     expect(screen.getByText('b.gguf')).toBeTruthy();

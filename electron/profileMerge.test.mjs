@@ -47,6 +47,19 @@ describe('merge offer detection', () => {
     expect(offer()).toBeNull();
   });
 
+  it('offers a profile that holds only settings, local models or a model-folder choice', () => {
+    fs.mkdirSync(path.join(source, 'Local Storage', 'leveldb'), { recursive: true });
+    expect(offer()).toEqual({ dir: source, merged: [] });
+    fs.rmSync(path.join(source, 'Local Storage'), { recursive: true });
+    fs.mkdirSync(path.join(source, 'models'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'models', 'a.gguf'), 'x');
+    expect(offer()).toEqual({ dir: source, merged: [] });
+    fs.rmSync(path.join(source, 'models'), { recursive: true });
+    expect(offer()).toBeNull();
+    fs.writeFileSync(path.join(source, 'model-locations.json'), JSON.stringify({ searchSubfolders: true }));
+    expect(offer()).toEqual({ dir: source, merged: [] });
+  });
+
   it('does not offer when the AppData profile holds no store', () => {
     fs.mkdirSync(path.join(source, 'IndexedDB'), { recursive: true });
     fs.mkdirSync(path.join(source, 'GPUCache'), { recursive: true });

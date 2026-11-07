@@ -1043,7 +1043,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     void refreshWorlds();
     void refreshEntities();
     void refreshDictionaries();
-  }, [refreshWorlds, refreshEntities, refreshDictionaries]);
+    void refreshModels();
+  }, [refreshWorlds, refreshEntities, refreshDictionaries, refreshModels]);
   const devMergeStep = import.meta.env.DEV && devRoute?.modal === 'profileMerge' ? devRoute.tab ?? 'offer' : null;
   const profileMerge = useProfileMerge({
     bridge: devMergeStep ? null : profileMergeBridge(),

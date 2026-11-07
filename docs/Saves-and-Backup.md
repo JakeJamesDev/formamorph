@@ -240,9 +240,9 @@ On Windows, starting the `Formamorph.exe` inside the `app` folder keeps your dat
 | **Not Now** | Closes the dialog. It opens again the next time you start Formamorph. |
 | **Don't Merge** | Closes the dialog for good. |
 
-The merge covers worlds, saves, entities, dictionaries, Avatars, stat templates and Mascot images. For an Avatar both copies hold, the newer one stays. Stat templates and Mascot images carry no age, so the merge adds only the ones you lack.
+The merge covers worlds, saves, entities, dictionaries, Avatars, stat templates, Mascot images, settings, sign-in, your model folder choice and local models. For an Avatar both copies hold, the newer one stays. Stat templates, Mascot images, settings and the model folder choice carry no age, so the merge adds only the ones you lack. Local models move into your model folder last, since they're the largest.
 
-When the merge finishes, the dialog lists what it added, replaced and kept, and any item it couldn't bring over, with the reason. Imported saves go to the end of each world's save list as ordinary saves. The copy in AppData is never deleted. If the merge stops partway, it's offered again on the next start.
+When the merge finishes, the dialog lists what it added, replaced and kept, and any item it couldn't bring over, with the reason. If it brought over settings, select **Restart** so they take effect. Imported saves go to the end of each world's save list as ordinary saves. The copy in AppData stays, except for local models, which move. If the merge stops partway, it's offered again on the next start.
 
 ## App Updates
 <!-- keywords: release notes, whats new, changelog, stable or beta, check manually, forced to, rollback, failed to start, current version, web reload -->

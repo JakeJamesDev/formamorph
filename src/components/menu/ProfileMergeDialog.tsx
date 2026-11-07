@@ -80,7 +80,7 @@ function ResultRows({ results }: { results: CategoryResult[] }) {
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col divide-y rounded-md border">
-        {results.map((result) => (
+        {results.filter((result) => result.added + result.replaced + result.kept + result.skipped.length > 0).map((result) => (
           <li key={result.key} className="flex items-baseline justify-between gap-4 px-3 py-2">
             <span className="font-medium">{result.label}</span>
             <Meta>
@@ -89,7 +89,7 @@ function ResultRows({ results }: { results: CategoryResult[] }) {
                 [result.replaced, 'replaced', 'replaced'],
                 [result.kept, 'kept', 'kept'],
                 [result.skipped.length, 'not merged', 'not merged'],
-              ]) || 'Nothing to merge'}
+              ])}
             </Meta>
           </li>
         ))}

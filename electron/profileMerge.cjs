@@ -1,12 +1,13 @@
 // The AppData profile a direct start of the inner exe wrote to, and whether its data still needs a merge into
 // the launcher folder's profile. No electron dependency, so plain Node tests it.
 const path = require('node:path');
+const { LOCATIONS_FILE } = require('./profileMergeModelFolder.cjs');
 
 /** The marker file in the AppData profile: `done` lists the merged categories, `declined` ends every offer. */
 const MARKER_FILE = 'formamorph-merge.json';
 
-/** Profile folders that hold merged stores. */
-const MERGED_STORES = ['IndexedDB'];
+/** Profile folders that hold merged data: records, settings and sign-in, and local models. */
+const MERGED_STORES = ['IndexedDB', 'Local Storage', 'models'];
 
 /** The AppData IndexedDB stores the renderer may read, by merge category. */
 const SOURCE_STORES = {
@@ -44,7 +45,8 @@ function mergeSource({ platform, env, sourceDir, targetDir, fsApi }) {
   if (samePath(sourceDir, targetDir) || !fsApi.existsSync(sourceDir)) return null;
   const marker = readMarker(sourceDir, fsApi);
   if (marker?.state === 'declined') return null;
-  const holdsStore = MERGED_STORES.some((store) => {
+  // A model-folder choice counts too: models in a chosen folder have no store in the profile.
+  const holdsStore = fsApi.existsSync(path.join(sourceDir, LOCATIONS_FILE)) || MERGED_STORES.some((store) => {
     const dir = path.join(sourceDir, store);
     try { return fsApi.existsSync(dir) && fsApi.readdirSync(dir).length > 0; } catch { return false; }
   });
