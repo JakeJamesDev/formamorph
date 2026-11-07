@@ -1,6 +1,7 @@
 # Spec: Active Installs
 
 Status: ready-for-agent
+Spec session: active-installs — spec
 
 Both repos: the client sends, the server counts. Tickets carry a `Repo:` line for the server half.
 
@@ -68,6 +69,7 @@ Each copy of the app tells the server once per UTC day that it was opened. The s
 
 **Server**
 
+- The routes are `POST /api/active-installs` for the daily send (public) and `GET /api/active-installs` for the totals (admin). Both repos use these paths.
 - A public route accepts the daily send. It has its own rate-limit config with a daily budget per address, small enough that one address cannot mint many installs. It uses the same in-memory, address-keyed limiter as the funnel route. Spreading sends across many addresses still works, and that limit is accepted.
 - It requires a valid Install id header and a readable client header. A send with either one missing or invalid is refused and stores nothing. A readable client header always carries a real version, so stored versions are never null.
 - The **server's clock** sets the day. No body is sent. A client clock that is off can only delay or skip its own send, never count twice.
