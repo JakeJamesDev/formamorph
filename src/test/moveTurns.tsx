@@ -2,7 +2,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, vi } from 'vitest';
 import { sseReply, sseResponse } from '@/test/aiTextFixtures';
-import { useGameplay } from '@/contexts/GameplayContext';
+import type { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 
 type Gameplay = ReturnType<typeof useGameplay>;

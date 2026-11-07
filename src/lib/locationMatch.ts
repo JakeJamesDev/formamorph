@@ -71,7 +71,7 @@ function exactName(lower: string, names: string[]): string | undefined {
 }
 
 /** {@link exactName}, with markdown and punctuation around the reply aside. */
-const exactNameIgnoringMarkup =(lower: string, names: string[]): string | undefined =>
+const exactNameIgnoringMarkup = (lower: string, names: string[]): string | undefined =>
   exactName(lower.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ''), names) ?? exactName(lower, names);
 
 /**

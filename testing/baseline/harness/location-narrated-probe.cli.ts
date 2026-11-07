@@ -13,7 +13,7 @@
 //   narrated defaultNarratedMovePrompt / defaultNarratedMoveUserPrompt over the walkable list
 // Every run dispatches all cases on every chosen arm together, so batch drift lands on every arm.
 //
-// After the three arms, a router arm sends the shipped location-change request over the control and far scenes,
+// After the narrated arms, a router arm sends the shipped location-change request over the control and far scenes,
 // and scores each reply by the substring rule over every place and by the router matcher (multi-hop-moves R2).
 //
 // The bar (multi-hop-moves Q10, ticket 02) is on the narrated arm's set totals: far right >= 90%, unlisted
@@ -455,8 +455,7 @@ for (let run = 0; run < runs; run++) {
       else routerMisses.push(`${rule.padEnd(9)} ${scene.set.padEnd(8)} ${scene.id} #${run + 1}: want ${scene.expect}, got ${place} :: ${JSON.stringify(raw)}`);
     }
   }), poolSize);
-  process.stdout.write(`router run ${run + 1}/${runs} · ${Math.round((Date.now() - routerBegun) / 1000)}s
-`);
+  process.stdout.write(`router run ${run + 1}/${runs} · ${Math.round((Date.now() - routerBegun) / 1000)}s\n`);
 }
 // A move to any place but the scene's answer.
 const wrong = (s: Scene, c: ReturnType<typeof cell>) => c.moved - (s.expect === 'NONE' ? 0 : c.right);
@@ -467,8 +466,7 @@ const routerTotal = (inSet: Scene[], rule: Rule) => inSet.reduce((t, s) => {
 for (const set of ['control', 'far'] as const) {
   const inSet = routerScenes.filter((s) => s.set === set);
   if (!inSet.length) continue;
-  console.log(`
-router ${set} (right · wrong moves, per scene)`.padEnd(45) + RULE_IDS.map((r) => r.padStart(14)).join(''));
+  console.log(`\nrouter ${set} (right · wrong moves, per scene)`.padEnd(45) + RULE_IDS.map((r) => r.padStart(14)).join(''));
   for (const s of inSet) {
     const row = routerRows.get(s.id)!;
     console.log(`  ${s.id.padEnd(42)}${RULE_IDS.map((r) => `${row[r].right}/${row[r].n} · ${wrong(s, row[r])}`.padStart(14)).join('')}`);

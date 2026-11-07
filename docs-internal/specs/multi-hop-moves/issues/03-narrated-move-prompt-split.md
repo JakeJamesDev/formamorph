@@ -32,7 +32,7 @@ Probe: `location-narrated-probe.cli.ts --arms current,narrated`, cloud default m
 | unlisted, the rest, moved | 0% (0/20) | **0%** (0/20) |
 | carried, moves found | 100% (100/100) | **100%** (100/100) |
 | stay, false moves | 12.5% (10/80) | **12.5%** (10/80) |
-| router controls, right | 60.5% (230/380) | **64.5%** (245/380) |
+| control scenes (router cases, Narrated Move matcher), right | 60.5% (230/380) | **64.5%** (245/380) |
 | median first token / total (ms) | 139 / 195 | 140 / 196 |
 
 - No doc quotes the Narrated Move user prompt, so no doc changed.
