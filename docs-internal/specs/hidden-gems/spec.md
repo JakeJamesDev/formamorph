@@ -15,6 +15,9 @@ Three well-liked worlds with few downloads get slots on page 1 of Community Crea
 - **Q6.** Each reader can turn gems off with a toggle. It is on by default and is not a sort option.
 - **Q7.** The server logs downloads by day from now on, and rebuilds the log from backups. Approved by the user.
 - **Q8.** Supporter-only worlds are never gems, because most readers can't download them. Revisit if this rule hides good Supporter worlds.
+- **Q14.** The website's Community page Worlds tab gets gems too, through the shared browser host. The goal is to reach everyone. Out of Scope means only the site's standalone listing pages.
+- **Q15.** The toggle is a checkbox like "Updates first", right after the sort control, on desktop and mobile. The badge is a chip in the pinned-mark style with a gem icon and a tooltip. Label, badge and tooltip follow the Writing Guide, including its label case. The tooltip must not claim that most players liked the world: the score is relative to the catalog, not a majority.
+- **Q16.** With P staff-pinned rows at the head, gems take 0-based indexes P+2, P+5 and P+8 of page 1. Fewer than 3 gems fill those slots in that order. A slot past the page size or past the end of the list leaves its gem in sorted place. "Updates first" is part of the sort, so gems are placed after it.
 
 ## Problem Statement
 
