@@ -53,7 +53,7 @@ function avatarsCategory(bridge: ProfileMergeBridge): MergeCategory {
       // The AppData profile wrote this record as a stored Avatar or the older flat shape.
       const stored = (await readRecord(bridge, 'avatars', item.id)) as unknown as StoredModelRecord | FlatAvatar;
       const record = wrappedAvatar(stored);
-      if (!record.data?.blob) throw new Error('Its file is missing.');
+      if (!record.data?.blob) throw new Error('Its file is missing');
       // The library keeps the folder's creation stamp; an edit stamp makes a repeat run tie.
       await modelStorageService.storeModel({ ...record, editedAt: record.editedAt ?? (libraryRevision(record) || undefined) });
     },
@@ -74,7 +74,7 @@ function statTemplatesCategory(bridge: ProfileMergeBridge): MergeCategory {
     source: () => sourceItems(bridge, 'statTemplates', () => undefined),
     copy: async (item) => {
       const template = readTemplate(await readRecord(bridge, 'statTemplates', item.id));
-      if (!template) throw new Error('It is not a stat template.');
+      if (!template) throw new Error('It isn’t a stat template');
       await saveUserTemplate(template);
     },
   };
@@ -92,7 +92,7 @@ function mascotImagesCategory(bridge: ProfileMergeBridge): MergeCategory {
     copy: async (item) => {
       // Narrowed below: the reader sends whatever the AppData store holds.
       const { blob } = (await readRecord(bridge, 'mascotImages', item.id)) as unknown as { blob?: unknown };
-      if (!(blob instanceof Blob)) throw new Error('Its file is missing.');
+      if (!(blob instanceof Blob)) throw new Error('Its file is missing');
       await putMascotImage(item.id, blob);
     },
   };

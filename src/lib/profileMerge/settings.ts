@@ -53,7 +53,7 @@ export function settingsCategory(bridge: ProfileMergeBridge, storage: Storage = 
     },
     copy: async (item) => {
       const value = (await sourceEntries())[item.id];
-      if (typeof value !== 'string') throw new Error('The other copy no longer holds it.');
+      if (typeof value !== 'string') throw new Error('The other copy no longer holds it');
       storage.setItem(item.id, value);
     },
   };

@@ -29,7 +29,7 @@ export async function readRecord(bridge: ProfileMergeBridge, key: string, id: st
     throw new MergeHalt(`The other copy stopped answering (${reasonOf(err)})`);
   }
   if (!record || typeof record !== 'object' || (record as { id?: unknown }).id !== id) {
-    throw new Error('The other copy no longer holds it.');
+    throw new Error('The other copy no longer holds it');
   }
   return reviveBlobs(record as IdRecord);
 }

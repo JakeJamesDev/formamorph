@@ -112,7 +112,7 @@ const moveOrder = (a, b) => Number(isSidecar(b.name)) - Number(isSidecar(a.name)
  */
 async function moveFile({ from, to, name }, onBytes = () => {}) {
   canceled = false;
-  if (!isMovable(name) || path.basename(name) !== name) throw new Error('It is not a model file');
+  if (!isMovable(name) || path.basename(name) !== name) throw new Error('It isn’t a model file');
   const srcFile = path.join(path.resolve(from), name);
   const destFile = path.join(path.resolve(to), name);
   if (fs.existsSync(destFile)) throw new Error(EXISTS_REASON);

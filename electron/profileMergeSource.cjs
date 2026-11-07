@@ -123,7 +123,7 @@ async function openSource({ electron, dir }) {
   });
   await win.loadURL(PARTITION_ORIGIN);
   const run = (fn, arg) => {
-    if (win.isDestroyed()) throw new Error('The AppData profile is closed.');
+    if (win.isDestroyed()) throw new Error('The window closed');
     return win.webContents.executeJavaScript(call(fn, arg));
   };
   return {
