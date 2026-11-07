@@ -321,6 +321,10 @@ _Avoid_: merge, migrate, transfer
 The account behind one Like, as the staff list shows it — with how old the account was at the moment it liked.
 _Avoid_: fan, voter
 
+**Hidden Gem**:
+A world the server picks for its likes in the last 60 days, set against few downloads in that window. Up to three at a time, rotated every 12 hours. The app shows them in slots 3, 6 and 9 of page 1 on the Worlds tab, in the plain browse view only.
+_Avoid_: featured, spotlight, trending
+
 **Listing Changelog**:
 The author-maintained update history on a published listing (any kind) — a date-sorted list of Changelog Entries, newest first. Listing metadata, not world content: it never travels with downloads or exports, and editing it never marks the listing as updated.
 _Avoid_: changelog (unqualified — that's the app's own changelog), version history
