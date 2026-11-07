@@ -72,6 +72,12 @@ Each copy of the app tells the server once per UTC day that it was opened. The s
 - The routes are `POST /api/active-installs` for the daily send (public) and `GET /api/active-installs` for the totals (admin). Both repos use these paths.
 - A public route accepts the daily send. It has its own rate-limit config with a daily budget per address, small enough that one address cannot mint many installs. It uses the same in-memory, address-keyed limiter as the funnel route. Spreading sends across many addresses still works, and that limit is accepted.
 - It requires a valid Install id header and a readable client header. A send with either one missing or invalid is refused and stores nothing. A readable client header always carries a real version, so stored versions are never null.
+- Ticket 01 rulings:
+  - The daily budget is 100 sends per address per 24 hours, in a fixed in-memory window. Carrier NAT can put many real installs behind one address, so the budget errs high.
+  - Readable means a real version, not version zero. A real version with an unrecognized platform is stored under platform `unknown`.
+  - An `active_installs` setting, default off, gates storing. While it is off, a send answers 204 and stores nothing. It is turned on after the policy publishes, as the anonymous-likes setting was.
+  - Replies: 204 for a counted send and for a repeat, 400 `install_header_invalid` for a bad Install id, 400 `client_header_invalid` for an unreadable client header, 429 past the budget.
+  - `?days` defaults to 14 and caps at 366. A breakdown sorts by count descending, then platform, then version.
 - The **server's clock** sets the day. No body is sent. A client clock that is off can only delay or skip its own send, never count twice.
 - A table of month keys holds one random secret per calendar month (UTC). The key is made on the first send of the month with an insert-or-ignore, then read back. A month key is never returned by any route.
 - A table of daily rows holds the UTC day, the hash, the platform and the version. The hash is HMAC-SHA256 of the Install id under the month key. A unique index on day and hash makes a repeated send a no-op, so the first version that day is kept.
