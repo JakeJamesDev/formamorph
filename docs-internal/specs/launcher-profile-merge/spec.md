@@ -46,6 +46,11 @@ A Windows player reported that **Update & Restart** failed with *Not a launcher 
 - **Q21 First-start copy:** the whole-store copy into an empty folder profile stays as it is. With Q17, a fresh copy ends in a silent done marker.
 - **Q22 Marker per category:** the done marker records the category keys that merged. When a build registers a category the marker lacks, the merge is offered again, for the new categories only. Declined stays final for every category.
 - **Q23 Imported autosaves:** an imported save drops its autosave flag and lands as an ordinary save, so Autosaves Kept never prunes it. A replaced save keeps the folder copy's flag.
+- **Q24 Settings keys:** every localStorage key the folder lacks copies, except a denylist of caches (Q10). Device identity, window layout, sign-in, and seen and tutorial flags all copy, since both profiles are on the same machine.
+- **Q25 Model-folder fields:** each field the folder lacks (no file, or the field null or absent) takes the AppData value. A saved field stays, even `searchSubfolders: false`. The main process updates its model locations in memory after the merge.
+- **Q26 Settings restart:** when any settings key copied, the result screen asks for a restart and has a Restart button. Live re-reading is out of scope.
+- **Q27 Legacy default Avatar:** the merge skips the legacy default Avatar id, which the Model Library already deletes on load. The summary does not count it.
+- **Q28 Mascot images:** every Mascot image the folder lacks copies by id, even when no rig in the folder references it.
 
 ## User Stories
 
