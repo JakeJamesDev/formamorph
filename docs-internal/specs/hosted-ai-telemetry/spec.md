@@ -8,21 +8,19 @@ Server-only. The client already sends what this needs. Real budgets, caps and pr
 
 ## Problem Statement
 
-The first days of Formamorph AI usage left four questions that the usage rows cannot answer.
+The first days of Formamorph AI usage left three questions that the usage rows cannot answer.
 
 - **Refusals leave no trace.** A refused call gets an HTTP reply and nothing is stored. Heavy accounts are approaching their weekly allowance, and when one hits it, staff will not see it. Staff also cannot see a rate limit, a pause, or an unconfirmed pledge turning players away.
 - **Staff cannot tell whether near-cap refusals come too early.** Admission reserves the estimated prompt plus all of `max_tokens`. The prompt estimate runs about 1.5× high on every prompt type, and real output is a small part of the cap. The row keeps only the settled cost, so the size of the reservation is lost.
 - **Usage cannot be tied to a build.** New prompt types appear, and some turns have no narration call. Staff cannot see which client version makes them.
-- **Slow calls cannot be tied to an upstream provider.** One cluster of first-token stalls hit every prompt type at the same maximum. The row does not say who served the call.
 
 ## Solution
 
-The proxy records four new things. The admin usage report shows them. The privacy policy says so.
+The proxy records three new things. The admin usage report shows them. The privacy policy says so.
 
 - **Refusal totals.** Each refused Formamorph AI call adds one to a per-day total for its account and refusal code. The total also keeps the tier, the spend subject, and the first and last time of the day.
 - **The reservation.** Each usage row keeps the capped `max_tokens` and the reservation it was admitted on.
 - **The client version.** Each usage row keeps the calling build's version from the client header the app already sends.
-- **The serving provider.** Each usage row keeps the upstream provider that served the call, when the upstream reply names one.
 
 The admin usage report gains sections for each one. The privacy policy lists the new fields.
 
@@ -49,16 +47,13 @@ The abort cause is already recorded and is not part of this spec. The status `ab
 17. As an admin, I want rows from a request with no valid client header to store no version, so that a missing header never looks like a real build.
 18. As an admin, I want the report to show calls, turns and cost per client version, so that I can see how fast players move to a new release.
 19. As an admin, I want the report to show, per client version, how many turns had no narration call, so that I can find the build that makes them.
-20. As an admin, I want each usage row to keep the upstream provider that served it, so that I can tie a stall to a provider.
-21. As an admin, I want the report to show calls, median and worst first-token time per provider, so that I can see whether one provider is slow.
-22. As an admin, I want rows whose upstream reply names no provider to store none, so that the field is never guessed.
-23. As an admin, I want the report never to show a spend subject or an account id in the new sections, so that the report stays as private as it is today.
-24. As a player, I want the privacy policy to list every field recorded about my calls, so that I know what is kept.
-25. As a player, I want the policy to say that refused calls are recorded with their reason, so that nothing is recorded that the policy does not name.
-26. As a player, I want the new records to keep no text from my play, so that the policy's promise about my play still holds.
-27. As a player, I want refused calls to answer exactly as they do today, so that recording them changes nothing I see.
-28. As an admin, I want a failed refusal write never to change the refusal reply, so that telemetry cannot break the proxy.
-29. As an admin, I want the new usage fields to be additive, so that a rollback needs no restore.
+20. As an admin, I want the report never to show a spend subject or an account id in the new sections, so that the report stays as private as it is today.
+21. As a player, I want the privacy policy to list every field recorded about my calls, so that I know what is kept.
+22. As a player, I want the policy to say that refused calls are recorded with their reason, so that nothing is recorded that the policy does not name.
+23. As a player, I want the new records to keep no text from my play, so that the policy's promise about my play still holds.
+24. As a player, I want refused calls to answer exactly as they do today, so that recording them changes nothing I see.
+25. As an admin, I want a failed refusal write never to change the refusal reply, so that telemetry cannot break the proxy.
+26. As an admin, I want the new usage fields to be additive, so that a rollback needs no restore.
 
 ## Implementation Decisions
 
@@ -78,29 +73,26 @@ The abort cause is already recorded and is not part of this spec. The status `ab
 
 **Usage row fields**
 
-- An additive schema step adds four nullable columns to the usage table: capped `max_tokens`, reservation in micro-dollars, client version and upstream provider.
+- An additive schema step adds three nullable columns to the usage table: capped `max_tokens`, reservation in micro-dollars and client version.
 - The capped `max_tokens` and the reservation are the values admission already computes. They are written when the row opens, and settling never changes them.
 - The client version comes from the request's parsed client header. The parser answers version zero (`0.0.0`) for a missing or unreadable header. Version zero stores null, so it never reads as a real build.
-- The upstream provider is read from the upstream reply and written when the row settles. The first ticket step checks with `npm run live:hosted-ai` that the reply names the provider, in which field, and in both stream and whole modes. If no reply names it, that part is dropped, and the spec is updated to say so.
-- The provider value is upstream free text. It is stored only when it matches a fixed short pattern, as the finish reason is today. Anything else stores null.
-- The usage model's open and settle shapes gain these fields. The admitted call carries the capped `max_tokens` and the client version, so a retry row gets them too. A retry stores its own reservation and provider.
+- The usage model's open and settle shapes gain these fields. The admitted call carries the capped `max_tokens` and the client version, so a retry row gets them too. A retry stores its own reservation.
 
 **Admin usage report**
 
-The existing report route gains four sections over the same range:
+The existing report route gains three sections over the same range:
 
 - `refusals`: per day and code, the total count and the distinct accounts. Also per tier and code, and the number of distinct accounts refused for `budget_exhausted` in the range. Distinct accounts count by account id. Erased totals add to the counts but not to the distinct accounts. Shape: `refusals: { days: [{ day, code, count, accounts }], tiers: [{ tier, code, count, accounts }], budgetExhaustedAccounts }`. Rows are sparse, only days and tiers with refusals, sorted by day or tier, then code. The stored empty-string tier reports as null. The day is the UTC day of the refusal, and the range keeps `day >= since`.
 - `reservations`: per prompt type and overall, the summed reservation, the summed settled cost and their ratio. Only rows with status `ok`, cost source `upstream`, `stopped = 0` and a reservation count. Swept rows and estimated costs would force the ratio toward 1.
 - The `reservations` ratio is cost / reservation, so below 1 means the estimate runs high. It is null when the reservation sum is 0. Its calls are the filtered rows, retries included.
 - `clients`: per client version, calls, turns, cost and closed turns with no narration call. Calls are every row in range. A turn is judged on all its rows, not only the in-range ones, and counts once, under the version of its first row, when that first row is in range. A closed turn has no `open` row. Rows with no version count under a null version. The version is stored as the header sent it, prerelease suffix included, with no normalizing.
-- `providers`: per provider, calls, median and worst first-token time. Only streams have a first-token time. Rows with no provider count under null.
 - Calls count every row, retries included, as the existing report sections do.
 
 No new section returns a subject or an account id. That follows how `heaviest` drops `subject` today.
 
 **Privacy policy**
 
-- The Formamorph AI section's list of recorded fields adds the app version and the provider that served the call.
+- The Formamorph AI section's list of recorded fields adds the app version.
 - It adds that each refused call is counted per day with its reason, your account, your Patreon user id or staff grant, your tier, and the first and last time that day.
 - The retention line and the erasure line cover the refusal totals. The Patreon user id stays on them until the 30 days end, as on usage rows.
 - The policy publishes through the existing publish step. Deploy the policy with or before the first build that records the new fields.
@@ -114,7 +106,6 @@ No new section returns a subject or an account id. That follows how `heaviest` d
 - **Refusals.** Each refusal family shows up under its code: entitlement, pause, rate limit, bad request and allowance. `upstream_error` does not show up. A refused request repeated many times adds to one total and does not add rows. The refusal reply body and status are unchanged. A refusal whose write fails still answers the same refusal. The test makes the refusal model's write throw with a spy.
 - **Reservation.** A call's reservation in the report matches the worst case of its estimated prompt and capped `max_tokens`. The settled cost stays apart from it.
 - **Client version.** A call with a valid client header reports under that version. A call without one, or with an unreadable one, reports under null and never under `0.0.0`. A turn with no narration call is counted for its version.
-- **Provider.** A fake upstream reply that names a provider reports under it. One that names none reports under null.
 - **Retention and erasure.** The sweep removes refusal totals past retention and keeps newer ones. Erasure detaches the account and keeps the totals.
 - **Privacy.** No new report section contains a subject or an account id.
 - Prior art: the proxy tests for refusals and streaming, the usage report tests for report sections, and the metering tests for reservations. The suite already has the fake upstream and the admin auth helpers these need.
@@ -122,6 +113,7 @@ No new section returns a subject or an account id. That follows how `heaviest` d
 
 ## Out of Scope
 
+- **The serving provider.** One cluster of first-token stalls hit every prompt type at the same maximum, and staff could not tell who served those calls. The upstream does not say. Checked on 2026-11-07: a live `npm run live:hosted-ai` run in `stream` and `whole` modes shows no provider in the reply body (top-level keys `id`, `object`, `created`, `model`, `choices`, `usage`, `service_tier`, `system_fingerprint`, `x_nanogpt_pricing`; `model` names the model). NanoGPT's provider-selection page says chat responses do not expose the upstream provider. So the usage row has no provider column and the report has no `providers` section. Ask the upstream for a provider field before revisiting this.
 - **A client header that names what started a turn**, such as a choice reroll or a resume. The app version narrows the turns with no narration call to a build, not a flow. That needs a client change and is a separate decision.
 - **The abort cause.** It is already recorded, as the Solution says.
 - **Return rate and behavior after the cap.** These are queries over existing data plus the refusal totals. They need no new recording.
@@ -130,7 +122,6 @@ No new section returns a subject or an account id. That follows how `heaviest` d
 
 ## Further Notes
 
-- **The policy's provider wording is the user's call.** The policy names one "third-party AI provider". If the provider field shows that the upstream routes calls to several providers, the third-party section may need to say so. That is a policy decision, and it is outside this spec's text.
 - The reservation shows how much headroom each call holds. Admission compares the week's spend, open reservations included, so an early refusal comes from other calls' open reservations, not from the new call's own.
 - **Re-acceptance is the user's call.** Publishing the edited policy can require players to accept it again or not. Batch all policy text in this spec into one publish so that players see at most one re-accept.
 - The schema step is additive. The deploy skill's backup rule still applies because the step touches `src/schema/`.
