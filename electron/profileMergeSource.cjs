@@ -30,8 +30,11 @@ async function pageSummaries(stores) {
           if (!at) { resolve(); return; }
           const v = at.value;
           if (v && typeof v === 'object' && typeof v.id === 'string') {
+            // A record that holds a file weighs that file; JSON.stringify sees a Blob as {}.
+            const file = v.data?.blob ?? v.blob;
             let size = 0;
-            try { size = JSON.stringify(v).length; } catch { size = 0; }
+            if (file instanceof Blob) size = file.size;
+            else try { size = JSON.stringify(v).length; } catch { size = 0; }
             const state = v.currentState && typeof v.currentState === 'object' ? v.currentState : {};
             out[key].push({
               id: v.id,
@@ -55,7 +58,9 @@ async function pageSummaries(stores) {
   return out;
 }
 
-/** Page-side: one record by id, or null. Runs in the hidden window. */
+/**
+ * Page-side: one record by id, or null. A Blob crosses as `{ __blob, type, base64 }`. Runs as source alone.
+ */
 async function pageRecord({ db: dbName, store, id }) {
   if (!(await indexedDB.databases()).some((d) => d.name === dbName)) return null;
   const db = await new Promise((resolve, reject) => {
@@ -64,9 +69,10 @@ async function pageRecord({ db: dbName, store, id }) {
     req.onerror = () => reject(req.error);
     req.onblocked = () => reject(new Error(`${dbName} is blocked`));
   });
+  let record;
   try {
     if (!db.objectStoreNames.contains(store)) return null;
-    return await new Promise((resolve, reject) => {
+    record = await new Promise((resolve, reject) => {
       const req = db.transaction([store], 'readonly').objectStore(store).get(id);
       req.onsuccess = () => resolve(req.result ?? null);
       req.onerror = () => reject(req.error);
@@ -74,6 +80,19 @@ async function pageRecord({ db: dbName, store, id }) {
   } finally {
     db.close();
   }
+  const encode = async (value) => {
+    if (value instanceof Blob) {
+      const bytes = new Uint8Array(await value.arrayBuffer());
+      let binary = '';
+      for (let at = 0; at < bytes.length; at += 0x8000) binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+      return { __blob: true, type: value.type, base64: btoa(binary) };
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+    const out = {};
+    for (const [key, inner] of Object.entries(value)) out[key] = await encode(inner);
+    return out;
+  };
+  return record === null ? null : encode(record);
 }
 
 /** Page-side: every localStorage entry as strings. Runs in the hidden window. */
@@ -115,4 +134,4 @@ async function openSource({ electron, dir }) {
   };
 }
 
-module.exports = { openSource };
+module.exports = { openSource, pageSummaries, pageRecord };

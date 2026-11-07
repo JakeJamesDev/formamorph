@@ -14,6 +14,9 @@ const SOURCE_STORES = {
   saves: { db: 'FORMAMORPH_DB', store: 'saveRecords' },
   entities: { db: 'entitiesDB', store: 'entities' },
   dictionaries: { db: 'dictionariesDB', store: 'dictionaries' },
+  avatars: { db: 'FORMAMORPH_MODELS_DB', store: 'models' },
+  statTemplates: { db: 'statTemplatesDB', store: 'templates' },
+  mascotImages: { db: 'FORMAMORPH_MASCOT_DB', store: 'images' },
 };
 
 const samePath = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();

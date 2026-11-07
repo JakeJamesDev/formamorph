@@ -31,7 +31,12 @@ describe('ProfileMergeDialog', () => {
     fireEvent.pointerDown(document.body);
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(Object.values(h).some((fn) => fn.mock.calls.length > 0)).toBe(false);
-    expect(screen.getAllByRole('progressbar')).toHaveLength(4);
+    expect(screen.getAllByRole('progressbar')).toHaveLength(7);
+  });
+
+  it.each(['offer', 'run'])('lists Avatars, Stat Templates and Mascot Images in the %s state', (step) => {
+    render(<ProfileMergeDialog view={devProfileMergeView(step)} {...handlers()} />);
+    for (const label of ['Avatars', 'Stat Templates', 'Mascot Images']) expect(screen.getByText(label)).toBeTruthy();
   });
 
   it('closes the offer on Escape as Not Now', () => {

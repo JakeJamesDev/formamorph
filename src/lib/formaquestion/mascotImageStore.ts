@@ -32,6 +32,17 @@ export async function getMascotImage(id: string): Promise<Blob | null> {
   return record?.blob ?? null;
 }
 
+/** Stores one image under a given id. */
+export async function putMascotImage(id: string, blob: Blob): Promise<void> {
+  const record: MascotImageRecord = { id, blob };
+  await promisifyRequest((await objectStore('readwrite')).put(record));
+}
+
+/** The id of every stored image. */
+export async function listMascotImageIds(): Promise<string[]> {
+  return (await promisifyRequest<IDBValidKey[]>((await objectStore('readonly')).getAllKeys())).map(String);
+}
+
 /** Removes one image. A missing id is not an error. */
 export async function deleteMascotImage(id: string): Promise<void> {
   await promisifyRequest((await objectStore('readwrite')).delete(id));

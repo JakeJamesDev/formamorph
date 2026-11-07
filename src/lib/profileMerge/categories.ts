@@ -11,10 +11,12 @@ import { getAllSaveRecords, getOrder, getSaveRecord, putSaveRecord, setOrder } f
 import { openWorldLibrary, readAllWorldMeta } from '@/lib/worldLibrary';
 import type { IdRecord } from '@/lib/backupIndex';
 import type { SaveMeta } from '@/lib/saveOrdering';
-import { MergeHalt, reasonOf, type MergeCategory, type MergeItem } from './engine';
+import type { MergeCategory, MergeItem } from './engine';
 import type { ProfileMergeBridge, SourceSummary } from './bridge';
 import { appendedSaveOrders, importedSave } from './saveOrder';
 import { modelFolderCategory, settingsCategory } from './settings';
+import { readRecord, sourceItems, textOr } from './sourceRead';
+import { localStoreCategories } from './localCategories';
 
 type LibraryKey = 'worlds' | 'entities' | 'dictionaries';
 
@@ -33,8 +35,6 @@ interface Stamped {
   createdAt?: string;
 }
 
-const textOr = (value: unknown, fallback: string) => (typeof value === 'string' && value ? value : fallback);
-
 const libraryItem = (record: Stamped): MergeItem => ({
   id: record.id,
   label: textOr(record.name, record.id),
@@ -44,28 +44,7 @@ const libraryItem = (record: Stamped): MergeItem => ({
 
 const saveTimestamp = (record: SaveRecord): string | undefined => record.currentState?.timestamp || undefined;
 
-const sourceItems = async (bridge: ProfileMergeBridge, key: string, stampOf: (s: SourceSummary) => string | undefined) =>
-  ((await bridge.summaries([key]))[key] ?? []).map((summary): MergeItem => ({
-    id: summary.id,
-    label: textOr(summary.name, summary.id),
-    stamp: stampOf(summary),
-    size: summary.size,
-  }));
-
 const librarySummaryStamp = (summary: SourceSummary) => libraryRevision(summary) || undefined;
-
-async function readRecord(bridge: ProfileMergeBridge, key: string, id: string): Promise<IdRecord> {
-  let record: unknown;
-  try {
-    record = await bridge.record(key, id);
-  } catch (err) {
-    throw new MergeHalt(`The other copy stopped answering (${reasonOf(err)})`);
-  }
-  if (!record || typeof record !== 'object' || (record as { id?: unknown }).id !== id) {
-    throw new Error('The other copy no longer holds it.');
-  }
-  return record as IdRecord;
-}
 
 async function worldTargets(): Promise<MergeItem[]> {
   const db = await openWorldLibrary();
@@ -160,5 +139,6 @@ export function mergeCategories(bridge: ProfileMergeBridge): MergeCategory[] {
     libraryCategory(bridge, 'entities'),
     libraryCategory(bridge, 'worlds'),
     savesCategory(bridge),
+    ...localStoreCategories(bridge),
   ];
 }

@@ -9,9 +9,16 @@ const plan = (key: string, label: string, add: number, replace: number, keep: nu
   key, label, stamped: true, unit: 'items', add: items(`${key}-new`, add), replace: items(`${key}-old`, replace), keep: items(`${key}-kept`, keep),
 });
 
+const unstamped = (key: string, label: string, add: number, keep: number): CategoryPlan => ({
+  ...plan(key, label, add, 0, keep), stamped: false,
+});
+
 const PLANS: CategoryPlan[] = [
+  unstamped('statTemplates', 'Stat Templates', 2, 1),
   plan('dictionaries', 'Dictionaries', 2, 0, 1),
   plan('entities', 'Entities', 5, 1, 3),
+  unstamped('mascotImages', 'Mascot Images', 1, 2),
+  plan('avatars', 'Avatars', 2, 1, 1),
   plan('worlds', 'Worlds', 3, 1, 2),
   plan('saves', 'Saves', 12, 0, 4),
 ];
@@ -34,8 +41,11 @@ export function devProfileMergeView(step: string | undefined): ProfileMergeView 
       step: 'result',
       results: [
         { key: 'settings', label: 'Settings and Sign-In', added: 14, replaced: 0, kept: 31, skipped: [] },
+        { key: 'statTemplates', label: 'Stat Templates', added: 2, replaced: 0, kept: 1, skipped: [] },
         { key: 'dictionaries', label: 'Dictionaries', added: 2, replaced: 0, kept: 1, skipped: [] },
         { key: 'entities', label: 'Entities', added: 5, replaced: 1, kept: 3, skipped: [] },
+        { key: 'mascotImages', label: 'Mascot Images', added: 1, replaced: 0, kept: 2, skipped: [] },
+        { key: 'avatars', label: 'Avatars', added: 2, replaced: 1, kept: 1, skipped: [] },
         { key: 'worlds', label: 'Worlds', added: 2, replaced: 1, kept: 2, skipped: [{ label: 'Sedge Landing', reason: 'There isn’t enough storage space' }] },
         { key: 'saves', label: 'Saves', added: 12, replaced: 0, kept: 4, skipped: [] },
       ],
