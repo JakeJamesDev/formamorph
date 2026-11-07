@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Game view tests for bundled saves and the Demo AI card now take under half the worker time.** Every bundled save loads and settles in `GameplayContext.bundledSaves.test.tsx`, and five cases still play a turn in the view.
   - **Test files now spend about 14% less time importing and 30% less in setup.** Node-environment tests skip Testing Library. The date field's calendar loads when a pointer or focus reaches its button.
   - **The Focus Classifier probe scores entity tiers and trimmed narration against hand labels.** It reports Focus recall, tier match, parse failures and tokens saved, and compares full and trimmed rosters on continuity.
+  - **`npm run title-card -- --layout cover` captures a 1260x1000 itch.io cover image.** It uses the title card's wordmark and app shots, with the model on the right.
 
 #### ➖ Removed
 

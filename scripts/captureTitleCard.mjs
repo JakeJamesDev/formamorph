@@ -4,6 +4,7 @@
 //   npm run title-card
 //   node scripts/captureTitleCard.mjs --base http://localhost:5180 --only alt --t 2.5
 //   node scripts/captureTitleCard.mjs --layout banner   (2560x1440 YouTube banner, youtube-banner-*)
+//   node scripts/captureTitleCard.mjs --layout cover    (1260x1000 itch.io cover, itch-cover-*)
 //
 // Chromium is the encoder, so the script needs no image dependency of its own.
 import { chromium } from '@playwright/test';
@@ -17,9 +18,11 @@ const arg = (name, fallback) => {
 const BASE = arg('base', 'http://localhost:5180');
 const PAGE = `${BASE}/build-assets/title-card/`;
 const OUT = 'thumbnails';
-const banner = arg('layout', '') === 'banner';
-const SIZE = banner ? { width: 2560, height: 1440 } : { width: 1920, height: 1080 };
-const NAME = banner ? 'youtube-banner' : 'title-card';
+const layout = arg('layout', '');
+const banner = layout === 'banner';
+const cover = layout === 'cover';
+const SIZE = banner ? { width: 2560, height: 1440 } : cover ? { width: 1260, height: 1000 } : { width: 1920, height: 1080 };
+const NAME = banner ? 'youtube-banner' : cover ? 'itch-cover' : 'title-card';
 const WEBP_QUALITY = 0.9;
 const ALL = ['default', 'alt', 'praline'];
 const only = arg('only', '').split(',').filter(Boolean);
@@ -49,7 +52,7 @@ for (const avatar of wanted) {
   const url = new URL(PAGE);
   url.searchParams.set('avatar', avatar);
   url.searchParams.set('scale', '1');
-  if (banner) url.searchParams.set('layout', 'banner');
+  if (layout) url.searchParams.set('layout', layout);
   if (t) url.searchParams.set('t', t);
   await page.goto(url.href);
   await page.evaluate(() => document.fonts.ready);
