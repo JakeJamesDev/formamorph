@@ -1,6 +1,6 @@
 # 01: Direct-Start Notice
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,12 +15,22 @@ The launcher handoff module owns the step. The message box and spawn are injecte
 
 ## Acceptance criteria
 
-- [ ] A direct start shows the message box once, with the launcher's full path in its text.
-- [ ] **Show in Folder** reveals the launcher in Explorer, and the handoff still runs.
-- [ ] **OK** runs the handoff.
-- [ ] A launcher start, a non-Windows platform and an unpackaged run show no message box.
-- [ ] When the launcher is missing, the app shows no message box and keeps running.
-- [ ] Tests use a fake dialog and spawn. Removing the message box call makes a test fail.
-- [ ] A changelog fragment covers the notice.
+- [x] A direct start shows the message box once, with the launcher's full path in its text. (`direct-start notice` test)
+- [x] **Show in Folder** reveals the launcher in Explorer, and the handoff still runs. (reveal test; a throwing reveal still spawns)
+- [x] **OK** runs the handoff. (OK test)
+- [x] A launcher start, a non-Windows platform and an unpackaged run show no message box. (`launcherToRestartThrough` returns null, so `main.cjs` never calls `handOff`)
+- [x] When the launcher is missing, the app shows no message box and keeps running. (same null path)
+- [x] Tests use a fake dialog and spawn. Removing the message box call makes a test fail. (mutation run: 3 tests failed)
+- [x] A changelog fragment covers the notice.
 
 For you: start a packaged build from `app\Formamorph.exe` and read the message box.
+
+## Landed
+
+**Not verified**
+- None unticked. `main.cjs` wiring (dialog, `shell.showItemInFolder`, spawn passed to `handOff`) has no test; the packaged build is its only check.
+- `showMessageBoxSync` and `showItemInFolder` before the app is ready are unverified. A throw is caught and the restart still runs.
+
+**For you**
+- Start a packaged build from `app\Formamorph.exe` and read the message box.
+- Check that the box appears before any window, and that Show in Folder selects the launcher in Explorer.

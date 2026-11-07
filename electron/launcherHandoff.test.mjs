@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import handoff from './launcherHandoff.cjs';
 
 const { launcherToRestartThrough, taskbarDetails } = handoff;
@@ -37,6 +37,50 @@ describe('launcher handoff', () => {
 
   it('matches the app folder in any case', () => {
     expect(start({ execPath: `${ROOT}\\App\\Formamorph.exe` })).toBe(LAUNCHER);
+  });
+});
+
+describe('direct-start notice', () => {
+  const run = (choice) => {
+    const calls = [];
+    const dialog = { showMessageBoxSync: (opts) => { calls.push(['dialog', opts]); return choice; } };
+    handoff.handOff({
+      launcher: LAUNCHER,
+      argv: ['--x'],
+      dialog,
+      reveal: (f) => calls.push(['reveal', f]),
+      spawn: (exe, argv) => calls.push(['spawn', exe, argv]),
+    });
+    return calls;
+  };
+
+  it('shows the box once with the launcher path, then starts the launcher on OK', () => {
+    const calls = run(0);
+    expect(calls.map((c) => c[0])).toEqual(['dialog', 'spawn']);
+    expect(calls[0][1].detail).toContain(LAUNCHER);
+    expect(calls[0][1].buttons).toEqual(['OK', 'Show in Folder']);
+    expect(calls[1]).toEqual(['spawn', LAUNCHER, ['--x']]);
+  });
+
+  it('reveals the launcher on Show in Folder, then still starts it', () => {
+    const calls = run(1);
+    expect(calls.map((c) => c[0])).toEqual(['dialog', 'reveal', 'spawn']);
+    expect(calls[1]).toEqual(['reveal', LAUNCHER]);
+  });
+
+  it('still starts the launcher when the box or the reveal fails', () => {
+    const spawned = [];
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const boom = () => { throw new Error('boom'); };
+    const base = { launcher: LAUNCHER, argv: [], spawn: (exe) => spawned.push(exe) };
+    handoff.handOff({ ...base, dialog: { showMessageBoxSync: boom }, reveal: () => {} });
+    handoff.handOff({ ...base, dialog: { showMessageBoxSync: () => 1 }, reveal: boom });
+    quiet.mockRestore();
+    expect(spawned).toEqual([LAUNCHER, LAUNCHER]);
+  });
+
+  it('shows the box before the launcher starts', () => {
+    expect(run(0)[0][0]).toBe('dialog');
   });
 });
 

@@ -25,7 +25,7 @@ const { confirmLeave } = require('./leavePrompt.cjs');
 const { windowChromeOptions, setWindowSymbolColor, watchFullScreen, isFullScreen, leaveFullScreen } = require('./windowChrome.cjs');
 const updater = require('./updater.cjs');
 const perfMeter = require('./perfMeter.cjs');
-const { launcherToRestartThrough, taskbarDetails } = require('./launcherHandoff.cjs');
+const { launcherToRestartThrough, handOff, taskbarDetails } = require('./launcherHandoff.cjs');
 const { spawn } = require('node:child_process');
 
 const APP_ID = 'dev.jakejames.formamorph';
@@ -40,9 +40,15 @@ const handoffLauncher = launcherToRestartThrough({
 });
 if (handoffLauncher) {
   try {
-    spawn(handoffLauncher, process.argv.slice(1), { detached: true, stdio: 'ignore' })
-      .on('error', (err) => console.error('Launcher handoff failed:', err))
-      .unref();
+    handOff({
+      launcher: handoffLauncher,
+      argv: process.argv.slice(1),
+      dialog,
+      reveal: (file) => shell.showItemInFolder(file),
+      spawn: (exe, argv) => spawn(exe, argv, { detached: true, stdio: 'ignore' })
+        .on('error', (err) => console.error('Launcher handoff failed:', err))
+        .unref(),
+    });
     app.exit(0);
   } catch (err) {
     console.error('Launcher handoff failed:', err); // keep running unhandled rather than not start at all
