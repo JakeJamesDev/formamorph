@@ -57,7 +57,9 @@ import { ClearSearchButton } from "@/components/ui/search-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
-import { ArrowLeft, Music, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
+import { ArrowLeft, Music, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen, NotebookText, Gamepad2, HeartPulse } from "lucide-react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { CollapsingTabsList } from "@/components/ui/collapsing-tabs-list";
 import { Dialog, DialogContent, DialogTitle, dialogTitleRow } from "@/components/ui/dialog";
 import { AI_CONTEXT_DIALOG_SIZE } from "@/components/aiContext/aiContextDialogSize";
 import { cn } from "@/lib/utils";
@@ -498,6 +500,14 @@ const DICTIONARY_VARIABLE = variableForToken('<DICTIONARY>')!;
 
 // A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
 const EMPTY_IMAGES: string[] = [];
+
+// The mobile game view's three panels, left to right.
+const MOBILE_PANEL_TABS = [
+  { value: "character", icon: NotebookText, label: "Story" },
+  { value: "game", icon: Gamepad2, label: "Game" },
+  { value: "status", icon: HeartPulse, label: "Status" },
+] as const;
+type MobilePanel = (typeof MOBILE_PANEL_TABS)[number]["value"];
 
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
@@ -1530,7 +1540,15 @@ const GameViewer = ({
     return () => { resize.disconnect(); mutations.disconnect(); };
   }, [isDebugOpen, debugFindTerms, syncDebugTicks]);
   const isMobile = useIsMobile();
-  const [mobilePanel, setMobilePanel] = useState("game");
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>("game");
+  // Which way the mobile panels slide: toward a tab to the right is "next".
+  const [mobileSlide, setMobileSlide] = useState<"next" | "back">("next");
+  const [mobileShown, setMobileShown] = useState(mobilePanel);
+  if (mobileShown !== mobilePanel) {
+    const order = (panel: MobilePanel) => MOBILE_PANEL_TABS.findIndex((tab) => tab.value === panel);
+    setMobileSlide(order(mobilePanel) > order(mobileShown) ? "next" : "back");
+    setMobileShown(mobilePanel);
+  }
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   /**
@@ -6327,36 +6345,22 @@ const GameViewer = ({
       <div aria-hidden data-window-corner-gradient="" className="window-corner-gradient -z-[5] hidden [[data-window-overlay]_&]:block" />
       <ThemedToastContainer />
 
-      {isMobile && !uiHidden && (
-        <div className="flex shrink-0 items-center gap-1 mb-1">
-          {[
-            { key: "character", label: "Story" },
-            { key: "game", label: "Game" },
-            { key: "status", label: "Status" },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setMobilePanel(t.key)}
-              className={`flex-1 min-w-0 rounded py-2 text-helper ${
-                mobilePanel === t.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-          {/* The single menu joins the tab row on mobile. */}
-          {menuModal(false)}
-        </div>
-      )}
-
       {!uiHidden && (isMobile ? (
-        <div className="flex-grow min-h-0 flex flex-col">
-          {mobilePanel === "character" && leftPanel}
-          {mobilePanel === "game" && middlePanel}
-          {mobilePanel === "status" && rightPanel}
-        </div>
+        <Tabs value={mobilePanel} onValueChange={(next) => setMobilePanel(next as MobilePanel)} className="flex-grow min-h-0 flex flex-col">
+          <div className="flex shrink-0 items-center gap-1 mb-1">
+            <CollapsingTabsList aria-label="Game Panels" value={mobilePanel} tabs={MOBILE_PANEL_TABS} className="flex-1" />
+            {/* The single menu joins the tab row on mobile. */}
+            {menuModal(false)}
+          </div>
+          {/* The exiting panel stays mounted through its slide out. */}
+          <div data-slide={mobileSlide} className="mobile-panel-stage relative flex-grow min-h-0 overflow-hidden">
+            {MOBILE_PANEL_TABS.map(({ value }) => (
+              <TabsContent key={value} value={value} className="mobile-panel absolute inset-0 mt-0 flex-col [&:not([hidden])]:flex">
+                {value === "character" ? leftPanel : value === "game" ? middlePanel : rightPanel}
+              </TabsContent>
+            ))}
+          </div>
+        </Tabs>
       ) : (
         <>
           <SideColumn

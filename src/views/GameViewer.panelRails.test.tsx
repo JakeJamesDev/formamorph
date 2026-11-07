@@ -172,11 +172,15 @@ describe('the collapsed state', () => {
       expect(rail('Status')).toBeNull();
       expect(screen.queryByRole('button', { name: /^(Collapse|Dock) Panel$/ })).toBeNull();
     };
-    fireEvent.click(await screen.findByRole('button', { name: 'Story' }));
+    // Game sits between Story and Status, so each switch slides the opposite way.
+    const slide = () => document.querySelector('[data-slide]')?.getAttribute('data-slide');
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Story' }));
     expect(await screen.findByRole('tablist', { name: 'Story' })).toBeInTheDocument();
+    expect(slide()).toBe('back');
     noRails();
-    fireEvent.click(screen.getByRole('button', { name: 'Status' }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Status' }));
     expect(await screen.findByRole('tablist', { name: 'Status' })).toBeInTheDocument();
+    expect(slide()).toBe('next');
     noRails();
   });
 });
@@ -291,9 +295,9 @@ describe('the drawer', () => {
     // A tab change from the rail re-renders the view in the mobile layout, and a mobile tab back again.
     device.mobile = true;
     await user.click(icon('Story', 'Memory'));
-    const gameTab = await screen.findByRole('button', { name: 'Game' });
+    const gameTab = await screen.findByRole('tab', { name: 'Game' });
     device.mobile = false;
-    fireEvent.click(gameTab);
+    fireEvent.mouseDown(gameTab);
 
     expect(await strip('left', 'Dock Panel')).toBeInTheDocument();
     expect(openDrawer()).toBeNull();
