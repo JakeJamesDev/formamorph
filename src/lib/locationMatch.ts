@@ -49,11 +49,8 @@ export const placeNameKey = (name: string): string => stripArticle(name.trim().t
 
 /** The name in `names` that `lower` (a lowercased reply) is, give or take a leading article. */
 function exactName(lower: string, names: string[]): string | undefined {
-  const lowerBare = stripArticle(lower);
-  return names.find((n) => {
-    const nl = n.toLowerCase();
-    return nl === lower || stripArticle(nl) === lowerBare;
-  });
+  const key = placeNameKey(lower);
+  return names.find((n) => n.toLowerCase() === lower || placeNameKey(n) === key);
 }
 
 /**

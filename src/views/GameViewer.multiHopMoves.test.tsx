@@ -36,6 +36,7 @@ const ledger: Item = {
   statEffects: [{ id: 'r1', statId: 'vigor', amount: 1, timing: 'owned', facet: 'value', op: 'add' }],
 };
 
+// Partial world: harborWorld supplies the rest, and the item and placement fields are the ones the passes read.
 const worldWith = (over: Partial<World> = {}): World => ({
   ...harborWorld({
     stats: [vigor],
@@ -149,6 +150,8 @@ describe('a move of more than one step in Auto mode', () => {
     expect(endpoint.sent).toEqual(['router', 'narrated']);
     await waitFor(() => expect(play.currentLocation?.id).toBe('store'));
     expect(endpoint.after.choices).toContain(CURRENT_STORE);
+    expect(endpoint.after.stats).toContain('Shop Ledger');
+    expect(endpoint.after.inventory).toContain('Shop Ledger');
   });
 
   it('leaves the player where they stand on a place past 3 moves', async () => {

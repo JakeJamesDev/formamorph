@@ -29,6 +29,7 @@ import {
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { navigableDestinationEntries, walkableDestinations } from '@/lib/locationContext';
+import { WALK_MOVE_CAP } from '@/lib/locationGraph';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { TURN_PASSES } from '@/lib/turnPipeline/turnPasses';
 import { emptyTurnMaterial } from '@/lib/turnPipeline/turnPlan';
@@ -180,8 +181,8 @@ const materialOf = (scene: Scene): Record<Arm, ReturnType<typeof sceneMaterial>[
   if (scene.expect !== 'NONE' && !destinations.includes(scene.expect)) throw new Error(`${scene.id}: ${scene.expect} is not reachable`);
   if (scene.set === 'far') {
     const moves = movesTo(world, location, scene.expect);
-    if (before.destinations.includes(scene.expect) || moves === null || moves < 2 || moves > 3) {
-      throw new Error(`${scene.id}: ${scene.expect} must be 2 or 3 moves away`);
+    if (before.destinations.includes(scene.expect) || moves === null || moves < 2 || moves > WALK_MOVE_CAP) {
+      throw new Error(`${scene.id}: ${scene.expect} must be 2 to ${WALK_MOVE_CAP} moves away`);
     }
     hopsOf.set(scene.id, moves);
   }
@@ -226,10 +227,10 @@ async function readStream(res: Response, began: number): Promise<{ text: string;
   let firstMs = NaN;
   for (;;) {
     const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
+    // At the end of the stream, a last line without a newline still counts.
+    buffer = done ? '' : lines.pop() ?? '';
     for (const line of lines) {
       const data = line.startsWith('data:') ? line.slice(5).trim() : '';
       if (!data || data === '[DONE]') continue;
@@ -238,6 +239,7 @@ async function readStream(res: Response, began: number): Promise<{ text: string;
       if (Number.isNaN(firstMs)) firstMs = Date.now() - began;
       text += delta;
     }
+    if (done) break;
   }
   return { text, firstMs };
 }
