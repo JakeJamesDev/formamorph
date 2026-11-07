@@ -1,11 +1,16 @@
-// Owned traits during play: which are active, and the pins each owner's traits lay.
+// Owned traits during play: which are active, and the pins every owner's traits and bands lay.
 
-import type { DiscoveredEntity, Entity, OwnedTraitState, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
-import { resolveOwners, type Owner, type OwnerWorld } from './owners';
+import type {
+  DiscoveredEntity, Entity, OwnedTraitState, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup,
+} from '@/types';
+import { inCast, playsAs, resolveOwners, type Owner, type OwnerWorld } from './owners';
 import { copyLookup, customPersonaEntity, readerFor, type CopyLookup, type CopyReader } from './blueprints';
 import { characterAsPlayer } from './builtinPlaceholders';
 import { entityTexts } from './entityTexts';
-import { bindBlueprintPins, collectPins, type PinSources } from './placeholderPins';
+import { bindBlueprintPins, bindStatPins, collectPins, type EntityPinStats, type PinnableStat, type PinSources } from './placeholderPins';
+import { blueprintIds } from './placeholderBlueprints';
+import type { PlaceholderHomesWorld } from './placeholderHomes';
+import { statBlueprintIds, type StatLinkWorld } from './statLinks';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
@@ -199,14 +204,27 @@ export interface OwnerPinState {
   owned: Readonly<Record<string, readonly string[]>>;
   /** The world's shared placeholders, the blueprints among them. */
   sharedPlaceholders: readonly Placeholder[];
+  /** Each entity's own stat values, by entity id. Absent = no entity band pins. */
+  entityStats?: Readonly<Record<string, readonly PinnableStat[]>>;
+  /** The world's Blueprints: a band on a Blueprint stat pins only its owner's copy of a Blueprint placeholder. */
+  blueprints?: PinBlueprints;
 }
+
+/** The ids of the world's Blueprint stats and Blueprint placeholders. */
+export interface PinBlueprints {
+  stats: ReadonlySet<string>;
+  placeholders: ReadonlySet<string>;
+}
+
+/** {@link PinBlueprints} read off a world's stat and placeholder lists. */
+export const pinBlueprintsOf = (world: StatLinkWorld & PlaceholderHomesWorld): PinBlueprints =>
+  ({ stats: statBlueprintIds(world), placeholders: blueprintIds(world) });
 
 /** The pins in force per owner. */
 export interface PinSet {
-  /** World-level text, and the played persona's own: the world pins plus the global and played traits. */
+  /** The pins every text reads: global, persona and every entity's traits and bands. */
   world: Record<string, string>;
-  /** One owner's own text. A cast entity's lays its traits over `world`; the played persona and null (global
-   *  scope) read `world`. */
+  /** One owner's own text. Every owner reads `world`; only its copies differ. */
   of: (ownerId: string | null | undefined) => Record<string, string>;
   /** The trait with its blueprint pins traced to that owner's copies, for its own card. */
   bind: (trait: Trait, ownerId: string | null | undefined) => Trait;
@@ -214,26 +232,45 @@ export interface PinSet {
   copies: (ownerId: string | null | undefined) => CopyLookup;
 }
 
+/** Owner pin state and the world-level sources, as one collection reads them. */
+type OwnerPinSources = Omit<PinSources, 'traits' | 'disabledTraitIds' | 'statTraits' | 'entityBands'>;
+
+/** {@link ownerPins} with its sources shown: what the one collection lays, for a reader that wants the layers. */
+export interface OwnerPinPlan {
+  sources: PinSources;
+  bind: PinSet['bind'];
+  copies: PinSet['copies'];
+}
+
 /**
- * The pins in force per owner, with `sources` supplying the world pins. The played text's traits lay first:
- * every global trait in one-tree order, then each played entity's own in one-tree order, then the played
- * entities' links, so the persona wins over global wherever its node sits. A played entity is the world
- * persona, or the Custom Persona entity and a library persona. A cast entity's active traits lay after them
- * in its own tree order, so it wins in its own text. Only the played text's traits switch stat bands.
+ * The pins every text reads, one collection for all. Inside one kind the cast lays first in entity order, then
+ * the played entities, then global scope, so the later lay wins. Each entity's stats follow its own traits.
  */
-export function ownerPins(state: OwnerPinState, sources: Omit<PinSources, 'traits' | 'disabledTraitIds' | 'statTraits'>): PinSet {
-  const { world, persona, library = [], owned, sharedPlaceholders } = state;
+export function ownerPins(state: OwnerPinState, sources: OwnerPinSources): PinSet {
+  const plan = ownerPinPlan(state, sources);
+  const pins = collectPins(plan.sources);
+  return { world: pins, of: () => pins, bind: plan.bind, copies: plan.copies };
+}
+
+/** The one collection {@link ownerPins} runs, before it runs. */
+export function ownerPinPlan(state: OwnerPinState, sources: OwnerPinSources): OwnerPinPlan {
+  const { world, persona, library = [], owned, sharedPlaceholders, entityStats = {}, blueprints: pinBlueprints } = state;
   const { global, owners } = resolveOwners(world, persona, library);
   const played = playedEntityId(persona);
   const playedOwners = owners.filter((b) => b.isPlayer);
-  const personaEntity = played ? [...world.entities, ...library].find((e) => e.id === played) ?? null : null;
+  const allEntities = [...world.entities, ...library];
+  const personaEntity = played ? allEntities.find((e) => e.id === played) ?? null : null;
+  const libraryIds = new Set(library.map((e) => e.id));
+  const playsHere = (e: Entity) => (libraryIds.has(e.id) ? e.id === played : playsAs(e, persona));
+  const presentHere = (e: Entity) => libraryIds.has(e.id) || playsHere(e) || inCast(e, persona);
   // No owner, which is global scope, reads the played text.
-  const readsPlayed = (id: string | null | undefined) => !id || playedOwners.some((b) => b.id === id);
+  const readsPlayed = (id: string | null | undefined) => !id || playedOwners.some((b) => b.id === id)
+    || allEntities.some((e) => e.id === id && playsHere(e));
 
   const blueprints = { placeholders: sharedPlaceholders, entities: world.entities };
   const readerOf = (id: string | null | undefined): CopyReader => (readsPlayed(id)
     ? readerFor(persona, personaEntity, true)
-    : readerFor(persona, owners.find((b) => b.id === id)?.entity ?? null, false));
+    : readerFor(persona, allEntities.find((e) => e.id === id) ?? null, false));
   const bind = (trait: Trait, id: string | null | undefined) => bindBlueprintPins(trait, blueprints, readerOf(id));
   const lookups = new Map<string | null, CopyLookup>();
   const copies = (id: string | null | undefined) => {
@@ -252,27 +289,32 @@ export function ownerPins(state: OwnerPinState, sources: Omit<PinSources, 'trait
   const heldIds = new Set(global.traits.map((t) => t.id));
   const playedOwn = playedOwners.flatMap((b) => activeIn(b).filter((t) => !b.linkOf.has(t.id)));
   const treeOrder = traitOrderIndex(tree.traits, tree.groups);
-  const playedTraits = [
-    ...inAuthoredOrder(state.globalTraits.filter((t) => heldIds.has(t.id)), treeOrder),
+  const globalOn = inAuthoredOrder(state.globalTraits.filter((t) => heldIds.has(t.id)), treeOrder).filter((t) => !off.has(t.id));
+  const playedOn = [
     ...inAuthoredOrder(playedOwn, treeOrder),
     ...playedOwners.flatMap((b) => inOwnerOrder(activeIn(b).filter((t) => b.linkOf.has(t.id)), b)),
   ].filter((t) => !off.has(t.id));
-  const playedLaid = playedTraits.map((t) => bind(t, null));
-  const collect = (traits: readonly Trait[]) => collectPins({ ...sources, traits, statTraits: playedTraits });
+  const castOwners = owners.filter((b) => b.present && !b.isPlayer);
+  const castLaid = castOwners.flatMap((b) => inOwnerOrder(activeIn(b), b).map((t) => bind(t, b.id)));
 
-  const worldPins = collect(playedLaid);
-  const cache = new Map<string, Record<string, string>>();
-  const of = (id: string | null | undefined) => {
-    if (readsPlayed(id)) return worldPins;
-    let pins = cache.get(id!);
-    if (!pins) {
-      const owner = owners.find((b) => b.id === id);
-      const own = owner ? inOwnerOrder(activeIn(owner), owner).map((t) => bind(t, id)).filter((t) => t.placeholderPins?.length) : [];
-      cache.set(id!, (pins = own.length ? collect([...playedLaid, ...own]) : worldPins));
-    }
-    return pins;
+  // Each entity's own bands, cast first, in entity order, then the played entities'.
+  const isBlueprint = (id: string) => !!pinBlueprints?.placeholders.has(id);
+  const bandsOf = (entity: Entity): EntityPinStats[] => {
+    const held = entityStats[entity.id];
+    if (!held?.length) return [];
+    const reader = readerOf(entity.id);
+    const stats = held.map((s) => bindStatPins(s, blueprints, reader, !!pinBlueprints?.stats.has(s.id), isBlueprint));
+    return [{ ownerId: entity.id, stats, statTraits: activeIn(owners.find((b) => b.id === entity.id)) }];
   };
-  return { world: worldPins, of, bind, copies };
+  const present = allEntities.filter(presentHere);
+  const entityBands = [
+    ...present.filter((e) => !playsHere(e)).flatMap(bandsOf),
+    ...present.filter(playsHere).flatMap(bandsOf),
+  ];
+
+  const statTraits = [...globalOn, ...playedOn];
+  const traits = [...castLaid, ...[...playedOn, ...globalOn].map((t) => bind(t, null))];
+  return { sources: { ...sources, traits, statTraits, entityBands }, bind, copies };
 }
 
 /** What an editor preview of one owner's trait text reads: its copies and the pins in force on it. */

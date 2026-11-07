@@ -877,6 +877,9 @@ export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCo
   const pins = set?.pinsAfter?.({
     codePins, acquired: ownerTraits.acquired, disabledTraitIds: ownerTraits.disabledTraitIds, ownedTraits: ownerTraits.ownedTraits,
     stats: result.stats,
+    ...(state.owners?.length && {
+      entityStats: Object.fromEntries(state.owners.map((owner) => [owner.id, result.owners?.[owner.id]?.stats ?? owner.stats])),
+    }),
   });
   return {
     ...turn,

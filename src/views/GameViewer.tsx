@@ -873,7 +873,7 @@ const GameViewer = ({
     entities, authoredCast, locations, connections, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
-    presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona,
+    presentEntitiesUnder, worldPersonas, customPersona: resolvedCustomPersona, pinBlueprints,
   } = useResolvedWorld();
   usePersonaNotice();
   // The authored slice inventory operations read, with every entity whose Body pick play reads.
@@ -2461,6 +2461,7 @@ const GameViewer = ({
     if (!over) return elapsed === undefined ? null : { elapsed };
     const overPins = pinsFor(over.codePins ?? {}, {
       traits: over.globalTraits, disabledTraitIds: over.disabledTraitIds, ownedTraits: over.ownedTraits, stats: over.globalStats,
+      entityStats: over.entityStats,
     });
     const resolve = (text: string) => resolveFor(overPins.world, text);
     const held = savedTraits(over, traits);
@@ -3981,6 +3982,7 @@ const GameViewer = ({
         // `previous` reads its bands under the pins the turn started with: its own stats' bands, traits and code pins.
         const startPins = pinsFor(basePins, {
           traits: [...held.acquired], disabledTraitIds: [...held.disabledTraitIds], ownedTraits: held.ownedTraits, stats: before,
+          entityStats: entityBase,
         }).world;
         const resolveStart = (text: string) => resolveFor(startPins, text);
         const ownerRows = entityCodeTurns(
@@ -4018,6 +4020,7 @@ const GameViewer = ({
             // A During AI Output run reads the pins its earlier sentences left.
             pinsAfter: (after) => pinsFor(after.codePins, {
               traits: [...after.acquired], disabledTraitIds: [...after.disabledTraitIds], ownedTraits: after.ownedTraits, stats: [...after.stats],
+              entityStats: { ...entityBase, ...after.entityStats },
             }).world,
           },
           owners,
@@ -5788,6 +5791,8 @@ const GameViewer = ({
         globalTraits: acquired,
         owned: initialOwnedTraits,
         sharedPlaceholders: worldPlaceholders,
+        entityStats: opening.entityStats,
+        blueprints: pinBlueprints,
       }, { location: authoredLocation, stats: opening.traitState.stats, placeholders, rolls: sessionRolls }).world;
       if (location && authoredLocation) {
         changeLocation(location);
@@ -5877,6 +5882,7 @@ const GameViewer = ({
     dictionaries,
     getWorldData,
     authoredLocations,
+    pinBlueprints,
     ownerWorld,
     worldPlaceholders,
     locations,

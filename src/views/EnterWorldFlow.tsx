@@ -8,7 +8,7 @@ import { useLingeringMount } from '@/lib/useLingeringMount';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
-import { ownerPins, inPlayOwners, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { ownerPins, inPlayOwners, pinBlueprintsOf, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { cascadeOffInput, startingStatsWith } from '@/lib/traitRuntime';
 import { seedWorldEntityStats } from '@/lib/entityStats';
 import { toastError } from '@/lib/linkToast';
@@ -179,10 +179,11 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     );
     const world = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities };
     // The persona's linked stat traits apply after the world picks, as the game's seed does.
+    const entityStats = seedWorldEntityStats({ stats: rawStats, statGroups: rawStatGroups, entities: [...worldEntities, ...libraryCast] });
     const starting = startingStatsWith(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
       ...inPlayOwners(world, draftPersona, libraryCast),
-    }, ownedTraitPicks, seedWorldEntityStats({ stats: rawStats, statGroups: rawStatGroups, entities: [...worldEntities, ...libraryCast] }));
+    }, ownedTraitPicks, entityStats);
     return ownerPins({
       world,
       persona: draftPersona,
@@ -190,6 +191,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
       globalTraits: chosen,
       owned: ownedTraitPicks,
       sharedPlaceholders: worldPlaceholders,
+      entityStats,
+      blueprints: pinBlueprintsOf({ stats: rawStats, statGroups: rawStatGroups, placeholders: worldPlaceholders, placeholderGroups }),
     }, {
       location: rawLocations.find((l) => l.id === selectedLocationId),
       stats: starting,
@@ -198,7 +201,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     });
   }, [
     selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities,
-    worldPlaceholders, rawStats, rawStatGroups, rawLocations, placeholders, rolls, libraryCast,
+    worldPlaceholders, rawStats, rawStatGroups, rawLocations, placeholders, rolls, libraryCast, placeholderGroups,
   ]);
   const {
     traits, traitGroups, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText, resolveEntityText,

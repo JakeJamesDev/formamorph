@@ -16,7 +16,7 @@
  */
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
-import { ownerPriming } from '@/lib/ownedTraitsInPlay';
+import { ownerPins, ownerPriming } from '@/lib/ownedTraitsInPlay';
 import { resolveOwners } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import { seedEntityStats } from '@/lib/entityStats';
@@ -38,7 +38,7 @@ import {
 import { DEFAULT_OPENING, openingOwner, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
-import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
+import { allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
 import { enabledStats } from '@/lib/traitEffects';
 import { seedNewGameStats } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
@@ -46,7 +46,7 @@ import type {
   Entity, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
 import { offeredStartLocations, personaStartLocation } from '@/lib/personaPick';
-import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinTraits, lensStartingStats, resolveLensText, type BenchLens } from './lens';
+import { lensActiveTraits, lensPersonaPicks, lensPersonaRef, lensPinBlueprints, lensStartingStats, resolveLensText, type BenchLens } from './lens';
 import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
 
@@ -185,6 +185,8 @@ export const EMPTY_OPENING: OpeningData = {
  *  the starting location — the three sources the opening pins come from. */
 interface OpeningStart {
   active: Trait[];
+  /** Each owner's picks in force, the played entity's among them. */
+  owned: Record<string, string[]>;
   /** The turn-one state the opening fold builds under the persona. */
   state: SandboxState;
   settled: PlayerStat[];
@@ -204,8 +206,9 @@ function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: st
   const pool = offered.length > 0 ? offered : locations;
   const own = lens.persona ? personaStartLocation(lens.persona, locations) : null;
   const location = pool.find((l) => l.id === startLocationId) ?? pool.find((l) => l.id === own) ?? pool[0] ?? null;
-  const state = openingStateOf(world, openingPicks(world, active, persona), openingPersonaOf(persona));
-  return { active, state, settled: [...state.stats], pool, location, personaId: lens.persona?.id ?? null };
+  const picks = openingPicks(world, active, persona);
+  const state = openingStateOf(world, picks, openingPersonaOf(persona));
+  return { active, owned: picks.owned, state, settled: [...state.stats], pool, location, personaId: lens.persona?.id ?? null };
 }
 
 /** The picks Enter World starts from under `persona`: the lens's traits, and each owner's default picks.
@@ -231,11 +234,19 @@ function openingPicks(world: OpeningWorld, active: readonly Trait[], persona: Pe
 /** The pins the fresh game opens under, from every source — the active traits (a default trait's pin binds
  *  every playthrough) and the cast's owned defaults, the starting location, the band each settled stat is in,
  *  and the value pins those and `rolls` settle — through the same collector Enter World runs. */
-const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: PlaceholderRolls): Record<string, string> =>
-  collectPins({
-    traits: lensPinTraits(world, start.active, start.personaId), location: start.location, stats: start.settled,
-    placeholders: allPlaceholders(world), rolls,
-  });
+const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: PlaceholderRolls): Record<string, string> => {
+  return ownerPins({
+    world: ownerWorldOf(world),
+    persona: lensPersonaRef(start.personaId),
+    globalTraits: start.active,
+    owned: start.owned,
+    sharedPlaceholders: world.placeholders ?? [],
+    entityStats: Object.fromEntries((start.state.owners ?? []).map((owner) => [owner.id, owner.stats])),
+    blueprints: lensPinBlueprints(world),
+  }, {
+    location: start.location, stats: globalStatsOf(start.settled, world.statGroups ?? []), placeholders: allPlaceholders(world), rolls,
+  }).world;
+};
 
 /** Every text any source pins a placeholder to — walked beside the rolls, exactly as Enter World walks them. */
 const openingPinTexts = (world: OpeningWorld): Record<string, string[]> =>

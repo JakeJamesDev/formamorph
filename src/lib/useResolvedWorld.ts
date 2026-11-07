@@ -3,7 +3,9 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveOwnerText, resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
-import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, ownerPins, type PinSet } from '@/lib/ownedTraitsInPlay';
+import {
+  activeOwnedTraitIds, addedCharacters, inPlayLibrary, ownerPins, pinBlueprintsOf, type PinBlueprints, type PinSet,
+} from '@/lib/ownedTraitsInPlay';
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, withPersonaEntry, worldEntitiesOf, type ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
@@ -85,6 +87,8 @@ export interface ResolvedWorld {
   /** `pinSet` as it would stand under other Code Pins, traits or stats — what a re-roll reads from the
    *  pre-turn ones, and what a turn's own pass reads from writes React has not rendered yet. */
   pinsFor: (codePins: CodePins, over?: PinSources) => PinSet;
+  /** The world's Blueprint stat and placeholder ids, which a character band's pins read. */
+  pinBlueprints: PinBlueprints;
   /** Resolve any authored string with the same rolls and pins these collections used. */
   resolvePH: (text: string) => string;
   /** Resolve against a whole pin map of the caller's own, as `pinsFor` builds. */
@@ -126,6 +130,7 @@ export interface PinSources {
   disabledTraitIds?: string[];
   ownedTraits?: OwnedTraitStates;
   stats?: PlayerStat[];
+  entityStats?: Readonly<Record<string, readonly PlayerStat[]>>;
 }
 
 /**
@@ -249,13 +254,18 @@ export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, str
 export function useResolvedWorld(): ResolvedWorld {
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, playEntities: rawEntities, worldPlaceholders,
+    stats: authoredStats, statGroups, placeholderGroups,
   } = useGameData();
   const { rolls, placeholders } = usePlaceholderSession();
   const {
     globalStats: rawGlobalStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, globalTraits, disabledTraitIds, ownedTraits, codePins,
-    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions,
+    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions, entityStats,
   } = useGameplay();
+  const pinBlueprints = useMemo(
+    () => pinBlueprintsOf({ stats: authoredStats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
+    [authoredStats, statGroups, worldPlaceholders, placeholderGroups],
+  );
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
   // The location by id and the stats by number: both are state, so a move or a stat crossing a band
@@ -275,6 +285,8 @@ export function useResolvedWorld(): ResolvedWorld {
     disabledTraitIds: over.disabledTraitIds ?? disabledTraitIds,
     owned: activeOwnedTraitIds(over.ownedTraits ?? ownedTraits),
     sharedPlaceholders: worldPlaceholders,
+    entityStats: over.entityStats ?? entityStats,
+    blueprints: pinBlueprints,
   }, {
     location: rawLocations.find((l) => l.id === storedLocationId),
     stats: over.stats ?? rawGlobalStats,
@@ -283,7 +295,7 @@ export function useResolvedWorld(): ResolvedWorld {
     codePins: withCodePins,
   }), [
     globalTraits, disabledTraitIds, ownedTraits, rawTraits, rawTraitGroups, rawEntities, worldPlaceholders, rawLibrary,
-    personaRef, traitOrder, rawLocations, storedLocationId, rawGlobalStats, placeholders, rolls,
+    personaRef, traitOrder, rawLocations, storedLocationId, rawGlobalStats, placeholders, rolls, entityStats, pinBlueprints,
   ]);
   const pinSet = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
   const pins = pinSet.world;
@@ -347,7 +359,7 @@ export function useResolvedWorld(): ResolvedWorld {
   return {
     entities, authoredCast: cast, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
-    globalStats, viewStats, traitOrder, traitEntities, traitLibrary, presentEntitiesUnder, codeEntities, pins, pinSet, pinsFor,
+    globalStats, viewStats, traitOrder, traitEntities, traitLibrary, presentEntitiesUnder, codeEntities, pins, pinSet, pinsFor, pinBlueprints,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
     resolveEntityText, resolveEntityFor,
   };

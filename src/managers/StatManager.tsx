@@ -535,6 +535,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
       onAddDescriptor={handleAddDescriptor}
       onRemoveDescriptor={handleRemoveDescriptor}
       onUnitChange={handleUnitChange}
+      ownerId={store?.ownerId}
+      linkId={link?.linkId}
     />
     </>
   );

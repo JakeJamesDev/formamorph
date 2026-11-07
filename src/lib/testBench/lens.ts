@@ -12,7 +12,9 @@ import { offeredPersonas, personaStartLocation, preselectPersona, worldPersonaRu
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { allPinRows, bindBlueprintPins, collectPinLayers, collectPins, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
+import { allPinRows, bindBlueprintPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
+import { ownerPinPlan, pinBlueprintsOf, type OwnerPinPlan, type PinBlueprints } from '@/lib/ownedTraitsInPlay';
+import { globalStatsOf } from '@/lib/statLinks';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith, statTraitsInForce, type TraitWorld } from '@/lib/traitRuntime';
@@ -26,7 +28,7 @@ import { ownerWorldOf, type RuleWorld } from './rules';
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
 export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
-  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'statGroups'>>;
+  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'statGroups' | 'placeholderGroups'>>;
 
 /** The traits the lens player picks from, with the links that brought them. */
 type LensTree = Pick<Owner, 'traits' | 'groups' | 'linkOf'>;
@@ -275,12 +277,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   const pickedTrait = player.traits.find((t) => t.id === state.pickedTraitId) ?? traits.find((t) => t.id === state.pickedTraitId) ?? null;
   const location = (world.locations ?? []).find((l) => l.id === state.locationId) ?? null;
   const active = activeTraitsFor(world, pickedTrait, personaId);
-  const { pins, layers } = collectPinLayers({
-    traits: lensPinTraits(world, active, personaId),
-    location,
-    stats: lensStartingStats(world, world.stats ?? [], active, personaId),
-    placeholders,
-  });
+  const { pins, layers } = collectPinLayers(lensPinPlan(world, active, personaId, location).sources);
   // The editors' labels for the same rows, matched by the stored pin: a layer carries the pin object its
   // source holds, and so does every row.
   const rows = allPinRows({
@@ -316,13 +313,39 @@ export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
   return activeTraitsFor(world, lens.pickedTrait, lens.persona?.id ?? null);
 }
 
-/** Every trait whose pins world-level text reads in a fresh game under the lens: the player's `active`, so a
- *  blueprint pin traces to the persona's copy, else the blueprint. */
-export function lensPinTraits(world: LensWorld, active: readonly Trait[], personaId: string | null = null): Trait[] {
-  const blueprints = lensBlueprints(world);
-  const reader = lensReader(world, personaId);
-  return active.map((t) => bindBlueprintPins(t, blueprints, reader));
+/**
+ * The pin collection a fresh game under the lens runs, through play's own planner: the player's `active`
+ * traits, every other present owner's default picks, each entity's own stats at their start, the global stats
+ * as the traits leave them, and the lens location.
+ */
+export function lensPinPlan(
+  world: LensWorld, active: readonly Trait[], personaId: string | null, location: GameLocation | null,
+): OwnerPinPlan {
+  const ownerWorld = ownerWorldOf(world);
+  const persona = lensPersonaRef(personaId);
+  const player = lensPlayer(world, personaId);
+  const castDefaults = Object.fromEntries(resolveOwners(ownerWorld, persona).owners
+    .filter((b) => b.present && !b.isPlayer)
+    .map((b) => [b.id, defaultPicks(b.traits, b.groups)]));
+  return ownerPinPlan({
+    world: ownerWorld,
+    persona,
+    globalTraits: active,
+    owned: { ...castDefaults, ...personaPicks(player, active) },
+    sharedPlaceholders: world.placeholders ?? [],
+    entityStats: lensEntityStats(world),
+    blueprints: lensPinBlueprints(world),
+  }, {
+    location,
+    stats: globalStatsOf(lensStartingStats(world, world.stats ?? [], active, personaId), world.statGroups ?? []),
+    placeholders: allPlaceholders(world),
+  });
 }
+
+/** The world's Blueprint stat and placeholder ids, as the lens's pin plan reads them. */
+export const lensPinBlueprints = (world: LensWorld): PinBlueprints => pinBlueprintsOf({
+  stats: world.stats ?? [], statGroups: world.statGroups ?? [], placeholders: world.placeholders ?? [], placeholderGroups: world.placeholderGroups ?? [],
+});
 
 /** How the lens player reads blueprints: a world persona through its own copies, None through the Custom
  *  Persona entity's. */
@@ -386,21 +409,13 @@ export interface LensOwnerScope {
   bind: (trait: Trait) => Trait;
 }
 
-/**
- * Each entity's scope as a fresh game under the lens reads it. The played entity reads the lens's own pins.
- * Any other entity lays its default traits over the player's, so it wins in its own text, and the lens
- * location and stat bands still lay over both, as `ownerPins` lays them in play. The walk is not `ownerPins`
- * itself: the lens's played layer is its active traits, which no save's trait state holds.
- */
+/** Each entity's scope as a fresh game under the lens reads it: the lens's own pins, which every text
+ *  reads, and the entity's own copies. */
 export function lensOwnerScopes(world: LensWorld, lens: BenchLens): (ownerId: string) => LensOwnerScope {
-  const placeholders = allPlaceholders(world);
   const blueprints = lensBlueprints(world);
   const personaId = lens.persona?.id ?? null;
   const ref = lensPersonaRef(personaId);
   const { owners } = resolveOwners(ownerWorldOf(world), ref);
-  const active = activeTraitsFor(world, lens.pickedTrait, personaId);
-  const played = lensPinTraits(world, active, personaId);
-  const stats = lensStartingStats(world, world.stats ?? [], active, personaId);
   const playerReader = lensReader(world, personaId);
   const playedScope: LensOwnerScope = {
     pins: lens.pins, copies: lens.copies, bind: (trait) => bindBlueprintPins(trait, blueprints, playerReader),
@@ -412,14 +427,7 @@ export function lensOwnerScopes(world: LensWorld, lens: BenchLens): (ownerId: st
     let scope = cache.get(ownerId);
     if (!scope) {
       const reader = readerFor(ref, owner.entity, false);
-      const bind = (trait: Trait) => bindBlueprintPins(trait, blueprints, reader);
-      const defaults = new Set(defaultPicks(owner.traits, owner.groups));
-      const own = inAuthoredOrder(owner.traits.filter((t) => defaults.has(t.id)), traitOrderIndex(owner.traits, owner.groups))
-        .map(bind).filter((t) => t.placeholderPins?.length);
-      const pins = own.length
-        ? collectPins({ traits: [...played, ...own], statTraits: played, location: lens.location, stats, placeholders })
-        : lens.pins;
-      scope = { pins, copies: copyLookup(blueprints, reader), bind };
+      scope = { pins: lens.pins, copies: copyLookup(blueprints, reader), bind: (trait) => bindBlueprintPins(trait, blueprints, reader) };
       cache.set(ownerId, scope);
     }
     return scope;

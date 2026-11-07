@@ -4,7 +4,7 @@ import { phValueId, phValues } from '@/test/placeholderValues';
 import { readerFor } from './blueprints';
 import { decodePlaceholderToken } from './placeholders';
 import {
-  activePlaceholderPins, addPinAt, allPinTexts, bindBlueprintPins, canCommitPinSource, collectPinLayers, collectPins, commitPinSource, pinConflict,
+  activePlaceholderPins, addPinAt, allPinTexts, bindBlueprintPins, canCommitPinSource, entityPinTies, collectPinLayers, collectPins, commitPinSource, pinConflict,
   pinKindsFor, pinSourceKey, pinSourcesOfKind, pinsTargeting, pinTarget, pinTargetFilter, removePinAt, sameSource, updatePinAt,
   valuePinRollChips, withPinnedValue, type PinnableStat,
 } from './placeholderPins';
@@ -556,54 +556,58 @@ describe('owned traits as pin sources — the world’s traits, then each cast e
     placeholders: [P('town', ['Marrow'])],
   } as unknown as EditorWorld;
 
-  it('lists an owned trait’s pin under its owner’s name, after the world’s traits', () => {
-    expect(pinsTargeting(world, 'town').map((r) => r.label)).toEqual(['Trait: Sworn', "Trait: Ash's Tamed", "Trait: Ash's Wild"]);
-    expect(pinSourcesOfKind(world, 'trait', 'town').map((o) => o.label)).toEqual(['Sworn', "Ash's Tamed", "Ash's Wild"]);
+  it('lists an owned trait’s pin under its owner’s name, before the world’s traits', () => {
+    expect(pinsTargeting(world, 'town').map((r) => r.label)).toEqual(["Trait: Ash's Tamed", "Trait: Ash's Wild", 'Trait: Sworn']);
+    expect(pinSourcesOfKind(world, 'trait', 'town').map((o) => o.label)).toEqual(["Ash's Tamed", "Ash's Wild", 'Sworn']);
   });
 
-  it('lets a cast entity’s owned trait beat the player’s world trait, since it lays last in its own text', () => {
+  it('lets the global trait beat a cast entity’s owned trait (Q18)', () => {
     const fromSworn = pinConflict(world, 'town', { kind: 'trait', id: 'sworn' })!;
-    expect(fromSworn.winner?.label).toBe("Trait: Ash's Wild");
+    expect(fromSworn.winner).toBeNull();
     expect(fromSworn.rule).toBe('order');
-    expect(pinConflict(world, 'town', { kind: 'trait', id: 'tamed' })!.winner).toBeNull();
+    expect(pinConflict(world, 'town', { kind: 'trait', id: 'tamed' })!.winner?.label).toBe('Trait: Sworn');
   });
 
-  it('never pits two cast entities’ traits against each other', () => {
+  it('pits two cast entities’ traits against each other, the later entity winning (Q17, Q18)', () => {
     const bo = { id: 'bo', name: 'Bo', traits: [trait('feral', [pin('town', 'Feral')], { name: 'Feral' })] };
     const both = { ...world, entities: [ash, bo] } as unknown as EditorWorld;
-    expect(pinConflict(both, 'town', { kind: 'trait', id: 'feral' })!.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
+    expect(pinConflict(both, 'town', { kind: 'trait', id: 'feral' })!.rivals.map((r) => r.label))
+      .toEqual(["Trait: Ash's Tamed", "Trait: Ash's Wild", 'Trait: Sworn']);
+    const castOnly = { ...both, traits: [] } as unknown as EditorWorld;
+    expect(pinConflict(castOnly, 'town', { kind: 'trait', id: 'tamed' })!.winner?.label).toBe("Trait: Bo's Feral");
+    expect(pinConflict(castOnly, 'town', { kind: 'trait', id: 'feral' })!.winner).toBeNull();
   });
 
-  it('pits a Persona’s trait against a cast entity’s, which wins in its own text', () => {
-    // Mira is listed after Bo, so order alone would hand her the win.
+  it('lets a persona-only Persona’s trait beat a cast entity’s, wherever it sits in the entity list (Q18)', () => {
     const bo = { id: 'bo', name: 'Bo', traits: [trait('feral', [pin('town', 'Feral')], { name: 'Feral' })] };
-    const mira = { id: 'mira', name: 'Mira', persona: true, traits: [trait('sworn-m', [pin('town', 'Oath')], { name: 'Oath' })] };
-    const both = { ...world, traits: [], entities: [bo, mira] } as unknown as EditorWorld;
+    const mira = { id: 'mira', name: 'Mira', persona: true, personaOnly: true, traits: [trait('sworn-m', [pin('town', 'Oath')], { name: 'Oath' })] };
+    const both = { ...world, traits: [], entities: [mira, bo] } as unknown as EditorWorld;
     const fromMira = pinConflict(both, 'town', { kind: 'trait', id: 'sworn-m' })!;
     expect(fromMira.rivals.map((r) => r.label)).toEqual(["Trait: Bo's Feral"]);
-    expect(fromMira.winner?.label).toBe("Trait: Bo's Feral");
+    expect(fromMira.winner).toBeNull();
+    expect(pinConflict(both, 'town', { kind: 'trait', id: 'feral' })!.winner?.label).toBe("Trait: Mira's Oath");
   });
 
-  it('lists a global trait before a Persona’s and pits them in the played text, the Persona’s winning by order', () => {
-    const mira = { id: 'mira', name: 'Mira', persona: true, traits: [trait('oath', [pin('town', 'Oath')], { name: 'Oath' })] };
+  it('lists the cast’s traits, then a persona-only Persona’s, then the global ones, the global trait winning (Q18)', () => {
+    const mira = { id: 'mira', name: 'Mira', persona: true, personaOnly: true, traits: [trait('oath', [pin('town', 'Oath')], { name: 'Oath' })] };
     const withCast = { ...world, entities: [mira, ash] } as unknown as EditorWorld;
-    expect(pinsTargeting(withCast, 'town').map((r) => r.label)).toEqual(['Trait: Sworn', "Trait: Mira's Oath", "Trait: Ash's Tamed", "Trait: Ash's Wild"]);
+    expect(pinsTargeting(withCast, 'town').map((r) => r.label)).toEqual(["Trait: Ash's Tamed", "Trait: Ash's Wild", "Trait: Mira's Oath", 'Trait: Sworn']);
     const played = { ...world, entities: [mira] } as unknown as EditorWorld;
     const fromSworn = pinConflict(played, 'town', { kind: 'trait', id: 'sworn' })!;
     expect(fromSworn.rivals.map((r) => r.label)).toEqual(["Trait: Mira's Oath"]);
-    expect(fromSworn.winner?.label).toBe("Trait: Mira's Oath");
+    expect(fromSworn.winner).toBeNull();
     const fromOath = pinConflict(played, 'town', { kind: 'trait', id: 'oath' })!;
     expect(fromOath.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
-    expect(fromOath.winner).toBeNull();
+    expect(fromOath.winner?.label).toBe('Trait: Sworn');
   });
 
-  it('never pits two Personas’ traits against each other: only one is played, and each wins in its own text', () => {
+  it('pits two Personas’ traits, since the one not played stays in the cast, but never two persona-only ones', () => {
     const mira = { id: 'mira', name: 'Mira', persona: true, traits: [trait('oath', [pin('town', 'Oath')], { name: 'Oath' })] };
     const nell = { id: 'nell', name: 'Nell', persona: true, traits: [trait('vow', [pin('town', 'Vow')], { name: 'Vow' })] };
     const both = { ...world, traits: [], entities: [mira, nell] } as unknown as EditorWorld;
-    expect(pinConflict(both, 'town', { kind: 'trait', id: 'oath' })).toBeNull();
-    const withWorld = { ...world, entities: [mira, nell] } as unknown as EditorWorld;
-    expect(pinConflict(withWorld, 'town', { kind: 'trait', id: 'oath' })!.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
+    expect(pinConflict(both, 'town', { kind: 'trait', id: 'oath' })!.rivals.map((r) => r.label)).toEqual(["Trait: Nell's Vow"]);
+    const solo = { ...world, entities: [{ ...mira, personaOnly: true }, { ...nell, personaOnly: true }] } as unknown as EditorWorld;
+    expect(pinConflict(solo, 'town', { kind: 'trait', id: 'oath' })!.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
   });
 
   it('never pits an owned trait against its exclusive sibling', () => {
@@ -650,12 +654,12 @@ describe('link pin lists as pin sources — a link’s overridden pins, listed p
   const mira = { kind: 'trait' as const, id: 'paladin', link: { ownerId: 'mira', linkId: 'l-mira' } };
   const newcomer = { kind: 'trait' as const, id: 'paladin', link: { ownerId: 'cp', linkId: 'l-you' } };
 
-  it('lists each link’s own list under its owner, the Custom Persona entity’s before the cast’s, and leaves a link reading the original live out', () => {
+  it('lists each link’s own list under its owner, the cast’s before the Custom Persona entity’s, and leaves a link reading the original live out', () => {
     const rows = pinsTargeting(world, 'garb');
     expect(rows.map((r) => [r.label, r.pin.value])).toEqual([
-      ['Trait: Paladin', 'Plate'], ["Trait: Newcomer's Paladin", 'Robe'], ["Trait: Albus's Paladin", 'Gilded plate'], ["Trait: Mira's Paladin", 'Robe'],
+      ["Trait: Albus's Paladin", 'Gilded plate'], ["Trait: Mira's Paladin", 'Robe'], ["Trait: Newcomer's Paladin", 'Robe'], ['Trait: Paladin', 'Plate'],
     ]);
-    expect(rows[3].source).toEqual(mira);
+    expect(rows[1].source).toEqual(mira);
   });
 
   it('keeps link rows out of the add and re-aim pickers', () => {
@@ -684,7 +688,7 @@ describe('link pin lists as pin sources — a link’s overridden pins, listed p
     const [row] = pinsTargeting(world, 'garb').filter((r) => sameSource(r.source, mira));
     const next = removePinAt(world, row.source, row.pin);
     expect(next.entities![1].traitLinks![0].overrides).toEqual({ paladin: { placeholderPins: { value: [], blueprint: [plate] } } });
-    expect(pinsTargeting(next, 'garb').map((r) => r.label)).toEqual(['Trait: Paladin', "Trait: Newcomer's Paladin", "Trait: Albus's Paladin"]);
+    expect(pinsTargeting(next, 'garb').map((r) => r.label)).toEqual(["Trait: Albus's Paladin", "Trait: Newcomer's Paladin", 'Trait: Paladin']);
   });
 
   it('writes the Custom Persona entity’s link list back through the entity writer', () => {
@@ -696,11 +700,11 @@ describe('link pin lists as pin sources — a link’s overridden pins, listed p
     expect(updateEntity).toHaveBeenCalledWith(next.entities![3]);
   });
 
-  it('pits a cast entity’s link list against the player’s, never against another cast entity’s', () => {
+  it('pits a cast entity’s link list against every other owner’s (Q17)', () => {
     const conflict = pinConflict(world, 'garb', mira)!;
-    // The original's own row reads as the player's, as every world trait row does.
-    expect(conflict.rivals.map((r) => r.label)).toEqual(['Trait: Paladin', "Trait: Newcomer's Paladin"]);
-    expect(conflict.winner).toBeNull();
+    // The original's own row reads as global, as every world trait row does, so it wins (Q18).
+    expect(conflict.rivals.map((r) => r.label)).toEqual(["Trait: Albus's Paladin", "Trait: Newcomer's Paladin", 'Trait: Paladin']);
+    expect(conflict.winner?.label).toBe('Trait: Paladin');
   });
 });
 
@@ -822,7 +826,11 @@ describe('pins on blueprints — only blueprint-side sources name a blueprint, a
     traitGroups: [],
     entities: [ash],
     locations: [location('fen', [])],
-    stats: [{ ...stat('hunger', 50, [{ threshold: 20, pins: [] }]), name: 'Hunger', type: 'number' }],
+    stats: [
+      { ...stat('hunger', 50, [{ threshold: 20, pins: [] }]), name: 'Hunger', type: 'number' },
+      { ...stat('term', 0, [{ threshold: 20, pins: [] }]), name: 'Term', type: 'number', groupId: 'sbp' },
+    ],
+    statGroups: [{ id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }],
     placeholders: [garb, trim, sash, town, copy],
     placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }],
   } as unknown as EditorWorld;
@@ -850,18 +858,25 @@ describe('pins on blueprints — only blueprint-side sources name a blueprint, a
     expect(offers({ kind: 'value', placeholderId: 'town', valueId: town.values[0].id })).toEqual(['town']);
   });
 
+  it('lets a Blueprint stat’s band name only blueprints, never a world placeholder or a copy (Q13, Q16)', () => {
+    expect(offers({ kind: 'descriptor', statId: 'term', descriptorId: 'term-b0' })).toEqual(['garb', 'sash']);
+    expect(offers({ kind: 'descriptor', statId: 'term', descriptorId: 'term-b0', ownerId: 'ash' })).toEqual(['garb', 'sash']);
+  });
+
   it('keeps copies out with no world behind the editor', () => {
     expect(offers({ kind: 'trait', id: 'paladin' }, null)).toEqual(['garb', 'sash', 'town']);
   });
 
-  it('offers a blueprint’s Pins section only trait and value sources, each blueprint-side', () => {
-    expect(pinKindsFor(world, 'garb').map((k) => k.kind)).toEqual(['trait', 'value']);
+  it('offers a blueprint’s Pins section only band, trait and value sources, each blueprint-side', () => {
+    expect(pinKindsFor(world, 'garb').map((k) => k.kind)).toEqual(['descriptor', 'trait', 'value']);
+    expect(pinSourcesOfKind(world, 'descriptor', 'garb').map((s) => s.label)).toEqual(['Term ≤ 20: band 0']);
+    expect(pinSourcesOfKind(world, 'descriptor', 'town').map((s) => s.label)).toEqual(['Hunger ≤ 20: band 0']);
     expect(pinKindsFor(world, 'town').map((k) => k.kind)).toEqual(['descriptor', 'location', 'trait', 'value']);
     expect(pinSourcesOfKind(world, 'trait', 'garb').map((s) => s.label)).toEqual(['paladin']);
     const valueOwners = (id: string) => pinSourcesOfKind(world, 'value', id).map((s) => (s.source as { placeholderId: string }).placeholderId);
     expect(valueOwners('garb')).toEqual(['trim', 'sash']);
     expect(valueOwners('sash')).toEqual(['garb', 'garb', 'trim', 'albus-garb']);
-    expect(pinSourcesOfKind(world, 'trait', 'town').map((s) => s.label)).toEqual(['paladin', "Ash's tamed"]);
+    expect(pinSourcesOfKind(world, 'trait', 'town').map((s) => s.label)).toEqual(["Ash's tamed", 'paladin']);
   });
 
   it('reads a copy’s values as the copy reads them, so a picked value keeps the blueprint’s id', () => {
@@ -869,5 +884,139 @@ describe('pins on blueprints — only blueprint-side sources name a blueprint, a
     expect(pinTarget(onCopy, world.placeholders)?.values.map((v) => v.text)).toEqual(['sun-disc tabard', 'rust cloak']);
     expect(withPinnedValue(onCopy, 'sun-disc tabard', world.placeholders)).toEqual(pin('albus-garb', 'sun-disc tabard', 'v-white'));
     expect(withPinnedValue(onCopy, 'mail', world.placeholders)).toEqual(pin('albus-garb', 'mail'));
+  });
+});
+
+describe('character bands as pin sources — each entity’s own stats, with their owner', () => {
+  const band = (statId: string, value: string) => ({
+    id: statId, name: statId[0].toUpperCase() + statId.slice(1), type: 'number', value: 0, min: 0, max: 100,
+    descriptors: [{ id: `${statId}-low`, threshold: 50, description: 'Low', placeholderPins: [pin('town', value)] }],
+  });
+  const mira = { id: 'mira', name: 'Mira', persona: true, personaOnly: true, stats: [band('trust', 'Oath')] };
+  const ash = { id: 'ash', name: 'Ash', stats: [band('standing', 'Fen')] };
+  const bo = { id: 'bo', name: 'Bo', stats: [band('standing', 'Sedge')] };
+  const world = {
+    traits: [], traitGroups: [],
+    entities: [mira, ash, bo],
+    stats: [band('hunger', 'Marrow')],
+    placeholders: [P('town', ['Marrow', 'Fen', 'Sedge', 'Oath'])],
+  } as unknown as EditorWorld;
+  const ashBand = { kind: 'descriptor' as const, statId: 'standing', descriptorId: 'standing-low', ownerId: 'ash' };
+  const boBand = { kind: 'descriptor' as const, statId: 'standing', descriptorId: 'standing-low', ownerId: 'bo' };
+
+  it('lists the cast’s bands in entity order, then a persona-only Persona’s, then the world’s, each named with its owner (Q18)', () => {
+    expect(pinsTargeting(world, 'town').map((r) => r.label))
+      .toEqual(["Ash's Standing ≤ 50", "Bo's Standing ≤ 50", "Mira's Trust ≤ 50", 'Hunger ≤ 50']);
+    expect(pinsTargeting(world, 'town')[0].source).toEqual(ashBand);
+  });
+
+  it('pits two characters’ bands against each other, the later character winning, and the global band over both', () => {
+    const castOnly = { ...world, stats: [] } as unknown as EditorWorld;
+    expect(pinConflict(castOnly, 'town', ashBand)!.winner?.label).toBe("Mira's Trust ≤ 50");
+    const noPersona = { ...castOnly, entities: [ash, bo] } as unknown as EditorWorld;
+    expect(pinConflict(noPersona, 'town', ashBand)!.winner?.label).toBe("Bo's Standing ≤ 50");
+    expect(pinConflict(world, 'town', boBand)!.winner?.label).toBe('Hunger ≤ 50');
+  });
+
+  it('keys one stat id under two owners apart', () => {
+    expect(pinSourceKey(ashBand)).not.toBe(pinSourceKey(boBand));
+    expect(sameSource(ashBand, boBand)).toBe(false);
+  });
+
+  it('writes a character’s band back to her entity and hands the entity to its writer', () => {
+    const next = updatePinAt(world, ashBand, pin('town', 'Fen'), pin('town', 'Sedge'));
+    expect(next.entities![1].stats![0].descriptors![0].placeholderPins).toEqual([pin('town', 'Sedge')]);
+    expect(next.entities![2]).toBe(world.entities![2]);
+    expect(next.stats).toBe(world.stats);
+    const updateEntity = vi.fn();
+    const updateStat = vi.fn();
+    commitPinSource(next, ashBand, { updateEntity, updateStat });
+    expect(updateEntity).toHaveBeenCalledWith(next.entities![1]);
+    expect(updateStat).not.toHaveBeenCalled();
+  });
+
+  it('lets a character’s band name a world placeholder and her own, never another entity’s (Q11)', () => {
+    const own = P('ash-mood', ['proud']);
+    const theirs = P('bo-mood', ['meek']);
+    const owned = {
+      ...world, placeholders: [...world.placeholders, own, theirs],
+      placeholderOwners: new Map([['ash-mood', { kind: 'entity', id: 'ash', name: 'Ash' }], ['bo-mood', { kind: 'entity', id: 'bo', name: 'Bo' }]]),
+    } as unknown as EditorWorld;
+    const offered = [world.placeholders[0], own, theirs].filter(pinTargetFilter(owned, ashBand)).map((p) => p.id);
+    expect(offered).toEqual(['town', 'ash-mood']);
+  });
+
+  it('names a tie between characters and its winner, but none for one character or for agreeing values', () => {
+    expect(entityPinTies(world, 'town').map((t) => [t.rows.map((r) => r.label), t.winner.label])).toEqual([
+      [["Ash's Standing ≤ 50", "Bo's Standing ≤ 50", "Mira's Trust ≤ 50"], "Mira's Trust ≤ 50"],
+    ]);
+    const one = { ...world, entities: [ash] } as unknown as EditorWorld;
+    expect(entityPinTies(one, 'town')).toEqual([]);
+    const agree = { ...world, entities: [ash, { ...bo, stats: [band('standing', 'Fen')] }] } as unknown as EditorWorld;
+    expect(entityPinTies(agree, 'town')).toEqual([]);
+  });
+
+  it('ranks a Persona that stays in the cast by entity order, and names it as the winner while played', () => {
+    const ashPersona = { ...ash, persona: true };
+    const w = { ...world, stats: [], entities: [ashPersona, bo] } as unknown as EditorWorld;
+    const [tie] = entityPinTies(w, 'town');
+    expect(tie.winner.label).toBe("Bo's Standing ≤ 50");
+    expect(tie.unlessPlayed.map((e) => e.id)).toEqual(['ash']);
+  });
+
+  it('lists a link’s overridden bands under its owner, and writes an edit to the link', () => {
+    const term = { ...band('term', 'Fen'), groupId: 'sbp' };
+    const link = {
+      id: 'l-ash', originalId: 'term', kind: 'stat', originalName: 'Term', groupId: null,
+      overrides: { term: { descriptors: { value: [{ id: 'term-low', threshold: 30, description: 'Low', placeholderPins: [pin('town', 'Sedge')] }], blueprint: term.descriptors } } },
+    };
+    const w = {
+      ...world, entities: [{ id: 'ash', name: 'Ash', statLinks: [link] }],
+      stats: [term], statGroups: [{ id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    } as unknown as EditorWorld;
+    const linked = { kind: 'descriptor' as const, statId: 'term', descriptorId: 'term-low', ownerId: 'ash', linkId: 'l-ash' };
+    expect(pinsTargeting(w, 'town').map((r) => [r.label, r.pin.value])).toEqual([["Ash's Term ≤ 30", 'Sedge'], ['Term ≤ 50', 'Fen']]);
+    expect(pinsTargeting(w, 'town')[0].source).toEqual(linked);
+    expect(pinSourcesOfKind(w, 'descriptor', 'town').map((o) => o.label)).toEqual([]);
+    const next = updatePinAt(w, linked, pin('town', 'Sedge'), pin('town', 'Marrow'));
+    const edited = next.entities![0].statLinks![0].overrides!.term.descriptors!.value;
+    expect(edited[0].placeholderPins).toEqual([pin('town', 'Marrow')]);
+    expect(next.stats).toBe(w.stats);
+  });
+
+  it('names a tie between two characters’ traits', () => {
+    const w = {
+      ...world, stats: [], entities: [
+        { id: 'ash', name: 'Ash', traits: [trait('tamed', [pin('town', 'Fen')], { name: 'Tamed' })] },
+        { id: 'bo', name: 'Bo', traits: [trait('feral', [pin('town', 'Sedge')], { name: 'Feral' })] },
+      ],
+    } as unknown as EditorWorld;
+    expect(entityPinTies(w, 'town').map((t) => t.winner.label)).toEqual(["Trait: Bo's Feral"]);
+  });
+});
+
+describe('collectPinLayers — the character layer', () => {
+  const town = P('town', ['Sedge', 'Marrow', 'Fen']);
+  const low = (id: string, value: string) => stat(id, 10, [{ threshold: 50, pins: [pin('town', value)] }]);
+
+  it('lays each character’s band under her owner, and the global bands over them', () => {
+    const { pins, layers } = collectPinLayers({
+      traits: [], placeholders: [town], stats: [low('hunger', 'Marrow')],
+      entityBands: [{ ownerId: 'ash', stats: [low('standing', 'Fen')], statTraits: [] }],
+    });
+    expect(pins).toEqual({ town: 'Marrow' });
+    expect(layers.map((l) => [l.source, l.wins])).toEqual([
+      [{ kind: 'descriptor', statId: 'standing', descriptorId: 'standing-b0', ownerId: 'ash' }, false],
+      [{ kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b0' }, true],
+    ]);
+  });
+
+  it('switches a character’s stats by her own traits, not the player’s', () => {
+    const off = trait('off', [], { statToggles: [{ statId: 'standing', enabled: false }] });
+    const ashStats = [low('standing', 'Fen')];
+    expect(collectPins({ traits: [off], placeholders: [town], entityBands: [{ ownerId: 'ash', stats: ashStats, statTraits: [] }] }))
+      .toEqual({ town: 'Fen' });
+    expect(collectPins({ traits: [], placeholders: [town], entityBands: [{ ownerId: 'ash', stats: ashStats, statTraits: [off] }] }))
+      .toEqual({});
   });
 });

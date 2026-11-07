@@ -16,7 +16,7 @@ import {
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { connectionLegs, travelEnds } from '@/lib/locationGraph';
 import {
-  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId, pinsTargeting,
+  allPinRows, entityPinTies, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId, pinsTargeting,
   valuePinners, type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
 } from '@/lib/placeholderPins';
 import { copyOf, effectiveCopy } from '@/lib/blueprints';
@@ -518,7 +518,7 @@ const pinEditorWorld = (world: RuleWorld): PinEditorWorld => {
   if (!editor) {
     editor = {
       traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [],
-      locations: world.locations ?? [], stats: world.stats ?? [], placeholders: allPlaceholders(world),
+      locations: world.locations ?? [], stats: world.stats ?? [], statGroups: world.statGroups ?? [], placeholders: allPlaceholders(world),
       placeholderGroups: world.placeholderGroups ?? [], placeholderOwners: placeholderOwners(world), placementLetters: lettersOf(world),
     };
     pinEditorByWorld.set(world, editor);
@@ -550,6 +550,8 @@ const PIN_SOURCE_TABS: Record<PinSourceKind, { section: FindingSection; byLabel?
 /** A pin's source as a finding item: the trait or location by its name, a band or a value by the label
  *  every pin surface gives it, each opening on the tab that holds the source. */
 const pinSourceItem = (row: PinRow, world: RuleWorld): FindingItem => {
+  // An entity's own band opens on that entity.
+  if (row.source.kind === 'descriptor' && row.source.ownerId) return { id: row.source.ownerId, name: row.label, section: 'entities' };
   const { section, byLabel } = PIN_SOURCE_TABS[row.source.kind];
   const id = pinSourceOwnerId(row.source);
   return byLabel ? { id, name: row.label, section } : namedItem(id, row.name, world, section);
@@ -588,17 +590,22 @@ const withMappedPinList = <T extends { [P in K]?: PlaceholderPin[] }, K extends 
 const withMappedPins = (world: RuleWorld, fn: (pin: PlaceholderPin) => PlaceholderPin): RuleWorld => {
   const traits = mapChanged(world.traits ?? [], (t) => withMappedPinList(t, 'placeholderPins', fn));
   const locations = mapChanged(world.locations ?? [], (l) => withMappedPinList(l, 'placeholderPins', fn));
-  const stats = mapChanged(world.stats ?? [], (s) => {
+  const bandsOf = (list: Stat[]) => mapChanged(list, (s) => {
     if (!s.descriptors?.length) return s;
     const descriptors = mapChanged(s.descriptors, (d) => withMappedPinList(d, 'placeholderPins', fn));
     return descriptors === s.descriptors ? s : { ...s, descriptors };
   });
+  const stats = bandsOf(world.stats ?? []);
   const withValues = withMappedPlaceholders(world, (ph) => {
     if (!ph.values?.length) return ph;
     const values = mapChanged(ph.values, (v) => withMappedPinList(v, 'pins', fn));
     return values === ph.values ? ph : { ...ph, values };
   });
-  return withSlice(withSlice(withSlice(withValues, 'traits', traits), 'locations', locations), 'stats', stats);
+  const entities = mapChanged(withValues.entities ?? [], (e) => {
+    const own = e.stats?.length ? bandsOf(e.stats) : e.stats;
+    return own === e.stats ? e : { ...e, stats: own };
+  });
+  return withSlice(withSlice(withSlice(withSlice(withValues, 'traits', traits), 'locations', locations), 'stats', stats), 'entities', entities);
 };
 
 const placeholderPinUnknownValue: Rule = {
@@ -674,6 +681,28 @@ const placeholderPinConflict: Rule = {
         [target, ...contested.map((entry) => pinSourceItem(entry.row, world))],
       )];
     });
+  },
+};
+
+const placeholderPinEntityTie: Rule = {
+  id: 'placeholder-pin-entity-tie',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholders are pinned to different values by more than one entity`,
+  check: (world) => {
+    const editor = pinEditorWorld(world);
+    const byId = indexPlaceholders(editor.placeholders);
+    const targets = [...new Set(pinRowsOf(world).map((row) => row.pin.placeholderId))].filter((id) => byId.has(id));
+    return targets.flatMap((id) => entityPinTies(editor, id).map((tie) => {
+      const target = placeholderItem(id, world);
+      return finding(
+        placeholderPinEntityTie,
+        `${quote(target.name)} is pinned to different values by ${listNames(tie.rows.map((row) => quote(row.label)))}. ${quote(tie.winner.label)} wins when they apply at once${
+          tie.unlessPlayed.length ? `, unless the player plays ${tie.unlessPlayed.map((e) => quote(labelOf(e.name, world))).join(' or ')}` : ''}`,
+        [target, ...tie.rows.map((row) => pinSourceItem(row, world))],
+      );
+    }));
   },
 };
 
@@ -3798,7 +3827,7 @@ export const RULES: readonly Rule[] = [
   imageRuleMissingTarget, entityImagesAllHideable, imageRulePercentZeroSpan, traitLinkRedundant, traitStatNoTarget,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,
-  placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,
+  placeholderPinUnknownValue, placeholderPinConflict, placeholderPinEntityTie, placeholderPinCycle, placeholderPinSelf,
   placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,
   placeholderDuplicateSlot,
   placeholderSharedWeightUnknownValue, placeholderOwnerOrphan, placeholderOwnerDropped,

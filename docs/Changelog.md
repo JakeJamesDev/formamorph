@@ -83,6 +83,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Waiting at a place's door, steps or ladder no longer moves you inside it.** You move once your action goes in. Calling across to a place, pointing at it or waving someone over from it also keeps you where you are.
   - **Update & Restart in the Windows desktop app now works when you start Formamorph from a taskbar pin or shortcut.** Formamorph opens through its main `Formamorph.exe`, so your saves and models stay in its folder.
   - **The update window now says whether checking, downloading or installing failed.**
+  - **Placeholder pins on an entity's own stat bands now apply in play.** They apply in every text, whoever the player plays. An entity's trait pins now reach every text too, not only its own. A Blueprint stat's band pins each owner's own copy.
 - **🛠️ Developer tooling**
   - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
   - **Media, Stats and Traits tab tests now mount the panel, not the World Editor, and use half the test time.** 159 tests moved with coverage held; the editor view keeps the cross-tab cases.

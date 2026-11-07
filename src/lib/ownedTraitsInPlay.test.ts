@@ -68,12 +68,18 @@ const pinsUnder = (persona: PersonaRef, globalTraits: Trait[], extra: Partial<Ow
     { placeholders: allPlaceholders },
   );
 
-describe('ownerPins — each owner lays its own pins', () => {
-  it("traces a blueprint pin to the owner's own copy, with the copy's text", () => {
-    expect(pinsUnder(NONE, []).of('albus')).toEqual({ 'albus-garb': 'Gilded plate', mood: 'fierce' });
+describe('ownerPins — every owner’s pins reach every text (Q17)', () => {
+  // Under None the cast is Albus, Mira and Bo; the Custom Persona entity is played.
+  const castPins = { mood: 'fierce', 'albus-garb': 'Gilded plate', garb: 'Plate' };
+
+  it("traces each cast owner's blueprint pin to its own copy, in the one set every text reads", () => {
+    const pins = pinsUnder(NONE, []);
+    expect(pins.world).toEqual(castPins);
+    expect(pins.of('albus')).toBe(pins.world);
+    expect(pins.of('mira')).toBe(pins.world);
   });
 
-  it("traces a link's overridden pins list to that owner's copy, while another owner reads its own", () => {
+  it("traces a link's overridden pins list to that owner's copy, beside another owner's", () => {
     const ROBE = phValueId('Robe');
     const kitCopy: Placeholder = {
       id: 'kit-garb', name: 'Class Garb', values: [], blueprintId: 'garb',
@@ -84,21 +90,20 @@ describe('ownerPins — each owner lays its own pins', () => {
       { world: { ...world, entities: [...world.entities, kit] }, persona: NONE, globalTraits: [], owned: { ...owned, kit: ['paladin'] }, sharedPlaceholders: shared },
       { placeholders: [...allPlaceholders, kitCopy] },
     );
-    expect(pins.of('kit')).toEqual({ 'kit-garb': 'Sackcloth' });
-    expect(pins.of('albus')).toEqual({ 'albus-garb': 'Gilded plate', mood: 'fierce' });
+    expect(pins.world).toEqual({ ...castPins, 'kit-garb': 'Sackcloth' });
   });
 
-  it("reads the blueprint itself for an owner with no copy, valued by the link's own pins", () => {
-    expect(pinsUnder(NONE, []).of('mira')).toEqual({ garb: 'Plate' });
+  it("lays the blueprint itself for an owner with no copy, valued by the link's own pins", () => {
+    expect(pinsUnder(NONE, []).world.garb).toBe('Plate');
   });
 
   it("lays nothing for a pin naming a value the owner's copy removed", () => {
-    expect(pinsUnder(NONE, []).of('bo')).toEqual({});
+    expect(pinsUnder(NONE, []).world).not.toHaveProperty('bo-garb');
   });
 
-  it("keeps a cast entity's pins out of world-level text", () => {
+  it("lays a cast entity's pins in world-level text, under the global traits (Q18)", () => {
     const pins = pinsUnder(NONE, [brave]);
-    expect(pins.world).toEqual({ mood: 'wary' });
+    expect(pins.world).toEqual({ ...castPins, mood: 'wary' });
     expect(pins.of(null)).toBe(pins.world);
   });
 
@@ -108,81 +113,189 @@ describe('ownerPins — each owner lays its own pins', () => {
     expect(pins.copies(undefined)).toBe(pins.copies(null));
   });
 
-  it("lays the player's pins in world-level text and in a cast entity's, under the entity's own", () => {
+  it("lets the played persona's pin beat a cast entity's, wherever the persona sits (Q18)", () => {
+    // The Custom Persona entity's Robe beats Mira's Plate though Mira is listed first.
     const pins = pinsUnder(NONE, [brave], { owned: picked });
-    expect(pins.world).toEqual({ mood: 'wary', garb: 'Robe' });
-    // Mira's Plate beats the player's Robe in her own text; the player's Wary reaches it untouched.
-    expect(pins.of('mira')).toEqual({ mood: 'wary', garb: 'Plate' });
-    expect(pins.of('bo')).toBe(pins.world);
+    expect(pins.world).toEqual({ ...castPins, mood: 'wary', garb: 'Robe' });
+    expect(pins.of('mira')).toBe(pins.world);
   });
 
   it("gives a directly held blueprint pin the pin's own text, on the copy of whoever is played", () => {
-    expect(pinsUnder(NONE, [cloak]).world).toEqual({ garb: 'Robe' });
+    expect(pinsUnder(NONE, [cloak], { owned: {} }).world).toEqual({ garb: 'Robe' });
     // Played as Albus, the same root trait lands on his own copy of Class Garb.
     expect(pinsUnder(AS_ALBUS, [cloak], { owned: { albus: ['t-stern'] } }).world).toEqual({ 'albus-garb': 'Robe', mood: 'fierce' });
   });
 
-  it("lays every global trait before the persona's, so the persona wins even where its node sits among root traits (Q31)", () => {
+  it("lays every global trait after the persona's, so a global trait wins even where the persona's node sits (Q18)", () => {
     const calm = trait('calm', [pin('mood', 'calm')], { groupId: null, order: 3 });
     const placed = { ...albus, traitPlacement: { groupId: null, order: 2 } };
     // No Custom Persona entity: the picked persona then keeps its own place in the tree.
     const among = { ...world, traits: [...world.traits, calm], entities: [placed, mira, bo] };
-    const pins = pinsUnder(AS_ALBUS, [brave, calm], { world: among, owned: { albus: ['t-stern'] } });
-    expect(pins.world.mood).toBe('fierce');
-    // With no persona node among them, the global traits still lay in tree order, the later winning.
-    expect(pinsUnder(NONE, [brave, calm], { world: among, owned: {} }).world.mood).toBe('calm');
+    expect(pinsUnder(AS_ALBUS, [brave, calm], { world: among, owned: { albus: ['t-stern'] } }).world.mood).toBe('calm');
+    expect(pinsUnder(AS_ALBUS, [brave], { world: among, owned: { albus: ['t-stern'] } }).world.mood).toBe('wary');
+    expect(pinsUnder(AS_ALBUS, [], { world: among, owned: { albus: ['t-stern'] } }).world.mood).toBe('fierce');
   });
 
-  it("reads the played persona's own text with the player's set", () => {
+  it("reads the played persona's own text with the one set", () => {
     const pins = pinsUnder(AS_ALBUS, [brave]);
-    expect(pins.world).toEqual({ mood: 'fierce', 'albus-garb': 'Gilded plate' });
+    expect(pins.world).toEqual({ ...castPins, mood: 'wary' });
     expect(pins.of('albus')).toBe(pins.world);
   });
 
   it("binds the Custom Persona entity's pins to a library persona's own copy first", () => {
-    expect(pinsUnder(AS_LIB, [], { owned: picked }).world).toEqual({ 'lib-garb': 'Robe' });
+    expect(pinsUnder(AS_LIB, [], { owned: { cp: ['paladin'] } }).world).toEqual({ 'lib-garb': 'Robe' });
   });
 
   it("reads the Custom Persona entity's copy for the player under None and under a library persona without one, never under a world persona", () => {
     const youCopy: Entity = { ...you, placeholders: [garbCopy('cp-garb', 'Newcomer robe')], traitLinks: [link('l-you', 'paladin')] };
     const w = { ...world, entities: [albus, mira, bo, youCopy] };
+    const albusPins = { mood: 'fierce', 'albus-garb': 'Gilded plate' };
     const under = (persona: PersonaRef, library: Entity[]) => ownerPins(
-      { world: w, persona, library, globalTraits: [], owned: picked, sharedPlaceholders: shared },
+      { world: w, persona, library, globalTraits: [], owned: { albus: owned.albus, cp: ['paladin'] }, sharedPlaceholders: shared },
       { placeholders: [...allPlaceholders, ...youCopy.placeholders!] },
     ).world;
-    expect(under(NONE, [])).toEqual({ 'cp-garb': 'Newcomer robe' });
-    expect(under(AS_LIB, [{ ...lib, placeholders: [] }])).toEqual({ 'cp-garb': 'Newcomer robe' });
-    expect(under(AS_LIB, [lib])).toEqual({ 'lib-garb': 'Wren cloak' });
-    expect(under(AS_ALBUS, [])).toEqual({ mood: 'fierce', 'albus-garb': 'Gilded plate' });
+    expect(under(NONE, [])).toEqual({ ...albusPins, 'cp-garb': 'Newcomer robe' });
+    expect(under(AS_LIB, [{ ...lib, placeholders: [] }])).toEqual({ ...albusPins, 'cp-garb': 'Newcomer robe' });
+    expect(under(AS_LIB, [lib])).toEqual({ ...albusPins, 'lib-garb': 'Wren cloak' });
+    expect(under(AS_ALBUS, [])).toEqual(albusPins);
   });
 
-  it("lets only the player's traits decide which stat bands pin", () => {
+  it("lets only the player's traits decide which global stat bands pin", () => {
     const pins = ownerPins(
       { world, persona: NONE, globalTraits: [], owned, sharedPlaceholders: shared },
       { placeholders: shared, stats: [hunger] },
     );
     // Mira's Paladin switches Hunger off; that toggle is not the player's, so the band still pins.
-    expect(pins.of('mira')).toEqual({ garb: 'Plate', mood: 'calm' });
+    expect(pins.world.mood).toBe('calm');
   });
 
   it('drops a disabled player trait, and binds a trait card for its owner', () => {
     const pins = pinsUnder(NONE, [brave], { disabledTraitIds: ['brave'], owned: picked });
-    expect(pins.world).toEqual({ garb: 'Robe' });
+    expect(pins.world).toEqual({ ...castPins, garb: 'Robe' });
     expect(pins.bind(paladin, 'albus').placeholderPins).toEqual([{ placeholderId: 'albus-garb', value: 'Gilded plate', valueId: TABARD }]);
     expect(pins.bind(paladin, 'bo').placeholderPins).toEqual([]);
     expect(pins.bind(paladin, 'mira').placeholderPins).toEqual(paladinPins);
     expect(pins.bind(brave, 'albus')).toBe(brave);
   });
 
-  it('lays nothing for an owner the playthrough does not hold', () => {
-    expect(pinsUnder(NONE, []).of('ghost')).toEqual({});
+  it('reads the one set for an owner the playthrough does not hold', () => {
+    const pins = pinsUnder(NONE, []);
+    expect(pins.of('ghost')).toBe(pins.world);
   });
 
   it("lays a Custom Persona pick's pin under None, and nothing from it under a world persona, where it lies dormant", () => {
     expect(pinsUnder(NONE, [], { owned: picked }).world.garb).toBe('Robe');
     const asAlbus = pinsUnder(AS_ALBUS, [], { owned: picked }).world;
-    expect(asAlbus.garb).toBeUndefined();
+    // Mira's Plate is all that pins the blueprint while the Custom Persona entity is absent.
+    expect(asAlbus.garb).toBe('Plate');
     expect(asAlbus['albus-garb']).toBe('Gilded plate');
+  });
+});
+
+describe('ownerPins — a character’s own stat bands (Q6, Q10, Q11, Q19)', () => {
+  const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Sedge', 'Marrow', 'Fen']) };
+  const albusMood: Placeholder = { id: 'albus-mood', name: 'Mood', values: phValues(['proud', 'meek']) };
+  /** A stat of `owner` at `value` with one band up to 50 laying `pins`. */
+  const standing = (value: number, pins: PlaceholderPin[], extra: Partial<PinnableStat> = {}): PinnableStat => ({
+    id: 'standing', value, min: 0, max: 100, enabled: true,
+    descriptors: [{ id: 'low', threshold: 50, description: 'Low', placeholderPins: pins }], ...extra,
+  });
+  const run = (persona: PersonaRef, entityStats: Record<string, PinnableStat[]>, extra: Partial<OwnerPinState> = {}, stats: PinnableStat[] = []) =>
+    ownerPins(
+      { world, persona, library: [lib], globalTraits: [], owned: {}, sharedPlaceholders: shared, entityStats, ...extra },
+      { placeholders: [...allPlaceholders, town, albusMood], stats },
+    );
+
+  it("pins world text and every other text from a cast entity's band, whoever is played", () => {
+    const stats = { mira: [standing(10, [pin('town', 'Fen')])] };
+    for (const persona of [NONE, AS_ALBUS, AS_LIB]) {
+      const pins = run(persona, stats);
+      expect(pins.world.town).toBe('Fen');
+      expect(pins.of('bo')).toBe(pins.world);
+    }
+  });
+
+  it("pins from the played persona's own band too", () => {
+    expect(run(AS_ALBUS, { albus: [standing(10, [pin('town', 'Marrow')])] }).world.town).toBe('Marrow');
+  });
+
+  it('lays nothing once the stat leaves the band', () => {
+    expect(run(NONE, { mira: [standing(80, [pin('town', 'Fen')])] }).world.town).toBeUndefined();
+  });
+
+  it("pins the character's own placeholder", () => {
+    expect(run(NONE, { albus: [standing(10, [pin('albus-mood', 'meek')])] }).world['albus-mood']).toBe('meek');
+  });
+
+  it("holds while the character is out of the scene: the collection reads no scene, only who is in the playthrough", () => {
+    // A persona-only Persona not played is out of the playthrough, so her band lays nothing.
+    const solo = { ...world, entities: [{ ...albus, personaOnly: true }, mira, bo, you] };
+    const stats = { albus: [standing(10, [pin('town', 'Marrow')])] };
+    expect(run(NONE, stats).world.town).toBe('Marrow');
+    expect(run(NONE, stats, { world: solo }).world.town).toBeUndefined();
+  });
+
+  it("lets the character's own traits in force switch her stat off", () => {
+    const off = trait('t-off', [], { groupId: null, order: 1, statToggles: [{ statId: 'standing', enabled: false }] });
+    const w = { ...world, entities: [albus, { ...mira, traits: [off] }, bo, you] };
+    const stats = { mira: [standing(10, [pin('town', 'Fen')])] };
+    expect(run(NONE, stats, { world: w }).world.town).toBe('Fen');
+    expect(run(NONE, stats, { world: w, owned: { mira: ['t-off'] } }).world.town).toBeUndefined();
+  });
+
+  it('orders ties inside the band kind: global wins, then the played persona, then the later character (Q18)', () => {
+    const at = (value: string) => [standing(10, [pin('town', value)])];
+    // Bo is listed after Mira, so Bo's band wins between the two.
+    expect(run(NONE, { mira: at('Fen'), bo: at('Sedge') }).world.town).toBe('Sedge');
+    expect(run(NONE, { bo: at('Sedge'), mira: at('Fen') }).world.town).toBe('Sedge');
+    // Played Albus is listed first and still beats both.
+    expect(run(AS_ALBUS, { albus: at('Marrow'), mira: at('Fen'), bo: at('Sedge') }).world.town).toBe('Marrow');
+    // A global band beats every character's.
+    const globalBand = { ...standing(10, [pin('town', 'Fen')]), id: 'g-standing' };
+    expect(run(AS_ALBUS, { albus: at('Marrow'), bo: at('Sedge') }, {}, [globalBand]).world.town).toBe('Fen');
+  });
+
+  it('keeps the order between kinds: any band beats any trait', () => {
+    const pins = run(NONE, { mira: [standing(10, [pin('mood', 'calm')])] }, { owned: { albus: ['t-stern'] }, globalTraits: [brave] });
+    expect(pins.world.mood).toBe('calm');
+  });
+});
+
+describe('ownerPins — a Blueprint stat’s band pins each owner’s own copy (Q13, Q16)', () => {
+  // Pregnancy is a Blueprint stat; Term is a Blueprint placeholder each mare copies.
+  const term: Placeholder = { id: 'term', name: 'Term', values: phValues(['early', 'late']) };
+  const termCopy = (id: string): Placeholder => ({ id, name: 'Term', values: [], blueprintId: 'term' });
+  const dawn: Entity = { id: 'dawn', name: 'Dawn', placeholders: [termCopy('dawn-term')] };
+  const ember: Entity = { id: 'ember', name: 'Ember', placeholders: [termCopy('ember-term')] };
+  const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Sedge', 'Fen']) };
+  const pregnancy = (value: number): PinnableStat => ({
+    id: 'pregnancy', value, min: 0, max: 100, enabled: true,
+    descriptors: [
+      { id: 'b-early', threshold: 50, description: 'Early', placeholderPins: [pin('term', 'early', phValueId('early')), pin('town', 'Fen')] },
+      { id: 'b-late', threshold: 100, description: 'Late', placeholderPins: [pin('term', 'late', phValueId('late'))] },
+    ],
+  });
+  const mares = { traits: [], traitGroups: [], entities: [dawn, ember] };
+  const run = (blueprints?: OwnerPinState['blueprints']) => ownerPins(
+    {
+      world: mares, persona: NONE, globalTraits: [], owned: {}, sharedPlaceholders: [term, town],
+      entityStats: { dawn: [pregnancy(20)], ember: [pregnancy(90)] }, ...(blueprints ? { blueprints } : {}),
+    },
+    { placeholders: [term, town, ...dawn.placeholders!, ...ember.placeholders!] },
+  );
+  const blueprints = { stats: new Set(['pregnancy']), placeholders: new Set(['term']) };
+
+  it("reads each mare's own copy's pinned value, from her own band", () => {
+    const pins = run(blueprints);
+    expect(pins.world['dawn-term']).toBe('early');
+    expect(pins.world['ember-term']).toBe('late');
+    expect(pins.world.term).toBeUndefined();
+  });
+
+  it('ignores a world placeholder a Blueprint stat’s band pins by hand', () => {
+    expect(run(blueprints).world.town).toBeUndefined();
+    // An own stat of the same shape pins it.
+    expect(run({ stats: new Set(), placeholders: new Set(['term']) }).world.town).toBe('Fen');
   });
 });
 

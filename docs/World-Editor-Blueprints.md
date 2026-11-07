@@ -154,15 +154,13 @@ A link can override its **Placeholder Pins** list. Albus's link can pin *silvere
 
 A pin that names a value the copy removed pins nothing.
 
+A [Blueprint stat's](World-Editor-Stats#pins-on-a-descriptor) band pins a blueprint the same way. Two mares link a *Pregnancy* stat, and its *Late* band pins *Term* to *late*. Each mare's copy of *Term* follows her own *Pregnancy* value. A Blueprint stat's band never pins a world placeholder.
+
 ### Whose pins apply where
 
-| Text | Pins that apply |
-|---|---|
-| World text: locations, the world prompt, narration | The world's pins, then the global and persona trait pins |
-| The player's persona | The same as world text |
-| An entity's own text | The world's pins, then the global and persona trait pins, then the entity's own trait pins on top |
+Every text reads the same pins: the world's, the persona's and each entity's. See [Pins](World-Editor-Placeholders#pins) for which pin wins.
 
-An entity's own trait pins never reach another owner's text. Albus's class never changes the player's description.
+A pin by blueprint lands on its owner's own copy, so it changes only the text that reads that copy. Albus's class never changes the player's description.
 
 ## Example: RPG Classes
 <!-- keywords: class system, dnd, job system, spells per class, worked sample, walkthrough, fantasy roles, step by step build, emberwatch -->

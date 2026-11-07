@@ -3,7 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/lib/placeholders';
-import { activeOwnedTraitIds, addedCharacters, ownerPins, inPlayLibrary, type PinSet } from '@/lib/ownedTraitsInPlay';
+import { activeOwnedTraitIds, addedCharacters, ownerPins, inPlayLibrary, pinBlueprintsOf, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
@@ -33,14 +33,18 @@ export function useEntityTextResolver(): ResolveEntityText {
 }
 
 function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
-  const { traits, traitGroups, locations, entities, worldPlaceholders } = useGameData();
+  const { traits, traitGroups, locations, entities, worldPlaceholders, stats, statGroups, placeholderGroups } = useGameData();
   const { placeholders } = usePlaceholderSession();
   // View-aliased (equal to live on the latest page): a past page resolves with the pins that were in
   // force on that turn, not whatever the player has toggled or walked into since.
   const {
     placeholderRolls, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewLocationId, viewCodePins,
-    personaRef, libraryPersona, discoveredEntities,
+    personaRef, libraryPersona, discoveredEntities, viewEntityStats,
   } = useGameplay();
+  const blueprints = useMemo(
+    () => pinBlueprintsOf({ stats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
+    [stats, statGroups, worldPlaceholders, placeholderGroups],
+  );
   const pinSet = useMemo(() => ownerPins({
     world: { traits, traitGroups, entities },
     persona: personaRef,
@@ -49,6 +53,8 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     disabledTraitIds: viewDisabledTraitIds,
     owned: activeOwnedTraitIds(viewOwnedTraits),
     sharedPlaceholders: worldPlaceholders,
+    entityStats: viewEntityStats,
+    blueprints,
   }, {
     location: locations.find((l) => l.id === viewLocationId),
     stats: viewStats,
@@ -58,6 +64,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
   }), [
     viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, worldPlaceholders, personaRef,
     libraryPersona, discoveredEntities, locations, viewLocationId, viewStats, placeholders, placeholderRolls, viewCodePins,
+    viewEntityStats, blueprints,
   ]);
   const pins = pinSet.world;
   const name = usePersonaName(placeholderRolls, pins);

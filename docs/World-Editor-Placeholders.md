@@ -185,14 +185,24 @@ A pin keeps a placeholder at one value while a condition is true. The playthroug
 
 | Pin source | Active while | Set it on |
 |---|---|---|
-| A stat descriptor | The stat is in that band | The pin button on the [descriptor row](World-Editor-Stats#pins-on-a-descriptor) |
+| A stat descriptor | The stat is in that band. A world stat and an entity's own stat both count. | The pin button on the [descriptor row](World-Editor-Stats#pins-on-a-descriptor) |
 | A location | The player is there | The location's [**Pins** tab](World-Editor-Locations#placeholder-pins) |
 | A trait | The trait is active | The trait's [**Pins** tab](World-Editor-Traits#placeholder-pins). A trait can [pin a blueprint](World-Editor-Blueprints#pins-by-blueprint), and each owner's copy takes the pin. |
 | A placeholder value | That value is the placeholder's current value | The pin button beside the value. Its panel has **Add Placeholder Pin**. |
 
-When two sources pin the same placeholder, the higher row in this table wins. Within one kind, the source lower in its own list wins. A [script](ScriptsGuide) can also pin and unpin a placeholder, and a script pin wins over all four.
+An entity's pins work like the world's. Its stat bands and traits pin every text: world text, each entity's text and the player's, whoever the player plays. They hold while the entity is out of the scene.
 
-The placeholder's **Pins** tab gathers every pin aimed at it. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in. A row's first box moves its pin to another source of the same kind.
+When two sources pin the same placeholder, the higher row in this table wins. Within one kind, the order is:
+
+1. A world source: a world stat or a world trait.
+2. The persona the player plays.
+3. The other entities. The entity lower in the entity list wins.
+
+Within one source, the row lower in its own list wins. A [script](ScriptsGuide) can also pin and unpin a placeholder, and a script pin wins over all four.
+
+> ⚠️ The Test Bench warns when two entities can pin one placeholder to different values. The warning names the pin that wins.
+
+The placeholder's **Pins** tab gathers every pin aimed at it, in the order above. An entity's band shows the entity's name, such as *Ash's Trust ≤ 50*. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in. A row's first box moves its pin to another source of the same kind.
 
 ## Where Chips Work
 <!-- keywords: which fields, supported places, cant insert, shows raw text, not replaced, listing blurb, menu order, allowed boxes -->

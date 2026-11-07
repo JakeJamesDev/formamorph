@@ -75,6 +75,17 @@ describe('PlaceholderPinRows — pins by blueprint', () => {
     expect(screen.getByRole('button', { name: 'Plate' })).toBeInTheDocument();
   });
 
+  it("offers a Blueprint stat's band only blueprints, and no world placeholder (Q16)", async () => {
+    const withStat: PinEditorWorld = {
+      ...world,
+      stats: [{ id: 'term', name: 'Term', type: 'number', description: '', value: 0, min: 0, max: 100, regen: 0, descriptors: [], groupId: 'sbp' }],
+      statGroups: [{ id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    };
+    const band: PinSourceRef = { kind: 'descriptor', statId: 'term', descriptorId: 'early', ownerId: 'dawn' };
+    render(<Harness world={withStat} source={band} start={{ placeholderId: 'garb', value: '' }} />);
+    expect(await offered('Class Garb')).toEqual(['Class Garb']);
+  });
+
   it('keeps blueprints from a location', async () => {
     render(<Harness world={world} source={{ kind: 'location', id: 'fen' }} start={{ placeholderId: 'boots', value: '' }} />);
     expect(await offered('Boots')).toEqual(['Boots']);

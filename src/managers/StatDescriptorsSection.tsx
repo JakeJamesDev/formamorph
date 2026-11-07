@@ -42,6 +42,10 @@ export interface StatDescriptorsSectionProps {
   onRemoveDescriptor: (id: string | number) => void;
   /** The unit and the converted list, written together: a second write would build on the first's draft. */
   onUnitChange: (unit: ThresholdUnit, descriptors: StatDescriptor[]) => void;
+  /** The entity whose own stat or link this is. Absent = a world stat. */
+  ownerId?: string;
+  /** The link whose overridden bands these are. */
+  linkId?: string;
 }
 
 /** Tints for consecutive bands, so neighbors read apart without carrying meaning of their own. */
@@ -162,7 +166,7 @@ const StartMarker = ({ fraction, start }: { fraction: number; start: number }) =
 
 export const StatDescriptorsSection = ({
   stat, newDescriptor, setNewDescriptor, onDescriptorChange, onDescriptorBlur, onAddDescriptor,
-  onRemoveDescriptor, onUnitChange,
+  onRemoveDescriptor, onUnitChange, ownerId, linkId,
 }: StatDescriptorsSectionProps) => {
   const { placeholders, placementLetters, placeholderOwners } = useStatEditorWorld();
   // Off world, a pin has no rival placements to read.
@@ -269,7 +273,7 @@ export const StatDescriptorsSection = ({
                   <PinPopoverButton
                     pins={descriptor.placeholderPins ?? []}
                     onChange={(next) => onDescriptorChange(index, 'placeholderPins', next.length ? next : undefined)}
-                    source={{ kind: 'descriptor', statId: stat.id ?? '', descriptorId: descriptor.id }}
+                    source={{ kind: 'descriptor', statId: stat.id ?? '', descriptorId: descriptor.id, ...(ownerId ? { ownerId } : {}), ...(linkId ? { linkId } : {}) }}
                     world={world}
                     placeholders={placeholders}
                     label={`Pins for ${chipText(descriptor.description) || 'descriptor'}`}

@@ -468,7 +468,7 @@ The value a playthrough draws for a Wildcard, made once at Enter World and kept 
 _Avoid_: random value, draw (the act only), selection
 
 **Pin**:
-A source holding a Placeholder at one fixed value while the source is active: a trait that is on, the current location, the stat band a stat sits in, or a Placeholder value that is the effective value of its Placeholder. A Pin masks the Roll underneath and never replaces it, so the Roll returns when the source goes off. A stat band outranks a location, a location a trait, a trait a value Pin.
+A source holding a Placeholder at one fixed value while the source is active: a trait that is on, the current location, the stat band a stat sits in, or a Placeholder value that is the effective value of its Placeholder. A Pin masks the Roll underneath and never replaces it, so the Roll returns when the source goes off. A Code Pin outranks a stat band, a stat band a location, a location a trait, a trait a value Pin. An entity's own stat bands and traits are Pins in every text, for any persona, and hold while it is out of the scene. Inside one kind a global source wins, then the played persona's, then the entity later in the entity list. A Blueprint stat's band pins each Owner's own Copy.
 _Avoid_: override, lock, fixed value
 
 **Placeholder Set**:

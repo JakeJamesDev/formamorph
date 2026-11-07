@@ -268,11 +268,21 @@ describe('pins from owned traits', () => {
     ],
   }];
 
-  it('keeps a cast entity’s owned default out of the world-level pins', () => {
+  it('lays a cast entity’s owned default in the world-level pins, under the player’s (Q17, Q18)', () => {
     const lens = buildLens(world({ entities: ash() }), { personaId: null, pickedTraitId: null, locationId: null });
-    expect(lens.pins).toEqual({});
+    expect(lens.pins).toEqual({ 'ph-hair': 'jet' });
     expect(buildLens(world({ entities: ash() }), { personaId: null, pickedTraitId: 't-sedge', locationId: null }).pinLayers.map((l) => [l.label, l.wins]))
-      .toEqual([['Trait: Sedge-Born', true]]);
+      .toEqual([["Trait: Ash's Tamed", false], ['Trait: Sedge-Born', true]]);
+  });
+
+  it('lays a cast entity’s own stat band at its start value', () => {
+    const banded = ash()!.map((e) => ({ ...e, traits: [], stats: [{
+      id: 's-trust', name: 'Trust', type: 'number' as const, description: '', regen: 0, value: 5, min: 0, max: 100, descriptors: [
+      { id: 'd-low', threshold: 10, description: 'Wary', placeholderPins: [{ placeholderId: 'ph-hair', value: 'ash' }] },
+    ] }] })) as LensWorld['entities'];
+    const lens = buildLens(world({ entities: banded }), { personaId: null, pickedTraitId: null, locationId: null });
+    expect(lens.pins).toEqual({ 'ph-hair': 'ash' });
+    expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([["Ash's Trust ≤ 10", true]]);
   });
 
   describe('a blueprint pin', () => {

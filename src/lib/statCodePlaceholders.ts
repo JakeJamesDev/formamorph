@@ -21,6 +21,8 @@ export interface PinState {
   disabledTraitIds: readonly string[];
   ownedTraits?: OwnedTraitStates;
   stats: readonly PlayerStat[];
+  /** The run's entity owners' stats, by owner id, whose bands pin too. */
+  entityStats?: Readonly<Record<string, readonly PlayerStat[]>>;
 }
 
 /** The placeholders one stat-code run reads, and what they resolve under. */

@@ -3880,17 +3880,17 @@ describe('placeholder pin rules', () => {
       expect(found.message).toContain('“Trait: Woven” wins whenever it applies');
     });
 
-    it('reads a cast entity’s owned trait as a rival that wins in its own text', () => {
+    it('reads a cast entity’s owned trait as a rival that a global trait beats (Q18)', () => {
       const [found] = only(contest({
         traits: [trait({ id: 't1', name: 'Sworn', placeholderPins: [pinTo('red')] })],
         entities: [{ id: 'ash', name: 'Ash', traits: [trait({ id: 'o1', name: 'Tamed', placeholderPins: [pinTo('blue')] })] }],
       }), 'placeholder-pin-conflict');
-      expect(found.message).toBe('“Hue” is pinned by “Trait: Sworn” and “Trait: Ash\'s Tamed”, and “Trait: Ash\'s Tamed” wins whenever it applies');
+      expect(found.message).toBe('“Hue” is pinned by “Trait: Ash\'s Tamed” and “Trait: Sworn”, and “Trait: Sworn” wins whenever it applies');
       expect(found.items).toContainEqual({ id: 'o1', name: 'Tamed', section: 'traits' });
     });
 
-    it('stays quiet for two Personas whose links pin one world placeholder to different values', () => {
-      // Only one is played; the other wins in its own text. The cast entity's link still rivals the world trait.
+    it('stays quiet for two persona-only Personas, which never share a playthrough, and pits a Persona against the cast', () => {
+      // A persona-only Persona is in play only while played. A cast entity's link rivals a Persona's (Q17).
       const paladin = trait({ id: 'paladin', name: 'Paladin', groupId: 'blueprints' });
       const link = (id: string, value: string): TraitLink => ({
         id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null,
@@ -3901,11 +3901,40 @@ describe('placeholder pin rules', () => {
       const two = contest({
         traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
         traits: [paladin],
-        entities: [persona('Albus', 'red'), persona('Sylvie', 'blue')],
+        entities: [persona('Albus', 'red', { personaOnly: true }), persona('Sylvie', 'blue', { personaOnly: true })],
       });
       expect(only(two, 'placeholder-pin-conflict')).toEqual([]);
       const [found] = only({ ...two, entities: [persona('Albus', 'red'), persona('Ash', 'blue', { persona: false })] }, 'placeholder-pin-conflict');
       expect(found.message).toBe('“Hue” is pinned by “Trait: Albus\'s Paladin” and “Trait: Ash\'s Paladin”, and “Trait: Ash\'s Paladin” wins whenever it applies');
+    });
+
+    it('warns when two characters can pin one placeholder to different values, and names the winner (Q21)', () => {
+      const trust = (id: string, value: string) => stat({ id, name: 'Trust', descriptors: [
+        { id: `${id}-low`, threshold: 50, description: 'Wary', placeholderPins: [pinTo(value)] },
+      ] });
+      const two = contest({
+        entities: [{ id: 'ash', name: 'Ash', stats: [trust('s-trust', 'red')] }, { id: 'bo', name: 'Bo', stats: [trust('s-trust', 'blue')] }],
+      });
+      const found = only(two, 'placeholder-pin-entity-tie');
+      expect(found).toHaveLength(1);
+      expect(found[0].severity).toBe('warning');
+      expect(found[0].message).toBe(
+        '“Hue” is pinned to different values by “Ash\'s Trust ≤ 50” and “Bo\'s Trust ≤ 50”. “Bo\'s Trust ≤ 50” wins when they apply at once',
+      );
+      expect(found[0].items).toEqual([
+        { id: 'p1', name: 'Hue' },
+        { id: 'ash', name: "Ash's Trust ≤ 50", section: 'entities' },
+        { id: 'bo', name: "Bo's Trust ≤ 50", section: 'entities' },
+      ]);
+      // A Persona in the cast wins only while played, which the warning says.
+      const [asPersona] = only(contest({
+        entities: [{ id: 'ash', name: 'Ash', persona: true, stats: [trust('s-trust', 'red')] }, { id: 'bo', name: 'Bo', stats: [trust('s-trust', 'blue')] }],
+      }), 'placeholder-pin-entity-tie');
+      expect(asPersona.message).toMatch(/“Bo's Trust ≤ 50” wins when they apply at once, unless the player plays “Ash”$/);
+      // A global band against one entity is precedence, not a tie between entities.
+      expect(only(contest({
+        stats: [trust('s-hunger', 'red')], entities: [{ id: 'bo', name: 'Bo', stats: [trust('s-trust', 'blue')] }],
+      }), 'placeholder-pin-entity-tie')).toEqual([]);
     });
 
     it('stays quiet for pins that can never be in force together: exclusive siblings, bands of one stat', () => {
@@ -5255,6 +5284,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'placeholder-owner-orphan': 'advanced',
   'placeholder-pin-broken': 'advanced',
   'placeholder-pin-conflict': 'advanced',
+  'placeholder-pin-entity-tie': 'advanced',
   'placeholder-pin-cycle': 'advanced',
   'placeholder-pin-self': 'advanced',
   'placeholder-pin-unknown-value': 'advanced',

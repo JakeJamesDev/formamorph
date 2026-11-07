@@ -202,6 +202,9 @@ When you switch, your numbers convert, so no band moves. The choice only changes
 
 **Advanced mode only.** Each descriptor row has a pin button. A pin keeps a [placeholder](World-Editor-Placeholders) at one value while the stat is in that band.
 
+- **An entity's own stat pins too.** Its band can pin a world placeholder or one of that entity's own placeholders. The pin applies in every text, whoever the player plays. See [Pins](World-Editor-Placeholders#pins) for which pin wins.
+- **A Blueprint stat's band pins a blueprint placeholder.** Its pin list offers only blueprints. Each entity that links the stat pins its own copy, from its own value. See [Pins by Blueprint](World-Editor-Blueprints#pins-by-blueprint).
+
 ## Scripts
 <!-- keywords: scripts tab, stat code, dynamic value calculation, javascript, script, formula, derived from another, automatic math, custom logic, programming, ai change overwritten, code box, computed, add script, timing -->
 <!-- route: worldEditorStat.code -->

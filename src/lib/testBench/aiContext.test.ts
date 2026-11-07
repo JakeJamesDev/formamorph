@@ -431,7 +431,7 @@ describe('an entity’s own scope', () => {
     expect(block(scoped({ entities: [...entities, titled, you] }), 'entities').text).toContain('Wren the gray-Eyed has gray eyes.');
   });
 
-  it('reads the Custom Persona entity’s own text with the lens’s pins, its traits among them', () => {
+  it('reads the Custom Persona entity’s pins in every text, over a cast entity’s own (Q17, Q18)', () => {
     const hazel: Trait = {
       id: 't-hazel', name: 'Hazel-Eyed', isDefault: true, statChanges: [], order: 0,
       placeholderPins: [{ placeholderId: 'w-eyes', value: 'green' }],
@@ -439,7 +439,7 @@ describe('an entity’s own scope', () => {
     const self = { ...you, traits: [hazel], aiDescription: `Eyes of ${EYES}.` };
     const data = scoped({ entities: [...entities, wren, self] });
     expect(block(data, 'persona').text).toContain('Eyes of green.');
-    expect(block(data, 'entities').text).toContain('Wren has gray eyes.');
+    expect(block(data, 'entities').text).toContain('Wren has green eyes.');
   });
 
   it('lets a starting stat’s band pin win over the entity’s trait, as play lays them', () => {

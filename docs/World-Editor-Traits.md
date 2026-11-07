@@ -171,6 +171,8 @@ A value that is one chip pins the part that chip holds. Pin a Wildcard to the va
 
 [Pin a blueprint](World-Editor-Blueprints#pins-by-blueprint) to pin each owner's own copy of it. A link can replace this list for one owner.
 
+An entity's trait pins every text, whoever the player plays.
+
 A stat descriptor's pin outranks a location's, and a location's outranks a trait's. See [Pins](World-Editor-Placeholders#pins) for the full order.
 
 ## Scripts
@@ -190,6 +192,8 @@ A stat descriptor's pin outranks a location's, and a location's outranks a trait
 <!-- keywords: clash, priority, which wins, overlap, contradiction, order matters, tie -->
 
 Two active traits can change the availability of the same stat, or pin the same placeholder. The trait lower in the trait list then wins. The row tells you when this applies, and it links to the other trait.
+
+For a pin on traits of different owners, a world trait wins, then the played persona's, then the entity lower in the entity list.
 
 [Body](#body) rows work differently: the trait switched on last wins.
 
