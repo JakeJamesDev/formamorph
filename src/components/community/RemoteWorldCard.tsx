@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Check, EyeOff, Download, Heart, HeartOff, MessageSquare, Pin, PinOff, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX, X } from "lucide-react";
 import { PinnedMark } from "@/components/community/PinnedMark";
+import { HiddenGemMark } from "@/components/community/HiddenGemMark";
 import { SupporterListingButton } from "@/components/community/SupporterListingButton";
 import { isSupporterOnly } from "@/lib/supporterListingAction";
 import { isPinned } from "@/lib/pinning";
@@ -95,6 +96,8 @@ interface RemoteWorldCardProps {
   reviewBusy?: boolean;
   /** Opens the likes audit from the Likes Marker. Staff surfaces only. */
   onOpenLikes?: (world: WorldRecord) => void;
+  /** Whether the card sits in a Hidden Gem slot. */
+  hiddenGem?: boolean;
 }
 
 /** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
@@ -104,7 +107,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease, onTogglePin, onToggleSupporterOnly,
   placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav, inReviewGroup = false,
-  onApprove, onReject, reviewBusy = false, onOpenLikes,
+  onApprove, onReject, reviewBusy = false, onOpenLikes, hiddenGem = false,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -316,6 +319,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
       </div>
 
       <PinnedMark listing={world} className="mb-2" />
+      {hiddenGem && <HiddenGemMark className="mb-2" />}
       <ModerationMarker listing={world} titleOnly={inReviewGroup} className="mb-2" />
       {viewerIsStaff && onOpenLikes && <LikesMarker reasons={likesMarkerOf(world)} onOpen={() => onOpenLikes(world)} className="mb-2" />}
 

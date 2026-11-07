@@ -4,6 +4,7 @@ import { type DownloadState } from "@/lib/downloadState";
 import { toEpoch } from "@/lib/thumbnailCache";
 import { likesForSort } from "@/lib/likeCount";
 import { comparePinned } from "@/lib/pinning";
+import { placeHiddenGems } from "@/lib/hiddenGems";
 import { kindOf, listingModels } from "@/lib/catalogKinds";
 import { BROWSE_TABS, catalogKindOfTab, type BrowseTab } from "@/lib/browseTabs";
 import { asStatusFacet, isViewersListing, matchesStatusFacets, type StatusFacet } from "@/lib/communityStatusFacets";
@@ -19,6 +20,7 @@ import { type WorldRecord } from "@/components/WorldDetails";
 export type ReviewPinning = 'none' | 'pin' | 'playerView';
 
 const NO_PINNED: WorldRecord[] = [];
+const NO_IDS: string[] = [];
 
 /** Oldest-queued first, then id, whatever the browser's sort. */
 const byQueueTime = (a: WorldRecord, b: WorldRecord): number =>
@@ -54,6 +56,7 @@ interface TabFilters {
   sortField: string; // updated_at | created_at | downloads | likes
   sortOrder: string; // asc | desc
   sortUpdatesFirst: boolean; // float listings with an update to the front
+  showHiddenGems: boolean; // a preference, so clearing filters leaves it
 }
 
 const emptyFilters = (sortField = 'updated_at'): TabFilters => ({
@@ -65,6 +68,7 @@ const emptyFilters = (sortField = 'updated_at'): TabFilters => ({
   sortField,
   sortOrder: 'desc',
   sortUpdatesFirst: true,
+  showHiddenGems: true,
 });
 
 const emptyByTab = (defaultSortField: string): Record<BrowseTab, TabFilters> =>
@@ -102,6 +106,7 @@ function readStoredFilters(storageKey: string, defaultSortField: string): Record
         sortField: typeof s.sortField === 'string' ? s.sortField : defaultSortField,
         sortOrder: s.sortOrder === 'asc' ? 'asc' : 'desc',
         sortUpdatesFirst: s.sortUpdatesFirst !== false,
+        showHiddenGems: s.showHiddenGems !== false,
       };
     }
   } catch { /* a corrupt key falls back to the defaults, which the write effect then rewrites */ }
@@ -188,6 +193,7 @@ export function useCommunityBrowserFilters(
   const setSortField = useMemo(() => setterFor('sortField'), [setterFor]);
   const setSortOrder = useMemo(() => setterFor('sortOrder'), [setterFor]);
   const setSortUpdatesFirst = useMemo(() => setterFor('sortUpdatesFirst'), [setterFor]);
+  const setShowHiddenGems = useMemo(() => setterFor('showHiddenGems'), [setterFor]);
 
   const toggleStatus = useCallback((facet: StatusFacet) => {
     setStatusFilter((prev) => (prev.includes(facet) ? prev.filter((f) => f !== facet) : [...prev, facet]));
@@ -201,7 +207,7 @@ export function useCommunityBrowserFilters(
   }, [patch]);
 
   const {
-    authorFilter, tagFilter, tagMode, modelFilter, statusFilter, sortField, sortOrder, sortUpdatesFirst,
+    authorFilter, tagFilter, tagMode, modelFilter, statusFilter, sortField, sortOrder, sortUpdatesFirst, showHiddenGems,
   } = filters;
 
   /**
@@ -346,7 +352,7 @@ export function useCommunityBrowserFilters(
   // Every include filter must hold — status facets stack with each other and with author and tag alike.
   // With "updates first" on, listings with an available update are floated to the front, each group then
   // ordered by the chosen sort field/direction.
-  const { pinnedRows, filteredRemoteWorlds } = useMemo(() => {
+  const { pinnedRows, sortedRows } = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const authors = authorFilter.map((a) => a.toLowerCase());
     const tags = tagFilter.map((t) => sanitizeTag(t)).filter(Boolean);
@@ -384,7 +390,7 @@ export function useCommunityBrowserFilters(
       rows = list.filter((world) => !awaitsFirstReview(world) || isViewersListing(world, viewerId));
     }
 
-    if (order) return { pinnedRows: pinned, filteredRemoteWorlds: order(rows) };
+    if (order) return { pinnedRows: pinned, sortedRows: order(rows) };
     const dir = sortOrder === 'asc' ? 1 : -1;
     const sorted = [...rows].sort((a, b) => {
       const pinOrder = comparePinned(a, b); // pins lead under every sort, as on the server
@@ -399,8 +405,17 @@ export function useCommunityBrowserFilters(
       return (av - bv) * dir;
     });
 
-    return { pinnedRows: pinned, filteredRemoteWorlds: sorted };
+    return { pinnedRows: pinned, sortedRows: sorted };
   }, [kindWorlds, searchQuery, authorFilter, tagFilter, tagMode, modelFilter, statusFilter, viewerId, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, downloadStateOf, order, review]);
+
+  // Hidden Gems take slots on page 1 of the plain Worlds browse only; any search or filter turns placement off.
+  const placesGems = tab === 'world' && !order && showHiddenGems && !searchQuery.trim()
+    && !authorFilter.length && !tagFilter.length && !modelFilter.length && !statusFilter.length;
+  const { filteredRemoteWorlds, placedGemIds } = useMemo(() => {
+    if (!placesGems) return { filteredRemoteWorlds: sortedRows, placedGemIds: NO_IDS };
+    const { rows, placed } = placeHiddenGems(sortedRows, pageSize);
+    return { filteredRemoteWorlds: rows, placedGemIds: placed.length ? placed.map((w) => String(w._id || w.id)) : NO_IDS };
+  }, [placesGems, sortedRows, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / pageSize));
   // Memoized: the browser defers this list, and a fresh array each render would never settle.
@@ -409,6 +424,8 @@ export function useCommunityBrowserFilters(
     [filteredRemoteWorlds, currentPage, pageSize],
   );
   const pinnedRemoteWorlds = currentPage === 1 ? pinnedRows : NO_PINNED;
+  /** Ids of the rows in gem slots on the current page. */
+  const hiddenGemIds = currentPage === 1 ? placedGemIds : NO_IDS;
 
   /** How many narrowings are in force on this tab — what the mobile "Filters" badge counts. Hides are
    *  included: an empty-looking grid is as often a hide as a filter. */
@@ -434,7 +451,7 @@ export function useCommunityBrowserFilters(
   // Reset to page 1 when the result set changes; clamp if hiding shrinks it below the current page.
   // `kind` included: switching tabs shortens the list, so a page-5 view would otherwise land on nothing.
   // `review` included: turning Pin Pending on from a later page would leave the pinned group out of sight.
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, modelFilter, statusFilter, sortField, sortOrder, kind, review]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, authorFilter, tagFilter, tagMode, modelFilter, statusFilter, sortField, sortOrder, showHiddenGems, kind, review]);
   useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
 
   return {
@@ -447,6 +464,7 @@ export function useCommunityBrowserFilters(
     sortField, setSortField,
     sortOrder, setSortOrder,
     sortUpdatesFirst, setSortUpdatesFirst,
+    showHiddenGems, setShowHiddenGems,
     clearFilters, activeFilterCount,
     currentPage, setCurrentPage,
     hiddenWorldIds, hiddenTags, hiddenAuthors,
@@ -454,6 +472,6 @@ export function useCommunityBrowserFilters(
     setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, unhideTag, unhideAuthor, hiddenWorldName,
     allAuthors, allTags, allModels,
-    filteredRemoteWorlds, totalPages, pagedRemoteWorlds, pinnedRemoteWorlds,
+    filteredRemoteWorlds, totalPages, pagedRemoteWorlds, pinnedRemoteWorlds, hiddenGemIds,
   };
 }

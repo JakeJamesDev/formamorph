@@ -543,12 +543,12 @@ const CommunityCreationsBrowser = ({
     searchQuery, applySearchInput, authorFilter, setAuthorFilter, tagFilter, setTagFilter,
     tagMode, setTagMode, modelFilter, setModelFilter, statusFilter, toggleStatus, clearFilters, activeFilterCount,
     sortField, setSortField, sortOrder, setSortOrder,
-    sortUpdatesFirst, setSortUpdatesFirst, currentPage, setCurrentPage,
+    sortUpdatesFirst, setSortUpdatesFirst, showHiddenGems, setShowHiddenGems, currentPage, setCurrentPage,
     hiddenWorldIds, hiddenTags, hiddenAuthors,
     hideRemoteWorld, hideRemoteTag, hideRemoteAuthor,
     setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
-    allAuthors, allTags, allModels, filteredRemoteWorlds, totalPages, pagedRemoteWorlds, pinnedRemoteWorlds,
+    allAuthors, allTags, allModels, filteredRemoteWorlds, totalPages, pagedRemoteWorlds, pinnedRemoteWorlds, hiddenGemIds,
   } = useCommunityBrowserFilters(
     catalogInView, downloadStateForRecord, open, {
       tab: browseTab,
@@ -1123,6 +1123,17 @@ const CommunityCreationsBrowser = ({
           {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
         </Button>
       </Tip>
+      {browseTab === 'world' && (
+        <Tip tip="Places a few well-liked worlds with few downloads on page 1" labelsChild={false}>
+          <label className="ml-2 flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
+            <Checkbox
+              checked={showHiddenGems}
+              onCheckedChange={(c) => setShowHiddenGems(c === true)}
+            />
+            Hidden Gems
+          </label>
+        </Tip>
+      )}
     </div>
   );
 
@@ -1259,6 +1270,8 @@ const CommunityCreationsBrowser = ({
     };
   }, [contests]);
 
+  const gemIds = useMemo(() => new Set(hiddenGemIds), [hiddenGemIds]);
+
   // One card for both the pinned group and the grid.
   const renderCard = (world: WorldRecord, inReviewGroup = false) => {
     const worldId = world._id || world.id;
@@ -1303,6 +1316,7 @@ const CommunityCreationsBrowser = ({
         onReject={decides ? rejectCard : undefined}
         reviewBusy={decides && review.busyId !== null}
         onOpenLikes={moderationHere ? setAuditing : undefined}
+        hiddenGem={!inReviewGroup && gemIds.has(String(worldId))}
       />
     );
   };

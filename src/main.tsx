@@ -11,6 +11,7 @@ import { installGlobalErrorHandlers } from './lib/globalErrorHandlers'
 import { installDevFeedbackStub } from './lib/dev/devFeedbackStub'
 import { installDevReviewStub } from './lib/dev/devReviewStub'
 import { installDevLikesStub } from './lib/dev/devLikesStub'
+import { installDevHiddenGemsStub } from './lib/dev/devHiddenGemsStub'
 import { installDevServerSettingsStub } from './lib/dev/devServerSettingsStub'
 
 installWindowChrome()
@@ -20,6 +21,7 @@ installGlobalErrorHandlers()
 if (import.meta.env.DEV) installDevFeedbackStub()
 if (import.meta.env.DEV) installDevReviewStub()
 if (import.meta.env.DEV) installDevLikesStub()
+if (import.meta.env.DEV) installDevHiddenGemsStub()
 if (import.meta.env.DEV) installDevServerSettingsStub()
 if (import.meta.env.DEV && import.meta.env.VITE_FM_HOLD_UPDATES) void import('./lib/dev/heldUpdatesBanner')
 

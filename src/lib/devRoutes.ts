@@ -153,6 +153,7 @@ export const DEV_MODAL_TABS = {
   // `fixture=moderation` is the same admin viewer with the Moderation popover open. `fixture=likesMarker`
   // serves a staff catalog with Likes Markers (`devLikesStub.ts`); `tab=contest` plus its archive selector
   // shows the marked contest entries, and `modal=likers` opens the canned audit.
+  // `fixture=hiddenGems` flags the three least-downloaded worlds of the real catalog as Hidden Gems.
   community: ['world', 'entity', 'dictionary', 'model', 'prompt', 'mascot', 'contest'],
   // The publish dialog's canned payload: a world by default, or a prompt with `tab=prompt`.
   publish: ['world', 'prompt'],
