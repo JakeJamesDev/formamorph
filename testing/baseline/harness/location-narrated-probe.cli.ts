@@ -1,7 +1,7 @@
 // Narrated-move probe: after the narration, does the location request find a move the story made?
 //   carried  the narration takes the player into a reachable place the action never asked for (../location-narrated-cases.json)
 //   stay     the narration only looks toward a place, talks about it, or moves someone else
-//   control  the location router's gold cases (../location-router-cases.json): action only, known answers
+//   control  the location router's cases (../location-router-cases.json), every set and world: action only, known answers
 //
 // Two arms, both built by the real locationSuggest pass record over each scene's chip values:
 //   reused   the shipped location-change prompts, as Suggest mode sends them after the narration
@@ -48,24 +48,30 @@ const narrated = JSON.parse(readFileSync(path.resolve(casesPath), 'utf8')) as {
   worlds: Record<string, PlaceSpec[]>;
   scenes: Scene[];
 };
-const router = JSON.parse(readFileSync(path.resolve('testing/baseline/location-router-cases.json'), 'utf8')) as {
-  current: { name: string; description: string };
-  destinations: { name: string; description: string }[];
-  cases: { name: string; narration: string; expect: string }[];
+interface RouterPlaces { current: { name: string; description: string }; destinations: { name: string; description: string }[] }
+const router = JSON.parse(readFileSync(path.resolve('testing/baseline/location-router-cases.json'), 'utf8')) as RouterPlaces & {
+  worlds?: Record<string, RouterPlaces>;
+  cases: { name: string; narration: string; expect: string; world?: string }[];
 };
 
-// The router cases' `narration` field holds the player's action.
-// The router's flat list becomes a world: the destinations sit beside the current place under one region.
+// The router cases' `narration` field holds the player's action. A case without `world` uses the top-level places.
+// Each router place list becomes a world: the destinations sit beside the current place under one region.
+const routerKey = (world?: string) => (world ? `router:${world}` : 'router');
+const routerPlaces: Record<string, RouterPlaces> = {
+  [routerKey()]: router,
+  ...Object.fromEntries(Object.entries(router.worlds ?? {}).map(([key, places]) => [routerKey(key), places])),
+};
 const worlds: Record<string, PlaceSpec[]> = {
   ...narrated.worlds,
-  router: [
-    { name: 'The Marsh', parent: null, summary: 'A river marsh.' },
-    { name: router.current.name, parent: 'The Marsh', summary: router.current.description },
-    ...router.destinations.map((d) => ({ name: d.name, parent: 'The Marsh', summary: d.description })),
-  ],
+  ...Object.fromEntries(Object.entries(routerPlaces).map(([key, places]) => [key, [
+    { name: 'The Region', parent: null, summary: 'The surrounding region.' },
+    { name: places.current.name, parent: 'The Region', summary: places.current.description },
+    ...places.destinations.map((d) => ({ name: d.name, parent: 'The Region', summary: d.description })),
+  ]])),
 };
 const controls: Scene[] = router.cases.map((c) => ({
-  set: 'control', id: c.name, world: 'router', at: router.current.name, action: c.narration, narration: '', expect: c.expect,
+  set: 'control', id: c.name, world: routerKey(c.world), at: routerPlaces[routerKey(c.world)].current.name,
+  action: c.narration, narration: '', expect: c.expect,
 }));
 const scenes = [...controls, ...narrated.scenes].filter((s) => !only || only.split(',').includes(s.id));
 
