@@ -51,6 +51,9 @@ A Windows player reported that **Update & Restart** failed with *Not a launcher 
 - **Q26 Settings restart:** when any settings key copied, the result screen asks for a restart and has a Restart button. Live re-reading is out of scope.
 - **Q27 Legacy default Avatar:** the merge skips the legacy default Avatar id, which the Model Library already deletes on load. The summary does not count it.
 - **Q28 Mascot images:** every Mascot image the folder lacks copies by id, even when no rig in the folder references it.
+- **Q29 Existing model file:** a model file the folder already has counts as kept in the summary, like other categories. Both copies stay. The result screen lists only real failures as skipped, with reasons.
+- **Q30 Partial downloads:** the merge moves partial downloads too, as items, each sidecar before its part. A moved partial download can then resume in the folder.
+- **Q31 Same model folder:** when source and destination are the same folder, the plan leaves the models category out. No row shows, and the done marker still records it.
 
 ## User Stories
 
