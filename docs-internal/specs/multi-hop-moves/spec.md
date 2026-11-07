@@ -1,6 +1,7 @@
 # Spec: Multi-Hop Moves
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-07, tickets 01–02, last landing b988cecf6. Review: spec text corrected, one gap ruled by the user. Tests green on 2026-11-07; lint red only on gitignored local files.
 Spec session: multi-hop-moves — spec
 
 ## Problem Statement
@@ -53,7 +54,7 @@ Rulings from the grill:
     - The unlisted set has 5 or 6 new neutral scenes that expect NONE. The probe asserts each far place exists and is not on the one-move list. No move is a hit, and a move to any listed place counts as moved. At least half the scenes use places that stay unlisted after ticket 02: more than 3 moves away, or behind a one-way leg. Ticket 02 moves the rest into the far set.
     - **Probe result and ruling (2026-11-07, user):** no prompt variant met the unlisted bar on the cloud model. The best one-line variant (an Elsewhere line at the end of the destination list, plus "the last place the body stops") moved 50% of unlisted runs, against 67–75% for the base prompt, with carried and stay unchanged. A two-part reply reached 25% but regressed carried and stay. Ruling: land the one-line variant, record the miss in Landed, and judge the unlisted bar again in ticket 02, with route tails on the list.
 - **Ticket 02 rulings:**
-  - A far place renders `- **Name:** summary — via <in-between places in walk order>`. The current and final places are not named. Leg Travel Hints are dropped on a far route; a one-move Connection keeps its hint.
+  - A far place renders `- **Name:** summary — via <in-between places in walk order>`, joined by ", then " (*Store — via Farm Yard, then Town*). The current and final places are not named. Leg Travel Hints are dropped on a far route; a one-move Connection keeps its hint.
   - The widening lives in the destinations chip itself, so any prompt and the Test Bench Destinations row read the 3-move list. The Sandbox Snapshot exits, the entity location request's destinations and the Location tab stay one move.
   - Shared names: the list holds only the nearest place of a name. On a tie, none of the tied places is listed, one-move ties included.
   - Order: one-move places in today's order, then 2-move, then 3-move, each in walk order. With several shortest routes, the first found wins.
@@ -66,8 +67,9 @@ Rulings from the grill:
 - **Q6. List form.** A place more than one move away keeps its summary and gets a route tail that names the places in between, in the form of the existing Travel Hint tail. A one-move place renders as it does today.
 - **Q7 / Q12. Final place only.** Only the final place counts as entered: the follower carry, the Met check, the log line, the ambient sound, presence and the scene pull. Nothing records the places in between. This was reopened on a new fact: a move today fires no enter script and records no visited place.
 - **Q8. Shared names.** When several listed places share a name, the one with the fewest moves wins. On a tie, the game does not move the player.
+  - **Close ruling (2026-11-07, user):** the current location counts as the nearest place of its own name, so a place that shares the current location's name is never listed, one-move neighbors included. A reply that names where the player stands never moves them.
 - **Q9. Elsewhere scope.** Elsewhere is a Narrated Move answer only. The router keeps NONE. In Auto mode and in Suggest mode, Elsewhere gives no move and no offer.
-- **Q10. Probe bar.** On the cloud default model, the location-narrated probe gains a **far** set (the narration carries the player 2 or 3 moves) and an **unlisted** set (the narration carries the player past the cap, or to a place that is not reachable). Far: at least 90% move to the right place. Unlisted: at most 10% move. The existing carried, stay and router control sets run in the same batches as the in-batch control.
+- **Q10. Probe bar.** On the cloud default model, the location-narrated probe gains a **far** set (the narration carries the player 2 or 3 moves) and an **unlisted** set (the narration carries the player past the cap, or to a place that is not reachable). Far: at least 90% move to the right place. Unlisted: at most 10% move, scored by the ticket 02 ruling. The existing carried, stay and router control sets run in the same batches as the in-batch control.
 - **Q11. Suggest mode.** The offer names the final place. Accepting it runs the same path move.
 - **Q13. Moves Between.** A Moves Between follower who does not own the final place stays behind, even when a place on the path is one of hers.
 - **Q14. Time.** A move charges no travel time, as today. The time pass reads the narration.
@@ -92,7 +94,7 @@ A good test calls the real function or runs a real turn with fake model replies,
   - Followers arrive at the final place. "Stay here" stays. A Moves Between follower who does not own the final place stays.
   - Suggest mode offers the final place, and accepting it moves the player there.
   - Passes after the move (choices, stats, inventory) read the final place.
-- **Seam 3, the cloud probe.** The location-narrated probe gains the far and unlisted sets, 10 runs each, against the Q10 bar.
+- **Seam 3, the cloud probe.** The location-narrated probe gains the far and unlisted sets, 10 runs each, against the Q10 bar as the ticket 02 ruling scores it: a stop past the cap inside a listed place is a hit when the reply names that containing place.
 - All test and probe scenes are neutral and made up. The world that found the gap stays private.
 
 ## Out of Scope
