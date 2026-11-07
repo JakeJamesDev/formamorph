@@ -102,6 +102,18 @@ describe('a move of more than one step in Auto mode', () => {
     expect(endpoint.after.inventory).toContain('Shop Ledger');
   });
 
+  it('moves nobody on a router reply that names a far place inside other words, and still moves one step to the yard', async () => {
+    await openInBarn();
+    stubEndpoint('You think about the store in town.', { router: 'I would go to the Store.', narrated: 'Barn' });
+
+    await playTurn('I think about the store.');
+    expect(play.currentLocation?.id).toBe('barn');
+
+    stubEndpoint('You step out into the yard.', { router: 'I would go to the Yard.' });
+    await playTurn('I step out into the yard.');
+    await waitFor(() => expect(play.currentLocation?.id).toBe('yard'));
+  });
+
   it('leaves the player where they stand on a place past 3 moves', async () => {
     await openInBarn();
     stubEndpoint('You walk to town, through the store and into its back room.', { router: 'Backroom', narrated: 'Backroom' });

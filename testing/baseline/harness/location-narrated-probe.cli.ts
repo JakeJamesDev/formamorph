@@ -12,6 +12,9 @@
 //   narrated defaultNarratedMovePrompt / defaultNarratedMoveUserPrompt over the walkable list
 // Every run dispatches all cases on every arm together, so batch drift lands on every arm.
 //
+// After the three arms, a router arm sends the shipped location-change request over the control and far scenes,
+// and scores each reply by the substring rule over every place and by the router matcher (multi-hop-moves R2).
+//
 // The bar (multi-hop-moves Q10, ticket 02) is on the narrated arm's set totals: far right >= 90%, unlisted
 // moved <= 10% over the scenes whose stop no listed place holds (a move to the listed place holding the stop is
 // a hit, and those scenes report apart), carried found and stay moved no worse than the before arm's, control right >= the before arm's.
@@ -28,11 +31,12 @@ import {
 } from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
-import { navigableDestinationEntries, walkableDestinations } from '@/lib/locationContext';
+import { farDestinationNames, navigableDestinationEntries, walkableDestinationEntries } from '@/lib/locationContext';
+import { matchLocationResponse } from '@/lib/locationMatch';
 import { WALK_MOVE_CAP } from '@/lib/locationGraph';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { TURN_PASSES } from '@/lib/turnPipeline/turnPasses';
-import { emptyTurnMaterial } from '@/lib/turnPipeline/turnPlan';
+import { emptyTurnMaterial, type TurnMaterial } from '@/lib/turnPipeline/turnPlan';
 import { testInput, TEST_PROMPTS } from '@/lib/turnPipeline/turnTestInputs';
 import { migrateWorld } from '@/lib/version';
 import type { Connection, GameLocation } from '@/types';
@@ -163,11 +167,13 @@ function sceneMaterial(scene: Scene, world: BuiltWorld) {
   const location = world.locations.find((l: GameLocation) => l.name === scene.at);
   if (!location) throw new Error(`${scene.world} has no ${scene.at}`);
   const ctx = chipValues(authoredChipScene(world, { location, resolve: (text) => text }));
-  const destinations = walkableDestinations(location, world.locations, world.connections ?? []).map((l) => l.name);
+  const reach = walkableDestinationEntries(location, world.locations, world.connections ?? []);
+  const destinations = reach.map((e) => e.location.name);
+  const farDestinations = farDestinationNames(reach);
   return {
     location, destinations,
     material: {
-      ...emptyTurnMaterial({ action: scene.action, effectiveAction: scene.action, turnId: 'probe', baseCtx: ctx, destinations }),
+      ...emptyTurnMaterial({ action: scene.action, effectiveAction: scene.action, turnId: 'probe', baseCtx: ctx, destinations, farDestinations }),
       ctx,
       narration: scene.narration,
     },
@@ -244,9 +250,8 @@ async function readStream(res: Response, began: number): Promise<{ text: string;
   return { text, firstMs };
 }
 
-async function send(arm: Arm, scene: Scene) {
-  const material = materials.get(scene.id)![arm];
-  const request = pass!.buildRequest(ARMS[arm], material);
+/** Sends one pass request with its sampler pin, retrying a failed call 3 times. */
+async function complete(request: ReturnType<NonNullable<typeof pass>['buildRequest']>) {
   const temperature = PROMPT_SAMPLER_PINS[request.type]?.temperature;
   for (let attempt = 0; ; attempt++) {
     const began = Date.now();
@@ -260,12 +265,18 @@ async function send(arm: Arm, scene: Scene) {
     });
     if (res.ok) {
       const { text: raw, firstMs } = await readStream(res, began);
-      const place = pass!.parseResponse(raw, material);
-      return { raw, got: typeof place === 'string' ? place : 'NONE', firstMs, totalMs: Date.now() - began };
+      return { raw, firstMs, totalMs: Date.now() - began };
     }
     if (attempt >= 3) throw new Error(`${res.status} ${await res.text()}`);
     await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
   }
+}
+
+async function send(arm: Arm, scene: Scene) {
+  const material = materials.get(scene.id)![arm];
+  const reply = await complete(pass!.buildRequest(ARMS[arm], material));
+  const place = pass!.parseResponse(reply.raw, material);
+  return { ...reply, got: typeof place === 'string' ? place : 'NONE' };
 }
 
 /** Runs `jobs` with at most `limit` in flight. */
@@ -385,3 +396,62 @@ const checks = [
 for (const [label, value, ok] of checks) console.log(`  ${label.padEnd(16)} ${pct(value, 1).padStart(7)} · ${ok ? 'MEETS' : 'MISSES'}`);
 if (misses.length) console.log(`\nmisses:\n  ${misses.join('\n  ')}`);
 console.log(`\nwall ${Math.round((Date.now() - begun) / 1000)}s`);
+
+// Router arm (multi-hop-moves R2): the shipped location-change request over the control and far scenes, action
+// only. Each reply is scored by the substring rule over every place and by the router matcher, where a far place
+// needs an exact reply. Same replies, so the two rules see no batch drift.
+const routerInput = testInput(
+  { prompts: { ...TEST_PROMPTS, locationChange: defaultLocationChangePrompt, locationChangeUser: defaultLocationChangeUserPrompt } },
+  { thinkingMode: 'off' },
+);
+const routerPass = TURN_PASSES.find((p) => p.id === 'locationAuto');
+if (!routerPass) throw new Error('no locationAuto pass');
+const routerScenes = scenes.filter((s) => s.set === 'control' || s.set === 'far');
+const RULES = {
+  substring: (raw: string, material: TurnMaterial) => matchLocationResponse(raw, material.destinations),
+  exact: (raw: string, material: TurnMaterial) => routerPass.parseResponse(raw, material),
+};
+type Rule = keyof typeof RULES;
+const RULE_IDS = Object.keys(RULES) as Rule[];
+const routerRows = new Map(routerScenes.map((s) => [s.id, { substring: cell(), exact: cell() }]));
+const routerMisses: string[] = [];
+const routerBegun = Date.now();
+for (let run = 0; run < runs; run++) {
+  await pool(routerScenes.map((scene) => async () => {
+    const { material } = sceneMaterial(scene, built[scene.world]);
+    const { raw } = await complete(routerPass.buildRequest(routerInput, material));
+    const row = routerRows.get(scene.id)!;
+    for (const rule of RULE_IDS) {
+      const place = RULES[rule](raw, material) ?? 'NONE';
+      const c = row[rule];
+      c.n++;
+      if (place !== 'NONE') c.moved++;
+      if (place === scene.expect) c.right++;
+      else routerMisses.push(`${rule.padEnd(9)} ${scene.set.padEnd(8)} ${scene.id} #${run + 1}: want ${scene.expect}, got ${place} :: ${JSON.stringify(raw)}`);
+    }
+  }), poolSize);
+  process.stdout.write(`router run ${run + 1}/${runs} · ${Math.round((Date.now() - routerBegun) / 1000)}s
+`);
+}
+// A move to any place but the scene's answer.
+const wrong = (s: Scene, c: ReturnType<typeof cell>) => c.moved - (s.expect === 'NONE' ? 0 : c.right);
+const routerTotal = (inSet: Scene[], rule: Rule) => inSet.reduce((t, s) => {
+  const c = routerRows.get(s.id)![rule];
+  return { right: t.right + c.right, n: t.n + c.n, wrong: t.wrong + wrong(s, c) };
+}, { right: 0, n: 0, wrong: 0 });
+for (const set of ['control', 'far'] as const) {
+  const inSet = routerScenes.filter((s) => s.set === set);
+  if (!inSet.length) continue;
+  console.log(`
+router ${set} (right · wrong moves, per scene)`.padEnd(45) + RULE_IDS.map((r) => r.padStart(14)).join(''));
+  for (const s of inSet) {
+    const row = routerRows.get(s.id)!;
+    console.log(`  ${s.id.padEnd(42)}${RULE_IDS.map((r) => `${row[r].right}/${row[r].n} · ${wrong(s, row[r])}`.padStart(14)).join('')}`);
+  }
+  console.log(`  ${'TOTAL'.padEnd(42)}${RULE_IDS.map((r) => {
+    const t = routerTotal(inSet, r);
+    return `${t.right}/${t.n} · ${t.wrong}`.padStart(14);
+  }).join('')}`);
+}
+if (routerMisses.length) console.log(`\nrouter misses:\n  ${routerMisses.join('\n  ')}`);
+console.log(`\nrouter wall ${Math.round((Date.now() - routerBegun) / 1000)}s`);

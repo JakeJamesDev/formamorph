@@ -96,7 +96,7 @@ By default the story offers the move. The player sees a small **Move to _X_?** p
 
 With **Move Automatically** on in Settings, the game moves the player itself:
 
-- 🚶 **The player's action** moves them before the scene is written, so the scene happens in the new place.
+- 🚶 **The player's action** moves them before the scene is written, so the scene happens in the new place. A place more than one step away counts only when the AI answers with its name alone. An answer that mentions it in a sentence moves the player nowhere.
 - 📖 **The narration** moves them too. When the action moves them nowhere but the narration ends with them in a connected place, the game moves them there after the narration. This includes the opening narration.
 - 👥 Followers come along either way, and an entity told to stay stays. On a walk of several steps they arrive at the last place. A **Moves Between** entity comes along only when that last place is one of its locations.
 

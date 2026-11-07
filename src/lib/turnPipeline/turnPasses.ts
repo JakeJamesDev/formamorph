@@ -18,7 +18,7 @@ import {
 } from '@/lib/stagedPlanning';
 import { languageDirective } from '@/lib/languages';
 import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
-import { matchLocationResponse, matchNarratedMoveResponse } from '@/lib/locationMatch';
+import { matchLocationResponse, matchNarratedMoveResponse, matchRouterResponse } from '@/lib/locationMatch';
 import {
   entityMoveCandidates, entityMoveOptions, entityMoveOptionsText, entityMoveStateText, type EntityMove,
 } from '@/lib/entityFollowing';
@@ -240,7 +240,7 @@ const locationAutoPass: TurnPassRecord<string | null> = {
     systemTiled(input.prompts.locationChange, material.baseCtx),
     userTiled(input.prompts.locationChangeUser, { '<PLAYER ACTION>': material.action }),
   ),
-  parseResponse: (raw, material) => matchLocationResponse(raw, material.destinations),
+  parseResponse: (raw, material) => matchRouterResponse(raw, material.destinations, material.farDestinations ?? []),
   fold: (parsed) => (parsed === null ? {} : { moved: true }),
 };
 

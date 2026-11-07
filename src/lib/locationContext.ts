@@ -464,6 +464,10 @@ export function walkableDestinationEntries<L extends NamedLink = GameLocation>(
   });
 }
 
+/** The names of the entries more than one move away: the ones the router matches only on an exact reply. */
+export const farDestinationNames = (entries: readonly WalkableEntry<NamedLink>[]): string[] =>
+  entries.filter((entry) => entry.moves > 1).map((entry) => entry.location.name);
+
 /** What trails a place's line after `via`: a far place's route, else a one-move Connection's travel hint. */
 export const destinationTail = (entry: WalkableEntry<NamedLink>): string | undefined =>
   entry.route.length ? entry.route.map((l) => l.name).join(", then ") : entry.hint;

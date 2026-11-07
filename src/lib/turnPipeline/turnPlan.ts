@@ -185,6 +185,9 @@ export interface TurnMaterial {
   sceneEntityTokens: TokenValues;
   /** Names the location router may answer with. */
   destinations: string[];
+  /** The names in `destinations` more than one move away, which the router matches only on an exact reply.
+   *  Absent: every destination is one move away. */
+  farDestinations?: string[];
   /** The player already moved this turn, before the narration. */
   moved?: boolean;
   /**
@@ -227,8 +230,8 @@ export interface TurnMaterial {
   milestone?: { kept: string[]; fresh: string[] };
 }
 
-/** The four values a turn knows before any pass has answered. Everything else is derived mid-run. */
-export type TurnMaterialSeed = Pick<TurnMaterial, 'action' | 'effectiveAction' | 'turnId' | 'baseCtx' | 'destinations'>;
+/** The values a turn knows before any pass has answered. Everything else is derived mid-run. */
+export type TurnMaterialSeed = Pick<TurnMaterial, 'action' | 'effectiveAction' | 'turnId' | 'baseCtx' | 'destinations' | 'farDestinations'>;
 
 /** A turn's starting material: what the caller knows up front, with every derived field at its empty value. */
 export function emptyTurnMaterial(seed: TurnMaterialSeed): TurnMaterial {

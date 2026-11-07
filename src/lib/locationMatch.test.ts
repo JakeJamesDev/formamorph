@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchLocationResponse, matchNarratedMoveResponse } from './locationMatch';
+import { matchLocationResponse, matchNarratedMoveResponse, matchRouterResponse } from './locationMatch';
 
 const names = ['Cave', 'Cave Entrance', 'Forest Clearing'];
 
@@ -87,6 +87,35 @@ describe('matchNarratedMoveResponse', () => {
 
   it('reads a word that only starts with Elsewhere as a reply like any other', () => {
     expect(matchNarratedMoveResponse('Elsewhereish Cave', names)).toBe('Cave');
+  });
+});
+
+describe('matchRouterResponse', () => {
+  const far = ['Cave Entrance', 'Old Mill'];
+  const reach = [...names, 'Old Mill'];
+
+  it('moves nobody on a reply that holds a far name inside other words', () => {
+    expect(matchRouterResponse('I walk all the way to the Old Mill.', reach, far)).toBeNull();
+  });
+
+  it('moves the player to a far place on an exact reply, case, article and markdown aside', () => {
+    expect(matchRouterResponse('  old mill ', reach, far)).toBe('Old Mill');
+    expect(matchRouterResponse('The Old Mill', reach, far)).toBe('Old Mill');
+    expect(matchRouterResponse('**Old Mill**.', reach, far)).toBe('Old Mill');
+  });
+
+  it('still finds a one-move place inside other words', () => {
+    expect(matchRouterResponse('I head into the forest clearing now', reach, far)).toBe('Forest Clearing');
+  });
+
+  it('moves nobody when the longest name in the reply is far, even with a one-move name inside it', () => {
+    expect(matchRouterResponse('I go to the cave entrance', reach, far)).toBeNull();
+    expect(matchRouterResponse('Cave Entrance', reach, far)).toBe('Cave Entrance');
+  });
+
+  it('reads NONE and an empty reply as no move', () => {
+    expect(matchRouterResponse('NONE', reach, far)).toBeNull();
+    expect(matchRouterResponse('', reach, far)).toBeNull();
   });
 });
 

@@ -138,7 +138,7 @@ import { getRevealReleased } from "../lib/revealTimingStore";
 import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
-import { walkableDestinations } from "../lib/locationContext";
+import { farDestinationNames, walkableDestinationEntries } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
@@ -3123,7 +3123,8 @@ const GameViewer = ({
 
     // Places a move can reach from here. Nowhere to go means nothing to route: the router's reply is matched
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
-    const destinations = currentLocation ? walkableDestinations(currentLocation, locations, connections) : [];
+    const reach = walkableDestinationEntries(currentLocation, locations, connections);
+    const destinations = reach.map((entry) => entry.location);
     const planInput = {
       action,
       isGameStarted,
@@ -3726,6 +3727,7 @@ const GameViewer = ({
           // diary passes record against.
           baseCtx: contextValues(null, codeView),
           destinations: destinations.map((loc) => loc.name),
+          farDestinations: farDestinationNames(reach),
         }),
         request,
         signal,
