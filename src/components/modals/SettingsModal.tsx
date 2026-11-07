@@ -77,6 +77,7 @@ import { imageReachabilityTarget } from '@/lib/imageGen/probe';
 import { TextEndpointEditor } from './TextEndpointEditor';
 import { activePresetEditor, presetEditor, type PresetEditorView } from './textEndpointEditorModel';
 import { FORMAMORPH_AI_PRESET_ID } from '@/lib/textEndpointPresets';
+import { dailySendAvailable } from '@/lib/activeInstalls';
 import { HOSTED_PRESET_STATES, type HostedPresetState } from '@/lib/hostedAi/refusals';
 import type { HostedState } from '@/lib/hostedAi/hostedState';
 import { showExhaustedNotice, showWarningNotice } from './hostedNotices';
@@ -523,6 +524,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setEditorAutoSave,
     editorAutoSaveIdleSeconds,
     setEditorAutoSaveIdleSeconds,
+    dailySendEnabled,
+    setDailySendEnabled,
     characterDiaries,
     describeCharacters,
     genTemperature,
@@ -2254,6 +2257,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   </Hint>
                 </div>
               </Row>
+              </Section>
+              )}
+
+              {dailySendAvailable() && (
+              <Section title="Privacy">
+              <CheckRow
+                htmlFor="dailySendEnabled"
+                checked={dailySendEnabled}
+                onChange={setDailySendEnabled}
+                {...rowCopy('dailySendEnabled')}
+              />
               </Section>
               )}
             </div>

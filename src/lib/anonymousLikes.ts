@@ -199,6 +199,24 @@ export function readerInstallId(): string | null {
 }
 
 /**
+ * The reader's Install id, only when storage really keeps it.
+ *
+ * A browser that refuses to store holds an id for one session alone, so a reader counted by it would
+ * count as a new Install every session.
+ *
+ * @returns The id, or null when nothing here may name one or storage did not keep it
+ */
+export function keptReaderInstallId(): string | null {
+  const install = readerInstallId();
+  if (!install) return null;
+  try {
+    return localStorage.getItem(INSTALL_STORAGE_KEY)?.toLowerCase() === install ? install : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Who the catalog in hand belongs to: a signed-in reader's id, or this Install.
  *
  * A guest has hearts of their own now, and the server marks them from the Install header, so two

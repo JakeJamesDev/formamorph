@@ -27,6 +27,7 @@ import { PrivacyPolicyProvider } from './contexts/PrivacyPolicyContext';
 import { AccountDeletionProvider } from './contexts/AccountDeletionContext';
 import { UpdateRequiredGate } from './components/modals/UpdateRequiredDialog';
 import { HostedAiStateSync } from './components/HostedAiStateSync';
+import { DailyInstallSender } from './components/DailyInstallSender';
 import { UsernameRenameGate } from './components/modals/UsernameRenameDialog';
 import { SignInHost } from './components/SignInHost';
 import { EXIT_TO_MENU_PROMPT } from './lib/leavePrompts';
@@ -292,6 +293,8 @@ function App() {
                           made from either screen, and sibling effects run in order — so the header this
                           installs is on `fetch` before any screen's mount effect asks for anything. */}
                       <UpdateRequiredGate />
+                      {/* After the gate above, so the client header is on `fetch` before its first send. */}
+                      <DailyInstallSender />
                       <HostedAiStateSync />
                       {COMMUNITY_ENABLED && <UsernameRenameGate />}
                       {/* One sign-in for every view, inside the age gate and the privacy prompt it

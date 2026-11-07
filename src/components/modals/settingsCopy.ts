@@ -752,6 +752,15 @@ Each chip adds its own clause and is left out when it has no value. Any mix of c
     description: 'Guides you through building a new world, one field at a time',
     info: "Opens the **World Editor** on a new world with an example for every step. Your other worlds don't change.",
   },
+
+  // ── Data · Privacy ──────────────────────────────────────────────────────────
+  dailySendEnabled: {
+    label: 'Daily Check-In',
+    description: 'Tells the Formamorph server once a day that you opened the app',
+    info: `The server counts how many copies of the app open each day and each month.
+- Sends no play data, worlds, or account details
+- Starts after you accept the adult-content warning`,
+  },
 } as const satisfies Record<string, SettingCopy>;
 
 /** Buttons inside the modal, kept here so their casing is guarded alongside the row labels. */

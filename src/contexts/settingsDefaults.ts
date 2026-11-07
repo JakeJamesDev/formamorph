@@ -265,6 +265,8 @@ export const DEFAULT_QUOTE_COLOR_DARK: string | null = null;
 export const DEFAULT_TOOLS_ENABLED = true;
 // The World Editor's Autosave. Off saves only on Save and Ctrl+S.
 export const DEFAULT_EDITOR_AUTO_SAVE = true;
+// The Daily Send that counts this install as active. Off sends nothing.
+export const DEFAULT_DAILY_SEND_ENABLED = true;
 // Seconds the World Editor waits after the last change before an autosave. The slider spans the min and max.
 export const DEFAULT_EDITOR_AUTO_SAVE_IDLE_S = 30;
 export const MIN_EDITOR_AUTO_SAVE_IDLE_S = 10;
