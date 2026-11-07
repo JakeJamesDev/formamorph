@@ -1,7 +1,7 @@
 # Spec: Multi-Hop Moves
 
-Status: done
-Status note: Closed 2026-11-07, tickets 01–02, last landing b988cecf6. Review: spec text corrected, one gap ruled by the user. Tests green on 2026-11-07; lint red only on gitignored local files.
+Status: ready-for-agent
+Status note: Reopened 2026-11-07 for close-review follow-ups, tickets 03–05. First close: tickets 01–02, last landing b988cecf6, tests green, lint red only on gitignored local files.
 Spec session: multi-hop-moves — spec
 
 ## Problem Statement
@@ -96,6 +96,18 @@ A good test calls the real function or runs a real turn with fake model replies,
   - Passes after the move (choices, stats, inventory) read the final place.
 - **Seam 3, the cloud probe.** The location-narrated probe gains the far and unlisted sets, 10 runs each, against the Q10 bar as the ticket 02 ruling scores it: a stop past the cap inside a listed place is a hit when the reply names that containing place.
 - All test and probe scenes are neutral and made up. The world that found the gap stays private.
+
+## Close-Review Follow-Ups
+
+Rulings from the first close review (2026-11-07, user):
+
+- **R1. Narrated Move prompt split.** The user prompt's last sentence holds three conditions (stay, a listed place, Elsewhere). It becomes three short lines, per rule 1 of the prompt-writing guide. It ships only if a cloud A/B against the current text shows no bar worse (ticket 03).
+- **R2. Router fallback.** The router's substring fallback matches only one-move places. A far place needs an exact reply. Router controls and the far set are probed (ticket 04).
+- **R3. Cleanups, no behavior change** (ticket 05):
+  - One shared turn-test helper replaces the copies in the multi-hop and narrated-moves tests.
+  - Test Bench destination rows carry a route in its own field, apart from the travel hint.
+  - The "up to 3 steps" help text is built from the move cap. Human docs keep the number as text.
+  - The walkable-reach function loses its cap parameter.
 
 ## Out of Scope
 
