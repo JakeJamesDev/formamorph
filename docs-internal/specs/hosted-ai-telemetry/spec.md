@@ -92,7 +92,8 @@ No new section returns a subject or an account id. That follows how `heaviest` d
 
 **Privacy policy**
 
-- The Formamorph AI section's list of recorded fields adds the app version.
+- The Formamorph AI section's list of recorded fields adds the app version. The capped `max_tokens` and the reservation join the existing token and cost wording as "the token limit and the amount held for the call".
+- The "Last updated" date moves to the date of the edit.
 - It adds that each refused call is counted per day with its reason, your account, your Patreon user id or staff grant, your tier, and the first and last time that day.
 - The retention line and the erasure line cover the refusal totals. The Patreon user id stays on them until the 30 days end, as on usage rows.
 - The policy publishes through the existing publish step. Deploy the policy with or before the first build that records the new fields.
