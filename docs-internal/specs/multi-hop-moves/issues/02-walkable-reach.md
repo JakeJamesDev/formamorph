@@ -28,6 +28,6 @@ One action or one narration moves the player up to three moves away (Q1, Q3–Q8
 - [ ] In a turn-runner test with fake replies, a Narrated Move answer naming a far place moves the player there.
 - [ ] Followers arrive at the final place, "stay here" stays, and a Moves Between follower who does not own the final place stays, in turn-runner tests.
 - [ ] Suggest mode offers the final place, and accepting the offer moves the player there, in a turn-runner test.
-- [ ] Probe numbers on the cloud default model, 10 runs per scene: far at least 90% right, unlisted at most 10% moved, carried and stay no worse than before, router controls unchanged, and first-token and total time per arm. The numbers go in the ticket's `## Landed` section.
+- [ ] Probe numbers on the cloud default model, 10 runs per scene: far at least 90% right, unlisted at most 10% moved (ticket 01 landed at about 50%; this ticket owns the bar), carried and stay no worse than before, router controls unchanged, and first-token and total time per arm. The numbers go in the ticket's `## Landed` section.
 
 For you: in a live Auto-mode run, "walk down the lane to town and step into the store" from a farm building puts you in the store, with its shopkeeper present.

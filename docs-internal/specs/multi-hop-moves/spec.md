@@ -45,6 +45,13 @@ Rulings from the grill:
 
 - **Q1. Walkable reach.** The router and the Narrated Move request can pick any place reachable by a chain of legal moves under the effective-navigation rule (ADR-0002: Implicit Navigation for pairs no Connection covers, plus the Connections leaving a place). One-way legs stay one-way. The game computes the path. The reply is matched against this list only.
 - **Q2. Elsewhere.** The Narrated Move request gets an Elsewhere answer: the player's body left for a place that is not on the list. Elsewhere moves nobody.
+  - **Ticket 01 rulings:**
+    - A reply whose first word is Elsewhere, in any case and with any trailing text, is Elsewhere and moves nobody, even when the trailing text names a listed place.
+    - An exact match to a listed place name wins over Elsewhere, so a place named "Elsewhere" stays reachable.
+    - The router keeps its matcher unchanged.
+    - The probe gets an in-batch "before" arm: the narrated prompt text at the ticket's base, frozen in the probe, run beside the new prompt on every set. The stay bar reads: the new stay false-move rate is at most the before arm's rate in the same batches. The reused arm stays.
+    - The unlisted set has 5 or 6 new neutral scenes that expect NONE. The probe asserts each far place exists and is not on the one-move list. No move is a hit, and a move to any listed place counts as moved. At least half the scenes use places that stay unlisted after ticket 02: more than 3 moves away, or behind a one-way leg. Ticket 02 moves the rest into the far set.
+    - **Probe result and ruling (2026-11-07, user):** no prompt variant met the unlisted bar on the cloud model. The best one-line variant (an Elsewhere line at the end of the destination list, plus "the last place the body stops") moved 50% of unlisted runs, against 67–75% for the base prompt, with carried and stay unchanged. A two-part reply reached 25% but regressed carried and stay. Ruling: land the one-line variant, record the miss in Landed, and judge the unlisted bar again in ticket 02, with route tails on the list.
 - **Q3. Followers.** A multi-hop move goes through the same move path as a one-move walk, to the final place. Followers come along, and "stay here" replies stay.
 - **Q4. Both requests.** The router and the Narrated Move request read the same widened list, as they do now.
 - **Q5. Hop cap.** At most 3 moves. A place past the cap is not listed.
