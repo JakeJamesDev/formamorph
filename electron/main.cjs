@@ -20,6 +20,7 @@ const modelMove = require('./modelMove.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
 const { mergeSource, writeMarker, SOURCE_STORES } = require('./profileMerge.cjs');
 const { openSource } = require('./profileMergeSource.cjs');
+const { readFields, fillField } = require('./profileMergeModelFolder.cjs');
 const { corsResponse } = require('./corsShim.cjs');
 const { httpOrigin, stripOrigin } = require('./originStrip.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
@@ -583,6 +584,21 @@ ipcMain.handle('merge-summaries', async (_event, categories) => {
 ipcMain.handle('merge-record', async (_event, { category, id }) => {
   if (!mergeOffer || !Object.hasOwn(SOURCE_STORES, category) || typeof id !== 'string') return null;
   return (await openMergeReader()).record({ ...SOURCE_STORES[category], id });
+});
+ipcMain.handle('merge-settings', async () => (mergeOffer ? (await openMergeReader()).settings() : {}));
+ipcMain.handle('merge-model-folder', () => (
+  mergeOffer ? { source: readFields(mergeOffer.dir, fs), target: readFields(app.getPath('userData'), fs) } : { source: {}, target: {} }
+));
+ipcMain.handle('merge-model-folder-fill', (_event, field) => {
+  if (!mergeOffer) throw new Error('The other copy is closed.');
+  const merged = fillField({ sourceDir: mergeOffer.dir, targetDir: app.getPath('userData'), field, fsApi: fs });
+  modelLocations = { ...modelLocations, ...merged };
+  try { fs.mkdirSync(modelsDir(), { recursive: true }); } catch { /* the picker reports a missing folder */ }
+});
+// The app reads settings once at load; relaunching keeps FORMAMORPH_ROOT, so it stays a launcher start.
+ipcMain.handle('merge-restart', () => {
+  app.relaunch();
+  app.exit(0);
 });
 ipcMain.handle('merge-later', () => {
   mergeLater = true;

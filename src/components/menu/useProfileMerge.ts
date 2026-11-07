@@ -89,5 +89,9 @@ export function useProfileMerge({ bridge, categoriesOf, onMerged }: UseProfileMe
 
   const done = useCallback(() => setView(null), []);
 
-  return { view, merge, notNow, decline, done };
+  const restart = useCallback(() => {
+    if (bridge) void bridge.restart().catch((err: unknown) => console.error('[profile merge] restart failed:', err));
+  }, [bridge]);
+
+  return { view, merge, notNow, decline, done, restart };
 }

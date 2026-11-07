@@ -1,6 +1,6 @@
 # 04: Settings, Sign-In and Model-Folder Choice
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,8 +17,21 @@ The merge also brings over settings, sign-in and the model-folder choice. All th
 
 ## Acceptance criteria
 
-- [ ] Engine tests: a folder key stays, a missing key is copied, and a signed-in AppData copy signs in a signed-out folder.
-- [ ] Tests: a folder model-folder choice stays, and a missing one takes the AppData value.
-- [ ] Settings applied by the merge take effect without a restart, or the result screen asks for one.
-- [ ] A test fails when the fill-missing guard is removed.
-- [ ] A changelog fragment covers settings and sign-in.
+- [x] Engine tests: a folder key stays, a missing key is copied, and a signed-in AppData copy signs in a signed-out folder. (`settings.test.ts` settings block; goes red when the folder snapshot is emptied)
+- [x] Tests: a folder model-folder choice stays, and a missing one takes the AppData value. (`profileMergeModelFolder.test.mjs`; red when the keep-the-folder line is removed)
+- [x] Settings applied by the merge take effect without a restart, or the result screen asks for one. (Q26: result screen shows **Restart** when a settings key was copied; `ProfileMergeDialog.test.tsx`)
+- [x] A test fails when the fill-missing guard is removed. (both guards put back and watched fail; settings run first, `merge order` test)
+- [x] A changelog fragment covers settings and sign-in. (`docs-internal/changelog.d/launcher-profile-merge-04.md`)
+
+## Landed
+
+**Not verified**
+
+- The real `session.fromPath` read of localStorage and `app.relaunch()` never ran in a packaged Windows build. No machine run exercised either; they are covered by review only.
+- A copied bundled-Avatar "seeded" flag could stop a re-seed if the folder's Avatar store lacks the record. Q24 copies seen flags, so I left it.
+
+**For you**
+
+- On a Windows machine with settings only in AppData, start through the launcher, merge, and check the **Restart** button on the result screen: after it, the endpoint and sign-in match the AppData copy.
+- Check the model-folder choice carried over: open the local model screen and read the download folder.
+- Check the new result row and **Restart** copy at `#dev?modal=profileMerge&tab=result`.

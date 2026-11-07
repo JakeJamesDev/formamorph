@@ -14,6 +14,11 @@ export interface SourceSummary {
   worldName?: string;
 }
 
+export type ModelFolderField = 'downloadDir' | 'externalDir' | 'searchSubfolders';
+
+/** The model-folder fields a profile sets; an absent field is unset. */
+export type ModelFolderFields = Partial<Record<ModelFolderField, string | boolean>>;
+
 export type MergeMarker = 'done' | 'declined';
 
 export interface ProfileMergeBridge {
@@ -22,6 +27,14 @@ export interface ProfileMergeBridge {
   summaries(categories: string[]): Promise<Record<string, SourceSummary[]>>;
   /** One AppData record, or null when it is gone. */
   record(category: string, id: string): Promise<unknown>;
+  /** Every localStorage entry of the AppData profile. */
+  settings(): Promise<Record<string, string>>;
+  /** The model-folder fields each profile's `model-locations.json` sets. */
+  modelFolder(): Promise<{ source: ModelFolderFields; target: ModelFolderFields }>;
+  /** Copy one model-folder field into the folder's profile when it lacks it. */
+  fillModelFolder(field: ModelFolderField): Promise<void>;
+  /** Relaunch the app so it reads the settings the merge copied. */
+  restart(): Promise<void>;
   /** Close the AppData profile and stop offering until the next start. */
   later(): Promise<void>;
   /** Write the marker: `done` with the categories merged, or `declined`. */

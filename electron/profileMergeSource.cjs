@@ -76,6 +76,17 @@ async function pageRecord({ db: dbName, store, id }) {
   }
 }
 
+/** Page-side: every localStorage entry as strings. Runs in the hidden window. */
+function pageSettings() {
+  const out = {};
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    const value = key === null ? null : localStorage.getItem(key);
+    if (key !== null && value !== null) out[key] = value;
+  }
+  return out;
+}
+
 const call = (fn, arg) => `(${fn.toString()})(${JSON.stringify(arg)})`;
 
 /**
@@ -99,6 +110,7 @@ async function openSource({ electron, dir }) {
   return {
     summaries: (stores) => run(pageSummaries, stores),
     record: (ref) => run(pageRecord, ref),
+    settings: () => run(pageSettings, null),
     close: () => { if (!win.isDestroyed()) win.destroy(); },
   };
 }

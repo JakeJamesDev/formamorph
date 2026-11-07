@@ -14,6 +14,7 @@ import type { SaveMeta } from '@/lib/saveOrdering';
 import { MergeHalt, reasonOf, type MergeCategory, type MergeItem } from './engine';
 import type { ProfileMergeBridge, SourceSummary } from './bridge';
 import { appendedSaveOrders, importedSave } from './saveOrder';
+import { modelFolderCategory, settingsCategory } from './settings';
 
 type LibraryKey = 'worlds' | 'entities' | 'dictionaries';
 
@@ -153,6 +154,8 @@ function savesCategory(bridge: ProfileMergeBridge): MergeCategory {
 /** The categories this build merges. */
 export function mergeCategories(bridge: ProfileMergeBridge): MergeCategory[] {
   return [
+    settingsCategory(bridge),
+    modelFolderCategory(bridge),
     libraryCategory(bridge, 'dictionaries'),
     libraryCategory(bridge, 'entities'),
     libraryCategory(bridge, 'worlds'),

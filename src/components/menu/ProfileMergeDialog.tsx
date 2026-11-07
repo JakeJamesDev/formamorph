@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
 import { SurfaceTab } from '@/components/ui/surface';
 import { writesOf, type CategoryPlan, type CategoryResult, type MergeProgress } from '@/lib/profileMerge/engine';
+import { SETTINGS_KEY } from '@/lib/profileMerge/settings';
 import type { ProfileMergeView } from './profileMergeView';
 
 interface ProfileMergeDialogProps {
@@ -22,7 +23,12 @@ interface ProfileMergeDialogProps {
   onNotNow: () => void;
   onDecline: () => void;
   onDone: () => void;
+  /** Relaunches the app so it reads the settings the merge copied. */
+  onRestart?: () => void;
 }
+
+/** Whether the merge copied a settings key: the app reads those once at load. */
+const copiedSettings = (results: CategoryResult[]) => results.some((result) => result.key === SETTINGS_KEY && result.added > 0);
 
 const counts = (parts: [number, string, string][]) =>
   parts.filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`).join(' · ');
@@ -107,8 +113,9 @@ function ResultRows({ results }: { results: CategoryResult[] }) {
 }
 
 /** The offer, the locked run, and the result of merging the AppData profile into the folder's profile. */
-export function ProfileMergeDialog({ view, onMerge, onNotNow, onDecline, onDone }: ProfileMergeDialogProps) {
+export function ProfileMergeDialog({ view, onMerge, onNotNow, onDecline, onDone, onRestart }: ProfileMergeDialogProps) {
   const running = view?.step === 'run';
+  const needsRestart = !!onRestart && view?.step === 'result' && !view.error && copiedSettings(view.results);
   const handleOpenChange = (open: boolean) => {
     if (open || !view || running) return;
     if (view.step === 'offer') onNotNow();
@@ -143,7 +150,9 @@ export function ProfileMergeDialog({ view, onMerge, onNotNow, onDecline, onDone 
             {view?.step === 'result' &&
               (view.error
                 ? `The merge stopped: ${view.error}. You'll be asked again the next time you start Formamorph.`
-                : 'Your data is merged.')}
+                : needsRestart
+                  ? 'Your data is merged. Restart Formamorph to use the settings that came over.'
+                  : 'Your data is merged.')}
           </DialogDescription>
         </DialogHeader>
 
@@ -166,7 +175,14 @@ export function ProfileMergeDialog({ view, onMerge, onNotNow, onDecline, onDone 
         )}
         {view?.step === 'result' && (
           <DialogFooter>
-            <Button onClick={onDone}>Done</Button>
+            {needsRestart ? (
+              <>
+                <Button variant="outline" onClick={onDone}>Done</Button>
+                <Button onClick={onRestart}>Restart</Button>
+              </>
+            ) : (
+              <Button onClick={onDone}>Done</Button>
+            )}
           </DialogFooter>
         )}
       </DialogContent>

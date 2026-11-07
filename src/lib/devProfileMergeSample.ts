@@ -33,6 +33,7 @@ export function devProfileMergeView(step: string | undefined): ProfileMergeView 
     return {
       step: 'result',
       results: [
+        { key: 'settings', label: 'Settings and Sign-In', added: 14, replaced: 0, kept: 31, skipped: [] },
         { key: 'dictionaries', label: 'Dictionaries', added: 2, replaced: 0, kept: 1, skipped: [] },
         { key: 'entities', label: 'Entities', added: 5, replaced: 1, kept: 3, skipped: [] },
         { key: 'worlds', label: 'Worlds', added: 2, replaced: 1, kept: 2, skipped: [{ label: 'Sedge Landing', reason: 'There isn’t enough storage space' }] },

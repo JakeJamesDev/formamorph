@@ -2162,6 +2162,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         onNotNow={devMergeStep ? closeDevMerge : profileMerge.notNow}
         onDecline={devMergeStep ? closeDevMerge : profileMerge.decline}
         onDone={devMergeStep ? closeDevMerge : profileMerge.done}
+        onRestart={devMergeStep ? closeDevMerge : profileMerge.restart}
       />
 
       {/* The component-file import review, and the update review a file of a source you already hold

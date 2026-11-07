@@ -42,6 +42,20 @@ describe('ProfileMergeDialog', () => {
     expect(h.onDecline).not.toHaveBeenCalled();
   });
 
+  it('asks for a restart only when the merge copied a settings key', () => {
+    const onRestart = vi.fn();
+    const result = (added: number) => ({
+      step: 'result' as const,
+      results: [{ key: 'settings', label: 'Settings and sign-in', added, replaced: 0, kept: 0, skipped: [] }],
+    });
+    const { rerender } = render(<ProfileMergeDialog view={result(2)} {...handlers()} onRestart={onRestart} />);
+    expect(screen.getByText(/Restart Formamorph to use the settings/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+    expect(onRestart).toHaveBeenCalledOnce();
+    rerender(<ProfileMergeDialog view={result(0)} {...handlers()} onRestart={onRestart} />);
+    expect(screen.queryByRole('button', { name: 'Restart' })).toBeNull();
+  });
+
   it('lists skipped items with reasons in the result', () => {
     render(<ProfileMergeDialog view={devProfileMergeView('result')} {...handlers()} />);
     expect(screen.getByText('Sedge Landing')).toBeTruthy();
@@ -57,6 +71,10 @@ function fakeBridge(offer: { merged: string[] } | null = { merged: [] }) {
     offer: vi.fn(async () => offer),
     summaries: vi.fn(async () => ({})),
     record: vi.fn(async () => null),
+    settings: vi.fn(async () => ({})),
+    modelFolder: vi.fn(async () => ({ source: {}, target: {} })),
+    fillModelFolder: vi.fn(async () => {}),
+    restart: vi.fn(async () => {}),
     later: vi.fn(async () => {}),
     mark: vi.fn(async (state, categories) => { marks.push(categories ? `${state}:${categories.join(',')}` : state); return true; }),
   };
