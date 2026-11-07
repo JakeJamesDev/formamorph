@@ -72,15 +72,18 @@ const BlockRow = ({ block, open, onToggle }: {
 );
 
 /** One place a player can move to, and what the model is told the trip involves. */
-const DestinationLine = ({ destination }: { destination: DestinationRow }) => (
-  <div className="flex items-baseline gap-1.5 rounded-md border p-1.5">
-    <Route className="h-3 w-3 shrink-0 translate-y-0.5 text-muted-foreground" aria-hidden />
-    <span className="min-w-0 flex-grow truncate text-label">{destination.name}</span>
-    <Meta className="shrink-0">
-      {destination.hint ? `via ${destination.hint}` : destination.via === 'connection' ? 'connection' : 'nested'}
-    </Meta>
-  </div>
-);
+const DestinationLine = ({ destination }: { destination: DestinationRow }) => {
+  const tail = destination.route ? destination.route.join(', then ') : destination.hint;
+  return (
+    <div className="flex items-baseline gap-1.5 rounded-md border p-1.5">
+      <Route className="h-3 w-3 shrink-0 translate-y-0.5 text-muted-foreground" aria-hidden />
+      <span className="min-w-0 flex-grow truncate text-label">{destination.name}</span>
+      <Meta className="shrink-0">
+        {tail ? `via ${tail}` : destination.via === 'connection' ? 'connection' : 'nested'}
+      </Meta>
+    </div>
+  );
+};
 
 /** One scope's cast, each row saying which of its descriptions this scope's block carries. */
 const RosterSection = ({ group }: { group: RosterGroup }) => (

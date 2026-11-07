@@ -162,21 +162,20 @@ export interface WalkStep {
 }
 
 /**
- * Every place reachable from `id` in up to `cap` moves, each move one of the effective destinations of the
+ * Every place reachable from `id` in up to {@link WALK_MOVE_CAP} moves, each move one of the effective destinations of the
  * place it leaves, so one-way legs stay one-way. Nearest first, in walk order; the first shortest route wins.
  */
 export function walkableReach(
   id: string,
   locations: readonly LocationLink[],
   connections: readonly Connection[],
-  cap: number = WALK_MOVE_CAP,
 ): WalkStep[] {
   const index = parentIndex(locations);
   const authored = authoredPairs(connections);
   const steps: WalkStep[] = [];
   const seen = new Set([id]);
   let frontier: WalkStep[] = [{ id, moves: 0, route: [], via: { via: "implicit" } }];
-  for (let moves = 1; moves <= cap && frontier.length; moves++) {
+  for (let moves = 1; moves <= WALK_MOVE_CAP && frontier.length; moves++) {
     const next: WalkStep[] = [];
     for (const from of frontier) {
       for (const [to, via] of destinationsIn(from.id, index, authored, connections)) {

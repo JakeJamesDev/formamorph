@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   dropLocationFromConnections, effectiveDestinations, implicitPairs, overriddenPairs, pairKey,
-  reachableFromStarts, walkableReach,
+  reachableFromStarts, walkableReach, WALK_MOVE_CAP,
 } from "./locationGraph";
 import type { Connection, GameLocation } from "@/types";
 
@@ -154,9 +154,13 @@ describe("walkableReach", () => {
     expect(steps.find((s) => s.id === "town")?.via).toEqual({ via: "connection", connection: lane, leg: lane.aToB });
   });
 
-  it("stops at the cap it is given", () => {
-    expect(reach("barn", [lane])).toEqual({ farm: 1, yard: 1, town: 2, store: 3 });
-    expect(walkableReach("barn", places, [lane], 1).map((s) => s.id)).toEqual(["farm", "yard"]);
+  it("stops at the move cap", () => {
+    // A chain one longer than the cap: the last link is a move too far.
+    const chain: GameLocation[] = Array.from({ length: WALK_MOVE_CAP + 2 }, (_, i) => ({ id: `n${i}`, name: `N${i}` }));
+    const links: Connection[] = chain.slice(1).map((to, i) => ({ id: `l${i}`, a: chain[i].id, b: to.id, aToB: {} }));
+    const steps = walkableReach("n0", chain, links);
+    expect(steps.map((s) => s.moves)).toEqual(Array.from({ length: WALK_MOVE_CAP }, (_, i) => i + 1));
+    expect(steps.some((s) => s.id === `n${WALK_MOVE_CAP + 1}`)).toBe(false);
   });
 });
 

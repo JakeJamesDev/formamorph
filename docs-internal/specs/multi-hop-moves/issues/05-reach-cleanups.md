@@ -1,6 +1,6 @@
 # 05: Walkable Reach Cleanups
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -18,7 +18,15 @@ The walkable-reach code says what it holds and keeps each rule in one place (R3)
 
 ## Acceptance criteria
 
-- [ ] Both turn-test files use the shared helper, and every test in them still passes.
-- [ ] A Test Bench row for a far place and one for a Connection read as before, in the Test Bench tests.
-- [ ] The help text names the cap through the constant.
-- [ ] The walkable-reach function has no cap parameter, and its tests still cover the cap.
+- [x] Both turn-test files use the shared helper, and every test in them still passes. (`src/test/moveTurns.tsx`; prepare's gates run both files.)
+- [x] A Test Bench row for a far place and one for a Connection read as before, in the Test Bench tests. (`aiContext.test.ts`: `route` for the far place, `hint` for the Connection.)
+- [x] The help text names the cap through the constant. (`promptVariables.ts`, `${WALK_MOVE_CAP}`.)
+- [x] The walkable-reach function has no cap parameter, and its tests still cover the cap. (`locationGraph.test.ts`: "stops at the move cap".)
+
+## Landed
+
+**Not verified**
+- The rendered text of a Test Bench row: `AiContextInstrument` has no component test, so "reads as before" rests on the data fields and the unchanged join (`, then `).
+
+**For you**
+- Open the Test Bench Destinations list on a world with a far place: the row should read `via Yard, then Town` as before.

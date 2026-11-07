@@ -17,7 +17,7 @@ import type { CopyLookup } from '@/lib/blueprints';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { traitScopedPins } from '@/lib/placeholderPins';
 import {
-  contextDelivery, destinationTail, knownEntityIds, reachableEntityIds, walkableDestinationEntries, scopedChipOpts, sublocationEntityIds,
+  contextDelivery, knownEntityIds, reachableEntityIds, walkableDestinationEntries, scopedChipOpts, sublocationEntityIds,
   type ContextDelivery,
 } from '@/lib/locationContext';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -65,8 +65,10 @@ export interface ContextBlock {
 export interface DestinationRow {
   id: string;
   name: string;
-  /** What the model is told the trip involves: a far place's route, else a Connection's travel hint. */
+  /** The Connection's authored travel hint, on a one-move place. */
   hint?: string;
+  /** A far place's route: the places passed through, in walk order. Absent for a one-move place. */
+  route?: string[];
   via: 'implicit' | 'connection';
 }
 
@@ -275,10 +277,13 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
     location,
     locationName: location ? resolve(location.name) : '',
     blocks,
-    destinations: walkableDestinationEntries(location, locations, connections).map((entry) => {
-      const tail = destinationTail(entry);
-      return { id: entry.location.id, name: resolve(entry.location.name), hint: tail ? resolve(tail) : undefined, via: entry.via };
-    }),
+    destinations: walkableDestinationEntries(location, locations, connections).map((entry) => ({
+      id: entry.location.id,
+      name: resolve(entry.location.name),
+      hint: entry.hint ? resolve(entry.hint) : undefined,
+      route: entry.route.length ? entry.route.map((place) => resolve(place.name)) : undefined,
+      via: entry.via,
+    })),
     rosters: ROSTERS.map((scope) => ({
       ...scope,
       prefersSummary: prefersSummary(scope.block),

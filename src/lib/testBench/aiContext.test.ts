@@ -275,7 +275,9 @@ describe('destinations', () => {
     const back = context(at('loc-market')).destinations;
     expect(back.map((d) => d.id)).toContain('loc-landing');
     // The harbor is reached on foot through the landing, never straight back across the one-way leg.
-    expect(back.find((d) => d.id === 'loc-harbor')?.hint).toBe('Sedge Landing');
+    const harbor = back.find((d) => d.id === 'loc-harbor');
+    expect(harbor?.route).toEqual(['Sedge Landing']);
+    expect(harbor?.hint).toBeUndefined();
   });
 
   it('drops the implicit sibling link the connection replaced, so a pair is listed once', () => {

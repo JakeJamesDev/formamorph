@@ -1,9 +1,8 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
-import { sseReply, sseResponse } from '@/test/aiTextFixtures';
+import { playTurn as playOneTurn, resetMoveTurnStorage, stubMoveEndpoint as stubEndpoint } from '@/test/moveTurns';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import type { Connection, Entity, GameLocation, Item, PlayerStat, World } from '@/types';
 
 /** Moves of more than one step on a mounted game: where the player ends the turn, who comes along, and what the
@@ -61,60 +60,9 @@ function Probe() {
   return null;
 }
 
-/** The scripted endpoint: each request kind answers from `replies`, and everything else with the narration. The
- *  system prompts of the passes after the narration are kept by kind. */
-function stubEndpoint(narration: string, replies: { router?: string; narrated?: string; entities?: Record<string, string> }) {
-  const sent: string[] = [];
-  const after = { choices: '', stats: '', inventory: '' };
-  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
-    if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    const body = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
-    const system = body.messages.find((m) => m.role === 'system')?.content ?? '';
-    if (system.includes('You are the location router')) {
-      sent.push('router');
-      return sseResponse(sseReply(replies.router ?? 'NONE'));
-    }
-    if (system.includes('You keep track of where the player character is')) {
-      sent.push('narrated');
-      return sseResponse(sseReply(replies.narrated ?? 'Barn'));
-    }
-    const mover = /You track where one character goes in an interactive story: (\w+)/.exec(system)?.[1];
-    if (mover) return sseResponse(sseReply(replies.entities?.[mover] ?? 'Stay'));
-    if (system.includes('player choice writer')) {
-      after.choices = system;
-      return sseResponse(sseReply('1. Look around\n2. Wait'));
-    }
-    if (system.includes('stat tracker')) {
-      after.stats = system;
-      return sseResponse(sseReply(''));
-    }
-    if (system.includes('inventory keeper')) {
-      after.inventory = system;
-      return sseResponse(sseReply(JSON.stringify({ operations: [] })));
-    }
-    return sseResponse(sseReply(narration));
-  }));
-  return { sent, after };
-}
+beforeEach(resetMoveTurnStorage);
 
-beforeEach(async () => {
-  for (const { id } of await getAllSaveRecords()) await deleteSaveRecord(id);
-  localStorage.clear();
-  localStorage.setItem('FORMAMORPH_endpointUrl', 'http://127.0.0.1:5190/v1/chat/completions');
-  localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
-  localStorage.setItem('FORMAMORPH_locationAutoApply', 'true');
-});
-
-/** Sends one action and waits for its turn to close. */
-async function playTurn(action: string) {
-  const turns = play.fullMessageHistory.length;
-  fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: action } });
-  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(play.fullMessageHistory.length).toBe(turns + 2));
-  await waitFor(() => expect(screen.getByPlaceholderText(/Type your action/)).toBeEnabled());
-  // The passes after the narration can still run once the box enables; the turn ends when generation stops.
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop generating' })).toBeNull());
-}
+const playTurn = (action: string) => playOneTurn(() => play, action);
 
 /** Mounts the world and plays the opening turn in the barn. */
 async function openInBarn(world = worldWith()) {

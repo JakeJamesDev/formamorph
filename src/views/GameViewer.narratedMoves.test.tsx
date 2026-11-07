@@ -1,9 +1,8 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
-import { sseReply, sseResponse } from '@/test/aiTextFixtures';
+import { playTurn as playOneTurn, resetMoveTurnStorage, stubMoveEndpoint, type MoveReplies } from '@/test/moveTurns';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import type { Entity, GameLocation, World } from '@/types';
 
 /** Narrated moves in Auto mode on a mounted game: where the player ends the turn, and who the story pulls there. */
@@ -41,50 +40,14 @@ function Probe() {
   return null;
 }
 
-/** The scripted endpoint: each request kind answers from `replies`, and everything else with the narration. */
-function stubEndpoint(narration: string, replies: { router?: string; narrated?: string; entities?: Record<string, string> }) {
-  const sent: string[] = [];
-  // The choices request's system prompt: a pass after the narration, rendered at the place the turn ends.
-  const choices: string[] = [];
-  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
-    if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    const body = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
-    const system = body.messages.find((m) => m.role === 'system')?.content ?? '';
-    if (system.includes('You are the location router')) {
-      sent.push('router');
-      return sseResponse(sseReply(replies.router ?? 'NONE'));
-    }
-    if (system.includes('You keep track of where the player character is')) {
-      sent.push('narrated');
-      return sseResponse(sseReply(replies.narrated ?? 'Village'));
-    }
-    const mover = /You track where one character goes in an interactive story: (\w+)/.exec(system)?.[1];
-    if (mover) return sseResponse(sseReply(replies.entities?.[mover] ?? 'Stay'));
-    if (system.includes('player choice writer')) choices.push(system);
-    return sseResponse(sseReply(narration));
-  }));
-  return { sent, choices };
-}
+const stubEndpoint = (narration: string, replies: MoveReplies) => stubMoveEndpoint(narration, replies, 'Village');
 
 /** The entities a prompt lists in its "Entities in Reachable Locations" section. */
 const reachableIn = (system: string) => /## Entities in Reachable Locations([\s\S]*?)(?=\n\n[^-\n])/.exec(system)?.[1] ?? '';
 
-beforeEach(async () => {
-  for (const { id } of await getAllSaveRecords()) await deleteSaveRecord(id);
-  localStorage.clear();
-  localStorage.setItem('FORMAMORPH_endpointUrl', 'http://127.0.0.1:5190/v1/chat/completions');
-  localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
-  localStorage.setItem('FORMAMORPH_locationAutoApply', 'true');
-});
+beforeEach(resetMoveTurnStorage);
 
-/** Sends one action and waits for its turn to close. */
-async function playTurn(action: string) {
-  const turns = play.fullMessageHistory.length;
-  fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: action } });
-  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await waitFor(() => expect(play.fullMessageHistory.length).toBe(turns + 2));
-  await waitFor(() => expect(screen.getByPlaceholderText(/Type your action/)).toBeEnabled());
-}
+const playTurn = (action: string) => playOneTurn(() => play, action);
 
 /** Where the game holds a character: its own position, else the place a pull anchored it at. */
 const whereIs = (id: string) =>
@@ -135,7 +98,7 @@ describe('a narrated move in Auto mode', () => {
     expect(play.entityFollowers).toEqual(['bram']);
     expect(play.entityPositions.maela).toBe('village');
     // The passes after the narration already read the hut, with Bram beside the player and Maela left behind.
-    const choices = endpoint.choices.at(-1) ?? '';
+    const choices = endpoint.after.choices;
     expect(choices).toContain('## Current Location\n- **name:** Hut');
     const elsewhere = reachableIn(choices);
     expect(elsewhere).toContain('Maela');
@@ -157,7 +120,7 @@ describe('a narrated move in Auto mode', () => {
     expect(endpoint.sent).toEqual(['router', 'narrated']);
     expect(play.currentLocation?.id).toBe('village');
     expect(play.entityPositions.bram).toBe('village');
-    expect(endpoint.choices.at(-1) ?? '').toContain('## Current Location\n- **name:** Village');
+    expect(endpoint.after.choices).toContain('## Current Location\n- **name:** Village');
   });
 
   it('never runs after the router moved the player', async () => {
