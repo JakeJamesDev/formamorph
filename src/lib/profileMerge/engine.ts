@@ -23,6 +23,8 @@ export interface MergeCategoryInfo {
   /** Stamped categories replace an older folder copy; unstamped ones copy only what the folder lacks. */
   stamped: boolean;
   unit: MergeUnit;
+  /** Runs after every other category, whatever the sizes. */
+  last?: boolean;
 }
 
 /** A category's storage: both snapshots, and the copy of one item. */
@@ -32,7 +34,7 @@ export interface MergeCategory extends MergeCategoryInfo {
   /** The AppData profile's items. */
   source(): Promise<MergeItem[]>;
   /** Read one item from the AppData profile and write it into the folder's profile. */
-  copy(item: MergeItem): Promise<void>;
+  copy(item: MergeItem, report?: (bytes: number) => void): Promise<void>;
   /** Runs once after the category's last copy, with the items added. */
   finish?(added: MergeItem[]): Promise<void>;
 }
@@ -87,7 +89,7 @@ export function planMerge(categories: MergeCategoryInfo[], source: MergeSnapshot
   const bytes = (plan: CategoryPlan) => writesOf(plan).reduce((sum, item) => sum + item.size, 0);
   return plans
     .map((plan, index) => ({ plan, index, bytes: bytes(plan) }))
-    .sort((a, b) => a.bytes - b.bytes || a.index - b.index)
+    .sort((a, b) => Number(!!a.plan.last) - Number(!!b.plan.last) || a.bytes - b.bytes || a.index - b.index)
     .map(({ plan }) => plan);
 }
 
@@ -150,7 +152,8 @@ export async function applyMerge(
     for (const item of items) {
       signal?.throwIfAborted();
       try {
-        await category.copy(item);
+        // A bytes category reports partway through a big file, so its bar moves before the file ends.
+        await category.copy(item, (bytes) => onProgress({ key: plan.key, done: done + Math.min(bytes, weightOf(plan.unit, item)), total }));
         if (replacing.has(item.id)) result.replaced += 1;
         else {
           result.added += 1;

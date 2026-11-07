@@ -109,6 +109,44 @@ describe('moveModels: the happy path', () => {
   });
 });
 
+describe('moveModels: smallest first', () => {
+  it('moves files in size order, sidecars ahead of everything', async () => {
+    write(path.join(from(), 'big.gguf'), 300);
+    write(path.join(from(), 'mid.gguf'), 200);
+    write(path.join(from(), 'small.gguf'), 100);
+    write(path.join(from(), 'mid.gguf.part'), 150);
+    write(path.join(from(), 'mid.gguf.part.json'), 500);
+    const order = [];
+    await moveModels({ from: from(), to: to() }, (p) => { if (order.at(-1) !== p.file) order.push(p.file); });
+    expect(order).toEqual(['mid.gguf.part.json', 'small.gguf', 'mid.gguf.part', 'mid.gguf', 'big.gguf']);
+  });
+});
+
+describe('moveFile: one file, for the profile merge', () => {
+  it('moves the file and reports its bytes', async () => {
+    write(path.join(from(), 'a.gguf'), 100);
+    const seen = [];
+    await modelMove.moveFile({ from: from(), to: to(), name: 'a.gguf' }, (n) => seen.push(n));
+    expect(fs.existsSync(path.join(from(), 'a.gguf'))).toBe(false);
+    expect(fs.statSync(path.join(to(), 'a.gguf')).size).toBe(100);
+    expect(seen.at(-1)).toBe(100);
+  });
+
+  it('keeps an existing destination file and the source file, and says why', async () => {
+    write(path.join(from(), 'a.gguf'), 100);
+    write(path.join(to(), 'a.gguf'), 7);
+    await expect(modelMove.moveFile({ from: from(), to: to(), name: 'a.gguf' })).rejects.toThrow(/already in the new folder/);
+    expect(fs.statSync(path.join(to(), 'a.gguf')).size).toBe(7);
+    expect(fs.statSync(path.join(from(), 'a.gguf')).size).toBe(100);
+  });
+
+  it('refuses a name that is not a model file or climbs out of the folder', async () => {
+    write(path.join(from(), 'notes.txt'), 5);
+    await expect(modelMove.moveFile({ from: from(), to: to(), name: 'notes.txt' })).rejects.toThrow();
+    await expect(modelMove.moveFile({ from: from(), to: to(), name: '../old/a.gguf' })).rejects.toThrow();
+  });
+});
+
 describe('moveModels: the source file survives anything going wrong', () => {
   // The rule this module exists to enforce. Every failure below must leave the original readable.
   it('keeps the source when the cross-volume copy fails partway', async () => {

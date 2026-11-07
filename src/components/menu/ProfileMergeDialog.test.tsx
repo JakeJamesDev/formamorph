@@ -31,7 +31,7 @@ describe('ProfileMergeDialog', () => {
     fireEvent.pointerDown(document.body);
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(Object.values(h).some((fn) => fn.mock.calls.length > 0)).toBe(false);
-    expect(screen.getAllByRole('progressbar')).toHaveLength(7);
+    expect(screen.getAllByRole('progressbar')).toHaveLength(8);
   });
 
   it.each(['offer', 'run'])('lists Avatars, Stat Templates and Mascot Images in the %s state', (step) => {
@@ -66,6 +66,17 @@ describe('ProfileMergeDialog', () => {
     expect(screen.getByText('Sedge Landing')).toBeTruthy();
     expect(screen.getByText(/enough storage space/)).toBeTruthy();
   });
+
+  it('lists a skipped local model with its reason in the result', () => {
+    render(<ProfileMergeDialog view={devProfileMergeView('result')} {...handlers()} />);
+    expect(screen.getByText('b.gguf')).toBeTruthy();
+    expect(screen.getByText(/The file is in use/)).toBeTruthy();
+  });
+
+  it('shows local model progress as bytes moved against the total', () => {
+    render(<ProfileMergeDialog view={devProfileMergeView('run')} {...handlers()} />);
+    expect(screen.getByText('Local Models').nextSibling?.textContent).toBe('3.1 GB of 9.8 GB');
+  });
 });
 
 const item = (id: string, size = 1): MergeItem => ({ id, label: id, stamp: '2026-06-01T00:00:00.000Z', size });
@@ -79,6 +90,8 @@ function fakeBridge(offer: { merged: string[] } | null = { merged: [] }) {
     settings: vi.fn(async () => ({})),
     modelFolder: vi.fn(async () => ({ source: {}, target: {} })),
     fillModelFolder: vi.fn(async () => {}),
+    models: vi.fn(async () => ({ source: [], target: [] })),
+    moveModel: vi.fn(async () => {}),
     restart: vi.fn(async () => {}),
     later: vi.fn(async () => {}),
     mark: vi.fn(async (state, categories) => { marks.push(categories ? `${state}:${categories.join(',')}` : state); return true; }),

@@ -72,6 +72,16 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
     settings: () => ipcRenderer.invoke('merge-settings'),
     modelFolder: () => ipcRenderer.invoke('merge-model-folder'),
     fillModelFolder: (field) => ipcRenderer.invoke('merge-model-folder-fill', field),
+    models: () => ipcRenderer.invoke('merge-models'),
+    moveModel: async (name, onBytes) => {
+      const listener = (_event, bytes) => onBytes?.(bytes);
+      ipcRenderer.on('merge-model-progress', listener);
+      try {
+        await ipcRenderer.invoke('merge-model-move', name);
+      } finally {
+        ipcRenderer.removeListener('merge-model-progress', listener);
+      }
+    },
     restart: () => ipcRenderer.invoke('merge-restart'),
     later: () => ipcRenderer.invoke('merge-later'),
     mark: (state, categories) => ipcRenderer.invoke('merge-mark', { state, categories }),

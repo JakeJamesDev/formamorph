@@ -19,6 +19,12 @@ export type ModelFolderField = 'downloadDir' | 'externalDir' | 'searchSubfolders
 /** The model-folder fields a profile sets; an absent field is unset. */
 export type ModelFolderFields = Partial<Record<ModelFolderField, string | boolean>>;
 
+/** A model file, partial download or resume sidecar in a models folder. */
+export interface ModelFile {
+  name: string;
+  size: number;
+}
+
 export type MergeMarker = 'done' | 'declined';
 
 export interface ProfileMergeBridge {
@@ -33,6 +39,10 @@ export interface ProfileMergeBridge {
   modelFolder(): Promise<{ source: ModelFolderFields; target: ModelFolderFields }>;
   /** Copy one model-folder field into the folder's profile when it lacks it. */
   fillModelFolder(field: ModelFolderField): Promise<void>;
+  /** The model files each side holds: the AppData models folder (empty when it is the folder's own) and the folder's. */
+  models(): Promise<{ source: ModelFile[]; target: ModelFile[] }>;
+  /** Move one model file into the folder's models directory; rejects with the reason it stayed. `onBytes` gets bytes moved so far. */
+  moveModel(name: string, onBytes?: (bytes: number) => void): Promise<void>;
   /** Relaunch the app so it reads the settings the merge copied. */
   restart(): Promise<void>;
   /** Close the AppData profile and stop offering until the next start. */

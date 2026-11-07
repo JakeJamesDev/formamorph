@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
 import { SurfaceTab } from '@/components/ui/surface';
 import { writesOf, type CategoryPlan, type CategoryResult, type MergeProgress } from '@/lib/profileMerge/engine';
+import { formatModelSize } from '@/lib/localModels';
 import { SETTINGS_KEY } from '@/lib/profileMerge/settings';
 import type { ProfileMergeView } from './profileMergeView';
 
@@ -64,7 +65,7 @@ function RunRows({ plans, progress }: { plans: CategoryPlan[]; progress: Record<
           <li key={plan.key} className="flex flex-col gap-1">
             <div className="flex items-baseline justify-between gap-4">
               <span className="font-medium">{plan.label}</span>
-              <Meta>{plan.unit === 'items' ? `${done} of ${total}` : `${percent}%`}</Meta>
+              <Meta>{plan.unit === 'items' ? `${done} of ${total}` : `${formatModelSize(done)} of ${formatModelSize(total)}`}</Meta>
             </div>
             <Progress value={percent} className="h-2" aria-label={`${plan.label} merged`} />
           </li>

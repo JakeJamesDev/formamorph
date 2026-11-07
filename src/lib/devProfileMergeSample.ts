@@ -21,6 +21,14 @@ const PLANS: CategoryPlan[] = [
   plan('avatars', 'Avatars', 2, 1, 1),
   plan('worlds', 'Worlds', 3, 1, 2),
   plan('saves', 'Saves', 12, 0, 4),
+  {
+    key: 'models', label: 'Local Models', stamped: false, unit: 'bytes', last: true,
+    add: [
+      { id: 'a.gguf', label: 'a.gguf', size: 2_400_000_000 },
+      { id: 'b.gguf', label: 'b.gguf', size: 7_380_000_000 },
+    ],
+    replace: [], keep: [{ id: 'c.gguf', label: 'c.gguf', size: 4_100_000_000 }],
+  },
 ];
 
 /** The sample view for a dialog step. */
@@ -33,6 +41,7 @@ export function devProfileMergeView(step: string | undefined): ProfileMergeView 
         dictionaries: { key: 'dictionaries', done: 2, total: 2 },
         entities: { key: 'entities', done: 6, total: 6 },
         worlds: { key: 'worlds', done: 1, total: 4 },
+        models: { key: 'models', done: 3_100_000_000, total: 9_780_000_000 },
       },
     };
   }
@@ -48,6 +57,7 @@ export function devProfileMergeView(step: string | undefined): ProfileMergeView 
         { key: 'avatars', label: 'Avatars', added: 2, replaced: 1, kept: 1, skipped: [] },
         { key: 'worlds', label: 'Worlds', added: 2, replaced: 1, kept: 2, skipped: [{ label: 'Sedge Landing', reason: 'There isn’t enough storage space' }] },
         { key: 'saves', label: 'Saves', added: 12, replaced: 0, kept: 4, skipped: [] },
+        { key: 'models', label: 'Local Models', added: 1, replaced: 0, kept: 1, skipped: [{ label: 'b.gguf', reason: 'The file is in use' }] },
       ],
     };
   }

@@ -24,6 +24,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Windows desktop app's window buttons stay readable over bright world art, and fade behind popups.** A soft shade sits behind them in game. They return to full color once every popup closes.
     - **The Entity View slides open and shut in game.** Its arrow turns as the section moves, and the tabs below follow. With reduced motion, it changes at once.
     - **Full screen in the Windows desktop app now uses the whole width, with Exit Full Screen in More Actions.** The room held for the window buttons goes away in full screen, so the layout matches the browser. **F11** still works.
+  - **Launcher Profile Merge:**
+    - **The profile merge now moves your downloaded local models.** Models in the other copy's folder move beside the main exe, smallest first. A model you already have stays.
   - **A Getting Ready bar shows whenever Formamorph takes a moment to start, and before the first launch's welcome animation.** On a fast computer it never appears.
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
   - **The Supporters list in Credits and on the Supporters page shows names in a grid under each tier's badge.** The grid fits as many columns as there is room for. Point at a name to see how long that person has supported.

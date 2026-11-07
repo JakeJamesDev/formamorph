@@ -26,6 +26,8 @@ function fakeBridge(stores: Record<string, { summary: SourceSummary; record: unk
     settings: async () => ({}),
     modelFolder: async () => ({ source: {}, target: {} }),
     fillModelFolder: async () => {},
+    models: async () => ({ source: [], target: [] }),
+    moveModel: async () => {},
     restart: async () => {},
   };
 }

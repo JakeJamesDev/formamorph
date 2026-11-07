@@ -21,6 +21,7 @@ const { portableUserDataDir, migratePersistentStores } = require('./portableProf
 const { mergeSource, writeMarker, SOURCE_STORES } = require('./profileMerge.cjs');
 const { openSource } = require('./profileMergeSource.cjs');
 const { readFields, fillField } = require('./profileMergeModelFolder.cjs');
+const { modelSides, plannedModelsDir, samePath, sourceModelsDir } =require('./profileMergeModels.cjs');
 const { corsResponse } = require('./corsShim.cjs');
 const { httpOrigin, stripOrigin } = require('./originStrip.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
@@ -594,6 +595,23 @@ ipcMain.handle('merge-model-folder-fill', (_event, field) => {
   const merged = fillField({ sourceDir: mergeOffer.dir, targetDir: app.getPath('userData'), field, fsApi: fs });
   modelLocations = { ...modelLocations, ...merged };
   try { fs.mkdirSync(modelsDir(), { recursive: true }); } catch { /* the picker reports a missing folder */ }
+});
+// Local models: the files each side holds, and a one-file move into the folder's models directory.
+ipcMain.handle('merge-models', () => {
+  if (!mergeOffer) return { source: [], target: [] };
+  // Planned before the model-folder fill runs, so the destination is the one the fill will leave.
+  const targetModelsDir = plannedModelsDir({
+    chosen: modelLocations.downloadDir, sourceDir: mergeOffer.dir, defaultDir: defaultModelsDir(), fsApi: fs,
+  });
+  return modelSides({ sourceDir: mergeOffer.dir, targetModelsDir, fsApi: fs });
+});
+ipcMain.handle('merge-model-move', async (event, name) => {
+  if (!mergeOffer || typeof name !== 'string') throw new Error('The other copy is closed.');
+  const from = sourceModelsDir(mergeOffer.dir, fs);
+  if (samePath(from, modelsDir())) return;
+  await modelMove.moveFile({ from, to: modelsDir(), name }, (bytes) => {
+    if (!event.sender.isDestroyed()) event.sender.send('merge-model-progress', bytes);
+  });
 });
 // The app reads settings once at load; relaunching keeps FORMAMORPH_ROOT, so it stays a launcher start.
 ipcMain.handle('merge-restart', () => {

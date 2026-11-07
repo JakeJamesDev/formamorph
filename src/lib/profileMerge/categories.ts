@@ -17,6 +17,7 @@ import { appendedSaveOrders, importedSave } from './saveOrder';
 import { modelFolderCategory, settingsCategory } from './settings';
 import { readRecord, sourceItems, textOr } from './sourceRead';
 import { localStoreCategories } from './localCategories';
+import { modelsCategory } from './modelsCategory';
 
 type LibraryKey = 'worlds' | 'entities' | 'dictionaries';
 
@@ -140,5 +141,6 @@ export function mergeCategories(bridge: ProfileMergeBridge): MergeCategory[] {
     libraryCategory(bridge, 'worlds'),
     savesCategory(bridge),
     ...localStoreCategories(bridge),
+    modelsCategory(bridge),
   ];
 }

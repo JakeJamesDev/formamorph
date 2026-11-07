@@ -9,6 +9,8 @@ const path = require('node:path');
 // resumable download" to modelDownload, and a half-copied model is not that.
 const TEMP_SUFFIX = '.moving';
 
+const EXISTS_REASON = 'A file with this name is already in the new folder';
+
 let canceled = false;
 
 /**
@@ -100,6 +102,31 @@ async function copyAcrossVolumes(src, dest, onChunk) {
   fs.unlinkSync(src); // only now is the copy safe to lose the original
 }
 
+/** Sidecars first, then smallest first, so an early stop leaves the most files moved. */
+const moveOrder = (a, b) => Number(isSidecar(b.name)) - Number(isSidecar(a.name)) || a.size - b.size || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+
+/**
+ * Move one file by name. Rename on one volume, copy-then-unlink across volumes. Throws when a file of that
+ * name is already at the destination (it stays, and the source is left alone) or the move fails.
+ * `onBytes` receives the bytes of this file moved so far.
+ */
+async function moveFile({ from, to, name }, onBytes = () => {}) {
+  canceled = false;
+  if (!isMovable(name) || path.basename(name) !== name) throw new Error('It is not a model file');
+  const srcFile = path.join(path.resolve(from), name);
+  const destFile = path.join(path.resolve(to), name);
+  if (fs.existsSync(destFile)) throw new Error(EXISTS_REASON);
+  fs.mkdirSync(path.resolve(to), { recursive: true });
+  try {
+    fs.renameSync(srcFile, destFile);
+    onBytes(sizeOf(destFile));
+  } catch (e) {
+    if (e.code !== 'EXDEV') throw e;
+    let done = 0;
+    await copyAcrossVolumes(srcFile, destFile, (n) => { done += n; onBytes(done); });
+  }
+}
+
 /**
  * Move every model (and resumable partial) from `from` to `to`.
  *
@@ -120,7 +147,7 @@ async function moveModels({ from, to }, onProgress = () => {}) {
   // Sidecars first. A cancel between a `.part` and its sidecar would otherwise land a full-length
   // preallocated part in the new folder with no bitmap, which reads as a complete partial and offers a
   // resume that then throws the file away. A sidecar with no part is simply ignored.
-  const files = listMovable(src).sort((a, b) => Number(isSidecar(b.name)) - Number(isSidecar(a.name)));
+  const files = listMovable(src).sort(moveOrder);
   const totalBytes = files.reduce((n, f) => n + f.size, 0);
   let movedBytes = 0;
 
@@ -136,7 +163,7 @@ async function moveModels({ from, to }, onProgress = () => {}) {
     // Never clobber: a same-named model already at the destination stays, and the source is left alone
     // for the user to deal with rather than silently overwritten or deleted.
     if (fs.existsSync(destFile)) {
-      skipped.push({ file: f.name, reason: 'A file with this name is already in the new folder' });
+      skipped.push({ file: f.name, reason: EXISTS_REASON });
       continue;
     }
     try {
@@ -176,4 +203,4 @@ async function moveModels({ from, to }, onProgress = () => {}) {
 /** Stop after the current file (or mid-copy, which discards only the partial copy). */
 function cancel() { canceled = true; }
 
-module.exports = { moveModels, cancel, countMovable, listMovable, freeSpace, isMovable, TEMP_SUFFIX };
+module.exports = { moveModels, moveFile, cancel, countMovable, listMovable, freeSpace, isMovable, TEMP_SUFFIX };
