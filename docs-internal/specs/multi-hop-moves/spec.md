@@ -1,7 +1,7 @@
 # Spec: Multi-Hop Moves
 
-Status: ready-for-agent
-Status note: Reopened 2026-11-07 for close-review follow-ups, tickets 03–05. First close: tickets 01–02, last landing b988cecf6, tests green, lint red only on gitignored local files.
+Status: done
+Status note: Closed 2026-11-07, tickets 01–05, last landing b0aed1fed. Review: spec text corrected. Tests green on 2026-11-07; lint red only on gitignored local files.
 Spec session: multi-hop-moves — spec
 
 ## Problem Statement
@@ -102,7 +102,7 @@ A good test calls the real function or runs a real turn with fake model replies,
 Rulings from the first close review (2026-11-07, user):
 
 - **R1. Narrated Move prompt split.** The user prompt's last sentence holds three conditions (stay, a listed place, Elsewhere). It becomes three short lines, per rule 1 of the prompt-writing guide. It ships only if a cloud A/B against the current text shows no bar worse (ticket 03).
-  - **Ticket 03 rulings:** the probe gains "current" (shipped system prompt, current user text frozen) and "split" arms over the walkable list. The older arms stay in the file behind an arm filter, so ticket 04's new router arm rebases cleanly. "No worse" reads strict set totals in the same batches: far right, carried found, control right and the inside-a-listed-place hit rate at least the current arm's; stay moved and unlisted moved at most. Latency is reported, not a bar. The new text is a lead sentence with three bullets. No changelog fragment.
+  - **Ticket 03 rulings:** the probe gains "current" (shipped system prompt, current user text frozen) and "narrated" (the split text) arms over the walkable list. The older arms stay in the file behind an arm filter, so ticket 04's new router arm rebases cleanly. "No worse" reads strict set totals in the same batches: far right, carried found, control right and the inside-a-listed-place hit rate at least the current arm's; stay moved and unlisted moved at most. Latency is reported, not a bar. The new text is a lead sentence with three bullets. No changelog fragment.
 - **R2. Router fallback.** The router's substring fallback matches only one-move places. A far place needs an exact reply. Router controls and the far set are probed (ticket 04).
   - **Ticket 04 rulings:** a far place matches when the reply equals its name after the Narrated Move matcher's outer strip (markdown and end punctuation aside). In the fallback, the longest name found in the reply decides over all places, and when that name is a far place, nobody moves. The location-narrated probe gains a router arm that sends the real router request over the control and far scenes, action only, and scores each reply with both the old and the new rule.
 - **R3. Cleanups, no behavior change** (ticket 05):
