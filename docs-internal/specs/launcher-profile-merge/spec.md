@@ -39,6 +39,13 @@ A Windows player reported that **Update & Restart** failed with *Not a launcher 
 - **Q14 Progress:** each category shows a progress bar. The dialog blocks closing while the merge runs. The order runs smallest to largest, with local models last.
 - **Q15 Seams:** one merge engine, the launcher handoff module, and the model move module (see Testing Decisions).
 - **Q16 Save order:** imported saves go to the end of the folder's save order. (Stated in the grill summary; the user moved to the spec without objection.)
+- **Q17 Empty plan:** when no category has anything new, to replace or to move, the done marker is written silently and no dialog shows. A player who got the first-start copy sees nothing.
+- **Q18 Skipped items:** a run that reaches the end writes the done marker even when items were skipped. The result screen lists them with reasons. Q8's "stops partway" means an error that ends the run or a force quit, not a single item that fails.
+- **Q19 Save order:** an imported save appends to its world's stored order. A world with no stored order first gets its current newest-first order written, then the imported ids are appended. A replaced save keeps its place.
+- **Q20 Progress unit:** a category's bar counts items written of items to write (new plus replace). Local models count bytes (ticket 05).
+- **Q21 First-start copy:** the whole-store copy into an empty folder profile stays as it is. With Q17, a fresh copy ends in a silent done marker.
+- **Q22 Marker per category:** the done marker records the category keys that merged. When a build registers a category the marker lacks, the merge is offered again, for the new categories only. Declined stays final for every category.
+- **Q23 Imported autosaves:** an imported save drops its autosave flag and lands as an ordinary save, so Autosaves Kept never prunes it. A replaced save keeps the folder copy's flag.
 
 ## User Stories
 
