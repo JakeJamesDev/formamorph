@@ -24,7 +24,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Windows desktop app's window buttons stay readable over bright world art, and fade behind popups.** A soft shade sits behind them in game. They return to full color once every popup closes.
     - **The Entity View slides open and shut in game.** Its arrow turns as the section moves, and the tabs below follow. With reduced motion, it changes at once.
     - **Full screen in the Windows desktop app now uses the whole width, with Exit Full Screen in More Actions.** The room held for the window buttons goes away in full screen, so the layout matches the browser. **F11** still works.
-  - **Launcher Profile Merge:**
+  - **Merge Your Other Data:**
+    - **Windows now tells you when you start Formamorph from the file inside the app folder.** A message box shows the main Formamorph.exe path and offers Show in Folder, then the game opens.
+    - **On Windows, the main menu offers to merge worlds, saves, entities and dictionaries left from starts outside the app folder.** Where both copies hold an item, the newer one stays. Choose **Merge**, **Not Now** or **Don't Merge**. Nothing is deleted, and a stopped merge is offered again.
+    - **On Windows, the merge brings over your settings, sign-in and chosen model folder.** A setting you already have stays. Restart Formamorph when the merge asks, to use the settings that came over.
+    - **On Windows, the merge offer now brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
     - **The profile merge now moves your downloaded local models.** Models in the other copy's folder move beside the main exe, smallest first. A model you already have stays.
   - **A Getting Ready bar shows whenever Formamorph takes a moment to start, and before the first launch's welcome animation.** On a fast computer it never appears.
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
@@ -41,10 +45,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **An entity joins the scene when the narration uses its full Stranger Name.** One word of the Stranger Name never counts on its own.
   - **An entity the narration names in a location just inside yours now joins your scene.** Its Movement decides, for a location inside yours or beside it. Stays Put never comes, and Moves Between Its Locations comes only into its own locations.
   - **With Move Automatically on, the game moves you when the narration ends with you somewhere new, the opening included.** Followers come along, and an entity told to stay stays. Without it, the **Move to…?** offer reads the narration too.
-  - **Windows now tells you when you start Formamorph from the file inside the app folder.** A message box shows the main Formamorph.exe path and offers Show in Folder, then the game opens.
-  - **On Windows, the main menu offers to merge worlds, saves, entities and dictionaries left from starts outside the app folder.** Where both copies hold an item, the newer one stays. Choose **Merge**, **Not Now** or **Don't Merge**. Nothing is deleted, and a stopped merge is offered again.
-  - **On Windows, the merge brings over your settings, sign-in and chosen model folder.** A setting you already have stays. Restart Formamorph when the merge asks, to use the settings that came over.
-  - **On Windows, the merge offer now brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
   - **When the narration takes you somewhere the game can't follow, you stay where you are.** With Move Automatically on, you and your followers stay. Without it, no **Move to…?** offer appears.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.

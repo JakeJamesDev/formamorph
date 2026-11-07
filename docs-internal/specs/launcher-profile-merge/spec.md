@@ -1,6 +1,7 @@
 # Spec: Launcher Profile Merge
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-07. Tickets 01–05, last landing 46559fe61. Review found three gaps, fixed in cb809f698; spec text corrected. Gates on 2026-11-07: test green; lint red only on untracked worlds-wip files.
 Spec session: launcher-profile-merge — spec
 
 ## Problem Statement
@@ -96,7 +97,7 @@ A Windows player reported that **Update & Restart** failed with *Not a launcher 
 - **One merge engine.** A pure module takes two snapshots and returns a plan. Each snapshot lists, per category, the items with their id, stamp and size. The plan holds new, replace and keep lists per category, ordered smallest first. A second step applies the plan through an injected storage interface and reports progress per category. It writes each item before it reads the next.
   - Stamped categories (worlds, saves, entities, dictionaries, Avatars) follow Q12 and Q2.
   - Unstamped categories (settings keys, stat templates, the Mascot image, the model-folder choice) follow Q5 and Q9: fill missing only.
-  - The existing Backup & Restore conflict split and record writers are reused where they fit. Avatars and stat templates get writers alongside them.
+  - The engine plans its own new, replace and keep split, and reuses the Backup & Restore record writers. Avatars and stat templates get writers alongside them.
 - **Category order.** Settings and sign-in, the model-folder choice, stat templates, dictionaries, entities, the Mascot image, Avatars, worlds, saves, then local models. Within a category, the smallest items go first. The engine computes the order from sizes; this list is the expected result for typical data, not a hard-coded sequence.
 - **Local models.** The existing model move module moves them and already never overwrites. It gains a smallest-first order. Its skip reasons feed the merge result.
 - **Save order.** Imported saves append to the folder's save order.
