@@ -11,7 +11,7 @@ import { useDevRoute } from "@/lib/devRouter";
 import { HostedAiPanel } from "@/components/menu/HostedAiPanel";
 import HostedAiAdminService, { type HostedAiAdminApi } from "@/services/HostedAiAdminService";
 import ServerSettingsService, {
-  ANONYMOUS_LIKES, LISTING_REVIEW, NETWORK_KIND, LIKES_MARKER_MIN_FLAGGED, LIKES_MARKER_SHARE, BURST_SIZE,
+  ACTIVE_INSTALLS, ANONYMOUS_LIKES, LISTING_REVIEW, NETWORK_KIND, LIKES_MARKER_MIN_FLAGGED, LIKES_MARKER_SHARE, BURST_SIZE,
   BURST_WINDOW_MINUTES, type ServerSettingKey, type ServerNumberKey,
 } from "@/services/ServerSettingsService";
 
@@ -57,6 +57,12 @@ const SETTINGS: readonly ServerSetting[] = [
     label: 'Network Check',
     hint: 'Flags new likes from VPN, hosting and Tor networks',
     info: 'Staff see the result in the likes audit and on marked listing cards. Likes and counts don’t change for players.',
+  },
+  {
+    key: ACTIVE_INSTALLS,
+    label: 'Daily Check-In Counts',
+    hint: 'Stores each copy’s daily check-in for the daily and monthly totals',
+    info: 'Stores one hashed ID per copy of the app per day. Check-ins sent while it’s off aren’t stored, and turning it off deletes nothing.',
   },
 ];
 

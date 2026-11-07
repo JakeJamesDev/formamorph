@@ -46,7 +46,7 @@ const answerKeyed = (stored: Record<string, unknown> = {}, writes: Response[] = 
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
     if (init?.method === 'PUT') return writes.shift() as Response;
     const key = url.split('/').pop() as string;
-    const isSwitch = ['anonymous_likes', 'listing_review', 'network_kind'].includes(key);
+    const isSwitch = ['anonymous_likes', 'listing_review', 'network_kind', 'active_installs'].includes(key);
     return settingBody(key in stored ? stored[key] : (isSwitch ? false : 1));
   });
 
@@ -93,8 +93,8 @@ describe('reading the setting', () => {
 
     await waitFor(() => expect(toastTexts(toastErrorMock)).toContain('Not staffView Details →'));
     expect(screen.queryByRole('checkbox')).toBeNull();
-    // One notice per row that went unanswered: the two switches and the four numbers.
-    expect(screen.getAllByText('This server didn’t answer for this setting')).toHaveLength(6);
+    // One notice per row that went unanswered: the three switches and the four numbers.
+    expect(screen.getAllByText('This server didn’t answer for this setting')).toHaveLength(7);
   });
 
   it('asks for nothing while the tab is not the one on screen', () => {
@@ -148,7 +148,7 @@ describe('writing the setting', () => {
   it('takes no second press while the first is in the air', async () => {
     fetchMock.mockImplementation((url: string, init?: RequestInit) => (init?.method === 'PUT'
       ? never()
-      : Promise.resolve(settingBody(url.endsWith('anonymous_likes') || url.endsWith('network_kind') ? false : 1))));
+      : Promise.resolve(settingBody(url.endsWith('anonymous_likes') || url.endsWith('network_kind') || url.endsWith('active_installs') ? false : 1))));
 
     render(<ServerSettingsTab active />);
     await waitFor(() => expect(anonymousLikes().hasAttribute('disabled')).toBe(false));
@@ -247,6 +247,33 @@ describe('the Network Check switch', () => {
     const write = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PUT') as [string, RequestInit];
     expect(write[0]).toBe('https://server.test/api/settings/network_kind');
     expect(write[1].body).toBe(JSON.stringify({ value: true }));
+  });
+});
+
+describe('the Daily Check-In Counts switch', () => {
+  const dailyCheckIn = () => screen.getByRole('checkbox', { name: 'Daily Check-In Counts' });
+
+  it('reads and writes the active_installs key', async () => {
+    answerKeyed({ active_installs: false }, [settingBody(true)]);
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(dailyCheckIn().hasAttribute('disabled')).toBe(false));
+    expect(dailyCheckIn().getAttribute('data-state')).toBe('unchecked');
+
+    fireEvent.click(dailyCheckIn());
+
+    await waitFor(() => expect(dailyCheckIn().getAttribute('data-state')).toBe('checked'));
+    const write = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PUT') as [string, RequestInit];
+    expect(write[0]).toBe('https://server.test/api/settings/active_installs');
+    expect(write[1].body).toBe(JSON.stringify({ value: true }));
+  });
+
+  it('shows the stored on state, not an empty box', async () => {
+    answerKeyed({ active_installs: true });
+
+    render(<ServerSettingsTab active />);
+
+    await waitFor(() => expect(dailyCheckIn().getAttribute('data-state')).toBe('checked'));
   });
 });
 

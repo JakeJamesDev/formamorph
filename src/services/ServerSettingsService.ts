@@ -10,6 +10,9 @@ export const LISTING_REVIEW = 'listing_review';
 /** Whether the server records the kind of network beside each like. */
 export const NETWORK_KIND = 'network_kind';
 
+/** Whether the server stores each install's Daily Send. */
+export const ACTIVE_INSTALLS = 'active_installs';
+
 /** The fewest flagged likes that mark a listing. */
 export const LIKES_MARKER_MIN_FLAGGED = 'likes_marker_min_flagged';
 
@@ -23,7 +26,8 @@ export const BURST_SIZE = 'burst_size';
 export const BURST_WINDOW_MINUTES = 'burst_window_minutes';
 
 /** The on/off settings this client reads and writes. The server declares more and refuses any other key. */
-export type ServerSettingKey = typeof ANONYMOUS_LIKES | typeof LISTING_REVIEW | typeof NETWORK_KIND;
+export type ServerSettingKey = typeof ANONYMOUS_LIKES | typeof LISTING_REVIEW | typeof NETWORK_KIND
+  | typeof ACTIVE_INSTALLS;
 
 /** The numeric settings this client reads and writes. */
 export type ServerNumberKey = typeof LIKES_MARKER_MIN_FLAGGED | typeof LIKES_MARKER_SHARE

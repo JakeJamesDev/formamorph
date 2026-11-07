@@ -4,7 +4,7 @@ import ServerSettingsService, { type ServerNumberKey, type ServerSettingKey } fr
 
 export const DEV_SERVER_SETTINGS_FIXTURE = 'serverSettings';
 
-const flags: Partial<Record<ServerSettingKey, boolean>> = { anonymous_likes: true, listing_review: false, network_kind: true };
+const flags: Partial<Record<ServerSettingKey, boolean>> = { anonymous_likes: true, listing_review: false, network_kind: true, active_installs: false };
 const numbers: Record<ServerNumberKey, number> = {
   likes_marker_min_flagged: 5, likes_marker_share: 0.5, burst_size: 8, burst_window_minutes: 15,
 };
