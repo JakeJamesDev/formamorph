@@ -127,7 +127,7 @@ The **AI Context** tab shows what the AI gets from the location in the **at** li
 
 - The top line estimates a turn's token cost from here.
 - **Context Blocks** lists each block of text the prompts can use, with its cost. Select a block to read it.
-- **Destinations** lists every place a player can go from here. A place not on the list can't be reached.
+- **Destinations** lists every place the story can move the player to from here, up to 3 steps away. A place more than one step away shows the places on the way. A place not on the list can't be reached in one turn.
 - **Entities the AI Is Told About** shows whether each entity arrives in full, as a summary or by name only.
 
 ## Opening

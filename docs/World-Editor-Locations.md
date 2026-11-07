@@ -88,20 +88,24 @@ Nesting decides where **the story** can take the player. When the AI reads an ac
 
 A [Connection](#connections) between two places replaces these rules for that pair.
 
+🚶 **One turn can cover up to three of these steps.** "Walk down the lane to town and step into the store" can take the player from a farm building to a store three steps away. Each step follows the rules above, so a one-way Connection is never walked backward. A place four or more steps away is out of reach, and the player stays where they are.
+
+The AI gets each place more than one step away with the places on the way: *Store — via Farm Yard, then Town*. When two places in reach share a name, the nearer one counts. When they are equally near, neither does.
+
 By default the story offers the move. The player sees a small **Move to _X_?** prompt with **Go** and **Dismiss**. The AI reads the action and the scene it led to, so a scene that carries the player somewhere offers that move too.
 
 With **Move Automatically** on in Settings, the game moves the player itself:
 
 - 🚶 **The player's action** moves them before the scene is written, so the scene happens in the new place.
 - 📖 **The narration** moves them too. When the action moves them nowhere but the narration ends with them in a connected place, the game moves them there after the narration. This includes the opening narration.
-- 👥 Followers come along either way, and an entity told to stay stays.
+- 👥 Followers come along either way, and an entity told to stay stays. On a walk of several steps they arrive at the last place. A **Moves Between** entity comes along only when that last place is one of its locations.
 
 Two results to know:
 
 - **A flat list of top-level locations** gives the AI nothing to connect, so it never offers a move. The player then does all the travel. This is a valid design when you choose it on purpose.
 - **A location with no connected place** gets no move step.
 
-When the AI's answer doesn't match a connected place, the game discards it and offers nothing. The story can never send the player to an unconnected place.
+When the AI's answer doesn't match a place in reach, the game discards it and offers nothing. The story can never send the player to a place out of reach.
 
 ## List and Canvas
 <!-- keywords: graph view, node editor, visual diagram, fullscreen, tidy layout, boxes overlap, unreachable marker, right-click menu, flowchart -->
@@ -191,7 +195,7 @@ Example: put a *wounded* backdrop first with the rule *Health < 20%*, and a calm
 | **Player-Facing Description** | Only with scene images on, when **Image Tags** and the **AI-Facing Description** are both blank: the AI turns it into image tags |
 | **Image Tags** | Not to the text AI. Sent to the image generator for [scene images](Image-Generation#scene-images). |
 | Nesting | As the **Sublocations** and **Reachable Locations** blocks, and the parent's name in the default *Now you are at* line |
-| **Travel Hint** | Yes, beside the place it leads to |
+| **Travel Hint** | Yes, beside the place it leads to, when that place is one step away |
 | **Known Here** | Yes, as the **Entities Known Here** block. See [Entities](#entities). |
 | Background image, ambient sound, the starting checkbox | Never |
 
@@ -253,7 +257,7 @@ Pick a place in **Connect to…**, then select the **+** button (**Add Connectio
 
 A **Travel Hint** is optional, and it goes to the AI: *through the shimmering portal*, *down the rope ladder*. It tells the story how the player makes the trip.
 
-Each direction has its own hint. The AI gets the hint for the direction the player travels. A direction with no hint gets none. The AI never uses the other direction's words.
+Each direction has its own hint. The AI gets the hint for the direction the player travels. A direction with no hint gets none. The AI never uses the other direction's words. A place more than one step away shows the places on the way instead of a hint.
 
 | Connection | Hint boxes |
 |---|---|

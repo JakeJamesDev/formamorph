@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   dropLocationFromConnections, effectiveDestinations, implicitPairs, overriddenPairs, pairKey,
-  reachableFromStarts,
+  reachableFromStarts, walkableReach,
 } from "./locationGraph";
 import type { Connection, GameLocation } from "@/types";
 
@@ -111,6 +111,52 @@ describe("reachableFromStarts", () => {
     const unflagged = world.map((l) => ({ ...l, isStarting: false }));
     expect([...reachableFromStarts(unflagged, [])].sort())
       .toEqual(["cellar", "house", "landing", "shore", "tavern", "village"]);
+  });
+});
+
+describe("walkableReach", () => {
+  // farm > { barn, yard } ; town > store > backroom ; a two-way lane joins Yard to Town, and a one-way slide
+  // drops from Yard into a top-level Glen.
+  const farm: GameLocation = { id: "farm", name: "Farm" };
+  const barn: GameLocation = { id: "barn", name: "Barn", parentId: "farm" };
+  const yard: GameLocation = { id: "yard", name: "Yard", parentId: "farm" };
+  const town: GameLocation = { id: "town", name: "Town" };
+  const store: GameLocation = { id: "store", name: "Store", parentId: "town" };
+  const backroom: GameLocation = { id: "backroom", name: "Backroom", parentId: "store" };
+  const glen: GameLocation = { id: "glen", name: "Glen" };
+  const places = [farm, barn, yard, town, store, backroom, glen];
+  const lane: Connection = { id: "lane", a: "yard", b: "town", aToB: { hint: "down the lane" }, bToA: {} };
+  const slide: Connection = { id: "slide", a: "yard", b: "glen", aToB: {} };
+  const reach = (from: string, connections = [lane, slide]) =>
+    Object.fromEntries(walkableReach(from, places, connections).map((s) => [s.id, s.moves]));
+
+  it("lists a place 3 moves away and not one 4 moves away", () => {
+    // Barn → Yard → Town → Store is 3 moves; the Backroom under the Store is a fourth.
+    expect(reach("barn")).toEqual({ farm: 1, yard: 1, town: 2, glen: 2, store: 3 });
+  });
+
+  it("never walks a one-way leg backward", () => {
+    // The slide runs Yard → Glen only, so nothing leaves the Glen.
+    expect(reach("glen")).toEqual({});
+    expect(reach("store")).toEqual({ town: 1, backroom: 1, yard: 2, farm: 3, barn: 3, glen: 3 });
+  });
+
+  it("gives a far place the places it passes through, and a one-move place none", () => {
+    const steps = walkableReach("barn", places, [lane, slide]);
+    const routeOf = (id: string) => steps.find((s) => s.id === id)?.route;
+    expect(routeOf("yard")).toEqual([]);
+    expect(routeOf("town")).toEqual(["yard"]);
+    expect(routeOf("store")).toEqual(["yard", "town"]);
+  });
+
+  it("keeps the first move's Connection leg on a one-move place", () => {
+    const steps = walkableReach("yard", places, [lane, slide]);
+    expect(steps.find((s) => s.id === "town")?.via).toEqual({ via: "connection", connection: lane, leg: lane.aToB });
+  });
+
+  it("stops at the cap it is given", () => {
+    expect(reach("barn", [lane])).toEqual({ farm: 1, yard: 1, town: 2, store: 3 });
+    expect(walkableReach("barn", places, [lane], 1).map((s) => s.id)).toEqual(["farm", "yard"]);
   });
 });
 

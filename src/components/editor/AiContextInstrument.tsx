@@ -160,7 +160,7 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
         )}
         <Meta as="p" className="flex items-start gap-1 leading-snug">
           <Compass className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-          A location not listed here can’t be reached from this one. The AI decides whether an action
+          A location not listed here can’t be reached from this one in one turn. The AI decides whether an action
           counts as travel.
         </Meta>
 

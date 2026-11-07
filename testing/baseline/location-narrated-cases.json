@@ -1,5 +1,5 @@
 {
-  "_note": "Made-up scenes for the narrated-move probe (harness/location-narrated-probe.cli.ts). Each scene stands the player at `at` in one of the small worlds below, gives the player's action and the narration that followed, and the place the player is in when the narration ends: a destination name, or NONE when they never left. `carried` scenes move the player without the action asking for it, and name the place only by description. `stay` scenes only look toward a place, talk about it, or move someone else. `unlisted` scenes carry the player to `goes`, a place more than one move away, so the answer is NONE. An empty action is an opening.",
+  "_note": "Made-up scenes for the narrated-move probe (harness/location-narrated-probe.cli.ts). Each scene stands the player at `at` in one of the small worlds below, gives the player's action and the narration that followed, and the place the player is in when the narration ends: a destination name, or NONE when they never left. `carried` scenes move the player without the action asking for it, and name the place only by description. `stay` scenes only look toward a place, talk about it, or move someone else. `far` scenes carry the player 2 or 3 moves, to a place on the widened list. `unlisted` scenes carry the player to `goes`, a place past 3 moves or not reachable at all, so the answer is NONE. `connections` adds Connections to a world: `from` to `to`, one way unless `twoWay`. An empty action is an opening.",
   "worlds": {
     "fen": [
       { "name": "The Drowned Fen", "parent": null, "summary": "A wide brown marsh of reed beds, slow channels and stilt villages." },
@@ -34,6 +34,17 @@
       { "name": "Chandler's Shop", "parent": "Market Row", "summary": "A narrow shop that smells of tallow, its shelves lined with candles and lamp oil." },
       { "name": "Stonegate Keep", "parent": "Stonegate", "summary": "The lord's square keep at the top of the hill, behind a deep ditch." },
       { "name": "Keep Chapel", "parent": "Stonegate Keep", "summary": "A small cold chapel inside the keep, lit by one round window." }
+    ],
+    "coast": [
+      { "name": "Cliff Top", "parent": null, "summary": "A windswept headland of short turf above the sea." },
+      { "name": "Lighthouse", "parent": "Cliff Top", "summary": "A white stone tower at the edge of the headland, its lamp room reached by a spiral stair." },
+      { "name": "Shingle Beach", "parent": null, "summary": "A narrow beach of gray pebbles at the foot of the cliffs." },
+      { "name": "Beach Cave", "parent": "Shingle Beach", "summary": "A dripping sea cave at the back of the beach, its floor wet with tide pools." }
+    ]
+  },
+  "connections": {
+    "coast": [
+      { "from": "Cliff Top", "to": "Shingle Beach", "hint": "a rope ladder that is pulled up behind each climber" }
     ]
   },
   "scenes": [
@@ -164,21 +175,57 @@
       "expect": "NONE"
     },
     {
-      "set": "unlisted", "id": "unlisted-heron", "world": "fen", "at": "Smokehouse", "goes": "Heron Island",
+      "set": "far", "id": "far-heron", "world": "fen", "at": "Smokehouse",
       "action": "I offer to help the smoker check his eel traps.",
       "narration": "The smoker grunts and hands you a pole. You duck out of the smoky hut, climb down the wooden steps and push off in a narrow punt. You pole across the open water for an hour until the boat grounds on a wooded island. You wade ashore under the trees, where gray herons stalk the shallows and their nests crowd the branches above you.",
-      "expect": "NONE"
+      "expect": "Heron Island"
     },
     {
-      "set": "unlisted", "id": "unlisted-customs", "world": "port", "at": "Cellar", "goes": "Customs House",
+      "set": "far", "id": "far-customs", "world": "port", "at": "Cellar",
       "action": "I bang on the trapdoor and shout until someone opens it.",
       "narration": "The trapdoor flies open and the keeper hauls you up by the collar. He drags you through the taproom, out under the painted sign and along the quay. He does not let go until you are inside the tollmen's office, where ledgers line the walls and a clerk sets down his pen beside the brass scales.",
+      "expect": "Customs House"
+    },
+    {
+      "set": "far", "id": "far-hollow", "world": "fort", "at": "Commander's Tower",
+      "action": "I offer to carry the commander's message to the shepherds.",
+      "narration": "The commander hands you a folded note. You hurry down the winding stair, cross the muddy yard and slip out through the gate. You follow the scree path down below the pass until you reach a sheltered dip where sheep graze on the short grass. An old shepherd rises from his fire to meet you.",
+      "expect": "Shepherd's Hollow"
+    },
+    {
+      "set": "far", "id": "far-stonegate", "world": "valley", "at": "Chandler's Shop",
+      "action": "I buy a lantern and set off for the town on the hill.",
+      "narration": "The chandler wraps the lantern in cloth. You step out of the shop into the crowded street and thread your way past the stalls, then out between the timber houses and over the mill bridge. The road climbs through the fields all day. At dusk you pass under the gate of the walled town and stop in its small gray square to catch your breath.",
+      "expect": "Stonegate"
+    },
+    {
+      "set": "far", "id": "far-oldtown", "world": "port", "at": "Cellar",
+      "action": "I climb out of the cellar and go looking for the old scribe.",
+      "narration": "You push up the trapdoor and climb into the dim taproom, then out under the painted sign onto the quay. You leave the gulls and the moored boats behind and climb the steep lanes away from the water. The houses grow older and lean closer together, until you stand in a crooked square of the old quarter, where the scribe's sign hangs over a narrow door.",
+      "expect": "Old Town"
+    },
+    {
+      "set": "far", "id": "far-millbrook", "world": "valley", "at": "Keep Chapel",
+      "action": "I leave the chapel and travel back to the mill town.",
+      "narration": "You bow to the priest and leave the cold chapel. You cross the keep's yard, go over the bridge across the ditch and walk down through the gray streets and out of the gate. The road runs downhill all day. By evening you hear the mill wheel turning and walk in among the timber houses, where a boy waters a horse at the trough by the mill.",
+      "expect": "Millbrook"
+    },
+    {
+      "set": "far", "id": "far-cave", "world": "coast", "at": "Lighthouse",
+      "action": "I go down to the beach to look for the smugglers' cache.",
+      "narration": "You wind down the spiral stair and step out onto the wind-bent grass. At the cliff edge you lower yourself onto the rope ladder and climb down to the pebbles below. You crunch across the beach to the dark mouth at the back of it and duck inside, where water drips from the roof into cold tide pools around your boots.",
+      "expect": "Beach Cave"
+    },
+    {
+      "set": "unlisted", "id": "unlisted-cliff", "world": "coast", "at": "Shingle Beach", "goes": "Cliff Top",
+      "action": "I find a way back up the cliff.",
+      "narration": "The rope ladder is gone, so you search along the foot of the cliffs until you find a crack with handholds. You climb slowly, clinging to the rock, and at last haul yourself over the edge onto the short wind-bent grass of the headland. Far below, the waves break on the pebbles where you stood.",
       "expect": "NONE"
     },
     {
-      "set": "unlisted", "id": "unlisted-hollow", "world": "fort", "at": "Commander's Tower", "goes": "Shepherd's Hollow",
-      "action": "I offer to carry the commander's message to the shepherds.",
-      "narration": "The commander hands you a folded note. You hurry down the winding stair, cross the muddy yard and slip out through the gate. You follow the scree path down below the pass until you reach a sheltered dip where sheep graze on the short grass. An old shepherd rises from his fire to meet you.",
+      "set": "unlisted", "id": "unlisted-lighthouse", "world": "coast", "at": "Beach Cave", "goes": "Lighthouse",
+      "action": "I follow the passage at the back of the cave.",
+      "narration": "The passage climbs through the rock in rough steps cut long ago. You follow it up in the dark until it ends at a wooden door. You push it open and step into the base of a white stone tower, and climb the spiral stair to the lamp room, where the great lens turns slowly in the evening light.",
       "expect": "NONE"
     }
   ]

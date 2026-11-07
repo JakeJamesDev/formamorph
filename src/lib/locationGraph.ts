@@ -127,9 +127,15 @@ export function effectiveDestinations(
   locations: readonly LocationLink[],
   connections: readonly Connection[],
 ): Map<string, DestinationVia> {
-  const authored = authoredPairs(connections);
+  return destinationsIn(id, parentIndex(locations), authoredPairs(connections), connections);
+}
+
+/** {@link effectiveDestinations} over a prebuilt index, so a walk builds it once. */
+function destinationsIn(
+  id: string, index: ParentIndex, authored: Set<string>, connections: readonly Connection[],
+): Map<string, DestinationVia> {
   const out = new Map<string, DestinationVia>();
-  for (const other of implicitNeighbors(id, parentIndex(locations))) {
+  for (const other of implicitNeighbors(id, index)) {
     if (!authored.has(pairKey(id, other))) out.set(other, { via: "implicit" });
   }
   for (const connection of connections) {
@@ -139,6 +145,53 @@ export function effectiveDestinations(
   }
   out.delete(id); // a self-link is authorable and reaches nowhere new
   return out;
+}
+
+/** How far a router or narrated move may carry the player in one turn. */
+export const WALK_MOVE_CAP = 3;
+
+/** One place a walk from the start reaches, and the shortest way there. */
+export interface WalkStep {
+  id: string;
+  /** How many moves the walk takes, from 1. */
+  moves: number;
+  /** The places passed through on the way, in walk order. Empty for a one-move place. */
+  route: string[];
+  /** How the first move is made. For a one-move place, how the whole trip is made. */
+  via: DestinationVia;
+}
+
+/**
+ * Every place reachable from `id` in up to `cap` moves, each move one of the effective destinations of the
+ * place it leaves, so one-way legs stay one-way. Nearest first, in walk order; the first shortest route wins.
+ */
+export function walkableReach(
+  id: string,
+  locations: readonly LocationLink[],
+  connections: readonly Connection[],
+  cap: number = WALK_MOVE_CAP,
+): WalkStep[] {
+  const index = parentIndex(locations);
+  const authored = authoredPairs(connections);
+  const steps: WalkStep[] = [];
+  const seen = new Set([id]);
+  let frontier: WalkStep[] = [{ id, moves: 0, route: [], via: { via: "implicit" } }];
+  for (let moves = 1; moves <= cap && frontier.length; moves++) {
+    const next: WalkStep[] = [];
+    for (const from of frontier) {
+      for (const [to, via] of destinationsIn(from.id, index, authored, connections)) {
+        if (seen.has(to)) continue;
+        seen.add(to);
+        const step = moves === 1
+          ? { id: to, moves, route: [], via }
+          : { id: to, moves, route: [...from.route, from.id], via: from.via };
+        next.push(step);
+      }
+    }
+    steps.push(...next);
+    frontier = next;
+  }
+  return steps;
 }
 
 /**

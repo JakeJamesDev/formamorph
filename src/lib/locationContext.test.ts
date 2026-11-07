@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
-  navigableDestinations, navigableDestinationEntries, buildDestinationsContext, sublocationEntityIds, reachableEntityIds, renderEntityRoster,
+  navigableDestinations, navigableDestinationEntries, buildDestinationsContext, walkableDestinationEntries, walkableDestinations, sublocationEntityIds, reachableEntityIds, renderEntityRoster,
   buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, knownEntityIds, buildKnownEntitiesContext,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
@@ -444,7 +444,7 @@ describe("navigableDestinations / buildDestinationsContext", () => {
     it("gives no hint to a leg without one, even when the other leg has one", () => {
       const oneSided: Connection = { id: "c7", a: "green", b: "landing", aToB: { hint: "down the steps" }, bToA: {} };
       expect(hintTo(landing, green, [oneSided])).toBeUndefined();
-      expect(buildDestinationsContext(landing, locs, [oneSided])).not.toContain("via");
+      expect(buildDestinationsContext(landing, locs, [oneSided])).not.toMatch(/^Green — via/m);
     });
 
     it("offers no return trip on a one-way Connection whose leg has a hint", () => {
@@ -452,6 +452,58 @@ describe("navigableDestinations / buildDestinationsContext", () => {
       expect(hintTo(green, landing, [drop])).toBe("down the steps");
       expect(navigableDestinationEntries(landing, locs, [drop])).toEqual([]);
     });
+  });
+});
+
+describe("walkableDestinations / buildDestinationsContext reach", () => {
+  // farm > { barn, yard } ; town > { store > backroom, well } ; a lane joins Yard to Town both ways.
+  const farm: GameLocation = { id: "farm", name: "Farm" };
+  const barn: GameLocation = { id: "barn", name: "Barn", parentId: "farm" };
+  const yard: GameLocation = { id: "yard", name: "Yard", parentId: "farm", aiSummary: "A muddy yard." };
+  const town: GameLocation = { id: "town", name: "Town", aiSummary: "A market town." };
+  const store: GameLocation = { id: "store", name: "Store", parentId: "town", aiSummary: "A general store." };
+  const backroom: GameLocation = { id: "backroom", name: "Backroom", parentId: "store" };
+  const well: GameLocation = { id: "well", name: "Well", parentId: "town" };
+  const places = [farm, barn, yard, town, store, backroom, well];
+  const lane: Connection = { id: "lane", a: "yard", b: "town", aToB: { hint: "down the lane" }, bToA: {} };
+  const names = (from: GameLocation, locations = places) =>
+    walkableDestinations(from, locations, [lane]).map((l) => l.name);
+
+  it("lists every place up to 3 moves away, nearest first, and none past it", () => {
+    expect(names(barn)).toEqual(["Farm", "Yard", "Town", "Store", "Well"]);
+  });
+
+  it("trails a far place with the places it passes through, and keeps a one-move Connection's hint", () => {
+    const out = buildDestinationsContext(yard, places, [lane], { preferSummary: true });
+    expect(out).toContain("Town: A market town. — via down the lane\n");
+    expect(out).toContain("Store: A general store. — via Town\n");
+    expect(out).toContain("Backroom — via Town, then Store\n");
+    expect(out).toContain("Barn\n"); // a one-move implicit place carries no tail
+    const fromBarn = buildDestinationsContext(barn, places, [lane], { preferSummary: true, format: "markdown" });
+    expect(fromBarn).toContain("- **Store:** A general store. — via Yard, then Town\n");
+  });
+
+  it("keeps only the nearest place of a shared name", () => {
+    const farCellar: GameLocation = { id: "far-cellar", name: "Cellar", parentId: "town" }; // 3 moves from the Barn
+    const nearCellar: GameLocation = { id: "near-cellar", name: "the cellar", parentId: "farm" };
+    const entries = walkableDestinationEntries(barn, [...places, farCellar, nearCellar], [lane]);
+    expect(entries.filter((e) => e.location.name.toLowerCase().endsWith("cellar")).map((e) => e.location.id))
+      .toEqual(["near-cellar"]);
+  });
+
+  it("lists neither place when two of a name are equally near", () => {
+    // Both mills sit beside the Barn, one move each.
+    const millA: GameLocation = { id: "mill-a", name: "Mill", parentId: "farm" };
+    const millB: GameLocation = { id: "mill-b", name: "Mill", parentId: "farm" };
+    expect(names(barn, [...places, millA, millB])).not.toContain("Mill");
+    // Two moves apart, past the Town: the Yard's own lane makes one nearer, so it lists.
+    const millC: GameLocation = { id: "mill-c", name: "Mill", parentId: "town" };
+    expect(walkableDestinations(yard, [...places, millA, millC], [lane]).map((l) => l.id)).toContain("mill-a");
+  });
+
+  it("drops a far place that shares the current location's name", () => {
+    const farBarn: GameLocation = { id: "far-barn", name: "Barn", parentId: "town" };
+    expect(walkableDestinations(barn, [...places, farBarn], [lane]).map((l) => l.id)).not.toContain("far-barn");
   });
 });
 

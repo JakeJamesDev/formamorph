@@ -405,7 +405,7 @@ A connection is a travel link between two locations. A connection between two lo
 | `aToB` | | Leg | Present when travel goes from `a` to `b` |
 | `bToA` | | Leg | Present when travel goes from `b` to `a` |
 
-A connection needs at least one leg. Both legs = two-way. A leg has one optional field, `hint`: how the trip is made, such as "through the old gate". The AI reads it after the destination's name.
+A connection needs at least one leg. Both legs = two-way. A leg has one optional field, `hint`: how the trip is made, such as "through the old gate". The AI reads it after the destination's name when the destination is one step away.
 
 ## Entities
 <!-- keywords: npc properties, character object, persona marks, nickname list, gallery array, link object keys, card file extras, folder key -->

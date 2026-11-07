@@ -272,9 +272,10 @@ describe('destinations', () => {
   });
 
   it('honors a one-way connection: the return trip is never offered', () => {
-    const back = context(at('loc-market')).destinations.map((d) => d.id);
-    expect(back).not.toContain('loc-harbor');
-    expect(back).toContain('loc-landing');
+    const back = context(at('loc-market')).destinations;
+    expect(back.map((d) => d.id)).toContain('loc-landing');
+    // The harbor is reached on foot through the landing, never straight back across the one-way leg.
+    expect(back.find((d) => d.id === 'loc-harbor')?.hint).toBe('Sedge Landing');
   });
 
   it('drops the implicit sibling link the connection replaced, so a pair is listed once', () => {

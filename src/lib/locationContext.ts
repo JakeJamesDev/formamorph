@@ -3,7 +3,8 @@ import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces }
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { entityIdsAt, entityIdsAtAny, knownHere, knownInOf } from "./entityPresence";
 import type { RelationshipLines } from "./entityRelationships";
-import { effectiveDestinations, type LocationLink } from "./locationGraph";
+import { effectiveDestinations, walkableReach, type LocationLink } from "./locationGraph";
+import { placeNameKey } from "./locationMatch";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import { decodeChipKey, decodeVariant, tokenVariant, variableForToken } from "./promptVariables";
@@ -414,14 +415,61 @@ export function navigableDestinationEntries<L extends LocationLink = GameLocatio
   return entries;
 }
 
+/** One place a move can carry the player to, and the places passed through on the way. */
+export interface WalkableEntry<L extends LocationLink = GameLocation> extends DestinationEntry<L> {
+  moves: number;
+  /** The places passed through, in walk order. Empty for a one-move place. */
+  route: L[];
+}
+
+/** A location with the name a reply matches against. */
+type NamedLink = LocationLink & { name: string };
+
 /**
- * The places the player can move to from the current location — the **local navigable graph** under the
- * effective-navigation rule (ADR-0002): its implicit neighbors (containing location, sub-locations,
- * siblings) for every pair no Connection covers, plus the Connections leaving it. Deduped by id, current
- * excluded. This is the location router's whole world: the only candidates fed to the model and the only
- * names its reply is matched against, which is what makes a one-way link structural — the return trip is
- * never offered rather than verbally forbidden.
+ * The places a router or narrated move can carry the player to: every place up to 3 moves away, nearest
+ * first. A name keeps only its nearest place; the current location counts as nearest, and a tie keeps none,
+ * so an exact reply never names a place the game would have to guess at.
  */
+export function walkableDestinationEntries<L extends NamedLink = GameLocation>(
+  current: NamedLink | null,
+  locations: readonly L[],
+  connections: readonly Connection[],
+): WalkableEntry<L>[] {
+  if (!current) return [];
+  const byId = new Map(locations.map((l) => [l.id, l]));
+  const entries: WalkableEntry<L>[] = [];
+  for (const step of walkableReach(current.id, locations, connections)) {
+    const location = byId.get(step.id);
+    const route = step.route.map((id) => byId.get(id)).filter((l): l is L => !!l);
+    if (!location || route.length !== step.route.length) continue; // a Connection pointing at a deleted location reaches nowhere
+    entries.push({
+      location,
+      route,
+      moves: step.moves,
+      hint: step.moves === 1 && step.via.via === "connection" ? step.via.leg.hint : undefined,
+      via: step.via.via,
+    });
+  }
+  const nearest = new Map<string, number>([[placeNameKey(current.name), 0]]);
+  const tied = new Set<string>();
+  for (const { location, moves } of entries) {
+    const key = placeNameKey(location.name);
+    const best = nearest.get(key);
+    if (best === undefined) nearest.set(key, moves);
+    else if (best === moves) tied.add(key);
+  }
+  return entries.filter(({ location, moves }) => {
+    const key = placeNameKey(location.name);
+    return nearest.get(key) === moves && !tied.has(key);
+  });
+}
+
+/** What trails a place's line after `via`: a far place's route, else a one-move Connection's travel hint. */
+export const destinationTail = (entry: WalkableEntry<NamedLink>): string | undefined =>
+  entry.route.length ? entry.route.map((l) => l.name).join(", then ") : entry.hint;
+
+/** The places one move from the current location: its effective destinations (ADR-0002), deduped, current
+ *  excluded. */
 export function navigableDestinations(
   current: MaybeLocation,
   locations: GameLocation[],
@@ -430,11 +478,22 @@ export function navigableDestinations(
   return navigableDestinationEntries(current, locations, connections).map((e) => e.location);
 }
 
+/** The places a router or narrated move can carry the player to: {@link walkableDestinationEntries}' places.
+ *  The router's whole world: the only candidates fed to the model and the only names its reply is matched
+ *  against, which keeps a one-way link structural. */
+export function walkableDestinations(
+  current: MaybeLocation,
+  locations: GameLocation[],
+  connections: Connection[],
+): GameLocation[] {
+  return walkableDestinationEntries(current, locations, connections).map((e) => e.location);
+}
+
 /**
- * Serialize the current location's navigable destinations for the `<LOCATION|destinations>` chip — one line per
- * place (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders. A
- * Connection's travel hint trails its line as `— via <hint>`, so the model knows how the trip is made.
- * Returns `N/A` when the location is null or nothing is reachable.
+ * Serialize the places a move can carry the player to for the `<LOCATION|destinations>` chip — one line per
+ * place (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders. A one-move
+ * Connection's travel hint trails its line as `— via <hint>`; a far place's route trails it the same way, as
+ * the places passed through. Returns `N/A` when the location is null or nothing is reachable.
  */
 export function buildDestinationsContext(
   current: MaybeLocation,
@@ -443,9 +502,12 @@ export function buildDestinationsContext(
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const entries = navigableDestinationEntries(current, locations, connections);
+  const entries = walkableDestinationEntries(current, locations, connections);
   if (entries.length === 0) return NONE_PLACEHOLDER;
-  const hints = new Map(entries.filter((e) => e.hint).map((e) => [e.location.id, e.hint!]));
+  const hints = new Map(entries.flatMap((e) => {
+    const tail = destinationTail(e);
+    return tail ? [[e.location.id, tail] as const] : [];
+  }));
   return buildLocationList(entries.map((e) => e.location), { ...opts, hints });
 }
 

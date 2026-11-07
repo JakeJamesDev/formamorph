@@ -44,6 +44,9 @@ export function matchLocationResponse(response: string, names: string[]): string
   return candidates[0] ?? null;
 }
 
+/** A place name as an exact reply matches it: case, outer spaces and a leading article aside. */
+export const placeNameKey = (name: string): string => stripArticle(name.trim().toLowerCase());
+
 /** The name in `names` that `lower` (a lowercased reply) is, give or take a leading article. */
 function exactName(lower: string, names: string[]): string | undefined {
   const lowerBare = stripArticle(lower);

@@ -138,7 +138,7 @@ import { getRevealReleased } from "../lib/revealTimingStore";
 import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
-import { navigableDestinations } from "../lib/locationContext";
+import { walkableDestinations } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolScriptSource, type ToolMemorySource } from "../lib/tools/toolSnapshot";
@@ -2881,7 +2881,7 @@ const GameViewer = ({
   ) => {
     const { signal } = turn;
     // The move offer lands before the reveal is held below — it is the one result that has always
-    // appeared while the narration was still fading. Scoped to the local navigable graph: the router's
+    // appeared while the narration was still fading. Scoped to the places a move can reach: the router's
     // reply named one of these or nothing.
     // A During AI Output move already beats the offer, so it never shows.
     const toolCalls = worldToolTurnRef.current;
@@ -3121,9 +3121,9 @@ const GameViewer = ({
     // On the opening turn, snapshot the pre-game state so page 1 can be regenerated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
 
-    // Places navigable from here. Nowhere to go means nothing to route: the router's reply is matched
+    // Places a move can reach from here. Nowhere to go means nothing to route: the router's reply is matched
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
-    const destinations = currentLocation ? navigableDestinations(currentLocation, locations, connections) : [];
+    const destinations = currentLocation ? walkableDestinations(currentLocation, locations, connections) : [];
     const planInput = {
       action,
       isGameStarted,

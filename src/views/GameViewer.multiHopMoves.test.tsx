@@ -1,0 +1,208 @@
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { harborWorld, renderGameViewer } from '@/test/gameViewer';
+import { sseReply, sseResponse } from '@/test/aiTextFixtures';
+import { useGameplay } from '@/contexts/GameplayContext';
+import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
+import type { Connection, Entity, GameLocation, Item, PlayerStat, World } from '@/types';
+
+/** Moves of more than one step on a mounted game: where the player ends the turn, who comes along, and what the
+ *  passes after the move read. */
+
+vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
+vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
+vi.mock('react-toastify', () => ({
+  toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn(), dismiss: vi.fn(), isActive: vi.fn() }),
+  ToastContainer: () => null,
+}));
+
+// farm > { barn, yard } ; town > store > backroom ; a lane joins the yard to the town both ways.
+// From the barn: yard 1 move, town 2, store 3, backroom 4.
+const FARM = { id: 'farm', name: 'Farm' } as GameLocation;
+const BARN = { id: 'barn', name: 'Barn', parentId: 'farm', isStarting: true } as GameLocation;
+const YARD = { id: 'yard', name: 'Yard', parentId: 'farm' } as GameLocation;
+const TOWN = { id: 'town', name: 'Town' } as GameLocation;
+const STORE = { id: 'store', name: 'Store', parentId: 'town' } as GameLocation;
+const BACKROOM = { id: 'backroom', name: 'Backroom', parentId: 'store' } as GameLocation;
+const LANE: Connection = { id: 'lane', a: 'yard', b: 'town', aToB: { hint: 'down the lane' }, bToA: {} };
+
+// Partial fixtures: the move path reads only these fields.
+const character = (id: string, name: string, movement: Entity['movement'], locations: string[]): Entity =>
+  ({ id, name, movement, locations } as unknown as Entity);
+const vigor: PlayerStat = { id: 'vigor', name: 'Vigor', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
+// Lies in the store; its stat effect puts its name in the stat request where it is present.
+const ledger: Item = {
+  id: 'ledger', name: 'Shop Ledger', stackable: false, traitEffects: [], equipRequires: [],
+  statEffects: [{ id: 'r1', statId: 'vigor', amount: 1, timing: 'owned', facet: 'value', op: 'add' }],
+};
+
+const worldWith = (over: Partial<World> = {}): World => ({
+  ...harborWorld({
+    stats: [vigor],
+    entities: [
+      character('ines', 'Ines', undefined, ['store']),
+      character('bram', 'Bram', 'follow', ['barn']),
+      character('maela', 'Maela', 'follow', ['barn']),
+      // Moves Between the barn and the town, never the store.
+      character('wren', 'Wren', 'between', ['barn', 'town']),
+    ],
+  }),
+  locations: [FARM, BARN, YARD, TOWN, STORE, BACKROOM],
+  connections: [LANE],
+  items: [ledger],
+  placements: [{ id: 'p1', where: { kind: 'location', id: 'store' }, quantity: 1, source: { kind: 'item', itemId: 'ledger' } }],
+  ...over,
+} as unknown as World);
+
+let play: ReturnType<typeof useGameplay>;
+function Probe() {
+  play = useGameplay();
+  return null;
+}
+
+/** The scripted endpoint: each request kind answers from `replies`, and everything else with the narration. The
+ *  system prompts of the passes after the narration are kept by kind. */
+function stubEndpoint(narration: string, replies: { router?: string; narrated?: string; entities?: Record<string, string> }) {
+  const sent: string[] = [];
+  const after = { choices: '', stats: '', inventory: '' };
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const body = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
+    const system = body.messages.find((m) => m.role === 'system')?.content ?? '';
+    if (system.includes('You are the location router')) {
+      sent.push('router');
+      return sseResponse(sseReply(replies.router ?? 'NONE'));
+    }
+    if (system.includes('You keep track of where the player character is')) {
+      sent.push('narrated');
+      return sseResponse(sseReply(replies.narrated ?? 'Barn'));
+    }
+    const mover = /You track where one character goes in an interactive story: (\w+)/.exec(system)?.[1];
+    if (mover) return sseResponse(sseReply(replies.entities?.[mover] ?? 'Stay'));
+    if (system.includes('player choice writer')) {
+      after.choices = system;
+      return sseResponse(sseReply('1. Look around\n2. Wait'));
+    }
+    if (system.includes('stat tracker')) {
+      after.stats = system;
+      return sseResponse(sseReply(''));
+    }
+    if (system.includes('inventory keeper')) {
+      after.inventory = system;
+      return sseResponse(sseReply(JSON.stringify({ operations: [] })));
+    }
+    return sseResponse(sseReply(narration));
+  }));
+  return { sent, after };
+}
+
+beforeEach(async () => {
+  for (const { id } of await getAllSaveRecords()) await deleteSaveRecord(id);
+  localStorage.clear();
+  localStorage.setItem('FORMAMORPH_endpointUrl', 'http://127.0.0.1:5190/v1/chat/completions');
+  localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
+  localStorage.setItem('FORMAMORPH_locationAutoApply', 'true');
+});
+
+/** Sends one action and waits for its turn to close. */
+async function playTurn(action: string) {
+  const turns = play.fullMessageHistory.length;
+  fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: action } });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  await waitFor(() => expect(play.fullMessageHistory.length).toBe(turns + 2));
+  await waitFor(() => expect(screen.getByPlaceholderText(/Type your action/)).toBeEnabled());
+  // The passes after the narration can still run once the box enables; the turn ends when generation stops.
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop generating' })).toBeNull());
+}
+
+/** Mounts the world and plays the opening turn in the barn. */
+async function openInBarn(world = worldWith()) {
+  renderGameViewer(world, { inGameplay: <Probe /> });
+  await screen.findByPlaceholderText(/Type your action/);
+  stubEndpoint('The barn smells of hay.', { narrated: 'Barn' });
+  await playTurn('Begin.');
+  expect(play.currentLocation?.id).toBe('barn');
+}
+
+const CURRENT_STORE = '## Current Location\n- **name:** Store';
+
+describe('a move of more than one step in Auto mode', () => {
+  it('moves the player 3 moves on a router answer, and the passes after it read the store', async () => {
+    await openInBarn();
+    const endpoint = stubEndpoint('You walk down the lane into town and step into the store, where Ines looks up.', { router: 'Store' });
+
+    await playTurn('I walk down the lane to town and step into the store.');
+
+    expect(endpoint.sent).toEqual(['router']);
+    await waitFor(() => expect(play.currentLocation?.id).toBe('store'));
+    expect(endpoint.after.choices).toContain(CURRENT_STORE);
+    expect(endpoint.after.stats).toContain('Shop Ledger');
+    expect(endpoint.after.inventory).toContain('Shop Ledger');
+  });
+
+  it('moves the player to a far place a Narrated Move answer names', async () => {
+    await openInBarn();
+    const endpoint = stubEndpoint('A cart carries you down the lane and drops you at the store door; you go in.', { router: 'NONE', narrated: 'Store' });
+
+    await playTurn('I climb onto the cart.');
+
+    expect(endpoint.sent).toEqual(['router', 'narrated']);
+    await waitFor(() => expect(play.currentLocation?.id).toBe('store'));
+    expect(endpoint.after.choices).toContain(CURRENT_STORE);
+  });
+
+  it('leaves the player where they stand on a place past 3 moves', async () => {
+    await openInBarn();
+    stubEndpoint('You walk to town, through the store and into its back room.', { router: 'Backroom', narrated: 'Backroom' });
+
+    await playTurn('I go to the back room of the store.');
+
+    expect(play.currentLocation?.id).toBe('barn');
+  });
+
+  it('moves nobody on a name two places share at the same distance', async () => {
+    const shed1 = { id: 'shed1', name: 'Shed', parentId: 'farm' } as GameLocation;
+    const shed2 = { id: 'shed2', name: 'Shed', parentId: 'farm' } as GameLocation;
+    await openInBarn(worldWith({ locations: [FARM, BARN, YARD, TOWN, STORE, BACKROOM, shed1, shed2] }));
+    stubEndpoint('You step into the shed.', { router: 'Shed', narrated: 'Shed' });
+
+    await playTurn('I go into the shed.');
+
+    expect(play.currentLocation?.id).toBe('barn');
+  });
+
+  it('brings a follower to the final place, leaves the one told to stay, and leaves a Moves Between character the store is not hers', async () => {
+    await openInBarn();
+    act(() => play.applyFollowerState({ followers: ['bram', 'maela'], positions: { bram: 'barn', maela: 'barn', wren: 'barn' } }));
+    stubEndpoint('You walk down the lane into town and into the store.', {
+      router: 'Store', entities: { Bram: 'Keep following', Maela: 'Stay here', Wren: 'Come along' },
+    });
+
+    await playTurn('Maela, wait here. Wren, come with me to the store.');
+
+    await waitFor(() => expect(play.currentLocation?.id).toBe('store'));
+    expect(play.entityPositions.bram).toBe('store');
+    expect(play.entityFollowers).toEqual(['bram']);
+    expect(play.entityPositions.maela).toBe('barn');
+    // Wren owns the town on the way, not the store, so she stays.
+    expect(play.entityPositions.wren).toBe('barn');
+  });
+});
+
+describe('a move of more than one step in Suggest mode', () => {
+  it('offers the final place, and Go moves the player there with the follower', async () => {
+    localStorage.setItem('FORMAMORPH_locationAutoApply', 'false');
+    await openInBarn();
+    act(() => play.applyFollowerState({ followers: ['bram'], positions: { bram: 'barn' } }));
+    stubEndpoint('You walk down the lane into town and step into the store.', { narrated: 'Store', entities: { Bram: 'Keep following' } });
+
+    await playTurn('I walk to the store in town.');
+
+    expect(play.currentLocation?.id).toBe('barn');
+    const offer = await screen.findByText(/Move to/);
+    expect(offer.textContent).toContain('Store');
+    fireEvent.click(screen.getByRole('button', { name: 'Go' }));
+    await waitFor(() => expect(play.currentLocation?.id).toBe('store'));
+    expect(play.entityPositions.bram).toBe('store');
+  });
+});

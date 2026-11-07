@@ -85,7 +85,7 @@ const LOCATION_SCOPE_AXIS: PromptVariantAxis = {
     { id: 'sublocations', label: 'Sub', help: "Sends the current location's direct sub-locations" },
     { id: 'parent', label: 'Parent', help: 'Sends the containing location, or nothing at the top level' },
     { id: 'reachable', label: 'Reachable', help: 'Sends the containing location and its neighbors' },
-    { id: 'destinations', label: 'Destinations', help: 'Sends connections, sub-locations, the containing location and its neighbors' },
+    { id: 'destinations', label: 'Destinations', help: 'Sends every place the story can move the player to, up to 3 steps away, with the places on the way' },
   ],
 };
 
