@@ -18,14 +18,15 @@ import { modelFolderCategory, settingsCategory } from './settings';
 import { readRecord, sourceItems, textOr } from './sourceRead';
 import { localStoreCategories } from './localCategories';
 import { modelsCategory } from './modelsCategory';
+import { MERGE_KEYS } from './keys';
 
-type LibraryKey = 'worlds' | 'entities' | 'dictionaries';
+type LibraryKey = typeof MERGE_KEYS.worlds | typeof MERGE_KEYS.entities | typeof MERGE_KEYS.dictionaries;
 
-const LABELS: Record<LibraryKey | 'saves', string> = {
-  worlds: 'Worlds',
-  saves: 'Saves',
-  entities: 'Entities',
-  dictionaries: 'Dictionaries',
+const LABELS: Record<LibraryKey | typeof MERGE_KEYS.saves, string> = {
+  [MERGE_KEYS.worlds]: 'Worlds',
+  [MERGE_KEYS.saves]: 'Saves',
+  [MERGE_KEYS.entities]: 'Entities',
+  [MERGE_KEYS.dictionaries]: 'Dictionaries',
 };
 
 interface Stamped {
@@ -47,34 +48,22 @@ const saveTimestamp = (record: SaveRecord): string | undefined => record.current
 
 const librarySummaryStamp = (summary: SourceSummary) => libraryRevision(summary) || undefined;
 
-async function worldTargets(): Promise<MergeItem[]> {
-  const db = await openWorldLibrary();
+/** Open a database, run `task` on it, and close it whatever happens. */
+async function withDb<T>(open: () => Promise<IDBDatabase>, task: (db: IDBDatabase) => Promise<T>): Promise<T> {
+  const db = await open();
   try {
-    return (await readAllWorldMeta(db)).meta.map(libraryItem);
+    return await task(db);
   } finally {
     db.close();
   }
 }
 
-async function storeTargets(key: Exclude<LibraryKey, 'worlds'>): Promise<MergeItem[]> {
-  const target = STORE_TARGETS[key];
-  const db = await target.open();
-  try {
-    return (await getAllReadable<Stamped>(db, target.store)).filter((r) => typeof r.id === 'string').map(libraryItem);
-  } finally {
-    db.close();
-  }
-}
+const worldTargets = () => withDb(openWorldLibrary, async (db) => (await readAllWorldMeta(db)).meta.map(libraryItem));
 
-async function writeLibrary(key: LibraryKey, record: IdRecord): Promise<void> {
-  const target = STORE_TARGETS[key];
-  const db = await target.open();
-  try {
-    await target.write(db, [record]);
-  } finally {
-    db.close();
-  }
-}
+const storeTargets = (key: Exclude<LibraryKey, typeof MERGE_KEYS.worlds>) => withDb(STORE_TARGETS[key].open, async (db) =>
+  (await getAllReadable<Stamped>(db, STORE_TARGETS[key].store)).filter((r) => typeof r.id === 'string').map(libraryItem));
+
+const writeLibrary = (key: LibraryKey, record: IdRecord) => withDb(STORE_TARGETS[key].open, (db) => STORE_TARGETS[key].write(db, [record]));
 
 function libraryCategory(bridge: ProfileMergeBridge, key: LibraryKey): MergeCategory {
   return {
@@ -82,7 +71,7 @@ function libraryCategory(bridge: ProfileMergeBridge, key: LibraryKey): MergeCate
     label: LABELS[key],
     stamped: true,
     unit: 'items',
-    target: () => (key === 'worlds' ? worldTargets() : storeTargets(key)),
+    target: () => (key === MERGE_KEYS.worlds ? worldTargets() : storeTargets(key)),
     source: () => sourceItems(bridge, key, librarySummaryStamp),
     copy: async (item) => writeLibrary(key, await readRecord(bridge, key, item.id)),
   };
@@ -98,20 +87,14 @@ const saveMeta = (record: SaveRecord): SaveMeta => ({
 
 async function appendImportedSaves(added: MergeItem[]): Promise<void> {
   const saves = (await getAllSaveRecords()).map(saveMeta);
-  const db = await openWorldLibrary();
-  let worlds;
-  try {
-    worlds = (await readAllWorldMeta(db)).meta.map((meta) => ({ id: meta.id, name: meta.name }));
-  } finally {
-    db.close();
-  }
+  const worlds = await withDb(openWorldLibrary, async (db) => (await readAllWorldMeta(db)).meta.map((meta) => ({ id: meta.id, name: meta.name })));
   const orders = await appendedSaveOrders(saves, worlds, added.map((item) => item.id), getOrder);
   for (const order of orders) await setOrder(order.key, order.ids);
 }
 
 function savesCategory(bridge: ProfileMergeBridge): MergeCategory {
   return {
-    key: 'saves',
+    key: MERGE_KEYS.saves,
     label: LABELS.saves,
     stamped: true,
     unit: 'items',
@@ -121,10 +104,10 @@ function savesCategory(bridge: ProfileMergeBridge): MergeCategory {
       stamp: saveTimestamp(record),
       size: 0,
     })),
-    source: () => sourceItems(bridge, 'saves', (summary) => summary.timestamp),
+    source: () => sourceItems(bridge, MERGE_KEYS.saves, (summary) => summary.timestamp),
     copy: async (item) => {
       // The AppData profile wrote this record as a SaveRecord; the read boundary migrates its shape on load.
-      const record = (await readRecord(bridge, 'saves', item.id)) as unknown as SaveRecord;
+      const record = (await readRecord(bridge, MERGE_KEYS.saves, item.id)) as unknown as SaveRecord;
       await putSaveRecord(importedSave(record, await getSaveRecord(item.id)));
     },
     finish: appendImportedSaves,
@@ -136,9 +119,9 @@ export function mergeCategories(bridge: ProfileMergeBridge): MergeCategory[] {
   return [
     settingsCategory(bridge),
     modelFolderCategory(bridge),
-    libraryCategory(bridge, 'dictionaries'),
-    libraryCategory(bridge, 'entities'),
-    libraryCategory(bridge, 'worlds'),
+    libraryCategory(bridge, MERGE_KEYS.dictionaries),
+    libraryCategory(bridge, MERGE_KEYS.entities),
+    libraryCategory(bridge, MERGE_KEYS.worlds),
     savesCategory(bridge),
     ...localStoreCategories(bridge),
     modelsCategory(bridge),

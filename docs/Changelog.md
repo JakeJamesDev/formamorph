@@ -26,7 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Full screen in the Windows desktop app now uses the whole width, with Exit Full Screen in More Actions.** The room held for the window buttons goes away in full screen, so the layout matches the browser. **F11** still works.
   - **Merge Your Other Data:**
     - **Windows now tells you when you start Formamorph from the file inside the app folder.** A message box shows the main Formamorph.exe path and offers Show in Folder, then the game opens.
-    - **On Windows, the main menu offers to merge worlds, saves, entities and dictionaries left from starts outside the app folder.** Where both copies hold an item, the newer one stays. Choose **Merge**, **Not Now** or **Don't Merge**. Nothing is deleted, and a stopped merge is offered again.
+    - **On Windows, the main menu offers to merge worlds, saves, entities and dictionaries left from starts outside the app folder.** Where both copies hold an item, the newer one stays. Choose **Merge**, **Not Now** or **Don't Merge**. A stopped merge is offered again.
     - **On Windows, the merge brings over your settings, sign-in and chosen model folder.** A setting you already have stays. Restart Formamorph when the merge asks, to use the settings that came over.
     - **On Windows, the merge offer now brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
     - **The profile merge now moves your downloaded local models.** Models in the other copy's folder move beside the main exe, smallest first. A model you already have stays.

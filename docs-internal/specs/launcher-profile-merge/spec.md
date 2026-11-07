@@ -55,6 +55,7 @@ A Windows player reported that **Update & Restart** failed with *Not a launcher 
 - **Q29 Existing model file:** a model file the folder already has counts as kept in the summary, like other categories. Both copies stay. The result screen lists only real failures as skipped, with reasons.
 - **Q30 Partial downloads:** the merge moves partial downloads too, as items, each sidecar before its part. A moved partial download can then resume in the folder.
 - **Q31 Same model folder:** when source and destination are the same folder, the plan leaves the models category out. No row shows, and the done marker still records it.
+- **Q32 Done marker failure:** when every copy finishes but the done marker fails to save, the result screen shows the merge as finished. The error is logged, and the offer returns on the next start.
 
 ## User Stories
 

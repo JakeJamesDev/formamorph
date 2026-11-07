@@ -4,6 +4,7 @@
  */
 import type { MergeCategory, MergeItem } from './engine';
 import type { ModelFolderField, ProfileMergeBridge } from './bridge';
+import { MERGE_KEYS } from './keys';
 
 /** Caches the app refetches; every other key copies. */
 export const SETTINGS_CACHE_KEYS: readonly string[] = [
@@ -13,9 +14,6 @@ export const SETTINGS_CACHE_KEYS: readonly string[] = [
   'formamorph.tierPrices',
   'FORMAMORPH_reasoningCatalog',
 ];
-
-export const SETTINGS_KEY = 'settings';
-export const MODEL_FOLDER_KEY = 'modelFolder';
 
 const MODEL_FOLDER_FIELDS: readonly { field: ModelFolderField; label: string }[] = [
   { field: 'downloadDir', label: 'Download Folder' },
@@ -40,7 +38,7 @@ export function settingsCategory(bridge: ProfileMergeBridge, storage: Storage = 
   let entries: Promise<Record<string, string>> | undefined;
   const sourceEntries = () => (entries ??= bridge.settings());
   return {
-    key: SETTINGS_KEY,
+    key: MERGE_KEYS.settings,
     label: 'Settings and Sign-In',
     stamped: false,
     unit: 'items',
@@ -66,7 +64,7 @@ export function modelFolderCategory(bridge: ProfileMergeBridge): MergeCategory {
     return MODEL_FOLDER_FIELDS.filter(({ field }) => field in fields).map(({ field, label }): MergeItem => ({ id: field, label, size: 0 }));
   };
   return {
-    key: MODEL_FOLDER_KEY,
+    key: MERGE_KEYS.modelFolder,
     label: 'Model Folder',
     stamped: false,
     unit: 'items',

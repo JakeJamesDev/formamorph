@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { FolderInput } from 'lucide-react';
 import {
   Dialog,
@@ -14,7 +15,7 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { SurfaceTab } from '@/components/ui/surface';
 import { writesOf, type CategoryPlan, type CategoryResult, type MergeProgress } from '@/lib/profileMerge/engine';
 import { formatModelSize } from '@/lib/localModels';
-import { SETTINGS_KEY } from '@/lib/profileMerge/settings';
+import { MERGE_KEYS } from '@/lib/profileMerge/keys';
 import type { ProfileMergeView } from './profileMergeView';
 
 interface ProfileMergeDialogProps {
@@ -29,7 +30,7 @@ interface ProfileMergeDialogProps {
 }
 
 /** Whether the merge copied a settings key: the app reads those once at load. */
-const copiedSettings = (results: CategoryResult[]) => results.some((result) => result.key === SETTINGS_KEY && result.added > 0);
+const copiedSettings = (results: CategoryResult[]) => results.some((result) => result.key === MERGE_KEYS.settings && result.added > 0);
 
 const counts = (parts: [number, string, string][]) =>
   parts.filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`).join(' · ');
@@ -113,14 +114,77 @@ function ResultRows({ results }: { results: CategoryResult[] }) {
   );
 }
 
+interface StepParts {
+  title: string;
+  description: string;
+  body: ReactNode;
+  footer: ReactNode;
+}
+
+/** Each step's title, description, body and buttons. */
+function stepParts(view: ProfileMergeView, handlers: Omit<ProfileMergeDialogProps, 'view'>): StepParts {
+  const { onMerge, onNotNow, onDecline, onDone, onRestart } = handlers;
+  switch (view.step) {
+    case 'offer':
+      return {
+        title: 'Merge Your Other Data',
+        description:
+          'You have data from an earlier start of Formamorph in another folder. Merge copies it here and moves your local models. Where both copies hold an item, the newer one stays.',
+        body: <OfferRows plans={view.plans} />,
+        footer: (
+          <DialogFooter>
+            <Button variant="ghost" className="sm:mr-auto" onClick={onDecline}>
+              Don&apos;t Merge
+            </Button>
+            <Button variant="outline" onClick={onNotNow}>
+              Not Now
+            </Button>
+            <Button onClick={onMerge}>Merge</Button>
+          </DialogFooter>
+        ),
+      };
+    case 'run':
+      return {
+        title: 'Merging Your Data',
+        description: 'Keep Formamorph open until the merge finishes.',
+        body: <RunRows plans={view.plans} progress={view.progress} />,
+        footer: null,
+      };
+    case 'result': {
+      const needsRestart = !!onRestart && !view.error && copiedSettings(view.results);
+      return {
+        title: view.error ? 'Merge Stopped' : 'Merge Finished',
+        description: view.error
+          ? `The merge stopped: ${view.error}. You'll be asked again the next time you start Formamorph.`
+          : needsRestart
+            ? 'Your data is merged. Restart Formamorph to use the settings that came over.'
+            : 'Your data is merged.',
+        body: <ResultRows results={view.results} />,
+        footer: (
+          <DialogFooter>
+            {needsRestart ? (
+              <>
+                <Button variant="outline" onClick={onDone}>Done</Button>
+                <Button onClick={onRestart}>Restart</Button>
+              </>
+            ) : (
+              <Button onClick={onDone}>Done</Button>
+            )}
+          </DialogFooter>
+        ),
+      };
+    }
+  }
+}
+
 /** The offer, the locked run, and the result of merging the AppData profile into the folder's profile. */
-export function ProfileMergeDialog({ view, onMerge, onNotNow, onDecline, onDone, onRestart }: ProfileMergeDialogProps) {
+export function ProfileMergeDialog({ view, ...handlers }: ProfileMergeDialogProps) {
   const running = view?.step === 'run';
-  const needsRestart = !!onRestart && view?.step === 'result' && !view.error && copiedSettings(view.results);
+  const parts = view ? stepParts(view, handlers) : null;
   const handleOpenChange = (open: boolean) => {
     if (open || !view || running) return;
-    if (view.step === 'offer') onNotNow();
-    else onDone();
+    if (view.step === 'offer') handlers.onNotNow();
+    else handlers.onDone();
   };
   const blockWhileRunning = (event: Event) => {
     if (running) event.preventDefault();
@@ -140,52 +204,14 @@ export function ProfileMergeDialog({ view, onMerge, onNotNow, onDecline, onDone,
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderInput className="h-4 w-4" />
-            {view?.step === 'offer' && 'Merge Your Other Data'}
-            {view?.step === 'run' && 'Merging Your Data'}
-            {view?.step === 'result' && (view.error ? 'Merge Stopped' : 'Merge Finished')}
+            {parts?.title}
           </DialogTitle>
-          <DialogDescription>
-            {view?.step === 'offer' &&
-              'You have data from an earlier start of Formamorph in another folder. Merge copies it here. Where both copies hold an item, the newer one stays. Nothing is deleted.'}
-            {view?.step === 'run' && 'Keep Formamorph open until the merge finishes.'}
-            {view?.step === 'result' &&
-              (view.error
-                ? `The merge stopped: ${view.error}. You'll be asked again the next time you start Formamorph.`
-                : needsRestart
-                  ? 'Your data is merged. Restart Formamorph to use the settings that came over.'
-                  : 'Your data is merged.')}
-          </DialogDescription>
+          <DialogDescription>{parts?.description}</DialogDescription>
         </DialogHeader>
 
-        <div className="py-2">
-          {view?.step === 'offer' && <OfferRows plans={view.plans} />}
-          {view?.step === 'run' && <RunRows plans={view.plans} progress={view.progress} />}
-          {view?.step === 'result' && <ResultRows results={view.results} />}
-        </div>
+        <div className="py-2">{parts?.body}</div>
 
-        {view?.step === 'offer' && (
-          <DialogFooter>
-            <Button variant="ghost" className="sm:mr-auto" onClick={onDecline}>
-              Don&apos;t Merge
-            </Button>
-            <Button variant="outline" onClick={onNotNow}>
-              Not Now
-            </Button>
-            <Button onClick={onMerge}>Merge</Button>
-          </DialogFooter>
-        )}
-        {view?.step === 'result' && (
-          <DialogFooter>
-            {needsRestart ? (
-              <>
-                <Button variant="outline" onClick={onDone}>Done</Button>
-                <Button onClick={onRestart}>Restart</Button>
-              </>
-            ) : (
-              <Button onClick={onDone}>Done</Button>
-            )}
-          </DialogFooter>
-        )}
+        {parts?.footer}
       </DialogContent>
     </Dialog>
   );

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import models from './profileMergeModels.cjs';
 
-const { sourceModelsDir, plannedModelsDir, modelSides, samePath } = models;
+const { sourceModelsDir, plannedModelsDir, modelSides } = models;
 
 let tmp;
 const appData = () => path.join(tmp, 'appdata');
@@ -73,13 +73,3 @@ describe('plannedModelsDir', () => {
   });
 });
 
-describe('samePath', () => {
-  it('sees a link to a folder as that folder', () => {
-    const real = path.join(tmp, 'real');
-    fs.mkdirSync(real);
-    const link = path.join(tmp, 'link');
-    fs.symlinkSync(real, link, 'junction');
-    expect(samePath(real, link)).toBe(true);
-    expect(samePath(real, path.join(tmp, 'other'))).toBe(false);
-  });
-});

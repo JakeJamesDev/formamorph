@@ -4,8 +4,7 @@
  */
 import type { MergeCategory, MergeItem } from './engine';
 import type { ModelFile, ProfileMergeBridge } from './bridge';
-
-export const MODELS_KEY = 'models';
+import { MERGE_KEYS } from './keys';
 
 const isSidecar = (name: string) => name.toLowerCase().endsWith('.gguf.part.json');
 
@@ -17,7 +16,7 @@ export function modelsCategory(bridge: ProfileMergeBridge): MergeCategory {
   let sides: Promise<{ source: ModelFile[]; target: ModelFile[] }> | undefined;
   const read = () => (sides ??= bridge.models());
   return {
-    key: MODELS_KEY,
+    key: MERGE_KEYS.models,
     label: 'Local Models',
     stamped: false,
     unit: 'bytes',

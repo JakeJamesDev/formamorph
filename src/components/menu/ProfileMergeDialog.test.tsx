@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { ProfileMergeDialog } from './ProfileMergeDialog';
 import { useProfileMerge } from './useProfileMerge';
 import { devProfileMergeView } from '@/lib/devProfileMergeSample';
-import type { MergeCategory, MergeItem } from '@/lib/profileMerge/engine';
+import { MergeHalt, type MergeCategory, type MergeItem } from '@/lib/profileMerge/engine';
 import type { ProfileMergeBridge } from '@/lib/profileMerge/bridge';
 
 const handlers = () => ({ onMerge: vi.fn(), onNotNow: vi.fn(), onDecline: vi.fn(), onDone: vi.fn() });
@@ -133,14 +133,28 @@ describe('useProfileMerge', () => {
     expect(onMerged).toHaveBeenCalledOnce();
   });
 
-  it('shows the stop reason when the marker cannot be written', async () => {
+  it('shows the result when the marker cannot be written after a full merge', async () => {
     const { bridge } = fakeBridge();
     const categoriesOf = () => [category('a', [item('1')], [])];
     const { result } = renderHook(() => useProfileMerge({ bridge, categoriesOf, onMerged: () => {} }));
     await waitFor(() => expect(result.current.view?.step).toBe('offer'));
     bridge.mark = vi.fn(async () => { throw new Error('The disk is full.'); });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     await act(() => result.current.merge());
-    expect(result.current.view).toMatchObject({ step: 'result', error: 'The disk is full' });
+    expect(result.current.view).toMatchObject({ step: 'result', results: [{ key: 'a', added: 1 }] });
+    expect(result.current.view).not.toHaveProperty('error');
+    expect(logged).toHaveBeenCalled();
+    logged.mockRestore();
+  });
+
+  it('shows the stop reason when a copy halts the run', async () => {
+    const { bridge } = fakeBridge();
+    const halting = { ...category('a', [item('1')], []), copy: async () => { throw new MergeHalt('The other copy stopped answering (The window closed)'); } };
+    const categoriesOf = () => [halting];
+    const { result } = renderHook(() => useProfileMerge({ bridge, categoriesOf, onMerged: () => {} }));
+    await waitFor(() => expect(result.current.view?.step).toBe('offer'));
+    await act(() => result.current.merge());
+    expect(result.current.view).toMatchObject({ step: 'result', error: 'The other copy stopped answering (The window closed)' });
   });
 
   it("writes the declined marker on Don't Merge and nothing on Not Now", async () => {

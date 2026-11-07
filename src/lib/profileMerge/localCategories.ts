@@ -11,6 +11,7 @@ import { listUserTemplates, saveUserTemplate } from '@/services/StatTemplateStor
 import type { MergeCategory } from './engine';
 import type { ProfileMergeBridge } from './bridge';
 import { readRecord, sourceItems, textOr } from './sourceRead';
+import { MERGE_KEYS } from './keys';
 
 /** The record shape from before the library wrapper: file fields at the top level. */
 interface FlatAvatar {
@@ -36,7 +37,7 @@ function wrappedAvatar(record: StoredModelRecord | FlatAvatar): StoredModelRecor
 
 function avatarsCategory(bridge: ProfileMergeBridge): MergeCategory {
   return {
-    key: 'avatars',
+    key: MERGE_KEYS.avatars,
     label: 'Avatars',
     stamped: true,
     unit: 'items',
@@ -47,11 +48,11 @@ function avatarsCategory(bridge: ProfileMergeBridge): MergeCategory {
       size: 0,
     })),
     // The old default is gone from every build; the library deletes it on load.
-    source: () => sourceItems(bridge, 'avatars', (summary) => libraryRevision(summary) || undefined,
+    source: () => sourceItems(bridge, MERGE_KEYS.avatars, (summary) => libraryRevision(summary) || undefined,
       (summary) => summary.id === LEGACY_DEFAULT_AVATAR_ID),
     copy: async (item) => {
       // The AppData profile wrote this record as a stored Avatar or the older flat shape.
-      const stored = (await readRecord(bridge, 'avatars', item.id)) as unknown as StoredModelRecord | FlatAvatar;
+      const stored = (await readRecord(bridge, MERGE_KEYS.avatars, item.id)) as unknown as StoredModelRecord | FlatAvatar;
       const record = wrappedAvatar(stored);
       if (!record.data?.blob) throw new Error('Its file is missing');
       // The library keeps the folder's creation stamp; an edit stamp makes a repeat run tie.
@@ -62,7 +63,7 @@ function avatarsCategory(bridge: ProfileMergeBridge): MergeCategory {
 
 function statTemplatesCategory(bridge: ProfileMergeBridge): MergeCategory {
   return {
-    key: 'statTemplates',
+    key: MERGE_KEYS.statTemplates,
     label: 'Stat Templates',
     stamped: false,
     unit: 'items',
@@ -71,9 +72,9 @@ function statTemplatesCategory(bridge: ProfileMergeBridge): MergeCategory {
       label: textOr(template.name, template.id),
       size: 0,
     })),
-    source: () => sourceItems(bridge, 'statTemplates', () => undefined),
+    source: () => sourceItems(bridge, MERGE_KEYS.statTemplates, () => undefined),
     copy: async (item) => {
-      const template = readTemplate(await readRecord(bridge, 'statTemplates', item.id));
+      const template = readTemplate(await readRecord(bridge, MERGE_KEYS.statTemplates, item.id));
       if (!template) throw new Error('It isn’t a stat template');
       await saveUserTemplate(template);
     },
@@ -82,16 +83,16 @@ function statTemplatesCategory(bridge: ProfileMergeBridge): MergeCategory {
 
 function mascotImagesCategory(bridge: ProfileMergeBridge): MergeCategory {
   return {
-    key: 'mascotImages',
+    key: MERGE_KEYS.mascotImages,
     label: 'Mascot Images',
     stamped: false,
     unit: 'items',
     target: async () => (await listMascotImageIds()).map((id) => ({ id, label: id, size: 0 })),
-    source: async () => (await sourceItems(bridge, 'mascotImages', () => undefined))
+    source: async () => (await sourceItems(bridge, MERGE_KEYS.mascotImages, () => undefined))
       .map((item, index) => ({ ...item, label: `Image ${index + 1}` })),
     copy: async (item) => {
       // Narrowed below: the reader sends whatever the AppData store holds.
-      const { blob } = (await readRecord(bridge, 'mascotImages', item.id)) as unknown as { blob?: unknown };
+      const { blob } = (await readRecord(bridge, MERGE_KEYS.mascotImages, item.id)) as unknown as { blob?: unknown };
       if (!(blob instanceof Blob)) throw new Error('Its file is missing');
       await putMascotImage(item.id, blob);
     },

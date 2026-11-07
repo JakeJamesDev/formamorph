@@ -3,13 +3,14 @@ import type { IdRecord } from '@/lib/backupIndex';
 import { MergeHalt, reasonOf, type MergeItem } from './engine';
 import type { ProfileMergeBridge, SourceSummary } from './bridge';
 import { reviveBlobs } from './blobWire';
+import type { MergeKey } from './keys';
 
 export const textOr = (value: unknown, fallback: string) => (typeof value === 'string' && value ? value : fallback);
 
 /** The AppData items of one store, labeled and stamped by `stampOf`. */
 export const sourceItems = async (
   bridge: ProfileMergeBridge,
-  key: string,
+  key: MergeKey,
   stampOf: (summary: SourceSummary) => string | undefined,
   skip: (summary: SourceSummary) => boolean = () => false,
 ) =>
@@ -21,7 +22,7 @@ export const sourceItems = async (
   }));
 
 /** One AppData record with its Blobs restored. A reader failure halts the run; a missing record skips the item. */
-export async function readRecord(bridge: ProfileMergeBridge, key: string, id: string): Promise<IdRecord> {
+export async function readRecord(bridge: ProfileMergeBridge, key: MergeKey, id: string): Promise<IdRecord> {
   let record: unknown;
   try {
     record = await bridge.record(key, id);

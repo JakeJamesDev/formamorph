@@ -2,6 +2,7 @@
 // the launcher folder's profile. No electron dependency, so plain Node tests it.
 const path = require('node:path');
 const { LOCATIONS_FILE } = require('./profileMergeModelFolder.cjs');
+const { samePath } = require('./samePath.cjs');
 
 /** The marker file in the AppData profile: `done` lists the merged categories, `declined` ends every offer. */
 const MARKER_FILE = 'formamorph-merge.json';
@@ -19,8 +20,6 @@ const SOURCE_STORES = {
   statTemplates: { db: 'statTemplatesDB', store: 'templates' },
   mascotImages: { db: 'FORMAMORPH_MASCOT_DB', store: 'images' },
 };
-
-const samePath = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 
 /** The marker, or null when none is written. An unreadable marker reads as declined. */
 function readMarker(sourceDir, fsApi) {
@@ -42,7 +41,7 @@ function readMarker(sourceDir, fsApi) {
  */
 function mergeSource({ platform, env, sourceDir, targetDir, fsApi }) {
   if (platform !== 'win32' || !env.FORMAMORPH_ROOT || !sourceDir || !targetDir) return null;
-  if (samePath(sourceDir, targetDir) || !fsApi.existsSync(sourceDir)) return null;
+  if (samePath(sourceDir, targetDir, platform) || !fsApi.existsSync(sourceDir)) return null;
   const marker = readMarker(sourceDir, fsApi);
   if (marker?.state === 'declined') return null;
   // A model-folder choice counts too: models in a chosen folder have no store in the profile.

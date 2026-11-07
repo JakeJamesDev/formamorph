@@ -68,7 +68,8 @@ export function useProfileMerge({ bridge, categoriesOf, onMerged }: UseProfileMe
         if (!mounted.current) return;
         setView((prev) => (prev?.step === 'run' ? { ...prev, progress: { ...prev.progress, [progress.key]: progress } } : prev));
       });
-      await bridge.mark('done', keysOf(categories.current));
+      // A marker that fails to save only brings the offer back, and a repeat run keeps every copied item.
+      await markQuietly(bridge, 'done', keysOf(categories.current));
       if (mounted.current) setView({ step: 'result', results });
     } catch (err) {
       void bridge.later().catch(() => {});
