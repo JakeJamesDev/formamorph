@@ -61,6 +61,10 @@ Each copy of the app tells the server once per UTC day that it was opened. The s
   - the player has **passed the age gate**. A player who failed or skipped it never sends;
   - the Settings switch is on;
   - the last day it sent successfully is not the current UTC day by the device clock.
+- Ticket 03 rulings:
+  - "Passed the age gate" means the existing attestation state. The gate is not raised at boot. A player who never opens a community surface never attests and is never counted, so DAU and MAU count attested installs only. The user ruled this.
+  - The switch sits in Settings, on the Data tab, in a last section named Privacy. Builds with no community server hide it.
+  - The label and hint follow the writing guide. The hint says the app tells the Formamorph server once a day that it was opened, and that it holds no play, worlds or account.
 - It mounts inside the app after the client-version gate. The fetch wrapper that adds the client header is installed in that gate's effect, so an earlier send would go out without the header.
 - The request carries the Install id header and the client header, which the wrapper adds by URL. It carries no credential, no body and no account.
 - The Install id comes from the accessor that makes it on first need, so every copy of the app now has one. The sender sends only when the id was actually stored. Private mode or a refused storage keeps the id in memory only, and those sessions are not sent, so each one does not count as a new install.
@@ -141,6 +145,7 @@ Each copy of the app tells the server once per UTC day that it was opened. The s
 
 - **Every sign-in now links its Install to the account.** Today an install gets an id when it gives a guest like or opens the catalog as a guest, so most installs that use the community already have one. With this change the rest get one too, so every sign-in links its install. Afterwards, guest likes from that copy of the app follow the account's rules, also on a shared computer after sign-out. The user accepted this over a separate activity id.
 - **Signed-in players' daily rows can be joined to their account until the month closes.** The claim table stores the plain Install id beside the account, and the month key exists until the close. Nightly database copies keep both for up to 14 more days. After that the rows and the key are gone. The policy says so.
+- **The totals count attested installs only.** The age gate appears only on a community surface, so a local-only player is never counted. Read DAU and MAU as installs that have passed the gate.
 - **The age gate comes first.** The user ruled that the send happens only after a pass, so no id is collected from anyone who has not attested they are an adult.
 - **Check the proxy's access log before deploy.** If Caddy logs request headers, its log already holds address plus Install id for catalog requests, and the daily send would add one line per install per day. The deploy step reads the Caddyfile and confirms what the access log keeps. UNVERIFIED until then.
 - **Deploy and publish together.** The telemetry spec's server deploy and its policy publish wait for this feature, so players see one deploy and one re-accept. A client release must ship before any send arrives, so the server half can deploy first.
