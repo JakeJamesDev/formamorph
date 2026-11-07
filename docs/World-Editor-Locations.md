@@ -90,7 +90,7 @@ A [Connection](#connections) between two places replaces these rules for that pa
 
 🚶 **One turn can cover up to three of these steps.** "Walk down the lane to town and step into the store" can take the player from a farm building to a store three steps away. Each step follows the rules above, so a one-way Connection is never walked backward. A place four or more steps away is out of reach, and the player stays where they are.
 
-The AI gets each place more than one step away with the places on the way: *Store — via Farm Yard, then Town*. When two places in reach share a name, the nearer one counts. When they are equally near, neither does.
+The AI gets each place more than one step away with the places on the way: *Store — via Farm Yard, then Town*. When two places in reach share a name, the nearer one counts. When they are equally near, neither does. A place with the same name as the player's current location never counts.
 
 By default the story offers the move. The player sees a small **Move to _X_?** prompt with **Go** and **Dismiss**. The AI reads the action and the scene it led to, so a scene that carries the player somewhere offers that move too.
 
