@@ -142,6 +142,24 @@ describe('a narrated move in Auto mode', () => {
     expect(elsewhere).not.toContain('Bram');
   });
 
+  it('leaves the player and a follower where they stand when the story went Elsewhere', async () => {
+    renderGameViewer(worldWith(), { inGameplay: <Probe /> });
+    await screen.findByPlaceholderText(/Type your action/);
+    stubEndpoint('The square is quiet.', { narrated: 'Village' });
+    await playTurn('Begin.');
+    act(() => play.applyFollowerState({ followers: ['bram'], positions: { bram: 'village' } }));
+
+    const endpoint = stubEndpoint('You walk past the hut and on over the far hills to a town of slate roofs.', {
+      router: 'NONE', narrated: 'Elsewhere, past the Hut', entities: { Bram: 'Keep following' },
+    });
+    await playTurn('I walk over the hills to the next town.');
+
+    expect(endpoint.sent).toEqual(['router', 'narrated']);
+    expect(play.currentLocation?.id).toBe('village');
+    expect(play.entityPositions.bram).toBe('village');
+    expect(endpoint.choices.at(-1) ?? '').toContain('## Current Location\n- **name:** Village');
+  });
+
   it('never runs after the router moved the player', async () => {
     renderGameViewer(worldWith(), { inGameplay: <Probe /> });
     await screen.findByPlaceholderText(/Type your action/);

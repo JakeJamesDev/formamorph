@@ -986,6 +986,11 @@ describe('the narrated move', () => {
     expect(outcome(finished, 'narratedMove').request.messages[0].content).toBe(`Carried:  | ${ANSWERS.narration}`);
   });
 
+  it('names no place when the story went Elsewhere, even past a listed one', async () => {
+    const { result } = await run({ answers: { ...NONE, narratedMove: 'Elsewhere, beyond The Long Pier' } });
+    expect(outcome(ok(result), 'narratedMove').parsed).toBeNull();
+  });
+
   it('leaves the turn going when the check fails', async () => {
     const { result, types } = await run({ answers: { ...NONE, narratedMove: () => { throw new Error('down'); } } });
     ok(result);
@@ -1010,6 +1015,23 @@ describe('the Suggest mode offer', () => {
       },
     });
     expect(commit?.suggestedLocation).toBe('The Long Pier');
+    expect(commit?.turn.locationId).toBe('dock');
+  });
+
+  it('offers no move when the story went Elsewhere', async () => {
+    const fake = makeFake({ answers: { narratedMove: 'Elsewhere, beyond The Long Pier' } });
+    const plan = planTurn(testInput({}, { locationAutoApply: false }));
+    const result = await runTurn({ plan, material: material(), request: fake.adapter, signal: new AbortController().signal, advance: advanceLikeTheView() });
+    ok(result);
+    const commit = computeTurnCommit({
+      result,
+      plan,
+      context: {
+        participants: [], knownDiscoveredNames: [], notes: '', reasoning: { text: '', ms: 0 }, gameTime: 0,
+        locationId: 'dock', currentLocationName: 'The Dock',
+      },
+    });
+    expect(commit?.suggestedLocation).toBeNull();
     expect(commit?.turn.locationId).toBe('dock');
   });
 });

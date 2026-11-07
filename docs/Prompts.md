@@ -175,7 +175,7 @@ The list on the left groups the prompts by the job they do. A prompt shows only 
 | **Stat Updates** | Trackers | Reads the turn after narration and records which stats changed | **Stat Updates** is on |
 | **Inventory** | Trackers | Reads the turn after narration and records who gained, lost, moved, equipped, used or found an item | Always |
 | **Location Change** | Trackers | Decides before narration if your action takes you to a new location. Sent only with **Move Automatically** on. | **Location Change** is on |
-| **Narrated Move** | Trackers | Decides after narration if the narration ends with you in a new location. With **Move Automatically** on, it runs when your action went nowhere, and the move applies at once. Otherwise it offers the move. | **Location Change** is on |
+| **Narrated Move** | Trackers | Decides after narration if the narration ends with you in a new location. With **Move Automatically** on, it runs when your action went nowhere, and the move applies at once. Otherwise it offers the move. When the narration ends somewhere it can't move you to, it answers **Elsewhere**, and you stay where you are. | **Location Change** is on |
 | **Entity Location** | Trackers | Decides whether each entity here comes with you or stays | **Location Change** and **Entity Movement** are on |
 | **Clock** | Trackers | Measures how much story time the turn took. Runs after narration. | **Measured Clock** is on |
 | **Opening** | Trackers | Reads the opening scene once, at the start, to set the time of day | **Measured Clock** is on |

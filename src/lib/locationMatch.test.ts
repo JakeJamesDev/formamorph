@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchLocationResponse } from './locationMatch';
+import { matchLocationResponse, matchNarratedMoveResponse } from './locationMatch';
 
 const names = ['Cave', 'Cave Entrance', 'Forest Clearing'];
 
@@ -57,5 +57,41 @@ describe('matchLocationResponse — article tolerance (not suffix looseness)', (
   it('does NOT collapse two homes with a shared suffix', () => {
     const homes = ["Emily's House", "John's House"];
     expect(matchLocationResponse('House', homes)).toBeNull();
+  });
+});
+
+describe('matchNarratedMoveResponse', () => {
+  it('reads Elsewhere as no move, in any case', () => {
+    expect(matchNarratedMoveResponse('Elsewhere', names)).toBeNull();
+    expect(matchNarratedMoveResponse('ELSEWHERE.', names)).toBeNull();
+    expect(matchNarratedMoveResponse('**elsewhere**', names)).toBeNull();
+  });
+
+  it('reads Elsewhere as no move even when the rest of the reply names a listed place', () => {
+    expect(matchNarratedMoveResponse('Elsewhere: past the Cave Entrance', names)).toBeNull();
+  });
+
+  it('lets a listed place named Elsewhere win', () => {
+    expect(matchNarratedMoveResponse('Elsewhere', [...names, 'Elsewhere'])).toBe('Elsewhere');
+  });
+
+  it('lets a listed place that starts with Elsewhere win through markdown and punctuation', () => {
+    expect(matchNarratedMoveResponse('**Elsewhere Inn**', [...names, 'Elsewhere Inn'])).toBe('Elsewhere Inn');
+    expect(matchNarratedMoveResponse('Elsewhere.', [...names, 'Elsewhere'])).toBe('Elsewhere');
+  });
+
+  it('matches a listed place as the router matcher does', () => {
+    expect(matchNarratedMoveResponse('You end up in the Cave Entrance.', names)).toBe('Cave Entrance');
+    expect(matchNarratedMoveResponse('NONE', names)).toBeNull();
+  });
+
+  it('reads a word that only starts with Elsewhere as a reply like any other', () => {
+    expect(matchNarratedMoveResponse('Elsewhereish Cave', names)).toBe('Cave');
+  });
+});
+
+describe('matchLocationResponse keeps the router reply rule', () => {
+  it('finds a listed place after Elsewhere', () => {
+    expect(matchLocationResponse('Elsewhere: past the Cave Entrance', names)).toBe('Cave Entrance');
   });
 });

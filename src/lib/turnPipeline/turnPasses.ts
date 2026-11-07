@@ -18,7 +18,7 @@ import {
 } from '@/lib/stagedPlanning';
 import { languageDirective } from '@/lib/languages';
 import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
-import { matchLocationResponse } from '@/lib/locationMatch';
+import { matchLocationResponse, matchNarratedMoveResponse } from '@/lib/locationMatch';
 import {
   entityMoveCandidates, entityMoveOptions, entityMoveOptionsText, entityMoveStateText, type EntityMove,
 } from '@/lib/entityFollowing';
@@ -271,7 +271,7 @@ const narratedMovePass: TurnPassRecord<string | null> = {
     input.hasCurrentLocation,
   isReady: (material) => !material.moved,
   buildRequest: (input, material) => narratedMoveRequest(input, material, false),
-  parseResponse: (raw, material) => matchLocationResponse(raw, material.destinations),
+  parseResponse: (raw, material) => matchNarratedMoveResponse(raw, material.destinations),
 };
 
 /** After the narration, ask whether the story moved the player and offer it. Suggest mode only. */
@@ -288,7 +288,7 @@ const locationSuggestPass: TurnPassRecord<string | null> = {
     input.locationCount > 1 &&
     input.prompts.narratedMove !== '',
   buildRequest: (input, material) => narratedMoveRequest(input, material, quietInBatch(input)),
-  parseResponse: (raw, material) => matchLocationResponse(raw, material.destinations),
+  parseResponse: (raw, material) => matchNarratedMoveResponse(raw, material.destinations),
 };
 
 /** One entity's location request: its system prompt over `values`, its user message over the action, the

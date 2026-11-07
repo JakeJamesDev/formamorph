@@ -218,12 +218,14 @@ Decide where the player character is when the action is done. Output a destinati
 // The narrated-move request: after the narration, where the story left the player character.
 export const defaultNarratedMovePrompt = `You keep track of where the player character is in an interactive story. You read one turn, the player character's action and the narration that followed, and you name the place where the player character's own body is when the narration ends. You never act in the story; "I" in the action and "you" in the narration are the player character.
 <LOCATION|summary.markdown|header="Current Location">\
-<LOCATION|destinations.summary.markdown|header="Where The Player Can Go">
-Follow only the player character's body through the narration. The answer is a place from the list when the body ends up in it, by walking, by being carried, dragged, led or pushed, or by the scene opening there. The narration often describes a place instead of naming it: match it to the place whose description fits. The answer is the current location when the body ends the narration where it started; a place the player character sees, names, talks about or plans to visit, and a place other characters come from or go to, leave the body where it stands. Reply with only the exact name of one place: the current location or a place from the list.`;
+<LOCATION|destinations.summary.markdown|header="Where The Player Can Go">\
+- **Elsewhere:** any place farther away that is not named above.
+
+Follow only the player character's body through the narration. The answer is a place from the list when the body ends up in it, by walking, by being carried, dragged, led or pushed, or by the scene opening there. The narration often describes a place instead of naming it: match it to the place whose description fits. The answer is the current location when the body ends the narration where it started; a place the player character sees, names, talks about or plans to visit, and a place other characters come from or go to, leave the body where it stands. The answer is the last place the body stops; a place it only passes through on the way is behind it. The answer is Elsewhere when that last place is neither the current location nor on the list. Reply with only one answer: the exact name of the current location, the exact name of a place from the list, or Elsewhere.`;
 
 export const defaultNarratedMoveUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
 <NARRATION|format=markdown|header="The Narration That Followed">
-Reply with only the name of the place where the player character's body is when this narration ends.`;
+Find the place where the player character's body is when this narration ends. Reply with only one answer: the current location's name when the body is still there, the exact name of the place from the list whose description fits it, or Elsewhere when no place on the list fits it.`;
 
 // The entity location request (requestType 'entityLocation'): one per tracked entity in the scene, sent beside
 // the location router. The reply is one line of the closed list the user message carries.

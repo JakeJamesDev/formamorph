@@ -45,6 +45,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **On Windows, the main menu offers to merge worlds, saves, entities and dictionaries left from starts outside the app folder.** Where both copies hold an item, the newer one stays. Choose **Merge**, **Not Now** or **Don't Merge**. Nothing is deleted, and a stopped merge is offered again.
   - **On Windows, the merge brings over your settings, sign-in and chosen model folder.** A setting you already have stays. Restart Formamorph when the merge asks, to use the settings that came over.
   - **On Windows, the merge offer now brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
+  - **When the narration takes you somewhere the game can't follow, you stay where you are.** With Move Automatically on, you and your followers stay. Without it, no **Move to…?** offer appears.
 - **🛠️ Developer tooling**
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.

@@ -2,14 +2,17 @@
 //   carried  the narration takes the player into a reachable place the action never asked for (../location-narrated-cases.json)
 //   stay     the narration only looks toward a place, talks about it, or moves someone else
 //   control  the location router's cases (../location-router-cases.json), every set and world: action only, known answers
+//   unlisted the narration carries the player to a place more than one move away (`goes`), so off the list
 //
-// Two arms, both built by the real locationSuggest pass record over each scene's chip values:
+// Three arms, all built by the real locationSuggest pass record over each scene's chip values:
 //   reused   the shipped location-change prompts, as Suggest mode sends them after the narration
+//   before   the narrated-move prompts before the Elsewhere answer (multi-hop-moves 01), frozen below
 //   narrated defaultNarratedMovePrompt / defaultNarratedMoveUserPrompt
-// Every run dispatches all cases on both arms together, so batch drift lands on every arm.
+// Every run dispatches all cases on every arm together, so batch drift lands on every arm.
 //
-// The bar (spec Q8) is on the set totals: carried moved >= 90%, stay moved <= 10%. A move to another place than
-// the scene names counts as a miss. Per-scene counts are reported beside it.
+// The bar (multi-hop-moves Q10, ticket 01) is on the narrated arm's set totals: unlisted moved <= 10%, carried
+// moves found >= 90%, stay moved <= the before arm's, control right >= the before arm's. A move to another
+// place than the scene names counts as a miss. Per-scene counts are reported beside it.
 //
 // Usage: npx vite-node testing/baseline/harness/location-narrated-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 10] [--only carried-up,plan] [--dump <scene id>]
@@ -42,7 +45,12 @@ const dump = argVal('--dump', '');
 const poolSize = Number(argVal('--pool', '8'));
 
 interface PlaceSpec { name: string; parent: string | null; summary: string }
-interface Scene { set: 'carried' | 'stay' | 'control'; id: string; world: string; at: string; action: string; narration: string; expect: string }
+interface Scene {
+  set: 'carried' | 'stay' | 'control' | 'unlisted';
+  id: string; world: string; at: string; action: string; narration: string; expect: string;
+  /** An unlisted scene's real destination. */
+  goes?: string;
+}
 const casesPath = argVal('--cases', 'testing/baseline/location-narrated-cases.json');
 const narrated = JSON.parse(readFileSync(path.resolve(casesPath), 'utf8')) as {
   worlds: Record<string, PlaceSpec[]>;
@@ -90,13 +98,42 @@ const built = Object.fromEntries(Object.entries(worlds).map(([key, places]) => {
   return [key, world];
 })) as Record<string, ReturnType<typeof migrateWorld>>;
 
+const BEFORE_NARRATED_MOVE = `You keep track of where the player character is in an interactive story. You read one turn, the player character's action and the narration that followed, and you name the place where the player character's own body is when the narration ends. You never act in the story; "I" in the action and "you" in the narration are the player character.
+<LOCATION|summary.markdown|header="Current Location">\
+<LOCATION|destinations.summary.markdown|header="Where The Player Can Go">
+Follow only the player character's body through the narration. The answer is a place from the list when the body ends up in it, by walking, by being carried, dragged, led or pushed, or by the scene opening there. The narration often describes a place instead of naming it: match it to the place whose description fits. The answer is the current location when the body ends the narration where it started; a place the player character sees, names, talks about or plans to visit, and a place other characters come from or go to, leave the body where it stands. Reply with only the exact name of one place: the current location or a place from the list.`;
+const BEFORE_NARRATED_MOVE_USER = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
+<NARRATION|format=markdown|header="The Narration That Followed">
+Reply with only the name of the place where the player character's body is when this narration ends.`;
+
 const ARMS = {
   reused: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: defaultLocationChangePrompt, narratedMoveUser: defaultLocationChangeUserPrompt } }, { thinkingMode: 'off' }),
+  before: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: BEFORE_NARRATED_MOVE, narratedMoveUser: BEFORE_NARRATED_MOVE_USER } }, { thinkingMode: 'off' }),
   narrated: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: defaultNarratedMovePrompt, narratedMoveUser: defaultNarratedMoveUserPrompt } }, { thinkingMode: 'off' }),
 };
 type Arm = keyof typeof ARMS;
 const pass = TURN_PASSES.find((p) => p.id === 'locationSuggest');
 if (!pass) throw new Error('no locationSuggest pass');
+
+type BuiltWorld = ReturnType<typeof migrateWorld>;
+/** The fewest moves from `from` to the place named `name`, or null when no chain of moves reaches it. */
+function movesTo(world: BuiltWorld, from: GameLocation, name: string): number | null {
+  const seen = new Set([from.id]);
+  for (let frontier = [from], hops = 1; frontier.length; hops++) {
+    const next: GameLocation[] = [];
+    for (const place of frontier) {
+      for (const to of navigableDestinations(place, world.locations, world.connections ?? [])) {
+        if (seen.has(to.id)) continue;
+        if (to.name === name) return hops;
+        seen.add(to.id);
+        next.push(to);
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
+const hopsOf = new Map<string, number>();
 
 const materialOf = (scene: Scene) => {
   const world = built[scene.world];
@@ -105,6 +142,14 @@ const materialOf = (scene: Scene) => {
   const ctx = chipValues(authoredChipScene(world, { location, resolve: (text) => text }));
   const destinations = navigableDestinations(location, world.locations, world.connections ?? []).map((l) => l.name);
   if (scene.expect !== 'NONE' && !destinations.includes(scene.expect)) throw new Error(`${scene.id}: ${scene.expect} is not reachable`);
+  if (scene.set === 'unlisted') {
+    const exists = world.locations.some((l: GameLocation) => l.name === scene.goes);
+    if (scene.expect !== 'NONE' || !exists || destinations.includes(scene.goes ?? '')) {
+      throw new Error(`${scene.id}: ${scene.goes} must exist off the list, with expect NONE`);
+    }
+    // An unreachable place counts as beyond any hop cap.
+    hopsOf.set(scene.id, movesTo(world, location, scene.goes ?? '') ?? Infinity);
+  }
   return {
     ...emptyTurnMaterial({ action: scene.action, effectiveAction: scene.action, turnId: 'probe', baseCtx: ctx, destinations }),
     ctx,
@@ -162,30 +207,32 @@ async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> 
 
 // moved = the player ends somewhere other than where they stood. right = the reply is the scene's answer.
 const cell = () => ({ n: 0, right: 0, moved: 0 });
+const ARM_IDS = Object.keys(ARMS) as Arm[];
 const perScene = new Map<string, Record<Arm, ReturnType<typeof cell>>>();
 const misses: string[] = [];
-console.log(`model ${model} · runs ${runs} · scenes ${scenes.length} · arms ${Object.keys(ARMS).join(', ')}`);
+console.log(`model ${model} · runs ${runs} · scenes ${scenes.length} · arms ${ARM_IDS.join(', ')}`);
 const begun = Date.now();
 
 for (let run = 0; run < runs; run++) {
-  const jobs = scenes.flatMap((scene) => (Object.keys(ARMS) as Arm[]).map((arm) => async () => ({ scene, arm, ...await send(arm, scene) })));
+  const jobs = scenes.flatMap((scene) => ARM_IDS.map((arm) => async () => ({ scene, arm, ...await send(arm, scene) })));
   for (const { scene, arm, raw, got } of await pool(jobs, poolSize)) {
-    const row = perScene.get(scene.id) ?? { reused: cell(), narrated: cell() };
+    const row = perScene.get(scene.id) ?? { reused: cell(), before: cell(), narrated: cell() };
     perScene.set(scene.id, row);
     const c = row[arm];
     c.n++;
     if (got !== 'NONE') c.moved++;
     if (got === scene.expect) c.right++;
-    else misses.push(`${arm.padEnd(8)} ${scene.set.padEnd(7)} ${scene.id} #${run + 1}: want ${scene.expect}, got ${got} :: ${JSON.stringify(raw)}`);
+    else misses.push(`${arm.padEnd(8)} ${scene.set.padEnd(8)} ${scene.id} #${run + 1}: want ${scene.expect}, got ${got} :: ${JSON.stringify(raw)}`);
   }
   process.stdout.write(`run ${run + 1}/${runs} · ${Math.round((Date.now() - begun) / 1000)}s\n`);
 }
 
 const pct = (a: number, n: number) => `${Math.round((1000 * a) / Math.max(1, n)) / 10}%`;
-// What each set counts: a stay scene scores its moves, the others their right answers.
+// What each set counts: stay and unlisted scenes score their moves, the others their right answers.
 const METRIC = {
   carried: { label: 'moves found', of: (c: ReturnType<typeof cell>) => c.right },
   stay: { label: 'false moves', of: (c: ReturnType<typeof cell>) => c.moved },
+  unlisted: { label: 'moved', of: (c: ReturnType<typeof cell>) => c.moved },
   control: { label: 'right', of: (c: ReturnType<typeof cell>) => c.right },
 } as const;
 const totals = (set: Scene['set'], arm: Arm) => scenes.filter((s) => s.set === set).reduce((t, s) => {
@@ -193,29 +240,47 @@ const totals = (set: Scene['set'], arm: Arm) => scenes.filter((s) => s.set === s
   return { n: t.n + c.n, right: t.right + c.right, moved: t.moved + c.moved };
 }, cell());
 
-for (const set of ['carried', 'stay', 'control'] as const) {
+for (const set of ['carried', 'stay', 'unlisted', 'control'] as const) {
   const inSet = scenes.filter((s) => s.set === set);
   if (!inSet.length) continue;
   const metric = METRIC[set];
-  console.log(`\n${set} (${metric.label}, per scene)          reused    narrated`);
+  console.log(`\n${set} (${metric.label}, per scene)`.padEnd(37) + ARM_IDS.map((arm) => arm.padStart(16)).join(''));
   for (const s of inSet) {
     const row = perScene.get(s.id)!;
-    const sceneCount = (arm: Arm) => `${metric.of(row[arm])}/${row[arm].n}`.padStart(8);
-    console.log(`  ${s.id.padEnd(30)} ${sceneCount('reused')}  ${sceneCount('narrated')}`);
+    const count = hopsOf.get(s.id);
+    const hops = count === undefined ? '' : count === Infinity ? ' (unreachable)' : ` (${count} moves)`;
+    console.log(`  ${(s.id + hops).padEnd(34)}${ARM_IDS.map((arm) => `${metric.of(row[arm])}/${row[arm].n}`.padStart(16)).join('')}`);
   }
   const setTotal = (arm: Arm) => {
     const t = totals(set, arm);
     return `${metric.of(t)}/${t.n} (${pct(metric.of(t), t.n)})`.padStart(16);
   };
-  console.log(`  ${'TOTAL'.padEnd(24)} ${setTotal('reused')}  ${setTotal('narrated')}`);
+  console.log(`  ${'TOTAL'.padEnd(34)}${ARM_IDS.map(setTotal).join('')}`);
 }
 
-console.log('\nbar (Q8): carried moves found >= 90%, stay false moves <= 10%');
-for (const arm of Object.keys(ARMS) as Arm[]) {
-  const carried = totals('carried', arm);
-  const stay = totals('stay', arm);
-  const ok = carried.n > 0 && stay.n > 0 && carried.right / carried.n >= 0.9 && stay.moved / stay.n <= 0.1;
-  console.log(`  ${arm.padEnd(8)} carried ${pct(carried.right, carried.n)} · stay ${pct(stay.moved, stay.n)} · ${ok ? 'MEETS' : 'MISSES'}`);
+const rate = (set: Scene['set'], arm: Arm, of: 'right' | 'moved') => {
+  const t = totals(set, arm);
+  return t.n ? t[of] / t.n : NaN;
+};
+
+// Unlisted totals split at 3 moves: the scenes beyond it stay off a list that reaches 3 moves.
+const unlistedBy = (far: boolean, arm: Arm) => scenes
+  .filter((s) => s.set === 'unlisted' && ((hopsOf.get(s.id) ?? 0) > 3) === far)
+  .reduce((t, s) => ({ n: t.n + perScene.get(s.id)![arm].n, moved: t.moved + perScene.get(s.id)![arm].moved }), { n: 0, moved: 0 });
+for (const far of [true, false]) {
+  const label = far ? 'unlisted beyond 3 moves' : 'unlisted 2-3 moves';
+  console.log(`  ${label.padEnd(34)}${ARM_IDS.map((arm) => {
+    const t = unlistedBy(far, arm);
+    return `${t.moved}/${t.n} (${pct(t.moved, t.n)})`.padStart(16);
+  }).join('')}`);
 }
+console.log('\nbar (Q10, ticket 01), narrated arm: unlisted moved <= 10%, carried >= 90%, stay <= before, control >= before');
+const checks = [
+  ['unlisted moved', rate('unlisted', 'narrated', 'moved'), rate('unlisted', 'narrated', 'moved') <= 0.1],
+  ['carried found', rate('carried', 'narrated', 'right'), rate('carried', 'narrated', 'right') >= 0.9],
+  ['stay moved', rate('stay', 'narrated', 'moved'), rate('stay', 'narrated', 'moved') <= rate('stay', 'before', 'moved')],
+  ['control right', rate('control', 'narrated', 'right'), rate('control', 'narrated', 'right') >= rate('control', 'before', 'right')],
+] as const;
+for (const [label, value, ok] of checks) console.log(`  ${label.padEnd(16)} ${pct(value, 1).padStart(7)} · ${ok ? 'MEETS' : 'MISSES'}`);
 if (misses.length) console.log(`\nmisses:\n  ${misses.join('\n  ')}`);
 console.log(`\nwall ${Math.round((Date.now() - begun) / 1000)}s`);

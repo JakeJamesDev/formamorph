@@ -1,5 +1,5 @@
 {
-  "_note": "Made-up scenes for the narrated-move probe (harness/location-narrated-probe.cli.ts). Each scene stands the player at `at` in one of the small worlds below, gives the player's action and the narration that followed, and the place the player is in when the narration ends: a destination name, or NONE when they never left. `carried` scenes move the player without the action asking for it, and name the place only by description. `stay` scenes only look toward a place, talk about it, or move someone else. An empty action is an opening.",
+  "_note": "Made-up scenes for the narrated-move probe (harness/location-narrated-probe.cli.ts). Each scene stands the player at `at` in one of the small worlds below, gives the player's action and the narration that followed, and the place the player is in when the narration ends: a destination name, or NONE when they never left. `carried` scenes move the player without the action asking for it, and name the place only by description. `stay` scenes only look toward a place, talk about it, or move someone else. `unlisted` scenes carry the player to `goes`, a place more than one move away, so the answer is NONE. An empty action is an opening.",
   "worlds": {
     "fen": [
       { "name": "The Drowned Fen", "parent": null, "summary": "A wide brown marsh of reed beds, slow channels and stilt villages." },
@@ -25,6 +25,15 @@
       { "name": "Gatehouse", "parent": "Watch Fort", "summary": "The fortified gate where travelers are stopped and searched." },
       { "name": "Barracks", "parent": "Watch Fort", "summary": "The soldiers' long sleeping hall, lined with cots." },
       { "name": "Commander's Tower", "parent": "Watch Fort", "summary": "A tall square tower; the commander keeps her map room at the top." }
+    ],
+    "valley": [
+      { "name": "Highvale", "parent": null, "summary": "A green upland of farms and stone towns between two rivers." },
+      { "name": "Millbrook", "parent": "Highvale", "summary": "A market town of timber houses around a turning water mill." },
+      { "name": "Stonegate", "parent": "Highvale", "summary": "A walled town of gray stone on a hill, a day's walk from its neighbor." },
+      { "name": "Market Row", "parent": "Millbrook", "summary": "A busy street of shops and stalls in the middle of town." },
+      { "name": "Chandler's Shop", "parent": "Market Row", "summary": "A narrow shop that smells of tallow, its shelves lined with candles and lamp oil." },
+      { "name": "Stonegate Keep", "parent": "Stonegate", "summary": "The lord's square keep at the top of the hill, behind a deep ditch." },
+      { "name": "Keep Chapel", "parent": "Stonegate Keep", "summary": "A small cold chapel inside the keep, lit by one round window." }
     ]
   },
   "scenes": [
@@ -134,6 +143,42 @@
       "set": "stay", "id": "opening-stay", "world": "fen", "at": "Reedmoor Village",
       "action": "",
       "narration": "You stand on a plank walkway among reed huts on stilts. The smell of smoked fish drifts from a low hut nearby, and high above the rest, a long hall looks down over the village. A girl with a fishing spear stops and stares at you.",
+      "expect": "NONE"
+    },
+    {
+      "set": "unlisted", "id": "unlisted-chapel", "world": "valley", "at": "Chandler's Shop", "goes": "Keep Chapel",
+      "action": "I ask the chandler where I can find a priest.",
+      "narration": "\"Not in this town,\" the chandler says, and points you up the road. You leave the shop and the busy street behind and walk out past the mill. The road climbs all afternoon until the gray walls of the town on the hill rise ahead. A guard waves you over the bridge across the ditch and into the lord's keep. At last you kneel in a small cold chapel, lit only by one round window, and an old priest turns to look at you.",
+      "expect": "NONE"
+    },
+    {
+      "set": "unlisted", "id": "unlisted-keep", "world": "valley", "at": "Chandler's Shop", "goes": "Stonegate Keep",
+      "action": "I take the sealed letter and set off to deliver it.",
+      "narration": "You tuck the letter inside your coat and step out of the shop. You push through the stalls of the market street and leave the timber houses behind. By evening the road has carried you up to the walled town of gray stone. Two guards lead you over the deep ditch and into the square keep at the top of the hill, where a steward takes the letter from your hand in the cold great hall.",
+      "expect": "NONE"
+    },
+    {
+      "set": "unlisted", "id": "unlisted-escort", "world": "valley", "at": "Market Row", "goes": "Keep Chapel",
+      "action": "I tell the soldiers I have done nothing wrong.",
+      "narration": "The two soldiers in gray say nothing. They take you by the arms and march you out of town, past the turning mill and up the long road. They do not stop until they reach the walled town on the hill and cross into the lord's keep. There they push you into a small cold chapel under one round window and bar the door behind you.",
+      "expect": "NONE"
+    },
+    {
+      "set": "unlisted", "id": "unlisted-heron", "world": "fen", "at": "Smokehouse", "goes": "Heron Island",
+      "action": "I offer to help the smoker check his eel traps.",
+      "narration": "The smoker grunts and hands you a pole. You duck out of the smoky hut, climb down the wooden steps and push off in a narrow punt. You pole across the open water for an hour until the boat grounds on a wooded island. You wade ashore under the trees, where gray herons stalk the shallows and their nests crowd the branches above you.",
+      "expect": "NONE"
+    },
+    {
+      "set": "unlisted", "id": "unlisted-customs", "world": "port", "at": "Cellar", "goes": "Customs House",
+      "action": "I bang on the trapdoor and shout until someone opens it.",
+      "narration": "The trapdoor flies open and the keeper hauls you up by the collar. He drags you through the taproom, out under the painted sign and along the quay. He does not let go until you are inside the tollmen's office, where ledgers line the walls and a clerk sets down his pen beside the brass scales.",
+      "expect": "NONE"
+    },
+    {
+      "set": "unlisted", "id": "unlisted-hollow", "world": "fort", "at": "Commander's Tower", "goes": "Shepherd's Hollow",
+      "action": "I offer to carry the commander's message to the shepherds.",
+      "narration": "The commander hands you a folded note. You hurry down the winding stair, cross the muddy yard and slip out through the gate. You follow the scree path down below the pass until you reach a sheltered dip where sheep graze on the short grass. An old shepherd rises from his fire to meet you.",
       "expect": "NONE"
     }
   ]
