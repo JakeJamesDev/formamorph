@@ -13,7 +13,7 @@ Ruling 2026-10-21: Community Creations does not ship in the Steam build. Steam W
 
 ## Draft answer (paste into the survey)
 
-Formamorph is an interactive text role-playing game. A language model narrates the story in response to the player's typed actions, inside a world the player has chosen or written.
+Formamorph is an interactive text RPG. A language model narrates the story in response to the player's typed actions, inside a world the player has chosen or written.
 
 **What is generated, and for whom.** The AI produces narration, dialogue, and short choices during play. Output is generated only in direct response to the player's own input and is shown only to that player, on that player's device. Nothing the AI generates is published, shared, or stored on our servers. The game also produces no images, audio, or video from AI during play unless the player connects their own image service.
 

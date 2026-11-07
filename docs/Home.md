@@ -12,7 +12,7 @@ Pick a world that comes with Formamorph, import one, or build your own in the Wo
 > 🌐 **Play in your browser:** [formamorph.ai/play](https://formamorph.ai/play/) opens at once, with no install. *(18+, see below.)*
 
 > [!CAUTION]
-> **For adults only (18+).** Formamorph is an open-ended AI roleplay engine. **Your chosen AI model** writes the stories. **Anyone** can author a world. Content therefore has no fixed limits. The in-app world browser shows **user-created worlds as-is**. The repository's README has the full responsible-use disclaimer.
+> **For adults only (18+).** Formamorph is an open-ended AI text RPG engine. **Your chosen AI model** writes the stories. **Anyone** can author a world. Content therefore has no fixed limits. The in-app world browser shows **user-created worlds as-is**. The repository's README has the full responsible-use disclaimer.
 
 > 🔒 **Privacy:** Community Creations uses an account. The [Privacy Policy](https://formamorph.ai/privacy) says what the server stores about it, and how to delete your account.
 

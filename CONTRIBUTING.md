@@ -57,7 +57,7 @@ New logic should come with tests where practical (pure helpers especially — mi
 
 ## ⚖️ Conduct & content
 
-Formamorph is an adults-only AI roleplay tool. Contributions must not add features whose primary purpose is generating illegal content. Be respectful in issues and reviews.
+Formamorph is an adults-only AI text RPG. Contributions must not add features whose primary purpose is generating illegal content. Be respectful in issues and reviews.
 
 ---
 
