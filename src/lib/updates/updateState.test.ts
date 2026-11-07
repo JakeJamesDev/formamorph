@@ -84,9 +84,10 @@ describe('updateReducer', () => {
   });
 
   it('ERROR records the message', () => {
-    const s = updateReducer(base(), { type: 'ERROR', error: 'boom' });
+    const s = updateReducer(base(), { type: 'ERROR', step: 'install', error: 'boom' });
     expect(s.phase).toBe('error');
     expect(s.error).toBe('boom');
+    expect(s.failedStep).toBe('install');
   });
 
   it('SET_CHANNEL resets to a fresh idle state on the new channel', () => {

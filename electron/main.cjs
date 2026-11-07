@@ -25,6 +25,30 @@ const { confirmLeave } = require('./leavePrompt.cjs');
 const { windowChromeOptions, setWindowSymbolColor, watchFullScreen, isFullScreen, leaveFullScreen } = require('./windowChrome.cjs');
 const updater = require('./updater.cjs');
 const perfMeter = require('./perfMeter.cjs');
+const { launcherToRestartThrough, taskbarDetails } = require('./launcherHandoff.cjs');
+const { spawn } = require('node:child_process');
+
+const APP_ID = 'dev.jakejames.formamorph';
+
+// A direct start of `<root>/app/Formamorph.exe` restarts through the launcher. See launcherHandoff.cjs.
+const handoffLauncher = launcherToRestartThrough({
+  platform: process.platform,
+  isPackaged: app.isPackaged,
+  env: process.env,
+  execPath: process.execPath,
+  exists: fs.existsSync,
+});
+if (handoffLauncher) {
+  try {
+    spawn(handoffLauncher, process.argv.slice(1), { detached: true, stdio: 'ignore' })
+      .on('error', (err) => console.error('Launcher handoff failed:', err))
+      .unref();
+    app.exit(0);
+  } catch (err) {
+    console.error('Launcher handoff failed:', err); // keep running unhandled rather than not start at all
+  }
+}
+if (process.platform === 'win32' && process.env.FORMAMORPH_ROOT) app.setAppUserModelId(APP_ID);
 
 // Portable/AppImage builds keep their whole profile (settings, saves, worlds, library) beside the exe so
 // copying the folder carries everything; installed (mac dmg) and dev keep the OS-default userData (dev would
@@ -232,6 +256,8 @@ function createWindow() {
   });
   mainWindow = win;
   watchFullScreen(win, process.platform);
+  const taskbar = taskbarDetails({ platform: process.platform, env: process.env, appId: APP_ID, execPath: process.execPath });
+  if (taskbar) win.setAppDetails(taskbar);
 
   // External links (footer socials, the update dialog's "Full changelog") open in the system browser, not a
   // new in-app window — deny the popup and hand http(s) URLs to the OS.

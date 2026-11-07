@@ -14,6 +14,8 @@ export type UpdatePhase =
   | 'downloaded'
   | 'error';
 
+export type UpdateStep = 'check' | 'download' | 'install';
+
 export interface UpdateState {
   phase: UpdatePhase;
   /** The running app's version (never changes for the session). */
@@ -26,6 +28,8 @@ export interface UpdateState {
   bytesReceived?: number;
   bytesTotal?: number;
   error?: string;
+  /** Which step raised `error`. */
+  failedStep?: UpdateStep;
   lastCheckedAt?: number;
   /** The download for `latestVersion` went to the browser (the Mac `.dmg`), not to the app. */
   openedInBrowser?: boolean;
@@ -39,7 +43,7 @@ export type UpdateAction =
   | { type: 'DOWNLOAD_PROGRESS'; received: number; total: number }
   | { type: 'DOWNLOAD_DONE' }
   | { type: 'DOWNLOAD_OPENED_IN_BROWSER' }
-  | { type: 'ERROR'; error: string }
+  | { type: 'ERROR'; step: UpdateStep; error: string }
   | { type: 'SET_CHANNEL'; channel: UpdateChannel };
 
 export function initialUpdateState(currentVersion: string, channel: UpdateChannel): UpdateState {
@@ -87,7 +91,7 @@ export function updateReducer(state: UpdateState, action: UpdateAction): UpdateS
     case 'DOWNLOAD_DONE':
       return { ...state, phase: 'downloaded', downloadPct: 100 };
     case 'ERROR':
-      return { ...state, phase: 'error', error: action.error };
+      return { ...state, phase: 'error', error: action.error, failedStep: action.step };
     case 'SET_CHANNEL':
       // Switching channel invalidates any pending result; a fresh check follows.
       return { ...initialUpdateState(state.currentVersion, action.channel) };

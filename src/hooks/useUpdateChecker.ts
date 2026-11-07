@@ -35,7 +35,7 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
     dispatch({ type: 'CHECK_START' });
     const res = await checkForUpdate(channel);
     if (!res.success || !res.result) {
-      dispatch({ type: 'ERROR', error: res.error ?? 'Update check failed' });
+      dispatch({ type: 'ERROR', step: 'check', error: res.error ?? 'Update check failed' });
       return;
     }
     const r = res.result;
@@ -86,7 +86,7 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
     updateBridge()
       ?.download({ version: state.latestVersion, channel, ...assets.current })
       .then((r) => { if (mounted.current && r?.openedInBrowser) dispatch({ type: 'DOWNLOAD_OPENED_IN_BROWSER' }); })
-      .catch((e) => { if (mounted.current) dispatch({ type: 'ERROR', error: (e as Error)?.message ?? 'Update download failed' }); });
+      .catch((e) => { if (mounted.current) dispatch({ type: 'ERROR', step: 'download', error: (e as Error)?.message ?? 'Update download failed' }); });
   }, [state.latestVersion, channel, mounted]);
 
   const applyUpdate = useCallback(() => {
@@ -96,7 +96,7 @@ export function useUpdateChecker(channel: UpdateChannel): UpdateChecker {
     // sends the player to a setting they come back from, so the offer must survive. Only a rejection is an
     // error worth showing.
     void Promise.resolve(bridge.apply())
-      .catch((e) => dispatch({ type: 'ERROR', error: (e as Error)?.message ?? 'Update install failed' }));
+      .catch((e) => dispatch({ type: 'ERROR', step: 'install', error: (e as Error)?.message ?? 'Update install failed' }));
   }, []);
 
   return { state, check, download, applyUpdate };

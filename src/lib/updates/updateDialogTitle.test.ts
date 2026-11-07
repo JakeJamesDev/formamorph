@@ -22,4 +22,12 @@ describe('updateDialogTitle', () => {
     expect(title('idle')).toBe('App Updates');
     expect(title('error')).toBe('Couldn’t Check for Updates');
   });
+
+  it('names the step that failed', () => {
+    const failed = (failedStep: 'check' | 'download' | 'install') =>
+      updateDialogTitle({ phase: 'error', latestVersion: 'v9.9.9', failedStep });
+    expect(failed('check')).toBe('Couldn’t Check for Updates');
+    expect(failed('download')).toBe('Couldn’t Download the Update');
+    expect(failed('install')).toBe('Couldn’t Install the Update');
+  });
 });
