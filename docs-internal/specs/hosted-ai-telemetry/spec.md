@@ -72,7 +72,7 @@ The abort cause is already recorded and is not part of this spec. The status `ab
 - The subject and tier are stored when the request has them. An entitlement refusal has neither. Every refusal has an account, because the auth check runs first.
 - The write is wrapped so that a failure is logged and the refusal still answers unchanged.
 - The `rate_limited` path must stay cheap. One upsert is the whole cost.
-- The existing usage sweep deletes refusal totals whose first time is older than `retentionDays`. Deleting on the first time means no stored time is ever older than the policy allows. The sweep's return value gains a refusal-deletion count.
+- The existing usage sweep deletes refusal totals whose first time is older than `retentionDays`. Deleting on the first time means no stored time is ever older than the policy allows. The sweep's return value gains `refusalsDeleted`, under the same `retentionDays` gate.
 - Account erasure nulls the account id on refusal totals, as it does on usage rows.
 - CONTEXT.md gains a **Refusal total** entry.
 
@@ -89,7 +89,7 @@ The abort cause is already recorded and is not part of this spec. The status `ab
 
 The existing report route gains four sections over the same range:
 
-- `refusals`: per day and code, the total count and the distinct accounts. Also per tier and code, and the number of distinct accounts refused for `budget_exhausted` in the range. Distinct accounts count by account id. Erased totals add to the counts but not to the distinct accounts.
+- `refusals`: per day and code, the total count and the distinct accounts. Also per tier and code, and the number of distinct accounts refused for `budget_exhausted` in the range. Distinct accounts count by account id. Erased totals add to the counts but not to the distinct accounts. Shape: `refusals: { days: [{ day, code, count, accounts }], tiers: [{ tier, code, count, accounts }], budgetExhaustedAccounts }`. Rows are sparse, only days and tiers with refusals, sorted by day or tier, then code. The stored empty-string tier reports as null. The day is the UTC day of the refusal, and the range keeps `day >= since`.
 - `reservations`: per prompt type and overall, the summed reservation, the summed settled cost and their ratio. Only rows with status `ok`, cost source `upstream`, `stopped = 0` and a reservation count. Swept rows and estimated costs would force the ratio toward 1.
 - `clients`: per client version, calls, turns, cost and closed turns with no narration call. A closed turn has no `open` row. Rows with no version count under a null version.
 - `providers`: per provider, calls, median and worst first-token time. Only streams have a first-token time. Rows with no provider count under null.
