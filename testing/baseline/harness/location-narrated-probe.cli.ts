@@ -5,12 +5,13 @@
 //   far      the narration carries the player 2 or 3 moves, to a place on the widened list
 //   unlisted the narration carries the player to `goes`, a place past 3 moves or not reachable, so off the list
 //
-// Three arms, all built by the real locationSuggest pass record over each scene's chip values:
+// Four arms, all built by the real locationSuggest pass record over each scene's chip values:
 //   reused   the shipped location-change prompts, as Suggest mode sends them after the narration
 //   before   the narrated-move prompts and one-move list before walkable reach (multi-hop-moves 02): the prompts
 //            frozen below, the list rendered from the scene's world cut down to the places one move away
+//   current  defaultNarratedMovePrompt with the before arm's user prompt, its answer rules in one sentence (multi-hop-moves 03)
 //   narrated defaultNarratedMovePrompt / defaultNarratedMoveUserPrompt over the walkable list
-// Every run dispatches all cases on every arm together, so batch drift lands on every arm.
+// Every run dispatches all cases on every chosen arm together, so batch drift lands on every arm.
 //
 // After the three arms, a router arm sends the shipped location-change request over the control and far scenes,
 // and scores each reply by the substring rule over every place and by the router matcher (multi-hop-moves R2).
@@ -18,12 +19,13 @@
 // The bar (multi-hop-moves Q10, ticket 02) is on the narrated arm's set totals: far right >= 90%, unlisted
 // moved <= 10% over the scenes whose stop no listed place holds (a move to the listed place holding the stop is
 // a hit, and those scenes report apart), carried found and stay moved no worse than the before arm's, control right >= the before arm's.
+// The R1 bar (ticket 03) runs with the current arm: each narrated set total is no worse than the current arm's.
 // A move to another place than the scene names counts as a miss. Per-scene counts and the first-token and total
 // time per arm are reported beside it.
 //
 // Usage: npx vite-node testing/baseline/harness/location-narrated-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 10] [--only carried-up,plan] [--dump <scene id>]
-//          [--cases <path>] [--pool 8]
+//          [--cases <path>] [--pool 8] [--arms current,narrated]
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -125,9 +127,15 @@ Find the place where the player character's body is when this narration ends. Re
 const ARMS = {
   reused: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: defaultLocationChangePrompt, narratedMoveUser: defaultLocationChangeUserPrompt } }, { thinkingMode: 'off' }),
   before: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: BEFORE_NARRATED_MOVE, narratedMoveUser: BEFORE_NARRATED_MOVE_USER } }, { thinkingMode: 'off' }),
+  current: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: defaultNarratedMovePrompt, narratedMoveUser: BEFORE_NARRATED_MOVE_USER } }, { thinkingMode: 'off' }),
   narrated: testInput({ prompts: { ...TEST_PROMPTS, narratedMove: defaultNarratedMovePrompt, narratedMoveUser: defaultNarratedMoveUserPrompt } }, { thinkingMode: 'off' }),
 };
 type Arm = keyof typeof ARMS;
+const chosen = argVal('--arms', '').split(',').map((a) => a.trim()).filter(Boolean);
+const unknownArm = chosen.find((a) => !(a in ARMS));
+if (unknownArm) throw new Error(`no arm ${unknownArm}; arms are ${Object.keys(ARMS).join(', ')}`);
+const ARM_IDS = (Object.keys(ARMS) as Arm[]).filter((arm) => !chosen.length || chosen.includes(arm));
+const hasArm = (arm: Arm) => ARM_IDS.includes(arm);
 const pass = TURN_PASSES.find((p) => p.id === 'locationSuggest');
 if (!pass) throw new Error('no locationSuggest pass');
 
@@ -208,16 +216,16 @@ const materialOf = (scene: Scene): Record<Arm, ReturnType<typeof sceneMaterial>[
       }
       return undefined;
     };
-    containedIn.set(scene.id, { reused: holder(destinations), before: holder(before.destinations), narrated: holder(destinations) });
+    containedIn.set(scene.id, { reused: holder(destinations), before: holder(before.destinations), current: holder(destinations), narrated: holder(destinations) });
   }
-  return { reused: material, before: before.material, narrated: material };
+  return { reused: material, before: before.material, current: material, narrated: material };
 };
 const materials = new Map(scenes.map((s) => [s.id, materialOf(s)]));
 
 if (dump) {
   const scene = scenes.find((s) => s.id === dump) ?? narrated.scenes.find((s) => s.id === dump);
   if (!scene) throw new Error(`no scene ${dump}`);
-  for (const arm of Object.keys(ARMS) as Arm[]) {
+  for (const arm of ARM_IDS) {
     const request = pass.buildRequest(ARMS[arm], (materials.get(scene.id) ?? materialOf(scene))[arm]);
     console.log(`=== ${arm}\n--- system\n${request.systemPrompt}\n--- user\n${request.messages.map((m) => m.content).join('\n')}\n--- cap ${request.maxTokens}\n`);
   }
@@ -294,7 +302,6 @@ async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> 
 
 // moved = the player ends somewhere other than where they stood. right = the reply is the scene's answer.
 const cell = () => ({ n: 0, right: 0, moved: 0 });
-const ARM_IDS = Object.keys(ARMS) as Arm[];
 const perScene = new Map<string, Record<Arm, ReturnType<typeof cell>>>();
 const misses: string[] = [];
 /** Moves to the place holding an unlisted scene's stop, by `arm:scene`. */
@@ -308,7 +315,7 @@ for (let run = 0; run < runs; run++) {
   for (const { scene, arm, raw, got, firstMs, totalMs } of await pool(jobs, poolSize)) {
     if (!Number.isNaN(firstMs)) timing[arm].first.push(firstMs);
     timing[arm].total.push(totalMs);
-    const row = perScene.get(scene.id) ?? { reused: cell(), before: cell(), narrated: cell() };
+    const row = perScene.get(scene.id) ?? Object.fromEntries(ARM_IDS.map((a) => [a, cell()])) as Record<Arm, ReturnType<typeof cell>>;
     perScene.set(scene.id, row);
     const c = row[arm];
     c.n++;
@@ -375,7 +382,6 @@ console.log(`  ${'the rest, moved'.padEnd(34)}${ARM_IDS.map((arm) => {
   const t = scored(arm, false);
   return `${t.moved}/${t.n} (${pct(t.moved, t.n)})`.padStart(16);
 }).join('')}`);
-const rest = scored('narrated', false);
 
 const median = (xs: number[]) => {
   const sorted = [...xs].sort((a, b) => a - b);
@@ -385,15 +391,34 @@ console.log(`\n${'time per request (median ms)'.padEnd(36)}${ARM_IDS.map((arm) =
 console.log(`  ${'first token'.padEnd(34)}${ARM_IDS.map((arm) => String(median(timing[arm].first)).padStart(16)).join('')}`);
 console.log(`  ${'total'.padEnd(34)}${ARM_IDS.map((arm) => String(median(timing[arm].total)).padStart(16)).join('')}`);
 
-console.log('\nbar (Q10, ticket 02), narrated arm: far >= 90%, unlisted moved <= 10%, carried >= before, stay <= before, control >= before');
-const checks = [
-  ['far right', rate('far', 'narrated', 'right'), rate('far', 'narrated', 'right') >= 0.9],
-  ['unlisted moved', rest.moved / rest.n, rest.moved / rest.n <= 0.1],
-  ['carried found', rate('carried', 'narrated', 'right'), rate('carried', 'narrated', 'right') >= rate('carried', 'before', 'right')],
-  ['stay moved', rate('stay', 'narrated', 'moved'), rate('stay', 'narrated', 'moved') <= rate('stay', 'before', 'moved')],
-  ['control right', rate('control', 'narrated', 'right'), rate('control', 'narrated', 'right') >= rate('control', 'before', 'right')],
-] as const;
-for (const [label, value, ok] of checks) console.log(`  ${label.padEnd(16)} ${pct(value, 1).padStart(7)} · ${ok ? 'MEETS' : 'MISSES'}`);
+const report = (checks: (readonly [string, number, boolean])[]) => {
+  for (const [label, value, ok] of checks) console.log(`  ${label.padEnd(16)} ${pct(value, 1).padStart(7)} · ${ok ? 'MEETS' : 'MISSES'}`);
+};
+if (hasArm('narrated') && hasArm('before')) {
+  const rest = scored('narrated', false);
+  console.log('\nbar (Q10, ticket 02), narrated arm: far >= 90%, unlisted moved <= 10%, carried >= before, stay <= before, control >= before');
+  report([
+    ['far right', rate('far', 'narrated', 'right'), rate('far', 'narrated', 'right') >= 0.9],
+    ['unlisted moved', rest.moved / rest.n, rest.moved / rest.n <= 0.1],
+    ['carried found', rate('carried', 'narrated', 'right'), rate('carried', 'narrated', 'right') >= rate('carried', 'before', 'right')],
+    ['stay moved', rate('stay', 'narrated', 'moved'), rate('stay', 'narrated', 'moved') <= rate('stay', 'before', 'moved')],
+    ['control right', rate('control', 'narrated', 'right'), rate('control', 'narrated', 'right') >= rate('control', 'before', 'right')],
+  ]);
+}
+// Ticket 03 (R1): the split user prompt is no worse than the current one on any set total in the same batches.
+if (hasArm('narrated') && hasArm('current')) {
+  const [split, current] = [scored('narrated', true), scored('current', true)];
+  const [splitRest, currentRest] = [scored('narrated', false), scored('current', false)];
+  console.log('\nbar (R1, ticket 03), narrated arm against current: each set no worse');
+  report([
+    ['far right', rate('far', 'narrated', 'right'), rate('far', 'narrated', 'right') >= rate('far', 'current', 'right')],
+    ['unlisted inside', split.hit / split.n, split.hit / split.n >= current.hit / current.n],
+    ['unlisted moved', splitRest.moved / splitRest.n, splitRest.moved / splitRest.n <= currentRest.moved / currentRest.n],
+    ['carried found', rate('carried', 'narrated', 'right'), rate('carried', 'narrated', 'right') >= rate('carried', 'current', 'right')],
+    ['stay moved', rate('stay', 'narrated', 'moved'), rate('stay', 'narrated', 'moved') <= rate('stay', 'current', 'moved')],
+    ['control right', rate('control', 'narrated', 'right'), rate('control', 'narrated', 'right') >= rate('control', 'current', 'right')],
+  ]);
+}
 if (misses.length) console.log(`\nmisses:\n  ${misses.join('\n  ')}`);
 console.log(`\nwall ${Math.round((Date.now() - begun) / 1000)}s`);
 

@@ -225,7 +225,10 @@ Follow only the player character's body through the narration. The answer is a p
 
 export const defaultNarratedMoveUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
 <NARRATION|format=markdown|header="The Narration That Followed">
-Find the place where the player character's body is when this narration ends. Reply with only one answer: the current location's name when the body is still there, the exact name of the place from the list whose description fits it, or Elsewhere when no place on the list fits it.`;
+Find the place where the player character's body is when this narration ends. Reply with only one answer:
+- The current location's name when the body is still there.
+- The exact name of the place from the list whose description fits it.
+- Elsewhere when no place on the list fits it.`;
 
 // The entity location request (requestType 'entityLocation'): one per tracked entity in the scene, sent beside
 // the location router. The reply is one line of the closed list the user message carries.
