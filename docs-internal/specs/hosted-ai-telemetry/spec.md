@@ -124,6 +124,7 @@ No new section returns a subject or an account id. That follows how `heaviest` d
 ## Further Notes
 
 - The reservation shows how much headroom each call holds. Admission compares the week's spend, open reservations included, so an early refusal comes from other calls' open reservations, not from the new call's own.
+- **The deploy waits for active installs.** The user ruled that this server deploy and its policy publish wait for the active-installs spec, so players see one deploy and one re-accept.
 - **Re-acceptance is the user's call.** Publishing the edited policy can require players to accept it again or not. Batch all policy text in this spec into one publish so that players see at most one re-accept.
 - The schema step is additive. The deploy skill's backup rule still applies because the step touches `src/schema/`.
 - Today's evidence: real/estimate is between 0.63 and 0.79 on all 20 prompt types, and the cache serves about 40% of prompt tokens. The reservation section should make the first number exact.
