@@ -1,6 +1,6 @@
 # 14: Rollback Test Timing
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,7 +17,15 @@ No player-visible change unless the module was at fault, and then a 👤 Fixed f
 
 ## Acceptance criteria
 
-- [ ] The cause is named in the landing body: module request or test leak.
-- [ ] The assertion that nothing downloads is unchanged.
-- [ ] 30 runs of the CUDA install test file in a row pass.
-- [ ] A guard: the test fails when the rollback path downloads the current tag again.
+- [x] The cause is named in the landing body: module request or test leak. (Test fixture: `zipSync` stamps the clock, so one tag's digests changed between builds; the module was right to re-download.)
+- [x] The assertion that nothing downloads is unchanged. (`expect(srv.state.requests).toEqual([])` untouched.)
+- [x] 30 runs of the CUDA install test file in a row pass. (Before: 5 of 60 and 1 of 60 failed. After: 40 of 40 and 30 of 30 passed.)
+- [x] A guard: the test fails when the rollback path downloads the current tag again. (Dropped the `installedTag()` check in `begin()` and `startup()`: the rollback test went red. The new "one tag builds the same digests at any clock time" test goes red with `mtime` removed.)
+
+## Landed
+
+**Not verified**
+- The whole-repo `FULL_GATES=1 npm run test` run belongs to `close-spec`, so it did not run here.
+
+**For you**
+- Nothing for a player to judge. No player-visible change.

@@ -1,6 +1,6 @@
 // @vitest-environment node
 // A real range server and a real temp data folder: the install is about what lands on disk.
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,9 +19,11 @@ const HOST = 'https://github.com/ggml-org/llama.cpp/releases/download';
 
 /** Deterministic bytes, so a chunk at the wrong offset changes the digest. */
 const noise = (n, seed) => Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed + (i >> 8)) % 251);
+/** Fixed entry time: zipSync stamps the clock otherwise, and one tag's zips would differ between builds. */
+const makeZip = (entries) => Buffer.from(zipSync(entries, { level: 0, mtime: Date.UTC(2026, 0, 1) }));
 const ZIPS = {
-  [`llama-${TAG}-bin-win-cuda-13.4-x64.zip`]: Buffer.from(zipSync({ 'llama-server.exe': noise(3000, 1), 'ggml-cuda.dll': noise(2000, 2) }, { level: 0 })),
-  'cudart-llama-bin-win-cuda-13.4-x64.zip': Buffer.from(zipSync({ 'cublas64_13.dll': noise(4000, 3) }, { level: 0 })),
+  [`llama-${TAG}-bin-win-cuda-13.4-x64.zip`]: makeZip({ 'llama-server.exe': noise(3000, 1), 'ggml-cuda.dll': noise(2000, 2) }),
+  'cudart-llama-bin-win-cuda-13.4-x64.zip': makeZip({ 'cublas64_13.dll': noise(4000, 3) }),
 };
 const NAMES = Object.keys(ZIPS);
 const digestOf = (buf) => `sha256:${crypto.createHash('sha256').update(buf).digest('hex')}`;
@@ -307,8 +309,8 @@ describe('CUDA replace after a pin bump', () => {
   function release(tag) {
     const seed = Number(tag.slice(1));
     const files = {
-      [`llama-${tag}-bin-win-cuda-13.4-x64.zip`]: Buffer.from(zipSync({ 'llama-server.exe': noise(3000, seed), 'ggml-cuda.dll': noise(2000, seed + 1) }, { level: 0 })),
-      'cudart-llama-bin-win-cuda-13.4-x64.zip': Buffer.from(zipSync({ 'cublas64_13.dll': noise(4000, seed + 2) }, { level: 0 })),
+      [`llama-${tag}-bin-win-cuda-13.4-x64.zip`]: makeZip({ 'llama-server.exe': noise(3000, seed), 'ggml-cuda.dll': noise(2000, seed + 1) }),
+      'cudart-llama-bin-win-cuda-13.4-x64.zip': makeZip({ 'cublas64_13.dll': noise(4000, seed + 2) }),
     };
     const pin = {
       tag,
@@ -322,6 +324,16 @@ describe('CUDA replace after a pin bump', () => {
   }
 
   const folders = () => fs.readdirSync(path.join(tmp, 'engines')).filter((n) => n.startsWith('llama-server-cuda-')).sort();
+
+  it('one tag builds the same digests at any clock time', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-06-01T10:00:00Z'));
+      const first = release('b8').pin.cuda.assets.map((a) => a.digest);
+      vi.setSystemTime(new Date('2026-06-01T10:00:05Z'));
+      expect(release('b8').pin.cuda.assets.map((a) => a.digest)).toEqual(first);
+    } finally { vi.useRealTimers(); }
+  });
 
   /** Install `tag` the way the player would. */
   async function installTag(tag) {
