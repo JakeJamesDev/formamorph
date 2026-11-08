@@ -46,6 +46,7 @@ import { balanceRows } from '@/lib/currency';
 import { InventoryTab } from './InventoryTab';
 import { CollapsingTabsList } from '@/components/ui/collapsing-tabs-list';
 import { useInventoryPanel, type InventoryPanelSettle } from './useInventoryPanel';
+import type { StatFacts } from '@/lib/actionList';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
@@ -1508,6 +1509,14 @@ export const RightPanel = ({
     return item && visibleItemImage(item, copy, gateInput);
   }, [worldItems, gateInput]);
   const inventory = useInventoryPanel(inventorySettle, itemImageOf);
+  // A manual stat edit lists after it runs (Q1); the controls wait while a turn or an item script runs (Q13).
+  const listedActions = inventorySettle?.actions;
+  const statsLocked = isWaitingForAI || !!inventorySettle?.busy;
+  const listStatEdit = (facts: StatFacts, commit: () => void) => {
+    const before = listedActions?.snapshot();
+    commit();
+    if (before !== undefined) listedActions?.add(facts, before);
+  };
   const {
     options: entityOptions, shown: shownEntity, section: entitySection, players: playedOwners, showPicker: entitiesShowStats,
   } = useStatPanelEntity(entityInForce);
@@ -1584,8 +1593,12 @@ export const RightPanel = ({
           isViewingPast={isViewingPast}
           snap={snapStats}
           editable={isEditMode && !isViewingPast}
+          locked={statsLocked}
           reserveDescriptorLine={owner.rows.some((row) => (row.descriptors?.length ?? 0) > 0)}
-          onCommitValue={(value) => commitManualEntityStatEdit(owner.entity.id, stat.id, value)}
+          onCommitValue={(value) => listStatEdit(
+            { kind: 'stat', stat: { id: stat.id, name: stat.name }, owner: { id: owner.entity.id, name: owner.entity.name }, from: stat.value, to: value },
+            () => commitManualEntityStatEdit(owner.entity.id, stat.id, value),
+          )}
         />
       )}
     />
@@ -1661,12 +1674,16 @@ export const RightPanel = ({
                           isViewingPast={isViewingPast}
                           snap={snapStats}
                           editable={isEditMode && !isViewingPast}
+                          locked={statsLocked}
                           reserveDescriptorLine={anyDescriptors}
-                          onCommitValue={(value) => {
-                            const newStats = [...globalStats];
-                            newStats[index] = { ...stat, value };
-                            commitManualStatEdit(newStats);
-                          }}
+                          onCommitValue={(value) => listStatEdit(
+                            { kind: 'stat', stat: { id: stat.id, name: stat.name }, from: stat.value, to: value },
+                            () => {
+                              const newStats = [...globalStats];
+                              newStats[index] = { ...stat, value };
+                              commitManualStatEdit(newStats);
+                            },
+                          )}
                         />
                       );
                     }}

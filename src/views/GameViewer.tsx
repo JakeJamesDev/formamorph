@@ -869,6 +869,7 @@ const GameViewer = ({
     setPendingAttachments,
     actionList,
     setActionList,
+    revertManualStatEditPage,
     scriptTells,
     setScriptTells,
     openingAction: openingTurnAction,
@@ -5610,7 +5611,9 @@ const GameViewer = ({
     if (!undo) return;
     setActionList(undo.list);
     restoreActionSnapshot(undo.restore);
-  }, [actionList, setActionList, restoreActionSnapshot]);
+    const { facts } = actionList[actionList.length - 1];
+    if (facts.kind === 'stat') revertManualStatEditPage(facts.owner?.id ?? null, facts.stat.id, facts.from);
+  }, [actionList, setActionList, restoreActionSnapshot, revertManualStatEditPage]);
 
   /** A panel write's equip check and settle over the live state; the settle fires the switch scripts and the
    *  item scripts run against the committed state. */
@@ -6246,7 +6249,7 @@ const GameViewer = ({
       actionTray={(
         <ActionListTray
           entries={actionList}
-          disabled={isWaitingForAI || panelRuns > 0}
+          disabled={isWaitingForAI || isViewingPast || panelRuns > 0}
           onUndo={undoNewestAction}
           onToggleHidden={(id) => setActionList((list) => toggleHidden(list, id))}
         />

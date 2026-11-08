@@ -66,7 +66,7 @@ describe('the Inventory tab lists its actions', () => {
     const { h, run, added } = panelOver([copy('r', 'ring', { state: { unidentified: true } })]);
     await waitFor(() => expect(h.gameplay().itemCopies).toHaveLength(1));
     run({ kind: 'use', copyId: 'r' });
-    expect(added[0].facts.item.name).toBe('Plain Ring');
+    expect(added[0].facts).toMatchObject({ item: { name: 'Plain Ring' } });
   });
 
   it('lists an equip with the copy it left, and an unequip with the row it left', async () => {

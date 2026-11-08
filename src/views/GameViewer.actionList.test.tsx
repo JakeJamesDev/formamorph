@@ -163,3 +163,66 @@ describe('the Action List in a game', () => {
     expect((document.getElementById(header.getAttribute('aria-controls') ?? '') as HTMLElement).style.gridTemplateRows).toBe('0fr');
   });
 });
+
+describe('stat edits in the Action List', () => {
+  const calmField = () => screen.getByRole('spinbutton', { name: 'Calm' });
+  const nerveField = () => screen.getByRole('spinbutton', { name: 'Nerve' });
+  const pageStat = (id: string) => gameplay().gameStates[0].globalStats.find((s) => s.id === id)?.value;
+  const pageNerve = () => gameplay().gameStates[0].entityStats?.ash?.find((s) => s.id === 'nerve')?.value;
+
+  async function editMode() {
+    renderGameViewer(world, { inGameplay: <Probe />, initialPersona: { ref: { source: 'world', entityId: 'ash' } } });
+    await screen.findByPlaceholderText(/Type your action/);
+    await waitFor(() => expect(gameplay().itemCopies).toHaveLength(2));
+    // One turn's page snapshot, which a manual edit patches.
+    act(() => gameplay().setGameStates([gameplay().saveCurrentGameState()]));
+    gameplay().setActiveTab('stats');
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Stats' }));
+  }
+
+  it('lists a global stat edit hidden, with the Stats icon and both values, and counts it as hidden', async () => {
+    await editMode();
+    fireEvent.change(calmField(), { target: { value: '70' } });
+    await waitFor(() => expect(rows()).toEqual(['Calm 50 → 70Only You']));
+    const region = tray() as HTMLElement;
+    expect(region.querySelectorAll('svg.lucide-chart-column')).toHaveLength(1);
+    expect(within(region).getByRole('button', { name: /Since Last Turn/ })).toHaveTextContent('0 for the AI · 1 hidden');
+  });
+
+  it('lists an entity stat edit, and showing it counts it as told to the AI', async () => {
+    await editMode();
+    fireEvent.change(nerveField(), { target: { value: '65' } });
+    await waitFor(() => expect(rows()).toEqual(['Ash’s Nerve 50 → 65Only You']));
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Tell the AI' }));
+    expect(within(tray() as HTMLElement).getByRole('button', { name: /Since Last Turn/ })).toHaveTextContent('1 for the AI');
+  });
+
+  it('merges a drag into one entry; undo restores the live value and the page snapshot', async () => {
+    await editMode();
+    for (const v of ['60', '65', '70']) fireEvent.change(calmField(), { target: { value: v } });
+    await waitFor(() => expect(value('calm')).toBe(70));
+    expect(pageStat('calm')).toBe(70);
+    expect(rows()).toEqual(['Calm 50 → 70Only You']);
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(value('calm')).toBe(50));
+    expect(pageStat('calm')).toBe(50);
+    expect(tray()).toBeNull();
+  });
+
+  it('undoes an entity stat edit in the page snapshot too', async () => {
+    await editMode();
+    fireEvent.change(nerveField(), { target: { value: '65' } });
+    await waitFor(() => expect(nerve()).toBe(65));
+    expect(pageNerve()).toBe(65);
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(nerve()).toBe(50));
+    expect(pageNerve()).toBe(50);
+  });
+
+  it('locks the stat fields while a turn runs', async () => {
+    await editMode();
+    expect(calmField()).toBeEnabled();
+    act(() => gameplay().setIsWaitingForAI(true));
+    expect(calmField()).toBeDisabled();
+  });
+});

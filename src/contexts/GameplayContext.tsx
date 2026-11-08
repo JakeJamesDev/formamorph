@@ -907,6 +907,19 @@ function useProvideGameplay() {
       : prev));
   }, [currentPage, entityStatChanges]);
 
+  // An undone manual edit puts the old value back into the current page's snapshot, which the edit patched.
+  const revertManualStatEditPage = useCallback((ownerId: string | null, statId: string, value: number) => {
+    const idx = currentPage - 1;
+    setGameStates((prev) => {
+      const page = prev[idx];
+      if (!page) return prev;
+      if (ownerId === null) {
+        return placeSnapshot(prev, idx, { ...page, globalStats: page.globalStats.map((s) => (s.id === statId ? { ...s, value } : s)) });
+      }
+      return page.entityStats ? placeSnapshot(prev, idx, { ...page, entityStats: withEntityStatValue(page.entityStats, ownerId, statId, value) }) : prev;
+    });
+  }, [currentPage]);
+
   const value = {
     characterData,
     setCharacterData,
@@ -938,6 +951,7 @@ function useProvideGameplay() {
     setGlobalStats,
     commitManualStatEdit,
     commitManualEntityStatEdit,
+    revertManualStatEditPage,
     globalTraits,
     setGlobalTraits,
     disabledTraitIds,

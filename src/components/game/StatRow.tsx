@@ -75,9 +75,10 @@ const StatBar = ({ value, min, max, delta, draining, animKey, snap }: {
  * unfocused, so a turn's stat changes and a slider drag both write into it, and a blur snaps a blank field
  * back to the value the stat actually holds.
  */
-const StatValueField = ({ stat, value, onCommit, onType }: {
+const StatValueField = ({ stat, value, disabled, onCommit, onType }: {
   stat: PlayerStat;
   value: number;
+  disabled: boolean;
   onCommit: (value: number) => void;
   /** Called before a keystroke's commit, so the row can tell a typed band change from a dealt one. */
   onType: () => void;
@@ -100,6 +101,7 @@ const StatValueField = ({ stat, value, onCommit, onType }: {
       step={1}
       size="sm"
       className="h-6 w-16 px-1 text-right"
+      disabled={disabled}
       value={text}
       onFocus={(event) => { focused.current = true; event.target.select(); }}
       onBlur={() => { focused.current = false; setText(statFieldText(value)); }}
@@ -132,6 +134,8 @@ export interface StatRowProps {
   fading: boolean;
   /** Edit mode is on and the turn is live, so the readout is typeable and the bar becomes a slider. */
   editable: boolean;
+  /** A turn or an item script runs, so the edit controls wait (Q13). */
+  locked?: boolean;
   /** Hold the descriptor line's height even when this value falls in no band, so a world with descriptors
    *  keeps every row the same height as its values move. */
   reserveDescriptorLine: boolean;
@@ -149,7 +153,7 @@ export interface StatRowProps {
  * already looking at the value they are setting; reduced motion drops the flash entirely.
  */
 export const StatRow = ({
-  stat, change, barDelta, draining, page, isViewingPast, snap, fading, editable,
+  stat, change, barDelta, draining, page, isViewingPast, snap, fading, editable, locked = false,
   reserveDescriptorLine, onCommitValue,
 }: StatRowProps) => {
   const reduce = usePrefersReducedMotion();
@@ -206,6 +210,7 @@ export const StatRow = ({
               <StatValueField
                 stat={stat}
                 value={stat.value}
+                disabled={locked}
                 onCommit={onCommitValue}
                 onType={() => { typed.current = true; }}
               />
@@ -223,6 +228,7 @@ export const StatRow = ({
           min={stat.min}
           max={stat.max}
           step={1}
+          disabled={locked}
           className="mt-2"
           onValueChange={(next) => onCommitValue(next[0])}
         />

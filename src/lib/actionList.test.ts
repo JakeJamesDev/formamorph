@@ -134,3 +134,51 @@ describe('the Action List', () => {
     expect(entryLine({ facts: equip, count: 1 })).toBe('Equipped Iron Sword');
   });
 });
+
+const statEdit = (to: number, from = 40, owner?: { id: string; name: string }): ListedActionFacts => ({
+  kind: 'stat', stat: { id: 'hp', name: 'Health' }, ...(owner && { owner }), from, to,
+});
+const mira = { id: 'mira', name: 'Mira' };
+
+describe('stat edits in the Action List', () => {
+  it('arrives hidden, with the old and new value in its line', () => {
+    const { list } = play([statEdit(60)]);
+    expect(lines(list)).toEqual(['Health 40 → 60']);
+    expect(list[0].hidden).toBe(true);
+    expect(lines(play([statEdit(60, 40, mira)]).list)).toEqual(['Mira’s Health 40 → 60']);
+  });
+
+  it('merges a run of edits to one stat into one entry from the first old value, first snapshot', () => {
+    const { list } = play([statEdit(45), statEdit(50, 45), statEdit(60, 50)]);
+    expect(lines(list)).toEqual(['Health 40 → 60']);
+    expect(list[0].count).toBe(1);
+    expect(list[0].snapshots).toEqual(['s0']);
+  });
+
+  it('keeps the shown flag through a merge', () => {
+    const shown = toggleHidden(play([statEdit(45)]).list, 'e0');
+    const { list } = play([statEdit(50, 45)], shown);
+    expect(list[0].hidden).toBe(false);
+    expect(lines(list)).toEqual(['Health 40 → 50']);
+  });
+
+  it('removes the entry when the stat is edited back to the old value', () => {
+    expect(play([statEdit(60), statEdit(40, 60)]).list).toEqual([]);
+  });
+
+  it('adds nothing for an edit that leaves the value where it was', () => {
+    expect(play([statEdit(40)]).list).toEqual([]);
+  });
+
+  it('starts a new entry for another stat, another owner, or after another action', () => {
+    const other: ListedActionFacts = { kind: 'stat', stat: { id: 'mp', name: 'Mana' }, from: 5, to: 9 };
+    expect(lines(play([statEdit(60), other]).list)).toEqual(['Health 40 → 60', 'Mana 5 → 9']);
+    expect(lines(play([statEdit(60), statEdit(70, 60, mira)]).list)).toEqual(['Health 40 → 60', 'Mira’s Health 60 → 70']);
+    expect(lines(play([statEdit(60), use, statEdit(70, 60)]).list)).toEqual(['Health 40 → 60', 'Used Healing Potion', 'Health 60 → 70']);
+  });
+
+  it('undoes to the snapshot before the first edit', () => {
+    const { list } = play([statEdit(45), statEdit(50, 45)]);
+    expect(undoNewest(list)).toEqual({ list: [], restore: 's0' });
+  });
+});

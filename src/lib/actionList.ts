@@ -15,7 +15,9 @@ export type ListedActionFacts =
   | { kind: 'use' | 'equip' | 'unequip'; item: ActionItem; copyId: string; resultId?: string }
   | { kind: 'give'; item: ActionItem; quantity: number; to: { id: string; name: string } }
   /** `place` is the location the copy went to (drop) or came from (pick up). */
-  | { kind: 'drop' | 'pickup'; item: ActionItem; quantity: number; place: string };
+  | { kind: 'drop' | 'pickup'; item: ActionItem; quantity: number; place: string }
+  /** A manual stat edit: `owner` is absent for a global stat; `from` and `to` are the values before and after (Q20). */
+  | { kind: 'stat'; stat: { id: string; name: string }; owner?: { id: string; name: string }; from: number; to: number };
 
 export type ListedActionKind = ListedActionFacts['kind'];
 
@@ -34,6 +36,7 @@ const REVERSE: Partial<Record<ListedActionKind, ListedActionKind>> = { equip: 'u
 const COLLAPSES: readonly ListedActionKind[] = ['use', 'give', 'drop', 'pickup'];
 
 const quantityOf = (facts: ListedActionFacts): number => ('quantity' in facts ? facts.quantity : 1);
+const itemKeyOf = (facts: ListedActionFacts): string => ('item' in facts ? facts.item.key : '');
 const targetOf = (facts: ListedActionFacts): string => {
   switch (facts.kind) {
     case 'give': return facts.to.id;
@@ -43,18 +46,22 @@ const targetOf = (facts: ListedActionFacts): string => {
   }
 };
 
+export type StatFacts = Extract<ListedActionFacts, { kind: 'stat' }>;
+const sameStat = (a: ListedActionFacts, b: StatFacts): a is StatFacts =>
+  a.kind === 'stat' && a.stat.id === b.stat.id && a.owner?.id === b.owner?.id;
+
 /** Whether `next` exactly reverses `newest` (Q17, Q28). Equip and unequip match on the copy `newest` left. */
 function reverses(newest: ListedActionFacts, next: ListedActionFacts): boolean {
   if (REVERSE[newest.kind] !== next.kind) return false;
   if ((newest.kind === 'equip' || newest.kind === 'unequip') && (next.kind === 'equip' || next.kind === 'unequip')) {
     return newest.resultId !== undefined && newest.resultId === next.copyId;
   }
-  return newest.item.key === next.item.key && quantityOf(newest) === quantityOf(next) && targetOf(newest) === targetOf(next);
+  return itemKeyOf(newest) === itemKeyOf(next) && quantityOf(newest) === quantityOf(next) && targetOf(newest) === targetOf(next);
 }
 
 /** Whether `next` repeats `newest`: same kind, item, target and quantity, of a kind that collapses (Q18, Q28). */
 const repeats = (newest: ListedActionFacts, next: ListedActionFacts): boolean =>
-  COLLAPSES.includes(next.kind) && newest.kind === next.kind && newest.item.key === next.item.key
+  COLLAPSES.includes(next.kind) && newest.kind === next.kind && itemKeyOf(newest) === itemKeyOf(next)
   && targetOf(newest) === targetOf(next) && quantityOf(newest) === quantityOf(next);
 
 /** The list without its newest repeat, and the snapshot to restore. Null on an empty list (Q2, Q16). */
@@ -77,9 +84,21 @@ export function reversalOf<S>(list: ActionList<S>, facts: ListedActionFacts): { 
   return undoNewest(list);
 }
 
-/** `list` with the action `facts` added after it ran, `snapshot` being the state just before it. */
+/**
+ * `list` with the action `facts` added after it ran, `snapshot` being the state just before it.
+ * A stat edit of the newest entry's stat merges into it (Q37): the entry keeps its first old value, first snapshot and
+ * hidden flag, and goes when the stat is back at the old value. A new stat entry arrives hidden (Q1).
+ */
 export function addAction<S>(list: ActionList<S>, facts: ListedActionFacts, snapshot: S, id: string): ListedAction<S>[] {
   const newest = list.at(-1);
+  if (facts.kind === 'stat') {
+    if (newest && sameStat(newest.facts, facts)) {
+      const rest = list.slice(0, -1);
+      if (facts.to === newest.facts.from) return rest;
+      return [...rest, { ...newest, facts: { ...newest.facts, to: facts.to } }];
+    }
+    return facts.from === facts.to ? [...list] : [...list, { id, facts, count: 1, hidden: true, snapshots: [snapshot] }];
+  }
   if (newest && repeats(newest.facts, facts)) {
     return [...list.slice(0, -1), { ...newest, count: newest.count + 1, snapshots: [...newest.snapshots, snapshot] }];
   }
@@ -114,6 +133,7 @@ export function entryLine(entry: Pick<ListedAction<unknown>, 'facts' | 'count'>)
       case 'give': return `Gave ${counted(facts.quantity, facts.item.name)} to ${facts.to.name}`;
       case 'drop': return `Dropped ${counted(facts.quantity, facts.item.name)}`;
       case 'pickup': return `Picked up ${counted(facts.quantity, facts.item.name)}`;
+      case 'stat': return `${facts.owner ? `${facts.owner.name}’s ` : ''}${facts.stat.name} ${Math.round(facts.from)} → ${Math.round(facts.to)}`;
     }
   })();
   return entry.count > 1 ? `${text} ×${entry.count}` : text;
