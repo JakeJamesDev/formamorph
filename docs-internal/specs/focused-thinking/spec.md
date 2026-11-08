@@ -13,9 +13,11 @@ The narrator is left to decide for itself whom the turn is about. No pass tells 
 
 A new Thinking Mode, **Focused (Experimental)**. Before narration, a **Focus Classifier** reads the player's action, the last narration and a short roster of the entities here and in sublocations. It gives each entity one **Focus Tier**:
 
-- **Focus**: the turn is about it. The narration gets its full block, as today.
-- **Background**: it is here but not the point of the turn. The narration gets its summary render.
-- **Offstage**: it is not part of this scene. The narration gets its name in one short list.
+- **Focus**: it speaks or acts this turn, or the player acts on it. The narration gets its full block, as today.
+- **Mentionable**: it does not act, but the narration may mention it: it is nearby, or the people here talk about it or react to it. The narration gets its summary render.
+- **Unused**: the narration has no reason to bring it up this turn. The narration gets its name in one short list.
+
+The tiers follow what the narration needs this turn, not where an entity is (Q28).
 
 Code builds the narration request from the tiers. The narration prompt never asks the narrator to pick whom to use. A failed call or an unreadable reply sends the full roster, so the worst turn equals today's.
 
@@ -33,8 +35,8 @@ Settled with the user on 2026-11-06 in the grill.
 | Q4 | Three tiers |
 | Q5 | The classifier sees each entity's name and AI summary. An entity with no summary sends its full description |
 | Q6 | Entities in sublocations are classified too |
-| Q7 | Background renders as today's summary roster does: summary over description, trait names only, no stats |
-| Q8 | Offstage entities appear by name in one short list |
+| Q7 | Mentionable renders as today's summary roster does: summary over description, trait names only, no stats |
+| Q8 | Unused entities appear by name in one short list |
 | Q9 | No code-side floors in the first version. The classifier decides alone, so the probe shows what it misses |
 | Q10 | A failed call or a parse failure sends the full roster |
 | Q11 | The Focus Classifier is its own prompt kind with its own sampler pins. Its endpoint defaults to the narration endpoint |
@@ -47,13 +49,14 @@ Settled with the user on 2026-11-06 in the grill.
 | Q18 | Post-narration passes keep their own rosters |
 | Q19 | The tiers show only in the request inspector |
 | Q20 | The picker label is "Focused (Experimental)" |
-| Q21 | Tier names: Focus, Background, Offstage. "Present" belongs to In Scene's _Avoid_ list |
+| Q21 | Tier names: Focus, Background, Offstage (renamed by Q28). "Present" belongs to In Scene's _Avoid_ list |
 | Q22 | One test seam: the turn runner with scripted AI replies. The probe harness covers model quality outside the gates |
-| Q23 | The continuity rubric has two parts. Objective counts per turn: Focus facts kept, Background entities kept in the scene, Offstage entities wrongly put onstage, and invented strangers who duplicate an existing entity. Plus a blind 1–5 continuity score on shuffled, label-stripped full/trimmed pairs. "No worse" means the trimmed mean is within the full arm's confidence interval on both parts |
+| Q23 | The continuity rubric has two parts. Objective counts per turn: Focus facts kept, Mentionable entities kept in the scene, Unused entities wrongly put onstage, and invented strangers who duplicate an existing entity. Plus a blind 1–5 continuity score on shuffled, label-stripped full/trimmed pairs. "No worse" means the trimmed mean is within the full arm's confidence interval on both parts |
 | Q24 | The probe sends the classifier temperature 0.2 and repetition penalty 1. Ticket 02 copies these as the pins. A sweep runs only if 0.2 misses the bar |
-| Q25 | The Offstage list follows the sublocation roster under a provisional header. Ticket 02 sets the final wording |
+| Q25 | The Unused list follows the sublocation roster under a provisional header. Ticket 02 sets the final wording |
 | Q26 | Ticket 01 may land after the cloud numbers, with the Cydonia criterion unticked. Ticket 02 stays blocked until the Cydonia numbers meet the bar |
 | Q27 | Ticket 01 may revise the classifier prompt up to 3 times. It tunes on a fixed half of the cases and reports the held-out half beside the full set. If the held-out half misses the bar after 3 revisions, the ticket lands with the failing numbers and the spec returns to the grill |
+| Q28 | Tiers follow what the narration needs this turn, not where an entity is. Names: Focus, Mentionable, Unused. A villain far away but talked about is Mentionable. Someone who just left is Mentionable while the people here react to them, and Unused once they have moved on |
 
 ## User Stories
 
@@ -73,7 +76,7 @@ Settled with the user on 2026-11-06 in the grill.
 14. As a player debugging a turn, I want the request inspector to show each entity's tier, so that I can see why a character got little detail.
 15. As a player on Native, Inline, Planning or Staged, I want my turns unchanged, so that the experiment cannot affect me.
 16. As a player in Focused mode, I want choices, stats, inventory, diary and discover to keep their usual rosters, so that game state stays correct.
-17. As an author, I want my entities' AI summaries used for Background entities, so that the summary I wrote has a clear job.
+17. As an author, I want my entities' AI summaries used for Mentionable entities, so that the summary I wrote has a clear job.
 18. As an author whose entity has no summary, I want the classifier to read its description, so that the entity is still sorted.
 19. As an author, I want entities in sublocations sorted the same way as entities here, so that one rule covers both.
 20. As a developer, I want a probe with hand-labeled turns to pass before the mode is built, so that we do not build a pipeline that does not help.
@@ -90,17 +93,17 @@ Settled with the user on 2026-11-06 in the grill.
 - **Focus Classifier pass.** A new pre-narration turn pass with its own prompt kind. It has sampler pins in the per-prompt sampler table, an endpoint setting that defaults to the narration endpoint, and native reasoning off. It is due only in Focused mode, and it waits for the location decision.
 - **Classifier request.** The system prompt states the task and the reply contract. The user turn carries the player's action, the last narration, and one line per entity here and in sublocations: a letter, the name, and the AI summary (the full description when the summary is blank). Letters come from the existing placement-letter helper, so the parse never matches names.
 - **Reply contract.** One line per letter with a tier word. The parser reads the reply into a map from entity id to Focus Tier. A missing letter, an unknown tier word, or no readable line at all counts as a parse failure for the whole reply, and the turn falls back to the full roster. Partial fills are not used.
-- **Roster render.** The entity roster builder takes an optional tier map. Focus renders today's full block. Background renders today's summary block (`preferSummary` with stats off). Offstage entities leave the roster and join a one-line name list. With no tier map, the builder renders exactly as today. The narration's two full-detail scopes (here and sublocations) read the map; every other scope ignores it.
-- **Narration prompt.** Focused mode uses the Native narration path. The prompt says nothing about tiers. It only receives the trimmed roster and the Offstage list.
+- **Roster render.** The entity roster builder takes an optional tier map. Focus renders today's full block. Mentionable renders today's summary block (`preferSummary` with stats off). Unused entities leave the roster and join a one-line name list. With no tier map, the builder renders exactly as today. The narration's two full-detail scopes (here and sublocations) read the map; every other scope ignores it.
+- **Narration prompt.** Focused mode uses the Native narration path. The prompt says nothing about tiers. It only receives the trimmed roster and the Unused list.
 - **Request inspector.** The AI Context view shows each classified entity with its tier, and says when the turn fell back to the full roster.
-- **Glossary.** CONTEXT.md gains **Focus Classifier**, **Focus Tier** (Focus, Background, Offstage) and **Focused** as a Thinking Mode. Each entry notes that In Scene is a separate idea: In Scene is who took part in recent turns, a Focus Tier is what the narration gets this turn.
+- **Glossary.** CONTEXT.md gains **Focus Classifier**, **Focus Tier** (Focus, Mentionable, Unused) and **Focused** as a Thinking Mode. Each entry notes that In Scene is a separate idea: In Scene is who took part in recent turns, a Focus Tier is what the narration gets this turn.
 - **Probe (ticket 01).** A harness script under `testing/baseline/harness/` with a labeled case file. Each case is a turn: world, location, the entities here, the action, the last narration, and the expected tier for each entity. The script reports Focus recall, tier match, parse failures and the entity tokens saved. A second arm sends narration with the full roster and with the hand-labeled trimmed roster for the same turns, and scores both on the continuity rubric. It replicates the sampler pins and sends `reasoning_effort: "none"` to the classifier. Runs follow the probe skill's run counts and in-batch controls.
 
 ## Testing Decisions
 
 - A good test drives a turn and reads the narration request the turn sends. It never inspects parser internals or the tier map directly.
 - **One seam: the turn runner** with scripted AI replies, as the turn runner tests do today. Each test scripts the classifier's reply and asserts on the narration request:
-  - A Focus entity's full block is in the request; a Background entity's summary is in it and its stats are not; an Offstage entity is only in the name list.
+  - A Focus entity's full block is in the request; a Mentionable entity's summary is in it and its stats are not; an Unused entity is only in the name list.
   - A sublocation entity follows its tier the same way.
   - A garbled reply, a reply missing a letter, and a failed classifier call each send the full roster.
   - A move to a new location makes the classifier see the destination's entities.

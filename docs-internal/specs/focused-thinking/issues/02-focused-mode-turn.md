@@ -9,7 +9,7 @@ Opus at high: it adds a turn pass and changes the shared entity roster builder u
 
 ## What to build
 
-A player picks Focused (Experimental) in the Thinking Mode picker and plays a turn. The turn runs the location passes, then the Focus Classifier, then narration (Q2, Q15). Narration gets each Focus entity's full block, each Background entity's summary render (summary over description, trait names only, no stats), and Offstage entities as one name list (Q4, Q7, Q8). Entities in sublocations follow their tiers the same way (Q6). The narration prompt says nothing about tiers.
+A player picks Focused (Experimental) in the Thinking Mode picker and plays a turn. The turn runs the location passes, then the Focus Classifier, then narration (Q2, Q15). Narration gets each Focus entity's full block, each Mentionable entity's summary render (summary over description, trait names only, no stats), and Unused entities as one name list (Q4, Q7, Q8). Entities in sublocations follow their tiers the same way (Q6). The narration prompt says nothing about tiers.
 
 - `focused` joins the Thinking Mode values; the picker shows "Focused (Experimental)" (Q1, Q20). Copy follows the Writing Guide.
 - The classifier is a new pre-narration pass and its own prompt kind, using the prompt text from ticket 01. It has sampler pins in the per-prompt sampler table, sends native reasoning off, and uses the narration endpoint (Q11, Q16). Its prompt editor tab and endpoint setting come in ticket 03.
@@ -21,7 +21,7 @@ A player picks Focused (Experimental) in the Thinking Mode picker and plays a tu
 
 ## Acceptance criteria
 
-- [ ] With a scripted classifier reply, the narration request holds the Focus entity's full block, the Background entity's summary without its stats, and the Offstage entity only in the name list.
+- [ ] With a scripted classifier reply, the narration request holds the Focus entity's full block, the Mentionable entity's summary without its stats, and the Unused entity only in the name list.
 - [ ] A sublocation entity follows its tier the same way.
 - [ ] A garbled reply, a reply missing a letter, and a failed classifier call each send the full roster, and each test fails when its fallback is removed.
 - [ ] After a move, the classifier request lists the destination's entities.

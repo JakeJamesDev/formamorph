@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.6.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.6.0** — the latest released version.
+> ✅ **3.0.0 – 3.6.1 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.6.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,19 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.6.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.6.1** (just released below)._
+
+### Minor Changes
+
+#### ➕ Added
+
+- **🛠️ Developer tooling**
+  - **The dev router starts a new game in any bundled world with `fixture=bundled-<world id>`.** Page one is the world's first Opening Narration, so release screenshots show real art and text without a model.
+
+---
+
+<details>
+<summary><strong>✅ 3.6.1 — Released 2026-11-08</strong> — Edge To Edge Window on Windows — the CUDA engine for NVIDIA cards — collapsible game panels — Merge Your Other Data — the story moves you up to three steps (click to expand)</summary>
 
 ### Minor Changes
 
@@ -23,13 +35,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The main menu has Load Game and Settings buttons, and the Settings Data tab has Back Up and Restore buttons.** A narrow window folds the action buttons, Load Game and Settings into one **More Actions** menu at the right. On mobile they stay in the menu at the left. The World Editor's search centers whenever both sides have room.
     - **The Windows desktop app's window buttons stay readable over bright world art, and fade behind popups.** A soft shade sits behind them in game. They return to full color once every popup closes.
     - **The Entity View slides open and shut in game.** Its arrow turns as the section moves, and the tabs below follow. With reduced motion, it changes at once.
-    - **Full screen in the Windows desktop app now uses the whole width, with Exit Full Screen in More Actions.** The room held for the window buttons goes away in full screen, so the layout matches the browser. **F11** still works.
+    - **Full screen in the Windows desktop app uses the whole width, with Exit Full Screen in More Actions.** The layout matches the browser. **F11** still works.
   - **Merge Your Other Data:**
     - **Windows now tells you when you start Formamorph from the file inside the app folder.** A message box shows the main Formamorph.exe path and offers Show in Folder, then the game opens.
     - **On Windows, the main menu offers to merge worlds, saves, entities and dictionaries left from starts outside the app folder.** Where both copies hold an item, the newer one stays. Choose **Merge**, **Not Now** or **Don't Merge**. A stopped merge is offered again.
     - **On Windows, the merge brings over your settings, sign-in and chosen model folder.** A setting you already have stays. Restart Formamorph when the merge asks, to use the settings that came over.
-    - **On Windows, the merge offer now brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
-    - **The profile merge now moves your downloaded local models.** Models in the other copy's folder move beside the main exe, smallest first. A model you already have stays.
+    - **On Windows, the merge brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
+    - **The merge moves your downloaded local models.** Models in the other copy's folder move beside the main exe, smallest first. A model you already have stays.
   - **CUDA Engine:**
     - **On Windows with an NVIDIA card, the Local Model panel can download NVIDIA's CUDA version of the engine.** The CUDA row shows the size, progress and **Cancel**, and resumes a stopped download. A card or driver that can't run it shows why. **Remove** frees the space, even after support ends.
     - **After an app update, CUDA downloads its new files in the background.** The engine uses Vulkan until they're installed. **Cancel** stops it until you choose **Download** or **Resume**. Once the engine stops, CUDA files from other versions are deleted, except the newest of them.
@@ -47,7 +59,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Regenerate Stats button in the game's Stats panel now names the endpoint it sends to.** It matches the other regenerate buttons.
   - **In game on desktop, each side panel collapses to a rail of labeled tab icons.** Use the thin strip on the panel's inner edge to collapse it or dock it again. Each device remembers its choice, and the story stays centered at a comfortable reading width.
   - **In game on desktop, a collapsed panel's rail icons open their tab in a drawer over the story.** Click the icon again, press Escape, or click elsewhere to close it. The strip on the drawer's edge docks the panel on that tab.
-  - **Take Me There and tutorial steps into a collapsed side panel now open that tab's drawer.** A request for a tab on a docked right panel now selects the tab too.
+  - **Take Me There and tutorial steps into a collapsed side panel open that tab's drawer.** A request for a tab on a docked right panel now selects the tab too.
   - **In game on desktop, pick how wide the story is in its ⋯ menu.** Full Width and Full Height fill the space a collapsed panel leaves, and Reading Width keeps it centered. Each device remembers its choice.
   - **In game on desktop, a dot on the collapsed Stats, Traits or Inventory icon shows that tab changed.** The dot stays until you open that tab.
   - **In game on mobile, swipe left or right to move between Story, Game and Status.** The panel and the tab highlight follow your finger, and a quick flick is enough. A tap on a tab slides across too.
@@ -67,7 +79,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Test files now spend about 14% less time importing and 30% less in setup.** Node-environment tests skip Testing Library. The date field's calendar loads when a pointer or focus reaches its button.
   - **The Focus Classifier probe scores entity tiers and trimmed narration against hand labels.** It reports Focus recall, tier match, parse failures and tokens saved, and compares full and trimmed rosters on continuity.
   - **`npm run title-card -- --layout cover` captures a 1260x1000 itch.io cover image.** It uses the title card's wordmark and app shots, with the model on the right.
-  - **The dev router starts a new game in any bundled world with `fixture=bundled-<world id>`.** Page one is the world's first Opening Narration, so release screenshots show real art and text without a model.
 
 #### ➖ Removed
 
@@ -87,7 +98,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The welcome animation at first launch no longer stutters in the desktop app.** Your local model now loads after it ends, and it starts once the main menu behind it has loaded.
   - **Picking a level on the Formamorph AI levels screen no longer stutters the first time.** Morphie's look for every level loads while you read, most visibly on mobile.
   - **Windows and popups on Android no longer sit under the status bar or the gesture bar.** This fixes the World Editor, full-screen editors, Edit Text, bottom sheets and windows that fill the screen. Popups stay clear when the keyboard opens.
-  - **In the Windows desktop app, dialogs and the Avatar screen no longer slide under the window buttons.** Tall dialogs in a small window keep their close button clear. Avatar Customization and the supporter road start below the buttons.
   - **An avatar now loads in game without freezing the page for a second or more.**
   - **An avatar with an image that can't load now still loads.** It shows without that one image instead of failing.
   - **Editing a big world in the World Editor no longer freezes the page for seconds after each change.** The Test Bench checks your world in the background again.
@@ -99,6 +109,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Items tab tests now mount the panel, not the whole World Editor, and take half the worker time.** 82 of 88 tests moved with coverage held. `src/test/panelBench.tsx` is the helper for the next batches.
   - **Media, Stats and Traits tab tests now mount the panel, not the World Editor, and use half the test time.** 159 tests moved with coverage held; the editor view keeps the cross-tab cases.
   - **The location router probe now shows the model the destination list again.** It renders headed location chips, runs the cloud endpoint without a profile, and compares two prompt versions in one batch. New cases cover waiting at a doorway.
+
+</details>
 
 ---
 

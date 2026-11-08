@@ -67,20 +67,20 @@ const DOCS = {
 
 interface Pair { caseIndex: number; name: string; expected: FocusTier; also?: FocusTier; score: number }
 
-/** Thresholds from the tune half: Focus keeps 95% recall, Background maximizes tier match below it. */
+/** Thresholds from the tune half: Focus keeps 95% recall, Mentionable maximizes tier match below it. */
 function fit(pairs: Pair[]) {
   const tune = pairs.filter((p) => split(p.caseIndex) === 'tune');
   const focus = tune.filter((p) => p.expected === 'Focus').map((p) => p.score).sort((a, b) => a - b);
   const tFocus = focus[Math.floor(focus.length * 0.05)];
   const candidates = [...new Set(tune.map((p) => p.score).filter((s) => s < tFocus))].sort((a, b) => a - b);
-  let best = { tBack: -Infinity, match: -1 };
-  for (const tBack of [-Infinity, ...candidates]) {
-    const match = tune.filter((p) => tierOf(p.score, tFocus, tBack) === p.expected || tierOf(p.score, tFocus, tBack) === p.also).length;
-    if (match > best.match) best = { tBack, match };
+  let best = { tMention: -Infinity, match: -1 };
+  for (const tMention of [-Infinity, ...candidates]) {
+    const match = tune.filter((p) => tierOf(p.score, tFocus, tMention) === p.expected || tierOf(p.score, tFocus, tMention) === p.also).length;
+    if (match > best.match) best = { tMention, match };
   }
-  return { tFocus, tBack: best.tBack };
+  return { tFocus, tMention: best.tMention };
 }
-const tierOf = (s: number, tFocus: number, tBack: number): FocusTier => (s >= tFocus ? 'Focus' : s >= tBack ? 'Background' : 'Offstage');
+const tierOf = (s: number, tFocus: number, tMention: number): FocusTier => (s >= tFocus ? 'Focus' : s >= tMention ? 'Mentionable' : 'Unused');
 
 /** Probability that a random Focus pair outscores a random non-Focus pair. */
 function auc(pairs: Pair[], positive: (p: Pair) => boolean) {
@@ -92,13 +92,13 @@ function auc(pairs: Pair[], positive: (p: Pair) => boolean) {
 }
 
 function report(pairs: Pair[]) {
-  const { tFocus, tBack } = fit(pairs);
+  const { tFocus, tMention } = fit(pairs);
   const outcomes = (half?: string): LabelOutcome[] => file.cases.flatMap((c, i) => {
     if (half && split(i) !== half) return [];
     const mine = pairs.filter((p) => p.caseIndex === i);
     return [{
       expected: c.tiers, accepted: c.alsoOk,
-      predicted: Object.fromEntries(mine.map((p) => [p.name, tierOf(p.score, tFocus, tBack)])),
+      predicted: Object.fromEntries(mine.map((p) => [p.name, tierOf(p.score, tFocus, tMention)])),
     }];
   });
   const pct = (a: number, b: number) => `${((100 * a) / b).toFixed(1)}%`;
@@ -106,7 +106,7 @@ function report(pairs: Pair[]) {
   return {
     tune: fmt(tallyLabels(outcomes('tune'))), held: fmt(tallyLabels(outcomes('held'))), all: fmt(tallyLabels(outcomes())),
     focusAuc: auc(pairs, (p) => p.expected === 'Focus').toFixed(3),
-    offstageAuc: auc(pairs, (p) => p.expected !== 'Offstage').toFixed(3),
+    unusedAuc: auc(pairs, (p) => p.expected !== 'Unused').toFixed(3),
   };
 }
 

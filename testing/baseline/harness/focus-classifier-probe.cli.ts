@@ -6,12 +6,12 @@
 //               (measured with max_tokens 1 against the full roster, net of the classifier call itself).
 //   narration   sends the real narration request twice per labeled narration case, with the full roster and
 //               with the hand-labeled trimmed roster, interleaved in one batch. Objective continuity per
-//               passage: Focus facts kept, Background entities still present, Offstage entities put onstage.
+//               passage: Focus facts kept, Mentionable entities still present, Unused entities put onstage.
 //               It also writes a shuffled, label-stripped judge packet for the blind 1-5 continuity score.
 //   merge       --judge <scores.json> --run <narration run.json> joins the blind scores back to their arms.
 //
 // The trimmed roster renders through the app's own chips: Focus entities get the scope's full block,
-// Background entities its summary block with stats off, and Offstage names join one list after the
+// Mentionable entities its summary block with stats off, and Unused names join one list after the
 // sublocation roster under a provisional header.
 //
 // Usage: npx vite-node testing/baseline/harness/focus-classifier-probe.cli.ts --
@@ -49,14 +49,14 @@ const only = argVal('--only', '');
 const dump = argVal('--dump', '');
 // The classifier's sampler pins, for ticket 02 to copy into PROMPT_SAMPLER_PINS (Q24).
 const CLASSIFIER_PINS = { temperature: 0.2, repetitionPenalty: 1 };
-const OFFSTAGE_HEADER = '## Elsewhere, not in this scene';
+const UNUSED_HEADER = '## Not part of this turn';
 const SEED = 4242;
 
 interface Scene { world: string; location: string; here: string[]; sub: Record<string, string[]> }
 interface Case {
   id: string; scene: string; covers: string[]; narration?: boolean;
   prevAction: string; lastNarration: string; action: string; tiers: Record<string, FocusTier>;
-  /** A second tier that also scores as a match, for Background-vs-Offstage toss-ups. */
+  /** A second tier that also scores as a match, for Mentionable-vs-Unused toss-ups. */
   alsoOk?: Record<string, FocusTier>;
 }
 interface Marks { presence: string; facts: string[] }
@@ -155,21 +155,21 @@ const rosterScopeOf = (key: string) => {
 };
 const realValue = (text: string | undefined) => (text && text.trim() !== NONE_PLACEHOLDER ? text.trimEnd() : null);
 
-/** The narration chip values for `tiers`: Focus full, Background summary without stats, Offstage named once. */
+/** The narration chip values for `tiers`: Focus full, Mentionable summary without stats, Unused named once. */
 function trimmedCtx(b: Built, tiers: Record<string, FocusTier>): ValueLookup {
   const full = b.ctxFor();
   const named = (tier: FocusTier) => new Set(Object.entries(tiers).filter(([, t]) => t === tier).map(([name]) => name));
   const focusCtx = b.ctxFor(named('Focus'));
-  const backgroundCtx = b.ctxFor(named('Background'));
-  const offstage = b.roster.filter((e) => tiers[e.name] === 'Offstage').map((e) => e.name);
+  const mentionableCtx = b.ctxFor(named('Mentionable'));
+  const unused = b.roster.filter((e) => tiers[e.name] === 'Unused').map((e) => e.name);
   return (key: string) => {
     const roster = rosterScopeOf(key);
     if (!roster) return full(key);
     const { decoded, scope } = roster;
     const summaryId = encodeVariant(decoded.variable, { ...decoded.selection, content: 'summary', stats: 'nostats' });
-    const parts = [realValue(focusCtx(key)), realValue(backgroundCtx(summaryId ? `<ENTITIES|${summaryId}>` : '<ENTITIES>'))];
+    const parts = [realValue(focusCtx(key)), realValue(mentionableCtx(summaryId ? `<ENTITIES|${summaryId}>` : '<ENTITIES>'))];
     // The list rides the sublocation roster, so a template without that chip drops it.
-    if (scope === 'sublocations' && offstage.length) parts.push(`\n${OFFSTAGE_HEADER}\n${offstage.join(', ')}`);
+    if (scope === 'sublocations' && unused.length) parts.push(`\n${UNUSED_HEADER}\n${unused.join(', ')}`);
     const text = parts.filter((p): p is string => p !== null).join('\n');
     return text ? `${text}\n` : NONE_PLACEHOLDER;
   };
@@ -309,18 +309,18 @@ async function classifierArm() {
 }
 
 type Arm = 'full' | 'trimmed';
-interface Passage { id: string; case: string; run: number; arm: Arm; text: string; promptTokens: number; focusFacts: number; backgroundPresent: number; offstageOnstage: number }
+interface Passage { id: string; case: string; run: number; arm: Arm; text: string; promptTokens: number; focusFacts: number; mentionablePresent: number; unusedOnstage: number }
 
 /** Objective continuity of one passage against the case's labels. */
 function continuity(c: Case, text: string) {
   const hit = (pattern: string) => new RegExp(pattern, 'i').test(text);
   const ofTier = (tier: FocusTier) => Object.entries(c.tiers).filter(([, t]) => t === tier).map(([name]) => name);
   const facts = ofTier('Focus').flatMap((name) => file.marks[name]?.facts ?? []);
-  const background = ofTier('Background');
+  const mentionable = ofTier('Mentionable');
   return {
     focusFacts: facts.length ? facts.filter(hit).length / facts.length : NaN,
-    backgroundPresent: background.length ? background.filter((name) => hit(file.marks[name].presence)).length / background.length : NaN,
-    offstageOnstage: ofTier('Offstage').filter((name) => hit(file.marks[name].presence)).length,
+    mentionablePresent: mentionable.length ? mentionable.filter((name) => hit(file.marks[name].presence)).length / mentionable.length : NaN,
+    unusedOnstage: ofTier('Unused').filter((name) => hit(file.marks[name].presence)).length,
   };
 }
 
@@ -342,7 +342,7 @@ async function narrationArm() {
     return { full: full.filter((_, i) => keep[i]), trimmed: trimmed.filter((_, i) => keep[i]) };
   };
   console.log(`\nmodel ${model} · runs ${runs} per arm · cases ${picked.length}`);
-  for (const [metric, higher] of [['focusFacts', true], ['backgroundPresent', true], ['offstageOnstage', false], ['promptTokens', false]] as const) {
+  for (const [metric, higher] of [['focusFacts', true], ['mentionablePresent', true], ['unusedOnstage', false], ['promptTokens', false]] as const) {
     const { full, trimmed } = pairs(metric);
     const d = pairedDiff(full, trimmed, higher);
     const f = meanCi(full); const t = meanCi(trimmed);

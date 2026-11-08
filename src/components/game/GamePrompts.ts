@@ -252,13 +252,13 @@ export const defaultFocusClassifierPrompt = `You are the scene caster for an int
 You read the player's action, the scene just told, and a lettered list. Entries under a sublocation's name are in a smaller place inside this one.
 
 Judge each letter on its own:
-- Focus: the action or the scene just told involves it: it is spoken to, used, looked at, asked about, waiting on the player, or about to act. Mark every letter that fits; a turn often has several.
-- Background: it shares the player's space and the player would notice it now, but this turn does not involve it.
-- Offstage: every other letter, including anyone out of the player's sight and entries in a sublocation the action does not reach.
+- Focus: it speaks or acts in the next scene, or the action acts on it: it is spoken to, used, looked at, waiting on the player, or about to act. Mark every letter that fits; a turn often has several.
+- Mentionable: it does not act, but the next scene may mention it: the player would notice it nearby, or the action or the people here talk about it or react to it.
+- Unused: every other letter. The next scene has no reason to bring it up, including anyone who has left once the people here have moved on, and entries in a sublocation the action does not reach.
 
 When the action takes the player to a new place, the list is that place's.
 
-Reply with one line per letter, in list order, and nothing else: the letter, a colon, and Focus, Background or Offstage.`;
+Reply with one line per letter, in list order, and nothing else: the letter, a colon, and Focus, Mentionable or Unused.`;
 
 export const defaultFocusClassifierUserPrompt = `<PLAYER ACTION|format=markdown|header="The player's action">
 <NARRATION|format=markdown|header="The scene just told">`;

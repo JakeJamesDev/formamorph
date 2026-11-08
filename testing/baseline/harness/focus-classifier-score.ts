@@ -1,6 +1,6 @@
 // Scoring for the Focus Classifier probe: the reply parser, the label metrics, and the arm comparison.
 
-export const FOCUS_TIERS = ['Focus', 'Background', 'Offstage'] as const;
+export const FOCUS_TIERS = ['Focus', 'Mentionable', 'Unused'] as const;
 export type FocusTier = (typeof FOCUS_TIERS)[number];
 
 const LETTER_LINE = /^[\s*_>#-]*\(?([A-Z]{1,2})\)?[*_]*\s*[:.)–—-]\s*[*_]*\s*([A-Za-z]+)/;

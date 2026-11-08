@@ -1,6 +1,7 @@
 # 13: Selection Narrowing
 
-Status: ready-for-agent
+Status: in-progress
+Base: a5fa04831
 Blocked by: 06, 12
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

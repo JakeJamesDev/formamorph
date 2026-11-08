@@ -11,7 +11,7 @@ Sonnet at medium: a read-only view of a record ticket 02 already stores.
 
 A player debugging a Focused turn opens the request inspector (AI Context view) and sees why an entity got little detail (Q19).
 
-- The narration request's view lists each classified entity with its Focus Tier: Focus, Background or Offstage.
+- The narration request's view lists each classified entity with its Focus Tier: Focus, Mentionable or Unused.
 - A turn that fell back to the full roster says so, with the reason: the call failed or the reply did not parse.
 - Turns in other Thinking Modes show nothing new.
 - No game UI outside the inspector changes. Copy follows the Writing Guide; the view follows the Design System.

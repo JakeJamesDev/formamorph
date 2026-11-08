@@ -1,253 +1,2696 @@
 {
   "scenes": {
-    "sedge": { "world": "testing/baseline/sedge-landing.json", "location": "Sedge Landing", "here": ["Bram", "Odette", "Rope Ferry"], "sub": {} },
-    "tavern": { "world": "src/defaultworlds/emberwatch.json", "location": "The Cinder and Crown", "here": ["Sylvie Thornwhistle", "Corvin Vale", "Wenna Tallow"], "sub": {} },
-    "keep": { "world": "src/defaultworlds/emberwatch.json", "location": "Emberwatch Keep", "here": ["Albus", "Sylvie Thornwhistle", "Captain Orrin Blackwell"], "sub": { "The Smithy": ["Bram Oakes"] } },
-    "square": { "world": "src/defaultworlds/emberwatch.json", "location": "Ashford Square", "here": ["Corvin Vale", "Mara Venn", "Reeve Godric Holt"], "sub": {} },
-    "cafeteria": { "world": "src/defaultworlds/valentines.json", "location": "Cafeteria", "here": ["The Swarm", "Rin Hayama", "Mrs. Okabe", "Haruto Mori"], "sub": {} },
-    "hallway": { "world": "src/defaultworlds/valentines.json", "location": "Second-Floor Hallway", "here": ["The Swarm", "Rin Hayama"], "sub": { "Classroom 2-B": ["Hana Sakuragi"], "Rooftop": ["Sora Amagi"], "Art Wing": ["Mei Tachibana", "Mr. Kuroda"], "Library": ["Ms. Fujimura"] } },
-    "hospital": { "world": "src/defaultworlds/slime.json", "location": "Ashburn General", "here": ["Quarantine Watch", "Dr. Ines Varga", "The Ward Mimic"], "sub": {} },
-    "fort": { "world": "src/defaultworlds/rampage.json", "location": "Fort Bastion", "here": ["Jet Fighter", "General Vasquez", "Aegis-One", "Dr. Lena Sorensen", "Captain Theo Ward"], "sub": { "Cedar Hollow": ["Artillery Battery", "Cedar Hollow Evacuees"] } },
-    "sunkwater": { "world": "src/defaultworlds/veilwood.json", "location": "Sunkwater", "here": ["Dread Crawler", "Bleeding Tooth", "Bark Frogs", "Mire Leeches"], "sub": { "Sunkwater Belfry": ["The Drowned Bell"] } }
+    "sedge": {
+      "world": "testing/baseline/sedge-landing.json",
+      "location": "Sedge Landing",
+      "here": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "sub": {}
+    },
+    "tavern": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "The Cinder and Crown",
+      "here": [
+        "Sylvie Thornwhistle",
+        "Corvin Vale",
+        "Wenna Tallow"
+      ],
+      "sub": {}
+    },
+    "keep": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "Emberwatch Keep",
+      "here": [
+        "Albus",
+        "Sylvie Thornwhistle",
+        "Captain Orrin Blackwell"
+      ],
+      "sub": {
+        "The Smithy": [
+          "Bram Oakes"
+        ]
+      }
+    },
+    "square": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "Ashford Square",
+      "here": [
+        "Corvin Vale",
+        "Mara Venn",
+        "Reeve Godric Holt"
+      ],
+      "sub": {}
+    },
+    "cafeteria": {
+      "world": "src/defaultworlds/valentines.json",
+      "location": "Cafeteria",
+      "here": [
+        "The Swarm",
+        "Rin Hayama",
+        "Mrs. Okabe",
+        "Haruto Mori"
+      ],
+      "sub": {}
+    },
+    "hallway": {
+      "world": "src/defaultworlds/valentines.json",
+      "location": "Second-Floor Hallway",
+      "here": [
+        "The Swarm",
+        "Rin Hayama"
+      ],
+      "sub": {
+        "Classroom 2-B": [
+          "Hana Sakuragi"
+        ],
+        "Rooftop": [
+          "Sora Amagi"
+        ],
+        "Art Wing": [
+          "Mei Tachibana",
+          "Mr. Kuroda"
+        ],
+        "Library": [
+          "Ms. Fujimura"
+        ]
+      }
+    },
+    "hospital": {
+      "world": "src/defaultworlds/slime.json",
+      "location": "Ashburn General",
+      "here": [
+        "Quarantine Watch",
+        "Dr. Ines Varga",
+        "The Ward Mimic"
+      ],
+      "sub": {}
+    },
+    "fort": {
+      "world": "src/defaultworlds/rampage.json",
+      "location": "Fort Bastion",
+      "here": [
+        "Jet Fighter",
+        "General Vasquez",
+        "Aegis-One",
+        "Dr. Lena Sorensen",
+        "Captain Theo Ward"
+      ],
+      "sub": {
+        "Cedar Hollow": [
+          "Artillery Battery",
+          "Cedar Hollow Evacuees"
+        ]
+      }
+    },
+    "sunkwater": {
+      "world": "src/defaultworlds/veilwood.json",
+      "location": "Sunkwater",
+      "here": [
+        "Dread Crawler",
+        "Bleeding Tooth",
+        "Bark Frogs",
+        "Mire Leeches"
+      ],
+      "sub": {
+        "Sunkwater Belfry": [
+          "The Drowned Bell"
+        ]
+      }
+    },
+    "drone-wastes": {
+      "world": "src/defaultworlds/drone.json",
+      "location": "Scavenger Wastes",
+      "here": [
+        "Rustjaw",
+        "Old Corwin"
+      ],
+      "sub": {
+        "Hulkfall Camp": [
+          "Sabi"
+        ],
+        "The Leviathan": [
+          "Glassback Burrower"
+        ]
+      }
+    },
+    "drone-frontier": {
+      "world": "src/defaultworlds/drone.json",
+      "location": "Demon Frontier",
+      "here": [
+        "Ser Halden",
+        "Blightspawn"
+      ],
+      "sub": {
+        "Fort Graywatch": [
+          "Squire Wren"
+        ],
+        "The Blight Line": [
+          "Herald Skarn"
+        ],
+        "Blightcrown Peaks": [
+          "Tiamat",
+          "Blight Drake"
+        ]
+      }
+    },
+    "drone-capital": {
+      "world": "src/defaultworlds/drone.json",
+      "location": "Ashfall Capital",
+      "here": [
+        "Archon Vael",
+        "Lady Morrow"
+      ],
+      "sub": {
+        "Undercity Vaults": [
+          "Vault Warden"
+        ]
+      }
+    },
+    "sugar-hills": {
+      "world": "src/defaultworlds/sugarscape.json",
+      "location": "Sundaelora",
+      "here": [
+        "Cream Cyclone",
+        "Gummy Bear",
+        "Sprinkle Swarmers",
+        "Cookie Brawler",
+        "Gingerbread Waypost"
+      ],
+      "sub": {
+        "Fudge Creek": [
+          "Fudge Otters"
+        ]
+      }
+    },
+    "sugar-ridge": {
+      "world": "src/defaultworlds/sugarscape.json",
+      "location": "The Toffee Ridge",
+      "here": [
+        "Saltlick Stones",
+        "Brittle Ram",
+        "Toffee Slide",
+        "Gingerbread Waypost"
+      ],
+      "sub": {
+        "The Caramel Caves": [
+          "Rock Candy Bats",
+          "Caramel Seep"
+        ]
+      }
+    },
+    "sugar-marsh": {
+      "world": "src/defaultworlds/sugarscape.json",
+      "location": "The Marshmallow Marsh",
+      "here": [
+        "Cream Cyclone",
+        "Puffmallow Toad",
+        "Fluffbog",
+        "Gingerbread Waypost"
+      ],
+      "sub": {}
+    },
+    "veilwood-fig": {
+      "world": "src/defaultworlds/veilwood.json",
+      "location": "The Hollow Fig",
+      "here": [
+        "Dread Crawler",
+        "Ember Spire",
+        "The Surveyor's Blazes",
+        "Lantern Moths"
+      ],
+      "sub": {
+        "The Surveyor's Camp": [
+          "The Surveyor's Journal"
+        ]
+      }
+    },
+    "veilwood-gloomcap": {
+      "world": "src/defaultworlds/veilwood.json",
+      "location": "Gloomcap Thicket",
+      "here": [
+        "Ember Speckle",
+        "Ember Spire",
+        "Night Veil",
+        "Cerulean Vex",
+        "Shadow Raptor",
+        "Sporeburst Puffball",
+        "Bark Frogs"
+      ],
+      "sub": {}
+    },
+    "veilwood-edge": {
+      "world": "src/defaultworlds/veilwood.json",
+      "location": "The Eastern Edge",
+      "here": [
+        "Shadow Raptor",
+        "Lantern Moths",
+        "The Surveyor's Blazes"
+      ],
+      "sub": {
+        "The Surveyor's Cache": [
+          "The Map's Other Half"
+        ]
+      }
+    },
+    "slime-marquette": {
+      "world": "src/defaultworlds/slime.json",
+      "location": "The Marquette District",
+      "here": [
+        "Green Slime",
+        "Quarantine Watch",
+        "The Loudspeakers"
+      ],
+      "sub": {
+        "The Night Pharmacy": [
+          "Hollis Pratt"
+        ]
+      }
+    },
+    "slime-bridge": {
+      "world": "src/defaultworlds/slime.json",
+      "location": "The Causeway Bridge",
+      "here": [
+        "Quarantine Watch",
+        "Sergeant Abena Okonjo",
+        "The Fog Veil",
+        "The Loudspeakers"
+      ],
+      "sub": {}
+    },
+    "slime-kash": {
+      "world": "src/defaultworlds/slime.json",
+      "location": "KASH Radio",
+      "here": [
+        "Dee Halloran",
+        "The Signal Slime",
+        "The Loudspeakers"
+      ],
+      "sub": {}
+    },
+    "rampage-harbor": {
+      "world": "src/defaultworlds/rampage.json",
+      "location": "Harbor District",
+      "here": [
+        "Attack Helicopter",
+        "Drone",
+        "Police Cordon",
+        "Navy Destroyer",
+        "Channel 8 News Chopper"
+      ],
+      "sub": {
+        "Ferry Terminal": [
+          "Last Ferry"
+        ]
+      }
+    },
+    "rampage-downtown": {
+      "world": "src/defaultworlds/rampage.json",
+      "location": "Downtown Core",
+      "here": [
+        "Battle Tank",
+        "Attack Helicopter",
+        "Channel 8 News Chopper"
+      ],
+      "sub": {
+        "Spire Tower": [
+          "Rooftop Missile Team"
+        ],
+        "Metro Underground": [
+          "Stranded Commuters"
+        ],
+        "Harborgate Bridge": [
+          "Combat Engineers",
+          "Stalled Drivers"
+        ]
+      }
+    },
+    "valentines-gym": {
+      "world": "src/defaultworlds/valentines.json",
+      "location": "Gymnasium",
+      "here": [
+        "The Swarm",
+        "Coach Daizen",
+        "Kenta Ishida"
+      ],
+      "sub": {
+        "Locker Rooms": [
+          "Ren Takeda"
+        ]
+      }
+    },
+    "valentines-busloop": {
+      "world": "src/defaultworlds/valentines.json",
+      "location": "Bus Loop",
+      "here": [
+        "Mr. Gonda",
+        "Coach Daizen",
+        "The Swarm",
+        "Kenta Ishida"
+      ],
+      "sub": {}
+    },
+    "valentines-artwing": {
+      "world": "src/defaultworlds/valentines.json",
+      "location": "Art Wing",
+      "here": [
+        "Mr. Kuroda",
+        "Mei Tachibana",
+        "The Swarm",
+        "Kenta Ishida"
+      ],
+      "sub": {}
+    },
+    "ember-barrow": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "The Barrow Beyond the Wall",
+      "here": [
+        "Albus",
+        "Sylvie Thornwhistle",
+        "Barrow Dead",
+        "Cold Lights"
+      ],
+      "sub": {
+        "The Bier Chamber": [
+          "The Barrow Wight"
+        ],
+        "The Hall of Shields": [
+          "Grave Hounds"
+        ],
+        "The Sorcerer's Vault": [
+          "The Shade of Maelis"
+        ]
+      }
+    },
+    "ember-barrow-corvin": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "The Barrow Beyond the Wall",
+      "here": [
+        "Corvin Vale",
+        "Barrow Dead",
+        "Cold Lights"
+      ],
+      "sub": {
+        "The Bier Chamber": [
+          "The Barrow Wight"
+        ],
+        "The Hall of Shields": [
+          "Grave Hounds"
+        ],
+        "The Sorcerer's Vault": [
+          "The Shade of Maelis"
+        ]
+      }
+    },
+    "ember-chapel": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "Chapel of the Ember",
+      "here": [
+        "Mother Hesk",
+        "Albus",
+        "Sylvie Thornwhistle"
+      ],
+      "sub": {}
+    },
+    "ember-keep-wings": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "Emberwatch Keep",
+      "here": [
+        "Albus",
+        "Sylvie Thornwhistle"
+      ],
+      "sub": {
+        "The Smithy": [
+          "Bram Oakes"
+        ],
+        "The Captain's Hall": [
+          "Captain Orrin Blackwell"
+        ]
+      }
+    },
+    "ember-tavern-night": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "The Cinder and Crown",
+      "here": [
+        "Wenna Tallow",
+        "Sylvie Thornwhistle",
+        "Corvin Vale",
+        "Hob Wainwright"
+      ],
+      "sub": {}
+    },
+    "ember-square-meeting": {
+      "world": "src/defaultworlds/emberwatch.json",
+      "location": "Ashford Square",
+      "here": [
+        "Reeve Godric Holt",
+        "Mara Venn",
+        "Corvin Vale",
+        "Hob Wainwright"
+      ],
+      "sub": {}
+    }
   },
   "cases": [
     {
-      "id": "sedge-ask-ferryman", "scene": "sedge", "covers": ["addressed by role"],
+      "id": "sedge-ask-ferryman",
+      "scene": "sedge",
+      "covers": [
+        "addressed by role"
+      ],
       "prevAction": "I step down onto the landing.",
       "lastNarration": "The boards of the landing give a little under your boots. A broad man with one sleeve pinned up leans against the rope post, watching the water. Off to one side, a small woman turns river-eels over a smoking firepit and does not look up.",
       "action": "I ask the ferryman how much he charges to take me across.",
-      "tiers": { "Bram": "Focus", "Odette": "Background", "Rope Ferry": "Background" }
+      "tiers": {
+        "Bram": "Focus",
+        "Odette": "Mentionable",
+        "Rope Ferry": "Mentionable"
+      }
     },
     {
-      "id": "sedge-eels", "scene": "sedge", "covers": ["described only"], "narration": true,
+      "id": "sedge-eels",
+      "scene": "sedge",
+      "covers": [
+        "described only"
+      ],
+      "narration": true,
       "prevAction": "I step down onto the landing.",
       "lastNarration": "The boards of the landing give a little under your boots. A broad man with one sleeve pinned up leans against the rope post, watching the water. Off to one side, a small woman turns river-eels over a smoking firepit and does not look up.",
       "action": "I wander over to the firepit and watch the woman turning the eels.",
-      "tiers": { "Bram": "Background", "Odette": "Focus", "Rope Ferry": "Background" }
+      "tiers": {
+        "Bram": "Mentionable",
+        "Odette": "Focus",
+        "Rope Ferry": "Mentionable"
+      }
     },
     {
-      "id": "sedge-board", "scene": "sedge", "covers": ["thing used"],
+      "id": "sedge-board",
+      "scene": "sedge",
+      "covers": [
+        "thing used"
+      ],
       "prevAction": "I ask the ferryman how much he charges to take me across.",
       "lastNarration": "\"Two coppers,\" he says, and holds out his one hand. When the coins are in it he nods at the raft tied to the post. \"Both hands on the rope. She leans.\"",
       "action": "I climb onto the raft and take hold of the rope.",
-      "tiers": { "Bram": "Background", "Odette": "Background", "Rope Ferry": "Focus" }
+      "tiers": {
+        "Bram": "Mentionable",
+        "Odette": "Mentionable",
+        "Rope Ferry": "Focus"
+      }
     },
     {
-      "id": "sedge-waiting", "scene": "sedge", "covers": ["left waiting"],
+      "id": "sedge-waiting",
+      "scene": "sedge",
+      "covers": [
+        "left waiting"
+      ],
       "prevAction": "I ask the ferryman how much he charges to take me across.",
       "lastNarration": "\"Two coppers,\" he says. He squints at the sky, then back at you. \"Light's going. You crossing or not?\"",
       "action": "I say nothing and study the far bank for a long moment.",
-      "tiers": { "Bram": "Focus", "Odette": "Background", "Rope Ferry": "Background" }
+      "tiers": {
+        "Bram": "Focus",
+        "Odette": "Mentionable",
+        "Rope Ferry": "Mentionable"
+      }
     },
     {
-      "id": "tavern-rumors", "scene": "tavern", "covers": ["addressed by role"],
+      "id": "tavern-rumors",
+      "scene": "tavern",
+      "covers": [
+        "addressed by role"
+      ],
       "prevAction": "I find a stool at the bar.",
       "lastNarration": "The Cinder and Crown is loud and warm. A round, red-cheeked woman bangs a tankard down in front of you without being asked. At the back table, a slight woman with a crooked grin is losing at dice to a well-dressed man who looks amused about it.",
       "action": "I lean on the bar and ask the keeper what she has heard about the barrow.",
-      "tiers": { "Sylvie Thornwhistle": "Background", "Corvin Vale": "Background", "Wenna Tallow": "Focus" }
+      "tiers": {
+        "Sylvie Thornwhistle": "Mentionable",
+        "Corvin Vale": "Mentionable",
+        "Wenna Tallow": "Focus"
+      }
     },
     {
-      "id": "tavern-wizard", "scene": "tavern", "covers": ["described only"], "narration": true,
+      "id": "tavern-wizard",
+      "scene": "tavern",
+      "covers": [
+        "described only"
+      ],
+      "narration": true,
       "prevAction": "I find a stool at the bar.",
       "lastNarration": "The Cinder and Crown is loud and warm. A round, red-cheeked woman bangs a tankard down in front of you without being asked. At the back table, a slight woman with a crooked grin is losing at dice to a well-dressed man who looks amused about it.",
       "action": "I sit down across from the well-dressed man and ask him what he is really after in the barrow.",
-      "tiers": { "Sylvie Thornwhistle": "Background", "Corvin Vale": "Focus", "Wenna Tallow": "Background" }
+      "tiers": {
+        "Sylvie Thornwhistle": "Mentionable",
+        "Corvin Vale": "Focus",
+        "Wenna Tallow": "Mentionable"
+      }
     },
     {
-      "id": "tavern-toast", "scene": "tavern", "covers": ["group addressed"],
+      "id": "tavern-toast",
+      "scene": "tavern",
+      "covers": [
+        "group addressed"
+      ],
       "prevAction": "I carry my drink to the back table.",
       "lastNarration": "The two at the back table look up as you set your tankard down. The slight woman pulls her dice toward her; the man in the good coat makes room on the bench with a little bow.",
       "action": "I raise my tankard to both of them and drink to the barrow being closed.",
-      "tiers": { "Sylvie Thornwhistle": "Focus", "Corvin Vale": "Focus", "Wenna Tallow": "Background" }
+      "tiers": {
+        "Sylvie Thornwhistle": "Focus",
+        "Corvin Vale": "Focus",
+        "Wenna Tallow": "Mentionable"
+      }
     },
     {
-      "id": "tavern-arrive", "scene": "tavern", "covers": ["move"],
+      "id": "tavern-arrive",
+      "scene": "tavern",
+      "covers": [
+        "move"
+      ],
       "prevAction": "I read the notice board by the well.",
       "lastNarration": "The notices flap in the wind off the wall. Most are old. The newest, nailed over the rest, is the keep's call for hands, and someone has scrawled a tally of names under it.",
       "action": "I push open the door of the Cinder and Crown and head for the hearth.",
-      "tiers": { "Sylvie Thornwhistle": "Background", "Corvin Vale": "Background", "Wenna Tallow": "Focus" }
+      "tiers": {
+        "Sylvie Thornwhistle": "Mentionable",
+        "Corvin Vale": "Mentionable",
+        "Wenna Tallow": "Focus"
+      }
     },
     {
-      "id": "keep-bounty", "scene": "keep", "covers": ["addressed by role"],
+      "id": "keep-bounty",
+      "scene": "keep",
+      "covers": [
+        "addressed by role"
+      ],
       "prevAction": "I walk through the gate into the yard.",
       "lastNarration": "The gate yard smells of smoke and wet stone. A gray-templed officer stands by the posted call for hands, arms folded. Near the well a broad man in plain mail polishes a shield, and a slight woman sits on the well's lip, swinging her heels.",
       "action": "I salute the captain and ask what the bounty pays.",
-      "tiers": { "Albus": "Background", "Sylvie Thornwhistle": "Background", "Captain Orrin Blackwell": "Focus", "Bram Oakes": "Offstage" }
+      "tiers": {
+        "Albus": "Mentionable",
+        "Sylvie Thornwhistle": "Mentionable",
+        "Captain Orrin Blackwell": "Focus",
+        "Bram Oakes": "Unused"
+      }
     },
     {
-      "id": "keep-smith", "scene": "keep", "covers": ["sublocation entity", "named by role"], "narration": true,
+      "id": "keep-smith",
+      "scene": "keep",
+      "covers": [
+        "sublocation entity",
+        "named by role"
+      ],
+      "narration": true,
       "prevAction": "I salute the captain and ask what the bounty pays.",
       "lastNarration": "\"Gold for results,\" the captain says. \"Nothing for stories.\" He looks you over. \"And nothing at all if you go out there with steel that won't bite the dead.\"",
       "action": "I ask the captain where I can get a blade that will cut the dead, and who makes them.",
-      "tiers": { "Albus": "Background", "Sylvie Thornwhistle": "Background", "Captain Orrin Blackwell": "Focus", "Bram Oakes": "Focus" }
+      "tiers": {
+        "Albus": "Mentionable",
+        "Sylvie Thornwhistle": "Mentionable",
+        "Captain Orrin Blackwell": "Focus",
+        "Bram Oakes": "Focus"
+      }
     },
     {
-      "id": "keep-recruit", "scene": "keep", "covers": ["addressed by description"],
+      "id": "keep-recruit",
+      "scene": "keep",
+      "covers": [
+        "addressed by description"
+      ],
       "prevAction": "I walk through the gate into the yard.",
       "lastNarration": "The gate yard smells of smoke and wet stone. A gray-templed officer stands by the posted call for hands, arms folded. Near the well a broad man in plain mail polishes a shield, and a slight woman sits on the well's lip, swinging her heels.",
       "action": "I ask the man polishing the shield whether he will come with me to the barrow.",
-      "tiers": { "Albus": "Focus", "Sylvie Thornwhistle": "Background", "Captain Orrin Blackwell": "Background", "Bram Oakes": "Offstage" }
+      "tiers": {
+        "Albus": "Focus",
+        "Sylvie Thornwhistle": "Mentionable",
+        "Captain Orrin Blackwell": "Mentionable",
+        "Bram Oakes": "Unused"
+      }
     },
     {
-      "id": "keep-gear", "scene": "keep", "covers": ["self-directed"],
+      "id": "keep-gear",
+      "scene": "keep",
+      "covers": [
+        "self-directed"
+      ],
       "prevAction": "I walk through the gate into the yard.",
       "lastNarration": "The gate yard smells of smoke and wet stone. A gray-templed officer stands by the posted call for hands, arms folded. Near the well a broad man in plain mail polishes a shield, and a slight woman sits on the well's lip, swinging her heels.",
       "action": "I sit on a crate by the wall and check my pack and boots.",
-      "tiers": { "Albus": "Background", "Sylvie Thornwhistle": "Background", "Captain Orrin Blackwell": "Background", "Bram Oakes": "Offstage" }
+      "tiers": {
+        "Albus": "Mentionable",
+        "Sylvie Thornwhistle": "Mentionable",
+        "Captain Orrin Blackwell": "Mentionable",
+        "Bram Oakes": "Unused"
+      }
     },
     {
-      "id": "square-notices", "scene": "square", "covers": ["self-directed"],
+      "id": "square-notices",
+      "scene": "square",
+      "covers": [
+        "self-directed"
+      ],
       "prevAction": "I walk down from the keep into the town.",
       "lastNarration": "Ashford Square is half market, half argument. A woman in black stands alone by the well. On the steps of the hall, a heavy man with a chain of office talks loudly to anyone who will listen, and a well-dressed stranger leans on a stall, listening with a small smile.",
       "action": "I read the notices pinned to the board by the well.",
-      "tiers": { "Corvin Vale": "Background", "Mara Venn": "Background", "Reeve Godric Holt": "Background" }
+      "tiers": {
+        "Corvin Vale": "Mentionable",
+        "Mara Venn": "Mentionable",
+        "Reeve Godric Holt": "Mentionable"
+      }
     },
     {
-      "id": "square-widow", "scene": "square", "covers": ["described only"],
+      "id": "square-widow",
+      "scene": "square",
+      "covers": [
+        "described only"
+      ],
       "prevAction": "I walk down from the keep into the town.",
       "lastNarration": "Ashford Square is half market, half argument. A woman in black stands alone by the well. On the steps of the hall, a heavy man with a chain of office talks loudly to anyone who will listen, and a well-dressed stranger leans on a stall, listening with a small smile.",
       "action": "I go to the woman in black by the well and ask if I can help her.",
-      "tiers": { "Corvin Vale": "Background", "Mara Venn": "Focus", "Reeve Godric Holt": "Background" }
+      "tiers": {
+        "Corvin Vale": "Mentionable",
+        "Mara Venn": "Focus",
+        "Reeve Godric Holt": "Mentionable"
+      }
     },
     {
-      "id": "square-reeve", "scene": "square", "covers": ["addressed by role"],
+      "id": "square-reeve",
+      "scene": "square",
+      "covers": [
+        "addressed by role"
+      ],
       "prevAction": "I walk down from the keep into the town.",
       "lastNarration": "Ashford Square is half market, half argument. A woman in black stands alone by the well. On the steps of the hall, a heavy man with a chain of office talks loudly to anyone who will listen, and a well-dressed stranger leans on a stall, listening with a small smile.",
       "action": "I ask the reeve why the town does not trust the keep.",
-      "tiers": { "Corvin Vale": "Background", "Mara Venn": "Background", "Reeve Godric Holt": "Focus" }
+      "tiers": {
+        "Corvin Vale": "Mentionable",
+        "Mara Venn": "Mentionable",
+        "Reeve Godric Holt": "Focus"
+      }
     },
     {
-      "id": "cafeteria-kitchen", "scene": "cafeteria", "covers": ["addressed by role", "about to act"],
+      "id": "cafeteria-kitchen",
+      "scene": "cafeteria",
+      "covers": [
+        "addressed by role",
+        "about to act"
+      ],
       "prevAction": "I run down the stairs toward the cafeteria.",
       "lastNarration": "You skid into the cafeteria. Behind you, the doors bang open again and the first wave of admirers pours in, ribboned boxes held high. A girl with a clipboard is already turning toward the noise, and the cook stands with her arms folded in front of the kitchen door.",
       "action": "I duck behind the counter and beg the cook to let me out through the kitchen.",
-      "tiers": { "The Swarm": "Focus", "Rin Hayama": "Focus", "Mrs. Okabe": "Focus", "Haruto Mori": "Background" }
+      "tiers": {
+        "The Swarm": "Focus",
+        "Rin Hayama": "Focus",
+        "Mrs. Okabe": "Focus",
+        "Haruto Mori": "Mentionable"
+      }
     },
     {
-      "id": "cafeteria-fountain", "scene": "cafeteria", "covers": ["thing used", "owner implied"],
+      "id": "cafeteria-fountain",
+      "scene": "cafeteria",
+      "covers": [
+        "thing used",
+        "owner implied"
+      ],
       "prevAction": "I run down the stairs toward the cafeteria.",
       "lastNarration": "The cafeteria smells of cocoa. A chocolate fountain burbles in the middle of the room, tended by a boy in a cooking-club apron. A girl with a clipboard patrols the aisle, and the cook watches from the kitchen door. The hallway behind you is quiet, for now.",
       "action": "I crouch down behind the chocolate fountain and keep my head low.",
-      "tiers": { "The Swarm": "Background", "Rin Hayama": "Background", "Mrs. Okabe": "Background", "Haruto Mori": "Focus" }
+      "tiers": {
+        "The Swarm": "Mentionable",
+        "Rin Hayama": "Mentionable",
+        "Mrs. Okabe": "Mentionable",
+        "Haruto Mori": "Focus"
+      }
     },
     {
-      "id": "cafeteria-run", "scene": "cafeteria", "covers": ["triggered by a rule"],
+      "id": "cafeteria-run",
+      "scene": "cafeteria",
+      "covers": [
+        "triggered by a rule"
+      ],
       "prevAction": "I slip into the cafeteria through the side door.",
       "lastNarration": "The cafeteria is busy. A girl with a clipboard stands in the main aisle, writing something down. Somewhere out in the hallway, the swarm is calling your name.",
       "action": "I sprint down the main aisle toward the far doors.",
-      "tiers": { "The Swarm": "Background", "Rin Hayama": "Focus", "Mrs. Okabe": "Background", "Haruto Mori": "Background" }
+      "tiers": {
+        "The Swarm": "Mentionable",
+        "Rin Hayama": "Focus",
+        "Mrs. Okabe": "Mentionable",
+        "Haruto Mori": "Mentionable"
+      }
     },
     {
-      "id": "hallway-listen", "scene": "hallway", "covers": ["about to act"],
+      "id": "hallway-listen",
+      "scene": "hallway",
+      "covers": [
+        "about to act"
+      ],
       "prevAction": "I slip out of the stairwell onto the second floor.",
       "lastNarration": "The hallway is too quiet for the last day before break. Somewhere past the corner, many feet are moving together, and a phone chimes, then another, then a dozen.",
       "action": "I press myself flat against the lockers and listen.",
-      "tiers": { "The Swarm": "Focus", "Rin Hayama": "Background", "Hana Sakuragi": "Offstage", "Sora Amagi": "Offstage", "Mei Tachibana": "Offstage", "Mr. Kuroda": "Offstage", "Ms. Fujimura": "Offstage" }
+      "tiers": {
+        "The Swarm": "Focus",
+        "Rin Hayama": "Mentionable",
+        "Hana Sakuragi": "Unused",
+        "Sora Amagi": "Unused",
+        "Mei Tachibana": "Unused",
+        "Mr. Kuroda": "Unused",
+        "Ms. Fujimura": "Unused"
+      }
     },
     {
-      "id": "hallway-peek", "scene": "hallway", "covers": ["sublocation entity", "described only"], "narration": true,
+      "id": "hallway-peek",
+      "scene": "hallway",
+      "covers": [
+        "sublocation entity",
+        "described only"
+      ],
+      "narration": true,
       "prevAction": "I slip out of the stairwell onto the second floor.",
       "lastNarration": "The hallway is clear for the moment. A girl with a clipboard is writing someone up at the far end. The door of your homeroom, 2-B, is shut, and voices behind it go silent as your footsteps pass.",
       "action": "I peek through the window in the door of Classroom 2-B to see who is waiting inside.",
-      "tiers": { "The Swarm": "Background", "Rin Hayama": "Background", "Hana Sakuragi": "Focus", "Sora Amagi": "Offstage", "Mei Tachibana": "Offstage", "Mr. Kuroda": "Offstage", "Ms. Fujimura": "Offstage" }
+      "tiers": {
+        "The Swarm": "Mentionable",
+        "Rin Hayama": "Mentionable",
+        "Hana Sakuragi": "Focus",
+        "Sora Amagi": "Unused",
+        "Mei Tachibana": "Unused",
+        "Mr. Kuroda": "Unused",
+        "Ms. Fujimura": "Unused"
+      }
     },
     {
-      "id": "hallway-text", "scene": "hallway", "covers": ["sublocation entity", "named"],
+      "id": "hallway-text",
+      "scene": "hallway",
+      "covers": [
+        "sublocation entity",
+        "named"
+      ],
       "prevAction": "I slip out of the stairwell onto the second floor.",
       "lastNarration": "The hallway is clear for the moment. A girl with a clipboard is writing someone up at the far end. Your phone buzzes in your pocket with the fan club's group chat, again.",
       "action": "I text Sora on the rooftop and ask how the swarm is searching the building.",
-      "tiers": { "The Swarm": "Background", "Rin Hayama": "Background", "Hana Sakuragi": "Offstage", "Sora Amagi": "Focus", "Mei Tachibana": "Offstage", "Mr. Kuroda": "Offstage", "Ms. Fujimura": "Offstage" }
+      "tiers": {
+        "The Swarm": "Mentionable",
+        "Rin Hayama": "Mentionable",
+        "Hana Sakuragi": "Unused",
+        "Sora Amagi": "Focus",
+        "Mei Tachibana": "Unused",
+        "Mr. Kuroda": "Unused",
+        "Ms. Fujimura": "Unused"
+      }
     },
     {
-      "id": "hospital-doctor", "scene": "hospital", "covers": ["addressed by role"],
+      "id": "hospital-doctor",
+      "scene": "hospital",
+      "covers": [
+        "addressed by role"
+      ],
       "prevAction": "I walk into the ER through the ambulance bay.",
       "lastNarration": "The ER is half dark. Two figures in taped rain suits sit at a screening desk by the doors, face shields fogged. Past them, a woman in scrubs moves fast between curtained beds, and in the farthest bed someone lies still under a sheet.",
       "action": "I find the doctor in scrubs and quietly show her the green under the skin of my wrist.",
-      "tiers": { "Quarantine Watch": "Background", "Dr. Ines Varga": "Focus", "The Ward Mimic": "Background" }
+      "tiers": {
+        "Quarantine Watch": "Mentionable",
+        "Dr. Ines Varga": "Focus",
+        "The Ward Mimic": "Mentionable"
+      }
     },
     {
-      "id": "hospital-check", "scene": "hospital", "covers": ["described only"], "narration": true,
+      "id": "hospital-check",
+      "scene": "hospital",
+      "covers": [
+        "described only"
+      ],
+      "narration": true,
       "prevAction": "I walk into the ER through the ambulance bay.",
       "lastNarration": "The ER is half dark. Two figures in taped rain suits sit at a screening desk by the doors, face shields fogged. Past them, a woman in scrubs moves fast between curtained beds, and in the farthest bed someone lies still under a sheet.",
       "action": "I go to the farthest bed and lean close to check on the sleeping patient.",
-      "tiers": { "Quarantine Watch": "Background", "Dr. Ines Varga": "Background", "The Ward Mimic": "Focus" }
+      "tiers": {
+        "Quarantine Watch": "Mentionable",
+        "Dr. Ines Varga": "Mentionable",
+        "The Ward Mimic": "Focus"
+      }
     },
     {
-      "id": "hospital-cordon", "scene": "hospital", "covers": ["described only"],
+      "id": "hospital-cordon",
+      "scene": "hospital",
+      "covers": [
+        "described only"
+      ],
       "prevAction": "I walk up to the hospital doors.",
       "lastNarration": "Floodlights wash the entrance white. A cordon of tape runs across the drive, and at its gap two contractors in rain suits wave people through one at a time, shining flashlights in their faces.",
       "action": "I tug my sleeve down over my wrist and walk past the screening patrol as calmly as I can.",
-      "tiers": { "Quarantine Watch": "Focus", "Dr. Ines Varga": "Offstage", "The Ward Mimic": "Offstage" }
+      "tiers": {
+        "Quarantine Watch": "Focus",
+        "Dr. Ines Varga": "Unused",
+        "The Ward Mimic": "Unused"
+      }
     },
     {
-      "id": "fort-radar", "scene": "fort", "covers": ["thing attacked", "about to act"],
+      "id": "fort-radar",
+      "scene": "fort",
+      "covers": [
+        "thing attacked",
+        "about to act"
+      ],
       "prevAction": "I stomp up the highway toward the fort.",
       "lastNarration": "Fort Bastion squats on its hill, all concrete and floodlights. Sirens wind up. On the runway, jets are already rolling, and a voice booms over the base speakers, ordering you to halt.",
       "action": "I roar at the fort and tear its radar mast out of the ground.",
-      "tiers": { "Jet Fighter": "Focus", "General Vasquez": "Focus", "Aegis-One": "Offstage", "Dr. Lena Sorensen": "Offstage", "Captain Theo Ward": "Offstage", "Artillery Battery": "Offstage", "Cedar Hollow Evacuees": "Offstage" }
+      "tiers": {
+        "Jet Fighter": "Focus",
+        "General Vasquez": "Focus",
+        "Aegis-One": "Unused",
+        "Dr. Lena Sorensen": "Unused",
+        "Captain Theo Ward": "Unused",
+        "Artillery Battery": "Unused",
+        "Cedar Hollow Evacuees": "Unused"
+      }
     },
     {
-      "id": "fort-hangar", "scene": "fort", "covers": ["thing looked at", "inside a place"],
+      "id": "fort-hangar",
+      "scene": "fort",
+      "covers": [
+        "thing looked at",
+        "inside a place"
+      ],
       "prevAction": "I tear the radar mast out of the ground.",
       "lastNarration": "The mast comes free in a shower of sparks. Jets scream overhead and missiles burst against your hide. Beyond the runway stands a hangar far bigger than the rest, its doors sealed, a warning light turning on its roof.",
       "action": "I rip the doors off the giant hangar and look inside.",
-      "tiers": { "Jet Fighter": "Background", "General Vasquez": "Background", "Aegis-One": "Focus", "Dr. Lena Sorensen": "Offstage", "Captain Theo Ward": "Focus", "Artillery Battery": "Offstage", "Cedar Hollow Evacuees": "Offstage" }
+      "tiers": {
+        "Jet Fighter": "Mentionable",
+        "General Vasquez": "Mentionable",
+        "Aegis-One": "Focus",
+        "Dr. Lena Sorensen": "Unused",
+        "Captain Theo Ward": "Focus",
+        "Artillery Battery": "Unused",
+        "Cedar Hollow Evacuees": "Unused"
+      }
     },
     {
-      "id": "fort-highway", "scene": "fort", "covers": ["sublocation entity", "described only"],
+      "id": "fort-highway",
+      "scene": "fort",
+      "covers": [
+        "sublocation entity",
+        "described only"
+      ],
       "prevAction": "I tear the radar mast out of the ground.",
       "lastNarration": "The mast comes free in a shower of sparks. Jets scream overhead. Past the fort, the highway toward the suburb is a solid line of headlights, and on the ridge above it, guns flash.",
       "action": "I turn and stare at the jammed highway and the families stuck on it.",
-      "tiers": { "Jet Fighter": "Focus", "General Vasquez": "Background", "Aegis-One": "Offstage", "Dr. Lena Sorensen": "Offstage", "Captain Theo Ward": "Offstage", "Artillery Battery": "Focus", "Cedar Hollow Evacuees": "Focus" }
+      "tiers": {
+        "Jet Fighter": "Focus",
+        "General Vasquez": "Mentionable",
+        "Aegis-One": "Unused",
+        "Dr. Lena Sorensen": "Unused",
+        "Captain Theo Ward": "Unused",
+        "Artillery Battery": "Focus",
+        "Cedar Hollow Evacuees": "Focus"
+      }
     },
     {
-      "id": "sunk-wade", "scene": "sunkwater", "covers": ["described only", "hazard"], "narration": true,
+      "id": "sunk-wade",
+      "scene": "sunkwater",
+      "covers": [
+        "described only",
+        "hazard"
+      ],
+      "narration": true,
       "prevAction": "I follow the channel south into the drowned village.",
       "lastNarration": "Sunkwater's roofs stand out of black water. Frogs sing from every sill. Through the doorway of the nearest house, past water up to the windows, a lumpy white cap clings to the far wall, weeping bright red beads.",
       "action": "I wade into the flooded house to reach the red-weeping mushroom on the far wall.",
-      "tiers": { "Dread Crawler": "Background", "Bleeding Tooth": "Focus", "Bark Frogs": "Background", "Mire Leeches": "Focus", "The Drowned Bell": "Offstage" }
+      "tiers": {
+        "Dread Crawler": "Mentionable",
+        "Bleeding Tooth": "Focus",
+        "Bark Frogs": "Mentionable",
+        "Mire Leeches": "Focus",
+        "The Drowned Bell": "Unused"
+      }
     },
     {
-      "id": "sunk-silence", "scene": "sunkwater", "covers": ["about to act", "described only"],
+      "id": "sunk-silence",
+      "scene": "sunkwater",
+      "covers": [
+        "about to act",
+        "described only"
+      ],
       "prevAction": "I pick my way along a roof ridge.",
       "lastNarration": "You are halfway along the ridge when the frogs stop. All of them, all at once. In the silence, something slides off a roof behind you and into the water without a splash.",
       "action": "I freeze and hold perfectly still.",
-      "tiers": { "Dread Crawler": "Focus", "Bleeding Tooth": "Offstage", "Bark Frogs": "Focus", "Mire Leeches": "Background", "The Drowned Bell": "Offstage" },
-      "alsoOk": { "Mire Leeches": "Offstage" }
+      "tiers": {
+        "Dread Crawler": "Focus",
+        "Bleeding Tooth": "Unused",
+        "Bark Frogs": "Focus",
+        "Mire Leeches": "Mentionable",
+        "The Drowned Bell": "Unused"
+      },
+      "alsoOk": {
+        "Mire Leeches": "Unused"
+      }
     },
     {
-      "id": "sunk-bell", "scene": "sunkwater", "covers": ["sublocation entity", "thing used"],
+      "id": "sunk-bell",
+      "scene": "sunkwater",
+      "covers": [
+        "sublocation entity",
+        "thing used"
+      ],
       "prevAction": "I pick my way along a roof ridge.",
       "lastNarration": "The church tower stands dry above the drowned roofs, and its bell hangs in the open belfry. The frogs sing on, steady and loud.",
       "action": "I throw a stone up at the bell in the church tower to hear it ring.",
-      "tiers": { "Dread Crawler": "Focus", "Bleeding Tooth": "Offstage", "Bark Frogs": "Background", "Mire Leeches": "Background", "The Drowned Bell": "Focus" },
-      "alsoOk": { "Mire Leeches": "Offstage" }
+      "tiers": {
+        "Dread Crawler": "Focus",
+        "Bleeding Tooth": "Unused",
+        "Bark Frogs": "Mentionable",
+        "Mire Leeches": "Mentionable",
+        "The Drowned Bell": "Focus"
+      },
+      "alsoOk": {
+        "Mire Leeches": "Unused"
+      }
+    },
+    {
+      "id": "drone-wastes-trade",
+      "scene": "drone-wastes",
+      "covers": [
+        "ordinary talk",
+        "addressed by description"
+      ],
+      "prevAction": "I roll down the dune road toward the smoke of the scavenger camp.",
+      "lastNarration": "A man with half a jaw of riveted iron sits on a crate beside a tarp heaped with salvage, and he looks you over like a price tag. Behind you, a mule cart creaks to a stop and its driver hops down, whistling. Past the camp's cranes, the rusted hulk of a beached ship leans in the sand.",
+      "action": "I drop a bent armor plate at the iron-jawed broker's feet and blink my lights at it.",
+      "tiers": {
+        "Glassback Burrower": "Unused",
+        "Old Corwin": "Mentionable",
+        "Rustjaw": "Focus",
+        "Sabi": "Mentionable"
+      },
+      "why": {
+        "Old Corwin": "The peddler just arrived beside the player but does not act in this trade.",
+        "Sabi": "Rustjaw's niece is in the camp a few steps away, so a mention is plausible."
+      }
+    },
+    {
+      "id": "drone-wastes-voice",
+      "scene": "drone-wastes",
+      "covers": [
+        "sublocation entity",
+        "described only",
+        "ordinary talk"
+      ],
+      "prevAction": "I drop a bent armor plate at the iron-jawed broker's feet and blink my lights at it.",
+      "lastNarration": "The broker turns the plate over and grunts, unimpressed. Before he can name a price, a girl's voice yells from under a crane inside the camp: \"Is that the walking cannon? Bring it here, I want to see its wheels!\"",
+      "action": "I beep twice and roll toward the voice under the crane.",
+      "tiers": {
+        "Glassback Burrower": "Unused",
+        "Old Corwin": "Mentionable",
+        "Rustjaw": "Mentionable",
+        "Sabi": "Focus"
+      },
+      "why": {
+        "Rustjaw": "The player turns away from him to answer the girl.",
+        "Sabi": "The action answers the voice that just called out from the camp."
+      }
+    },
+    {
+      "id": "drone-wastes-still",
+      "scene": "drone-wastes",
+      "covers": [
+        "about to act",
+        "rule triggered",
+        "sublocation entity",
+        "described only"
+      ],
+      "prevAction": "I roll out alone across the dunes toward the beached hulk.",
+      "lastNarration": "The wreck's shadow falls over you, and the camp is a smudge of smoke far behind. The sand ahead of your wheels ripples, then ripples again closer, something under it circling toward the rumble of your motor.",
+      "action": "I cut my motor and sit dead still on the sand.",
+      "tiers": {
+        "Glassback Burrower": "Focus",
+        "Old Corwin": "Unused",
+        "Rustjaw": "Unused",
+        "Sabi": "Unused"
+      },
+      "why": {
+        "Glassback Burrower": "The circling hunter acts this turn, losing track of a target that stops vibrating.",
+        "Rustjaw": "Left behind at the camp and plays no part out at the wreck."
+      }
+    },
+    {
+      "id": "drone-wastes-rumor",
+      "scene": "drone-wastes",
+      "covers": [
+        "ordinary talk",
+        "toss-up"
+      ],
+      "prevAction": "I roll back to the salvage tarp at the edge of camp.",
+      "lastNarration": "The peddler leans on his cart wheel and grins at you. \"Now there's a customer who doesn't haggle. Maps, charms, news from the capital, what'll it be?\" The iron-jawed broker snorts from his crate and goes back to sorting bolts.",
+      "action": "I project a flickering image of a glowing Power Core onto the peddler's cart cover.",
+      "tiers": {
+        "Glassback Burrower": "Unused",
+        "Old Corwin": "Focus",
+        "Rustjaw": "Mentionable",
+        "Sabi": "Mentionable"
+      },
+      "alsoOk": {
+        "Sabi": "Unused"
+      },
+      "why": {
+        "Rustjaw": "Power Cores are his trade, but the question goes to the peddler.",
+        "Sabi": "She is in the camp nearby yet has no part in this exchange."
+      }
+    },
+    {
+      "id": "drone-frontier-ambush",
+      "scene": "drone-frontier",
+      "covers": [
+        "two focus",
+        "rule triggered",
+        "about to act"
+      ],
+      "prevAction": "I ride the frontier road beside Ser Halden's horse.",
+      "lastNarration": "The brush on both sides of the road splits open, and a pack of wolves with thorned hides and too many eyes spills onto the path. Ser Halden's sword rings out of its scabbard. \"Stay by me, machine!\"",
+      "action": "I flare every light I have at full brightness straight into the pack.",
+      "tiers": {
+        "Blight Drake": "Unused",
+        "Blightspawn": "Focus",
+        "Herald Skarn": "Unused",
+        "Ser Halden": "Focus",
+        "Squire Wren": "Unused",
+        "Tiamat": "Unused"
+      },
+      "why": {
+        "Ser Halden": "He drew steel last turn and is still fighting this one.",
+        "Blightspawn": "The flare hits the pack, and they fear sudden bright light.",
+        "Squire Wren": "He is back at the fort and plays no part in the fight on the road."
+      }
+    },
+    {
+      "id": "drone-frontier-bread",
+      "scene": "drone-frontier",
+      "covers": [
+        "waiting",
+        "sublocation entity"
+      ],
+      "prevAction": "I roll up to the gate of the fort.",
+      "lastNarration": "A boy in a squire's tabard runs out through the gate and drops to one knee in front of you, holding out a heel of bread. \"Go on, war hound. Eat!\" Behind him, the captain watches from the gatehouse with his arms folded. The boy holds the bread out and waits.",
+      "action": "I sit still and stare up at the fort's walls.",
+      "tiers": {
+        "Blight Drake": "Unused",
+        "Blightspawn": "Unused",
+        "Herald Skarn": "Unused",
+        "Ser Halden": "Mentionable",
+        "Squire Wren": "Focus",
+        "Tiamat": "Unused"
+      },
+      "why": {
+        "Squire Wren": "He is waiting on the player, so the narration must show his reaction.",
+        "Ser Halden": "He watches from the gatehouse but does not act this turn."
+      }
+    },
+    {
+      "id": "drone-frontier-silver",
+      "scene": "drone-frontier",
+      "covers": [
+        "described only",
+        "sublocation entity",
+        "toss-up"
+      ],
+      "prevAction": "I climb a rock beside the frontier road to look north.",
+      "lastNarration": "From the top of the rock you can see the jagged peaks to the north, crowned in purple haze. Something huge and silver circles slowly above the highest one, catching the sun. Below you, Ser Halden waits with the horses.",
+      "action": "I aim my optic at the silver shape over the peaks and zoom in as far as it goes.",
+      "tiers": {
+        "Blight Drake": "Mentionable",
+        "Blightspawn": "Unused",
+        "Herald Skarn": "Unused",
+        "Ser Halden": "Mentionable",
+        "Squire Wren": "Unused",
+        "Tiamat": "Focus"
+      },
+      "alsoOk": {
+        "Blight Drake": "Unused"
+      },
+      "why": {
+        "Tiamat": "The player acts on the silver shape, and the zoom must describe him correctly.",
+        "Blight Drake": "They hunt over the same peaks, so they may show up in the view, but they do not act."
+      }
+    },
+    {
+      "id": "drone-frontier-offer",
+      "scene": "drone-frontier",
+      "covers": [
+        "acted on",
+        "sublocation entity"
+      ],
+      "prevAction": "I roll alone to the edge of the Blight Line.",
+      "lastNarration": "Where the grass turns gray, a tall figure in black iron armor waits with his horns lowered in a courteous bow. A pack of thorned wolves sits at his heel. \"Machine. My master has a place for something like you. Choose well.\"",
+      "action": "I swivel my cannon toward the horned demon.",
+      "tiers": {
+        "Blight Drake": "Unused",
+        "Blightspawn": "Mentionable",
+        "Herald Skarn": "Focus",
+        "Ser Halden": "Unused",
+        "Squire Wren": "Unused",
+        "Tiamat": "Unused"
+      },
+      "why": {
+        "Blightspawn": "The pack sits at its master's heel and waits for his order rather than acting.",
+        "Ser Halden": "The player came alone, so the captain plays no part."
+      }
+    },
+    {
+      "id": "drone-capital-arrive",
+      "scene": "drone-capital",
+      "covers": [
+        "move"
+      ],
+      "prevAction": "I follow the old road out of Thornmere toward the capital.",
+      "lastNarration": "The farm girl runs alongside you as far as the last fence post, then stops and waves an apple at you until the bend in the road hides her. Ahead, the road climbs toward gray walls and ash-dark towers.",
+      "action": "I roll through the capital gates and into the crowded streets.",
+      "tiers": {
+        "Archon Vael": "Mentionable",
+        "Lady Morrow": "Mentionable",
+        "Vault Warden": "Unused"
+      },
+      "why": {
+        "Archon Vael": "She lives in the capital, but nothing puts her at the gate this turn.",
+        "Lady Morrow": "Her agents watch the city, so a mention is possible, but she does not act on arrival.",
+        "Vault Warden": "It patrols far beneath the city and has no part in an arrival."
+      }
+    },
+    {
+      "id": "drone-capital-gift",
+      "scene": "drone-capital",
+      "covers": [
+        "acted on",
+        "described only"
+      ],
+      "prevAction": "I chirp at the old woman in the Order's robes.",
+      "lastNarration": "\"You see? It agrees,\" the old summoner says to no one in particular, beaming at you. Across the courtyard, a woman in green silk sweeps in with two servants and sets a velvet box on the flagstones. \"A small gift for the guardian,\" she says, smiling.",
+      "action": "I roll over to the woman in green silk and nudge the velvet box open with my cannon.",
+      "tiers": {
+        "Archon Vael": "Mentionable",
+        "Lady Morrow": "Focus",
+        "Vault Warden": "Unused"
+      },
+      "why": {
+        "Archon Vael": "She is in the courtyard, but the player turns from her to the gift."
+      }
+    },
+    {
+      "id": "sugar-hills-cookie",
+      "scene": "sugar-hills",
+      "covers": [
+        "acted on",
+        "described only"
+      ],
+      "prevAction": "I jump aside as something rolls at me down the hill.",
+      "lastNarration": "A cookie the size of a boulder thunders past, misses you by an arm's length, and buries itself in the hillside. Now it wobbles furiously in place, chocolate chips rattling loose onto the ice cream.",
+      "action": "I walk over to the stuck cookie and pry off a loose chip to eat.",
+      "tiers": {
+        "Cookie Brawler": "Focus",
+        "Cream Cyclone": "Unused",
+        "Fudge Otters": "Unused",
+        "Gingerbread Waypost": "Mentionable",
+        "Gummy Bear": "Unused",
+        "Sprinkle Swarmers": "Unused"
+      },
+      "why": {
+        "Gingerbread Waypost": "Wayposts stand all over the hills, so one may be mentioned, but it never acts unless asked."
+      }
+    },
+    {
+      "id": "sugar-hills-waypost",
+      "scene": "sugar-hills",
+      "covers": [
+        "ordinary talk",
+        "addressed by description"
+      ],
+      "prevAction": "I climb to the top of a vanilla hill to get my bearings.",
+      "lastNarration": "From the hilltop the scoops of ice cream roll away in every direction. A gingerbread figure on a candy-cane post stands beside you, a polite bite missing from its arm. Far off along a ridge, a white funnel of whipped cream wanders lazily.",
+      "action": "I ask the gingerbread figure which way leads out of this place.",
+      "tiers": {
+        "Cookie Brawler": "Unused",
+        "Cream Cyclone": "Mentionable",
+        "Fudge Otters": "Unused",
+        "Gingerbread Waypost": "Focus",
+        "Gummy Bear": "Unused",
+        "Sprinkle Swarmers": "Unused"
+      },
+      "why": {
+        "Gingerbread Waypost": "It answers by pointing, so it acts this turn.",
+        "Cream Cyclone": "It is in view far off but does not come near the player this turn."
+      }
+    },
+    {
+      "id": "sugar-hills-sticky",
+      "scene": "sugar-hills",
+      "covers": [
+        "rule triggered",
+        "just left"
+      ],
+      "prevAction": "I try to outrun the whipped-cream tornado.",
+      "lastNarration": "The tornado catches you, spins you until the sky blurs, and sets you down in the grass coated head to toe in cream. Then it wobbles away over the next hill and is gone.",
+      "action": "I sit in the grass to catch my breath and lick the cream off my wrist.",
+      "tiers": {
+        "Cookie Brawler": "Unused",
+        "Cream Cyclone": "Unused",
+        "Fudge Otters": "Unused",
+        "Gingerbread Waypost": "Mentionable",
+        "Gummy Bear": "Unused",
+        "Sprinkle Swarmers": "Focus"
+      },
+      "why": {
+        "Cream Cyclone": "It just left the scene, and bringing it back would go against the narrative.",
+        "Sprinkle Swarmers": "A player coated in cream draws them, and a resting one is easy to swarm."
+      },
+      "alsoOk": {
+        "Cream Cyclone": "Mentionable"
+      }
+    },
+    {
+      "id": "sugar-hills-creek",
+      "scene": "sugar-hills",
+      "covers": [
+        "sublocation entity",
+        "described only",
+        "rule triggered"
+      ],
+      "prevAction": "I follow the sound of running water downhill.",
+      "lastNarration": "At the bottom of the hill a creek of melted fudge chuckles between steep mud chutes. Something glossy and brown slides down one with a squeak, and another chatters back at it from midstream.",
+      "action": "I set my last cookie chip down on a rock and lean over the bank to watch the glossy shapes.",
+      "tiers": {
+        "Cookie Brawler": "Unused",
+        "Cream Cyclone": "Unused",
+        "Fudge Otters": "Focus",
+        "Gingerbread Waypost": "Mentionable",
+        "Gummy Bear": "Unused",
+        "Sprinkle Swarmers": "Unused"
+      },
+      "why": {
+        "Fudge Otters": "Reached only by description, and food set down is exactly what they steal.",
+        "Cookie Brawler": "The chip came from it earlier, but the brawler itself plays no part here."
+      }
+    },
+    {
+      "id": "sugar-ridge-ram",
+      "scene": "sugar-ridge",
+      "covers": [
+        "about to act",
+        "described only",
+        "toss-up"
+      ],
+      "prevAction": "I start up the narrow trail along the ridge.",
+      "lastNarration": "The toffee ledge narrows to a single boot-width. On the ledge above, a goat made of peanut brittle lowers its curled toffee horns, paws the rock, and fixes its eyes on you.",
+      "action": "I keep climbing the ledge toward the top.",
+      "tiers": {
+        "Brittle Ram": "Focus",
+        "Caramel Seep": "Unused",
+        "Gingerbread Waypost": "Mentionable",
+        "Rock Candy Bats": "Unused",
+        "Saltlick Stones": "Mentionable",
+        "Toffee Slide": "Mentionable"
+      },
+      "alsoOk": {
+        "Saltlick Stones": "Unused"
+      },
+      "why": {
+        "Brittle Ram": "It is about to charge, and the player climbing into its path sets it off.",
+        "Toffee Slide": "A charge may loosen the face, so it is near enough to mention, but it does not start on its own.",
+        "Saltlick Stones": "They sit somewhere on the ridge but have no part in this climb."
+      }
+    },
+    {
+      "id": "sugar-ridge-salt",
+      "scene": "sugar-ridge",
+      "covers": [
+        "acted on",
+        "described only"
+      ],
+      "prevAction": "I limp down the ridge trail with my stomach growling.",
+      "lastNarration": "Beside the trail sits a rough gray-white boulder, and for a pace around it nothing sugary grows at all. Even the toffee underfoot has gone dull and plain.",
+      "action": "I kneel and lick the rough gray boulder.",
+      "tiers": {
+        "Brittle Ram": "Unused",
+        "Caramel Seep": "Unused",
+        "Gingerbread Waypost": "Mentionable",
+        "Rock Candy Bats": "Unused",
+        "Saltlick Stones": "Focus",
+        "Toffee Slide": "Unused"
+      },
+      "why": {
+        "Saltlick Stones": "The player touches the boulder, so its effect on the curse must be right."
+      }
+    },
+    {
+      "id": "sugar-ridge-cave",
+      "scene": "sugar-ridge",
+      "covers": [
+        "sublocation entity",
+        "rule triggered",
+        "described only"
+      ],
+      "prevAction": "I follow the ridge to a dark opening in the rock.",
+      "lastNarration": "A cave mouth gapes in the side of the ridge, breathing warm, buttery air. Inside, small shapes hang glittering from the ceiling, and something golden gleams across the floor.",
+      "action": "I shout into the cave mouth to hear how deep it goes.",
+      "tiers": {
+        "Brittle Ram": "Unused",
+        "Caramel Seep": "Mentionable",
+        "Gingerbread Waypost": "Mentionable",
+        "Rock Candy Bats": "Focus",
+        "Saltlick Stones": "Unused",
+        "Toffee Slide": "Unused"
+      },
+      "why": {
+        "Rock Candy Bats": "Noise startles the roost into a swarm, so the shout sets them off.",
+        "Caramel Seep": "It gleams on the cave floor, but it only grabs a traveler who stands still inside."
+      }
+    },
+    {
+      "id": "sugar-ridge-heavy",
+      "scene": "sugar-ridge",
+      "covers": [
+        "rule triggered"
+      ],
+      "prevAction": "I sit on a ledge and chew toffee shards until I can't eat another bite.",
+      "lastNarration": "You are full to bursting, heavy and slow, and the ledge creaks under you. Above, the steep toffee face softens and shines in the afternoon sun.",
+      "action": "I heave myself up and stomp up the steep toffee face.",
+      "tiers": {
+        "Brittle Ram": "Unused",
+        "Caramel Seep": "Unused",
+        "Gingerbread Waypost": "Mentionable",
+        "Rock Candy Bats": "Unused",
+        "Saltlick Stones": "Unused",
+        "Toffee Slide": "Focus"
+      },
+      "why": {
+        "Toffee Slide": "A heavy, full traveler on the face is what sets a slide off."
+      }
+    },
+    {
+      "id": "sugar-marsh-arrive",
+      "scene": "sugar-marsh",
+      "covers": [
+        "move"
+      ],
+      "prevAction": "I follow the waypost's arrow out of the ice cream hills.",
+      "lastNarration": "The last gingerbread figure on the hills points its icing arrow downhill toward low, steaming ground. The ice cream underfoot thins out, and a warm, sweet fog rolls up to meet you.",
+      "action": "I wade down into the marshmallow marsh, testing each step before I put my weight on it.",
+      "tiers": {
+        "Cream Cyclone": "Unused",
+        "Fluffbog": "Mentionable",
+        "Gingerbread Waypost": "Mentionable",
+        "Puffmallow Toad": "Mentionable"
+      },
+      "why": {
+        "Fluffbog": "Testing the ground makes a soft spot worth getting right, but nothing says the player finds one.",
+        "Puffmallow Toad": "Its booming is marsh scenery, but it does not act toward the player yet.",
+        "Cream Cyclone": "It roams the marsh too, but nothing puts it near the player's arrival."
+      }
+    },
+    {
+      "id": "sugar-marsh-stuck",
+      "scene": "sugar-marsh",
+      "covers": [
+        "two focus",
+        "about to act",
+        "acted on"
+      ],
+      "prevAction": "I step onto a patch of firm-looking ground between the pools.",
+      "lastNarration": "The crust gives way, and you sink to the waist in warm marshmallow. On the edge of the nearest pool, a fat marshmallow toad puffs up to twice its size and glares at you, its tongue flicking. Far off along the shore, a white funnel of cream spins lazily.",
+      "action": "I dig at the marshmallow around my waist and keep one eye on the toad's tongue.",
+      "tiers": {
+        "Cream Cyclone": "Mentionable",
+        "Fluffbog": "Focus",
+        "Gingerbread Waypost": "Unused",
+        "Puffmallow Toad": "Focus"
+      },
+      "why": {
+        "Fluffbog": "The player is stuck in it and digging at it.",
+        "Puffmallow Toad": "It is puffed and about to strike with its tongue.",
+        "Cream Cyclone": "It is in view far off but does not come near this turn.",
+        "Gingerbread Waypost": "Nothing in the marsh scene puts a waypost in play while the player is stuck."
+      }
+    },
+    {
+      "id": "veilwood-fig-arrive",
+      "scene": "veilwood-fig",
+      "covers": [
+        "move"
+      ],
+      "prevAction": "I follow the channel bank north through the fog.",
+      "lastNarration": "The black water narrows to a ditch you can step across. Ahead, through the fog, a fig tree as wide as a house stands on a hump of dry ground, its roots spilling down into the channel like poured wax.",
+      "action": "I climb out of the channel and walk in among the roots of the giant fig.",
+      "tiers": {
+        "Dread Crawler": "Mentionable",
+        "Ember Spire": "Mentionable",
+        "Lantern Moths": "Mentionable",
+        "The Surveyor's Blazes": "Mentionable",
+        "The Surveyor's Journal": "Mentionable"
+      },
+      "why": {
+        "Dread Crawler": "Its haunts include the fig, but nothing calls it into this arrival.",
+        "The Surveyor's Journal": "The camp is up in the tree; an arrival may glimpse it but nothing touches it."
+      }
+    },
+    {
+      "id": "veilwood-fig-camp",
+      "scene": "veilwood-fig",
+      "covers": [
+        "sublocation entity",
+        "described only",
+        "acted on"
+      ],
+      "prevAction": "I walk a slow circle around the base of the fig.",
+      "lastNarration": "On the far side of the trunk, a rope ladder hangs down out of the fog. High up in the first great fork, the corner of a green tarp sags over a plank platform, and something on it flaps in the wind.",
+      "action": "I climb the rope ladder to the platform and search through whatever was left under the tarp.",
+      "tiers": {
+        "Dread Crawler": "Mentionable",
+        "Ember Spire": "Mentionable",
+        "Lantern Moths": "Mentionable",
+        "The Surveyor's Blazes": "Mentionable",
+        "The Surveyor's Journal": "Focus"
+      },
+      "why": {
+        "The Surveyor's Journal": "The player searches the camp it lies in, reached only by description."
+      }
+    },
+    {
+      "id": "veilwood-fig-moths-flee",
+      "scene": "veilwood-fig",
+      "covers": [
+        "about to act",
+        "described only",
+        "rule triggered"
+      ],
+      "prevAction": "I sit down between two roots to rest my legs.",
+      "lastNarration": "The moths resting on the fig's bark wink out one after another and flit away into the fog until the trunk is dark. On the far side of the tree, something scrapes wet bark, low down, then higher.",
+      "action": "I press myself flat against the root and hold perfectly still.",
+      "tiers": {
+        "Dread Crawler": "Focus",
+        "Ember Spire": "Unused",
+        "Lantern Moths": "Unused",
+        "The Surveyor's Blazes": "Unused",
+        "The Surveyor's Journal": "Unused"
+      },
+      "why": {
+        "Dread Crawler": "The unseen climber is about to pass close, and stillness is the rule it answers to.",
+        "Lantern Moths": "They scattered last turn and have left the scene."
+      }
+    },
+    {
+      "id": "veilwood-gloomcap-speckle",
+      "scene": "veilwood-gloomcap",
+      "covers": [
+        "ordinary",
+        "described only",
+        "acted on"
+      ],
+      "prevAction": "I look around the thicket for something to eat.",
+      "lastNarration": "The thicket floor is crowded with caps. A cluster of black-and-orange mottled ones grows on a fallen log, a fat red one stands alone in the moss, and beyond them a bright blue tangle spirals up a violet stem. Frogs sing from the wet leaves.",
+      "action": "I pick one of the black-and-orange mushrooms off the log and eat it.",
+      "tiers": {
+        "Bark Frogs": "Mentionable",
+        "Cerulean Vex": "Mentionable",
+        "Ember Speckle": "Focus",
+        "Ember Spire": "Mentionable",
+        "Night Veil": "Mentionable",
+        "Shadow Raptor": "Mentionable",
+        "Sporeburst Puffball": "Mentionable"
+      }
+    },
+    {
+      "id": "veilwood-gloomcap-puffballs",
+      "scene": "veilwood-gloomcap",
+      "covers": [
+        "two focus",
+        "described only",
+        "rule triggered"
+      ],
+      "prevAction": "I look around the thicket for something to eat.",
+      "lastNarration": "Deeper in, past a bank of pale round puffballs, layered blue caps glow like stained glass on a spiraling violet stem. They are the most beautiful thing you have seen in the wood.",
+      "action": "I push straight through the pale puffballs to reach the blue mushrooms beyond.",
+      "tiers": {
+        "Bark Frogs": "Mentionable",
+        "Cerulean Vex": "Focus",
+        "Ember Speckle": "Mentionable",
+        "Ember Spire": "Mentionable",
+        "Night Veil": "Mentionable",
+        "Shadow Raptor": "Mentionable",
+        "Sporeburst Puffball": "Focus"
+      },
+      "why": {
+        "Sporeburst Puffball": "Pushing through bursts them and forces a loud cough.",
+        "Shadow Raptor": "The cough may draw it, but it does not arrive or act this turn."
+      }
+    },
+    {
+      "id": "veilwood-gloomcap-raptor",
+      "scene": "veilwood-gloomcap",
+      "covers": [
+        "about to act",
+        "described only",
+        "rule triggered"
+      ],
+      "prevAction": "I kneel to look at a red mushroom in the moss.",
+      "lastNarration": "The frogs stop singing all at once. Between the trunks a dark shape lopes across the clearing, head low, yellow eyes catching the little light there is. It stops, and turns toward you.",
+      "action": "I scramble up the nearest tree as high as I can climb.",
+      "tiers": {
+        "Bark Frogs": "Focus",
+        "Cerulean Vex": "Unused",
+        "Ember Speckle": "Unused",
+        "Ember Spire": "Unused",
+        "Night Veil": "Unused",
+        "Shadow Raptor": "Focus",
+        "Sporeburst Puffball": "Unused"
+      },
+      "why": {
+        "Shadow Raptor": "It charges and, unable to climb, circles below.",
+        "Bark Frogs": "Their silence carries on while the hunter is near, like guns still firing.",
+        "Ember Spire": "The mushroom the player was kneeling over plays no part in the escape."
+      }
+    },
+    {
+      "id": "veilwood-edge-blazes",
+      "scene": "veilwood-edge",
+      "covers": [
+        "ordinary",
+        "travel",
+        "acted on"
+      ],
+      "prevAction": "I head southeast where the trees start to thin.",
+      "lastNarration": "The ground rises and dries underfoot. On a trunk ahead, a smear of orange paint stands out against the bark, and twenty paces past it, another. Moths rest on the higher branches, glowing faintly.",
+      "action": "I follow the orange paint marks from trunk to trunk.",
+      "tiers": {
+        "Lantern Moths": "Mentionable",
+        "Shadow Raptor": "Mentionable",
+        "The Map's Other Half": "Mentionable",
+        "The Surveyor's Blazes": "Focus"
+      },
+      "why": {
+        "The Map's Other Half": "The blazes lead to its cache, but the trail does not reach it this turn."
+      }
+    },
+    {
+      "id": "veilwood-edge-cairn",
+      "scene": "veilwood-edge",
+      "covers": [
+        "sublocation entity",
+        "described only",
+        "acted on"
+      ],
+      "prevAction": "I follow the orange paint marks from trunk to trunk.",
+      "lastNarration": "The last blaze is circled three times. At the foot of that trunk, a low cairn of flat stones sits over a hollow in the roots, too neat to be anything the wood made.",
+      "action": "I pull the stones off the cairn and reach into the hollow underneath.",
+      "tiers": {
+        "Lantern Moths": "Mentionable",
+        "Shadow Raptor": "Mentionable",
+        "The Map's Other Half": "Focus",
+        "The Surveyor's Blazes": "Mentionable"
+      },
+      "why": {
+        "The Map's Other Half": "It is what the player's hand finds in the cache, described only as a hollow under stones."
+      }
+    },
+    {
+      "id": "veilwood-edge-dusk",
+      "scene": "veilwood-edge",
+      "covers": [
+        "waiting",
+        "toss-up"
+      ],
+      "prevAction": "I sit with my back to a trunk and catch my breath.",
+      "lastNarration": "The light is going gray. All around you the moths lift off the bark and drift uphill, unhurried, out of the trees and toward the bare eastern slope.",
+      "action": "I stay where I am and watch where the moths go.",
+      "tiers": {
+        "Lantern Moths": "Focus",
+        "Shadow Raptor": "Mentionable",
+        "The Map's Other Half": "Mentionable",
+        "The Surveyor's Blazes": "Mentionable"
+      },
+      "alsoOk": {
+        "Shadow Raptor": "Unused"
+      },
+      "why": {
+        "Lantern Moths": "They are the thing watched, and they act by drifting east.",
+        "Shadow Raptor": "Dusk wakes the hunters, but nothing signals this one yet."
+      }
+    },
+    {
+      "id": "slime-marquette-arrive",
+      "scene": "slime-marquette",
+      "covers": [
+        "move"
+      ],
+      "prevAction": "I slip out the back of my building onto Crescent Row.",
+      "lastNarration": "Crescent Row is empty and wet. A faint green trail glows along the gutter, still fresh. Two blocks north, past the dark laundromat, a pharmacy sign is the only light still on.",
+      "action": "I head north into the Marquette District toward the lit pharmacy sign.",
+      "tiers": {
+        "Green Slime": "Mentionable",
+        "Hollis Pratt": "Mentionable",
+        "Quarantine Watch": "Mentionable",
+        "The Loudspeakers": "Mentionable"
+      },
+      "why": {
+        "Hollis Pratt": "She keeps the pharmacy the player is heading for, but the player does not reach her counter yet."
+      }
+    },
+    {
+      "id": "slime-marquette-counter",
+      "scene": "slime-marquette",
+      "covers": [
+        "ordinary talk",
+        "sublocation entity",
+        "described only"
+      ],
+      "prevAction": "I head north into the Marquette District toward the lit pharmacy sign.",
+      "lastNarration": "The Marquette blocks are shuttered tight. Halfway down, behind a shutter left at knee height, a counter light burns over shelves of brown bottles, and a gray-haired woman sits behind it writing in a ledger.",
+      "action": "I duck under the shutter and ask the woman at the counter if she has any iodine.",
+      "tiers": {
+        "Green Slime": "Mentionable",
+        "Hollis Pratt": "Focus",
+        "Quarantine Watch": "Mentionable",
+        "The Loudspeakers": "Mentionable"
+      }
+    },
+    {
+      "id": "slime-marquette-alley",
+      "scene": "slime-marquette",
+      "covers": [
+        "two focus",
+        "about to act",
+        "described only"
+      ],
+      "prevAction": "I keep to the shadows along the storefronts.",
+      "lastNarration": "Behind you a flashlight beam swings onto the street, and two figures in taped rain suits start checking doorways one by one. Ahead, a glowing green trail runs off the pavement and into a dark alley between two shops.",
+      "action": "I step into the dark alley to get out of the flashlight's reach.",
+      "tiers": {
+        "Green Slime": "Focus",
+        "Hollis Pratt": "Mentionable",
+        "Quarantine Watch": "Focus",
+        "The Loudspeakers": "Mentionable"
+      },
+      "why": {
+        "Green Slime": "The player walks into its trail, and it flows toward warmth and motion.",
+        "Quarantine Watch": "The patrol is sweeping toward the player, who hides from them, so its beam acts this turn."
+      }
+    },
+    {
+      "id": "slime-bridge-sergeant",
+      "scene": "slime-bridge",
+      "covers": [
+        "ordinary talk",
+        "addressed by role"
+      ],
+      "prevAction": "I join the end of the screening line at the barricade.",
+      "lastNarration": "Floodlights glare off the wet steel of the Causeway Bridge. Contractors in rain suits wave people forward one at a time, and a broad woman with a megaphone on her hip walks the line, glancing every few seconds at the storm grate by the curb.",
+      "action": "I step out of line and ask the woman with the megaphone what it takes to get across tonight.",
+      "tiers": {
+        "Quarantine Watch": "Mentionable",
+        "Sergeant Abena Okonjo": "Focus",
+        "The Fog Veil": "Mentionable",
+        "The Loudspeakers": "Mentionable"
+      }
+    },
+    {
+      "id": "slime-bridge-waiting",
+      "scene": "slime-bridge",
+      "covers": [
+        "waiting"
+      ],
+      "prevAction": "I tell the sergeant I came up through the storm drains.",
+      "lastNarration": "Okonjo's head snaps around. \"The drains.\" She steps in close, voice low under the floodlight hum. \"My partner went down there three hours ago. Rain suit, orange tape on the arm. You see him or not?\"",
+      "action": "I look down at the grate by the curb and don't answer right away.",
+      "tiers": {
+        "Quarantine Watch": "Mentionable",
+        "Sergeant Abena Okonjo": "Focus",
+        "The Fog Veil": "Mentionable",
+        "The Loudspeakers": "Mentionable"
+      },
+      "why": {
+        "Sergeant Abena Okonjo": "She is waiting on an answer, so the narration must carry her reaction to the silence."
+      }
+    },
+    {
+      "id": "slime-bridge-haze",
+      "scene": "slime-bridge",
+      "covers": [
+        "described only",
+        "hazard"
+      ],
+      "prevAction": "I show my clean wrists at the barricade.",
+      "lastNarration": "The contractor waves you through and the barricade falls behind you. Out over the middle span, a faint green haze hangs above the railings, drifting against the wind toward the floodlights.",
+      "action": "I pull my scarf over my nose and mouth and run the length of the bridge through the haze.",
+      "tiers": {
+        "Quarantine Watch": "Mentionable",
+        "Sergeant Abena Okonjo": "Mentionable",
+        "The Fog Veil": "Focus",
+        "The Loudspeakers": "Mentionable"
+      }
+    },
+    {
+      "id": "slime-kash-song",
+      "scene": "slime-kash",
+      "covers": [
+        "waiting",
+        "about to act",
+        "toss-up"
+      ],
+      "prevAction": "I knock on the glass of the broadcast booth.",
+      "lastNarration": "Inside the booth, the host glances up, headphones crooked, and holds up one finger without breaking off what they are saying into the mic. A slow record starts to spin, and they point you at a sagging couch by the door.",
+      "action": "I sit down on the couch and wait for the song to end.",
+      "tiers": {
+        "Dee Halloran": "Focus",
+        "The Loudspeakers": "Unused",
+        "The Signal Slime": "Mentionable"
+      },
+      "alsoOk": {
+        "The Loudspeakers": "Mentionable"
+      },
+      "why": {
+        "Dee Halloran": "The player is waiting on them, and they come out when the record ends.",
+        "The Loudspeakers": "The street speakers cover all of Ashburn but are out of earshot in the booth."
+      }
+    },
+    {
+      "id": "slime-kash-cable",
+      "scene": "slime-kash",
+      "covers": [
+        "two focus",
+        "rule triggered",
+        "acted on"
+      ],
+      "prevAction": "I sit down on the couch and wait for the song to end.",
+      "lastNarration": "Dee leans into the mic for the midnight bulletin. Under their voice the radio hiss climbs into a soft rising tone, and a bead of green slides down the cable above the mixing desk, toward their hands.",
+      "action": "I grab the tin of salt by the door and pour a line along the cable run.",
+      "tiers": {
+        "Dee Halloran": "Focus",
+        "The Loudspeakers": "Unused",
+        "The Signal Slime": "Focus"
+      },
+      "why": {
+        "Dee Halloran": "They are mid-broadcast at the desk the slime is reaching for, still acting this turn.",
+        "The Signal Slime": "Described only as green on the cable; the salt line acts on it."
+      }
+    },
+    {
+      "id": "slime-kash-topic",
+      "scene": "slime-kash",
+      "covers": [
+        "ordinary talk",
+        "topic asked"
+      ],
+      "prevAction": "I sit down on the couch and wait for the song to end.",
+      "lastNarration": "The record runs out and Dee pulls off their headphones. \"Sorry. Can't leave dead air, the whole city's listening.\" They drop into the chair across from you with a mug of cold coffee. \"What can I do for you?\"",
+      "action": "I ask Dee why the loudspeakers outside keep saying everything is under control.",
+      "tiers": {
+        "Dee Halloran": "Focus",
+        "The Loudspeakers": "Mentionable",
+        "The Signal Slime": "Mentionable"
+      },
+      "why": {
+        "The Loudspeakers": "A topic the player asks a third party about is Background."
+      }
+    },
+    {
+      "id": "rampage-harbor-crane",
+      "scene": "rampage-harbor",
+      "covers": [
+        "ordinary action",
+        "about to act"
+      ],
+      "prevAction": "I wade out of the bay onto the docks.",
+      "lastNarration": "Seawater pours off you onto the waterfront. Container cranes tower around you like toys, and on the boulevard beyond, patrol cars sit nose to nose behind sawhorses while officers shout through megaphones. Far out past the breakwater, a gray warship swings its guns toward you.",
+      "action": "I grab the nearest container crane and tear it off its rails.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Channel 8 News Chopper": "Mentionable",
+        "Drone": "Mentionable",
+        "Last Ferry": "Mentionable",
+        "Navy Destroyer": "Focus",
+        "Police Cordon": "Mentionable"
+      },
+      "why": {
+        "Navy Destroyer": "Its guns were swinging onto the creature last turn, so it fires this turn.",
+        "Police Cordon": "Described on the boulevard, but the crane, not the cordon, is acted on."
+      }
+    },
+    {
+      "id": "rampage-harbor-ferry",
+      "scene": "rampage-harbor",
+      "covers": [
+        "sublocation entity",
+        "described only",
+        "two focus",
+        "still firing"
+      ],
+      "prevAction": "I tear the crane off its rails.",
+      "lastNarration": "The crane comes away screaming, cables snapping. At the harbor's southern tip, a ferry packed to the rails is backing out of its slip, its horn blaring at you over and over. The warship past the breakwater opens up, and shells burst across your shoulders.",
+      "action": "I stomp toward the blaring ferry before it can reach open water.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Channel 8 News Chopper": "Mentionable",
+        "Drone": "Mentionable",
+        "Last Ferry": "Focus",
+        "Navy Destroyer": "Focus",
+        "Police Cordon": "Mentionable"
+      },
+      "why": {
+        "Last Ferry": "The ferry the player goes after sits in the Ferry Terminal sublocation, named only by description.",
+        "Navy Destroyer": "It was firing last turn and is still firing."
+      }
+    },
+    {
+      "id": "rampage-harbor-drones",
+      "scene": "rampage-harbor",
+      "covers": [
+        "described only",
+        "ordinary action"
+      ],
+      "prevAction": "I stomp toward the ferry.",
+      "lastNarration": "Before you reach the slip, a buzzing cloud boils up off the refinery side of the harbor, dozens of tiny shapes stinging at your eyes. You can barely see the ferry through them.",
+      "action": "I swat blindly at the buzzing cloud around my head.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Channel 8 News Chopper": "Mentionable",
+        "Drone": "Focus",
+        "Last Ferry": "Mentionable",
+        "Navy Destroyer": "Mentionable",
+        "Police Cordon": "Mentionable"
+      },
+      "why": {
+        "Drone": "The buzzing cloud of tiny stinging shapes is the drone swarm, never named.",
+        "Last Ferry": "Mentioned behind the cloud but plays no part in the swat."
+      }
+    },
+    {
+      "id": "rampage-harbor-chopper",
+      "scene": "rampage-harbor",
+      "covers": [
+        "ordinary action",
+        "just left",
+        "toss-up"
+      ],
+      "prevAction": "I swat the drones out of the air.",
+      "lastNarration": "The last drones tumble into the water. A red-and-white helicopter hangs off your shoulder at a not-quite-safe distance, a reporter leaning out of its open door with a microphone, shouting to the city that the harbor is lost.",
+      "action": "I turn and roar right into the news helicopter's open door.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Channel 8 News Chopper": "Focus",
+        "Drone": "Unused",
+        "Last Ferry": "Unused",
+        "Navy Destroyer": "Mentionable",
+        "Police Cordon": "Mentionable"
+      },
+      "alsoOk": {
+        "Last Ferry": "Mentionable"
+      },
+      "why": {
+        "Drone": "The swarm was just destroyed, so a mention would contradict the narration.",
+        "Last Ferry": "It has been pulling away for two turns and plays no part, though a glimpse of it leaving would not be wrong.",
+        "Attack Helicopter": "Military helicopters are nearby but not part of this exchange."
+      }
+    },
+    {
+      "id": "rampage-downtown-arrive",
+      "scene": "rampage-downtown",
+      "covers": [
+        "move",
+        "about to act"
+      ],
+      "prevAction": "I wreck the last of the ferry gantries.",
+      "lastNarration": "The gantries fold into the water. Behind you the harbor burns; ahead, to the north, the glass towers of downtown glitter in the floodlights, and you can hear tank engines grinding into position between them.",
+      "action": "I stride north off the waterfront and into the Downtown Core.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Battle Tank": "Focus",
+        "Channel 8 News Chopper": "Mentionable",
+        "Combat Engineers": "Mentionable",
+        "Rooftop Missile Team": "Mentionable",
+        "Stalled Drivers": "Mentionable",
+        "Stranded Commuters": "Mentionable"
+      },
+      "why": {
+        "Battle Tank": "The tanks were moving into position for the creature's arrival and open fire as it enters.",
+        "Rooftop Missile Team": "The teams are on the towers but stay unseen until a missile hits.",
+        "Stranded Commuters": "They are under the streets the creature walks into, though they play no part yet."
+      }
+    },
+    {
+      "id": "rampage-downtown-spire",
+      "scene": "rampage-downtown",
+      "covers": [
+        "acted on",
+        "still firing",
+        "two focus"
+      ],
+      "prevAction": "I stride into the Downtown Core.",
+      "lastNarration": "Tanks open up from the cross streets, and shells crack off your shins. Above everything rises the needle of Spire Tower, its observation deck level with your eyes.",
+      "action": "I wrap both arms around Spire Tower and start to pull it over.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Battle Tank": "Focus",
+        "Channel 8 News Chopper": "Focus",
+        "Combat Engineers": "Mentionable",
+        "Rooftop Missile Team": "Focus",
+        "Stalled Drivers": "Mentionable",
+        "Stranded Commuters": "Mentionable"
+      },
+      "why": {
+        "Rooftop Missile Team": "They hold the tower the player is pulling down, so they fire from it or flee it.",
+        "Battle Tank": "The tanks were firing last turn and are still firing.",
+        "Channel 8 News Chopper": "Its authored role is to react loudly to the rampage's most dramatic moments, and this is one."
+      }
+    },
+    {
+      "id": "rampage-downtown-bridge",
+      "scene": "rampage-downtown",
+      "covers": [
+        "sublocation entity",
+        "described only",
+        "about to act",
+        "toss-up"
+      ],
+      "prevAction": "I pull Spire Tower down across downtown.",
+      "lastNarration": "Half of downtown goes down with the tower in a rolling roar of glass. Through the dust, at the south-east corner, a suspension bridge spans the river, and tiny figures scurry along its towers, unspooling wire. A line of abandoned cars stands on its deck with the doors hanging open.",
+      "action": "I step out onto the bridge deck toward Old Town.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Battle Tank": "Mentionable",
+        "Channel 8 News Chopper": "Mentionable",
+        "Combat Engineers": "Focus",
+        "Rooftop Missile Team": "Unused",
+        "Stalled Drivers": "Mentionable",
+        "Stranded Commuters": "Mentionable"
+      },
+      "alsoOk": {
+        "Rooftop Missile Team": "Mentionable"
+      },
+      "why": {
+        "Combat Engineers": "The wiring figures are the engineers, who blow the bridge with the creature on it.",
+        "Stalled Drivers": "Their abandoned cars are described, but the drivers are already running off the far ramps.",
+        "Rooftop Missile Team": "Their tower just fell, so they have left the scene, though teams on other roofs are possible.",
+        "Battle Tank": "Tanks hold the bridge approach, but nothing says they fire this turn."
+      }
+    },
+    {
+      "id": "rampage-downtown-subway",
+      "scene": "rampage-downtown",
+      "covers": [
+        "sublocation entity",
+        "described only",
+        "still firing",
+        "two focus"
+      ],
+      "prevAction": "I stomp down the avenue after the tanks.",
+      "lastNarration": "A tank platoon backs away down the avenue, firing as it goes. Under your feet the street sags over a subway line, and through the cracks you can see flashlight beams bobbing along the tracks below.",
+      "action": "I crouch and peer down through the cracked street at the lights in the tunnel.",
+      "tiers": {
+        "Attack Helicopter": "Mentionable",
+        "Battle Tank": "Focus",
+        "Channel 8 News Chopper": "Mentionable",
+        "Combat Engineers": "Mentionable",
+        "Rooftop Missile Team": "Mentionable",
+        "Stalled Drivers": "Mentionable",
+        "Stranded Commuters": "Focus"
+      },
+      "why": {
+        "Stranded Commuters": "The flashlight beams in the tunnel are the commuters in the Metro Underground sublocation.",
+        "Battle Tank": "The platoon was firing as it retreated and keeps firing."
+      }
+    },
+    {
+      "id": "rampage-downtown-helicopters",
+      "scene": "rampage-downtown",
+      "covers": [
+        "ordinary action"
+      ],
+      "prevAction": "I kick a tank into a plaza fountain.",
+      "lastNarration": "The tank cartwheels into the fountain and lies there, treads spinning. A pair of attack helicopters slides out from behind a tower and looses a missile barrage into your face.",
+      "action": "I swipe at the nearest helicopter.",
+      "tiers": {
+        "Attack Helicopter": "Focus",
+        "Battle Tank": "Mentionable",
+        "Channel 8 News Chopper": "Mentionable",
+        "Combat Engineers": "Mentionable",
+        "Rooftop Missile Team": "Mentionable",
+        "Stalled Drivers": "Mentionable",
+        "Stranded Commuters": "Mentionable"
+      },
+      "why": {
+        "Battle Tank": "The kicked tank is out of the fight, and the others are not described as firing."
+      }
+    },
+    {
+      "id": "valentines-gym-sample",
+      "scene": "valentines-gym",
+      "covers": [
+        "rule triggered",
+        "ordinary action"
+      ],
+      "prevAction": "I push into the crowd at the Valentine's fair.",
+      "lastNarration": "The gym is a maze of chocolate stalls and paper streamers, loud enough to hide in. A girl at the nearest stall holds out a sample on a toothpick. By the far door, a man in a tracksuit twirls a whistle on its cord and scans the crowd.",
+      "action": "I take the sample from the girl at the stall so I look like any other fairgoer.",
+      "tiers": {
+        "Coach Daizen": "Mentionable",
+        "Kenta Ishida": "Mentionable",
+        "Ren Takeda": "Unused",
+        "The Swarm": "Mentionable"
+      },
+      "why": {
+        "Coach Daizen": "He is described watching the crowd, but the sample is the stall girl's, not his.",
+        "Ren Takeda": "He waits in the locker rooms and plays no part on the fair floor."
+      }
+    },
+    {
+      "id": "valentines-gym-lockers",
+      "scene": "valentines-gym",
+      "covers": [
+        "sublocation entity",
+        "described only"
+      ],
+      "prevAction": "I take the sample and eat it.",
+      "lastNarration": "The chocolate is gone in one bite, and nobody gives you a second look. Behind the bleachers, the locker-room door hangs half open, and someone inside is bouncing a sneaker off the lockers and loudly counting off his own splits.",
+      "action": "I slip behind the bleachers and into the locker rooms to catch my breath.",
+      "tiers": {
+        "Coach Daizen": "Mentionable",
+        "Kenta Ishida": "Mentionable",
+        "Ren Takeda": "Focus",
+        "The Swarm": "Mentionable"
+      },
+      "why": {
+        "Ren Takeda": "The voice counting splits in the Locker Rooms sublocation is Ren, waiting there for the player."
+      }
+    },
+    {
+      "id": "valentines-gym-whistle",
+      "scene": "valentines-gym",
+      "covers": [
+        "waiting",
+        "described only"
+      ],
+      "prevAction": "I edge toward the fire door at the back of the gym.",
+      "lastNarration": "You are three steps from the fire door when the whistle shrieks. The man in the tracksuit plants himself in front of it, arms out. \"Unsportsmanlike, the lot of it,\" he says. \"Where do you think you're going?\"",
+      "action": "I just stand there and catch my breath without answering.",
+      "tiers": {
+        "Coach Daizen": "Focus",
+        "Kenta Ishida": "Mentionable",
+        "Ren Takeda": "Unused",
+        "The Swarm": "Mentionable"
+      },
+      "why": {
+        "Coach Daizen": "He asked the player a question and is waiting on the answer.",
+        "The Swarm": "The whistle could draw them, but nothing has them act yet."
+      }
+    },
+    {
+      "id": "valentines-gym-pa",
+      "scene": "valentines-gym",
+      "covers": [
+        "voice answered",
+        "about to act",
+        "two focus",
+        "toss-up"
+      ],
+      "prevAction": "I duck under a stall table at the fair.",
+      "lastNarration": "The PA crackles over the fair music. \"Sighting, sighting! Our runaway was just seen ducking under the strawberry stall in the gym!\" Heads turn all over the floor, and ribboned boxes rise above the crowd.",
+      "action": "I yell back at the speaker that I'm long gone, out the fire door.",
+      "tiers": {
+        "Coach Daizen": "Mentionable",
+        "Kenta Ishida": "Focus",
+        "Ren Takeda": "Mentionable",
+        "The Swarm": "Focus"
+      },
+      "alsoOk": {
+        "Ren Takeda": "Unused"
+      },
+      "why": {
+        "Kenta Ishida": "The action answers the voice that just spoke over the PA.",
+        "The Swarm": "The admirers were turning toward the stall last turn and close in now.",
+        "Ren Takeda": "The broadcast names the gym, so he may come out after the player, though he could stay put."
+      }
+    },
+    {
+      "id": "valentines-bus-arrive",
+      "scene": "valentines-busloop",
+      "covers": [
+        "move",
+        "acted on"
+      ],
+      "prevAction": "I ask the cook, politely, if I can go out through her kitchen.",
+      "lastNarration": "She looks you over, then jerks her ladle toward the back. \"Mind the floor.\" Past the steaming pots, the loading door stands propped open on cold air and the rumble of idling engines.",
+      "action": "I step out through the loading door onto the bus loop and bang on the door of the nearest bus.",
+      "tiers": {
+        "Coach Daizen": "Mentionable",
+        "Kenta Ishida": "Mentionable",
+        "Mr. Gonda": "Focus",
+        "The Swarm": "Mentionable"
+      },
+      "why": {
+        "Mr. Gonda": "The player bangs on his bus, and he answers it."
+      }
+    },
+    {
+      "id": "valentines-bus-fence",
+      "scene": "valentines-busloop",
+      "covers": [
+        "ordinary talk",
+        "described only"
+      ],
+      "prevAction": "I bang on the door of the nearest bus.",
+      "lastNarration": "The doors stay shut. Through the glass, a heavyset driver lowers his crossword and taps a handwritten sign: NO BOARDING UNTIL THE CHASE IS OVER. He does not look sorry.",
+      "action": "I ask the driver through the glass whether there's any way out past the fence.",
+      "tiers": {
+        "Coach Daizen": "Mentionable",
+        "Kenta Ishida": "Mentionable",
+        "Mr. Gonda": "Focus",
+        "The Swarm": "Mentionable"
+      }
+    },
+    {
+      "id": "valentines-bus-under",
+      "scene": "valentines-busloop",
+      "covers": [
+        "about to act",
+        "two focus",
+        "hiding"
+      ],
+      "prevAction": "I sprint along the bus loop toward the street gate.",
+      "lastNarration": "The street gate is chained shut, with a padlock as big as your fist. Behind you a whistle blasts, and a man in a tracksuit comes jogging around the end of the line of buses. Back toward the school, the side doors bang open and the first ribboned boxes spill out.",
+      "action": "I drop flat and roll under the nearest bus.",
+      "tiers": {
+        "Coach Daizen": "Focus",
+        "Kenta Ishida": "Mentionable",
+        "Mr. Gonda": "Focus",
+        "The Swarm": "Focus"
+      },
+      "why": {
+        "Coach Daizen": "He was jogging after the player and keeps searching this turn.",
+        "The Swarm": "The admirers spilling out last turn fan out across the loop now.",
+        "Mr. Gonda": "The player hides under his bus, the known hiding place he keeps an eye on."
+      }
+    },
+    {
+      "id": "valentines-art-hide",
+      "scene": "valentines-artwing",
+      "covers": [
+        "ordinary talk",
+        "addressed by role"
+      ],
+      "prevAction": "I slip into the art wing and shut the door behind me.",
+      "lastNarration": "Easels and plaster busts crowd the studio, and the air smells of turpentine. A tall man in a paint-stained smock looks up from a canvas and raises an eyebrow. At the far end, a sheet hangs over something taller than the door.",
+      "action": "I ask the art teacher if there's somewhere I can hide for a few minutes.",
+      "tiers": {
+        "Kenta Ishida": "Mentionable",
+        "Mei Tachibana": "Mentionable",
+        "Mr. Kuroda": "Focus",
+        "The Swarm": "Mentionable"
+      },
+      "why": {
+        "Mei Tachibana": "Her sheeted portrait is described, so she is near, but she does not act yet.",
+        "The Swarm": "They hunt the hallway just outside the shut door."
+      }
+    },
+    {
+      "id": "valentines-art-portrait",
+      "scene": "valentines-artwing",
+      "covers": [
+        "described only",
+        "ordinary talk"
+      ],
+      "prevAction": "I ask the art teacher if there's somewhere I can hide.",
+      "lastNarration": "\"Closet, back left. One person, no sneezing.\" He nods toward a narrow door. Between you and it, a dreamy-eyed girl with charcoal on her fingers stands beside the sheeted canvas, one hand on its cord.",
+      "action": "I stop and ask the girl with charcoal on her fingers what's under the sheet.",
+      "tiers": {
+        "Kenta Ishida": "Mentionable",
+        "Mei Tachibana": "Focus",
+        "Mr. Kuroda": "Mentionable",
+        "The Swarm": "Mentionable"
+      },
+      "why": {
+        "Mei Tachibana": "The girl with charcoal on her fingers is Mei, never named.",
+        "Mr. Kuroda": "He just spoke, but the player turns from him to the girl."
+      }
+    },
+    {
+      "id": "ember-barrow-arrive",
+      "scene": "ember-barrow",
+      "covers": [
+        "move",
+        "two focus"
+      ],
+      "prevAction": "I ask the sergeant to let us down the far side of the wall.",
+      "lastNarration": "The sergeant grumbles, but she kicks the rope ladder over the parapet and holds a lantern out for you. Below, the barrow field is black and silent. Albus checks the strap of his shield; Sylvie is already halfway down the rungs.",
+      "action": "I climb down and lead Albus and Sylvie across the field to the barrow mouth.",
+      "tiers": {
+        "Albus": "Focus",
+        "Barrow Dead": "Mentionable",
+        "Cold Lights": "Mentionable",
+        "Grave Hounds": "Unused",
+        "Sylvie Thornwhistle": "Focus",
+        "The Barrow Wight": "Unused",
+        "The Shade of Maelis": "Unused"
+      },
+      "why": {
+        "Albus": "The player leads him across the field, so he acts in the crossing.",
+        "Cold Lights": "They drift among the mounds after dark, so the arrival may mention them, but nothing draws them yet.",
+        "Barrow Dead": "They guard the barrow the party walks up to but have not stirred."
+      }
+    },
+    {
+      "id": "ember-barrow-rising",
+      "scene": "ember-barrow",
+      "covers": [
+        "about to act",
+        "described only"
+      ],
+      "prevAction": "I hold the lantern high and look for Sylvie.",
+      "lastNarration": "Sylvie has drifted off toward a side mound, and pale blue lights are bunching around her knees. She hurries back into the lantern light, swearing. Behind her, the turf on the nearest mound splits, and something in rusted mail is pulling itself free.",
+      "action": "I plant the lantern in the dirt and tell Albus to get his shield up.",
+      "tiers": {
+        "Albus": "Focus",
+        "Barrow Dead": "Focus",
+        "Cold Lights": "Mentionable",
+        "Grave Hounds": "Unused",
+        "Sylvie Thornwhistle": "Mentionable",
+        "The Barrow Wight": "Unused",
+        "The Shade of Maelis": "Unused"
+      },
+      "why": {
+        "Barrow Dead": "Only described as something in rusted mail, and it is already climbing out to attack.",
+        "Sylvie Thornwhistle": "She is back in the light; the player addresses Albus, not her.",
+        "Cold Lights": "They did their work last turn and the lantern keeps them back."
+      }
+    },
+    {
+      "id": "ember-barrow-hounds",
+      "scene": "ember-barrow",
+      "covers": [
+        "sublocation entity",
+        "acted on",
+        "two focus"
+      ],
+      "prevAction": "I lead the way down the sloping passage.",
+      "lastNarration": "The passage splits. From the left, past a doorway hung with rotted shields, comes a faint scrape of claws on stone, and no bark or growl at all. To the right, a narrow stair drops toward a cold, dim glow.",
+      "action": "I take the torch from Sylvie and push through the shield-hung doorway, holding the fire out in front of me.",
+      "tiers": {
+        "Albus": "Mentionable",
+        "Barrow Dead": "Mentionable",
+        "Cold Lights": "Unused",
+        "Grave Hounds": "Focus",
+        "Sylvie Thornwhistle": "Focus",
+        "The Barrow Wight": "Unused",
+        "The Shade of Maelis": "Unused"
+      },
+      "why": {
+        "Grave Hounds": "Reached only by the shield-hung doorway and the silent claws; the player walks in on them with fire.",
+        "Sylvie Thornwhistle": "The player takes the torch out of her hand.",
+        "Cold Lights": "They drift outside among the mounds, not in the passages.",
+        "The Shade of Maelis": "The glow down the stair is the other branch, which the player does not take."
+      }
+    },
+    {
+      "id": "ember-barrow-prayer",
+      "scene": "ember-barrow",
+      "covers": [
+        "ordinary talk"
+      ],
+      "prevAction": "I cross the field to the barrow mouth.",
+      "lastNarration": "The barrow mouth is a square of black stone set into the largest mound. Your lantern shows a passage sloping down, its walls lined with empty niches. Out on the field behind you, a few pale lights hang low over the grass.",
+      "action": "I ask Albus whether he wants to say a prayer before we go down.",
+      "tiers": {
+        "Albus": "Focus",
+        "Barrow Dead": "Mentionable",
+        "Cold Lights": "Mentionable",
+        "Grave Hounds": "Unused",
+        "Sylvie Thornwhistle": "Mentionable",
+        "The Barrow Wight": "Unused",
+        "The Shade of Maelis": "Unused"
+      },
+      "why": {
+        "Cold Lights": "Described last turn hanging out on the field, not acting on the party."
+      }
+    },
+    {
+      "id": "ember-barrow-crown",
+      "scene": "ember-barrow",
+      "covers": [
+        "about to act",
+        "described only",
+        "sublocation entity"
+      ],
+      "prevAction": "I step into the chamber at the bottom of the stair.",
+      "lastNarration": "A tall, gaunt figure in rotted mail stands on the steps of a stone bier, half an iron crown crooked on its brow. Its eyes burn like coals as they find you. \"Trespassers,\" it says, in a voice like grave dust, and its hand closes on the hilt of its sword.",
+      "action": "I hold up the other half of the crown so it can see it.",
+      "tiers": {
+        "Albus": "Mentionable",
+        "Barrow Dead": "Mentionable",
+        "Cold Lights": "Unused",
+        "Grave Hounds": "Unused",
+        "Sylvie Thornwhistle": "Mentionable",
+        "The Barrow Wight": "Focus",
+        "The Shade of Maelis": "Unused"
+      },
+      "why": {
+        "The Barrow Wight": "Never named, only described; it is drawing on the player and the action answers it.",
+        "Albus": "Behind the player in the chamber; the turn is between the player and the guardian.",
+        "Barrow Dead": "The guardian commands them, so a mention is plausible, but none are in the chamber."
+      }
+    },
+    {
+      "id": "ember-vault-ask",
+      "scene": "ember-barrow-corvin",
+      "covers": [
+        "waiting",
+        "sublocation entity",
+        "toss-up"
+      ],
+      "prevAction": "I ask the ghost what he wants for the book.",
+      "lastNarration": "The ghost holds the grimoire to his chest and inclines his head. \"Break my oath, and the book is yours,\" he whispers. \"I can wait. I have waited a very long time.\" Beside you, Corvin's fingers drum on his belt, and his eyes never leave the book.",
+      "action": "I turn to Corvin and quietly ask whether he knows how an oath like that is broken.",
+      "tiers": {
+        "Barrow Dead": "Mentionable",
+        "Cold Lights": "Unused",
+        "Corvin Vale": "Focus",
+        "Grave Hounds": "Unused",
+        "The Barrow Wight": "Unused",
+        "The Shade of Maelis": "Mentionable"
+      },
+      "alsoOk": {
+        "Barrow Dead": "Unused"
+      },
+      "why": {
+        "The Shade of Maelis": "He said he will wait, and the player asks Corvin about him, not him.",
+        "Barrow Dead": "They guard the halls outside the vault; a mention is possible but not needed."
+      }
+    },
+    {
+      "id": "ember-vault-grab",
+      "scene": "ember-barrow-corvin",
+      "covers": [
+        "rule triggered",
+        "about to act",
+        "two focus",
+        "acted on"
+      ],
+      "prevAction": "I bow to the ghost and thank him for the warning.",
+      "lastNarration": "While the ghost speaks, Corvin drifts sideways along the shelves behind him, toward a sealed scroll case. His hand is already lifting. The whispering voice stops in the middle of a word.",
+      "action": "I grab Corvin's wrist before he can touch the scroll case.",
+      "tiers": {
+        "Barrow Dead": "Mentionable",
+        "Cold Lights": "Unused",
+        "Corvin Vale": "Focus",
+        "Grave Hounds": "Unused",
+        "The Barrow Wight": "Unused",
+        "The Shade of Maelis": "Focus"
+      },
+      "why": {
+        "The Shade of Maelis": "He turns hostile if his vault is robbed, and he has already stopped to watch the theft.",
+        "Barrow Dead": "A hostile vault could call them, but they are not in the room."
+      }
+    },
+    {
+      "id": "ember-barrow-alone",
+      "scene": "ember-barrow-corvin",
+      "covers": [
+        "just left",
+        "described only",
+        "self-directed"
+      ],
+      "prevAction": "I tell Corvin I will not carry the book back for him.",
+      "lastNarration": "Corvin shrugs, tucks the grimoire under his coat, and walks off across the field toward the wall with the only lantern. It bobs smaller and smaller and drops over the rise. The dark closes in, and out among the mounds two pale lights begin to drift your way.",
+      "action": "I sit down on a fallen stone at the barrow mouth to catch my breath.",
+      "tiers": {
+        "Barrow Dead": "Mentionable",
+        "Cold Lights": "Focus",
+        "Corvin Vale": "Unused",
+        "Grave Hounds": "Unused",
+        "The Barrow Wight": "Unused",
+        "The Shade of Maelis": "Unused"
+      },
+      "why": {
+        "Corvin Vale": "He just left with the lantern and is over the rise.",
+        "Cold Lights": "Only described, and already drifting toward a lone player with no lantern.",
+        "Barrow Dead": "They follow where the lights gather, but nothing has risen yet."
+      }
+    },
+    {
+      "id": "ember-chapel-carry",
+      "scene": "ember-chapel",
+      "covers": [
+        "move",
+        "acted on",
+        "two focus"
+      ],
+      "prevAction": "I haul Sylvie up the rope ladder.",
+      "lastNarration": "The night watch drags you both over the parapet. Sylvie's forearm is torn where a hound's teeth went in, and the skin around the bite has gone gray and cold to the touch. \"Chapel,\" the sergeant snaps. \"Now.\"",
+      "action": "I carry Sylvie through the chapel door and shout for the cleric.",
+      "tiers": {
+        "Albus": "Mentionable",
+        "Mother Hesk": "Focus",
+        "Sylvie Thornwhistle": "Focus"
+      },
+      "why": {
+        "Mother Hesk": "Called by role on arrival, and she answers.",
+        "Sylvie Thornwhistle": "The player carries her in.",
+        "Albus": "Kneeling at the flame inside; the turn is the cleric's."
+      }
+    },
+    {
+      "id": "ember-chapel-test",
+      "scene": "ember-chapel",
+      "covers": [
+        "ordinary talk",
+        "topic"
+      ],
+      "prevAction": "I sit on the bench beside Sylvie's cot.",
+      "lastNarration": "Sylvie is asleep under a gray blanket, the bite bound in clean linen. The dwarf scrubs her hands in a basin and mutters about fools who go into barrows at night. Across the chapel, Albus kneels before the flame, unmoving.",
+      "action": "I ask Mother Hesk what Albus means when he says the barrow is a test.",
+      "tiers": {
+        "Albus": "Mentionable",
+        "Mother Hesk": "Focus",
+        "Sylvie Thornwhistle": "Mentionable"
+      },
+      "why": {
+        "Albus": "He is the topic of the question, not its audience.",
+        "Sylvie Thornwhistle": "Asleep on the cot."
+      }
+    },
+    {
+      "id": "ember-keep-hammer",
+      "scene": "ember-keep-wings",
+      "covers": [
+        "move",
+        "sublocation entity",
+        "described only"
+      ],
+      "prevAction": "I climb the hill road from the town.",
+      "lastNarration": "The hill road is steep and rutted, and the wind off the wall bites. Ahead, the keep gate stands open. From somewhere inside, a hammer rings steady on an anvil.",
+      "action": "I walk through the gate and follow the ringing hammer to its source.",
+      "tiers": {
+        "Albus": "Mentionable",
+        "Bram Oakes": "Focus",
+        "Captain Orrin Blackwell": "Unused",
+        "Sylvie Thornwhistle": "Mentionable"
+      },
+      "why": {
+        "Bram Oakes": "Reached only by the sound of his hammer.",
+        "Captain Orrin Blackwell": "Shut in his hall; he plays no part in a walk to the forge."
+      }
+    },
+    {
+      "id": "ember-keep-proof",
+      "scene": "ember-keep-wings",
+      "covers": [
+        "waiting",
+        "acted on",
+        "toss-up"
+      ],
+      "prevAction": "I knock and step into the captain's hall.",
+      "lastNarration": "The captain does not look up from the ledger on his table. \"You went past the wall,\" he says. \"So. What did you bring back?\" He sets the pen down and waits. Albus has followed you in and stands by the door.",
+      "action": "I set the broken half of the iron crown on his table.",
+      "tiers": {
+        "Albus": "Mentionable",
+        "Bram Oakes": "Unused",
+        "Captain Orrin Blackwell": "Focus",
+        "Sylvie Thornwhistle": "Unused"
+      },
+      "alsoOk": {
+        "Sylvie Thornwhistle": "Mentionable"
+      },
+      "why": {
+        "Captain Orrin Blackwell": "He asked and is waiting, and the action answers him.",
+        "Albus": "By the door; the exchange is with the captain.",
+        "Sylvie Thornwhistle": "Out in the yard; she plays no part, though a passing mention is possible."
+      }
+    },
+    {
+      "id": "ember-tavern-window",
+      "scene": "ember-tavern-night",
+      "covers": [
+        "just left",
+        "addressed by role"
+      ],
+      "prevAction": "I watch the dice game at the back table.",
+      "lastNarration": "Sylvie laughs, sweeps the coins off the table, and is out through the back window before the carter she beat can get his feet under him. Wenna roars after her about the shutters. The old carter sits back down, red in the face, staring at the dice left on the board.",
+      "action": "I pick up the dice she left behind and offer the carter a fair game instead.",
+      "tiers": {
+        "Corvin Vale": "Mentionable",
+        "Hob Wainwright": "Focus",
+        "Sylvie Thornwhistle": "Mentionable",
+        "Wenna Tallow": "Mentionable"
+      },
+      "why": {
+        "Sylvie Thornwhistle": "She just went out the window, and the carter is still reacting to her win.",
+        "Wenna Tallow": "She already shouted last turn; this turn is the player and the carter.",
+        "Hob Wainwright": "Called only the carter, and the player offers him the game."
+      }
+    },
+    {
+      "id": "ember-square-plinth",
+      "scene": "ember-square-meeting",
+      "covers": [
+        "just left",
+        "rule triggered"
+      ],
+      "prevAction": "I ask the carter to set me down at the square.",
+      "lastNarration": "The ox cart creaks off down the river lane and is gone. On the hall steps the reeve is mid-speech to a thin crowd, and he glares at you as you walk past him toward the empty plinth where the old king's statue used to stand. One of its base stones sits loose and cracked.",
+      "action": "I kneel at the plinth and pry at the loose base stone with my knife.",
+      "tiers": {
+        "Corvin Vale": "Mentionable",
+        "Hob Wainwright": "Unused",
+        "Mara Venn": "Mentionable",
+        "Reeve Godric Holt": "Focus"
+      },
+      "why": {
+        "Reeve Godric Holt": "He is already glaring, and a stranger digging at the town's plinth during his meeting draws him in.",
+        "Hob Wainwright": "His cart just left the square.",
+        "Corvin Vale": "Barrow secrets interest him, but nothing shows him moving yet."
+      }
     }
   ],
   "marks": {
-    "Bram": { "presence": "ferryman|one[- ]armed|pinned|\\bBram\\b", "facts": ["one arm|one hand|one-armed|pinned", "brass (ring|ear)"] },
-    "Odette": { "presence": "\\bwoman\\b|eel|Odette", "facts": ["scar", "green (glass )?bead|bead", "count"] },
-    "Rope Ferry": { "presence": "raft|ferry|rope", "facts": ["list|lean|tilt"] },
-    "Sylvie Thornwhistle": { "presence": "Sylvie|crooked grin|slight woman|dice", "facts": [] },
-    "Corvin Vale": { "presence": "Corvin|well-dressed|good coat|wizard|amused", "facts": ["grimoire", "sorcerer|court"] },
-    "Wenna Tallow": { "presence": "Wenna|keeper|red-cheeked|round woman|tankard", "facts": [] },
-    "Albus": { "presence": "Albus|shield|mail", "facts": [] },
-    "Captain Orrin Blackwell": { "presence": "captain|Blackwell|gray-templed|officer", "facts": ["gold|results", "quarr|stone|wall"] },
-    "Bram Oakes": { "presence": "smith|forge|Bram|Oakes|smithy", "facts": ["cold iron|iron", "smith|forge"] },
-    "The Swarm": { "presence": "swarm|admirer|fan club|ribbon", "facts": [] },
-    "Rin Hayama": { "presence": "clipboard|Rin|disciplin", "facts": [] },
-    "Hana Sakuragi": { "presence": "Hana|president|enormous|huge|handmade chocolate", "facts": ["chocolate", "president|fan club|lookout|group chat|pincer"] },
-    "Sora Amagi": { "presence": "Sora|rooftop", "facts": [] },
-    "Mei Tachibana": { "presence": "Mei|portrait|painter|art club", "facts": [] },
-    "Mr. Kuroda": { "presence": "Kuroda", "facts": [] },
-    "Ms. Fujimura": { "presence": "Fujimura|librar", "facts": [] },
-    "Quarantine Watch": { "presence": "rain suit|face shield|watch|patrol|contractor|screening", "facts": [] },
-    "Dr. Ines Varga": { "presence": "doctor|scrubs|Varga", "facts": [] },
-    "The Ward Mimic": { "presence": "sheet|patient|bed|slime|mimic", "facts": ["rise|rises|rising|surge", "green|pale|translucen", "slow rise and fall|breath|chest"] },
-    "Dread Crawler": { "presence": "crawler|hunter|something (slid|moves|glides)", "facts": [] },
-    "Bleeding Tooth": { "presence": "mushroom|cap|red bead|bleeding tooth", "facts": ["red", "white|lumpy", "iron"] },
-    "Bark Frogs": { "presence": "frog|chorus|sing", "facts": [] },
-    "Mire Leeches": { "presence": "leech", "facts": ["leech", "black|finger"] },
-    "The Drowned Bell": { "presence": "\\bbell\\b|belfry|tower", "facts": [] }
+    "Bram": {
+      "presence": "ferryman|one[- ]armed|pinned|\\bBram\\b",
+      "facts": [
+        "one arm|one hand|one-armed|pinned",
+        "brass (ring|ear)"
+      ]
+    },
+    "Odette": {
+      "presence": "\\bwoman\\b|eel|Odette",
+      "facts": [
+        "scar",
+        "green (glass )?bead|bead",
+        "count"
+      ]
+    },
+    "Rope Ferry": {
+      "presence": "raft|ferry|rope",
+      "facts": [
+        "list|lean|tilt"
+      ]
+    },
+    "Sylvie Thornwhistle": {
+      "presence": "Sylvie|crooked grin|slight woman|dice",
+      "facts": []
+    },
+    "Corvin Vale": {
+      "presence": "Corvin|well-dressed|good coat|wizard|amused",
+      "facts": [
+        "grimoire",
+        "sorcerer|court"
+      ]
+    },
+    "Wenna Tallow": {
+      "presence": "Wenna|keeper|red-cheeked|round woman|tankard",
+      "facts": []
+    },
+    "Albus": {
+      "presence": "Albus|shield|mail",
+      "facts": []
+    },
+    "Captain Orrin Blackwell": {
+      "presence": "captain|Blackwell|gray-templed|officer",
+      "facts": [
+        "gold|results",
+        "quarr|stone|wall"
+      ]
+    },
+    "Bram Oakes": {
+      "presence": "smith|forge|Bram|Oakes|smithy",
+      "facts": [
+        "cold iron|iron",
+        "smith|forge"
+      ]
+    },
+    "The Swarm": {
+      "presence": "swarm|admirer|fan club|ribbon",
+      "facts": []
+    },
+    "Rin Hayama": {
+      "presence": "clipboard|Rin|disciplin",
+      "facts": []
+    },
+    "Hana Sakuragi": {
+      "presence": "Hana|president|enormous|huge|handmade chocolate",
+      "facts": [
+        "chocolate",
+        "president|fan club|lookout|group chat|pincer"
+      ]
+    },
+    "Sora Amagi": {
+      "presence": "Sora|rooftop",
+      "facts": []
+    },
+    "Mei Tachibana": {
+      "presence": "Mei|portrait|painter|art club",
+      "facts": []
+    },
+    "Mr. Kuroda": {
+      "presence": "Kuroda",
+      "facts": []
+    },
+    "Ms. Fujimura": {
+      "presence": "Fujimura|librar",
+      "facts": []
+    },
+    "Quarantine Watch": {
+      "presence": "rain suit|face shield|watch|patrol|contractor|screening",
+      "facts": []
+    },
+    "Dr. Ines Varga": {
+      "presence": "doctor|scrubs|Varga",
+      "facts": []
+    },
+    "The Ward Mimic": {
+      "presence": "sheet|patient|bed|slime|mimic",
+      "facts": [
+        "rise|rises|rising|surge",
+        "green|pale|translucen",
+        "slow rise and fall|breath|chest"
+      ]
+    },
+    "Dread Crawler": {
+      "presence": "crawler|hunter|something (slid|moves|glides)",
+      "facts": []
+    },
+    "Bleeding Tooth": {
+      "presence": "mushroom|cap|red bead|bleeding tooth",
+      "facts": [
+        "red",
+        "white|lumpy",
+        "iron"
+      ]
+    },
+    "Bark Frogs": {
+      "presence": "frog|chorus|sing",
+      "facts": []
+    },
+    "Mire Leeches": {
+      "presence": "leech",
+      "facts": [
+        "leech",
+        "black|finger"
+      ]
+    },
+    "The Drowned Bell": {
+      "presence": "\\bbell\\b|belfry|tower",
+      "facts": []
+    }
   }
 }
