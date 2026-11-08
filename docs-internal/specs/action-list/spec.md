@@ -51,7 +51,18 @@ When the player sends, the shown entries ride along with the action, and the lis
 - **Q28** Reversal and collapse work on facts, not copy ids, since stacks split and merge. Pick up reverses the newest drop when it takes the same item, the same quantity, from where the drop put it. Unequip reverses the newest equip of the copy that equip left, whatever the slot. Collapse needs the same operation, item (the authored or runtime item, not the copy), target and quantity; a line names a quantity above 1.
 - **Q29** Undo reverts the action and everything it caused, the play log included, and adds no log line. It never reverts what the player wrote by hand since the action and that the list does not track, such as player notes; those keep their live value.
 - **Q30** An entry stores the display name it had when the action ran (an unidentified copy's unidentified name, the give target's In Scene label). A later reveal or rename does not rewrite it.
-- **Q31** Panel actions add entries in both layouts. Until the Chat layout has its own tray, entries made in Chat are never sent: the player must see what the AI will be told.
+- **Q31** Panel actions add entries in both layouts. Until the Chat layout has its own tray, a send from Chat tells the AI nothing: its entries are stored on the turn as not told. A send from Pages tells every shown entry, wherever it was made, because the player saw them in the tray.
+- **Q32** Empty send needs the narration call's native thinking off. With it on, the narrator would get an empty action and no block (Q10), so a typed action is required.
+- **Q33** The empty-action turn keeps the narration user template as it is, with the block appended. The probe decides whether it needs more.
+- **Q34** The sent list is a per-turn record in the save. Only the newest turn's record keeps its snapshots (regenerate needs them); a send drops the previous turn's snapshots and keeps its facts, counts and hidden flags.
+- **Q35** Until ticket 07 lands, a regenerated turn sends no block: regenerate still reverts the panel actions, so telling them would contradict the state.
+- **Q37** A stat edit of the same owner and stat as the newest entry merges into it. The entry keeps its first old value, first snapshot and hidden flag, takes the latest new value, and stays at count 1. A merge back to the old value removes the entry. A different stat or any other action in between starts a new entry.
+- **Q38** An entity stat line names the owner as the panel shows it ("Mira's Health 40 → 60"). Values are rounded as in the Stats tab.
+- **Q39** Ticket 05 owns the mid-turn block for stat edits; ticket 04 owns it for trait toggles, travel and persona switches.
+- **Q40** Every entry's snapshot is one shape holding the GameState and the persona reference. Ticket 04 owns it; 05 builds on it and 06 serializes it.
+- **Q41** Entity-owned trait toggles the player can switch are listed too. The owner is in the facts; reversal needs the same trait, the same owner and the opposite switch.
+- **Q42** Travel means the Location map modal only. The starting location, turn moves, script moves and the AI's "Move to X?" are not listed. Travel, trait and persona entries never collapse.
+- **Q36** Shared turn-input shape (ticket 02 owns it, 03 reuses it): the told entries, shown only, oldest first, each as its facts and count. A pure Action List helper writes the block text.
 
 ## User Stories
 
