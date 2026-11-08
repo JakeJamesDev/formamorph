@@ -74,6 +74,9 @@ When the player sends, the shown entries ride along with the action, and the lis
 - **Q52** The newest sent record stores the send-time state as one more snapshot (state and persona, no message history, Q48), dropped with the others on the next send (Q34). Regenerate restores it. Additive save-shape change.
 - **Q53** Regenerate Stats and the choice-script rerun start from the same send-time state through one shared helper, so they keep the listed actions too (Q15). They do not pause or reopen the list.
 - **Q54** (ticket 03 as built) A listed pick up guards a pass gain from the floor or from no one. A gain a character hands over is never matched.
+- **Q55** In the Chat layout, regenerate resends at once from the send-time state: actions stay applied, the list does not reopen, and the AI is told nothing (Q31).
+- **Q56** Regenerating the opening turn (page 1) keeps today's path: the list clears and the pre-game state returns.
+- **Q57** (ticket 07 as built) A sent record without its snapshots falls back to today's pre-turn restore.
 - **Q36** Shared turn-input shape (ticket 02 owns it, 03 reuses it): the told entries, shown only, oldest first, each as its facts and count. A pure Action List helper writes the block text.
 
 ## User Stories
