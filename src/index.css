@@ -721,6 +721,42 @@ b {
   .place-chip-shine::after { animation: none; display: none; }
 }
 
+/* Hidden Gem chip: the gem glints and two sparkles twinkle beside it every 9s. */
+.gem-sparkle {
+  position: relative;
+  display: inline-flex;
+}
+.gem-sparkle > svg {
+  animation: gem-glint 9s ease-in-out 3s infinite;
+}
+.gem-sparkle::before,
+.gem-sparkle::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: radial-gradient(circle, hsl(0 0% 100%) 0 20%, hsl(var(--primary)) 60%);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  transform: scale(0);
+  animation: gem-twinkle 9s ease-out 3s infinite;
+  pointer-events: none;
+}
+.gem-sparkle::before { top: -4px; right: -4px; }
+.gem-sparkle::after { bottom: -3px; left: -4px; width: 5px; height: 5px; animation-delay: 3.25s; }
+@keyframes gem-glint {
+  0%, 9%, 100% { transform: scale(1); filter: none; }
+  4% { transform: scale(1.18) rotate(-8deg); filter: brightness(1.5) drop-shadow(0 0 2px hsl(var(--primary))); }
+}
+@keyframes gem-twinkle {
+  0%, 10%, 100% { transform: scale(0) rotate(0deg); }
+  4% { transform: scale(1.2) rotate(45deg); }
+  7% { transform: scale(0.7) rotate(90deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gem-sparkle > svg { animation: none; }
+  .gem-sparkle::before, .gem-sparkle::after { animation: none; display: none; }
+}
+
 /* A game drawer opening out of its rail (`PanelDrawer`). */
 @keyframes drawer-open-left {
   from { opacity: 0; transform: translateX(-0.75rem); }

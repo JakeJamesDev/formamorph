@@ -8,7 +8,10 @@ export function HiddenGemMark({ className }: { className?: string }) {
   return (
     <Tip tip="Gets many likes for how few players have downloaded it" labelsChild={false}>
       <span className={cn(MARK_CHIP_CLASS, className)}>
-        <Gem className="h-3 w-3 shrink-0" aria-hidden /> Hidden Gem
+        <span className="gem-sparkle shrink-0" aria-hidden>
+          <Gem className="h-3 w-3" />
+        </span>
+        Hidden Gem
       </span>
     </Tip>
   );
