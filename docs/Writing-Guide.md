@@ -27,6 +27,7 @@ Copy takes on the words and the order of whatever its writer read last. A spec, 
 1. **List the facts in the user's words first.** Write what the user sees, clicks, and fills in. Then write the copy from that list, not from the spec, `CONTEXT.md`, or the code.
 2. **Glossary words aren't UI words.** A `CONTEXT.md` term goes into copy only when a visible label uses it, or when the copy defines it first. Pipeline words (planner, cast, pass) never go in.
 3. **Read it aloud. Would you say this?** A line that no one would say to a colleague fails, however well it scores on the other rules.
+4. **Natural means plain, not colorful.** A changelog or list lead names the feature: `Money and items`, not `Things to buy`. Say what changes and what drives it; don't give a mechanic intent (`Descriptions change with stats`, not `A world that notices`). Vary the shape of the leads; one template on every bullet reads as a formula.
 
 ## Labels, capitalization, and complete sentences
 
