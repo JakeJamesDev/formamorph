@@ -11,6 +11,7 @@ import type { HairTypeDef } from '@/types';
 import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
 import { resolveMorphAlias } from '@/lib/bodyMorphs';
 import { medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
+import { watchOnScreen } from '@/lib/watchOnScreen';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -439,6 +440,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
    useEffect(() => {
     if (!mountRef.current) return;
     const mount = mountRef.current;
+    const onScreen = watchOnScreen(mount);
     // Set up scene
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30.0, 1, 0.1, 20.0);
@@ -700,8 +702,8 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         vrmRef.current.update(dt);
       }
 
-      // Out of sight (a stowed panel), or while the model prepares, the frame isn't drawn.
-      if (!holdDraw && mount.clientWidth && mount.clientHeight) renderer.render(scene, camera);
+      // Out of sight (a stowed or off-screen panel), or while the model prepares, the frame isn't drawn.
+      if (!holdDraw && onScreen.visible && mount.clientWidth && mount.clientHeight) renderer.render(scene, camera);
     };
 
     const clock = new THREE.Clock();
@@ -719,6 +721,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     return () => {
       // Gate any still-in-flight GLTF/FBX callbacks so they can't restart the animation loop post-unmount.
       cancelled = true;
+      onScreen.stop();
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
       cancelAnimationFrame(rafId);

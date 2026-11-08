@@ -42,7 +42,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Take Me There and tutorial steps into a collapsed side panel now open that tab's drawer.** A request for a tab on a docked right panel now selects the tab too.
   - **In game on desktop, pick how wide the story is in its ⋯ menu.** Full Width and Full Height fill the space a collapsed panel leaves, and Reading Width keeps it centered. Each device remembers its choice.
   - **In game on desktop, a dot on the collapsed Stats, Traits or Inventory icon shows that tab changed.** The dot stays until you open that tab.
-  - **In game on mobile, swipe left or right to move between Story, Game and Status.** The panel follows your finger, and a tap on a tab slides it across too. The tabs get icons and the same sliding highlight as the other tabs.
+  - **In game on mobile, swipe left or right to move between Story, Game and Status.** The panel and the tab highlight follow your finger, and a quick flick is enough. A tap on a tab slides across too.
   - **An entity joins the scene when the narration uses its full Stranger Name.** One word of the Stranger Name never counts on its own.
   - **An entity the narration names in a location just inside yours now joins your scene.** Its Movement decides, for a location inside yours or beside it. Stays Put never comes, and Moves Between Its Locations comes only into its own locations.
   - **With Move Automatically on, the game moves you when the narration ends with you somewhere new, the opening included.** Followers come along, and an entity told to stay stays. Without it, the **Move to…?** offer reads the narration too.

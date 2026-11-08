@@ -1,6 +1,7 @@
 import { TabsList } from '@/components/ui/tabs';
 import { CollapsingSegment, SegmentMeasure, SegmentPill, type CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
 import { useCollapsingSegments } from '@/components/ui/useCollapsingSegments';
+import type { SwipeProgress } from '@/lib/swipeProgress';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,11 +11,13 @@ import { cn } from '@/lib/utils';
  * The tabs stretch to fill the row. With `hug`, the strip instead takes its full-label width as a flex
  * basis, shrinks in a tight row down to its icons, and centers its tabs.
  */
-export function CollapsingTabsList<V extends string>({ tabs, value, className, hug = false, 'aria-label': ariaLabel }: {
+export function CollapsingTabsList<V extends string>({ tabs, value, className, hug = false, follow, 'aria-label': ariaLabel }: {
   tabs: readonly CollapsingSegmentOption<V>[];
   value: V;
   className?: string;
   hug?: boolean;
+  /** A swiped strip of this strip's panels, which the pill tracks while it moves. */
+  follow?: SwipeProgress;
   'aria-label': string;
 }) {
   const active = Math.max(0, tabs.findIndex((t) => t.value === value));
@@ -30,7 +33,7 @@ export function CollapsingTabsList<V extends string>({ tabs, value, className, h
       style={{ minWidth, ...(hug && fullWidth !== undefined && { flex: `0 1 ${fullWidth}px` }) }}
     >
       <TabsList aria-label={ariaLabel} className={cn('relative flex justify-start', !hug && 'w-full')}>
-        {ready && <SegmentPill layout={layout} active={active} animate={animate} />}
+        {ready && <SegmentPill layout={layout} active={active} animate={animate} follow={follow} />}
         {tabs.map((tab, i) => (
           <CollapsingSegment
             key={tab.value}

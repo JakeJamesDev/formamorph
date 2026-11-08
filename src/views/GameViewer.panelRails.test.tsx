@@ -172,15 +172,15 @@ describe('the collapsed state', () => {
       expect(rail('Status')).toBeNull();
       expect(screen.queryByRole('button', { name: /^(Collapse|Dock) Panel$/ })).toBeNull();
     };
-    // Game sits between Story and Status, so each switch slides the opposite way.
-    const slide = () => document.querySelector('[data-slide]')?.getAttribute('data-slide');
+    // The panels sit in one strip, Story to Status, and it moves to the tab picked.
+    const panelStrip = () => document.querySelector<HTMLElement>('[data-panel-track]')?.style.transform;
     fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Story' }));
     expect(await screen.findByRole('tablist', { name: 'Story' })).toBeInTheDocument();
-    expect(slide()).toBe('back');
+    expect(panelStrip()).toBe('translateX(0%)');
     noRails();
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Status' }));
     expect(await screen.findByRole('tablist', { name: 'Status' })).toBeInTheDocument();
-    expect(slide()).toBe('next');
+    expect(panelStrip()).toBe('translateX(-200%)');
     noRails();
   });
 });

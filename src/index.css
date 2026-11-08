@@ -731,23 +731,6 @@ b {
   to   { opacity: 1; transform: none; }
 }
 
-/* The mobile game panels slide with their tab (`MobilePanelStage`); Radix holds the exiting panel until its
-   slide ends. A swipe sets --drag-from, so the slide finishes from where the finger let go. The entering
-   panel holds no fill afterward, so a drag's inline transform moves it. */
-.mobile-panel-stage { --in-from: 100%; --out-to: -100%; }
-.mobile-panel-stage[data-slide="back"] { --in-from: -100%; --out-to: 100%; }
-@keyframes mobile-panel-in  { from { transform: translateX(var(--drag-from, var(--in-from))); } }
-@keyframes mobile-panel-out { from { transform: translateX(var(--drag-from, 0px)); } to { transform: translateX(var(--out-to)); } }
-.mobile-panel {
-  animation-duration: 300ms;
-  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
-}
-.mobile-panel[data-state="active"] { animation-name: mobile-panel-in; animation-fill-mode: backwards; }
-.mobile-panel[data-state="inactive"] { animation-name: mobile-panel-out; animation-fill-mode: forwards; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) {
-  .mobile-panel-stage > .mobile-panel { animation: none; }
-}
-
 /* A game side's content arriving after a collapse or dock (`SideColumn`). */
 @keyframes side-fade-in {
   from { opacity: 0; }

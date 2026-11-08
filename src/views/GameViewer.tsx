@@ -60,6 +60,7 @@ import { Pager } from "@/components/ui/pagination";
 import { ArrowLeft, Music, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen, NotebookText, Gamepad2, HeartPulse } from "lucide-react";
 import { Tabs } from "@/components/ui/tabs";
 import { MobilePanelStage } from "@/components/game/MobilePanelStage";
+import { createSwipeProgress } from "@/lib/swipeProgress";
 import { CollapsingTabsList } from "@/components/ui/collapsing-tabs-list";
 import { Dialog, DialogContent, DialogTitle, dialogTitleRow } from "@/components/ui/dialog";
 import { AI_CONTEXT_DIALOG_SIZE } from "@/components/aiContext/aiContextDialogSize";
@@ -1542,6 +1543,8 @@ const GameViewer = ({
   }, [isDebugOpen, debugFindTerms, syncDebugTicks]);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("game");
+  // The mobile panel strip's place while it moves; the tab pill follows it.
+  const [mobileSwipe] = useState(createSwipeProgress);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   /**
@@ -6341,7 +6344,7 @@ const GameViewer = ({
       {!uiHidden && (isMobile ? (
         <Tabs value={mobilePanel} onValueChange={(next) => setMobilePanel(next as MobilePanel)} className="flex-grow min-h-0 flex flex-col">
           <div className="flex shrink-0 items-center gap-1 mb-1">
-            <CollapsingTabsList aria-label="Game Panels" value={mobilePanel} tabs={MOBILE_PANEL_TABS} className="flex-1" />
+            <CollapsingTabsList aria-label="Game Panels" value={mobilePanel} tabs={MOBILE_PANEL_TABS} follow={mobileSwipe} className="flex-1" />
             {/* The single menu joins the tab row on mobile. */}
             {menuModal(false)}
           </div>
@@ -6349,6 +6352,7 @@ const GameViewer = ({
             tabs={MOBILE_PANEL_TABS}
             value={mobilePanel}
             onValueChange={setMobilePanel}
+            progress={mobileSwipe}
             renderPanel={(panel) => (panel === "character" ? leftPanel : panel === "game" ? middlePanel : rightPanel)}
           />
         </Tabs>
