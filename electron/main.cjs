@@ -379,6 +379,9 @@ ipcMain.handle('cuda-support', () => cudaSupport());
 
 // The optional CUDA build, one folder per pinned tag under userData/engines. Windows only (spec Q2).
 let cudaInstall = null;
+const ENGINE_RUNS = new Set(['loading', 'ready']);
+// Old tags' folders are deleted once the engine stops (Q16).
+llmEngine.onStatus((state) => { if (!ENGINE_RUNS.has(state.status)) cudaInstall?.prune(); });
 function cuda() {
   cudaInstall ??= createCudaInstall({
     enginesDir: path.join(app.getPath('userData'), 'engines'),
@@ -394,6 +397,7 @@ function cuda() {
       return { nvidia, support: nvidia ? await cudaSupport() : { supported: false, reason: 'no-nvidia-card' } };
     },
     stopEngine: () => llmEngine.stop(),
+    engineRunning: () => ENGINE_RUNS.has(llmEngine.getState().status),
     freeSpace: modelMove.freeSpace,
     onStatus: (s) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('cuda-status', s); },
   });
@@ -696,6 +700,8 @@ app.whenReady().then(() => {
   });
 
   createWindow();
+  // A pin bump replaces an installed CUDA build in the background; old folders go first.
+  if (process.platform === 'win32') void Promise.resolve().then(() => cuda().startup()).catch(() => { /* the row shows the status */ });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

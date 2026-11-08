@@ -476,6 +476,28 @@ describe('local model CUDA row', () => {
     expect(await screen.findByText(/CUDA needs 1.4 GB, and the drive has 800 MB free/)).toBeInTheDocument();
   });
 
+  it('says CUDA is updating while a replace downloads, and not during a first download', async () => {
+    const { bridge, push } = cudaBridge(notInstalled());
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+    await screen.findByRole('button', { name: /^Download/ });
+    const downloading = { ...CUDA_BASE, state: 'downloading', received: 1, total: CUDA_BASE.downloadBytes, phase: 'download' } as const;
+    await push(downloading);
+    expect(screen.queryByText(/CUDA needs new files/)).toBeNull();
+    await push({ ...downloading, replacing: true });
+    expect(screen.getByText(/The engine uses Vulkan until they’re installed/)).toBeInTheDocument();
+  });
+
+  it('a stale install that couldn’t fit says it is updating, how much it needs, and offers Download', async () => {
+    const error = { kind: 'no-space', neededBytes: 1_363_265_321, freeBytes: 800_000_000 } as const;
+    const { bridge } = cudaBridge({ ...CUDA_BASE, state: 'stale', tag: 'b8', partialBytes: 0, error });
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+    expect(await screen.findByText(/CUDA needs new files/)).toBeInTheDocument();
+    expect(screen.getByText(/CUDA needs 1.4 GB, and the drive has 800 MB free/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Download/ })).toBeEnabled();
+  });
+
   it('asks before Remove while the engine runs, then removes', async () => {
     const { bridge, calls } = cudaBridge(installed);
     stubDesktop({ devices: [DISCRETE], cuda: bridge, engine: readyEngine() });

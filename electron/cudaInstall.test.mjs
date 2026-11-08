@@ -72,13 +72,17 @@ const unzipInto = async (zip, dir) => {
 
 const SUPPORTED = { nvidia: true, support: { supported: true } };
 
-function makeInstall({ fetchImpl, pin = pinWith(), probe = () => SUPPORTED, free = () => 10 ** 12, stopEngine = async () => {}, statuses = [] } = {}) {
+function makeInstall({
+  fetchImpl, pin = pinWith(), probe = () => SUPPORTED, free = () => 10 ** 12, stopEngine = async () => {},
+  engineRunning = () => false, statuses = [],
+} = {}) {
   return createCudaInstall({
     enginesDir: path.join(tmp, 'engines'),
     pin,
     downloader: modelDownload.createDownloader({ allowedHosts: ['github.com'], busyMessage: 'busy', hostMessage: 'github only' }),
     probe,
     stopEngine,
+    engineRunning,
     freeSpace: free,
     extract: unzipInto,
     downloadOptions: { fetchImpl, chunkSize: CHUNK },
@@ -272,5 +276,197 @@ describe('CUDA install', () => {
     modelSrv.release();
     await expect(modelJob).resolves.toBe(path.join(modelDir, 'm.gguf'));
     expect(fs.readFileSync(path.join(modelDir, 'm.gguf'))).toEqual(Buffer.from(model));
+  });
+});
+
+describe('CUDA replace after a pin bump', () => {
+  /** One tag's two zips, with bytes of its own, and the pin that names them. */
+  function release(tag) {
+    const seed = Number(tag.slice(1));
+    const files = {
+      [`llama-${tag}-bin-win-cuda-13.4-x64.zip`]: Buffer.from(zipSync({ 'llama-server.exe': noise(3000, seed), 'ggml-cuda.dll': noise(2000, seed + 1) }, { level: 0 })),
+      'cudart-llama-bin-win-cuda-13.4-x64.zip': Buffer.from(zipSync({ 'cublas64_13.dll': noise(4000, seed + 2) }, { level: 0 })),
+    };
+    const pin = {
+      tag,
+      cuda: {
+        assets: Object.entries(files).map(([name, buf]) => ({
+          name, url: `${HOST}/${tag}/${name}`, size: buf.length, unpackedSize: 9000, digest: digestOf(buf),
+        })),
+      },
+    };
+    return { pin, files };
+  }
+
+  const folders = () => fs.readdirSync(path.join(tmp, 'engines')).filter((n) => n.startsWith('llama-server-cuda-')).sort();
+
+  /** Install `tag` the way the player would. */
+  async function installTag(tag) {
+    const { pin, files } = release(tag);
+    const { fetchImpl } = await zipServer({ files });
+    expect((await makeInstall({ fetchImpl, pin }).install()).state).toBe('installed');
+  }
+
+  /** Start the automatic replace to `tag` and Cancel it partway through the second asset. */
+  async function cancelReplace(tag) {
+    const { pin, files } = release(tag);
+    const held = await zipServer({ files, holdName: pin.cuda.assets[1].name, holdFrom: CHUNK });
+    const cuda = makeInstall({ fetchImpl: held.fetchImpl, pin });
+    const first = cuda.startup();
+    await until(() => held.state.held.length > 0);
+    cuda.cancel();
+    held.release();
+    return first;
+  }
+
+  it('with an older tag installed, app start reads stale and downloads the new tag without a click', async () => {
+    await installTag('b8');
+    const { pin, files } = release('b9');
+    const srv = await zipServer({ files });
+    const statuses = [];
+    const cuda = makeInstall({ fetchImpl: srv.fetchImpl, pin, statuses });
+    expect(await cuda.status()).toMatchObject({ state: 'stale', tag: 'b8' });
+
+    expect(await cuda.startup()).toMatchObject({ state: 'installed', tag: 'b9' });
+    const downloading = statuses.filter((s) => s.state === 'downloading');
+    expect(downloading.length).toBeGreaterThan(0);
+    expect(downloading.every((s) => s.replacing === true)).toBe(true);
+    expect(srv.state.requests.length).toBeGreaterThan(0);
+    expect(folders()).toEqual(['llama-server-cuda-b8', 'llama-server-cuda-b9']);
+  });
+
+  it('a first install is not a replace', async () => {
+    const statuses = [];
+    const { fetchImpl } = await zipServer();
+    await makeInstall({ fetchImpl, statuses }).install();
+    expect(statuses.filter((s) => s.state === 'downloading').some((s) => 'replacing' in s)).toBe(false);
+  });
+
+  it('app start downloads nothing when no CUDA build is installed', async () => {
+    const { fetchImpl, state } = await zipServer();
+    const cuda = makeInstall({ fetchImpl });
+    await cuda.startup();
+    expect((await cuda.status()).state).toBe('not-installed');
+    expect(state.requests).toEqual([]);
+  });
+
+  it('after the replace lands, keeps the newest older tag and deletes anything older', async () => {
+    await installTag('b7');
+    await installTag('b8');
+    fs.mkdirSync(path.join(tmp, 'engines', 'staging', 'b6'), { recursive: true });
+    const { pin, files } = release('b9');
+    const { fetchImpl } = await zipServer({ files });
+    await makeInstall({ fetchImpl, pin }).startup();
+    expect(folders()).toEqual(['llama-server-cuda-b8', 'llama-server-cuda-b9']);
+    expect(fs.existsSync(path.join(tmp, 'engines', 'staging', 'b6'))).toBe(false);
+  });
+
+  it('defers deletes while the engine runs, and deletes at the next stop or app start', async () => {
+    await installTag('b7');
+    await installTag('b8');
+    const { pin, files } = release('b9');
+    const { fetchImpl } = await zipServer({ files });
+    let runs = true;
+    const cuda = makeInstall({ fetchImpl, pin, engineRunning: () => runs });
+    expect((await cuda.startup()).state).toBe('installed');
+    expect(folders()).toEqual(['llama-server-cuda-b7', 'llama-server-cuda-b8', 'llama-server-cuda-b9']);
+
+    runs = false;
+    await cuda.prune(); // main calls this when the engine reports a stop
+    expect(folders()).toEqual(['llama-server-cuda-b8', 'llama-server-cuda-b9']);
+
+    // An old folder left from an earlier run, found at the next app start.
+    const leftover = path.join(tmp, 'engines', 'llama-server-cuda-b6');
+    fs.mkdirSync(leftover);
+    fs.writeFileSync(path.join(leftover, 'cuda-install.json'), JSON.stringify({ tag: 'b6', digests: [] }));
+    await makeInstall({ fetchImpl, pin }).startup();
+    expect(folders()).toEqual(['llama-server-cuda-b8', 'llama-server-cuda-b9']);
+  });
+
+  it('a rollback to the previous tag finds its folder valid, downloads nothing, and keeps the newer one', async () => {
+    await installTag('b8');
+    const next = release('b9');
+    await makeInstall({ fetchImpl: (await zipServer({ files: next.files })).fetchImpl, pin: next.pin }).startup();
+
+    const prev = release('b8');
+    const srv = await zipServer({ files: prev.files });
+    const rolledBack = makeInstall({ fetchImpl: srv.fetchImpl, pin: prev.pin });
+    await rolledBack.startup();
+    expect(await rolledBack.status()).toMatchObject({ state: 'installed', tag: 'b8' });
+    expect(srv.state.requests).toEqual([]);
+    expect(folders()).toEqual(['llama-server-cuda-b8', 'llama-server-cuda-b9']);
+  });
+
+  it('too little free space leaves the old build in place and states how much is needed', async () => {
+    await installTag('b8');
+    const { pin, files } = release('b9');
+    const srv = await zipServer({ files });
+    const needed = pin.cuda.assets.reduce((n, a) => n + a.size + a.unpackedSize, 0);
+    const result = await makeInstall({ fetchImpl: srv.fetchImpl, pin, free: () => 10 }).startup();
+    expect(result).toMatchObject({ state: 'stale', tag: 'b8', error: { kind: 'no-space', neededBytes: needed, freeBytes: 10 } });
+    expect(srv.state.requests).toEqual([]);
+    expect(folders()).toEqual(['llama-server-cuda-b8']);
+  });
+
+  it('a canceled replace stays canceled at the next app start, and a newer pin clears it', async () => {
+    await installTag('b8');
+    expect((await cancelReplace('b9')).state).toBe('stale');
+
+    const { pin, files } = release('b9');
+    const srv = await zipServer({ files });
+    const restarted = makeInstall({ fetchImpl: srv.fetchImpl, pin });
+    await restarted.startup();
+    expect((await restarted.status()).state).toBe('stale');
+    expect(srv.state.requests).toEqual([]);
+
+    // A rollback to the older pin keeps the cancel, so the roll-forward still skips that tag.
+    const rollback = release('b8');
+    await makeInstall({ fetchImpl: (await zipServer({ files: rollback.files })).fetchImpl, pin: rollback.pin }).startup();
+    await makeInstall({ fetchImpl: srv.fetchImpl, pin }).startup();
+    expect(srv.state.requests).toEqual([]);
+
+    const newer = release('b10');
+    const bumped = await zipServer({ files: newer.files });
+    expect(await makeInstall({ fetchImpl: bumped.fetchImpl, pin: newer.pin }).startup()).toMatchObject({ state: 'installed', tag: 'b10' });
+  });
+
+  it('the player\'s Resume after a canceled replace finishes it from the partials', async () => {
+    await installTag('b8');
+    await cancelReplace('b9');
+
+    const { pin, files } = release('b9');
+    const srv = await zipServer({ files });
+    expect(await makeInstall({ fetchImpl: srv.fetchImpl, pin }).install()).toMatchObject({ state: 'installed', tag: 'b9' });
+    expect(srv.state.requests.some((r) => r.name === pin.cuda.assets[0].name)).toBe(false);
+    expect(fs.existsSync(path.join(tmp, 'engines', 'cuda-replace-canceled.json'))).toBe(false);
+  });
+
+  it('app start downloads nothing on a machine that no longer supports CUDA', async () => {
+    await installTag('b8');
+    const { pin, files } = release('b9');
+    const srv = await zipServer({ files });
+    const verdict = { supported: false, reason: 'driver-too-old', driverFloor: 615 };
+    await makeInstall({ fetchImpl: srv.fetchImpl, pin, probe: () => ({ nvidia: true, support: verdict }) }).startup();
+    expect(srv.state.requests).toEqual([]);
+  });
+
+  it('a folder set aside for deletion is finished at the next prune and never reads as a tag', async () => {
+    await installTag('b8');
+    const aside = path.join(tmp, 'engines', 'deleting-llama-server-cuda-b7');
+    fs.mkdirSync(aside);
+    fs.writeFileSync(path.join(aside, 'cuda-install.json'), JSON.stringify({ tag: 'b7', digests: [] }));
+    const { pin, files } = release('b9');
+    const cuda = makeInstall({ fetchImpl: (await zipServer({ files })).fetchImpl, pin });
+    expect(await cuda.status()).toMatchObject({ state: 'stale', tag: 'b8' });
+    await cuda.prune();
+    expect(fs.existsSync(aside)).toBe(false);
+  });
+
+  it('Remove clears a canceled replace', async () => {
+    await installTag('b8');
+    await cancelReplace('b9');
+    const { fetchImpl } = await zipServer({ files: release('b9').files });
+    await makeInstall({ fetchImpl, pin: release('b9').pin }).remove();
+    expect(fs.existsSync(path.join(tmp, 'engines', 'cuda-replace-canceled.json'))).toBe(false);
   });
 });

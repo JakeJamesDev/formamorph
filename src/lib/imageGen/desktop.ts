@@ -210,7 +210,11 @@ export type CudaStatus = {
   downloadBytes: number;
 } & (
   | { state: 'not-installed' | 'stale'; tag?: string; partialBytes: number; error?: CudaInstallError }
-  | { state: 'downloading'; received: number; total: number; phase: 'download' | 'verify' | 'unpack' }
+  | {
+      state: 'downloading'; received: number; total: number; phase: 'download' | 'verify' | 'unpack';
+      /** An older tag's build is installed, so this download replaces it after a pin bump. */
+      replacing?: true;
+    }
   | { state: 'installed'; tag: string }
   | { state: 'unsupported' }
 );

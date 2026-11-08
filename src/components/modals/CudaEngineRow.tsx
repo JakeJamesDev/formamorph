@@ -60,6 +60,7 @@ function InstallError({ error }: { error: CudaInstallError }) {
 }
 
 const PHASE_TEXT = { verify: 'Checking the files…', unpack: 'Installing…' } as const;
+const UPDATING_TEXT = 'CUDA needs new files for this version. The engine uses Vulkan until they’re installed.';
 
 /**
  * The Local Model panel's CUDA row, on machines whose nvidia-smi lists an NVIDIA card. Download, progress,
@@ -98,6 +99,7 @@ export function CudaEngineRow({ engine }: { engine: LocalLlmState }) {
             <Button type="button" variant="outline" size="sm" onClick={() => void bridge.cancel()}>Cancel</Button>
           )}
         </div>
+        {status.replacing && <Hint>{UPDATING_TEXT}</Hint>}
       </div>
     );
   } else if (status.state === 'installed') {
@@ -121,6 +123,7 @@ export function CudaEngineRow({ engine }: { engine: LocalLlmState }) {
           </Button>
           {resume && <Hint>{formatModelSize(status.partialBytes)} of {formatModelSize(status.downloadBytes)} downloaded</Hint>}
         </div>
+        {status.state === 'stale' && <Hint>{UPDATING_TEXT}</Hint>}
         {status.error && <InstallError error={status.error} />}
       </div>
     );
