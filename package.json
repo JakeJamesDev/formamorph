@@ -37,6 +37,7 @@
     "android:open": "cap open android",
     "android:run": "node scripts/buildAndroid.mjs && cap run android",
     "llama-server:fetch": "node scripts/fetchLlamaServer.mjs",
+    "llama-server:bump": "node scripts/bumpLlamaServerPin.mjs",
     "vram-helper": "node scripts/vram-helper.mjs",
     "gen-tags": "node scripts/genDanbooruTags.mjs",
     "gen-item-icons": "node scripts/genItemIcons.mjs",

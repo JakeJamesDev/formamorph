@@ -51,6 +51,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Community Creations places up to three well-liked worlds with few downloads on page 1 of the Worlds tab.** Each one carries a **Hidden Gem** badge, and the picks change every 12 hours. Turn them off with the **Hidden Gems** checkbox next to the sort control.
   - **The app tells the Formamorph server once a day that it was opened, with a Settings switch to stop it.** The counts show how many players return and on which platforms. The server keeps a scrambled ID, never play, worlds or account. Turn off **Daily Check-In** under **Settings → Data → Privacy**.
 - **🛠️ Developer tooling**
+  - **CUDA Engine:**
+    - **The llama.cpp pin now holds the CUDA 13.4 asset digests.** `npm run llama-server:bump -- <tag>` writes them, and the desktop build fails when the release lacks an asset or a digest differs.
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
   - **Six World Editor tabs' tests now mount the panel, not the whole editor, and take half the worker time.** 124 of 177 test rows moved with coverage held. The tabs are Entities, Dictionary, Placeholders, Locations, Overview and Tools.

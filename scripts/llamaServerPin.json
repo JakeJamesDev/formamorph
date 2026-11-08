@@ -1,3 +1,15 @@
 {
-  "tag": "b12078"
+  "tag": "b12078",
+  "cuda": {
+    "assets": [
+      {
+        "name": "llama-b12078-bin-win-cuda-13.4-x64.zip",
+        "digest": "sha256:dc5bfd85b8fa1551e3bb0d947d68e39dd29c72064169508fe8c531765b9f2c7f"
+      },
+      {
+        "name": "cudart-llama-bin-win-cuda-13.4-x64.zip",
+        "digest": "sha256:738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668"
+      }
+    ]
+  }
 }

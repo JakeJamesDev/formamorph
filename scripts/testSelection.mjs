@@ -144,7 +144,7 @@ export const PATH_TRIGGERS = {
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
   // The fake llama-server replays the run recorded at the pinned tag; the stream parser test reads the same files.
   'electron/fixtures/llama-server/*.json': ['electron/fakeLlamaServer.mjs', 'src/lib/aiRequest/aiStream.llamaServer.test.ts'],
-  'scripts/llamaServerPin.json': ['electron/fakeLlamaServer.mjs', 'scripts/fetchLlamaServer.mjs'],
+  'scripts/llamaServerPin.json': ['electron/fakeLlamaServer.mjs', 'scripts/fetchLlamaServer.mjs', 'electron/enginePin.cjs', 'electron/enginePin.test.mjs'],
   'scripts/fixtures/llamaServerAssets.*.json': ['scripts/fetchLlamaServer.test.mjs'],
   // The pin load test runs the generator as a child process.
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
