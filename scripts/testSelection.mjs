@@ -162,6 +162,7 @@ export const PATH_TRIGGERS = {
   '.github/workflows/ci.yml': ['scripts/ciWorkflow.test.mjs'],
   '.github/workflows/release.yml': ['scripts/bundledAvatarCheck.test.mjs'],
   '.github/workflows/pages.yml': ['scripts/bundledAvatarCheck.test.mjs'],
+  'electron-builder.yml': ['electron/builderConfig.test.mjs', 'scripts/bundledAvatarCheck.test.mjs'],
   'vite.config.js': ['scripts/espeakCheck.test.mjs'],
   // The runner test loads this reporter by path through real vitest.
   'scripts/runOutcomeReporter.mjs': ['scripts/runTests.test.mjs'],

@@ -19,6 +19,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **The dev router starts a new game in any bundled world with `fixture=bundled-<world id>`.** Page one is the world's first Opening Narration, so release screenshots show real art and text without a model.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The built-in engine loads models again in the Linux and macOS desktop apps.** In 3.6.1, every Load stopped with "The llama.cpp pin file is missing from this build."
+
 ---
 
 <details>
