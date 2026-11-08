@@ -3208,7 +3208,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             held={introActive || gateOpen || firstRunDue}
           />
 
-          {/* One-time CUDA engine offer; waits for the intro, the AI setup gate and the first-run step. */}
+          {/* One-time CUDA engine offer; waits for the intro, the AI setup gate, the first-run step and any open modal dialog. */}
           <CudaNoticeHost held={introActive || gateOpen || gate !== null || aiGatePending || firstRunDue} />
 
           {/* Community Creations. The host reads its own libraries, account and events from the services,

@@ -129,6 +129,36 @@ describe('the CUDA notice on the main menu', () => {
     expect(await screen.findByRole('region', { name: 'CUDA Engine' })).toBeInTheDocument();
   });
 
+  it('waits while a modal dialog is open anywhere, then shows once it closes', async () => {
+    stubDesktop(NOT_INSTALLED);
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('data-state', 'open');
+    document.body.appendChild(dialog);
+    render(<CudaNoticeHost held={false} />);
+    await startEngine();
+    expect(notice()).not.toBeInTheDocument();
+
+    act(() => { dialog.remove(); });
+
+    expect(await screen.findByRole('region', { name: 'CUDA Engine' })).toBeInTheDocument();
+  });
+
+  it('ignores a non-modal window and a closed dialog', async () => {
+    stubDesktop(NOT_INSTALLED);
+    for (const attrs of [{ 'aria-modal': 'false', 'data-state': 'open' }, { 'data-state': 'closed' }]) {
+      const el = document.createElement('div');
+      el.setAttribute('role', 'dialog');
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+      document.body.appendChild(el);
+    }
+    render(<CudaNoticeHost held={false} />);
+    await startEngine();
+
+    expect(await screen.findByRole('region', { name: 'CUDA Engine' })).toBeInTheDocument();
+    document.querySelectorAll('[role="dialog"]').forEach((el) => el.remove());
+  });
+
   it('holds back while the load is still deciding whether the AI is usable, then shows', async () => {
     stubDesktop(NOT_INSTALLED);
     renderMainMenu();

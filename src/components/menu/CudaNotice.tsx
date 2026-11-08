@@ -47,11 +47,27 @@ export function CudaNotice({ downloadBytes, onDownload, onDismiss }: CudaNoticeP
   );
 }
 
+const OPEN_MODAL = '[role="dialog"]:not([aria-modal="false"]):not([data-state="closed"]), [role="alertdialog"]:not([data-state="closed"])';
+
+/** True while any modal dialog is open anywhere in the document, wherever its state lives. */
+function useModalOpen(): boolean {
+  const [open, setOpen] = useState(() => document.querySelector(OPEN_MODAL) !== null);
+  useEffect(() => {
+    const check = () => setOpen(document.querySelector(OPEN_MODAL) !== null);
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-state', 'aria-modal', 'role'] });
+    return () => observer.disconnect();
+  }, []);
+  return open;
+}
+
 /**
  * Offers the CUDA engine once per device: the first time the built-in engine starts on a card that can
- * run it, with no CUDA install. `held` keeps the card back while the intro or a first-run step has the screen.
+ * run it, with no CUDA install. The card stays back while `held` is set (intro, first-run step) or a modal dialog is open.
  */
 export function CudaNoticeHost({ held }: { held: boolean }) {
+  const modalOpen = useModalOpen();
   const status = useCudaStatus();
   const engine = useLocalLlmStatus();
   const [armed, setArmed] = useState(false);
@@ -67,7 +83,7 @@ export function CudaNoticeHost({ held }: { held: boolean }) {
   const answer = () => { markPromptSeen(); setAnswered(true); };
 
   const bridge = window.formamorphDesktop?.cuda;
-  if (!armed || answered || held || !offerable || !bridge || !status) return null;
+  if (!armed || answered || held || modalOpen || !offerable || !bridge || !status) return null;
   return (
     <CudaNotice
       downloadBytes={status.downloadBytes}
