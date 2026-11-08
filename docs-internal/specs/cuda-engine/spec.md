@@ -114,6 +114,12 @@ Rulings from the spec review (2026-11-07):
   - The device picker lists the devices of the next start's backend. The status line names the backend that ran.
   - The Backend control shows only on NVIDIA machines, in Simple and Advanced. Auto reads Auto (CUDA) or Auto (Vulkan).
   - CUDA starts set the JIT cache to NVIDIA's documented maximum.
+- Ticket 06 rulings:
+  - Only a CUDA failure followed by a Vulkan success in the same start writes the failure record. A failure on both backends, or an empty CUDA listing, writes none.
+  - An explicit CUDA setting ignores the record, but its fallback still writes one.
+  - Retry clears the record. If the engine is ready on Vulkan, Retry also restarts it on CUDA.
+  - The "failed last time" line shows in the installed row whenever the record matches, and Remove clears it.
+  - The record stores the sorted distinct driver versions of all cards. Any change clears it, and a failed query reads as no match.
 - Ticket 07 rulings:
   - Retention (Q22) keeps the current tag plus the newest other valid folder, older or newer, so a rollback and a roll-forward both find their folder. Everything else is deleted, staging partials included, only while the engine is stopped or at app start.
   - Cancel of the background replace sticks for that target tag until the player clicks Download or Resume. A newer pin tag clears it.
