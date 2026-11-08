@@ -83,7 +83,16 @@ export function CudaEngineRow({ engine, status }: { engine: LocalLlmState; statu
 
   let body: ReactNode;
   if (status.state === 'unsupported') {
-    body = <UnsupportedReason support={status.support} />;
+    body = (
+      <div className="grid gap-2">
+        <UnsupportedReason support={status.support} />
+        {status.hasFiles && (
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onRemove}>Remove</Button>
+          </div>
+        )}
+      </div>
+    );
   } else if (status.state === 'downloading') {
     const pct = status.total ? Math.round((status.received / status.total) * 100) : 0;
     body = (

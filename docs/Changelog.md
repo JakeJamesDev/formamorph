@@ -81,6 +81,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **CUDA Engine:**
     - **The CUDA offer on the main menu now waits while any dialog is open.** It shows once the dialog closes.
+    - **Local Model now keeps Remove for CUDA files from an older version when your card or driver stops supporting CUDA.** Remove frees the disk space.
   - **The game's last choices and a script's question no longer hide behind the status strip.** You can always scroll the last row clear of it. A script's question stays in view as text appears, and the strip shows **Waiting for your answer…** until you answer.
   - **One save, entity, dictionary or avatar with a missing or damaged file no longer empties its list.** The others keep loading, and Backup & Restore can still back them up.
   - **A world your library can't read now shows one notice with a way to fix it.** Review lists each damaged world, and you can restore, download again or remove it. Your other worlds keep loading, including when a world's stored file is missing.

@@ -1,6 +1,6 @@
 # 11: Remove CUDA When Unsupported
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,6 +15,14 @@ The row keeps the unsupported reason and no Download, and adds Remove whenever a
 
 ## Acceptance criteria
 
-- [ ] On an unsupported machine with an installed or stale CUDA folder, the row shows the reason and Remove. (install module test and Local Model panel test)
-- [ ] Remove deletes the folder, and the row then shows the reason alone.
-- [ ] On an unsupported machine with no CUDA folder, nothing changes.
+- [x] On an unsupported machine with an installed or stale CUDA folder, the row shows the reason and Remove. (install module test and Local Model panel test) Installed already kept Remove; the stale case now reads `hasFiles` (cudaInstall.test.mjs, LocalModelPanel.test.tsx).
+- [x] Remove deletes the folder, and the row then shows the reason alone. (install test: folder gone, no `hasFiles`; panel test: Remove gone after the pushed status)
+- [x] On an unsupported machine with no CUDA folder, nothing changes. (install test: no `hasFiles`)
+
+## Landed
+
+**Not verified**
+- Partials in the staging folder alone do not show Remove on an unsupported machine; the ticket names installed or stale folders only.
+
+**For you**
+- Roll the driver below the floor with an older-tag CUDA folder on disk. Look in Local Model, CUDA row: reason plus Remove, then reason alone after Remove.

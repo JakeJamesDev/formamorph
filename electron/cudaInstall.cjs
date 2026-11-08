@@ -188,7 +188,7 @@ function createCudaInstall({
     }
     const tag = installedTag();
     if (tag) return { ...base, state: 'installed', tag, ...(failedFor(drivers) ? { failedLastTime: true } : {}) };
-    if (!support?.supported) return { ...base, state: 'unsupported' };
+    if (!support?.supported) return { ...base, state: 'unsupported', ...(staleTag() ? { hasFiles: true } : {}) };
     const partialBytes = sumOf(onDisk);
     const rest = { partialBytes, ...(lastError ? { error: lastError } : {}) };
     const stale = staleTag();

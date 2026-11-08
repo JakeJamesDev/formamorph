@@ -250,7 +250,11 @@ export type CudaStatus = {
       /** CUDA failed to load on this tag and driver, so Auto uses Vulkan until Retry. */
       failedLastTime?: true;
     }
-  | { state: 'unsupported' }
+  | {
+      state: 'unsupported';
+      /** An older tag's CUDA folder is still on disk, so the row offers Remove. */
+      hasFiles?: true;
+    }
 );
 
 declare global {

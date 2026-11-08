@@ -459,6 +459,21 @@ describe('local model CUDA row', () => {
     expect(screen.queryByRole('button', { name: /download/i })).toBeNull();
   });
 
+  it('offers Remove beside the reason when an unsupported machine still holds a CUDA folder, then shows the reason alone', async () => {
+    const unsupported = { ...CUDA_BASE, support: { supported: false as const, reason: 'driver-too-old' as const, driverFloor: 580, cardName: DISCRETE } };
+    const { bridge, calls, push } = cudaBridge({ ...unsupported, state: 'unsupported', hasFiles: true });
+    stubDesktop({ devices: [DISCRETE], cuda: bridge, engine: readyEngine({ status: 'stopped' }) });
+    openPanel();
+
+    expect(await screen.findByText(/Update it to version 580 or later/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /download/i })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(calls).toEqual(['remove']);
+    await push({ ...unsupported, state: 'unsupported' });
+    expect(screen.getByText(/Update it to version 580 or later/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+  });
+
   it('downloads with progress and a Cancel, resumes, then reads installed', async () => {
     const { bridge, calls, push } = cudaBridge(notInstalled());
     stubDesktop({ devices: [DISCRETE], cuda: bridge });

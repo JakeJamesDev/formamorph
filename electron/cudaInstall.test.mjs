@@ -178,6 +178,27 @@ describe('CUDA install', () => {
     expect(state.requests).toEqual([]);
   });
 
+  it('an unsupported machine with a stale folder reads hasFiles, and Remove clears it', async () => {
+    const old = path.join(tmp, 'engines', 'llama-server-cuda-b7');
+    fs.mkdirSync(old, { recursive: true });
+    fs.writeFileSync(path.join(old, 'cuda-install.json'), JSON.stringify({ tag: 'b7', digests: [] }));
+    const { fetchImpl } = await zipServer();
+    const verdict = { supported: false, reason: 'driver-too-old', driverFloor: 580 };
+    const cuda = makeInstall({ fetchImpl, probe: () => ({ nvidia: true, support: verdict }) });
+    expect(await cuda.status()).toMatchObject({ state: 'unsupported', hasFiles: true });
+    const after = await cuda.remove();
+    expect(after.state).toBe('unsupported');
+    expect(after.hasFiles).toBeUndefined();
+    expect(fs.existsSync(old)).toBe(false);
+  });
+
+  it('an unsupported machine with no CUDA folder reads no hasFiles', async () => {
+    const { fetchImpl } = await zipServer();
+    const verdict = { supported: false, reason: 'driver-too-old', driverFloor: 580 };
+    const cuda = makeInstall({ fetchImpl, probe: () => ({ nvidia: true, support: verdict }) });
+    expect((await cuda.status()).hasFiles).toBeUndefined();
+  });
+
   it('reads stale for an older tag\'s folder', async () => {
     const old = path.join(tmp, 'engines', 'llama-server-cuda-b7');
     fs.mkdirSync(old, { recursive: true });
