@@ -103,7 +103,7 @@ Rulings from the spec review (2026-11-07):
   - The row shows whenever the VRAM query lists an NVIDIA card. When the facts query fails, it shows "support unknown" with no Download. It hides only when no NVIDIA card is listed.
 - Ticket 08 rulings:
   - The notice appears the first time the engine reaches loading while the flag is unset, on a supported NVIDIA machine with CUDA not installed. A stale install never shows it.
-  - It waits until the intro, the AI setup, the first-run step and any open dialog close.
+  - It waits until the intro, the AI setup, the first-run step and any open dialog close. "Any open dialog" means any open dialog in the document, by the editor history chords' existing rule: dialog or alertdialog role, not `aria-modal="false"`, not `data-state="closed"`. Radix sets no `aria-modal`. Popovers, menus and toasts don't count (ticket 10 ruling).
   - Download closes the notice and starts the install. Progress and errors show only in the engine row.
   - The flag is a device-local key, never in backups, worlds or saves. It is set only by Download or Not now.
   - The user approved the form on 2026-11-07: a non-modal card at the bottom right of the main menu, over the footer icons while shown. The draft copy stands, subject to the Writing Guide pass.
@@ -120,6 +120,11 @@ Rulings from the spec review (2026-11-07):
   - Retry clears the record. If the engine is ready on Vulkan, Retry also restarts it on CUDA.
   - The "failed last time" line shows in the installed row whenever the record matches, and Remove clears it.
   - The record stores the sorted distinct driver versions of all cards. Any change clears it, and a failed query reads as no match.
+- Ticket 12 rulings:
+  - A pin counts as Vulkan-only when it matches a Vulkan device name and no nvidia-smi card. Auto then starts on Vulkan with reason `device-pin`.
+  - The pin check runs after not-installed and updating, and before failed-last-time, the support verdict and mixed GPUs. An explicit CUDA setting still wins.
+  - Main's input gathering for the backend choice moves behind a seam with injected dependencies, and tests drive it.
+  - When Auto picks CUDA, the device picker lists only CUDA's devices. To pin an integrated GPU, the player sets Backend to Vulkan first. The user ruled this stays as is (2026-11-07).
 - Ticket 07 rulings:
   - Retention (Q22) keeps the current tag plus the newest other valid folder, older or newer, so a rollback and a roll-forward both find their folder. Everything else is deleted, staging partials included, only while the engine is stopped or at app start.
   - Cancel of the background replace sticks for that target tag until the player clicks Download or Resume. A newer pin tag clears it.
@@ -152,7 +157,7 @@ Rulings from the spec review (2026-11-07):
 - Supported: compute capability 7.5 or higher. Floor: R580 for 8.6, 8.9, 12.0 and 12.1, which have precompiled code. R615 for every other supported capability, which runs from PTX.
 - With several NVIDIA cards, every card must pass. Otherwise Auto stays on Vulkan, unless the device setting pins a card that passes.
 - Mixed GPUs (Q14) means an NVIDIA card plus a non-NVIDIA card that isn't integrated. NVIDIA plus an integrated GPU, the common laptop case, is not mixed. The device policy's integrated-name test is shared for this.
-- Output: the backend for this start, and a reason when CUDA is not used: not installed, updating, failed last time, no CUDA devices, no NVIDIA card, driver too old, card too old, support unknown, mixed GPUs, or setting.
+- Output: the backend for this start, and a reason when CUDA is not used: not installed, updating, device pin (a Vulkan-only device, ticket 12), failed last time, no CUDA devices, no NVIDIA card, driver too old, card too old, support unknown, mixed GPUs, or setting.
 
 **Backend choice at engine start.**
 - The engine runs in a utility process and can't see user data. Main resolves the CUDA folder and passes the server binary in the start options.
