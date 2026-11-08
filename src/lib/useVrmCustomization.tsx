@@ -52,6 +52,9 @@ const HAIR_TYPES: Record<string, HairTypeDef> = {
 const BODY_MORPH_MIN = -0.25;
 const BODY_MORPH_MAX = 1.25;
 const BODY_MORPH_STEP = 0.05;
+// Head keys run between their two modeled shapes; past either end the mesh distorts.
+const HEAD_MORPH_MIN = 0;
+const HEAD_MORPH_MAX = 1;
 
 export interface VrmCustomization {
   /** Pass to `VRMViewer.onCapabilities` so the controls learn what the loaded model supports. */
@@ -153,6 +156,7 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
 
   // One slider per body morph the loaded model actually exposes — fully model-driven, nothing hardcoded.
   const bodyMorphSliders = caps?.bodyMorphs ?? [];
+  const headMorphSliders = caps?.headMorphs ?? [];
   const visibleHairStyles = caps?.hairStyles ?? [];
 
   const viewerProps: VrmCustomization['viewerProps'] = {
@@ -176,6 +180,24 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
     hairLength,
     extraColors: Object.keys(extraColors).length ? extraColors : undefined,
     hairTypes: HAIR_TYPES,
+  };
+
+  const morphSlider = (morph: string, min: number, max: number) => {
+    const value = bodyMorphs[morph] ?? 0;
+    return (
+      <div key={morph} className="space-y-2">
+        <Label htmlFor={`morph-${morph}`}>{cleanLabel(morph)}</Label>
+        <Slider
+          id={`morph-${morph}`}
+          min={min}
+          max={max}
+          step={BODY_MORPH_STEP}
+          value={[value]}
+          onValueChange={([v]) => setBodyMorph(morph, v)}
+        />
+        <Meta>{value.toFixed(2)}</Meta>
+      </div>
+    );
   };
 
   const controls = (
@@ -212,26 +234,17 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
         </div>
       )}
 
+      {headMorphSliders.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-title font-semibold">Head Features</h3>
+          {headMorphSliders.map((morph) => morphSlider(morph, HEAD_MORPH_MIN, HEAD_MORPH_MAX))}
+        </div>
+      )}
+
       {bodyMorphSliders.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-title font-semibold">Initial Body Features</h3>
-          {bodyMorphSliders.map((morph) => {
-            const value = bodyMorphs[morph] ?? 0;
-            return (
-              <div key={morph} className="space-y-2">
-                <Label htmlFor={`morph-${morph}`}>{cleanLabel(morph)}</Label>
-                <Slider
-                  id={`morph-${morph}`}
-                  min={BODY_MORPH_MIN}
-                  max={BODY_MORPH_MAX}
-                  step={BODY_MORPH_STEP}
-                  value={[value]}
-                  onValueChange={([v]) => setBodyMorph(morph, v)}
-                />
-                <Meta>{value.toFixed(2)}</Meta>
-              </div>
-            );
-          })}
+          {bodyMorphSliders.map((morph) => morphSlider(morph, BODY_MORPH_MIN, BODY_MORPH_MAX))}
         </div>
       )}
 

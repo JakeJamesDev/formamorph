@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **When you send, the AI hears what Since Last Turn lists, so the story reacts to those actions.** Hidden rows stay with you. Send works with an empty action box, and each page keeps its list under your action.
   - **Website:**
     - **The formamorph.ai pages use a violet-to-rose accent and the same Formamorph wordmark as the game's title screen.** The home, privacy, sign-in and community pages share it in light and dark.
+  - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
 - **🛠️ Developer tooling**
   - **The dev router starts a new game in any bundled world with `fixture=bundled-<world id>`.** Page one is the world's first Opening Narration, so release screenshots show real art and text without a model.
 

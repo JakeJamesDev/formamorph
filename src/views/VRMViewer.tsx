@@ -9,7 +9,8 @@ import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { HairTypeDef } from '@/types';
 import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
-import { resolveMorphAlias } from '@/lib/bodyMorphs';
+import { applyMorphInfluences } from '@/lib/modelMorphs';
+import { catalogNames, expressionBoundMorphs, vrmMorphCatalog } from '@/lib/vrmMorphCatalog';
 import { medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
 import { usePanelLoopGate } from '@/lib/panelShown';
 
@@ -34,6 +35,8 @@ type MorphMesh = THREE.Object3D & {
 export interface VRMCapabilities {
   /** Body-shape/feature morphs present on the `Body` mesh (e.g. 'Belly', 'Breasts', 'Fat', 'B_Pear', …). */
   bodyMorphs: string[];
+  /** Slider keys on other meshes, such as face or hair shapes ('Ear Shape'); facial-rig keys excluded. */
+  headMorphs: string[];
   /** Hair-style keys (from `hairTypes`) whose shapekey mesh exists in the model. */
   hairStyles: string[];
   /** True if a supported hair style also exposes the `LENGTH` morph. */
@@ -51,8 +54,8 @@ export interface VRMViewerHandle {
 }
 
 interface VRMViewerProps {
-  /** Body-mesh morph influences keyed by morph name (Belly/Breasts/Fat/B_Pear/…). Composed by the
-   *  caller from customization choices and stat-driven values; applied to every Body primitive. */
+  /** Morph influences keyed by morph name, body and head keys alike (Belly, Ear Shape, …). Composed by the
+   *  caller from customization choices and stat-driven values; applied to every primitive carrying the key. */
   bodyMorphValues?: Record<string, number>;
   hairColor?: string;
   eyeColor?: string;
@@ -193,18 +196,6 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
   const [ready, setReady] = useState(false);
 
-  const findMesh = (meshName: string, gltf: GLTF) => {
-    return gltf.scene.children.find((child) => child.name === meshName);
-  };
-
-  // The morph-target dictionary for a named mesh (matches setMorphTarget's lookup), or null if absent.
-  const getMorphDict = (meshName: string, gltf: GLTF) => {
-    const mesh = findMesh(meshName, gltf);
-    if (!mesh) return null;
-    const child = (mesh.children[0] || mesh) as MorphMesh;
-    return child.morphTargetDictionary || null;
-  };
-
   // --- Color customization: tint skin/hair/eye materials to match the pickers, on the GPU (no per-pixel work). ---
   const hexToRgb = (hex: string) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
@@ -294,41 +285,11 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     });
   };
 
-  
-  const setMorphTarget = (meshName: string, morphTargetName: string, value: number, gltf: GLTF) => {
-    if (!gltf.scene) return;
-
-    const node = gltf.scene.children.find((child) => child.name === meshName) ?? findMesh(meshName, gltf);
-    if (!node) return;
-
-    // A multi-material mesh (body skin + each clothing piece) is split by GLTFLoader into one
-    // primitive per material, each a sibling mesh carrying the same body morphs. Apply the influence
-    // to every primitive that exposes the morph so clothing scales with the body (matches v1.2);
-    // setting only the first primitive moved the body alone and clipped the clothes.
-    let applied = false;
-    node.traverse((obj) => {
-      const mesh = obj as MorphMesh;
-      const dict = mesh.morphTargetDictionary;
-      if (!dict || !mesh.morphTargetInfluences) return;
-      // Resolve per primitive: a bound name from an older world/model maps onto this model's alias-mate.
-      const resolved = resolveMorphAlias(morphTargetName, (candidate) => candidate in dict);
-      if (resolved === null) return;
-      mesh.morphTargetInfluences[dict[resolved]] = value;
-      applied = true;
-    });
-    if (!applied) {
-      console.warn(`Morph target "${morphTargetName}" not found under mesh "${meshName}".`);
-    }
-  };
-
-  // Apply the whole body-morph map to the Body mesh, zeroing morphs that were applied last time but
-  // are no longer present (so unbinding a slider relaxes it rather than freezing its last value).
+  // Apply the morph map by name to every primitive carrying each key (body, clothing, face, hair), zeroing
+  // keys applied last time that are gone, so unbinding a slider relaxes it rather than freezing it.
   const applyBodyMorphs = (gltf: GLTF) => {
     const next = bodyMorphValues ?? {};
-    for (const [name, value] of Object.entries(next)) setMorphTarget('Body', name, value, gltf);
-    Object.keys(bodyMorphsAppliedRef.current).forEach((name) => {
-      if (!(name in next)) setMorphTarget('Body', name, 0, gltf);
-    });
+    applyMorphInfluences(gltf.scene, next, bodyMorphsAppliedRef.current);
     bodyMorphsAppliedRef.current = next;
   };
 
@@ -531,9 +492,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
         // Report which customization morphs this model exposes so the UI hides unsupported sliders.
         if (onCapabilities) {
-          const bodyDict = getMorphDict('Body', gltf) || {};
-          const bodyMorphs = Object.keys(bodyDict);
-          const hairMeshes = getHairMeshes(gltf);
+          const catalog = vrmMorphCatalog(gltf.scene, expressionBoundMorphs(vrm));          const hairMeshes = getHairMeshes(gltf);
           const styles = hairMeshes.map(c => c.name);
           const hairLengthSupported = hairMeshes.some((c) => {
             const child = (c.children[0] || c) as MorphMesh;
@@ -546,7 +505,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
             return c;
           };
           const colors = { hair: sampleColor('hair') ?? undefined, skin: sampleColor('skin') ?? undefined, eye: sampleColor('eye') ?? undefined };
-          onCapabilities({ bodyMorphs, hairStyles: styles, hairLength: hairLengthSupported, colors, extras: getColorableExtras(gltf) });
+          onCapabilities({ bodyMorphs: catalogNames(catalog, 'body'), headMorphs: catalogNames(catalog, 'head'), hairStyles: styles, hairLength: hairLengthSupported, colors, extras: getColorableExtras(gltf) });
         }
 
         setReady(true);

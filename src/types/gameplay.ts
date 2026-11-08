@@ -126,7 +126,7 @@ export interface HairTypeDef {
 
 /** The player character's appearance customization applied to the VRM model. */
 export interface CharacterData {
-  /** Chosen body-morph influences, keyed by the model's morph name. The value is the absolute morph
+  /** Chosen morph influences, body and head keys alike, keyed by the model's morph name. The value is the absolute morph
    *  influence written to three.js (0 = off, 1 = the model's authored full shape); the customization
    *  slider's range is only a UI clamp, so it can change without touching this stored meaning. Auto-derived
    *  per model, so any morph the model exposes is adjustable — nothing is hardcoded to a fixed field. */

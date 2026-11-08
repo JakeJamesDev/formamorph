@@ -1,31 +1,31 @@
-import * as THREE from "three";
+import type * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { VRMLoaderPlugin } from "@pixiv/three-vrm";
+import { VRMLoaderPlugin, type VRM } from "@pixiv/three-vrm";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
-
-// Minimal view of a mesh exposing morph targets (the shape setMorphTarget/getMorphDict read).
-type MorphMesh = THREE.Object3D & { morphTargetDictionary?: Record<string, number> };
+import { catalogNames, expressionBoundMorphs, vrmMorphCatalog, type CatalogMorph } from "./vrmMorphCatalog";
 
 /**
- * Load a VRM purely to read the body slider names — the morph targets on its `Body` mesh. Mirrors
- * VRMViewer's `getMorphDict('Body', …)` lookup but headlessly: no scene, renderer, or animation loop,
- * and GPU resources are disposed afterward. Returns `[]` if there's no `Body` mesh or the load fails.
+ * Load a VRM purely to read its slider keys, the same catalog VRMViewer reports, but headlessly: no scene,
+ * renderer, or animation loop, and GPU resources are disposed afterward. Returns `[]` if the load fails.
  */
-export async function loadBodyMorphNames(url: string): Promise<string[]> {
+export async function loadMorphCatalog(url: string): Promise<CatalogMorph[]> {
   const loader = new GLTFLoader();
   loader.register((parser) => new VRMLoaderPlugin(parser));
   let gltf: GLTF | null = null;
   try {
     gltf = await loader.loadAsync(url);
-    const body = gltf.scene.children.find((child) => child.name === "Body");
-    if (!body) return [];
-    const child = (body.children[0] || body) as MorphMesh;
-    return Object.keys(child.morphTargetDictionary ?? {});
+    const vrm = gltf.userData.vrm as VRM | undefined;
+    return vrmMorphCatalog(gltf.scene, expressionBoundMorphs(vrm));
   } catch {
     return [];
   } finally {
     if (gltf) disposeGltf(gltf);
   }
+}
+
+/** The body slider names a VRM exposes: the keys on its `Body` mesh. */
+export async function loadBodyMorphNames(url: string): Promise<string[]> {
+  return catalogNames(await loadMorphCatalog(url), "body");
 }
 
 function disposeGltf(gltf: GLTF): void {
