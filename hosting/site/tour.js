@@ -26,7 +26,7 @@
       hots: [[40, 4.5, 'Browse and download community worlds'], [62, 4.5, 'Import a world someone shared with you'],
         [70, 55, 'Ask the built-in guide anything']] },
     { id: '03-world-details', kick: 'Create', title: 'Build Your Own World',
-      body: 'Write characters, locations, items, stats and scripts in the world editor. Share your world as one file, or publish it to the community.',
+      body: 'Write entities, locations, items, stats and scripts in the world editor. Share your world as one file, or publish it to the community.',
       hots: [[32, 61, 'Open any world in the editor'], [32, 71, 'Share it as one file'],
         [67, 26, 'Your description, tags and art']] },
     { id: '04-settings', kick: 'Your Setup', title: 'Any AI Model, Any Look',

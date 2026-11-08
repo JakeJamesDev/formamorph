@@ -1,5 +1,5 @@
-// Capture the landing page's screenshots: the gallery set (5 screens x 5 palettes x 2 themes, plus the
-// thumbnails, the favicon, and the social-embed image) and the hero turn. Writes straight into hosting/site/.
+// Capture the landing page's screenshots: the tour set (5 screens x 5 palettes x 2 themes, plus the favicon
+// and the social-embed image) and the hero turn. Writes straight into hosting/site/.
 //
 // Needs a dev server (`npm run dev -- --port 5180`). Gameplay loads a prepared save without AI calls.
 // The server must not have served the title card: that puts these shots in Vite's module graph, so writing one reloads the page.

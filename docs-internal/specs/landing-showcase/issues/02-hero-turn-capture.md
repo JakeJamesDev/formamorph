@@ -9,7 +9,7 @@ Owns the hero turn's data file, the frames and the layout data that tickets 03 a
 
 ## What to build
 
-The site screenshot script captures the hero turn. It loads an Emberwatch game at the Cinder and Crown with Wenna Tallow present and the player carrying a few items. For light and dark in the purple palette, it writes:
+The site screenshot script captures the hero turn. It loads an Emberwatch game at the Cinder and Crown with Wenna Tallow present and the player carrying a few items. For light and dark in the Graphite palette (Q13), it writes:
 - the Stats tab with the turn's text, choices, stat values, fills and descriptors hidden;
 - the Inventory tab before the Beer-Stained Barrow Map arrives;
 - the Inventory tab after it arrives;

@@ -86,7 +86,7 @@ The prototype is `.scratch/landing-v2/` (untracked), served by the `scratch-land
 - **Tour.** Six steps: Play, Inventory, Library, Create, Your setup, Avatars. Inventory is second. The screenshot is sticky beside the steps on wide screens and pinned above them on narrow ones. The step nearest the middle of the viewport is the current one and sets the screenshot. Each step has two to four hotspots, placed as percentages of the capture.
 - **Theme wipe.** On steps with all five palettes, the next palette sweeps across the screenshot behind a gradient bar every few seconds while the frame is on screen and not hovered. Dragging the bar previews the next palette; releasing past the middle keeps it. Swatches pick a palette directly. The Inventory step has one palette, so its wipe and swatches are off.
 - **Loading.** The hero's first frame loads eagerly. Tour frames and the other hero frames load lazily.
-- **Page structure.** The light/dark onion-skin gallery and its thumbnail strip go. The footer's download row, the release lookup, the deletion notice and the shared header stay as they are.
+- **Page structure.** The light/dark onion-skin gallery and its thumbnail strip go. The footer's download row, the release lookup, the deletion notice and the shared header's layout stay as they are; the header takes the new wordmark (ticket 01).
 - **Copy.** The prototype's copy is a draft. Every user-facing string (tagline, tour steps, hotspot notes, platform cards) is written from a facts list per the Writing Guide before it lands.
 - **No export shape, version or settings change.** The work touches only the site and the capture tooling.
 
