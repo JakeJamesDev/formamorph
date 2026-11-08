@@ -1,6 +1,6 @@
 # 05: Run The Engine On CUDA
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -21,14 +21,27 @@ The Backend setting is device-local and never goes in backups, worlds or saves; 
 
 ## Acceptance criteria
 
-- [ ] Auto starts on CUDA when it is installed and supported, and `gpuBackend` reads `cuda`. (engine test with the recorded CUDA fixtures)
-- [ ] Auto stays on Vulkan when CUDA isn't installed, when the machine is unsupported, or in the mixed-GPU case. Pinning the NVIDIA card in the mixed case starts on CUDA.
-- [ ] NVIDIA plus an integrated GPU counts as not mixed, and Auto starts on CUDA.
-- [ ] The Backend setting overrides Auto both ways, and changing it reloads a running engine.
-- [ ] CUDA is grayed out in the Backend control until installed. (Local Model panel test)
-- [ ] The device picker shows the running backend's devices, and a pin by name carries across backends.
-- [ ] An install that lands while the engine runs on Vulkan shows "Restart on CUDA", and the engine doesn't reload on its own.
-- [ ] The CUDA start sets the JIT cache size, and the spec records the value's source.
-- [ ] Frames: `.scratch/frames/backend-control.png` in light and dark, at the panel's realistic width.
+- [x] Auto starts on CUDA when it is installed and supported, and `gpuBackend` reads `cuda`. (engine test with the recorded CUDA fixtures) — `CUDA backend › Auto starts on CUDA…`, over `b12078-cuda.json` recorded on the 4090.
+- [x] Auto stays on Vulkan when CUDA isn't installed, when the machine is unsupported, or in the mixed-GPU case. Pinning the NVIDIA card in the mixed case starts on CUDA. — engine tests `…not installed`, `…unsupported machine`, `…beside another discrete GPU, and pinning…`.
+- [x] NVIDIA plus an integrated GPU counts as not mixed, and Auto starts on CUDA. — engine test `counts an integrated GPU…`.
+- [x] The Backend setting overrides Auto both ways, and changing it reloads a running engine. — engine test `the Backend setting overrides Auto both ways`; panel test `arms Save & Reload on a change and sends the setting`. Main's reload compare (`llm-set-options`) is checked by reading; no test drives main.cjs.
+- [x] CUDA is grayed out in the Backend control until installed. (Local Model panel test) — `grays CUDA out until it is installed`, `keeps a stored CUDA choice selected but grayed…`.
+- [x] The device picker shows the running backend's devices, and a pin by name carries across backends. — panel test `lists the devices of the backend the settings would run…` (next start's backend, per spec-session ruling 4); engine test `a device pin by name carries across backends`.
+- [x] An install that lands while the engine runs on Vulkan shows "Restart on CUDA", and the engine doesn't reload on its own. — panel test `offers Restart on CUDA when CUDA lands under a Vulkan run…`.
+- [x] The CUDA start sets the JIT cache size, and the spec records the value's source. — engine test `sets the CUDA JIT cache to its 4 GiB maximum on a CUDA start only`; spec "Backend choice at engine start".
+- [x] Frames: `.scratch/frames/backend-control.png` in light and dark, at the panel's realistic width. — 1280×900 headless Chrome with a desktop shim; `-dark` and `-open` twins.
 
 For you: start a model on CUDA on the 4090, and compare the feel with Vulkan in a normal play session. Local Model panel, then any world.
+
+## Landed
+
+**Not verified**
+- A real CUDA start inside the packaged app. The engine tests replay the recorded CUDA run; main's wiring (`backendChoice`, `llm-restart`, `llm-list-devices`) has no test harness.
+- That the 4 GiB JIT cache keeps compiled kernels across starts on an RTX 20 or GTX 16 card. No such card here.
+
+**For you**
+- Start a model on CUDA on the 4090, and compare the feel with Vulkan in a normal play session. Local Model panel, then any world.
+- Look at the Backend row: `.scratch/cuda-engine-05/frames/backend-control.png`, `.scratch/cuda-engine-05/frames/backend-control-dark.png`, and the open lists `backend-control-open.png` / `backend-control-dark-open.png`.
+
+**For ticket 06**
+- A CUDA load that fails today takes the CPU retry on the CUDA binary, with the JIT cache variable set. Ticket 06 puts the Vulkan attempt before it.

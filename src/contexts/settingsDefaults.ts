@@ -70,6 +70,11 @@ export const LOCAL_GPU_DEVICE_AUTO = 'auto';
 // hatch for a machine Auto pins. Mirrors ENGINE_DEVICE_ALL in electron/engineDevice.cjs.
 export const LOCAL_GPU_DEVICE_ALL = 'all';
 export const DEFAULT_LOCAL_GPU_DEVICE = LOCAL_GPU_DEVICE_AUTO;
+// Which llama-server build the engine runs. Auto picks CUDA when it is installed and the machine passes
+// electron/engineBackend.cjs's rule; Vulkan and CUDA override it. Mirrors ENGINE_BACKENDS there.
+export type LocalEngineBackend = 'auto' | 'vulkan' | 'cuda';
+export const LOCAL_ENGINE_BACKENDS: readonly LocalEngineBackend[] = ['auto', 'vulkan', 'cuda'];
+export const DEFAULT_LOCAL_ENGINE_BACKEND: LocalEngineBackend = 'auto';
 // On by default: the engine picks an installed model and loads it as soon as anything routes to it, and a
 // finished download loads itself. Off leaves loading to the Load button, so VRAM is only spent on demand.
 export const DEFAULT_LOCAL_AUTO_LOAD = true;

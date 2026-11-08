@@ -29,18 +29,21 @@ function parseNvidiaFacts(stdout) {
     });
 }
 
-/**
- * The CUDA support verdict for this machine. A missing nvidia-smi, a rejected field or a timeout gives
- * `support-unknown`; a clean query with no rows gives `no-nvidia-card`. `run` is injectable for tests.
- */
-async function cudaSupport({ run = runNvidiaSmi, timeoutMs = QUERY_TIMEOUT_MS } = {}) {
-  let stdout;
+/** The NVIDIA cards as `{ name, driverVersion, computeCap }`, or null when the query fails. `run` is injectable for tests. */
+async function nvidiaCards({ run = runNvidiaSmi, timeoutMs = QUERY_TIMEOUT_MS } = {}) {
   try {
-    stdout = await run(['--query-gpu=name,driver_version,compute_cap', '--format=csv,noheader,nounits'], timeoutMs);
+    return parseNvidiaFacts(await run(['--query-gpu=name,driver_version,compute_cap', '--format=csv,noheader,nounits'], timeoutMs));
   } catch {
-    return evaluateCudaSupport(null);
+    return null;
   }
-  return evaluateCudaSupport(parseNvidiaFacts(stdout));
 }
 
-module.exports = { cudaSupport, parseNvidiaFacts };
+/**
+ * The CUDA support verdict for this machine. A missing nvidia-smi, a rejected field or a timeout gives
+ * `support-unknown`; a clean query with no rows gives `no-nvidia-card`.
+ */
+async function cudaSupport(options) {
+  return evaluateCudaSupport(await nvidiaCards(options));
+}
+
+module.exports = { cudaSupport, nvidiaCards, parseNvidiaFacts };

@@ -26,7 +26,7 @@ import {
  * welcome intro plays first. Later changes to it are ignored.
  */
 export function LocalEngineManager({ bootHeld = false }: { bootHeld?: boolean }) {
-  const { engineWanted, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests, localUnifiedKvCache, localKCacheType, localVCacheType, localKvCacheInRam, localGpuDevice, localAutoLoad, localContextOverflow } = useSettings();
+  const { engineWanted, localContextSize, localGpuLayers, localFlashAttention, localParallelRequests, localUnifiedKvCache, localKCacheType, localVCacheType, localKvCacheInRam, localGpuDevice, localEngineBackend, localAutoLoad, localContextOverflow } = useSettings();
   const [released, setReleased] = useState(!bootHeld);
   useEffect(() => { if (!bootHeld) setReleased(true); }, [bootHeld]);
 
@@ -43,7 +43,7 @@ export function LocalEngineManager({ bootHeld = false }: { bootHeld?: boolean })
         await stopLocalLlm().catch(() => { /* ignore */ });
         return;
       }
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, kCacheType: localKCacheType, vCacheType: localVCacheType, kvCacheInRam: localKvCacheInRam, gpuDevice: localGpuDevice }).catch(() => { /* ignore */ });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, kCacheType: localKCacheType, vCacheType: localVCacheType, kvCacheInRam: localKvCacheInRam, gpuDevice: localGpuDevice, engineBackend: localEngineBackend }).catch(() => { /* ignore */ });
       if (cancelled) return;
       if (!localAutoLoad) return;
       const st = await localLlmStatus().catch(() => null);

@@ -65,9 +65,9 @@ const UPDATING_TEXT = 'CUDA needs new files for this version. The engine uses Vu
 /**
  * The Local Model panel's CUDA row, on machines whose nvidia-smi lists an NVIDIA card. Download, progress,
  * Cancel (which keeps the partials for a resume) and Remove, which asks first when the engine runs.
+ * `status` comes from the panel's `useCudaStatus`.
  */
-export function CudaEngineRow({ engine }: { engine: LocalLlmState }) {
-  const status = useCudaStatus();
+export function CudaEngineRow({ engine, status }: { engine: LocalLlmState; status: CudaStatus | null }) {
   const mounted = useMountedRef();
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);

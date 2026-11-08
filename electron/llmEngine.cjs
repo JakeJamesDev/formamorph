@@ -28,6 +28,8 @@ const STOP_TIMEOUT_MS = 5000;
 const BOOT_TIMEOUT_MS = 30000;
 // Instance log lines kept for a load error.
 const LOG_LINES_KEPT = 200;
+// NVIDIA's documented maximum JIT cache, so cards that run from PTX compile the kernels once.
+const CUDA_JIT_CACHE_BYTES = String(4 * 1024 ** 3);
 
 // The load-dependent half of the status: the options the current model was loaded with, and the device it
 // runs on. All null when nothing is loaded.
@@ -42,6 +44,7 @@ const NO_ENGINE = {
   kvCacheInRam: null,
   maxContextSize: null,
   engineVramMB: null,
+  backendSetting: null,
   gpuBackend: null,
   gpuDeviceNames: null,
   deviceVramTotalMB: null,
@@ -174,7 +177,9 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
         const cmd = llamaServer.spawnCommand(bin, args, platform);
         let child;
         try {
-          child = spawn(cmd.command, cmd.args, { stdio: [cmd.stdin, 'pipe', 'pipe'], env: { ...process.env, LLAMA_CACHE: l.cacheDir }, windowsHide: true });
+          const env = { ...process.env, LLAMA_CACHE: l.cacheDir };
+          if (l.cuda) env.CUDA_CACHE_MAXSIZE = CUDA_JIT_CACHE_BYTES;
+          child = spawn(cmd.command, cmd.args, { stdio: [cmd.stdin, 'pipe', 'pipe'], env, windowsHide: true });
         } catch (e) {
           return finish({ ok: false, error: errorText(e) });
         }
@@ -398,9 +403,11 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
    * `contextSize` pool, off gives each slot a full `contextSize`. `gpuDevice` is the device setting (`auto`, `all`, or a
    * device name), resolved against `--list-devices` on every start with `nvidiaGpus` (nvidia-smi rows) for
    * Auto's pick. A failed GPU load retries once on the CPU. `contextOverflow`, when given, sets the policy
-   * as `setContextOverflow` does.
+   * as `setContextOverflow` does. `cudaBinary` is the CUDA build's server when main chose CUDA; a CUDA build
+   * that lists no devices leaves the start on the bundled build. `engineBackend` is the Backend setting, kept
+   * with the applied options.
    */
-  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, kCacheType, vCacheType, kvCacheInRam, gpuDevice, nvidiaGpus, contextOverflow: policy } = {}) {
+  async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, kCacheType, vCacheType, kvCacheInRam, gpuDevice, nvidiaGpus, cudaBinary = null, engineBackend = null, contextOverflow: policy } = {}) {
     if (policy !== undefined) setContextOverflow(policy);
     if (state.status === 'loading' || state.status === 'ready') return getState();
     if (!modelPath) { setState({ ...stoppedState(), status: 'error', port, error: 'No modelPath provided.' }); return getState(); }
@@ -416,7 +423,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
       kvCacheInRam: kvCacheInRam === true,
     };
     // The options this model is (being) loaded with, so the renderer can compare against pending settings.
-    const applied = { ...settings, maxContextSize: null, engineVramMB: null };
+    const applied = { ...settings, maxContextSize: null, engineVramMB: null, backendSetting: engineBackend };
     // This start: its settings, work folder, device, router (`server`), front server, and teardown state.
     // `projector` is the vision projector file, or null: without one, image parts are dropped.
     // `slotContext` is one slot's context in tokens once loaded, or null when the server didn't say.
@@ -431,8 +438,14 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     const abandoned = async () => { await l.done; return getState(); };
 
     setState({ status: 'loading', modelPath, modelId, port, error: null, loadProgress: 0, ...NO_ENGINE, ...applied });
-    l.bin = binaryPath({ platform });
-    const devices = await llamaServer.listServerDevices({ bin: l.bin, spawn });
+    let devices = [];
+    if (cudaBinary) {
+      devices = await llamaServer.listServerDevices({ bin: cudaBinary, spawn });
+      if (!isCurrent()) return abandoned();
+    }
+    l.cuda = devices.length > 0;
+    l.bin = l.cuda ? cudaBinary : binaryPath({ platform });
+    if (!l.cuda) devices = await llamaServer.listServerDevices({ bin: l.bin, spawn });
     if (!isCurrent()) return abandoned();
     const names = devices.map((d) => d.name);
     const pick = selectEngineDevice({ deviceNames: names, nvidiaGpus, setting: gpuDevice });

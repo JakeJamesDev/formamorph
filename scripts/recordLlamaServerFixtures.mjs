@@ -1,8 +1,9 @@
 // Records the fake llama-server's fixtures from a real run of the pinned build: --list-devices, a load that
 // answers one chat turn, a load that fails on the KV cache, a CPU load and a fit-off load. `--thinking` records
 // one turn of a Qwen-style thinking model into <tag>-thinking.json, `--gemma` one of a Gemma 4 model into
-// <tag>-gemma.json. Rerun all after every pin bump.
-// Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>] [--gemma <model.gguf>]
+// <tag>-gemma.json. `--cuda <folder>` records the CUDA build's listing and one load into <tag>-cuda.json.
+// Rerun all after every pin bump.
+// Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>] [--gemma <model.gguf>] [--cuda <folder>]
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -109,10 +110,14 @@ async function scenario({ bin, modelPath, settings, chat }) {
     for (let i = 0; i < depth; i++) e = JSON.stringify(e).slice(1, -1);
     return e;
   }).reverse();
-  const swaps = [[presetPath, '<preset>'], [bin, '<bin>'], [modelPath, '<model>'], [modelPath.replace(/\\/g, '/'), '<model>'], [modelId, '<modelId>'], [os.homedir(), 'C:\\Users\\user']];
+  const swaps = [[presetPath, '<preset>'], [bin, '<bin>'], [path.dirname(bin), '<binDir>'], [modelPath, '<model>'], [modelPath.replace(/\\/g, '/'), '<model>'], [modelId, '<modelId>'], [os.homedir(), 'C:\\Users\\user']];
   const scrub = (v) => {
     let text = JSON.stringify(v);
-    for (const [from, to] of swaps) for (const e of escapes(from)) text = text.split(e).join(to);
+    // The replacement is escaped to the same depth as the match, so a backslash in it stays valid JSON.
+    for (const [from, to] of swaps) {
+      const into = escapes(to);
+      escapes(from).forEach((e, i) => { text = text.split(e).join(into[i]); });
+    }
     return JSON.parse(text);
   };
   return scrub({
@@ -132,10 +137,34 @@ const flagModel = (flag) => {
 const thinkingModel = flagModel('--thinking');
 const gemmaModel = flagModel('--gemma');
 const modelPath = process.argv[2]?.startsWith('--') ? null : process.argv[2];
-if (!modelPath && !thinkingModel && !gemmaModel) { console.error('Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>] [--gemma <model.gguf>]'); process.exit(1); }
+const cudaFolder = flagModel('--cuda');
+if (!modelPath && !thinkingModel && !gemmaModel) { console.error('Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>] [--gemma <model.gguf>] [--cuda <CUDA build folder>]'); process.exit(1); }
+const tag = JSON.parse(await (await import('node:fs/promises')).readFile(path.join(HERE, 'llamaServerPin.json'), 'utf8')).tag;
+
+const listDevicesOf = (exe) => new Promise((resolve) => {
+  let out = '';
+  const c = spawn(exe, ['--list-devices'], { windowsHide: true });
+  c.stdout.on('data', (d) => { out += d; });
+  c.stderr.on('data', (d) => { out += d; });
+  c.once('close', () => resolve(out));
+});
+const settings = { contextSize: 4096, gpuLayers: ls.GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2 };
+
+// The CUDA build's listing and one load, kept apart: the fake answers by binary, so one start can see both builds.
+if (cudaFolder) {
+  if (!modelPath) { console.error('--cuda records a load: pass <model.gguf> too.'); process.exit(1); }
+  const cudaBin = path.join(cudaFolder, process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
+  const listDevices = await listDevicesOf(cudaBin);
+  const loaded = await scenario({ bin: cudaBin, modelPath, settings, chat: 'plain' });
+  await mkdir(OUT_DIR, { recursive: true });
+  const file = path.join(OUT_DIR, `${tag}-cuda.json`);
+  await writeFile(file, `${JSON.stringify({ tag, listDevices, scenarios: { loaded } }, null, 1)}\n`);
+  console.log(`Recorded ${path.relative(ROOT, file)}: loaded ${loaded.outcome}`);
+  process.exit(0);
+}
+
 const bin = ls.binaryPath();
 if (!bin) { console.error('No bundled llama-server. Run npm run llama-server:fetch first.'); process.exit(1); }
-const tag = JSON.parse(await (await import('node:fs/promises')).readFile(path.join(HERE, 'llamaServerPin.json'), 'utf8')).tag;
 
 // One turn of a thinking model, kept apart: its thought must arrive in `reasoning_content`, never in `content`.
 for (const [model, chat] of [[thinkingModel, 'thinking'], [gemmaModel, 'gemma']]) {
@@ -149,14 +178,7 @@ for (const [model, chat] of [[thinkingModel, 'thinking'], [gemmaModel, 'gemma']]
 }
 if (!modelPath) process.exit(0);
 
-const listDevices = await new Promise((resolve) => {
-  let out = '';
-  const c = spawn(bin, ['--list-devices'], { windowsHide: true });
-  c.stdout.on('data', (d) => { out += d; });
-  c.stderr.on('data', (d) => { out += d; });
-  c.once('close', () => resolve(out));
-});
-const settings = { contextSize: 4096, gpuLayers: ls.GPU_LAYERS_AUTO, flashAttention: true, parallelRequests: 2 };
+const listDevices = await listDevicesOf(bin);
 const loaded = await scenario({ bin, modelPath, settings, chat: 'plain' });
 // Far past any VRAM, with fit off so the server tries it as asked.
 const kvFail = await scenario({ bin, modelPath, settings: { ...settings, contextSize: 1048576, gpuLayers: ls.GPU_LAYERS_MAX, parallelRequests: 1 } });

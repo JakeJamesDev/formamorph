@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import llmEngine from './llmEngine.cjs';
 import llamaServer from './llamaServer.cjs';
+import engineBackend from './engineBackend.cjs';
 import { countFakeTokens, createFakeLlamaServer, isCpuStart, loadFixture, loadGemmaFixture, loadThinkingFixture, renderChatMl } from './fakeLlamaServer.mjs';
 
 const { createEngine, getState } = llmEngine;
@@ -15,7 +16,7 @@ const { GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT, freePort } = llamaServer;
 const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'unifiedKvCache', 'kCacheType', 'vCacheType', 'kvCacheInRam', 'maxContextSize', 'engineVramMB',
-  'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
+  'backendSetting', 'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
   'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions', 'serverPid',
 ];
 const keysOf = (s) => Object.keys(s).sort();
@@ -948,6 +949,117 @@ describe('VRAM viewer fields from the load log', () => {
     const { fake, seen } = setup({}, { platform: 'linux' });
     await engine.start({ ...SETTINGS, modelPath: MODEL, port: await freePort() });
     expect((await pidStatus(seen)).serverPid).toBe(fake.routers[0].instancePid);
+  });
+});
+
+describe('CUDA backend', () => {
+  const { backendForStart } = engineBackend;
+  const CUDA_BIN = 'engines/llama-server-cuda/llama-server.exe';
+  const RTX_4090 = { name: 'NVIDIA GeForce RTX 4090', driverVersion: '616.92', computeCap: '8.9' };
+  // The bundled build's listing on the 4090, as recorded.
+  const VULKAN_4090 = ['NVIDIA GeForce RTX 4090'];
+  const INSTALLED = { state: 'installed', nvidia: true };
+  // A Radeon RX card beside the NVIDIA one: the mixed-GPU case (Q14).
+  const MIXED = 'Available devices:\r\n  Vulkan0: NVIDIA GeForce RTX 4090 (24138 MiB, 23370 MiB free)\r\n  Vulkan1: AMD Radeon RX 7900 XTX (24560 MiB, 24000 MiB free)\r\n';
+  const MIXED_NAMES = ['NVIDIA GeForce RTX 4090', 'AMD Radeon RX 7900 XTX'];
+  // The 4090 beside an Intel iGPU: not mixed.
+  const WITH_IGPU_NAMES = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4090'];
+
+  /** Choose as main does, then start the engine with that choice over both recorded builds. */
+  async function startChosen({ install = INSTALLED, cards = [RTX_4090], vulkanDeviceNames = VULKAN_4090, setting = 'auto', gpuDevice = 'auto', fakeOptions = {} } = {}) {
+    const choice = backendForStart({ install, serverPath: () => (install.state === 'installed' ? CUDA_BIN : null), cards, vulkanDeviceNames, setting, gpuDevice });
+    const { fake } = setup({ cuda: { bin: CUDA_BIN }, ...fakeOptions });
+    const state = await engine.start({ ...SETTINGS, gpuDevice, nvidiaGpus: cards, engineBackend: setting, cudaBinary: choice.cudaBinary, modelPath: MODEL, port: await freePort() });
+    const router = fake.routerCalls()[0];
+    return { choice, state, fake, router };
+  }
+
+  it('Auto starts on CUDA when it is installed and supported', async () => {
+    const { choice, state, router } = await startChosen();
+    expect(choice).toMatchObject({ backend: 'cuda', reason: null });
+    expect(state).toMatchObject({ status: 'ready', gpuBackend: 'cuda', backendSetting: 'auto', gpuDeviceOptions: ['NVIDIA GeForce RTX 4090'] });
+    expect(router.bin).toBe(CUDA_BIN);
+  });
+
+  it('sets the CUDA JIT cache to its 4 GiB maximum on a CUDA start only', async () => {
+    const cudaStart = await startChosen();
+    expect(cudaStart.router.env.CUDA_CACHE_MAXSIZE).toBe('4294967296');
+    const vulkanStart = await startChosen({ setting: 'vulkan' });
+    expect(vulkanStart.router.env).not.toHaveProperty('CUDA_CACHE_MAXSIZE');
+  });
+
+  it('Auto stays on Vulkan when CUDA is not installed', async () => {
+    const { choice, state, router } = await startChosen({ install: { state: 'not-installed', nvidia: true } });
+    expect(choice).toMatchObject({ backend: 'vulkan', reason: 'not-installed' });
+    expect(state.gpuBackend).toBe('vulkan');
+    expect(router.bin).toBe('llama-server');
+  });
+
+  it('reads a stale install or a replace in progress as updating', () => {
+    const choose = (install) => backendForStart({ install, serverPath: () => null, cards: [RTX_4090], vulkanDeviceNames: VULKAN_4090, setting: 'auto' });
+    expect(choose({ state: 'stale' }).reason).toBe('updating');
+    expect(choose({ state: 'downloading', replacing: true }).reason).toBe('updating');
+    expect(choose({ state: 'downloading' }).reason).toBe('not-installed');
+  });
+
+  it('Auto stays on Vulkan on an unsupported machine', async () => {
+    const { choice, state } = await startChosen({ cards: [{ ...RTX_4090, driverVersion: '560.94' }] });
+    expect(choice).toMatchObject({ backend: 'vulkan', reason: 'driver-too-old' });
+    expect(state.gpuBackend).toBe('vulkan');
+    const unknown = backendForStart({ install: INSTALLED, serverPath: () => CUDA_BIN, cards: null, vulkanDeviceNames: VULKAN_4090, setting: 'auto' });
+    expect(unknown).toMatchObject({ backend: 'vulkan', reason: 'support-unknown' });
+  });
+
+  it('Auto stays on Vulkan beside another discrete GPU, and pinning the NVIDIA card starts on CUDA', async () => {
+    const mixed = await startChosen({ vulkanDeviceNames: MIXED_NAMES, fakeOptions: { listDevices: MIXED } });
+    expect(mixed.choice).toMatchObject({ backend: 'vulkan', reason: 'mixed-gpus' });
+    expect(mixed.state.gpuBackend).toBe('vulkan');
+
+    const pinned = await startChosen({ vulkanDeviceNames: MIXED_NAMES, gpuDevice: 'NVIDIA GeForce RTX 4090', fakeOptions: { listDevices: MIXED } });
+    expect(pinned.choice.backend).toBe('cuda');
+    expect(pinned.state).toMatchObject({ gpuBackend: 'cuda', gpuDeviceOrigin: 'manual' });
+    expect(after(pinned.router.args, '--device')).toBe('CUDA0');
+
+    // All GPUs is no pin: the mixed machine keeps both cards through Vulkan.
+    expect(backendForStart({ install: INSTALLED, serverPath: () => CUDA_BIN, cards: [RTX_4090], vulkanDeviceNames: MIXED_NAMES, setting: 'auto', gpuDevice: 'all' }).backend).toBe('vulkan');
+  });
+
+  it('counts an integrated GPU beside the NVIDIA card as not mixed, so Auto starts on CUDA', async () => {
+    const { choice, state } = await startChosen({ vulkanDeviceNames: WITH_IGPU_NAMES });
+    expect(choice.backend).toBe('cuda');
+    expect(state.gpuBackend).toBe('cuda');
+  });
+
+  it('the Backend setting overrides Auto both ways', async () => {
+    const vulkan = await startChosen({ setting: 'vulkan' });
+    expect(vulkan.choice).toMatchObject({ backend: 'vulkan', reason: 'setting' });
+    expect(vulkan.state).toMatchObject({ gpuBackend: 'vulkan', backendSetting: 'vulkan' });
+
+    const cuda = await startChosen({ setting: 'cuda', vulkanDeviceNames: MIXED_NAMES, cards: [{ ...RTX_4090, driverVersion: '560.94' }] });
+    expect(cuda.choice.backend).toBe('cuda');
+    expect(cuda.state).toMatchObject({ gpuBackend: 'cuda', backendSetting: 'cuda' });
+
+    // Without the install, a stored CUDA setting starts on Vulkan and says why.
+    expect(backendForStart({ install: { state: 'not-installed' }, serverPath: () => null, cards: [RTX_4090], vulkanDeviceNames: VULKAN_4090, setting: 'cuda' }))
+      .toMatchObject({ backend: 'vulkan', reason: 'not-installed' });
+  });
+
+  it('a CUDA build that lists no devices starts on the bundled build', async () => {
+    const { state, fake } = await startChosen({ fakeOptions: { cuda: { bin: CUDA_BIN, listDevices: 'Available devices:\r\n' } } });
+    expect(state).toMatchObject({ status: 'ready', gpuBackend: 'vulkan' });
+    const routers = fake.routerCalls();
+    expect(routers).toHaveLength(1);
+    expect(routers[0].bin).toBe('llama-server');
+    expect(routers[0].env).not.toHaveProperty('CUDA_CACHE_MAXSIZE');
+  });
+
+  it('a device pin by name carries across backends', async () => {
+    const onCuda = await startChosen({ gpuDevice: 'NVIDIA GeForce RTX 4090' });
+    expect(onCuda.state).toMatchObject({ gpuBackend: 'cuda', gpuDeviceOrigin: 'manual', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'] });
+    expect(after(onCuda.router.args, '--device')).toBe('CUDA0');
+    const onVulkan = await startChosen({ gpuDevice: 'NVIDIA GeForce RTX 4090', setting: 'vulkan' });
+    expect(onVulkan.state).toMatchObject({ gpuBackend: 'vulkan', gpuDeviceOrigin: 'manual', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'] });
+    expect(after(onVulkan.router.args, '--device')).toBe('Vulkan0');
   });
 });
 

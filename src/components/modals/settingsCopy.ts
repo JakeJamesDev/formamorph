@@ -530,6 +530,17 @@ More context uses more **VRAM**. If a model doesn't fit, lower this first.`,
 
 The **Engine device** line above shows the result.`,
   },
+  localEngineBackend: {
+    label: 'Backend',
+    description: 'Chooses whether the engine runs on CUDA or Vulkan',
+    info: `CUDA and Vulkan are two versions of the engine. On NVIDIA cards, CUDA is often faster.
+
+- **Auto** uses CUDA once it's downloaded. Beside a second graphics card, it uses Vulkan, so both cards stay in use
+- **Vulkan** always uses the version that comes with Formamorph
+- **CUDA** needs the CUDA download first
+
+The **Engine device** line above shows the result.`,
+  },
   localCuda: {
     label: 'CUDA',
     description: 'Downloads the CUDA version of the engine for your NVIDIA card',

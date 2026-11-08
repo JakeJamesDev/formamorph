@@ -101,4 +101,4 @@ function selectEngineDevice({ deviceNames, nvidiaGpus, setting } = {}) {
   return { index, origin: index == null ? null : 'auto' };
 }
 
-module.exports = { selectEngineDevice, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };
+module.exports = { selectEngineDevice, namesMatch, isIntegrated, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };

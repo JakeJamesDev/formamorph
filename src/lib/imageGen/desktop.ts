@@ -2,7 +2,7 @@
 // `window.formamorphDesktop`; in the plain web build it's absent. Cloud image providers (which need a
 // CORS-free proxy) route through this bridge and are disabled in the UI when it isn't present.
 
-import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
+import type { LocalCacheType, LocalContextOverflow, LocalEngineBackend } from '@/contexts/settingsDefaults';
 import type { ProjectorSource } from '@/lib/localModels';
 import type { ProfileMergeBridge } from '@/lib/profileMerge/bridge';
 import type { UpdateDownloadResult } from '@/lib/updates/updateBridge';
@@ -138,6 +138,8 @@ export interface LocalLlmState {
   /** Our VRAM footprint in MB: the model, KV, compute and output buffers llama-server logged on GPU devices
    *  at load. Null on the CPU backend or with no model. */
   engineVramMB: number | null;
+  /** The Backend setting the current model was started with. */
+  backendSetting: LocalEngineBackend | null;
   /** The backend llama.cpp selected — 'cuda' | 'vulkan' | 'metal' | 'cpu' — or null before one is chosen.
    *  Survives a failed load, so an out-of-VRAM error still says which device it ran on. */
   gpuBackend: string | null;
@@ -175,6 +177,30 @@ export interface EngineDeviceList {
   devices: string[];
   /** The card Auto would use right now, or null when Auto uses them all. Shown next to "Auto" in the picker. */
   autoPick: string | null;
+  /** The backend the next start runs with the settings asked about, and why it isn't CUDA. Absent off desktop. */
+  choice?: EngineBackendChoice;
+}
+
+/** Why a start runs on Vulkan instead of CUDA: the setting, the install, the machine, or the CUDA build's listing. */
+export type EngineBackendReason = 'setting' | 'not-installed' | 'updating' | 'mixed-gpus' | 'no-cuda-devices' | 'no-nvidia-card' | 'card-too-old' | 'driver-too-old' | 'support-unknown';
+
+export interface EngineBackendChoice {
+  backend: 'cuda' | 'vulkan';
+  reason: EngineBackendReason | null;
+}
+
+/** The settings the engine loads with; a change to any of them reloads a running model. */
+export interface LocalLlmOptions {
+  contextSize: number;
+  gpuLayers: number;
+  flashAttention: boolean;
+  parallelRequests: number;
+  unifiedKvCache: boolean;
+  kCacheType: LocalCacheType;
+  vCacheType: LocalCacheType;
+  kvCacheInRam: boolean;
+  gpuDevice: string;
+  engineBackend: LocalEngineBackend;
 }
 
 /** The device an engine state is pinned to, by name — null when nothing was pinned. Read from the list the
@@ -267,12 +293,14 @@ declare global {
         cancelMove: () => Promise<boolean>;
         /** Subscribe to move progress; returns an unsubscribe fn. */
         onMoveProgress: (cb: (p: LocalMoveProgress) => void) => () => void;
-        /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if changed. */
-        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }) => Promise<LocalLlmState>;
+        /** Set engine load options; reloads if changed. */
+        setOptions: (opts: LocalLlmOptions) => Promise<LocalLlmState>;
+        /** Stop and start the loaded model again with the current options. */
+        restart: () => Promise<LocalLlmState>;
         /** Set the Context Overflow policy for the next request; no reload. Resolves the policy applied. */
         setContextOverflow: (policy: LocalContextOverflow) => Promise<LocalContextOverflow>;
-        /** Every GPU the engine can pin to, for the device picker. */
-        listDevices: () => Promise<EngineDeviceList>;
+        /** Every GPU the next start's backend can pin to, for the device picker, given unsaved settings. */
+        listDevices: (pending?: Pick<LocalLlmOptions, 'engineBackend' | 'gpuDevice'>) => Promise<EngineDeviceList>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
          *  the saved path. */
         download: (opts: LocalDownloadOptions) => Promise<{ path: string }>;
@@ -409,9 +437,12 @@ export function subscribeLocalMove(cb: (p: LocalMoveProgress) => void): () => vo
   return llm?.onMoveProgress ? llm.onMoveProgress(cb) : () => {};
 }
 
-/** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if they changed. */
-export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; unifiedKvCache: boolean; kCacheType: LocalCacheType; vCacheType: LocalCacheType; kvCacheInRam: boolean; gpuDevice: string }): Promise<LocalLlmState> =>
+/** Set engine load options; reloads if they changed. */
+export const setLocalLlmOptions = (opts: LocalLlmOptions): Promise<LocalLlmState> =>
   requireLlm().setOptions(opts);
+
+/** Start the loaded model again with the current options, so a backend that landed meanwhile takes over. */
+export const restartLocalLlm = (): Promise<LocalLlmState> => requireLlm().restart();
 
 /** Set the engine's Context Overflow policy; it applies to the next request with no reload. */
 export const setLocalLlmContextOverflow = (policy: LocalContextOverflow): Promise<LocalContextOverflow> =>
@@ -419,8 +450,8 @@ export const setLocalLlmContextOverflow = (policy: LocalContextOverflow): Promis
 
 /** Every GPU the engine can pin to. Off desktop, and on a machine whose backend can't enumerate, an empty
  *  list — which the picker states rather than showing an empty dropdown. */
-export const listLocalGpuDevices = (): Promise<EngineDeviceList> =>
-  isLocalLlmAvailable() ? requireLlm().listDevices() : Promise.resolve({ backend: null, devices: [], autoPick: null });
+export const listLocalGpuDevices = (pending?: Pick<LocalLlmOptions, 'engineBackend' | 'gpuDevice'>): Promise<EngineDeviceList> =>
+  isLocalLlmAvailable() ? requireLlm().listDevices(pending) : Promise.resolve({ backend: null, devices: [], autoPick: null });
 
 /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
  *  saved path. */

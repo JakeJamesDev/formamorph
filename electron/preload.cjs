@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   // ref (`load`), which main resolves inside a searched folder — no arbitrary-path start is exposed.
   llm: {
     stop: () => ipcRenderer.invoke('llm-stop'),
+    restart: () => ipcRenderer.invoke('llm-restart'),
     status: () => ipcRenderer.invoke('llm-status'),
     modelsDir: () => ipcRenderer.invoke('llm-models-dir'),
     onStatus: (cb) => {
@@ -64,7 +65,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
     },
     setOptions: (opts) => ipcRenderer.invoke('llm-set-options', opts),
     setContextOverflow: (policy) => ipcRenderer.invoke('llm-set-context-overflow', policy),
-    listDevices: () => ipcRenderer.invoke('llm-list-devices'),
+    listDevices: (pending) => ipcRenderer.invoke('llm-list-devices', pending),
     download: (opts) => ipcRenderer.invoke('llm-download', opts),
     cancelDownload: () => ipcRenderer.invoke('llm-download-cancel'),
     listPartials: () => ipcRenderer.invoke('llm-list-partials'),

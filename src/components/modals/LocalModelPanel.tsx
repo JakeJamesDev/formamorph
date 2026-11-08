@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,18 +11,31 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
 import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
-import { setLocalLlmOptions, listLocalGpuDevices, pinnedEngineDevice, type EngineDeviceList } from '@/lib/imageGen/desktop';
+import { setLocalLlmOptions, restartLocalLlm, listLocalGpuDevices, pinnedEngineDevice, type EngineDeviceList, type EngineBackendChoice } from '@/lib/imageGen/desktop';
+import { useMountedRef } from '@/lib/useMountedRef';
 import {
   LOCAL_GPU_LAYERS_MAX, GPU_LAYERS_AUTO, GPU_LAYERS_MAX, LOCAL_PARALLEL_REQUESTS_MAX, DEFAULT_MAX_TOKENS,
   DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_UNIFIED_KV_CACHE, DEFAULT_LOCAL_K_CACHE_TYPE, DEFAULT_LOCAL_V_CACHE_TYPE, DEFAULT_LOCAL_KV_CACHE_IN_RAM, LOCAL_CACHE_TYPES, DEFAULT_LOCAL_PARALLEL_REQUESTS,
   DEFAULT_LOCAL_CONTEXT_OVERFLOW, LOCAL_CONTEXT_OVERFLOW_POLICIES,
-  LOCAL_GPU_DEVICE_AUTO, LOCAL_GPU_DEVICE_ALL, DEFAULT_LOCAL_GPU_DEVICE,
+  LOCAL_GPU_DEVICE_AUTO, LOCAL_GPU_DEVICE_ALL, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_ENGINE_BACKEND,
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
-import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
+import type { LocalCacheType, LocalContextOverflow, LocalEngineBackend } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
-import { CudaEngineRow } from './CudaEngineRow';
+import { CudaEngineRow, useCudaStatus } from './CudaEngineRow';
 import { effectiveVCacheType } from '../../../electron/cacheTypes.cjs';
+
+/** Why the next start runs on Vulkan, when the Backend row's own label doesn't say it. Null for none. */
+function backendReasonText(choice: EngineBackendChoice | undefined, setting: LocalEngineBackend): ReactNode {
+  if (!choice || choice.backend === 'cuda') return null;
+  switch (choice.reason) {
+    case 'mixed-gpus': return <>Auto uses Vulkan because you have another graphics card. Pick your NVIDIA card in <strong>GPU Device</strong> to use CUDA.</>;
+    case 'updating': return 'CUDA is updating. The engine uses Vulkan until the update finishes.';
+    case 'no-cuda-devices': return 'CUDA found no graphics card, so the engine uses Vulkan.';
+    case 'not-installed': return setting === 'cuda' ? 'Download CUDA below to use it. Until then, the engine uses Vulkan.' : null;
+    default: return null;
+  }
+}
 
 /**
  * The desktop Endpoint tab's local-model view (shown when a custom endpoint is off). Model management sits
@@ -41,6 +54,7 @@ export function LocalModelPanel() {
     localKvCacheInRam, setLocalKvCacheInRam,
     localContextOverflow, setLocalContextOverflow,
     localGpuDevice, setLocalGpuDevice,
+    localEngineBackend, setLocalEngineBackend,
     localMaxTokens, setLocalMaxTokens,
     genTemperature, setGenTemperature,
     genTopP, setGenTopP,
@@ -54,14 +68,20 @@ export function LocalModelPanel() {
   const [reloading, setReloading] = useState(false);
   const vram = useVramStats('', { enabled: true });
   const [gpuDevices, setGpuDevices] = useState<EngineDeviceList>({ backend: null, devices: [], autoPick: null });
+  const cuda = useCudaStatus();
+  const cudaInstalled = cuda?.state === 'installed';
+  const mounted = useMountedRef();
+  const [restarting, setRestarting] = useState(false);
 
-  // Every GPU the engine could pin to. Asked for once: it costs a short-lived engine process when nothing
-  // has enumerated yet, and the list only changes when drivers do.
+  // Every GPU the next start's backend could pin to, with that backend. Asked again when a setting that picks
+  // the backend changes, or when CUDA's install changes; main keeps each build's listing after the first.
   useEffect(() => {
     let active = true;
-    listLocalGpuDevices().then((d) => { if (active) setGpuDevices(d); }).catch(() => { /* leave the row on its no-GPU state */ });
+    listLocalGpuDevices({ engineBackend: localEngineBackend, gpuDevice: localGpuDevice })
+      .then((d) => { if (active) setGpuDevices(d); })
+      .catch(() => { /* leave the row on its no-GPU state */ });
     return () => { active = false; };
-  }, []);
+  }, [localEngineBackend, localGpuDevice, cuda?.state]);
 
   // A chosen device the current enumeration no longer has (an eGPU unplugged, a driver removed). It stays
   // on the list, marked, so the row reads as a stale choice rather than as a blank control.
@@ -110,6 +130,7 @@ export function LocalModelPanel() {
     // Main loads the coerced V type, so compare what it would apply, not the stored value.
     effectiveVCacheType(localVCacheType, localFlashAttention) !== engine.vCacheType ||
     localKvCacheInRam !== engine.kvCacheInRam ||
+    localEngineBackend !== engine.backendSetting ||
     deviceDiffers;
 
   // When Save & Reload can act: a loaded model whose settings changed, OR a failed load — so a context/GPU
@@ -123,11 +144,24 @@ export function LocalModelPanel() {
   const saveReload = async () => {
     setReloading(true);
     try {
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, kCacheType: localKCacheType, vCacheType: localVCacheType, kvCacheInRam: localKvCacheInRam, gpuDevice: localGpuDevice });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, unifiedKvCache: localUnifiedKvCache, kCacheType: localKCacheType, vCacheType: localVCacheType, kvCacheInRam: localKvCacheInRam, gpuDevice: localGpuDevice, engineBackend: localEngineBackend });
     } finally {
       setReloading(false);
     }
   };
+
+  // CUDA landed while the model runs on Vulkan (Q17): the engine waits for this, never reloading on its own.
+  // A pending settings change has Save & Reload for that instead.
+  const offerCudaRestart = engine.status === 'ready' && engine.gpuBackend === 'vulkan' && gpuDevices.choice?.backend === 'cuda' && !optionsDiffer;
+  const restartOnCuda = async () => {
+    setRestarting(true);
+    try {
+      await restartLocalLlm();
+    } catch { /* the engine status shows the result */ } finally {
+      if (mounted.current) setRestarting(false);
+    }
+  };
+  const backendReason = backendReasonText(gpuDevices.choice, localEngineBackend);
 
   const resetDefaults = () => {
     setLocalContextSize(DEFAULT_LOCAL_CONTEXT_SIZE);
@@ -140,6 +174,7 @@ export function LocalModelPanel() {
     setLocalKvCacheInRam(DEFAULT_LOCAL_KV_CACHE_IN_RAM);
     setLocalContextOverflow(DEFAULT_LOCAL_CONTEXT_OVERFLOW);
     setLocalGpuDevice(DEFAULT_LOCAL_GPU_DEVICE);
+    setLocalEngineBackend(DEFAULT_LOCAL_ENGINE_BACKEND);
     setLocalMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
     setGenTopP(DEFAULT_GEN_TOP_P);
@@ -251,8 +286,33 @@ export function LocalModelPanel() {
       </Row>
       )}
 
+      {/* Which llama-server build runs, beside the device it runs on (Q11). NVIDIA machines only, and hidden
+          with GPU off, where the CPU runs the model on either build. */}
+      {cuda?.nvidia && localGpuLayers !== 0 && (
+        <Row htmlFor="localEngineBackend" {...rowCopy('localEngineBackend')}>
+          <div className="grid gap-2">
+            <Select value={localEngineBackend} onValueChange={(v) => setLocalEngineBackend(v as LocalEngineBackend)}>
+              {/* A stored CUDA choice without the install stays selected but grayed (the start runs Vulkan). */}
+              <SelectTrigger id="localEngineBackend" className={localEngineBackend === 'cuda' && !cudaInstalled ? 'text-muted-foreground' : undefined}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">{gpuDevices.choice ? `Auto (${gpuDevices.choice.backend === 'cuda' ? 'CUDA' : 'Vulkan'})` : 'Auto'}</SelectItem>
+                <SelectItem value="vulkan">Vulkan</SelectItem>
+                <SelectItem value="cuda" disabled={!cudaInstalled}>CUDA</SelectItem>
+              </SelectContent>
+            </Select>
+            {backendReason && <Hint>{backendReason}</Hint>}
+            {offerCudaRestart && (
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="outline" size="sm" disabled={restarting} onClick={() => void restartOnCuda()}>Restart on CUDA</Button>
+                <Hint>CUDA is installed. Your model still runs on Vulkan.</Hint>
+              </div>
+            )}
+          </div>
+        </Row>
+      )}
+
       {/* NVIDIA machines only; the row renders nothing elsewhere. */}
-      <CudaEngineRow engine={engine} />
+      <CudaEngineRow engine={engine} status={cuda} />
 
       {/* Flash Attention groups with the reload settings above (all "apply on reload"). */}
       {advancedMode && (

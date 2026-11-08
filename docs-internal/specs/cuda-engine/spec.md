@@ -157,7 +157,7 @@ Rulings from the spec review (2026-11-07):
   3. List the Vulkan build's devices, and load on Vulkan. This is today's path, including its CPU fallback.
 - The engine state already reports the backend that ran (`gpuBackend`), and the status line already labels CUDA. New fields: a fallback flag and the CUDA error. The notice and the Error Details show the CUDA error. If Vulkan fails too, the final error is Vulkan's, as today.
 - The device picker lists the devices of the backend that will run. The pin stays a device name. On the 4090, the CUDA and Vulkan builds both list "NVIDIA GeForce RTX 4090", so a pin carries across. A name that doesn't match falls back to Auto, as the device policy already does.
-- The engine spawns llama-server with a larger CUDA JIT cache, so RTX 20 and GTX 16 cards compile the kernels once. The value comes from NVIDIA's documented range; it is not verified yet.
+- The engine spawns llama-server with a larger CUDA JIT cache, so RTX 20 and GTX 16 cards compile the kernels once. The value is `CUDA_CACHE_MAXSIZE=4294967296` (4 GiB), on CUDA starts only. Source: NVIDIA CUDA Programming Guide, section 5.2.2.3 `CUDA_CACHE_MAXSIZE` (https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/environment-variables.html, read 2026-11-07). It gives 1 GiB as the desktop default and 4 GiB as the maximum. That a full cache keeps the compiled kernels across starts is not verified on an RTX 20 card.
 
 **Settings.**
 - A new Backend setting, `auto | vulkan | cuda`, default `auto`. Like every setting, it lives on the device and never goes in backups, worlds or saves. No export shape changes.

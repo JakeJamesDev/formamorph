@@ -7,7 +7,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
-const { cudaSupport } = require('./nvidiaFacts.cjs');
+const { cudaSupport, nvidiaCards } = require('./nvidiaFacts.cjs');
+const { backendForStart, engineBackend } = require('./engineBackend.cjs');
 const { createCudaInstall } = require('./cudaInstall.cjs');
 const { readEnginePin } = require('./enginePin.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
@@ -96,21 +97,25 @@ let mainWindow = null;
 // gpuDevice is a device *name* (or 'auto'/'all'), which the engine resolves against `--list-devices` at each
 // start — an index saved across a driver change would point at a different card.
 // contextOverflow applies to the next request with no reload (llm-set-context-overflow).
-let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false, gpuDevice: ENGINE_DEVICE_AUTO, contextOverflow: DEFAULT_OVERFLOW_POLICY };
+let engineOptions = { contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false, gpuDevice: ENGINE_DEVICE_AUTO, engineBackend: 'auto', contextOverflow: DEFAULT_OVERFLOW_POLICY };
 
 // Every GPU llama-server can see, for the device picker. `--list-devices` initializes every backend, so it is
 // read once and cached; each engine start reads its own copy and refreshes this one through its status.
-let deviceEnumeration = null;
-// One read at a time: a desktop boot can ask twice at once (a model starting while the picker fills).
-let devicesInFlight = null;
+// Keyed by binary: the bundled Vulkan build and the CUDA build list different devices.
+const deviceEnumerations = new Map();
+// One read at a time per binary: a desktop boot can ask twice at once (a model starting while the picker fills).
+const devicesInFlight = new Map();
 
-async function currentEnumeration() {
-  if (deviceEnumeration) return deviceEnumeration;
-  devicesInFlight ??= listServerDevices({ bin: llamaServerBinary() })
-    .then(deviceListing)
-    .finally(() => { devicesInFlight = null; });
-  deviceEnumeration = await devicesInFlight;
-  return deviceEnumeration;
+async function enumerationOf(bin) {
+  const cached = deviceEnumerations.get(bin);
+  if (cached) return cached;
+  if (!devicesInFlight.has(bin)) {
+    devicesInFlight.set(bin, listServerDevices({ bin }).then(deviceListing).finally(() => devicesInFlight.delete(bin)));
+  }
+  const enumeration = await devicesInFlight.get(bin);
+  // An empty CUDA listing is asked again next time: a reinstall at the same path can list devices.
+  if (enumeration.gpuDeviceNames.length || bin === llamaServerBinary()) deviceEnumerations.set(bin, enumeration);
+  return enumeration;
 }
 
 /** nvidia-smi's GPUs for Auto's pick; none without nvidia-smi, where the name patterns decide alone. */
@@ -118,9 +123,27 @@ async function nvidiaGpus() {
   try { return (await collectVram()).gpus; } catch { return []; }
 }
 
-/** The engine's load options for a model: the renderer's settings plus the GPUs Auto picks among. */
+/**
+ * The backend the next start runs, for `options` (the engine options, or pending ones from the panel), with
+ * the CUDA build's server when that is CUDA. Off Windows there is no CUDA build (spec Q2).
+ */
+async function backendChoice(options = engineOptions) {
+  if (process.platform !== 'win32') return { backend: 'vulkan', reason: 'not-installed', cudaBinary: null };
+  const install = await cuda().status();
+  return backendForStart({
+    install,
+    serverPath: () => cuda().serverPath(),
+    cards: install.nvidia ? await nvidiaCards() : [],
+    vulkanDeviceNames: (await enumerationOf(llamaServerBinary())).gpuDeviceNames,
+    setting: options.engineBackend,
+    gpuDevice: options.gpuDevice,
+  });
+}
+
+/** The engine's load options for a model: the renderer's settings, the GPUs Auto picks among, and the CUDA build when the backend choice says CUDA. */
 async function startOptions(modelPath) {
-  return { modelPath, ...engineOptions, nvidiaGpus: await nvidiaGpus() };
+  const { cudaBinary } = await backendChoice();
+  return { modelPath, ...engineOptions, nvidiaGpus: await nvidiaGpus(), cudaBinary };
 }
 
 // Keep the (multi-GB) models beside the app so a portable build stays self-contained — burying them in
@@ -194,8 +217,12 @@ function detectLmStudioDir() {
 
 // Push every engine status change to the renderer (it also polls once on mount via 'llm-status').
 llmEngine.onStatus((state) => {
-  // A start read the device list afresh; keep the picker's copy in step, so a card added or removed shows.
-  if (deviceEnumeration && Array.isArray(state.gpuDeviceOptions)) deviceEnumeration = { ...deviceEnumeration, gpuDeviceNames: state.gpuDeviceOptions };
+  // A start read the device list afresh; keep the picker's copy of that backend in step, so a card added or removed shows.
+  if (Array.isArray(state.gpuDeviceOptions)) {
+    for (const [bin, enumeration] of deviceEnumerations) {
+      if (enumeration.gpuBackend === state.gpuBackend) deviceEnumerations.set(bin, { ...enumeration, gpuDeviceNames: state.gpuDeviceOptions });
+    }
+  }
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-status', state);
 });
 
@@ -436,6 +463,7 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
     vCacheType: llamaServer.cacheType(opts.vCacheType ?? engineOptions.vCacheType),
     kvCacheInRam: typeof opts.kvCacheInRam === 'boolean' ? opts.kvCacheInRam : engineOptions.kvCacheInRam,
     gpuDevice: typeof opts.gpuDevice === 'string' ? opts.gpuDevice : engineOptions.gpuDevice,
+    engineBackend: engineBackend(opts.engineBackend ?? engineOptions.engineBackend),
     contextOverflow: engineOptions.contextOverflow,
   };
   // A quantized V cache needs Flash Attention; without it the stored V type is not usable.
@@ -448,7 +476,8 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
     || next.kCacheType !== engineOptions.kCacheType
     || next.vCacheType !== engineOptions.vCacheType
     || next.kvCacheInRam !== engineOptions.kvCacheInRam
-    || next.gpuDevice !== engineOptions.gpuDevice;
+    || next.gpuDevice !== engineOptions.gpuDevice
+    || next.engineBackend !== engineOptions.engineBackend;
   engineOptions = next;
   const loaded = llmEngine.getState().modelPath;
   if (changed && loaded) {
@@ -465,17 +494,39 @@ ipcMain.handle('llm-set-context-overflow', async (_event, policy) => {
   return engineOptions.contextOverflow;
 });
 
-// Every GPU the engine could be pinned to, for the device picker: { backend, devices, autoPick }. An empty
-// list with a 'cpu' backend is a machine with no GPU, which the picker says rather than offering nothing.
-// autoPick is the card Auto would use right now, so the dropdown can show it next to the word.
-ipcMain.handle('llm-list-devices', async () => {
-  const enumeration = await currentEnumeration();
+// The next start with the current options: the panel's Restart on CUDA, once CUDA landed under a Vulkan run.
+ipcMain.handle('llm-restart', async () => {
+  const { status, modelPath: loaded } = llmEngine.getState();
+  if (status !== 'ready' || !loaded) return llmEngine.getState();
+  await llmEngine.stop();
+  return llmEngine.start(await startOptions(loaded));
+});
+
+// Every GPU the engine could be pinned to, for the device picker: { backend, devices, autoPick, choice }. The
+// devices are those of the backend the next start runs with `pending` (the panel's unsaved Backend and device
+// settings), and `choice` is that backend with its reason. An empty list with a 'cpu' backend is a machine
+// with no GPU, which the picker says rather than offering nothing. autoPick is the card Auto would use right
+// now, so the dropdown can show it next to the word.
+ipcMain.handle('llm-list-devices', async (_event, pending) => {
+  const options = {
+    ...engineOptions,
+    ...(typeof pending?.engineBackend === 'string' ? { engineBackend: engineBackend(pending.engineBackend) } : {}),
+    ...(typeof pending?.gpuDevice === 'string' ? { gpuDevice: pending.gpuDevice } : {}),
+  };
+  const { cudaBinary, ...picked } = await backendChoice(options);
+  let choice = picked;
+  let enumeration = cudaBinary ? await enumerationOf(cudaBinary) : null;
+  // A CUDA build that lists no devices starts on Vulkan, so the picker lists Vulkan's.
+  if (!enumeration?.gpuDeviceNames.length) {
+    if (cudaBinary) choice = { backend: 'vulkan', reason: 'no-cuda-devices' };
+    enumeration = await enumerationOf(llamaServerBinary());
+  }
   let autoPick = null;
   if (enumeration.gpuDeviceNames.length) {
     const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus: await nvidiaGpus() });
     if (pick.index != null) autoPick = enumeration.gpuDeviceNames[pick.index] ?? null;
   }
-  return { backend: enumeration.gpuBackend, devices: enumeration.gpuDeviceNames, autoPick };
+  return { backend: enumeration.gpuBackend, devices: enumeration.gpuDeviceNames, autoPick, choice };
 });
 
 // Installed GGUF filenames across every searched folder (used where only names matter).

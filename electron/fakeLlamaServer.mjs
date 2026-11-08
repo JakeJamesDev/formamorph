@@ -22,6 +22,9 @@ export const loadThinkingFixture = (tag = PIN) => readFixture(`${tag}-thinking`)
 /** One turn of a Gemma 4 model with thinking on at `tag`, recorded with `--gemma`. */
 export const loadGemmaFixture = (tag = PIN) => readFixture(`${tag}-gemma`);
 
+/** The CUDA build's listing and one load at `tag`, recorded with `--cuda`. */
+export const loadCudaFixture = (tag = PIN) => readFixture(`${tag}-cuda`);
+
 const argValue = (args, flag) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : null;
@@ -42,8 +45,13 @@ export const isCpuStart = (args) => argValue(args, '--device') === 'none';
  * `holdReply` keeps each chat reply open (a stream after its first frame); `chatHangups` gets each one the
  * caller ends. `holdTokenize` keeps every `/tokenize` answer back, listed in `heldTokenize`, until
  * `releaseTokenize()`. `chatExtraTokens` adds to a chat prompt's count.
+ * `cuda` is a second build, `{ bin, fixture, listDevices }`: a spawn of that binary replays its recording,
+ * so one start can see the CUDA build and then the bundled one. A scenario it lacks comes from `fixture`.
  */
-export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (isCpuStart(args) ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, stepMs = 2, holdReply = false, holdTokenize = false, chatExtraTokens = 0 } = {}) {
+export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (args) => (isCpuStart(args) ? 'cpu' : 'loaded'), listDevices = fixture.listDevices, cuda = null, stepMs = 2, holdReply = false, holdTokenize = false, chatExtraTokens = 0 } = {}) {
+  const cudaFixture = cuda ? (cuda.fixture ?? loadCudaFixture()) : null;
+  const cudaBuild = cuda ? { scenarios: { ...fixture.scenarios, ...cudaFixture.scenarios }, listDevices: cuda.listDevices ?? cudaFixture.listDevices } : null;
+  const bundledBuild = { scenarios: fixture.scenarios, listDevices };
   const calls = [];
   const chatRequests = [];
   const chatHangups = [];
@@ -60,6 +68,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     const bin = wrapped ? commandArgs[2] : command;
     const args = wrapped ? commandArgs.slice(3) : commandArgs;
     calls.push({ bin, args: [...args], env: opts.env ?? null, wrapped });
+    const build = cudaBuild && bin === cuda.bin ? cudaBuild : bundledBuild;
     const child = new EventEmitter();
     child.pid = nextPid++;
     child.stdout = new PassThrough();
@@ -76,11 +85,11 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
 
     if (args.includes('--list-devices')) {
       child.kill = () => exit(null, 'SIGTERM');
-      setImmediate(() => { child.stdout.write(listDevices); exit(0); });
+      setImmediate(() => { child.stdout.write(build.listDevices); exit(0); });
       return child;
     }
 
-    const scenario = fixture.scenarios[scenarioFor(args)];
+    const scenario = build.scenarios[scenarioFor(args)];
     const port = Number(argValue(args, '--port'));
     const ini = readFileSync(argValue(args, '--models-preset'), 'utf8');
     const modelId = /^\[(.+)\]$/m.exec(ini)[1];
@@ -129,7 +138,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
         await body(req);
         json(res, 200, { success: true });
         router.loaded = false;
-        const unloaded = fixture.scenarios.loaded.afterEvents.find((e) => e.data?.status === 'unloaded');
+        const unloaded = build.scenarios.loaded.afterEvents.find((e) => e.data?.status === 'unloaded');
         return later(stepMs, () => send(unloaded));
       }
       // The token routes the proxy's Context Overflow reads, in the shapes the pinned build answers with.
@@ -158,11 +167,11 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
         if (holdReply) req.socket.once('close', () => chatHangups.push(payload));
         if (payload.stream) {
           res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
-          const frames = fill(scenario.chatStream ?? fixture.scenarios.loaded.chatStream);
+          const frames = fill(scenario.chatStream ?? build.scenarios.loaded.chatStream);
           return holdReply ? res.write(`${frames.split('\n\n')[0]}\n\n`) : res.end(frames);
         }
         if (holdReply) return;
-        return json(res, 200, fill(scenario.chat ?? fixture.scenarios.loaded.chat));
+        return json(res, 200, fill(scenario.chat ?? build.scenarios.loaded.chat));
       }
       return json(res, 404, { error: { message: 'not found' } });
     });
@@ -181,7 +190,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
     /** The model instance dies while the router stays up: the router reports it as the recorded failed exit. */
     router.crashInstance = () => {
       router.loaded = false;
-      send(fixture.scenarios.kvFail.loadEvents.at(-1));
+      send(build.scenarios.kvFail.loadEvents.at(-1));
     };
     server.listen(port, '127.0.0.1', () => scenario.boot.forEach(line));
     return child;

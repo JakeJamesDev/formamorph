@@ -281,7 +281,14 @@ function createCudaInstall({
     return running;
   }
 
-  return { status, install, startup, cancel, remove, prune };
+  /** The installed build's llama-server for the current tag, or null when that tag isn't installed. */
+  function serverPath() {
+    if (!installedTag()) return null;
+    const exe = path.join(installDirFor(enginesDir, pin.tag), process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
+    return fs.existsSync(exe) ? exe : null;
+  }
+
+  return { status, install, startup, cancel, remove, prune, serverPath };
 }
 
 module.exports = { createCudaInstall, tarExtract };

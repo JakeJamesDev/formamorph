@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { LocalModelPanel } from './LocalModelPanel';
 import { LocalEngineManager } from '../LocalEngineManager';
-import type { CudaInstallError, CudaStatus, LocalLlmState } from '@/lib/imageGen/desktop';
+import type { CudaInstallError, CudaStatus, EngineBackendChoice, EngineDeviceList, LocalLlmState } from '@/lib/imageGen/desktop';
 
 type CudaBridge = NonNullable<NonNullable<Window['formamorphDesktop']>['cuda']>;
 
@@ -40,7 +40,7 @@ const IGPU = 'Intel(R) UHD Graphics 770';
 const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
   status: 'ready', modelPath: 'D:/models/m.gguf', modelId: 'm.gguf', port: 8977, error: null, loadProgress: null,
   contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false,
-  maxContextSize: 32768, engineVramMB: 4096,
+  maxContextSize: 32768, engineVramMB: 4096, backendSetting: 'auto',
   gpuBackend: 'vulkan', gpuDeviceNames: [IGPU, DISCRETE], deviceVramTotalMB: 16376, deviceVramFreeMB: 15176,
   gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null, serverPid: null,
   ...over,
@@ -48,12 +48,17 @@ const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
 
 let setOptionsCalls: Record<string, unknown>[] = [];
 let contextOverflowCalls: string[] = [];
+let listDevicesCalls: unknown[] = [];
+let restartCalls = 0;
 
 /** Stand the desktop bridge up so the panel takes its desktop path — the only one the picker exists on. */
-function stubDesktop({ devices, backend = 'vulkan', autoPick = null, engine = readyEngine(), cuda = null }: {
+function stubDesktop({ devices, backend = 'vulkan', autoPick = null, choice, listFor, engine = readyEngine(), cuda = null }: {
   devices: string[];
   backend?: string | null;
   autoPick?: string | null;
+  choice?: EngineBackendChoice;
+  /** Answers by the pending settings asked about, in place of the fixed list. */
+  listFor?: (pending: { engineBackend?: string; gpuDevice?: string } | undefined) => EngineDeviceList;
   engine?: LocalLlmState;
   cuda?: CudaBridge | null;
 }) {
@@ -64,7 +69,11 @@ function stubDesktop({ devices, backend = 'vulkan', autoPick = null, engine = re
     llm: {
       status: () => Promise.resolve(engine),
       onStatus: () => () => {},
-      listDevices: () => Promise.resolve({ backend, devices, autoPick }),
+      listDevices: (pending?: { engineBackend?: string; gpuDevice?: string }) => {
+        listDevicesCalls.push(pending);
+        return Promise.resolve(listFor ? listFor(pending) : { backend, devices, autoPick, ...(choice ? { choice } : {}) });
+      },
+      restart: () => { restartCalls += 1; return Promise.resolve(engine); },
       setOptions: (opts: Record<string, unknown>) => { setOptionsCalls.push(opts); return Promise.resolve(engine); },
       setContextOverflow: (policy: string) => { contextOverflowCalls.push(policy); return Promise.resolve(policy); },
       stop: () => Promise.resolve(engine),
@@ -84,6 +93,8 @@ beforeEach(() => {
   localStorage.clear();
   setOptionsCalls = [];
   contextOverflowCalls = [];
+  listDevicesCalls = [];
+  restartCalls = 0;
   delete (window as { formamorphDesktop?: unknown }).formamorphDesktop;
 });
 
@@ -528,5 +539,135 @@ describe('local model CUDA row', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
     expect(calls).toEqual(['remove']);
     expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+});
+
+describe('local model Backend row', () => {
+  const RTX_4090 = 'NVIDIA GeForce RTX 4090';
+  const installed: CudaStatus = { ...CUDA_BASE, state: 'installed', tag: 'b9' };
+  const ON_CUDA: EngineBackendChoice = { backend: 'cuda', reason: null };
+  const backendPicker = () => screen.findByRole('combobox', { name: /backend/i });
+  const devicePickerByName = () => screen.getByRole('combobox', { name: /gpu device/i });
+  const optionTexts = async () => (await screen.findAllByRole('option')).map((o) => o.textContent);
+
+  it('grays CUDA out until it is installed', async () => {
+    const { bridge, push } = cudaBridge(notInstalled());
+    stubDesktop({ devices: [RTX_4090], cuda: bridge, choice: { backend: 'vulkan', reason: 'not-installed' } });
+    openPanel();
+
+    await userEvent.click(await backendPicker());
+    expect(await screen.findByRole('option', { name: 'CUDA' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('option', { name: 'Vulkan' })).not.toHaveAttribute('aria-disabled');
+    await userEvent.keyboard('{Escape}');
+
+    await push(installed);
+    await userEvent.click(await backendPicker());
+    expect(await screen.findByRole('option', { name: 'CUDA' })).not.toHaveAttribute('aria-disabled');
+  });
+
+  it('names the backend Auto will run', async () => {
+    const { bridge } = cudaBridge(installed);
+    stubDesktop({ devices: [RTX_4090], cuda: bridge, choice: ON_CUDA, engine: readyEngine({ gpuBackend: 'cuda' }) });
+    openPanel();
+    await screen.findByText('Auto (CUDA)');
+    await userEvent.click(await backendPicker());
+    expect(await optionTexts()).toEqual(['Auto (CUDA)', 'Vulkan', 'CUDA']);
+  });
+
+  it('arms Save & Reload on a change and sends the setting', async () => {
+    const { bridge } = cudaBridge(installed);
+    stubDesktop({ devices: [RTX_4090], cuda: bridge, choice: ON_CUDA, engine: readyEngine({ gpuBackend: 'cuda' }) });
+    openPanel();
+    const reload = () => screen.getByRole('button', { name: /save.*reload/i });
+    await backendPicker();
+    expect(reload()).toBeDisabled();
+
+    await userEvent.click(await backendPicker());
+    await userEvent.click(await screen.findByRole('option', { name: 'Vulkan' }));
+    expect(reload()).toBeEnabled();
+    await userEvent.click(reload());
+    expect(setOptionsCalls[0].engineBackend).toBe('vulkan');
+  });
+
+  it('offers Restart on CUDA when CUDA lands under a Vulkan run, and reloads only on the click', async () => {
+    const { bridge, push } = cudaBridge(notInstalled());
+    let cudaReady = false;
+    stubDesktop({
+      devices: [RTX_4090], cuda: bridge, engine: readyEngine({ gpuBackend: 'vulkan' }),
+      listFor: () => ({ backend: cudaReady ? 'cuda' : 'vulkan', devices: [RTX_4090], autoPick: null, choice: cudaReady ? ON_CUDA : { backend: 'vulkan', reason: 'not-installed' } }),
+    });
+    openPanel();
+    await backendPicker();
+    await act(async () => {});
+    expect(screen.queryByRole('button', { name: 'Restart on CUDA' })).toBeNull();
+
+    cudaReady = true;
+    await push(installed);
+    const restart = await screen.findByRole('button', { name: 'Restart on CUDA' });
+    expect(restartCalls).toBe(0);
+    expect(setOptionsCalls).toEqual([]);
+    await userEvent.click(restart);
+    expect(restartCalls).toBe(1);
+  });
+
+  it('offers no Restart on CUDA while the model already runs on CUDA', async () => {
+    const { bridge } = cudaBridge(installed);
+    stubDesktop({ devices: [RTX_4090], cuda: bridge, choice: ON_CUDA, engine: readyEngine({ gpuBackend: 'cuda' }) });
+    openPanel();
+    await screen.findByText('Auto (CUDA)');
+    expect(screen.queryByRole('button', { name: 'Restart on CUDA' })).toBeNull();
+  });
+
+  it('lists the devices of the backend the settings would run, asking again on a change', async () => {
+    const { bridge } = cudaBridge(installed);
+    const AMD = 'AMD Radeon RX 7900 XTX';
+    stubDesktop({
+      devices: [], cuda: bridge,
+      listFor: (pending) => (pending?.engineBackend === 'vulkan'
+        ? { backend: 'vulkan', devices: [RTX_4090, AMD], autoPick: null, choice: { backend: 'vulkan', reason: 'setting' } }
+        : { backend: 'cuda', devices: [RTX_4090], autoPick: null, choice: ON_CUDA }),
+    });
+    openPanel();
+    await screen.findByText('Auto (CUDA)');
+    expect(listDevicesCalls[0]).toEqual({ engineBackend: 'auto', gpuDevice: 'auto' });
+
+    await userEvent.click(devicePickerByName());
+    expect(await optionTexts()).toEqual([`Auto (${RTX_4090})`, 'All GPUs', RTX_4090]);
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(await backendPicker());
+    await userEvent.click(await screen.findByRole('option', { name: 'Vulkan' }));
+    await act(async () => {});
+    expect(listDevicesCalls.at(-1)).toEqual({ engineBackend: 'vulkan', gpuDevice: 'auto' });
+    await userEvent.click(devicePickerByName());
+    expect(await optionTexts()).toEqual(['Auto (All GPUs)', 'All GPUs', RTX_4090, AMD]);
+  });
+
+  it('says why Auto stays on Vulkan beside another graphics card', async () => {
+    const { bridge } = cudaBridge(installed);
+    stubDesktop({ devices: [RTX_4090, 'AMD Radeon RX 7900 XTX'], cuda: bridge, choice: { backend: 'vulkan', reason: 'mixed-gpus' } });
+    openPanel();
+    expect(await screen.findByText('Auto (Vulkan)')).toBeInTheDocument();
+    expect(await screen.findByText(/another graphics card/)).toBeInTheDocument();
+  });
+
+  it('keeps a stored CUDA choice selected but grayed while CUDA is not installed, and says why', async () => {
+    const { bridge } = cudaBridge(notInstalled());
+    localStorage.setItem('FORMAMORPH_localEngineBackend', 'cuda');
+    stubDesktop({ devices: [RTX_4090], cuda: bridge, choice: { backend: 'vulkan', reason: 'not-installed' }, engine: readyEngine({ backendSetting: 'cuda' }) });
+    openPanel();
+    const picker = await backendPicker();
+    expect(picker).toHaveTextContent('CUDA');
+    expect(picker).toHaveClass('text-muted-foreground');
+    expect(await screen.findByText(/Download CUDA below to use it/)).toBeInTheDocument();
+  });
+
+  it('is absent off NVIDIA machines', async () => {
+    const { bridge } = cudaBridge({ ...CUDA_BASE, nvidia: false, support: { supported: false, reason: 'no-nvidia-card' }, state: 'unsupported' });
+    stubDesktop({ devices: [IGPU], cuda: bridge });
+    openPanel();
+    await screen.findByRole('combobox');
+    await act(async () => {});
+    expect(screen.queryByRole('combobox', { name: /backend/i })).toBeNull();
   });
 });

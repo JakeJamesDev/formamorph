@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **CUDA Engine:**
     - **On Windows with an NVIDIA card, the Local Model panel can download NVIDIA's CUDA version of the engine.** The CUDA row shows the size, progress and Cancel, and resumes a stopped download. A card or driver that can't run it shows why. Remove frees the space.
     - **After an app update, CUDA downloads its new files in the background.** The engine uses Vulkan until they're installed. Cancel stops it until you choose Download or Resume. Once the engine stops, older CUDA files are deleted, except the previous version's.
+    - **With CUDA downloaded, the built-in engine runs on CUDA from its next start.** A **Backend** setting beside **GPU Device** picks Auto, Vulkan or CUDA. A model running on Vulkan when CUDA finishes offers **Restart on CUDA**.
   - **A Getting Ready bar shows whenever Formamorph takes a moment to start, and before the first launch's welcome animation.** On a fast computer it never appears.
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
   - **The Supporters list in Credits and on the Supporters page shows names in a grid under each tier's badge.** The grid fits as many columns as there is room for. Point at a name to see how long that person has supported.
