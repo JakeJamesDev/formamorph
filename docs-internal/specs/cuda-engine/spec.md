@@ -235,12 +235,18 @@ A good test drives a seam from outside and asserts what a player or the engine s
 - NVIDIA's CUDA 13 minor-version compatibility floor is R580.
 - Code compiled on first start needs a driver that knows the PTX ISA. For ISA 9.4 that is the R615 branch (13.4). This floor is inferred from NVIDIA's PTX rule; drivers older than R615 were not tested.
 
-**Quick numbers** (one 4B Q4_K_M model, 2 runs, not the Q10 benchmark):
+**Q10 benchmark** (2026-11-07, RTX 4090, driver 616.92, llama-server b12078, Cydonia 24B `cydonia-24b-v4.3@q4_k_m`, 8K context, 5 runs per backend):
 
-| Backend | Prompt t/s (warm) | Gen t/s |
-|---|---|---|
-| CUDA | about 9,750–10,100 | about 212 |
-| Vulkan | about 6,380 | about 198 |
+| Backend | Prompt t/s (warm): median, range | Gen t/s: median, range | Load s: median, range |
+|---|---|---|---|
+| CUDA 13.4 | 3,753 (3,728–3,798) | 52.1 (51.1–53.4) | 5.5 (5.3–5.9) |
+| Vulkan | 3,451 (3,387–3,524) | 53.0 (51.6–53.3) | 8.1 (7.7–8.8) |
+
+- CUDA prompt speed is about 9% higher. Generation is level, within run noise.
+- The first CUDA load took 30.7 s (cold file cache) and is left out of the load column.
+- Arguments for both builds: `-m <model> --host 127.0.0.1 --port 5391 --offline -lv 4 -c 8192 -ngl all --fit off -fa on -np 1 --kv-unified -ctk f16 -ctv f16`. The app's router flags (`--models-preset`, `--no-models-autoload`, `--models-max 1`, `--log-jsonl`, `--reasoning-format deepseek`) do not affect speed and were replaced by `-m`.
+- Each run started a fresh server, sent one 8-token warmup request, then one request with a 4,997-token prompt and 200 generated tokens (`cache_prompt: false`, temperature 0). Speeds come from the server's `timings`.
+- LM Studio and Ollama held no loaded model, and no model process ran on the GPU.
 
 **Licensing.**
 - The CUDA EULA (updated January 26, 2026) lists `cublas` and `cublasLt` as redistributable for Windows, including versioned names.
@@ -249,4 +255,4 @@ A good test drives a seam from outside and asserts what a player or the engine s
 
 **Steam.** The public Steamworks pages have no rule on runtime downloads from third-party hosts. The Steam Distribution Agreement itself was not checked. Both open legal points are item 8 of the Steam release checklist (Q23).
 
-**Seen in passing, not part of this effort.** A Vulkan run printed "Flash Attention over K/V rows is assigned to device CPU". Whether the app's own `-fa on` start hits the same fallback is not checked.
+**Flash attention under `-fa on` (checked in the Q10 benchmark).** The Vulkan build hits the CPU fallback with `-fa on`. Its log shows `flash_attn = enabled`, then "layer 0 is assigned to device Vulkan0 but Flash Attention over K/V rows is assigned to device CPU" and "Flash Attention over K/V rows not supported, set to disabled". The CUDA build logs "Flash Attention over K/V rows enabled" with no fallback.
