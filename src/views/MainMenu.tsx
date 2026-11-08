@@ -147,6 +147,7 @@ import { placementsBy, judgingContestsOf } from "@/lib/contests";
 import { useContests } from "@/lib/useContests";
 import { EventBanner, EventBannerChips, EventBannerCount } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
+import { CudaNoticeHost } from "@/components/menu/CudaNotice";
 import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
 import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
@@ -3206,6 +3207,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onOpenEvent={openEvent}
             held={introActive || gateOpen || firstRunDue}
           />
+
+          {/* One-time CUDA engine offer; waits for the intro, the AI setup gate and the first-run step. */}
+          <CudaNoticeHost held={introActive || gateOpen || gate !== null || aiGatePending || firstRunDue} />
 
           {/* Community Creations. The host reads its own libraries, account and events from the services,
               so all the menu hands it is where to open — see CommunityBrowserHost.tsx. */}
