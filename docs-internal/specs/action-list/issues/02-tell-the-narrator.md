@@ -19,6 +19,7 @@ Spec rulings: Q3, Q4, Q8, Q10, Q11, Q19, Q22.
 
 - [ ] With shown entries and thinking off, the narration request ends with the wrapper and one line per shown entry. A narrationPrompt test covers it.
 - [ ] Hidden entries never appear in any request.
+- [ ] Entries made in the Chat layout are never sent (Q31).
 - [ ] With native thinking on, the block is absent.
 - [ ] No other pass (choices, stats, digest) gets the block.
 - [ ] History keeps the bare action; the next turn's request does not repeat the block.

@@ -48,6 +48,10 @@ When the player sends, the shown entries ride along with the action, and the lis
 - **Q25** The tray (prototype variant B) wins.
 - **Q26** The tray animates its expand and collapse. The chevron follows the standard: right when collapsed, down when expanded.
 - **Q27** Each entry's icon matches the panel tab it came from (the Stats tab icon for stat edits, and so on).
+- **Q28** Reversal and collapse work on facts, not copy ids, since stacks split and merge. Pick up reverses the newest drop when it takes the same item, the same quantity, from where the drop put it. Unequip reverses the newest equip of the copy that equip left, whatever the slot. Collapse needs the same operation, item (the authored or runtime item, not the copy), target and quantity; a line names a quantity above 1.
+- **Q29** Undo reverts the action and everything it caused, the play log included, and adds no log line. It never reverts what the player wrote by hand since the action and that the list does not track, such as player notes; those keep their live value.
+- **Q30** An entry stores the display name it had when the action ran (an unidentified copy's unidentified name, the give target's In Scene label). A later reveal or rename does not rewrite it.
+- **Q31** Panel actions add entries in both layouts. Until the Chat layout has its own tray, entries made in Chat are never sent: the player must see what the AI will be told.
 
 ## User Stories
 
