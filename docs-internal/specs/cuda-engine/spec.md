@@ -101,6 +101,24 @@ Rulings from the spec review (2026-11-07):
   - The row sits in the Engine section under the device picker, in Simple and Advanced.
   - The driver hint names the card's floor and links NVIDIA's driver download page.
   - The row shows whenever the VRAM query lists an NVIDIA card. When the facts query fails, it shows "support unknown" with no Download. It hides only when no NVIDIA card is listed.
+- Ticket 08 rulings:
+  - The notice appears the first time the engine reaches loading while the flag is unset, on a supported NVIDIA machine with CUDA not installed. A stale install never shows it.
+  - It waits until the intro, the AI setup, the first-run step and any open dialog close.
+  - Download closes the notice and starts the install. Progress and errors show only in the engine row.
+  - The flag is a device-local key, never in backups, worlds or saves. It is set only by Download or Not now.
+  - The user approved the form on 2026-11-07: a non-modal card at the bottom right of the main menu, over the footer icons while shown. The draft copy stands, subject to the Writing Guide pass.
+- Ticket 05 rulings:
+  - An explicit CUDA setting runs whenever CUDA is installed, whatever the support verdict. The verdict and the mixed-GPU case steer only Auto.
+  - When CUDA is set but not installed or updating, the start runs on Vulkan with that reason, and the control shows CUDA selected and grayed.
+  - Restart on CUDA shows when the engine is ready on Vulkan and the next start's backend choice is CUDA.
+  - The device picker lists the devices of the next start's backend. The status line names the backend that ran.
+  - The Backend control shows only on NVIDIA machines, in Simple and Advanced. Auto reads Auto (CUDA) or Auto (Vulkan).
+  - CUDA starts set the JIT cache to NVIDIA's documented maximum.
+- Ticket 07 rulings:
+  - Retention (Q22) keeps the current tag plus the newest other valid folder, older or newer, so a rollback and a roll-forward both find their folder. Everything else is deleted, staging partials included, only while the engine is stopped or at app start.
+  - Cancel of the background replace sticks for that target tag until the player clicks Download or Resume. A newer pin tag clears it.
+  - The automatic replace retries at every app start while status is stale, the machine is supported, and the player didn't cancel that tag.
+  - The downloading status carries `replacing: true` during a replace. The status stays stale with the old tag, which gives Auto its "updating" reason.
 
 **The downloader.**
 - The model downloader is one module-wide download with a Hugging Face–only allow-list. It becomes an instance per download, each with its own allow-list, cancel and progress channel. The model download keeps its behavior.
