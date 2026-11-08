@@ -63,6 +63,17 @@ When the player sends, the shown entries ride along with the action, and the lis
 - **Q41** Entity-owned trait toggles the player can switch are listed too. The owner is in the facts; reversal needs the same trait, the same owner and the opposite switch.
 - **Q42** Travel means the Location map modal only. The starting location, turn moves, script moves and the AI's "Move to X?" are not listed. Travel, trait and persona entries never collapse.
 - **Q43** (user ruling) A switch script's run counts as a panel run: every listed action and undo wait until it finishes, including while a `player.confirm` prompt waits on the player. Toggling other traits while such a prompt is open is no longer possible, and the tests that pinned it go.
+- **Q44** The guard maps listed kinds to pass operations: use → `use` by the player; equip and unequip → the same op by the player; give → `transfer` to the receiver, `gain` to the receiver from the player, or `lose` by the player; drop → `transfer` to the location or `lose` by the player; pick up → `gain` to the player or `transfer` from the location to the player. Any other shape is never guarded.
+- **Q45** The guard's budget is units, not operations: count × quantity per shown entry. A pass op over the budget lands its remainder, with one log line for the part dropped.
+- **Q46** The Inventory pass guard line is code-owned, not a preset field, and the anatomy labels it. Only shown inventory entries reach it; stat, trait, travel and persona entries never do.
+- **Q47** The live list is saved wherever the game state is saved, through the same save write, and needs no new autosave trigger. The panel changes and their list always travel together.
+- **Q48** No snapshot in the save carries the message history (undo keeps the live history). Ticket 06 strips it from the live list and from the newest sent list's snapshots.
+- **Q49** A malformed live list loads as an empty list. Dropping one entry would break the undo chain after it.
+- **Q50** (user ruling, reopens Q7, Q9 and Q46 on probe evidence) The guard is the code rule only; the Inventory pass gets no line about listed actions. On cloud the line never stopped a double, and with the rule it blocked a typed second use (0/12, against 7–10/12 without it).
+- **Q51** (user ruling) A regenerate of a turn whose sent list has entries, hidden-only included, pauses: it rewinds, restores the send-time state, reopens the list, puts the action and its attachments back, and waits for Send. A turn with an empty list resends at once, as today.
+- **Q52** The newest sent record stores the send-time state as one more snapshot (state and persona, no message history, Q48), dropped with the others on the next send (Q34). Regenerate restores it. Additive save-shape change.
+- **Q53** Regenerate Stats and the choice-script rerun start from the same send-time state through one shared helper, so they keep the listed actions too (Q15). They do not pause or reopen the list.
+- **Q54** (ticket 03 as built) A listed pick up guards a pass gain from the floor or from no one. A gain a character hands over is never matched.
 - **Q36** Shared turn-input shape (ticket 02 owns it, 03 reuses it): the told entries, shown only, oldest first, each as its facts and count. A pure Action List helper writes the block text.
 
 ## User Stories
