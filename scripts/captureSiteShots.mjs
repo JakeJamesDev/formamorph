@@ -1,5 +1,5 @@
-// Capture the landing page's gallery set: 5 screens x 5 palettes x 2 themes, plus the thumbnails,
-// the favicon, and the social-embed image. Writes straight into hosting/site/.
+// Capture the landing page's screenshots: the gallery set (5 screens x 5 palettes x 2 themes, plus the
+// thumbnails, the favicon, and the social-embed image) and the hero turn. Writes straight into hosting/site/.
 //
 // Needs a dev server (`npm run dev -- --port 5180`). Gameplay loads a prepared save without AI calls.
 // The server must not have served the title card: that puts these shots in Vite's module graph, so writing one reloads the page.
@@ -11,13 +11,22 @@
 //   node scripts/captureSiteShots.mjs --only 02-game --verify-only --width 1600 --height 900
 //   node scripts/captureSiteShots.mjs --only 02-game --scene scripts/fixtures/site-game.json
 //
+//   node scripts/captureSiteShots.mjs --only hero --base http://localhost:5181
+//
+// `hero` is the landing hero's Emberwatch turn from hosting/site/hero-turn.js, always 1600x900, purple, light
+// and dark, into hosting/site/shots/hero/<theme>/: stats (turn and stat readouts hidden), inv-before and
+// inv-after (Inventory tab without and with the new item, turn hidden), inv-full (nothing hidden, for the tour).
+// shots/hero/layout.js sets `window.FM_HERO_LAYOUT`: the boxes the page draws over, stat ranges, theme colors.
+// A run of `hero` alone leaves the icon and og.jpg alone.
+//
 // The avatar screen shows Aurelia (build-assets/alternate-avatar.vrm), not the tracked Aki. The capture serves it
 // by intercepting the fetch in a context of its own, so the tracked file is never touched: writing an
 // 18 MB file into public/ restarts Vite's watcher mid-run and kills the server under the capture.
 import { chromium } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { prepareGame, verifyGame } from './lib/demoGame.mjs';
+import { runInNewContext } from 'node:vm';
+import { assertUnclipped, prepareGame, verifyGame } from './lib/demoGame.mjs';
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -37,10 +46,23 @@ const WEBP_QUALITY = 0.86;
 const THUMB_WIDTH = 300;
 const OG = { width: 1200, height: 630, quality: 0.88 };
 
-const ALL = ['01-library', '02-game', '03-world-details', '04-settings', '05-avatar'];
+const GALLERY = ['01-library', '02-game', '03-world-details', '04-settings', '05-avatar'];
+const ALL = [...GALLERY, 'hero'];
 const HELP_QUESTION = arg('question', 'How do I import a world someone shared?');
 const only = arg('only', '').split(',').filter(Boolean);
 const wanted = new Set(only.length ? only : ALL);
+
+const HERO_WORLD = 'src/defaultworlds/emberwatch.json';
+const HERO_PALETTE = 'purple';
+const HERO_VIEWPORT = { width: 1600, height: 900 };
+// The new item lands between the gear and the coin.
+const HERO_GEAR = [['Healing Draught', 1], ['Hooded Lantern', 1]];
+const HERO_COIN = [['Silver', 3], ['Copper', 12]];
+const heroTurn = () => {
+  const sandbox = { window: {} };
+  runInNewContext(readFileSync('hosting/site/hero-turn.js', 'utf8'), sandbox);
+  return sandbox.window.FM_HERO_TURN;
+};
 
 const AVATAR_ALT = 'build-assets/alternate-avatar.vrm';
 
@@ -73,8 +95,8 @@ const write = (path, buf) => {
 };
 
 const browser = await chromium.launch();
-const newCtx = async () => {
-  const c = await browser.newContext({ viewport: VIEWPORT });
+const newCtx = async (viewport = VIEWPORT) => {
+  const c = await browser.newContext({ viewport });
   // A first boot with only the legacy keys migrates them into an active "Custom" endpoint preset,
   // which sidesteps the read-only fields on the Default preset.
   await c.addInitScript(([url, model]) => {
@@ -153,6 +175,172 @@ const sweep = async (page, name, verify) => {
   write(`${OUT}/shots/thumbs/${name}.webp`, await encode(hero, { width: THUMB_WIDTH }));
   console.log(VERIFY_ONLY ? 'verified:' : 'swept:', name);
   return hero;
+};
+
+/** One hero state in a context of its own: the fixture modules are cached per context, so a reload keeps the old save. */
+const openHero = async (scene, scheme, tab) => {
+  const context = await newCtx(HERO_VIEWPORT);
+  await prepareGame(context, scene, HERO_WORLD);
+  const page = await mk(context);
+  await page.emulateMedia({ colorScheme: scheme });
+  await page.goto(`${BASE}/#dev?view=gameViewer&fixture=whiteRoom&mode=pages&tab=${tab}`);
+  await page.getByTestId('narration').waitFor({ timeout: 90000 });
+  await page.getByRole('button', { name: scene.choices[0], exact: true }).waitFor();
+  await page.waitForTimeout(1500); // the background item passes settle
+  await page.dismiss();
+  await page.getByRole('tab', { name: 'Entities', exact: true }).click();
+  await page.getByTestId('action-input-wrap').locator('textarea').fill('');
+  await page.getByTestId('action-input-wrap').locator('textarea').blur();
+  await page.evaluate((palette) => document.documentElement.setAttribute('data-theme', palette), HERO_PALETTE);
+  await page.mouse.move(HERO_VIEWPORT.width / 2, 5);
+  await page.evaluate(async () => { await document.fonts.ready; });
+  await page.waitForTimeout(600);
+  return page;
+};
+
+const assertNoDialog = async (page) => {
+  const dialog = page.getByRole('dialog');
+  if (await dialog.count()) throw new Error(`Hero capture rejected: a dialog is open: ${(await dialog.first().innerText()).slice(0, 90)}`);
+};
+
+/** Throws unless the turn's text and choices, and every extra target, are on screen and unclipped. */
+const verifyHeroTurn = async (page, scene, extraTargets = []) => {
+  await assertNoDialog(page);
+  if ((await page.getByTestId('action-line').textContent())?.trim() !== scene.action) {
+    throw new Error('Hero capture rejected: submitted action does not match the turn');
+  }
+  const narration = (await page.getByTestId('narration').innerText()).replace(/\s+/g, ' ').trim();
+  if (narration !== scene.narration.replace(/\s+/g, ' ').trim()) throw new Error('Hero capture rejected: narration does not match the turn');
+  await assertUnclipped([page.getByTestId('action-line'), page.getByTestId('narration'),
+    ...scene.choices.map((choice) => page.getByTestId('choice-rows').getByRole('button', { name: choice, exact: true })), ...extraTargets],
+  'Hero capture');
+};
+
+const newItemRow = (page, name) => page.getByRole('tabpanel').getByRole('listitem').filter({ has: page.getByText(name, { exact: true }) });
+
+// A persona stat row's parts (StatRow.tsx), shared by the measure and the hide passes.
+const STAT_PARTS = { row: 'div.mb-2', track: '.rounded-full.bg-secondary', value: ':scope > div > div > span', descriptor: 'p' };
+
+/** The band a value falls in, by the app's rule: the first threshold, ascending, at or above it. */
+const bandAt = (stat, value) => [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold)
+  .find((band) => value <= (stat.thresholdUnit === 'raw' ? band.threshold : stat.min + (band.threshold / 100) * (stat.max - stat.min)))
+  ?.description ?? '';
+
+/** Boxes and colors the page draws the turn over, in capture pixels. */
+const measureHero = (page, scene, statRanges) => page.evaluate(([choices, statRanges, parts]) => {
+  const box = (el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; };
+  const font = (el) => {
+    const s = getComputedStyle(el);
+    return { family: s.fontFamily, size: parseFloat(s.fontSize), line: parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.5, weight: s.fontWeight };
+  };
+  const color = (el) => getComputedStyle(el).color;
+  const token = (name) => `hsl(${getComputedStyle(document.documentElement).getPropertyValue(name).trim()})`;
+  const textLeaf = (root, text) => [...root.querySelectorAll('*')].find((el) => el.childElementCount === 0 && el.textContent.trim() === text);
+  const narration = document.querySelector('[data-testid=narration]');
+  const paragraphs = [...narration.querySelectorAll('p')];
+  const quote = narration.querySelector('.dialogue-quote');
+  if (!quote) throw new Error('Hero capture rejected: the narration paints no dialogue');
+  const actionLine = document.querySelector('[data-testid=action-line]');
+  const actionText = [...actionLine.querySelectorAll('*')].find((el) => el.childElementCount === 0 && el.textContent.trim());
+  const rows = [...document.querySelectorAll('[data-testid=choice-rows] button')];
+  const choiceBoxes = choices.map((text) => {
+    const row = rows.find((button) => button.textContent.trim() === text);
+    const label = textLeaf(row, text);
+    return { text, row: box(row), box: box(label), font: font(label) };
+  });
+  const statsRegion = document.querySelector('[data-testid=persona-stats]');
+  const rowParts = [...statsRegion.querySelectorAll(parts.row)].filter((row) => row.querySelector(parts.track)).map((row) => ({
+    name: row.querySelector('span').textContent.trim(), value: row.querySelector(parts.value), track: row.querySelector(parts.track),
+    descriptor: row.querySelector(parts.descriptor),
+  }));
+  const stats = rowParts.map(({ name, value, track, descriptor }) => ({
+    name, ...statRanges[name], valueText: value.textContent.trim(), value: box(value), valueFont: font(value), bar: box(track),
+    descriptor: descriptor?.textContent.trim() ?? '', descriptorBox: descriptor ? box(descriptor) : null, descriptorFont: descriptor ? font(descriptor) : null,
+  }));
+  const [first] = rowParts;
+  const panel = document.querySelector('[role=tablist][aria-label=Status]').closest('.rounded-lg.border');
+  return {
+    layout: { action: { box: box(actionText), font: font(actionText) }, narration: { box: box(narration), font: font(paragraphs[0] ?? narration),
+      paragraphs: paragraphs.map(box) }, choices: choiceBoxes, stats, panel: box(panel) },
+    colors: { text: color(paragraphs[0] ?? narration), dialogue: color(quote), action: color(actionText), choice: color(textLeaf(rows[0], choices[0])),
+      value: color(first.value), fill: getComputedStyle(first.track.firstElementChild).backgroundColor,
+      descriptor: color(first.descriptor ?? statsRegion), success: token('--success'), destructive: token('--destructive') },
+  };
+}, [scene.choices, statRanges, STAT_PARTS]);
+
+/** Hides the turn and, unless `keepStats`, the stat readouts. Hidden elements keep their space. */
+const hideTurn = (page, scene, keepStats) => page.evaluate(([choices, keepStats, parts]) => {
+  const hide = (el) => { if (el) el.style.visibility = 'hidden'; };
+  [...document.querySelector('[data-testid=narration]').children].forEach(hide);
+  [...document.querySelector('[data-testid=action-line]').querySelectorAll('*')].filter((el) => el.childElementCount === 0).forEach(hide);
+  for (const row of document.querySelectorAll('[data-testid=choice-rows] button')) {
+    if (choices.includes(row.textContent.trim())) [...row.querySelectorAll('*')].filter((el) => el.childElementCount === 0 && el.textContent.trim()).forEach(hide);
+  }
+  if (keepStats) return;
+  for (const row of document.querySelector('[data-testid=persona-stats]').querySelectorAll(parts.row)) {
+    const track = row.querySelector(parts.track);
+    if (!track) continue;
+    hide(row.querySelector(parts.value));
+    hide(track.firstElementChild);
+    hide(row.querySelector(parts.descriptor));
+  }
+}, [scene.choices, keepStats, STAT_PARTS]);
+
+const captureHero = async () => {
+  const turn = heroTurn();
+  const world = JSON.parse(readFileSync(HERO_WORLD, 'utf8'));
+  // The page draws the end readout and descriptor too, since the stats frame hides them.
+  const statRanges = Object.fromEntries(world.stats.map((stat) => {
+    const start = stat.starting ?? stat.value;
+    const change = turn.stats.find((item) => item.name === stat.name)?.change;
+    return [stat.name, { min: stat.min, max: stat.max, start, startDescriptor: bandAt(stat, start),
+      ...(change !== undefined && { end: start + change, endDescriptor: bandAt(stat, start + change) }) }];
+  }));
+  const scene = { location: 'The Cinder and Crown', entity: 'Wenna Tallow', opening: 'Firelight and noise fill the Cinder and Crown.',
+    action: turn.action, narration: turn.narration, choices: turn.choices, items: [...HERO_GEAR, ...HERO_COIN], noGlobalStats: true };
+  const withItem = { ...scene, items: [...HERO_GEAR, [turn.newItem, 1], ...HERO_COIN] };
+  const out = `${OUT}/shots/hero`;
+  const layout = { size: { w: HERO_VIEWPORT.width, h: HERO_VIEWPORT.height }, colors: {} };
+  let geometry = null;
+  const shoot = async (page, scheme, frame) => {
+    await assertNoDialog(page);
+    write(`${out}/${scheme}/${frame}.webp`, await encode(await page.screenshot()));
+  };
+  for (const scheme of THEMES) {
+    let page = await openHero(scene, scheme, 'stats');
+    const statTargets = turn.stats.map((change) => page.getByTestId('persona-stats').locator(STAT_PARTS.row).filter({ hasText: change.name }));
+    await verifyHeroTurn(page, scene, statTargets);
+    const measured = await measureHero(page, scene, statRanges);
+    const drift = measured.layout.stats.find((stat) => stat.descriptor !== stat.startDescriptor);
+    if (drift) throw new Error(`Hero capture rejected: ${drift.name} shows "${drift.descriptor}", the band rule gives "${drift.startDescriptor}"`);
+    layout.colors[scheme] = measured.colors;
+    await hideTurn(page, scene, false);
+    await shoot(page, scheme, 'stats');
+    await page.context().close();
+
+    page = await openHero(scene, scheme, 'inventory');
+    await verifyHeroTurn(page, scene);
+    if (await newItemRow(page, turn.newItem).count()) throw new Error('Hero capture rejected: the new item is already in the bag');
+    await hideTurn(page, scene, true);
+    await shoot(page, scheme, 'inv-before');
+    await page.context().close();
+
+    page = await openHero(withItem, scheme, 'inventory');
+    await verifyHeroTurn(page, scene, [newItemRow(page, turn.newItem)]);
+    const newItem = await newItemRow(page, turn.newItem).evaluate((row) => {
+      const b = row.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height };
+    });
+    // One layout serves both themes, so they must lay out alike.
+    const themeGeometry = { ...measured.layout, newItem };
+    if (geometry && JSON.stringify(geometry) !== JSON.stringify(themeGeometry)) throw new Error(`Hero capture rejected: ${scheme} lays out differently from light`);
+    geometry = themeGeometry;
+    await shoot(page, scheme, 'inv-full');
+    await hideTurn(page, scene, true);
+    await shoot(page, scheme, 'inv-after');
+    await page.context().close();
+    console.log(VERIFY_ONLY ? 'verified:' : 'captured:', `hero ${scheme}`);
+  }
+  write(`${out}/layout.js`, `// Written by scripts/captureSiteShots.mjs --only hero.\nwindow.FM_HERO_LAYOUT = ${JSON.stringify({ ...layout, ...geometry }, null, 1)};\n`);
 };
 
 let gameFrame = null;
@@ -241,23 +429,27 @@ try {
     await p.close();
     await avatarCtx.close();
   }
+
+  if (wanted.has('hero')) await captureHero();
 } catch (error) {
   // Report and carry on to the derived files, so one flaky screen does not throw away the rest.
   failures.push(String(error).split(/\r?\n/)[0]);
 }
 
-// The favicon and hero logo reuse the app icon at the size the page actually paints it.
-write(`${OUT}/icon.png`, await encode(readFileSync('public/icon.png'), { type: 'image/png', width: 256 }));
+if (GALLERY.some((name) => wanted.has(name))) {
+  // The favicon and hero logo reuse the app icon at the size the page actually paints it.
+  write(`${OUT}/icon.png`, await encode(readFileSync('public/icon.png'), { type: 'image/png', width: 256 }));
 
-// The social card: one gallery screenshot, cover-cropped to the 1.91:1 frame the platforms expect.
-const ogSource = gameFrame ?? (existsSync(`${OUT}/shots/graphite/dark/02-game.webp`)
-  ? readFileSync(`${OUT}/shots/graphite/dark/02-game.webp`)
-  : null);
-if (ogSource) {
-  write(`${OUT}/og.jpg`, await encode(ogSource, { type: 'image/jpeg', quality: OG.quality, crop: OG }));
-  if (!VERIFY_ONLY) console.log('wrote og.jpg');
-} else {
-  console.log('skipped og.jpg (no 02-game frame in this run)');
+  // The social card: one gallery screenshot, cover-cropped to the 1.91:1 frame the platforms expect.
+  const ogSource = gameFrame ?? (existsSync(`${OUT}/shots/graphite/dark/02-game.webp`)
+    ? readFileSync(`${OUT}/shots/graphite/dark/02-game.webp`)
+    : null);
+  if (ogSource) {
+    write(`${OUT}/og.jpg`, await encode(ogSource, { type: 'image/jpeg', quality: OG.quality, crop: OG }));
+    if (!VERIFY_ONLY) console.log('wrote og.jpg');
+  } else {
+    console.log('skipped og.jpg (no 02-game frame in this run)');
+  }
 }
 
 await browser.close();
