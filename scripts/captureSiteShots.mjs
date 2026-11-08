@@ -13,7 +13,7 @@
 //
 //   node scripts/captureSiteShots.mjs --only hero --base http://localhost:5181
 //
-// `hero` is the landing hero's Emberwatch turn from hosting/site/hero-turn.js, always 1600x900, purple, light
+// `hero` is the landing hero's Emberwatch turn from hosting/site/hero-turn.js, always 1600x900, graphite, light
 // and dark, into hosting/site/shots/hero/<theme>/: stats (turn and stat readouts hidden), inv-before and
 // inv-after (Inventory tab without and with the new item, turn hidden), inv-full (nothing hidden, for the tour).
 // shots/hero/layout.js sets `window.FM_HERO_LAYOUT`: the boxes the page draws over, stat ranges, theme colors.
@@ -52,7 +52,7 @@ const only = arg('only', '').split(',').filter(Boolean);
 const wanted = new Set(only.length ? only : ALL);
 
 const HERO_WORLD = 'src/defaultworlds/emberwatch.json';
-const HERO_PALETTE = 'purple';
+const HERO_PALETTE = 'graphite';
 const HERO_VIEWPORT = { width: 1600, height: 900 };
 // The new item lands between the gear and the coin.
 const HERO_GEAR = [['Healing Draught', 1], ['Hooded Lantern', 1]];

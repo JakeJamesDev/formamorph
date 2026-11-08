@@ -202,14 +202,14 @@ test.describe('landing feature tour', () => {
       await centerStep(page, id);
       await expect(page.locator(`.step[data-step="${id}"]`)).toHaveClass(/\bcur\b/);
       await expect(page.locator('.step.cur')).toHaveCount(1);
-      const want = id === 'inventory' ? '/site/shots/hero/dark/inv-full.webp' : `/site/shots/purple/dark/${id}.webp`;
+      const want = id === 'inventory' ? '/site/shots/hero/dark/inv-full.webp' : `/site/shots/graphite/dark/${id}.webp`;
       await expect(page.locator('[data-base]')).toHaveAttribute('src', want);
       // The frame really decodes: a broken src has no natural width.
       await expect.poll(() => page.locator('[data-base]').evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(600);
     }
     // Scrolling back up returns the earlier screenshot.
     await centerStep(page, '02-game');
-    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/purple/dark/02-game.webp');
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/graphite/dark/02-game.webp');
   });
 
   test('every hotspot is reachable with Tab and shows its note on focus', async ({ page }, testInfo) => {
@@ -255,27 +255,27 @@ test.describe('landing feature tour', () => {
     const box = (await frame.boundingBox())!;
     const at = (pct: number) => box.x + box.width * pct;
     const y = box.y + box.height * 0.5;
-    expect(await pressed(page)).toBe('Purple theme');
+    expect(await pressed(page)).toBe('Graphite theme');
 
     // Short of the middle: the preview shows, then the current palette comes back.
     await page.mouse.move(at(0.95), y);
     await page.mouse.down();
     await page.mouse.move(at(0.7), y, { steps: 5 });
     expect(parseFloat(await cut(page))).toBeCloseTo(70, 0);
-    await expect(page.locator('[data-over]')).toHaveAttribute('src', '/site/shots/graphite/dark/02-game.webp');
+    await expect(page.locator('[data-over]')).toHaveAttribute('src', '/site/shots/purple/dark/02-game.webp');
     await expect(page.locator('[data-bar]')).not.toHaveClass(/\bhide\b/);
     await page.mouse.up();
     expect(await cut(page)).toBe('100%');
-    expect(await pressed(page)).toBe('Purple theme');
-    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/purple/dark/02-game.webp');
+    expect(await pressed(page)).toBe('Graphite theme');
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/graphite/dark/02-game.webp');
 
     // Past the middle: the next palette stays.
     await page.mouse.move(at(0.95), y);
     await page.mouse.down();
     await page.mouse.move(at(0.3), y, { steps: 5 });
     await page.mouse.up();
-    expect(await pressed(page)).toBe('Graphite theme');
-    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/graphite/dark/02-game.webp');
+    expect(await pressed(page)).toBe('Purple theme');
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/purple/dark/02-game.webp');
     expect(await cut(page)).toBe('100%');
 
     await page.getByRole('button', { name: 'Rose theme' }).click();
@@ -307,7 +307,7 @@ test.describe('landing feature tour', () => {
     const mid = trace.map((r) => parseFloat(r.cut)).filter((c) => c > 2 && c < 98);
     expect(mid.length, 'frames caught mid-sweep').toBeGreaterThan(10);
     for (let i = 1; i < mid.length; i++) expect(mid[i]).toBeLessThanOrEqual(mid[i - 1]);
-    expect(trace[trace.length - 1].pal).toBe('Graphite theme');
+    expect(trace[trace.length - 1].pal).toBe('Purple theme');
 
     await centerStep(page, 'inventory');
     await expect(page.locator('[data-swatches]')).toHaveCSS('visibility', 'hidden');
@@ -343,7 +343,7 @@ test.describe('landing feature tour', () => {
     await centerStep(page, '02-game');
     await page.mouse.move(0, 0);
     await page.waitForTimeout(SWEEP_EVERY_MS * 2 + 500);
-    expect(await pressed(page)).toBe('Purple theme');
+    expect(await pressed(page)).toBe('Graphite theme');
     expect(await cut(page)).toBe('100%');
     expect(await page.locator('[data-frame] .hot').first().evaluate((h) => getComputedStyle(h, '::after').animationName)).toBe('none');
     await context.close();
@@ -412,7 +412,7 @@ test.describe('landing feature tour', () => {
     await page.mouse.move(box.x + 6, box.y + box.height - 6);
     await expect.poll(() => cut(page)).toBe('100%');
     await page.waitForTimeout(SWEEP_EVERY_MS + 500);
-    expect(await pressed(page)).toBe('Purple theme');
+    expect(await pressed(page)).toBe('Graphite theme');
     expect(await cut(page)).toBe('100%');
   });
 

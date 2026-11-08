@@ -6,24 +6,24 @@ window.FM_HERO_LAYOUT = {
  },
  "colors": {
   "light": {
-   "text": "rgb(19, 11, 30)",
-   "dialogue": "rgb(106, 52, 178)",
-   "action": "rgb(112, 96, 133)",
-   "choice": "rgb(19, 11, 30)",
-   "value": "rgb(19, 11, 30)",
-   "fill": "rgb(195, 172, 226)",
-   "descriptor": "rgb(112, 96, 133)",
+   "text": "rgb(26, 29, 35)",
+   "dialogue": "rgb(72, 89, 122)",
+   "action": "rgb(106, 112, 124)",
+   "choice": "rgb(26, 29, 35)",
+   "value": "rgb(26, 29, 35)",
+   "fill": "rgb(39, 44, 52)",
+   "descriptor": "rgb(106, 112, 124)",
    "success": "hsl(142 71% 40%)",
    "destructive": "hsl(0 84.2% 60.2%)"
   },
   "dark": {
-   "text": "rgb(245, 243, 247)",
-   "dialogue": "rgb(194, 162, 235)",
-   "action": "rgb(171, 159, 188)",
-   "choice": "rgb(245, 243, 247)",
-   "value": "rgb(245, 243, 247)",
-   "fill": "rgb(206, 188, 230)",
-   "descriptor": "rgb(171, 159, 188)",
+   "text": "rgb(244, 244, 246)",
+   "dialogue": "rgb(175, 184, 202)",
+   "action": "rgb(161, 166, 175)",
+   "choice": "rgb(244, 244, 246)",
+   "value": "rgb(244, 244, 246)",
+   "fill": "rgb(233, 234, 237)",
+   "descriptor": "rgb(161, 166, 175)",
    "success": "hsl(142 65% 45%)",
    "destructive": "hsl(0 72% 58%)"
   }
@@ -31,7 +31,7 @@ window.FM_HERO_LAYOUT = {
  "action": {
   "box": {
    "x": 469,
-   "y": 85,
+   "y": 61,
    "w": 665,
    "h": 20
   },
@@ -45,7 +45,7 @@ window.FM_HERO_LAYOUT = {
  "narration": {
   "box": {
    "x": 455,
-   "y": 117,
+   "y": 93,
    "w": 679,
    "h": 176
   },
@@ -58,19 +58,19 @@ window.FM_HERO_LAYOUT = {
   "paragraphs": [
    {
     "x": 455,
-    "y": 117,
+    "y": 93,
     "w": 679,
     "h": 48
    },
    {
     "x": 455,
-    "y": 181,
+    "y": 157,
     "w": 679,
     "h": 48
    },
    {
     "x": 455,
-    "y": 245,
+    "y": 221,
     "w": 679,
     "h": 48
    }
@@ -81,13 +81,13 @@ window.FM_HERO_LAYOUT = {
    "text": "I ask Wenna who the three adventurers were.",
    "row": {
     "x": 441,
-    "y": 368,
+    "y": 344,
     "w": 707,
     "h": 40
    },
    "box": {
     "x": 453,
-    "y": 377,
+    "y": 353,
     "w": 329.796875,
     "h": 22
    },
@@ -102,13 +102,13 @@ window.FM_HERO_LAYOUT = {
    "text": "I buy a drink and study the map by the fire.",
    "row": {
     "x": 441,
-    "y": 408,
+    "y": 384,
     "w": 707,
     "h": 41
    },
    "box": {
     "x": 453,
-    "y": 418,
+    "y": 394,
     "w": 315.953125,
     "h": 22
    },
@@ -123,13 +123,13 @@ window.FM_HERO_LAYOUT = {
    "text": "I head for the barrow before dark.",
    "row": {
     "x": 441,
-    "y": 449,
+    "y": 425,
     "w": 707,
     "h": 41
    },
    "box": {
     "x": 453,
-    "y": 459,
+    "y": 435,
     "w": 248.125,
     "h": 22
    },

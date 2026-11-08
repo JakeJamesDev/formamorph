@@ -43,7 +43,8 @@
 
   .btn { display:inline-flex; align-items:center; gap:.5em; padding:.8em 1.6em; border-radius:10px;
     border:1px solid transparent; font-weight:600; text-decoration:none; cursor:pointer; font-size:1rem; }
-  .btn-play { background:var(--accent); background:var(--grad); color:var(--accent-ink); font-size:1.15rem;
+  /* The gradient starts at the border edge, so it does not tile into the transparent border. */
+  .btn-play { background:var(--accent); background:var(--grad) border-box; color:var(--accent-ink); font-size:1.15rem;
     box-shadow:0 8px 28px var(--glow); }
   .btn-play:hover { filter:brightness(1.1); }
   .btn-ghost { border-color:var(--edge); color:var(--text); }
@@ -77,8 +78,8 @@
   .frame .bar.hide { opacity:0; }
 
   .hot { position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; border:0; padding:0;
-    background:var(--grad); cursor:pointer; z-index:5; box-shadow:0 0 0 3px #fff9, 0 2px 8px #0008; }
-  .hot::after { content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--g2);
+    background:var(--text); cursor:pointer; z-index:5; box-shadow:0 0 0 3px var(--bg), 0 2px 8px #0008; }
+  .hot::after { content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--text);
     animation:tour-ping 2s ease-out infinite; }
   @keyframes tour-ping { from { transform:scale(.6); opacity:1; } to { transform:scale(1.6); opacity:0; } }
   .tip { position:absolute; z-index:6; max-width:220px; padding:.5rem .7rem; border-radius:8px; background:#0d0f12ee;
@@ -107,7 +108,7 @@
     .tour .steps { grid-row:3; }
     .tour .step { min-height:48vh; }
     .swatches .hint { display:none; }
-    .hot { width:14px; height:14px; margin:-7px 0 0 -7px; box-shadow:0 0 0 2px #fff9; }
+    .hot { width:14px; height:14px; margin:-7px 0 0 -7px; box-shadow:0 0 0 2px var(--bg); }
     .hot::after { inset:-4px; }
     .plat { grid-template-columns:1fr; }
   }

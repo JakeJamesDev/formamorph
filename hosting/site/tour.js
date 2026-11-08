@@ -4,8 +4,8 @@
   if (!tour) return;
 
   const PALETTES = [
-    { id: 'purple', name: 'Purple', swatch: '#a78bfa' },
     { id: 'graphite', name: 'Graphite', swatch: '#6b7280' },
+    { id: 'purple', name: 'Purple', swatch: '#a78bfa' },
     { id: 'forest', name: 'Forest', swatch: '#4f9a57' },
     { id: 'rose', name: 'Rose', swatch: '#e86a8a' },
     { id: 'monochrome', name: 'Monochrome', swatch: '#d4d4d4' },
