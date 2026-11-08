@@ -128,7 +128,9 @@ describe('CUDA install', () => {
     const held = await zipServer({ holdName: cudart, holdFrom: CHUNK * 2 });
     const cuda = makeInstall({ fetchImpl: held.fetchImpl });
     const first = cuda.install();
-    await until(() => held.state.held.length > 0);
+    // Hold point: the first zip is whole and chunks 0-1 of the second are recorded; later chunks sit held.
+    const part = path.join(tmp, 'engines', 'staging', TAG, `${cudart}.part`);
+    await until(() => held.state.held.length > 0 && modelDownload.receivedBytes(part) === CHUNK * 2);
     cuda.cancel();
     const after = await first;
     expect(after.state).toBe('not-installed');
