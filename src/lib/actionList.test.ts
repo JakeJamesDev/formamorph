@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addAction, closeList, entryLine, listCounts, recordSent, restoreSent, reversalOf, toggleHidden, toldActions, toldLines, undoNewest,
-  type ActionList, type ListedActionFacts,
+  addAction, closeList, entryLine, isActionSnapshot, listCounts, mapLiveSnapshots, mapSentSnapshots, recordSent, restoreLive, restoreSent,
+  reversalOf, toggleHidden, toldActions, toldLines, undoNewest, type ActionList, type ListedActionFacts,
 } from './actionList';
 
 const potion = { key: 'item:potion', name: 'Healing Potion' };
@@ -268,6 +268,12 @@ describe('sending the list', () => {
     expect(restoreSent(undefined)).toEqual({});
   });
 
+  it('drops an entry’s snapshots when one fails the snapshot check', () => {
+    const isWord = (v: unknown): v is string => typeof v === 'string';
+    const saved = { t1: { told: true, entries: [{ id: 'e', facts: use, count: 1, hidden: false, snapshots: [3] }] } };
+    expect(restoreSent(saved, isWord)).toEqual({ t1: { told: true, entries: [{ id: 'e', facts: use, count: 1, hidden: false }] } });
+  });
+
   it('reads back trait, travel and persona entries, and leaves out one without its subject', () => {
     const facts: ListedActionFacts[] = [
       { kind: 'trait', trait: { id: 'bold', name: 'Bold' }, owner: null, enabled: true },
@@ -277,5 +283,45 @@ describe('sending the list', () => {
     const saved = recordSent({}, 't1', facts.map((f, i) => ({ id: `e${i}`, facts: f, count: 1, hidden: false, snapshots: ['s'] })), true);
     expect(restoreSent<string>(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
     expect(restoreSent({ t1: { told: true, entries: [{ id: 'x', facts: { kind: 'travel', from: null }, count: 1, hidden: false }] } })).toEqual({});
+  });
+});
+
+describe('the live list in a save', () => {
+  const isWord = (v: unknown): v is string => typeof v === 'string';
+  const saved = () => play([equip, use, use, statEdit(60)]).list;
+
+  it('reads a saved list back whole', () => {
+    expect(restoreLive(JSON.parse(JSON.stringify(saved())), isWord)).toEqual(saved());
+    expect(restoreLive(undefined, isWord)).toEqual([]);
+  });
+
+  it('drops the whole list when any entry is malformed (Q49)', () => {
+    const list = saved();
+    const variants: unknown[] = [
+      [...list.slice(0, 1), { ...list[1], snapshots: ['s1'] }, ...list.slice(2)],
+      [...list.slice(0, 1), { ...list[1], snapshots: ['s1', 2] }, ...list.slice(2)],
+      [...list.slice(0, 1), { ...list[1], snapshots: undefined }, ...list.slice(2)],
+      [...list.slice(0, 1), { ...list[1], facts: { kind: 'eat', item: potion } }, ...list.slice(2)],
+      [...list, 'junk'],
+      { e0: list[0] },
+    ];
+    for (const raw of variants) expect(restoreLive(raw, isWord)).toEqual([]);
+  });
+
+  it('maps every snapshot, live and sent, and leaves a sent entry without snapshots as it is', () => {
+    const list = saved();
+    expect(mapLiveSnapshots(list, (s) => s.toUpperCase()).flatMap((e) => e.snapshots)).toEqual(['S0', 'S1', 'S2', 'S3']);
+    const sent = recordSent(recordSent({}, 't1', play([use]).list, true), 't2', list, true);
+    const mapped = mapSentSnapshots(sent, (s) => s.toUpperCase());
+    expect(mapped.t1).toEqual(sent.t1);
+    expect(mapped.t2.entries.flatMap((e) => e.snapshots)).toEqual(['S0', 'S1', 'S2', 'S3']);
+  });
+
+  it('checks the snapshot shape', () => {
+    expect(isActionSnapshot({ state: {}, persona: null })).toBe(true);
+    expect(isActionSnapshot({ state: {}, persona: { source: 'world', entityId: 'ash' } })).toBe(true);
+    expect(isActionSnapshot({ state: {} })).toBe(false);
+    expect(isActionSnapshot({ state: null, persona: null })).toBe(false);
+    expect(isActionSnapshot('s0')).toBe(false);
   });
 });

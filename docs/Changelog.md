@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Stat edits you make in the Stats tab now list in the Since Last Turn tray.** Each shows the old and new value. It starts hidden from the AI, and you can show it or undo it.
     - **When you send, the AI hears what Since Last Turn lists, so the story reacts to those actions.** Hidden rows stay with you. Send works with an empty action box, and each page keeps its list under your action.
     - **Trait switches, map travel and persona changes now list in the tray above the action box.** Undo puts the game back as it was. Turning, traveling or switching straight back clears the row. These controls wait while a turn runs.
+    - **Saves keep the Since Last Turn tray, so a loaded game shows the same rows and can still undo them.** Hidden rows stay hidden. Manual saves and autosaves both keep it.
   - **Website:**
     - **The formamorph.ai pages use a violet-to-rose accent and the same Formamorph wordmark as the game's title screen.** The home, privacy, sign-in and community pages share it in light and dark.
     - **The formamorph.ai home page plays an example turn on a real game screen, then tours six features.** An action types in, the story appears word by word, Faith and Renown change, and a map lands in the inventory. A tour below shows six features and sweeps through the color themes. Reduced motion holds everything still.

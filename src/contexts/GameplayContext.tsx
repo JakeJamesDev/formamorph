@@ -18,7 +18,10 @@ import type { SceneImageMap } from '../lib/sceneImages';
 import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
-import { restoreSent, type ActionSnapshot, type ListedAction, type SentActionMap } from '../lib/actionList';
+import {
+  isActionSnapshot, mapLiveSnapshots, mapSentSnapshots, restoreLive, restoreSent,
+  type ActionSnapshot, type ListedAction, type SentActionMap,
+} from '../lib/actionList';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -79,6 +82,8 @@ import type {
   WorldVrmStore,
 } from '@/types';
 import { remapChosenVrm } from '../lib/legacyVrm';
+
+const historyFree = (snapshot: ActionSnapshot): ActionSnapshot => ({ ...snapshot, state: stripSnapshotHistory(snapshot.state) });
 
 /** A save write's outcome; a failure carries what the write rejected with. */
 type SaveWriteResult = { ok: true } | { ok: false; error: unknown };
@@ -542,7 +547,8 @@ function useProvideGameplay() {
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
         ...(Object.keys(actionAttachments).length ? { actionAttachments } : {}),
         ...(Object.keys(scriptTells).length ? { scriptTells } : {}),
-        ...(Object.keys(sentActions).length ? { sentActions } : {}),
+        ...(Object.keys(sentActions).length ? { sentActions: mapSentSnapshots(sentActions, historyFree) } : {}),
+        ...(actionList.length ? { actionList: mapLiveSnapshots(actionList, historyFree) } : {}),
         ...(openingAction !== null ? { openingAction } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
@@ -562,7 +568,7 @@ function useProvideGameplay() {
       }
       return { ok: false, error };
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, sentActions, openingAction, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, sentActions, actionList, openingAction, addSystemLogEntry]);
 
   const saveGame = useCallback(async (...args: Parameters<typeof writeSave>) => (await writeSave(...args)).ok, [writeSave]);
 
@@ -664,8 +670,8 @@ function useProvideGameplay() {
         // Migrate a legacy v1.2 envelope to the current shape (no-op for a save already stamped with
         // APP_VERSION). Same migrateSave the import boundary runs, so both stay in lockstep.
         const migrated = migrateSave(savedData);
-        const held = (state: GameState) => (worldEntities
-          ? withHeldOwners(state, heldEntityIds(worldEntities.map((e) => e.id), state, migrated.persona))
+        const held = (state: GameState, persona = migrated.persona) => (worldEntities
+          ? withHeldOwners(state, heldEntityIds(worldEntities.map((e) => e.id), state, persona))
           : state);
         // Snapshots are history-free post-migration; reconstitute the live current state with the canonical
         // top-level history so loadGameState restores narration/rollback correctly. Backfill any stat the
@@ -699,10 +705,14 @@ function useProvideGameplay() {
           // Absent on a save written with no attachments ⇒ none.
           setActionAttachments(restoreAttachments(migrated.actionAttachments));
           setScriptTells(restoreTells(migrated.scriptTells));
-          setSentActions(restoreSent<ActionSnapshot>(migrated.sentActions));
+          // Snapshots load like stateHistory, held against their own persona; undo keeps the live history.
+          const loadedSnapshot = ({ state, persona }: ActionSnapshot): ActionSnapshot => ({
+            state: held(backfilled(state, persona ?? undefined), persona ?? undefined), persona,
+          });
+          setSentActions(mapSentSnapshots(restoreSent(migrated.sentActions, isActionSnapshot), loadedSnapshot));
           setOpeningAction(typeof migrated.openingAction === 'string' ? migrated.openingAction : null);
           setPendingAttachments([]);
-          setActionList([]);
+          setActionList(mapLiveSnapshots(restoreLive(migrated.actionList, isActionSnapshot), loadedSnapshot));
           addSystemLogEntry(`Game loaded from "${saveName}"`);
           logOrphans();
           setSaveLoads((n) => n + 1);

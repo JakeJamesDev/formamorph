@@ -201,7 +201,7 @@ const namesSubject = (facts: ListedActionFacts): boolean => {
   }
 };
 
-const isSentAction = (value: unknown): value is SentAction<unknown> => {
+const isListedEntry = (value: unknown): value is SentAction<unknown> => {
   const v = value as Partial<SentAction<unknown>> | null;
   return !!v && typeof v.id === 'string' && typeof v.count === 'number' && v.count >= 1 && typeof v.hidden === 'boolean'
     && !!v.facts && typeof v.facts === 'object' && Object.hasOwn(KINDS, v.facts.kind) && namesSubject(v.facts)
@@ -209,17 +209,52 @@ const isSentAction = (value: unknown): value is SentAction<unknown> => {
 };
 
 /** The sent lists a save holds, read back. A save is a file the player can edit, so malformed entries are
- *  left out. Absent ⇒ none. */
-export function restoreSent<S>(raw: unknown): SentActionMap<S> {
+ *  left out. Absent ⇒ none. With `isSnapshot`, an entry with a malformed snapshot keeps none. */
+export function restoreSent<S>(raw: unknown, isSnapshot?: (value: unknown) => value is S): SentActionMap<S> {
   const restored: SentActionMap<S> = {};
   if (!raw || typeof raw !== 'object') return restored;
   for (const [turnId, sent] of Object.entries(raw)) {
     const v = sent as Partial<SentActionList<S>> | null;
     if (!v || typeof v.told !== 'boolean' || !Array.isArray(v.entries)) continue;
-    const entries = (v.entries as unknown[]).filter(isSentAction) as SentAction<S>[];
+    const entries = (v.entries as unknown[]).filter(isListedEntry).map(({ snapshots, ...entry }) => (
+      snapshots && (!isSnapshot || snapshots.every(isSnapshot)) ? { ...entry, snapshots } : entry
+    )) as SentAction<S>[];
     if (entries.length) restored[turnId] = { told: v.told, entries };
   }
   return restored;
+}
+
+/** Whether a saved value has the ActionSnapshot shape. */
+export const isActionSnapshot = (value: unknown): value is ActionSnapshot => {
+  const v = value as Partial<ActionSnapshot> | null;
+  return !!v && !!v.state && typeof v.state === 'object' && (v.persona === null || (!!v.persona && typeof v.persona === 'object'));
+};
+
+/**
+ * The live list a save holds, read back. Any malformed entry drops the whole list, since each snapshot assumes
+ * the entries after it (Q49). Absent ⇒ empty.
+ */
+export function restoreLive<S>(raw: unknown, isSnapshot: (value: unknown) => value is S): ListedAction<S>[] {
+  if (!Array.isArray(raw)) return [];
+  const whole = raw.every((entry: unknown) => isListedEntry(entry) && Array.isArray(entry.snapshots)
+    && entry.snapshots.length === entry.count && entry.snapshots.every(isSnapshot));
+  return whole ? (raw as ListedAction<S>[]) : [];
+}
+
+/** `list` with each snapshot passed through `map`. */
+export const mapLiveSnapshots = <S, T>(list: ActionList<S>, map: (snapshot: S) => T): ListedAction<T>[] =>
+  list.map((entry) => ({ ...entry, snapshots: entry.snapshots.map(map) }));
+
+/** `sent` with each kept snapshot passed through `map`. */
+export function mapSentSnapshots<S, T>(sent: SentActionMap<S>, map: (snapshot: S) => T): SentActionMap<T> {
+  const next: SentActionMap<T> = {};
+  for (const [turnId, list] of Object.entries(sent)) {
+    next[turnId] = {
+      told: list.told,
+      entries: list.entries.map(({ snapshots, ...entry }) => (snapshots ? { ...entry, snapshots: snapshots.map(map) } : entry)),
+    };
+  }
+  return next;
 }
 
 /** How many rows the AI is told and how many are hidden. */

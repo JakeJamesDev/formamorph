@@ -164,6 +164,47 @@ describe('the Action List in a game', () => {
   });
 });
 
+describe('the Action List across a save and load', () => {
+  const helmOn = () => gameplay().itemCopies.some((c) => c.equipped);
+
+  it('reloads the entries, hidden flags and counts, and undo still restores', async () => {
+    await start();
+    fireEvent.click(screen.getByRole('button', { name: 'Equip Helm' }));
+    await waitFor(() => expect(rows()).toEqual(['Equipped Helm']));
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Hide from the AI' }));
+    for (let i = 0; i < 2; i += 1) {
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Use Tonic' })).toBeEnabled());
+      fireEvent.click(screen.getByRole('button', { name: 'Use Tonic' }));
+      await waitFor(() => expect(tonics()).toBe(2 - i));
+    }
+    await waitFor(() => expect(value('calm')).toBe(90));
+    await act(async () => { await gameplay().saveGame('slot', 'Harbor', 'w1', 'list-roundtrip'); });
+
+    // Leave the saved state: undo everything, back to three tonics and no helm.
+    for (const name of ['Undo One', 'Undo', 'Undo']) {
+      await waitFor(() => expect(within(tray() as HTMLElement).getByRole('button', { name })).toBeEnabled());
+      fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name }));
+    }
+    await waitFor(() => expect(tray()).toBeNull());
+    expect(tonics()).toBe(3);
+    expect(helmOn()).toBe(false);
+
+    await act(async () => { expect(await gameplay().loadGame('list-roundtrip', world.locations ?? [])).toBe(true); });
+    await waitFor(() => expect(rows()).toEqual(['Equipped HelmOnly You', 'Used Tonic ×2']));
+    expect(within(tray() as HTMLElement).getByRole('button', { name: /Since Last Turn/ })).toHaveTextContent('1 for the AI · 1 hidden');
+    expect(tonics()).toBe(1);
+    expect(helmOn()).toBe(true);
+
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Undo One' }));
+    await waitFor(() => expect(tonics()).toBe(2));
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(value('calm')).toBe(50));
+    expect(tonics()).toBe(3);
+    expect(helmOn()).toBe(true);
+    expect(rows()).toEqual(['Equipped HelmOnly You']);
+  });
+});
+
 describe('stat edits in the Action List', () => {
   const calmField = () => screen.getByRole('spinbutton', { name: 'Calm' });
   const nerveField = () => screen.getByRole('spinbutton', { name: 'Nerve' });
