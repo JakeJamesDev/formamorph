@@ -1,18 +1,13 @@
 // Choices cache probe — how much of each choices request repeats the one before it, and so could be served
 // from the provider's prefix cache. Reads captured choices requests from AI-context dumps (the app's Export)
-// and re-lays each system prompt in the candidate section orders:
-//
-//   Arm A = as captured.
-//   Arm B = the fixed instructions (from 'The player character is "I"' to the end) moved right after the role
-//           header; the world blocks keep their order.
-//   Arm C = Arm B, plus the stat-bearing blocks (Global Stats, Player Stats, Player Character) moved last.
+// and re-lays each system prompt in the candidate section orders (choicesOrder.mjs).
 //
 // Gate 1 (default, no model): the shared prefix between consecutive calls, and the section it breaks in.
 // Gate 2 (--live): sends the calls in order through FormamorphServer's `npm run live:hosted-ai` (testing key)
 // and reads the provider's cached-token count, to see whether a longer shared prefix is actually cached.
 //
 // Usage: node testing/baseline/harness/choices-cache-probe.mjs <dump.json> [...more dumps]
-//          [--arms A,B,C] [--live] [--server ../FormamorphServer] [--limit 12]
+//          [--arms A,B,C,D] [--live] [--server ../FormamorphServer] [--limit 12]
 //   --live    Gate 2. Sends --limit consecutive calls per dump and arm, one live:hosted-ai run each.
 //   --server  The FormamorphServer main checkout (it holds .env and the settings copy).
 //   --settings  A hosted_ai settings file for the run, e.g. one with a provider pin. Default: the server's copy.
@@ -20,6 +15,7 @@ import { readFile, writeFile, mkdtemp } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { choicesRequests, messagesFor } from './choicesOrder.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback = null) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
@@ -30,46 +26,6 @@ const live = args.includes('--live');
 const server = path.resolve(option('--server', path.resolve(process.cwd(), '../FormamorphServer')));
 const limit = Number(option('--limit', '12'));
 const settings = option('--settings') && path.resolve(option('--settings'));
-
-const STATIC_MARKER = '\n\nThe player character is "I"';
-const STAT_BLOCKS = new Set(['Global Stats', 'Player Stats', 'Player Character']);
-
-/** Every captured choices request in a dump, in turn order. */
-function choicesRequests(dump) {
-  const found = [];
-  const walk = (node) => {
-    if (!node || typeof node !== 'object') return;
-    if (node.type === 'choices' && Array.isArray(node.messages)) found.push(node);
-    for (const key of Object.keys(node)) walk(node[key]);
-  };
-  walk(dump);
-  return found;
-}
-
-/** A system prompt split into role header, `## ` world blocks, and the fixed instructions. */
-function sections(system) {
-  const at = system.indexOf(STATIC_MARKER);
-  if (at < 0) return null;
-  const head = system.slice(0, at);
-  const firstBlock = head.indexOf('\n## ');
-  const header = firstBlock < 0 ? head : head.slice(0, firstBlock);
-  const body = firstBlock < 0 ? '' : head.slice(firstBlock + 1);
-  const blocks = body ? body.split(/\n(?=## )/).map((text) => ({ title: text.match(/^## (.+)/)?.[1] ?? '', text: text.replace(/\n+$/, '') })) : [];
-  return { header: header.replace(/\n+$/, ''), blocks, instructions: system.slice(at).replace(/^\n+/, '') };
-}
-
-/** The system prompt laid out for one arm. A prompt without the fixed-instruction marker is sent as captured. */
-function relay(system, arm) {
-  const parts = arm === 'A' ? null : sections(system);
-  if (!parts) return system;
-  const blocks = arm === 'C'
-    ? [...parts.blocks.filter((b) => !STAT_BLOCKS.has(b.title)), ...parts.blocks.filter((b) => STAT_BLOCKS.has(b.title))]
-    : parts.blocks;
-  return [parts.header, parts.instructions, ...blocks.map((b) => b.text)].join('\n\n');
-}
-
-const messagesFor = (request, arm) =>
-  request.messages.map((m, i) => (i === 0 && m.role === 'system' ? { ...m, content: relay(m.content, arm) } : m));
 
 /** The request as the provider tokenizes it, close enough for a prefix comparison. */
 const serialized = (messages) => messages.map((m) => `<${m.role}>${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`).join('');
