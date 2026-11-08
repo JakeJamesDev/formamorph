@@ -177,24 +177,40 @@ export type SentAction<S> = Omit<ListedAction<S>, 'snapshots'> & { snapshots?: S
 export interface SentActionList<S> {
   told: boolean;
   entries: SentAction<S>[];
+  /** The state at send, after the newest entry, which a regenerate restores (Q52). Newest turn only. */
+  after?: S;
 }
 
 /** Sent lists by turn id. */
 export type SentActionMap<S> = Record<string, SentActionList<S>>;
 
 /**
- * `map` with `turnId`'s sent list recorded, and every other turn's snapshots dropped (Q34). An empty list
- * records nothing.
+ * `map` with `turnId`'s sent list recorded, `after` being the state at send, and every other turn's snapshots
+ * dropped (Q34). An empty list records nothing.
  */
-export function recordSent<S>(map: SentActionMap<S>, turnId: string, list: ActionList<S>, told: boolean): SentActionMap<S> {
+export function recordSent<S>(map: SentActionMap<S>, turnId: string, list: ActionList<S>, told: boolean, after?: S): SentActionMap<S> {
   const next: SentActionMap<S> = {};
   for (const [id, sent] of Object.entries(map)) {
-    next[id] = sent.entries.some((entry) => entry.snapshots)
-      ? { ...sent, entries: sent.entries.map(({ snapshots: _dropped, ...entry }) => entry) }
+    next[id] = sent.after !== undefined || sent.entries.some((entry) => entry.snapshots)
+      ? { told: sent.told, entries: sent.entries.map(({ snapshots: _dropped, ...entry }) => entry) }
       : sent;
   }
-  if (list.length > 0) next[turnId] = { told, entries: [...list] };
+  if (list.length > 0) next[turnId] = { told, entries: [...list], ...(after !== undefined ? { after } : {}) };
   return next;
+}
+
+/**
+ * The live list a regenerate of the turn `sent` went with reopens, and the state to restore (Q14, Q51). Null when
+ * the record lacks a snapshot the list needs: an older turn's record, or one a save dropped.
+ */
+export function reopenSent<S>(sent: SentActionList<S> | undefined): { list: ListedAction<S>[]; restore: S } | null {
+  if (!sent || sent.after === undefined) return null;
+  const list: ListedAction<S>[] = [];
+  for (const { snapshots, ...entry } of sent.entries) {
+    if (!snapshots || snapshots.length !== entry.count) return null;
+    list.push({ ...entry, snapshots });
+  }
+  return { list, restore: sent.after };
 }
 
 /** Every kind a saved entry may carry; a new kind fails to compile until it is added here. */
@@ -231,7 +247,8 @@ export function restoreSent<S>(raw: unknown, isSnapshot?: (value: unknown) => va
     const entries = (v.entries as unknown[]).filter(isListedEntry).map(({ snapshots, ...entry }) => (
       snapshots && (!isSnapshot || snapshots.every(isSnapshot)) ? { ...entry, snapshots } : entry
     )) as SentAction<S>[];
-    if (entries.length) restored[turnId] = { told: v.told, entries };
+    const after = v.after !== undefined && (!isSnapshot || isSnapshot(v.after)) ? { after: v.after } : {};
+    if (entries.length) restored[turnId] = { told: v.told, entries, ...after };
   }
   return restored;
 }
@@ -263,6 +280,7 @@ export function mapSentSnapshots<S, T>(sent: SentActionMap<S>, map: (snapshot: S
   for (const [turnId, list] of Object.entries(sent)) {
     next[turnId] = {
       told: list.told,
+      ...(list.after !== undefined ? { after: map(list.after) } : {}),
       entries: list.entries.map(({ snapshots, ...entry }) => (snapshots ? { ...entry, snapshots: snapshots.map(map) } : entry)),
     };
   }

@@ -47,7 +47,7 @@ function liveList(live: () => ReturnType<typeof useGameplay>): ListedAction<Acti
 
 const snapshotHistories = (record: SaveRecord) => [
   ...(record.actionList ?? []).flatMap((entry) => entry.snapshots),
-  ...Object.values(record.sentActions ?? {}).flatMap((sent) => sent.entries.flatMap((entry) => entry.snapshots ?? [])),
+  ...Object.values(record.sentActions ?? {}).flatMap((sent) => [...sent.entries.flatMap((entry) => entry.snapshots ?? []), ...(sent.after ? [sent.after] : [])]),
 ].map((snapshot) => snapshot.state.fullMessageHistory);
 
 describe('the live Action List across a save/load round trip', () => {
@@ -56,19 +56,20 @@ describe('the live Action List across a save/load round trip', () => {
     const list = liveList(live);
     await act(async () => {
       live().setActionList(list);
-      live().setSentActions({ t1: { told: true, entries: list } });
+      live().setSentActions({ t1: { told: true, entries: list, after: list[0].snapshots[0] } });
     });
     await act(async () => { await live().saveGame('slot', 'World', 'w1', 'list-save'); });
 
     const record = await getSaveRecord('list-save') as SaveRecord;
     expect(record.actionList?.map((e) => [e.id, e.count, e.hidden, e.snapshots.length])).toEqual([['a', 2, false, 2], ['b', 1, true, 1]]);
-    expect(snapshotHistories(record)).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
+    expect(snapshotHistories(record)).toEqual([undefined, undefined, undefined, undefined, undefined, undefined, undefined]);
 
     await act(async () => { live().setActionList([]); });
     await act(async () => { await live().loadGame('list-save', []); });
     expect(live().actionList.map((e) => [e.id, e.facts, e.count, e.hidden, e.snapshots.length]))
       .toEqual([['a', tonicUse, 2, false, 2], ['b', list[1].facts, 1, true, 1]]);
     expect(Object.values(live().sentActions).map((s) => s.entries.length)).toEqual([2]);
+    expect(live().sentActions.t1.after?.state.globalStats).toEqual(list[0].snapshots[0].state.globalStats);
   });
 
   it('writes the list in an autosave too', async () => {

@@ -8,7 +8,7 @@ import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
 import { ActionListTray } from '@/components/game/ActionListTray';
-import { addAction, closeList, listCounts, recordSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts, type ToldAction } from '@/lib/actionList';
+import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts, type ToldAction } from '@/lib/actionList';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { personaKey, samePersonaRef } from '@/lib/personaPick';
@@ -248,7 +248,7 @@ import type { AiRequestRecord } from "@/lib/aiContext/requestRecord";
 import { composeSceneTags, pickSceneCast, stripPlaces, splitTags, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
-import { addToPending, setTurnAttachments, latestTurnAttachments, pruneAttachments } from "../lib/actionAttachments";
+import { addToPending, setTurnAttachments, latestTurnAttachments, pageTurnId, pruneAttachments } from "../lib/actionAttachments";
 import { useImageAttachments } from "../lib/useImageAttachments";
 import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest, takesCharacterPrompts } from "../lib/imageGen";
@@ -872,6 +872,7 @@ const GameViewer = ({
     actionList,
     setActionList,
     revertManualStatEditPage,
+    sentActions,
     setSentActions,
     scriptTells,
     setScriptTells,
@@ -1800,17 +1801,64 @@ const GameViewer = ({
   const likeAsk = useLikePrompt(worldId ? String(worldId) : null, turnCommitNonce, fullMessageHistory);
   const [pendingTurnNonce, setPendingTurnNonce] = useState(0);
 
+  /** The list the turn on `page` was sent with. */
+  const sentListOf = (page: number) => {
+    const turnId = pageTurnId(fullMessageHistory, page);
+    return turnId ? sentActions[turnId] : undefined;
+  };
+  /** The state a re-roll of the turn on `page` starts from: the state at send, its listed actions applied (Q53). */
+  const preTurnStateOf = (page: number) =>
+    sentListOf(page)?.after?.state ?? regenerateState(gameStates, initialStateRef.current, page);
+
+  /**
+   * Regenerate a turn sent with a list (Q14, Q51): back to the state at send, the list live again and the action
+   * and its images back in the box, waiting for Send. False when the record cannot reopen.
+   */
+  const reopenRegenerate = (page: number, action: string): boolean => {
+    const turnId = pageTurnId(fullMessageHistory, page);
+    const reopened = reopenSent(sentListOf(page));
+    if (!turnId || !reopened || !restoreSendState(reopened.restore)) return false;
+    setActionList(reopened.list);
+    setSentActions(({ [turnId]: _reopened, ...rest }) => rest);
+    setPendingAttachments(latestTurnAttachments(actionAttachments, fullMessageHistory));
+    rewindForReroll(page);
+    setPlayerInput(action);
+    return true;
+  };
+
+  /** Restores a turn's state at send, persona included, keeping the live narration and notes. */
+  const restoreSendState = ({ state, persona: ref }: ActionSnapshot): boolean => {
+    if (!loadGameState(state, locations, { keepLiveHistory: true })) return false;
+    const samePersona = ref && personaRef ? samePersonaRef(ref, personaRef) : !ref && !personaRef;
+    if (!samePersona) setPersonaRef(ref ?? undefined);
+    return true;
+  };
+
+  /** Drops the turn on `page` for a re-roll; the restored state is the caller's. */
+  const rewindForReroll = (page: number) => {
+    // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
+    // AND overlap the re-roll's language-model request on the one GPU.
+    cancelSceneImage();
+    rewindHistoryToPage(page - 1);
+    // Mark the current turn's AI-context entry as superseded; the next send appends a fresh one.
+    setDebugTurns((prev) => markRegeneratedTurn(prev));
+  };
+
   /** Regenerate the turn on `page`, which Chat passes as the latest page. */
   const handleRegenerate = (page = currentPage) => {
     if (!canRegenerate(page, totalPages)) return;
+    const action = lastTurnAction(fullMessageHistory);
+    if (page >= 2 && action !== null && !chatLayout && reopenRegenerate(page, action)) return;
+    // Chat has no tray, so its re-roll keeps the listed actions and re-sends at once (Q55).
+    const chatSent = page >= 2 && chatLayout ? sentListOf(page)?.after : undefined;
     // Regenerating the opening turn (page 1) restores the pre-game state, not a gameStates entry. On a
     // loaded save that snapshot was never captured (initialStateRef is only set during a live first turn),
     // so reconstruct a pre-opening baseline from the current state with its history emptied — re-sending
     // START GAME from there re-captures initialStateRef and regenerates the opening.
+    // A list that cannot reopen is dropped with its actions, so nothing applied goes untold.
     const previousState =
       regenerateState(gameStates, initialStateRef.current, page) ??
       (page === 1 ? { ...saveCurrentGameState(), fullMessageHistory: [] } : null);
-    const action = lastTurnAction(fullMessageHistory);
     if (!previousState || action === null) return;
     // Page one draws again, before anything is restored: a pool of one Opening Narration has nothing else
     // to show, so the page stays as it is. The draw is recorded only once the restore has succeeded.
@@ -1820,17 +1868,12 @@ const GameViewer = ({
     if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
-    if (!loadGameState(previousState, locations, { keepLiveHistory: true })) return;
+    if (!(chatSent ? restoreSendState(chatSent) : loadGameState(previousState, locations, { keepLiveHistory: true }))) return;
     setActionList([]);
-    // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
-    // AND overlap the re-roll's language-model request on the one GPU.
-    cancelSceneImage();
-    rewindHistoryToPage(page - 1);
+    rewindForReroll(page);
     // The notes scratchpad is left alone: regen only targets the latest page, where the live scratchpad is
     // always at least as fresh as the message's frozen notes (a stopped turn freezes none at all —
     // re-seeding from the message here wiped the player's notes).
-    // Mark the current turn's AI-context entry as superseded; sendGameAction appends a fresh one.
-    setDebugTurns((prev) => markRegeneratedTurn(prev));
     // Regenerating the opening (page 1) returns to the not-started state. An Opening Narration then starts
     // the game again on its own; an Opening Action fills the box for the player to edit and submit.
     if (redraw) {
@@ -1970,7 +2013,7 @@ const GameViewer = ({
   const rerunChoiceScripts = async (
     prev: AITurnResult, action: string, drawn: readonly string[], page: number,
   ): Promise<ChoicesRerun> => {
-    const preTurnState = regenerateState(gameStates, initialStateRef.current, page);
+    const preTurnState = preTurnStateOf(page);
     if (!preTurnState?.globalStats) return { ran: false };
     const preTurn = liveSnapshotOf(preTurnState);
     const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
@@ -2055,7 +2098,7 @@ const GameViewer = ({
   const handleRegenerateStats = (page = currentPage) => {
     const target = partialRegenTarget(page);
     if (!target || !statUpdatesEnabled || requestStatCount === 0) return;
-    const preTurnState = regenerateState(gameStates, initialStateRef.current, page);
+    const preTurnState = preTurnStateOf(page);
     if (!preTurnState?.globalStats) return;
     const preTurn = liveSnapshotOf(preTurnState);
     const { prev, action } = target;
@@ -3156,6 +3199,8 @@ const GameViewer = ({
     stopCommandPreview(); // a real turn supersedes any command preview
     // On the opening turn, snapshot the pre-game state so page 1 can be regenerated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
+    // The state after the list's newest entry, which a regenerate of this turn restores (Q52).
+    const sentState: ActionSnapshot | undefined = actionList.length ? { state: saveCurrentGameState(), persona: personaRef ?? null } : undefined;
 
     // Places a move can reach from here. Nowhere to go means nothing to route: the router's reply is matched
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
@@ -3283,7 +3328,7 @@ const GameViewer = ({
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
       setActionList((list) => closeList(list).live);
-      setSentActions((map) => recordSent(map, turnId, actionList, tellsActionList && !script));
+      setSentActions((map) => recordSent(map, turnId, actionList, tellsActionList && !script, sentState));
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front
       // location request) must not be mistaken for "narration came through" (see abortGeneration).
       userTurnAddedRef.current = false;

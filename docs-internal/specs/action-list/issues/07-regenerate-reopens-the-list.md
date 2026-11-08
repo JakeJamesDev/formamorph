@@ -1,6 +1,6 @@
 # 07: Regenerate Reopens the List
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 06
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,8 +15,16 @@ Spec rulings: Q14, Q15.
 
 ## Acceptance criteria
 
-- [ ] Regenerating a turn whose list had entries keeps those actions applied; a test that fails on today's behavior covers it.
-- [ ] The regenerated turn's list reopens with the same entries and hidden flags, and undo works on it.
-- [ ] Hiding or undoing an entry before the resend changes what the resent turn carries.
-- [ ] Regenerating a turn with an empty list behaves as today.
-- [ ] Rollback to an earlier page does not reopen a list.
+- [x] Regenerating a turn whose list had entries keeps those actions applied; a test that fails on today's behavior covers it. (tellNarrator "keeps the listed actions applied…"; red with the reopen disabled. Regenerate Stats: the Q53 test, red with `after` ignored. Chat: the Q55 test, red with the send-time restore removed.)
+- [x] The regenerated turn's list reopens with the same entries and hidden flags, and undo works on it. ("reopens the entries with their hidden flags, and undo works on them")
+- [x] Hiding or undoing an entry before the resend changes what the resent turn carries. ("sends what the player changed before the resend")
+- [x] Regenerating a turn with an empty list behaves as today. ("re-sends at once when the turn had no list, as before")
+- [x] Rollback to an earlier page does not reopen a list. ("does not reopen a list on a rollback")
+
+## Landed
+
+**Not verified**
+- The Q57 fallback (a saved record whose snapshots were dropped re-rolls from the pre-turn state) has a unit test for `reopenSent` only, not an in-game test.
+
+**For you**
+- Use a potion, send, press Regenerate Narration: the potion stays used, the tray comes back, and your action is in the box until you press Send (In Game).

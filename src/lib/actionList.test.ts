@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addAction, closeList, entryLine, isActionSnapshot, listCounts, mapLiveSnapshots, mapSentSnapshots, recordSent, restoreLive, restoreSent,
+  addAction, closeList, entryLine, isActionSnapshot, listCounts, mapLiveSnapshots, mapSentSnapshots, recordSent, reopenSent, restoreLive, restoreSent,
   reversalOf, toggleHidden, toldActions, toldLines, undoNewest, type ActionList, type ListedActionFacts,
 } from './actionList';
 
@@ -249,6 +249,34 @@ describe('sending the list', () => {
     const second = recordSent(first, 't2', play([equip]).list, false);
     expect(second.t1).toEqual({ told: true, entries: [{ id: 'e0', facts: use, count: 2, hidden: false }] });
     expect(second.t2).toEqual({ told: false, entries: [{ id: 'e0', facts: equip, count: 1, hidden: false, snapshots: ['s0'] }] });
+  });
+
+  it('keeps the state at send on the newest record only (Q52)', () => {
+    const first = recordSent({}, 't1', play([use]).list, true, 'at-send-1');
+    expect(first.t1.after).toBe('at-send-1');
+    const second = recordSent(first, 't2', play([equip]).list, true, 'at-send-2');
+    expect(second.t1).toEqual({ told: true, entries: [{ id: 'e0', facts: use, count: 1, hidden: false }] });
+    expect(second.t2.after).toBe('at-send-2');
+    expect(recordSent(second, 't3', [], true, 'unused').t2).not.toHaveProperty('after');
+  });
+
+  it('reopens the newest record as a live list with its state at send (Q14)', () => {
+    const { list } = play([use, use, equip]);
+    const sent = recordSent({}, 't1', toggleHidden(list, list[1].id), true, 'at-send');
+    expect(reopenSent(sent.t1)).toEqual({ list: toggleHidden(list, list[1].id), restore: 'at-send' });
+    const older = recordSent(sent, 't2', play([use]).list, true, 'later');
+    expect(reopenSent(older.t1)).toBeNull();
+    expect(reopenSent({ ...sent.t1, after: undefined })).toBeNull();
+    expect(reopenSent({ ...sent.t1, entries: [{ ...sent.t1.entries[0], snapshots: ['s0'] }] })).toBeNull();
+    expect(reopenSent(undefined)).toBeNull();
+  });
+
+  it('reads the state at send back, and drops one that fails the snapshot check', () => {
+    const isWord = (v: unknown): v is string => typeof v === 'string';
+    const saved = recordSent({}, 't1', play([use]).list, true, 'at-send');
+    expect(restoreSent(JSON.parse(JSON.stringify(saved)), isWord)).toEqual(saved);
+    expect(restoreSent({ t1: { ...saved.t1, after: 3 } }, isWord).t1).not.toHaveProperty('after');
+    expect(mapSentSnapshots(saved, (s) => s.toUpperCase()).t1.after).toBe('AT-SEND');
   });
 
   it('records nothing for an empty list, and still drops the older snapshots', () => {

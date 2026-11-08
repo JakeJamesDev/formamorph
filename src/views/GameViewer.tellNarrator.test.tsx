@@ -1,13 +1,14 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
+import { stubChatLayout } from '@/test/gamePanels';
 import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { bodyFixture } from '@/test/bodyFixture';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { closedTurns } from '@/lib/memoryView';
 import { defaultActionListPrompt } from '@/components/game/GamePrompts';
-import type { Item, Placement, Slot, World } from '@/types';
+import type { Item, Placement, PlayerStat, Slot, World } from '@/types';
 
 /** Sending the Action List: shown entries reach the narration request, the sent page keeps the list (ticket 02). */
 
@@ -77,8 +78,8 @@ async function send(action?: string) {
 }
 
 /** A started game with the Inventory tab open; the opening turn is played. */
-async function start() {
-  renderGameViewer(world, { inGameplay: <Probe /> });
+async function start(played: World = world) {
+  renderGameViewer(played, { inGameplay: <Probe /> });
   await screen.findByPlaceholderText(/Type your action/);
   stubEndpoint();
   await waitFor(() => expect(gameplay().itemCopies).toHaveLength(2));
@@ -182,17 +183,110 @@ describe('sending the Action List', () => {
     expect(records.every((r) => r.told)).toBe(true);
   });
 
-  it('sends no block on a regenerate (Q35)', async () => {
+});
+
+const calmValue = () => gameplay().globalStats.find((s) => s.id === 'calm')?.value;
+const tonics = () => gameplay().itemCopies.find((c) => c.item.kind === 'item' && c.item.itemId === 'tonic')?.quantity ?? 0;
+const rowTexts = () => within(tray() as HTMLElement).getAllByRole('listitem').map((row) => row.textContent);
+const regenerate = () => fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
+
+describe('regenerating a turn sent with a list (Q14, Q51)', () => {
+  it('keeps the listed actions applied and reopens the list, waiting for Send', async () => {
     await start();
     await useTonic();
     await send('I wait.');
-    // A panel action after the send is listed too; neither list reaches the regenerated request.
+    // A panel action after the send belongs to the turn being re-rolled, so it goes with it.
+    await useTonic();
+    expect(tonics()).toBe(1);
+    requests = [];
+    regenerate();
+
+    await waitFor(() => expect(rowTexts()).toEqual(['Used Tonic']));
+    expect(tonics()).toBe(2);
+    expect(box()).toHaveValue('I wait.');
+    expect(closedTurns(history())).toBe(1);
+    expect(gameplay().isWaitingForAI).toBe(false);
+    expect(requests).toEqual([]);
+
+    await send();
+    expect(lastMessagesWith('Used Tonic')).toHaveLength(1);
+    expect(tonics()).toBe(2);
+  });
+
+  it('reopens the entries with their hidden flags, and undo works on them', async () => {
+    await start();
+    await useTonic();
+    await equipHelm();
+    hideRow(1);
+    await send('I wait.');
+    regenerate();
+
+    await waitFor(() => expect(gameplay().actionList.map((e) => e.hidden)).toEqual([false, true]));
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(rowTexts()).toEqual(['Used Tonic']));
+    expect(screen.getByRole('button', { name: 'Equip Helm' })).toBeInTheDocument();
+    fireEvent.click(within(tray() as HTMLElement).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(tray()).toBeNull());
+    expect(tonics()).toBe(3);
+  });
+
+  it('sends what the player changed before the resend', async () => {
+    await start();
+    await useTonic();
+    await equipHelm();
+    await send('I wait.');
+    regenerate();
+    await waitFor(() => expect(rowTexts()).toHaveLength(2));
+    hideRow(0);
+    requests = [];
+    await send();
+    expect(requestsWith('Used Tonic')).toEqual([]);
+    expect(lastMessagesWith('Equipped Helm')).toHaveLength(1);
+    expect(Object.values(gameplay().sentActions).at(-1)?.entries.map((e) => e.hidden)).toEqual([true, false]);
+  });
+
+  it('re-sends at once when the turn had no list, as before', async () => {
+    await start();
+    await send('I wait.');
+    // A panel action after the send goes with the re-rolled turn, and the re-sent request does not hear it.
     await useTonic();
     requests = [];
-    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
+    regenerate();
     await waitFor(() => expect(requests.length).toBeGreaterThan(0));
     await turnDone();
     expect(requestsWith('Used Tonic')).toEqual([]);
+    expect(tray()).toBeNull();
+    expect(tonics()).toBe(3);
+  });
+
+  it('starts Regenerate Stats from the state at send, the listed actions applied (Q53)', async () => {
+    const calm: PlayerStat = { id: 'calm', name: 'Calm', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
+    const scripted: Item = { ...tonic, scripts: [{ id: 'u', timing: 'used', code: 'stats.Calm.value = 90;' }] };
+    await start({ ...world, ...harborWorld({ stats: [calm] }), items: [scripted, helm], slots, bodies: world.bodies, placements });
+    await useTonic();
+    await waitFor(() => expect(calmValue()).toBe(90));
+    await send('I wait.');
+    requests = [];
+    act(() => gameplay().setActiveTab('stats'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
+    await waitFor(() => expect(requestsWith('stat tracker').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
+    expect(calmValue()).toBe(90);
+  });
+
+  it('does not reopen a list on a rollback', async () => {
+    await start();
+    await useTonic();
+    await send('I wait.');
+    await send('I ring the bell.');
+    fireEvent.click(screen.getByLabelText('Go to previous page'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rewind to Here' }));
+    const confirm = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirm).getAllByRole('button').at(-1)!);
+    await waitFor(() => expect(closedTurns(history())).toBe(2));
+    expect(tray()).toBeNull();
+    expect(gameplay().actionList).toEqual([]);
   });
 });
 
@@ -222,6 +316,26 @@ describe('when the list is not told', () => {
     await send('I wait.');
     expect(requestsWith('Used Tonic')).toEqual([]);
     expect(Object.values(gameplay().sentActions).map((r) => [r.told, r.entries.length])).toEqual([[false, 1]]);
+  });
+
+  it('re-sends a Chat regenerate at once, the listed actions kept and untold (Q55)', async () => {
+    localStorage.setItem('FORMAMORPH_narrationLayout', 'chat');
+    const realScrollTo = HTMLElement.prototype.scrollTo;
+    HTMLElement.prototype.scrollTo = () => {};
+    // jsdom lays nothing out; the chat list renders its rows only at a measured size.
+    onTestFinished(stubChatLayout());
+    onTestFinished(() => { HTMLElement.prototype.scrollTo = realScrollTo; });
+    await start();
+    await useTonic();
+    await send('I wait.');
+    requests = [];
+    fireEvent.click(screen.getAllByRole('button', { name: 'Regenerate Narration' }).at(-1)!);
+    await waitFor(() => expect(requests.length).toBeGreaterThan(0));
+    await turnDone();
+    expect(closedTurns(history())).toBe(2);
+    expect(requestsWith('Used Tonic')).toEqual([]);
+    expect(gameplay().actionList).toEqual([]);
+    expect(tonics()).toBe(2);
   });
 });
 
