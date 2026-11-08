@@ -29,6 +29,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The formamorph.ai pages use a violet-to-rose accent and the same Formamorph wordmark as the game's title screen.** The home, privacy, sign-in and community pages share it in light and dark.
     - **The formamorph.ai home page plays an example turn on a real game screen, then tours six features.** An action types in, the story appears word by word, Faith and Renown change, and a map lands in the inventory. A tour below shows six features and sweeps through the color themes. Reduced motion holds everything still.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
+  - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
 
 ---
 

@@ -60,11 +60,10 @@ describe('default prompts carry the expected variable chips', () => {
   });
 
   it('choices prompt', () => {
+    // Stat descriptors change most turns, so they sit last to keep the cacheable prefix long.
     expect(tokensIn(defaultChoicesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
-      '<STATS DESCRIPTION|descriptions.markdown>',
-      '<PERSONA|summary.markdown>',
       '<NOTES>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -73,8 +72,15 @@ describe('default prompts carry the expected variable chips', () => {
       '<ENTITIES|sublocations.summary.markdown>',
       '<ENTITIES|reachable.summary.markdown>',
       '<ENTITIES|known.summary.markdown>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
+      '<PERSONA|summary.markdown>',
       '<LANGUAGE>',
     ]);
+  });
+
+  it('choices prompt puts its fixed rules before any world chip', () => {
+    expect(defaultChoicesPrompt.indexOf('## Rules')).toBeGreaterThan(0);
+    expect(defaultChoicesPrompt.indexOf('## Rules')).toBeLessThan(defaultChoicesPrompt.indexOf('<WORLD DESCRIPTION'));
   });
 
   it('stat-updates prompt', () => {

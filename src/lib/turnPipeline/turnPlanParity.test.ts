@@ -87,6 +87,10 @@ const assertRendersTemplate = (systemPrompt: string, template: string): void => 
   }
 };
 
+/** The choices template's paragraphs, matched one by one: the run recorded the world blocks between them. */
+const recordedChoices = (template: string): string =>
+  template.replace(/(<[^<>]+>)|\n\n/g, (match, chip: string | undefined) => chip ?? '<PARAGRAPH>');
+
 /** The text prompt from its rules on, as the run recorded it: no owner rule or slight-shift rule, and the change bound it had. */
 const sharedStatTail = (template: string): string =>
   template.slice(template.indexOf('## What to change')).replace(/^- The stats under Player Character.*\n/m, '')
@@ -165,7 +169,7 @@ describe('turn plan parity with the recorded run', () => {
       if (template) {
         assertRendersTemplate(built.systemPrompt, template);
         // The recorded text prompt has no owner blocks; only its shared tail is matched.
-        const recorded = id === 'statUpdates' ? sharedStatTail(template) : id === 'storyboard' ? recordedStoryboard(template) : template;
+        const recorded = id === 'statUpdates' ? sharedStatTail(template) : id === 'storyboard' ? recordedStoryboard(template) : id === 'choices' ? recordedChoices(template) : template;
         assertRendersTemplate(request.systemPrompt, recorded);
       }
       // Messages the fixture holds every input for.

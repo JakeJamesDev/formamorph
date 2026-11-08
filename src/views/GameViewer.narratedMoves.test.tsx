@@ -43,7 +43,7 @@ function Probe() {
 const stubEndpoint = (narration: string, replies: MoveReplies) => stubMoveEndpoint(narration, replies, 'Village');
 
 /** The entities a prompt lists in its "Entities in Reachable Locations" section. */
-const reachableIn = (system: string) => /## Entities in Reachable Locations([\s\S]*?)(?=\n\n[^-\n])/.exec(system)?.[1] ?? '';
+const reachableIn = (system: string) => /## Entities in Reachable Locations([\s\S]*?)(?=\n\n[^-\n]|\s*$)/.exec(system)?.[1] ?? '';
 
 beforeEach(resetMoveTurnStorage);
 

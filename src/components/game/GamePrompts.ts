@@ -137,19 +137,9 @@ export const defaultSummaryUserPrompt = `The player's action this turn: <PLAYER 
 <NARRATION|format=markdown|header="The narration that resulted">
 Now record what this turn changed - the player's action and its outcome - in one or two short second-person, present-tense sentences on a single line: what you do and what now stands true as a result. Report reactions only as what they settle (agreed, refused, hesitated), not the moment-by-moment. No quoted dialogue. Nothing else.`;
 
+// Fixed text first and the per-turn stat blocks last, so consecutive calls share a cacheable prefix.
 export const defaultChoicesPrompt = `You are the player choice writer for an interactive roleplay. Your one job is to offer the player a short list of distinct actions their character could take next, in the player's own first-person voice. You never narrate events or act in the story - a separate step already wrote what just happened; you only propose what the player might do about it.
-<WORLD DESCRIPTION|format=markdown|header="Game World">\
-<TRAITS DESCRIPTION|markdown|header="Global Traits">\
-<STATS DESCRIPTION|descriptions.markdown|header="Global Stats">\
-<PERSONA|summary.markdown|header="Player Character">\
-<NOTES|format=markdown|header="Player Notes">\
-<LOCATION|summary.markdown|header="Current Location">\
-<LOCATION|sublocations.summary.markdown|header="Sublocations">\
-<LOCATION|reachable.summary.markdown|header="Reachable Locations">\
-<ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
-<ENTITIES|sublocations.summary.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
-<ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
-<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">
+
 The player character is "I": every option is written in the player's own first-person voice.
 
 Suggest 3 to 5 distinct things I could do next - each a genuinely different way to respond to what is happening right now, engaging with the people, threats, and openings actually present in the scene, and fitting who I am (my stats, traits, and situation). Not generic filler.
@@ -161,7 +151,18 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 - When the scene puts a question to me or invites me to speak, at least one option answers it in my own words - a single clause, no quotation marks (I tell her I'm new here, I admit the truth, I lie that nothing's wrong) - not only ways to stall or avoid answering.
 - Make the options meaningfully different from one another.
 - Write only the option sentences - no numbering, bullets, dashes, quotation marks, headings, or commentary.
-
+<WORLD DESCRIPTION|format=markdown|header="Game World">\
+<TRAITS DESCRIPTION|markdown|header="Global Traits">\
+<NOTES|format=markdown|header="Player Notes">\
+<LOCATION|summary.markdown|header="Current Location">\
+<LOCATION|sublocations.summary.markdown|header="Sublocations">\
+<LOCATION|reachable.summary.markdown|header="Reachable Locations">\
+<ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
+<ENTITIES|sublocations.summary.markdown|pre="Entries for entities associated with sublocations.\n\n"|header="Entities in Sublocations">\
+<ENTITIES|reachable.summary.markdown|pre="Entries for entities associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
+<ENTITIES|known.summary.markdown|pre="Entries for entities the player may know of here. Each is elsewhere right now: people here may speak of it.\n\n"|header="Entities Known Here">\
+<STATS DESCRIPTION|descriptions.markdown|header="Global Stats">\
+<PERSONA|summary.markdown|header="Player Character">
 <LANGUAGE>`;
 
 export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act. You read what happened this turn and record how it moved the stats of each character listed below. Your entire output is one JSON object - nothing else.

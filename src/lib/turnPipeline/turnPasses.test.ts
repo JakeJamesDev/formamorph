@@ -492,12 +492,12 @@ describe('turn pass requests', () => {
       const shipped = { prompts: { ...TEST_PROMPTS, choices: defaultChoicesPrompt } };
       const render = (language: string) => build('choices', {}, shipped, { language }).systemPrompt;
       const english = render('English');
-      // The chip takes its own blank lines with it: the prompt still ends on the template's last rule.
-      expect(english.endsWith('quotation marks, headings, or commentary.')).toBe(true);
+      // The chip takes its own blank lines with it: the prompt still ends on the template's last block.
+      expect(english.endsWith('<PERSONA|summary.markdown|header="Player Character">')).toBe(true);
       expect(english).not.toContain('Write all choices in');
-      // And the non-English arm is that same prompt plus the directive as its final line, one blank line
-      // after the body — the exact bytes the code-side append used to produce.
-      expect(render('French')).toBe(`${english}\n\nWrite all choices in French.`);
+      // And the non-English arm is that same prompt plus the directive as its own final line. A rendered
+      // block ends on a newline, so in play the directive sits one blank line after it.
+      expect(render('French')).toBe(`${english}\nWrite all choices in French.`);
     });
 
     it('appends nothing to the stat prompt for any language', () => {
