@@ -124,6 +124,25 @@ describe('Publish', () => {
     expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
   });
 
+  it('duplicates the tile it was opened on', async () => {
+    const user = userEvent.setup();
+    const onDuplicate = vi.fn();
+    showItem({ onDuplicate, onDelete: vi.fn() });
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Sedge tile' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
+
+    expect(onDuplicate).toHaveBeenCalledWith('model-1');
+  });
+
+  it('offers no Duplicate on a tab that passes none', () => {
+    showItem({ onDelete: vi.fn() });
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Sedge tile' }));
+
+    expect(screen.queryByRole('menuitem', { name: 'Duplicate' })).not.toBeInTheDocument();
+  });
+
   it('is absent on a folder, which is an arrangement rather than a thing to publish', () => {
     render(
       <LibraryTileContextMenu

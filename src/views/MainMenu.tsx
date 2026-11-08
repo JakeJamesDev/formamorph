@@ -85,6 +85,7 @@ import { clearDefaultPersona, readDefaultPersona, setDefaultPersona } from '@/li
 import WorldStorageService, { assertWorldFields } from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
+import { libraryCopy } from '@/lib/libraryCopy';
 import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
@@ -1605,6 +1606,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       // Get the current world data
       const worldToDuplicate = selectedWorld!.data;
+      const folder = worldTiles.groupOfItem(selectedWorld.id);
 
       // Generate a unique ID for the duplicated world
       const worldId = `duplicate-${randomUUID()}`;
@@ -1637,6 +1639,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         tags: duplicatedWorld.worldOverview.tags || [],
         isLoading: false
       }]);
+      if (folder) worldTiles.addTo(worldId, folder.id);
 
       // Close the world modal
       setShowWorldModal(false);
@@ -1645,6 +1648,37 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     } catch (error) {
       console.error('Error duplicating world:', error);
       toastError(error, { headline: 'Failed to duplicate world' });
+    }
+  };
+
+  // The copy joins the original's folder, if it has one.
+  const handleDuplicateEntity = async (id: string) => {
+    try {
+      const folder = entityTiles.groupOfItem(id);
+      const details = entities.find((entity) => entity.id === id)?.libraryDetails;
+      const now = new Date().toISOString();
+      const copy = libraryCopy(await EntityStorageService.getEntityData(id), details);
+      await EntityStorageService.storeEntity({ ...copy, createdAt: now, lastAccessed: now });
+      await refreshEntities();
+      if (folder) entityTiles.addTo(copy.id, folder.id);
+      toast.success('Entity duplicated');
+    } catch (error) {
+      toastError(error, { headline: 'Failed to duplicate entity' });
+    }
+  };
+
+  const handleDuplicateDictionary = async (id: string) => {
+    try {
+      const folder = dictionaryTiles.groupOfItem(id);
+      const details = dictionaries.find((dictionary) => dictionary.id === id)?.libraryDetails;
+      const now = new Date().toISOString();
+      const copy = libraryCopy(await DictionaryStorageService.getDictionaryData(id), details);
+      await DictionaryStorageService.storeDictionary({ ...copy, createdAt: now, lastAccessed: now });
+      await refreshDictionaries();
+      if (folder) dictionaryTiles.addTo(copy.id, folder.id);
+      toast.success('Dictionary duplicated');
+    } catch (error) {
+      toastError(error, { headline: 'Failed to duplicate dictionary' });
     }
   };
 
@@ -2323,6 +2357,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             />
           )}
           onCheckUpdates={(id) => { void checkForUpdates('entity', id); }}
+          onDuplicate={(id) => { void handleDuplicateEntity(id); }}
           itemActions={(id) => {
             if (!entities.some((entity) => entity.id === id && entity.persona)) return null;
             return (
@@ -2363,6 +2398,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             />
           )}
           onCheckUpdates={(id) => { void checkForUpdates('dictionary', id); }}
+          onDuplicate={(id) => { void handleDuplicateDictionary(id); }}
           onDelete={setDictionaryToDelete}
         />
       ) : (

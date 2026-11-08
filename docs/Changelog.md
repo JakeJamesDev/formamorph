@@ -37,6 +37,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
   - **The Supporters list in Credits and on the Supporters page shows names in a grid under each tier's badge.** The grid fits as many columns as there is room for. Point at a name to see how long that person has supported.
   - **The Entities library has one Personas button in place of the All and Personas switch.** Turn it on to show only your personas, and off to show everyone.
+  - **Right-click an entity or dictionary in the library and choose Duplicate to make a copy.** The copy stays in the same group as the original. A duplicated world now stays in its group too.
   - **Settings and Formaquestion Settings tabs now have icons, and on mobile a Sections list replaces the dropdown.** On a wide screen the highlight slides to the tab you pick. On mobile, tap **Sections** to see every tab in groups, as in the World Editor.
   - **In game, point at the day and time of day above the Stats panel to see the exact clock time.** For example, *Day 3, evening* shows *Day 3, 19:15*.
   - **The Regenerate Stats button in the game's Stats panel now names the endpoint it sends to.** It matches the other regenerate buttons.
