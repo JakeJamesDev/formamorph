@@ -731,21 +731,19 @@ b {
   to   { opacity: 1; transform: none; }
 }
 
-/* The mobile game panels slide with their tab (`GameViewer`); Radix holds the exiting panel until its slide ends. */
-@keyframes mobile-panel-from-right { from { transform: translateX(100%); } to { transform: none; } }
-@keyframes mobile-panel-from-left  { from { transform: translateX(-100%); } to { transform: none; } }
-@keyframes mobile-panel-to-left    { from { transform: none; } to { transform: translateX(-100%); } }
-@keyframes mobile-panel-to-right   { from { transform: none; } to { transform: translateX(100%); } }
+/* The mobile game panels slide with their tab (`MobilePanelStage`); Radix holds the exiting panel until its
+   slide ends. A swipe sets --drag-from, so the slide finishes from where the finger let go. The entering
+   panel holds no fill afterward, so a drag's inline transform moves it. */
+.mobile-panel-stage { --in-from: 100%; --out-to: -100%; }
+.mobile-panel-stage[data-slide="back"] { --in-from: -100%; --out-to: 100%; }
+@keyframes mobile-panel-in  { from { transform: translateX(var(--drag-from, var(--in-from))); } }
+@keyframes mobile-panel-out { from { transform: translateX(var(--drag-from, 0px)); } to { transform: translateX(var(--out-to)); } }
 .mobile-panel {
   animation-duration: 300ms;
   animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
-  animation-fill-mode: both;
 }
-.mobile-panel[data-state="inactive"] { pointer-events: none; }
-.mobile-panel-stage[data-slide="next"] > .mobile-panel[data-state="active"] { animation-name: mobile-panel-from-right; }
-.mobile-panel-stage[data-slide="next"] > .mobile-panel[data-state="inactive"] { animation-name: mobile-panel-to-left; }
-.mobile-panel-stage[data-slide="back"] > .mobile-panel[data-state="active"] { animation-name: mobile-panel-from-left; }
-.mobile-panel-stage[data-slide="back"] > .mobile-panel[data-state="inactive"] { animation-name: mobile-panel-to-right; }
+.mobile-panel[data-state="active"] { animation-name: mobile-panel-in; animation-fill-mode: backwards; }
+.mobile-panel[data-state="inactive"] { animation-name: mobile-panel-out; animation-fill-mode: forwards; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .mobile-panel-stage > .mobile-panel { animation: none; }
 }

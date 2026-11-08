@@ -58,7 +58,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
 import { ArrowLeft, Music, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen, NotebookText, Gamepad2, HeartPulse } from "lucide-react";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs } from "@/components/ui/tabs";
+import { MobilePanelStage } from "@/components/game/MobilePanelStage";
 import { CollapsingTabsList } from "@/components/ui/collapsing-tabs-list";
 import { Dialog, DialogContent, DialogTitle, dialogTitleRow } from "@/components/ui/dialog";
 import { AI_CONTEXT_DIALOG_SIZE } from "@/components/aiContext/aiContextDialogSize";
@@ -1541,14 +1542,6 @@ const GameViewer = ({
   }, [isDebugOpen, debugFindTerms, syncDebugTicks]);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("game");
-  // Which way the mobile panels slide: toward a tab to the right is "next".
-  const [mobileSlide, setMobileSlide] = useState<"next" | "back">("next");
-  const [mobileShown, setMobileShown] = useState(mobilePanel);
-  if (mobileShown !== mobilePanel) {
-    const order = (panel: MobilePanel) => MOBILE_PANEL_TABS.findIndex((tab) => tab.value === panel);
-    setMobileSlide(order(mobilePanel) > order(mobileShown) ? "next" : "back");
-    setMobileShown(mobilePanel);
-  }
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   /**
@@ -6352,14 +6345,12 @@ const GameViewer = ({
             {/* The single menu joins the tab row on mobile. */}
             {menuModal(false)}
           </div>
-          {/* The exiting panel stays mounted through its slide out. */}
-          <div data-slide={mobileSlide} className="mobile-panel-stage relative flex-grow min-h-0 overflow-hidden">
-            {MOBILE_PANEL_TABS.map(({ value }) => (
-              <TabsContent key={value} value={value} className="mobile-panel absolute inset-0 mt-0 flex-col [&:not([hidden])]:flex">
-                {value === "character" ? leftPanel : value === "game" ? middlePanel : rightPanel}
-              </TabsContent>
-            ))}
-          </div>
+          <MobilePanelStage
+            tabs={MOBILE_PANEL_TABS}
+            value={mobilePanel}
+            onValueChange={setMobilePanel}
+            renderPanel={(panel) => (panel === "character" ? leftPanel : panel === "game" ? middlePanel : rightPanel)}
+          />
         </Tabs>
       ) : (
         <>
