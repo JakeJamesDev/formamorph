@@ -1,12 +1,33 @@
 // Storage is real (in-memory): SettingsProvider reads it on mount, and the device setting persists there.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { LocalModelPanel } from './LocalModelPanel';
 import { LocalEngineManager } from '../LocalEngineManager';
-import type { LocalLlmState } from '@/lib/imageGen/desktop';
+import type { CudaInstallError, CudaStatus, LocalLlmState } from '@/lib/imageGen/desktop';
+
+type CudaBridge = NonNullable<NonNullable<Window['formamorphDesktop']>['cuda']>;
+
+const CUDA_BASE = { nvidia: true, support: { supported: true as const }, downloadBytes: 592_528_572 };
+const notInstalled = (over: { partialBytes?: number; error?: CudaInstallError } = {}): CudaStatus =>
+  ({ ...CUDA_BASE, state: 'not-installed', partialBytes: 0, ...over });
+
+/** A CUDA bridge whose status the test pushes, recording each call. */
+function cudaBridge(initial: CudaStatus) {
+  let listener: ((s: CudaStatus) => void) | null = null;
+  const calls: string[] = [];
+  const bridge: CudaBridge = {
+    status: () => Promise.resolve(initial),
+    install: () => { calls.push('install'); return Promise.resolve(initial); },
+    cancel: () => { calls.push('cancel'); return Promise.resolve(true); },
+    remove: () => { calls.push('remove'); return Promise.resolve(initial); },
+    onStatus: (cb) => { listener = cb; return () => { listener = null; }; },
+  };
+  const push = (s: CudaStatus) => act(() => { listener?.(s); });
+  return { bridge, calls, push };
+}
 
 // The model manager is its own surface with its own coverage, and mounting it pulls in the whole install
 // /download/move bridge. Nothing here is about it.
@@ -29,15 +50,17 @@ let setOptionsCalls: Record<string, unknown>[] = [];
 let contextOverflowCalls: string[] = [];
 
 /** Stand the desktop bridge up so the panel takes its desktop path — the only one the picker exists on. */
-function stubDesktop({ devices, backend = 'vulkan', autoPick = null, engine = readyEngine() }: {
+function stubDesktop({ devices, backend = 'vulkan', autoPick = null, engine = readyEngine(), cuda = null }: {
   devices: string[];
   backend?: string | null;
   autoPick?: string | null;
   engine?: LocalLlmState;
+  cuda?: CudaBridge | null;
 }) {
   window.formamorphDesktop = {
     fetch: () => Promise.resolve({ ok: true, status: 200, body: '' }),
     vramStats: () => Promise.resolve({ gpus: [], processes: [], selfPid: null }),
+    ...(cuda ? { cuda } : {}),
     llm: {
       status: () => Promise.resolve(engine),
       onStatus: () => () => {},
@@ -376,5 +399,112 @@ describe('local model GPU device picker', () => {
     expect(await screen.findByRole('combobox')).toHaveTextContent(IGPU);
     await userEvent.click(screen.getByRole('button', { name: /reset/i }));
     expect(devicePicker()).toHaveTextContent('Auto');
+  });
+});
+
+describe('local model CUDA row', () => {
+  const installed: CudaStatus = { ...CUDA_BASE, state: 'installed', tag: 'b9' };
+
+  it('shows on a machine whose nvidia-smi lists an NVIDIA card, with the size, the license line and the EULA link', async () => {
+    const { bridge } = cudaBridge(notInstalled());
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+
+    expect(await screen.findByRole('button', { name: 'Download (593 MB)' })).toBeEnabled();
+    expect(screen.getByText(/NVIDIA’s CUDA libraries, under NVIDIA’s license/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'CUDA EULA' })).toHaveAttribute('href', 'https://docs.nvidia.com/cuda/eula/index.html');
+  });
+
+  it('is absent when nvidia-smi lists no NVIDIA card', async () => {
+    const { bridge } = cudaBridge({ ...CUDA_BASE, nvidia: false, support: { supported: false, reason: 'no-nvidia-card' }, state: 'unsupported' });
+    stubDesktop({ devices: [IGPU], cuda: bridge });
+    openPanel();
+    await screen.findByRole('combobox');
+    await act(async () => {});
+    expect(screen.queryByText('CUDA')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'CUDA EULA' })).toBeNull();
+  });
+
+  it('tells a driver under the floor to update, with the floor and a driver link, and offers no Download', async () => {
+    const { bridge } = cudaBridge({ ...CUDA_BASE, support: { supported: false, reason: 'driver-too-old', driverFloor: 615, cardName: 'NVIDIA GeForce RTX 2080' }, state: 'unsupported' });
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+
+    expect(await screen.findByText(/Update it to version 615 or later/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Get the Latest Driver' })).toHaveAttribute('href', 'https://www.nvidia.com/en-us/drivers/');
+    expect(screen.queryByRole('button', { name: /download/i })).toBeNull();
+  });
+
+  it.each([
+    ['card-too-old', /GTX 1080 is too old for CUDA/],
+    ['support-unknown', /Couldn’t read your NVIDIA driver details/],
+  ] as const)('states the %s reason with no Download', async (reason, text) => {
+    const { bridge } = cudaBridge({ ...CUDA_BASE, support: { supported: false, reason, cardName: 'NVIDIA GeForce GTX 1080' }, state: 'unsupported' });
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+    expect(await screen.findByText(text)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /download/i })).toBeNull();
+  });
+
+  it('downloads with progress and a Cancel, resumes, then reads installed', async () => {
+    const { bridge, calls, push } = cudaBridge(notInstalled());
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+
+    await userEvent.click(await screen.findByRole('button', { name: /^Download/ }));
+    expect(calls).toEqual(['install']);
+    await push({ ...CUDA_BASE, state: 'downloading', received: 200_000_000, total: CUDA_BASE.downloadBytes, phase: 'download' });
+    expect(screen.getByText('200 MB of 593 MB')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'CUDA download' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(calls).toEqual(['install', 'cancel']);
+
+    await push(notInstalled({ partialBytes: 200_000_000 }));
+    expect(screen.getByText('200 MB of 593 MB downloaded')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Resume Download' }));
+    expect(calls).toEqual(['install', 'cancel', 'install']);
+
+    await push(installed);
+    expect(screen.getByText('Installed')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
+
+  it('states how much space a refused download needs', async () => {
+    const { bridge } = cudaBridge(notInstalled({ error: { kind: 'no-space', neededBytes: 1_363_265_321, freeBytes: 800_000_000 } }));
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+    expect(await screen.findByText(/CUDA needs 1.4 GB, and the drive has 800 MB free/)).toBeInTheDocument();
+  });
+
+  it('asks before Remove while the engine runs, then removes', async () => {
+    const { bridge, calls } = cudaBridge(installed);
+    stubDesktop({ devices: [DISCRETE], cuda: bridge, engine: readyEngine() });
+    openPanel();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent(/stops the engine and unloads your model/);
+    expect(calls).toEqual([]);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    expect(calls).toEqual(['remove']);
+  });
+
+  it('keeps Remove and shows the reason when an installed machine is no longer supported', async () => {
+    const { bridge } = cudaBridge({ ...installed, support: { supported: false, reason: 'driver-too-old', driverFloor: 580, cardName: 'NVIDIA GeForce RTX 4090' } });
+    stubDesktop({ devices: [DISCRETE], cuda: bridge });
+    openPanel();
+
+    expect(await screen.findByRole('button', { name: 'Remove' })).toBeEnabled();
+    expect(screen.getByText(/Update it to version 580 or later/)).toBeInTheDocument();
+  });
+
+  it('removes at once while the engine is stopped', async () => {
+    const { bridge, calls } = cudaBridge(installed);
+    stubDesktop({ devices: [DISCRETE], cuda: bridge, engine: readyEngine({ status: 'stopped' }) });
+    openPanel();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    expect(calls).toEqual(['remove']);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 });

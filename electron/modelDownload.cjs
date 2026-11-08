@@ -16,6 +16,9 @@ const {
 // initial host is enough.
 const MODEL_ALLOWED_HOSTS = ['huggingface.co'];
 
+/** The error message of a download stopped by Cancel; the partial stays for a resume. */
+const DOWNLOAD_PAUSED = 'DOWNLOAD_PAUSED';
+
 const PROGRESS_INTERVAL_MS = 250; // aggregated progress events, not one per network chunk
 const SAMPLE_INTERVAL_MS = 2000;  // throughput window the connection ramp measures
 const MAX_SEGMENT_ATTEMPTS = 5;
@@ -290,7 +293,7 @@ async function runSegmented({ url, fileName, tmpPath, finalPath, total, chunkSiz
     }
 
     if (failure) throw failure;
-    if (signal.aborted) throw new Error('DOWNLOAD_PAUSED');
+    if (signal.aborted) throw new Error(DOWNLOAD_PAUSED);
     // Never rename off a partial write: every chunk must be marked and the bytes must add up.
     if (doneSet.size !== chunks.length || completedBytes !== total) {
       throw new Error('Download failed: the file is incomplete.');
@@ -359,7 +362,7 @@ async function download(
     return await runSingleStream(args, onProgress);
   } catch (e) {
     // A user-initiated pause aborts the fetch; surface it as a recognizable, non-error signal.
-    if (controller.signal.aborted) throw new Error('DOWNLOAD_PAUSED');
+    if (controller.signal.aborted) throw new Error(DOWNLOAD_PAUSED);
     throw e;
   } finally {
     current = null;
@@ -435,4 +438,4 @@ function discardPartial(destDir, fileName) {
   return removeFile(partPath);
 }
 
-module.exports = { createDownloader, download, downloadModel, cancel, listPartials, discardPartial };
+module.exports = { createDownloader, download, downloadModel, cancel, listPartials, discardPartial, receivedBytes, removeSidecar, sidecarPathFor, DOWNLOAD_PAUSED };

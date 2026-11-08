@@ -530,6 +530,10 @@ More context uses more **VRAM**. If a model doesn't fit, lower this first.`,
 
 The **Engine device** line above shows the result.`,
   },
+  localCuda: {
+    label: 'CUDA',
+    description: 'Downloads the CUDA version of the engine for your NVIDIA card',
+  },
   localFlashAttention: {
     label: 'Flash Attention',
     description: 'Saves VRAM and often runs faster',

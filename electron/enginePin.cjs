@@ -11,7 +11,7 @@ const PIN_PATHS = [
   path.join(__dirname, '..', 'scripts', 'llamaServerPin.json'),
 ];
 
-/** @returns {{ tag: string, cuda: { assets: { name: string, digest: string, url: string }[] } }} */
+/** @returns {{ tag: string, cuda: { assets: { name: string, digest: string, size: number, unpackedSize: number, url: string }[] } }} */
 function readEnginePin(paths = PIN_PATHS) {
   const file = paths.find((p) => fs.existsSync(p));
   if (!file) throw new Error('The llama.cpp pin file is missing from this build.');
@@ -19,6 +19,8 @@ function readEnginePin(paths = PIN_PATHS) {
   const assets = (pin.cuda?.assets ?? []).map((a) => ({
     name: a.name,
     digest: a.digest,
+    size: a.size,
+    unpackedSize: a.unpackedSize,
     url: `${RELEASE_BASE}/${pin.tag}/${a.name}`,
   }));
   return { tag: pin.tag, cuda: { assets } };

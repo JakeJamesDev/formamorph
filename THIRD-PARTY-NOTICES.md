@@ -90,6 +90,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### NVIDIA CUDA libraries
+
+cuBLAS, cuBLASLt and the CUDA runtime, in the optional CUDA download of the llama-server engine on Windows (the `cudart-llama-bin-win-cuda-13.4-x64.zip` asset of the llama.cpp release pinned in `scripts/llamaServerPin.json`). The app downloads them from that release at the player's request; they are not part of the installed app. © NVIDIA Corporation. Distributed under the NVIDIA CUDA Toolkit End User License Agreement (<https://docs.nvidia.com/cuda/eula/index.html>).
+
 ### LLVM OpenMP
 
 Part of the llama-server engine in the desktop build (`build-assets/llama-server/`, llama.cpp release pinned in `scripts/llamaServerPin.json`). `libomp` in the Windows build. Apache License 2.0 with LLVM Exceptions.

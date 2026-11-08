@@ -21,6 +21,7 @@ import {
 } from '@/contexts/settingsDefaults';
 import type { LocalCacheType, LocalContextOverflow } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
+import { CudaEngineRow } from './CudaEngineRow';
 import { effectiveVCacheType } from '../../../electron/cacheTypes.cjs';
 
 /**
@@ -249,6 +250,9 @@ export function LocalModelPanel() {
         )}
       </Row>
       )}
+
+      {/* NVIDIA machines only; the row renders nothing elsewhere. */}
+      <CudaEngineRow engine={engine} />
 
       {/* Flash Attention groups with the reload settings above (all "apply on reload"). */}
       {advancedMode && (

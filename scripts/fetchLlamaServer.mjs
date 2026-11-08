@@ -53,7 +53,7 @@ export async function listAssets(tag, fetchImpl = fetch) {
   return new Map((await listReleaseAssets(tag, fetchImpl)).map((a) => [a.name, a.browser_download_url]));
 }
 
-/** The pinned CUDA assets of `tag` as the release lists them: `{ name, digest }`. Throws when either is missing or has no digest. */
+/** The pinned CUDA assets of `tag` as the release lists them: `{ name, digest, size, url }`. Throws when either is missing or has no digest. */
 export async function cudaAssetsOf(tag, fetchImpl = fetch) {
   const listed = new Map((await listReleaseAssets(tag, fetchImpl)).map((a) => [a.name, a]));
   const names = CUDA_ASSETS.map((c) => c.asset(tag));
@@ -61,7 +61,39 @@ export async function cudaAssetsOf(tag, fetchImpl = fetch) {
   if (missing.length) throw new Error(`Release "${tag}" lacks CUDA assets: ${missing.join(', ')}.`);
   const undigested = names.filter((n) => !/^sha256:[0-9a-f]{64}$/.test(listed.get(n).digest ?? ''));
   if (undigested.length) throw new Error(`Release "${tag}" lists no SHA-256 digest for: ${undigested.join(', ')}.`);
-  return names.map((name) => ({ name, digest: listed.get(name).digest }));
+  return names.map((name) => {
+    const a = listed.get(name);
+    return { name, digest: a.digest, size: a.size, url: a.browser_download_url };
+  });
+}
+
+const ZIP_EOCD = 0x06054b50;
+const ZIP_CENTRAL = 0x02014b50;
+const EOCD_SEARCH = 65_557; // the 22-byte record plus the longest zip comment
+
+async function fetchRange(url, start, end, fetchImpl) {
+  const res = await fetchImpl(url, { headers: { 'User-Agent': headers()['User-Agent'], Range: `bytes=${start}-${end}` }, redirect: 'follow' });
+  if (res.status !== 206) throw new Error(`Range request for ${url} answered ${res.status}.`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+/** The summed uncompressed size of a remote zip's entries, read from its central directory with two range requests. */
+export async function zipUnpackedSize(url, size, fetchImpl = fetch) {
+  const tailStart = Math.max(0, size - EOCD_SEARCH);
+  const tail = await fetchRange(url, tailStart, size - 1, fetchImpl);
+  let eocd = -1;
+  for (let i = tail.length - 22; i >= 0; i--) if (tail.readUInt32LE(i) === ZIP_EOCD) { eocd = i; break; }
+  if (eocd < 0) throw new Error(`${url} has no zip end record.`);
+  const cdSize = tail.readUInt32LE(eocd + 12);
+  const cdOffset = tail.readUInt32LE(eocd + 16);
+  if (cdSize === 0xffffffff || cdOffset === 0xffffffff) throw new Error(`${url} is a ZIP64 archive, which the pin reader does not read.`);
+  const cd = await fetchRange(url, cdOffset, cdOffset + cdSize - 1, fetchImpl);
+  let total = 0;
+  for (let p = 0; p + 46 <= cd.length && cd.readUInt32LE(p) === ZIP_CENTRAL;) {
+    total += cd.readUInt32LE(p + 24);
+    p += 46 + cd.readUInt16LE(p + 28) + cd.readUInt16LE(p + 30) + cd.readUInt16LE(p + 32);
+  }
+  return total;
 }
 
 /**
@@ -77,12 +109,17 @@ export async function verifyCudaPin({ fetchImpl = fetch, pin } = {}) {
     const mine = pinned.find((p) => p.name === asset.name);
     if (!mine) throw new Error(`The pin does not name ${asset.name}. Run npm run llama-server:bump -- ${pin.tag}.`);
     if (mine.digest !== asset.digest) throw new Error(`CUDA asset ${asset.name} has digest ${asset.digest} on release "${pin.tag}", but the pin holds ${mine.digest}.`);
+    if (mine.size !== asset.size) throw new Error(`CUDA asset ${asset.name} has size ${asset.size} on release "${pin.tag}", but the pin holds ${mine.size}. Run npm run llama-server:bump -- ${pin.tag}.`);
+    if (!(mine.unpackedSize > 0)) throw new Error(`The pin holds no unpacked size for ${asset.name}. Run npm run llama-server:bump -- ${pin.tag}.`);
   }
 }
 
-/** Writes `tag` and its CUDA asset names and digests into the pin file. Refuses a tag whose release lacks either asset. */
+/** Writes `tag` and its CUDA asset names, digests, sizes and unpacked sizes into the pin file. Refuses a tag whose release lacks either asset. */
 export async function bumpPin(tag, { fetchImpl = fetch, file = PIN_FILE } = {}) {
-  const assets = await cudaAssetsOf(tag, fetchImpl);
+  const assets = [];
+  for (const { name, digest, size, url } of await cudaAssetsOf(tag, fetchImpl)) {
+    assets.push({ name, digest, size, unpackedSize: await zipUnpackedSize(url, size, fetchImpl) });
+  }
   await writeFile(file, `${JSON.stringify({ tag, cuda: { assets } }, null, 2)}\n`);
   return assets;
 }

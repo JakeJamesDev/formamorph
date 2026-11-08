@@ -8,6 +8,8 @@ const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
 const { cudaSupport } = require('./nvidiaFacts.cjs');
+const { createCudaInstall } = require('./cudaInstall.cjs');
+const { readEnginePin } = require('./enginePin.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
 // exports. See llmEngineProxy.cjs.
 const llmEngine = require('./llmEngineProxy.cjs');
@@ -374,6 +376,33 @@ ipcMain.handle('vram-stats', async () => {
 
 // CUDA support verdict from its own nvidia-smi query, so the VRAM readout above is never affected by it.
 ipcMain.handle('cuda-support', () => cudaSupport());
+
+// The optional CUDA build, one folder per pinned tag under userData/engines. Windows only (spec Q2).
+let cudaInstall = null;
+function cuda() {
+  cudaInstall ??= createCudaInstall({
+    enginesDir: path.join(app.getPath('userData'), 'engines'),
+    pin: readEnginePin(),
+    downloader: modelDownload.createDownloader({
+      allowedHosts: ['github.com'],
+      busyMessage: 'A CUDA download is already in progress.',
+      hostMessage: 'CUDA downloads are only allowed from github.com.',
+    }),
+    // The row follows the VRAM query's NVIDIA list; the support verdict comes from the facts query.
+    probe: async () => {
+      const nvidia = process.platform === 'win32' && (await nvidiaGpus()).length > 0;
+      return { nvidia, support: nvidia ? await cudaSupport() : { supported: false, reason: 'no-nvidia-card' } };
+    },
+    stopEngine: () => llmEngine.stop(),
+    freeSpace: modelMove.freeSpace,
+    onStatus: (s) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('cuda-status', s); },
+  });
+  return cudaInstall;
+}
+ipcMain.handle('cuda-status', () => cuda().status({ refresh: true }));
+ipcMain.handle('cuda-install', () => cuda().install());
+ipcMain.handle('cuda-cancel', () => { cuda().cancel(); return true; });
+ipcMain.handle('cuda-remove', () => cuda().remove());
 
 // Desktop-only local LLM: load a GGUF and serve an OpenAI-compatible endpoint on localhost. The renderer
 // then points its normal OpenAI endpoint at it. Handlers return the engine's serializable state. Loading

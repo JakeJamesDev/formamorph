@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, readFile, readdir, readlink, rm, symlink, writeFile } f
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BUILDS, CUDA_ASSETS, bumpPin, cudaAssetsOf, fetchLlamaServer, listAssets, platformsFromArgs, readPin, verifyCudaPin } from './fetchLlamaServer.mjs';
+import { zipSync } from 'fflate';
+import { BUILDS, CUDA_ASSETS, bumpPin, cudaAssetsOf, fetchLlamaServer, listAssets, platformsFromArgs, readPin, verifyCudaPin, zipUnpackedSize } from './fetchLlamaServer.mjs';
 
 // The asset names of the pinned tag's real release, recorded with the API. A pin bump re-records this file.
 const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b12078.json'), 'utf8'));
@@ -136,11 +137,28 @@ describe('CUDA pin', () => {
 
   const HEX_A = 'a'.repeat(64);
   const HEX_B = 'b'.repeat(64);
-  const release = (tag, { digests = [HEX_A, HEX_B], skip = [] } = {}) => ({
-    assets: CUDA_ASSETS.map((c, i) => ({ name: c.asset(tag), digest: `sha256:${digests[i]}`, browser_download_url: `https://x/${c.id}` })).filter((a) => !skip.includes(a.name)),
+  // Two real zips: entry sizes 3 + 5 and 7, so the unpacked sizes are 8 and 7.
+  const ZIPS = [
+    Buffer.from(zipSync({ 'llama-server.exe': new Uint8Array(3), 'ggml-cuda.dll': new Uint8Array(5) })),
+    Buffer.from(zipSync({ 'cublas64_13.dll': new Uint8Array(7) })),
+  ];
+  const UNPACKED = [8, 7];
+  const ranged = (zip) => async (_url, init) => {
+    const [start, end] = /bytes=(\d+)-(\d+)/.exec(init.headers.Range).slice(1).map(Number);
+    return new Response(zip.subarray(start, end + 1), { status: 206 });
+  };
+  const release = (tag, { digests = [HEX_A, HEX_B], sizes = ZIPS.map((z) => z.length), skip = [] } = {}) => ({
+    assets: CUDA_ASSETS.map((c, i) => ({ name: c.asset(tag), digest: `sha256:${digests[i]}`, size: sizes[i], browser_download_url: `https://x/${c.id}` })).filter((a) => !skip.includes(a.name)),
   });
-  const serving = (body) => async () => json(200, body);
-  const pinOf = (tag, digests = [HEX_A, HEX_B]) => ({ tag, cuda: { assets: CUDA_ASSETS.map((c, i) => ({ name: c.asset(tag), digest: `sha256:${digests[i]}` })) } });
+  /** The release API at its own URL, and each asset's zip behind range requests at its download URL. */
+  const serving = (body) => async (url, init) => {
+    const i = CUDA_ASSETS.findIndex((c) => url === `https://x/${c.id}`);
+    return i < 0 ? json(200, body) : ranged(ZIPS[i])(url, init);
+  };
+  const pinOf = (tag, digests = [HEX_A, HEX_B]) => ({
+    tag,
+    cuda: { assets: CUDA_ASSETS.map((c, i) => ({ name: c.asset(tag), digest: `sha256:${digests[i]}`, size: ZIPS[i].length, unpackedSize: UNPACKED[i] })) },
+  });
 
   it('names only the two win-x64 CUDA 13.4 assets, the cudart one without a tag', () => {
     expect(CUDA_ASSETS.map((c) => c.asset('b9'))).toEqual(['llama-b9-bin-win-cuda-13.4-x64.zip', 'cudart-llama-bin-win-cuda-13.4-x64.zip']);
@@ -153,10 +171,12 @@ describe('CUDA pin', () => {
     for (const a of pin.cuda.assets) {
       expect(names).toContain(a.name);
       expect(a.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+      expect(a.size).toBeGreaterThan(0);
+      expect(a.unpackedSize).toBeGreaterThan(a.size);
     }
   });
 
-  it('bump writes the tag with both asset names and digests', async () => {
+  it('bump writes the tag with both asset names, digests, sizes and unpacked sizes', async () => {
     const file = path.join(await tmp('pin-'), 'pin.json');
     await bumpPin('b9', { fetchImpl: serving(release('b9')), file });
     expect(JSON.parse(await readFile(file, 'utf8'))).toEqual(pinOf('b9'));
@@ -188,6 +208,22 @@ describe('CUDA pin', () => {
   it('the gate fails when a digest differs from the pin', async () => {
     const changed = release('b9', { digests: [HEX_A, 'c'.repeat(64)] });
     await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(changed) })).rejects.toThrow(/cudart-llama-bin-win-cuda-13\.4-x64\.zip has digest sha256:c+/);
+  });
+
+  it('the gate fails when a size differs from the pin', async () => {
+    const changed = release('b9', { sizes: [ZIPS[0].length, ZIPS[1].length + 1] });
+    await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(changed) })).rejects.toThrow(/cudart-llama-bin-win-cuda-13\.4-x64\.zip has size/);
+  });
+
+  it('the gate fails for a pin with no unpacked size', async () => {
+    const pin = pinOf('b9');
+    delete pin.cuda.assets[0].unpackedSize;
+    await expect(verifyCudaPin({ pin, fetchImpl: serving(release('b9')) })).rejects.toThrow(/no unpacked size/);
+  });
+
+  it('reads a zip\'s unpacked size past a trailing comment', async () => {
+    const zip = Buffer.from(zipSync({ a: new Uint8Array(11) }, { comment: 'x'.repeat(300) }));
+    expect(await zipUnpackedSize('https://x/a', zip.length, ranged(zip))).toBe(11);
   });
 
   it('the gate fails for a pin with no CUDA assets', async () => {

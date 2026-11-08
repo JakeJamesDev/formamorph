@@ -195,6 +195,26 @@ export type CudaSupport =
       driverFloor?: number;
     };
 
+/** Why a CUDA install stopped short (electron/cudaInstall.cjs). */
+export type CudaInstallError =
+  | { kind: 'no-space'; neededBytes: number; freeBytes: number }
+  | { kind: 'digest'; asset: string }
+  | { kind: 'failed'; message: string };
+
+/** The CUDA engine build's install status (electron/cudaInstall.cjs). */
+export type CudaStatus = {
+  /** Whether nvidia-smi lists an NVIDIA card. */
+  nvidia: boolean;
+  support: CudaSupport | null;
+  /** Both zips, summed. */
+  downloadBytes: number;
+} & (
+  | { state: 'not-installed' | 'stale'; tag?: string; partialBytes: number; error?: CudaInstallError }
+  | { state: 'downloading'; received: number; total: number; phase: 'download' | 'verify' | 'unpack' }
+  | { state: 'installed'; tag: string }
+  | { state: 'unsupported' }
+);
+
 declare global {
   interface Window {
     formamorphDesktop?: WindowChromeBridge & {
@@ -203,6 +223,14 @@ declare global {
       vramStats?: () => Promise<unknown>;
       /** Whether this machine can run the CUDA engine build, from a separate nvidia-smi query. */
       cudaSupport?: () => Promise<CudaSupport>;
+      /** The optional CUDA engine build. `install` resolves with the final status; progress arrives on `onStatus`. */
+      cuda?: {
+        status: () => Promise<CudaStatus>;
+        install: () => Promise<CudaStatus>;
+        cancel: () => Promise<boolean>;
+        remove: () => Promise<CudaStatus>;
+        onStatus: (cb: (s: CudaStatus) => void) => () => void;
+      };
       /** Tell the main process which ComfyUI server to remove this window's Origin for; null for none. */
       setComfyEndpoint?: (url: string | null) => Promise<void>;
       /** Local LLM engine: load a GGUF served on a localhost OpenAI endpoint and read its status. */

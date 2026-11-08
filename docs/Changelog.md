@@ -30,6 +30,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **On Windows, the merge brings over your settings, sign-in and chosen model folder.** A setting you already have stays. Restart Formamorph when the merge asks, to use the settings that came over.
     - **On Windows, the merge offer now brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
     - **The profile merge now moves your downloaded local models.** Models in the other copy's folder move beside the main exe, smallest first. A model you already have stays.
+  - **CUDA Engine:**
+    - **On Windows with an NVIDIA card, the Local Model panel can download NVIDIA's CUDA version of the engine.** The CUDA row shows the size, progress and Cancel, and resumes a stopped download. A card or driver that can't run it shows why. Remove frees the space.
   - **A Getting Ready bar shows whenever Formamorph takes a moment to start, and before the first launch's welcome animation.** On a fast computer it never appears.
   - **An entity's Relationships field in the World Editor has a `?` with a worked example.** It shows which way a row reads, so *son* beside Tom on Mara means Tom is Mara's son.
   - **The Supporters list in Credits and on the Supporters page shows names in a grid under each tier's badge.** The grid fits as many columns as there is room for. Point at a name to see how long that person has supported.

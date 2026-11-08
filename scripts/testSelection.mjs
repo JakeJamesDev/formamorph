@@ -80,6 +80,8 @@ export const GRAPH_COVERED = {
   'electron/llmEngine.test.mjs': 'reads only its own temp folder',
   'electron/llamaServer.test.mjs': 'reads only its own temp folder',
   'electron/nvidiaFacts.cjs': 'runs nvidia-smi only in its default runner, which tests replace',
+  'electron/cudaInstall.cjs': 'reads only the engines folder its caller passes; runs tar only in its default extractor, which tests replace',
+  'electron/cudaInstall.test.mjs': 'reads only its own temp folder',
   'scripts/typecheck.mjs':'checks only the folder its caller passes; runs git only in mainCheckoutRoot, which no test calls',
   'scripts/versionSiteImages.mjs': 'reads only the folder its caller passes',
   'scripts/copySweep.mjs': 'reads files only in its command-line sweep, which no test calls',

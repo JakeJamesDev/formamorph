@@ -14,6 +14,8 @@ describe('readEnginePin', () => {
     expect(pin.cuda.assets).toHaveLength(2);
     for (const a of pin.cuda.assets) {
       expect(a.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+      expect(a.size).toBeGreaterThan(0);
+      expect(a.unpackedSize).toBeGreaterThan(0);
       expect(a.url).toBe(`https://github.com/ggml-org/llama.cpp/releases/download/${pin.tag}/${a.name}`);
     }
   });

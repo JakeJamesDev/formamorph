@@ -18,6 +18,18 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   leaveFullScreen: () => ipcRenderer.invoke('window-leave-full-screen'),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
   cudaSupport: () => ipcRenderer.invoke('cuda-support'),
+  // The optional CUDA engine build: status, install with pushed progress, cancel (keeps partials), remove.
+  cuda: {
+    status: () => ipcRenderer.invoke('cuda-status'),
+    install: () => ipcRenderer.invoke('cuda-install'),
+    cancel: () => ipcRenderer.invoke('cuda-cancel'),
+    remove: () => ipcRenderer.invoke('cuda-remove'),
+    onStatus: (cb) => {
+      const handler = (_event, s) => cb(s);
+      ipcRenderer.on('cuda-status', handler);
+      return () => ipcRenderer.removeListener('cuda-status', handler);
+    },
+  },
   // The ComfyUI server whose Origin check the main process passes for this window; null for none.
   setComfyEndpoint: (url) => ipcRenderer.invoke('comfy-endpoint', url),
   // Local LLM engine: stop/load a GGUF served on a localhost OpenAI endpoint, read its status, learn
