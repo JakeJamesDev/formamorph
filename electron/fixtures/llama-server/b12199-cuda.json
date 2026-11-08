@@ -1,0 +1,1019 @@
+{
+ "tag": "b12199",
+ "listDevices": "Available devices:\r\n  CUDA0: NVIDIA GeForce RTX 4090 (24563 MiB, 23036 MiB free)\r\n",
+ "scenarios": {
+  "loaded": {
+   "args": [
+    "--models-preset",
+    "<preset>",
+    "--offline",
+    "--no-models-autoload",
+    "--models-max",
+    "1",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "50572",
+    "--log-jsonl",
+    "--reasoning-format",
+    "deepseek",
+    "-lv",
+    "4",
+    "-c",
+    "4096",
+    "-ngl",
+    "auto",
+    "--fit",
+    "on",
+    "-fa",
+    "on",
+    "-np",
+    "2",
+    "--kv-unified",
+    "-ctk",
+    "f16",
+    "-ctv",
+    "f16"
+   ],
+   "models": {
+    "data": [
+     {
+      "id": "<modelId>",
+      "aliases": [],
+      "tags": [],
+      "object": "model",
+      "owned_by": "llamacpp",
+      "created": 1794115359,
+      "status": {
+       "value": "unloaded",
+       "args": [
+        "<bin>",
+        "--host",
+        "127.0.0.1",
+        "--log-colors",
+        "off",
+        "--log-jsonl",
+        "--offline",
+        "--port",
+        "0",
+        "--reasoning-format",
+        "deepseek",
+        "--alias",
+        "<modelId>",
+        "--ctx-size",
+        "4096",
+        "--cache-type-k",
+        "f16",
+        "--cache-type-v",
+        "f16",
+        "--flash-attn",
+        "on",
+        "--fit",
+        "on",
+        "--kv-unified",
+        "--log-verbosity",
+        "4",
+        "--model",
+        "<model>",
+        "--n-gpu-layers",
+        "auto",
+        "--parallel",
+        "2"
+       ],
+       "preset": "[<modelId>]\nlog-colors = off\nlog-jsonl = 1\noffline = 1\nreasoning-format = deepseek\nctx-size = 4096\ncache-type-k = f16\ncache-type-v = f16\nflash-attn = on\nfit = on\nkv-unified = 1\nlog-verbosity = 4\nmodel = <model>\nn-gpu-layers = auto\nparallel = 2\n\n"
+      },
+      "architecture": {
+       "input_modalities": [
+        "text"
+       ],
+       "output_modalities": [
+        "text"
+       ]
+      },
+      "source": "preset",
+      "can_remove": false,
+      "context_length": 131072
+     }
+    ],
+    "object": "list"
+   },
+   "loadReply": {
+    "success": true
+   },
+   "outcome": "loaded",
+   "chat": {
+    "choices": [
+     {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+       "role": "assistant",
+       "content": "Hi there."
+      }
+     }
+    ],
+    "created": 1794115366,
+    "model": "<modelId>",
+    "system_fingerprint": "b12199-372dc5ca1",
+    "object": "chat.completion",
+    "usage": {
+     "completion_tokens": 4,
+     "prompt_tokens": 15,
+     "total_tokens": 19,
+     "prompt_tokens_details": {
+      "cached_tokens": 0
+     }
+    },
+    "id": "chatcmpl-dVNnocMN0ySgn2MaaFrHvlXJos18m4es",
+    "timings": {
+     "cache_n": 0,
+     "prompt_n": 15,
+     "prompt_ms": 25.132,
+     "prompt_per_token_ms": 1.6754666666666667,
+     "prompt_per_second": 596.8486391851027,
+     "predicted_n": 4,
+     "predicted_ms": 28.687,
+     "predicted_per_token_ms": 9.562333333333333,
+     "predicted_per_second": 104.57698609126084
+    }
+   },
+   "chatStream": "data: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null}}],\"created\":1794115366,\"id\":\"chatcmpl-4nOu08pwqWhxMDkCAYISSyMTirvSMcOa\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b12199-372dc5ca1\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"content\":\"Hi\"}}],\"created\":1794115366,\"id\":\"chatcmpl-4nOu08pwqWhxMDkCAYISSyMTirvSMcOa\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b12199-372dc5ca1\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"content\":\" there\"}}],\"created\":1794115366,\"id\":\"chatcmpl-4nOu08pwqWhxMDkCAYISSyMTirvSMcOa\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b12199-372dc5ca1\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"content\":\".\"}}],\"created\":1794115366,\"id\":\"chatcmpl-4nOu08pwqWhxMDkCAYISSyMTirvSMcOa\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b12199-372dc5ca1\",\"object\":\"chat.completion.chunk\"}\n\ndata: {\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"delta\":{}}],\"created\":1794115366,\"id\":\"chatcmpl-4nOu08pwqWhxMDkCAYISSyMTirvSMcOa\",\"model\":\"<modelId>\",\"system_fingerprint\":\"b12199-372dc5ca1\",\"object\":\"chat.completion.chunk\",\"timings\":{\"cache_n\":14,\"prompt_n\":1,\"prompt_ms\":8.836,\"prompt_per_token_ms\":8.836,\"prompt_per_second\":113.17338162064281,\"predicted_n\":4,\"predicted_ms\":25.742,\"predicted_per_token_ms\":8.580666666666668,\"predicted_per_second\":116.54106130059824}}\n\ndata: [DONE]\n\n",
+   "boot": [
+    "{\"type\":\"log\",\"time\":71103,\"level\":\"info\",\"msg\":\"ggml_cuda_init: found 1 CUDA devices (Total VRAM: 24563 MiB):\\n\"}\r",
+    "{\"type\":\"log\",\"time\":71187,\"level\":\"info\",\"msg\":\"  Device 0: NVIDIA GeForce RTX 4090, compute capability 8.9, VMM: yes, VRAM: 24563 MiB\\n\"}\r",
+    "{\"type\":\"log\",\"time\":71216,\"level\":\"info\",\"msg\":\"load_backend: loaded CUDA backend from <binDir>\\\\ggml-cuda.dll\\n\"}\r",
+    "{\"type\":\"log\",\"time\":72087,\"level\":\"info\",\"msg\":\"load_backend: loaded RPC backend from <binDir>\\\\ggml-rpc.dll\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80365,\"level\":\"info\",\"msg\":\"load_backend: loaded CPU backend from <binDir>\\\\ggml-cpu-alderlake.dll\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80579,\"level\":\"info\",\"msg\":\"srv  llama_server: initializing ...\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80595,\"level\":\"info\",\"msg\":\"cmn  common_param: common_params_print_info: build 12199 (372dc5ca1) with Clang 20.1.8 for Windows x86_64\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80595,\"level\":\"info\",\"msg\":\"cmn  common_param: common_params_print_info: verbosity = 4 (adjust with the `-lv N` CLI arg)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80650,\"level\":\"info\",\"msg\":\"cmn  common_param: system_info: n_threads = 24 (n_threads_batch = 24) / 32 | CUDA : ARCHS = 750,800,860,890,900,1200,1210 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | \\n\"}\r",
+    "{\"type\":\"log\",\"time\":80659,\"level\":\"info\",\"msg\":\"srv  server_run_r: starting server in router mode. models will be automatically loaded on-demand\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80764,\"level\":\"info\",\"msg\":\"srv  init_listene: running without SSL\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80947,\"level\":\"info\",\"msg\":\"srv          init: using 31 threads for HTTP server\\n\"}\r",
+    "{\"type\":\"log\",\"time\":82671,\"level\":\"info\",\"msg\":\"srv   load_models: Loaded 0 cached model presets from C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\llama-rec-303oQp\\\\cache\\n\"}\r",
+    "{\"type\":\"log\",\"time\":82918,\"level\":\"info\",\"msg\":\"srv   load_models: Loaded 1 custom model presets from <preset>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":117726,\"level\":\"info\",\"msg\":\"srv    operator(): Available models (1):\\n\"}\r",
+    "{\"type\":\"log\",\"time\":117731,\"level\":\"info\",\"msg\":\"srv    operator():   [    preset] <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":117857,\"level\":\"warn\",\"msg\":\"srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":117868,\"level\":\"warn\",\"msg\":\"srv  server_setup: security: router mode enabled - do not expose to untrusted environments\\n\"}\r",
+    "{\"type\":\"log\",\"time\":121049,\"level\":\"info\",\"msg\":\"srv  server_on_li: listening on http://127.0.0.1:50572\\n\"}\r"
+   ],
+   "load": [
+    "{\"type\":\"log\",\"time\":191838,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with name=<modelId> on port 50575\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191873,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with args:\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191875,\"level\":\"info\",\"msg\":\"srv          load:   <bin>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191875,\"level\":\"info\",\"msg\":\"srv          load:   --host\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191875,\"level\":\"info\",\"msg\":\"srv          load:   127.0.0.1\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191875,\"level\":\"info\",\"msg\":\"srv          load:   --log-colors\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191876,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191876,\"level\":\"info\",\"msg\":\"srv          load:   --log-jsonl\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191876,\"level\":\"info\",\"msg\":\"srv          load:   --offline\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191876,\"level\":\"info\",\"msg\":\"srv          load:   --port\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191876,\"level\":\"info\",\"msg\":\"srv          load:   50575\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191876,\"level\":\"info\",\"msg\":\"srv          load:   --reasoning-format\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191876,\"level\":\"info\",\"msg\":\"srv          load:   deepseek\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191877,\"level\":\"info\",\"msg\":\"srv          load:   --alias\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191877,\"level\":\"info\",\"msg\":\"srv          load:   <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191878,\"level\":\"info\",\"msg\":\"srv          load:   --ctx-size\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191878,\"level\":\"info\",\"msg\":\"srv          load:   4096\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   --cache-type-k\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   f16\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   --cache-type-v\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   f16\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   --flash-attn\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   on\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   --fit\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   on\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191879,\"level\":\"info\",\"msg\":\"srv          load:   --kv-unified\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   --log-verbosity\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   4\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   --model\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   <model>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   --n-gpu-layers\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   auto\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   --parallel\\n\"}\r",
+    "{\"type\":\"log\",\"time\":191880,\"level\":\"info\",\"msg\":\"srv          load:   2\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335530,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":90873,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"ggml_cuda_init: found 1 CUDA devices (Total VRAM: 24563 MiB):\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335541,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":90958,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"  Device 0: NVIDIA GeForce RTX 4090, compute capability 8.9, VMM: yes, VRAM: 24563 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335542,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":90984,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_backend: loaded CUDA backend from <binDir>\\\\\\\\ggml-cuda.dll\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335542,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":91975,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_backend: loaded RPC backend from <binDir>\\\\\\\\ggml-rpc.dll\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335544,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":101016,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_backend: loaded CPU backend from <binDir>\\\\\\\\ggml-cpu-alderlake.dll\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335545,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":101179,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: initializing ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335546,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":101193,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: common_params_print_info: build 12199 (372dc5ca1) with Clang 20.1.8 for Windows x86_64\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335547,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":101194,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: common_params_print_info: verbosity = 4 (adjust with the `-lv N` CLI arg)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":335562,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":101196,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: device_info:\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436773,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":197178,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param:   - CUDA0   : NVIDIA GeForce RTX 4090 (24563 MiB, 23036 MiB free)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436777,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":197188,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param:   - CPU     : 13th Gen Intel(R) Core(TM) i9-13900K (65220 MiB, 22988 MiB free)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436779,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":197241,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: system_info: n_threads = 24 (n_threads_batch = 24) / 32 | CUDA : ARCHS = 750,800,860,890,900,1200,1210 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | \\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436779,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":197317,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  init_listene: running without SSL\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436780,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":197476,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv          init: using 31 threads for HTTP server\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436780,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":197536,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436782,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":202099,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: loading model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436782,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":202102,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: local path '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436782,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":202123,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_fit_a: fitting params to device memory ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436783,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":202123,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_fit_a: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":436783,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":202160,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_params_fit_impl: getting device memory data for initial parameters:\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590381,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":341447,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_memory_breakdown_print: | memory breakdown [MiB] | total    free    self   model   context   compute    unaccounted |\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590385,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":341452,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_memory_breakdown_print: |   - CUDA0 (RTX 4090)   | 24563 = 23036 + (3024 =  2430 +     512 +      82) +       -1497 |\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590385,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":341453,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_memory_breakdown_print: |   - Host               |                   239 =   211 +       0 +      28                |\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590388,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"fit_memory_breakdown\\\",\\\"data\\\":{\\\"unit\\\":\\\"MiB\\\",\\\"rows\\\":[{\\\"kind\\\":\\\"device\\\",\\\"name\\\":\\\"CUDA0\\\",\\\"description\\\":\\\"RTX 4090\\\",\\\"total\\\":24563,\\\"free\\\":23036,\\\"self\\\":3024,\\\"model\\\":2430,\\\"context\\\":512,\\\"compute\\\":82,\\\"unaccounted\\\":-1497},{\\\"kind\\\":\\\"host\\\",\\\"name\\\":\\\"Host\\\",\\\"self\\\":239,\\\"model\\\":211,\\\"context\\\":0,\\\"compute\\\":28}]}}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590389,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":365732,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_params_fit_impl: projected to use 3024 MiB of device memory vs. 23036 MiB of free device memory\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590389,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":365737,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_params_fit_impl: will leave 20011 >= 1024 MiB of free device memory, no changes needed\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590390,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":365739,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_fit_params: successfully fit params to free device memory\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":590390,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":365747,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_fit_params: fitting params to free memory took 0.16 seconds\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640762,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396899,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: loaded meta data with 28 key-value pairs and 292 tensors from <model> (version GGUF V3 (latest))\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640765,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396909,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640766,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396911,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   0:                       general.architecture str              = llama\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640766,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396912,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   1:                               general.type str              = model\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640767,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396912,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   2:                               general.name str              = Impish_LLAMA_4B_V2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640767,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396913,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   3:                       general.organization str              = SicariusSicariiStuff\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640767,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396913,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   4:                         general.size_label str              = 4.5B\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640767,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396914,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   5:                          llama.block_count u32              = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640767,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396915,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   6:                       llama.context_length u32              = 131072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640768,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396915,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   7:                     llama.embedding_length u32              = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640768,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396915,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   8:                  llama.feed_forward_length u32              = 9216\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640768,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396916,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   9:                 llama.attention.head_count u32              = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640768,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396916,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  10:              llama.attention.head_count_kv u32              = 8\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640768,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396920,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  11:                       llama.rope.freq_base f32              = 500000.000000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640769,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396926,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  12:     llama.attention.layer_norm_rms_epsilon f32              = 0.000010\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640769,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396926,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  13:                 llama.attention.key_length u32              = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640769,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396927,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  14:               llama.attention.value_length u32              = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640769,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396927,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  15:                           llama.vocab_size u32              = 128256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640770,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396927,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  16:                 llama.rope.dimension_count u32              = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640770,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396928,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  17:                       tokenizer.ggml.model str              = gpt2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640770,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396928,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  18:                         tokenizer.ggml.pre str              = llama-bpe\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640771,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396931,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  19:                      tokenizer.ggml.tokens arr[str,128256]  = [\\\\\\\"!\\\\\\\", \\\\\\\"\\\\\\\\\\\\\\\"\\\\\\\", \\\\\\\"#\\\\\\\", \\\\\\\"$\\\\\\\", \\\\\\\"%\\\\\\\", \\\\\\\"&\\\\\\\", \\\\\\\"'\\\\\\\", ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640771,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396933,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  20:                  tokenizer.ggml.token_type arr[i32,128256]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640771,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396934,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  21:                      tokenizer.ggml.merges arr[str,280147]  = [\\\\\\\"Ġ Ġ\\\\\\\", \\\\\\\"Ġ ĠĠĠ\\\\\\\", \\\\\\\"ĠĠ ĠĠ\\\\\\\", \\\\\\\"...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640771,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396935,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  22:                tokenizer.ggml.bos_token_id u32              = 128000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640774,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396935,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  23:                tokenizer.ggml.eos_token_id u32              = 128019\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640784,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396936,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  24:            tokenizer.ggml.padding_token_id u32              = 128004\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640786,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396937,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  25:                    tokenizer.chat_template str              = {% if not add_generation_prompt is de...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640788,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396937,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  26:               general.quantization_version u32              = 2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640798,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396938,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  27:                          general.file_type u32              = 15\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640798,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396938,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - type  f32:   66 tensors\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640799,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396939,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - type q4_K:  193 tensors\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640801,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396939,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - type q6_K:   33 tensors\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640806,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396940,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: file format = GGUF V3 (latest)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640809,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396940,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: file type   = Q4_K - Medium\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640813,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396941,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: file size   = 2.58 GiB (4.91 BPW) \\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640814,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":396972,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_prepare_model_devices: using device CUDA0 (NVIDIA GeForce RTX 4090) (0000:01:00.0) - 23036 MiB free\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":691275,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":463672,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: 0 unused tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742220,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":477004,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: printing all EOG tokens:\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742225,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":477009,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128001 ('<|end_of_text|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742225,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":477010,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128008 ('<|eom_id|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742226,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":477010,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128009 ('<|eot_id|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742226,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":477010,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128019 ('<|im_end|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742226,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":477236,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: special tokens cache size = 256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742227,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489284,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: token to piece cache size = 0.7999 MB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742227,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489297,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: arch                  = llama\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742227,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489298,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: vocab_only            = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742228,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489298,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: no_alloc              = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742230,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489298,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_ctx_train           = 131072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742230,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489299,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_inp            = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742230,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489299,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd                = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742230,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489299,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_out            = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742231,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489300,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_layer               = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742231,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489300,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_layer_all           = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742231,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489308,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_head                = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742232,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489310,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_head_kv             = 8\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742232,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489310,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_rot                 = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742232,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489310,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_swa                 = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742232,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489311,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: is_swa_any            = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742247,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489311,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: non_causal_type       = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742248,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489311,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_head_k         = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742248,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489311,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_head_v         = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742249,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489313,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_gqa                 = 4\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742249,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489314,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_k_gqa          = 1024\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742249,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489315,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_v_gqa          = 1024\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742249,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489316,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_norm_eps            = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742250,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489317,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_norm_rms_eps        = 1.0e-05\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742250,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489317,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_clamp_kqv           = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742250,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489317,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_max_alibi_bias      = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742250,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489317,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_logit_scale         = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742250,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489317,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_attn_scale          = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742251,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489318,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_attn_value_scale    = 0.0000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742251,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489319,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_ff                  = 9216\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742251,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489319,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_expert              = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742251,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489320,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_expert_used         = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742251,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489320,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_expert_groups       = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742252,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489320,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_group_used          = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742252,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489320,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: causal attn           = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742252,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489321,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: pooling type          = -1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742252,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489321,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope type             = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742253,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489321,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope scaling          = linear\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742260,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489322,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: freq_base_train       = 500000.0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742261,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489323,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: freq_scale_train      = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742261,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489323,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_ctx_orig_yarn       = 131072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742261,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489323,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope_yarn_log_mul     = 0.0000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742261,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489323,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope_finetuned        = unknown\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742261,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489324,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: model type            = 8B\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742262,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489325,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: model params          = 4.51 B\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742262,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489325,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: general.name          = Impish_LLAMA_4B_V2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742267,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489326,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: vocab type            = BPE\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742267,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489326,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_vocab               = 128256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742268,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489326,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_merges              = 280147\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742273,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489327,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: BOS token             = 128000 '<|begin_of_text|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742277,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489327,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOS token             = 128019 '<|im_end|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742278,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489327,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOT token             = 128019 '<|im_end|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742278,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489327,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOM token             = 128008 '<|eom_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742282,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489328,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: PAD token             = 128004 '<|finetune_right_pad_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742287,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489328,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: LF token              = 198 'Ċ'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742287,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489329,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128001 '<|end_of_text|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742292,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489329,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128008 '<|eom_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742292,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489329,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128009 '<|eot_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742296,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489329,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128019 '<|im_end|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742297,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489330,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: max token length      = 256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":742301,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":489353,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: loading model tensors, this can take a while... (load_mode = mmap)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5701111,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":5438509,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: offloading output layer to GPU\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5701114,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":5438513,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: offloading 31 repeating layers to GPU\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5701115,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":5438514,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: offloaded 33/33 layers to GPU\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5701115,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":5438517,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors:   CPU_Mapped model buffer size =   211.36 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":5701115,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":5438518,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors:        CUDA0 model buffer size =  2430.74 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408494,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160051,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|end_of_text|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408498,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160056,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|eom_id|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408498,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160056,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|eot_id|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408498,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160057,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|im_end|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408498,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160149,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: constructing llama_context\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160157,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_seq_max             = 2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160158,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_ctx                 = 4096\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160158,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_ctx_seq             = 4096\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160158,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_batch               = 2048\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160158,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_ubatch              = 512\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160159,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: causal_attn           = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160159,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: flash_attn            = enabled\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408499,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160160,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: kv_unified            = true\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408500,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160162,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: freq_base             = 500000.0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408500,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160163,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: freq_scale            = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408500,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160163,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_rs_seq              = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408500,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160164,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_outputs_max         = 2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408500,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160164,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_outputs_max_per_seq = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408501,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160165,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_ctx_seq (4096) < n_ctx_train (131072) -- the full capacity of the model will not be utilized\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408501,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6160631,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context:  CUDA_Host  output buffer size =     0.98 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408501,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6172660,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_kv_cache:      CUDA0 KV buffer size =   512.00 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408501,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6172667,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_kv_cache: size =  512.00 MiB (  4096 cells,  32 layers,  2/1 seqs), K (f16):  256.00 MiB, V (f16):  256.00 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408502,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6172674,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_kv_cache: n_rot_k = 0, n_embd_head_k_all = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408502,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6172674,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_kv_cache: n_rot_v = 0, n_embd_head_k_all = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408504,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6172686,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"sched_reserve: reserving ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408505,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6173925,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"resolve_fused_ops: Flash Attention over K/V rows enabled\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408505,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6173929,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"resolve_fused_ops: resolving fused DeepSeek V4 HC support:\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408505,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6174323,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"resolve_fused_ops: fused DeepSeek V4 HC pre enabled\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408506,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6174702,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"resolve_fused_ops: fused DeepSeek V4 HC comb enabled\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408506,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6175062,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"resolve_fused_ops: fused DeepSeek V4 HC post enabled\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408506,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6180278,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"sched_reserve:      CUDA0 compute buffer size =    82.05 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408506,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6180283,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"sched_reserve:  CUDA_Host compute buffer size =    28.05 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408506,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6180285,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"sched_reserve: graph: nodes = 1001, splits = 2, input objects = 4, input tensors = 9\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408507,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6180286,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"sched_reserve: reserve took 7.60 ms, sched copies = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408507,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6180399,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn          init: llama threadpool init, n_threads = 24\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6408507,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6180421,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: warming up the model with an empty run - please wait ... (--no-warmup to disable)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509199,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241281,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: initializing, n_slots = 2, n_ctx_slot = 4096, kv_unified = 'true'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509203,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241311,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"spec common_specu: no implementations specified for speculative decoding\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509203,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241317,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot   load_model: id  0 | task -1 | new slot, n_ctx = 4096\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509203,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241320,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot   load_model: id  1 | task -1 | new slot, n_ctx = 4096\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509204,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241342,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: prompt cache is enabled, size limit: 8192 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509204,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241345,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: use `--cache-ram 0` to disable the prompt cache\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509204,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241345,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509205,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241346,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: context checkpoints enabled, max = 32, min spacing = 8192\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509205,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6241370,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv          init: idle slots will be saved to prompt cache and cleared upon starting a new task\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509207,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6243946,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv          init: init: chat template, example_format: '<|im_start|>system\\\\nYou are a helpful assistant<|im_end|>\\\\n<|im_start|>user\\\\nHello<|im_end|>\\\\n<|im_start|>assistant\\\\nHi there<|im_end|>\\\\n<|im_start|>user\\\\nHow are you?<|im_end|>\\\\n<|im_start|>assistant\\\\n'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509207,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6244099,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv          init: init: chat template, thinking = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509208,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6244124,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv          init: preserve_reasoning kwarg: not supported by template\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509208,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6244147,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  server_run_i: model loaded\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509208,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6244151,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  server_on_li: listening on http://127.0.0.1:50575\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509209,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6244292,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  update_slots: all slots are idle\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6509209,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6244398,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): child server monitoring thread started, waiting for EOF on stdin...\\\\n\\\"}\\r\\n\"}\r"
+   ],
+   "after": [
+    "{\"type\":\"log\",\"time\":6838325,\"level\":\"info\",\"msg\":\"srv  proxy_reques: proxying request to model <modelId> on port 50575\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864373,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617702,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  server_strea: conv_id= (empty=1)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864380,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617871,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  0 | task -1 |  - skipping, slot is empty\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864380,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617874,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  1 | task -1 |  - skipping, slot is empty\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864381,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617876,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864384,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617876,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  get_availabl: updating prompt cache\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864384,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617885,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv          load:  - looking for better prompt, base f_keep = -1.000, f_sim = 0.000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864385,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617889,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 4096 tokens, 8589934592 est)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864385,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617890,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  get_availabl: prompt cache update took 0.01 ms\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864386,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617926,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> greedy \\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864389,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617935,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task -1 | sampler params: \\\\n\\\\trepeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000\\\\n\\\\tdry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 64\\\\n\\\\ttop_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.000\\\\n\\\\tmirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000, adaptive_target = -1.000, adaptive_decay = 0.900\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864390,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617936,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task 0 | processing task, is_child = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864390,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617936,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot process_sing: id  1 | task -1 | saving idle slot to prompt cache\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864390,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617939,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot prompt_clear: id  1 | task -1 | clearing prompt with 0 tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864391,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617957,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 0 | new prompt, n_ctx_slot = 4096, n_keep = 0, task.n_tokens = 15\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864391,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617962,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 0 | cached n_tokens = 0, memory_seq_rm [0, end)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6864392,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6617974,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot init_sampler: id  0 | task 0 | init sampler, took 0.00 ms, tokens: text = 15, total = 15\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6896633,\"level\":\"info\",\"msg\":\"srv  proxy_reques: proxying request to model <modelId> on port 50575\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914608,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6671795,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 | prompt eval time =      25.13 ms /    15 tokens (    1.68 ms per token,   596.85 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914611,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6671800,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |        eval time =      28.69 ms /     4 tokens (    9.56 ms per token,   104.58 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914612,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6671801,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |       total time =      53.82 ms /    19 tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914613,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6671806,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |    graphs reused =          3\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914613,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6671807,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914614,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6671825,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot      release: id  0 | task 0 | stop processing: n_tokens = 18, truncated = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914614,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6671830,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  update_slots: all slots are idle\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914615,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675696,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  server_strea: conv_id= (empty=1)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914615,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675763,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  0 | task -1 |  - checking sim = 1.000 (15/15) > 0.100\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914615,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675766,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  1 | task -1 |  - skipping, slot is empty\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914616,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675767,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 1.000 (> 0.100 thold), f_keep = 0.833\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914616,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675870,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task -1 | sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> greedy \\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914618,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675880,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task -1 | sampler params: \\\\n\\\\trepeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000\\\\n\\\\tdry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 64\\\\n\\\\ttop_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.000\\\\n\\\\tmirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000, adaptive_target = -1.000, adaptive_decay = 0.900\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914619,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675882,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot launch_slot_: id  0 | task 5 | processing task, is_child = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914619,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675883,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot process_sing: id  1 | task -1 | saving idle slot to prompt cache\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914619,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675884,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot prompt_clear: id  1 | task -1 | clearing prompt with 0 tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914620,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675895,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 5 | new prompt, n_ctx_slot = 4096, n_keep = 0, task.n_tokens = 15\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914620,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675898,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 5 | need to evaluate at least 1 token for each active slot (n_past = 15, task.n_tokens() = 15)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914620,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675898,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 5 | n_past was set to 14\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914620,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675902,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot   operator(): id  0 | task 5 | cached n_tokens = 14, memory_seq_rm [14, end)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6914621,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6675911,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot init_sampler: id  0 | task 5 | init sampler, took 0.00 ms, tokens: text = 15, total = 15\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6934034,\"level\":\"info\",\"msg\":\"srv        unload: stopping model instance name=<modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6965005,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6710487,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 | prompt eval time =       8.84 ms /     1 tokens (    8.84 ms per token,   113.17 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6965008,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6710492,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |        eval time =      25.74 ms /     4 tokens (    8.58 ms per token,   116.54 tokens per second)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6965009,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6710492,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |       total time =      34.58 ms /     5 tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6965010,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6710493,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |    graphs reused =          7\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6965010,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6710494,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot print_timing: id  0 | task 5 |   graph reallocs =          0    /     0        (same size) / (changed size)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6965010,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6710502,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"slot      release: id  0 | task 5 | stop processing: n_tokens = 18, truncated = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":6965011,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6710510,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  update_slots: all slots are idle\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":7015389,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6743174,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): exit command received, exiting...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":7015393,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6743379,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): operator(): cleaning up before exit...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":7015394,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6744250,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_memory_breakdown_print: | memory breakdown [MiB] | total    free    self   model   context   compute    unaccounted |\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":7015394,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6744252,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_memory_breakdown_print: |   - CUDA0 (RTX 4090)   | 24563 = 19956 + (3024 =  2430 +     512 +      82) +        1582 |\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":7015394,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"log\\\",\\\"time\\\":6744252,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"common_memory_breakdown_print: |   - Host               |                   239 =   211 +       0 +      28                |\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":7015397,\"level\":\"none\",\"msg\":\"[50575] {\\\"type\\\":\\\"fit_memory_breakdown\\\",\\\"data\\\":{\\\"unit\\\":\\\"MiB\\\",\\\"rows\\\":[{\\\"kind\\\":\\\"device\\\",\\\"name\\\":\\\"CUDA0\\\",\\\"description\\\":\\\"RTX 4090\\\",\\\"total\\\":24563,\\\"free\\\":19956,\\\"self\\\":3024,\\\"model\\\":2430,\\\"context\\\":512,\\\"compute\\\":82,\\\"unaccounted\\\":1582},{\\\"kind\\\":\\\"host\\\",\\\"name\\\":\\\"Host\\\",\\\"self\\\":239,\\\"model\\\":211,\\\"context\\\":0,\\\"compute\\\":28}]}}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":7318343,\"level\":\"info\",\"msg\":\"srv           run: instance name=<modelId> exited with status 0\\n\"}\r"
+   ],
+   "loadEvents": [
+    {
+     "model": "<modelId>",
+     "event": "model_status",
+     "data": {
+      "status": "loading"
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.2971864640712738
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.592583179473877
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.8614119291305542
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 1
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loaded",
+      "info": {
+       "id": "<modelId>",
+       "aliases": [
+        "<modelId>"
+       ],
+       "tags": [],
+       "object": "model",
+       "architecture": {
+        "input_modalities": [
+         "text"
+        ],
+        "output_modalities": [
+         "text"
+        ]
+       },
+       "created": 1794115366,
+       "owned_by": "llamacpp",
+       "meta": {
+        "vocab_type": 2,
+        "n_vocab": 128256,
+        "n_ctx": 4096,
+        "n_ctx_train": 131072,
+        "n_embd": 3072,
+        "n_params": 4512746560,
+        "size": 2770446592,
+        "ftype": "Q4_K - Medium"
+       }
+      },
+      "memory": {
+       "n_ctx": 4096,
+       "devices": [
+        {
+         "kind": "device",
+         "name": "CUDA0",
+         "model": 2548820224,
+         "context": 536870912,
+         "compute": 86030464,
+         "total": 25756696576,
+         "free": 20925382656
+        },
+        {
+         "kind": "host",
+         "name": "Host",
+         "model": 221626368,
+         "context": 0,
+         "compute": 29411360
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "afterEvents": [
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "unloaded",
+      "exit_code": 0
+     }
+    }
+   ]
+  },
+  "kvFail": {
+   "args": [
+    "--models-preset",
+    "<preset>",
+    "--offline",
+    "--no-models-autoload",
+    "--models-max",
+    "1",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "54683",
+    "--log-jsonl",
+    "--reasoning-format",
+    "deepseek",
+    "-lv",
+    "4",
+    "-c",
+    "1048576",
+    "-ngl",
+    "all",
+    "--fit",
+    "off",
+    "-fa",
+    "on",
+    "-np",
+    "1",
+    "--kv-unified",
+    "-ctk",
+    "f16",
+    "-ctv",
+    "f16"
+   ],
+   "models": {
+    "data": [
+     {
+      "id": "<modelId>",
+      "aliases": [],
+      "tags": [],
+      "object": "model",
+      "owned_by": "llamacpp",
+      "created": 1794115367,
+      "status": {
+       "value": "unloaded",
+       "args": [
+        "<bin>",
+        "--host",
+        "127.0.0.1",
+        "--log-colors",
+        "off",
+        "--log-jsonl",
+        "--offline",
+        "--port",
+        "0",
+        "--reasoning-format",
+        "deepseek",
+        "--alias",
+        "<modelId>",
+        "--ctx-size",
+        "1048576",
+        "--cache-type-k",
+        "f16",
+        "--cache-type-v",
+        "f16",
+        "--flash-attn",
+        "on",
+        "--fit",
+        "off",
+        "--kv-unified",
+        "--log-verbosity",
+        "4",
+        "--model",
+        "<model>",
+        "--n-gpu-layers",
+        "all",
+        "--parallel",
+        "1"
+       ],
+       "preset": "[<modelId>]\nlog-colors = off\nlog-jsonl = 1\noffline = 1\nreasoning-format = deepseek\nctx-size = 1048576\ncache-type-k = f16\ncache-type-v = f16\nflash-attn = on\nfit = off\nkv-unified = 1\nlog-verbosity = 4\nmodel = <model>\nn-gpu-layers = all\nparallel = 1\n\n"
+      },
+      "architecture": {
+       "input_modalities": [
+        "text"
+       ],
+       "output_modalities": [
+        "text"
+       ]
+      },
+      "source": "preset",
+      "can_remove": false,
+      "context_length": 131072
+     }
+    ],
+    "object": "list"
+   },
+   "loadReply": {
+    "success": true
+   },
+   "outcome": "unloaded",
+   "boot": [
+    "{\"type\":\"log\",\"time\":69428,\"level\":\"info\",\"msg\":\"ggml_cuda_init: found 1 CUDA devices (Total VRAM: 24563 MiB):\\n\"}\r",
+    "{\"type\":\"log\",\"time\":69517,\"level\":\"info\",\"msg\":\"  Device 0: NVIDIA GeForce RTX 4090, compute capability 8.9, VMM: yes, VRAM: 24563 MiB\\n\"}\r",
+    "{\"type\":\"log\",\"time\":69546,\"level\":\"info\",\"msg\":\"load_backend: loaded CUDA backend from <binDir>\\\\ggml-cuda.dll\\n\"}\r",
+    "{\"type\":\"log\",\"time\":70421,\"level\":\"info\",\"msg\":\"load_backend: loaded RPC backend from <binDir>\\\\ggml-rpc.dll\\n\"}\r",
+    "{\"type\":\"log\",\"time\":78730,\"level\":\"info\",\"msg\":\"load_backend: loaded CPU backend from <binDir>\\\\ggml-cpu-alderlake.dll\\n\"}\r",
+    "{\"type\":\"log\",\"time\":78895,\"level\":\"info\",\"msg\":\"srv  llama_server: initializing ...\\n\"}\r",
+    "{\"type\":\"log\",\"time\":78907,\"level\":\"info\",\"msg\":\"cmn  common_param: common_params_print_info: build 12199 (372dc5ca1) with Clang 20.1.8 for Windows x86_64\\n\"}\r",
+    "{\"type\":\"log\",\"time\":78908,\"level\":\"info\",\"msg\":\"cmn  common_param: common_params_print_info: verbosity = 4 (adjust with the `-lv N` CLI arg)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":78951,\"level\":\"info\",\"msg\":\"cmn  common_param: system_info: n_threads = 24 (n_threads_batch = 24) / 32 | CUDA : ARCHS = 750,800,860,890,900,1200,1210 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | \\n\"}\r",
+    "{\"type\":\"log\",\"time\":78959,\"level\":\"info\",\"msg\":\"srv  server_run_r: starting server in router mode. models will be automatically loaded on-demand\\n\"}\r",
+    "{\"type\":\"log\",\"time\":79019,\"level\":\"info\",\"msg\":\"srv  init_listene: running without SSL\\n\"}\r",
+    "{\"type\":\"log\",\"time\":79164,\"level\":\"info\",\"msg\":\"srv          init: using 31 threads for HTTP server\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80766,\"level\":\"info\",\"msg\":\"srv   load_models: Loaded 0 cached model presets from C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\llama-rec-iiGP8S\\\\cache\\n\"}\r",
+    "{\"type\":\"log\",\"time\":80973,\"level\":\"info\",\"msg\":\"srv   load_models: Loaded 1 custom model presets from <preset>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":110855,\"level\":\"info\",\"msg\":\"srv    operator(): Available models (1):\\n\"}\r",
+    "{\"type\":\"log\",\"time\":110861,\"level\":\"info\",\"msg\":\"srv    operator():   [    preset] <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":110964,\"level\":\"warn\",\"msg\":\"srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\n\"}\r",
+    "{\"type\":\"log\",\"time\":110973,\"level\":\"warn\",\"msg\":\"srv  server_setup: security: router mode enabled - do not expose to untrusted environments\\n\"}\r",
+    "{\"type\":\"log\",\"time\":113458,\"level\":\"info\",\"msg\":\"srv  server_on_li: listening on http://127.0.0.1:54683\\n\"}\r"
+   ],
+   "load": [
+    "{\"type\":\"log\",\"time\":171767,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with name=<modelId> on port 54686\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171819,\"level\":\"info\",\"msg\":\"srv          load: spawning server instance with args:\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171820,\"level\":\"info\",\"msg\":\"srv          load:   <bin>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171820,\"level\":\"info\",\"msg\":\"srv          load:   --host\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171820,\"level\":\"info\",\"msg\":\"srv          load:   127.0.0.1\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171820,\"level\":\"info\",\"msg\":\"srv          load:   --log-colors\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171821,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171821,\"level\":\"info\",\"msg\":\"srv          load:   --log-jsonl\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171821,\"level\":\"info\",\"msg\":\"srv          load:   --offline\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171821,\"level\":\"info\",\"msg\":\"srv          load:   --port\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171821,\"level\":\"info\",\"msg\":\"srv          load:   54686\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171822,\"level\":\"info\",\"msg\":\"srv          load:   --reasoning-format\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171822,\"level\":\"info\",\"msg\":\"srv          load:   deepseek\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171822,\"level\":\"info\",\"msg\":\"srv          load:   --alias\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171822,\"level\":\"info\",\"msg\":\"srv          load:   <modelId>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171822,\"level\":\"info\",\"msg\":\"srv          load:   --ctx-size\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171822,\"level\":\"info\",\"msg\":\"srv          load:   1048576\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171823,\"level\":\"info\",\"msg\":\"srv          load:   --cache-type-k\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171823,\"level\":\"info\",\"msg\":\"srv          load:   f16\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171823,\"level\":\"info\",\"msg\":\"srv          load:   --cache-type-v\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171823,\"level\":\"info\",\"msg\":\"srv          load:   f16\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171823,\"level\":\"info\",\"msg\":\"srv          load:   --flash-attn\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171824,\"level\":\"info\",\"msg\":\"srv          load:   on\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171824,\"level\":\"info\",\"msg\":\"srv          load:   --fit\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171824,\"level\":\"info\",\"msg\":\"srv          load:   off\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171824,\"level\":\"info\",\"msg\":\"srv          load:   --kv-unified\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171824,\"level\":\"info\",\"msg\":\"srv          load:   --log-verbosity\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171824,\"level\":\"info\",\"msg\":\"srv          load:   4\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171825,\"level\":\"info\",\"msg\":\"srv          load:   --model\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171825,\"level\":\"info\",\"msg\":\"srv          load:   <model>\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171825,\"level\":\"info\",\"msg\":\"srv          load:   --n-gpu-layers\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171825,\"level\":\"info\",\"msg\":\"srv          load:   all\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171825,\"level\":\"info\",\"msg\":\"srv          load:   --parallel\\n\"}\r",
+    "{\"type\":\"log\",\"time\":171825,\"level\":\"info\",\"msg\":\"srv          load:   1\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283688,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":63098,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"ggml_cuda_init: found 1 CUDA devices (Total VRAM: 24563 MiB):\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283692,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":63183,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"  Device 0: NVIDIA GeForce RTX 4090, compute capability 8.9, VMM: yes, VRAM: 24563 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283693,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":63210,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_backend: loaded CUDA backend from <binDir>\\\\\\\\ggml-cuda.dll\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283693,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":64155,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_backend: loaded RPC backend from <binDir>\\\\\\\\ggml-rpc.dll\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283694,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":73051,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_backend: loaded CPU backend from <binDir>\\\\\\\\ggml-cpu-alderlake.dll\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283694,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":73266,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  llama_server: initializing ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283695,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":73280,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: common_params_print_info: build 12199 (372dc5ca1) with Clang 20.1.8 for Windows x86_64\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283696,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":73281,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: common_params_print_info: verbosity = 4 (adjust with the `-lv N` CLI arg)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":283701,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":73283,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: device_info:\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385558,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":138911,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param:   - CUDA0   : NVIDIA GeForce RTX 4090 (24563 MiB, 23036 MiB free)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385561,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":138919,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param:   - CPU     : 13th Gen Intel(R) Core(TM) i9-13900K (65220 MiB, 24117 MiB free)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385563,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":138968,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_param: system_info: n_threads = 24 (n_threads_batch = 24) / 32 | CUDA : ARCHS = 750,800,860,890,900,1200,1210 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | \\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385563,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":139034,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv  init_listene: running without SSL\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385564,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":139179,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv          init: using 31 threads for HTTP server\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385564,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":139234,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385565,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":141867,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: loading model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385565,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":141869,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    load_model: local path '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385566,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170721,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: loaded meta data with 28 key-value pairs and 292 tensors from <model> (version GGUF V3 (latest))\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385566,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170733,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385566,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170739,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   0:                       general.architecture str              = llama\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385566,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170740,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   1:                               general.type str              = model\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385567,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170741,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   2:                               general.name str              = Impish_LLAMA_4B_V2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385567,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170742,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   3:                       general.organization str              = SicariusSicariiStuff\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385567,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170742,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   4:                         general.size_label str              = 4.5B\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385567,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170746,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   5:                          llama.block_count u32              = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385567,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170746,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   6:                       llama.context_length u32              = 131072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385568,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170747,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   7:                     llama.embedding_length u32              = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385568,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170747,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   8:                  llama.feed_forward_length u32              = 9216\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385568,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170749,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv   9:                 llama.attention.head_count u32              = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385568,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170749,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  10:              llama.attention.head_count_kv u32              = 8\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385568,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170752,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  11:                       llama.rope.freq_base f32              = 500000.000000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385570,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170754,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  12:     llama.attention.layer_norm_rms_epsilon f32              = 0.000010\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385570,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170754,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  13:                 llama.attention.key_length u32              = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":385573,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170754,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  14:               llama.attention.value_length u32              = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437166,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170755,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  15:                           llama.vocab_size u32              = 128256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437169,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170755,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  16:                 llama.rope.dimension_count u32              = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437169,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170755,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  17:                       tokenizer.ggml.model str              = gpt2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437169,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170756,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  18:                         tokenizer.ggml.pre str              = llama-bpe\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437170,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170761,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  19:                      tokenizer.ggml.tokens arr[str,128256]  = [\\\\\\\"!\\\\\\\", \\\\\\\"\\\\\\\\\\\\\\\"\\\\\\\", \\\\\\\"#\\\\\\\", \\\\\\\"$\\\\\\\", \\\\\\\"%\\\\\\\", \\\\\\\"&\\\\\\\", \\\\\\\"'\\\\\\\", ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170762,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  20:                  tokenizer.ggml.token_type arr[i32,128256]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170764,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  21:                      tokenizer.ggml.merges arr[str,280147]  = [\\\\\\\"Ġ Ġ\\\\\\\", \\\\\\\"Ġ ĠĠĠ\\\\\\\", \\\\\\\"ĠĠ ĠĠ\\\\\\\", \\\\\\\"...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170765,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  22:                tokenizer.ggml.bos_token_id u32              = 128000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170765,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  23:                tokenizer.ggml.eos_token_id u32              = 128019\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170766,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  24:            tokenizer.ggml.padding_token_id u32              = 128004\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170767,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  25:                    tokenizer.chat_template str              = {% if not add_generation_prompt is de...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170767,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  26:               general.quantization_version u32              = 2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170768,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - kv  27:                          general.file_type u32              = 15\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170769,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - type  f32:   66 tensors\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170769,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - type q4_K:  193 tensors\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170770,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_model_loader: - type q6_K:   33 tensors\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170771,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: file format = GGUF V3 (latest)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170772,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: file type   = Q4_K - Medium\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170773,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: file size   = 2.58 GiB (4.91 BPW) \\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":170825,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_prepare_model_devices: using device CUDA0 (NVIDIA GeForce RTX 4090) (0000:01:00.0) - 23036 MiB free\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":437175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":233625,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: 0 unused tokens\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488166,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":246940,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: printing all EOG tokens:\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488169,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":246945,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128001 ('<|end_of_text|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488170,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":246945,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128008 ('<|eom_id|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488170,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":246945,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128009 ('<|eot_id|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488170,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":246946,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load:   - 128019 ('<|im_end|>')\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488170,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":247184,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: special tokens cache size = 256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256365,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load: token to piece cache size = 0.7999 MB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256384,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: arch                  = llama\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488171,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256384,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: vocab_only            = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256385,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: no_alloc              = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256385,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_ctx_train           = 131072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256385,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_inp            = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256386,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd                = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256386,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_out            = 3072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256386,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_layer               = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488172,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256386,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_layer_all           = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256400,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_head                = 32\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256402,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_head_kv             = 8\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256402,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_rot                 = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256402,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_swa                 = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256403,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: is_swa_any            = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256403,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: non_causal_type       = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256403,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_head_k         = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488173,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256403,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_head_v         = 128\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256405,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_gqa                 = 4\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256406,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_k_gqa          = 1024\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256407,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_embd_v_gqa          = 1024\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256408,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_norm_eps            = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256409,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_norm_rms_eps        = 1.0e-05\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256409,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_clamp_kqv           = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488174,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256409,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_max_alibi_bias      = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256410,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_logit_scale         = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256410,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_attn_scale          = 0.0e+00\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256410,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: f_attn_value_scale    = 0.0000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256412,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_ff                  = 9216\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256412,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_expert              = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256412,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_expert_used         = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256412,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_expert_groups       = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256413,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_group_used          = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488175,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256413,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: causal attn           = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488176,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256413,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: pooling type          = -1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488176,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256413,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope type             = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488176,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256414,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope scaling          = linear\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":488178,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256414,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: freq_base_train       = 500000.0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538572,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256415,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: freq_scale_train      = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538576,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256416,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_ctx_orig_yarn       = 131072\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538576,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256416,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope_yarn_log_mul     = 0.0000\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538576,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256416,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: rope_finetuned        = unknown\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538577,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256417,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: model type            = 8B\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538577,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256417,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: model params          = 4.51 B\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538577,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256418,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: general.name          = Impish_LLAMA_4B_V2\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538577,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256418,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: vocab type            = BPE\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538577,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256419,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_vocab               = 128256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538577,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256419,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: n_merges              = 280147\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538578,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256419,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: BOS token             = 128000 '<|begin_of_text|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538578,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256420,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOS token             = 128019 '<|im_end|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538578,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256420,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOT token             = 128019 '<|im_end|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538579,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256420,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOM token             = 128008 '<|eom_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538581,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256420,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: PAD token             = 128004 '<|finetune_right_pad_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538581,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256421,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: LF token              = 198 'Ċ'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538581,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256421,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128001 '<|end_of_text|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538581,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256421,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128008 '<|eom_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538581,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256422,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128009 '<|eot_id|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538581,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256422,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: EOG token             = 128019 '<|im_end|>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538581,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256422,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"print_info: max token length      = 256\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":538582,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":256446,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: loading model tensors, this can take a while... (load_mode = mmap)\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640094,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":412025,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: offloading output layer to GPU\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640097,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":412029,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: offloading 31 repeating layers to GPU\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640097,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":412029,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors: offloaded 33/33 layers to GPU\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640098,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":412034,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors:   CPU_Mapped model buffer size =   211.36 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":640098,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":412035,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"load_tensors:        CUDA0 model buffer size =  2430.74 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398867,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153610,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|end_of_text|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398872,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153617,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|eom_id|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398873,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153618,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|eot_id|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398873,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153619,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"cmn  common_init_: added <|im_end|> logit bias = -inf\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398873,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153701,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: constructing llama_context\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398874,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153710,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_seq_max             = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398874,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153711,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_ctx                 = 1048576\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398874,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153711,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_ctx_seq             = 1048576\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398874,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153711,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_batch               = 2048\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398875,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153711,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_ubatch              = 512\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398875,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153712,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: causal_attn           = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398875,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153713,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: flash_attn            = enabled\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398875,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153713,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: kv_unified            = true\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398875,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153715,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: freq_base             = 500000.0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398876,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153717,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: freq_scale            = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398876,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153717,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_rs_seq              = 0\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398876,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153717,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_outputs_max         = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398877,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153717,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context: n_outputs_max_per_seq = 1\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398877,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1153719,\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"llama_context: n_ctx_seq (1048576) > n_ctx_train (131072) -- possible training context overflow\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":1398878,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":1154212,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"llama_context:  CUDA_Host  output buffer size =     0.49 MiB\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966426,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10735665,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"ggml_backend_cuda_buffer_type_alloc_buffer: allocating 131072.00 MiB on device 0: cudaMalloc failed: out of memory\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966430,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10735677,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"ggml_backend_buft_alloc_buffer_n_default: failed to allocate CUDA0 buffer of size 137438953472\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966431,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10737709,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"llama_init_from_model: failed to initialize the context: failed to allocate buffer for kv cache\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966431,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10737738,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"cmn  common_init_: failed to create context with model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966432,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10737741,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"cmn  common_init_: failed to create context with model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966432,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10737744,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"srv    load_model: failed to create_context with model '<model>'\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966432,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10737748,\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"srv    operator(): operator(): cleaning up before exit...\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":10966433,\"level\":\"none\",\"msg\":\"[54686] {\\\"type\\\":\\\"log\\\",\\\"time\\\":10739196,\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"srv  server_run_i: exiting due to model loading error\\\\n\\\"}\\r\\n\"}\r",
+    "{\"type\":\"log\",\"time\":11271352,\"level\":\"info\",\"msg\":\"srv           run: instance name=<modelId> exited with status 1\\n\"}\r"
+   ],
+   "after": [],
+   "loadEvents": [
+    {
+     "model": "<modelId>",
+     "event": "model_status",
+     "data": {
+      "status": "loading"
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.2888036072254181
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.5717634558677673
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 0.8320230841636658
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "loading",
+      "progress": {
+       "stages": [
+        "text_model"
+       ],
+       "current": "text_model",
+       "value": 1
+      }
+     }
+    },
+    {
+     "model": "<modelId>",
+     "event": "status_change",
+     "data": {
+      "status": "unloaded",
+      "exit_code": 1
+     }
+    }
+   ],
+   "afterEvents": []
+  }
+ }
+}

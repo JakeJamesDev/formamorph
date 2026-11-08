@@ -8,13 +8,13 @@ import { zipSync } from 'fflate';
 import { BUILDS, CUDA_ASSETS, bumpPin, cudaAssetsOf, fetchLlamaServer, listAssets, platformsFromArgs, readPin, verifyCudaPin, zipUnpackedSize } from './fetchLlamaServer.mjs';
 
 // The asset names of the pinned tag's real release, recorded with the API. A pin bump re-records this file.
-const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b12078.json'), 'utf8'));
+const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b12199.json'), 'utf8'));
 
 const json = (status, body) => new Response(JSON.stringify(body), { status });
 
 describe('asset-name mapping', () => {
   it('pins the tag the recorded asset list was taken from', async () => {
-    expect(await readPin()).toBe('b12078');
+    expect(await readPin()).toBe('b12199');
   });
 
   it('maps every desktop build to an asset the pinned release has', async () => {
@@ -160,8 +160,8 @@ describe('CUDA pin', () => {
     cuda: { assets: CUDA_ASSETS.map((c, i) => ({ name: c.asset(tag), digest: `sha256:${digests[i]}`, size: ZIPS[i].length, unpackedSize: UNPACKED[i] })) },
   });
 
-  it('names only the two win-x64 CUDA 13.4 assets, the cudart one without a tag', () => {
-    expect(CUDA_ASSETS.map((c) => c.asset('b9'))).toEqual(['llama-b9-bin-win-cuda-13.4-x64.zip', 'cudart-llama-bin-win-cuda-13.4-x64.zip']);
+  it('names only the two win-x64 CUDA 13.5 assets, the cudart one without a tag', () => {
+    expect(CUDA_ASSETS.map((c) => c.asset('b9'))).toEqual(['llama-b9-bin-win-cuda-13.5-x64.zip', 'cudart-llama-bin-win-cuda-13.5-x64.zip']);
   });
 
   it('commits a pin whose CUDA assets the recorded release has', async () => {
@@ -202,17 +202,17 @@ describe('CUDA pin', () => {
 
   it('the gate fails when the pinned release lacks a CUDA asset', async () => {
     const skip = [CUDA_ASSETS[1].asset('b9')];
-    await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(release('b9', { skip })) })).rejects.toThrow(/lacks CUDA assets: cudart-llama-bin-win-cuda-13\.4-x64\.zip/);
+    await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(release('b9', { skip })) })).rejects.toThrow(/lacks CUDA assets: cudart-llama-bin-win-cuda-13.5-x64\.zip/);
   });
 
   it('the gate fails when a digest differs from the pin', async () => {
     const changed = release('b9', { digests: [HEX_A, 'c'.repeat(64)] });
-    await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(changed) })).rejects.toThrow(/cudart-llama-bin-win-cuda-13\.4-x64\.zip has digest sha256:c+/);
+    await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(changed) })).rejects.toThrow(/cudart-llama-bin-win-cuda-13.5-x64\.zip has digest sha256:c+/);
   });
 
   it('the gate fails when a size differs from the pin', async () => {
     const changed = release('b9', { sizes: [ZIPS[0].length, ZIPS[1].length + 1] });
-    await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(changed) })).rejects.toThrow(/cudart-llama-bin-win-cuda-13\.4-x64\.zip has size/);
+    await expect(verifyCudaPin({ pin: pinOf('b9'), fetchImpl: serving(changed) })).rejects.toThrow(/cudart-llama-bin-win-cuda-13.5-x64\.zip has size/);
   });
 
   it('the gate fails for a pin with no unpacked size', async () => {

@@ -149,7 +149,7 @@ describe('relatedFiles', () => {
 
   it('reaches the llama-server module from the pin, and its test from the recorded asset list', () => {
     expect(relatedFiles(['scripts/llamaServerPin.json'], new Map())).toContain('scripts/fetchLlamaServer.mjs');
-    expect(relatedFiles(['scripts/fixtures/llamaServerAssets.b12078.json'], new Map())).toContain('scripts/fetchLlamaServer.test.mjs');
+    expect(relatedFiles(['scripts/fixtures/llamaServerAssets.b12199.json'], new Map())).toContain('scripts/fetchLlamaServer.test.mjs');
   });
 
   it.each(['public/default-avatar.vrm', 'build-assets/alternate-avatar.vrm', 'build-assets/praline-avatar.vrm', 'vite.site.config.js', 'legal/notices-map.json'])(

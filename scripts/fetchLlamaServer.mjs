@@ -28,10 +28,10 @@ const PIN_FILE = path.join(HERE, 'llamaServerPin.json');
 const readPinFile = async () => JSON.parse(await readFile(PIN_FILE, 'utf8'));
 export const readPin = async () => (await readPinFile()).tag;
 
-/** The Windows CUDA 13.4 assets the optional CUDA download needs. The cudart asset name carries no tag. */
+/** The Windows CUDA 13.5 assets the optional CUDA download needs. The cudart asset name carries no tag. */
 export const CUDA_ASSETS = [
-  { id: 'cuda', asset: (tag) => `llama-${tag}-bin-win-cuda-13.4-x64.zip` },
-  { id: 'cudart', asset: () => 'cudart-llama-bin-win-cuda-13.4-x64.zip' },
+  { id: 'cuda', asset: (tag) => `llama-${tag}-bin-win-cuda-13.5-x64.zip` },
+  { id: 'cudart', asset: () => 'cudart-llama-bin-win-cuda-13.5-x64.zip' },
 ];
 
 const headers = () => ({

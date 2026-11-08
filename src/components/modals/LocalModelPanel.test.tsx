@@ -439,11 +439,11 @@ describe('local model CUDA row', () => {
   });
 
   it('tells a driver under the floor to update, with the floor and a driver link, and offers no Download', async () => {
-    const { bridge } = cudaBridge({ ...CUDA_BASE, support: { supported: false, reason: 'driver-too-old', driverFloor: 615, cardName: 'NVIDIA GeForce RTX 2080' }, state: 'unsupported' });
+    const { bridge } = cudaBridge({ ...CUDA_BASE, support: { supported: false, reason: 'driver-too-old', driverFloor: 620, cardName: 'NVIDIA GeForce RTX 2080' }, state: 'unsupported' });
     stubDesktop({ devices: [DISCRETE], cuda: bridge });
     openPanel();
 
-    expect(await screen.findByText(/Update it to version 615 or later/)).toBeInTheDocument();
+    expect(await screen.findByText(/Update it to version 620 or later/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Get the Latest Driver' })).toHaveAttribute('href', 'https://www.nvidia.com/en-us/drivers/');
     expect(screen.queryByRole('button', { name: /download/i })).toBeNull();
   });

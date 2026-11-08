@@ -22,8 +22,8 @@ const noise = (n, seed) => Uint8Array.from({ length: n }, (_, i) => (i * 31 + se
 /** Fixed entry time: zipSync stamps the clock otherwise, and one tag's zips would differ between builds. */
 const makeZip = (entries) => Buffer.from(zipSync(entries, { level: 0, mtime: Date.UTC(2026, 0, 1) }));
 const ZIPS = {
-  [`llama-${TAG}-bin-win-cuda-13.4-x64.zip`]: makeZip({ 'llama-server.exe': noise(3000, 1), 'ggml-cuda.dll': noise(2000, 2) }),
-  'cudart-llama-bin-win-cuda-13.4-x64.zip': makeZip({ 'cublas64_13.dll': noise(4000, 3) }),
+  [`llama-${TAG}-bin-win-cuda-13.5-x64.zip`]: makeZip({ 'llama-server.exe': noise(3000, 1), 'ggml-cuda.dll': noise(2000, 2) }),
+  'cudart-llama-bin-win-cuda-13.5-x64.zip': makeZip({ 'cublas64_13.dll': noise(4000, 3) }),
 };
 const NAMES = Object.keys(ZIPS);
 const digestOf = (buf) => `sha256:${crypto.createHash('sha256').update(buf).digest('hex')}`;
@@ -309,8 +309,8 @@ describe('CUDA replace after a pin bump', () => {
   function release(tag) {
     const seed = Number(tag.slice(1));
     const files = {
-      [`llama-${tag}-bin-win-cuda-13.4-x64.zip`]: makeZip({ 'llama-server.exe': noise(3000, seed), 'ggml-cuda.dll': noise(2000, seed + 1) }),
-      'cudart-llama-bin-win-cuda-13.4-x64.zip': makeZip({ 'cublas64_13.dll': noise(4000, seed + 2) }),
+      [`llama-${tag}-bin-win-cuda-13.5-x64.zip`]: makeZip({ 'llama-server.exe': noise(3000, seed), 'ggml-cuda.dll': noise(2000, seed + 1) }),
+      'cudart-llama-bin-win-cuda-13.5-x64.zip': makeZip({ 'cublas64_13.dll': noise(4000, seed + 2) }),
     };
     const pin = {
       tag,
@@ -480,7 +480,7 @@ describe('CUDA replace after a pin bump', () => {
     await installTag('b8');
     const { pin, files } = release('b9');
     const srv = await zipServer({ files });
-    const verdict = { supported: false, reason: 'driver-too-old', driverFloor: 615 };
+    const verdict = { supported: false, reason: 'driver-too-old', driverFloor: 620 };
     await makeInstall({ fetchImpl: srv.fetchImpl, pin, probe: () => ({ nvidia: true, support: verdict }) }).startup();
     expect(srv.state.requests).toEqual([]);
   });

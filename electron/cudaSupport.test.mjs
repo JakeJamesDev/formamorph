@@ -14,14 +14,14 @@ describe('evaluateCudaSupport · floors', () => {
     expect(reasonOf(card('8.6', '580.00'))).toEqual({ supported: true });
   });
 
-  it('7.5 needs R615', () => {
-    expect(reasonOf(card('7.5', '614.99'))).toMatchObject({ supported: false, reason: 'driver-too-old', driverFloor: 615 });
-    expect(reasonOf(card('7.5', '615.00'))).toEqual({ supported: true });
+  it('7.5 needs R620', () => {
+    expect(reasonOf(card('7.5', '619.99'))).toMatchObject({ supported: false, reason: 'driver-too-old', driverFloor: 620 });
+    expect(reasonOf(card('7.5', '620.00'))).toEqual({ supported: true });
   });
 
-  it('9.0 fails on R580 and passes on R615', () => {
-    expect(reasonOf(card('9.0', '580.10'))).toMatchObject({ supported: false, reason: 'driver-too-old' });
-    expect(reasonOf(card('9.0', '615.10'))).toEqual({ supported: true });
+  it('9.0 fails on R615 and passes on R620', () => {
+    expect(reasonOf(card('9.0', '616.92'))).toMatchObject({ supported: false, reason: 'driver-too-old' });
+    expect(reasonOf(card('9.0', '620.10'))).toEqual({ supported: true });
   });
 
   it.each(['8.9', '12.0', '12.1'])('%s runs on R580', (cap) => {
@@ -40,7 +40,7 @@ describe('evaluateCudaSupport · several cards', () => {
   });
 
   it('all cards passing is supported', () => {
-    expect(reasonOf(card('8.9', '616.92'), card('7.5', '616.92'))).toEqual({ supported: true });
+    expect(reasonOf(card('8.9', '620.10'), card('7.5', '620.10'))).toEqual({ supported: true });
   });
 });
 

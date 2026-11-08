@@ -1,11 +1,11 @@
-// Can this machine run llama-server's CUDA 13.4 build? Pure policy over the facts nvidia-smi reports.
+// Can this machine run llama-server's CUDA 13.5 build? Pure policy over the facts nvidia-smi reports.
 // The one home of the floors: every consumer reads this verdict and never re-derives it.
 
 /** Compute capabilities whose code ships precompiled in the CUDA build. */
 const PRECOMPILED = new Set(['8.6', '8.9', '12.0', '12.1']);
 /** Driver branch floors: CUDA 13 minor-version compatibility, and the PTX ISA of the build's compiler. */
 const DRIVER_FLOOR_PRECOMPILED = 580;
-const DRIVER_FLOOR_PTX = 615;
+const DRIVER_FLOOR_PTX = 620;
 const MIN_CAPABILITY = [7, 5];
 
 /** "8.9" → [8, 9]; null when nvidia-smi gave anything else (e.g. "[N/A]"). */
