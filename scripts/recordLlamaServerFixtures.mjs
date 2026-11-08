@@ -1,7 +1,7 @@
 // Records the fake llama-server's fixtures from a real run of the pinned build: --list-devices, a load that
 // answers one chat turn, a load that fails on the KV cache, a CPU load and a fit-off load. `--thinking` records
 // one turn of a Qwen-style thinking model into <tag>-thinking.json, `--gemma` one of a Gemma 4 model into
-// <tag>-gemma.json. `--cuda <folder>` records the CUDA build's listing and one load into <tag>-cuda.json.
+// <tag>-gemma.json. `--cuda <folder>` records the CUDA build's listing, one load and one KV cache failure into <tag>-cuda.json.
 // Rerun all after every pin bump.
 // Usage: node scripts/recordLlamaServerFixtures.mjs [<model.gguf>] [--thinking <model.gguf>] [--gemma <model.gguf>] [--cuda <folder>]
 import { spawn } from 'node:child_process';
@@ -156,10 +156,12 @@ if (cudaFolder) {
   const cudaBin = path.join(cudaFolder, process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
   const listDevices = await listDevicesOf(cudaBin);
   const loaded = await scenario({ bin: cudaBin, modelPath, settings, chat: 'plain' });
+  // A CUDA load failure: the same far-past-VRAM KV cache as the bundled kvFail.
+  const kvFail = await scenario({ bin: cudaBin, modelPath, settings: { ...settings, contextSize: 1048576, gpuLayers: ls.GPU_LAYERS_MAX, parallelRequests: 1 } });
   await mkdir(OUT_DIR, { recursive: true });
   const file = path.join(OUT_DIR, `${tag}-cuda.json`);
-  await writeFile(file, `${JSON.stringify({ tag, listDevices, scenarios: { loaded } }, null, 1)}\n`);
-  console.log(`Recorded ${path.relative(ROOT, file)}: loaded ${loaded.outcome}`);
+  await writeFile(file, `${JSON.stringify({ tag, listDevices, scenarios: { loaded, kvFail } }, null, 1)}\n`);
+  console.log(`Recorded ${path.relative(ROOT, file)}: loaded ${loaded.outcome}, kvFail ${kvFail.outcome}`);
   process.exit(0);
 }
 

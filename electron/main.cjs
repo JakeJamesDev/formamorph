@@ -8,8 +8,10 @@ const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
 const { cudaSupport, nvidiaCards } = require('./nvidiaFacts.cjs');
+const { evaluateCudaSupport } = require('./cudaSupport.cjs');
 const { backendForStart, engineBackend } = require('./engineBackend.cjs');
-const { createCudaInstall } = require('./cudaInstall.cjs');
+const { createCudaInstall, driverVersions } = require('./cudaInstall.cjs');
+const { createCudaStarts } = require('./cudaStart.cjs');
 const { readEnginePin } = require('./enginePin.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
 // exports. See llmEngineProxy.cjs.
@@ -130,10 +132,12 @@ async function nvidiaGpus() {
 async function backendChoice(options = engineOptions) {
   if (process.platform !== 'win32') return { backend: 'vulkan', reason: 'not-installed', cudaBinary: null };
   const install = await cuda().status();
+  const cards = install.nvidia ? await nvidiaCards() : [];
   return backendForStart({
     install,
     serverPath: () => cuda().serverPath(),
-    cards: install.nvidia ? await nvidiaCards() : [],
+    failedLastTime: cuda().failedFor(driverVersions(cards)),
+    cards,
     vulkanDeviceNames: (await enumerationOf(llamaServerBinary())).gpuDeviceNames,
     setting: options.engineBackend,
     gpuDevice: options.gpuDevice,
@@ -145,6 +149,17 @@ async function startOptions(modelPath) {
   const { cudaBinary } = await backendChoice();
   return { modelPath, ...engineOptions, nvidiaGpus: await nvidiaGpus(), cudaBinary };
 }
+
+// Starts that keep the CUDA failure record. Off Windows a start never runs CUDA, so it never falls back.
+let cudaStarts = null;
+const engineStarts = () => (cudaStarts ??= createCudaStarts({
+  engine: llmEngine,
+  install: cuda(),
+  startOptions,
+  nextBackend: async () => (await backendChoice()).backend,
+  readCards: nvidiaCards,
+}));
+const startEngine = (modelPath) => engineStarts().start(modelPath);
 
 // Keep the (multi-GB) models beside the app so a portable build stays self-contained — burying them in
 // AppData orphans them for a portable exe with no uninstaller. Portable Windows builds run from a temp
@@ -421,7 +436,9 @@ function cuda() {
     // The row follows the VRAM query's NVIDIA list; the support verdict comes from the facts query.
     probe: async () => {
       const nvidia = process.platform === 'win32' && (await nvidiaGpus()).length > 0;
-      return { nvidia, support: nvidia ? await cudaSupport() : { supported: false, reason: 'no-nvidia-card' } };
+      if (!nvidia) return { nvidia, support: { supported: false, reason: 'no-nvidia-card' }, drivers: null };
+      const cards = await nvidiaCards();
+      return { nvidia, support: evaluateCudaSupport(cards), drivers: driverVersions(cards) };
     },
     stopEngine: () => llmEngine.stop(),
     engineRunning: () => ENGINE_RUNS.has(llmEngine.getState().status),
@@ -434,6 +451,8 @@ ipcMain.handle('cuda-status', () => cuda().status({ refresh: true }));
 ipcMain.handle('cuda-install', () => cuda().install());
 ipcMain.handle('cuda-cancel', () => { cuda().cancel(); return true; });
 ipcMain.handle('cuda-remove', () => cuda().remove());
+// The row's Retry: forget the CUDA failure, and restart a model running on Vulkan when the next start is CUDA.
+ipcMain.handle('cuda-retry', () => engineStarts().retry());
 
 // Desktop-only local LLM: load a GGUF and serve an OpenAI-compatible endpoint on localhost. The renderer
 // then points its normal OpenAI endpoint at it. Handlers return the engine's serializable state. Loading
@@ -444,7 +463,7 @@ ipcMain.handle('llm-load', async (_event, ref) => {
   const modelPath = resolveModelRef(ref, scanOptions());
   if (!modelPath) throw new Error('That model is no longer in a searched folder.');
   await llmEngine.stop();
-  return llmEngine.start(await startOptions(modelPath));
+  return startEngine(modelPath);
 });
 ipcMain.handle('llm-stop', () => llmEngine.stop());
 ipcMain.handle('llm-status', () => llmEngine.getState());
@@ -482,7 +501,7 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
   const loaded = llmEngine.getState().modelPath;
   if (changed && loaded) {
     await llmEngine.stop();
-    return llmEngine.start(await startOptions(loaded));
+    return startEngine(loaded);
   }
   return llmEngine.getState();
 });
@@ -499,7 +518,7 @@ ipcMain.handle('llm-restart', async () => {
   const { status, modelPath: loaded } = llmEngine.getState();
   if (status !== 'ready' || !loaded) return llmEngine.getState();
   await llmEngine.stop();
-  return llmEngine.start(await startOptions(loaded));
+  return startEngine(loaded);
 });
 
 // Every GPU the engine could be pinned to, for the device picker: { backend, devices, autoPick, choice }. The
@@ -600,7 +619,7 @@ ipcMain.handle('llm-move-models', async (_event, { from, to }) => {
     const name = path.basename(loadedBefore);
     // Reload from the new folder if it made the trip, otherwise from where it stayed.
     const back = result.moved.includes(name) ? path.join(to, name) : loadedBefore;
-    if (fs.existsSync(back)) await llmEngine.start(await startOptions(back));
+    if (fs.existsSync(back)) await startEngine(back);
   }
   return result;
 });
@@ -625,7 +644,7 @@ ipcMain.handle('llm-download', async (_event, { url, fileName, projector = null,
   });
   if (autoLoad !== false) {
     await llmEngine.stop();
-    await llmEngine.start(await startOptions(finalPath));
+    await startEngine(finalPath);
   }
   return { path: finalPath };
 });

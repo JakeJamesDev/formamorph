@@ -1,11 +1,13 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import llmEngine from './llmEngine.cjs';
 import llamaServer from './llamaServer.cjs';
 import engineBackend from './engineBackend.cjs';
+import cudaInstallModule from './cudaInstall.cjs';
+import cudaStartModule from './cudaStart.cjs';
 import { countFakeTokens, createFakeLlamaServer, isCpuStart, loadFixture, loadGemmaFixture, loadThinkingFixture, renderChatMl } from './fakeLlamaServer.mjs';
 
 const { createEngine, getState } = llmEngine;
@@ -17,7 +19,7 @@ const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'unifiedKvCache', 'kCacheType', 'vCacheType', 'kvCacheInRam', 'maxContextSize', 'engineVramMB',
   'backendSetting', 'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
-  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions', 'serverPid',
+  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions', 'serverPid', 'cudaFallback', 'cudaError',
 ];
 const keysOf = (s) => Object.keys(s).sort();
 const expectedKeys = [...STATE_KEYS].sort();
@@ -966,8 +968,8 @@ describe('CUDA backend', () => {
   const WITH_IGPU_NAMES = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4090'];
 
   /** Choose as main does, then start the engine with that choice over both recorded builds. */
-  async function startChosen({ install = INSTALLED, cards = [RTX_4090], vulkanDeviceNames = VULKAN_4090, setting = 'auto', gpuDevice = 'auto', fakeOptions = {} } = {}) {
-    const choice = backendForStart({ install, serverPath: () => (install.state === 'installed' ? CUDA_BIN : null), cards, vulkanDeviceNames, setting, gpuDevice });
+  async function startChosen({ install = INSTALLED, failedLastTime = false, cards = [RTX_4090], vulkanDeviceNames = VULKAN_4090, setting = 'auto', gpuDevice = 'auto', fakeOptions = {} } = {}) {
+    const choice = backendForStart({ install, serverPath: () => (install.state === 'installed' ? CUDA_BIN : null), failedLastTime, cards, vulkanDeviceNames, setting, gpuDevice });
     const { fake } = setup({ cuda: { bin: CUDA_BIN }, ...fakeOptions });
     const state = await engine.start({ ...SETTINGS, gpuDevice, nvidiaGpus: cards, engineBackend: setting, cudaBinary: choice.cudaBinary, modelPath: MODEL, port: await freePort() });
     const router = fake.routerCalls()[0];
@@ -1060,6 +1062,165 @@ describe('CUDA backend', () => {
     const onVulkan = await startChosen({ gpuDevice: 'NVIDIA GeForce RTX 4090', setting: 'vulkan' });
     expect(onVulkan.state).toMatchObject({ gpuBackend: 'vulkan', gpuDeviceOrigin: 'manual', gpuDeviceNames: ['NVIDIA GeForce RTX 4090'] });
     expect(after(onVulkan.router.args, '--device')).toBe('Vulkan0');
+  });
+
+  // The recorded CUDA KV cache failure on the CUDA build; the bundled build loads, or replays its own kvFail.
+  const cudaFails = (bundled = (args) => (isCpuStart(args) ? 'cpu' : 'loaded')) => (args, { cuda }) => (cuda ? 'kvFail' : bundled(args));
+
+  it('a failed CUDA load falls back to Vulkan in the same start, with the flag and the CUDA error', async () => {
+    const { state, fake } = await startChosen({ fakeOptions: { scenarioFor: cudaFails() } });
+    expect(state).toMatchObject({ status: 'ready', error: null, gpuBackend: 'vulkan', cudaFallback: true, gpuDeviceNames: ['NVIDIA GeForce RTX 4090'] });
+    expect(state.cudaError).toMatch(/VRAM/);
+    expect(keysOf(state)).toEqual(expectedKeys);
+    const routers = fake.routerCalls();
+    // CUDA, then the bundled build on the GPU: no CPU retry on the CUDA build.
+    expect(routers.map((r) => r.bin)).toEqual([CUDA_BIN, 'llama-server']);
+    expect(isCpuStart(routers[1].args)).toBe(false);
+    expect(routers[1].env).not.toHaveProperty('CUDA_CACHE_MAXSIZE');
+    expect(fake.routers[0].child.alive).toBe(false);
+    expect(fake.liveProcesses()).toBe(2);
+  });
+
+  it('CUDA and Vulkan both failing reach the CPU fallback, and the final error is the Vulkan one', async () => {
+    const loads = await startChosen({ fakeOptions: { scenarioFor: cudaFails((args) => (isCpuStart(args) ? 'cpu' : 'kvFail')) } });
+    expect(loads.state).toMatchObject({ status: 'ready', gpuBackend: 'cpu', cudaFallback: true });
+    expect(loads.fake.routerCalls().map((r) => [r.bin, isCpuStart(r.args)])).toEqual([[CUDA_BIN, false], ['llama-server', false], ['llama-server', true]]);
+
+    const vulkanOnly = await startChosen({ setting: 'vulkan', fakeOptions: { scenarioFor: () => 'kvFail' } });
+    const { state, fake } = await startChosen({ fakeOptions: { scenarioFor: cudaFails(() => 'kvFail') } });
+    expect(state).toMatchObject({ status: 'error', error: vulkanOnly.state.error, gpuBackend: 'cpu', cudaFallback: true });
+    expect(keysOf(state)).toEqual(expectedKeys);
+    expect(fake.routerCalls()).toHaveLength(3);
+    expect(fake.liveProcesses()).toBe(0);
+  });
+
+  it('a CUDA load that succeeds carries no fallback', async () => {
+    const { state } = await startChosen();
+    expect(state).toMatchObject({ gpuBackend: 'cuda', cudaFallback: false, cudaError: null });
+  });
+
+  describe('failure memory', () => {
+    const { createCudaInstall, driverVersions } = cudaInstallModule;
+    const { createCudaStarts } = cudaStartModule;
+    const DRIVERS = driverVersions([RTX_4090]);
+    let enginesDir = null;
+    afterEach(() => { if (enginesDir) rmSync(enginesDir, { recursive: true, force: true }); enginesDir = null; });
+
+    /** The install module over a temp folder, for `tag`; its record is what main reads and writes. */
+    const install = (tag = 'b12078') => {
+      enginesDir ??= mkdtempSync(path.join(os.tmpdir(), 'cuda-failure-'));
+      return createCudaInstall({
+        enginesDir, pin: { tag, cuda: { assets: [] } }, downloader: null, stopEngine: async () => {}, freeSpace: () => null,
+        probe: () => ({ nvidia: true, support: { supported: true }, drivers: DRIVERS }),
+      });
+    };
+
+    /**
+     * Main's starts over the fake: `startOptions` stands in for main's backend choice (its device listing
+     * needs the real builds), reading the record as main does. `choice` is the last start's.
+     */
+    function cudaStarts(cuda, { cards = [RTX_4090], setting = 'auto', scenarioFor } = {}) {
+      const { fake } = setup({ cuda: { bin: CUDA_BIN }, ...(scenarioFor ? { scenarioFor } : {}) });
+      const choose = () => backendForStart({
+        install: INSTALLED, serverPath: () => CUDA_BIN, failedLastTime: cuda.failedFor(driverVersions(cards)), cards, vulkanDeviceNames: VULKAN_4090, setting,
+      });
+      const run = { fake, choice: null };
+      run.starts = createCudaStarts({
+        engine, install: cuda, readCards: async () => cards, nextBackend: async () => choose().backend,
+        startOptions: async (modelPath) => {
+          run.choice = choose();
+          return { ...SETTINGS, modelPath, port: await freePort(), nvidiaGpus: cards, engineBackend: setting, cudaBinary: run.choice.cudaBinary };
+        },
+      });
+      return run;
+    }
+
+    /** One start and stop through main's starts. */
+    async function mainStart(cuda, options) {
+      const run = cudaStarts(cuda, options);
+      run.state = await run.starts.start(MODEL);
+      await engine.stop();
+      return run;
+    }
+
+    it('after a fallback, the next Auto start goes straight to Vulkan, and Retry lets it try CUDA again', async () => {
+      const cuda = install();
+      const failed = await mainStart(cuda, { scenarioFor: cudaFails() });
+      expect(failed.state.cudaFallback).toBe(true);
+
+      const next = await mainStart(cuda);
+      expect(next.choice).toMatchObject({ backend: 'vulkan', reason: 'failed-last-time' });
+      expect(next.fake.calls.map((c) => c.bin)).not.toContain(CUDA_BIN);
+      expect(next.state.gpuBackend).toBe('vulkan');
+
+      await cuda.retry();
+      expect((await mainStart(cuda)).state.gpuBackend).toBe('cuda');
+    });
+
+    it('Retry restarts a model running on Vulkan on CUDA, and only clears the record while stopped', async () => {
+      const cuda = install();
+      // CUDA fails until the player fixes the cause (a driver update, say), then loads.
+      let cudaBroken = true;
+      const run = cudaStarts(cuda, { scenarioFor: (args, { cuda: onCuda }) => (onCuda && cudaBroken ? 'kvFail' : 'loaded') });
+      await run.starts.start(MODEL);
+      expect(engine.getState()).toMatchObject({ status: 'ready', gpuBackend: 'vulkan', cudaFallback: true });
+      expect(cuda.failedFor(DRIVERS)).toBe(true);
+
+      cudaBroken = false;
+      await run.starts.retry();
+      expect(engine.getState()).toMatchObject({ status: 'ready', gpuBackend: 'cuda', cudaFallback: false });
+      expect(run.fake.routerCalls().at(-1).bin).toBe(CUDA_BIN);
+      expect(cuda.failedFor(DRIVERS)).toBe(false);
+
+      await mainStart(cuda, { scenarioFor: cudaFails() });
+      const stopped = cudaStarts(cuda);
+      await stopped.starts.retry();
+      expect(cuda.failedFor(DRIVERS)).toBe(false);
+      expect(stopped.fake.calls).toEqual([]);
+      expect(engine.getState().status).toBe('stopped');
+    });
+
+    it('a new tag or a new driver version lets Auto try CUDA again', async () => {
+      await mainStart(install(), { scenarioFor: cudaFails() });
+      expect(install().failedFor(DRIVERS)).toBe(true);
+      expect(install('b12079').failedFor(DRIVERS)).toBe(false);
+      const newDriver = await mainStart(install(), { cards: [{ ...RTX_4090, driverVersion: '620.10' }] });
+      expect(newDriver.state.gpuBackend).toBe('cuda');
+      // A failed facts query never matches.
+      expect(install().failedFor(driverVersions(null))).toBe(false);
+    });
+
+    it('an explicit CUDA setting runs CUDA despite the record, and its fallback still records', async () => {
+      const cuda = install();
+      await mainStart(cuda, { setting: 'cuda', scenarioFor: cudaFails() });
+      expect(cuda.failedFor(DRIVERS)).toBe(true);
+      expect((await mainStart(cuda, { setting: 'cuda' })).state.gpuBackend).toBe('cuda');
+    });
+
+    it('records nothing when Vulkan failed too, whether the CPU then loads or not, or when CUDA loaded', async () => {
+      const cuda = install();
+      expect((await mainStart(cuda, { scenarioFor: cudaFails(() => 'kvFail') })).state.status).toBe('error');
+      const onCpu = await mainStart(cuda, { scenarioFor: cudaFails((args) => (isCpuStart(args) ? 'cpu' : 'kvFail')) });
+      expect(onCpu.state).toMatchObject({ status: 'ready', gpuBackend: 'cpu', cudaFallback: true });
+      expect((await mainStart(cuda)).state.gpuBackend).toBe('cuda');
+      expect(cuda.failedFor(DRIVERS)).toBe(false);
+    });
+
+    it('keeps several cards as their distinct driver versions, sorted', () => {
+      expect(driverVersions([{ driverVersion: '616.92' }, { driverVersion: '580.10' }, { driverVersion: '616.92' }])).toEqual(['580.10', '616.92']);
+    });
+
+    it('the installed status says CUDA failed last time while the record matches, and Remove clears it', async () => {
+      const cuda = install();
+      await mainStart(cuda, { scenarioFor: cudaFails() });
+      // An installed folder for the tag, as its marker reads.
+      const dir = path.join(enginesDir, 'llama-server-cuda-b12078');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(path.join(dir, 'cuda-install.json'), JSON.stringify({ tag: 'b12078', digests: [] }));
+      expect(await cuda.status()).toMatchObject({ state: 'installed', failedLastTime: true });
+      await cuda.remove();
+      expect(cuda.failedFor(DRIVERS)).toBe(false);
+    });
   });
 });
 

@@ -109,6 +109,12 @@ export function CudaEngineRow({ engine, status }: { engine: LocalLlmState; statu
           <Hint>Installed</Hint>
           <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onRemove}>Remove</Button>
         </div>
+        {status.failedLastTime && (
+          <div className="flex items-center gap-3">
+            <Hint>CUDA couldn’t load a model last time.</Hint>
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void run(bridge.retry)}>Retry CUDA</Button>
+          </div>
+        )}
         {/* A driver rollback after the install: the files stay, and the reason still shows. */}
         {status.support && !status.support.supported && <UnsupportedReason support={status.support} />}
       </div>

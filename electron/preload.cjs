@@ -18,12 +18,13 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   leaveFullScreen: () => ipcRenderer.invoke('window-leave-full-screen'),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
   cudaSupport: () => ipcRenderer.invoke('cuda-support'),
-  // The optional CUDA engine build: status, install with pushed progress, cancel (keeps partials), remove.
+  // The optional CUDA engine build: status, install with pushed progress, cancel (keeps partials), remove, retry after a failure.
   cuda: {
     status: () => ipcRenderer.invoke('cuda-status'),
     install: () => ipcRenderer.invoke('cuda-install'),
     cancel: () => ipcRenderer.invoke('cuda-cancel'),
     remove: () => ipcRenderer.invoke('cuda-remove'),
+    retry: () => ipcRenderer.invoke('cuda-retry'),
     onStatus: (cb) => {
       const handler = (_event, s) => cb(s);
       ipcRenderer.on('cuda-status', handler);

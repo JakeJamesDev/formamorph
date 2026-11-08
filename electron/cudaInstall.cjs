@@ -11,6 +11,15 @@ const MARKER = 'cuda-install.json';
 const STAGING = 'staging';
 const CANCEL_RECORD = 'cuda-replace-canceled.json';
 const DISCARD_PREFIX = 'deleting-';
+const FAILURE_RECORD = 'cuda-failed.json';
+
+/** The cards' sorted distinct driver versions, or null when the facts query failed. */
+function driverVersions(cards) {
+  if (!Array.isArray(cards)) return null;
+  return [...new Set(cards.map((c) => c?.driverVersion).filter((v) => typeof v === 'string' && v))].sort();
+}
+
+const sameList = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i]);
 
 const installDirFor = (enginesDir, tag) => path.join(enginesDir, `${FOLDER_PREFIX}${tag}`);
 const stagingDirFor = (enginesDir, tag) => path.join(enginesDir, STAGING, tag);
@@ -114,6 +123,38 @@ function createCudaInstall({
   const recordCancel = () => { fs.mkdirSync(enginesDir, { recursive: true }); fs.writeFileSync(cancelFile, JSON.stringify({ tag: pin.tag })); };
   const clearCancel = () => { try { fs.rmSync(cancelFile, { force: true }); } catch { /* cleared at the next prune */ } };
 
+  // A CUDA load that failed where Vulkan then loaded, for this tag and these drivers (spec Q19).
+  const failureFile = path.join(enginesDir, FAILURE_RECORD);
+  const readFailure = () => { try { return JSON.parse(fs.readFileSync(failureFile, 'utf8')); } catch { return null; } };
+  const clearFailure = () => { try { fs.rmSync(failureFile, { force: true }); } catch { /* matched again until cleared */ } };
+
+  /** True while the failure record names the current tag and `drivers` (from `driverVersions`); null drivers never match. */
+  function failedFor(drivers) {
+    const record = readFailure();
+    return record?.tag === pin.tag && drivers != null && sameList(record.drivers, drivers);
+  }
+
+  /**
+   * Hear one engine start's outcome: a start that fell back from CUDA and loaded on Vulkan records the
+   * failure under the current tag and `drivers`. Every other outcome leaves the record alone.
+   */
+  async function noteStart(state, drivers) {
+    if (state?.status !== 'ready' || state.cudaFallback !== true || state.gpuBackend !== 'vulkan' || drivers == null) return;
+    if (failedFor(drivers)) return;
+    try {
+      fs.mkdirSync(enginesDir, { recursive: true });
+      fs.writeFileSync(failureFile, JSON.stringify({ tag: pin.tag, drivers, error: state.cudaError ?? null }));
+    } catch { /* the next fallback records it */ }
+    await emit();
+  }
+
+  /** The row's Retry: forget the failure, so Auto tries CUDA again. */
+  async function retry() {
+    clearFailure();
+    await emit();
+    return status();
+  }
+
   /**
    * Delete every CUDA folder but the current tag's and the newest other valid one (a launcher rollback's),
    * plus other tags' partials. Skipped while the engine runs; a folder Windows still holds stays for next time.
@@ -140,13 +181,13 @@ function createCudaInstall({
   /** The current status. `refresh` reads the machine facts again, so a driver update shows without a restart. */
   async function status({ refresh = false } = {}) {
     if (refresh && !job) facts = null;
-    const { nvidia, support } = await machine();
+    const { nvidia, support, drivers = null } = await machine();
     const base = { nvidia, support, downloadBytes };
     if (job) {
       return { ...base, state: 'downloading', received: job.received, total: job.total, phase: job.phase, ...(job.replacing ? { replacing: true } : {}) };
     }
     const tag = installedTag();
-    if (tag) return { ...base, state: 'installed', tag };
+    if (tag) return { ...base, state: 'installed', tag, ...(failedFor(drivers) ? { failedLastTime: true } : {}) };
     if (!support?.supported) return { ...base, state: 'unsupported' };
     const partialBytes = sumOf(onDisk);
     const rest = { partialBytes, ...(lastError ? { error: lastError } : {}) };
@@ -266,6 +307,7 @@ function createCudaInstall({
       if (n.startsWith(FOLDER_PREFIX) || n === STAGING) fs.rmSync(path.join(enginesDir, n), { recursive: true, force: true });
     }
     clearCancel();
+    clearFailure();
     lastError = null;
     await emit();
     return status();
@@ -288,7 +330,7 @@ function createCudaInstall({
     return fs.existsSync(exe) ? exe : null;
   }
 
-  return { status, install, startup, cancel, remove, prune, serverPath };
+  return { status, install, startup, cancel, remove, prune, serverPath, failedFor, noteStart, retry };
 }
 
-module.exports = { createCudaInstall, tarExtract };
+module.exports = { createCudaInstall, tarExtract, driverVersions };

@@ -23,7 +23,7 @@ const engine = (status: LocalLlmState['status']): LocalLlmState => ({
   status, modelPath: null, modelId: null, port: null, error: null, loadProgress: null, contextSize: null, gpuLayers: null,
   flashAttention: null, parallelRequests: null, unifiedKvCache: null, kCacheType: null, vCacheType: null, kvCacheInRam: null,
   maxContextSize: null, engineVramMB: null, backendSetting: null, gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null,
-  gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null, serverPid: null,
+  gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null, serverPid: null, cudaFallback: null, cudaError: null,
 });
 
 let installCalls = 0;
@@ -40,6 +40,7 @@ function stubDesktop(cuda: CudaStatus | null) {
       install: () => { installCalls += 1; return Promise.resolve(cuda); },
       cancel: () => Promise.resolve(true),
       remove: () => Promise.resolve(cuda),
+      retry: () => Promise.resolve(cuda),
       onStatus: () => () => {},
     }
     : undefined;

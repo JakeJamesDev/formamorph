@@ -54,6 +54,9 @@ const NO_ENGINE = {
   gpuDeviceOrigin: null,
   gpuDeviceOptions: null,
   serverPid: null,
+  // True when a failed CUDA load fell back to the bundled build, with that load's error.
+  cudaFallback: null,
+  cudaError: null,
 };
 
 // Serializable status shared with the renderer (no live handles). status: stopped|loading|ready|error.
@@ -404,7 +407,7 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
    * device name), resolved against `--list-devices` on every start with `nvidiaGpus` (nvidia-smi rows) for
    * Auto's pick. A failed GPU load retries once on the CPU. `contextOverflow`, when given, sets the policy
    * as `setContextOverflow` does. `cudaBinary` is the CUDA build's server when main chose CUDA; a CUDA build
-   * that lists no devices leaves the start on the bundled build. `engineBackend` is the Backend setting, kept
+   * that lists no devices, or fails to load, leaves the start on the bundled build. `engineBackend` is the Backend setting, kept
    * with the applied options.
    */
   async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, unifiedKvCache, kCacheType, vCacheType, kvCacheInRam, gpuDevice, nvidiaGpus, cudaBinary = null, engineBackend = null, contextOverflow: policy } = {}) {
@@ -447,21 +450,26 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     l.bin = l.cuda ? cudaBinary : binaryPath({ platform });
     if (!l.cuda) devices = await llamaServer.listServerDevices({ bin: l.bin, spawn });
     if (!isCurrent()) return abandoned();
-    const names = devices.map((d) => d.name);
-    const pick = selectEngineDevice({ deviceNames: names, nvidiaGpus, setting: gpuDevice });
-    l.device = pick.index != null ? devices[pick.index].id : null;
-    const device = {
-      gpuBackend: llamaServer.backendOf(devices),
-      gpuDeviceNames: pick.index != null ? [names[pick.index]] : names,
-      deviceVramTotalMB: null,
-      deviceVramFreeMB: null,
-      gpuDeviceIndex: pick.index,
-      gpuDeviceRawIndex: null,
-      gpuDeviceOrigin: pick.origin,
-      gpuDeviceOptions: names.length ? names : null,
+    // The device this start loads onto, with the CUDA fallback fields; an error state keeps it.
+    const device = { cudaFallback: false, cudaError: null };
+    /** Pick among `devices` and publish the pick now rather than at 'ready', so a slow load shows what it's loading onto. */
+    const useDevices = () => {
+      const names = devices.map((d) => d.name);
+      const pick = selectEngineDevice({ deviceNames: names, nvidiaGpus, setting: gpuDevice });
+      l.device = pick.index != null ? devices[pick.index].id : null;
+      Object.assign(device, {
+        gpuBackend: llamaServer.backendOf(devices),
+        gpuDeviceNames: pick.index != null ? [names[pick.index]] : names,
+        deviceVramTotalMB: null,
+        deviceVramFreeMB: null,
+        gpuDeviceIndex: pick.index,
+        gpuDeviceRawIndex: null,
+        gpuDeviceOrigin: pick.origin,
+        gpuDeviceOptions: names.length ? names : null,
+      });
+      setState({ ...getState(), loadProgress: 0, ...device });
     };
-    // Publish the device now rather than at 'ready', so a slow load shows what it's loading onto.
-    setState({ ...getState(), ...device });
+    useDevices();
 
     const errorState = (error) => ({ status: 'error', modelPath, modelId: null, port, error, loadProgress: null, ...NO_ENGINE, ...device });
     const fail = async (error) => {
@@ -478,6 +486,20 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
     }
 
     let result = await attempt(l, { cpu: !devices.length });
+    // A failed CUDA load runs the bundled build next, which keeps its own CPU retry.
+    if (!result.ok && l.cuda && isCurrent()) {
+      device.cudaFallback = true;
+      device.cudaError = result.error;
+      await endServer(l.server);
+      l.server = null;
+      if (!isCurrent()) return abandoned();
+      l.cuda = false;
+      l.bin = binaryPath({ platform });
+      devices = await llamaServer.listServerDevices({ bin: l.bin, spawn });
+      if (!isCurrent()) return abandoned();
+      useDevices();
+      result = await attempt(l, { cpu: !devices.length });
+    }
     if (!result.ok && devices.length && isCurrent()) {
       const gpuError = result.error;
       await endServer(l.server);

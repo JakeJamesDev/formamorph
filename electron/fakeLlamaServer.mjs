@@ -40,7 +40,8 @@ export const countFakeTokens = (text) => (text.match(/<\|[a-z_]+\|>|[^\s<]+|</g)
 export const isCpuStart = (args) => argValue(args, '--device') === 'none';
 
 /**
- * `scenarioFor(args)` names the recorded scenario a router start replays: `loaded`, `kvFail` or `cpu`.
+ * `scenarioFor(args, { cuda })` names the recorded scenario a router start replays: `loaded`, `kvFail` or
+ * `cpu`; `cuda` is true for a start of the CUDA build.
  * `listDevices` overrides the recorded `--list-devices` text. `stepMs` paces the replayed events.
  * `holdReply` keeps each chat reply open (a stream after its first frame); `chatHangups` gets each one the
  * caller ends. `holdTokenize` keeps every `/tokenize` answer back, listed in `heldTokenize`, until
@@ -89,7 +90,7 @@ export function createFakeLlamaServer({ fixture = loadFixture(), scenarioFor = (
       return child;
     }
 
-    const scenario = build.scenarios[scenarioFor(args)];
+    const scenario = build.scenarios[scenarioFor(args, { cuda: build === cudaBuild })];
     const port = Number(argValue(args, '--port'));
     const ini = readFileSync(argValue(args, '--models-preset'), 'utf8');
     const modelId = /^\[(.+)\]$/m.exec(ini)[1];

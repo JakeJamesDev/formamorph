@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { LocalModelPanel } from './LocalModelPanel';
 import { LocalEngineManager } from '../LocalEngineManager';
+import { closeErrorDetails, getErrorDetailsState } from '@/lib/errorDetails';
 import type { CudaInstallError, CudaStatus, EngineBackendChoice, EngineDeviceList, LocalLlmState } from '@/lib/imageGen/desktop';
 
 type CudaBridge = NonNullable<NonNullable<Window['formamorphDesktop']>['cuda']>;
@@ -23,6 +24,7 @@ function cudaBridge(initial: CudaStatus) {
     install: () => { calls.push('install'); return Promise.resolve(initial); },
     cancel: () => { calls.push('cancel'); return Promise.resolve(true); },
     remove: () => { calls.push('remove'); return Promise.resolve(initial); },
+    retry: () => { calls.push('retry'); return Promise.resolve(initial); },
     onStatus: (cb) => { listener = cb; return () => { listener = null; }; },
   };
   const push = (s: CudaStatus) => act(() => { listener?.(s); });
@@ -42,7 +44,7 @@ const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
   contextSize: 8192, gpuLayers: -1, flashAttention: true, parallelRequests: 2, unifiedKvCache: true, kCacheType: 'f16', vCacheType: 'f16', kvCacheInRam: false,
   maxContextSize: 32768, engineVramMB: 4096, backendSetting: 'auto',
   gpuBackend: 'vulkan', gpuDeviceNames: [IGPU, DISCRETE], deviceVramTotalMB: 16376, deviceVramFreeMB: 15176,
-  gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null, serverPid: null,
+  gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null, serverPid: null, cudaFallback: false, cudaError: null,
   ...over,
 });
 
@@ -669,5 +671,61 @@ describe('local model Backend row', () => {
     await screen.findByRole('combobox');
     await act(async () => {});
     expect(screen.queryByRole('combobox', { name: /backend/i })).toBeNull();
+  });
+});
+
+describe('local model CUDA fallback and failure memory', () => {
+  const RTX_4090 = 'NVIDIA GeForce RTX 4090';
+  const installed: CudaStatus = { ...CUDA_BASE, state: 'installed', tag: 'b9' };
+  const failed: CudaStatus = { ...installed, failedLastTime: true };
+  const CUDA_ERROR = "Context Size 8192 doesn't fit in this GPU's VRAM. Lower Context Size.";
+  const NOTICE = /CUDA couldn’t load your model, so it runs on Vulkan/;
+
+  it('says a start fell back to Vulkan, and Error Details shows the CUDA error', async () => {
+    const { bridge } = cudaBridge(failed);
+    stubDesktop({
+      devices: [RTX_4090], cuda: bridge, choice: { backend: 'vulkan', reason: 'failed-last-time' },
+      engine: readyEngine({ gpuBackend: 'vulkan', cudaFallback: true, cudaError: CUDA_ERROR }),
+    });
+    openPanel();
+    expect(await screen.findByText(NOTICE)).toBeInTheDocument();
+    // The notice says it for this start; the Backend row's own reason line stays out of the way.
+    expect(screen.queryByText(/because CUDA failed last time/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'View Details' }));
+    expect(getErrorDetailsState()).toMatchObject({ open: true, entry: { details: CUDA_ERROR } });
+    closeErrorDetails();
+  });
+
+  it('shows no notice for a start that ran on CUDA or never tried it', async () => {
+    const { bridge } = cudaBridge(installed);
+    stubDesktop({ devices: [RTX_4090], cuda: bridge, choice: { backend: 'cuda', reason: null }, engine: readyEngine({ gpuBackend: 'cuda' }) });
+    openPanel();
+    await screen.findByText('Auto (CUDA)');
+    expect(screen.queryByText(NOTICE)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'View Details' })).toBeNull();
+  });
+
+  it('shows no Vulkan notice when the fallback ended on the CPU', async () => {
+    const { bridge } = cudaBridge(installed);
+    stubDesktop({
+      devices: [RTX_4090], cuda: bridge, choice: { backend: 'cuda', reason: null },
+      engine: readyEngine({ gpuBackend: 'cpu', cudaFallback: true, cudaError: CUDA_ERROR }),
+    });
+    openPanel();
+    await screen.findByText('Auto (CUDA)');
+    expect(screen.queryByText(NOTICE)).toBeNull();
+  });
+
+  it('says CUDA failed last time with a Retry, and names it as the reason Auto uses Vulkan', async () => {
+    const { bridge, calls, push } = cudaBridge(failed);
+    stubDesktop({ devices: [RTX_4090], cuda: bridge, choice: { backend: 'vulkan', reason: 'failed-last-time' }, engine: readyEngine({ gpuBackend: 'vulkan' }) });
+    openPanel();
+    expect(await screen.findByText('CUDA couldn’t load a model last time.')).toBeInTheDocument();
+    expect(screen.getByText('Auto uses Vulkan because CUDA failed last time.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry CUDA' }));
+    expect(calls).toEqual(['retry']);
+
+    await push(installed);
+    expect(screen.queryByRole('button', { name: 'Retry CUDA' })).toBeNull();
   });
 });

@@ -22,16 +22,18 @@ function mixedGpus(vulkanDeviceNames, cards) {
  * `gpuDevice` is the device setting.
  *
  * Returns `{ backend: 'cuda' | 'vulkan', reason }`; `reason` says why CUDA isn't used: `setting`,
- * `not-installed`, `updating`, `mixed-gpus`, or a support verdict reason. An explicit CUDA setting skips
- * the support rule and the mixed-GPU check; those steer only Auto.
+ * `not-installed`, `updating`, `failed-last-time`, `mixed-gpus`, or a support verdict reason. An explicit
+ * CUDA setting skips the failure record, the support rule and the mixed-GPU check; those steer only Auto.
+ * `failedLastTime` is true while the CUDA failure record matches this tag and driver.
  */
-function chooseEngineBackend({ setting, installState, replacing = false, cards, vulkanDeviceNames = [], gpuDevice = ENGINE_DEVICE_AUTO } = {}) {
+function chooseEngineBackend({ setting, installState, replacing = false, failedLastTime = false, cards, vulkanDeviceNames = [], gpuDevice = ENGINE_DEVICE_AUTO } = {}) {
   const wanted = engineBackend(setting);
   if (wanted === 'vulkan') return vulkan('setting');
   if (installState !== 'installed') {
     return vulkan(installState === 'stale' || (installState === 'downloading' && replacing) ? 'updating' : 'not-installed');
   }
   if (wanted === 'cuda') return CUDA;
+  if (failedLastTime) return vulkan('failed-last-time');
 
   // A device pin on an NVIDIA card asks for that card alone, so only that card has to pass.
   const pinned = gpuDevice !== ENGINE_DEVICE_AUTO && gpuDevice !== ENGINE_DEVICE_ALL && Array.isArray(cards)
@@ -49,11 +51,12 @@ function chooseEngineBackend({ setting, installState, replacing = false, cards, 
 
 /**
  * The backend choice for one start plus the CUDA server to run, from the CUDA install (`install` is its
- * status, `serverPath` its installed binary). CUDA without a binary on disk reads as not installed.
+ * status, `serverPath` its installed binary, `failedLastTime` its failure record's match). CUDA without a
+ * binary on disk reads as not installed.
  */
-function backendForStart({ install, serverPath, cards, vulkanDeviceNames, setting, gpuDevice }) {
+function backendForStart({ install, serverPath, failedLastTime = false, cards, vulkanDeviceNames, setting, gpuDevice }) {
   const choice = chooseEngineBackend({
-    setting, installState: install?.state, replacing: install?.replacing === true, cards, vulkanDeviceNames, gpuDevice,
+    setting, installState: install?.state, replacing: install?.replacing === true, failedLastTime, cards, vulkanDeviceNames, gpuDevice,
   });
   const cudaBinary = choice.backend === 'cuda' ? serverPath() : null;
   if (choice.backend === 'cuda' && !cudaBinary) return { backend: 'vulkan', reason: 'not-installed', cudaBinary: null };

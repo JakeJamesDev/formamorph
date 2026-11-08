@@ -164,6 +164,10 @@ export interface LocalLlmState {
   gpuDeviceOptions: string[] | null;
   /** Pid of the llama-server model instance, which holds our VRAM. Null until found after the load. */
   serverPid: number | null;
+  /** True when a failed CUDA load fell back to Vulkan in this start. Null when nothing is loaded. */
+  cudaFallback: boolean | null;
+  /** That CUDA load's error, in setting names. Null without a fallback. */
+  cudaError: string | null;
 }
 
 /** How the engine's pinned device was arrived at. */
@@ -182,7 +186,7 @@ export interface EngineDeviceList {
 }
 
 /** Why a start runs on Vulkan instead of CUDA: the setting, the install, the machine, or the CUDA build's listing. */
-export type EngineBackendReason = 'setting' | 'not-installed' | 'updating' | 'mixed-gpus' | 'no-cuda-devices' | 'no-nvidia-card' | 'card-too-old' | 'driver-too-old' | 'support-unknown';
+export type EngineBackendReason = 'setting' | 'not-installed' | 'updating' | 'failed-last-time' | 'mixed-gpus' | 'no-cuda-devices' | 'no-nvidia-card' | 'card-too-old' | 'driver-too-old' | 'support-unknown';
 
 export interface EngineBackendChoice {
   backend: 'cuda' | 'vulkan';
@@ -241,7 +245,11 @@ export type CudaStatus = {
       /** An older tag's build is installed, so this download replaces it after a pin bump. */
       replacing?: true;
     }
-  | { state: 'installed'; tag: string }
+  | {
+      state: 'installed'; tag: string;
+      /** CUDA failed to load on this tag and driver, so Auto uses Vulkan until Retry. */
+      failedLastTime?: true;
+    }
   | { state: 'unsupported' }
 );
 
@@ -259,6 +267,8 @@ declare global {
         install: () => Promise<CudaStatus>;
         cancel: () => Promise<boolean>;
         remove: () => Promise<CudaStatus>;
+        /** Forget the CUDA failure; a model running on Vulkan restarts on CUDA. */
+        retry: () => Promise<CudaStatus>;
         onStatus: (cb: (s: CudaStatus) => void) => () => void;
       };
       /** Tell the main process which ComfyUI server to remove this window's Origin for; null for none. */
