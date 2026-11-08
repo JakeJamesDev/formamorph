@@ -1,6 +1,7 @@
 # Spec: CUDA Engine
 
 Status: ready-for-agent
+Spec session: cuda-engine — spec
 
 Windows desktop only. An optional download that lets the built-in engine run llama-server's CUDA build on NVIDIA cards.
 
