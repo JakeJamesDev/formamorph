@@ -302,6 +302,66 @@ describe('turn pass requests', () => {
       ).toBe('Player: I wait. [make her leave]');
     });
 
+    describe('told panel actions', () => {
+      const potion = { key: 'potion', name: 'Healing Potion' };
+      const told: TurnPlanInput['toldActions'] = [
+        { facts: { kind: 'use', item: potion, copyId: 'c1' }, count: 2 },
+        { facts: { kind: 'give', item: { key: 'coin', name: 'Coin' }, quantity: 3, to: { id: 'bram', name: 'Bram' } }, count: 1 },
+      ];
+
+      it('ends the request with the wrapper and one line per told entry, with thinking off', () => {
+        expect(lastMessage('narration', {}, { toldActions: told }, { thinkingMode: 'off' })).toBe(
+          'Player: I read the notices.\n\nACTION LIST\n- Used Healing Potion ×2\n- Gave 3× Coin to Bram',
+        );
+      });
+
+      it('follows the direction rider on a bracket turn', () => {
+        const bracket = { action: 'I wait. [make her leave]' };
+        expect(lastMessage('narration', bracket, { toldActions: told.slice(0, 1) }, { thinkingMode: 'off' })).toBe(
+          'Player: I wait. [make her leave]\n\nOOC RIDER\n\nACTION LIST\n- Used Healing Potion ×2',
+        );
+      });
+
+      it('adds nothing with no told entries, or with thinking on', () => {
+        expect(lastMessage('narration', {}, { toldActions: [] }, { thinkingMode: 'off' })).toBe('Player: I read the notices.');
+        for (const mode of ['precall', 'inline', 'staged'] as const) {
+          const message = lastMessage('narration', {}, { toldActions: told }, { thinkingMode: mode });
+          expect([mode, message.includes('ACTION LIST'), message.includes('Healing Potion')]).toEqual([mode, false, false]);
+        }
+      });
+
+      it('sends the lines alone under a blank wrapper', () => {
+        expect(
+          lastMessage('narration', {}, { toldActions: told.slice(0, 1), prompts: { ...TEST_PROMPTS, actionList: ' ' } }, { thinkingMode: 'off' }),
+        ).toBe('Player: I read the notices.\n\n- Used Healing Potion ×2');
+      });
+
+      it('keeps an empty action with its template, then the block (Q33)', () => {
+        expect(lastMessage('narration', { action: '', effectiveAction: '' }, { action: '', toldActions: told.slice(0, 1) }, { thinkingMode: 'off' }))
+          .toBe('Player: \n\nACTION LIST\n- Used Healing Potion ×2');
+      });
+
+      it('reaches no other pass (Q8)', () => {
+        const subject = { name: 'Bram', entity: BRAM, moves: [] };
+        for (const record of TURN_PASSES) {
+          if (record.id === 'narration') continue;
+          const request = record.buildRequest(input({ toldActions: told }, { thinkingMode: 'off' }), material({ subject }));
+          const text = [request.systemPrompt, ...request.messages.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))].join('\n');
+          expect([record.id, text.includes('ACTION LIST'), text.includes('Healing Potion')]).toEqual([record.id, false, false]);
+        }
+      });
+
+      it('marks the wrapper as its own editor and the lines as assembled context', () => {
+        const request = build('narration', {}, { toldActions: told }, { thinkingMode: 'off' });
+        const content = request.messages[request.messages.length - 1].content as string;
+        const runs = request.anatomy!.messages[request.messages.length - 1];
+        expect(runsTile(content, runs)).toBe(true);
+        const textOf = (label: string) => runs.filter((r) => (r.source ?? r.contextLabel) === label).map((r) => content.slice(r.start, r.end));
+        expect(textOf('action-list')).toEqual(['ACTION LIST\n']);
+        expect(textOf('listed-actions')).toEqual(['- Used Healing Potion ×2\n- Gave 3× Coin to Bram']);
+      });
+    });
+
     it('rides the inline think directive in inline mode only', () => {
       expect(lastMessage('narration', {}, {}, { thinkingMode: 'inline' })).toBe(
         `I read the notices.${INLINE_THINKING_DIRECTIVE}`,

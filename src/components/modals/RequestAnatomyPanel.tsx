@@ -28,7 +28,7 @@ import { Hint } from '@/components/ui/typography';
 /** The fixture playthrough at its fullest: every condition the player's settings allow is shown firing.
  *  One a playthrough could skip (no recall hit this turn) still can't promise anything — the builder
  *  drops what the settings themselves rule out. */
-const ALL_CONDITIONS: AnatomyConditions = { recap: true, recall: true, brackets: true };
+const ALL_CONDITIONS: AnatomyConditions = { recap: true, recall: true, brackets: true, listedActions: true };
 
 const MODE_LABELS: Record<AnatomyViewMode, string> = { chips: 'Chips', resolved: 'Preview' };
 

@@ -8,7 +8,8 @@ import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
 import { ActionListTray } from '@/components/game/ActionListTray';
-import { addAction, closeList, reversalOf, toggleHidden, undoNewest } from '@/lib/actionList';
+import { addAction, closeList, listCounts, recordSent, reversalOf, toggleHidden, toldActions, undoNewest } from '@/lib/actionList';
+import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
@@ -143,7 +144,7 @@ import { narrationRevealListener } from "../lib/narrationRevealListener";
 import { getRevealReleased } from "../lib/revealTimingStore";
 import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
-import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
+import { parseTurnContent, pruneTurnMap, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { farDestinationNames, walkableDestinationEntries } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
@@ -701,6 +702,7 @@ const GameViewer = ({
     storyboardPrompt,
     narrationUserPrompt,
     oocDirectivePrompt,
+    actionListPrompt,
     recapUserPrompt,
     rehydrateUserPrompt,
     choicesUserPrompt,
@@ -870,6 +872,7 @@ const GameViewer = ({
     actionList,
     setActionList,
     revertManualStatEditPage,
+    setSentActions,
     scriptTells,
     setScriptTells,
     openingAction: openingTurnAction,
@@ -1350,6 +1353,9 @@ const GameViewer = ({
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
   const devRoute = useDevRoute();
+  const chatLayout = useNarrationLayout() === "chat";
+  // A send tells the narrator the shown entries from Pages with thinking off (Q10, Q31).
+  const tellsActionList = !chatLayout && thinkingMode === "off";
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     switch (devRoute?.modal) {
@@ -1412,15 +1418,16 @@ const GameViewer = ({
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, pending.slice(2)));
     })();
   }, [devRoute?.attach, fullMessageHistory, mounted, setPendingAttachments, setActionAttachments]);
-  // Images, tells and script pins belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
+  // Images, tells, sent lists and script pins belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
   // was regenerated. The controller marks a running turn at once: a regenerate starts inside an effect, and
   // its user message can commit before `isWaitingForAI` does.
   useEffect(() => {
     if (isWaitingForAI || abortControllerRef.current) return;
     setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
     setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
+    setSentActions((prev) => pruneTurnMap(prev, fullMessageHistory));
     setMemoryNotes((prev) => pruneScriptPins(prev, fullMessageHistory));
-  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setMemoryNotes]);
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setSentActions, setMemoryNotes]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [leftCollapsed, setLeftCollapsed] = useGameLeftCollapsed();
@@ -2710,6 +2717,7 @@ const GameViewer = ({
     storyboard: storyboardPrompt,
     narrationUser: narrationUserPrompt,
     oocDirective: oocDirectivePrompt,
+    actionList: actionListPrompt,
     // This session's opening, resolved: an old save's history holds the sentinel rather than the text.
     openingCue: resolveDrawn(openingCue()),
     choices: resolvedChoicesPrompt,
@@ -3148,6 +3156,9 @@ const GameViewer = ({
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
     const reach = walkableDestinationEntries(currentLocation, locations, connections);
     const destinations = reach.map((entry) => entry.location);
+    // A Chat send tells nothing (Q31) and a scripted turn plays canned narration. The narration pass rides the
+    // entries in the thinking-off lane only (Q10).
+    const told = script || chatLayout ? [] : toldActions(actionList);
     const planInput = {
       action,
       isGameStarted,
@@ -3156,6 +3167,7 @@ const GameViewer = ({
       hasCurrentLocation: !!currentLocation,
       writtenNarration,
       attachments: resentAttachments ?? attachments,
+      toldActions: told,
       settings: script ? { ...turnSettings(), thinkingMode: "off" as const, choicesEnabled: true } : turnSettings(),
       prompts: turnPrompts(),
     };
@@ -3266,6 +3278,7 @@ const GameViewer = ({
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
       setActionList((list) => closeList(list).live);
+      setSentActions((map) => recordSent(map, turnId, actionList, tellsActionList && !script));
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front
       // location request) must not be mistaken for "narration came through" (see abortGeneration).
       userTurnAddedRef.current = false;
@@ -5355,10 +5368,12 @@ const GameViewer = ({
     [passQueue, discoveredDescriptionJob],
   );
 
+  // An empty action box sends when Since Last Turn tells the AI something: Pages only, thinking off (Q11, Q32).
+  const sendsEmpty = tellsActionList && listCounts(actionList).shown > 0;
   const handleSendAction = () => {
     const input = playerInput.trim();
     // A scene render holds the turn as well as the input: the model and the image server share one card.
-    if (!input || isWaitingForAI || sceneImageJob) return;
+    if ((!input && !sendsEmpty) || isWaitingForAI || sceneImageJob) return;
     if (input.startsWith("/")) {
       runSlashCommand(input);
       setPlayerInput("");
@@ -6217,6 +6232,7 @@ const GameViewer = ({
       totalPages={totalPages}
       handlePageChange={handlePageChange}
       handleSendAction={handleSendAction}
+      emptySendHeld={actionList.length > 0 && !sendsEmpty}
       handleKeyPress={handleKeyPress}
       handleRollback={handleRollback}
       handleRegenerate={handleRegenerate}

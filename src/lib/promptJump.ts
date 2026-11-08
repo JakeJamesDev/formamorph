@@ -18,9 +18,9 @@ export const PROMPT_TAB_FOR_REQUEST: Partial<Record<AIRequestType, PromptTab>> =
 );
 
 /** The conditional narration lines the Messages view stacks, each its own field there. */
-export type MessageField = 'recap' | 'now' | 'recall' | 'direction';
+export type MessageField = 'recap' | 'now' | 'recall' | 'direction' | 'action-list';
 
-const MESSAGE_FIELDS: readonly AnatomySource[] = ['recap', 'now', 'recall', 'direction'];
+const MESSAGE_FIELDS: readonly AnatomySource[] = ['recap', 'now', 'recall', 'direction', 'action-list'];
 
 /**
  * Where a click lands: which prompt, which editor, which stacked field to scroll to and focus, and which
@@ -39,7 +39,7 @@ export interface PromptJumpTarget {
  * are never passed here — see {@link resolveContextJump} for the few whose content another prompt wrote.
  */
 export function resolvePromptJump(source: AnatomySource, type: AIRequestType): PromptJumpTarget | null {
-  // These four ride the narration exchange and are edited on the Narration prompt, whatever pass a
+  // These ride the narration exchange and are edited on the Narration prompt, whatever pass a
   // capture carrying them belongs to.
   if (MESSAGE_FIELDS.includes(source)) {
     return { tab: 'narration', surface: 'messages', field: source as MessageField };

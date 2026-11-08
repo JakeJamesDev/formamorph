@@ -704,6 +704,12 @@ Each chip adds its own clause and is left out when it has no value. Any mix of c
     sentWhen: 'Sent in the narration history when Scene Recall recalls an old turn',
     info: 'Sent right after the recap, with the old turn’s full narration as the reply. The wording must mark the scene as past. An unframed old scene can overrule what the recap says happened since.',
   },
+  actionListMessage: {
+    label: 'Since Last Turn Message',
+    description: 'Introduces what you did outside the action box',
+    sentWhen: 'Sent when Since Last Turn lists anything for the AI',
+    info: 'Comes before one line for each action Since Last Turn tells the AI, such as an item you used',
+  },
   directionMessage: {
     label: 'Direction Message',
     description: 'Marks bracketed text as your direction, not speech',

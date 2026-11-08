@@ -26,6 +26,7 @@ import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
 import { INVENTORY_JSON_FORMAT, INVENTORY_TEXT_FORMAT, inventoryPassSchema, parseInventoryReply } from '@/lib/inventory/pass';
 import { backingStatIds } from '@/lib/currency';
+import { toldLines, type ToldAction } from '@/lib/actionList';
 import type { Currency, InventoryPassOp } from '@/types';
 import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/lib/statRequest';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
@@ -453,6 +454,16 @@ const storyboardPass: TurnPassRecord<string> = {
   parseResponse: (raw) => raw,
 };
 
+/** The told panel actions under the preset's wrapper line (Q19). A blank wrapper sends the lines alone. */
+function toldPieces(wrapper: string, told: readonly ToldAction[] | undefined): AnatomyPiece[] {
+  if (!told?.length) return [];
+  return [
+    { text: '\n\n', glue: true },
+    ...(wrapper.trim() ? [{ text: wrapper, source: 'action-list' as const }, { text: '\n', glue: true }] : []),
+    { text: toldLines(told), contextLabel: 'listed-actions' },
+  ];
+}
+
 /**
  * The turn's story text. Its system prompt is assembled by the caller (dictionary scan, banded history,
  * notes fallback); what the pass owns is the final user turn — the action as the model receives it, plus
@@ -488,6 +499,7 @@ export const narrationPass: TurnPassRecord<string> = {
             ...(ridden
               ? [{ text: '\n\n', glue: true }, { text: input.prompts.oocDirective, source: 'direction' as const }]
               : []),
+            ...toldPieces(input.prompts.actionList, input.toldActions),
           ]
         : [{ text: actionText, contextLabel: 'action' }];
     // Both directives ride the final user turn, adjacent to where the model writes — recency is what makes

@@ -114,6 +114,75 @@ export function closeList<S>(list: ActionList<S>): { sent: ListedAction<S>[]; li
   return { sent: [...list], live: [] };
 }
 
+/** A shown entry as a turn carries it to the AI: its facts and its repeat count, oldest first. */
+export interface ToldAction {
+  facts: ListedActionFacts;
+  count: number;
+}
+
+/** The entries a send tells the AI: the shown ones, in list order. */
+export const toldActions = <S>(list: ActionList<S>): ToldAction[] =>
+  list.filter((entry) => !entry.hidden).map(({ facts, count }) => ({ facts, count }));
+
+/** The told entries' lines, one per entry, as the narration request carries them under the wrapper (Q19). */
+export const toldLines = (told: readonly ToldAction[]): string =>
+  told.map((entry) => `- ${entryLine(entry)}`).join('\n');
+
+/** A sent entry. Only the newest turn's record keeps its snapshots (Q34). */
+export type SentAction<S> = Omit<ListedAction<S>, 'snapshots'> & { snapshots?: S[] };
+
+/** The list a turn was sent with. `told` is false when the send told the AI nothing (a Chat send, Q31). */
+export interface SentActionList<S> {
+  told: boolean;
+  entries: SentAction<S>[];
+}
+
+/** Sent lists by turn id. */
+export type SentActionMap<S> = Record<string, SentActionList<S>>;
+
+/**
+ * `map` with `turnId`'s sent list recorded, and every other turn's snapshots dropped (Q34). An empty list
+ * records nothing.
+ */
+export function recordSent<S>(map: SentActionMap<S>, turnId: string, list: ActionList<S>, told: boolean): SentActionMap<S> {
+  const next: SentActionMap<S> = {};
+  for (const [id, sent] of Object.entries(map)) {
+    next[id] = sent.entries.some((entry) => entry.snapshots)
+      ? { ...sent, entries: sent.entries.map(({ snapshots: _dropped, ...entry }) => entry) }
+      : sent;
+  }
+  if (list.length > 0) next[turnId] = { told, entries: [...list] };
+  return next;
+}
+
+/** Every kind a saved entry may carry; a new kind fails to compile until it is added here. */
+const KINDS: Record<ListedActionKind, true> = { use: true, equip: true, unequip: true, give: true, drop: true, pickup: true, stat: true };
+
+/** The facts name their subject: the item, or the stat for a stat edit. */
+const namesSubject = (facts: ListedActionFacts): boolean =>
+  facts.kind === 'stat' ? typeof facts.stat?.name === 'string' : typeof facts.item?.name === 'string';
+
+const isSentAction = (value: unknown): value is SentAction<unknown> => {
+  const v = value as Partial<SentAction<unknown>> | null;
+  return !!v && typeof v.id === 'string' && typeof v.count === 'number' && v.count >= 1 && typeof v.hidden === 'boolean'
+    && !!v.facts && typeof v.facts === 'object' && Object.hasOwn(KINDS, v.facts.kind) && namesSubject(v.facts)
+    && (v.snapshots === undefined || Array.isArray(v.snapshots));
+};
+
+/** The sent lists a save holds, read back. A save is a file the player can edit, so malformed entries are
+ *  left out. Absent ⇒ none. */
+export function restoreSent<S>(raw: unknown): SentActionMap<S> {
+  const restored: SentActionMap<S> = {};
+  if (!raw || typeof raw !== 'object') return restored;
+  for (const [turnId, sent] of Object.entries(raw)) {
+    const v = sent as Partial<SentActionList<S>> | null;
+    if (!v || typeof v.told !== 'boolean' || !Array.isArray(v.entries)) continue;
+    const entries = (v.entries as unknown[]).filter(isSentAction) as SentAction<S>[];
+    if (entries.length) restored[turnId] = { told: v.told, entries };
+  }
+  return restored;
+}
+
 /** How many rows the AI is told and how many are hidden. */
 export function listCounts<S>(list: ActionList<S>): { shown: number; hidden: number } {
   const hidden = list.filter((entry) => entry.hidden).length;

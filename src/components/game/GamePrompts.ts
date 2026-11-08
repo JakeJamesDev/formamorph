@@ -87,6 +87,9 @@ The player's action is the turn's first beat, written as it happens - an action 
 // Narration → Messages). Evidence bar: ooc-probe.mjs.
 export const defaultOocDirectivePrompt = `The square-bracketed text in the action is the author directing the scene, not something the player's character says or does: make this turn go the way it directs, and keep the story's prose free of it.`;
 
+/** The line above the panel actions a turn tells the narrator, one per line under it. */
+export const defaultActionListPrompt = `Just before this action, the player character did the following. Open this turn by showing each one on the page, in this order:`;
+
 /** True when a player action carries an OOC square-bracket directive (used to gate the rider). */
 export function hasOocDirective(action: string): boolean {
   return /\[[^\]]+\]/.test(action);
@@ -627,6 +630,7 @@ export const PROMPT_TEXT_DEFAULTS: PromptValues = {
   recapUserPrompt: defaultRecapUserPrompt,
   rehydrateUserPrompt: defaultRehydrateUserPrompt,
   oocDirectivePrompt: defaultOocDirectivePrompt,
+  actionListPrompt: defaultActionListPrompt,
   choicesPrompt: defaultChoicesPrompt,
   statUpdatesPrompt: defaultStatUpdatesPrompt,
   locationChangePromptText: defaultLocationChangePrompt,

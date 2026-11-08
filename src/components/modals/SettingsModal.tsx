@@ -446,6 +446,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setRecapUserPrompt,
     oocDirectivePrompt,
     setOocDirectivePrompt,
+    actionListPrompt,
+    setActionListPrompt,
     choicesUserPrompt,
     setChoicesUserPrompt,
     statUpdatesUserPrompt,
@@ -883,10 +885,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const nowAvailable = recapAvailable;
   // The recall line rides only while Scene Recall is on — same hide-with-the-feature rule as the recap.
   const recallAvailable = activePromptTab === 'narration' && memoryDigests && semanticMemory && semanticRehydration;
-  // The direction rider fires only on [bracket] turns with thinking off (same guard as the User template).
-  const directionAvailable = activePromptTab === 'narration' && thinkingMode === 'off';
+  // The direction rider and the Since Last Turn lines ride only with thinking off (same guard as the User template).
+  const thinkingOffMessages = activePromptTab === 'narration' && thinkingMode === 'off';
   // The Messages view stacks whichever of the conditional narration lines are live.
-  const messagesAvailable = recapAvailable || nowAvailable || recallAvailable || directionAvailable;
+  const messagesAvailable = recapAvailable || nowAvailable || recallAvailable || thinkingOffMessages;
   const showingMessages = promptView === 'messages' && messagesAvailable;
   // The stacked fields the Messages view renders — one per live line, each with its own reset.
   const messageFields = [
@@ -905,9 +907,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       value: rehydrateUserPrompt, set: setRehydrateUserPrompt, def: styledDefaults.rehydrateUserPrompt,
       variables: undefined, vocabulary: NO_VARIABLES_VOCABULARY,
     }] : []),
-    ...(directionAvailable ? [{
+    ...(thinkingOffMessages ? [{
       key: 'direction', ...SETTINGS_COPY.directionMessage,
       value: oocDirectivePrompt, set: setOocDirectivePrompt, def: styledDefaults.oocDirectivePrompt,
+      variables: undefined, vocabulary: NO_VARIABLES_VOCABULARY,
+    }] : []),
+    ...(thinkingOffMessages ? [{
+      key: 'action-list', ...SETTINGS_COPY.actionListMessage,
+      value: actionListPrompt, set: setActionListPrompt, def: styledDefaults.actionListPrompt,
       variables: undefined, vocabulary: NO_VARIABLES_VOCABULARY,
     }] : []),
   ];
@@ -952,6 +959,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       storyboard: storyboardPrompt,
       narrationUser: narrationUserPrompt,
       oocDirective: oocDirectivePrompt,
+      actionList: actionListPrompt,
       // The hub draws a mid-story turn, so the opening cue is along for the shape only.
       openingCue: OPENING_SCENE_CUE,
       discoverEntity: discoverEntityPrompt,
@@ -978,7 +986,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   }), [
     systemPrompt, recapUserPrompt, nowLinePrompt, rehydrateUserPrompt,
     locationChangePromptText, locationChangeUserPrompt, narratedMovePrompt, narratedMoveUserPrompt, entityLocationPrompt, entityLocationUserPrompt, thinkingPrompt, directorPrompt, directorUserPrompt,
-    characterPrompt, storyboardPrompt, narrationUserPrompt, oocDirectivePrompt,
+    characterPrompt, storyboardPrompt, narrationUserPrompt, oocDirectivePrompt, actionListPrompt,
     choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt, statTextPrompts,
     summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,

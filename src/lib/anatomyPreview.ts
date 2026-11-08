@@ -11,6 +11,7 @@ import { renderPromptTemplate } from './promptTemplate';
 import { readValue, type TokenValues } from './promptValues';
 import { estimateTokens } from './memoryUtils';
 import { buildStamper, hoursByPosition } from './gameClock';
+import type { ToldAction } from './actionList';
 import type { SectionStyle } from './promptPresets';
 import { outputReserve, type ParagraphLimit } from './outputLength';
 import { toAnatomyBlocks, type AnatomyBlock } from './requestAnatomy';
@@ -41,6 +42,8 @@ export interface AnatomyConditions {
   recall: boolean;
   /** The action carries a `[bracketed]` authorial direction, which rides the Direction Message. */
   brackets: boolean;
+  /** Since Last Turn lists actions for the AI, which ride the Since Last Turn Message. */
+  listedActions: boolean;
 }
 
 /** The player's live generation settings, as plain data — everything the assembly reads that a player can
@@ -67,9 +70,8 @@ export interface AnatomyPreviewSettings {
  * Which conditions this configuration can produce at all. The builder gates on this, so a caller asking
  * for a condition the settings rule out draws the request without it rather than a lie.
  *
- * These are the Recap and Recall editor surfaces' own availability conditions. Brackets are never gated:
- * the bracket rides the action in every Thinking mode, and the Direction rider answering it only with
- * thinking off is the thing worth showing.
+ * These are the Recap and Recall editor surfaces' own availability conditions. Brackets and listed actions
+ * are never gated: the riders answering them only with thinking off are the thing worth showing.
  */
 export function anatomyToggleAvailability(
   settings: AnatomyPreviewSettings,
@@ -78,6 +80,7 @@ export function anatomyToggleAvailability(
     recap: settings.memoryDigests,
     recall: settings.memoryDigests && settings.semanticMemory && settings.semanticRehydration,
     brackets: true,
+    listedActions: true,
   };
 }
 
@@ -144,6 +147,12 @@ const FIXTURE_SCENE_CAST = SAMPLE_TURN.sceneCast;
 
 /** The authorial direction a bracketed action carries. */
 const FIXTURE_BRACKET = ' [keep the tide going out through this scene]';
+
+/** The panel actions a send tells the AI. */
+const FIXTURE_TOLD: ToldAction[] = [
+  { facts: { kind: 'use', item: { key: 'lamp-oil', name: 'Lamp Oil' }, copyId: 'c1' }, count: 1 },
+  { facts: { kind: 'give', item: { key: 'map', name: 'Tide Map' }, quantity: 1, to: { id: 'wren', name: 'Wren' } }, count: 1 },
+];
 
 /** The plan a planning mode hands the narration. Canned with the narrations, and for the same reason: a
  *  plan is what an earlier pass's model wrote this run, not something a setting decides. */
@@ -365,7 +374,7 @@ function fixtureRecap(
   values: TokenValues,
   settings: AnatomyPreviewSettings,
 ): string {
-  return narrationBand(prompts, values, { recap: true, recall: false, brackets: false }, settings).band.recap;
+  return narrationBand(prompts, values, { recap: true, recall: false, brackets: false, listedActions: false }, settings).band.recap;
 }
 
 /** The narration's two assembly steps ahead of its pass: its system prompt, and the banded history the
@@ -441,7 +450,8 @@ function buildNarrationAnatomy(
   const { prompt, runs, band, action, recap } = narrationBand(prompts, values, conditions, settings);
   const input = previewInput(prompts, settings, recap);
   const planningMode = settings.thinkingMode === 'precall' || settings.thinkingMode === 'staged';
-  const request = narrationPass.buildRequest({ ...input, action }, {
+  const told = conditions.listedActions ? { toldActions: FIXTURE_TOLD } : {};
+  const request = narrationPass.buildRequest({ ...input, action, ...told }, {
     ...previewMaterial(values, action, band.recap),
     // The narration is what this request asks for, so nothing has been written yet.
     narration: '',

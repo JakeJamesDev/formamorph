@@ -24,6 +24,7 @@ export const PROMPT_TEXT_KEYS = [
   'recapUserPrompt',
   'rehydrateUserPrompt',
   'oocDirectivePrompt',
+  'actionListPrompt',
   'choicesPrompt',
   'statUpdatesPrompt',
   'locationChangePromptText',

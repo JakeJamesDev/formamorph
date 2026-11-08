@@ -21,6 +21,7 @@ export const TEST_PROMPTS: TurnPrompts = {
   storyboard: 'STORYBOARD <WORLD DESCRIPTION>',
   narrationUser: 'Player: <PLAYER ACTION>',
   oocDirective: 'OOC RIDER',
+  actionList: 'ACTION LIST',
   openingCue: OPENING_SCENE_CUE,
   choices: 'CHOICES <WORLD DESCRIPTION> <ENTITIES>',
   choicesUser: 'Choices: <PLAYER ACTION> | <NARRATION>',

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addAction, closeList, entryLine, listCounts, reversalOf, toggleHidden, undoNewest, type ActionList, type ListedActionFacts,
+  addAction, closeList, entryLine, listCounts, recordSent, restoreSent, reversalOf, toggleHidden, toldActions, toldLines, undoNewest,
+  type ActionList, type ListedActionFacts,
 } from './actionList';
 
 const potion = { key: 'item:potion', name: 'Healing Potion' };
@@ -180,5 +181,40 @@ describe('stat edits in the Action List', () => {
   it('undoes to the snapshot before the first edit', () => {
     const { list } = play([statEdit(45), statEdit(50, 45)]);
     expect(undoNewest(list)).toEqual({ list: [], restore: 's0' });
+  });
+});
+
+describe('sending the list', () => {
+  it('tells the shown entries with their counts, in list order, and writes one line each', () => {
+    const { list } = play([use, use, equip, give()]);
+    const told = toldActions(toggleHidden(list, list[1].id));
+    expect(told).toEqual([{ facts: use, count: 2 }, { facts: give(), count: 1 }]);
+    expect(toldLines(told)).toBe('- Used Healing Potion ×2\n- Gave Healing Potion to Mara');
+    expect(toldActions(list.map((e) => ({ ...e, hidden: true })))).toEqual([]);
+  });
+
+  it('records the sent list and drops every older turn’s snapshots (Q34)', () => {
+    const first = recordSent({}, 't1', play([use, use]).list, true);
+    expect(first.t1.entries[0].snapshots).toEqual(['s0', 's1']);
+    const second = recordSent(first, 't2', play([equip]).list, false);
+    expect(second.t1).toEqual({ told: true, entries: [{ id: 'e0', facts: use, count: 2, hidden: false }] });
+    expect(second.t2).toEqual({ told: false, entries: [{ id: 'e0', facts: equip, count: 1, hidden: false, snapshots: ['s0'] }] });
+  });
+
+  it('records nothing for an empty list, and still drops the older snapshots', () => {
+    const sent = recordSent(recordSent({}, 't1', play([use]).list, true), 't2', [], true);
+    expect(Object.keys(sent)).toEqual(['t1']);
+    expect(sent.t1.entries[0].snapshots).toBeUndefined();
+  });
+
+  it('reads a saved map back, leaving out what is malformed', () => {
+    const saved = recordSent(recordSent({}, 't1', play([use]).list, true), 't2', play([equip, statEdit(60)]).list, true);
+    expect(restoreSent<string>(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
+    expect(restoreSent({
+      t1: { told: true, entries: [{ id: 'x', facts: { kind: 'eat', item: potion }, count: 1, hidden: false }] },
+      t2: { told: 'yes', entries: [] },
+      t3: { told: true, entries: [{ id: 'e', facts: use, count: 1, hidden: false }, 'junk'] },
+    })).toEqual({ t3: { told: true, entries: [{ id: 'e', facts: use, count: 1, hidden: false }] } });
+    expect(restoreSent(undefined)).toEqual({});
   });
 });

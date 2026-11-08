@@ -59,6 +59,7 @@ const SOURCE_STYLES: Record<AnatomySource, { chip: string; mark: string; markHot
   now: { chip: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300', mark: 'bg-emerald-400/20', markHot: 'bg-emerald-400/40', chipEdge: 'border-emerald-500/40' },
   recall: { chip: 'bg-sky-500/15 text-sky-700 dark:text-sky-300', mark: 'bg-sky-400/20', markHot: 'bg-sky-400/40', chipEdge: 'border-sky-500/40' },
   direction: { chip: 'bg-rose-500/15 text-rose-700 dark:text-rose-300', mark: 'bg-rose-400/20', markHot: 'bg-rose-400/40', chipEdge: 'border-rose-500/40' },
+  'action-list': { chip: 'bg-teal-500/15 text-teal-700 dark:text-teal-300', mark: 'bg-teal-400/20', markHot: 'bg-teal-400/40', chipEdge: 'border-teal-500/40' },
 };
 
 const ROLE_LABELS: Record<AnatomyBlock['role'], string> = {

@@ -7,6 +7,7 @@ import type { TokenValues } from '@/lib/promptValues';
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import type { PromptAttachmentsMap } from '@/lib/promptAttachments';
 import type { EntityMoveReply } from '@/lib/entityFollowing';
+import type { ToldAction } from '@/lib/actionList';
 
 /**
  * The Turn Plan: what one turn will ask the model, decided before any request is sent.
@@ -95,6 +96,8 @@ export interface TurnPrompts {
   storyboard: string;
   narrationUser: string;
   oocDirective: string;
+  /** The line above the told panel actions in the narration request. */
+  actionList: string;
   /** The text the opening turn's legacy "START GAME" sentinel resolves to: the session's drawn opening
    *  (see lib/openings). */
   openingCue: string;
@@ -137,6 +140,8 @@ export interface TurnPlanInput {
   writtenNarration?: string;
   /** The images the player attached to the action, in attach order. */
   attachments?: ImageAttachment[];
+  /** The panel actions this send tells the AI: shown entries only, oldest first. Absent ⇒ none. */
+  toldActions?: ToldAction[];
   settings: TurnSettings;
   prompts: TurnPrompts;
 }

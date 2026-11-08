@@ -3,7 +3,7 @@ import { ChevronRight, Eye, EyeOff, ListChecks, Undo2, type LucideIcon } from 'l
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
-import { entryLine, listCounts, type ListedAction, type ListedActionKind } from '@/lib/actionList';
+import { entryLine, listCounts, type ListedAction, type ListedActionKind, type SentActionList } from '@/lib/actionList';
 import { ItemIcon, StatIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +19,26 @@ function RowButton({ tip, icon: Icon, disabled, onClick }: { tip: string; icon: 
         <Icon className="h-4 w-4" aria-hidden />
       </Button>
     </Tip>
+  );
+}
+
+/** A sent page's list under its action line, read-only. A row the AI never heard reads as player-only (Q4, Q31). */
+export function SentActions({ sent }: { sent: SentActionList<unknown> | undefined }) {
+  if (!sent?.entries.length) return null;
+  return (
+    <ul className="mt-1.5 space-y-0.5" aria-label="Since Last Turn" data-testid="sent-action-list">
+      {sent.entries.map((entry) => {
+        const Icon = SOURCE_ICON[entry.facts.kind];
+        const onlyYou = entry.hidden || !sent.told;
+        return (
+          <li key={entry.id} className="flex items-center gap-2" data-only-you={onlyYou || undefined}>
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="min-w-0 truncate">{entryLine(entry)}</span>
+            {onlyYou && <Meta className="shrink-0">Only You</Meta>}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

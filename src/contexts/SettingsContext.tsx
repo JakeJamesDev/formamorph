@@ -947,7 +947,7 @@ function useProvideSettings() {
 
   const promptValues = useMemo(() => activeValues(effectiveStore, BUILTIN_VALUES), [effectiveStore]);
   const {
-    systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
+    systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, actionListPrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
     choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, narratedMovePrompt, narratedMoveUserPrompt, entityLocationPrompt, entityLocationUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
@@ -958,6 +958,7 @@ function useProvideSettings() {
   const setRecapUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'recapUserPrompt', v));
   const setRehydrateUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'rehydrateUserPrompt', v));
   const setOocDirectivePrompt = (v: string) => editPresetStore((s) => updateValue(s, 'oocDirectivePrompt', v));
+  const setActionListPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'actionListPrompt', v));
   const setChoicesPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'choicesPrompt', v));
   const setStatUpdatesPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'statUpdatesPrompt', v));
   const setLocationChangePromptText = (v: string) => editPresetStore((s) => updateValue(s, 'locationChangePromptText', v));
@@ -1956,6 +1957,8 @@ function useProvideSettings() {
     setRehydrateUserPrompt,
     oocDirectivePrompt,
     setOocDirectivePrompt,
+    actionListPrompt,
+    setActionListPrompt,
     choicesPrompt,
     setChoicesPrompt,
     statUpdatesPrompt,

@@ -14,7 +14,7 @@ import { renderPromptTemplate } from './promptTemplate';
 import { PROMPT_TEXT_KEYS } from './promptPresets';
 import {
   defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt,
-  defaultNowLinePrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt,
+  defaultNowLinePrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultActionListPrompt,
   INLINE_THINKING_DIRECTIVE,
   PROMPT_TEXT_DEFAULTS,
 } from '@/components/game/GamePrompts';
@@ -50,7 +50,7 @@ const PROMPTS: AnatomyPreviewPrompts = {
   },
 };
 
-const ALL_ON: AnatomyConditions = { recap: true, recall: true, brackets: true };
+const ALL_ON: AnatomyConditions = { recap: true, recall: true, brackets: true, listedActions: true };
 
 /** One hub under a settings/condition combination, with the chip pool composed from the same settings. */
 const hub = (
@@ -166,11 +166,11 @@ describe('the narration hub', () => {
     }
   });
 
-  it('shows all six editor surfaces with every condition on', () => {
+  it('shows all seven editor surfaces with every condition on', () => {
     expect(new Set(labels(preview()))).toEqual(
       new Set([
-        'system-template', 'user-template', 'recap', 'now', 'recall', 'direction',
-        'condensed', 'recalled', 'past-action', 'past-narration',
+        'system-template', 'user-template', 'recap', 'now', 'recall', 'direction', 'action-list',
+        'condensed', 'recalled', 'past-action', 'past-narration', 'listed-actions',
       ]),
     );
   });
@@ -179,7 +179,9 @@ describe('the narration hub', () => {
     const blocks = preview();
     expect(textOf(blocks, 'recap')).toEqual([defaultRecapUserPrompt]);
     expect(textOf(blocks, 'recall')).toEqual([defaultRehydrateUserPrompt]);
-    expect(textOf(blocks, 'direction')).toEqual([defaultOocDirectivePrompt]);
+    // A join belongs to the run before it, so each rider is checked where it ends the message.
+    expect(textOf(preview({ listedActions: false }), 'direction')).toEqual([defaultOocDirectivePrompt]);
+    expect(textOf(blocks, 'action-list')).toEqual([`${defaultActionListPrompt}\n`]);
     // The now-line is a template, so what lands is its render against this world's values.
     expect(textOf(blocks, 'now')).toEqual([expect.stringContaining('Now you are at')]);
     expect(textOf(blocks, 'system-template').join('')).toContain('You are the narrator stage');

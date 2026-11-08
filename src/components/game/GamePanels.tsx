@@ -28,6 +28,7 @@ import { ChatChoices } from './ChatChoices';
 import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
 import { ActionLine } from './ActionLine';
+import { SentActions } from './ActionListTray';
 import { StatsActions } from './StatsActions';
 import { bubbleActions, choicesActions, playerBubbleActions, withEndpoints } from '@/lib/bubbleActions';
 import { useEndpointTip, withEndpointLine } from '@/lib/useEndpointTip';
@@ -558,6 +559,7 @@ export const MiddlePanel = ({
   totalPages,
   handlePageChange,
   handleSendAction,
+  emptySendHeld = false,
   handleKeyPress,
   handleRollback,
   handleRegenerate,
@@ -609,6 +611,8 @@ export const MiddlePanel = ({
   totalPages: number;
   handlePageChange: (page: number) => void;
   handleSendAction: () => void;
+  /** Since Last Turn lists entries but would tell the AI none, so an empty action box cannot send (Q11, Q32). */
+  emptySendHeld?: boolean;
   handleKeyPress: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** Rolls back to `page`, or to the viewed page. */
   handleRollback: (page?: number) => void;
@@ -688,6 +692,7 @@ export const MiddlePanel = ({
     isGameStarted,
     actionAttachments,
     setActionAttachments,
+    sentActions,
     pendingAttachments,
     setPendingAttachments,
     scriptTells,
@@ -1082,7 +1087,9 @@ export const MiddlePanel = ({
                   />
                 )}
                 {actionLine !== undefined && (
-                  <ActionLine text={actionLine} actions={actionLineActions} attachments={turnAttachments(actionAttachments, sceneTurnId)} />
+                  <ActionLine text={actionLine} actions={actionLineActions} attachments={turnAttachments(actionAttachments, sceneTurnId)}>
+                    <SentActions sent={sceneTurnId ? sentActions[sceneTurnId] : undefined} />
+                  </ActionLine>
                 )}
                 {showReasoning && pageReasoning?.text && (
                   <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />
@@ -1319,7 +1326,7 @@ export const MiddlePanel = ({
                 <Tip tip={withEndpointLine('Send', endpointTip('narration'))} labelsChild={false}>
                   <Button
                     onClick={handleSendAction}
-                    disabled={disabled}
+                    disabled={disabled || (!playerInput.trim() && emptySendHeld)}
                     aria-label="Send"
                     className="border-dashed border-2 w-12 px-0"
                   >

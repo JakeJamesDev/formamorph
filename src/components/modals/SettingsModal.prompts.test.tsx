@@ -299,6 +299,20 @@ describe('Settings → Prompts jumps', () => {
     expect(screen.getByText('Now Message')).toBeInTheDocument();
   });
 
+  it('stacks the Since Last Turn Message with thinking off, and leaves it out with thinking on', () => {
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
+    const { unmount } = openPrompts();
+    fireEvent.click(anatomyRun('Since Last Turn Message'));
+    expect(screen.getByText('Since Last Turn Message')).toBeInTheDocument();
+    expect(screen.getByText('Sent when Since Last Turn lists anything for the AI')).toBeInTheDocument();
+    unmount();
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'inline');
+    openPrompts();
+    expect(screen.queryAllByRole('button').filter((b) => b.getAttribute('aria-label') === 'Open the Since Last Turn Message')).toEqual([]);
+    fireEvent.click(anatomyRun('Recap Message'));
+    expect(screen.queryByText('Since Last Turn Message')).toBeNull();
+  });
+
   it('scrolls the Messages view to the field the jump names, and pulses it', async () => {
     const scrolled: Element[] = [];
     const realScroll = Element.prototype.scrollIntoView;

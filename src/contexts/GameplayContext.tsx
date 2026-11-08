@@ -18,7 +18,7 @@ import type { SceneImageMap } from '../lib/sceneImages';
 import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
-import type { ListedAction } from '../lib/actionList';
+import { restoreSent, type ListedAction, type SentActionMap } from '../lib/actionList';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -273,6 +273,8 @@ function useProvideGameplay() {
   const [scriptTells, setScriptTells] = useState<TellMap>({});
   // The player's panel actions since the last turn, each with the state from just before it (Q6).
   const [actionList, setActionList] = useState<ListedAction<GameState>[]>([]);
+  // The list each turn was sent with, by turn id; only the newest keeps its snapshots (Q34).
+  const [sentActions, setSentActions] = useState<SentActionMap<GameState>>({});
   // The opening turn's `turn.action`; null until a playthrough opens, and on a save that lacks it.
   const [openingAction, setOpeningAction] = useState<string | null>(null);
   // The books in play: the save's, plus the world's shipped-off books a script may switch on.
@@ -540,6 +542,7 @@ function useProvideGameplay() {
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
         ...(Object.keys(actionAttachments).length ? { actionAttachments } : {}),
         ...(Object.keys(scriptTells).length ? { scriptTells } : {}),
+        ...(Object.keys(sentActions).length ? { sentActions } : {}),
         ...(openingAction !== null ? { openingAction } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
@@ -559,7 +562,7 @@ function useProvideGameplay() {
       }
       return { ok: false, error };
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, openingAction, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, sentActions, openingAction, addSystemLogEntry]);
 
   const saveGame = useCallback(async (...args: Parameters<typeof writeSave>) => (await writeSave(...args)).ok, [writeSave]);
 
@@ -696,6 +699,7 @@ function useProvideGameplay() {
           // Absent on a save written with no attachments ⇒ none.
           setActionAttachments(restoreAttachments(migrated.actionAttachments));
           setScriptTells(restoreTells(migrated.scriptTells));
+          setSentActions(restoreSent<GameState>(migrated.sentActions));
           setOpeningAction(typeof migrated.openingAction === 'string' ? migrated.openingAction : null);
           setPendingAttachments([]);
           setActionList([]);
@@ -750,6 +754,7 @@ function useProvideGameplay() {
             // A legacy save predates attachments ⇒ none.
             setActionAttachments({});
             setScriptTells({});
+            setSentActions({});
             setOpeningAction(null);
             setPendingAttachments([]);
             setActionList([]);
@@ -1007,6 +1012,8 @@ function useProvideGameplay() {
     setPendingAttachments,
     actionList,
     setActionList,
+    sentActions,
+    setSentActions,
     setSceneImages,
     memoryPins,
     setMemoryPins,

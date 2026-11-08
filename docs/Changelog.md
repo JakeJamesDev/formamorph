@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Since Last Turn:**
     - **A tray above the action box lists what you do in the Inventory tab between turns.** Undo the newest action to put the game back as it was, the item's scripts and effects included. Repeats share one row.
     - **Stat edits you make in the Stats tab now list in the Since Last Turn tray.** Each shows the old and new value. It starts hidden from the AI, and you can show it or undo it.
+    - **When you send, the AI hears what Since Last Turn lists, so the story reacts to those actions.** Hidden rows stay with you. Send works with an empty action box, and each page keeps its list under your action.
 - **🛠️ Developer tooling**
   - **The dev router starts a new game in any bundled world with `fixture=bundled-<world id>`.** Page one is the world's first Opening Narration, so release screenshots show real art and text without a model.
 
