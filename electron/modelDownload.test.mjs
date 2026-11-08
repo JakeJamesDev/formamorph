@@ -8,7 +8,7 @@ import path from 'node:path';
 import http from 'node:http';
 import modelDownload from './modelDownload.cjs';
 
-const { download, cancel, listPartials, discardPartial } = modelDownload;
+const { createDownloader, download, cancel, listPartials, discardPartial } = modelDownload;
 
 // A real HTTP server and a real temp directory. The whole point of this module is what lands on disk from
 // a set of range requests, which a mocked fs and a mocked fetch would assert nothing about.
@@ -354,6 +354,82 @@ describe('download: what must never happen', () => {
 
     cancel();
     await running;
+  });
+});
+
+describe('createDownloader: independent instances', () => {
+  const make = (host) => createDownloader({
+    allowedHosts: [host],
+    busyMessage: `${host} busy`,
+    hostMessage: `${host} only`,
+  });
+  const urlOn = (host, name) => `https://${host}/f/${name}`;
+  // Rewrites either allowed host onto the mock server, so the host allow-list stays live.
+  const viaMock = (base) => (url, init) => fetch(String(url).replace(/^https:\/\/[^/]+/, base), init);
+  const baseOf = (srv) => `http://127.0.0.1:${srv.address().port}`;
+
+  it('refuses a host outside its own list, with its own message', async () => {
+    const a = make('a.example');
+    const b = make('b.example');
+    const { fetchImpl } = await rangeServer(makeBody(CHUNK));
+
+    await expect(
+      a.download({ url: urlOn('b.example', 'x.bin'), fileName: 'x.bin', destDir: tmp, fetchImpl }, () => {}),
+    ).rejects.toThrow('a.example only');
+    await expect(
+      b.download({ url: urlOn('a.example', 'x.bin'), fileName: 'x.bin', destDir: tmp, fetchImpl }, () => {}),
+    ).rejects.toThrow('b.example only');
+  });
+
+  it('runs two downloads at once, and Cancel on one leaves the other running to completion', async () => {
+    const a = make('a.example');
+    const b = make('b.example');
+    const bodyA = makeBody(CHUNK * 4);
+    const bodyB = makeBody(CHUNK * 6);
+    // A hangs past its first two chunks until cancelled. B is held until A has started, then flows freely.
+    const srvA = await rangeServer(bodyA, { hangFromOffset: CHUNK * 2 });
+    const srvB = await rangeServer(bodyB, { barrier: 2 });
+
+    const runA = a.download(
+      { url: urlOn('a.example', 'a.bin'), fileName: 'a.bin', destDir: tmp, chunkSize: CHUNK, fetchImpl: viaMock(baseOf(srvA.srv)) },
+      () => {},
+    ).catch((e) => e);
+    const runB = b.download(
+      { url: urlOn('b.example', 'b.bin'), fileName: 'b.bin', destDir: tmp, chunkSize: CHUNK, fetchImpl: viaMock(baseOf(srvB.srv)) },
+      () => {},
+    );
+
+    const sidecarA = `${path.join(tmp, 'a.bin.part')}.json`;
+    await waitFor(() => fs.existsSync(sidecarA) && JSON.parse(fs.readFileSync(sidecarA, 'utf8')).done.length === 2);
+    a.cancel();
+
+    expect((await runA).message).toBe('DOWNLOAD_PAUSED');
+    expect(await runB).toBe(path.join(tmp, 'b.bin'));
+    expect(fs.readFileSync(path.join(tmp, 'b.bin'))).toEqual(bodyB);
+    expect(fs.existsSync(path.join(tmp, 'a.bin'))).toBe(false);
+  });
+
+  it('lets each instance hold its own current download', async () => {
+    const a = make('a.example');
+    const b = make('b.example');
+    const hung = await rangeServer(makeBody(CHUNK * 4), { hangFromOffset: CHUNK * 2 });
+    const hungFetch = viaMock(baseOf(hung.srv));
+    const runA = a.download(
+      { url: urlOn('a.example', 'a.bin'), fileName: 'a.bin', destDir: tmp, chunkSize: CHUNK, fetchImpl: hungFetch }, () => {},
+    ).catch((e) => e);
+    await waitFor(() => fs.existsSync(path.join(tmp, 'a.bin.part')));
+
+    // Same instance is busy; the other instance is free to start.
+    await expect(
+      a.download({ url: urlOn('a.example', 'c.bin'), fileName: 'c.bin', destDir: tmp, fetchImpl: hungFetch }, () => {}),
+    ).rejects.toThrow('a.example busy');
+    const free = await rangeServer(makeBody(CHUNK));
+    await expect(
+      b.download({ url: urlOn('b.example', 'b.bin'), fileName: 'b.bin', destDir: tmp, chunkSize: CHUNK, fetchImpl: viaMock(baseOf(free.srv)) }, () => {}),
+    ).resolves.toBe(path.join(tmp, 'b.bin'));
+
+    a.cancel();
+    await runA;
   });
 });
 

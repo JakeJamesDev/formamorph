@@ -2,7 +2,8 @@
 // parallel range requests, writing into one preallocated `.part` file and renaming on success (so a
 // cancelled or failed download never leaves a half-file that looks valid). A JSON sidecar beside the
 // `.part` records which chunks landed, so a download resumes across an app restart. Servers that ignore
-// range requests fall back to the original single-stream path. One download at a time.
+// range requests fall back to the original single-stream path. One download at a time per downloader
+// instance; `createDownloader` makes independent instances, and the module's own exports are the model one.
 const fs = require('node:fs');
 const path = require('node:path');
 const { pumpResponseToFile } = require('./streamDownload.cjs');
@@ -13,7 +14,7 @@ const {
 
 // Only fetch from Hugging Face. net.fetch follows HF's redirect to its CDN internally, so validating the
 // initial host is enough.
-const ALLOWED_HOSTS = new Set(['huggingface.co']);
+const MODEL_ALLOWED_HOSTS = ['huggingface.co'];
 
 const PROGRESS_INTERVAL_MS = 250; // aggregated progress events, not one per network chunk
 const SAMPLE_INTERVAL_MS = 2000;  // throughput window the connection ramp measures
@@ -23,12 +24,6 @@ const MAX_BACKOFF_MS = 10000;
 
 // Required lazily: this module is imported by tests that run outside Electron.
 const electronFetch = (...args) => require('electron').net.fetch(...args);
-
-let current = null; // { controller, fileName }
-
-function isAllowed(url) {
-  try { return ALLOWED_HOSTS.has(new URL(url).host); } catch { return false; }
-}
 
 /** On-disk size of a file, or 0 if it doesn't exist. */
 function sizeOf(p) {
@@ -318,6 +313,19 @@ async function runSegmented({ url, fileName, tmpPath, finalPath, total, chunkSiz
 }
 
 /**
+ * A downloader with its own host allow-list, current download and Cancel. Two instances never share
+ * state, so one can run or cancel while the other keeps going. `busyMessage` and `hostMessage` are the
+ * errors thrown for a second concurrent call and for a URL outside `allowedHosts`.
+ */
+function createDownloader({ allowedHosts, busyMessage, hostMessage }) {
+  const hosts = new Set(allowedHosts);
+  let current = null; // { controller, fileName }
+
+  const isAllowed = (url) => {
+    try { return hosts.has(new URL(url).host); } catch { return false; }
+  };
+
+/**
  * Download `url` → `<destDir>/<fileName>`, reporting { fileName, received, total, done } via onProgress.
  * Resumes whatever a previous attempt left behind (HF LFS files are immutable, so old bytes stay valid).
  * On any interruption the `.part` and its sidecar are left in place for a later resume; only success
@@ -328,8 +336,8 @@ async function download(
   { url, fileName, destDir, fetchImpl = electronFetch, chunkSize = DEFAULT_CHUNK_SIZE, backoffBaseMs = BACKOFF_BASE_MS },
   onProgress,
 ) {
-  if (current) throw new Error('A model download is already in progress.');
-  if (!isAllowed(url)) throw new Error('Model downloads are only allowed from huggingface.co.');
+  if (current) throw new Error(busyMessage);
+  if (!isAllowed(url)) throw new Error(hostMessage);
 
   fs.mkdirSync(destDir, { recursive: true });
   const finalPath = path.join(destDir, path.basename(fileName));
@@ -393,6 +401,15 @@ function cancel() {
   if (current) current.controller.abort();
 }
 
+  return { download, downloadModel, cancel };
+}
+
+const { download, downloadModel, cancel } = createDownloader({
+  allowedHosts: MODEL_ALLOWED_HOSTS,
+  busyMessage: 'A model download is already in progress.',
+  hostMessage: 'Model downloads are only allowed from huggingface.co.',
+});
+
 /** Bytes of `partPath` that are really downloaded — the sidecar bitmap when there is one. */
 function receivedBytes(partPath) {
   const sidecar = readSidecar(sidecarPathFor(partPath));
@@ -418,4 +435,4 @@ function discardPartial(destDir, fileName) {
   return removeFile(partPath);
 }
 
-module.exports = { download, downloadModel, cancel, listPartials, discardPartial };
+module.exports = { createDownloader, download, downloadModel, cancel, listPartials, discardPartial };
