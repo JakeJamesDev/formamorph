@@ -85,7 +85,9 @@
   .hero { min-height:92vh; min-height:92svh; display:grid; place-items:center; text-align:center;
     position:relative; overflow:hidden; background:var(--bg); }
   .hero .bgimg { position:absolute; inset:-40px; background-position:center; background-size:cover;
-    filter:var(--hero-filter); opacity:var(--hero-opacity); }
+    filter:var(--hero-filter); opacity:var(--hero-opacity);
+    background-image:url(/site/shots/hero/light/stats.webp); }
+  .dark .hero .bgimg { background-image:url(/site/shots/hero/dark/stats.webp); }
   .hero .in { position:relative; padding:2rem 1.25rem; max-width:780px; }
   .hero img.logo { width:96px; height:96px; border-radius:20px; margin-bottom:1.2rem; }
   h1.fm-wordmark { font-size:clamp(3.4rem,11vw,6.6rem); filter:url(#fm-goo); padding-top:.1em; }
@@ -93,6 +95,28 @@
   .cta { display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap; }
   section { max-width:1100px; margin:0 auto; padding:4rem 1.5rem; }
   footer { text-align:center; color:var(--dim); padding:3rem 1rem; border-top:1px solid var(--line); }
+
+  /* Live turn: the 1600x900 capture, cropped to the story column and side panel, scaled to the hero's width. */
+  .live { position:relative; width:min(1100px,calc(100% - 2.5rem)); margin:0 auto 3rem; overflow:hidden;
+    border-radius:14px; border:1px solid var(--edge); box-shadow:0 30px 70px #0005; text-align:left; }
+  .live .stage { position:absolute; left:0; top:0; transform-origin:0 0; }
+  .live .stage > img, .live .layer > img { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .live .overlay { position:absolute; }
+  .live .w { opacity:0; transition:opacity 250ms cubic-bezier(0.16,1,0.3,1); }
+  .live .choice { opacity:0; transition:opacity 350ms; white-space:nowrap; }
+  .live .w.on, .live .choice.on { opacity:1; }
+  .live .track { position:absolute; border-radius:999px; overflow:hidden; }
+  .live .fill, .live .band { position:absolute; top:0; bottom:0; left:0; }
+  .live .val { display:flex; justify-content:flex-end; align-items:center; gap:8px; white-space:nowrap; }
+  .live .chip { font-size:13px; font-weight:500; }
+  .live .desc { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .live .layer { position:absolute; inset:0; opacity:0; transition:opacity 350ms ease; }
+  .live .layer.on { opacity:1; }
+  .live .ring { position:absolute; border-radius:8px; box-shadow:0 0 0 2px var(--ring); opacity:0; }
+  .live .ring.on { opacity:1; animation:hero-ring 1.6s ease-out 2; }
+  @keyframes hero-ring { from { box-shadow:0 0 0 2px var(--ring), 0 0 0 0 var(--ring); }
+    to { box-shadow:0 0 0 2px var(--ring), 0 0 0 14px transparent; } }
+  .live.still * { transition:none !important; animation:none !important; }
 
   @media (prefers-reduced-motion: reduce) {
     .skin img.lay { transition:none; }
@@ -134,6 +158,8 @@
     </div>
     <p class="dl-note" style="margin-top:.9rem" data-dl-note></p>
   </div>
+  <div class="live" data-live role="img"
+    aria-label="An example turn: the player acts, the narrator replies, two stats change, and a map lands in the inventory"></div>
 </div>
 
 <section><div data-gallery></div></section>
@@ -153,6 +179,9 @@
   <a href="/privacy">Privacy</a> &middot; &copy; 2026 Jake James
 </footer>
 
+<script src="/site/hero-turn.js"></script>
+<script src="/site/shots/hero/layout.js"></script>
+<script src="/site/hero.js"></script>
 <script>
 const PALETTES = ['graphite', 'purple', 'forest', 'rose', 'monochrome'];
 const SCREENS = [
@@ -164,9 +193,6 @@ const SCREENS = [
 const FADE_MS = 1200;
 const HOLD_MS = 3500;
 const shot = (pal, theme, id) => `/site/shots/${pal}/${theme}/${id}.webp`;
-
-document.querySelector('.hero .bgimg').style.backgroundImage =
-  `url(${shot('graphite', 'dark', '01-library')})`;
 
 // One theme stack per side. The first palette of the first screen is eager; every other layer
 // waits, so a visitor who never scrolls to the gallery downloads two images instead of ten.

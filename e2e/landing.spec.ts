@@ -1,5 +1,26 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Browser, type Page } from '@playwright/test';
 import { SITE_URL } from '../playwright.config';
+
+type Box = { x: number; y: number; w: number; h: number };
+
+/** The parts of the hero layout file (`hosting/site/shots/hero/layout.js`) the hero tests read. */
+type HeroLayout = {
+  size: { w: number; h: number };
+  narration: { box: Box };
+  choices: { row: Box; box: Box }[];
+  stats: { name: string; min: number; max: number }[];
+  panel: Box;
+  newItem: Box;
+  colors: Record<'light' | 'dark', Record<'success' | 'destructive', string>>;
+};
+
+declare global {
+  interface Window {
+    FM_HERO_LAYOUT: HeroLayout;
+    /** Set by the theme test to prove no reload happened. */
+    __noReload?: boolean;
+  }
+}
 
 /**
  * The formamorph.ai landing page. It is static files served straight from `hosting/`, so it shares no
@@ -222,7 +243,248 @@ test.describe('landing page', () => {
     }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
     await expect(page.getByRole('link', { name: /Play in your browser/ })).toBeVisible();
+    await expect(page.locator('[data-live]')).toBeVisible();
     await expect(page.locator('.skin')).toBeVisible();
+  });
+});
+
+/**
+ * The hero's live turn: overlay text, stat bars and an Inventory switch drawn over the captured game
+ * screen. Positions come from the capture's layout file, so every box here is checked against that
+ * file's boxes, mapped through the stage's on-screen size.
+ */
+test.describe('landing hero turn', () => {
+  /** Maps a capture box to page pixels through the scaled stage, whose width is the capture's. */
+  const toPage = (stage: DOMRect, captureW: number, b: Box) => {
+    const s = stage.width / captureW;
+    return { x: stage.x + b.x * s, y: stage.y + b.y * s, w: b.w * s, h: b.h * s };
+  };
+
+  const finished = async (browser: Browser, colorScheme: 'light' | 'dark' = 'dark') => {
+    const context = await browser.newContext({ reducedMotion: 'reduce', colorScheme, viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto(SITE_URL);
+    await page.locator('[data-live]').scrollIntoViewIfNeeded();
+    return { context, page };
+  };
+
+  test('the demo waits for the hero to scroll into view, and its first frame loads eagerly', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the observer is viewport-independent');
+    await page.setViewportSize({ width: 1280, height: 420 });
+    await page.goto(SITE_URL);
+    const live = page.locator('[data-live]');
+    const base = live.locator('.stage > img');
+    await expect(base).toHaveAttribute('fetchpriority', 'high');
+    expect(await base.getAttribute('loading')).toBeNull();
+    for (const img of await live.locator('.layer > img').all()) await expect(img).toHaveAttribute('loading', 'lazy');
+
+    await page.waitForTimeout(2500);
+    expect(await live.locator('.w.on').count()).toBe(0);
+    expect(await page.evaluate(() => document.querySelector('[data-live] .stage > .overlay')!.textContent)).toBe('');
+
+    await live.scrollIntoViewIfNeeded();
+    await expect(live.locator('.stage > .overlay').first()).toHaveText("I check under the adventurers' back table.", { timeout: 5000 });
+  });
+
+  test('narration words fade in one after another over about 250 ms, with no caret', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the fade is viewport-independent');
+    await page.goto(SITE_URL);
+    // One opacity row per frame for the first six words, sampled from scroll until 1.2 s after the first fade.
+    const trace = await page.evaluate(() => new Promise<{ t: number; o: number[] }[]>((done) => {
+      document.querySelector('[data-live]')!.scrollIntoView();
+      const words = [...document.querySelectorAll('[data-live] .w')].slice(0, 6);
+      const rows: { t: number; o: number[] }[] = [];
+      const t0 = performance.now();
+      let started = 0;
+      const tick = () => {
+        const t = performance.now() - t0;
+        const o = words.map((w) => Number(getComputedStyle(w).opacity));
+        rows.push({ t, o });
+        if (!started && o[0] > 0) started = t;
+        if ((started && t - started > 1200) || t > 10_000) done(rows); else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }));
+
+    const firstFull = (i: number) => trace.find((r) => r.o[i] >= 0.999)?.t ?? Infinity;
+    const lastZero = (i: number) => [...trace].reverse().find((r) => r.o[i] === 0)?.t ?? -Infinity;
+    expect(trace.some((r) => r.o[0] > 0), 'the narration started').toBe(true);
+    for (let i = 0; i < 6; i++) {
+      const span = firstFull(i) - lastZero(i);
+      expect(trace.filter((r) => r.o[i] > 0.05 && r.o[i] < 0.95).length, `word ${i} mid-fade frames`).toBeGreaterThan(1);
+      expect(span, `word ${i} fade length`).toBeGreaterThan(150);
+      expect(span, `word ${i} fade length`).toBeLessThan(450);
+      if (i) expect(lastZero(i), `word ${i} starts after word ${i - 1}`).toBeGreaterThan(lastZero(i - 1));
+    }
+
+    // Nothing but words in the narration: no caret element and no drawn pseudo-element.
+    const extras = await page.evaluate(() => {
+      const narr = document.querySelector('[data-live] .narr')!;
+      const stray = [...narr.querySelectorAll('*')].filter((n) => n.tagName !== 'P' && !n.classList.contains('w'));
+      const pseudo = [narr, ...narr.querySelectorAll('*')].flatMap((n) =>
+        ['::before', '::after'].map((p) => getComputedStyle(n, p).content)).filter((c) => c !== 'none' && c !== 'normal');
+      return { stray: stray.length, pseudo };
+    });
+    expect(extras).toEqual({ stray: 0, pseudo: [] });
+  });
+
+  test('each choice sits inside its captured row, left-aligned', async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'one viewport proves the mapping');
+    const { context, page } = await finished(browser);
+    const read = await page.evaluate(() => {
+      const L = window.FM_HERO_LAYOUT;
+      const stage = document.querySelector('[data-live] .stage')!.getBoundingClientRect();
+      const texts = [...document.querySelectorAll('[data-live] .choice')].map((n) => {
+        const r = document.createRange();
+        r.selectNodeContents(n);
+        return r.getBoundingClientRect().toJSON() as DOMRect;
+      });
+      return { stage: stage.toJSON() as DOMRect, captureW: L.size.w, rows: L.choices.map((c) => c.row), boxes: L.choices.map((c) => c.box), texts };
+    });
+    expect(read.texts).toHaveLength(3);
+    read.texts.forEach((t, i) => {
+      const row = toPage(read.stage, read.captureW, read.rows[i]);
+      const box = toPage(read.stage, read.captureW, read.boxes[i]);
+      expect(Math.abs(t.x - box.x), `choice ${i} left edge`).toBeLessThan(2);
+      expect(t.x).toBeGreaterThanOrEqual(row.x);
+      expect(t.x + t.width).toBeLessThanOrEqual(row.x + row.w);
+      expect(t.y).toBeGreaterThanOrEqual(row.y - 1);
+      expect(t.y + t.height).toBeLessThanOrEqual(row.y + row.h + 1);
+    });
+    await context.close();
+  });
+
+  test('Faith drops with a red band over 46–50 and Renown rises with a green band over 5–10', async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'one viewport proves the bands');
+    for (const scheme of ['dark', 'light'] as const) {
+      const { context, page } = await finished(browser, scheme);
+      const read = await page.evaluate((m) => {
+        const L = window.FM_HERO_LAYOUT;
+        const color = (c: string) => { const n = document.createElement('i'); n.style.color = c; document.body.append(n);
+          const out = getComputedStyle(n).color; n.remove(); return out; };
+        const tracks = [...document.querySelectorAll('[data-live] .track')];
+        const chips = [...document.querySelectorAll('[data-live] .chip')];
+        return {
+          success: color(L.colors[m].success), destructive: color(L.colors[m].destructive),
+          stats: L.stats.map((s, i) => {
+            const t = tracks[i].getBoundingClientRect();
+            const band = tracks[i].querySelector('.band')!;
+            const b = band.getBoundingClientRect();
+            const pct = (x: number) => s.min + ((x - t.x) / t.width) * (s.max - s.min);
+            return { name: s.name, from: pct(b.x), to: pct(b.x + b.width), band: getComputedStyle(band).backgroundColor,
+              chip: chips[i].textContent, chipColor: getComputedStyle(chips[i]).color, chipOpacity: getComputedStyle(chips[i]).opacity };
+          }),
+        };
+      }, scheme);
+      const faith = read.stats.find((s) => s.name === 'Faith')!;
+      const renown = read.stats.find((s) => s.name === 'Renown')!;
+      expect(faith.from).toBeCloseTo(46, 0);
+      expect(faith.to).toBeCloseTo(50, 0);
+      expect(faith.band).toBe(read.destructive);
+      expect([faith.chip, faith.chipColor, faith.chipOpacity]).toEqual(['−4', read.destructive, '1']);
+      expect(renown.from).toBeCloseTo(5, 0);
+      expect(renown.to).toBeCloseTo(10, 0);
+      expect(renown.band).toBe(read.success);
+      expect([renown.chip, renown.chipColor, renown.chipOpacity]).toEqual(['+5', read.success, '1']);
+      for (const s of read.stats.filter((x) => x.name !== 'Faith' && x.name !== 'Renown')) expect(s.chip).toBe('');
+      await context.close();
+    }
+  });
+
+  test('the played turn ends on the Inventory frame, clipped to the panel, with the ring on the new row', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'one viewport proves the switch');
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(SITE_URL);
+    const live = page.locator('[data-live]');
+    await live.scrollIntoViewIfNeeded();
+    await expect(live.locator('.ring.on')).toHaveCount(1, { timeout: 40_000 });
+    await page.waitForTimeout(500);
+    const read = await page.evaluate(() => {
+      const L = window.FM_HERO_LAYOUT;
+      const stage = document.querySelector('[data-live] .stage')!.getBoundingClientRect();
+      const s = stage.width / L.size.w;
+      const at = (x: number, y: number) => document.elementFromPoint(stage.x + x * s, stage.y + y * s);
+      const layers = [...document.querySelectorAll('[data-live] .layer')];
+      const ring = document.querySelector('[data-live] .ring')!;
+      return {
+        stage: stage.toJSON() as DOMRect, captureW: L.size.w, newItem: L.newItem,
+        opacity: layers.map((l) => getComputedStyle(l).opacity),
+        src: (layers[1].querySelector('img') as HTMLImageElement).src,
+        // The after layer tops the stack, so a hit inside the panel lands on it and a hit outside never does.
+        inPanel: layers[1].contains(at(L.panel.x + L.panel.w / 2, L.panel.y + L.panel.h / 2)),
+        inStory: layers[1].contains(at(L.narration.box.x + 20, L.narration.box.y + 10)),
+        ring: ring.getBoundingClientRect().toJSON() as DOMRect,
+        ringShadow: getComputedStyle(ring).boxShadow,
+      };
+    });
+    expect(read.opacity).toEqual(['1', '1']);
+    expect(read.src).toMatch(/\/hero\/(dark|light)\/inv-after\.webp$/);
+    expect(read.inPanel).toBe(true);
+    expect(read.inStory).toBe(false);
+    const row = toPage(read.stage, read.captureW, read.newItem);
+    expect(read.ring.x).toBeLessThanOrEqual(row.x);
+    expect(read.ring.y).toBeLessThanOrEqual(row.y);
+    expect(read.ring.x + read.ring.width).toBeGreaterThanOrEqual(row.x + row.w);
+    expect(read.ring.y + read.ring.height).toBeGreaterThanOrEqual(row.y + row.h);
+    expect(read.ringShadow).not.toBe('none');
+  });
+
+  test('reduced motion shows the finished turn at once, with no transition', async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the media query is viewport-independent');
+    const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1280, height: 420 } });
+    const page = await context.newPage();
+    await page.goto(SITE_URL);
+    // Read before the hero is ever in view: the finished turn does not wait for the observer.
+    const read = await page.evaluate(() => {
+      const live = document.querySelector('[data-live]')!;
+      const all = (s: string) => [...live.querySelectorAll(s)];
+      return {
+        action: live.querySelector('.stage > .overlay')!.textContent,
+        words: [...new Set(all('.w').map((w) => getComputedStyle(w).opacity))],
+        choices: [...new Set(all('.choice').map((w) => getComputedStyle(w).opacity))],
+        layers: all('.layer').map((l) => getComputedStyle(l).opacity),
+        chips: all('.chip').map((c) => c.textContent).filter(Boolean),
+        moving: all('*').filter((n) => getComputedStyle(n).transitionDuration.split(',').some((d) => parseFloat(d) > 0)
+          || getComputedStyle(n).animationName !== 'none').length,
+      };
+    });
+    expect(read).toEqual({
+      action: "I check under the adventurers' back table.",
+      words: ['1'], choices: ['1'], layers: ['1', '1'], chips: ['−4', '+5'], moving: 0,
+    });
+    await context.close();
+  });
+
+  test('a site theme switch swaps every hero frame and color without a reload', async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the theme rule is viewport-independent');
+    const context = await browser.newContext({ reducedMotion: 'reduce', colorScheme: 'light' });
+    const page = await context.newPage();
+    await page.goto(SITE_URL);
+    const read = () => page.evaluate(() => {
+      const live = document.querySelector('[data-live]')!;
+      const color = (s: string) => getComputedStyle(live.querySelector(s)!).color;
+      return {
+        frames: [...live.querySelectorAll('img')].map((i) => (i as HTMLImageElement).src.replace(/^.*\/hero\//, '')),
+        bg: getComputedStyle(document.querySelector('.hero .bgimg')!).backgroundImage.replace(/^.*\/hero\/|"?\)$/g, ''),
+        text: color('.narr'), dialogue: color('.w.q'), action: color('.stage > .overlay'), choice: color('.choice'),
+        fill: getComputedStyle(live.querySelector('.fill')!).backgroundColor,
+        marker: window.__noReload ?? false,
+      };
+    });
+    const light = await read();
+    expect(light.frames).toEqual(['light/stats.webp', 'light/inv-before.webp', 'light/inv-after.webp']);
+    expect(light.bg).toBe('light/stats.webp');
+    await page.evaluate(() => { window.__noReload = true; });
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect.poll(async () => (await read()).frames[0]).toBe('dark/stats.webp');
+    const dark = await read();
+    expect(dark.marker).toBe(true);
+    expect(dark.frames).toEqual(['dark/stats.webp', 'dark/inv-before.webp', 'dark/inv-after.webp']);
+    expect(dark.bg).toBe('dark/stats.webp');
+    for (const k of ['text', 'dialogue', 'action', 'choice', 'fill'] as const) expect(dark[k], k).not.toBe(light[k]);
+    await context.close();
   });
 });
 
