@@ -3,7 +3,7 @@ import {
 } from 'lucide-react';
 
 /** Tabs on the Admin Panel. Guarded against the dev-router ledger by `devRouter.test.ts`. */
-export const ADMIN_PANEL_TABS = ['users', 'broadcasts', 'policies', 'serverSettings', 'usage', 'events', 'feedback', 'moderation', 'log'] as const;
+export const ADMIN_PANEL_TABS = ['users', 'feedback', 'moderation', 'usage', 'events', 'broadcasts', 'policies', 'serverSettings', 'log'] as const;
 export type AdminPanelTab = (typeof ADMIN_PANEL_TABS)[number];
 
 /** Tabs only an administrator sees. Speaking to everyone, writing what the site requires, changing what
@@ -23,11 +23,11 @@ export const ADMIN_PANEL_TAB_FACES: Record<AdminPanelTab, { label: string; icon:
   log: { label: 'Log', icon: History },
 };
 
-/** The Sections bar's groups, in strip order: accounts, the administrator's tabs, then the community's. */
+/** The Sections bar's groups, in strip order: people, activity, then the site itself. */
 const ADMIN_PANEL_TAB_GROUPS: readonly { id: string; tabs: readonly AdminPanelTab[] }[] = [
-  { id: 'accounts', tabs: ['users'] },
-  { id: 'site', tabs: ADMIN_PANEL_OWNER_TABS },
-  { id: 'community', tabs: ['events', 'feedback', 'moderation', 'log'] },
+  { id: 'people', tabs: ['users', 'feedback', 'moderation'] },
+  { id: 'activity', tabs: ['usage', 'events', 'broadcasts'] },
+  { id: 'site', tabs: ['policies', 'serverSettings', 'log'] },
 ];
 
 /** The groups one role sees. A moderator's drop the administrator's tabs. */
