@@ -11,6 +11,10 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 const downloads = vi.hoisted(() => ({ downloadBlob: vi.fn() }));
 vi.mock('@/lib/downloadBlob', () => downloads);
 
+// The store itself is covered in reviewWorldInstall.test.ts.
+const install = vi.hoisted(() => ({ installReviewWorld: vi.fn(async (_content: unknown, _item: unknown) => 'Sedge Landing (Pending Review)') }));
+vi.mock('@/lib/reviewWorldInstall', () => install);
+
 // The composer has its own tests; here it only has to say what it was opened with.
 vi.mock('./MessageComposerDialog', () => ({
   MessageComposerDialog: ({ target, initialSubject, initialBody }: {
@@ -198,17 +202,33 @@ describe('the item dialog', () => {
     ]);
   });
 
-  it('downloads the waiting content', async () => {
-    stubQueue([item()]);
-    vi.spyOn(ReviewService, 'fetchContent').mockResolvedValue({ worldOverview: { name: 'Sedge Landing' } });
+  it('downloads the waiting content of a component', async () => {
+    stubQueue([item({ kind: 'entity', name: 'Wren' })]);
+    vi.spyOn(ReviewService, 'fetchContent').mockResolvedValue({ name: 'Wren' });
 
     render(<ReviewTab active />);
-    const dialog = await openRow('Sedge Landing');
+    const dialog = await openRow('Wren');
     fireEvent.click(within(dialog).getByRole('button', { name: /Download/ }));
 
     await waitFor(() => expect(downloads.downloadBlob).toHaveBeenCalledTimes(1));
     expect(ReviewService.fetchContent).toHaveBeenCalledWith('w1');
-    expect(downloads.downloadBlob.mock.calls[0][1]).toBe('Sedge Landing.json');
+    expect(downloads.downloadBlob.mock.calls[0][1]).toBe('Wren.json');
+    expect(install.installReviewWorld).not.toHaveBeenCalled();
+  });
+
+  it('adds a waiting world to the library instead of saving a file', async () => {
+    stubQueue([item()]);
+    const content = { worldOverview: { name: 'Sedge Landing' } };
+    vi.spyOn(ReviewService, 'fetchContent').mockResolvedValue(content);
+
+    render(<ReviewTab active />);
+    const dialog = await openRow('Sedge Landing');
+    fireEvent.click(within(dialog).getByRole('button', { name: /Add to Library/ }));
+
+    await waitFor(() => expect(install.installReviewWorld).toHaveBeenCalledTimes(1));
+    expect(install.installReviewWorld.mock.calls[0][0]).toBe(content);
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('"Sedge Landing (Pending Review)" added to your library'));
+    expect(downloads.downloadBlob).not.toHaveBeenCalled();
   });
 });
 
@@ -399,7 +419,7 @@ describe('the download', () => {
     render(<ReviewTab active />);
     const dialog = await openRow('Sedge Landing');
 
-    expect(within(dialog).queryByRole('button', { name: /Download/ })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: /Add to Library/ })).toBeNull();
   });
 
   it('is offered on an update with new content', async () => {
@@ -408,7 +428,7 @@ describe('the download', () => {
     render(<ReviewTab active />);
     const dialog = await openRow('Sedge Landing');
 
-    expect(within(dialog).getByRole('button', { name: /Download/ })).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: /Add to Library/ })).toBeTruthy();
   });
 });
 
@@ -421,7 +441,7 @@ describe('the staff ladder', () => {
 
     expect(within(dialog).queryByRole('button', { name: /Approve/ })).toBeNull();
     expect(within(dialog).queryByRole('button', { name: /Reject/ })).toBeNull();
-    expect(within(dialog).getByRole('button', { name: /Download/ })).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: /Add to Library/ })).toBeTruthy();
   });
 
   it('hides the decision on the viewer’s own listing', async () => {

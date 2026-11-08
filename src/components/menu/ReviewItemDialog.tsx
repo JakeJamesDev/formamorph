@@ -128,7 +128,7 @@ export function ReviewItemDialog({
                 {/* An update with no new content has nothing to download. */}
                 {(item.type !== 'update' || item.pendingUpdate?.content_changed) && (
                   <Button variant="outline" onClick={onDownload} className="gap-1.5">
-                    <Download className="h-4 w-4" /> Download
+                    <Download className="h-4 w-4" /> {item.kind === 'world' ? 'Add to Library' : 'Download'}
                   </Button>
                 )}
                 {onOpenListing && (

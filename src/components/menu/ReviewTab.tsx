@@ -4,7 +4,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Meta } from "@/components/ui/typography";
 import { nounOf, useReviewDecision } from "@/components/community/useReviewDecision";
 import { ReviewItemDialog } from "@/components/menu/ReviewItemDialog";
+import { toast } from "react-toastify";
 import { downloadBlob } from "@/lib/downloadBlob";
+import { installReviewWorld } from "@/lib/reviewWorldInstall";
 import { REVIEW_TYPE_LABELS, waitedFor } from "@/lib/listingModeration";
 import { toastError } from "@/lib/linkToast";
 import { quarantineDeadline } from "@/lib/quarantine";
@@ -72,6 +74,11 @@ export function ReviewTab({ active, onOpenListing, onChanged, initialItemId }: R
     try {
       const content = await ReviewService.fetchContent(item.id);
       if (!mounted.current) return;
+      if (item.kind === 'world') {
+        const name = await installReviewWorld(content, item);
+        if (mounted.current) toast.success(`"${name}" added to your library`);
+        return;
+      }
       downloadBlob(new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' }), `${item.name || nounOf(item)}.json`);
     } catch (error) {
       if (mounted.current) toastError(error, 'Failed to download the content');
