@@ -1032,6 +1032,28 @@ describe('CUDA backend', () => {
     expect(state.gpuBackend).toBe('cuda');
   });
 
+  it('a pin on the integrated GPU keeps Auto on Vulkan with that pin, and says why', async () => {
+    const WITH_IGPU = 'Available devices:\r\n  Vulkan0: Intel(R) UHD Graphics 770 (16000 MiB, 15000 MiB free)\r\n  Vulkan1: NVIDIA GeForce RTX 4090 (24138 MiB, 23370 MiB free)\r\n';
+    const { choice, state, router } = await startChosen({ vulkanDeviceNames: WITH_IGPU_NAMES, gpuDevice: 'Intel(R) UHD Graphics 770', fakeOptions: { listDevices: WITH_IGPU } });
+    expect(choice).toMatchObject({ backend: 'vulkan', reason: 'device-pin', cudaBinary: null });
+    expect(state).toMatchObject({ gpuBackend: 'vulkan', gpuDeviceNames: ['Intel(R) UHD Graphics 770'], gpuDeviceOrigin: 'manual' });
+    expect(after(router.args, '--device')).toBe('Vulkan0');
+  });
+
+  it('the device-pin check outranks every other Auto reason, and an explicit CUDA setting outranks it', () => {
+    const choose = (overrides) => backendForStart({ install: INSTALLED, serverPath: () => CUDA_BIN, cards: [RTX_4090], vulkanDeviceNames: WITH_IGPU_NAMES, setting: 'auto', gpuDevice: 'Intel(R) UHD Graphics 770', ...overrides });
+    expect(choose({ failedLastTime: true }).reason).toBe('device-pin');
+    expect(choose({ cards: [{ ...RTX_4090, driverVersion: '560.94' }] }).reason).toBe('device-pin');
+    expect(choose({ cards: null }).reason).toBe('device-pin');
+    expect(choose({ vulkanDeviceNames: [...WITH_IGPU_NAMES, 'AMD Radeon RX 7900 XTX'] }).reason).toBe('device-pin');
+    expect(choose({ install: { state: 'stale' } }).reason).toBe('updating');
+    expect(choose({ setting: 'cuda' }).backend).toBe('cuda');
+    // The NVIDIA card's own pin, no pin, and a name no device lists all leave Auto on CUDA.
+    for (const gpuDevice of ['NVIDIA GeForce RTX 4090', 'auto', 'all', 'Intel(R) Arc(TM) Graphics']) {
+      expect(choose({ gpuDevice })).toMatchObject({ backend: 'cuda', reason: null });
+    }
+  });
+
   it('the Backend setting overrides Auto both ways', async () => {
     const vulkan = await startChosen({ setting: 'vulkan' });
     expect(vulkan.choice).toMatchObject({ backend: 'vulkan', reason: 'setting' });

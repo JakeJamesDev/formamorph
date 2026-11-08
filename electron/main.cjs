@@ -9,7 +9,8 @@ const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
 const { cudaSupport, nvidiaCards } = require('./nvidiaFacts.cjs');
 const { evaluateCudaSupport } = require('./cudaSupport.cjs');
-const { backendForStart, engineBackend } = require('./engineBackend.cjs');
+const { engineBackend } = require('./engineBackend.cjs');
+const { createBackendChoice } = require('./engineBackendChoice.cjs');
 const { createCudaInstall, driverVersions } = require('./cudaInstall.cjs');
 const { createCudaStarts } = require('./cudaStart.cjs');
 const { readEnginePin } = require('./enginePin.cjs');
@@ -125,24 +126,14 @@ async function nvidiaGpus() {
   try { return (await collectVram()).gpus; } catch { return []; }
 }
 
-/**
- * The backend the next start runs, for `options` (the engine options, or pending ones from the panel), with
- * the CUDA build's server when that is CUDA. Off Windows there is no CUDA build (spec Q2).
- */
-async function backendChoice(options = engineOptions) {
-  if (process.platform !== 'win32') return { backend: 'vulkan', reason: 'not-installed', cudaBinary: null };
-  const install = await cuda().status();
-  const cards = install.nvidia ? await nvidiaCards() : [];
-  return backendForStart({
-    install,
-    serverPath: () => cuda().serverPath(),
-    failedLastTime: cuda().failedFor(driverVersions(cards)),
-    cards,
-    vulkanDeviceNames: (await enumerationOf(llamaServerBinary())).gpuDeviceNames,
-    setting: options.engineBackend,
-    gpuDevice: options.gpuDevice,
-  });
-}
+const chooseBackend = createBackendChoice({
+  platform: process.platform,
+  install: cuda,
+  readCards: nvidiaCards,
+  vulkanDeviceNames: async () => (await enumerationOf(llamaServerBinary())).gpuDeviceNames,
+});
+/** The backend the next start runs for `options`, the engine options by default. */
+const backendChoice = (options = engineOptions) => chooseBackend(options);
 
 /** The engine's load options for a model: the renderer's settings, the GPUs Auto picks among, and the CUDA build when the backend choice says CUDA. */
 async function startOptions(modelPath) {

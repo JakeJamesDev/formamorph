@@ -653,6 +653,15 @@ describe('local model Backend row', () => {
     expect(await screen.findByText(/another graphics card/)).toBeInTheDocument();
   });
 
+  it('names the pinned device when it keeps Auto on Vulkan', async () => {
+    const { bridge } = cudaBridge(installed);
+    savedDevice(IGPU);
+    stubDesktop({ devices: [IGPU, RTX_4090], cuda: bridge, choice: { backend: 'vulkan', reason: 'device-pin' } });
+    openPanel();
+    expect(await screen.findByText('Auto (Vulkan)')).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`is set to ${IGPU.replace(/[()]/g, '\\$&')}\\. Pick your NVIDIA card`))).toBeInTheDocument();
+  });
+
   it('keeps a stored CUDA choice selected but grayed while CUDA is not installed, and says why', async () => {
     const { bridge } = cudaBridge(notInstalled());
     localStorage.setItem('FORMAMORPH_localEngineBackend', 'cuda');

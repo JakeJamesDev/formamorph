@@ -29,10 +29,11 @@ import { effectiveVCacheType } from '../../../electron/cacheTypes.cjs';
 const CUDA_FALLBACK_TEXT = 'CUDA couldn’t load your model, so it runs on Vulkan.';
 
 /** Why the next start runs on Vulkan, when the Backend row's own label doesn't say it. Null for none. */
-function backendReasonText(choice: EngineBackendChoice | undefined, setting: LocalEngineBackend): ReactNode {
+function backendReasonText(choice: EngineBackendChoice | undefined, setting: LocalEngineBackend, gpuDevice: string): ReactNode {
   if (!choice || choice.backend === 'cuda') return null;
   switch (choice.reason) {
     case 'mixed-gpus': return <>Auto uses Vulkan because you have another graphics card. Pick your NVIDIA card in <strong>GPU Device</strong> to use CUDA.</>;
+    case 'device-pin': return <>Auto uses Vulkan because <strong>GPU Device</strong> is set to {gpuDevice}. Pick your NVIDIA card there to use CUDA.</>;
     case 'updating': return 'CUDA is updating. The engine uses Vulkan until the update finishes.';
     case 'no-cuda-devices': return 'CUDA found no graphics card, so the engine uses Vulkan.';
     case 'failed-last-time': return 'Auto uses Vulkan because CUDA failed last time.';
@@ -165,7 +166,7 @@ export function LocalModelPanel() {
       if (mounted.current) setRestarting(false);
     }
   };
-  const backendReason = backendReasonText(gpuDevices.choice, localEngineBackend);
+  const backendReason = backendReasonText(gpuDevices.choice, localEngineBackend, localGpuDevice);
   // A CPU load or an error after the fallback has its own status line; the notice is for a Vulkan run.
   const cudaFallbackShown = engine.cudaFallback === true && engine.status === 'ready' && engine.gpuBackend === 'vulkan';
 

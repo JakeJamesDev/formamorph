@@ -186,7 +186,7 @@ export interface EngineDeviceList {
 }
 
 /** Why a start runs on Vulkan instead of CUDA: the setting, the install, the machine, or the CUDA build's listing. */
-export type EngineBackendReason = 'setting' | 'not-installed' | 'updating' | 'failed-last-time' | 'mixed-gpus' | 'no-cuda-devices' | 'no-nvidia-card' | 'card-too-old' | 'driver-too-old' | 'support-unknown';
+export type EngineBackendReason = 'setting' | 'not-installed' | 'updating' | 'device-pin' | 'failed-last-time' | 'mixed-gpus' | 'no-cuda-devices' | 'no-nvidia-card' | 'card-too-old' | 'driver-too-old' | 'support-unknown';
 
 export interface EngineBackendChoice {
   backend: 'cuda' | 'vulkan';

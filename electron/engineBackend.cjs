@@ -16,14 +16,22 @@ function mixedGpus(vulkanDeviceNames, cards) {
   return vulkanDeviceNames.some((name) => !cards.some((card) => namesMatch(name, card?.name)) && !isIntegrated(name));
 }
 
+const isPin = (gpuDevice) => gpuDevice !== ENGINE_DEVICE_AUTO && gpuDevice !== ENGINE_DEVICE_ALL;
+const cardNamed = (gpuDevice, cards) => (Array.isArray(cards) ? cards.find((card) => namesMatch(gpuDevice, card?.name)) : undefined);
+
+/** A pin on a listed Vulkan device that is no NVIDIA card, so only the Vulkan build can run it. */
+const vulkanOnlyPin = (gpuDevice, vulkanDeviceNames, cards) =>
+  isPin(gpuDevice) && vulkanDeviceNames.includes(gpuDevice) && !cardNamed(gpuDevice, cards);
+
 /**
  * The backend for one start. `installState` and `replacing` come from the CUDA install status, `cards` from
  * the NVIDIA facts query (null when it failed), `vulkanDeviceNames` from the bundled build's listing, and
  * `gpuDevice` is the device setting.
  *
  * Returns `{ backend: 'cuda' | 'vulkan', reason }`; `reason` says why CUDA isn't used: `setting`,
- * `not-installed`, `updating`, `failed-last-time`, `mixed-gpus`, or a support verdict reason. An explicit
- * CUDA setting skips the failure record, the support rule and the mixed-GPU check; those steer only Auto.
+ * `not-installed`, `updating`, `device-pin`, `failed-last-time`, `mixed-gpus`, or a support verdict reason. An explicit
+ * CUDA setting skips the device-pin check, the failure record, the support rule and the mixed-GPU check; those
+ * steer only Auto.
  * `failedLastTime` is true while the CUDA failure record matches this tag and driver.
  */
 function chooseEngineBackend({ setting, installState, replacing = false, failedLastTime = false, cards, vulkanDeviceNames = [], gpuDevice = ENGINE_DEVICE_AUTO } = {}) {
@@ -33,12 +41,11 @@ function chooseEngineBackend({ setting, installState, replacing = false, failedL
     return vulkan(installState === 'stale' || (installState === 'downloading' && replacing) ? 'updating' : 'not-installed');
   }
   if (wanted === 'cuda') return CUDA;
+  if (vulkanOnlyPin(gpuDevice, vulkanDeviceNames, cards)) return vulkan('device-pin');
   if (failedLastTime) return vulkan('failed-last-time');
 
   // A device pin on an NVIDIA card asks for that card alone, so only that card has to pass.
-  const pinned = gpuDevice !== ENGINE_DEVICE_AUTO && gpuDevice !== ENGINE_DEVICE_ALL && Array.isArray(cards)
-    ? cards.find((card) => namesMatch(gpuDevice, card?.name))
-    : null;
+  const pinned = isPin(gpuDevice) ? cardNamed(gpuDevice, cards) : null;
   if (pinned) {
     const verdict = evaluateCudaSupport([pinned]);
     return verdict.supported ? CUDA : vulkan(verdict.reason);
