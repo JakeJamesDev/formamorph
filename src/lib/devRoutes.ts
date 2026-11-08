@@ -305,3 +305,4 @@ export const DEV_MODAL_TABS = {
 // world pick that names an Avatar the library lacks (`#dev?modal=avatar&avatars=lockedMissing`).
 // Admin Panel → Policies uses the `subtab=…` slot, and its two are fixed, so they are guarded above.
 // Mid-game boot fixtures live in `devFixtures.ts` (`DEV_FIXTURES`); reached via `bootFixture(name)`.
+// `bundled-<world id>` starts a new game in a bundled world on its first Opening Narration (`fixture=bundled-sugarscape`).

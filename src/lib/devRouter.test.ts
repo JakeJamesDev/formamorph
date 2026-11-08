@@ -4,7 +4,8 @@ import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
 import { seedDevRouteFromEnv } from './devRouter';
 import { DEV_PUBLISH_SAMPLES } from './devPublishSample';
 import { BROWSE_TABS } from './browseTabs';
-import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
+import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, bundledFixture, loadDevFixture } from './devFixtures';
+import { DEFAULT_WORLDS } from './defaultWorlds';
 import { SETTINGS_ENDPOINT_TABS, SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { TOOL_EDIT_TABS } from '@/components/modals/toolsView';
 import { allGroupedTabs, PROMPT_SURFACE_ROUTES, PRESET_ROUTES } from './promptGroups';
@@ -314,12 +315,45 @@ describe('mid-game boot fixtures', () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1]);
     vi.stubGlobal('fetch', async () => ({ ok: true, blob: async () => new Blob([jpeg], { type: 'image/jpeg' }) }));
     try {
-      for (const name of DEV_FIXTURES) expect(await loadDevFixture(name), name).not.toBeNull();
+      // A bundled world is tens of MB; open-chat is the one small enough to load here.
+      for (const name of DEV_FIXTURES.filter((n) => !n.startsWith('bundled-') || n === 'bundled-open-chat')) {
+        expect(await loadDevFixture(name), name).not.toBeNull();
+      }
       const long = await loadDevFixture('thousandTurns');
       expect(Object.values(long!.save!.sceneImages!)[0][0]).toMatch(/^data:image\/jpeg;base64,/);
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('registers one fixture per bundled world, each naming a bundled file', () => {
+    const files = Object.keys(import.meta.glob('@/defaultworlds/*.json')).map((p) => p.split('/').pop()!.replace('.json', ''));
+    const bundled = DEV_FIXTURES.filter((n) => n.startsWith('bundled-')).map((n) => n.slice('bundled-'.length));
+    expect(bundled).toEqual(DEFAULT_WORLDS.map((w) => w.id));
+    for (const id of bundled) expect(files, id).toContain(id);
+  });
+
+  it('a bundled fixture is a new game on the world’s first Opening Narration', () => {
+    const raw = {
+      worldOverview: {
+        name: 'Tiny', description: '', author: '', thumbnail: '', bgm: null, systemPrompt: '',
+        openings: [
+          { id: 'a', text: 'I wave.', kind: 'action' },
+          { id: 'n1', text: 'Rain on the roofs.', kind: 'narration' },
+          { id: 'n2', text: 'Dawn breaks.', kind: 'narration' },
+        ],
+      },
+    };
+    const fx = bundledFixture(raw, { id: 'tiny', defaultName: 'Tiny' });
+    expect(fx.save).toBeUndefined();
+    expect(fx.world.id).toBe('tiny');
+    expect(fx.world.worldOverview.openings).toEqual([{ id: 'n1', text: 'Rain on the roofs.', kind: 'narration' }]);
+  });
+
+  it('a bundled fixture without an Opening Narration keeps the world’s openings', async () => {
+    const fx = await loadDevFixture('bundled-open-chat');
+    expect(fx?.world.id).toBe('open-chat');
+    expect(fx?.world.worldOverview.openings?.length).toBeGreaterThan(0);
   });
 
   it('the written-opening fixture is a new game whose one opening is a Narration', async () => {

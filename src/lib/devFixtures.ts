@@ -6,10 +6,17 @@
  */
 import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
+import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
+
+/** `bundled-<world id>` boots a new game in that bundled world. */
+const BUNDLED_PREFIX = 'bundled-';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars', 'entityPresence', 'entityFollowers', 'mapBackground', 'items'] as const;
-export type DevFixtureName = (typeof DEV_FIXTURES)[number];
+export const DEV_FIXTURES = [
+  'whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs', 'entityAvatars',
+  'entityPresence', 'entityFollowers', 'mapBackground', 'items',
+  ...DEFAULT_WORLDS.map((w) => `${BUNDLED_PREFIX}${w.id}`),
+];
 
 // Real-sized images for the long save, fetched from the dev server.
 const THOUSAND_TURN_IMAGES = ['/thumbnails/1.jpg', '/thumbnails/2.jpg', '/thumbnails/3.jpg', '/thumbnails/4.jpg'];
@@ -455,6 +462,26 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       };
     }
     default:
-      return null;
+      return name.startsWith(BUNDLED_PREFIX) ? loadBundledFixture(name.slice(BUNDLED_PREFIX.length)) : null;
   }
+}
+
+/** A new game in a bundled world, opening on its first Opening Narration so page one is authored text. */
+async function loadBundledFixture(id: string): Promise<DevFixture | null> {
+  const seed = DEFAULT_WORLDS.find((w) => w.id === id);
+  if (!seed) return null;
+  // Lazy: each world is its own chunk, fetched only when this fixture boots.
+  const files = import.meta.glob<Record<string, unknown>>('../defaultworlds/*.json', { import: 'default' });
+  const load = files[`../defaultworlds/${id}.json`];
+  if (!load) return null;
+  return bundledFixture(await load(), seed);
+}
+
+/** The fixture for one parsed bundled file: its seeded world, cut to its first Opening Narration when it has one. */
+export function bundledFixture(raw: Record<string, unknown>, seed: DefaultWorldSeed): DevFixture {
+  const world = seedWorldData(raw, seed);
+  const opening = world.worldOverview.openings?.find((o) => o.kind === 'narration');
+  return {
+    world: opening ? { ...world, worldOverview: { ...world.worldOverview, openings: [opening] } } : world,
+  };
 }
