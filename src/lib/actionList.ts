@@ -3,13 +3,25 @@
  * The caller takes and restores the snapshots; this module only holds them.
  */
 
-import type { GameState, PersonaRef } from '@/types';
+import type { GameState, ItemRef, PersonaRef } from '@/types';
 
 /** The item an action acted on: `key` is the authored or runtime item, `name` its display name when it ran (Q30). */
 export interface ActionItem {
   key: string;
   name: string;
 }
+
+/** The `ActionItem.key` of an item. */
+export const actionItemKey = (ref: ItemRef): string => (ref.kind === 'item' ? `item:${ref.itemId}` : `runtime:${ref.runtimeItemId}`);
+
+const INVENTORY_KINDS = ['use', 'equip', 'unequip', 'give', 'drop', 'pickup'] as const;
+/** The facts of a panel action that moved or acted on items. */
+export type InventoryActionFacts = Extract<ListedActionFacts, { kind: (typeof INVENTORY_KINDS)[number] }>;
+export type ToldInventoryAction = ToldAction & { facts: InventoryActionFacts };
+
+/** The told entries that moved or acted on items, which the Inventory pass must not repeat (Q7, Q50). */
+export const toldInventoryActions = (told: readonly ToldAction[]): ToldInventoryAction[] =>
+  told.filter((entry): entry is ToldInventoryAction => (INVENTORY_KINDS as readonly string[]).includes(entry.facts.kind));
 
 /** A thing named by id, with its display name when the action ran (Q30). */
 export interface ActionRef {

@@ -8,7 +8,7 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { randomUUID } from '@/lib/uuid';
 import { copyName } from '@/lib/items';
-import type { ActionSnapshot, ListedActionFacts } from '@/lib/actionList';
+import { actionItemKey, type ActionSnapshot, type ListedActionFacts } from '@/lib/actionList';
 import type { ItemCopy } from '@/types';
 import type { InventoryTabProps } from './InventoryTab';
 
@@ -43,7 +43,7 @@ export interface PanelActionList {
   add: (facts: ListedActionFacts, snapshot: ActionSnapshot) => void;
 }
 
-const itemKey = (copy: ItemCopy): string => (copy.item.kind === 'item' ? `item:${copy.item.itemId}` : `runtime:${copy.item.runtimeItemId}`);
+const itemKey = (copy: ItemCopy): string => actionItemKey(copy.item);
 
 /** What a panel `op` does, before it runs; null for an op the panel never lists. */
 function plannedFacts(op: InventoryOp, copies: readonly ItemCopy[], name: (copy: ItemCopy) => string, entityName: (id: string) => string): ListedActionFacts | null {

@@ -8,6 +8,7 @@ import { sameWhere, stateWord } from '@/lib/items';
 import { escapeRegExp } from '@/lib/utils';
 import type { InventoryPassOp, InventoryPassOpKind, InventoryUseAfter, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 import type { InventoryCall, InventoryResult } from './index';
+import { guardTold } from './passGuard';
 import { coveredByMoney, settleListedBuy, settlePays } from './passMoney';
 import { candidates, distribute, gainId, itemNameKey, listedName, nameMatches, ownerOf, runOps, skip, startPass, type PassRun, type PassScene } from './passRun';
 
@@ -140,6 +141,8 @@ export const parseInventoryReply = (raw: string): InventoryPassOp[] => jsonOps(r
 export interface InventoryPassResult extends InventoryResult {
   /** Every runtime item: the scene's, and the ones this reply made. */
   runtimeItems: RuntimeItem[];
+  /** The reply's operations less the shown Listed Actions' repeats: what a re-roll replays. */
+  ops: InventoryPassOp[];
   /** The stats after this reply's payments. Absent when the scene has no money. */
   stats?: PaymentStats;
 }
@@ -149,15 +152,16 @@ export function applyInventoryPass(
   copies: readonly ItemCopy[], passOps: readonly InventoryPassOp[], scene: PassScene, call: Omit<InventoryCall, 'source'>,
 ): InventoryPassResult {
   const pass = startPass(copies, scene, call);
-  const money = settlePays(pass, passOps);
+  const ops = guardTold(pass, passOps);
+  const money = settlePays(pass, ops);
   const handMoves = new Set<string>();
-  for (const named of passOps) {
+  for (const named of ops) {
     if (named.op === 'pay') continue;
     if (named.op === 'buy') settleListedBuy(pass, named, money.buys);
     else if (!coveredByMoney(pass, named, money, handMoves)) applyItemOp(pass, named);
   }
   const { list, itemUses, diagnostics, events, runtimeItems, moneyStats } = pass;
-  return { copies: list, itemUses, diagnostics, events, runtimeItems, ...(moneyStats && { stats: moneyStats }) };
+  return { copies: list, itemUses, diagnostics, events, runtimeItems, ops, ...(moneyStats && { stats: moneyStats }) };
 }
 
 type ItemOp = InventoryPassOp & { op: Exclude<InventoryPassOpKind, 'pay' | 'buy'> };

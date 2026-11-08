@@ -8,7 +8,7 @@ import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
 import { ActionListTray } from '@/components/game/ActionListTray';
-import { addAction, closeList, listCounts, recordSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts } from '@/lib/actionList';
+import { addAction, closeList, listCounts, recordSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts, type ToldAction } from '@/lib/actionList';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { personaKey, samePersonaRef } from '@/lib/personaPick';
@@ -2117,7 +2117,8 @@ const GameViewer = ({
         // The turn's Inventory pass replays as saved, at the place and presence it landed at (Q53, Q62).
         const turnLocation = locations.find((loc) => loc.id === prev.inventoryLocationId) ?? null;
         const commitTotals = startActionTotals();
-        const landed = landInventoryPass(prev.inventoryOps ?? [], turnLocation, prev.inventoryOwners ?? [], replay.base, {
+        // The saved operations already left out what the turn's Listed Actions did.
+        const { landed } = landInventoryPass(prev.inventoryOps ?? [], turnLocation, prev.inventoryOwners ?? [], replay.base, {
           ...liveItemsRef.current, runtimeItems: preTurnItems.runtimeItems,
         }, commitTotals);
         const base = landed?.state ?? replay.base;
@@ -2908,6 +2909,8 @@ const GameViewer = ({
       entityMove: { start: FollowerState; from: string | undefined; applied: FollowerState };
       /** The narration outside its dialogue, which pulls the characters it names into the final place. */
       prose: string;
+      /** The shown Listed Actions the turn was sent with, which the Inventory pass must not repeat (Q7). */
+      told: readonly ToldAction[];
     },
   ) => {
     const { signal } = turn;
@@ -2949,16 +2952,18 @@ const GameViewer = ({
     const discovered = commit.discoveries.map((d) => ({ id: d.entity.id, name: d.entity.name }));
     const { start: moveStart, from: moveFrom } = turn.entityMove;
     const movedTo = moveFrom ? commitEntityMoves(moveStart, commit, { from: moveFrom, to: turn.location?.id }).state.positions : undefined;
-    // What the pass validates against, which the turn keeps for its re-roll.
-    const inventoryRecord: Pick<AITurnResult, 'inventoryOwners' | 'inventoryLocationId'> = commit.inventoryOps.length ? {
-      inventoryOwners: inventoryOwnersAt(turn.location, discovered, movedTo),
+    const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, movedTo) : [];
+    const commitTotals = startActionTotals();
+    const { kept: inventoryKept, landed: inventory } = landInventoryPass(
+      commit.inventoryOps, turn.location, inventoryOwners, outputWritten,
+      { ...liveItemsRef.current, runtimeItems }, commitTotals, turn.told,
+    );
+    // What the pass landed and validated against, which the turn keeps for its re-roll.
+    const inventoryRecord: Pick<AITurnResult, 'inventoryOps' | 'inventoryOwners' | 'inventoryLocationId'> = commit.inventoryOps.length ? {
+      inventoryOps: inventoryKept,
+      inventoryOwners,
       ...(turn.location ? { inventoryLocationId: turn.location.id } : {}),
     } : {};
-    const commitTotals = startActionTotals();
-    const inventory = landInventoryPass(
-      commit.inventoryOps, turn.location, inventoryRecord.inventoryOwners ?? [], outputWritten,
-      { ...liveItemsRef.current, runtimeItems }, commitTotals,
-    );
     const outputBase = inventory?.state ?? outputWritten;
 
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
@@ -3826,6 +3831,7 @@ const GameViewer = ({
         context: commitContext,
         entityMove: { start: moveStart, from: moveFrom, applied: turnJoin ?? moveStart },
         prose: turnProse,
+        told,
       });
       // The allowance notice comes after the commit, never while the stream runs.
       showHostedNotices(settings.switchBackFromHostedAi);
@@ -5713,6 +5719,7 @@ const GameViewer = ({
     base: TurnCodeState | null,
     from: InventoryPassFrom,
     world: TraitWorld = gatedWorld(),
+    told: readonly ToldAction[] = [],
   ) => {
     if (!ops.length) return null;
     const traitsBefore = traitStateOver(base);
@@ -5721,7 +5728,7 @@ const GameViewer = ({
     const inForce = entityInForceUnder(traitsBefore.ownedTraits ?? {});
     const result = applyInventoryPass(from.copies, ops, {
       items: worldItems, runtimeItems: from.runtimeItems, playerNames: [...new Set([...playerNames, ...playedNames(playedEntities)])], owners,
-      location: location && { id: location.id, name: location.name }, resolve: resolvePH,
+      location: location && { id: location.id, name: location.name }, resolve: resolvePH, told,
       money: {
         currencies: worldCurrencies, placements: worldPlacements,
         stats: { globalStats: traitsBefore.stats, entityStats: entityStatsBefore },
@@ -5746,8 +5753,9 @@ const GameViewer = ({
   };
 
   /**
-   * The Inventory pass committed before the stat deltas (Q53). Answers the state the stat commit then starts from
-   * and the item events the caller fires once the turn settles, or null when nothing moved.
+   * The Inventory pass committed before the stat deltas (Q53). `landed` holds the state the stat commit then starts
+   * from and the item events the caller fires once the turn settles, and is null when nothing moved. `kept` holds
+   * the operations left after the `told` guard (Q50).
    */
   const landInventoryPass = (
     ops: readonly InventoryPassOp[],
@@ -5756,13 +5764,14 @@ const GameViewer = ({
     base: TurnCodeState | null,
     from: InventoryPassFrom,
     totals: ActionTotals,
-  ): { state: TurnCodeState; events: ItemScriptEvent[] } | null => {
-    const pass = inventoryPassOver(ops, location, owners, base, from);
-    if (!pass) return null;
+    told: readonly ToldAction[] = [],
+  ): { kept: InventoryPassOp[]; landed: { state: TurnCodeState; events: ItemScriptEvent[] } | null } => {
+    const pass = inventoryPassOver(ops, location, owners, base, from, gatedWorld(), told);
+    if (!pass) return { kept: [], landed: null };
     const { result, moved } = pass;
     for (const line of result.diagnostics) addSystemLogEntry(line);
     if (result.runtimeItems.length !== from.runtimeItems.length) setRuntimeItems(result.runtimeItems);
-    if (!moved) return null;
+    if (!moved) return { kept: result.ops, landed: null };
     const { traitsBefore, traitsPaid, settled, state, world } = moved;
     // A paid stat joins the turn's held bar deltas, as the runs before the AI do.
     const paidDeltas = appliedStatDeltas(resolveStatNames(traitsBefore.stats, resolvePH), resolveStatNames(traitsPaid.stats, resolvePH));
@@ -5776,7 +5785,7 @@ const GameViewer = ({
     setBodies(settled.bodies);
     for (const line of [...settled.log, ...settled.bodyLog]) addLogEntry(line);
     void fireSwitchScripts(traitsBefore, settled.traits, world, totals);
-    return { state, events: [...result.events, ...settled.events] };
+    return { kept: result.ops, landed: { state, events: [...result.events, ...settled.events] } };
   };
 
   /** Move the stats onto a new persona, whose linked stat traits replace the old one's, then settle the traits

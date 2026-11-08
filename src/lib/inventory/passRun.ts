@@ -2,6 +2,7 @@
  * One Inventory pass reply in progress: what its names resolve against, what it has done so far, and the
  * name and owner readings every operation shares (Q56).
  */
+import { actionItemKey, type ToldAction } from '@/lib/actionList';
 import type { SlotOwner } from '@/lib/bodies';
 import type { MoneyOwners, PaymentStats } from '@/lib/currency/payment';
 import { sameCharacterName } from '@/lib/entityMatch';
@@ -36,6 +37,8 @@ export interface PassScene {
   resolve?: (text: string) => string;
   /** What a pay settles against. Absent, every pay is skipped. */
   money?: PassMoney;
+  /** The shown Listed Actions the turn was sent with, which the reply must not repeat (Q7, Q21). */
+  told?: readonly ToldAction[];
 }
 
 type AuthoredName = { item: Item; key: string; face: string };
@@ -171,6 +174,14 @@ export function listedName(pass: PassRun, name: string): string {
 export function authoredNamed(pass: PassRun, name: string): Item | undefined {
   const key = itemNameKey(listedName(pass, name));
   return (pass.authored.find((a) => a.key === key) ?? byFace(pass, key))?.item;
+}
+
+/** The Listed Action key of the item `name` means, or null when no item has that name. */
+export function actionKeyNamed(pass: PassRun, name: string): string | null {
+  const authored = authoredNamed(pass, name);
+  if (authored) return actionItemKey({ kind: 'item', itemId: authored.id });
+  const runtime = runtimeNamed(pass, itemNameKey(listedName(pass, name)));
+  return runtime ? actionItemKey({ kind: 'runtime', runtimeItemId: runtime.id }) : null;
 }
 
 /** What a name means across a reply: the authored item it names, else the name itself. */
