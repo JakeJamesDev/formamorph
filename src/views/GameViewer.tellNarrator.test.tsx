@@ -7,6 +7,8 @@ import { bodyFixture } from '@/test/bodyFixture';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { closedTurns } from '@/lib/memoryView';
+import { pageTurnId } from '@/lib/actionAttachments';
+import { toggleHidden } from '@/lib/actionList';
 import { defaultActionListPrompt } from '@/components/game/GamePrompts';
 import type { Item, Placement, PlayerStat, Slot, World } from '@/types';
 
@@ -319,25 +321,76 @@ describe('when the list is not told', () => {
   });
 
   it('re-sends a Chat regenerate at once, the listed actions kept and untold (Q55)', async () => {
-    localStorage.setItem('FORMAMORPH_narrationLayout', 'chat');
-    const realScrollTo = HTMLElement.prototype.scrollTo;
-    HTMLElement.prototype.scrollTo = () => {};
-    // jsdom lays nothing out; the chat list renders its rows only at a measured size.
-    onTestFinished(stubChatLayout());
-    onTestFinished(() => { HTMLElement.prototype.scrollTo = realScrollTo; });
-    await start();
+    await startChat();
     await useTonic();
     await send('I wait.');
     requests = [];
-    fireEvent.click(screen.getAllByRole('button', { name: 'Regenerate Narration' }).at(-1)!);
-    await waitFor(() => expect(requests.length).toBeGreaterThan(0));
-    await turnDone();
+    await chatRegenerate();
     expect(closedTurns(history())).toBe(2);
     expect(requestsWith('Used Tonic')).toEqual([]);
     expect(gameplay().actionList).toEqual([]);
     expect(tonics()).toBe(2);
   });
+
+  it('keeps the listed actions on every Chat regenerate of the turn, the record unchanged (Q15, Q55)', async () => {
+    await startChat();
+    await useTonic();
+    fireEvent.click(screen.getByRole('button', { name: 'Equip Helm' }));
+    await waitFor(() => expect(gameplay().actionList).toHaveLength(2));
+    // Chat has no tray to hide a row from; a hidden flag from the Pages layout rides along all the same.
+    act(() => gameplay().setActionList(toggleHidden(gameplay().actionList, gameplay().actionList[1].id)));
+    await send('I wait.');
+    const latestRecord = () => gameplay().sentActions[pageTurnId(history(), 2) ?? ''];
+    const original = latestRecord();
+    expect(original.entries.map((e) => [e.facts.kind, e.hidden])).toEqual([['use', false], ['equip', true]]);
+    await chatRegenerate();
+    await chatRegenerate();
+    expect(closedTurns(history())).toBe(2);
+    expect(tonics()).toBe(2);
+    expect(screen.queryByRole('button', { name: 'Equip Helm' })).toBeNull();
+    // The record is what the sent page shows in the Pages layout.
+    expect(latestRecord()).toEqual(original);
+  });
+
+  it('starts Regenerate Stats after a Chat regenerate from the state at send (Q53)', async () => {
+    const calm: PlayerStat = { id: 'calm', name: 'Calm', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
+    const scripted: Item = { ...tonic, scripts: [{ id: 'u', timing: 'used', code: 'stats.Calm.value = 90;' }] };
+    await startChat({ ...world, ...harborWorld({ stats: [calm] }), items: [scripted, helm], slots, bodies: world.bodies, placements });
+    await useTonic();
+    await waitFor(() => expect(calmValue()).toBe(90));
+    await send('I wait.');
+    await chatRegenerate();
+    requests = [];
+    act(() => gameplay().setActiveTab('stats'));
+    const regenerateStats = () => screen.getAllByRole('button', { name: 'Regenerate Stats' }).at(-1)!;
+    await waitFor(() => expect(regenerateStats()).toBeEnabled());
+    fireEvent.click(regenerateStats());
+    await waitFor(() => expect(requestsWith('stat tracker').length).toBeGreaterThan(0));
+    await waitFor(() => expect(regenerateStats()).toBeEnabled());
+    expect(calmValue()).toBe(90);
+    expect(tonics()).toBe(2);
+  });
 });
+
+/** A started game in the Chat layout. */
+async function startChat(played: World = world) {
+  localStorage.setItem('FORMAMORPH_narrationLayout', 'chat');
+  const realScrollTo = HTMLElement.prototype.scrollTo;
+  // jsdom has no scrolling, and lays nothing out; the chat list renders its rows only at a measured size.
+  HTMLElement.prototype.scrollTo = () => {};
+  onTestFinished(stubChatLayout());
+  onTestFinished(() => { HTMLElement.prototype.scrollTo = realScrollTo; });
+  await start(played);
+}
+
+/** Regenerates the latest Chat turn and waits for the resend to settle. */
+async function chatRegenerate() {
+  const before = requests.length;
+  await waitFor(() => expect(screen.getAllByRole('button', { name: 'Regenerate Narration' }).at(-1)).toBeEnabled());
+  fireEvent.click(screen.getAllByRole('button', { name: 'Regenerate Narration' }).at(-1)!);
+  await waitFor(() => expect(requests.length).toBeGreaterThan(before));
+  await turnDone();
+}
 
 /** `text` as a literal inside a RegExp. */
 function literal(text: string): string {

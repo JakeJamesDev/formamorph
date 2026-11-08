@@ -188,7 +188,7 @@ export type SentActionMap<S> = Record<string, SentActionList<S>>;
  * `map` with `turnId`'s sent list recorded, `after` being the state at send, and every other turn's snapshots
  * dropped (Q34). An empty list records nothing.
  */
-export function recordSent<S>(map: SentActionMap<S>, turnId: string, list: ActionList<S>, told: boolean, after?: S): SentActionMap<S> {
+export function recordSent<S>(map: SentActionMap<S>, turnId: string, list: readonly SentAction<S>[], told: boolean, after?: S): SentActionMap<S> {
   const next: SentActionMap<S> = {};
   for (const [id, sent] of Object.entries(map)) {
     next[id] = sent.after !== undefined || sent.entries.some((entry) => entry.snapshots)

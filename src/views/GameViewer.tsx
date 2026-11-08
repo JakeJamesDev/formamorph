@@ -8,7 +8,7 @@ import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
 import { ActionListTray } from '@/components/game/ActionListTray';
-import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts, type ToldAction } from '@/lib/actionList';
+import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts, type SentActionList, type ToldAction } from '@/lib/actionList';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { personaKey, samePersonaRef } from '@/lib/personaPick';
@@ -347,6 +347,8 @@ interface PendingTurn {
   resentAttachments?: ImageAttachment[];
   /** The turn replaces the latest one. */
   regenerate?: boolean;
+  /** A Chat regenerate's sent list, which the resent turn records again (Q55). */
+  resentList?: SentActionList<ActionSnapshot>;
 }
 
 /** What one playthrough remembers about its openings. Session state only, so a save never carries it. */
@@ -1850,7 +1852,8 @@ const GameViewer = ({
     const action = lastTurnAction(fullMessageHistory);
     if (page >= 2 && action !== null && !chatLayout && reopenRegenerate(page, action)) return;
     // Chat has no tray, so its re-roll keeps the listed actions and re-sends at once (Q55).
-    const chatSent = page >= 2 && chatLayout ? sentListOf(page)?.after : undefined;
+    const chatRecord = page >= 2 && chatLayout ? sentListOf(page) : undefined;
+    const chatSent = chatRecord?.after ? chatRecord : undefined;
     // Regenerating the opening turn (page 1) restores the pre-game state, not a gameStates entry. On a
     // loaded save that snapshot was never captured (initialStateRef is only set during a live first turn),
     // so reconstruct a pre-opening baseline from the current state with its history emptied — re-sending
@@ -1868,7 +1871,7 @@ const GameViewer = ({
     if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
-    if (!(chatSent ? restoreSendState(chatSent) : loadGameState(previousState, locations, { keepLiveHistory: true }))) return;
+    if (!(chatSent?.after ? restoreSendState(chatSent.after) : loadGameState(previousState, locations, { keepLiveHistory: true }))) return;
     setActionList([]);
     rewindForReroll(page);
     // The notes scratchpad is left alone: regen only targets the latest page, where the live scratchpad is
@@ -1895,7 +1898,10 @@ const GameViewer = ({
       );
       return;
     }
-    pendingTurnRef.current = { action, resentAttachments: latestTurnAttachments(actionAttachments, fullMessageHistory), regenerate: true };
+    pendingTurnRef.current = {
+      action, resentAttachments: latestTurnAttachments(actionAttachments, fullMessageHistory), regenerate: true,
+      resentList: chatSent,
+    };
     setPendingTurnNonce((n) => n + 1);
   };
 
@@ -3184,8 +3190,10 @@ const GameViewer = ({
    */
   const sendGameAction = async (
     action: string,
-    { writtenNarration, attachments, resentAttachments, regenerate = false, script }: {
+    { writtenNarration, attachments, resentAttachments, resentList, regenerate = false, script }: {
       writtenNarration?: string;
+      /** The re-sent turn's list, recorded in place of the live one. */
+      resentList?: SentActionList<ActionSnapshot>;
       /** This turn replaces the latest one. */
       regenerate?: boolean;
       attachments?: ImageAttachment[];
@@ -3200,7 +3208,9 @@ const GameViewer = ({
     // On the opening turn, snapshot the pre-game state so page 1 can be regenerated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
     // The state after the list's newest entry, which a regenerate of this turn restores (Q52).
-    const sentState: ActionSnapshot | undefined = actionList.length ? { state: saveCurrentGameState(), persona: personaRef ?? null } : undefined;
+    const sentState: ActionSnapshot | undefined =
+      resentList?.after ?? (actionList.length ? { state: saveCurrentGameState(), persona: personaRef ?? null } : undefined);
+    const sentEntries = resentList?.entries ?? actionList;
 
     // Places a move can reach from here. Nowhere to go means nothing to route: the router's reply is matched
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
@@ -3328,7 +3338,7 @@ const GameViewer = ({
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
       setActionList((list) => closeList(list).live);
-      setSentActions((map) => recordSent(map, turnId, actionList, tellsActionList && !script, sentState));
+      setSentActions((map) => recordSent(map, turnId, sentEntries, tellsActionList && !script, sentState));
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front
       // location request) must not be mistaken for "narration came through" (see abortGeneration).
       userTurnAddedRef.current = false;
@@ -3915,7 +3925,7 @@ const GameViewer = ({
     if (pendingTurnNonce === 0) return;
     const pending = pendingTurnRef.current;
     pendingTurnRef.current = null;
-    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration, resentAttachments: pending.resentAttachments, regenerate: pending.regenerate });
+    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration, resentAttachments: pending.resentAttachments, resentList: pending.resentList, regenerate: pending.regenerate });
     // sendGameAction is deliberately not a dependency — we want this render's (post-restore) closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTurnNonce]);
