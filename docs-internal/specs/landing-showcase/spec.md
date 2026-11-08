@@ -1,6 +1,7 @@
 # Spec: Landing Showcase
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-08, tickets 01–05, last landing 8a64984c4. Review: spec text corrected; gap fixed by ticket 05. Closed red: lint errors in untracked worlds-wip/ files and src/views/MainMenu.cudaNotice.test.tsx, both outside this effort.
 Spec session: landing-showcase — spec
 
 The formamorph.ai home page shows the game working, with a live turn, a scrolling feature tour and an inventory focus, under a purple gradient accent and the title-card wordmark.
