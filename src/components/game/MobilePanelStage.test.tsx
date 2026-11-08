@@ -4,15 +4,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MobilePanelStage } from './MobilePanelStage';
-import { createSwipeProgress } from '@/lib/swipeProgress';
+import { createSwipeProgress, type SwipeGlide } from '@/lib/swipeProgress';
+import { usePanelShown } from '@/lib/panelShown';
 
 const TABS = [{ value: 'story' }, { value: 'game' }, { value: 'status' }] as const;
 type Panel = (typeof TABS)[number]['value'];
 const WIDTH = 300;
 
 let swipe = createSwipeProgress();
+const renders: Record<Panel, number> = { story: 0, game: 0, status: 0 };
 
-function Harness({ start = 'game' }: { start?: Panel }) {
+// Reports whether its panel shows, and counts the panel's renders.
+function Mark({ panel, tick }: { panel: Panel; tick: number }) {
+  renders[panel] += 1;
+  return <span data-testid={`mark-${panel}`} data-tick={tick}>{usePanelShown() ? 'shown' : 'hidden'}</span>;
+}
+
+function Harness({ start = 'game', tick = 0 }: { start?: Panel; tick?: number }) {
   const [value, setValue] = React.useState<Panel>(start);
   return (
     <Tabs value={value} onValueChange={(next) => setValue(next as Panel)}>
@@ -25,6 +33,7 @@ function Harness({ start = 'game' }: { start?: Panel }) {
         renderPanel={(panel) => (
           <div>
             <p>{panel} body</p>
+            <Mark panel={panel} tick={tick} />
             <input aria-label={`${panel} field`} />
             {createPortal(<p>{panel} dialog</p>, document.body)}
           </div>
@@ -33,6 +42,8 @@ function Harness({ start = 'game' }: { start?: Panel }) {
     </Tabs>
   );
 }
+
+const marks = () => TABS.map(({ value: v }) => `${v}:${screen.getByTestId(`mark-${v}`).textContent}`);
 
 const track = () => document.querySelector<HTMLElement>('[data-panel-track]')!;
 const stage = () => track().parentElement!;
@@ -94,7 +105,63 @@ describe('MobilePanelStage', () => {
     // It takes hold after the first 24px step, so the strip has moved by the rest.
     expect(track().style.transform).toBe('translateX(-396px)');
     // In tabs from the first, for the tab pill.
-    expect(swipe.get()).toBeCloseTo(1.32);
+    expect(swipe.get()).toEqual({ at: expect.closeTo(1.32) });
+  });
+
+  it('hands the pill one glide on release, not a report per frame', () => {
+    setup();
+    stubGlide();
+    drag(-180, { steps: 6, msPerStep: 100 });
+    const glide = swipe.get() as SwipeGlide;
+    expect(glide.from).toBeCloseTo(1.5);
+    expect(glide.to).toBe(2);
+  });
+
+  it('tells each panel whether it shows: the open one at rest, both while one slides in', () => {
+    setup();
+    expect(marks()).toEqual(['story:hidden', 'game:shown', 'status:hidden']);
+    drag(-120, { end: false });
+    expect(marks()).toEqual(['story:hidden', 'game:shown', 'status:shown']);
+    now += 100; // held still, so it settles back
+    fireEvent.pointerUp(stage(), { pointerId: 1, pointerType: 'touch', clientX: 30, clientY: 200 });
+    expect(marks()).toEqual(['story:hidden', 'game:shown', 'status:hidden']);
+  });
+
+  it('keeps out-of-view panels from rendering again until they show', () => {
+    swipe = createSwipeProgress();
+    const view = render(<Harness tick={0} />);
+    const counted = { ...renders };
+    view.rerender(<Harness tick={1} />);
+    expect(renders.game).toBeGreaterThan(counted.game);
+    expect(renders.story).toBe(counted.story);
+    expect(renders.status).toBe(counted.status);
+    // Once it shows, it catches up with the latest props.
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'status' }));
+    expect(screen.getByTestId('mark-status')).toHaveAttribute('data-tick', '1');
+  });
+
+  it('takes a new touch when the last one never ended here', () => {
+    setup();
+    fireEvent.pointerDown(stage(), { pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: 150, clientY: 200 });
+    // Its pointerup went to an overlay outside the stage; the next touch must still swipe.
+    drag(-180, { steps: 6, msPerStep: 100 });
+    expect(shown()).toEqual(['status']);
+  });
+
+  it('settles when the drag loses its pointer capture', () => {
+    setup();
+    drag(-120, { end: false });
+    fireEvent.lostPointerCapture(stage(), { pointerId: 1, pointerType: 'touch' });
+    expect(track().style.transform).toBe('translateX(-100%)');
+  });
+
+  it('keeps dragging when the touched element hands its capture to the strip', () => {
+    setup();
+    drag(-120, { end: false, from: screen.getByText('game body') });
+    // The browser's implicit capture on the touched element ends as the strip takes it.
+    fireEvent.lostPointerCapture(screen.getByText('game body'), { pointerId: 1, pointerType: 'touch' });
+    fireEvent.pointerMove(stage(), { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 0, clientY: 200 });
+    expect(track().style.transform).toBe('translateX(-426px)');
   });
 
   it('reports the strip at rest once it lands', () => {

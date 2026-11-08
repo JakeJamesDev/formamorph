@@ -13,6 +13,7 @@ import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
 import type { Base64Data, EntityVisualKind } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { usePanelEverShown } from '@/lib/panelShown';
 
 /** The button each viewer carries, reading as pressed once this is the visual the entity opens on. */
 const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => void }) => (
@@ -64,6 +65,8 @@ export const EntityVisual = ({ entity, className, images: inPlay, avatar, prefer
   morphValues?: Readonly<Record<string, number>>;
 }) => {
   const [open, setOpen] = useState<EntityVisualKind | null>(null);
+  // A 3D view loads only once its panel has been on screen.
+  const everShown = usePanelEverShown();
 
   const images = inPlay ?? entityImageData(entity);
   // A held index outlives the gallery it was taken from (an edited world, a reused panel), so clamp it here
@@ -90,8 +93,8 @@ export const EntityVisual = ({ entity, className, images: inPlay, avatar, prefer
 
   return (
     <Slot className={className} fill={showing !== 'image'}>
-      {showing === 'avatar' ? avatar
-        : showing === 'model' ? modelViewer()
+      {showing === 'avatar' ? everShown && avatar
+        : showing === 'model' ? everShown && modelViewer()
         : <Picture images={images} index={index} gallery={gallery} name={entity.name} onZoom={() => setOpen('image')} />}
       {others.length > 0 && (
         <div className="absolute top-1 right-1 flex flex-col gap-1">

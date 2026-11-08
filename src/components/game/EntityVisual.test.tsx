@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntityVisual } from './EntityVisual';
+import { PanelShownProvider } from '@/lib/panelShown';
 import type { Entity } from '@/types';
 
 // The real viewer needs a WebGL context jsdom has none of; what matters here is which visual gets mounted.
@@ -47,6 +48,20 @@ describe('EntityVisual', () => {
   it('renders nothing for an entity with no visual at all', () => {
     const { container } = render(<EntityVisual entity={entity({})} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('loads no 3D view until its panel has shown, then keeps it', () => {
+    const at = (shown: boolean) => (
+      <PanelShownProvider value={shown}>
+        <EntityVisual entity={entity({ model: MODEL })} avatar={AVATAR} />
+      </PanelShownProvider>
+    );
+    const { rerender } = render(at(false));
+    expect(screen.queryByTestId('avatar-viewer')).not.toBeInTheDocument();
+    rerender(at(true));
+    expect(screen.getByTestId('avatar-viewer')).toBeInTheDocument();
+    rerender(at(false));
+    expect(screen.getByTestId('avatar-viewer')).toBeInTheDocument();
   });
 });
 

@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { cn } from '@/lib/utils';
 import { createModelLoader, loadedRoot } from '@/lib/modelLoader';
 import { applyMorphInfluences } from '@/lib/modelMorphs';
-import { watchOnScreen } from '@/lib/watchOnScreen';
+import { usePanelLoopGate } from '@/lib/panelShown';
 import type { MediaAsset } from '@/types';
 
 interface ModelViewerProps {
@@ -22,6 +22,7 @@ const FALLBACK_SIZE = 400;
 
 const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS }: ModelViewerProps) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const panelLoop = usePanelLoopGate();
   // The loaded model and the influences last applied to it, so a morph change never reloads the model.
   const objectRef = useRef<THREE.Object3D | null>(null);
   const morphsRef = useRef(morphValues);
@@ -40,7 +41,6 @@ const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS }: M
 
     const mount = mountRef.current;
     mount?.appendChild(renderer.domElement);
-    const onScreen = mount ? watchOnScreen(mount) : null;
 
     // Fill whatever box the viewer is placed in — a dialog, or an entity panel's image slot — rather than a
     // fixed square. The canvas is stretched by CSS so a resize redraws immediately, before the observer fires.
@@ -139,24 +139,32 @@ const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS }: M
       console.error('Error loading model:', error);
     });
 
-    let animationFrameId: number;
+    let animationFrameId = 0;
+    let asleep = false;
     const clock = new THREE.Clock();
     const animate = () => {
+      // An off-screen panel's viewer stops until the panel shows again.
+      if (!panelLoop.shown.current) { asleep = true; return; }
       animationFrameId = requestAnimationFrame(animate);
       // Consume the delta unconditionally, so a mixer created mid-loop doesn't start on the whole
       // elapsed-since-mount gap and jump straight to a late keyframe.
       const delta = clock.getDelta();
       mixer?.update(delta);
       controls.update();
-      // An off-screen panel's model isn't drawn.
-      if (onScreen?.visible !== false) renderer.render(scene, camera);
+      renderer.render(scene, camera);
+    };
+    panelLoop.wake.current = () => {
+      if (!asleep || disposed) return;
+      asleep = false;
+      clock.getDelta();
+      animate();
     };
 
     animate();
 
     return () => {
       disposed = true;
-      onScreen?.stop();
+      panelLoop.wake.current = () => {};
       objectRef.current = null;
       appliedRef.current = NO_MORPHS;
       observer?.disconnect();

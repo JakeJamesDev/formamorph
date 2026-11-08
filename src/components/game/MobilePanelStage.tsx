@@ -2,6 +2,7 @@ import * as React from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import type { SwipeProgress } from '@/lib/swipeProgress';
+import { PanelShownProvider } from '@/lib/panelShown';
 
 const SLOP = 10; // px a touch moves before it picks an axis
 const FLICK_SPEED = 0.4; // px per ms
@@ -28,6 +29,12 @@ const scrollsSideways = (from: Element, stop: Element) => {
   return false;
 };
 
+// A panel out of view skips the view's renders until it shows again, then catches up in one.
+const Frozen = React.memo(
+  function Frozen({ children }: { live: boolean; children: React.ReactNode }) { return children; },
+  (prev, next) => !prev.live && !next.live,
+);
+
 const px = (offset: number) => `translateX(${offset}px)`;
 const restAt = (index: number) => `translateX(${-index * 100}%)`;
 
@@ -48,11 +55,19 @@ export function MobilePanelStage<V extends string>({ tabs, value, onValueChange,
   const stageRef = React.useRef<HTMLDivElement>(null);
   const trackRef = React.useRef<HTMLDivElement>(null);
   const gesture = React.useRef<Gesture | null>(null);
-  const glideRef = React.useRef<{ run: Animation; to: number; frame: number } | null>(null);
+  const glideRef = React.useRef<{ run: Animation; to: number } | null>(null);
   const placed = React.useRef(false);
   const index = Math.max(0, tabs.findIndex((tab) => tab.value === value));
+  // The panels the strip shows any part of while it moves, as "first:last"; at rest only the open one.
+  const [inView, setInView] = React.useState(`${index}:${index}`);
+  const [firstInView, lastInView] = inView.split(':').map(Number);
+  const isShown = (i: number) => i === index || (i >= firstInView && i <= lastInView);
 
   const width = () => stageRef.current?.clientWidth ?? 0;
+  const span = (a: number, b: number) => {
+    const clamp = (n: number) => Math.max(0, Math.min(tabs.length - 1, n));
+    setInView(`${clamp(Math.floor(Math.min(a, b)))}:${clamp(Math.ceil(Math.max(a, b)))}`);
+  };
 
   // Where the strip is drawn now, mid-glide included.
   const offsetNow = () => {
@@ -67,46 +82,48 @@ export function MobilePanelStage<V extends string>({ tabs, value, onValueChange,
     return inline[2] === 'px' ? Number(inline[1]) : (Number(inline[1]) / 100) * width();
   };
 
-  // The strip's place in tabs, for a tab strip's pill to follow.
-  const publish = (offset: number | null) => {
+  // Under the finger: report the strip's place in tabs, for the pill and for which panels show.
+  const follow = (offset: number) => {
     const w = width();
-    progress?.set(offset === null || !w ? null : -offset / w);
+    if (!w) return;
+    progress?.set(-offset / w);
+    span(-offset / w, -offset / w);
   };
 
   const stopGlide = () => {
     const glider = glideRef.current;
     glideRef.current = null;
     glider?.run.cancel();
-    if (glider) cancelAnimationFrame(glider.frame);
   };
 
   /** Glide to panel `to`, leaving at `speed` (px per ms, signed) when a release hands one over. */
   const glide = (to: number, speed = 0) => {
     const track = trackRef.current;
     if (!track) return;
+    const w = width();
     const from = offsetNow();
-    const target = -to * width();
+    const target = -to * w;
     stopGlide();
-    const land = () => { track.style.transform = restAt(to); glideRef.current = null; publish(null); };
+    const land = () => {
+      track.style.transform = restAt(to);
+      glideRef.current = null;
+      progress?.set(null);
+      span(to, to);
+    };
     const distance = Math.abs(target - from);
-    if (reducedMotion || typeof track.animate !== 'function' || distance < 1) { land(); return; }
+    if (reducedMotion || typeof track.animate !== 'function' || distance < 1 || !w) { land(); return; }
     // A release toward the panel keeps its speed: the curve leaves at the finger's pace and eases in.
     const toward = speed !== 0 && Math.sign(speed) === Math.sign(target - from);
     const duration = toward ? Math.min(SLIDE_MS, Math.max(160, (2.5 * distance) / Math.abs(speed))) : SLIDE_MS;
     const lift = toward ? Math.min(1, (Math.abs(speed) * duration * 0.25) / distance) : 0;
-    const run = track.animate([{ transform: px(from) }, { transform: px(target) }], {
-      duration,
-      easing: toward ? `cubic-bezier(0.25, ${lift.toFixed(3)}, 0.25, 1)` : STANDARD,
-    });
-    const glider = { run, to, frame: 0 };
-    const follow = () => {
-      if (glideRef.current !== glider) return;
-      publish(offsetNow());
-      glider.frame = requestAnimationFrame(follow);
-    };
+    const easing = toward ? `cubic-bezier(0.25, ${lift.toFixed(3)}, 0.25, 1)` : STANDARD;
+    const run = track.animate([{ transform: px(from) }, { transform: px(target) }], { duration, easing });
+    const glider = { run, to };
     glideRef.current = glider;
-    follow();
-    run.finished.then(() => { if (glideRef.current === glider) { cancelAnimationFrame(glider.frame); land(); } }, () => {});
+    // The pill runs the same glide itself, so nothing here runs per frame.
+    progress?.glide({ from: -from / w, to, duration, easing });
+    span(-from / w, to);
+    run.finished.then(() => { if (glideRef.current === glider) land(); }, () => {});
   };
 
   // A tab change glides the strip, unless a release already sent it there.
@@ -120,21 +137,11 @@ export function MobilePanelStage<V extends string>({ tabs, value, onValueChange,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  // Panels out of view take no focus or taps, and screen readers skip them.
-  React.useLayoutEffect(() => {
-    trackRef.current?.querySelectorAll<HTMLElement>('[data-panel]').forEach((el) => {
-      const away = el.dataset.panel !== value;
-      el.toggleAttribute('inert', away);
-      if (away) el.setAttribute('aria-hidden', 'true');
-      else el.removeAttribute('aria-hidden');
-    });
-  });
-
-  // An unmount mid-glide stops its frame loop and leaves the pill at rest.
+  // An unmount mid-glide stops it and leaves the pill at rest.
   React.useEffect(() => () => {
     const glider = glideRef.current;
     glideRef.current = null;
-    if (glider) cancelAnimationFrame(glider.frame);
+    glider?.run.cancel();
     progress?.set(null);
   }, [progress]);
 
@@ -149,7 +156,8 @@ export function MobilePanelStage<V extends string>({ tabs, value, onValueChange,
   }, []);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'mouse' || !e.isPrimary || gesture.current) return;
+    // A new touch replaces any gesture whose end never reached here, such as one a menu's overlay took.
+    if (e.pointerType === 'mouse' || !e.isPrimary) return;
     const target = e.target as Element;
     // A portaled dialog's touches reach here through the React tree.
     if (!e.currentTarget.contains(target)) return;
@@ -174,6 +182,7 @@ export function MobilePanelStage<V extends string>({ tabs, value, onValueChange,
       g.from = offsetNow();
       stopGlide();
       track.style.transform = px(g.from);
+      follow(g.from);
       g.x0 = e.clientX;
       e.currentTarget.setPointerCapture?.(e.pointerId);
     }
@@ -193,7 +202,7 @@ export function MobilePanelStage<V extends string>({ tabs, value, onValueChange,
     if (offset < last) offset = last - give(last - offset);
     g.offset = offset;
     track.style.transform = px(offset);
-    publish(offset);
+    follow(offset);
   };
 
   const release = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -222,21 +231,31 @@ export function MobilePanelStage<V extends string>({ tabs, value, onValueChange,
       onPointerMove={onPointerMove}
       onPointerUp={release}
       onPointerCancel={release}
+      // Taking capture from the touched element fires its loss there too; only the stage's own loss ends a drag.
+      onLostPointerCapture={(e) => { if (e.target === e.currentTarget) release(e); }}
     >
       <div ref={trackRef} data-panel-track="" className="absolute inset-0 will-change-transform">
-        {tabs.map(({ value: v }, i) => (
-          <TabsContent
-            key={v}
-            value={v}
-            data-panel={v}
-            forceMount
-            hidden={false}
-            className="absolute inset-y-0 mt-0 flex w-full flex-col"
-            style={{ left: `${i * 100}%` }}
-          >
-            {renderPanel(v)}
-          </TabsContent>
-        ))}
+        {tabs.map(({ value: v }, i) => {
+          // Panels out of view take no focus or taps, and screen readers skip them.
+          const away = v !== value;
+          return (
+            <TabsContent
+              key={v}
+              value={v}
+              data-panel={v}
+              forceMount
+              hidden={false}
+              inert={away}
+              aria-hidden={away || undefined}
+              className="absolute inset-y-0 mt-0 flex w-full flex-col"
+              style={{ left: `${i * 100}%` }}
+            >
+              <PanelShownProvider value={isShown(i)}>
+                <Frozen live={isShown(i)}>{renderPanel(v)}</Frozen>
+              </PanelShownProvider>
+            </TabsContent>
+          );
+        })}
       </div>
     </div>
   );

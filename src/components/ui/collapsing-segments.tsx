@@ -8,7 +8,7 @@ import { SEGMENT_MOTION } from '@/components/ui/segmentMotion';
 import { SEGMENT_X } from '@/components/ui/useCollapsingSegments';
 import { labelShown, type SegmentFold, type SegmentLayout } from '@/lib/collapsingSegments';
 import { MEASURE_LAYER } from '@/lib/measureLayer';
-import type { SwipeProgress } from '@/lib/swipeProgress';
+import type { SwipeGlide, SwipeProgress, SwipeState } from '@/lib/swipeProgress';
 import { cn } from '@/lib/utils';
 
 export interface CollapsingSegmentOption<V extends string> {
@@ -35,17 +35,31 @@ export function SegmentPill({ layout, active, animate, follow }: { layout: Segme
   const ref = useRef<HTMLSpanElement>(null);
   const restRef = useRef({ layout, active });
   restRef.current = { layout, active };
+  const glideRef = useRef<{ state: SwipeGlide; run: Animation | null } | null>(null);
 
   // A followed pill is placed here alone: a React style write on a tab change would pull it off the strip.
-  const place = useCallback((position: number | null) => {
+  const place = useCallback((state: SwipeState) => {
     const el = ref.current;
     if (!el) return;
+    // A tab change mid-glide re-places with the same glide, which is already running.
+    if (state && 'to' in state && glideRef.current?.state === state) return;
+    glideRef.current?.run?.cancel();
+    glideRef.current = null;
     const rest = restRef.current;
-    const box = pillAt(rest.layout, position ?? rest.active);
-    // While the strip moves, the pill sits under it frame by frame; at rest its own slide returns.
-    el.style.transition = position === null ? '' : 'none';
+    const box = pillAt(rest.layout, state === null ? rest.active : 'to' in state ? state.to : state.at);
+    // While the strip moves, the pill moves with it; at rest its own slide returns.
+    el.style.transition = state === null ? '' : 'none';
     el.style.width = `${box.width}px`;
     el.style.transform = `translateX(${box.left}px)`;
+    if (state && 'to' in state && typeof el.animate === 'function') {
+      // The strip's glide runs off the main thread, so the pill runs its own with the same timing.
+      const start = pillAt(rest.layout, state.from);
+      const run = el.animate(
+        [{ width: `${start.width}px`, transform: `translateX(${start.left}px)` }, { width: `${box.width}px`, transform: `translateX(${box.left}px)` }],
+        { duration: state.duration, easing: state.easing },
+      );
+      glideRef.current = { state, run };
+    }
   }, []);
 
   useLayoutEffect(() => {
@@ -53,6 +67,7 @@ export function SegmentPill({ layout, active, animate, follow }: { layout: Segme
   }, [follow, place, layout, active]);
 
   useLayoutEffect(() => (follow ? follow.subscribe(place) : undefined), [follow, place]);
+  useLayoutEffect(() => () => glideRef.current?.run?.cancel(), []);
 
   return (
     <span

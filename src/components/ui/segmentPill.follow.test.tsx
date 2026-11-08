@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render } from '@testing-library/react';
 import { SegmentPill, pillAt } from './collapsing-segments';
 import { createSwipeProgress } from '@/lib/swipeProgress';
@@ -39,7 +39,7 @@ describe('SegmentPill with a swipe to follow', () => {
     expect(pill().style.transition).toBe('');
   });
 
-  it('stays under the strip when the tab changes mid-glide', () => {
+  it('stays under the strip when the tab changes mid-drag', () => {
     const swipe = createSwipeProgress();
     const { rerender } = render(<SegmentPill layout={LAYOUT} active={1} animate follow={swipe} />);
     expect(pill().style.transform).toBe('translateX(104px)');
@@ -48,6 +48,53 @@ describe('SegmentPill with a swipe to follow', () => {
     expect(pill().style.transform).toBe('translateX(144px)');
     act(() => swipe.set(null));
     expect(pill().style.transform).toBe('translateX(184px)');
+  });
+
+  describe('gliding', () => {
+    // jsdom has no Web Animations; record what the pill asks for instead.
+    const runs: { frames: Keyframe[]; options: KeyframeAnimationOptions; cancel: ReturnType<typeof vi.fn> }[] = [];
+    beforeEach(() => {
+      runs.length = 0;
+      Object.defineProperty(HTMLElement.prototype, 'animate', {
+        configurable: true,
+        value: (frames: Keyframe[], options: KeyframeAnimationOptions) => {
+          const run = { frames, options, cancel: vi.fn() };
+          runs.push(run);
+          return run;
+        },
+      });
+    });
+    afterEach(() => { delete (HTMLElement.prototype as { animate?: unknown }).animate; });
+
+    const GLIDE = { from: 1.5, to: 2, duration: 220, easing: 'ease-out' };
+
+    it('runs the strip\'s glide itself, with the same timing', () => {
+      const swipe = createSwipeProgress();
+      render(<SegmentPill layout={LAYOUT} active={1} animate follow={swipe} />);
+      act(() => swipe.glide(GLIDE));
+      expect(runs).toHaveLength(1);
+      expect(runs[0].frames.map((f) => f.transform)).toEqual(['translateX(144px)', 'translateX(184px)']);
+      expect(runs[0].options).toEqual({ duration: 220, easing: 'ease-out' });
+      expect(pill().style.transform).toBe('translateX(184px)');
+    });
+
+    it('keeps its glide running when the tab changes under it', () => {
+      const swipe = createSwipeProgress();
+      const { rerender } = render(<SegmentPill layout={LAYOUT} active={1} animate follow={swipe} />);
+      act(() => swipe.glide(GLIDE));
+      rerender(<SegmentPill layout={LAYOUT} active={2} animate follow={swipe} />);
+      expect(runs).toHaveLength(1);
+      expect(runs[0].cancel).not.toHaveBeenCalled();
+    });
+
+    it('drops its glide when a drag catches the strip', () => {
+      const swipe = createSwipeProgress();
+      render(<SegmentPill layout={LAYOUT} active={1} animate follow={swipe} />);
+      act(() => swipe.glide(GLIDE));
+      act(() => swipe.set(1.7));
+      expect(runs[0].cancel).toHaveBeenCalled();
+      expect(pill().style.transform).toBe('translateX(160px)');
+    });
   });
 
   it('stops following once unmounted', () => {

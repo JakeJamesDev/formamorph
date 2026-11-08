@@ -11,7 +11,7 @@ import type { HairTypeDef } from '@/types';
 import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
 import { resolveMorphAlias } from '@/lib/bodyMorphs';
 import { medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
-import { watchOnScreen } from '@/lib/watchOnScreen';
+import { usePanelLoopGate } from '@/lib/panelShown';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -176,6 +176,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   // Read live in the render loop so toggling it doesn't tear down/rebuild the scene.
   const pausedRef = useRef(!animate);
   useEffect(() => { pausedRef.current = !animate; }, [animate]);
+  const panelLoop = usePanelLoopGate();
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -440,7 +441,6 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
    useEffect(() => {
     if (!mountRef.current) return;
     const mount = mountRef.current;
-    const onScreen = watchOnScreen(mount);
     // Set up scene
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30.0, 1, 0.1, 20.0);
@@ -688,7 +688,10 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     // Animation loop. Track the RAF id and the pending animation timeout so cleanup can cancel them —
     // otherwise every remount (model swap, layout change) leaks another loop/timer driving a disposed scene.
     let rafId = 0;
+    let asleep = false;
     const renderFrame = () => {
+      // An off-screen panel's viewer stops until the panel shows again.
+      if (!panelLoop.shown.current) { asleep = true; return; }
       rafId = requestAnimationFrame(renderFrame);
       // Always consume the delta (so unpausing doesn't jump); feed 0 while paused to freeze in place.
       const deltaTime = clock.getDelta();
@@ -702,11 +705,18 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
         vrmRef.current.update(dt);
       }
 
-      // Out of sight (a stowed or off-screen panel), or while the model prepares, the frame isn't drawn.
-      if (!holdDraw && onScreen.visible && mount.clientWidth && mount.clientHeight) renderer.render(scene, camera);
+      // Out of sight (a stowed panel), or while the model prepares, the frame isn't drawn.
+      if (!holdDraw && mount.clientWidth && mount.clientHeight) renderer.render(scene, camera);
     };
 
     const clock = new THREE.Clock();
+    panelLoop.wake.current = () => {
+      if (!asleep || cancelled) return;
+      asleep = false;
+      // The time asleep is dropped, so the pose resumes where it stopped.
+      clock.getDelta();
+      renderFrame();
+    };
     renderFrame();
 
      
@@ -721,7 +731,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     return () => {
       // Gate any still-in-flight GLTF/FBX callbacks so they can't restart the animation loop post-unmount.
       cancelled = true;
-      onScreen.stop();
+      panelLoop.wake.current = () => {};
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
       cancelAnimationFrame(rafId);
