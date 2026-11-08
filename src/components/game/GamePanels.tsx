@@ -585,6 +585,7 @@ export const MiddlePanel = ({
   progressBar,
   likePrompt,
   locationSuggestion,
+  actionTray,
   commandPreview,
   commandChoices = null,
   commandAction = null,
@@ -648,6 +649,8 @@ export const MiddlePanel = ({
   /** The once-only in-game like prompt, above the pager and in the flow so it covers no narration. */
   likePrompt?: React.ReactNode;
   locationSuggestion: React.ReactNode;
+  /** The Action List tray, above the action box in the Pages layout. */
+  actionTray?: React.ReactNode;
   commandPreview: boolean;
   /** The preview's choices, or null when it shows narration only. */
   commandChoices?: CommandChoices | null;
@@ -1252,6 +1255,7 @@ export const MiddlePanel = ({
             )}
           </div>
           <div className={cn('flex flex-col gap-2', attachDragOver && 'rounded-md ring-2 ring-inset ring-ring')} {...intakeProps}>
+            {!chatLayout && actionTray}
             {imageAttachments && (
               <AttachmentThumbs
                 attachments={pendingAttachments}

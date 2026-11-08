@@ -2,7 +2,7 @@ import { remintScopedPlaceholders } from '@/lib/placeholderHomes';
 import { remapPlaceholderIds, remintPlaceholdersDeep } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import type { Item, ItemCopy, ItemCopyState, ItemRequirement, ItemWhenEmpty, Placement, PlacementWhere, Slot, SlotRule, Trait } from '@/types';
+import type { Item, ItemCopy, ItemCopyState, ItemRequirement, ItemWhenEmpty, Placement, PlacementWhere, RuntimeItem, Slot, SlotRule, Trait } from '@/types';
 
 /** A new item with every list empty. */
 export const blankItem = (id: string, name = 'New Item'): Item =>
@@ -36,6 +36,16 @@ export const isUnidentified = (copy: Pick<ItemCopy, 'state'>): boolean => copy.s
 
 /** A copy that counts as money: visible and identified. */
 export const isSpendable = (copy: Pick<ItemCopy, 'state' | 'visibility'>): boolean => copy.visibility === 'visible' && !isUnidentified(copy);
+
+/** The name the player sees on `copy`: a runtime item's name, else its item's face through `resolve`. */
+export function copyName(
+  copy: ItemCopy, items: readonly Item[], runtimeItems: readonly Pick<RuntimeItem, 'id' | 'name'>[], resolve: (text: string) => string,
+): string {
+  const ref = copy.item;
+  if (ref.kind === 'runtime') return runtimeItems.find((r) => r.id === ref.runtimeItemId)?.name || 'Unknown Item';
+  const item = items.find((i) => i.id === ref.itemId);
+  return (item && resolve(copyFace(item, copy).name)) || 'Unknown Item';
+}
 
 /** The name and player description the player sees on `copy`: the unidentified face while it is unidentified,
  *  a blank unidentified field falling back to the normal value (Q16). */

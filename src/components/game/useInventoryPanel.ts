@@ -7,7 +7,9 @@ import { usePresence } from '@/lib/usePresence';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { randomUUID } from '@/lib/uuid';
-import type { ItemCopy } from '@/types';
+import { copyName } from '@/lib/items';
+import type { ListedActionFacts } from '@/lib/actionList';
+import type { GameState, ItemCopy } from '@/types';
 import type { InventoryTabProps } from './InventoryTab';
 
 const YOU = { kind: 'you' } as const;
@@ -26,7 +28,57 @@ export interface InventoryPanelSettle {
   traitPicks?: TraitBodyPicks;
   /** Each owner's base Body a script wrote. Absent = none. */
   basePicks?: TraitBodyPicks;
+  /** The Action List the panel's actions go to. Absent = not listed. */
+  actions?: PanelActionList;
+  /** Item scripts of an earlier action still run, so a new action would snapshot a state they have yet to write. */
+  busy?: boolean;
 }
+
+/** The live game's Action List, as the panel writes it. */
+export interface PanelActionList {
+  /** Undoes the newest entry when `facts` exactly reverses it (Q17). True when it did. */
+  reverse: (facts: ListedActionFacts) => boolean;
+  /** The state just before an action. */
+  snapshot: () => GameState;
+  add: (facts: ListedActionFacts, snapshot: GameState) => void;
+}
+
+const itemKey = (copy: ItemCopy): string => (copy.item.kind === 'item' ? `item:${copy.item.itemId}` : `runtime:${copy.item.runtimeItemId}`);
+
+/** What a panel `op` does, before it runs; null for an op the panel never lists. */
+function plannedFacts(op: InventoryOp, copies: readonly ItemCopy[], name: (copy: ItemCopy) => string, entityName: (id: string) => string): ListedActionFacts | null {
+  if (op.kind === 'gain') return null;
+  const copy = copies.find((c) => c.id === op.copyId);
+  if (!copy) return null;
+  const item = { key: itemKey(copy), name: name(copy) };
+  switch (op.kind) {
+    case 'use':
+    case 'equip':
+    case 'unequip':
+      return { kind: op.kind, item, copyId: copy.id };
+    case 'transfer': {
+      const quantity = op.quantity ?? copy.quantity;
+      if (op.to.kind === 'entity') return { kind: 'give', item, quantity, to: { id: op.to.id, name: entityName(op.to.id) } };
+      if (op.to.kind === 'location') return { kind: 'drop', item, quantity, place: op.to.id };
+      return copy.where.kind === 'location' ? { kind: 'pickup', item, quantity, place: copy.where.id } : null;
+    }
+    default:
+      return null;
+  }
+}
+
+/** `facts` with the row an equip or unequip left: the copy itself, a copy split off it, or the stack it merged into. */
+function ranFacts(facts: ListedActionFacts, before: readonly ItemCopy[], after: readonly ItemCopy[]): ListedActionFacts {
+  if (facts.kind !== 'equip' && facts.kind !== 'unequip') return facts;
+  const equip = facts.kind === 'equip';
+  const grew = (c: ItemCopy) => c.id === facts.copyId || c.quantity > (before.find((b) => b.id === c.id)?.quantity ?? 0);
+  const row = after.find((c) => !!c.equipped === equip && itemKey(c) === facts.item.key && grew(c));
+  return row ? { ...facts, resultId: row.id } : facts;
+}
+
+/** Whether `after` differs from `before`. A skipped op changes no Item Copy. */
+const changed = (before: readonly ItemCopy[], after: readonly ItemCopy[]) =>
+  before.length !== after.length || after.some((copy, i) => copy !== before[i]);
 
 /** The Inventory tab's data and its one write: panel operations through the Inventory module (Q17), then the
  *  settle. Without `settle`, the operations alone land. */
@@ -48,12 +100,20 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
   const bodySlotsOfYou = useMemo(() => bodySlots(bodyOfYou, slots), [bodyOfYou, slots]);
   const resolveText = usePlaceholderResolver();
   const locationId = currentLocation?.id;
-  const disabled = isWaitingForAI || isViewingPast;
+  const disabled = isWaitingForAI || isViewingPast || !!settle?.busy;
   const { inScene } = usePresence();
   // Q54, Q56: Give and the panel writes take the In Scene set, each under its label.
   const present = useMemo(() => inScene.flatMap((p) => p.label === null ? [] : [{ id: p.entity.id, name: p.label }]), [inScene]);
 
+  const runtimeItemList = runtimeItems ?? NONE;
   const onOps = useCallback((ops: InventoryOp[]) => {
+    const list = settle?.actions;
+    const planned = list && ops.length === 1 ? plannedFacts(
+      ops[0], itemCopies, (copy) => copyName(copy, items, runtimeItemList, resolveText),
+      (id) => present.find((e) => e.id === id)?.name ?? 'an entity',
+    ) : null;
+    if (list && planned && list.reverse(planned)) return;
+    const before = list && planned ? list.snapshot() : null;
     const result = applyInventoryOps(itemCopies, ops, {
       world: { items, slots, bodies, entities, traitPicks, basePicks }, source: 'panel', newId: randomUUID, persona: personaRef,
       presence: { locationId, entityIds: new Set(present.map((e) => e.id)) },
@@ -61,11 +121,12 @@ export function useInventoryPanel(settle?: InventoryPanelSettle, imageOf?: Inven
     });
     if (settle) {
       settle.commit(result.copies, itemCopies, result.diagnostics, result.itemUses, result.events);
+      if (list && planned && before && changed(itemCopies, result.copies)) list.add(ranFacts(planned, itemCopies, result.copies), before);
       return;
     }
     setItemCopies(result.copies);
     for (const line of result.diagnostics) addLogEntry(line);
-  }, [itemCopies, items, slots, bodies, entities, traitPicks, basePicks, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
+  }, [itemCopies, items, runtimeItemList, resolveText, slots, bodies, entities, traitPicks, basePicks, personaRef, locationId, present, settle, setItemCopies, addLogEntry]);
 
   return {
     ownerName: persona?.entity.name ?? null,

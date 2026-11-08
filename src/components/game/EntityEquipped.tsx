@@ -6,7 +6,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { visibleItemImage } from '@/lib/imageVisibility';
 import { copyWorthFacts } from '@/lib/currency';
 import { copyItemIcon } from '@/lib/itemIcons';
-import { copyFace, copyFacts, occupiedSlots } from '@/lib/items';
+import { copyFace, copyFacts, copyName, occupiedSlots } from '@/lib/items';
 import { visibleWorn } from '@/lib/inventory';
 import { playsAs } from '@/lib/owners';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
@@ -28,10 +28,7 @@ export function EntityEquipped({ entity }: { entity: Entity }) {
   if (worn.length === 0) return null;
   const slotName = (slotId: string) => resolveText(data?.slots?.find((s) => s.id === slotId)?.name ?? '');
   const itemOf = ({ item: ref }: ItemCopy) => (ref.kind === 'item' ? data?.items?.find((i) => i.id === ref.itemId) : undefined);
-  const nameOf = (copy: ItemCopy) => {
-    const item = itemOf(copy);
-    return resolveText(item ? copyFace(item, copy).name : '') || 'Unknown Item';
-  };
+  const nameOf = (copy: ItemCopy) => copyName(copy, data?.items ?? [], [], resolveText);
   const imageOf = (copy: ItemCopy) => {
     const item = itemOf(copy);
     return item && visibleItemImage(item, copy, gateInput);

@@ -134,6 +134,14 @@ _Avoid_: object, thing, entity (for an item)
 One item in play, kept in the save. It has an Owner or lies at a location, a quantity, an equipped state, a visibility, its uses left, its State and whether it is unidentified. Always written in full.
 _Avoid_: copy (that is a placeholder Copy), instance
 
+**Action List**:
+The player's panel actions since the last turn, newest last, shown in a tray above the action box. Its shown entries go to the narrator with the next action; the list then closes. Only the newest entry can be undone.
+_Avoid_: action queue, pending actions, history
+
+**Listed Action**:
+One entry in the Action List: a panel action's facts, a hidden flag, a count of back-to-back repeats, and the game state from just before each repeat. Undo restores that state. An action that exactly reverses the newest entry undoes it instead of adding one.
+_Avoid_: action log entry, pending action
+
 **Use**:
 The one action on an Item Copy: drink, read, blow, spend. It runs the item's After Use effects and When Used scripts, then spends one of the copy's Uses when the item has them. An item can be used when it has Uses, After Use effects or a When Used script. A runtime item's use removes one.
 _Avoid_: consume, activate

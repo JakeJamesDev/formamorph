@@ -18,6 +18,7 @@ import type { SceneImageMap } from '../lib/sceneImages';
 import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
+import type { ListedAction } from '../lib/actionList';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -270,6 +271,8 @@ function useProvideGameplay() {
   const [pendingAttachments, setPendingAttachments] = useState<ImageAttachment[]>([]);
   // What scripts told the player, by turn id, beside the history so no request carries it (Q23).
   const [scriptTells, setScriptTells] = useState<TellMap>({});
+  // The player's panel actions since the last turn, each with the state from just before it (Q6).
+  const [actionList, setActionList] = useState<ListedAction<GameState>[]>([]);
   // The opening turn's `turn.action`; null until a playthrough opens, and on a save that lacks it.
   const [openingAction, setOpeningAction] = useState<string | null>(null);
   // The books in play: the save's, plus the world's shipped-off books a script may switch on.
@@ -695,6 +698,7 @@ function useProvideGameplay() {
           setScriptTells(restoreTells(migrated.scriptTells));
           setOpeningAction(typeof migrated.openingAction === 'string' ? migrated.openingAction : null);
           setPendingAttachments([]);
+          setActionList([]);
           addSystemLogEntry(`Game loaded from "${saveName}"`);
           logOrphans();
           setSaveLoads((n) => n + 1);
@@ -748,6 +752,7 @@ function useProvideGameplay() {
             setScriptTells({});
             setOpeningAction(null);
             setPendingAttachments([]);
+            setActionList([]);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
             logOrphans();
             setSaveLoads((n) => n + 1);
@@ -986,6 +991,8 @@ function useProvideGameplay() {
     setOpeningAction,
     pendingAttachments,
     setPendingAttachments,
+    actionList,
+    setActionList,
     setSceneImages,
     memoryPins,
     setMemoryPins,

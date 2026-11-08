@@ -6,7 +6,9 @@ import {
 import { hasCode, isItemTiming } from '@/lib/scripts';
 import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
-import type { InventoryPanelSettle } from '@/components/game/useInventoryPanel';
+import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
+import { ActionListTray } from '@/components/game/ActionListTray';
+import { addAction, closeList, reversalOf, toggleHidden, undoNewest } from '@/lib/actionList';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { samePersonaRef } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
@@ -865,6 +867,8 @@ const GameViewer = ({
     setActionAttachments,
     pendingAttachments,
     setPendingAttachments,
+    actionList,
+    setActionList,
     scriptTells,
     setScriptTells,
     openingAction: openingTurnAction,
@@ -1586,6 +1590,8 @@ const GameViewer = ({
     // edits. Narration is rewound by slicing the live flat history to the rolled-back page instead.
     const success = loadGameState(targetState, locations, { keepLiveHistory: true });
     if (!success) return;
+    // The list's snapshots postdate the turn rolled back to.
+    setActionList([]);
     // A render still in flight targets a turn this rollback discards — stop it, or its finished image
     // would land back under the dead turn id (and ride into any opted-in save, invisible and unprunable).
     cancelSceneImage();
@@ -1807,6 +1813,7 @@ const GameViewer = ({
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
     if (!loadGameState(previousState, locations, { keepLiveHistory: true })) return;
+    setActionList([]);
     // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
     // AND overlap the re-roll's language-model request on the one GPU.
     cancelSceneImage();
@@ -3257,6 +3264,7 @@ const GameViewer = ({
       const carried = resentAttachments ?? plan.attachments;
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
+      setActionList((list) => closeList(list).live);
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front
       // location request) must not be mistaken for "narration came through" (see abortGeneration).
       userTurnAddedRef.current = false;
@@ -5574,6 +5582,36 @@ const GameViewer = ({
   settleLiveRef.current = settleLive;
   runItemEventsRef.current = runItemEvents;
 
+  /** Restores the state from before a listed action (Q6). What the player wrote by hand since stays (Q29). */
+  // The panel's item script runs still going; a listed action waits for them.
+  const [panelRuns, setPanelRuns] = useState(0);
+  const restoreActionSnapshot = useCallback((snapshot: GameState) => {
+    const live = saveCurrentGameState();
+    const handWritten = { characterData: live.characterData, playerNotes: live.playerNotes, gameplayText: live.gameplayText };
+    if (!loadGameState({ ...snapshot, ...handWritten }, locations, { keepLiveHistory: true })) return;
+    // Item script runs still in flight belong to the undone action.
+    itemRunGenerationRef.current += 1;
+    liveItemsRef.current = heldItemsOf({ copies: snapshot.itemCopies ?? [], ledger: snapshot.itemEffects ?? {}, bodies: snapshot.bodies ?? {} });
+    setTraitCascade(null);
+  }, [saveCurrentGameState, loadGameState, locations]);
+  const panelActions = useMemo<PanelActionList>(() => ({
+    reverse: (facts) => {
+      const reversal = reversalOf(actionList, facts);
+      if (!reversal) return false;
+      setActionList(reversal.list);
+      restoreActionSnapshot(reversal.restore);
+      return true;
+    },
+    snapshot: saveCurrentGameState,
+    add: (facts, snapshot) => setActionList((list) => addAction(list, facts, snapshot, randomUUID())),
+  }), [actionList, setActionList, restoreActionSnapshot, saveCurrentGameState]);
+  const undoNewestAction = useCallback(() => {
+    const undo = undoNewest(actionList);
+    if (!undo) return;
+    setActionList(undo.list);
+    restoreActionSnapshot(undo.restore);
+  }, [actionList, setActionList, restoreActionSnapshot]);
+
   /** A panel write's equip check and settle over the live state; the settle fires the switch scripts and the
    *  item scripts run against the committed state. */
   const inventorySettle = useMemo<InventoryPanelSettle>(() => {
@@ -5583,16 +5621,20 @@ const GameViewer = ({
       requirement: equipRequirement({ traits: traitState, ledger: itemEffects, now: gameTime }, settleWorld),
       traitPicks: traitBodyPicks,
       basePicks: bodies.base,
+      actions: panelActions,
       commit: (copies, previous, lines, itemUses, events) => {
         const totals = startActionTotals();
-        void runItemEvents([...events, ...commitItemCopies(copies, previous, lines, itemUses, totals)], totals);
+        const runs = runItemEvents([...events, ...commitItemCopies(copies, previous, lines, itemUses, totals)], totals);
+        setPanelRuns((n) => n + 1);
+        void runs.finally(() => { if (mounted.current) setPanelRuns((n) => n - 1); });
       },
+      busy: panelRuns > 0,
       timed: personaRef ? timedEffectViews(itemEffects, worldItems, playedEntityIds(personaRef, traitEntities), gameTime, {
         stat: (ownerId, statId) => traitState.entityStats?.[ownerId]?.find((s) => s.id === statId)?.name ?? statId,
         trait: (ownerId, traitId) => traitNameIn(world, traitId, traitName, ownerId) ?? traitId,
       }) : [],
     };
-  }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitItemCopies, runItemEvents, traitBodyPicks, startActionTotals]);
+  }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitItemCopies, runItemEvents, traitBodyPicks, startActionTotals, panelActions, panelRuns, mounted]);
 
   /** The present items whose stat effects the game applies, which the stat request names (Q53). */
   const statItemNames = (location: GameLocation | null): string[] =>
@@ -6201,6 +6243,14 @@ const GameViewer = ({
       progressBar={progressBar}
       likePrompt={likePromptCard}
       locationSuggestion={locationSuggestion}
+      actionTray={(
+        <ActionListTray
+          entries={actionList}
+          disabled={isWaitingForAI || panelRuns > 0}
+          onUndo={undoNewestAction}
+          onToggleHidden={(id) => setActionList((list) => toggleHidden(list, id))}
+        />
+      )}
       commandPreview={commandPreview}
       commandChoices={commandChoices}
       commandRunId={commandRunId}

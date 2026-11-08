@@ -16,6 +16,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ➕ Added
 
+- **👤 User-facing**
+  - **Since Last Turn:**
+    - **A tray above the action box lists what you do in the Inventory tab between turns.** Undo the newest action to put the game back as it was, the item's scripts and effects included. Repeats share one row.
 - **🛠️ Developer tooling**
   - **The dev router starts a new game in any bundled world with `fixture=bundled-<world id>`.** Page one is the world's first Opening Narration, so release screenshots show real art and text without a model.
 

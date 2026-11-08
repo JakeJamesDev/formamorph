@@ -13,7 +13,7 @@ import type { BodySlot } from '@/lib/bodies';
 import { fillBoxes } from '@/lib/bodyLayout';
 import { copyWorthFacts, type BalanceRow } from '@/lib/currency';
 import { copyItemIcon } from '@/lib/itemIcons';
-import { byEquipOrder, copyFace, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
+import { byEquipOrder, copyFace, copyName, copyFacts, copyState, itemUsable, occupiedSlots, ruleGaps, usesLeft, usesLine, wholeCount } from '@/lib/items';
 import type { InventoryOp, TimedEffectView } from '@/lib/inventory';
 import type { Body, Currency, Item, ItemCopy, ItemCopyWhere, RuntimeItem, Slot } from '@/types';
 import { ItemModal } from '../modals/ItemModal';
@@ -218,11 +218,7 @@ export function InventoryTab({
   const shown = copies.filter((c) => c.visibility === 'visible');
   const itemOf = (copy: ItemCopy) => (copy.item.kind === 'item' ? byId.get(copy.item.itemId) : undefined);
   // An unidentified copy goes by its unidentified face (Q17).
-  const nameOf = (copy: ItemCopy) => {
-    const item = itemOf(copy);
-    return (copy.item.kind === 'runtime'
-      ? runtimeById.get(copy.item.runtimeItemId)?.name : resolveText(item ? copyFace(item, copy).name : '')) || 'Unknown Item';
-  };
+  const nameOf = (copy: ItemCopy) => copyName(copy, items, runtimeItems, resolveText);
   const shownIconOf = (copy: ItemCopy) => {
     return copyItemIcon(copy, itemOf(copy), { name: nameOf(copy), slots: worldSlots, readText: resolveText, image: imageOf?.(copy) });
   };
