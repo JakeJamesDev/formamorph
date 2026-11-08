@@ -138,7 +138,7 @@ function reverses(newest, next) {
 
 A collapsed row holds one snapshot per repeat (Q16), so a reversal only counts when the newest row has a count of 1.
 
-**Entries.** A Listed Action records its kind, the subject (Item Copy, trait, location, persona or stat), the target where one exists (the receiving entity, the switch direction), the before value for travel, persona and stats, its count, its hidden flag, and one snapshot per repeat. The line text is not stored; the module writes it from these facts.
+**Entries.** A Listed Action records its kind, the subject (an item by key, quantity and result, a trait, location, persona or stat; Q28), the target where one exists (the receiving entity, the switch direction), the before value for travel, persona and stats, its count, its hidden flag, and one snapshot per repeat. The line text is not stored; the module writes it from these facts.
 
 **Snapshots.** Each entry stores the full runtime state taken just before the action (the same shape the page snapshot uses). Undo restores it. Because undo is newest first, a restore never loses a later action. Persona is envelope-level state, so a persona entry's snapshot also holds the persona reference.
 
@@ -148,13 +148,13 @@ A collapsed row holds one snapshot per repeat (Q16), so a reversal only counts w
 
 **Narration request (Q8, Q10, Q19).** The narration pass appends a new piece, beside the Direction rider, in the thinking-off lane, when the list has shown entries: the preset's wrapper line followed by one code-written line per shown entry. History stores the bare action, so the block never accumulates. The wrapper is a new preset field shown in Prompts → Narration → Messages with its own reset, hidden when there is nothing to show. The anatomy marks the block as assembled context.
 
-**Inventory pass guard (Q7, Q9, Q21).** The Inventory pass request gets a line naming the shown inventory entries as already done. In code, when the pass returns an operation of the same kind on the same item (and target) as a shown entry, one matching operation is dropped per shown repeat, with a diagnostic log line like other pass skips. Hidden entries are not guarded.
+**Inventory pass guard (Q7, Q21, Q44, Q45, Q50).** The guard is code only; the pass request carries no line about listed actions. When the pass returns an operation that reports a shown inventory entry, it is dropped unit by unit up to the entry's count × quantity, with a diagnostic log line like other pass skips. Hidden entries are not guarded.
 
 **Empty send (Q11).** Send is enabled with an empty action box when the list has at least one shown entry. The other passes receive the empty action as they do today (Q22).
 
-**Turn record and regenerate (Q4, Q14, Q15).** On send, the closed list is stored on the turn record with its entries and their pre-action snapshots. The page shows it under the action line. Regenerate restores the pre-turn state, reapplies the list's actions by restoring the state after the newest entry, and reopens the list as the live list. This replaces the current behavior where regenerate reverts panel changes.
+**Turn record and regenerate (Q4, Q14, Q15, Q51–Q56).** On send, the closed list is stored as the turn's sent list, keyed by turn id, with its entries, their pre-action snapshots and the state at send. The page shows it under the action line. Regenerate restores the state at send, reopens the list as the live list and waits for Send. Chat resends at once from the state at send; page one keeps its old path. This replaces the current behavior where regenerate reverts panel changes.
 
-**Save shape (Q12).** The live list (entries plus snapshots) is a new save field. The sent list rides the turn record. Both are additive; there is no compat code for unreleased forms.
+**Save shape (Q12).** The live list (entries plus snapshots) is a new save field. The sent lists are a second field, keyed by turn id and pruned with the history. Both are additive; there is no compat code for unreleased forms.
 
 **Tray UI (Q25, Q26, Q27).** The tray sits above the action box, beside the pending image thumbnails. Its header counts shown and hidden entries and toggles expand and collapse with an animation; the chevron points right when collapsed and down when expanded. Each row has the source tab's icon, the entry line, a hide toggle, and an undo on the newest row only. Hidden rows read as player-only. The sent page uses a compact read-only form. The design follows the Design System; the tray is a new visual pattern the user approved through the prototype. Player-facing copy ("Since Last Turn", "Only you", tooltips, the wrapper default) is written under the Writing Guide, not taken from the prototype.
 
@@ -168,7 +168,7 @@ Good tests drive a seam's public behavior and assert observable results: the lis
 - **Tray (existing GamePanels harness).** Rows, counts, hide and undo controls, the mid-turn block, empty send, and the sent page's read-only form.
 - **Save round trip.** A save with a live list reloads with the same entries, and undo still restores.
 - **Regenerate.** A regenerate keeps panel actions and reopens the list; this test fails on today's behavior.
-- **Probes.** The wrapper line and the Inventory pass guard line are prompt changes and ship with probe numbers (`probe` skill): the narrator reacts to shown entries, does not mention hidden ones, and the pass stops double consuming, each with in-batch controls.
+- **Probes.** The wrapper line is a prompt change and the guard changes pass results; both ship with probe numbers (`probe` skill): the narrator reacts to shown entries, does not mention hidden ones, and the pass stops double consuming, each with in-batch controls.
 
 ## Out of Scope
 
@@ -181,6 +181,6 @@ Good tests drive a seam's public behavior and assert observable results: the lis
 
 ## Further Notes
 
-- ⚠️ **Save shape changes:** a new live-list field and a list on each turn record.
+- ⚠️ **Save shape changes:** a new live-list field (`actionList`) and the sent lists (`sentActions`, the newest with its `after` state).
 - New glossary entries for **Action List** and **Listed Action** go into `CONTEXT.md` with the first ticket.
 - The prototype branch `prototype/action-list` and worktree stay for reference; its README holds the variant table.
