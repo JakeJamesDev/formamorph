@@ -18,7 +18,7 @@ The changelog fragment, if any, is folded into the CUDA entry when that is still
 ## Acceptance criteria
 
 - [x] With an older tag installed, app start reports stale and starts the new tag's download without a click. (install module test with a temp folder) (`cudaInstall.test.mjs` "with an older tag installed, app start reads stale…"; every downloading status carries `replacing`)
-- [ ] During the replace, Auto starts on Vulkan and the reason reads "updating".
+- [x] During the replace, Auto starts on Vulkan and the reason reads "updating". (covered by ticket 05's engine test, found in the close review)
 - [x] After the replace lands, the newest older tag is kept and anything older is deleted. ("after the replace lands, keeps the newest older tag…"; keeping no other tag turned it and 7 more red)
 - [x] A delete is deferred while the engine runs, and happens at the next stop or app start. ("defers deletes while the engine runs…"; dropping the `engineRunning()` check turned it red)
 - [x] A rollback to the previous tag finds its folder valid and downloads nothing. ("a rollback to the previous tag finds its folder valid…": zero requests, the newer folder kept)

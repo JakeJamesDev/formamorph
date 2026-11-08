@@ -86,7 +86,7 @@ Rulings from the spec review (2026-11-07):
 - Portable migration and profile merge copy only browser stores and models, so they never touch the engines folder. No change is needed there.
 
 **The pin.**
-- A pin-bump command (new) writes the tag plus the name and SHA-256 digest of each CUDA asset, read from the release API's `digest` field. People run it by hand; the build never writes the pin.
+- A pin-bump command (new) writes the tag plus the name, SHA-256 digest, size and unpacked size of each CUDA asset, read from the release API's `digest` field. People run it by hand; the build never writes the pin.
 - The build gate checks that the pinned release has both CUDA assets and that their digests match the pin.
 - The tag and the digests ship inside the packaged app, because the pin file is not packaged today. The app never calls the GitHub API at runtime: it downloads from the plain release-download URL of each asset (the API allows 60 unauthenticated requests per hour).
 - The CUDA folder is valid only when its marker names the current tag and both digests matched.
@@ -137,10 +137,10 @@ Rulings from the spec review (2026-11-07):
 - Downloads both assets, checks each digest, unpacks, writes the marker, then moves the folder into place. The extractor is injected: Windows' own tar in the app, a zip reader in tests (CI runs on Linux).
 - On a pin bump with CUDA installed, it starts the new tag's download in the background on the first app start.
 - Before downloading, it checks free space for both zips plus the unpacked folder (Q20).
-- It keeps the current tag and the newest older tag. Older folders are deleted when the engine is stopped or at app start (Q16, Q22).
+- It keeps the current tag and the newest other valid folder, older or newer (Q22 as refined by the ticket 07 rulings). Other folders are deleted when the engine is stopped or at app start (Q16).
 - Remove asks to stop the engine, then deletes the folder. Cancel keeps the partials so the download can resume.
-- A failure record (tag and driver version) lives on the device. Auto skips CUDA while it matches (Q19). Retry clears it.
-- Interface: `status()` → not-installed / downloading (bytes, total) / installed (tag) / stale (old tag) / unsupported (reason). Also `install()`, `cancel()` and `remove()`.
+- A failure record (tag and the sorted driver versions of all cards) lives on the device. Auto skips CUDA while it matches (Q19). Retry clears it.
+- Interface: `status()` → not-installed / downloading (bytes, total) / installed (tag) / stale (old tag) / unsupported. Every status carries the `support` verdict, and installed carries `failedLastTime`. Also `install()`, `cancel()` and `remove()`.
 - The renderer reads status through a desktop-bridge call, and a push event reports changes. The same status carries whether nvidia-smi found an NVIDIA card, so the panel doesn't depend on the VRAM poll.
 
 **NVIDIA facts.**
@@ -152,7 +152,7 @@ Rulings from the spec review (2026-11-07):
 - Supported: compute capability 7.5 or higher. Floor: R580 for 8.6, 8.9, 12.0 and 12.1, which have precompiled code. R615 for every other supported capability, which runs from PTX.
 - With several NVIDIA cards, every card must pass. Otherwise Auto stays on Vulkan, unless the device setting pins a card that passes.
 - Mixed GPUs (Q14) means an NVIDIA card plus a non-NVIDIA card that isn't integrated. NVIDIA plus an integrated GPU, the common laptop case, is not mixed. The device policy's integrated-name test is shared for this.
-- Output: the backend for this start, and a reason when CUDA is not used: not installed, updating, driver too old, card too old, support unknown, mixed GPUs, or setting.
+- Output: the backend for this start, and a reason when CUDA is not used: not installed, updating, failed last time, no CUDA devices, no NVIDIA card, driver too old, card too old, support unknown, mixed GPUs, or setting.
 
 **Backend choice at engine start.**
 - The engine runs in a utility process and can't see user data. Main resolves the CUDA folder and passes the server binary in the start options.
@@ -261,4 +261,4 @@ A good test drives a seam from outside and asserts what a player or the engine s
 
 **Steam.** The public Steamworks pages have no rule on runtime downloads from third-party hosts. The Steam Distribution Agreement itself was not checked. Both open legal points are item 8 of the Steam release checklist (Q23).
 
-**Flash attention under `-fa on` (checked in the Q10 benchmark).** The Vulkan build hits the CPU fallback with `-fa on`. Its log shows `flash_attn = enabled`, then "layer 0 is assigned to device Vulkan0 but Flash Attention over K/V rows is assigned to device CPU" and "Flash Attention over K/V rows not supported, set to disabled". The CUDA build logs "Flash Attention over K/V rows enabled" with no fallback.
+**Flash attention under `-fa on` (checked in the Q10 benchmark).** The Vulkan build turns off one optional fused operation under `-fa on`, not flash attention itself. A source check at b12078 and master (2026-11-07) found that flash attention and quantized V caches still work on Vulkan, so no change is needed. Its log shows `flash_attn = enabled`, then "layer 0 is assigned to device Vulkan0 but Flash Attention over K/V rows is assigned to device CPU" and "Flash Attention over K/V rows not supported, set to disabled". The CUDA build logs "Flash Attention over K/V rows enabled" with no fallback.
