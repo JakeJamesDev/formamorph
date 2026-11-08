@@ -184,12 +184,25 @@ export function pinnedEngineDevice(engine: LocalLlmState): string | null {
   return engine.gpuDeviceOptions?.[engine.gpuDeviceIndex] ?? null;
 }
 
+/** The CUDA support verdict (electron/cudaSupport.cjs). */
+export type CudaSupport =
+  | { supported: true }
+  | {
+      supported: false;
+      reason: 'no-nvidia-card' | 'card-too-old' | 'driver-too-old' | 'support-unknown';
+      cardName?: string | null;
+      /** Driver branch the failing card needs, on `driver-too-old`. */
+      driverFloor?: number;
+    };
+
 declare global {
   interface Window {
     formamorphDesktop?: WindowChromeBridge & {
       fetch: (req: DesktopFetchRequest) => Promise<DesktopFetchResponse>;
       /** Live nvidia-smi VRAM numbers from the main process (same shape as the standalone helper's JSON). */
       vramStats?: () => Promise<unknown>;
+      /** Whether this machine can run the CUDA engine build, from a separate nvidia-smi query. */
+      cudaSupport?: () => Promise<CudaSupport>;
       /** Tell the main process which ComfyUI server to remove this window's Origin for; null for none. */
       setComfyEndpoint?: (url: string | null) => Promise<void>;
       /** Local LLM engine: load a GGUF served on a localhost OpenAI endpoint and read its status. */
@@ -278,6 +291,13 @@ export async function desktopVramStats(): Promise<unknown> {
   const bridge = typeof window !== 'undefined' ? window.formamorphDesktop : undefined;
   if (!bridge?.vramStats) throw new Error('VRAM stats are only available in the Formamorph desktop app.');
   return bridge.vramStats();
+}
+
+/** Whether the CUDA engine build can run here. Throws if not running in the desktop app. */
+export async function desktopCudaSupport(): Promise<CudaSupport> {
+  const bridge = typeof window !== 'undefined' ? window.formamorphDesktop : undefined;
+  if (!bridge?.cudaSupport) throw new Error('CUDA support is only available in the Formamorph desktop app.');
+  return bridge.cudaSupport();
 }
 
 /** POST/GET through the Electron main process (no browser CORS). Throws if not running in the desktop app. */

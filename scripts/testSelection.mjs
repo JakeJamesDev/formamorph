@@ -79,6 +79,7 @@ export const GRAPH_COVERED = {
   'electron/llamaServer.cjs': 'checks only for the bundled binary, which tests replace',
   'electron/llmEngine.test.mjs': 'reads only its own temp folder',
   'electron/llamaServer.test.mjs': 'reads only its own temp folder',
+  'electron/nvidiaFacts.cjs': 'runs nvidia-smi only in its default runner, which tests replace',
   'scripts/typecheck.mjs':'checks only the folder its caller passes; runs git only in mainCheckoutRoot, which no test calls',
   'scripts/versionSiteImages.mjs': 'reads only the folder its caller passes',
   'scripts/copySweep.mjs': 'reads files only in its command-line sweep, which no test calls',

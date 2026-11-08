@@ -1,6 +1,6 @@
 # 03: NVIDIA Facts And CUDA Support
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -17,7 +17,15 @@ No player-visible change on its own, so no changelog fragment.
 
 ## Acceptance criteria
 
-- [ ] The support rule's tests cover each floor at its edges: 8.6 on R579 and R580, 7.5 on R614 and R615, 9.0 on R580 (fails) and R615, and 6.1 (card too old).
-- [ ] With several NVIDIA cards, one failing card makes the machine unsupported, with that card's reason.
-- [ ] A rejected field, a missing nvidia-smi, or a timeout gives "support unknown". The VRAM query's result is unchanged in each case.
-- [ ] The renderer can read the support result through the desktop bridge.
+- [x] The support rule's tests cover each floor at its edges: 8.6 on R579 and R580, 7.5 on R614 and R615, 9.0 on R580 (fails) and R615, and 6.1 (card too old). (`electron/cudaSupport.test.mjs` "floors"; lowering the PTX floor to 580 turned two tests red.)
+- [x] With several NVIDIA cards, one failing card makes the machine unsupported, with that card's reason. ("several cards" test.)
+- [x] A rejected field, a missing nvidia-smi, or a timeout gives "support unknown". The VRAM query's result is unchanged in each case. (The query is a separate module; `vramCollect.cjs` is untouched. Test "asks for the facts in a query of its own".)
+- [x] The renderer can read the support result through the desktop bridge. (`cudaSupport` in preload, IPC `cuda-support`, `desktopCudaSupport()` in `desktop.ts`; typecheck green. Not run in a live app.)
+
+## Landed
+
+**Not verified**
+- The bridge call in a running Electron app, and real nvidia-smi output on the 4090.
+
+**For you**
+- Nothing.

@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
+const { cudaSupport } = require('./nvidiaFacts.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
 // exports. See llmEngineProxy.cjs.
 const llmEngine = require('./llmEngineProxy.cjs');
@@ -370,6 +371,9 @@ ipcMain.handle('vram-stats', async () => {
     return { error: 'nvidia-smi-not-found', gpus: [], processes: [], selfPid: llmEngine.getState().serverPid };
   }
 });
+
+// CUDA support verdict from its own nvidia-smi query, so the VRAM readout above is never affected by it.
+ipcMain.handle('cuda-support', () => cudaSupport());
 
 // Desktop-only local LLM: load a GGUF and serve an OpenAI-compatible endpoint on localhost. The renderer
 // then points its normal OpenAI endpoint at it. Handlers return the engine's serializable state. Loading

@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
   },
   leaveFullScreen: () => ipcRenderer.invoke('window-leave-full-screen'),
   vramStats: () => ipcRenderer.invoke('vram-stats'),
+  cudaSupport: () => ipcRenderer.invoke('cuda-support'),
   // The ComfyUI server whose Origin check the main process passes for this window; null for none.
   setComfyEndpoint: (url) => ipcRenderer.invoke('comfy-endpoint', url),
   // Local LLM engine: stop/load a GGUF served on a localhost OpenAI endpoint, read its status, learn
