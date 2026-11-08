@@ -1123,18 +1123,19 @@ const CommunityCreationsBrowser = ({
           {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
         </Button>
       </Tip>
-      {browseTab === 'world' && (
-        <Tip tip="Places a few well-liked worlds with few downloads on page 1" labelsChild={false}>
-          <label className="ml-2 flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
-            <Checkbox
-              checked={showHiddenGems}
-              onCheckedChange={(c) => setShowHiddenGems(c === true)}
-            />
-            Hidden Gems
-          </label>
-        </Tip>
-      )}
     </div>
+  );
+
+  const hiddenGemsControl = browseTab !== 'world' ? null : (
+    <Tip tip="Places a few well-liked worlds with few downloads on page 1" labelsChild={false}>
+      <label className="flex items-center gap-2 shrink-0 cursor-pointer text-label leading-4 select-none">
+        <Checkbox
+          checked={showHiddenGems}
+          onCheckedChange={(c) => setShowHiddenGems(c === true)}
+        />
+        Hidden Gems
+      </label>
+    </Tip>
   );
 
   const hiddenControl = capabilities.hiddenFilters ? (
@@ -1199,7 +1200,7 @@ const CommunityCreationsBrowser = ({
   ) : null;
 
   const updatesControl = !capabilities.localLibrary || browseTab === 'contest' ? null : (
-    <label className="flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
+    <label className="flex items-center gap-2 shrink-0 cursor-pointer text-label leading-4 select-none">
       <Checkbox
         checked={sortUpdatesFirst}
         onCheckedChange={(c) => { setSortUpdatesFirst(c === true); setCurrentPage(1); }}
@@ -1207,6 +1208,14 @@ const CommunityCreationsBrowser = ({
       Updates first
     </label>
   );
+
+  // Stacked so two checkboxes take one control's width at the end of the filter row.
+  const trailingToggles = updatesControl || hiddenGemsControl ? (
+    <div className="flex flex-col items-start gap-1">
+      {updatesControl}
+      {hiddenGemsControl}
+    </div>
+  ) : null;
 
   // Hidden and updates-first ride along inside the bar: they narrow or reorder the same grid, and a second
   // row for two controls reads as a second, unrelated set of filters.
@@ -1234,7 +1243,7 @@ const CommunityCreationsBrowser = ({
       models={browseTab === 'prompt' ? { filter: modelFilter, setFilter: setModelFilter, options: allModels } : undefined}
       signedIn={isAuthenticated}
       centered={eventChips}
-      trailing={updatesControl}
+      trailing={trailingToggles}
     >
       {hiddenControl}
     </CommunityFilterBar>

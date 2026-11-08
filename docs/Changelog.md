@@ -53,7 +53,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **With Move Automatically on, the game moves you when the narration ends with you somewhere new, the opening included.** Followers come along, and an entity told to stay stays. Without it, the **Move to…?** offer reads the narration too.
   - **When the narration takes you somewhere the game can't follow, you stay where you are.** With Move Automatically on, you and your followers stay. Without it, no **Move to…?** offer appears.
   - **In play, the story can now move you up to three steps away in one turn.** "Walk to town and step into the store" puts you in the store, with your followers. A place four or more steps away, or back through a one-way Connection, leaves you where you are.
-  - **Community Creations places up to three well-liked worlds with few downloads on page 1 of the Worlds tab.** Each one carries a **Hidden Gem** badge, and the picks change every 12 hours. Turn them off with the **Hidden Gems** checkbox next to the sort control.
+  - **Community Creations places up to three well-liked worlds with few downloads on page 1 of the Worlds tab.** Each one carries a **Hidden Gem** badge, and the picks change every 12 hours. Turn them off with the **Hidden Gems** checkbox at the end of the filter row.
   - **The app tells the Formamorph server once a day that it was opened, with a Settings switch to stop it.** The counts show how many players return and on which platforms. The server keeps a scrambled ID, never play, worlds or account. Turn off **Daily Check-In** under **Settings → Data → Privacy**.
 - **🛠️ Developer tooling**
   - **CUDA Engine:**

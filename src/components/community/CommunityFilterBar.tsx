@@ -32,7 +32,7 @@ interface CommunityFilterBarProps {
   children?: React.ReactNode;
   /** Sits centered on the row rather than after the filters — the collapsed event chips. */
   centered?: React.ReactNode;
-  /** Sits at the far end of the row: the updates-first checkbox. */
+  /** Sits at the far end of the row: the Updates first and Hidden Gems checkboxes. */
   trailing?: React.ReactNode;
   /** The filters tutorial, anchored to the Add Filter control when this bar is the one to carry it. */
   addFilterTutorial?: TutorialEntry | null;
