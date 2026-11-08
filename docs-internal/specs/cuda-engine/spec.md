@@ -90,6 +90,11 @@ Rulings from the spec review (2026-11-07):
 - The build gate checks that the pinned release has both CUDA assets and that their digests match the pin.
 - The tag and the digests ship inside the packaged app, because the pin file is not packaged today. The app never calls the GitHub API at runtime: it downloads from the plain release-download URL of each asset (the API allows 60 unauthenticated requests per hour).
 - The CUDA folder is valid only when its marker names the current tag and both digests matched.
+- Ticket 02 rulings:
+  - The digest check runs in the llama-server fetch step and fails the desktop build. It runs even when the bundled builds are already current. It can also run alone through a check flag.
+  - The ticket gates and the web build make no network calls.
+  - The pin names only the two win-x64 CUDA 13.4 assets.
+  - The packaged app reads a copy of the pin from its resources. A dev run reads the source pin.
 
 **The downloader.**
 - The model downloader is one module-wide download with a Hugging Face–only allow-list. It becomes an instance per download, each with its own allow-list, cancel and progress channel. The model download keeps its behavior.
