@@ -4,7 +4,7 @@ All notable changes to Formamorph. This fork's first line is **2.0.0** — a ful
 
 > ✅ **3.0.0 – 3.6.1 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.6.1** — the latest released version.
 
-Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
+Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more additions touch the same feature, they sit together under that feature's name. Fixes sit under the part of the app they touch, such as **In Game** or **World Editor**.
 
 ---
 
