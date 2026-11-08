@@ -426,7 +426,7 @@ describe('entity nodes in the traits tab', () => {
   it('hands an owned trait’s switch to the runtime by id and owner', () => {
     const view = withAsh();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch off Tamed' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-tamed', false, 'e-ash');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-tamed', false, 'e-ash', 'Ash');
   });
 
   it('locks an owned trait whose requirement the player lacks', () => {
@@ -648,7 +648,7 @@ describe('linked traits in the traits tab', () => {
   it('hands a linked trait’s switch to the runtime with the owner whose row it is', () => {
     const view = withLinks();
     fireEvent.click(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-paladin', false, 'e-ash');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-paladin', false, 'e-ash', 'Ash');
   });
 
   it("lists the Custom Persona entity's links under its own node as the player under None, marked You", () => {
@@ -830,13 +830,13 @@ describe('a max-one trait group reads as a set of alternatives', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     openDisabled('Global');
     fireEvent.click(screen.getByRole('radio', { name: 'Switch on Scholar' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, null);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, null, null);
   });
 
   it('clears the selected alternative when it is clicked again, so none is a legal answer', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     fireEvent.click(screen.getByRole('radio', { name: 'Switch off Farmhand' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, null);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, null, null);
   });
 
   it('marks the radios by what is actually held', () => {

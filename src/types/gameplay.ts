@@ -1,6 +1,6 @@
 import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming, PlacementWhere, BodyPick } from './world';
 import type { ChatMessage } from './ai';
-import type { SentActionList } from '@/lib/actionList';
+import type { ActionSnapshot, SentActionList } from '@/lib/actionList';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
  *  Slice 2). Save-only: it rolls back with the turn and is never written to the world export. */
@@ -518,7 +518,7 @@ export interface SaveObject {
   scriptTells?: Record<string, { text: string; timing: ScriptTiming }[]>;
   /** The Action List each turn was sent with, by turn id. Only the newest turn's entries keep their
    *  snapshots. Absent ⇒ none. */
-  sentActions?: Record<string, SentActionList<GameState>>;
+  sentActions?: Record<string, SentActionList<ActionSnapshot>>;
   /** The opening turn's `turn.action`: the Opening Action the player sent, or empty for an Opening Narration.
    *  History holds the "START GAME" stand-in instead. Absent ⇒ a page-one re-roll reads the drawn opening. */
   openingAction?: string;

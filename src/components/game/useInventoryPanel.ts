@@ -8,8 +8,8 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { randomUUID } from '@/lib/uuid';
 import { copyName } from '@/lib/items';
-import type { ListedActionFacts } from '@/lib/actionList';
-import type { GameState, ItemCopy } from '@/types';
+import type { ActionSnapshot, ListedActionFacts } from '@/lib/actionList';
+import type { ItemCopy } from '@/types';
 import type { InventoryTabProps } from './InventoryTab';
 
 const YOU = { kind: 'you' } as const;
@@ -39,8 +39,8 @@ export interface PanelActionList {
   /** Undoes the newest entry when `facts` exactly reverses it (Q17). True when it did. */
   reverse: (facts: ListedActionFacts) => boolean;
   /** The state just before an action. */
-  snapshot: () => GameState;
-  add: (facts: ListedActionFacts, snapshot: GameState) => void;
+  snapshot: () => ActionSnapshot;
+  add: (facts: ListedActionFacts, snapshot: ActionSnapshot) => void;
 }
 
 const itemKey = (copy: ItemCopy): string => (copy.item.kind === 'item' ? `item:${copy.item.itemId}` : `runtime:${copy.item.runtimeItemId}`);

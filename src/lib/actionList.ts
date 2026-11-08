@@ -3,9 +3,17 @@
  * The caller takes and restores the snapshots; this module only holds them.
  */
 
+import type { GameState, PersonaRef } from '@/types';
+
 /** The item an action acted on: `key` is the authored or runtime item, `name` its display name when it ran (Q30). */
 export interface ActionItem {
   key: string;
+  name: string;
+}
+
+/** A thing named by id, with its display name when the action ran (Q30). */
+export interface ActionRef {
+  id: string;
   name: string;
 }
 
@@ -13,13 +21,30 @@ export interface ActionItem {
 export type ListedActionFacts =
   /** `copyId` is the Item Copy acted on; `resultId` the row it ended in. */
   | { kind: 'use' | 'equip' | 'unequip'; item: ActionItem; copyId: string; resultId?: string }
-  | { kind: 'give'; item: ActionItem; quantity: number; to: { id: string; name: string } }
+  | { kind: 'give'; item: ActionItem; quantity: number; to: ActionRef }
   /** `place` is the location the copy went to (drop) or came from (pick up). */
   | { kind: 'drop' | 'pickup'; item: ActionItem; quantity: number; place: string }
   /** A manual stat edit: `owner` is absent for a global stat; `from` and `to` are the values before and after (Q20). */
-  | { kind: 'stat'; stat: { id: string; name: string }; owner?: { id: string; name: string }; from: number; to: number };
+  | { kind: 'stat'; stat: { id: string; name: string }; owner?: { id: string; name: string }; from: number; to: number }
+  /** `owner` is null for a global trait. */
+  | { kind: 'trait'; trait: ActionRef; owner: ActionRef | null; enabled: boolean }
+  /** `from` is null when the player stood nowhere. */
+  | { kind: 'travel'; from: ActionRef | null; to: ActionRef }
+  | { kind: 'persona'; from: PersonaFact; to: PersonaFact };
+
+/** A persona: `id` matches exactly when the persona does; `name` is null for None without a name. */
+export interface PersonaFact {
+  id: string;
+  name: string | null;
+}
 
 export type ListedActionKind = ListedActionFacts['kind'];
+
+/** The state an entry restores: the runtime state and the persona reference, which lives in the save envelope (Q40). */
+export interface ActionSnapshot {
+  state: GameState;
+  persona: PersonaRef | null;
+}
 
 /** One row of the list. `snapshots` holds one state per repeat, oldest first (Q16). */
 export interface ListedAction<S> {
@@ -52,6 +77,11 @@ const sameStat = (a: ListedActionFacts, b: StatFacts): a is StatFacts =>
 
 /** Whether `next` exactly reverses `newest` (Q17, Q28). Equip and unequip match on the copy `newest` left. */
 function reverses(newest: ListedActionFacts, next: ListedActionFacts): boolean {
+  if (newest.kind === 'trait' && next.kind === 'trait') {
+    return newest.trait.id === next.trait.id && newest.owner?.id === next.owner?.id && newest.enabled !== next.enabled;
+  }
+  if (newest.kind === 'travel' && next.kind === 'travel') return newest.from !== null && newest.from.id === next.to.id;
+  if (newest.kind === 'persona' && next.kind === 'persona') return newest.from.id === next.to.id;
   if (REVERSE[newest.kind] !== next.kind) return false;
   if ((newest.kind === 'equip' || newest.kind === 'unequip') && (next.kind === 'equip' || next.kind === 'unequip')) {
     return newest.resultId !== undefined && newest.resultId === next.copyId;
@@ -156,11 +186,20 @@ export function recordSent<S>(map: SentActionMap<S>, turnId: string, list: Actio
 }
 
 /** Every kind a saved entry may carry; a new kind fails to compile until it is added here. */
-const KINDS: Record<ListedActionKind, true> = { use: true, equip: true, unequip: true, give: true, drop: true, pickup: true, stat: true };
+const KINDS: Record<ListedActionKind, true> = {
+  use: true, equip: true, unequip: true, give: true, drop: true, pickup: true, stat: true, trait: true, travel: true, persona: true,
+};
 
-/** The facts name their subject: the item, or the stat for a stat edit. */
-const namesSubject = (facts: ListedActionFacts): boolean =>
-  facts.kind === 'stat' ? typeof facts.stat?.name === 'string' : typeof facts.item?.name === 'string';
+/** The facts name the subject their line reads. */
+const namesSubject = (facts: ListedActionFacts): boolean => {
+  switch (facts.kind) {
+    case 'stat': return typeof facts.stat?.name === 'string';
+    case 'trait': return typeof facts.trait?.name === 'string';
+    case 'travel': return typeof facts.to?.name === 'string';
+    case 'persona': return typeof facts.to?.id === 'string';
+    default: return typeof facts.item?.name === 'string';
+  }
+};
 
 const isSentAction = (value: unknown): value is SentAction<unknown> => {
   const v = value as Partial<SentAction<unknown>> | null;
@@ -203,6 +242,9 @@ export function entryLine(entry: Pick<ListedAction<unknown>, 'facts' | 'count'>)
       case 'drop': return `Dropped ${counted(facts.quantity, facts.item.name)}`;
       case 'pickup': return `Picked up ${counted(facts.quantity, facts.item.name)}`;
       case 'stat': return `${facts.owner ? `${facts.owner.name}’s ` : ''}${facts.stat.name} ${Math.round(facts.from)} → ${Math.round(facts.to)}`;
+      case 'trait': return `Turned ${facts.enabled ? 'on' : 'off'} ${facts.owner ? `${facts.owner.name}’s ` : ''}${facts.trait.name}`;
+      case 'travel': return `Traveled to ${facts.to.name}`;
+      case 'persona': return `Switched persona to ${facts.to.name ?? 'None'}`;
     }
   })();
   return entry.count > 1 ? `${text} ×${entry.count}` : text;

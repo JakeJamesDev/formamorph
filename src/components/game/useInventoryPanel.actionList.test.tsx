@@ -3,11 +3,11 @@ import { act, waitFor } from '@testing-library/react';
 import { bodyFixture } from '@/test/bodyFixture';
 import { renderInGame, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import { useGameplay } from '@/contexts/GameplayContext';
-import type { ListedActionFacts } from '@/lib/actionList';
+import type { ActionSnapshot, ListedActionFacts } from '@/lib/actionList';
 import type { InventoryOp } from '@/lib/inventory';
 import { useInventoryPanel, type InventoryPanelSettle, type PanelActionList } from './useInventoryPanel';
 import type { InventoryTabProps } from './InventoryTab';
-import type { Entity, GameLocation, GameState, Item, ItemCopy } from '@/types';
+import type { Entity, GameLocation, Item, ItemCopy } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -30,8 +30,8 @@ const turns: TurnFixture[] = [{ narration: 'One.', turnId: 't1' }, { narration: 
 
 /** The panel over `copies`, its settle committing what each op leaves and listing into a recorder. */
 function panelOver(copies: ItemCopy[], reverse: (facts: ListedActionFacts) => boolean = () => false) {
-  const added: { facts: ListedActionFacts; snapshot: GameState }[] = [];
-  const snapshot = { marker: 'before' } as unknown as GameState;
+  const added: { facts: ListedActionFacts; snapshot: ActionSnapshot }[] = [];
+  const snapshot = { state: { marker: 'before' }, persona: null } as unknown as ActionSnapshot;
   const actions: PanelActionList = { reverse: vi.fn(reverse), snapshot: () => snapshot, add: (facts, before) => added.push({ facts, snapshot: before }) };
   let panel!: InventoryTabProps;
   const Probe = () => {

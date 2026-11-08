@@ -18,7 +18,7 @@ import type { SceneImageMap } from '../lib/sceneImages';
 import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
-import { restoreSent, type ListedAction, type SentActionMap } from '../lib/actionList';
+import { restoreSent, type ActionSnapshot, type ListedAction, type SentActionMap } from '../lib/actionList';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -272,9 +272,9 @@ function useProvideGameplay() {
   // What scripts told the player, by turn id, beside the history so no request carries it (Q23).
   const [scriptTells, setScriptTells] = useState<TellMap>({});
   // The player's panel actions since the last turn, each with the state from just before it (Q6).
-  const [actionList, setActionList] = useState<ListedAction<GameState>[]>([]);
+  const [actionList, setActionList] = useState<ListedAction<ActionSnapshot>[]>([]);
   // The list each turn was sent with, by turn id; only the newest keeps its snapshots (Q34).
-  const [sentActions, setSentActions] = useState<SentActionMap<GameState>>({});
+  const [sentActions, setSentActions] = useState<SentActionMap<ActionSnapshot>>({});
   // The opening turn's `turn.action`; null until a playthrough opens, and on a save that lacks it.
   const [openingAction, setOpeningAction] = useState<string | null>(null);
   // The books in play: the save's, plus the world's shipped-off books a script may switch on.
@@ -699,7 +699,7 @@ function useProvideGameplay() {
           // Absent on a save written with no attachments ⇒ none.
           setActionAttachments(restoreAttachments(migrated.actionAttachments));
           setScriptTells(restoreTells(migrated.scriptTells));
-          setSentActions(restoreSent<GameState>(migrated.sentActions));
+          setSentActions(restoreSent<ActionSnapshot>(migrated.sentActions));
           setOpeningAction(typeof migrated.openingAction === 'string' ? migrated.openingAction : null);
           setPendingAttachments([]);
           setActionList([]);

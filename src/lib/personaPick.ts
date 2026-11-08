@@ -61,6 +61,10 @@ export function samePersonaRef(a: PersonaRef, b: PersonaRef): boolean {
   return a.source !== 'none' && b.source !== 'none' && a.entityId === b.entityId;
 }
 
+/** A key two references share exactly when `samePersonaRef` holds. */
+export const personaKey = (ref: PersonaRef): string =>
+  JSON.stringify(ref.source === 'none' ? ['none', ref.name ?? '', ref.description ?? ''] : [ref.source, ref.entityId]);
+
 /** The inputs of the preselect rule, shared by the enter-world step and Quick Start. */
 export interface PersonaChoices {
   rules: PersonaRules;

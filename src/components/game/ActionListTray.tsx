@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { entryLine, listCounts, type ListedAction, type ListedActionKind, type SentActionList } from '@/lib/actionList';
-import { ItemIcon, StatIcon } from '@/lib/elementIcons';
+import { ItemIcon, LocationIcon, PersonaIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 
 /** Each entry wears the icon of the panel tab it came from (Q27). */
 const SOURCE_ICON: Record<ListedActionKind, LucideIcon> = {
   use: ItemIcon, equip: ItemIcon, unequip: ItemIcon, give: ItemIcon, drop: ItemIcon, pickup: ItemIcon, stat: StatIcon,
+  trait: TraitIcon, travel: LocationIcon, persona: PersonaIcon,
 };
 
 function RowButton({ tip, icon: Icon, disabled, onClick }: { tip: string; icon: LucideIcon; disabled: boolean; onClick: () => void }) {

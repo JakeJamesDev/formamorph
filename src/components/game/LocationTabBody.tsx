@@ -9,13 +9,15 @@ const identity = (text: string) => text;
  * The Location tab's body: where the player is, its Player-Facing Description and the places a drawn
  * Connection leads to. Names arrive resolved; `resolveText` resolves the description.
  */
-export function LocationTabBody({ location, locations, connections, resolveText = identity, past, onLocationClick }: {
+export function LocationTabBody({ location, locations, connections, resolveText = identity, past, disabled, onLocationClick }: {
   location: GameLocation | null | undefined;
   locations: GameLocation[];
   connections: Connection[];
   resolveText?: (text: string) => string;
   /** The location of a past turn: named, but not a place to travel from. */
   past?: boolean;
+  /** Travel waits, as while a turn runs. */
+  disabled?: boolean;
   onLocationClick?: () => void;
 }) {
   // The drawn Connections leading out of here, named. Implicit travel is left out, so a world with no
@@ -33,7 +35,7 @@ export function LocationTabBody({ location, locations, connections, resolveText 
 
   return (
     <div className="p-2 flex flex-col gap-4">
-      <Button onClick={onLocationClick} disabled={past} className="w-full">
+      <Button onClick={onLocationClick} disabled={past || disabled} className="w-full">
         {past ? 'Location' : 'Current Location'}: {location?.name || 'Unknown'}
       </Button>
       {location && (

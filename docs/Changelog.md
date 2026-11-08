@@ -21,6 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A tray above the action box lists what you do in the Inventory tab between turns.** Undo the newest action to put the game back as it was, the item's scripts and effects included. Repeats share one row.
     - **Stat edits you make in the Stats tab now list in the Since Last Turn tray.** Each shows the old and new value. It starts hidden from the AI, and you can show it or undo it.
     - **When you send, the AI hears what Since Last Turn lists, so the story reacts to those actions.** Hidden rows stay with you. Send works with an empty action box, and each page keeps its list under your action.
+    - **Trait switches, map travel and persona changes now list in the tray above the action box.** Undo puts the game back as it was. Turning, traveling or switching straight back clears the row. These controls wait while a turn runs.
   - **Website:**
     - **The formamorph.ai pages use a violet-to-rose accent and the same Formamorph wordmark as the game's title screen.** The home, privacy, sign-in and community pages share it in light and dark.
     - **The formamorph.ai home page plays an example turn on a real game screen.** An action types in, the story appears word by word, Faith and Renown change, and a map lands in the inventory. Reduced motion shows the finished turn.

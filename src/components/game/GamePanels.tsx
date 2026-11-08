@@ -1354,7 +1354,7 @@ const entityItems = (options: StatPanelOption[]) =>
 
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
-  inventorySettle, collapsed, placement = 'docked', railOpen, railDots, onShownTab, onRailOpen, onRailClose,
+  inventorySettle, actionsBusy = false, collapsed, placement = 'docked', railOpen, railDots, onShownTab, onRailOpen, onRailClose,
 }: {
   /** Desktop: shows the panel's rail in place of the panel. */
   collapsed?: boolean;
@@ -1372,7 +1372,9 @@ export const RightPanel = ({
   /** The live game's equip check and inventory settle for a panel write. Absent ⇒ the operations alone land. */
   inventorySettle?: InventoryPanelSettle;
   /** Switch an owner's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
-  onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId) => void;
+  onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId, ownerName: string | null) => void;
+  /** Script runs of an earlier panel action still go, so a listed action waits. */
+  actionsBusy?: boolean;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
   onPersonaChange: (ref: PersonaRef, name: string | null) => void;
   /** What the player's last trait switch or persona change turned off. */
@@ -1516,6 +1518,8 @@ export const RightPanel = ({
     return item && visibleItemImage(item, copy, gateInput);
   }, [worldItems, gateInput]);
   const inventory = useInventoryPanel(inventorySettle, itemImageOf);
+  // Listed actions wait while a turn or an earlier action's scripts run (Q13).
+  const actionsBlocked = isWaitingForAI || actionsBusy;
   // A manual stat edit lists after it runs (Q1); the controls wait while a turn or an item script runs (Q13).
   const listedActions = inventorySettle?.actions;
   const statsLocked = isWaitingForAI || !!inventorySettle?.busy;
@@ -1648,7 +1652,7 @@ export const RightPanel = ({
         <Tip tip={formatClock(gameTime, calendar)} labelsChild={false}>
           <p tabIndex={0} className="self-center rounded-sm text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">{formatAbsolute(gameTime, calendar)}</p>
         </Tip>
-        <PersonaRow onChange={onPersonaChange} />
+        <PersonaRow onChange={onPersonaChange} disabled={actionsBlocked} />
       </div>
 
       <Tabs value={shownTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
@@ -1752,8 +1756,8 @@ export const RightPanel = ({
               isOff={(id, ownerId) => (ownerId === null
                 ? disabledTraits.has(id) || !heldTraitIds.has(id)
                 : !activeOwned[ownerId]?.includes(id))}
-              readOnly={isViewingPast}
-              onToggleTrait={onToggleTrait}
+              readOnly={isViewingPast || actionsBlocked}
+              onToggleTrait={(traitId, enabled, ownerId) => onToggleTrait(traitId, enabled, ownerId, ownerId === null ? null : traitTree.entityNodes.get(ownerId)?.name ?? null)}
               resolveTraitText={resolveTreeTraitText}
               hiddenOwners={hiddenTraitOwners}
               emptyOwner={entitiesShowTraits && entitySection && !traitTree.entityNodes.has(entitySection.entity.id) ? shownEntity?.label : undefined}
@@ -1800,6 +1804,7 @@ export const RightPanel = ({
               connections={connections}
               resolveText={resolvePH}
               past={isViewingPast}
+              disabled={actionsBlocked}
               onLocationClick={onLocationClick}
             />
           </ScrollArea>

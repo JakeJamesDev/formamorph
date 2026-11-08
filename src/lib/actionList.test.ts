@@ -127,6 +127,56 @@ describe('the Action List', () => {
     expect(closeList(list)).toEqual({ sent: list, live: [] });
   });
 
+  describe('trait, travel and persona', () => {
+    const trait = (enabled: boolean, owner: { id: string; name: string } | null = null, id = 'bold'): ListedActionFacts =>
+      ({ kind: 'trait', trait: { id, name: id === 'bold' ? 'Bold' : 'Keen' }, owner, enabled });
+    const mira = { id: 'mira', name: 'Mira' };
+    const harbor = { id: 'harbor', name: 'Harbor' };
+    const market = { id: 'market', name: 'Market' };
+    const hall = { id: 'hall', name: 'Hall' };
+    const travel = (from: typeof harbor | null, to: typeof harbor): ListedActionFacts => ({ kind: 'travel', from, to });
+    const persona = (from: string, to: string): ListedActionFacts => ({
+      kind: 'persona', from: { id: from, name: from }, to: { id: to, name: to === 'none' ? null : to },
+    });
+
+    it('treats the opposite switch of the same trait and owner as the newest toggle’s undo', () => {
+      expect(play([trait(true), trait(false)])).toMatchObject({ list: [], restored: ['s0'] });
+      expect(play([trait(false, mira), trait(true, mira)])).toMatchObject({ list: [], restored: ['s0'] });
+    });
+
+    it('adds a toggle of another trait, another owner, or the same switch again', () => {
+      expect(play([trait(true), trait(false, null, 'keen')]).list).toHaveLength(2);
+      expect(play([trait(true), trait(false, mira)]).list).toHaveLength(2);
+      expect(play([trait(true, mira), trait(false)]).list).toHaveLength(2);
+      expect(play([trait(true), trait(true)]).list).toHaveLength(2);
+    });
+
+    it('treats a trip back to where the newest trip left from as its undo', () => {
+      expect(play([travel(harbor, market), travel(market, harbor)])).toMatchObject({ list: [], restored: ['s0'] });
+      expect(lines(play([travel(harbor, market), travel(market, hall)]).list)).toEqual(['Traveled to Market', 'Traveled to Hall']);
+      expect(play([travel(null, market), travel(market, harbor)]).list).toHaveLength(2);
+    });
+
+    it('treats a switch back to the persona the newest switch left as its undo', () => {
+      expect(play([persona('ash', 'mira'), persona('mira', 'ash')])).toMatchObject({ list: [], restored: ['s0'] });
+      expect(play([persona('ash', 'mira'), persona('mira', 'wren')]).list).toHaveLength(2);
+    });
+
+    it('never collapses repeats of these kinds', () => {
+      expect(play([travel(harbor, market), travel(market, hall), travel(hall, harbor)]).list).toHaveLength(3);
+      expect(play([trait(true), trait(true, null, 'keen'), trait(false, null, 'keen')]).list).toHaveLength(1);
+    });
+
+    it('never matches a reversal across kinds', () => {
+      expect(play([use, trait(true), travel(harbor, market), persona('ash', 'mira')]).list).toHaveLength(4);
+    });
+
+    it('writes their lines', () => {
+      expect(lines(play([trait(true), trait(false, mira, 'keen'), travel(harbor, market), persona('ash', 'mira'), persona('mira', 'none')]).list))
+        .toEqual(['Turned on Bold', 'Turned off Mira’s Keen', 'Traveled to Market', 'Switched persona to mira', 'Switched persona to None']);
+    });
+  });
+
   it('writes every inventory line', () => {
     expect(lines(play([
       use, equip, unequip, give(), drop(3, 'hall'), { kind: 'pickup', item: arrow, quantity: 1, place: 'yard' },
@@ -216,5 +266,16 @@ describe('sending the list', () => {
       t3: { told: true, entries: [{ id: 'e', facts: use, count: 1, hidden: false }, 'junk'] },
     })).toEqual({ t3: { told: true, entries: [{ id: 'e', facts: use, count: 1, hidden: false }] } });
     expect(restoreSent(undefined)).toEqual({});
+  });
+
+  it('reads back trait, travel and persona entries, and leaves out one without its subject', () => {
+    const facts: ListedActionFacts[] = [
+      { kind: 'trait', trait: { id: 'bold', name: 'Bold' }, owner: null, enabled: true },
+      { kind: 'travel', from: null, to: { id: 'market', name: 'Market' } },
+      { kind: 'persona', from: { id: 'ash', name: 'Ash' }, to: { id: 'none', name: null } },
+    ];
+    const saved = recordSent({}, 't1', facts.map((f, i) => ({ id: `e${i}`, facts: f, count: 1, hidden: false, snapshots: ['s'] })), true);
+    expect(restoreSent<string>(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
+    expect(restoreSent({ t1: { told: true, entries: [{ id: 'x', facts: { kind: 'travel', from: null }, count: 1, hidden: false }] } })).toEqual({});
   });
 });

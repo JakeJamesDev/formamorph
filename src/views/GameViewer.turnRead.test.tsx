@@ -202,21 +202,6 @@ describe('turn in a switch run', () => {
     await waitFor(() => expect(seen.switch).toBe(2000));
   });
 
-  it('reads an empty action and the turn in progress on a toggle while a turn runs', async () => {
-    await enter(worldWith());
-    await send(OPENING);
-    let release = () => {};
-    held = new Promise<void>((resolve) => { release = resolve; });
-    fireEvent.change(box(), { target: { value: 'I ring the bell.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(calls).toBeGreaterThan(0));
-    await clickBrave();
-    await waitFor(() => expect(seen.switch).toBe(2000));
-    held = null;
-    release();
-    await waitFor(() => expect(closedTurns(history)).toBe(2));
-  });
-
   it('reads that turn’s action and number on a switch a script fires inside the turn', async () => {
     const switcher: Script = { id: 'switcher', timing: 'after', code: 'if (turn.number === 2) traits.Brave.enabled = true;' };
     await enter(worldWith([switcher]));
@@ -265,21 +250,6 @@ describe('turn.narration and turn.choices', () => {
     expect(replies.switch).toBe(0);
   });
 
-  it('reads no choices on a toggle during a stats re-roll once the player turns choices off', async () => {
-    await enter(replyWorld());
-    await send(OPENING);
-    act(() => choicesOff());
-    let release = () => {};
-    statHeld = new Promise<void>((resolve) => { release = resolve; });
-    const asked = statCalls;
-    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Stats' }));
-    await waitFor(() => expect(statCalls).toBe(asked + 1));
-    await clickBrave();
-    await waitFor(() => expect(replies.switch).toBe(10));
-    statHeld = null;
-    release();
-  });
-
   it('reads empty on a toggle before the opening turn', async () => {
     await enter(replyWorld());
     await clickBrave();
@@ -299,21 +269,6 @@ describe('turn.narration and turn.choices', () => {
     act(() => choicesOff());
     await clickBrave();
     await waitFor(() => expect(replies.switch).toBe(10));
-  });
-
-  it('reads empty on a toggle while a turn runs, before its reply lands', async () => {
-    await enter(replyWorld());
-    await send(OPENING);
-    let release = () => {};
-    held = new Promise<void>((resolve) => { release = resolve; });
-    fireEvent.change(box(), { target: { value: 'I ring the bell.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(calls).toBeGreaterThan(0));
-    await clickBrave();
-    await waitFor(() => expect(replies.switch).toBe(0));
-    held = null;
-    release();
-    await waitFor(() => expect(closedTurns(history)).toBe(2));
   });
 
   it('reads the turn’s page and choices on a switch an After the AI script fires', async () => {

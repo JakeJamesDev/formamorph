@@ -867,7 +867,7 @@ describe('RightPanel — the traits tab against an edited world', () => {
     expect(box).toBeEnabled();
 
     fireEvent.click(box);
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false, null);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false, null, null);
   });
 
   it('offers no switch when the author has not marked it switchable', () => {
@@ -922,7 +922,7 @@ describe('RightPanel — acquirable traits in the traits tab', () => {
     const view = renderPanel();
     openDisabled();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch on Feral' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true, null);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true, null, null);
   });
 
   it('leaves a trait the author never marked switchable out of the panel entirely', () => {

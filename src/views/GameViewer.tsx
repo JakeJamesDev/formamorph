@@ -8,10 +8,10 @@ import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
 import { ActionListTray } from '@/components/game/ActionListTray';
-import { addAction, closeList, listCounts, recordSent, reversalOf, toggleHidden, toldActions, undoNewest } from '@/lib/actionList';
+import { addAction, closeList, listCounts, recordSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts } from '@/lib/actionList';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
-import { samePersonaRef } from '@/lib/personaPick';
+import { personaKey, samePersonaRef } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
 import { usePresence } from '@/lib/usePresence';
 import {
@@ -5415,13 +5415,14 @@ const GameViewer = ({
     setBodies(result.items.bodies);
   }, [itemCopies, setItemCopies, setItemEffects, setBodies]);
   const runItemEventsRef = useRef<((events: readonly ItemScriptEvent[], totals: ActionTotals) => Promise<void>) | null>(null);
+  /** Hands back the item script runs the settle started, if any. */
   const commitGatedTraits = useCallback(
-    (result: GatedTraitResult, because: string, totals: ActionTotals) => {
+    (result: GatedTraitResult, because: string, totals: ActionTotals): Promise<void> | undefined => {
       if (result.state !== traitState) commitTraitState(result.state);
       commitSettledItems(result);
       for (const line of [...result.log, ...(result.items?.bodyLog ?? [])]) addLogEntry(line);
       setTraitCascade(result.cascadeNames.length ? { off: result.cascadeNames, because } : null);
-      if (result.items?.events.length) void runItemEventsRef.current?.(result.items.events, totals);
+      return result.items?.events.length ? runItemEventsRef.current?.(result.items.events, totals) : undefined;
     },
     [traitState, commitTraitState, commitSettledItems, addLogEntry],
   );
@@ -5453,6 +5454,53 @@ const GameViewer = ({
   // After the stat pass and stat code, so a lost requirement unequips this turn (Q123).
   const settleTurn = useTurnSettle(traitState, gatedWorld, traitName, commitTurnSettle, settleWithItems);
 
+  // A library persona settles once its entity loads, so the settle and the run read it (Q15). `from` is the
+  // world the traits still hold under.
+  const [waitingPersona, setWaitingPersona] = useState<{ ref: PersonaRef; name: string | null; from: TraitWorld } | null>(null);
+  // Script runs a panel action started and still going; a listed action and undo wait for them.
+  const [panelRuns, setPanelRuns] = useState(0);
+  const listBusy = panelRuns > 0 || waitingPersona !== null;
+  const trackPanelRun = useCallback((run: Promise<unknown> | undefined) => {
+    if (!run) return;
+    setPanelRuns((n) => n + 1);
+    void run.finally(() => { if (mounted.current) setPanelRuns((n) => n - 1); });
+  }, [mounted]);
+  const takeActionSnapshot = useCallback((): ActionSnapshot => ({ state: saveCurrentGameState(), persona: personaRef ?? null }), [saveCurrentGameState, personaRef]);
+  /** Restores the state from before a listed action (Q6). What the player wrote by hand since stays (Q29). */
+  const restoreActionSnapshot = useCallback(({ state, persona: ref }: ActionSnapshot) => {
+    const live = saveCurrentGameState();
+    const handWritten = { characterData: live.characterData, playerNotes: live.playerNotes, gameplayText: live.gameplayText };
+    if (!loadGameState({ ...state, ...handWritten }, locations, { keepLiveHistory: true })) return;
+    // Item script runs still in flight belong to the undone action.
+    itemRunGenerationRef.current += 1;
+    liveItemsRef.current = heldItemsOf({ copies: state.itemCopies ?? [], ledger: state.itemEffects ?? {}, bodies: state.bodies ?? {} });
+    setTraitCascade(null);
+    if (ref ? !(personaRef && samePersonaRef(ref, personaRef)) : personaRef) setPersonaRef(ref ?? undefined);
+  }, [saveCurrentGameState, loadGameState, locations, personaRef, setPersonaRef]);
+  /** Undoes the newest entry when `facts` exactly reverses it (Q17). True when it did. */
+  const reverseListedAction = useCallback((facts: ListedActionFacts) => {
+    const reversal = reversalOf(actionList, facts);
+    if (!reversal) return false;
+    setActionList(reversal.list);
+    restoreActionSnapshot(reversal.restore);
+    return true;
+  }, [actionList, setActionList, restoreActionSnapshot]);
+  const addListedAction = useCallback((facts: ListedActionFacts, snapshot: ActionSnapshot) => {
+    setActionList((list) => addAction(list, facts, snapshot, randomUUID()));
+  }, [setActionList]);
+  const panelActions = useMemo<PanelActionList>(
+    () => ({ reverse: reverseListedAction, snapshot: takeActionSnapshot, add: addListedAction }),
+    [reverseListedAction, takeActionSnapshot, addListedAction],
+  );
+  const undoNewestAction = useCallback(() => {
+    const undo = undoNewest(actionList);
+    if (!undo) return;
+    setActionList(undo.list);
+    restoreActionSnapshot(undo.restore);
+    const { facts } = actionList[actionList.length - 1];
+    if (facts.kind === 'stat') revertManualStatEditPage(facts.owner?.id ?? null, facts.stat.id, facts.from);
+  }, [actionList, setActionList, restoreActionSnapshot, revertManualStatEditPage]);
+
   /**
    * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the
    * author marked switchable is available whenever its gate holds; everything the trait does beyond its stat changes (AI
@@ -5460,20 +5508,29 @@ const GameViewer = ({
    * trait freezes the world's stat changes as they stand right now, authored and chips intact, as seeding does.
    */
   const toggleTrait = useCallback(
-    (traitId: string, enabled: boolean, ownerId: OwnerId) => {
+    (traitId: string, enabled: boolean, ownerId: OwnerId, ownerName: string | null = null) => {
+      if (isWaitingForAI || listBusy) return;
       const world = gatedWorld();
+      const name = traitNameIn(world, traitId, traitName, ownerId) ?? traitId;
+      const facts: ListedActionFacts = {
+        kind: 'trait', trait: { id: traitId, name }, owner: ownerId === null ? null : { id: ownerId, name: ownerName ?? ownerId }, enabled,
+      };
+      if (reverseListedAction(facts)) return;
       const switched = switchPlayerTrait(traitState, traitId, enabled, world, traitName, ownerId);
       if (!switched) return;
+      const snapshot = takeActionSnapshot();
       const items = settleWithItems(switched.state, world, traitName);
       const result = {
         ...items, log: [...switched.log, ...items.log], cascade: [...switched.cascade, ...items.cascade],
         cascadeNames: [...switched.cascadeNames, ...items.cascadeNames],
       };
       const totals = startActionTotals();
-      commitGatedTraits(result, traitNameIn(world, traitId, traitName, ownerId) ?? traitId, totals);
-      void fireSwitchScripts(traitState, result.state, world, totals);
+      trackPanelRun(commitGatedTraits(result, name, totals));
+      trackPanelRun(fireSwitchScripts(traitState, result.state, world, totals));
+      addListedAction(facts, snapshot);
     },
-    [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, settleWithItems, startActionTotals],
+    [isWaitingForAI, listBusy, traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, settleWithItems, startActionTotals,
+      reverseListedAction, takeActionSnapshot, trackPanelRun, addListedAction],
   );
 
   /** Script inventory writes through the Inventory module, checked against `over`, else the live state, and the
@@ -5598,38 +5655,6 @@ const GameViewer = ({
   settleLiveRef.current = settleLive;
   runItemEventsRef.current = runItemEvents;
 
-  /** Restores the state from before a listed action (Q6). What the player wrote by hand since stays (Q29). */
-  // The panel's item script runs still going; a listed action waits for them.
-  const [panelRuns, setPanelRuns] = useState(0);
-  const restoreActionSnapshot = useCallback((snapshot: GameState) => {
-    const live = saveCurrentGameState();
-    const handWritten = { characterData: live.characterData, playerNotes: live.playerNotes, gameplayText: live.gameplayText };
-    if (!loadGameState({ ...snapshot, ...handWritten }, locations, { keepLiveHistory: true })) return;
-    // Item script runs still in flight belong to the undone action.
-    itemRunGenerationRef.current += 1;
-    liveItemsRef.current = heldItemsOf({ copies: snapshot.itemCopies ?? [], ledger: snapshot.itemEffects ?? {}, bodies: snapshot.bodies ?? {} });
-    setTraitCascade(null);
-  }, [saveCurrentGameState, loadGameState, locations]);
-  const panelActions = useMemo<PanelActionList>(() => ({
-    reverse: (facts) => {
-      const reversal = reversalOf(actionList, facts);
-      if (!reversal) return false;
-      setActionList(reversal.list);
-      restoreActionSnapshot(reversal.restore);
-      return true;
-    },
-    snapshot: saveCurrentGameState,
-    add: (facts, snapshot) => setActionList((list) => addAction(list, facts, snapshot, randomUUID())),
-  }), [actionList, setActionList, restoreActionSnapshot, saveCurrentGameState]);
-  const undoNewestAction = useCallback(() => {
-    const undo = undoNewest(actionList);
-    if (!undo) return;
-    setActionList(undo.list);
-    restoreActionSnapshot(undo.restore);
-    const { facts } = actionList[actionList.length - 1];
-    if (facts.kind === 'stat') revertManualStatEditPage(facts.owner?.id ?? null, facts.stat.id, facts.from);
-  }, [actionList, setActionList, restoreActionSnapshot, revertManualStatEditPage]);
-
   /** A panel write's equip check and settle over the live state; the settle fires the switch scripts and the
    *  item scripts run against the committed state. */
   const inventorySettle = useMemo<InventoryPanelSettle>(() => {
@@ -5642,17 +5667,15 @@ const GameViewer = ({
       actions: panelActions,
       commit: (copies, previous, lines, itemUses, events) => {
         const totals = startActionTotals();
-        const runs = runItemEvents([...events, ...commitItemCopies(copies, previous, lines, itemUses, totals)], totals);
-        setPanelRuns((n) => n + 1);
-        void runs.finally(() => { if (mounted.current) setPanelRuns((n) => n - 1); });
+        trackPanelRun(runItemEvents([...events, ...commitItemCopies(copies, previous, lines, itemUses, totals)], totals));
       },
-      busy: panelRuns > 0,
+      busy: listBusy,
       timed: personaRef ? timedEffectViews(itemEffects, worldItems, playedEntityIds(personaRef, traitEntities), gameTime, {
         stat: (ownerId, statId) => traitState.entityStats?.[ownerId]?.find((s) => s.id === statId)?.name ?? statId,
         trait: (ownerId, traitId) => traitNameIn(world, traitId, traitName, ownerId) ?? traitId,
       }) : [],
     };
-  }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitItemCopies, runItemEvents, traitBodyPicks, startActionTotals, panelActions, panelRuns, mounted]);
+  }, [gatedWorld, settleWorldOf, traitState, itemEffects, gameTime, personaRef, worldItems, traitEntities, traitName, commitItemCopies, runItemEvents, traitBodyPicks, startActionTotals, panelActions, listBusy, trackPanelRun]);
 
   /** The present items whose stat effects the game applies, which the stat request names (Q53). */
   const statItemNames = (location: GameLocation | null): string[] =>
@@ -5765,16 +5788,20 @@ const GameViewer = ({
       // The `you` Item Copies' effects and grants move onto the new played entity (Q107, Q117).
       const settled = settleWithItems(moved.state, to, traitName, from.persona);
       const totals = startActionTotals();
-      commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change', totals);
-      void fireSwitchScripts(traitState, settled.state, to, totals, from);
+      trackPanelRun(commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change', totals));
+      trackPanelRun(fireSwitchScripts(traitState, settled.state, to, totals, from));
     },
-    [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, settleWithItems, startActionTotals],
+    [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts, settleWithItems, startActionTotals, trackPanelRun],
   );
-  // A library persona settles once its entity loads, so the settle and the run read it (Q15). `from` is the
-  // world the traits still hold under.
-  const [waitingPersona, setWaitingPersona] = useState<{ ref: PersonaRef; name: string | null; from: TraitWorld } | null>(null);
+  /** Runs after PersonaRow set the new reference, so the live state and `personaRef` still read the old persona.
+   *  It cannot refuse, so PersonaRow's Change is the mid-turn block. */
   const changePersona = useCallback(
     (ref: PersonaRef, name: string | null) => {
+      const facts: ListedActionFacts = {
+        kind: 'persona', from: { id: personaKey(personaRef ?? { source: 'none' }), name: persona?.entity.name ?? null }, to: { id: personaKey(ref), name },
+      };
+      if (reverseListedAction(facts)) return;
+      addListedAction(facts, takeActionSnapshot());
       const from = waitingPersona?.from ?? gatedWorld();
       if (ref.source === 'library') {
         setWaitingPersona({ ref, name, from });
@@ -5783,7 +5810,7 @@ const GameViewer = ({
       setWaitingPersona(null);
       settlePersonaTraits(ref, name, from);
     },
-    [waitingPersona, gatedWorld, settlePersonaTraits],
+    [personaRef, persona, reverseListedAction, addListedAction, takeActionSnapshot, waitingPersona, gatedWorld, settlePersonaTraits],
   );
   useEffect(() => {
     if (!waitingPersona || personaPending || !personaRef || !samePersonaRef(personaRef, waitingPersona.ref)) return;
@@ -5805,6 +5832,21 @@ const GameViewer = ({
       }
     },
     [setCurrentLocation, carryFollowersTo, setVisibleEntities, currentFollowers, allEntities],
+  );
+  /** Travel through the map, a listed action (Q42). */
+  const travel = useCallback(
+    (to: GameLocation) => {
+      if (isWaitingForAI || listBusy) return;
+      const facts: ListedActionFacts = {
+        kind: 'travel', from: currentLocation ? { id: currentLocation.id, name: resolvePH(currentLocation.name) } : null,
+        to: { id: to.id, name: resolvePH(to.name) },
+      };
+      if (reverseListedAction(facts)) return;
+      const snapshot = takeActionSnapshot();
+      changeLocation(to);
+      addListedAction(facts, snapshot);
+    },
+    [isWaitingForAI, listBusy, currentLocation, resolvePH, reverseListedAction, takeActionSnapshot, changeLocation, addListedAction],
   );
 
   const isInitialized = useRef(false);
@@ -6265,7 +6307,7 @@ const GameViewer = ({
       actionTray={(
         <ActionListTray
           entries={actionList}
-          disabled={isWaitingForAI || isViewingPast || panelRuns > 0}
+          disabled={isWaitingForAI || isViewingPast || listBusy}
           onUndo={undoNewestAction}
           onToggleHidden={(id) => setActionList((list) => toggleHidden(list, id))}
         />
@@ -6293,6 +6335,7 @@ const GameViewer = ({
       onRailClose={closeDrawer}
       onLocationClick={() => setIsLocationModalOpen(true)}
       onToggleTrait={toggleTrait}
+      actionsBusy={listBusy}
       inventorySettle={inventorySettle}
       onPersonaChange={changePersona}
       traitCascade={traitCascade}
@@ -6553,7 +6596,7 @@ const GameViewer = ({
         currentLocationId={currentLocation?.id ?? null}
         entitiesAt={metRoster}
         mapBackground={mapBackdrop}
-        changeLocation={changeLocation}
+        changeLocation={travel}
         resolveText={resolvePH}
       />
 

@@ -191,6 +191,10 @@ describe('memory verdicts in play', () => {
     await clickBrave();
     await waitFor(() => expect(notes).toEqual([{ id: 'n1', text: 'The bridge is fixed.', anchorTurn: 0 }]));
 
+    // A turn between, so the switch-off is not an undo of the switch-on (Q17).
+    stubEndpoint();
+    act(() => play?.setActiveTab('stats'));
+    await playTurn('I wait.');
     act(() => {
       play?.setMemoryNotes([]);
       play?.setFullMessageHistory(SEEDED);

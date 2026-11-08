@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
@@ -27,16 +27,16 @@ const world = (): World => ({ ...harborWorld({ stats: [vigor] }), traits: [brave
 
 let stats: PlayerStat[] = [];
 let traitsOn: string[] = [];
-let logLines: string[] = [];
 let showTraits = () => {};
+let showStats = () => {};
 let history: ChatMessage[] = [];
 let notes: MemoryNote[] = [];
 function Probe() {
   const play = useGameplay();
   stats = play.globalStats;
   traitsOn = play.globalTraits.filter((t) => !play.disabledTraitIds.includes(t.id)).map((t) => t.id).sort();
-  logLines = play.logEntries.map(({ text }) => text);
   showTraits = () => play.setActiveTab('traits');
+  showStats = () => play.setActiveTab('stats');
   history = play.fullMessageHistory;
   notes = play.memoryNotes;
   return null;
@@ -90,6 +90,9 @@ describe('When a Trait Switches in play', () => {
     await screen.findByPlaceholderText(/Type your action/);
     await clickBrave();
     await waitFor(() => expect(vigorNow()).toBe(70));
+    // A turn between, so the switch-off is not an undo of the switch-on (Q17).
+    act(() => showStats());
+    await playTurn();
     await clickBrave();
     await waitFor(() => expect(vigorNow()).toBe(30));
   });
@@ -109,56 +112,27 @@ describe('When a Trait Switches in play', () => {
       ...brave,
       scripts: [{ id: 'rally', timing: 'switch', code: 'if (trait.enabled && player.confirm("Rally?")) { traits.Bold.enabled = true; traits.Calm.enabled = true; }' }],
     };
-    const plus = (id: string, name: string, value: number, more: Partial<Trait> = {}): Trait =>
-      ({ id, name, playerToggle: true, statChanges: [{ statId: 'vigor', type: 'starting', value }], ...more });
-    /** `code` as the trait's own When a Trait Switches script. */
-    const onSwitch = (code: string): Partial<Trait> => ({ scripts: [{ id: 'sw', timing: 'switch', code }] });
-    const calm = plus('calm', 'Calm', 10);
+    const plus = (id: string, name: string, value: number): Trait =>
+      ({ id, name, playerToggle: true, statChanges: [{ statId: 'vigor', type: 'starting', value }] });
 
-    async function openRally({ bold = plus('bold', 'Bold', 5), keen = plus('keen', 'Keen', 2), extra = [] as Trait[] } = {}) {
-      renderGameViewer({ ...harborWorld({ stats: [vigor] }), traits: [rally, bold, calm, keen, ...extra] }, { inGameplay: <Probe /> });
+    async function openRally() {
+      const traits = [rally, plus('bold', 'Bold', 5), plus('calm', 'Calm', 10), plus('keen', 'Keen', 2)];
+      renderGameViewer({ ...harborWorld({ stats: [vigor] }), traits }, { inGameplay: <Probe /> });
       await screen.findByPlaceholderText(/Type your action/);
       await clickBrave();
       await screen.findByRole('group', { name: 'Rally?' });
     }
 
-    it('lands the run’s own switches and keeps a toggle the player made meanwhile', async () => {
+    it('locks the panel actions and undo until the player answers (Q43)', async () => {
       await openRally();
-      await clickTrait('Keen');
-      await waitFor(() => expect(vigorNow()).toBe(52));
+      const tray = screen.getByRole('region', { name: 'Since Last Turn' });
+      expect(within(tray).getByRole('button', { name: 'Undo' })).toBeDisabled();
+      expect(screen.getByRole('checkbox', { name: /Keen/ })).toBeDisabled();
 
       fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
-      await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave', 'calm', 'keen']));
-      expect(vigorNow()).toBe(67);
-    });
-
-    it('lets the player’s toggle win a trait the run also switched, stat changes included', async () => {
-      await openRally();
-      await clickTrait('Calm');
-      await waitFor(() => expect(vigorNow()).toBe(60));
-      await clickTrait('Calm');
-      await waitFor(() => expect(vigorNow()).toBe(50));
-
-      fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
-      await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave']));
-      expect(vigorNow()).toBe(55);
-      // The run's own switch writes its line; its dropped switch of Calm writes none.
-      expect(logLines.filter((line) => line.includes('(by '))).toEqual(['Acquired trait: Bold (by Brave)']);
-    });
-
-    it('lands a nested run’s switches, and a run the player’s toggle fired, each on its own', async () => {
-      // Bold's own switch-on, nested in Brave's run, switches Lucky on; Keen's, fired by the player, switches Sharp on.
-      await openRally({
-        bold: plus('bold', 'Bold', 5, onSwitch('if (trait.enabled) traits.Lucky.enabled = true;')),
-        keen: plus('keen', 'Keen', 2, onSwitch('if (trait.enabled) traits.Sharp.enabled = true;')),
-        extra: [plus('lucky', 'Lucky', 3), plus('sharp', 'Sharp', 20)],
-      });
-      await clickTrait('Keen');
-      await waitFor(() => expect(traitsOn).toEqual(['brave', 'keen', 'sharp']));
-
-      fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
-      await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave', 'calm', 'keen', 'lucky', 'sharp']));
-      expect(vigorNow()).toBe(90);
+      await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave', 'calm']));
+      await waitFor(() => expect(within(tray).getByRole('button', { name: 'Undo' })).toBeEnabled());
+      expect(screen.getByRole('checkbox', { name: /Keen/ })).toBeEnabled();
     });
   });
 
@@ -192,37 +166,6 @@ describe('When a Trait Switches in play', () => {
       await waitFor(() => expect(pinned()).toEqual(['Brave is sworn.']));
       expect(traitsOn).toEqual([]);
       expect(notes[0].id).toContain(latestTurn()?.turnId);
-      expect(latestTurn()?.codeMemory).toEqual(['Brave stood up.']);
-      expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
-    });
-
-    it('land on the turn once it ends, for a toggle while the turn runs', async () => {
-      renderGameViewer(notingWorld(), { inGameplay: <Probe /> });
-      await playTurn();
-      // The second turn's narration waits until the toggle has run.
-      let release = () => {};
-      const held = new Promise<void>((resolve) => { release = resolve; });
-      const answer = vi.fn(async (_url: string, init?: RequestInit) => {
-        if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-        const system = (JSON.parse(init.body as string) as { messages: { role: string; content: string }[] }).messages
-          .find((m) => m.role === 'system')?.content ?? '';
-        if (system.includes('stat tracker')) return sseResponse(sseReply('No changes'));
-        if (system.includes('player choice writer')) return sseResponse(sseReply('1. Wait\n2. Go'));
-        await held;
-        return sseResponse(sseReply('The ferry docks.'));
-      });
-      vi.stubGlobal('fetch', answer);
-      fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: 'I wait.' } });
-      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-      await waitFor(() => expect(history.filter((m) => m.role === 'user')).toHaveLength(2));
-      await clickBrave();
-      await waitFor(() => expect(traitsOn).toEqual(['brave']));
-      release();
-      await waitFor(() => expect(pinned()).toEqual(['Brave is sworn.']));
-      const turns = history.filter((m) => m.role === 'assistant');
-      expect(turns).toHaveLength(2);
-      expect(notes[0].id).toContain(latestTurn()?.turnId);
-      expect(latestTurn()?.narration).toContain('The ferry docks.');
       expect(latestTurn()?.codeMemory).toEqual(['Brave stood up.']);
       expect(latestTurn()?.codeDiaries).toEqual({ Mira: ['He stood up.'] });
     });

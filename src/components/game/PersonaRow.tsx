@@ -21,7 +21,11 @@ import type { PersonaRef } from '@/types';
 
 /** The player's persona in the side panel: portrait, name, and a Change control that opens the picker.
  *  `onChange` runs after the persona changes, with the new persona's name, or null for None. */
-export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: string | null) => void }) {
+export function PersonaRow({ onChange, disabled = false }: {
+  onChange: (ref: PersonaRef, name: string | null) => void;
+  /** Off while a turn or an earlier action's scripts run. */
+  disabled?: boolean;
+}) {
   const { personaRef, setPersonaRef, discoveredEntities } = useGameplay();
   const { worldId, worldOverview } = useGameData();
   const { persona, entities: cast, worldPersonas, customPersona, resolveEntityText } = useResolvedWorld();
@@ -81,7 +85,7 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
           ? <><span className="min-w-0 truncate">{persona.entity.name}</span><YouMark /></>
           : <span className="truncate text-muted-foreground">None</span>}
       </span>
-      <Button variant="outline" size="sm" className="shrink-0" onClick={() => showPicker(true)}>Change</Button>
+      <Button variant="outline" size="sm" className="shrink-0" disabled={disabled} onClick={() => showPicker(true)}>Change</Button>
       <Dialog open={open} onOpenChange={showPicker}>
         <DialogContent surface="persona" className="flex h-[90dvh] w-[95vw] max-w-none flex-col sm:w-[47.5vw]">
           <DialogHeader className="shrink-0 text-left">
@@ -100,7 +104,7 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
           </ScrollArea>
           <DialogFooter className="shrink-0">
             <Button variant="ghost" onClick={() => showPicker(false)}>Cancel</Button>
-            <Button onClick={apply} disabled={samePersonaRef(choice, current)}>Change</Button>
+            <Button onClick={apply} disabled={disabled || samePersonaRef(choice, current)}>Change</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
