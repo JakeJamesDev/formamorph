@@ -62,6 +62,7 @@ When the player sends, the shown entries ride along with the action, and the lis
 - **Q40** Every entry's snapshot is one shape holding the GameState and the persona reference. Ticket 04 owns it; 05 builds on it and 06 serializes it.
 - **Q41** Entity-owned trait toggles the player can switch are listed too. The owner is in the facts; reversal needs the same trait, the same owner and the opposite switch.
 - **Q42** Travel means the Location map modal only. The starting location, turn moves, script moves and the AI's "Move to X?" are not listed. Travel, trait and persona entries never collapse.
+- **Q43** (user ruling) A switch script's run counts as a panel run: every listed action and undo wait until it finishes, including while a `player.confirm` prompt waits on the player. Toggling other traits while such a prompt is open is no longer possible, and the tests that pinned it go.
 - **Q36** Shared turn-input shape (ticket 02 owns it, 03 reuses it): the told entries, shown only, oldest first, each as its facts and count. A pure Action List helper writes the block text.
 
 ## User Stories
