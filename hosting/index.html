@@ -51,30 +51,66 @@
   .dl-row { display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center; }
   .dl-note { color:var(--dim); font-size:.85rem; }
 
-  /* Onion-skin gallery: a light stack under a dark stack the divider clips in from the right. */
-  .skin { position:relative; overflow:hidden; border-radius:12px; border:1px solid var(--line);
-    user-select:none; touch-action:none; aspect-ratio:16/9; background:#000; cursor:ew-resize; }
-  .skin img.lay { position:absolute; inset:0; width:100%; height:100%; display:block;
-    pointer-events:none; opacity:0; transition:opacity var(--fade,1.2s) ease; }
-  .skin img.lay.on { opacity:1; }
-  .skin .topwrap { position:absolute; inset:0; z-index:100; isolation:isolate;
-    clip-path:inset(0 0 0 var(--cut,50%)); pointer-events:none; }
-  .skin .bar { position:absolute; top:0; bottom:0; left:var(--cut,50%); width:2px; z-index:200;
-    background:var(--accent); box-shadow:0 0 12px #000c; }
-  .skin .knob { position:absolute; top:50%; left:var(--cut,50%); transform:translate(-50%,-50%); z-index:200;
-    background:var(--accent); color:var(--accent-ink); border-radius:999px; padding:.25em .6em;
-    font-size:.75rem; font-weight:700; white-space:nowrap; }
-  .skin .tag { position:absolute; bottom:.6rem; z-index:200; font-size:.7rem; font-weight:700;
-    letter-spacing:.08em; text-transform:uppercase; padding:.25em .7em; border-radius:999px;
-    background:#000a; color:#fff; }
-  .skin .tag.l { left:.6rem; } .skin .tag.r { right:.6rem; }
+  .grad-text { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
 
-  .thumbs { display:flex; gap:.5rem; margin-top:.8rem; flex-wrap:wrap; justify-content:center; }
-  .thumbs button { border:2px solid transparent; border-radius:8px; padding:0; background:none;
-    cursor:pointer; color:inherit; font:inherit; }
-  .thumbs button[aria-pressed="true"] { border-color:var(--accent); }
-  .thumbs img { width:clamp(96px,28vw,148px); aspect-ratio:16/9; display:block; border-radius:6px; }
-  .thumbs .lbl { color:var(--dim); font-size:.72rem; padding:.2em 0 .4em; }
+  /* Feature tour: steps scroll past one sticky screenshot. */
+  .tour { max-width:1180px; display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);
+    column-gap:3rem; padding-top:5rem; }
+  .tour h2 { font-size:clamp(1.7rem,4vw,2.4rem); letter-spacing:-.02em; grid-column:1/-1; }
+  .tour .steps { display:flex; flex-direction:column; }
+  .tour .step { min-height:62vh; display:flex; flex-direction:column; justify-content:center; padding:1rem 0;
+    opacity:.35; transition:opacity .4s; }
+  .tour .step.cur { opacity:1; }
+  .tour .kick { font-size:.75rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; align-self:flex-start; }
+  .tour h3 { font-size:1.45rem; margin:.3rem 0 .5rem; }
+  .tour .step p { color:var(--dim); }
+  /* Centered on the viewport, beside the current step; the frame is about 27rem tall at full width. */
+  .tour .pin { position:sticky; top:max(1rem,calc(50vh - 13.5rem)); align-self:start; }
+
+  .frame { position:relative; aspect-ratio:16/9; border-radius:12px; overflow:hidden; border:1px solid var(--edge);
+    background:#000; box-shadow:0 24px 60px var(--surface-shadow); touch-action:pan-y; cursor:ew-resize; user-select:none; }
+  .frame[data-step="inventory"] { cursor:default; }
+  .frame img { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
+  .frame .over { position:absolute; inset:0; clip-path:inset(0 0 0 var(--cut,100%)); pointer-events:none; }
+  .frame .bar { position:absolute; top:0; bottom:0; left:var(--cut,100%); width:3px; margin-left:-1.5px;
+    background:var(--grad); box-shadow:0 0 16px var(--g2); pointer-events:none; }
+  .frame .bar.hide { opacity:0; }
+
+  .hot { position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; border:0; padding:0;
+    background:var(--grad); cursor:pointer; z-index:5; box-shadow:0 0 0 3px #fff9, 0 2px 8px #0008; }
+  .hot::after { content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--g2);
+    animation:tour-ping 2s ease-out infinite; }
+  @keyframes tour-ping { from { transform:scale(.6); opacity:1; } to { transform:scale(1.6); opacity:0; } }
+  .tip { position:absolute; z-index:6; max-width:220px; padding:.5rem .7rem; border-radius:8px; background:#0d0f12ee;
+    color:#fff; font-size:.8rem; line-height:1.35; pointer-events:none; transform:translate(-50%,calc(-100% - 18px));
+    opacity:0; transition:opacity .2s; }
+  .tip.below { transform:translate(-50%,18px); }
+  .tip.show { opacity:1; }
+
+  .swatches { display:flex; align-items:center; gap:.5rem; margin-top:.9rem; flex-wrap:wrap; font-size:.8rem; color:var(--dim); }
+  .swatches button { width:26px; height:26px; border-radius:50%; border:2px solid var(--bg); cursor:pointer; padding:0;
+    box-shadow:0 0 0 1px var(--edge); }
+  .swatches button[aria-pressed="true"] { box-shadow:0 0 0 2px var(--accent); }
+  .swatches.off { visibility:hidden; }
+  .swatches .name { margin-left:.3rem; min-width:7em; }
+  .swatches .hint { margin-left:auto; }
+
+  .plat { max-width:1180px; display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; padding-top:2rem; }
+  .plat a { display:block; border:1px solid var(--line); border-radius:12px; padding:1.3rem; text-decoration:none; }
+  .plat a:hover { background:var(--lift); border-color:var(--edge); }
+  .plat b { display:block; margin-bottom:.3rem; }
+  .plat span { color:var(--dim); font-size:.92rem; }
+
+  @media (max-width:860px) {
+    .tour { grid-template-columns:1fr; }
+    .tour .pin { top:0; z-index:3; margin-top:1rem; padding:.5rem 0; background:var(--bg); grid-row:2; }
+    .tour .steps { grid-row:3; }
+    .tour .step { min-height:48vh; }
+    .swatches .hint { display:none; }
+    .hot { width:14px; height:14px; margin:-7px 0 0 -7px; box-shadow:0 0 0 2px #fff9; }
+    .hot::after { inset:-4px; }
+    .plat { grid-template-columns:1fr; }
+  }
 
   .session-notice { position:fixed; z-index:3; top:4.5rem; left:50%; transform:translateX(-50%);
     width:min(560px,calc(100% - 2rem)); padding:.85rem 1rem; border:1px solid var(--notice-border);
@@ -119,7 +155,8 @@
   .live.still * { transition:none !important; animation:none !important; }
 
   @media (prefers-reduced-motion: reduce) {
-    .skin img.lay { transition:none; }
+    .hot::after { animation:none; }
+    .tour .step, .tip { transition:none; }
   }
 </style>
 <link rel="preload" href="/site/fonts/baloo-2-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -162,7 +199,24 @@
     aria-label="An example turn: the player acts, the narrator replies, two stats change, and a map lands in the inventory"></div>
 </div>
 
-<section><div data-gallery></div></section>
+<section class="tour" data-tour aria-label="Feature tour">
+  <h2>Everything a Story Needs, <span class="grad-text">in One Place</span></h2>
+  <div class="steps" data-steps></div>
+  <div class="pin">
+    <div class="frame" data-frame>
+      <img data-base alt="" loading="lazy" decoding="async">
+      <div class="over"><img data-over alt="" loading="lazy" decoding="async"></div>
+      <div class="bar hide" data-bar></div>
+    </div>
+    <div class="swatches" data-swatches><span class="name" data-palname></span><span class="hint">Drag across the screenshot to compare themes</span></div>
+  </div>
+</section>
+
+<section class="plat" aria-label="Ways to play">
+  <a href="/play/"><b>In Your Browser</b><span>Nothing to install. Connect any OpenAI-compatible AI service and play.</span></a>
+  <a href="https://github.com/JakeJamesDev/formamorph/releases/latest"><b>On Your Desktop</b><span>Windows, Linux and macOS. A built-in engine runs AI models on your own computer, fully offline.</span></a>
+  <a href="https://github.com/JakeJamesDev/formamorph/wiki/Install-on-Android"><b>On Android</b><span>Play your worlds on Android. The guide shows how to install the app.</span></a>
+</section>
 
 <footer>
   <div class="dl-row" data-dl-buttons></div>
@@ -182,96 +236,8 @@
 <script src="/site/hero-turn.js"></script>
 <script src="/site/shots/hero/layout.js"></script>
 <script src="/site/hero.js"></script>
+<script src="/site/tour.js"></script>
 <script>
-const PALETTES = ['graphite', 'purple', 'forest', 'rose', 'monochrome'];
-const SCREENS = [
-  { id: '01-library', label: 'Library & Help' },
-  { id: '02-game', label: 'Play' },
-  { id: '03-world-details', label: 'World details' },
-  { id: '04-settings', label: 'Settings' },
-  { id: '05-avatar', label: 'Avatars' },];
-const FADE_MS = 1200;
-const HOLD_MS = 3500;
-const shot = (pal, theme, id) => `/site/shots/${pal}/${theme}/${id}.webp`;
-
-// One theme stack per side. The first palette of the first screen is eager; every other layer
-// waits, so a visitor who never scrolls to the gallery downloads two images instead of ten.
-function layers(theme, id, eager) {
-  return PALETTES.map((p, i) =>
-    `<img class="lay${i === 0 ? ' on' : ''}" alt="" src="${shot(p, theme, id)}"` +
-    (i === 0 && eager ? ' fetchpriority="high">' : ' loading="lazy" decoding="async">')).join('');
-}
-
-function makeSkin(id, eager) {
-  const el = document.createElement('div');
-  el.className = 'skin';
-  el.innerHTML =
-    layers('light', id, eager) +
-    `<div class="topwrap">${layers('dark', id, eager)}</div>` +
-    '<div class="bar"></div><div class="knob">&#9666; drag &#9656;</div>' +
-    '<span class="tag l">Light</span><span class="tag r">Dark</span>';
-
-  const move = (x) => {
-    const r = el.getBoundingClientRect();
-    el.style.setProperty('--cut', Math.max(2, Math.min(98, ((x - r.left) / r.width) * 100)) + '%');
-  };
-  el.addEventListener('pointerdown', (e) => { el.dragging = true; el.setPointerCapture(e.pointerId); move(e.clientX); });
-  el.addEventListener('pointermove', (e) => { if (e.buttons) move(e.clientX); });
-  el.addEventListener('pointerup', () => { el.dragging = false; });
-  el.addEventListener('lostpointercapture', () => { el.dragging = false; });
-
-  // Fade IN only: the covered layer stays fully opaque under the incoming one, so brightness never
-  // dips. A true cross-fade passes both layers through half opacity and reads as a desaturate.
-  let idx = 0;
-  let z = 10;
-  el.advance = () => {
-    const prev = idx;
-    idx = (idx + 1) % PALETTES.length;
-    for (const wrap of [el, el.querySelector('.topwrap')]) {
-      const imgs = wrap.querySelectorAll(':scope > img.lay');
-      imgs[idx].style.zIndex = ++z;
-      imgs[idx].classList.add('on');
-      // Release the covered layer only after the fade has fully landed.
-      setTimeout(() => { if (idx !== prev) imgs[prev].classList.remove('on'); }, FADE_MS + 200);
-    }
-  };
-  return el;
-}
-
-document.querySelectorAll('[data-gallery]').forEach((host) => {
-  const viewer = document.createElement('div');
-  const thumbs = document.createElement('div');
-  thumbs.className = 'thumbs';
-  // Rendered screens are kept, so switching back to one costs no second download.
-  const built = new Map();
-  let cur = SCREENS[0].id;
-
-  const render = () => {
-    if (!built.has(cur)) built.set(cur, makeSkin(cur, built.size === 0));
-    viewer.replaceChildren(built.get(cur));
-    thumbs.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === cur)));
-  };
-
-  for (const s of SCREENS) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.dataset.id = s.id;
-    b.innerHTML = `<img src="/site/shots/thumbs/${s.id}.webp" alt="" loading="lazy" decoding="async">` +
-      `<div class="lbl">${s.label}</div>`;
-    b.onclick = () => { cur = s.id; render(); };
-    thumbs.appendChild(b);
-  }
-  host.append(viewer, thumbs);
-  render();
-
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    setInterval(() => {
-      const el = built.get(cur);
-      if (el && !el.dragging) el.advance(); // two motions at once reads as flicker
-    }, HOLD_MS);
-  }
-});
-
 // Downloads resolve from the latest release. Any failure falls back to the releases page, so a
 // rate-limited visitor still gets a working button.
 const REPO = 'JakeJamesDev/formamorph';

@@ -1,6 +1,6 @@
 # 04: Feature Tour
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -17,13 +17,25 @@ The prototype (`.scratch/landing-v2/index.html`, untracked) is the reference bui
 
 ## Acceptance criteria
 
-- [ ] Scrolling each step to the middle of the viewport sets its screenshot; the Inventory step is second.
-- [ ] Every hotspot is reachable with Tab and shows its note on focus.
-- [ ] Dragging the wipe past the middle and releasing switches the palette; releasing before it restores the current one; swatches set the palette.
-- [ ] The automatic sweep stops under reduced motion and on the Inventory step.
-- [ ] Tour frames below the fold are not requested until the tour nears the viewport.
-- [ ] The onion-skin gallery, its slideshow and its thumbnail strip are gone; the landing suite's old gallery tests are replaced by tour tests.
-- [ ] At 375 wide the screenshot pins above the step text and the page has no horizontal scroll.
-- [ ] Frames: `.scratch/frames/tour-inventory-dark-1440.png`, `.scratch/frames/tour-play-light-1440.png`, `.scratch/frames/tour-mid-wipe-dark-1440.png` and `.scratch/frames/tour-dark-375.png`.
+- [x] Scrolling each step to the middle of the viewport sets its screenshot; the Inventory step is second. (`landing feature tour › scrolling each step to the middle sets its screenshot, Inventory second`, both projects)
+- [x] Every hotspot is reachable with Tab and shows its note on focus. (`every hotspot is reachable with Tab…`, all six steps; tap and hover tests too)
+- [x] Dragging the wipe past the middle and releasing switches the palette; releasing before it restores the current one; swatches set the palette. (`a drag past the middle keeps the next palette…`; `a swatch picked mid-sweep wins…`)
+- [x] The automatic sweep stops under reduced motion and on the Inventory step. (`reduced motion stops the sweep…`; `the sweep paints… and not on the Inventory step`, per-frame clip samples)
+- [x] Tour frames below the fold are not requested until the tour nears the viewport. (`tour frames are not requested until the tour nears the viewport`, both projects)
+- [x] The onion-skin gallery, its slideshow and its thumbnail strip are gone; the landing suite's old gallery tests are replaced by tour tests. (diff; thumbnails and their capture write removed per Q10)
+- [x] At 375 wide the screenshot pins above the step text and the page has no horizontal scroll. (`at 375 wide the screenshot pins above the step text`; `the page fits its viewport`)
+- [x] Frames: `.scratch/frames/tour-inventory-dark-1440.png`, `.scratch/frames/tour-play-light-1440.png`, `.scratch/frames/tour-mid-wipe-dark-1440.png` and `.scratch/frames/tour-dark-375.png`. (written by Playwright against the served page)
 
-For you: the sweep's rhythm and the hotspot notes' wording on each step.
+Each tour behavior test was proven to bite: nine mutants of `hosting/site/tour.js` each turned a test red.
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- For you: the sweep's rhythm and the hotspot notes' wording on each step.
+- Hotspot placement on the Inventory step: `.scratch/landing-showcase-04/frames/tour-inventory-dark-1440.png`. The positions came from the prototype's capture.
+- The step, card and tooltip copy, in a real browser at formamorph.ai's home page.

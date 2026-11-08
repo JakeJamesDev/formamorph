@@ -43,7 +43,6 @@ const VIEWPORT = { width: Number(arg('width', '1600')), height: Number(arg('heig
 if (!Object.values(VIEWPORT).every((size) => Number.isInteger(size) && size > 0)) throw new Error('Invalid capture viewport');
 // The side-panel labels and the complete turn must fit at the capture viewport.
 const WEBP_QUALITY = 0.86;
-const THUMB_WIDTH = 300;
 const OG = { width: 1200, height: 630, quality: 0.88 };
 
 const GALLERY = ['01-library', '02-game', '03-world-details', '04-settings', '05-avatar'];
@@ -172,7 +171,6 @@ const sweep = async (page, name, verify) => {
       if (pal === 'graphite' && scheme === 'dark') hero = png;
     }
   }
-  write(`${OUT}/shots/thumbs/${name}.webp`, await encode(hero, { width: THUMB_WIDTH }));
   console.log(VERIFY_ONLY ? 'verified:' : 'swept:', name);
   return hero;
 };

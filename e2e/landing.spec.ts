@@ -26,15 +26,11 @@ declare global {
  * The formamorph.ai landing page. It is static files served straight from `hosting/`, so it shares no
  * code with the app and none of its behavior is provable from a rendered tree:
  *
- *  - the onion-skin divider is a pointer drag against real element boxes,
- *  - the palette slideshow is a CSS opacity transition sampled while it runs,
+ *  - the tour follows real scroll position and the theme wipe is a pointer drag against real boxes,
+ *  - the automatic sweep is a clip sampled per frame while it runs,
  *  - `prefers-reduced-motion` has to actually reach the page,
  *  - the download buttons resolve against a network response that can fail.
  */
-
-const PALETTES = 5;
-const HOLD_MS = 3500;
-const FADE_MS = 1200;
 
 /** A release payload shaped like the GitHub API's, with one asset per platform. */
 const RELEASE = {
@@ -50,10 +46,6 @@ const API = 'https://api.github.com/repos/JakeJamesDev/formamorph/releases/lates
 const LATEST = 'https://github.com/JakeJamesDev/formamorph/releases/latest';
 /** The APK's name carries no version, so its link is the latest redirect rather than an API asset. */
 const APK = `${LATEST}/download/Formamorph-android.apk`;
-
-/** Opacity of every light-stack layer, in palette order. */
-const opacities = (page: Page) =>
-  page.$$eval('.skin > img.lay', (imgs) => imgs.map((i) => Number(getComputedStyle(i).opacity)));
 
 test.describe('site theme', () => {
   test('the landing page follows the held light preference without rewriting it', async ({ page }) => {
@@ -102,30 +94,18 @@ test.describe('site theme', () => {
 });
 
 test.describe('landing page', () => {
-  test('gallery renders both theme stacks with only the first palette showing', async ({ page }) => {
-    await page.goto(SITE_URL);
-    const skin = page.locator('.skin');
-    await expect(skin).toHaveCount(1);
-    await expect(skin.locator('> img.lay')).toHaveCount(PALETTES);
-    await expect(skin.locator('.topwrap > img.lay')).toHaveCount(PALETTES);
-    await expect(page.locator('.thumbs button')).toHaveCount(5);
-    expect(await opacities(page)).toEqual([1, 0, 0, 0, 0]);
-    // The images are real files, not placeholders: a broken src decodes to zero width.
-    const widths = await skin.locator('> img.lay').first()
-      .evaluate((i: HTMLImageElement) => [i.naturalWidth, i.naturalHeight]);
-    expect(widths[0]).toBeGreaterThan(600);
-    expect(widths[1]).toBeGreaterThan(300);
-  });
-
   test('every asset the page names is really served', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'the file set does not vary by viewport');
     await page.goto(SITE_URL);
+    // The tour names its frames once it nears the viewport.
+    await page.locator('[data-tour] h2').scrollIntoViewIfNeeded();
+    await expect(page.locator('[data-over]')).toHaveAttribute('src', /./);
     // Everything the page points at, including the paths only a link unfurler or a browser tab ever
     // fetches: the favicon, the hero's CSS background, and the social card. A typo in any of those is
     // invisible on screen, so nothing else in this file would see it.
     const urls = await page.evaluate(() => {
       const out = new Set<string>();
-      for (const img of document.querySelectorAll('img')) out.add(img.src);
+      for (const img of document.querySelectorAll('img')) if (img.getAttribute('src')) out.add(img.src);
       for (const l of document.querySelectorAll<HTMLLinkElement>('link[rel*="icon"]')) out.add(l.href);
       const bg = getComputedStyle(document.querySelector('.hero .bgimg')!).backgroundImage;
       const url = /url\("?(.+?)"?\)/.exec(bg);
@@ -137,71 +117,13 @@ test.describe('landing page', () => {
     });
     // The social tags carry the production origin; only the path is this repo's to get right.
     const local = urls.map((u) => u.replace('https://formamorph.ai', SITE_URL));
-    expect(local.length).toBeGreaterThanOrEqual(8);
+    // Three hero frames, the icon, the social card and the tour's two palette frames.
+    expect(local.length).toBeGreaterThanOrEqual(7);
     for (const url of local) {
       const res = await page.request.get(url);
       expect(res.status(), url).toBe(200);
       expect((await res.body()).length, url).toBeGreaterThan(0);
     }
-  });
-
-  test('a thumbnail switches the screen the gallery shows', async ({ page }) => {
-    await page.goto(SITE_URL);
-    await expect(page.locator('.skin > img.lay').first()).toHaveAttribute('src', /01-library/);
-    await page.locator('.thumbs button', { hasText: 'Avatars' }).click();
-    await expect(page.locator('.skin > img.lay').first()).toHaveAttribute('src', /05-avatar/);
-    await expect(page.locator('.skin .topwrap > img.lay').first()).toHaveAttribute('src', /dark.*05-avatar/);
-  });
-
-  test('the divider drags', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'the drag is proven once; touch uses the same handler');
-    await page.goto(SITE_URL);
-    const skin = page.locator('.skin');
-    await skin.scrollIntoViewIfNeeded();
-    const box = (await skin.boundingBox())!;
-    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.5, { steps: 5 });
-    await page.mouse.up();
-    const cut = Number((await skin.evaluate((el) => el.style.getPropertyValue('--cut'))).replace('%', ''));
-    expect(cut).toBeGreaterThan(70);
-    expect(cut).toBeLessThan(90);
-  });
-
-  test('the palette fade holds the outgoing layer opaque', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'the slideshow is viewport-independent');
-    await page.goto(SITE_URL);
-    await page.locator('.skin').scrollIntoViewIfNeeded();
-
-    // Sample across one tick and the fade that follows it. A true cross-fade would show the outgoing
-    // layer below 1 while the incoming one is still climbing, and that midpoint is the brightness dip
-    // the design rejected.
-    const trace = await page.evaluate(async (ms) => {
-      const read = () => [...document.querySelectorAll('.skin > img.lay')]
-        .map((i) => Number(getComputedStyle(i).opacity));
-      const out: number[][] = [];
-      const until = Date.now() + ms;
-      while (Date.now() < until) {
-        out.push(read());
-        await new Promise((r) => setTimeout(r, 60));
-      }
-      return out;
-    }, HOLD_MS + FADE_MS + 800);
-
-    const climbing = trace.filter((row) => row[1] > 0 && row[1] < 1);
-    expect(climbing.length).toBeGreaterThan(3); // the fade was actually observed running
-    for (const row of climbing) expect(row[0]).toBe(1); // and the outgoing layer never dipped
-    expect(trace[trace.length - 1][1]).toBe(1); // the incoming layer landed
-  });
-
-  test('reduced motion leaves the slideshow parked', async ({ browser }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'the media query is viewport-independent');
-    const context = await browser.newContext({ reducedMotion: 'reduce' });
-    const page = await context.newPage();
-    await page.goto(SITE_URL);
-    await page.waitForTimeout(HOLD_MS * 2 + FADE_MS);
-    expect(await opacities(page)).toEqual([1, 0, 0, 0, 0]);
-    await context.close();
   });
 
   test('download buttons resolve to the latest release assets', async ({ page }) => {
@@ -236,7 +158,7 @@ test.describe('landing page', () => {
   test('the page fits its viewport', async ({ page }) => {
     await page.goto(SITE_URL);
     // Both projects run this: the phone is what a shared link opens, and the desktop width is what
-    // the gallery's max-width was picked for.
+    // the tour's two columns were picked for.
     const overflow = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       client: document.documentElement.clientWidth,
@@ -244,7 +166,289 @@ test.describe('landing page', () => {
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
     await expect(page.getByRole('link', { name: /Play in your browser/ })).toBeVisible();
     await expect(page.locator('[data-live]')).toBeVisible();
-    await expect(page.locator('.skin')).toBeVisible();
+    await expect(page.locator('[data-frame]')).toBeVisible();
+  });
+});
+
+/**
+ * The feature tour: six steps scroll past one sticky screenshot. The current step is the one at the
+ * middle of the viewport, so every test scrolls a real page rather than calling into the script.
+ */
+test.describe('landing feature tour', () => {
+  const STEPS = ['02-game', 'inventory', '01-library', '03-world-details', '04-settings', '05-avatar'];
+  const SWEEP_EVERY_MS = 4200;
+  const TOUR_FRAME = /\/site\/shots\/(purple|graphite|forest|rose|monochrome)\/|inv-full/;
+
+  /** Scrolls so the step's center sits at the viewport's middle, then waits for the frame to follow. */
+  const centerStep = async (page: Page, id: string) => {
+    await page.evaluate((s) => {
+      const r = document.querySelector(`.step[data-step="${s}"]`)!.getBoundingClientRect();
+      window.scrollBy(0, r.top + r.height / 2 - innerHeight / 2);
+    }, id);
+    await expect(page.locator('[data-frame]')).toHaveAttribute('data-step', id);
+  };
+  /** The painted left edge of the next-palette layer, from its computed clip: `100%` when hidden. */
+  const cut = (page: Page) =>
+    page.locator('[data-frame] .over').evaluate((o) => /([^\s(]+%)\)$/.exec(getComputedStyle(o).clipPath)?.[1] ?? '');
+  const pressed = (page: Page) =>
+    page.locator('[data-swatches] button[aria-pressed="true"]').getAttribute('aria-label');
+
+  test('scrolling each step to the middle sets its screenshot, Inventory second', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto(SITE_URL);
+    await expect(page.locator('.step')).toHaveCount(6);
+    expect(await page.locator('.step').evaluateAll((n) => n.map((s) => (s as HTMLElement).dataset.step))).toEqual(STEPS);
+    for (const id of STEPS) {
+      await centerStep(page, id);
+      await expect(page.locator(`.step[data-step="${id}"]`)).toHaveClass(/\bcur\b/);
+      await expect(page.locator('.step.cur')).toHaveCount(1);
+      const want = id === 'inventory' ? '/site/shots/hero/dark/inv-full.webp' : `/site/shots/purple/dark/${id}.webp`;
+      await expect(page.locator('[data-base]')).toHaveAttribute('src', want);
+      // The frame really decodes: a broken src has no natural width.
+      await expect.poll(() => page.locator('[data-base]').evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(600);
+    }
+    // Scrolling back up returns the earlier screenshot.
+    await centerStep(page, '02-game');
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/purple/dark/02-game.webp');
+  });
+
+  test('every hotspot is reachable with Tab and shows its note on focus', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'focus order is viewport-independent');
+    await page.goto(SITE_URL);
+    for (const id of STEPS) {
+      await centerStep(page, id);
+      const hots = page.locator('[data-frame] .hot');
+      const count = await hots.count();
+      expect(count, id).toBeGreaterThanOrEqual(2);
+      expect(count, id).toBeLessThanOrEqual(4);
+      // Tab from a click on the step's own text walks the hotspots in order.
+      const title = (await page.locator(`.step[data-step="${id}"] h3`).boundingBox())!;
+      await page.mouse.click(title.x + 4, title.y + title.height / 2);
+      for (let i = 0; i < count; i++) {
+        await page.keyboard.press('Tab');
+        await expect(hots.nth(i)).toBeFocused();
+        const note = await hots.nth(i).getAttribute('aria-label');
+        const tips = page.locator('[data-frame] .tip');
+        await expect(tips.nth(i)).toHaveText(note!);
+        await expect.poll(() => tips.nth(i).evaluate((t) => getComputedStyle(t).opacity)).toBe('1');
+        for (let j = 0; j < count; j++) if (j !== i) await expect(tips.nth(j)).not.toHaveClass(/\bshow\b/);
+      }
+    }
+  });
+
+  test('a hovered hotspot shows its note', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'hover needs a mouse');
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    await page.locator('[data-frame] .hot').first().hover();
+    await expect(page.locator('[data-frame] .tip').first()).toHaveClass(/\bshow\b/);
+    await page.mouse.move(0, 0);
+    await expect(page.locator('[data-frame] .tip').first()).not.toHaveClass(/\bshow\b/);
+  });
+
+  test('a drag past the middle keeps the next palette, short of it restores the current one, and swatches pick one', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the drag is proven once; touch uses the same handler');
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    const frame = page.locator('[data-frame]');
+    const box = (await frame.boundingBox())!;
+    const at = (pct: number) => box.x + box.width * pct;
+    const y = box.y + box.height * 0.5;
+    expect(await pressed(page)).toBe('Purple theme');
+
+    // Short of the middle: the preview shows, then the current palette comes back.
+    await page.mouse.move(at(0.95), y);
+    await page.mouse.down();
+    await page.mouse.move(at(0.7), y, { steps: 5 });
+    expect(parseFloat(await cut(page))).toBeCloseTo(70, 0);
+    await expect(page.locator('[data-over]')).toHaveAttribute('src', '/site/shots/graphite/dark/02-game.webp');
+    await expect(page.locator('[data-bar]')).not.toHaveClass(/\bhide\b/);
+    await page.mouse.up();
+    expect(await cut(page)).toBe('100%');
+    expect(await pressed(page)).toBe('Purple theme');
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/purple/dark/02-game.webp');
+
+    // Past the middle: the next palette stays.
+    await page.mouse.move(at(0.95), y);
+    await page.mouse.down();
+    await page.mouse.move(at(0.3), y, { steps: 5 });
+    await page.mouse.up();
+    expect(await pressed(page)).toBe('Graphite theme');
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/graphite/dark/02-game.webp');
+    expect(await cut(page)).toBe('100%');
+
+    await page.getByRole('button', { name: 'Rose theme' }).click();
+    expect(await pressed(page)).toBe('Rose theme');
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', '/site/shots/rose/dark/02-game.webp');
+    await expect(page.locator('[data-palname]')).toHaveText('Rose');
+  });
+
+  test('the sweep paints the next palette across on its own, and not on the Inventory step', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the sweep is viewport-independent');
+    test.setTimeout(40_000);
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    await page.mouse.move(0, 0);
+    // One clip reading per frame, until the palette changes or two sweep periods pass.
+    const trace = await page.evaluate((ms) => new Promise<{ cut: string; pal: string | null }[]>((done) => {
+      const over = document.querySelector('[data-frame] .over')!;
+      const clip = () => /([^\s(]+%)\)$/.exec(getComputedStyle(over).clipPath)?.[1] ?? '';
+      const pal = () => document.querySelector('[data-swatches] [aria-pressed="true"]')!.getAttribute('aria-label');
+      const first = pal();
+      const rows: { cut: string; pal: string | null }[] = [];
+      const t0 = performance.now();
+      const tick = () => {
+        rows.push({ cut: clip(), pal: pal() });
+        if (pal() !== first || performance.now() - t0 > ms) done(rows); else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }), SWEEP_EVERY_MS * 2 + 2000);
+    const mid = trace.map((r) => parseFloat(r.cut)).filter((c) => c > 2 && c < 98);
+    expect(mid.length, 'frames caught mid-sweep').toBeGreaterThan(10);
+    for (let i = 1; i < mid.length; i++) expect(mid[i]).toBeLessThanOrEqual(mid[i - 1]);
+    expect(trace[trace.length - 1].pal).toBe('Graphite theme');
+
+    await centerStep(page, 'inventory');
+    await expect(page.locator('[data-swatches]')).toHaveCSS('visibility', 'hidden');
+    await expect(page.locator('[data-over]')).not.toHaveAttribute('src', /./);
+    const frame = (await page.locator('[data-frame]').boundingBox())!;
+    await page.mouse.move(frame.x + frame.width * 0.95, frame.y + 20);
+    await page.mouse.down();
+    await page.mouse.move(frame.x + frame.width * 0.2, frame.y + 20, { steps: 4 });
+    await page.mouse.up();
+    await page.mouse.move(0, 0);
+    // Every clip and bar reading across two sweep periods: the wipe never moves on this step.
+    const still = await page.evaluate((ms) => new Promise<string[]>((done) => {
+      const over = document.querySelector('[data-frame] .over')!;
+      const bar = document.querySelector('[data-bar]')!;
+      const seen = new Set<string>();
+      const t0 = performance.now();
+      const tick = () => {
+        seen.add(`${/([^\s(]+%)\)$/.exec(getComputedStyle(over).clipPath)?.[1]} ${getComputedStyle(bar).opacity}`);
+        if (performance.now() - t0 > ms) done([...seen]); else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }), SWEEP_EVERY_MS * 2);
+    expect(still).toEqual(['100% 0']);
+    await expect(page.locator('[data-base]')).toHaveAttribute('src', /inv-full\.webp$/);
+  });
+
+  test('reduced motion stops the sweep and the hotspot pulse', async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the media query is viewport-independent');
+    test.setTimeout(40_000);
+    const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1280, height: 860 } });
+    const page = await context.newPage();
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(SWEEP_EVERY_MS * 2 + 500);
+    expect(await pressed(page)).toBe('Purple theme');
+    expect(await cut(page)).toBe('100%');
+    expect(await page.locator('[data-frame] .hot').first().evaluate((h) => getComputedStyle(h, '::after').animationName)).toBe('none');
+    await context.close();
+  });
+
+  test('tour frames are not requested until the tour nears the viewport', async ({ page }) => {
+    const seen: string[] = [];
+    page.on('request', (r) => { if (TOUR_FRAME.test(r.url())) seen.push(r.url()); });
+    await page.goto(SITE_URL);
+    await page.waitForLoadState('networkidle');
+    expect(seen).toEqual([]);
+    await page.locator('[data-tour] h2').scrollIntoViewIfNeeded();
+    await expect.poll(() => seen.length).toBeGreaterThan(0);
+  });
+
+  test('at 375 wide the screenshot pins above the step text', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the narrow layout');
+    await page.goto(SITE_URL);
+    for (const id of ['02-game', '03-world-details']) {
+      await centerStep(page, id);
+      const pin = (await page.locator('.tour .pin').boundingBox())!;
+      const text = (await page.locator(`.step[data-step="${id}"] h3`).boundingBox())!;
+      expect(pin.y, `${id} pin at the top`).toBeLessThanOrEqual(1);
+      expect(pin.y + pin.height, `${id} pin above its text`).toBeLessThanOrEqual(text.y);
+      expect(pin.width).toBeLessThanOrEqual(375);
+    }
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  /** Waits until the automatic sweep has painted part of the next palette across. */
+  const midSweep = async (page: Page) => {
+    await page.mouse.move(0, 0);
+    await expect.poll(async () => parseFloat(await cut(page)), { timeout: SWEEP_EVERY_MS * 2 + 2000, intervals: [30] })
+      .toBeLessThan(90);
+  };
+
+  test('a swatch picked mid-sweep wins, and the sweep rests a full period after it', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the sweep is viewport-independent');
+    test.setTimeout(40_000);
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    await midSweep(page);
+    const picked = Date.now();
+    await page.getByRole('button', { name: 'Rose theme' }).click();
+    // Sample until the next palette change, or one period plus the sweep length.
+    const trace: { at: number; pal: string | null; cut: string }[] = [];
+    while (Date.now() - picked < SWEEP_EVERY_MS + 1600) {
+      trace.push({ at: Date.now() - picked, pal: await pressed(page), cut: await cut(page) });
+      if (trace[trace.length - 1].pal !== 'Rose theme') break;
+      await page.waitForTimeout(40);
+    }
+    expect(trace[0].pal).toBe('Rose theme');
+    expect(trace[0].cut).toBe('100%');
+    // No paint across until a full period has passed since the pick.
+    for (const r of trace.filter((x) => x.at < SWEEP_EVERY_MS - 200)) expect(r, `at ${r.at} ms`).toEqual(expect.objectContaining({ pal: 'Rose theme', cut: '100%' }));
+  });
+
+  test('hovering the frame mid-sweep stops it and restores the current palette', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'hover needs a mouse');
+    test.setTimeout(40_000);
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    await midSweep(page);
+    const box = (await page.locator('[data-frame]').boundingBox())!;
+    await page.mouse.move(box.x + 6, box.y + box.height - 6);
+    await expect.poll(() => cut(page)).toBe('100%');
+    await page.waitForTimeout(SWEEP_EVERY_MS + 500);
+    expect(await pressed(page)).toBe('Purple theme');
+    expect(await cut(page)).toBe('100%');
+  });
+
+  test('a focused hotspot keeps focus in the frame when the step changes under it', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'focus is viewport-independent');
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    await page.locator('[data-frame] .hot').first().focus();
+    await centerStep(page, 'inventory');
+    await expect(page.locator('[data-frame] .hot').first()).toBeFocused();
+    await expect(page.locator('[data-frame] .hot').first()).toHaveAttribute('aria-label', 'New items arrive as the story gives them');
+  });
+
+  test('a tap on a hotspot shows its note', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the touch project');
+    await page.goto(SITE_URL);
+    await centerStep(page, '02-game');
+    // Block focus, as iOS Safari does on a tap, so only the tap itself can show the note.
+    await page.locator('[data-frame] .hot').evaluateAll((hots) => {
+      for (const b of hots) b.addEventListener('focus', () => (b as HTMLElement).blur());
+    });
+    await page.locator('[data-frame] .hot').nth(1).tap();
+    const tips = page.locator('[data-frame] .tip');
+    await expect.poll(() => tips.nth(1).evaluate((t) => getComputedStyle(t).opacity)).toBe('1');
+    await page.locator('[data-frame] .hot').first().tap();
+    await expect(tips.first()).toHaveClass(/\bshow\b/);
+    await expect(tips.nth(1)).not.toHaveClass(/\bshow\b/);
+  });
+
+  test('the platform cards link to the browser game, the latest release and the Android guide', async ({ page }) => {
+    await page.goto(SITE_URL);
+    const cards = page.locator('.plat a');
+    await expect(cards).toHaveCount(3);
+    await expect(cards.nth(0)).toHaveAttribute('href', '/play/');
+    await expect(cards.nth(1)).toHaveAttribute('href', LATEST);
+    await expect(cards.nth(2)).toHaveAttribute('href', 'https://github.com/JakeJamesDev/formamorph/wiki/Install-on-Android');
   });
 });
 
