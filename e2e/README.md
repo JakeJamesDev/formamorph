@@ -147,7 +147,8 @@ the shared Profile / Account Settings / Sign Out header at desktop and phone siz
 deletion notice, session/avatar sync, and site sign-out reaching open app and landing pages without reloads.
 
 > **The palette guard reads the landing page, not a copy.** It opens `hosting/index.html` on 5185, reads
-> `--bg` and `--accent` off it, and compares those to the computed ground and button fill on 5186. The
+> `--bg` and the solid violet `--accent` off it, and compares those to the computed ground and button fill
+> on 5186. A second check pins the gradient stops on the landing page, the privacy page and the header. The
 > tolerance is three channels, because the tokens the shadcn primitives read are whole-number HSL and
 > cannot land on an arbitrary hex. Putting the app's own dark background back turns it red.
 

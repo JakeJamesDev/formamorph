@@ -24,8 +24,11 @@
 <meta name="twitter:description" content="What Formamorph stores about you, why, for how long, and who else handles it.">
 <meta name="twitter:image" content="https://formamorph.ai/site/og.jpg">
 <style>
-  :root { color-scheme:light; --bg:#f7f8f6; --text:#18201a; --dim:#5f6a61; --accent:#3a7e41; --line:#d7ddd7; --lift:#0000000a; }
-  :root.dark { color-scheme:dark; --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f; --line:#2a2e35; --lift:#ffffff12; }
+  :root { color-scheme:light; --bg:#f7f8f6; --text:#18201a; --dim:#5f6a61; --accent:#7c3aed; --line:#d7ddd7; --lift:#0000000a;
+    --g1:#7c3aed; --g2:#c026d3; --g3:#e11d48; }
+  :root.dark { color-scheme:dark; --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#a78bfa; --line:#2a2e35; --lift:#ffffff12;
+    --g1:#a78bfa; --g2:#f0abfc; --g3:#fb7185; }
+  :root { --grad:linear-gradient(95deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%); }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--text); font:16px/1.65 system-ui,sans-serif;
     -webkit-text-size-adjust:100%; }
@@ -46,14 +49,17 @@
   footer { text-align:center; color:var(--dim); padding:3rem 1rem; border-top:1px solid var(--line); }
   footer a { color:inherit; }
 </style>
+<link rel="preload" href="/site/fonts/baloo-2-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/site-header.css">
 
 </head>
 <body>
 
 <div data-site-header>
-  <header class="fm-site-header"><div class="fm-header-inner">
-    <a class="fm-brand" href="/"><img src="/site/icon.png" width="32" height="32" alt=""><span>Formamorph</span></a>
+  <header class="fm-site-header">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="fm-goo-sm"><feGaussianBlur in="SourceGraphic" stdDeviation="0.7" result="b" /><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" result="g" /><feComposite in="SourceGraphic" in2="g" operator="atop" /></filter></svg>
+    <div class="fm-header-inner">
+    <a class="fm-brand" href="/" aria-label="Formamorph"><img src="/site/icon.png" width="32" height="32" alt=""><span class="fm-wordmark" aria-hidden="true">Forma<i><b>m</b><b>o</b><b>r</b><b>p</b><b>h</b></i></span></a>
     <nav class="fm-primary-nav" aria-label="Main navigation"><a href="/community">Community</a><a href="/feedback">Feedback</a></nav>
     <div class="fm-account"><a class="fm-sign-in" href="/login?next=/">Sign In</a></div>
   </div></header>

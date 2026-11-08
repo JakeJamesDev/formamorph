@@ -21,8 +21,8 @@
     --card-foreground: 135 14% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 135 14% 11%;
-    --primary: 126 37% 36%;
-    --primary-foreground: 120 20% 98%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 120 10% 92%;
     --secondary-foreground: 135 14% 11%;
     --muted: 120 10% 92%;
@@ -41,7 +41,7 @@
     --overlay: 0 0% 0%;
     --border: 120 10% 85%;
     --input: 120 10% 85%;
-    --ring: 126 37% 36%;
+    --ring: 262.1 83.3% 57.8%;
     --radius: 0.625rem;
     /* Supporter Flair tier colors. Same values as the app's index.css, which tests their contrast. */
     --supporter: 318 75% 30%;
@@ -57,8 +57,8 @@
     --card-foreground: 216 12% 92%;
     --popover: 216 15% 9%;
     --popover-foreground: 216 12% 92%;
-    --primary: 124 39% 62%;
-    --primary-foreground: 129 23% 6%;
+    --primary: 255.1 91.7% 76.3%;
+    --primary-foreground: 268.6 39.6% 10.4%;
     --secondary: 216 14% 14%;
     --secondary-foreground: 216 12% 92%;
     --muted: 216 14% 14%;
@@ -77,7 +77,7 @@
     --overlay: 0 0% 0%;
     --border: 218 12% 19%;
     --input: 218 12% 19%;
-    --ring: 124 39% 62%;
+    --ring: 255.1 91.7% 76.3%;
     --supporter: 318 75% 85%;
     --supporter-plus: 268 85% 87%;
     --supporter-top: 45 90% 78%;

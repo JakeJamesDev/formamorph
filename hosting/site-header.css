@@ -1,6 +1,12 @@
 /* Shared by every website entry, independent of Tailwind's reset. */
-:root { --fm-panel:#fff; --fm-raised:#eef1ed; --fm-text:#202622; --fm-muted:#667068; --fm-line:#d9ded8; --fm-accent:#3a7e41; }
-:root.dark { --fm-panel:#202326; --fm-raised:#272b2e; --fm-text:#e5e7e9; --fm-muted:#a4a9ae; --fm-line:#363b40; --fm-accent:#89c98d; }
+/* Baloo 2 is the title card's face, hosted here so the site makes no font-host request. */
+@font-face { font-family:'Baloo 2'; font-style:normal; font-weight:400 800; font-display:swap;
+  src:url(/site/fonts/baloo-2-latin-wght-normal.woff2) format('woff2'); }
+:root { --fm-panel:#fff; --fm-raised:#eef1ed; --fm-text:#202622; --fm-muted:#667068; --fm-line:#d9ded8;
+  --fm-g1:#7c3aed; --fm-g2:#c026d3; --fm-g3:#e11d48; --fm-accent:#7c3aed; }
+:root.dark { --fm-panel:#202326; --fm-raised:#272b2e; --fm-text:#e5e7e9; --fm-muted:#a4a9ae; --fm-line:#363b40;
+  --fm-g1:#a78bfa; --fm-g2:#f0abfc; --fm-g3:#fb7185; --fm-accent:#a78bfa; }
+:root { --fm-grad:linear-gradient(95deg,var(--fm-g1) 0%,var(--fm-g2) 55%,var(--fm-g3) 100%); }
 .fm-site-header, .fm-account-menu { color:var(--fm-text); font:400 14px/1.5 system-ui,sans-serif; text-align:left; }
 .fm-site-header *, .fm-account-menu * { box-sizing:border-box; }
 .fm-site-header a, .fm-account-menu a { color:inherit; text-decoration:none; }
@@ -9,13 +15,20 @@
 .fm-header-inner { height:100%; display:flex; align-items:center; gap:32px; padding:0 28px; }
 .fm-brand { display:flex; align-items:center; gap:10px; flex-shrink:0; font-size:18px; font-weight:650; letter-spacing:-.4px; }
 .fm-brand img { display:block; width:32px; height:32px; border-radius:8px; }
+/* The title card's wordmark: "Forma" plain, "morph" in the gradient, each letter heavier than the last. */
+.fm-wordmark { font-family:'Baloo 2',system-ui,sans-serif; font-size:26px; font-weight:500; letter-spacing:-.06em;
+  line-height:.9; padding-top:.2em; white-space:nowrap; filter:url(#fm-goo-sm); }
+.fm-wordmark i { font-style:normal; color:var(--fm-accent); background:var(--fm-grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.fm-wordmark b { font-weight:500; }
+.fm-wordmark b:nth-child(2) { font-weight:575; } .fm-wordmark b:nth-child(3) { font-weight:650; }
+.fm-wordmark b:nth-child(4) { font-weight:725; } .fm-wordmark b:nth-child(5) { font-weight:800; }
 .fm-primary-nav { border-left:1px solid var(--fm-line); padding-left:28px; height:32px; display:flex; gap:26px; }
 .fm-primary-nav a { display:flex; align-items:center; position:relative; font-size:15px; font-weight:550; color:var(--fm-muted); white-space:nowrap; }
 .fm-primary-nav a::after { content:''; position:absolute; left:0; right:0; bottom:-16px; height:2px; background:transparent; }
 .fm-primary-nav a:hover { color:var(--fm-text); }
 .fm-primary-nav a:hover::after { background:var(--fm-muted); }
 .fm-primary-nav a[aria-current=page] { color:var(--fm-text); }
-.fm-primary-nav a[aria-current=page]::after { background:var(--fm-accent); }
+.fm-primary-nav a[aria-current=page]::after { background:var(--fm-accent); background:var(--fm-grad); }
 .fm-account { margin-left:auto; flex-shrink:0; }
 .fm-avatar-button { display:flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; border:1px solid var(--fm-line); border-radius:50%; background:var(--fm-raised); }
 .fm-avatar-button .fm-site-avatar { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:34px; height:34px; border-radius:50%; object-fit:cover; font-size:14px; font-weight:600; line-height:1; color:white; }
@@ -39,7 +52,7 @@
   .fm-brand { font-size:16px; gap:8px; }
   .fm-brand img { width:27px; height:27px; }
   /* The icon alone on a phone, so both nav links and the account control fit; the name stays for screen readers. */
-  .fm-brand span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .fm-brand > span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   .fm-primary-nav { border:0; padding:0; }
   .fm-primary-nav a { font-size:14px; }
   .fm-sign-in { gap:4px; font-size:13px; }

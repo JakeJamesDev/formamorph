@@ -65,6 +65,78 @@ test.describe('site pages', () => {
     }
   });
 
+  for (const [scheme, stops, solid] of [
+    ['light', ['#7c3aed', '#c026d3', '#e11d48'], '#7c3aed'],
+    ['dark', ['#a78bfa', '#f0abfc', '#fb7185'], '#a78bfa'],
+  ] as const) {
+    test(`the ${scheme} landing, privacy and header tokens carry the gradient stops`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.addInitScript(() => localStorage.setItem('vite-ui-theme', 'system'));
+      for (const path of ['/', '/privacy']) {
+        await page.goto(`${SITE_URL}${path}`);
+        const tokens = await page.evaluate(() => {
+          const style = getComputedStyle(document.documentElement);
+          const read = (name: string) => style.getPropertyValue(name).trim().toLowerCase();
+          return {
+            page: [read('--g1'), read('--g2'), read('--g3'), read('--accent')],
+            header: [read('--fm-g1'), read('--fm-g2'), read('--fm-g3'), read('--fm-accent')],
+          };
+        });
+        expect(tokens.page, path).toEqual([...stops, solid]);
+        expect(tokens.header, path).toEqual([...stops, solid]);
+      }
+      // White ink on the light gradient button, dark ink on the dark one.
+      await page.goto(SITE_URL);
+      const play = await page.locator('.btn-play').evaluate((node) => ({
+        color: getComputedStyle(node).color, image: getComputedStyle(node).backgroundImage }));
+      expect(play.image).toContain('linear-gradient');
+      expect(play.color).toBe(scheme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(26, 16, 37)');
+    });
+  }
+
+  test('the wordmark splits plain Forma from a heavier-by-letter gradient morph', async ({ page }) => {
+    const hosts = new Set<string>();
+    page.on('request', (request) => hosts.add(new URL(request.url()).hostname));
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.addInitScript(() => localStorage.setItem('vite-ui-theme', 'system'));
+    await page.goto(SITE_URL);
+    await page.evaluate(() => document.fonts.ready);
+
+    const marks = await page.evaluate(() => {
+      const read = (root: Element) => {
+        const morph = root.querySelector('i')!;
+        const style = getComputedStyle(root);
+        const morphStyle = getComputedStyle(morph);
+        return {
+          font: style.fontFamily,
+          filter: style.filter,
+          formaColor: style.color,
+          bodyColor: getComputedStyle(root.closest('.fm-site-header') ?? document.body).color,
+          weights: [...morph.querySelectorAll('b')].map((letter) => getComputedStyle(letter).fontWeight),
+          formaWeight: style.fontWeight,
+          gradient: morphStyle.backgroundImage,
+          clip: morphStyle.backgroundClip,
+        };
+      };
+      return { hero: read(document.querySelector('h1.fm-wordmark')!), header: read(document.querySelector('.fm-brand .fm-wordmark')!),
+        fontLoaded: document.fonts.check("500 20px 'Baloo 2'") };
+    });
+
+    for (const mark of [marks.hero, marks.header]) {
+      expect(mark.font).toContain('Baloo 2');
+      expect(mark.formaColor).toBe(mark.bodyColor);
+      expect(mark.formaWeight).toBe('500');
+      expect(mark.weights).toEqual(['500', '575', '650', '725', '800']);
+      expect(mark.gradient).toContain('linear-gradient');
+      expect(mark.clip).toBe('text');
+    }
+    // The header mark rounds less than the hero mark, so it stays sharp at its size.
+    expect(marks.hero.filter).toContain('#fm-goo"');
+    expect(marks.header.filter).toContain('#fm-goo-sm"');
+    expect(marks.fontLoaded).toBe(true);
+    expect([...hosts].filter((host) => /googleapis|gstatic|typekit|fonts\./i.test(host))).toEqual([]);
+  });
+
   test('the login page lays out inside the viewport', async ({ page }) => {
     await page.goto(`${PAGES_URL}/login`);
 

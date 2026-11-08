@@ -1,6 +1,6 @@
 # 01: Accent and Wordmark
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -15,11 +15,20 @@ The spec's Implementation Decisions hold the color stops, the weights, the filte
 
 ## Acceptance criteria
 
-- [ ] The landing page, the privacy page and the shared site header declare the gradient and solid accent tokens for light and dark, with the stops the spec names; no green accent remains on any site page.
-- [ ] The hero and header wordmarks render "Forma" in the text color and "morph" in the gradient, with letter weights 500, 575, 650, 725, 800; the header mark uses its own lighter filter and stays sharp.
-- [ ] Baloo 2 loads from the site's own files; the page makes no request to a font host.
-- [ ] The account and community pages' primary color matches the landing page's accent in both themes; the site-pages palette guard proves it.
-- [ ] Frames: `.scratch/frames/accent-landing-dark.png`, `.scratch/frames/accent-landing-light.png` (1440 wide) and `.scratch/frames/accent-account-dark.png` (1440 wide) show the hero wordmark, the Play button and an account page.
-- [ ] Docs the change makes stale are updated (the e2e README's palette guard note).
+- [x] The landing page, the privacy page and the shared site header declare the gradient and solid accent tokens for light and dark, with the stops the spec names; no green accent remains on any site page. (site-pages tests "the light/dark landing, privacy and header tokens carry the gradient stops"; grep of `hosting/` and `site/` for the old greens)
+- [x] The hero and header wordmarks render "Forma" in the text color and "morph" in the gradient, with letter weights 500, 575, 650, 725, 800; the header mark uses its own lighter filter and stays sharp. (test "the wordmark splits plain Forma from a heavier-by-letter gradient morph")
+- [x] Baloo 2 loads from the site's own files; the page makes no request to a font host. (same test: `document.fonts.check` and the request host list)
+- [x] The account and community pages' primary color matches the landing page's accent in both themes; the site-pages palette guard proves it. (existing guard tests, green; they read `--accent` off the landing page)
+- [x] Frames: `.scratch/frames/accent-landing-dark.png`, `.scratch/frames/accent-landing-light.png` (1440 wide) and `.scratch/frames/accent-account-dark.png` (1440 wide) show the hero wordmark, the Play button and an account page. (viewed)
+- [x] Docs the change makes stale are updated (the e2e README's palette guard note).
 
 For you: the wordmark next to the title card art at hero size, both themes.
+
+## Landed
+
+**Not verified**
+- The community pages' primary color has no frame or test of its own. It shares `site.css` with the sign-in page, which the guard covers.
+
+**For you**
+- The wordmark next to the title card art at hero size, both themes: `.scratch/landing-showcase-01/frames/accent-landing-dark.png`, `.scratch/landing-showcase-01/frames/accent-landing-light.png`.
+- The sign-in page with the violet controls: `.scratch/landing-showcase-01/frames/accent-account-dark.png`.

@@ -24,14 +24,17 @@
 <meta name="twitter:description" content="Create your own characters and locations, or play any of the hundreds the community has published. Runs in your browser or fully offline on your desktop, with any AI model you choose.">
 <meta name="twitter:image" content="https://formamorph.ai/site/og.jpg">
 <style>
-  :root { color-scheme:light; --bg:#f7f8f6; --text:#18201a; --dim:#5f6a61; --accent:#3a7e41;
+  :root { color-scheme:light; --bg:#f7f8f6; --text:#18201a; --dim:#5f6a61;
+    --g1:#7c3aed; --g2:#c026d3; --g3:#e11d48; --accent:#7c3aed;
     --accent-ink:#fff; --line:#d7ddd7; --edge:#b9c2b9; --lift:#0000000a;
-    --account-bg:#f7f8f6e8; --notice-bg:#eaf4eb; --notice-border:#3a7e4173;
+    --account-bg:#f7f8f6e8; --notice-bg:#f3eefd; --notice-border:#7c3aed73; --glow:#7c3aed22;
     --surface-shadow:#0000001f; --hero-opacity:.22; --hero-filter:blur(6px) saturate(.7); }
-  .dark { color-scheme:dark; --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f;
-    --accent-ink:#0c130d; --line:#2a2e35; --edge:#3a3f47; --lift:#ffffff14;
-    --account-bg:#0d0f12b3; --notice-bg:#142018; --notice-border:#7ac47f73;
+  .dark { color-scheme:dark; --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8;
+    --g1:#a78bfa; --g2:#f0abfc; --g3:#fb7185; --accent:#a78bfa;
+    --accent-ink:#1a1025; --line:#2a2e35; --edge:#3a3f47; --lift:#ffffff14;
+    --account-bg:#0d0f12b3; --notice-bg:#17141f; --notice-border:#a78bfa73; --glow:#a78bfa33;
     --surface-shadow:#0000004d; --hero-opacity:1; --hero-filter:blur(6px) brightness(.35); }
+  :root { --grad:linear-gradient(95deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%); }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--text); font:16px/1.55 system-ui,sans-serif;
     -webkit-text-size-adjust:100%; }
@@ -40,7 +43,8 @@
 
   .btn { display:inline-flex; align-items:center; gap:.5em; padding:.8em 1.6em; border-radius:10px;
     border:1px solid transparent; font-weight:600; text-decoration:none; cursor:pointer; font-size:1rem; }
-  .btn-play { background:var(--accent); color:var(--accent-ink); font-size:1.15rem; }
+  .btn-play { background:var(--accent); background:var(--grad); color:var(--accent-ink); font-size:1.15rem;
+    box-shadow:0 8px 28px var(--glow); }
   .btn-play:hover { filter:brightness(1.1); }
   .btn-ghost { border-color:var(--edge); color:var(--text); }
   .btn-ghost:hover { background:var(--lift); }
@@ -58,7 +62,7 @@
   .skin .bar { position:absolute; top:0; bottom:0; left:var(--cut,50%); width:2px; z-index:200;
     background:var(--accent); box-shadow:0 0 12px #000c; }
   .skin .knob { position:absolute; top:50%; left:var(--cut,50%); transform:translate(-50%,-50%); z-index:200;
-    background:var(--accent); color:#0c130d; border-radius:999px; padding:.25em .6em;
+    background:var(--accent); color:var(--accent-ink); border-radius:999px; padding:.25em .6em;
     font-size:.75rem; font-weight:700; white-space:nowrap; }
   .skin .tag { position:absolute; bottom:.6rem; z-index:200; font-size:.7rem; font-weight:700;
     letter-spacing:.08em; text-transform:uppercase; padding:.25em .7em; border-radius:999px;
@@ -84,7 +88,7 @@
     filter:var(--hero-filter); opacity:var(--hero-opacity); }
   .hero .in { position:relative; padding:2rem 1.25rem; max-width:780px; }
   .hero img.logo { width:96px; height:96px; border-radius:20px; margin-bottom:1.2rem; }
-  h1 { font-size:clamp(2.2rem,9vw,3.4rem); letter-spacing:-.02em; }
+  h1.fm-wordmark { font-size:clamp(3.4rem,11vw,6.6rem); filter:url(#fm-goo); padding-top:.1em; }
   .tagline { color:var(--dim); font-size:clamp(1.02rem,3.6vw,1.25rem); margin:.8rem 0 2rem; }
   .cta { display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap; }
   section { max-width:1100px; margin:0 auto; padding:4rem 1.5rem; }
@@ -94,14 +98,17 @@
     .skin img.lay { transition:none; }
   }
 </style>
+<link rel="preload" href="/site/fonts/baloo-2-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/site-header.css">
 </head>
 <body>
 
 <!-- Navigation stays available before the shared header loads. -->
 <div data-site-header>
-  <header class="fm-site-header"><div class="fm-header-inner">
-    <a class="fm-brand" href="/"><img src="/site/icon.png" width="32" height="32" alt=""><span>Formamorph</span></a>
+  <header class="fm-site-header">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="fm-goo"><feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b" /><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" result="g" /><feComposite in="SourceGraphic" in2="g" operator="atop" /></filter><filter id="fm-goo-sm"><feGaussianBlur in="SourceGraphic" stdDeviation="0.7" result="b" /><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" result="g" /><feComposite in="SourceGraphic" in2="g" operator="atop" /></filter></svg>
+    <div class="fm-header-inner">
+    <a class="fm-brand" href="/" aria-label="Formamorph"><img src="/site/icon.png" width="32" height="32" alt=""><span class="fm-wordmark" aria-hidden="true">Forma<i><b>m</b><b>o</b><b>r</b><b>p</b><b>h</b></i></span></a>
     <nav class="fm-primary-nav" aria-label="Main navigation"><a href="/community">Community</a><a href="/feedback">Feedback</a></nav>
     <div class="fm-account"><a class="fm-sign-in" href="/login?next=/">Sign In</a></div>
   </div></header>
@@ -116,7 +123,7 @@
   <div class="bgimg"></div>
   <div class="in">
     <img class="logo" src="/site/icon.png" width="256" height="256" alt="">
-    <h1>Formamorph</h1>
+    <h1 class="fm-wordmark" aria-label="Formamorph"><span aria-hidden="true">Forma<i><b>m</b><b>o</b><b>r</b><b>p</b><b>h</b></i></span></h1>
     <p class="tagline">An AI text RPG that brings your world to life. Create your own characters and
       locations or download any of the hundreds created by the community to explore.
       Runs directly in your browser or fully offline on your desktop, with any AI
