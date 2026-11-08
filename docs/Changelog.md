@@ -31,10 +31,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **On Windows, the merge offer now brings over Avatars, stat templates and Mascot images left in the AppData profile.** The newer Avatar stays. Stat templates and Mascot images you already have stay as they are.
     - **The profile merge now moves your downloaded local models.** Models in the other copy's folder move beside the main exe, smallest first. A model you already have stays.
   - **CUDA Engine:**
-    - **On Windows with an NVIDIA card, the Local Model panel can download NVIDIA's CUDA version of the engine.** The CUDA row shows the size, progress and **Cancel**, and resumes a stopped download. A card or driver that can't run it shows why. **Remove** frees the space.
+    - **On Windows with an NVIDIA card, the Local Model panel can download NVIDIA's CUDA version of the engine.** The CUDA row shows the size, progress and **Cancel**, and resumes a stopped download. A card or driver that can't run it shows why. **Remove** frees the space, even after support ends.
     - **After an app update, CUDA downloads its new files in the background.** The engine uses Vulkan until they're installed. **Cancel** stops it until you choose **Download** or **Resume**. Once the engine stops, CUDA files from other versions are deleted, except the newest of them.
     - **With CUDA downloaded, the built-in engine runs on CUDA from its next start.** A **Backend** setting beside **GPU Device** picks Auto, Vulkan or CUDA. A model running on Vulkan when CUDA finishes offers **Restart on CUDA**.
-    - **The main menu offers the CUDA engine once, the first time the engine starts on an NVIDIA card.** **Download** starts the install and **Not Now** closes the card. The CUDA row stays in Local Model either way.
+    - **The main menu offers the CUDA engine once, the first time the engine starts on an NVIDIA card.** **Download** starts the install and **Not Now** closes the card. It waits while a dialog is open. The CUDA row stays in Local Model either way.
     - **When CUDA can't load a model, the engine loads it on Vulkan and says so in the Local Model panel.** **View Details** shows why. Auto then stays on Vulkan until a driver or app update, or until you click **Retry CUDA**.
     - **With Backend on Auto, setting GPU Device to your integrated graphics keeps the engine on Vulkan.** The Local Model panel says why. Pick your NVIDIA card in **GPU Device** to use CUDA.
   - **A Getting Ready bar shows whenever Formamorph takes a moment to start, and before the first launch's welcome animation.** On a fast computer it never appears.
@@ -59,8 +59,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Community Creations places up to three well-liked worlds with few downloads on page 1 of the Worlds tab.** Each one carries a **Hidden Gem** badge, and the picks change every 12 hours. Turn them off with the **Hidden Gems** checkbox at the end of the filter row.
   - **The app tells the Formamorph server once a day that it was opened, with a Settings switch to stop it.** The counts show how many players return and on which platforms. The server keeps a scrambled ID, never play, worlds or account. Turn off **Daily Check-In** under **Settings → Data → Privacy**.
 - **🛠️ Developer tooling**
-  - **CUDA Engine:**
-    - **The llama.cpp pin now holds the CUDA 13.4 asset digests.** `npm run llama-server:bump -- <tag>` writes them, and the desktop build fails when the release lacks an asset or a digest differs.
+  - **The llama.cpp pin now holds the CUDA 13.4 asset digests.** `npm run llama-server:bump -- <tag>` writes them, and the desktop build fails when the release lacks an asset or a digest differs.
   - **Enter World and help answer tests now mount their panels instead of the menu or window, halving their time.** 76 of 89 tests moved with coverage held. Age gate tests stay on the menu.
   - **`scripts/selectionReplay.mjs` scores affected-test selection with injected bugs.** It replays landings on their older tests and samples mutants, then reports misses, precision and an upper bound on the miss rate.
   - **Six World Editor tabs' tests now mount the panel, not the whole editor, and take half the worker time.** 124 of 177 test rows moved with coverage held. The tabs are Entities, Dictionary, Placeholders, Locations, Overview and Tools.
@@ -79,9 +78,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **CUDA Engine:**
-    - **The CUDA offer on the main menu now waits while any dialog is open.** It shows once the dialog closes.
-    - **Local Model now keeps Remove for CUDA files from an older version when your card or driver stops supporting CUDA.** Remove frees the disk space.
   - **The game's last choices and a script's question no longer hide behind the status strip.** You can always scroll the last row clear of it. A script's question stays in view as text appears, and the strip shows **Waiting for your answer…** until you answer.
   - **One save, entity, dictionary or avatar with a missing or damaged file no longer empties its list.** The others keep loading, and Backup & Restore can still back them up.
   - **A world your library can't read now shows one notice with a way to fix it.** Review lists each damaged world, and you can restore, download again or remove it. Your other worlds keep loading, including when a world's stored file is missing.

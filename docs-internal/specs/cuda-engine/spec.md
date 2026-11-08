@@ -1,6 +1,7 @@
 # Spec: CUDA Engine
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-07. Tickets 01–14, last landing 5f4c89df2. Review: spec text corrected; gaps became tickets 10–14, all landed. Test green on 2026-11-07. Lint red only on worlds-wip files outside this effort.
 Spec session: cuda-engine — spec
 
 Windows desktop only. An optional download that lets the built-in engine run llama-server's CUDA build on NVIDIA cards.
