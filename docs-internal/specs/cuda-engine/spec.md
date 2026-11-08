@@ -95,6 +95,12 @@ Rulings from the spec review (2026-11-07):
   - The ticket gates and the web build make no network calls.
   - The pin names only the two win-x64 CUDA 13.4 assets.
   - The packaged app reads a copy of the pin from its resources. A dev run reads the source pin.
+- Ticket 04 rulings:
+  - The pin also records each asset's `size` and `unpackedSize`, and the build gate checks them. The free-space need is both zips plus the unpacked size.
+  - Until ticket 07, a stale install reads as not-installed, and Download installs the current tag.
+  - The row sits in the Engine section under the device picker, in Simple and Advanced.
+  - The driver hint names the card's floor and links NVIDIA's driver download page.
+  - The row shows whenever the VRAM query lists an NVIDIA card. When the facts query fails, it shows "support unknown" with no Download. It hides only when no NVIDIA card is listed.
 
 **The downloader.**
 - The model downloader is one module-wide download with a Hugging Face–only allow-list. It becomes an instance per download, each with its own allow-list, cancel and progress channel. The model download keeps its behavior.
