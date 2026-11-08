@@ -144,8 +144,11 @@ describe('the shipped changelog', () => {
     expect(lintSection(src.slice(bounds[0], bounds[1]), { inProgress: true })).toEqual([]);
   });
 
-  it.each(['3.2.0', '3.1.0', '3.0.0'])('has a well-formed %s release section', (version) => {
-    // Releases before 3.0.0 predate the group format and the word limits, and are left as they shipped.
+  it.each([
+    '3.6.0', '3.5.2', '3.5.1', '3.5.0', '3.4.0', '3.3.3', '3.3.2', '3.3.1', '3.3.0',
+    '3.2.3', '3.2.2', '3.2.1', '3.2.0', '3.1.0', '3.0.0',
+  ])('has a well-formed %s release section', (version) => {
+    // Releases before 3.0.0, and 3.1.2, 3.1.1 and 3.0.1, predate the word limits and are left as they shipped.
     const bounds = releaseBounds(src, version);
     expect(bounds).not.toBeNull();
     expect(lintSection(src.slice(bounds[0], bounds[1]))).toEqual([]);
