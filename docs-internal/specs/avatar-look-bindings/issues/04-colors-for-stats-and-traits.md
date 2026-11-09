@@ -11,6 +11,7 @@ Color math in OKLab plus a per-material apply path inside VRMViewer. Needs care 
 
 Stats blend skin, eye and hair colors, and traits set them (Q5, Q10).
 
+- Build on what landed: the resolver `avatarLook` and its `holders` map (add color channels to it, spec "Trait editor"), the shared slider picker hook and row, the trait Stats-tab section, and the overlap warning (01–03).
 - Stats and stat-link overrides gain `colorBindings` (`{ channel, color }`). Traits gain `colorPins` (`{ channel, color }`), with no link override (Q20).
 - **This ticket owns the color plan.** For each channel the resolver returns either "none" or a set color (the player's pick or the winning trait pin) plus `(target, t)` blend steps in authored order (group, then `order`), `t` clamped to [0, 1].
 - VRMViewer applies the plan per material. "None" resets to the model's own colors. The start is the set color, or that material's own median when none is set. The blend runs in OKLab. Separate materials in one channel stay apart.

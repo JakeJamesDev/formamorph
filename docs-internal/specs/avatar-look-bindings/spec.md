@@ -121,6 +121,14 @@ This keeps separate materials in one channel (face and body skin, two eyes) apar
 
 **Trait editor (Q12).** A matching section holds rows of a slider and its Set To value, and rows of a channel and its color. The editor warns when another trait sets the same control, unless the two can't be active together (one pick-one group) (Q4).
 
+- The section sits on the trait's Stats tab, below Body. Its field takes the stat editor's label, so the two match. A new row starts at Set To 1 (picking a slider usually means "show it").
+- The warning reads "Also set by <traits>. The trait switched on last wins.", and each name links to its trait.
+- Rivals: a world trait against the other world traits; an owned trait against its owner's own traits. World traits against a played entity's own traits don't warn. Pick-one siblings never warn. Automatic traits warn like Optional ones.
+- The match is by name, and by resolved key when the known model is loaded, so Fat and Thickness warn on a model where they alias to one key.
+- A linked trait's known model is the link owner's model.
+- The resolver's holder map is `holders: Record<modelKey, { ownerId: string | null; traitId: string }>`. Ticket 04 adds color channels to it. Ticket 05 resolves the trait's name.
+- Glossary: **Slider Pin**, a trait row that holds one Avatar slider at a Set To value while the trait is active. The Body rule widens to "the latest-on active trait row wins" for Body, slider and color rows.
+
 **Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model. The known model is the world's player Avatar (the one a new game uses) for world stats and traits, and the owner's model for owned stats and traits. A world with no fixed Avatar shows no mark.
 
 **Stat-link overrides.** The override editor's Body Sliders field gets the same Change By rows (and, in ticket 04, the Colors list), so an override carries the full binding list.
