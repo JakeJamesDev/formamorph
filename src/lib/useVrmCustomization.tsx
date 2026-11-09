@@ -45,7 +45,7 @@ const ColorRow = ({ label, value, onChange, onRevert, heldBy }: {
         </Button>
       </Tip>
     </div>
-    {heldBy !== undefined && <Meta>Set by {heldBy}.</Meta>}
+    {heldBy !== undefined && <Meta>Set by {heldBy}</Meta>}
   </div>
 );
 
@@ -217,7 +217,7 @@ export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLo
           disabled={heldBy !== undefined}
           onValueChange={([v]) => setBodyMorph(morph, v)}
         />
-        <Meta>{value.toFixed(2)}{heldBy !== undefined && ` · Set by ${heldBy}.`}</Meta>
+        <Meta>{value.toFixed(2)}{heldBy !== undefined && ` · Set by ${heldBy}`}</Meta>
       </div>
     );
   };

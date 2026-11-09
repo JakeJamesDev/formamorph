@@ -125,6 +125,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   const colorBindings = editingStat.colorBindings ?? NO_COLOR_BINDINGS;
   // The model the bindings play on is read only while the stat has any, or once Colors opens to seed a row.
   const [colorsOpened, setColorsOpened] = useState(false);
+  useEffect(() => { setColorsOpened(false); }, [stat.id]);
   const sliders = useSliderPicker(store?.morphOwner, bindings.length > 0 || colorBindings.length > 0 || colorsOpened);
   // A picked slider keeps its Change By; a new one starts at the default.
   const pickSliders = (names: string[]) =>
