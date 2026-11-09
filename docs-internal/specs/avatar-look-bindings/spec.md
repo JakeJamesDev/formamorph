@@ -103,7 +103,7 @@ It replaces the summing in `mergeBodyMorphs` and the per-stat map in `statMorphM
 
 This keeps separate materials in one channel (face and body skin, two eyes) apart.
 
-**A material's own color (Q21).** The plain texture median fails on atlases where other parts outnumber the skin (Aki's body atlas holds black tights). Ticket 06 finds each material's color from its dominant color cluster instead. That fixes the bindings and the player's own Skin Color picker. Ticket 04 lands as specced first.
+**A material's own color (Q21).** The plain texture median fails on atlases where other parts outnumber the skin (Aki's body atlas holds black tights). Ticket 06 finds each material's color from its dominant color cluster instead. That fixes the bindings and the player's own Skin Color picker. Ticket 04 lands as specced first. The cluster pick favors light runs, which suits skin, eyes and hair. Clothing "extras" keep the plain median, and untextured, factor-only materials keep today's path.
 
 **Trait precedence (Q4, reopened).** Among active traits that set the same control, the most recently switched-on wins. Traits switched on together fall back to tree order. This reuses the switch-on order the inventory settle already keeps for Body rows (`BodyRuntime.traitsOn`). That list widens to also hold traits that carry slider or color rows. `traitBodyPicks` already skips entries with no Body pick, so Body resolution doesn't change. As with Body rows, the played entity's own traits drive the played Persona.
 
@@ -141,7 +141,7 @@ This keeps separate materials in one channel (face and body skin, two eyes) apar
   - Glossary: **Color Pin**.
 - Glossary: **Slider Pin**, a trait row that holds one Avatar slider at a Set To value while the trait is active. The Body rule widens to "the latest-on active trait row wins" for Body, slider and color rows.
 
-**Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model. The known model is the world's player Avatar (the one a new game uses) for world stats and traits, and, for owned stats and traits, every model the look applies to on that owner (its Avatar and its 3D model): a row is marked only when none has the control. A world with no fixed Avatar shows no mark.
+**Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model. The known model is the world's player Avatar (the one a new game uses) for world stats and traits, and, for owned stats and traits, every model the look applies to on that owner (its Avatar and its 3D model): a row is marked only when none has the control. An Avatar pick of the device default counts as unknown. When no model is known, no row is marked. Color channels come from the Avatar only. A world with no fixed Avatar shows no mark.
 
 **Stat-link overrides.** The override editor's Body Sliders field gets the same Change By rows (and, in ticket 04, the Colors list), so an override carries the full binding list.
 
