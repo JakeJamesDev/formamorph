@@ -1,6 +1,6 @@
 # 05: Customization Lock
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -19,11 +19,20 @@ In the new-game flow, Character Customization shows a slider or color that a che
 
 ## Acceptance criteria
 
-- [ ] With Elf checked, Ear Shape shows locked with a note naming Elf.
-- [ ] With Elf unchecked (Back to the trait step), Ear Shape is editable and keeps the player's value.
-- [ ] A trait color pin locks that color picker the same way.
-- [ ] The Model Library's Customization shows no lock.
-- [ ] An entity with an Avatar and a 3D model shows no "Not on this model" on a skin Colors row; an entity with only a non-VRM model still does.
+- [x] With Elf checked, Ear Shape shows locked with a note naming Elf. (`EnterWorldFlow.customizationLock.test.tsx`; the test fails with the lock removed)
+- [ ] With Elf unchecked (Back to the trait step), Ear Shape is editable and keeps the player's value. (editable: tested; kept value: not asserted)
+- [x] A trait color pin locks that color picker the same way. (same test, Skin note; `customizationLock.test.ts`)
+- [x] The Model Library's Customization shows no lock. (same file, hook with no lock)
+- [x] An entity with an Avatar and a 3D model shows no "Not on this model" on a skin Colors row; an entity with only a non-VRM model still does. (`StatManager.bodySliders.test.tsx`, "on an entity with an Avatar")
 - [ ] Frames: `.scratch/frames/customization-lock.png`, light and dark, 1280 wide and 375 wide.
 
 For you: read the lock note in the start flow and confirm it is clear (Character Customization, new game).
+
+## Landed
+
+**Not verified**
+- Frames: not captured; the lock note has only been read in jsdom.
+- Unchecked Elf keeps the player's value: the stored value is never written while locked, but no test asserts it.
+
+**For you**
+- Read the lock note in the start flow and confirm it is clear (Character Customization, new game).

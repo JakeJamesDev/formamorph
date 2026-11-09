@@ -272,9 +272,12 @@ const TraitManager = ({
   const morphPins = editingTrait.morphPins ?? NO_MORPH_PINS;
   const traitOwnerModel = traitOwner?.model;
   const traitOwnerName = traitOwner?.name;
+  const traitOwnerPick = traitOwner?.vrmPick;
   const morphOwner = useMemo(
-    () => (traitOwnerName !== undefined ? { name: labelPlaceholders(traitOwnerName, placeholders), model: traitOwnerModel } : undefined),
-    [traitOwnerName, traitOwnerModel, placeholders],
+    () => (traitOwnerName !== undefined
+      ? { name: labelPlaceholders(traitOwnerName, placeholders), model: traitOwnerModel, vrmPick: traitOwnerPick }
+      : undefined),
+    [traitOwnerName, traitOwnerModel, traitOwnerPick, placeholders],
   );
   const colorPins = editingTrait.colorPins ?? NO_COLOR_PINS;
   // The model is read while the trait has rows, or once Colors opens to seed a row.

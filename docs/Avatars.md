@@ -133,6 +133,14 @@ Drag the viewer to turn the Avatar. Scroll to zoom.
 
 **Colors** always shows. **Hair**, **Initial Body Features** and **Other Colors** show only when the model supports them, so a plain `.glb` file may show few of them or none.
 
+#### Locked Controls
+
+A trait can set a slider or a color. When you checked such a trait on the trait step, that control is locked here. It shows the trait's value and the note **Set by** with the trait's name. You can't change it.
+
+- Your own value stays saved. If you go **Back**, uncheck the trait and return, the control is free and holds the value you picked.
+- Traits that switch on by themselves during the game, and traits from items, do not lock anything here.
+- The customization controls in the library's Avatar details have no world, so nothing is locked there.
+
 ### In the Game
 
 The entity view shows the selected entity's Avatar.

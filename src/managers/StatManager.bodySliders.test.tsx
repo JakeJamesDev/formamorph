@@ -328,4 +328,47 @@ describe('the Colors rows', () => {
     renderManager({ ...entityStore({ name: 'golem.glb', data: 'data:golem' }), stats: [bound] }, bound);
     expect(await screen.findByText('Not on this model')).toBeInTheDocument();
   });
+
+  describe("on an entity with an Avatar", () => {
+    const withAvatar = (data: string, model?: Partial<MediaAsset>) => {
+      loads.looks.set(data, { channels: ['skin'], colors: {} });
+      loads.catalogs.set(data, ['EarShape']);
+      worldParts.overview = { vrmStore: { elf: { name: 'Elf', file: { data } } } };
+      const bound = {
+        ...wounds,
+        colorBindings: [{ channel: 'skin' as const, color: '#ffffff' }, { channel: 'hair' as const, color: '#ffffff' }],
+        morphBindings: [{ name: 'EarShape' }, { name: 'Cracks' }],
+      };
+      const store: StatEditorStore = {
+        ...entityStore(model), stats: [bound],
+        morphOwner: { name: 'Golem', model, vrmPick: { kind: 'world', id: 'elf' } },
+      };
+      renderManager(store, bound);
+    };
+    const colorRow = (label: string) => screen.getByRole('button', { name: `Target Color for ${label}` }).previousElementSibling as HTMLElement;
+
+    it("reads the owner's Avatar as well as its 3D model", async () => {
+      loads.owner.set('data:golem-both', ['Cracks']);
+      withAvatar('data:elf-both', { name: 'golem.glb', data: 'data:golem-both' });
+      expect(await within(colorRow('Hair')).findByText('Not on this model')).toBeInTheDocument();
+      expect(within(colorRow('Skin')).queryByText('Not on this model')).toBeNull();
+      const rowOf = (name: string) => screen.getByRole('spinbutton', { name: `Change By for ${name}` }).previousElementSibling as HTMLElement;
+      expect(within(rowOf('EarShape')).queryByText('Not on this model')).toBeNull();
+      expect(within(rowOf('Cracks')).queryByText('Not on this model')).toBeNull();
+    });
+
+    it('still marks a color when only a non-Avatar 3D model is known', async () => {
+      loads.owner.set('data:golem-only', ['Cracks']);
+      const bound = { ...wounds, colorBindings: [{ channel: 'skin' as const, color: '#ffffff' }] };
+      renderManager({ ...entityStore({ name: 'golem.glb', data: 'data:golem-only' }), stats: [bound] }, bound);
+      expect(await screen.findByText('Not on this model')).toBeInTheDocument();
+    });
+
+    it('marks nothing when the only Avatar is the default pick and there is no 3D model', async () => {
+      const bound = { ...wounds, colorBindings: [{ channel: 'skin' as const, color: '#ffffff' }] };
+      renderManager({ ...entityStore(), stats: [bound], morphOwner: { name: 'Golem', vrmPick: { kind: 'default' } } }, bound);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.queryByText('Not on this model')).toBeNull();
+    });
+  });
 });

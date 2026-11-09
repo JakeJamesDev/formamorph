@@ -79,27 +79,47 @@ function pickLoader(pick: Exclude<VrmPick, { kind: "default" }>, overview: Pick<
   });
 }
 
+/** An owner's 3D model and Avatar as one offer: every key and channel either carries, the Avatar's colors. */
+const mergeOffers = (model: ModelOffer, avatar: ModelOffer): ModelOffer => ({
+  keys: [...new Set([...model.keys, ...avatar.keys])],
+  channels: [...new Set([...model.channels, ...avatar.channels])],
+  colors: { ...model.colors, ...avatar.colors },
+});
+
+/** What an owner's look applies to: its 3D model and its Avatar. */
+export interface KnownOwner {
+  model?: Partial<MediaAsset>;
+  /** The owner's Avatar pick. A User's Default pick names no model, so it adds nothing. */
+  vrmPick?: VrmPick;
+}
+
 /**
- * The slider keys and color channels of the model a stat's or trait's rows play on: the owner's model for an
- * owned row, else the world's player Avatar. A non-VRM owner model has no color channels. Null while loading, or
- * when no model is fixed. Loads only when `active`.
+ * The slider keys and color channels of the models a stat's or trait's rows play on: every model the look
+ * applies to on an owned row (its 3D model and its Avatar), else the world's player Avatar. A non-VRM owner
+ * model has no color channels. Null while loading, or when no model is known. Loads only when `active`.
  */
-export function useKnownMorphKeys(owner: { model?: Partial<MediaAsset> } | undefined, active: boolean): KnownModel | null {
+export function useKnownMorphKeys(owner: KnownOwner | undefined, active: boolean): KnownModel | null {
   const world = useGameDataOptional();
   const overview = world?.worldOverview;
   const entities = world?.entities;
   const ownerData = owner?.model?.data;
+  const ownerPick = owner?.vrmPick && owner.vrmPick.kind !== "default" ? owner.vrmPick : undefined;
+  const pickKind = ownerPick?.kind;
+  const pickId = ownerPick?.id;
   const load = useMemo(() => {
     if (owner) {
-      return ownerData
+      const own = ownerData
         ? () => cached(dataKey("owner", ownerData), async () => ({ keys: await loadModelMorphNames(owner.model!), channels: [], colors: {} }))
         : undefined;
+      const avatar = ownerPick ? pickLoader(ownerPick, overview) : undefined;
+      if (own && avatar) return () => Promise.all([own(), avatar()]).then(([model, look]) => mergeOffers(model, look));
+      return own ?? avatar;
     }
     const pick = worldPlayerVrmPick(overview, entities ?? []);
     return pick ? pickLoader(pick, overview) : undefined;
-    // The owner's model data names its model; the object around it may be rebuilt every render.
+    // The owner's model data and pick name its models; the objects around them may be rebuilt every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner === undefined, ownerData, overview, entities]);
+  }, [owner === undefined, ownerData, pickKind, pickId, overview, entities]);
   const [known, setKnown] = useState<KnownModel | null>(null);
   const mounted = useMountedRef();
 

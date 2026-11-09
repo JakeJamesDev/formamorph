@@ -6,7 +6,7 @@ import { loadModelMorphNames } from "./modelLoader";
 import { useMountedRef } from "./useMountedRef";
 import ModelStorageService from "@/services/ModelStorageService";
 import type { MorphSource } from "./bodyMorphs";
-import type { MediaAsset } from "@/types";
+import type { MediaAsset, VrmPick } from "@/types";
 
 // Morph names cached by a stable key (model id, or the custom VRM's data URL) so re-opening the picker —
 // or editing another stat — never reloads a model.
@@ -58,6 +58,8 @@ export interface MorphOwner {
   /** Group heading: the owner's name. */
   name: string;
   model?: Partial<MediaAsset>;
+  /** The owner's Avatar pick; its sliders and colors count toward the "not on this model" mark. */
+  vrmPick?: VrmPick;
 }
 
 /**

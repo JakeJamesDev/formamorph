@@ -17,6 +17,7 @@ import { filesFrom } from '@/lib/importFiles';
 import { useVrmSourceUrl } from '@/lib/useVrmSourceUrl';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
+import type { AvatarLock } from '@/lib/customizationLock';
 import { Hint } from '@/components/ui/typography';
 import { BUNDLED_DEFAULT_URL, DEFAULT_AVATAR_ID, pickerStart, readUserDefaultAvatar } from '@/lib/defaultAvatar';
 import { namedVrmSource } from '@/lib/vrmResolver';
@@ -26,9 +27,11 @@ import { toastError } from '@/lib/linkToast';
 import { SurfaceLayer } from '@/components/ui/surface';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 
-const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }: {
+const CharacterCustomization = ({ vrm, lock, onCharacterCustomized, onBack, onAbort }: {
   /** The played entity's Avatar. User's Default offers the library picker; any other pick shows as set. */
   vrm?: VrmPick;
+  /** The checked traits that hold sliders and colors. Absent when the screen has no world. */
+  lock?: AvatarLock;
   onCharacterCustomized: (data: CharacterData) => void;
   /** Step back in the enter-world flow. Undefined on the flow's first step, where the button becomes Abort. */
   onBack?: () => void;
@@ -40,7 +43,7 @@ const CharacterCustomization = ({ vrm, onCharacterCustomized, onBack, onAbort }:
   useBackStop(onBack ?? onAbort);
   // The sliders and color pickers (and the state that drives the preview) live in the shared hook, so the
   // model-library details modal can offer the same controls to test an exported model.
-  const { setCaps, vrmViewerRef, viewerProps, controls, characterData } = useVrmCustomization();
+  const { setCaps, vrmViewerRef, viewerProps, controls, characterData } = useVrmCustomization(true, lock);
 
   const { worldOverview } = useGameData();
   const locked = vrm && vrm.kind !== 'default' ? vrm : undefined;

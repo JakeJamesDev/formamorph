@@ -48,7 +48,7 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
   /** The id the detached item takes, or null when the link or its original is gone. */
   detach: (linkId: string) => string | null;
 } {
-  const morphOwner = { name: labelPlaceholders(entity.name, placeholders), model: entity.model };
+  const morphOwner = { name: labelPlaceholders(entity.name, placeholders), model: entity.model, vrmPick: entity.vrmPick };
   const offWorld = offWorldOf(entity, world);
   const store: StatEditorStore = {
     stats: resolved, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)), ownerId: entity.id, morphOwner, offWorld,

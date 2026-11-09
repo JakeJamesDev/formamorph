@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- this hook file keeps its private ColorRow helper
    and the shared customization surface together as one unit; there's nothing to fast-refresh separately. */
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Undo2 } from 'lucide-react';
-import type { CharacterData, HairTypeDef } from '@/types';
+import type { BodyTraitOn, CharacterData, ColorChannel, HairTypeDef } from '@/types';
 import type { VRMCapabilities, VRMViewerHandle } from '@/views/VRMViewer';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
+import { lockedLook, type AvatarLock } from '@/lib/customizationLock';
+import { COLOR_CHANNELS } from '@/lib/avatarLook';
 
 /**
  * Owns the avatar-customization surface — the sliders and color pickers that read a model's detected
@@ -25,20 +27,25 @@ const cleanLabel = (s: string) =>
   s.replace(/\([^)]*\)/g, '').replace(/[._]+/g, ' ').trim().replace(/^\w/, (c) => c.toUpperCase());
 
 // One consistent color control: swatch picker + a revert (↩) button that restores the model's original.
-const ColorRow = ({ label, value, onChange, onRevert }: {
+const ColorRow = ({ label, value, onChange, onRevert, heldBy }: {
   label: string;
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onRevert: () => void;
+  /** The checked trait that sets this color: the row shows it and cannot change it. */
+  heldBy?: string;
 }) => (
-  <div className="flex items-center space-x-2">
-    <Label className="flex-1">{label}</Label>
-    <Input type="color" value={value} onChange={onChange} className="w-10 h-10 p-0 border-0" />
-    <Tip tip="Revert to original">
-      <Button variant="ghost" size="icon" onClick={onRevert}>
-        <Undo2 className="h-4 w-4" />
-      </Button>
-    </Tip>
+  <div className="space-y-1">
+    <div className="flex items-center space-x-2">
+      <Label className="flex-1">{label}</Label>
+      <Input type="color" value={value} onChange={onChange} disabled={heldBy !== undefined} className="w-10 h-10 p-0 border-0" />
+      <Tip tip="Revert to original">
+        <Button variant="ghost" size="icon" onClick={onRevert} disabled={heldBy !== undefined}>
+          <Undo2 className="h-4 w-4" />
+        </Button>
+      </Tip>
+    </div>
+    {heldBy !== undefined && <Meta>Set by {heldBy}.</Meta>}
   </div>
 );
 
@@ -82,8 +89,9 @@ export interface VrmCustomization {
 /**
  * @param includeAnimateToggle - whether the controls render the "Animate Avatar" checkbox (the enter-world
  *   flow shows it; a preview that's just testing morphs may not want it). Defaults to true.
+ * @param lock - the checked traits whose pins hold sliders and colors. Absent in the Model Library, which locks nothing.
  */
-export function useVrmCustomization(includeAnimateToggle = true): VrmCustomization {
+export function useVrmCustomization(includeAnimateToggle = true, lock?: AvatarLock): VrmCustomization {
   const [caps, setCaps] = useState<VRMCapabilities | null>(null);
   const vrmViewerRef = useRef<VRMViewerHandle>(null);
 
@@ -159,11 +167,23 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
   const headMorphSliders = caps?.headMorphs ?? [];
   const visibleHairStyles = caps?.hairStyles ?? [];
 
+  // The pins the checked traits put on this model. The player's own values stay stored under them.
+  const pinned = useMemo(() => (lock && caps
+    ? lockedLook(lock, {
+      catalog: [...caps.bodyMorphs, ...caps.headMorphs],
+      channels: COLOR_CHANNELS.filter((channel) => caps.colors?.[channel]),
+    })
+    : null), [lock, caps]);
+  const holderName = (holder: BodyTraitOn | undefined) => (holder && lock ? lock.nameOf(holder) : undefined);
+  const pinnedColor = (channel: ColorChannel) => (pinned?.colorHolders[channel] ? pinned.colors[channel]?.set : undefined);
+  const heldColor = (channel: ColorChannel) => holderName(pinned?.colorHolders[channel]);
+  const shownMorphs = pinned ? { ...bodyMorphs, ...Object.fromEntries(Object.keys(pinned.holders).map((key) => [key, pinned.morphs[key]])) } : bodyMorphs;
+
   const viewerProps: VrmCustomization['viewerProps'] = {
-    bodyMorphValues: bodyMorphs,
-    hairColor: colorTouched.hair ? hairColor : undefined,
-    eyeColor: colorTouched.eye ? eyeColor : undefined,
-    skinColor: colorTouched.skin ? skinColor : undefined,
+    bodyMorphValues: shownMorphs,
+    hairColor: pinnedColor('hair') ?? (colorTouched.hair ? hairColor : undefined),
+    eyeColor: pinnedColor('eye') ?? (colorTouched.eye ? eyeColor : undefined),
+    skinColor: pinnedColor('skin') ?? (colorTouched.skin ? skinColor : undefined),
     hairTypes: HAIR_TYPES,
     currentHairStyle,
     hairLength,
@@ -183,7 +203,8 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
   };
 
   const morphSlider = (morph: string, min: number, max: number) => {
-    const value = bodyMorphs[morph] ?? 0;
+    const heldBy = holderName(pinned?.holders[morph]);
+    const value = heldBy !== undefined ? pinned!.morphs[morph] : bodyMorphs[morph] ?? 0;
     return (
       <div key={morph} className="space-y-2">
         <Label htmlFor={`morph-${morph}`}>{cleanLabel(morph)}</Label>
@@ -193,9 +214,10 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
           max={max}
           step={BODY_MORPH_STEP}
           value={[value]}
+          disabled={heldBy !== undefined}
           onValueChange={([v]) => setBodyMorph(morph, v)}
         />
-        <Meta>{value.toFixed(2)}</Meta>
+        <Meta>{value.toFixed(2)}{heldBy !== undefined && ` · Set by ${heldBy}.`}</Meta>
       </div>
     );
   };
@@ -258,9 +280,10 @@ export function useVrmCustomization(includeAnimateToggle = true): VrmCustomizati
           <ColorRow
             key={channel}
             label={label}
-            value={value}
+            value={pinnedColor(channel) ?? value}
             onChange={(e) => changeChannel(channel, e.target.value)}
             onRevert={() => revertChannel(channel)}
+            heldBy={heldColor(channel)}
           />
         ))}
 

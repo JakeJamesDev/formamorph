@@ -19,7 +19,8 @@ import { startingLocations } from '@/lib/startingLocation';
 import {
   gateTrees, gateStates, gateTreeOf, settle, shownRefs, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
-import { scoped, type OwnerId } from '@/lib/scope';
+import { playedEntityIds, scoped, type OwnerId } from '@/lib/scope';
+import { checkedAvatarLock } from '@/lib/customizationLock';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { libraryLines } from '@/lib/librarySources';
@@ -237,6 +238,14 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     () => scoped(entryDraft.traitIds, entryDraft.ownedTraitIds),
     [entryDraft.traitIds, entryDraft.ownedTraitIds],
   );
+  // The checked traits the Avatar step locks sliders and colors for.
+  const avatarLock = useMemo(() => checkedAvatarLock({
+    trees: castTrees,
+    played: playedEntityIds(entryDraft.persona, resolvedWorldEntities),
+    globalIds: entryDraft.traitIds,
+    ownedIds: entryDraft.ownedTraitIds,
+    inOrder: (checked) => inAuthoredOrder(checked, traitOrderIndex(rawTraits, rawTraitGroups)),
+  }), [castTrees, entryDraft.persona, entryDraft.traitIds, entryDraft.ownedTraitIds, resolvedWorldEntities, rawTraits, rawTraitGroups]);
   const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
     const names = shownRefs(castTrees, result.turnedOff).map((ref) => traitName(ref.ownerId, ref.traitId));
     return names.length ? { off: names, because } : null;
@@ -526,6 +535,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     return (
       <CharacterCustomization
         vrm={import.meta.env.DEV && getDevRoute()?.avatars === 'lockedMissing' ? DEV_MISSING_PICK : selectedVrm}
+        lock={avatarLock}
         onCharacterCustomized={(customizedData) => {
           if (entryStarted.current) return;
           entryStarted.current = true;
