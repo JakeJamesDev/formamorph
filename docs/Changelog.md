@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Saves keep the Since Last Turn tray, so a loaded game shows the same rows and can still undo them.** Hidden rows stay hidden. Manual saves and autosaves both keep it.
     - **What you do in the Inventory tab is not repeated when the story describes it.** A second use you type still counts when the story describes both. A hidden row never blocks the same action typed in the box.
     - **Regenerating a turn now keeps the actions its Since Last Turn tray listed, and the tray comes back.** Your action returns to the box. Hide or undo rows, then press Send. Regenerate Stats keeps those actions too.
+    - **The Since Last Turn tray comes back when a turn fails or you stop it before the story appears.** Send again and the AI hears its rows once. Regenerating your last finished turn still keeps its listed actions.
   - **Website:**
     - **The formamorph.ai pages use a violet-to-rose accent and the same Formamorph wordmark as the game's title screen.** The home, privacy, sign-in and community pages share it in light and dark.
     - **The formamorph.ai home page plays an example turn on a real game screen, then tours six features.** An action types in, the story appears word by word, Faith and Renown change, and a map lands in the inventory. A tour below shows six features and sweeps through the color themes. Reduced motion holds everything still.

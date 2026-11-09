@@ -8,7 +8,7 @@ import { runRowKeys } from '@/lib/worldScripts';
 import { playedEntityIds } from '@/lib/scope';
 import type { InventoryPanelSettle, PanelActionList } from '@/components/game/useInventoryPanel';
 import { ActionListTray } from '@/components/game/ActionListTray';
-import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedActionFacts, type SentActionList, type ToldAction } from '@/lib/actionList';
+import { addAction, closeList, listCounts, recordSent, reopenSent, reversalOf, toggleHidden, toldActions, undoNewest, type ActionSnapshot, type ListedAction, type ListedActionFacts, type SentActionList, type SentActionMap, type ToldAction } from '@/lib/actionList';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { ownerPins, inPlayOwners, laterDiscovered, libraryUnder } from '@/lib/ownedTraitsInPlay';
 import { personaKey, samePersonaRef } from '@/lib/personaPick';
@@ -144,7 +144,7 @@ import { narrationRevealListener } from "../lib/narrationRevealListener";
 import { getRevealReleased } from "../lib/revealTimingStore";
 import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
-import { parseTurnContent, pruneTurnMap, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
+import { parseTurnContent, pruneTurnMap, survivingTurnIds, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { farDestinationNames, walkableDestinationEntries } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
@@ -1238,6 +1238,8 @@ const GameViewer = ({
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
   // The turn a `player.tell` belongs to while a sent turn runs; between turns a tell joins the latest one (Q53).
   const tellTurnRef = useRef<string | null>(null);
+  // The sent turn's live list and sent lists from before its send, which come back if the turn never lands.
+  const unlandedListRef = useRef<{ turnId: string; list: ListedAction<ActionSnapshot>[]; sent: SentActionMap<ActionSnapshot> } | null>(null);
   // The prompt host of one run: its tells keep the run's timing (Q54), a toast shows at once, asks go to the line.
   const playPrompts = useCallback((timing: RunTiming): ScriptPromptHost => noticeHost(scriptPrompts, {
     onTell: (text) => {
@@ -1426,11 +1428,18 @@ const GameViewer = ({
   // its user message can commit before `isWaitingForAI` does.
   useEffect(() => {
     if (isWaitingForAI || abortControllerRef.current) return;
+    // A turn that left no message in history gives its list back, unsent, and the older lists their snapshots.
+    const unlanded = unlandedListRef.current;
+    unlandedListRef.current = null;
+    if (unlanded && !survivingTurnIds(fullMessageHistory).has(unlanded.turnId)) {
+      setActionList(unlanded.list);
+      setSentActions(unlanded.sent);
+    }
     setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
     setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
     setSentActions((prev) => pruneTurnMap(prev, fullMessageHistory));
     setMemoryNotes((prev) => pruneScriptPins(prev, fullMessageHistory));
-  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setSentActions, setMemoryNotes]);
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setSentActions, setMemoryNotes, setActionList]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [leftCollapsed, setLeftCollapsed] = useGameLeftCollapsed();
@@ -3337,6 +3346,8 @@ const GameViewer = ({
       const carried = resentAttachments ?? plan.attachments;
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
+      const liveAtSend = resentList ? reopenSent(resentList)?.list ?? [] : actionList;
+      unlandedListRef.current = { turnId, list: liveAtSend, sent: sentActions };
       setActionList((list) => closeList(list).live);
       setSentActions((map) => recordSent(map, turnId, sentEntries, tellsActionList && !script, sentState));
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front
@@ -6457,6 +6468,8 @@ const GameViewer = ({
     cancelSceneImage();
     passSessionRef.current += 1;
     passQueue?.abort();
+    // The loaded save's list wins over a running turn's.
+    unlandedListRef.current = null;
     // The loaded save draws its own opening on first need, with nothing shown yet.
     openingSessionRef.current = newOpeningSession();
     // A save from another (installed) world: swap GameData to that world first, then restore the save against
