@@ -35,6 +35,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, a trait can now set an Avatar slider while active, such as an Elf's Ear Shape.** Stats still add on top, and the player's own setting returns when the trait ends.
     - **In the World Editor, stats can now shift an Avatar's skin, eye or hair color, and traits can set one.** A stat blends toward its target as it rises, from the player's own color. Face and body skin each shift from their own tone.
     - **Avatar Customization now locks the sliders and colors that a trait you checked sets.** A note names the trait. Your own values come back when you uncheck it.
+  - **Stranger Fields:**
+    - **The item editor puts Unidentified Name beside Name and Unidentified Description under Player-Facing Description.** Each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
 

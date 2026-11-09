@@ -246,7 +246,10 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
 };
 
 /** The three prose fields with their AI-generate controls. The summary is Advanced only. */
-export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ownerId }: DescribedFieldGroupProps) => {
+export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ownerId, afterPlayer }: DescribedFieldGroupProps & {
+  /** The replacement description, rendered directly under Player-Facing Description. */
+  afterPlayer?: ReactNode;
+}) => {
   const { advanced } = useEditorMode();
   return (
     <>
@@ -269,6 +272,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
         resizable
         tourAnchor="entity-player-description"
       />
+      {afterPlayer}
       <PlaceholderField
         label="AI-Facing Description"
         historyField="aiDescription"

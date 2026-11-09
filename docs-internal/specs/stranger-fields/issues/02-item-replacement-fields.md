@@ -1,6 +1,6 @@
 # 02: Item Replacement Fields
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -20,9 +20,22 @@ The item editor puts each unidentified field next to the field it replaces (Q5, 
 
 ## Acceptance criteria
 
-- [ ] Unidentified Name renders beside Name on the item's main tab, and no longer on the Descriptions tab.
-- [ ] Unidentified Description renders directly after Player-Facing Description.
-- [ ] Each of the two fields has one help button that opens its own topic; no inline hint remains.
-- [ ] A search hit on Unidentified Name opens the tab that holds it.
-- [ ] Clearing Unidentified Name leaves Unidentified Description unchanged.
-- [ ] Frames of the item editor at a narrow and a wide pane width, both themes: `.scratch/frames/item-names-narrow-light.png`, `.scratch/frames/item-names-wide-light.png`, `.scratch/frames/item-names-narrow-dark.png`, `.scratch/frames/item-names-wide-dark.png`.
+- [x] Unidentified Name renders beside Name on the item's main tab, and no longer on the Descriptions tab. (`WorldEditor.itemNames.test.tsx`: holds Unidentified Name beside Name; keeps it off Descriptions)
+- [x] Unidentified Description renders directly after Player-Facing Description. (test: label order)
+- [x] Each of the two fields has one help button that opens its own topic; no inline hint remains. (tests: one `About …` button per field, hint text absent; `helpTopics.test.ts` green)
+- [x] A search hit on Unidentified Name opens the tab that holds it. (test: `itemTabForField('unidentifiedName')` is `profile`)
+- [x] Clearing Unidentified Name leaves Unidentified Description unchanged. (test: clear through the Lexical editor)
+- [x] Frames of the item editor at a narrow and a wide pane width, both themes: `.scratch/frames/item-names-narrow-light.png`, `.scratch/frames/item-names-wide-light.png`, `.scratch/frames/item-names-narrow-dark.png`, `.scratch/frames/item-names-wide-dark.png`.
+
+## Landed
+
+**Not verified**
+
+- Reveal Origin and the find bar landing on the Profile tab end to end: only the field-to-tab map is tested.
+- The Descriptions tab frame: its field order is tested in the DOM, with no frame.
+- Placeholder chips in the split row at a width just above the split: only the stacked and the split layouts were framed.
+
+**For you**
+
+- Look at the split name row in the item editor at the width you use: `.scratch/stranger-fields-02/frames/item-names-wide-dark.png` and `item-names-narrow-dark.png`. The split starts when the row is 32rem wide; say if that threshold is off.
+- Read the two new help topics and the wiki sections on Unidentified Name and Unidentified Description for tone.

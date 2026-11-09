@@ -34,8 +34,8 @@ The item panel works like the entity panel.
 
 | Tab | What it holds |
 |---|---|
-| **Profile** | The name, the [**Icon**](#icon), the images with their rules, and the image tags |
-| **Descriptions** | The player-facing and AI-facing descriptions, in Advanced mode the **AI-Facing Summary**, and the **Unidentified Name** and **Unidentified Description** |
+| **Profile** | The name with the **Unidentified Name** beside it, the [**Icon**](#icon), the images with their rules, and the image tags |
+| **Descriptions** | The player-facing description with the **Unidentified Description** under it, the AI-facing descriptions, and in Advanced mode the **AI-Facing Summary** |
 | **Properties** | Value, Stackable, Uses, State, When Empty, Bound and Slots |
 | **Effects** | The stat and trait effect rows: what the item does to its owner |
 | **Requirements** | The [Equip Requirements](#requirements) |
@@ -64,16 +64,19 @@ The **Icon** field picks what the **Inventory** tab shows for the item, on the f
 
 ## Unidentified items
 <!-- keywords: unidentified, identify, mystery item, cursed item, true name, hidden identity, unidentified name, unidentified description -->
-<!-- route: worldEditorItem.descriptions -->
+<!-- route: worldEditorItem.profile -->
 
 An item can hide its true name and description until the story reveals them. A cursed ring can look like a plain ring.
 
-| Field | What it does |
-|---|---|
-| **Unidentified Name** | The name the player sees until the item is identified |
-| **Unidentified Description** | The description the player sees until the item is identified |
+### Unidentified Name
 
-- 🔒 Fill either field, and every copy of the item starts unidentified. A blank field shows the normal value.
+The name the player sees until the item is identified. It sits beside **Name** on the **Profile** tab, and stacks under it when the panel is narrow.
+
+### Unidentified Description
+
+The description the player sees until the item is identified. It sits directly under **Player-Facing Description** on the **Descriptions** tab.
+
+- 🔒 Fill either field, and every copy of the item starts unidentified. A blank field shows the normal value. Clearing one field never clears the other.
 - 👁️ The player sees only the unidentified face: in the **Inventory** tab, in the log and in Formaquestion.
 - 📖 The narrator sees both faces, with the true one marked unknown to the player. It can reveal the truth when the story does.
 - ✨ The item's effects apply while it's unidentified.

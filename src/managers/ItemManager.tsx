@@ -7,6 +7,8 @@ import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { WorldInput } from '@/components/editor/WorldField';
+import { SplitNameField, SplitNameRow } from '@/components/editor/SplitNameRow';
+import { HelpButton } from '@/components/HelpButton';
 import { useItemRuleHost } from '@/components/editor/ImageRuleCog';
 import { EntityDescriptionFields, EntityImageWidget } from './EntityFields';
 import { ItemEffectsFields, ItemTraitEffectsFields } from './ItemEffectsFields';
@@ -232,16 +234,30 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
           <div className="grid gap-4 sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]">
             <ImageGallery />
             <div className="space-y-4">
-              <div className="space-y-2" {...fieldFrame('name')}>
-                <Label>Name</Label>
-                <PlaceholderNameField
-                  value={draft.name}
-                  onChange={(v) => setField('name', v)}
-                  placeholders={placeholders}
-                  ownerId={item.id}
-                  ariaLabel="Name"
-                />
-              </div>
+              <SplitNameRow
+                name={(
+                  <SplitNameField historyField="name" label="Name">
+                    <PlaceholderNameField
+                      value={draft.name}
+                      onChange={(v) => setField('name', v)}
+                      placeholders={placeholders}
+                      ownerId={item.id}
+                      ariaLabel="Name"
+                    />
+                  </SplitNameField>
+                )}
+                partner={(
+                  <SplitNameField historyField="unidentifiedName" label="Unidentified Name" helpTopicId="worldEditor.unidentifiedName">
+                    <PlaceholderNameField
+                      value={draft.unidentifiedName ?? ''}
+                      onChange={(v) => setField('unidentifiedName', v || undefined)}
+                      placeholders={placeholders}
+                      ownerId={item.id}
+                      ariaLabel="Unidentified Name"
+                    />
+                  </SplitNameField>
+                )}
+              />
               <ItemIconField item={draft} apply={apply} />
               <ImageTags />
             </div>
@@ -250,32 +266,22 @@ const ItemManager = ({ item, tab, onTabChange, placeholderId, onPlaceholderIdCha
       </PanelTabContent>
 
       <PanelTabContent value="descriptions">
-        <EntityDescriptionFields {...groupProps} />
-        <div className="space-y-2" {...fieldFrame('unidentifiedName')}>
-          <Label>Unidentified Name</Label>
-          <Hint id={`item-unidentified-name-hint-${item.id}`}>
-            Shows this name to the player until the narration identifies the item. Leave it blank to show its Name.
-          </Hint>
-          <PlaceholderNameField
-            value={draft.unidentifiedName ?? ''}
-            onChange={(v) => setField('unidentifiedName', v || undefined)}
-            placeholders={placeholders}
-            ownerId={item.id}
-            ariaLabel="Unidentified Name"
-            ariaDescribedBy={`item-unidentified-name-hint-${item.id}`}
-          />
-        </div>
-        <PlaceholderField
-          label="Unidentified Description"
-          ariaLabel="Unidentified Description"
-          historyField="unidentifiedDescription"
-          hint="Replaces the Player-Facing Description until the narration identifies the item. Leave it blank to show the Player-Facing Description."
-          value={draft.unidentifiedDescription ?? ''}
-          onChange={(v) => setField('unidentifiedDescription', v || undefined)}
-          placeholders={placeholders}
-          ownerId={item.id}
-          ownerName={draft.name}
-          resizable
+        <EntityDescriptionFields
+          {...groupProps}
+          afterPlayer={(
+            <PlaceholderField
+              label="Unidentified Description"
+              ariaLabel="Unidentified Description"
+              historyField="unidentifiedDescription"
+              labelAside={<HelpButton topicId="worldEditor.unidentifiedDescription" className="h-6 w-6" />}
+              value={draft.unidentifiedDescription ?? ''}
+              onChange={(v) => setField('unidentifiedDescription', v || undefined)}
+              placeholders={placeholders}
+              ownerId={item.id}
+              ownerName={draft.name}
+              resizable
+            />
+          )}
         />
       </PanelTabContent>
 

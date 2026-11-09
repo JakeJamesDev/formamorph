@@ -29,7 +29,7 @@ const TAB_BY_FIELD: Record<string, ItemPanelTab> = {
   playerDescription: 'descriptions',
   aiDescription: 'descriptions',
   aiSummary: 'descriptions',
-  unidentifiedName: 'descriptions',
+  unidentifiedName: 'profile',
   unidentifiedDescription: 'descriptions',
   'scripts[].name': 'scripts',
   'scripts[].code': 'scripts',

@@ -127,10 +127,9 @@ describe('the item panel', () => {
     expect(screen.getByText('AI-Facing Summary')).toBeTruthy();
   });
 
-  it('writes the Unidentified Name and Unidentified Description from the Descriptions tab, in Simple mode too', async () => {
+  it('writes the Unidentified Name from the Profile tab and the Unidentified Description from the Descriptions tab, in Simple mode too', async () => {
     const { ctx } = renderItemsTab(WORLD, 'simple');
     openItem('Lamp');
-    itemFieldsTab('Descriptions');
     const type = async (name: string, text: string) => {
       const editor = getNearestEditorFromDOMNode(screen.getByRole('textbox', { name }));
       await act(async () => {
@@ -138,8 +137,10 @@ describe('the item panel', () => {
       });
     };
     await type('Unidentified Name', 'Dented Lamp');
+    itemFieldsTab('Descriptions');
     await type('Unidentified Description', 'A lamp gone green with age.');
     expect(ctx().items.find((i) => i.id === 'lamp')).toMatchObject({ unidentifiedName: 'Dented Lamp', unidentifiedDescription: 'A lamp gone green with age.' });
+    itemFieldsTab('Profile');
     await type('Unidentified Name', '');
     expect(ctx().items.find((i) => i.id === 'lamp')?.unidentifiedName).toBeUndefined();
   });

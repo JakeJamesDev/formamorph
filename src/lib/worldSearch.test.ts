@@ -534,7 +534,7 @@ describe('Items, Scripts and Tools', () => {
       ['playerDescription', 'Player-Facing Description', true, 'descriptions'],
       ['aiDescription', 'AI-Facing Description', true, 'descriptions'],
       ['aiSummary', 'AI-Facing Summary', true, 'descriptions'],
-      ['unidentifiedName', 'Unidentified Name', true, 'descriptions'],
+      ['unidentifiedName', 'Unidentified Name', true, 'profile'],
       ['unidentifiedDescription', 'Unidentified Description', true, 'descriptions'],
       ['scripts[0].name', 'Script Name', false, 'scripts'],
       ['scripts[0].code', 'Script Code', false, 'scripts'],

@@ -332,6 +332,33 @@ The player has met an entity from the start when it has no Stranger Name, or whe
 
 Both stranger fields take placeholders and rolls.`,
   },
+  'worldEditor.unidentifiedName': {
+    title: 'Unidentified Name',
+    wikiPage: 'World-Editor-Items',
+    wikiAnchor: 'unidentified-name',
+    body: `Hides what an item is until the story reveals it. Until then, the player sees the **Unidentified Name**, such as "Cloudy Vial", in place of the **Name**.
+
+- Leave it blank to show the Name.
+- Fill this field or the **Unidentified Description**, and every copy of the item starts unidentified.
+- The player sees the Unidentified Name in the **Inventory** tab, in the log and in Formaquestion.
+- The AI narrator sees both names. It can reveal the real one when the story does, or a script can call \`reveal()\`.
+- A copy that is out of sight first comes into view and stays unidentified. A second reveal identifies it.
+
+The field takes placeholders and rolls.`,
+  },
+  'worldEditor.unidentifiedDescription': {
+    title: 'Unidentified Description',
+    wikiPage: 'World-Editor-Items',
+    wikiAnchor: 'unidentified-description',
+    body: `Shows the player a different description until the story reveals the item. Until then, the player sees the **Unidentified Description** in place of the **Player-Facing Description**.
+
+- Leave it blank to show the Player-Facing Description.
+- Fill this field or the **Unidentified Name**, and every copy of the item starts unidentified.
+- The two fields work apart. You can write a description with no Unidentified Name, or the other way around.
+- The item's effects apply while it is unidentified.
+
+The field takes placeholders and rolls.`,
+  },
   'worldEditor.statChanges': {
     title: 'Stat Changes',
     wikiPage: 'World-Editor-Traits',
