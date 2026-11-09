@@ -4,6 +4,11 @@ import { VRMLoaderPlugin, type VRM } from "@pixiv/three-vrm";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { catalogNames, expressionBoundMorphs, vrmMorphCatalog, type CatalogMorph } from "./vrmMorphCatalog";
 
+export interface MorphSplit {
+  body: string[];
+  head: string[];
+}
+
 /**
  * Load a VRM purely to read its slider keys, the same catalog VRMViewer reports, but headlessly: no scene,
  * renderer, or animation loop, and GPU resources are disposed afterward. Returns `[]` if the load fails.
@@ -23,9 +28,10 @@ export async function loadMorphCatalog(url: string): Promise<CatalogMorph[]> {
   }
 }
 
-/** The body slider names a VRM exposes: the keys on its `Body` mesh. */
-export async function loadBodyMorphNames(url: string): Promise<string[]> {
-  return catalogNames(await loadMorphCatalog(url), "body");
+/** The slider names a VRM exposes, split into the keys on its `Body` mesh and its head features. */
+export async function loadMorphSplit(url: string): Promise<MorphSplit> {
+  const catalog = await loadMorphCatalog(url);
+  return { body: catalogNames(catalog, "body"), head: catalogNames(catalog, "head") };
 }
 
 function disposeGltf(gltf: GLTF): void {

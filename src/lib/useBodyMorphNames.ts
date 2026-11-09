@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGameDataOptional } from "@/contexts/GameDataContext";
 import { DEFAULT_AVATAR_ID } from "./defaultAvatar";
-import { loadBodyMorphNames } from "./vrmMorphLoader";
+import { loadMorphSplit, type MorphSplit } from "./vrmMorphLoader";
 import { loadModelMorphNames } from "./modelLoader";
 import { useMountedRef } from "./useMountedRef";
 import ModelStorageService from "@/services/ModelStorageService";
@@ -10,23 +10,23 @@ import type { MediaAsset } from "@/types";
 
 // Morph names cached by a stable key (model id, or the custom VRM's data URL) so re-opening the picker —
 // or editing another stat — never reloads a model.
-const cache = new Map<string, string[]>();
+const cache = new Map<string, MorphSplit>();
 
-async function cachedLoad(key: string, load: () => Promise<string[]>): Promise<string[]> {
+async function cachedLoad(key: string, load: () => Promise<MorphSplit>): Promise<MorphSplit> {
   const hit = cache.get(key);
   if (hit) return hit;
-  const names = await load();
-  cache.set(key, names);
-  return names;
+  const split = await load();
+  cache.set(key, split);
+  return split;
 }
 
 /** Read a library model's body morphs, via a throwaway object URL over its stored blob. */
-function morphsForModel(id: string): Promise<string[]> {
+function morphsForModel(id: string): Promise<MorphSplit> {
   return cachedLoad(id, async () => {
     const { blob } = await ModelStorageService.getModelData(id);
     const url = URL.createObjectURL(blob);
     try {
-      return await loadBodyMorphNames(url);
+      return await loadMorphSplit(url);
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -39,8 +39,18 @@ const dataKey = (kind: string, dataUrl: string) =>
   `${kind}:${dataUrl.length}:${dataUrl.slice(0, 128)}:${dataUrl.slice(-128)}`;
 
 /** Read the world's embedded custom VRM morphs. */
-function morphsForCustom(dataUrl: string): Promise<string[]> {
-  return cachedLoad(dataKey("custom", dataUrl), () => loadBodyMorphNames(dataUrl));
+function morphsForCustom(dataUrl: string): Promise<MorphSplit> {
+  return cachedLoad(dataKey("custom", dataUrl), () => loadMorphSplit(dataUrl));
+}
+
+/** Add a model's sliders as a source; a model with none adds nothing. */
+function pushSource(sources: MorphSource[], heading: string, { body, head }: MorphSplit): void {
+  if (body.length || head.length) sources.push({ heading, morphs: body, head });
+}
+
+/** A non-VRM model has no head catalog, so every key is a body slider. */
+async function ownerSplit(model: Partial<MediaAsset>): Promise<MorphSplit> {
+  return { body: await loadModelMorphNames(model), head: [] };
 }
 
 /** The model an owned stat's body sliders bind to: its owner's own. */
@@ -68,7 +78,7 @@ export function useOwnerMorphSources(owner: MorphOwner | undefined): { sources: 
     if (loadedRef.current || !model?.data) return;
     loadedRef.current = true;
     setLoading(true);
-    void cachedLoad(dataKey("owner", model.data), () => loadModelMorphNames(model)).then((names) => {
+    void cachedLoad(dataKey("owner", model.data), () => ownerSplit(model)).then(({ body: names }) => {
       // A model swapped mid-load leaves this result to a model that's gone.
       if (!mounted.current || modelRef.current !== model) return;
       setMorphs(names);
@@ -89,7 +99,7 @@ export function useOwnerMorphSources(owner: MorphOwner | undefined): { sources: 
 }
 
 /**
- * Body slider names available to bind in the world editor, one group per Avatar: the world's store Avatars
+ * Slider names available to bind in the world editor, one source per Avatar: the world's store Avatars
  * first, then the library Avatars with the bundled default leading. Loading is
  * lazy — call `load()` when the picker opens — and cached, so the stat editor stays fast until then.
  *
@@ -112,8 +122,7 @@ export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolea
       // The world's store Avatars lead, one group each under its display name.
       for (const vrm of Object.values(store ?? {})) {
         if (!vrm.file.data) continue;
-        const morphs = await morphsForCustom(vrm.file.data);
-        if (morphs.length) built.push({ heading: vrm.name, morphs });
+        pushSource(built, vrm.name, await morphsForCustom(vrm.file.data));
       }
       // Library Avatars, newest-first, the bundled default leading: User's Default falls back to it. Loaded
       // one at a time rather than in parallel — VRMs are large, and a burst of concurrent GLTF loads would
@@ -121,8 +130,7 @@ export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolea
       const models = await ModelStorageService.getModelMetadata();
       const ordered = [...models].sort((a, b) => (a.id === DEFAULT_AVATAR_ID ? -1 : b.id === DEFAULT_AVATAR_ID ? 1 : 0));
       for (const model of ordered) {
-        const morphs = await morphsForModel(model.id);
-        if (morphs.length) built.push({ heading: model.name, morphs });
+        pushSource(built, model.name, await morphsForModel(model.id));
       }
       setSources(built);
       setLoading(false);

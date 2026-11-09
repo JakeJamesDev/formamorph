@@ -95,12 +95,14 @@ export function boundMorphNamesExcluding(stats: readonly Stat[], statId: string)
   return set;
 }
 
-/** One model's contribution to the body-slider picker: its display name and the morphs it exposes. */
+/** One model's contribution to the slider picker: its display name and the sliders it exposes. */
 export interface MorphSource {
-  /** Group heading — the model's name. */
+  /** The model's name; each group heading starts with it. */
   heading: string;
-  /** Every body morph the model exposes. */
+  /** Every body slider the model exposes. */
   morphs: readonly string[];
+  /** Every head-feature slider; absent on a model with no head catalog. */
+  head?: readonly string[];
 }
 
 /** A model's options as the MultiSelect's grouped-options shape. */
@@ -110,25 +112,29 @@ export interface MorphOptionGroup {
 }
 
 /**
- * Build the grouped body-slider options: one group per model, each carrying its morph names minus those
- * already owned by another stat, and de-duplicated within the model. A morph shared by several models
- * appears under each — selecting it anywhere binds the name everywhere, since a binding is the bare name.
- * Empty groups (all names taken or none exposed) are dropped.
+ * Build the grouped slider options: per model, a "Body Sliders" group then a "Head Features" group, each
+ * carrying its names minus those already owned by another stat, and de-duplicated within the group. A
+ * slider shared by several models appears under each — selecting it anywhere binds the name everywhere,
+ * since a binding is the bare name. Empty groups (all names taken or none exposed) are dropped.
  */
 export function buildMorphGroups(
   sources: readonly MorphSource[],
   taken: ReadonlySet<string>,
 ): MorphOptionGroup[] {
   const groups: MorphOptionGroup[] = [];
-  for (const source of sources) {
+  const add = (heading: string, names: readonly string[]) => {
     const seen = new Set<string>();
     const options: { label: string; value: string }[] = [];
-    for (const name of source.morphs) {
+    for (const name of names) {
       if (taken.has(name) || seen.has(name)) continue;
       seen.add(name);
       options.push({ label: name, value: name });
     }
-    if (options.length) groups.push({ heading: source.heading, options });
+    if (options.length) groups.push({ heading, options });
+  };
+  for (const source of sources) {
+    add(`${source.heading} · Body Sliders`, source.morphs);
+    add(`${source.heading} · Head Features`, source.head ?? []);
   }
   return groups;
 }

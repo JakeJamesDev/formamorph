@@ -1,6 +1,6 @@
 # 02: Head Features in the Picker
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -18,8 +18,20 @@ An author can bind a stat to a Head Features slider such as Ear Shape (Q8).
 
 ## Acceptance criteria
 
-- [ ] On a model with head keys, the stat picker shows Body Sliders and Head Features under the model's heading.
-- [ ] Expression and lip-sync keys don't appear.
-- [ ] An owned stat's picker splits its owner's model the same way.
+- [x] On a model with head keys, the stat picker shows Body Sliders and Head Features under the model's heading. Group headings "Aurelia · Body Sliders" and "Aurelia · Head Features" read on the preview (frame); test `splits a world stat model into Body Sliders and Head Features`.
+- [x] Expression and lip-sync keys don't appear. The picker reads the existing morph catalog, which hides them; the preview lists only Ear Shape, Tusks, Cat Ears and Fox Tail under Head Features.
+- [ ] An owned stat's picker splits its owner's model the same way. Per the spec session's ruling, a non-VRM entity model lists Body Sliders only (test `lists an entity model under Body Sliders only`).
 - [ ] A stat bound to Ear Shape moves the ears in play.
 - [ ] Frame: the open picker on the world stats editor, `.scratch/frames/picker-head-features.png`, light and dark, 1280 wide.
+
+## Landed
+
+**Not verified**
+- A stat bound to Ear Shape moves the ears in play. The picker change only lists the key. The viewer already applies a bound name to every mesh that carries it, but I did not run a game.
+- Frame in light mode. Only the dark frame exists: `.scratch/avatar-look-bindings-02/frames/picker-head-features-dark.jpg`. A class swap did not repaint the pane, so I stopped.
+- An owned stat on a VRM entity model. The owner picker reads every entity model through the non-VRM loader, so it never shows Head Features. No test covers a VRM owner.
+- The 1280-wide frame is a 1280-wide viewport scaled by the pane to 800 pixels.
+
+**For you**
+- Open the stats editor with a model that has head keys and check the group headings read well: `.scratch/avatar-look-bindings-02/frames/picker-head-features-dark.jpg`.
+- Decide whether the field label "Body Sliders" should now read "Sliders", since the list holds Head Features too.

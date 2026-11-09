@@ -413,7 +413,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           </div>
           <div className="space-y-2" {...fieldFrame('morphBindings')}>
             {fieldLabel('morphBindings', 'Body Sliders')}
-            <Hint>Binds body sliders to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
+            <Hint>Binds body sliders and head features to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
             <MultiSelect
               key={stat.id}
               options={morphGroups}

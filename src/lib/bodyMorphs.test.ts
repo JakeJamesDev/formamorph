@@ -127,17 +127,18 @@ describe("boundMorphNamesExcluding", () => {
 });
 
 describe("buildMorphGroups", () => {
-  it("keeps one group per model and maps each morph to a {label,value} option", () => {
+  it("splits each model into Body Sliders and Head Features groups of {label,value} options", () => {
     const groups = buildMorphGroups(
       [
-        { heading: "Alpha", morphs: ["Height", "Muscle"] },
+        { heading: "Alpha", morphs: ["Height", "Muscle"], head: ["EarShape"] },
         { heading: "Beta", morphs: ["Width"] },
       ],
       new Set(),
     );
     expect(groups).toEqual([
-      { heading: "Alpha", options: [{ label: "Height", value: "Height" }, { label: "Muscle", value: "Muscle" }] },
-      { heading: "Beta", options: [{ label: "Width", value: "Width" }] },
+      { heading: "Alpha · Body Sliders", options: [{ label: "Height", value: "Height" }, { label: "Muscle", value: "Muscle" }] },
+      { heading: "Alpha · Head Features", options: [{ label: "EarShape", value: "EarShape" }] },
+      { heading: "Beta · Body Sliders", options: [{ label: "Width", value: "Width" }] },
     ]);
   });
   it("shows a shared morph under every model that has it", () => {
@@ -148,7 +149,7 @@ describe("buildMorphGroups", () => {
       ],
       new Set(),
     );
-    expect(groups.map((g) => g.heading)).toEqual(["Alpha", "Beta"]);
+    expect(groups.map((g) => g.heading)).toEqual(["Alpha · Body Sliders", "Beta · Body Sliders"]);
     expect(groups.every((g) => g.options[0].value === "Height")).toBe(true);
   });
   it("drops names taken by another stat, and any group left empty", () => {
@@ -159,7 +160,7 @@ describe("buildMorphGroups", () => {
       ],
       new Set(["Muscle"]),
     );
-    expect(groups).toEqual([{ heading: "Alpha", options: [{ label: "Height", value: "Height" }] }]);
+    expect(groups).toEqual([{ heading: "Alpha · Body Sliders", options: [{ label: "Height", value: "Height" }] }]);
   });
   it("de-duplicates a name repeated within one model", () => {
     const groups = buildMorphGroups([{ heading: "Alpha", morphs: ["Height", "Height"] }], new Set());

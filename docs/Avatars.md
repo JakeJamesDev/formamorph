@@ -78,7 +78,7 @@ You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no
 <!-- keywords: shape keys, shapekeys, blend shapes, morph targets, custom avatar, slider not showing, key missing, body mesh, wings, horns, tail, transform during play, grow, ctrl+j, join mesh, weight paint, vertex group, ponytail, hair length key, vrm addon, basis, object data properties, part left behind, floating horns -->
 <!-- route: modelDetails -->
 
-Formamorph makes a body slider from each shape key on the object named `Body`. A world's stats can change these sliders. Formamorph reads no other object for body sliders.
+Formamorph makes a body slider from each shape key on the object named `Body`. A world's stats can change these sliders. Formamorph reads no other object for body sliders. A stat can also change a head feature, such as Ear Shape. The stat's list shows these under **Head Features**.
 
 You need the VRM Add-on for Blender. **Shape Keys** and **Vertex Groups** are in the **Object Data Properties** tab, the green triangle.
 
@@ -100,7 +100,7 @@ Keep these rules or the sliders can fail:
 - Don't parent other objects to `Body`.
 - Give every vertex a bone. A vertex with no bone follows the hips, so the part stays behind when the Avatar moves.
 
-To tie a slider to a stat, open a world stat in the World Editor and pick the key in **Body Sliders**. See [World Editor Stats](World-Editor-Stats).
+To tie a slider to a stat, open a world stat in the World Editor and pick the key in **Body Sliders**. The list has two groups for each model, **Body Sliders** and **Head Features**. See [World Editor Stats](World-Editor-Stats).
 
 - The stat's Min sets the key to 0, and its Max sets it to 1.
 - Each key belongs to one stat only.

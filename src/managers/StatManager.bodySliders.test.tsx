@@ -24,11 +24,11 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 
 // The model files stand behind these loaders; the hooks that pick between them run for real.
 const loads = vi.hoisted(() => ({
-  player: ['Belly', 'Fat'] as string[],
+  player: { body: ['Belly', 'Fat'], head: ['EarShape'] } as { body: string[]; head: string[] },
   owner: new Map<string, string[]>(),
   ownerCalls: 0,
 }));
-vi.mock('@/lib/vrmMorphLoader', () => ({ loadBodyMorphNames: async () => loads.player }));
+vi.mock('@/lib/vrmMorphLoader', () => ({ loadMorphSplit: async () => loads.player }));
 vi.mock('@/lib/modelLoader', () => ({
   loadModelMorphNames: async (model: Partial<MediaAsset>) => {
     loads.ownerCalls++;
@@ -52,19 +52,27 @@ const renderManager = (store?: StatEditorStore, stat: Stat = wounds) => render(
   </EditorModeContext.Provider>,
 );
 
-/** Opens the Body Sliders picker and returns the slider names it offers. */
-const offered = async () => {
+/** Opens the Body Sliders picker and returns the slider names it offers, with the group heading each sits under. */
+const offeredByGroup = async () => {
   const field = screen.getByText('Body Sliders').parentElement!;
   await userEvent.click(within(field).getByRole('combobox'));
   const list = await screen.findByRole('listbox', { name: 'Available options' });
   // Let the lazy load settle before reading the list.
   await new Promise((resolve) => setTimeout(resolve, 0));
   // Slider rows announce their selection; Select All and the Close footer don't.
-  return within(list).queryAllByRole('option')
-    .map((option) => option.getAttribute('aria-label') ?? '')
-    .filter((label) => /, (not )?selected$/.test(label))
-    .map((label) => label.replace(/, (not )?selected$/, ''));
+  const groups: Record<string, string[]> = {};
+  for (const group of within(list).queryAllByRole('group')) {
+    const names = within(group).queryAllByRole('option')
+      .map((option) => option.getAttribute('aria-label') ?? '')
+      .filter((label) => /, (not )?selected$/.test(label))
+      .map((label) => label.replace(/, (not )?selected$/, ''));
+    const heading = group.parentElement?.querySelector('[cmdk-group-heading]')?.textContent ?? '';
+    if (names.length) groups[heading] = names;
+  }
+  return groups;
 };
+
+const offered = async () => Object.values(await offeredByGroup()).flat();
 
 beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:model');
@@ -90,12 +98,21 @@ describe('the Body Sliders picker', () => {
         <StatManager stat={wounds} tab="details" onTabChange={() => {}} store={{ ...entityStore(model), morphOwner: { name: 'Stone Golem', model } }} />
       </EditorModeContext.Provider>,
     );
-    expect(await screen.findByText('Stone Golem')).toBeInTheDocument();
+    expect(await screen.findByText('Stone Golem · Body Sliders')).toBeInTheDocument();
   });
 
-  it('keeps the player models on a world stat', async () => {
+  it('splits a world stat model into Body Sliders and Head Features', async () => {
     renderManager();
-    expect(await offered()).toEqual(['Belly', 'Fat']);
+    expect(await offeredByGroup()).toEqual({
+      'Library Model · Body Sliders': ['Belly', 'Fat'],
+      'Library Model · Head Features': ['EarShape'],
+    });
+  });
+
+  it('lists an entity model under Body Sliders only', async () => {
+    loads.owner.set('data:statue', ['Cracks']);
+    renderManager(entityStore({ name: 'statue.glb', data: 'data:statue' }));
+    expect(await offeredByGroup()).toEqual({ 'Golem · Body Sliders': ['Cracks'] });
   });
 
   it('offers nothing, and loads nothing, for an entity with no model', async () => {
