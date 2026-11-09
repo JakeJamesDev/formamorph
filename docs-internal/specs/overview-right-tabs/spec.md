@@ -1,6 +1,6 @@
 # Spec: Overview Right Tabs
 
-Status: ready-for-human
+Status: in-progress
 
 ## Problem Statement
 
@@ -49,7 +49,7 @@ The editor remembers the right-column tab and the prompt sub-tab for the editing
 
 ## Implementation Decisions
 
-- **Rulings.** Q1: Simple mode hides the tab strip. Q2: Custom Prompts uses sub-tabs with one always selected; the toggle-group picker is removed. Q3: each prompt panel and the Openings tab carry their own switch at the top; no checkbox sits on any tab. Q4: the first tab is named Details. Q5: no tab or sub-tab shows an on-state marker. Q6: the editor remembers the last right-column tab for the editing session, not in the world. Q7: Custom Prompts opens on Narration the first time. Q8: the World Editor bench is the one test seam.
+- **Rulings.** Q1: Simple mode hides the tab strip. Q2: Custom Prompts uses sub-tabs with one always selected; the toggle-group picker is removed. Q3: each prompt panel and the Openings tab carry their own switch at the top; no checkbox sits on any tab. Q4: the first tab is named Details. Q5: no tab or sub-tab shows an on-state marker. Q6: the editor remembers the last right-column tab for the editing session, not in the world. Q7: Custom Prompts opens on Narration the first time. Q8: the World Editor bench is the one test seam. Q9 (after the landing, replaces Q2's sub-tabs and Q3/Q5 for prompts): Custom Prompts shows a list of status rows, one per prompt, each with its checkbox, its name and a Custom (on) or Default (off) label; clicking a row opens that prompt's field below the list. Kept text does not change the label. The look was approved from a mock.
 - **Scope of the module change.** The Overview details manager splits its column into the three tabs. The Custom Prompts section loses the toggle group, the deselect-to-close behavior, the pipe separators and the container-query grid. The Openings panel itself is unchanged; it moves to its own tab and gains the switch above it.
 - **Overview state.** The editor holds two values: the right-column tab (Details, Custom Prompts, Openings) and the prompt kind (Narration, Choices, Stats). The "no panel open" state goes away, because some tab is always shown and one prompt kind is always selected. The overview-panel module's type and its history helpers change to match.
 - **History Origins.** A Step's Origin on Overview records the place the author saw: Details for the descriptions and the Readme, the prompt kind for a prompt edit, and Openings for an opening. Reveal maps that value back onto both the tab and the prompt kind. A value the mode does not offer falls back to Details, as other tabs fall back to their first sub-tab. Editor history is session-only, so the old "none" value needs no compatibility path.
