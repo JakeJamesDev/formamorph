@@ -129,6 +129,16 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
   - Entities Here becomes a read-only list of who can be at this place, one line per entity with the reason (Group; begins here, with the chance when there are several Starts; stays, wanders or patrols here, with the time; can be led here). Each line opens that entity's Routine tab.
   - Known Here is unchanged.
   - Each Connection row gets the Nearby / Far choice.
+- **Q83** When several idles or row edges pass between two engine calls, the engine replays each step in clock order, so the result equals continuous play. The no-move rule at the player's location still holds for the whole span. (Ticket 02.)
+- **Q84** A row whose places are all unconnected acts like a gap: the character stays at its Start's place. A Wander or Patrol with some connected places uses only those. (Ticket 02.)
+- **Q85** A follower recruited by a script `.follow()` is never blocked by Traversable. Wait and Part ways still apply. The follow state records that it came from a script. (Ticket 02.)
+- **Q86** The saved per-Individual state also holds the current row id and the time the engine last ran. (Ticket 02.)
+- **Q87** A saved Start that the world no longer has is rolled again for that character alone. (Ticket 02.)
+- **Q88** Nearby covers every implicit neighbor (parent, siblings, children) and both ends of a Connection, a one-way Connection included, minus Far pairs. A child joined to its parent by a Far Connection is left out of every section of the Entities chip, the sub-locations section included. (Ticket 01.)
+- **Q89** The Connection field is `distance`, holding `far` or absent. The bundled worlds and dev fixtures lose `nearbyUsesConnections` in their files, and the probe that compared that field is deleted. (Ticket 01.)
+- **Q90** A script-move hold on a Stay lasts until that stretch of the day ends: the row's end, or the start of the next timed row for free time or an All-day row. With no timed row at all it never ends, so a scripted move of a character with an empty schedule stays until a script moves them again, as it does today. (Ticket 02.)
+- **Q91** In free time and with an empty schedule, the Start's place counts as the place the current row uses, so it is always allowed. (Ticket 02.)
+- **Q92** A pull or script move on a Wander or Patrol row whose idle already ran out starts a fresh idle from the move. (Ticket 02.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
@@ -303,7 +313,7 @@ The Entities chip gains a Movement include, on by default in every prompt that u
 
 ### Save shape
 
-The save gains, per Individual: the chosen Start, follow state, wait until-time, hold and its end, the current idle's end, and the patrol stop index. The waiting place is the saved position.
+The save gains, per Individual: the chosen Start, follow state (with whether a script started it, Q85), wait until-time, hold and its end, the current idle's end, the patrol stop index, the current row id and the time the engine last ran (Q86). The waiting place is the saved position.
 
 ## Testing Decisions
 
