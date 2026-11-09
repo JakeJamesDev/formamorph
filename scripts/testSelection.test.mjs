@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ALWAYS_RUN, GRAPH_COVERED, PATH_TRIGGERS, changedSince, cjsRequires, gateOptions, gitFiles, relatedFiles, requirersOf, touchedSince } from './testSelection.mjs';
+import { ALWAYS_RUN, GRAPH_COVERED, PATH_TRIGGERS, changedSince, cjsRequires, gateOptions, gitFiles, importersOfGone, relatedFiles, requirersOf, touchedSince } from './testSelection.mjs';
 
 // Tracked and new files; a tracked file deleted in the working tree is gone.
 const FILES = gitFiles('ls-files', '--cached', '--others', '--exclude-standard').filter((file) => existsSync(file));
@@ -205,6 +205,10 @@ describe('the affected-test listing', () => {
     'electron/llmEngineHost.cjs': '',
     'electron/stream.cjs': '',
     'electron/download.cjs': "require('./stream.cjs');",
+    'src/lib/vocab.json': '{}',
+    'src/lib/g2p.ts': "import vocab from './vocab.json';",
+    'src/worlds/forest.json': '{}',
+    'src/lib/worlds.test.ts': "const worlds = import.meta.glob('../worlds/*.json');",
   };
 
   /** The listing of a real git repo holding FIXTURE, after `change` runs in it. */
@@ -255,10 +259,67 @@ describe('the affected-test listing', () => {
     expect(listing(gone('electron/stream.cjs'))).toContain('electron/download.cjs');
   });
 
+  it('lists the importer of a data file deleted in the working tree, since vitest cannot walk to it', () => {
+    expect(listing(gone('src/lib/vocab.json'))).toContain('src/lib/g2p.ts');
+  });
+
+  it('lists the file whose import.meta.glob matched a file deleted in a commit', () => {
+    const related = listing(({ git }) => {
+      git('rm', 'src/worlds/forest.json');
+      git('commit', '-m', 'drop');
+    }, 'HEAD~1');
+    expect(related).toContain('src/lib/worlds.test.ts');
+  });
+
+  it('lists no importer of a file that still exists', () => {
+    const related = listing(({ dir }) => writeFileSync(path.join(dir, 'src/lib/vocab.json'), '{"a":1}'));
+    expect(related).not.toContain('src/lib/g2p.ts');
+  });
+
   it('fires no trigger when nothing changed', () => {
     const onlyTriggered = PATH_TRIGGERS['docs/*.md'].filter((file) => !(file in ALWAYS_RUN));
     expect(onlyTriggered.length).toBeGreaterThan(0);
     expect(listing(() => {}).filter((file) => onlyTriggered.includes(file))).toEqual([]);
+  });
+});
+
+describe('importersOfGone', () => {
+  const sources = {
+    'src/lib/a.ts': "import data from './data.json';",
+    'src/lib/b.ts': "import { x } from '@/lib/mod';",
+    'src/lib/c.ts': "const raw = await import('../docs/page.md?raw');",
+    'src/lib/d.ts': "const all = import.meta.glob(['../worlds/*.json', '!../worlds/skip.json']);",
+    'src/lib/e.ts': "const one = import.meta.glob('/src/maps/*.json', { eager: true });",
+    'src/lib/f.ts': "import react from 'react';\nimport data from './other.json';",
+    'src/lib/g.ts': "const worker = new Worker(new URL('./work.worker.ts', import.meta.url), { type: 'module' });",
+    'src/lib/h.test.ts': "vi.mock('@/lib/vectors.json', () => ({ default: [] }));",
+    'src/lib/i.ts': "import table from './table';",
+    'src/lib/j.ts': "const sets = import.meta.glob(['./sets/[ab].json']);",
+  };
+
+  it('finds direct, alias, query and extensionless imports of a deleted file', () => {
+    expect(importersOfGone(['src/lib/data.json'], sources)).toEqual(['src/lib/a.ts']);
+    expect(importersOfGone(['src/lib/mod.ts'], sources)).toEqual(['src/lib/b.ts']);
+    expect(importersOfGone(['src/docs/page.md'], sources)).toEqual(['src/lib/c.ts']);
+    expect(importersOfGone(['src/lib/table.json'], sources)).toEqual(['src/lib/i.ts']);
+  });
+
+  it('finds a worker named through new URL and a test that mocks a deleted file', () => {
+    expect(importersOfGone(['src/lib/work.worker.ts'], sources)).toEqual(['src/lib/g.ts']);
+    expect(importersOfGone(['src/lib/vectors.json'], sources)).toEqual(['src/lib/h.test.ts']);
+  });
+
+  it('reads a glob array whose pattern holds a character class', () => {
+    expect(importersOfGone(['src/lib/sets/a.json'], sources)).toEqual(['src/lib/j.ts']);
+  });
+
+  it('finds relative and root-relative import.meta.glob patterns that matched a deleted file', () => {
+    expect(importersOfGone(['src/worlds/forest.json'], sources)).toEqual(['src/lib/d.ts']);
+    expect(importersOfGone(['src/maps/town.json'], sources)).toEqual(['src/lib/e.ts']);
+  });
+
+  it('finds nothing for a deleted file no source names', () => {
+    expect(importersOfGone(['src/lib/unused.json', 'react'], sources)).toEqual([]);
   });
 });
 

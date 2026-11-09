@@ -86,7 +86,7 @@ export const GRAPH_COVERED = {
   'scripts/versionSiteImages.mjs': 'reads only the folder its caller passes',
   'scripts/copySweep.mjs': 'reads files only in its command-line sweep, which no test calls',
   'scripts/moveReach.mjs': 'reads only the probe file its caller passes; the compiler walks the files the probe names',
-  'scripts/testSelection.mjs': 'runs git only in the helpers the gate scripts call',
+  'scripts/testSelection.mjs': 'runs git and reads the tree only in the helpers the gate scripts call',
   'scripts/runTests.mjs': 'reads only its own temp reports and runs vitest and git in the folder its caller passes',
   'scripts/runTests.test.mjs': 'reads only its own temp folder',
   'scripts/runOutcomeReporter.mjs': 'writes only the file its runner names; a test of it runs real vitest',
@@ -195,6 +195,51 @@ export function requirersOf(sources) {
     }
   }
   return requirers;
+}
+
+// Imports, requires, mocks and `new URL(..., import.meta.url)` worker and asset paths.
+const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\(\s*|\bvi\.(?:do)?mock\(\s*|\bnew URL\(\s*)['"]([^'"]+)['"]/g;
+const GLOB_CALL = /import\.meta\.glob\s*(?:<[^>]*>)?\(\s*(\[(?:[^\]'"]|'[^']*'|"[^"]*")*\]|'[^']*'|"[^"]*")/g;
+const QUOTED = /['"]([^'"]+)['"]/g;
+const RESOLVED_EXTENSIONS = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', ...['ts', 'tsx', 'js', 'jsx', 'mjs'].map((extension) => `/index.${extension}`)];
+const CODE_SOURCE = /\.(?:tsx?|jsx?|mjs|cjs)$/;
+
+/** The repo path a relative, `@/` or root-relative specifier names, its query dropped; null for a package. */
+export function specifierPath(file, specifier) {
+  const bare = specifier.replace(/\?.*$/, '');
+  if (bare.startsWith('@/')) return `src/${bare.slice(2)}`;
+  if (bare.startsWith('.')) return path.posix.join(path.posix.dirname(file), bare);
+  if (bare.startsWith('/')) return bare.slice(1);
+  return null;
+}
+
+/**
+ * The files whose imports or `import.meta.glob` patterns name a path in `gone`. Vitest can't walk an import to a file
+ * that no longer exists, so these stand in for it. `sources` maps repo paths to their text.
+ */
+export function importersOfGone(gone, sources) {
+  const goneSet = new Set(gone);
+  const importsGone = (file, specifier) => {
+    const target = specifierPath(file, specifier);
+    return target !== null && RESOLVED_EXTENSIONS.some((extension) => goneSet.has(target + extension));
+  };
+  const globMatchesGone = (file, argument) => [...argument.matchAll(QUOTED)].some(([, pattern]) => {
+    const target = specifierPath(file, pattern);
+    return target !== null && gone.some((deleted) => path.posix.matchesGlob(deleted, target));
+  });
+  return Object.entries(sources)
+    .filter(([file, source]) => [...source.matchAll(SPECIFIER)].some(([, specifier]) => importsGone(file, specifier))
+      || [...source.matchAll(GLOB_CALL)].some(([, argument]) => globMatchesGone(file, argument)))
+    .map(([file]) => file)
+    .sort();
+}
+
+/** `importersOfGone` for the touched paths that are gone, read from the working tree's code files. */
+export function importersOfGoneOnDisk(touched) {
+  const gone = touched.filter((file) => !existsSync(file));
+  if (!gone.length) return [];
+  const files = gitFiles('ls-files', '--cached', '--others', '--exclude-standard').filter((file) => CODE_SOURCE.test(file) && existsSync(file));
+  return importersOfGone(gone, Object.fromEntries(files.map((file) => [file, readFileSync(file, 'utf8')])));
 }
 
 /** The paths to hand `vitest related`: the changed files, everything they reach through the rules above, and ALWAYS_RUN. */
