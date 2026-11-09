@@ -1,6 +1,7 @@
 # Spec: Stranger Fields
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-09, tickets 01–04, last landing 0549ea06c. Review: spec text corrected. Closed red: lint errors in a peer's uncommitted UsageTab.tsx and worlds-wip; tests failed in MainMenu.cudaNotice, EventFormDialog, CodeArea, CodeArea.cards, RemoteWorldDetailsModal.changelog, none in this effort.
 Spec session: stranger-fields — spec
 
 ## Problem Statement
@@ -52,7 +53,7 @@ Each replacement field sits next to the field it replaces, on entities and items
 **Layout (rulings Q1, Q2, Q4, Q5, Q8)**
 - The Profile tab's identity fields put Stranger Name in a second column beside Name. The columns split only when the pane has room and stack otherwise. The split follows the editor's existing pane-width approach, not the viewport.
 - The Stranger fields keep their gate: Advanced mode, World Editor only (Q7). Elsewhere, Name stays full width.
-- The Descriptions tab renders Stranger Description directly after Player-Facing Description and before the AI-Facing fields. The item editor does the same for Unidentified Description. Neither is conditional (Q8, and the reversal of Q4's condition).
+- The Descriptions tab renders Stranger Description directly after Player-Facing Description and before the AI-Facing fields. The item editor does the same for Unidentified Description. Neither depends on its partner field (Q8, and the reversal of Q4's condition); Stranger Description keeps the Q7 gate.
 - Unidentified Name leaves the Descriptions tab and joins the item's Name in the same split column.
 - The entity and item field-to-tab maps for search and Reveal Origin move `strangerName` to Profile, `strangerDescription` to Descriptions, and `unidentifiedName` to the item's main tab.
 
@@ -66,7 +67,8 @@ Each replacement field sits next to the field it replaces, on entities and items
 - The world and save shapes do not change.
 
 **Runtime (Q11–Q14)**
-- The Presence module gains one predicate for "has a stranger face": a Stranger Name that is set (even one that resolves blank, as today) or a non-blank Stranger Description. It mirrors the item rule for an unidentified face.
+- The Presence module gains a predicate for "has a stranger face": a Stranger Name that is set (even one that resolves blank, as today) or a non-blank Stranger Description. It mirrors the item rule for an unidentified face. A second predicate says whether the entity hides its Name (a Stranger Name is set).
+- Presence carries a **known** set: the Met set plus each unmet entity that does not hide its Name. The map roster, the Formaquestion Player World and the trait tree read it (Q15, Q16).
 - The start rule's first case changes from "no Stranger Name" to "no stranger face". Relationships, Known In and runtime characters still meet the entity at the start.
 - An unmet entity's label stays: latest story alias, else Stranger Name, else nothing, for entities with a Stranger Name. An unmet entity with only a Stranger Description takes its real Name as its label. The story never gives it an alias.
 - The prompts' stranger reveal stays limited to entities with a Stranger Name, so the AI sees nothing new (Q12).
@@ -74,15 +76,18 @@ Each replacement field sits next to the field it replaces, on entities and items
 - Opening an unmet description-only entity opens the Stranger view under its real Name, showing the Stranger Description (Q14).
 - The Formaquestion Player World lists a description-only unmet entity by its real Name with the Stranger Description.
 
+**Inventory pass (Q17–Q19)**
+- The Inventory pass matches an owner by Name, by any Alias with placeholders resolved, and by Stranger Name or story alias, met or not. A Name wins; a name two owners share matches no one. The owner list on the turn stays `{ id, name }`.
+
 **Glossary**
-- `CONTEXT.md`: **Stranger** becomes an unmet entity with a Stranger Name or a Stranger Description. Only one with a Stranger Name hides its true name. **Met**'s first start case becomes "It has neither a Stranger Name nor a Stranger Description."
+- `CONTEXT.md`: **Stranger** becomes an unmet entity with a Stranger Name or a Stranger Description. Only one with a Stranger Name hides its true name. **Met**'s first start case becomes "It has neither a Stranger Name nor a Stranger Description." **Met** also says the map and the Help window list the Met set plus each unmet entity with no Stranger Name.
 
 ## Testing Decisions
 
 A good test drives a public seam with a world and a play state, and asserts what the player or author sees. It never asserts a helper's internals.
 
 - **Presence module** (`presence.test.ts`): a description-only entity starts unmet; relationships and Known In still meet it; its label is its real Name; the story never stores an alias for it; narration naming it while present meets it. A Stranger Name entity keeps today's behavior. Prior art: the existing start-rule and label cases there.
-- **World Editor render tests** (`WorldEditor.entitiesTab.test.tsx`, `WorldEditor.itemsTab.test.tsx`, `EntityFields.stranger.test.tsx`): field order per tab, Stranger Description shown with a blank Stranger Name, one help button per field, and Reveal Origin landing on the new tab. Prior art: the label lists in those files.
+- **World Editor render tests** (`WorldEditor.itemNames.test.tsx`, `EntityFields.stranger.test.tsx`; the tab maps in `entityPanelTabs.test.ts` and `worldSearch.test.ts`): field order per tab, Stranger Description shown with a blank Stranger Name, one help button per field, and Reveal Origin landing on the new tab. Prior art: the label lists in those files.
 - **Stranger view** (`StrangerModal.test.tsx`, `GamePanels.test.tsx`): a description-only stranger shows its real Name and the Stranger Description; after meeting, the normal panel shows.
 - **Formaquestion Player World** (`playerView.test.ts`, `playerViewWorld.test.ts`): a description-only unmet entity appears under its real Name with the Stranger Description, never the Player-Facing Description. Prior art: `playerViewUnidentified.test.ts`.
 - Each runtime guard is proven by reinstating the old start rule and watching its test fail.

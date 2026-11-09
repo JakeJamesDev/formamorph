@@ -35,11 +35,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, a trait can now set an Avatar slider while active, such as an Elf's Ear Shape.** Stats still add on top, and the player's own setting returns when the trait ends.
     - **In the World Editor, stats can now shift an Avatar's skin, eye or hair color, and traits can set one.** A stat blends toward its target as it rises, from the player's own color. Face and body skin each shift from their own tone.
     - **Avatar Customization now locks the sliders and colors that a trait you checked sets.** A note names the trait. Your own values come back when you uncheck it.
-  - **Stranger Fields:**
-    - **The item editor puts Unidentified Name beside Name and Unidentified Description under Player-Facing Description.** Each field has its own help button.
-    - **The entity editor puts Stranger Name beside Name and Stranger Description under Player-Facing Description.** Each field has its own help button, and search finds both.
-  - **Scene Presence:**
-    - **An entity with a Stranger Description and no Stranger Name now starts as a stranger.** You see its Name, and its Stranger Description shows in place of its description until you meet it.
+  - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
   - **The World Editor's Overview tab puts Custom Prompts and Openings on tabs of their own.** In Advanced mode, the right column has Details, Custom Prompts and Openings tabs. Each prompt and the openings have a checkbox at the top that turns them on.
