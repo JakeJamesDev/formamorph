@@ -12,6 +12,7 @@ Touches the settle's switch-on order, save reading, history paging and the resol
 A trait sets a slider while it is active (Q2, Q3). An Elf trait holds Ear Shape at 1; a Human trait holds it at 0.
 
 - A trait gains optional `morphPins` (`{ name, value }`). Set To takes any number (Q13). Trait links carry no override for it (Q20).
+- Ticket 01 built the resolver (`avatarLook`) and the viewers' key reports; extend them. Ticket 02 built the shared picker.
 - The resolver replaces the player's value with the winning pin, then adds stats on top. It returns, for each control, the trait that holds it.
 - Precedence (Q4): the latest switch-on wins; tree order breaks a tie. `BodyRuntime.traitsOn` widens to hold traits with pins; Body picks don't change.
 - The resolver treats an active trait missing from `traitsOn` as switched on after every listed one, in tree order. A loaded save shows trait looks at once.

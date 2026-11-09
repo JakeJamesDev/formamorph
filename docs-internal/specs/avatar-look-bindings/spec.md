@@ -107,7 +107,7 @@ This keeps separate materials in one channel (face and body skin, two eyes) apar
 
 **Reading the order.** Load runs no settle, so the resolver itself treats an active trait missing from `traitsOn` as switched on after every listed one, in tree order. An older save and a fresh load then show trait looks at once. History paging reads the viewed snapshot's `bodies`, as it reads `viewTraits`.
 
-**Schema: stat bindings.** `morphBindings` changes from a list of names to a list of `{ name, by? }`. Absent `by` means 1. A new optional `colorBindings` holds `{ channel, color }`, where `channel` is `skin`, `eye` or `hair`. A stat-link override (`StatLinkFields`) carries both fields in the same forms.
+**Schema: stat bindings.** `morphBindings` changes from a list of names to a list of `{ name, by? }`. Absent `by` means 1. A `by` of 1, or an empty field, is stored absent, so an untouched binding round-trips as `{ name }`. Any finite number is allowed, with no clamp. When one stat's bindings resolve to the same model key through aliases, that key counts once for the stat, with the first binding's `by`. A new optional `colorBindings` holds `{ channel, color }`, where `channel` is `skin`, `eye` or `hair`. A stat-link override (`StatLinkFields`) carries both fields in the same forms.
 
 **Schema: trait rows.** A trait gains optional `morphPins` (`{ name, value }`) and `colorPins` (`{ channel, color }`). Set To takes any number (Q13). Trait links carry no override for them (Q20).
 
@@ -115,13 +115,17 @@ This keeps separate materials in one channel (face and body skin, two eyes) apar
 
 **Saved stats (Q17).** A save keeps its own stat copies, bindings included. On load, `refreshSavedStats` also re-reads `morphBindings` and `colorBindings` from the world, as it does scripts and name. An author's binding changes then reach saves in progress.
 
-**Pickers (Q8).** One shared slider picker for stats and traits. It keeps one group per model and splits each into Body Sliders and Head Features, from the morph catalog. It uses the same exclusions as Customization (expressions and lip-sync stay hidden). The cache holds the split, so owned stats get it too. The rule that hides a slider another stat uses goes, with `boundMorphNamesExcluding` (Q9).
+**Pickers (Q8).** One shared slider picker for stats and traits. It keeps one group per model and splits each into Body Sliders and Head Features, from the morph catalog. It uses the same exclusions as Customization (expressions and lip-sync stay hidden). The cache holds the split, so owned stats get it too. Each model shows as two groups headed "<Model> · Body Sliders" and "<Model> · Head Features" (no picker component change). A non-VRM entity model has no head catalog, so all its keys list under Body Sliders. The rule that hides a slider another stat uses goes, with `boundMorphNamesExcluding` (Q9).
 
 **Stat editor (Q11).** The Body Sliders multi-select stays. Below it, each picked slider gets a row with a Change By number. A Colors list below that adds rows of a channel and a target color.
 
 **Trait editor (Q12).** A matching section holds rows of a slider and its Set To value, and rows of a channel and its color. The editor warns when another trait sets the same control, unless the two can't be active together (one pick-one group) (Q4).
 
-**Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model.
+**Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model. The known model is the world's player Avatar (the one a new game uses) for world stats and traits, and the owner's model for owned stats and traits. A world with no fixed Avatar shows no mark.
+
+**Stat-link overrides.** The override editor's Body Sliders field gets the same Change By rows (and, in ticket 04, the Colors list), so an override carries the full binding list.
+
+**Help vectors.** `build:help-vectors` runs once at the spec close, not per ticket.
 
 **Character Customization (Q7, Q18).** In the new-game flow, the trait step comes before the Avatar step. Customization reads the traits the player checked there; Automatic traits and item grants are not evaluated yet. A slider or color one of those traits sets shows locked, with a note naming the trait. The stored player value stays, and returns when the trait ends. Customization in the Model Library has no world and locks nothing.
 
