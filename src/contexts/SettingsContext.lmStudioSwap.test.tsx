@@ -66,15 +66,20 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   localStorage.clear();
 });
 
 describe('a stored LM Studio record after a model swap', () => {
   it('re-reads the model list once per session and takes the loaded model’s answers whole', async () => {
+    vi.useFakeTimers();
     const view = renderHook(() => useSettings(), { wrapper });
     expect(view.result.current.reasoningCapability?.tools).toBe(true);
     await act(async () => { view.result.current.setNativeReasoning({ enabled: true, level: 'high' }); });
+    // Past the 1200 ms resolve debounce.
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    vi.useRealTimers();
 
     await waitFor(() => expect(view.result.current.reasoningCapability?.tools).toBe(false));
     const record = view.result.current.reasoningCapability;

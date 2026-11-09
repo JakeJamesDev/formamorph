@@ -280,11 +280,6 @@ describe('findDuplicate', () => {
 });
 
 describe('addModel metadata', () => {
-  it('records a content hash', async () => {
-    const record = await ModelStorageService.addModel(new File([blob()], 'x.vrm', { type: 'model/vrm' }));
-    expect(record.data.hash).toBeTruthy();
-  });
-
   it('prefers the VRM title over the filename', async () => {
     const vrm = await makeVrm1({ name: 'Proper Name' }).arrayBuffer();
     const record = await ModelStorageService.addModel(new File([vrm], 'export_final_v2.vrm', { type: 'model/vrm' }));

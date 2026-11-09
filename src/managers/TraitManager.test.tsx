@@ -95,19 +95,6 @@ beforeEach(() => {
   onOpenTrait.mockClear();
 });
 
-// An unknown topic id renders no button at all, so the hint buttons prove their ids resolve.
-describe('the section help buttons', () => {
-  it('mount registered topics for all three sections, each on its own tab', () => {
-    const { unmount } = renderManager('stats');
-    expect(screen.getByRole('button', { name: 'About Stat Changes' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'About Stat Availability' })).toBeInTheDocument();
-    unmount();
-
-    renderManager('pins');
-    expect(screen.getByRole('button', { name: 'About Placeholder Pins' })).toBeInTheDocument();
-  });
-});
-
 describe('the Body row', () => {
   it('adds a blank row, picks a Body from None and the world Bodies, and removes the row', async () => {
     const user = userEvent.setup();

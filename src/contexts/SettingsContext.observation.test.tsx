@@ -52,6 +52,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   localStorage.clear();
 });
@@ -202,7 +203,11 @@ describe('a vLLM server proving it separates its reasoning', () => {
   beforeEach(() => { vllmFetch.mockClear(); vi.stubGlobal('fetch', vllmFetch); });
 
   it('names the dialect and leaves the budget unanswered before any reply', async () => {
+    vi.useFakeTimers();
     const view = await engagedSettings();
+    // Past the 1200 ms resolve debounce.
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    vi.useRealTimers();
     await waitFor(() => expect(view.result.current.reasoningCapability?.dialect).toBe('vllm'));
     expect(view.result.current.reasoningCapability?.budget).toBeNull();
   });

@@ -62,13 +62,16 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => { localStorage.clear(); });
+afterEach(() => { vi.useRealTimers(); localStorage.clear(); });
 
 /** A provider with reasoning engaged, held at the point where its debounced resolve is in flight. */
 async function resolveInFlight() {
+  vi.useFakeTimers();
   const view = renderHook(() => useSettings(), { wrapper });
   await act(async () => { view.result.current.setNativeReasoning({ enabled: true, level: 'high' }); });
   // The unprompted resolve is debounced by 1200 ms.
+  await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+  vi.useRealTimers();
   await waitFor(() => expect(resolveReasoningCapability).toHaveBeenCalledTimes(1));
   return view;
 }

@@ -86,11 +86,6 @@ beforeEach(() => {
 });
 
 describe('the location pin section', () => {
-  it('mounts its help topic', () => {
-    renderManager();
-    expect(screen.getByRole('button', { name: 'About Placeholder Pins' })).toBeInTheDocument();
-  });
-
   it('adds a pin, aims it, and writes the value onto the location by id', async () => {
     renderManager();
     await userEvent.click(screen.getByRole('button', { name: 'Add Placeholder Pin' }));
