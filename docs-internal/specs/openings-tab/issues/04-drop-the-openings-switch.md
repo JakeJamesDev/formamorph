@@ -29,7 +29,7 @@ A world uses its openings whenever it has any (Q9, Q10).
 
 **Not verified**
 
-- The "honor the flag" mutation was not run. No browser frame: the change removes a flag and reworks hint text, and the editor tests read the hints.
+- The spec session ran the "honor the flag" mutation after the landing: returning an empty pool on a stored off flag failed the three stored-flag tests in `openings.test.ts`; restored, 78 pass. No browser frame: the change removes a flag and reworks hint text, and the editor tests read the hints.
 - Nothing else unticked.
 
 **For you**
