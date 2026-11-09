@@ -18,13 +18,15 @@ import {
   addOpening, hasAuthoredOpenings, openingsEditorView, openingsEnabled, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
 import {
-  openingsTabOwners, openingsTabRows, resolveOwnerKey, rowlessOwner, WORLD_OWNER_KEY, type OpeningsTabOwner, type OwnerKind,
+  entityOwnerKey, entityPickChoices, locationOwnerKey, locationPicker, openingsTabOwners, openingsTabRows, resolveOwnerKey,
+  rowlessOwner, WORLD_OWNER_KEY, type OpeningsTabOwner, type OwnerKind,
 } from '@/lib/openingsTab';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
 import {
   DefaultOpeningNote, EntityOpeningsHint, LocationOpeningsHint, OpeningsList, WorldOpeningsHint,
 } from './OpeningsPanel';
+import { OpeningsAddMenu } from './OpeningsAddMenu';
 
 /** The Starting Location filter's value for every start at once. */
 const ALL_LOCATIONS = 'all-locations';
@@ -60,6 +62,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
   // The filter lasts while the editor is open.
   const [filter, setFilter] = useState<string | null>(null);
   const view = openingsEditorView({ overview: worldOverview, entities, locations }, filter);
+  const allView = filter === null ? view : openingsEditorView({ overview: worldOverview, entities, locations }, null);
   const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const typed = search.typed;
@@ -79,9 +82,8 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
   // An owner the filter leaves out keeps its pane, with none of its rows and its note from the unfiltered view.
   function filteredOwner(): OpeningsTabOwner | undefined {
     if (!resolved || resolved.kind === 'world' || !selectedId) return undefined;
-    const all = openingsEditorView({ overview: worldOverview, entities, locations }, null);
     const id = resolved.kind === 'location' ? resolved.location.id : resolved.entity.id;
-    const atNoStart = all.groups.some((g) => (g.location?.id ?? g.entity?.id) === id && g.atNoStart);
+    const atNoStart = allView.groups.some((g) => (g.location?.id ?? g.entity?.id) === id && g.atNoStart);
     return rowlessOwner(selectedId, resolved, atNoStart);
   }
 
@@ -201,6 +203,22 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
     </OwnerPane>
   ) : null;
 
+  // The + offers what the tab doesn't list with no search and no filter (Q7, Q21).
+  const listedKeys = new Set(openingsTabOwners(allView, null).keys());
+  const addMenu = (
+    <OpeningsAddMenu
+      locations={locationPicker(locations, (id) => listedKeys.has(locationOwnerKey(id)))}
+      entityChoices={entityPickChoices(entityGroups, entities, (id) => listedKeys.has(entityOwnerKey(id)))}
+      onPickLocation={(l) => { updateLocation({ ...l, ...addOpening(l) }); onSelect(locationOwnerKey(l.id)); }}
+      onPickEntity={(id) => {
+        const entity = entities.find((e) => e.id === id);
+        if (!entity) return;
+        updateEntity({ ...entity, ...addOpening(entity) });
+        onSelect(entityOwnerKey(id));
+      }}
+    />
+  );
+
   const startOptions = view.starts.map((l) => ({ value: l.id, label: label(l.name) }));
   const startFilter = view.starts.length > 1 && (
     <div className="flex items-center gap-2">
@@ -224,10 +242,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
         <ListSearchToolbar
           search={search}
           placeholder="Search openings"
-          add={{
-            label: 'Add to Openings',
-            onAdd: () => { updateWorldOverview(addOpening(worldOverview)); onSelect(WORLD_OWNER_KEY); },
-          }}
+          add={{ label: 'Add to Openings', menu: addMenu }}
           after={extras?.after}
           target={extras?.target}
         >

@@ -80,6 +80,45 @@ export function openingsTabOwners(
   return out;
 }
 
+/** One row of a location picker level: a pick, or a level to open when a location below it is pickable. */
+export interface LocationPickRow {
+  location: GameLocation;
+  drills: boolean;
+}
+
+/** The + menu's location drill-in. */
+export interface LocationPicker {
+  /** Whether any location can be picked. */
+  any: boolean;
+  pickable: (id: string) => boolean;
+  /** The rows under `parentId`, null for the top: only those with a pick at or below them. */
+  level: (parentId: string | null) => LocationPickRow[];
+}
+
+/** The location drill-in over `locations`. `listed` says whether a location is on the tab with no search and no
+ *  filter; every other location is pickable. */
+export function locationPicker(locations: readonly GameLocation[], listed: (id: string) => boolean): LocationPicker {
+  const flat = locationRows([...locations]);
+  // A location with a pickable location below it.
+  const drills = new Set<string>();
+  // Reverse depth-first order reaches every child before its parent.
+  for (const node of [...flat].reverse()) {
+    if (node.parentId && (drills.has(node.id) || !listed(node.id))) drills.add(node.parentId);
+  }
+  const offers = (id: string) => drills.has(id) || !listed(id);
+  return {
+    any: flat.some((n) => !listed(n.id)),
+    pickable: (id: string) => !listed(id),
+    level: (parentId: string | null): LocationPickRow[] => flat
+      .filter((n) => n.parentId === parentId && offers(n.id))
+      .map((n) => ({ location: n.location, drills: drills.has(n.id) })),
+  };
+}
+
+/** The + menu's entity drill-in: every entity not on the tab with no search and no filter, in its folders. */
+export const entityPickChoices = (entityGroups: readonly EntityGroup[], entities: readonly Entity[], listed: (id: string) => boolean) =>
+  ownerChoices([...entityGroups], entities.filter((e) => !listed(e.id)));
+
 /** The tab's list rows, top to bottom. `matches` says whether an owner row stays under the search; This World
  *  always does. */
 export function openingsTabRows({ owners, locations, entities, entityGroups, matches }: {

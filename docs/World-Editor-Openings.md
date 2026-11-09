@@ -47,6 +47,7 @@ The **Openings** tab lists This World and every location and entity with opening
 
 Each row shows how many openings it has. The **No Starting Location** icon marks a row whose openings never come up: see [Starting Location filter](#starting-location-filter).
 
+- To give a location or entity its first opening, select **+**, then **Location** or **Entity**, and pick it. It's listed and selected with one blank opening. A location with locations inside it opens a list of them. To add to the location itself, pick **Add to <name>** at the top of that list.
 - The owner's name at the top of the right pane opens its own **Openings** tab.
 - After you delete an owner's last opening, its row stays until you select another row.
 - Search finds an owner by its name or by the text of its openings. The right pane then shows only the matching openings.

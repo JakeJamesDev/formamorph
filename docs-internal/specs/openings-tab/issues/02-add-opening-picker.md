@@ -1,6 +1,6 @@
 # 02: Add Opening Picker
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -22,10 +22,21 @@ Reference: the prototype's variant B picker (spec, Further Notes).
 
 ## Acceptance criteria
 
-- [ ] The Entity drill-in lists only entities without openings, in their folders (editor-bench test, mutation "list every entity" goes red)
-- [ ] The Location drill-in lists only locations without openings and their parents; a parent opens its level, and its Add to row adds to the parent (editor-bench test)
-- [ ] A pick adds one blank opening, closes the menu and selects that owner (editor-bench test)
-- [ ] A drill-in with nothing to pick is disabled
-- [ ] Keyboard: Back rows and pick rows are reachable, and focus moves to each level's Back row
-- [ ] Frame `.scratch/frames/openings-picker.png` at 1280×800 dark, with a drilled location level showing its Add to row
-- [ ] Design System entries added; a changelog fragment is written
+- [x] The Entity drill-in lists only entities without openings, in their folders (editor-bench test, mutation "list every entity" goes red): "lists only entities the tab does not list, in their folders"; the mutation turned it red
+- [x] The Location drill-in lists only locations without openings and their parents; a parent opens its level, and its Add to row adds to the parent (editor-bench test): "lists only locations the tab does not list…" and "adds one blank opening to a parent from its Add to row…"; ignoring `listed` turned them red
+- [x] A pick adds one blank opening, closes the menu and selects that owner (editor-bench test): the Add to case and "adds one blank opening to a picked entity and selects it"; Q21 has its own test, red when the picker reads the filtered view
+- [x] A drill-in with nothing to pick is disabled: "disables a drill-in with nothing to pick"
+- [x] Keyboard: Back rows and pick rows are reachable, and focus moves to each level's Back row: the focus test drives both drill-ins by Tab and Enter; Back returns focus to the drill row
+- [x] Frame `.scratch/frames/openings-picker.png` at 1280×800 dark, with a drilled location level showing its Add to row: headless Playwright on Veilwood, The Veilwood level
+- [x] Design System entries added; a changelog fragment is written: Owner Flyouts (location levels, Add to row, empty drill-in, Openings instance) and the dim context row in Lists With Controls
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- The Add to row and the location levels in the + menu, at a drilled level: `.scratch/openings-tab-02/frames/openings-picker.png`.
+- The live Design System showcase has no Openings picker sample; the entries are in `docs/Design-System.md` only.

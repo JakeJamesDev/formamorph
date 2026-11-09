@@ -55,49 +55,69 @@ export function OwnerList({ choices, label, onPick, refusal, back, leafIcon = ow
   const text = (name: string) => <PlaceholderText text={name} placeholders={placeholders} />;
   const checkSlot = (on: boolean) => refusal && <Check className={cn('h-4 w-4 shrink-0', on ? 'opacity-100' : 'opacity-0')} aria-hidden />;
   return (
-    <DrillSlide key={levelId ?? ''} from={from}>
-      {backRow && (
+    <MenuLevel levelKey={levelId ?? ''} from={from} back={backRow && { label: text(backRow.label), onBack: backRow.onBack }} label={label}>
+      {level.map((row) => {
+        if (row.kind === 'group') {
+          return (
+            <button key={row.id} type="button" className={MENU_ROW} onClick={() => go([...path, row.id], 'right')}>
+              {checkSlot(false)}
+              <GroupIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className={MENU_ROW_NAME}>{text(row.name)}</span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+          );
+        }
+        const refused = refusal?.(row.id);
+        const reason = refused ? labelPlaceholders(refused, placeholders) : null;
+        const button = (
+          <button
+            type="button"
+            aria-disabled={reason ? true : undefined}
+            aria-pressed={refusal ? !!reason : undefined}
+            aria-description={reason ?? undefined}
+            className={cn(MENU_ROW, 'aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:bg-transparent')}
+            onClick={() => { if (!reason) onPick(row.id); }}
+          >
+            {checkSlot(!!reason)}
+            {leafIcon(row)}
+            <span className={MENU_ROW_NAME}>{text(row.name)}</span>
+          </button>
+        );
+        return <Tip key={row.id} tip={reason} labelsChild={false} side="right">{button}</Tip>;
+      })}
+    </MenuLevel>
+  );
+}
+
+/** A wrapping menu row name. */
+export const MENU_ROW_NAME = 'min-w-0 flex-1 break-words [overflow-wrap:anywhere]';
+
+/**
+ * One level of a drill-in flyout: the Back row, which takes focus as the level opens, then the level's rows in a
+ * group that scrolls inside the popover.
+ */
+export function MenuLevel({ levelKey, from, back, label, children }: {
+  /** Names the level, so a new one slides in and its Back row takes focus. */
+  levelKey: string;
+  from: SlideFrom;
+  back?: { label: ReactNode; onBack: () => void };
+  /** The group's accessible name. */
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <DrillSlide key={levelKey} from={from}>
+      {back && (
         <>
-          {/* Keyed by level, so each level's Back row takes focus as it opens. */}
-          <button key={levelId ?? ''} type="button" className={cn(MENU_ROW, 'font-medium')} onClick={backRow.onBack} autoFocus>
+          <button key={levelKey} type="button" className={cn(MENU_ROW, 'font-medium')} onClick={back.onBack} autoFocus>
             <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(backRow.label)}</span>
+            <span className={MENU_ROW_NAME}>{back.label}</span>
           </button>
           <div role="separator" className="-mx-1 my-1 h-px bg-border" />
         </>
       )}
       <ScrollArea className="max-h-[min(20rem,calc(var(--radix-popover-content-available-height)-4rem))]">
-        <div role="group" aria-label={label}>
-          {level.map((row) => {
-            if (row.kind === 'group') {
-              return (
-                <button key={row.id} type="button" className={MENU_ROW} onClick={() => go([...path, row.id], 'right')}>
-                  {checkSlot(false)}
-                  <GroupIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                  <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(row.name)}</span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                </button>
-              );
-            }
-            const refused = refusal?.(row.id);
-            const reason = refused ? labelPlaceholders(refused, placeholders) : null;
-            const button = (
-              <button
-                type="button"
-                aria-disabled={reason ? true : undefined}
-                aria-pressed={refusal ? !!reason : undefined}
-                aria-description={reason ?? undefined}
-                className={cn(MENU_ROW, 'aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:bg-transparent')}
-                onClick={() => { if (!reason) onPick(row.id); }}
-              >
-                {checkSlot(!!reason)}
-                {leafIcon(row)}
-                <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(row.name)}</span>
-              </button>
-            );
-            return <Tip key={row.id} tip={reason} labelsChild={false} side="right">{button}</Tip>;
-          })}
-        </div>
+        <div role="group" aria-label={label}>{children}</div>
       </ScrollArea>
     </DrillSlide>
   );

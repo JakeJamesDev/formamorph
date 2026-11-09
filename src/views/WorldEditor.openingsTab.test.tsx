@@ -244,6 +244,139 @@ describe('the World Editor Openings tab', () => {
     expect(within(pane('editor-detail')).getAllByTestId('opening-row')).toHaveLength(2);
   });
 
+  describe('the + picker', () => {
+    /** WORLD plus owners to pick: the Cellar under the listed Harbor Steps, the Reed Bed under the pickable
+     *  Black Fen, a Boatwright in the River Folk, and a Ghost whose only opening is a hidden Self row. */
+    const PICK_WORLD: World = {
+      ...WORLD,
+      locations: [
+        ...WORLD.locations,
+        { id: 'cellar', name: 'Cellar', parentId: 'harbor' },
+        { id: 'reeds', name: 'Reed Bed', parentId: 'fen' },
+      ],
+      entities: [
+        ...WORLD.entities,
+        { id: 'boatwright', name: 'Boatwright', groupId: 'folk' },
+        { id: 'ghost', name: 'Ghost', openings: [{ id: 'g1', text: 'A cold hand.', kind: 'action', self: true }] },
+      ],
+    } as World;
+
+    const openPlus = () => fireEvent.click(within(pane('editor-list')).getByRole('button', { name: 'Add to Openings' }));
+    const menuRow = (name: string | RegExp) => screen.getByRole('button', { name });
+    const level = (group: 'Locations' | 'Entities') =>
+      within(screen.getByRole('group', { name: group })).getAllByRole('button').map((b) => b.textContent);
+
+    it('lists only entities the tab does not list, in their folders', async () => {
+      await openOpeningsTab(PICK_WORLD);
+      openPlus();
+      fireEvent.click(menuRow('Entity'));
+      expect(level('Entities')).toEqual(['River Folk', 'Drifter', 'Ghost']);
+      fireEvent.click(menuRow('River Folk'));
+      expect(level('Entities')).toEqual(['Boatwright']);
+    });
+
+    it('lists only locations the tab does not list and their parents; a parent opens its level', async () => {
+      await openOpeningsTab(PICK_WORLD);
+      openPlus();
+      fireEvent.click(menuRow('Location'));
+      expect(level('Locations')).toEqual(['Harbor Steps', 'Black Fen', 'Salt Marsh']);
+
+      // Listed itself, so its level has no Add to row.
+      fireEvent.click(menuRow('Harbor Steps'));
+      expect(level('Locations')).toEqual(['Cellar']);
+      fireEvent.click(menuRow('Harbor Steps'));
+
+      // The Old Mill is listed, so only the Reed Bed is offered under the Black Fen.
+      fireEvent.click(menuRow('Black Fen'));
+      expect(level('Locations')).toEqual(['Add to Black Fen', 'Reed Bed']);
+    });
+
+    it("adds one blank opening to a parent from its Add to row, closes the menu and selects it", async () => {
+      const bench = await openOpeningsTab(PICK_WORLD);
+      openPlus();
+      fireEvent.click(menuRow('Location'));
+      fireEvent.click(menuRow('Black Fen'));
+      fireEvent.click(menuRow('Add to Black Fen'));
+      expect(bench.ctx().locations.find((l) => l.id === 'fen')?.openings).toEqual([
+        expect.objectContaining({ text: '', kind: 'action' }),
+      ]);
+      expect(screen.queryByRole('group', { name: 'Locations' })).toBeNull();
+      expect(selectedOwner()).toBe('Black Fen');
+      expect(paneHeading()).toBe('Black Fen');
+      expect(paneCards()).toHaveLength(1);
+    });
+
+    it('adds one blank opening to a picked entity and selects it', async () => {
+      const bench = await openOpeningsTab(PICK_WORLD);
+      openPlus();
+      fireEvent.click(menuRow('Entity'));
+      fireEvent.click(menuRow('Ghost'));
+      const ghost = bench.ctx().entities.find((e) => e.id === 'ghost');
+      expect(ghost?.openings).toHaveLength(2);
+      expect(ghost?.openings?.[1]).toMatchObject({ text: '', kind: 'action' });
+      expect(screen.queryByRole('group', { name: 'Entities' })).toBeNull();
+      expect(selectedOwner()).toBe('Ghost');
+      expect(listRows()).toContain('Ghost 1!');
+    });
+
+    it('ignores the search and the Starting Location filter, and a pick clears the search', async () => {
+      const user = userEvent.setup();
+      await openOpeningsTab(PICK_WORLD);
+      // The Black Fen filter hides Harbor Steps and the Old Mill; the search hides every owner row.
+      await user.click(within(pane('editor-list')).getByRole('combobox', { name: 'Starting Location' }));
+      await user.click(screen.getByRole('option', { name: 'Black Fen' }));
+      fireEvent.change(tabSearch(), { target: { value: 'zzz' } });
+      openPlus();
+      fireEvent.click(menuRow('Location'));
+      expect(level('Locations')).toEqual(['Harbor Steps', 'Black Fen', 'Salt Marsh']);
+      fireEvent.click(menuRow('Black Fen'));
+      expect(level('Locations')).toEqual(['Add to Black Fen', 'Reed Bed']);
+      fireEvent.click(menuRow('Reed Bed'));
+      expect(tabSearch()).toHaveValue('');
+      // Selected, though the filter hides its row (Q16).
+      expect(paneHeading()).toBe('Reed Bed');
+    });
+
+    it('disables a drill-in with nothing to pick', async () => {
+      // Every location and entity already holds an opening.
+      await openOpeningsTab(benchEditorWorld({
+        locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, openings: [{ id: 'h1', text: 'Gulls.', kind: 'action' }] }],
+        entities: [{ id: 'resident', name: 'Odd Wick', locations: ['harbor'], openings: [{ id: 'r1', text: 'A lamp.', kind: 'action' }] }],
+      } as unknown as Partial<World>));
+      openPlus();
+      expect(menuRow('Location')).toBeDisabled();
+      expect(menuRow('Entity')).toBeDisabled();
+    });
+
+    it("moves focus to each level's Back row, and reaches the pick rows by Tab", async () => {
+      const user = userEvent.setup();
+      await openOpeningsTab(PICK_WORLD);
+      openPlus();
+      await user.click(menuRow('Location'));
+      expect(menuRow('Location')).toHaveFocus();
+      // Back returns focus to the drill row it came from.
+      await user.keyboard('{Enter}');
+      expect(menuRow('Location')).toHaveFocus();
+      await user.keyboard('{Enter}');
+      await user.click(menuRow('Black Fen'));
+      expect(menuRow('Black Fen')).toHaveFocus();
+      await user.tab();
+      expect(menuRow('Add to Black Fen')).toHaveFocus();
+      await user.tab();
+      expect(menuRow('Reed Bed')).toHaveFocus();
+      await user.keyboard('{Enter}');
+      expect(selectedOwner()).toBe('Reed Bed');
+
+      openPlus();
+      await user.click(menuRow('Entity'));
+      expect(menuRow('Entity')).toHaveFocus();
+      await user.click(menuRow('River Folk'));
+      expect(menuRow('River Folk')).toHaveFocus();
+      await user.tab();
+      expect(menuRow('Boatwright')).toHaveFocus();
+    });
+  });
+
   it('opens on the list on mobile, with nothing selected', async () => {
     const restore = asMobile();
     try {

@@ -760,6 +760,7 @@ Open `#dev?modal=designSystem&tab=icon-grid-picker`. The reference uses local st
 | Edit or order authored items | Use `SortableList`, `SortableRow`, and `EditorRow`; preserve selection, metadata, duplicate/delete controls, and the detail editor. |
 | Open settings for a whole list | Pin one `EditorRow` above the list, with no grip, no actions and a divider under it, through the List Editor adapter's `pinned` rows. It never drags, stays under any search, and shows when the list is empty. The Items tab's **Equipment Settings** uses it. |
 | Edit records that hold their own ordered rows | Use an expandable `EditorRow` (chevron, grip, name, meta summary, delete) with an attached bordered body below it. The body holds the record's fields and a nested `EditorRowList` that is its own drag boundary. Morphie's layers and the World Editor's Bodies use it. |
+| Show some owners inside their real nesting | Draw the listed owners as `EditorRow`s at their tree depth. A parent location or folder that holds no listed owner, but has one below it, shows as a dim context row: its icon and name at 60–70% opacity, no selection, no actions. The Openings tab uses it. |
 | Switch a few fixed options on and edit one at a time | Use status rows in one bordered list: a checkbox, the name, and a status word (**Custom** when on, **Default** when off). Clicking the row selects it and shows its editor below the list, with an accent fill and a chevron on the selected row. The checkbox never changes the selection. The Overview's **Custom Prompts** tab uses it. |
 | Choose and manage saved progress | Use `SaveList`; preserve the save name, timestamp, game time, Auto state, ordering, load/select action, export, and delete. |
 
@@ -1613,7 +1614,7 @@ Prompt and section labels reuse the production registry. The reference's title a
 
 ## Pattern: Owner Flyouts
 
-**Purpose:** Pick one entity from the world's entity groups without leaving the Traits tab.
+**Purpose:** Pick one entity from the world's entity groups, or one location from its location tree, without leaving the tab.
 
 This pattern differs from two others on purpose. Its entity list sits inside the **+** menu, unlike the Searchable Group Picker, because each level stays short. Its rows keep a check column in a held-state flyout, unlike Compact Selection Lists, so entity rows and group rows align.
 
@@ -1622,10 +1623,14 @@ This pattern differs from two others on purpose. Its entity list sits inside the
 - 👤 **Custom Persona icon.** The entity with the Custom Persona mark sits in its Entities-tab place and carries its own icon.
 - ✅ **Check column.** A flyout that shows held state starts every row with a check column, so group rows and entity rows align. A held entity reads checked and dimmed, and can't be picked.
 - 💬 **Refusal reason.** A held row carries a tip that says why it can't be picked: "Already links Trust", "Already owns Trust", "Already links Body, which holds Trust". A menu that doesn't list the entity starts the line with its name ("Bram already links Trust"). The row stays reachable by keyboard, and screen readers read the reason. A touch screen shows no tip.
+- 📍 **Location levels.** A location list follows the location tree the same way. A location with a pickable location below it opens its level, with a chevron. Every other row is a plain pick.
+- ➕ **Add to row.** When the location that opened a level can be picked too, the level starts with **Add to <name>**, a plus icon and a divider under it. Without it, a location with pickable children could never be picked.
+- 🚫 **Empty drill-in.** A menu row that opens a list with nothing to pick stays visible and disabled.
 - Rows use the menu's row size and padding. Long names wrap. The list scrolls inside the popover when it outgrows the space.
 
 | Instance | Where | After a pick |
 | --- | --- | --- |
+| **Location** / **Entity** | The Openings tab's **+** menu drills in, over the owners the tab doesn't list | The popover closes, and the owner is listed and selected with one blank opening |
 | **Add Trait to Entity** / **Add Group to Entity** | The Traits tab's **+** menu drills in | The popover closes and the new row is selected |
 | **Link To…** | Right-aligned at the top of a world trait's or group's Details, and beside a selected link's Linked-from line, in Advanced | The popover stays open and the row turns checked |
 
@@ -1637,6 +1642,8 @@ This pattern differs from two others on purpose. Its entity list sits inside the
 | Rows and levels | `ownerChoices` in [`ownerChoices.ts`](../src/lib/ownerChoices.ts) |
 | Menu row | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
 | Link button | `LinkToOwnerButton` in [`OwnerPicker.tsx`](../src/managers/OwnerPicker.tsx) |
+| Location levels, Add to row | `OpeningsAddMenu` in [`OpeningsAddMenu.tsx`](../src/managers/OpeningsAddMenu.tsx) |
+| Pickable locations and entities | `locationPicker`, `entityPickChoices` in [`openingsTab.ts`](../src/lib/openingsTab.ts) |
 | Refusal reasons and their text | `HeldReason` and `heldReasonText` in [`heldReasons.ts`](../src/lib/heldReasons.ts) |
 | **+** menu drill-in | `traitsMenu` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
 | Isolated reference | [`OwnerFlyoutReference.tsx`](../src/components/design-system/OwnerFlyoutReference.tsx) |
