@@ -103,6 +103,8 @@ It replaces the summing in `mergeBodyMorphs` and the per-stat map in `statMorphM
 
 This keeps separate materials in one channel (face and body skin, two eyes) apart.
 
+**A material's own color (Q21).** The plain texture median fails on atlases where other parts outnumber the skin (Aki's body atlas holds black tights). Ticket 06 finds each material's color from its dominant color cluster instead. That fixes the bindings and the player's own Skin Color picker. Ticket 04 lands as specced first.
+
 **Trait precedence (Q4, reopened).** Among active traits that set the same control, the most recently switched-on wins. Traits switched on together fall back to tree order. This reuses the switch-on order the inventory settle already keeps for Body rows (`BodyRuntime.traitsOn`). That list widens to also hold traits that carry slider or color rows. `traitBodyPicks` already skips entries with no Body pick, so Body resolution doesn't change. As with Body rows, the played entity's own traits drive the played Persona.
 
 **Reading the order.** Load runs no settle, so the resolver itself treats an active trait missing from `traitsOn` as switched on after every listed one, in tree order. An older save and a fresh load then show trait looks at once. History paging reads the viewed snapshot's `bodies`, as it reads `viewTraits`.
@@ -127,6 +129,16 @@ This keeps separate materials in one channel (face and body skin, two eyes) apar
 - The match is by name, and by resolved key when the known model is loaded, so Fat and Thickness warn on a model where they alias to one key.
 - A linked trait's known model is the link owner's model.
 - The resolver's holder map is `holders: Record<modelKey, { ownerId: string | null; traitId: string }>`. Ticket 04 adds color channels to it. Ticket 05 resolves the trait's name.
+- Colors (ticket 04):
+  - The resolver returns a separate `colorHolders` keyed by channel, beside `holders`.
+  - A stat holds at most one color binding per channel, and a trait at most one color pin per channel.
+  - The Colors field mirrors Body Sliders: a multi-select of Skin, Eye and Hair, then one row per channel with the design-system ColorPicker.
+  - A new row starts at the known model's own color for that channel, or #ffffff when no model is known.
+  - The headless loader reports the model's channels. A non-VRM owner has none, so its color rows read "not on this model".
+  - Blend steps follow the stats' tree order.
+  - The overlap note and the rival rules match the Slider Pin rules.
+  - Labels: the field is "Colors"; the column is "Target Color" in the stat editor and "Set To" in the trait editor. History labels read "Colors".
+  - Glossary: **Color Pin**.
 - Glossary: **Slider Pin**, a trait row that holds one Avatar slider at a Set To value while the trait is active. The Body rule widens to "the latest-on active trait row wins" for Body, slider and color rows.
 
 **Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model. The known model is the world's player Avatar (the one a new game uses) for world stats and traits, and the owner's model for owned stats and traits. A world with no fixed Avatar shows no mark.
