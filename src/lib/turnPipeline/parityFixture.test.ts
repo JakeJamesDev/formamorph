@@ -25,10 +25,6 @@ const EXPECTED_TURNS = 7;
 const EXPECTED_REQUESTS = 86;
 
 describe('recorded parity fixture', () => {
-  it('validates against the recorded format', () => {
-    expect(() => fixture()).not.toThrow();
-  });
-
   it('is a recording of the Sedge Landing script', () => {
     const f = fixture();
     expect(f.world).toBe('sedge-landing.json');

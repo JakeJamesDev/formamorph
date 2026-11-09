@@ -273,6 +273,6 @@ describe('executeStatCode currencies', () => {
 
   it('leaves a read-only run with no pay', async () => {
     const res = await run(`currencies.Coin.pay(persona, null, 1);`, {}, { readOnly: true });
-    expect(res.error).not.toBeNull();
+    expect(res.error).toMatch(/currencies\.Coin\.pay isn’t available in a Tool script/);
   });
 });

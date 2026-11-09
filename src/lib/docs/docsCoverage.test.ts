@@ -63,11 +63,6 @@ describe('docs coverage of the app', () => {
     expect(unclosedFenceProblems(DOCS)).toEqual([]);
   });
 
-  it('reports how-to sections that could name a target (report only)', () => {
-    const untargeted = untargetedSections(DOCS, SURFACE_TARGETS);
-    if (untargeted.length > 0) console.info(`How-to sections whose surface has targets but whose route names none:\n${untargeted.join('\n')}`);
-  });
-
   it('gives every surface-map section the route of its surface', () => {
     expect(surfaceRouteProblems({ map: SURFACE_MAP, exclusions: SURFACE_EXCLUSIONS, index: createDocsIndex({ pages: DOCS }) })).toEqual([]);
   });

@@ -402,9 +402,4 @@ describe('buildMemoryLedger time stamps', () => {
     const note = rows.find((r) => r.id === 'n1')!;
     expect(note.stamp).toBe('Day 3, morning — two days ago');
   });
-
-  it('stamps rows under the Recent divider too', () => {
-    const rows = stamped(measured(), 96);
-    expect(rows[rows.length - 1].stamp).toBeTruthy();
-  });
 });

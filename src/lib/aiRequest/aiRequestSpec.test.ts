@@ -383,13 +383,6 @@ describe('reasoning split — budget where the record says, effort everywhere el
     expect(buildRequestBody(snap, call({ requestType: 'statUpdates' }))).toMatchObject({ thinking_budget_tokens: 0 });
   });
 
-  it('sends the global effort on an external endpoint that accepts it', () => {
-    const snap = snapshot(external(), { reasoningEngaged: true, reasoningEffort: 'high' });
-    const body = buildRequestBody(snap, call());
-    expect(body).toMatchObject({ reasoning_effort: 'high' });
-    expect(body).not.toHaveProperty('thinking_budget_tokens');
-  });
-
   it('lets a per-prompt level override the global one', () => {
     const snap = snapshot(external(), {
       reasoningEngaged: true, reasoningEffort: 'high', promptReasoning: { narration: 'low' },

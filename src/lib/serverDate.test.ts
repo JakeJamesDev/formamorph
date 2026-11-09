@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatServerDateTime, parseServerDate } from './serverDate';
+import { formatServerDate, formatServerDateTime, parseServerDate } from './serverDate';
 
 describe('parseServerDate', () => {
   // Asserted as instants rather than formatted strings: a formatted comparison agrees with itself on a
@@ -32,7 +32,12 @@ describe('parseServerDate', () => {
 
 describe('formatServerDateTime', () => {
   it('renders a parseable timestamp', () => {
-    expect(formatServerDateTime('2026-07-30 12:00:00')).toBeTruthy();
+    // Locale-free: the date and time is the date plus a time.
+    const date = formatServerDate('2026-07-30 12:00:00');
+    const text = formatServerDateTime('2026-07-30 12:00:00');
+    expect(date).not.toBe('');
+    expect(text).toContain(date);
+    expect(text).not.toBe(date);
   });
 
   it('returns an empty string for an unparseable value', () => {

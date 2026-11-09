@@ -27,7 +27,8 @@ describe('reading the state', () => {
   });
 
   it('gives the deadline as a date', () => {
-    expect(quarantineDeadline(listing())).toBeTruthy();
+    // The expiry as a local date, with no time of day.
+    expect(quarantineDeadline(listing())).toBe(new Date('2026-08-08T00:00:00.000Z').toLocaleDateString());
   });
 
   it('gives no deadline when there is none to give', () => {
@@ -77,7 +78,8 @@ describe('who gets the notice', () => {
   });
 
   it('carries the deadline, since that is what the message is about', () => {
-    expect(quarantineTargetFor(listing(), 'admin-1')?.deadline).toBeTruthy();
+    expect(quarantineTargetFor(listing(), 'admin-1')?.deadline).toBe(quarantineDeadline(listing()));
+    expect(quarantineTargetFor(listing({ quarantine_expires_at: null }), 'admin-1')?.deadline).toBeNull();
   });
 
   it('falls back to the kind’s noun when the listing has no name', () => {
