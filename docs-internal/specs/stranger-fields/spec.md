@@ -1,6 +1,7 @@
 # Spec: Stranger Fields
 
 Status: ready-for-agent
+Spec session: stranger-fields — spec
 
 ## Problem Statement
 
