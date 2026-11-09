@@ -1,6 +1,7 @@
 # Spec: Action List
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-08, tickets 01–09, last landing 4d6acd52b. Review: spec text corrected; its two gaps became tickets 08 and 09. Tests green on 2026-11-08 (33936 pass, 350s); lint red only on ignored worlds-wip files.
 Spec session: action-list — spec
 
 Player actions taken in the game's panels between turns are listed above the action box, told to the narrator with the next turn, and can be hidden or undone before sending.
