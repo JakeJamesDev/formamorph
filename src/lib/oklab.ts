@@ -26,6 +26,18 @@ function srgbToOklab([r, g, b]: Triple): Triple {
   ];
 }
 
+let linearByte: Float64Array | null = null;
+
+/** OKLab lightness (0..1) of sRGB bytes, for per-pixel work: the L row of `srgbToOklab`, without allocations. */
+export function oklabLightness(r: number, g: number, b: number): number {
+  if (!linearByte) linearByte = Float64Array.from({ length: 256 }, (_, v) => toLinear(v / 255));
+  const lr = linearByte[r], lg = linearByte[g], lb = linearByte[b];
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+}
+
 function oklabToSrgb([L, a, b]: Triple): Triple {
   const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
   const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;

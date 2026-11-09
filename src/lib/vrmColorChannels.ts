@@ -1,6 +1,6 @@
 import type * as THREE from "three";
 import type { ColorChannel } from "@/types";
-import { medianOpaqueRGB, tintSeedRGB, toByte } from "./textureMedian";
+import { dominantClusterRGB, tintSeedRGB, toByte } from "./textureMedian";
 import { COLOR_CHANNELS } from "./avatarLook";
 
 const CLOTH_WORDS = ['cloth', 'top', 'bottom', 'shoe', 'skirt', 'pant', 'shirt', 'dress', 'jacket', 'sock', 'glove', 'sleeve', 'coat', 'bra', 'accessor'];
@@ -25,7 +25,7 @@ export function channelMatch(channel: string, matName: string, meshName: string)
 type ChannelMaterial = THREE.Material & { isOutline?: boolean; color?: THREE.Color; map?: THREE.Texture | null };
 
 
-/** A material's own color as a picker seeds it: its texture's median under its color factor, else that factor. */
+/** A material's own color as a picker seeds it: its texture's dominant cluster under its color factor, else that factor. */
 function materialColor(m: ChannelMaterial): string | null {
   const factor: [number, number, number] = m.color?.isColor ? [m.color.r, m.color.g, m.color.b] : [1, 1, 1];
   const image = m.map?.image as (CanvasImageSource & { width?: number; height?: number }) | undefined;
@@ -35,7 +35,7 @@ function materialColor(m: ChannelMaterial): string | null {
     canvas.width = image.width; canvas.height = image.height;
     const ctx = canvas.getContext('2d');
     try {
-      if (ctx) { ctx.drawImage(image, 0, 0); median = medianOpaqueRGB(ctx.getImageData(0, 0, image.width, image.height).data); }
+      if (ctx) { ctx.drawImage(image, 0, 0); median = dominantClusterRGB(ctx.getImageData(0, 0, image.width, image.height).data); }
     } catch { median = null; }
   }
   if (!median && !m.color?.isColor) return null;

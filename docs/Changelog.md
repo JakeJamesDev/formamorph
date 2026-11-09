@@ -38,6 +38,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Avatars:**
+    - **The Skin Color picker now tints an Avatar's body and face to the same tone.** Before, an Avatar with dark clothing on the body, such as Aki, could get a pale yellow body.
+
 ---
 
 <details>

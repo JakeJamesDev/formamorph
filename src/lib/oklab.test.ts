@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { blendColor, mixOklab } from "./oklab";
+import { blendColor, mixOklab, oklabLightness } from "./oklab";
+
+describe("oklabLightness", () => {
+  it("runs from 0 at black to 1 at white", () => {
+    expect(oklabLightness(0, 0, 0)).toBeCloseTo(0, 6);
+    expect(oklabLightness(255, 255, 255)).toBeCloseTo(1, 4);
+  });
+
+  it("puts sRGB mid gray near 0.6, not 0.5", () => {
+    expect(oklabLightness(128, 128, 128)).toBeCloseTo(0.5999, 3);
+  });
+});
 
 describe("mixOklab", () => {
   it("returns each end at 0 and 1", () => {

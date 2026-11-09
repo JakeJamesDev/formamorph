@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { medianOpaqueRGB, tintFactors, tintSeedRGB } from './textureMedian';
+import { dominantClusterRGB, medianOpaqueRGB, tintFactors, tintSeedRGB } from './textureMedian';
 
 describe('tintSeedRGB', () => {
   it('returns the median under a factor of 1', () => {
@@ -99,5 +99,40 @@ describe('medianOpaqueRGB', () => {
 
   it('returns null with no opaque pixel', () => {
     expect(medianOpaqueRGB(px(5, 5, 5, 0, 4))).toBeNull();
+  });
+});
+
+describe('dominantClusterRGB', () => {
+  const bytes = (rgb: [number, number, number]) => rgb.map((x) => Math.round(x * 255));
+  // A skin atlas where black tights outnumber the skin, as on Aki's body.
+  const atlas = [...px(60, 44, 43, 255, 45), ...px(40, 30, 30, 255, 15), ...px(249, 212, 185, 255, 40)];
+
+  it('returns the skin on an atlas where dark garments outnumber it', () => {
+    expect(bytes(dominantClusterRGB(atlas)!)).toEqual([249, 212, 185]);
+  });
+
+  it('differs from the plain median there, which lands on the garment', () => {
+    expect(bytes(medianOpaqueRGB(atlas)!)).toEqual([60, 44, 43]);
+  });
+
+  it('returns the plain median, within a level, of a gradient, which forms one cluster', () => {
+    // Bins at the ramp's ends hold under 1% of the pixels and drop out, so the median may move by one level.
+    const ramp = Array.from({ length: 101 }, (_, i) => px(60 + i, 40 + i, 40 + i)).flat();
+    const plain = bytes(medianOpaqueRGB(ramp)!);
+    bytes(dominantClusterRGB(ramp)!).forEach((v, i) => expect(Math.abs(v - plain[i])).toBeLessThanOrEqual(1));
+  });
+
+  it('ignores a bright speck under 1% of the pixels', () => {
+    const hair = [...px(70, 40, 40, 255, 300), ...px(255, 255, 255, 255, 2)];
+    expect(bytes(dominantClusterRGB(hair)!)).toEqual([70, 40, 40]);
+  });
+
+  it('does not count fully transparent pixels', () => {
+    const data = [...px(250, 250, 250, 0, 90), ...px(40, 30, 30, 255, 10)];
+    expect(bytes(dominantClusterRGB(data)!)).toEqual([40, 30, 30]);
+  });
+
+  it('returns null with no opaque pixel', () => {
+    expect(dominantClusterRGB(px(5, 5, 5, 0, 4))).toBeNull();
   });
 });

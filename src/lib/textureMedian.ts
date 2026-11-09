@@ -1,3 +1,5 @@
+import { oklabLightness } from "./oklab";
+
 const MIN_ALPHA = 10;
 const MAX_FACTOR = 4;
 const MIN_MEDIAN = 0.01;
@@ -41,10 +43,49 @@ export function tintFactors(
 
 /** Per-channel median of the opaque pixels in RGBA data, each channel in 0..1. Null when no pixel is opaque. */
 export function medianOpaqueRGB(data: ArrayLike<number>): [number, number, number] | null {
-  const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+  return medianWhere(data, (i) => data[i + 3] >= MIN_ALPHA);
+}
+
+const L_BINS = 32;
+const MIN_RUN_SHARE = 0.01;
+
+/**
+ * A material's own color from its dominant cluster: opaque pixels split into runs of adjacent, populated OKLab
+ * lightness bins, and the run carrying the most light wins, so dark garments baked into a skin atlas don't pull
+ * it. A gradient forms one run and returns the plain median. Per-channel median of that run, each in 0..1; null
+ * when no pixel is opaque.
+ */
+export function dominantClusterRGB(data: ArrayLike<number>): [number, number, number] | null {
+  const bins = new Uint8Array(data.length >> 2).fill(255);
+  const hist = new Uint32Array(L_BINS);
   let n = 0;
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] < MIN_ALPHA) continue;
+    const bin = Math.min(L_BINS - 1, Math.max(0, Math.floor(oklabLightness(data[i], data[i + 1], data[i + 2]) * L_BINS)));
+    bins[i >> 2] = bin; hist[bin]++; n++;
+  }
+  if (!n) return null;
+  const floor = MIN_RUN_SHARE * n;
+  // Some bin holds at least 1/L_BINS of the pixels, above the floor, so a run always replaces this.
+  let best: [number, number] = [0, L_BINS - 1];
+  let bestLight = -1;
+  for (let lo = 0; lo < L_BINS; lo++) {
+    if (hist[lo] < floor) continue;
+    let hi = lo, light = 0;
+    while (hi < L_BINS && hist[hi] >= floor) { light += hist[hi] * (hi + 0.5); hi++; }
+    if (light > bestLight) { bestLight = light; best = [lo, hi - 1]; }
+    lo = hi;
+  }
+  const [lo, hi] = best;
+  return medianWhere(data, (i) => bins[i >> 2] >= lo && bins[i >> 2] <= hi);
+}
+
+/** Per-channel median of the pixels `keep` accepts, by RGBA offset. */
+function medianWhere(data: ArrayLike<number>, keep: (i: number) => boolean): [number, number, number] | null {
+  const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+  let n = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (!keep(i)) continue;
     hist[0][data[i]]++; hist[1][data[i + 1]]++; hist[2][data[i + 2]]++;
     n++;
   }

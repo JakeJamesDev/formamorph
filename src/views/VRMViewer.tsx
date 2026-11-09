@@ -11,10 +11,10 @@ import type { ColorChannel, HairTypeDef } from '@/types';
 import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
 import { applyMorphInfluences } from '@/lib/modelMorphs';
 import { catalogNames, expressionBoundMorphs, vrmMorphCatalog } from '@/lib/vrmMorphCatalog';
-import { medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
+import { dominantClusterRGB, medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
 import { channelMatch } from '@/lib/vrmColorChannels';
 import { blendColor } from '@/lib/oklab';
-import type { ColorPlan } from '@/lib/avatarLook';
+import { COLOR_CHANNELS, type ColorPlan } from '@/lib/avatarLook';
 import { usePanelLoopGate } from '@/lib/panelShown';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
@@ -226,18 +226,19 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     return result;
   };
 
-  // Median opaque pixel of a material's texture → normalized [r,g,b] (0..1), cached. Null if it has no texture.
-  const getMedianRGB = (material: VrmMaterial): [number, number, number] | null => {
-    if (material.userData.__medianRGB !== undefined) return material.userData.__medianRGB;
+  // Texture color, cached, null without a texture: a channel material's dominant cluster, an extra's plain median.
+  const getTextureRGB = (material: VrmMaterial, channel: boolean): [number, number, number] | null => {
+    const key = channel ? '__clusterRGB' : '__medianRGB';
+    if (material.userData[key] !== undefined) return material.userData[key];
     const src = getOriginalImageData(material);
-    const median = src ? medianOpaqueRGB(src.data) : null;
-    material.userData.__medianRGB = median;
-    return median;
+    const rgb = src ? (channel ? dominantClusterRGB : medianOpaqueRGB)(src.data) : null;
+    material.userData[key] = rgb;
+    return rgb;
   };
 
-  // A material's untinted color (to seed a picker): texture median under the original color factor, else that factor.
-  const untintedColor = (material: VrmMaterial) => {
-    const median = getMedianRGB(material);
+  // A material's untinted color (to seed a picker): texture color under the original color factor, else that factor.
+  const untintedColor = (material: VrmMaterial, channel: boolean) => {
+    const median = getTextureRGB(material, channel);
     const color: THREE.Color | null | undefined = material.userData.__origColor ?? material.color;
     const factor: [number, number, number] | null = color?.isColor ? [color.r, color.g, color.b] : null;
     const rgb = median ? tintSeedRGB(median, factor ?? [1, 1, 1]) : factor;
@@ -245,10 +246,10 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     return '#' + rgb.map(x => toByte(x).toString(16).padStart(2, '0')).join('');
   };
 
-  // GPU tint (no per-pixel work). Textured material: scale the color factor so the texture's median shifts to
-  // `hex` (result ≈ texture × target/median → matches the picker). Factor-only material (no texture, e.g. some
-  // Blender exports): set the color factor to `hex` directly.
-  const tintByMedian = (material: VrmMaterial, hex: string) => {
+  // GPU tint (no per-pixel work). Textured material: scale the color factor so the texture color shifts to
+  // `hex` (result ≈ texture × target/texture color → matches the picker). Factor-only material (no texture, e.g.
+  // some Blender exports): set the color factor to `hex` directly.
+  const tintMaterial = (material: VrmMaterial, hex: string, channel: boolean) => {
     // Remember the untinted colors once, so a revert can restore them exactly.
     if (material.userData.__origColor === undefined)
       material.userData.__origColor = material.color?.isColor ? material.color.clone() : null;
@@ -258,7 +259,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     const origColor: THREE.Color | null = material.userData.__origColor;
     const origShade: THREE.Color | null = material.userData.__origShade;
     const base: [number, number, number] = origColor ? [origColor.r, origColor.g, origColor.b] : [1, 1, 1];
-    const { color, shade } = tintFactors([tr, tg, tb], getMedianRGB(material), base, origShade ? [origShade.r, origShade.g, origShade.b] : base);
+    const { color, shade } = tintFactors([tr, tg, tb], getTextureRGB(material, channel), base, origShade ? [origShade.r, origShade.g, origShade.b] : base);
     if (material.color?.isColor) material.color.setRGB(...color);
     if (material.shadeColorFactor?.isColor) material.shadeColorFactor.setRGB(...shade);
     material.needsUpdate = true;
@@ -312,9 +313,11 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     if (active && hairLength !== undefined) applyHairLength(active, hairLength);
   };
 
+  const isChannel = (target: string): target is ColorChannel => (COLOR_CHANNELS as readonly string[]).includes(target);
+
   // Apply `fn` to a target's materials: a channel keyword ('hair'|'skin'|'eye') or an exact extra-material name.
   const forEachTargetMaterial = (target: string, fn: (m: VrmMaterial) => void) => {
-    if (target === 'hair' || target === 'skin' || target === 'eye') return forEachChannelMaterial(target, fn);
+    if (isChannel(target)) return forEachChannelMaterial(target, fn);
     vrmRef.current?.scene.traverse((obj) => {
       const mesh = obj as MorphMesh;
       if (!mesh.isMesh || !mesh.material) return;
@@ -323,14 +326,14 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     });
   };
 
-  const tintTarget = (target: string, hex: string) => forEachTargetMaterial(target, (m) => tintByMedian(m, hex));
+  const tintTarget = (target: string, hex: string) => forEachTargetMaterial(target, (m) => tintMaterial(m, hex, isChannel(target)));
 
   // A channel's plan, per material: each starts from the plan's set color or its own, then blends in OKLab.
   const applyColorPlan = (channel: ColorChannel, plan: ColorPlan) => {
     if (!plan) return resetTarget(channel);
     forEachChannelMaterial(channel, (m) => {
-      const start = plan.set ?? untintedColor(m);
-      if (start) tintByMedian(m, blendColor(start, plan.steps));
+      const start = plan.set ?? untintedColor(m, true);
+      if (start) tintMaterial(m, blendColor(start, plan.steps), true);
     });
   };
 
@@ -341,10 +344,10 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     m.needsUpdate = true;
   });
 
-  // Calculated representative color of a target (its first material's median) — for seeding a picker.
+  // Calculated representative color of a target (its first material's untinted color) — for seeding a picker.
   const calcColor = (target: string) => {
     let c: string | null = null;
-    forEachTargetMaterial(target, (m) => { if (!c) c = untintedColor(m); });
+    forEachTargetMaterial(target, (m) => { if (!c) c = untintedColor(m, isChannel(target)); });
     return c;
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- calcColor reads live refs; a stable handle is fine.
@@ -501,7 +504,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
           // Sample each part's current color from its texture so the pickers start at the model's real colors.
           const sampleColor = (channel: string) => {
             let c: string | null = null;
-            forEachChannelMaterial(channel, (m) => { if (!c) c = untintedColor(m); });
+            forEachChannelMaterial(channel, (m) => { if (!c) c = untintedColor(m, true); });
             return c;
           };
           const colors = { hair: sampleColor('hair') ?? undefined, skin: sampleColor('skin') ?? undefined, eye: sampleColor('eye') ?? undefined };
