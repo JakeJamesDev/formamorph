@@ -85,7 +85,8 @@ For each color (Q5, Q10):
 - the customization;
 - the model's key catalog (body and head keys), so the resolver skips keys the model lacks and resolves aliases (Fat, Thickness, Weight) to the model's own name before it merges;
 - the active traits in switch-on order;
-- the active stats with their authored twins.
+- the active stats with their authored twins;
+- the player's colors and the model's color channels.
 
 Outputs:
 
@@ -95,10 +96,10 @@ Outputs:
 
 It replaces the summing in `mergeBodyMorphs` and the per-stat map in `statMorphMap`. The game's player Avatar, entity Avatars and Character Customization's lock all read it.
 
-**Colors in the viewer (Q5).** The model's own colors exist only inside VRMViewer, after load, one median per material. So the viewer applies the color plan itself, per material:
+**Colors in the viewer (Q5).** The model's own colors exist only inside VRMViewer, after load, one color per material (see "A material's own color"). So the viewer applies the color plan itself, per material:
 
 - A channel with "none" resets to the model's own colors.
-- The start color is the player's pick, or that material's own median when the player picked none.
+- The start color is the player's pick, or that material's own color when the player picked none.
 - The viewer runs the blend steps from that start.
 
 This keeps separate materials in one channel (face and body skin, two eyes) apart.
@@ -128,7 +129,7 @@ This keeps separate materials in one channel (face and body skin, two eyes) apar
 - Rivals: a world trait against the other world traits; an owned trait against its owner's own traits. World traits against a played entity's own traits don't warn. Pick-one siblings never warn. Automatic traits warn like Optional ones.
 - The match is by name, and by resolved key when the known model is loaded, so Fat and Thickness warn on a model where they alias to one key.
 - A linked trait's known model is the link owner's model.
-- The resolver's holder map is `holders: Record<modelKey, { ownerId: string | null; traitId: string }>`. Ticket 04 adds color channels to it. Ticket 05 resolves the trait's name.
+- The resolver's holder map is `holders: Record<modelKey, BodyTraitOn>` (`{ ownerId, traitId }`). Colors use the separate `colorHolders`. Ticket 05 resolves the trait's name.
 - Colors (ticket 04):
   - The resolver returns a separate `colorHolders` keyed by channel, beside `holders`.
   - A stat holds at most one color binding per channel, and a trait at most one color pin per channel.
