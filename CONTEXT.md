@@ -122,6 +122,42 @@ _Avoid_: known, discovered, revealed
 The entities here that took part in the story in one of the last 3 turns. An entity takes part when the prose shows it or the planner casts it. A name inside dialogue does not count. When the player moves, only followers keep the turns from before the move. An entity that leaves the player's place is out of scene at once. The In Scene set feeds the stat picker, the Traits tab and Give.
 _Avoid_: present, visible, participants
 
+**Group (entity kind)**:
+An entity that is at all its places at once: a herd, a swarm, a fixture. It never moves, is never pulled and never follows.
+_Avoid_: Everywhere Listed
+
+**Individual**:
+An entity that is one body in one place. One of its Starts is rolled per playthrough, and its Schedule moves it through the day.
+_Avoid_: One, random presence
+
+**Start**:
+One weighted beginning of an Individual: a place plus a Schedule. One Start is rolled per playthrough and kept for the whole save. A Start with an empty Schedule stays at its place.
+_Avoid_: spawn, presence
+
+**Schedule**:
+A Start's daily routine: rows of a time and an action (Stay, Wander or Patrol). A timed row beats the All-day row for its hours; in hours no row covers, the character stays at its Start's place.
+_Avoid_: movement, routine (the editor tab's name)
+
+**Stay**:
+A Schedule action: the character is at one place for the row's hours.
+_Avoid_: Stays Put
+
+**Wander**:
+A Schedule action: the character moves among weighted places, idling a fixed time at each before a new pick.
+_Avoid_: Moves Between, roam
+
+**Patrol**:
+A Schedule action: the character walks a list of stops in order, idling at each, then loops to the first.
+_Avoid_: route, circuit
+
+**Strict**:
+A Schedule row flag: during the row the character can't be called over by narration and won't start following the player. A follow already running continues.
+_Avoid_: locked, busy
+
+**Traversable**:
+The places an Individual may go beyond its Schedule, or Anywhere. Pulls and follows reach only its current row's places plus these. An empty list means Schedule places only.
+_Avoid_: range, Can Follow
+
 **Look Around**:
 Everyone here the player would see if they looked around: In Scene first, then the quiet ones, each under their label. It feeds the Entities tab.
 _Avoid_: scene list, roster

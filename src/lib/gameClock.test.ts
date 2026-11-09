@@ -19,7 +19,30 @@ import {
   buildStamper,
   flatHoursAt,
   DEFAULT_START_HOUR,
+  nextDaypartEdge,
+  storyMinute,
 } from './gameClock';
+
+describe('storyMinute', () => {
+  it('counts minutes from midnight of day 1, on the minute the clock stamp shows', () => {
+    expect(storyMinute(0)).toBe(DEFAULT_START_HOUR * 60);
+    expect(storyMinute(0.25, { startHour: 22 })).toBe(22 * 60 + 15);
+    expect(storyMinute(26)).toBe(24 * 60 + 10 * 60);
+    expect(formatClock(1.5)).toBe('Day 1, 09:30');
+    expect(storyMinute(1.5)).toBe(9 * 60 + 30);
+  });
+});
+
+describe('nextDaypartEdge', () => {
+  it('returns the first daypart edge after a minute, where daypart() changes', () => {
+    expect(nextDaypartEdge(10 * 60)).toBe(662);
+    expect(daypart(661 / 60)).toBe('morning');
+    expect(daypart(663 / 60)).toBe('midday');
+    expect(nextDaypartEdge(662)).toBe(778);
+    expect(nextDaypartEdge(23 * 60)).toBe(1440 + 360); // night runs past midnight to dawn
+    expect(nextDaypartEdge(3 * 1440 + 100)).toBe(3 * 1440 + 360);
+  });
+});
 
 describe('flatHoursAt', () => {
   it('charges one hour per user/assistant pair', () => {

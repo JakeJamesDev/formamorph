@@ -418,6 +418,54 @@ export interface GalleryImage {
   requires?: TraitRequirementRow[];
 }
 
+/** Group: at all its places at once and never moves. Individual: one body in one place, driven by Starts. */
+export type EntityKind = 'group' | 'individual';
+
+/** A schedule row's hours, in minutes from midnight. `end` before `start` wraps past midnight. */
+export interface ScheduleRange {
+  start: number;
+  end: number;
+}
+
+/** A Wander place and its pick weight. */
+export interface WanderPlace {
+  place: string;
+  weight: number;
+}
+
+/** A Patrol stop and how long the character idles there, in minutes. */
+export interface PatrolStop {
+  place: string;
+  idle: number;
+}
+
+/** What a schedule row does. Idle durations are in minutes. */
+export type ScheduleAction =
+  | { kind: 'stay'; place: string }
+  | { kind: 'wander'; places: WanderPlace[]; idle: number }
+  | { kind: 'patrol'; stops: PatrolStop[] };
+
+/** One row of a Start's schedule. A timed row beats the All-day row for the hours it covers. */
+export interface ScheduleRow {
+  id: string;
+  time: 'allDay' | ScheduleRange;
+  /** During the row narration can't call the character over, and it won't start following unless a script asks. */
+  strict?: boolean;
+  action: ScheduleAction;
+}
+
+/** One weighted beginning for an Individual: a place and the daily schedule kept from there. */
+export interface EntityStart {
+  id: string;
+  place: string;
+  /** Positive integer. */
+  weight: number;
+  schedule: ScheduleRow[];
+}
+
+/** Where an Individual may go beyond its schedule. An empty list means schedule places only. */
+export type Traversable = 'anywhere' | string[];
+
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
 export interface Entity {
   id: string;

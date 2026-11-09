@@ -122,14 +122,34 @@ export const daypartSet = (dayparts: readonly Daypart[]): Daypart[] => DAYPARTS.
 export function daypart(hour: number, calendar?: WorldCalendar): Daypart {
   const { hoursPerDay } = resolve(calendar);
   const f = ((hour % hoursPerDay) + hoursPerDay) % hoursPerDay / hoursPerDay;
-  if (f < 0.25) return 'night';
-  if (f < 0.33) return 'dawn';
-  if (f < 0.46) return 'morning';
-  if (f < 0.54) return 'midday';
-  if (f < 0.71) return 'afternoon';
-  if (f < 0.83) return 'evening';
-  return 'night';
+  let part: Daypart = 'night';
+  for (const [start, next] of DAYPART_STARTS) if (f >= start) part = next;
+  return part;
 }
+
+/** Where each daypart after midnight's night begins, as a fraction of the day. */
+const DAYPART_STARTS: readonly (readonly [number, Daypart])[] = [
+  [0.25, 'dawn'], [0.33, 'morning'], [0.46, 'midday'], [0.54, 'afternoon'], [0.71, 'evening'], [0.83, 'night'],
+];
+
+export const MINUTES_PER_DAY = 24 * 60;
+
+/** The daypart edges of a 24-hour day, in minutes from midnight, rounded to the minute. */
+const DAYPART_EDGE_MINUTES: readonly number[] = DAYPART_STARTS.map(([f]) => Math.round(f * MINUTES_PER_DAY));
+
+/** The first daypart edge after story minute `minute`. */
+export function nextDaypartEdge(minute: number): number {
+  const day = Math.floor(minute / MINUTES_PER_DAY) * MINUTES_PER_DAY;
+  for (const base of [day, day + MINUTES_PER_DAY]) {
+    for (const edge of DAYPART_EDGE_MINUTES) if (base + edge > minute) return base + edge;
+  }
+  return day + 2 * MINUTES_PER_DAY; // unreachable: tomorrow always has an edge
+}
+
+/** Minutes since midnight of day 1 after `elapsed` story hours, on the rounded minute `clockReading` uses:
+ *  the absolute time the position engine counts in. */
+export const storyMinute = (elapsed: number, calendar?: WorldCalendar): number =>
+  Math.round((Math.max(0, elapsed) + resolve(calendar).startHour) * 60);
 
 /** The daypart after `elapsed` story hours, read off the rounded minute the clock stamp and scripts share. */
 export const daypartAt = (elapsed: number, calendar?: WorldCalendar): Daypart => clockReading(elapsed, calendar).daypart;

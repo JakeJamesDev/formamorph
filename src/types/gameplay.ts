@@ -62,6 +62,33 @@ export type EntityStatValues = Record<string, PlayerStat[]>;
 /** Entity id → the location id it stands at during the game. An absent entity is at every location it lists. */
 export type EntityPositions = Record<string, string>;
 
+/** An Individual traveling with the player, or left waiting at its position until `until`. `script`: a
+ *  script started it, so Strict and Traversable don't apply. */
+export type FollowState =
+  | { mode: 'following'; script?: boolean }
+  | { mode: 'waiting'; until: number; script?: boolean };
+
+/** What keeps a pulled or script-moved Individual off its schedule: a time, or nothing but the next script move. */
+export type PositionHold = { until: number } | { untilScriptMove: true };
+
+/** The position engine's saved state for one Individual. Times are story minutes (see `storyMinute`). */
+export interface IndividualState {
+  startId: string;
+  /** The row in force when the engine last ran. Absent = no row. */
+  rowId?: string;
+  lastRun: number;
+  /** Absent = not following. */
+  follow?: FollowState;
+  hold?: PositionHold;
+  /** When the current Wander or Patrol idle runs out. */
+  idleEnd?: number;
+  /** The Patrol stop last reached, as an index into the row's stops. */
+  stop?: number;
+}
+
+/** Individual id → its position engine state. */
+export type IndividualStates = Record<string, IndividualState>;
+
 /** Entity id → stat id → what one turn moved that stat's value. Unmoved stats are absent. */
 export type EntityStatChanges = Record<string, Record<string, number>>;
 
