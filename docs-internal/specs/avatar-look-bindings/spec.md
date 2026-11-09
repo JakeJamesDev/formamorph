@@ -1,6 +1,7 @@
 # Spec: Avatar Look Bindings
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-11-09, tickets 01–08, last landing 975ee41f5. Review: spec text corrected; three small fixes to 07 before the close. Closed red: MainMenu.cudaNotice.test.tsx, EventFormDialog.test.tsx, CodeArea.cards.test.tsx, CodeArea.test.tsx (outside this effort).
 Spec session: avatar-look-bindings — spec
 
 ## Problem Statement
