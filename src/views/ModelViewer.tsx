@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { cn } from '@/lib/utils';
 import { createModelLoader, loadedRoot } from '@/lib/modelLoader';
-import { applyMorphInfluences } from '@/lib/modelMorphs';
+import { applyMorphInfluences, modelMorphNames } from '@/lib/modelMorphs';
 import { usePanelLoopGate } from '@/lib/panelShown';
 import type { MediaAsset } from '@/types';
 
@@ -13,6 +13,8 @@ interface ModelViewerProps {
   className?: string;
   /** Morph influences keyed by shape-key name, applied to every mesh that carries the key. */
   morphValues?: Readonly<Record<string, number>>;
+  /** Called once the model loads, with every shape-key name it carries. */
+  onMorphNames?: (names: string[]) => void;
 }
 
 const NO_MORPHS: Readonly<Record<string, number>> = {};
@@ -20,7 +22,7 @@ const NO_MORPHS: Readonly<Record<string, number>> = {};
 /** Square fallback for the frames before layout has measured the container (and for jsdom, which reports 0). */
 const FALLBACK_SIZE = 400;
 
-const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS }: ModelViewerProps) => {
+const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS, onMorphNames }: ModelViewerProps) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const panelLoop = usePanelLoopGate();
   // The loaded model and the influences last applied to it, so a morph change never reloads the model.
@@ -28,6 +30,8 @@ const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS }: M
   const morphsRef = useRef(morphValues);
   const appliedRef = useRef<Readonly<Record<string, number>>>(NO_MORPHS);
   morphsRef.current = morphValues;
+  const onMorphNamesRef = useRef(onMorphNames);
+  onMorphNamesRef.current = onMorphNames;
 
   useEffect(() => {
     if (!model || !model.data) return;
@@ -108,6 +112,7 @@ const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS }: M
       objectRef.current = object;
       applyMorphInfluences(object, morphsRef.current, NO_MORPHS);
       appliedRef.current = morphsRef.current;
+      onMorphNamesRef.current?.(modelMorphNames(object));
 
       // Play every clip the file carries. A Blender/glTF export splits motion into one clip per animated
       // object, so playing only the first would leave the rest of the model frozen. `animations` lives on

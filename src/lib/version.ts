@@ -5,7 +5,7 @@ import type {
 } from '@/types';
 import { isImplicitPair, parentIndex } from './locationGraph';
 import { LEGACY_DEFAULT_AVATAR_VALUES, migrateLegacyPlayerAvatar, type LegacyCharacterData } from './legacyVrm';
-import { autoBindLegacyBodyStats } from './bodyMorphs';
+import { autoBindLegacyBodyStats, migrateMorphBindingList, migrateStatListMorphBindings } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
 import { migrateGlobalFields } from './globalSaveFields';
 import { DEFAULT_AVATAR_ID } from './defaultAvatar';
@@ -516,6 +516,21 @@ const linkWithOverrideSides = (field: string, fn: (side: unknown) => unknown) =>
 
 const linkWithGlobalTargets = linkWithOverrideSides('statChanges', rowsWithGlobalTarget);
 
+const linkWithMorphBindings = linkWithOverrideSides('morphBindings', migrateMorphBindingList);
+
+/** One entity with its own stats' and its stat links' `morphBindings` as objects. A library entity never passes
+ *  through `migrateWorld`, so its read boundary and a card's import call this too. Idempotent. */
+export function migrateEntityMorphBindings<T>(entity: T): T {
+  return withField(withField(entity, 'stats', migrateStatListMorphBindings), 'statLinks', mapList(linkWithMorphBindings)) as T;
+}
+
+/** Every stat binding stored as `{ name }` rather than a bare name: world stats, entity stats and stat links. Not
+ *  version-gated, since a world stamped with the current version can predate the change. */
+function migrateWorldMorphBindings(world: Record<string, unknown>): void {
+  if (Array.isArray(world.stats)) world.stats = migrateStatListMorphBindings(world.stats);
+  if (Array.isArray(world.entities)) world.entities = mapList(migrateEntityMorphBindings)(world.entities);
+}
+
 /** One entity with its owned traits' and its links' legacy `player` row targets stored as `global`. Idempotent. */
 export function migrateEntityGlobalTargets<T>(entity: T): T {
   return withField(withField(entity, 'traits', mapList(traitWithGlobalTargets)), 'traitLinks', mapList(linkWithGlobalTargets)) as T;
@@ -772,7 +787,7 @@ function migrateStatScripts(world: Record<string, unknown>): void {
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity- and location-gallery folds, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
- * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard, the code-box-to-scripts rewrite, the stat-code route rewrite, the persona start-location drop and the legacy player-Avatar move run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard, the code-box-to-scripts rewrite, the stat-code route rewrite, the persona start-location drop, the legacy player-Avatar move and the stat-binding object form run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Auto-binds legacy body stats to morphs,
  * and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
  * bump is the user's call (see the export-shape-versioning note); shipped worlds are only reshaped through
@@ -801,6 +816,7 @@ export function migrateWorld(raw: unknown): World {
   migrateStatScripts(world);
   migrateWorldScriptText(world);
   migrateLegacyPlayerAvatar(world);
+  migrateWorldMorphBindings(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   if (Array.isArray(world.stats)) {
@@ -931,6 +947,7 @@ function migrateBodyMorphs(state: GameState): GameState {
  *   5. Global fields (presence-based, every snapshot): `playerStats` and `playerTraits` become `globalStats` and
  *      `globalTraits`, and the cascade-off and applied-value maps split into global and owners parts.
  *   6. Scripts (presence-based, every snapshot): each saved stat's two code boxes become scripts.
+ *   7. Stat bindings (presence-based, every snapshot): each saved stat's bare binding names become `{ name }`.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
@@ -949,13 +966,26 @@ function migrateSnapshotScripts(state: GameState): GameState {
   return { ...state, globalStats, ...(entityStats ? { entityStats } : {}) };
 }
 
+/** A snapshot with every saved stat's bindings as objects, global and each entity's. The same snapshot when none
+ *  holds a bare name. */
+function migrateSnapshotMorphBindings(state: GameState): GameState {
+  const globalStats = migrateStatListMorphBindings(state.globalStats);
+  const entityStats = state.entityStats && Object.fromEntries(
+    Object.entries(state.entityStats).map(([id, stats]) => [id, migrateStatListMorphBindings(stats)]),
+  );
+  const entitiesSame = !state.entityStats || Object.entries(state.entityStats).every(([id, stats]) => entityStats?.[id] === stats);
+  if (globalStats === state.globalStats && entitiesSame) return state;
+  return { ...state, globalStats, ...(entityStats ? { entityStats } : {}) };
+}
+
 export function migrateSave(save: SaveObject): SaveObject {
   const isLegacy = typeof save.version === 'number';
   const migratedCurrent = isLegacy ? migrateLegacySaveState(save.currentState) : save.currentState;
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const normalizeSnapshot = (s: GameState) => migrateSnapshotScripts(migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s))));
+  const normalizeSnapshot = (s: GameState) =>
+    migrateSnapshotMorphBindings(migrateSnapshotScripts(migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s)))));
   const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)

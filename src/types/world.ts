@@ -48,6 +48,13 @@ export interface Script {
   order?: number;
 }
 
+/** One Avatar slider a stat changes: by the model's slider name, or an alias-mate of it. */
+export interface MorphBinding {
+  name: string;
+  /** The Change By amount at the stat's authored max. Absent = 1. */
+  by?: number;
+}
+
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
@@ -70,9 +77,8 @@ export interface Stat {
   thresholdUnit?: ThresholdUnit;
   /** Scripts with this stat as `self`, run while the stat is enabled. Absent = none. */
   scripts?: Script[];
-  /** Body-mesh morph target names this stat drives; the value maps linearly across [min, authored max],
-   *  so a max raised during the game pushes the influence past 1. */
-  morphBindings?: string[];
+  /** Avatar sliders this stat changes, each by `by` times its value's share of [min, authored max]. */
+  morphBindings?: MorphBinding[];
   /** `false` starts the stat inert — hidden from the player and the AI, regen and code paused — until a
    *  trait switches it on. Absent = enabled. */
   enabled?: boolean;
@@ -143,7 +149,7 @@ export interface StatLinkFields {
   descriptors: StatDescriptor[];
   thresholdUnit: ThresholdUnit;
   scripts: Script[];
-  morphBindings: string[];
+  morphBindings: MorphBinding[];
   enabled: boolean;
   hidden: boolean;
   noIncrease: boolean;

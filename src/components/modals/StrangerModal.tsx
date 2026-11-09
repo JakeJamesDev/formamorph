@@ -21,7 +21,7 @@ export const StrangerModal = ({ entity, label, isOpen, onOpenChange }: {
   // The copy carries the label for a name and drops every other field that could say who this is.
   const shown = entity ? { ...entity, name: label, sound: undefined } : undefined;
   const { images, imageIndex, onImageStep } = useEntityGallery(shown);
-  const morphValues = useEntityStatMorphs(shown);
+  const { morphs: morphValues, onCatalog: onMorphNames } = useEntityStatMorphs(shown);
   const avatars = usePlayAvatars();
   const avatarSource = shown ? avatars.sourceOf(shown) : undefined;
 
@@ -45,6 +45,7 @@ export const StrangerModal = ({ entity, label, isOpen, onOpenChange }: {
           imageIndex={imageIndex}
           onImageStep={onImageStep}
           morphValues={morphValues}
+          onMorphNames={onMorphNames}
         >
           <EntityDescription text={entity.strangerDescription?.trim() ?? ''} resolveText={(text) => resolveEntityText(shown, text)} />
         </EntityCardBody>

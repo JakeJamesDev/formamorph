@@ -21,7 +21,7 @@ const MODEL = { name: 'golem.glb', type: 'model/gltf-binary', data: 'data:model/
 const PICTURE = 'data:image/png;base64,AAAA';
 const PICTURE_B = 'data:image/png;base64,BBBB';
 
-const cracks = statFixture('Wounds', 0, { morphBindings: ['Cracks'] });
+const cracks = statFixture('Wounds', 0, { morphBindings: [{ name: 'Cracks' }] });
 const golem: Entity = {
   id: 'golem', name: 'Golem', locations: [], model: MODEL, images: [{ data: PICTURE }],
   vrmPick: { kind: 'world', id: 'golem' }, stats: [cracks],
@@ -32,6 +32,11 @@ const plainWren = { ...wren, vrmPick: undefined } as Entity;
 
 const custom: CharacterData = { bodyMorphs: { Belly: 0.1 }, currentHairStyle: 'long', hairLength: 0.5, hairColor: '#ff0000' };
 const golemStats = (value: number): EntityStatValues => ({ golem: [{ ...cracks, value }] });
+/** The player's stats on the played Avatar: one stat on Belly at `value` out of 100. */
+const fullness = (value: number) => {
+  const stat = statFixture('Fullness', value, { morphBindings: [{ name: 'Belly' }] });
+  return { stats: [stat], authored: [stat] };
+};
 
 const YARD = { id: 'yard', name: 'Gate Yard', isStarting: true };
 /** Everyone stands in the one place the player is. */
@@ -53,7 +58,7 @@ const show = ({ cast: authored, scene, overview = {}, seed }: {
         g.setVisibleEntities(scene);
         g.setCurrentLocation(YARD as never);
         g.setCharacterData(custom);
-        g.setBodyMorphValues({ Belly: 0.3 });
+        g.setPlayerLookStats(fullness(30));
         g.setEntityStats(golemStats(40));
         seed?.(g);
       },
@@ -226,7 +231,7 @@ describe('LeftPanel — one entity view', () => {
       seed: (g) => g.setPersonaRef({ source: 'world', entityId: 'wren' }),
     });
     await waitFor(() => expect(lastAvatarUrl()).toBe(store.wren.file.data));
-    gameplay().setBodyMorphValues({ Belly: 0.6 });
+    gameplay().setPlayerLookStats(fullness(60));
     await waitFor(() => expect(vrmViewerRenders[vrmViewerRenders.length - 1].bodyMorphValues).toEqual({ Belly: 0.7 }));
 
     fireEvent.click(entityRow('Golem'));

@@ -213,7 +213,7 @@ describe('applyOwnedStatDrop', () => {
 
   it('carries a stat\'s morph bindings and descriptor pins across owners', () => {
     const pinned = stat('health', 'vitals', 0, {
-      morphBindings: ['belly'],
+      morphBindings: [{ name: 'belly' }],
       descriptors: [{ id: 'd1', threshold: 0, description: 'Weak', placeholderPins: [{ placeholderId: 'p-mood', value: 'Low' }] }],
     });
     const w = world([ash], { stats: [pinned, ...lists.stats.slice(1)] });

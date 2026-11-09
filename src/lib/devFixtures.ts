@@ -175,7 +175,7 @@ const DEV_ITEM_CAST: Entity[] = [
 
 /** The `entityMorphs` fixture's entity: the bundled avatar as an entity model, its Bulk stat bound to a face
  *  shape key, since the avatar's face meshes are the ones that carry shape keys. */
-const MORPH_STAT = devStat('Bulk', 100, { morphBindings: ['Fcl_ALL_Surprised'] });
+const MORPH_STAT = devStat('Bulk', 100, { morphBindings: [{ name: 'Fcl_ALL_Surprised' }] });
 const MORPH_ENTITY = {
   id: 'dev-golem', name: 'Golem',
   model: { name: 'default-avatar.vrm', type: 'model/gltf-binary', data: DEFAULT_AVATAR_URL },

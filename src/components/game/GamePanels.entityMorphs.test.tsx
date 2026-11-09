@@ -18,8 +18,8 @@ vi.mock('@/views/ModelViewer', () => ({
 
 const MODEL = { name: 'golem.glb', data: 'data:model/gltf-binary;base64,AAAA' };
 const PICTURE = 'data:image/png;base64,AAAA';
-const wounds = statFixture('Wounds', 0, { morphBindings: ['Cracks'] });
-const mood = statFixture('Mood', 0, { morphBindings: ['Frown'], enabled: false });
+const wounds = statFixture('Wounds', 0, { morphBindings: [{ name: 'Cracks' }] });
+const mood = statFixture('Mood', 0, { morphBindings: [{ name: 'Frown' }], enabled: false });
 const golem = { id: 'golem', name: 'Golem', model: MODEL, stats: [wounds, mood] };
 
 const at = (value: number): EntityStatValues => ({
@@ -54,6 +54,22 @@ describe('LeftPanel — entity stat morphs', () => {
   it("drives the entity view's model from the entity's live stats", () => {
     show(golem);
     expect(morphsOf(screen.getByTestId('model-viewer'))).toEqual({ Cracks: 0.6 });
+  });
+
+  it('leaves a stat its own trait switched off at rest', () => {
+    renderInGame(
+      <LeftPanel entities={[{ ...golem, locations: ['yard'] }] as never} onEntityClick={vi.fn()} narrationPrompt={defaultSystemPrompt} />,
+      {
+        world: { entities: [{ ...golem, locations: ['yard'] }], locations: [YARD] } as never, turns,
+        seed: (g) => {
+          g.setCurrentLocation(YARD as never);
+          g.setEntityStats(at(60));
+          g.setVisibleEntities(scene);
+          g.setViewEntityStatEnabled({ golem: { [wounds.id]: false, [mood.id]: true } });
+        },
+      },
+    );
+    expect(morphsOf(screen.getByTestId('model-viewer'))).toEqual({ Frown: 0.8 });
   });
 
   it('shows the paged-back turn’s stats on a past page', () => {

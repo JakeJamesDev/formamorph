@@ -45,8 +45,8 @@ export function refreshChosenTraits(chosen: Trait[], authored: Trait[]): Trait[]
 
 /**
  * Re-read each saved stat's authoring identity from the world, the stat sibling of `refreshChosenTraits`:
- * `scripts`, `name`, `description`, and `type` come from the world by id, so a save started before the
- * author's latest edit still runs the new code on its next turn.
+ * `scripts`, `name`, `description`, `type` and `morphBindings` come from the world by id, so a save started
+ * before the author's latest edit still runs the new code on its next turn.
  *
  * Every other field — `value`, bounds, `starting`, the AI max delta, the code delta, `enabled`, and the
  * trait-derived base fields — stays the saved stat's own: they are the numbers the playthrough actually
@@ -55,7 +55,7 @@ export function refreshChosenTraits(chosen: Trait[], authored: Trait[]): Trait[]
  */
 export function refreshSavedStats(saved: readonly PlayerStat[], authored: readonly Stat[]): PlayerStat[] {
   const byId = new Map(authored.map((s) => [s.id, s]));
-  return saved.map((stat) => {
+  return refreshSavedBindings(saved, authored).map((stat) => {
     const current = byId.get(stat.id);
     return current
       ? {
@@ -63,6 +63,23 @@ export function refreshSavedStats(saved: readonly PlayerStat[], authored: readon
         name: current.name, description: current.description, type: current.type,
       }
       : stat;
+  });
+}
+
+/** `stat`'s bindings as a spread: absent when it has none. */
+const withBindingsOf = (stat: Pick<Stat, 'morphBindings'>) => (stat.morphBindings ? { morphBindings: stat.morphBindings } : {});
+
+/** Saved stats with their bindings re-read from the world by id, which a load runs so a binding the author changed
+ *  reaches a save in progress. A stat the world no longer has keeps its saved bindings. */
+export function refreshSavedBindings<S extends Pick<Stat, 'id' | 'morphBindings'>>(
+  saved: readonly S[], authored: readonly Pick<Stat, 'id' | 'morphBindings'>[],
+): S[] {
+  const byId = new Map(authored.map((s) => [s.id, s]));
+  return saved.map((stat) => {
+    const current = byId.get(stat.id);
+    if (!current) return stat;
+    const { morphBindings: _saved, ...rest } = stat;
+    return { ...rest, ...withBindingsOf(current) } as S;
   });
 }
 

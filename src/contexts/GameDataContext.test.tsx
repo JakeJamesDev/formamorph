@@ -27,7 +27,7 @@ describe('entity stats in the world store', () => {
   const trust: Stat = {
     id: 's-trust', name: 'Trust', type: 'number', description: 'How far Ash trusts you', min: -5, max: 20, value: 3, regen: 1,
     descriptors: [{ id: 'd1', threshold: 10, description: 'Wary' }], hidden: true, noDecrease: true, scripts: boxScripts({ after: 'return 1;' }),
-    morphBindings: ['Belly'],
+    morphBindings: [{ name: 'Belly' }],
   };
   const withStats = {
     ...world('w', {}),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders } from './version';
+import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders, migrateEntityMorphBindings } from './version';
 import { placeholderWeight } from './placeholders';
 import { gateOf, gateStates, worldGateInput } from './traitGates';
 import { headingReachesAi } from './groupTree';
@@ -21,7 +21,7 @@ type MigratedWorld = {
   version?: string;
   customPlayerVRM?: unknown;
   worldOverview: { customPlayerVRM?: unknown; vrmStore?: Record<string, { name: string; file: unknown }>; legacyVrmFallback?: unknown };
-  stats?: { name: string; morphBindings?: string[] }[];
+  stats?: { name: string; morphBindings?: unknown[] }[];
   entities?: DescItem[];
   locations?: DescItem[];
   dictionary?: unknown[];
@@ -504,16 +504,16 @@ describe('migrateWorld', () => {
       ],
     };
     const out = migrateWorld(legacy) as unknown as MigratedWorld;
-    expect(out.stats?.map((s) => s.morphBindings)).toEqual([['Belly'], ['Fat'], ['Breasts'], undefined]);
+    expect(out.stats?.map((s) => s.morphBindings)).toEqual([[{ name: 'Belly' }], [{ name: 'Fat' }], [{ name: 'Breasts' }], undefined]);
   });
 
-  it('leaves a body stat that already carries morphBindings untouched', () => {
+  it('keeps the bindings a body stat already carries, in the object form', () => {
     const legacy = {
       worldOverview: { name: 'W' },
       stats: [{ name: 'Stomach', morphBindings: ['B_Pear'] }],
     };
     const out = migrateWorld(legacy) as unknown as MigratedWorld;
-    expect(out.stats?.[0].morphBindings).toEqual(['B_Pear']);
+    expect(out.stats?.[0].morphBindings).toEqual([{ name: 'B_Pear' }]);
   });
 
   it('renames legacy description keys on entities and locations', () => {
@@ -828,6 +828,65 @@ describe('migrateSave — dictionary keyword arrays', () => {
   it('leaves a save without dictionaries alone', () => {
     const out = migrateSave({ version: APP_VERSION, currentState: {}, stateHistory: [] } as unknown as SaveObject);
     expect('dictionaries' in out).toBe(false);
+  });
+});
+
+describe('stat bindings in the object form', () => {
+  const linkWorld = () => ({
+    version: APP_VERSION,
+    worldOverview: { name: 'W' },
+    statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    stats: [
+      { id: 'hunger', name: 'Hunger', morphBindings: ['Thickness'] },
+      { id: 'mass', name: 'Mass', groupId: 'bp', morphBindings: ['Belly', { name: 'Fat', by: -1 }] },
+    ],
+    entities: [{
+      id: 'golem', name: 'Golem', locations: [],
+      stats: [{ id: 'cracks', name: 'Cracks', morphBindings: ['Cracks'] }],
+      statLinks: [{
+        id: 'l1', originalId: 'mass', kind: 'stat', originalName: 'Mass', groupId: null,
+        overrides: { mass: { morphBindings: { value: ['Bust'], blueprint: ['Belly'] } } },
+      }],
+    }],
+  });
+  type Bound = { morphBindings?: unknown };
+  type LinkedWorld = {
+    stats: Bound[];
+    entities: { stats: Bound[]; statLinks: { overrides: Record<string, { morphBindings: { value: unknown; blueprint: unknown } }> }[] }[];
+  };
+
+  it('turns bare names into objects on a current-version world: world stats, entity stats and stat links', () => {
+    const out = migrateWorld(linkWorld()) as unknown as LinkedWorld;
+    expect(out.stats.map((s) => s.morphBindings)).toEqual([[{ name: 'Thickness' }], [{ name: 'Belly' }, { name: 'Fat', by: -1 }]]);
+    expect(out.entities[0].stats[0].morphBindings).toEqual([{ name: 'Cracks' }]);
+    expect(out.entities[0].statLinks[0].overrides.mass.morphBindings).toEqual({ value: [{ name: 'Bust' }], blueprint: [{ name: 'Belly' }] });
+  });
+
+  it('changes nothing on a second run', () => {
+    const once = migrateWorld(linkWorld());
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
+  it('turns a library record\'s bare names into objects, and keeps it on a second run', () => {
+    const record = linkWorld().entities[0];
+    const once = migrateEntityMorphBindings(record) as unknown as LinkedWorld['entities'][number];
+    expect(once.stats[0].morphBindings).toEqual([{ name: 'Cracks' }]);
+    expect(once.statLinks[0].overrides.mass.morphBindings.value).toEqual([{ name: 'Bust' }]);
+    expect(migrateEntityMorphBindings(once)).toBe(once);
+  });
+
+  it("turns a save's stat copies into objects, global and each entity's, and keeps them on a second run", () => {
+    const snapshot = {
+      globalStats: [{ id: 'hunger', value: 5, morphBindings: ['Thickness'] }],
+      entityStats: { golem: [{ id: 'cracks', value: 2, morphBindings: ['Cracks'] }] },
+    };
+    const save = { version: APP_VERSION, currentState: snapshot, stateHistory: [snapshot], messageHistory: [] } as unknown as SaveObject;
+    const once = migrateSave(save);
+    for (const state of [once.currentState, once.stateHistory[0]]) {
+      expect(state.globalStats[0].morphBindings).toEqual([{ name: 'Thickness' }]);
+      expect(state.entityStats?.golem[0].morphBindings).toEqual([{ name: 'Cracks' }]);
+    }
+    expect(migrateSave(JSON.parse(JSON.stringify(once)))).toEqual(once);
   });
 });
 

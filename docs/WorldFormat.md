@@ -136,6 +136,7 @@ Import runs every world through a migration. The migration changes an older shap
 | An entity `startingLocationId` | Removed. A persona's `locations` are where it can start |
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
 | A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
+| A `morphBindings` entry that is a bare name | `{ name }` |
 | Entity and location `inGameDescription` and `detailedDescription` | `playerDescription` and `aiDescription` |
 | A trait `description` | Both `playerDescription` and `aiDescription` |
 
@@ -208,7 +209,7 @@ Each stat is a number the game tracks. A stat in the top-level `stats` is global
 | `descriptors` | ✓ | [Descriptor](#stat-descriptors)[] | Text for each band of values |
 | `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures. `"raw"` = the stat's own units. `"percent"` = a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
 | `scripts` | | [Script](#scripts)[] | Code with this stat as `self`. See the [Scripts Guide](ScriptsGuide) |
-| `morphBindings` | | String[] | Body morph names this stat drives. `min` to `max` maps to 0 to 1 |
+| `morphBindings` | | `{ name, by? }`[] | Avatar sliders this stat changes. From `min` to `max`, the stat adds 0 up to `by` to slider `name`. Absent `by` = 1. A negative `by` makes the slider smaller. The changes of several stats on one slider add up |
 | `enabled` | | Boolean | `false` starts the stat off. The player and the AI don't see it, and regen and code stop. A trait's `statToggles` switches it on. Absent = on |
 | `hidden` | | Boolean | `true` hides the stat from the player. The AI still reads it, and regen and code still run |
 | `noIncrease` / `noDecrease` | | Boolean | The AI can't raise or lower the value |

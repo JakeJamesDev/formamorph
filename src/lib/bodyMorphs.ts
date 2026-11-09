@@ -1,8 +1,7 @@
-// Pure helpers behind stat-bound VRM body sliders. A stat's live value maps linearly to a morph
-// influence, scaled against its authored max; several stats compose into one map VRMViewer applies.
-// Kept free of React/three so the (off-by-one- and clamp-prone) math is unit-testable.
+// Pure helpers behind stat-bound Avatar sliders: the normalized stat value, alias names, the picker groups and
+// the binding migration. `avatarLook` composes them into the final morph map.
 
-import type { Stat } from "@/types";
+import type { MorphBinding, Stat } from "@/types";
 
 /** The legacy v1.2 body stat → morph mapping the runtime used to hardcode (Stomach drives the Belly
  *  morph, Fatness the Fat morph, Breastsize the Breasts morph). Used by the import migration. */
@@ -41,59 +40,8 @@ export function normalizeStat(value: number, min: number, max: number, refMax: n
   return Math.max(0, t);
 }
 
-/**
- * Build the morph influences driven by stats: every number stat with bindings contributes its
- * normalized value to each morph name it's bound to. Stats without bindings are ignored.
- * `authored` supplies each stat's authored max as the scale anchor; a stat missing from it falls
- * back to its own live max. Percentage stats stay capped at 1 — 100 is their definitional ceiling.
- */
-export function statMorphMap(
-  stats: readonly Stat[],
-  authored: readonly Stat[] = [],
-): Record<string, number> {
-  const refMax = new Map(authored.map((s) => [s.id, s.max]));
-  const map: Record<string, number> = {};
-  for (const stat of stats) {
-    if (!stat.morphBindings?.length || typeof stat.value !== "number") continue;
-    let influence = normalizeStat(stat.value, stat.min, stat.max, refMax.get(stat.id) ?? stat.max);
-    if (stat.type === "percentage") influence = Math.min(1, influence);
-    for (const name of stat.morphBindings) map[name] = influence;
-  }
-  return map;
-}
-
-/** The morph influences an entity's own stats drive on its model: its enabled stats, scaled against the
- *  entity's authored stats. */
-export function entityStatMorphMap(
-  values: readonly Stat[] | undefined,
-  authored: readonly Stat[] | undefined,
-): Record<string, number> {
-  return statMorphMap((values ?? []).filter((stat) => stat.enabled !== false), authored);
-}
-
-/** Compose base (customization-chosen) morphs with stat-driven morphs, summing overlapping keys —
- *  matching the historical `base + percent`. Sums may exceed 1; three.js clamps influences itself. */
-export function mergeBodyMorphs(
-  base: Record<string, number>,
-  stat: Record<string, number>,
-): Record<string, number> {
-  const merged: Record<string, number> = { ...base };
-  for (const [name, value] of Object.entries(stat)) {
-    merged[name] = (merged[name] ?? 0) + value;
-  }
-  return merged;
-}
-
-/** Morph names already bound by stats *other than* `statId` — the set to hide from this stat's slider
- *  picker so a given slider is owned by only one stat. */
-export function boundMorphNamesExcluding(stats: readonly Stat[], statId: string): Set<string> {
-  const set = new Set<string>();
-  for (const stat of stats) {
-    if (stat.id === statId) continue;
-    for (const name of stat.morphBindings ?? []) set.add(name);
-  }
-  return set;
-}
+/** A binding's Change By: its `by`, or 1 when absent. */
+export const bindingBy = (binding: MorphBinding): number => binding.by ?? 1;
 
 /** One model's contribution to the slider picker: its display name and the sliders it exposes. */
 export interface MorphSource {
@@ -111,22 +59,15 @@ export interface MorphOptionGroup {
   options: { label: string; value: string }[];
 }
 
-/**
- * Build the grouped slider options: per model, a "Body Sliders" group then a "Head Features" group, each
- * carrying its names minus those already owned by another stat, and de-duplicated within the group. A
- * slider shared by several models appears under each — selecting it anywhere binds the name everywhere,
- * since a binding is the bare name. Empty groups (all names taken or none exposed) are dropped.
- */
-export function buildMorphGroups(
-  sources: readonly MorphSource[],
-  taken: ReadonlySet<string>,
-): MorphOptionGroup[] {
+/** The grouped slider options: per model, a "Body Sliders" group then a "Head Features" group, names de-duplicated
+ *  within each, empty groups dropped. A binding names its slider, so a name shared by several models binds on each. */
+export function buildMorphGroups(sources: readonly MorphSource[]): MorphOptionGroup[] {
   const groups: MorphOptionGroup[] = [];
   const add = (heading: string, names: readonly string[]) => {
     const seen = new Set<string>();
     const options: { label: string; value: string }[] = [];
     for (const name of names) {
-      if (taken.has(name) || seen.has(name)) continue;
+      if (seen.has(name)) continue;
       seen.add(name);
       options.push({ label: name, value: name });
     }
@@ -146,6 +87,27 @@ export function autoBindLegacyBodyStats(stats: readonly Stat[]): Stat[] {
   return stats.map((stat) => {
     const binding = LEGACY_BODY_BINDINGS[stat.name];
     if (!binding || stat.morphBindings !== undefined) return stat;
-    return { ...stat, morphBindings: [...binding] };
+    return { ...stat, morphBindings: binding.map((name) => ({ name })) };
   });
+}
+
+/** A raw `morphBindings` list with each bare name as `{ name }`. The same list when no entry is a string. */
+export function migrateMorphBindingList(list: unknown): unknown {
+  if (!Array.isArray(list) || !list.some((entry) => typeof entry === "string")) return list;
+  return list.map((entry) => (typeof entry === "string" ? { name: entry } : entry));
+}
+
+/** A raw stat with its `morphBindings` as objects. The same stat when there is nothing to change. */
+export function migrateStatMorphBindings<T>(stat: T): T {
+  if (!stat || typeof stat !== "object" || !("morphBindings" in stat)) return stat;
+  const list = (stat as { morphBindings?: unknown }).morphBindings;
+  const next = migrateMorphBindingList(list);
+  return next === list ? stat : { ...stat, morphBindings: next };
+}
+
+/** A raw stat list with every stat's bindings as objects. The same list when none changed. */
+export function migrateStatListMorphBindings<T>(stats: T): T {
+  if (!Array.isArray(stats)) return stats;
+  const next = stats.map(migrateStatMorphBindings);
+  return (next.some((stat, i) => stat !== stats[i]) ? next : stats) as T;
 }

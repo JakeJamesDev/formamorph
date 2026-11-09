@@ -119,6 +119,13 @@ describe('re-reading saved stats from the world', () => {
     expect(stat.type).toBe('percentage');
   });
 
+  it('picks up the sliders and Change By amounts the author set since the save was made', () => {
+    const saved = [PS('vigor', { morphBindings: [{ name: 'Belly' }] }), PS('mood', { morphBindings: [{ name: 'Frown' }] })];
+    const authored = [S('vigor', { morphBindings: [{ name: 'Belly', by: -1 }, { name: 'Fat' }] }), S('mood')];
+    expect(refreshSavedStats(saved, authored).map((s) => s.morphBindings))
+      .toEqual([[{ name: 'Belly', by: -1 }, { name: 'Fat' }], undefined]);
+  });
+
   it('keeps the numbers the playthrough actually reached, not the author\'s current defaults', () => {
     const saved = [PS('vigor', {
       value: 42, min: 5, max: 90, regen: 3, starting: 10, aiMaxDelta: 8,

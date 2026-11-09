@@ -15,6 +15,7 @@ import { setLiveReasoning } from '../lib/reasoningStreamStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
+import type { LookStats } from '../lib/avatarLook';
 import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
@@ -28,7 +29,7 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { settleItemEffects, withoutOrphanCopies, withoutOrphanTimedTraits, type OwnerStatTraits } from '../lib/inventory';
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
-import { backfillGameStateStats } from '../lib/statBackfill';
+import { backfillGameStateStats, refreshGameStateBindings } from '../lib/statBackfill';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
 import { positionedCast, reconcileGameStatePositions, type PlaceableEntity } from '../lib/entityPresence';
@@ -95,6 +96,7 @@ const EMPTY_IDS: string[] = [];
 const EMPTY_OWNED: OwnedTraitStates = {};
 const EMPTY_ENTITY_CHANGES: EntityStatChanges = {};
 const EMPTY_CHOICES: Choice[] = [];
+const NO_LOOK_STATS: LookStats = { stats: [], authored: [] };
 const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
 const NO_ITEM_COPIES: readonly ItemCopy[] = [];
@@ -303,8 +305,10 @@ function useProvideGameplay() {
   const [traitsView, setTraitsView] = useState<TraitsPanelView>({
     query: '', keys: null, open: new Set(), openDisabled: new Set(), expanded: new Set(),
   });
-  // Stat-driven body morph influences, keyed by morph name (built from stats' morphBindings).
-  const [bodyMorphValues, setBodyMorphValues] = useState<Record<string, number>>({});
+  // The player's stats that drive the played Avatar, on the turn on screen.
+  const [playerLookStats, setPlayerLookStats] = useState<LookStats>(NO_LOOK_STATS);
+  // Each entity's stats switched on or off under its own traits, on the turn on screen, by entity id.
+  const [viewEntityStatEnabled, setViewEntityStatEnabled] = useState<Readonly<Record<string, Record<string, boolean>>>>({});
   const [isFlashing, setIsFlashing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [choices, setChoices] = useState<Choice[]>([]);
@@ -641,11 +645,12 @@ function useProvideGameplay() {
     const withChosenVrmRemapped = (raw: GameState) => (raw.characterData
       ? { ...raw, characterData: remapChosenVrm(raw.characterData, vrmStore) }
       : raw);
-    /** The state with every stat the world has since added, global and each entity's, no entity stat
-     *  carrying stored code bounds, each position checked against the world, and its chosen Avatar remapped. */
+    /** The state with every stat the world has since added, global and each entity's, each stat's bindings re-read
+     *  from the world, no entity stat carrying stored code bounds, each position checked against the world, and its
+     *  chosen Avatar remapped. */
     const backfilled = (raw: GameState, persona?: PersonaRef) => {
       const state = withoutOrphans(withChosenVrmRemapped(raw), persona);
-      const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
+      const players = refreshGameStateBindings(backfillGameStateStats(withoutEntityCodeBounds(state), worldStats), worldStats, worldEntities);
       if (!worldEntities) return players;
       const cast = positionedCast(worldEntities, persona);
       return reconcileGameStateFollowers(
@@ -938,8 +943,10 @@ function useProvideGameplay() {
   const value = {
     characterData,
     setCharacterData,
-    bodyMorphValues,
-    setBodyMorphValues,
+    playerLookStats,
+    setPlayerLookStats,
+    viewEntityStatEnabled,
+    setViewEntityStatEnabled,
     visibleEntities,
     setVisibleEntities,
     discoveredEntities,

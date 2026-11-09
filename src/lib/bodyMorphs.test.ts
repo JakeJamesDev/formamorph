@@ -2,12 +2,9 @@ import { describe, it, expect } from "vitest";
 import type { Stat } from "@/types";
 import {
   normalizeStat,
-  statMorphMap,
-  entityStatMorphMap,
-  mergeBodyMorphs,
-  boundMorphNamesExcluding,
   autoBindLegacyBodyStats,
   buildMorphGroups,
+  migrateStatListMorphBindings,
   resolveMorphAlias,
 } from "./bodyMorphs";
 
@@ -47,94 +44,12 @@ describe("normalizeStat", () => {
   });
 });
 
-describe("statMorphMap", () => {
-  it("ignores stats without bindings or without a numeric value", () => {
-    const stats = [
-      stat({ id: "a", name: "A", value: 50 }), // no bindings
-      stat({ id: "b", name: "B", morphBindings: ["Belly"] }), // no value
-    ];
-    expect(statMorphMap(stats)).toEqual({});
-  });
-  it("contributes a stat's normalized value to each bound morph", () => {
-    const stats = [stat({ id: "a", name: "A", value: 25, morphBindings: ["Belly", "Fat"] })];
-    expect(statMorphMap(stats)).toEqual({ Belly: 0.25, Fat: 0.25 });
-  });
-  it("combines multiple stats", () => {
-    const stats = [
-      stat({ id: "a", name: "A", value: 100, morphBindings: ["Belly"] }),
-      stat({ id: "b", name: "B", value: 10, min: 0, max: 20, morphBindings: ["Breasts"] }),
-    ];
-    expect(statMorphMap(stats)).toEqual({ Belly: 1, Breasts: 0.5 });
-  });
-  it("anchors the scale to the authored max, so a raised max drives the morph past 1", () => {
-    const authored = [stat({ id: "a", name: "A", max: 50, morphBindings: ["Belly"] })];
-    const live = [stat({ id: "a", name: "A", max: 100, value: 100, morphBindings: ["Belly"] })];
-    expect(statMorphMap(live, authored)).toEqual({ Belly: 2 });
-  });
-  it("keeps a percentage stat capped at 1", () => {
-    const authored = [stat({ id: "a", name: "A", type: "percentage", max: 50, morphBindings: ["Belly"] })];
-    const live = [
-      stat({ id: "a", name: "A", type: "percentage", max: 100, value: 100, morphBindings: ["Belly"] }),
-    ];
-    expect(statMorphMap(live, authored)).toEqual({ Belly: 1 });
-  });
-  it("falls back to the live max for a stat absent from the authored world", () => {
-    const live = [stat({ id: "runtime", name: "R", max: 20, value: 10, morphBindings: ["Fat"] })];
-    expect(statMorphMap(live, [])).toEqual({ Fat: 0.5 });
-  });
-});
-
-describe("entityStatMorphMap", () => {
-  it("drives each bound shape key from the entity's own stat, scaled against its authored max", () => {
-    const authored = [stat({ id: "hp", name: "Wounds", max: 50, morphBindings: ["Bruise"] })];
-    const live = [stat({ id: "hp", name: "Wounds", max: 100, value: 25, morphBindings: ["Bruise"] })];
-    expect(entityStatMorphMap(live, authored)).toEqual({ Bruise: 0.5 });
-  });
-  it("leaves a disabled stat's shape keys at rest", () => {
-    const live = [
-      stat({ id: "a", name: "A", value: 50, morphBindings: ["Bruise"], enabled: false }),
-      stat({ id: "b", name: "B", value: 50, morphBindings: ["Fat"] }),
-    ];
-    expect(entityStatMorphMap(live, [])).toEqual({ Fat: 0.5 });
-  });
-  it("is empty for an entity with no stat values", () => {
-    expect(entityStatMorphMap(undefined, undefined)).toEqual({});
-  });
-});
-
-describe("mergeBodyMorphs", () => {
-  it("sums overlapping keys and keeps disjoint ones", () => {
-    const base = { Belly: 0.2, B_Pear: 0.5 };
-    const fromStats = { Belly: 0.3, Fat: 0.4 };
-    expect(mergeBodyMorphs(base, fromStats)).toEqual({ Belly: 0.5, B_Pear: 0.5, Fat: 0.4 });
-  });
-  it("does not mutate the inputs", () => {
-    const base = { Belly: 0.2 };
-    mergeBodyMorphs(base, { Belly: 0.3 });
-    expect(base).toEqual({ Belly: 0.2 });
-  });
-});
-
-describe("boundMorphNamesExcluding", () => {
-  it("unions morphs from other stats and excludes the given one", () => {
-    const stats = [
-      stat({ id: "a", name: "A", morphBindings: ["Belly", "Fat"] }),
-      stat({ id: "b", name: "B", morphBindings: ["Breasts"] }),
-    ];
-    expect(boundMorphNamesExcluding(stats, "b")).toEqual(new Set(["Belly", "Fat"]));
-    expect(boundMorphNamesExcluding(stats, "a")).toEqual(new Set(["Breasts"]));
-  });
-});
-
 describe("buildMorphGroups", () => {
   it("splits each model into Body Sliders and Head Features groups of {label,value} options", () => {
-    const groups = buildMorphGroups(
-      [
-        { heading: "Alpha", morphs: ["Height", "Muscle"], head: ["EarShape"] },
-        { heading: "Beta", morphs: ["Width"] },
-      ],
-      new Set(),
-    );
+    const groups = buildMorphGroups([
+      { heading: "Alpha", morphs: ["Height", "Muscle"], head: ["EarShape"] },
+      { heading: "Beta", morphs: ["Width"] },
+    ]);
     expect(groups).toEqual([
       { heading: "Alpha · Body Sliders", options: [{ label: "Height", value: "Height" }, { label: "Muscle", value: "Muscle" }] },
       { heading: "Alpha · Head Features", options: [{ label: "EarShape", value: "EarShape" }] },
@@ -142,34 +57,25 @@ describe("buildMorphGroups", () => {
     ]);
   });
   it("shows a shared morph under every model that has it", () => {
-    const groups = buildMorphGroups(
-      [
-        { heading: "Alpha", morphs: ["Height"] },
-        { heading: "Beta", morphs: ["Height"] },
-      ],
-      new Set(),
-    );
+    const groups = buildMorphGroups([
+      { heading: "Alpha", morphs: ["Height"] },
+      { heading: "Beta", morphs: ["Height"] },
+    ]);
     expect(groups.map((g) => g.heading)).toEqual(["Alpha · Body Sliders", "Beta · Body Sliders"]);
     expect(groups.every((g) => g.options[0].value === "Height")).toBe(true);
   });
-  it("drops names taken by another stat, and any group left empty", () => {
-    const groups = buildMorphGroups(
-      [
-        { heading: "Alpha", morphs: ["Height", "Muscle"] },
-        { heading: "Beta", morphs: ["Muscle"] }, // only Muscle, which is taken → group dropped
-      ],
-      new Set(["Muscle"]),
-    );
-    expect(groups).toEqual([{ heading: "Alpha · Body Sliders", options: [{ label: "Height", value: "Height" }] }]);
+  it("drops a group with no sliders", () => {
+    expect(buildMorphGroups([{ heading: "Alpha", morphs: [] }, { heading: "Beta", morphs: ["Width"] }]).map((g) => g.heading))
+      .toEqual(["Beta · Body Sliders"]);
   });
   it("de-duplicates a name repeated within one model", () => {
-    const groups = buildMorphGroups([{ heading: "Alpha", morphs: ["Height", "Height"] }], new Set());
+    const groups = buildMorphGroups([{ heading: "Alpha", morphs: ["Height", "Height"] }]);
     expect(groups[0].options).toEqual([{ label: "Height", value: "Height" }]);
   });
 });
 
 describe("autoBindLegacyBodyStats", () => {
-  it("binds the standard trio and leaves other stats alone", () => {
+  it("binds the standard trio in the object form and leaves other stats alone", () => {
     const stats = [
       stat({ id: "1", name: "Stomach" }),
       stat({ id: "2", name: "Fatness" }),
@@ -177,9 +83,9 @@ describe("autoBindLegacyBodyStats", () => {
       stat({ id: "4", name: "Health" }),
     ];
     const out = autoBindLegacyBodyStats(stats);
-    expect(out[0].morphBindings).toEqual(["Belly"]);
-    expect(out[1].morphBindings).toEqual(["Fat"]);
-    expect(out[2].morphBindings).toEqual(["Breasts"]);
+    expect(out[0].morphBindings).toEqual([{ name: "Belly" }]);
+    expect(out[1].morphBindings).toEqual([{ name: "Fat" }]);
+    expect(out[2].morphBindings).toEqual([{ name: "Breasts" }]);
     expect(out[3].morphBindings).toBeUndefined();
   });
   it("is idempotent — a stat that already carries the field is untouched", () => {
@@ -187,6 +93,17 @@ describe("autoBindLegacyBodyStats", () => {
     const out = autoBindLegacyBodyStats(stats);
     expect(out[0].morphBindings).toEqual([]);
     expect(out[0]).toBe(stats[0]); // unchanged reference
+  });
+});
+
+describe("migrateStatListMorphBindings", () => {
+  it("turns bare names into objects and keeps objects as they are", () => {
+    const raw = [{ id: "a", morphBindings: ["Belly", { name: "Fat", by: -1 }] }];
+    expect(migrateStatListMorphBindings(raw)).toEqual([{ id: "a", morphBindings: [{ name: "Belly" }, { name: "Fat", by: -1 }] }]);
+  });
+  it("returns the same list when nothing holds a bare name", () => {
+    const raw = [{ id: "a", morphBindings: [{ name: "Belly" }] }, { id: "b" }];
+    expect(migrateStatListMorphBindings(raw)).toBe(raw);
   });
 });
 

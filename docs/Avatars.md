@@ -102,8 +102,10 @@ Keep these rules or the sliders can fail:
 
 To tie a slider to a stat, open a world stat in the World Editor and pick the key in **Body Sliders**. The list has two groups for each model, **Body Sliders** and **Head Features**. See [World Editor Stats](World-Editor-Stats).
 
-- The stat's Min sets the key to 0, and its Max sets it to 1.
-- Each key belongs to one stat only.
+- Each picked key has a **Change By** number, 1 by default. At the stat's Min, the stat adds nothing to the key. At its Max, it adds the **Change By**.
+- A negative **Change By** makes the key smaller as the stat rises.
+- A number stat above its Max keeps changing the key. A percentage stat stops at 100%.
+- Several stats can change one key. Their changes add up.
 - An entity's own stats list the keys of its 3D model, not its Avatar.
 - The **Initial Body Features** value adds to the stat's value.
 

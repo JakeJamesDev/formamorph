@@ -1,5 +1,6 @@
-import type { Stat, PlayerStat } from '@/types';
+import type { Entity, Stat, PlayerStat } from '@/types';
 import { statStartValue } from './statDescriptorGeometry';
+import { refreshSavedBindings } from './traitEffects';
 
 /**
  * Reconcile a save's `globalStats` against the world's current stat definitions by appending any stat the
@@ -18,6 +19,25 @@ export function backfillPlayerStats(stats: PlayerStat[], worldStats: Stat[]): Pl
   if (missing.length === 0) return stats;
   const seeded = missing.map((s) => ({ ...s, value: statStartValue(s) })) as PlayerStat[];
   return [...stats, ...seeded];
+}
+
+/** A saved state with every stat's bindings re-read from the world: global stats from `worldStats`, each entity's
+ *  from that entity's authored stats. Owners the world lacks keep their saved bindings. */
+export function refreshGameStateBindings<S extends { globalStats?: PlayerStat[]; entityStats?: Record<string, PlayerStat[]> }>(
+  state: S,
+  worldStats: readonly Stat[],
+  entities: readonly Pick<Entity, 'id' | 'stats'>[] = [],
+): S {
+  const authoredOf = new Map(entities.map((e) => [e.id, e.stats ?? []]));
+  const entityStats = state.entityStats && Object.fromEntries(Object.entries(state.entityStats).map(([id, stats]) => {
+    const authored = authoredOf.get(id);
+    return [id, authored && Array.isArray(stats) ? refreshSavedBindings(stats, authored) : stats];
+  }));
+  return {
+    ...state,
+    ...(Array.isArray(state.globalStats) ? { globalStats: refreshSavedBindings(state.globalStats, worldStats) } : {}),
+    ...(entityStats ? { entityStats } : {}),
+  };
 }
 
 /** Apply {@link backfillPlayerStats} to a GameState (a save's current state or a rollback snapshot),

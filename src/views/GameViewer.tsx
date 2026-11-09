@@ -257,7 +257,6 @@ import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
-import { statMorphMap } from "../lib/bodyMorphs";
 import {
   inAuthoredOrder, refreshChosenTraits, refreshSavedStats, activeStatEnabled, enabledStats,
 } from "../lib/traitEffects";
@@ -832,7 +831,8 @@ const GameViewer = ({
     viewLocationId,
     gameStates,
     setGameStates,
-    setBodyMorphValues,
+    setPlayerLookStats,
+    setViewEntityStatEnabled,
     playerNotes,
     setPlayerNotes,
     saveGame,
@@ -2476,10 +2476,17 @@ const GameViewer = ({
   );
 
   useEffect(() => {
-    // Authored stats anchor the morph scale, so a max the AI raised grows the shape key rather than
-    // shrinking every point below it.
-    setBodyMorphValues(statMorphMap(viewActiveStats, stats));
-  }, [viewActiveStats, stats, setBodyMorphValues]);
+    // Authored stats anchor the slider scale, so a max the AI raised grows the slider rather than shrinking it.
+    // The traits in force already chose these stats, so each one is on whatever its authored flag says.
+    const enabled = Object.fromEntries(viewActiveStats.map((s) => [s.id, true]));
+    setPlayerLookStats({ stats: viewActiveStats, authored: stats, enabled });
+  }, [viewActiveStats, stats, setPlayerLookStats]);
+
+  useEffect(() => {
+    const inForce = entityInForceUnder(viewOwnedTraits);
+    setViewEntityStatEnabled(Object.fromEntries(Object.entries(viewEntityStats)
+      .map(([id, held]) => [id, activeStatEnabled(held, inForce(id))])));
+  }, [viewEntityStats, viewOwnedTraits, entityInForceUnder, setViewEntityStatEnabled]);
 
   // Ambient audio follows the viewed location (the paged turn's when browsing history, the live one
   // otherwise). Centralizing it here also fixes the load/rollback gap where `loadGameState` set the

@@ -315,7 +315,8 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
           onPreferenceChange={entityViewPreference.onPreferenceChange}
           imageIndex={entityViewGallery.imageIndex}
           onImageStep={entityViewGallery.onImageStep}
-          morphValues={entityViewMorphs}
+          morphValues={entityViewMorphs.morphs}
+          onMorphNames={entityViewMorphs.onCatalog}
         />
       </div>
     </div>

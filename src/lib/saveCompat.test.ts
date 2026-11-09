@@ -131,7 +131,7 @@ describe('migrateLegacySaveState', () => {
       playerStats: [{ id: 's', name: 'Stomach', value: 5 }, { id: 'h', name: 'Health', value: 90 }],
     } as unknown as GameState;
     const out = migrateLegacySaveState(state);
-    expect(out.globalStats[0].morphBindings).toEqual(['Belly']);
+    expect(out.globalStats[0].morphBindings).toEqual([{ name: 'Belly' }]);
     expect(out.globalStats[1].morphBindings).toBeUndefined(); // non-body stat untouched
   });
 });
@@ -155,7 +155,7 @@ describe('migrateSave (shared import + load path)', () => {
       playerDescription: 'You are a Bat Pony',
       aiDescription: 'You are a Bat Pony',
     });
-    expect(out.currentState.globalStats[0].morphBindings).toEqual(['Belly']);
+    expect(out.currentState.globalStats[0].morphBindings).toEqual([{ name: 'Belly' }]);
     // v2-only field stamped onto every snapshot, not just defaulted on read.
     expect(out.currentState.discoveredEntities).toEqual([]);
     // opening-only save: empty history + appended current = a single page (the migrated currentState).

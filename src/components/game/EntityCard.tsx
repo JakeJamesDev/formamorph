@@ -32,11 +32,11 @@ export function EntityDescription({ text, resolveText = identity, children }: {
  * the description area. The visual props are the gameplay-held picture state `EntityVisual` takes.
  * `sideBySide` puts the picture left of the text on large screens; it needs a host with a fixed height.
  */
-export function EntityCardBody({ entity, children, sideBySide = false, images, avatar, preference, onPreferenceChange, imageIndex, onImageStep, morphValues }: {
+export function EntityCardBody({ entity, children, sideBySide = false, images, avatar, preference, onPreferenceChange, imageIndex, onImageStep, morphValues, onMorphNames }: {
   entity: EntityVisualSource & Pick<Entity, 'sound'>;
   children: ReactNode;
   sideBySide?: boolean;
-} & Pick<ComponentProps<typeof EntityVisual>, 'images' | 'avatar' | 'preference' | 'onPreferenceChange' | 'imageIndex' | 'onImageStep' | 'morphValues'>) {
+} & Pick<ComponentProps<typeof EntityVisual>, 'images' | 'avatar' | 'preference' | 'onPreferenceChange' | 'imageIndex' | 'onImageStep' | 'morphValues' | 'onMorphNames'>) {
   return (
     <div className={cn('flex-grow min-h-0 flex flex-col gap-4 p-4', sideBySide && 'lg:flex-row lg:gap-6')}>
       {/* Picture takes 3/4 of the height, or 3/5 of the width side by side (aspect ratio preserved). */}
@@ -52,6 +52,7 @@ export function EntityCardBody({ entity, children, sideBySide = false, images, a
             imageIndex={imageIndex}
             onImageStep={onImageStep}
             morphValues={morphValues}
+            onMorphNames={onMorphNames}
           />
         </div>
       )}

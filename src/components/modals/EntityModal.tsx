@@ -36,7 +36,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
   const resolveEntityText = useEntityTextResolver();
   const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
   const { images, imageIndex, onImageStep } = useEntityGallery(entity);
-  const morphValues = useEntityStatMorphs(entity ?? undefined);
+  const { morphs: morphValues, onCatalog: onMorphNames } = useEntityStatMorphs(entity ?? undefined);
   const avatars = usePlayAvatars();
   const avatarSource = entity ? avatars.sourceOf(entity) : undefined;
 
@@ -133,6 +133,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
           imageIndex={imageIndex}
           onImageStep={onImageStep}
           morphValues={morphValues}
+          onMorphNames={onMorphNames}
         >
               {mode === 'edit' ? (
                 <div className="flex flex-col gap-2">

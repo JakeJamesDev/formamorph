@@ -50,7 +50,7 @@ const VIEW: Record<EntityVisualKind, { label: string; icon: LucideIcon }> = {
  *
  * Fills its container, so the caller owns the sizing.
  */
-export const EntityVisual = ({ entity, className, images: inPlay, avatar, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues }: {
+export const EntityVisual = ({ entity, className, images: inPlay, avatar, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues, onMorphNames }: {
   entity: EntityVisualSource;
   /** The images visible in play, in author order. Absent, the authored gallery, rules ignored. */
   images?: readonly Base64Data[];
@@ -63,6 +63,8 @@ export const EntityVisual = ({ entity, className, images: inPlay, avatar, prefer
   onImageStep?: (by: number) => void;
   /** The shape keys the entity's own stats drive on its model, in every viewer this opens. */
   morphValues?: Readonly<Record<string, number>>;
+  /** Called once the model loads, with every shape-key name it carries. */
+  onMorphNames?: (names: string[]) => void;
 }) => {
   const [open, setOpen] = useState<EntityVisualKind | null>(null);
   // A 3D view loads only once its panel has been on screen.
@@ -88,7 +90,7 @@ export const EntityVisual = ({ entity, className, images: inPlay, avatar, prefer
   ) : undefined);
   const openChange = (kind: EntityVisualKind) => (next: boolean) => setOpen(next ? kind : null);
   const modelViewer = (viewerClass?: string) => model && (
-    <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} className={viewerClass} />
+    <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} onMorphNames={onMorphNames} className={viewerClass} />
   );
 
   return (

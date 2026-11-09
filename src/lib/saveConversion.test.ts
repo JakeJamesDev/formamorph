@@ -46,7 +46,7 @@ describe('nested-legacy load pipeline (flatten → migrateLegacySaveState)', () 
       expect(state.globalTraits[0]).toMatchObject({ aiDescription: 'You are a Bat Pony' });
       expect('description' in state.globalTraits[0]).toBe(false);
       // Legacy body stat bound so it drives the VRM.
-      expect(state.globalStats[0].morphBindings).toEqual(['Belly']);
+      expect(state.globalStats[0].morphBindings).toEqual([{ name: 'Belly' }]);
       // v2-only field stamped.
       expect(state.discoveredEntities).toEqual([]);
     }

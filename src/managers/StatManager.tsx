@@ -26,7 +26,8 @@ import { statPanelHome, type ScriptBoxWorld } from "@/lib/scriptBoxHome";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
-import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
+import { buildMorphGroups, resolveMorphAlias } from "@/lib/bodyMorphs";
+import { useKnownMorphKeys } from "@/lib/useKnownMorphKeys";
 import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
 import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescriptorsSection';
@@ -36,7 +37,7 @@ import { labelPlaceholders } from "@/lib/placementLetters";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
 import { useCodeUseReveal } from "@/lib/codeUseReveal";
-import type { FocusFieldHint, RegenUnit, ScriptTiming, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import type { FocusFieldHint, MorphBinding, RegenUnit, ScriptTiming, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
 import { REGEN_UNIT_LABELS, REGEN_UNITS, regenPer, regenPerHour, regenUnitOf } from "@/lib/regenUnits";
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { WorldInput } from '@/components/editor/WorldField';
@@ -79,6 +80,49 @@ const normalizeStat = (stat: EditingStat): EditingStat => ({
   type: stat?.type || "number",
 });
 
+const NO_BINDINGS: readonly MorphBinding[] = [];
+
+/** `binding` with Change By `by`; the default of 1, or none, is stored as absent. */
+const withChangeBy = ({ name }: MorphBinding, by: number | undefined): MorphBinding =>
+  (by === undefined || by === 1 ? { name } : { name, by });
+
+/** One picked slider's row: its name, a "Not on this model" status when the known model lacks it, and its
+ *  Change By. The field keeps what is typed, so a lone minus sign or a cleared field can stand mid-edit. */
+function ChangeByRow({ binding, missing, onCommit }: {
+  binding: MorphBinding;
+  missing: boolean;
+  onCommit: (by: number | undefined) => void;
+}) {
+  const shown = String(binding.by ?? 1);
+  const [text, setText] = useState(shown);
+  // A change from outside the field (undo, a link reset) replaces what it shows; the field's own edit doesn't.
+  useEffect(() => { setText((current) => (current.trim() !== "" && Number(current) === Number(shown) ? current : shown)); }, [shown]);
+  const commit = (raw: string) => {
+    const by = Number(raw);
+    if (raw.trim() !== "" && Number.isFinite(by)) onCommit(by);
+  };
+  const settle = () => {
+    if (text.trim() === "") onCommit(undefined);
+    setText(shown);
+  };
+  return (
+    <>
+      <div className="min-w-0">
+        <div className="truncate text-body">{binding.name}</div>
+        {missing && <div className="text-helper text-muted-foreground">Not on this model</div>}
+      </div>
+      <WorldInput
+        type="number"
+        step="any"
+        aria-label={`Change By for ${binding.name}`}
+        value={text}
+        onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
+        onBlur={settle}
+      />
+    </>
+  );
+}
+
 /**
  * Right-panel editor for one stat: its fields split across Details, Descriptors and Code.
  *
@@ -113,8 +157,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   const { draft: editingStat, apply } = useEditingDraft<EditingStat>(stat, writeStat, normalizeStat);
 
   // Body sliders available to this stat: the owner's model's shape keys, or for a world stat every model's
-  // (grouped by model), minus those already owned by another stat (each slider binds to a single stat).
-  // Loaded lazily when the picker opens.
+  // (grouped by model). Loaded lazily when the picker opens.
   const worldMorphs = useBodyMorphSources();
   const ownerMorphs = useOwnerMorphSources(store?.morphOwner);
   const { sources: morphSources, loading: morphsLoading, load: loadMorphs } = store?.morphOwner ? ownerMorphs : worldMorphs;
@@ -125,10 +168,16 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
       ? "This entity's 3D model has no body sliders"
       : "This entity has no 3D model. Add one to bind its body sliders.";
   }
-  const morphGroups = useMemo(() => {
-    const taken = boundMorphNamesExcluding(stats, stat.id);
-    return buildMorphGroups(morphSources, taken);
-  }, [morphSources, stats, stat.id]);
+  const morphGroups = useMemo(() => buildMorphGroups(morphSources), [morphSources]);
+  const bindings = editingStat.morphBindings ?? NO_BINDINGS;
+  // The model the bindings play on, read only while the stat has any.
+  const knownKeys = useKnownMorphKeys(store?.morphOwner, bindings.length > 0);
+  const onModel = (name: string) => !knownKeys || resolveMorphAlias(name, (key) => knownKeys.has(key)) !== null;
+  // A picked slider keeps its Change By; a new one starts at the default.
+  const pickSliders = (names: string[]) =>
+    handleChange("morphBindings", names.map((name) => bindings.find((b) => b.name === name) ?? { name }));
+  const setChangeBy = (name: string, by: number | undefined) =>
+    handleChange("morphBindings", bindings.map((b) => (b.name === name ? withChangeBy(b, by) : b)));
 
   // Code reaches a stat by its code name, so the rename offer compares the two names the way code reads them.
   const nameRename = useRenameField({
@@ -413,17 +462,31 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           </div>
           <div className="space-y-2" {...fieldFrame('morphBindings')}>
             {fieldLabel('morphBindings', 'Body Sliders')}
-            <Hint>Binds body sliders and head features to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
+            <Hint>Moves each slider as the stat rises, by its Change By at Max</Hint>
             <MultiSelect
               key={stat.id}
               options={morphGroups}
-              defaultValue={editingStat.morphBindings ?? []}
-              onValueChange={(v) => handleChange("morphBindings", v)}
+              defaultValue={bindings.map((b) => b.name)}
+              onValueChange={pickSliders}
               onOpenChange={(open) => { if (open) loadMorphs(); }}
               placeholder="Select body sliders"
               emptyIndicator={morphsLoading ? "Loading sliders…" : ownerMorphsEmpty}
               maxCount={6}
             />
+            {bindings.length > 0 && (
+              <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 gap-y-2 pt-1">
+                <span />
+                <Label className="text-meta text-muted-foreground">Change By</Label>
+                {bindings.map((binding) => (
+                  <ChangeByRow
+                    key={binding.name}
+                    binding={binding}
+                    missing={!onModel(binding.name)}
+                    onCommit={(by) => setChangeBy(binding.name, by)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -9,11 +9,21 @@ const wounds = {
   id: 's1', name: 'Wounds', type: 'number', description: '', min: 0, max: 10, value: 0, regen: 0, descriptors: [],
 } as unknown as Stat;
 
+// The world's own parts a test sets: its Avatars and persona picks, its stats, and the stat write.
+const worldParts = vi.hoisted(() => ({
+  overview: {} as Record<string, unknown>,
+  entities: [] as unknown[],
+  stats: [] as unknown[],
+  updateStat: (() => {}) as (stat: unknown) => void,
+}));
 vi.mock('@/contexts/GameDataContext', () => {
-  const world = () => ({
-    stats: [wounds], statGroups: [], playStats: [wounds], placeholders: [], traits: [], traitGroups: [], entities: [], playEntities: [], entityGroups: [], dictionaries: [],
-    placementLetters: new Map(), placeholderOwners: new Map(), worldOverview: {}, updateStat: () => {},
-  });
+  const world = () => {
+    const stats = worldParts.stats.length ? worldParts.stats : [wounds];
+    return {
+      stats, statGroups: [], playStats: stats, placeholders: [], traits: [], traitGroups: [], entities: worldParts.entities, playEntities: [], entityGroups: [], dictionaries: [],
+      placementLetters: new Map(), placeholderOwners: new Map(), worldOverview: worldParts.overview, updateStat: worldParts.updateStat,
+    };
+  };
   return { useGameData: world, useGameDataOptional: world };
 });
 vi.mock('@/components/prompt/PlaceholderField', () => ({
@@ -26,9 +36,13 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 const loads = vi.hoisted(() => ({
   player: { body: ['Belly', 'Fat'], head: ['EarShape'] } as { body: string[]; head: string[] },
   owner: new Map<string, string[]>(),
+  catalogs: new Map<string, string[]>(),
   ownerCalls: 0,
 }));
-vi.mock('@/lib/vrmMorphLoader', () => ({ loadMorphSplit: async () => loads.player }));
+vi.mock('@/lib/vrmMorphLoader', () => ({
+  loadMorphSplit: async () => loads.player,
+  loadMorphCatalog: async (url: string) => (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
+}));
 vi.mock('@/lib/modelLoader', () => ({
   loadModelMorphNames: async (model: Partial<MediaAsset>) => {
     loads.ownerCalls++;
@@ -78,7 +92,12 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:model');
   URL.revokeObjectURL = vi.fn();
   loads.owner.clear();
+  loads.catalogs.clear();
   loads.ownerCalls = 0;
+  worldParts.overview = {};
+  worldParts.entities = [];
+  worldParts.stats = [];
+  worldParts.updateStat = () => {};
 });
 
 describe('the Body Sliders picker', () => {
@@ -130,8 +149,102 @@ describe('the Body Sliders picker', () => {
   });
 
   it('keeps a binding already on the stat removable when the model offers nothing', async () => {
-    const bound = { ...wounds, morphBindings: ['Cracks'] };
+    const bound = { ...wounds, morphBindings: [{ name: 'Cracks' }] };
     renderManager({ ...entityStore(undefined), stats: [bound] }, bound);
     expect(screen.getByRole('button', { name: /Remove Cracks/ })).toBeInTheDocument();
+  });
+
+  it('keeps a slider another stat uses pickable', async () => {
+    const fatness = { ...wounds, id: 's2', name: 'Fatness', morphBindings: [{ name: 'Belly' }] };
+    worldParts.stats = [wounds, fatness];
+    renderManager();
+    expect(await offered()).toEqual(['Belly', 'Fat', 'EarShape']);
+  });
+});
+
+describe('the Change By rows', () => {
+  /** A stat editor whose writes land in `written`, re-rendered with each write as the World Editor does. */
+  const editing = (start: Stat) => {
+    const written: Stat[] = [];
+    const mounted: { view?: ReturnType<typeof renderManager> } = {};
+    worldParts.updateStat = (next) => {
+      const stat = next as Stat;
+      written.push(stat);
+      mounted.view?.rerender(
+        <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
+          <StatManager stat={stat} tab="details" onTabChange={() => {}} />
+        </EditorModeContext.Provider>,
+      );
+    };
+    mounted.view = renderManager(undefined, start);
+    return written;
+  };
+
+  it('adds a row at 1 for a picked slider and drops it when the slider goes', async () => {
+    const written = editing(wounds);
+    await userEvent.click(within(screen.getByText('Body Sliders').parentElement!).getByRole('combobox'));
+    await userEvent.click(await screen.findByRole('option', { name: /^Fat, not selected$/ }));
+    expect(written.at(-1)?.morphBindings).toEqual([{ name: 'Fat' }]);
+    expect(screen.getByRole('spinbutton', { name: 'Change By for Fat' })).toHaveValue(1);
+    await userEvent.click(screen.getByRole('option', { name: /^Fat, selected$/ }));
+    expect(written.at(-1)?.morphBindings).toEqual([]);
+    expect(screen.queryByRole('spinbutton', { name: 'Change By for Fat' })).toBeNull();
+  });
+
+  it('stores a typed amount, negatives included, and stores 1 as absent', async () => {
+    const written = editing({ ...wounds, morphBindings: [{ name: 'Belly' }, { name: 'Fat', by: 2 }] });
+    const belly = screen.getByRole('spinbutton', { name: 'Change By for Belly' });
+    await userEvent.clear(belly);
+    await userEvent.type(belly, '-1.5');
+    expect(written.at(-1)?.morphBindings).toEqual([{ name: 'Belly', by: -1.5 }, { name: 'Fat', by: 2 }]);
+    const fat = screen.getByRole('spinbutton', { name: 'Change By for Fat' });
+    await userEvent.clear(fat);
+    await userEvent.type(fat, '1');
+    expect(written.at(-1)?.morphBindings).toEqual([{ name: 'Belly', by: -1.5 }, { name: 'Fat' }]);
+  });
+
+  it('stores an emptied field as absent once it loses focus', async () => {
+    const written = editing({ ...wounds, morphBindings: [{ name: 'Fat', by: 2 }] });
+    const fat = screen.getByRole('spinbutton', { name: 'Change By for Fat' });
+    await userEvent.clear(fat);
+    expect(written).toEqual([]);
+    await userEvent.tab();
+    expect(written.at(-1)?.morphBindings).toEqual([{ name: 'Fat' }]);
+    expect(fat).toHaveValue(1);
+  });
+
+  it("marks a slider the owner's model lacks, and not an alias-mate it has", async () => {
+    loads.owner.set('data:golem', ['Cracks', 'Fat']);
+    const bound = { ...wounds, morphBindings: [{ name: 'Cracks' }, { name: 'Moss' }, { name: 'Thickness' }] };
+    renderManager({ ...entityStore({ name: 'golem.glb', data: 'data:golem' }), stats: [bound] }, bound);
+    const rowOf = (name: string) => screen.getByRole('spinbutton', { name: `Change By for ${name}` }).previousElementSibling as HTMLElement;
+    expect(await within(rowOf('Moss')).findByText('Not on this model')).toBeInTheDocument();
+    expect(within(rowOf('Cracks')).queryByText('Not on this model')).toBeNull();
+    expect(within(rowOf('Thickness')).queryByText('Not on this model')).toBeNull();
+  });
+
+  it("checks a world stat against the world's player Avatar", async () => {
+    loads.catalogs.set('data:aki', ['Belly']);
+    worldParts.overview = {
+      startPersona: { source: 'none' },
+      vrmStore: { aki: { name: 'Aki', file: { data: 'data:aki' } } },
+    };
+    worldParts.entities = [{ id: 'you', name: 'You', customPersona: true, locations: [], vrmPick: { kind: 'world', id: 'aki' } }];
+    const bound = { ...wounds, morphBindings: [{ name: 'Belly' }, { name: 'Tusks' }] };
+    worldParts.stats = [bound];
+    renderManager(undefined, bound);
+    expect(await screen.findAllByText('Not on this model')).toHaveLength(1);
+    const tusks = screen.getByRole('spinbutton', { name: 'Change By for Tusks' }).previousElementSibling as HTMLElement;
+    expect(within(tusks).getByText('Not on this model')).toBeInTheDocument();
+  });
+
+  it('marks nothing when the world leaves the Avatar to the player', async () => {
+    loads.catalogs.set('data:aki', ['Belly']);
+    worldParts.overview = { vrmStore: { aki: { name: 'Aki', file: { data: 'data:aki' } } } };
+    const bound = { ...wounds, morphBindings: [{ name: 'Tusks' }] };
+    worldParts.stats = [bound];
+    renderManager(undefined, bound);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText('Not on this model')).toBeNull();
   });
 });
