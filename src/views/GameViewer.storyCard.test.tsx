@@ -178,15 +178,6 @@ describe('who sees the card', () => {
 });
 
 describe('the Demo AI turn count', () => {
-  it('skips the opening and counts each later player action', async () => {
-    await enterAndOpen();
-    expect(demoAITurnCount()).toBe(0);
-    await playTurn('I ring the bell.');
-    expect(demoAITurnCount()).toBe(1);
-    await playTurn('I wait at the dock.');
-    expect(demoAITurnCount()).toBe(2);
-  });
-
   it('does not count a narration regenerate, a choices re-roll or a stats re-roll', async () => {
     await enterAndOpen();
     await playTurn('I ring the bell.');

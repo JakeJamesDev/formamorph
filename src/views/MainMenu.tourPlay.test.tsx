@@ -109,8 +109,9 @@ describe('Authoring Tour Play', () => {
     const step = await screen.findByRole('dialog', { name: 'Play Your World' });
     fireEvent.click(within(step).getByRole('button', { name: 'Play' }));
 
-    // The unblocked case shows the Introduction inside this same default window.
-    await expect(screen.findByRole('dialog', { name: 'Introduction' })).rejects.toThrow();
+    // An unblocked Play shows the Introduction well inside 2 s of the editor closing.
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'World Editor' })).not.toBeInTheDocument());
+    await expect(screen.findByRole('dialog', { name: 'Introduction' }, { timeout: 2_000 })).rejects.toThrow();
     expect(readTourRecord(TOUR_WORLD.id)).toBeNull();
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('This world requires a source its author removed: Lamp Keeper.');

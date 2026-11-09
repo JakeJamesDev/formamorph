@@ -76,37 +76,28 @@ async function playOpening(options: Parameters<typeof renderGameViewer>[1], play
 }
 
 describe('a new game of Emberwatch', () => {
-  it('seeds a non-Rogue purse and shows its balance in the Inventory tab', async () => {
+  it('as non-Rogue Albus: gives only the Rogue in the cast the extra items, tracks purses and not an empty shopkeeper, and shows the balance in the Inventory tab', async () => {
     await playOpening({ initialPersona: { ref: asEntity('Albus') }, initialOwnedTraits: setupPicks(asEntity('Albus')) });
+    expect(balance({ kind: 'entity', id: entityId('Sylvie Thornwhistle') })).toEqual({ tracked: true, amount: 500 });
     expect(balance(YOU)).toEqual({ tracked: true, amount: 300 });
+    // No bonus runs for a Custom Persona nobody picked.
+    expect(balance({ kind: 'entity', id: entityId('Wanderer') })).toEqual({ tracked: true, amount: 0 });
+    // Jory Pike is tracked by his purse; a shopkeeper with no items placed stays untracked.
+    expect(balance({ kind: 'entity', id: entityId('Jory Pike') })).toEqual({ tracked: true, amount: 3250 });
+    expect(balance({ kind: 'entity', id: entityId('Bram Oakes') })).toEqual({ tracked: false });
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Inventory' }));
     expect(within(await screen.findByRole('list', { name: 'Money' })).getByText('3 Gold')).toBeInTheDocument();
   }, 60_000);
 
-  it('gives a played Rogue the extra items', async () => {
-    await playOpening({ initialPersona: { ref: asEntity('Sylvie Thornwhistle') }, initialOwnedTraits: setupPicks(asEntity('Sylvie Thornwhistle')) });
-    expect(balance(YOU)).toEqual({ tracked: true, amount: 500 });
-  }, 60_000);
-
-  it('gives a Rogue in the cast the extra items, and the played non-Rogue none', async () => {
-    await playOpening({ initialPersona: { ref: asEntity('Albus') }, initialOwnedTraits: setupPicks(asEntity('Albus')) });
-    expect(balance({ kind: 'entity', id: entityId('Sylvie Thornwhistle') })).toEqual({ tracked: true, amount: 500 });
-    expect(balance(YOU)).toEqual({ tracked: true, amount: 300 });
-  }, 60_000);
-
   it('gives the bonus once when the player regenerates the opening', async () => {
     await playOpening({ initialPersona: { ref: asEntity('Sylvie Thornwhistle') }, initialOwnedTraits: setupPicks(asEntity('Sylvie Thornwhistle')) });
+    expect(balance(YOU)).toEqual({ tracked: true, amount: 500 });
     fireEvent.click(screen.getByRole('button', { name: 'Regenerate Narration' }));
     const box = screen.getByPlaceholderText<HTMLTextAreaElement>(/Type your action/);
     await waitFor(() => expect(box).not.toHaveValue(''));
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Narration' })).toBeEnabled(), { timeout: 30_000 });
     expect(balance(YOU)).toEqual({ tracked: true, amount: 500 });
-  }, 60_000);
-
-  it('runs no bonus for a Custom Persona nobody picked', async () => {
-    await playOpening({ initialPersona: { ref: asEntity('Albus') }, initialOwnedTraits: setupPicks(asEntity('Albus')) });
-    expect(balance({ kind: 'entity', id: entityId('Wanderer') })).toEqual({ tracked: true, amount: 0 });
   }, 60_000);
 
   it("lands the Custom Persona's purse and bonus on a library persona", async () => {
@@ -142,11 +133,5 @@ describe('a new game of Emberwatch', () => {
   it('gives a Custom Persona both bonuses for a Halfling Rogue build', async () => {
     await playOpening({ initialPersona: { ref: NONE }, initialOwnedTraits: setupPicks(NONE, 'Halfling', 'Rogue') });
     expect(balance(YOU)).toEqual({ tracked: true, amount: 550 });
-  }, 60_000);
-
-  it('tracks Jory Pike by his purse, and leaves a shopkeeper with no items placed untracked', async () => {
-    await playOpening({ initialPersona: { ref: asEntity('Albus') }, initialOwnedTraits: setupPicks(asEntity('Albus')) });
-    expect(balance({ kind: 'entity', id: entityId('Jory Pike') })).toEqual({ tracked: true, amount: 3250 });
-    expect(balance({ kind: 'entity', id: entityId('Bram Oakes') })).toEqual({ tracked: false });
   }, 60_000);
 });
