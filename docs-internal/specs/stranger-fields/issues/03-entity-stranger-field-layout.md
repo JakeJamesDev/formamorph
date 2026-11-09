@@ -14,6 +14,7 @@ The entity editor puts each Stranger field next to the field it replaces (Q1, Q2
 - Stranger Name joins Name in ticket 02's split name row. Outside the gate, Name stays full width.
 - Stranger Description sits on the Descriptions tab directly under Player-Facing Description, before the AI-Facing fields. It always shows, even with a blank Stranger Name.
 - The Stranger help topic splits in two: Stranger Name and Stranger Description. The inline hints go away; their content moves into the topics, written per the Writing Guide. The Stranger Description topic says it works alone: the player knows the Name but sees this description until they meet the entity (ticket 01). The Stranger Name topic says where Stranger Description now lives.
+- Ticket 01 landed so that a script's `met` reads false for a description-only entity until the player meets it. Say so in the Stranger Description topic, and in the script docs if they describe `met`.
 - Each topic carries a wiki page and anchor; update the entities wiki page's strangers section to match.
 - The entity field-to-tab map sends `strangerName` to Profile and `strangerDescription` to Descriptions.
 - Clearing either field never clears the other (Q3).
