@@ -37,6 +37,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Avatar Customization now locks the sliders and colors that a trait you checked sets.** A note names the trait. Your own values come back when you uncheck it.
   - **Stranger Fields:**
     - **The item editor puts Unidentified Name beside Name and Unidentified Description under Player-Facing Description.** Each field has its own help button.
+    - **The entity editor puts Stranger Name beside Name and Stranger Description under Player-Facing Description.** Each field has its own help button, and search finds both.
   - **Scene Presence:**
     - **An entity with a Stranger Description and no Stranger Name now starts as a stranger.** You see its Name, and its Stranger Description shows in place of its description until you meet it.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.

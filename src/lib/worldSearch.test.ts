@@ -7,6 +7,7 @@ import { collectSearchTargets, findMatches, refusesBlueprintInsert, replaceAll, 
 import type { SearchSources, SearchTarget } from '@/lib/worldSearch';
 import type { Connection, Dictionary, Entity, GameLocation, Item, Placeholder, Stat, Tool, Trait, WorldOverview } from '@/types';
 import { itemTabForField } from '@/views/itemPanelTabs';
+import { entityTabForField } from '@/views/entityPanelTabs';
 import { blankItem } from '@/lib/items';
 import { scriptEntryKey, type ScriptEdit } from '@/lib/worldScripts';
 
@@ -480,6 +481,23 @@ describe('Travel Hints', () => {
     expect(matches.map((m) => m.target.itemId)).toEqual(['quay']);
     replaceAll(matches, () => 'ferry');
     expect(written.at(-1)).toMatchObject({ aToB: { hint: 'by the ferry' }, bToA: { hint: 'by the ferry' } });
+  });
+});
+
+describe('Entity Stranger fields', () => {
+  const STRANGER = { ...entity({ id: 'e1', name: 'Velka' }), strangerName: 'a veiled woman', strangerDescription: 'A grey cloak hides her face.' };
+  const hits = (query: string, advanced: boolean) =>
+    findMatches(collectSearchTargets({ ...sources({ entities: [STRANGER] }).src, advanced }), query, LOOSE)
+      .map(({ target }) => [target.fieldKey, entityTabForField(target.fieldKey)]);
+
+  it('opens Profile for a Stranger Name hit and Descriptions for a Stranger Description hit', () => {
+    expect(hits('veiled', true)).toEqual([['strangerName', 'profile']]);
+    expect(hits('grey cloak', true)).toEqual([['strangerDescription', 'descriptions']]);
+  });
+
+  it('drops both hits in Simple mode, which hides the fields', () => {
+    expect(hits('veiled', false)).toEqual([]);
+    expect(hits('grey cloak', false)).toEqual([]);
   });
 });
 

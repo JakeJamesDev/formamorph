@@ -307,8 +307,12 @@ You don't need a second row on Tom for Mara. If both rows exist, the AI reads on
   'worldEditor.strangerName': {
     title: 'Stranger Name',
     wikiPage: 'World-Editor-Entities',
-    wikiAnchor: 'strangers',
+    wikiAnchor: 'stranger-name',
     body: `Hides who an entity is until the player meets it. Until then, the player sees the **Stranger Name**, such as "a hooded figure", in place of the **Name**. The AI narrator uses the Stranger Name too.
+
+- Leave it blank to show the Name.
+- The **Stranger Description** is on the **Descriptions** tab, under the **Player-Facing Description**. It works with or without a Stranger Name.
+- Clearing this field keeps the Stranger Description.
 
 **How the player meets the entity**
 
@@ -320,17 +324,31 @@ Once met, the player sees the Name for the rest of the game.
 **Before the player meets the entity**
 
 - If the AI tracks the entity under another name, such as "the tall woman", the player sees that name instead.
-- The entity's popup in the **Entities** tab shows the **Stranger Description** in place of the **Player-Facing Description**. Leave the Stranger Description blank to show no description.
-- The Map doesn't show the entity. The Help window shows it only under that other name, with no description.
+- The Map doesn't show an entity with a Stranger Name. The Help window shows it only under that other name, with no description.
 
 **Entities the player has already met**
 
-The player has met an entity from the start when it has no Stranger Name, or when either of these is true:
+The player has met an entity from the start when it has no Stranger Name and no Stranger Description, or when either of these is true:
 
 - It has a relationship with the persona, in either direction.
 - One of its **Known In** picks is one of the persona's **Locations**, or contains one. The **Nearby** default doesn't count.
 
-Both stranger fields take placeholders and rolls.`,
+The field takes placeholders and rolls. It shows in Advanced mode, in the World Editor only.`,
+  },
+  'worldEditor.strangerDescription': {
+    title: 'Stranger Description',
+    wikiPage: 'World-Editor-Entities',
+    wikiAnchor: 'stranger-description',
+    body: `Shows the player a different description until they meet the entity. Until then, the player sees the **Stranger Description** in place of the **Player-Facing Description**.
+
+- Leave it blank to show no description until the player meets the entity. An entity with neither stranger field starts met.
+- The field works alone. With no **Stranger Name**, the player knows the Name but sees this description until they meet the entity.
+- The entity's popup in the **Entities** tab and the Help window show it. The Help window shows it only for an entity with no Stranger Name.
+- The AI narrator sees nothing new. It keeps using the Name, or the Stranger Name when there is one.
+- A script reads \`met\` as false for the entity until the player meets it. \`meet()\` makes the player meet the entity, as for any stranger.
+- The player meets the entity the same way as any stranger: the narration uses its Name while it is at the player's location, or a script calls \`meet()\`. See **Stranger Name** for the rules.
+
+The field takes placeholders and rolls. It shows in Advanced mode, in the World Editor only.`,
   },
   'worldEditor.unidentifiedName': {
     title: 'Unidentified Name',

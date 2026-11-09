@@ -1,6 +1,6 @@
 # 03: Entity Stranger Field Layout
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01 — Description-Only Strangers; 02 — Item Replacement Fields
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -22,9 +22,22 @@ The entity editor puts each Stranger field next to the field it replaces (Q1, Q2
 
 ## Acceptance criteria
 
-- [ ] In Advanced mode on the World Editor, Stranger Name renders beside Name; in Simple mode and the library editor, Name renders alone.
-- [ ] Stranger Description renders directly after Player-Facing Description with a blank Stranger Name.
-- [ ] Stranger Name and Stranger Description each have one help button that opens its own topic; no inline hint remains.
-- [ ] A search hit on either field opens the tab that holds it.
-- [ ] Clearing Stranger Name leaves Stranger Description unchanged.
-- [ ] Frames of the entity Profile and Descriptions tabs at a narrow and a wide pane width, both themes: `.scratch/frames/entity-names-narrow-light.png`, `.scratch/frames/entity-names-wide-light.png`, `.scratch/frames/entity-names-narrow-dark.png`, `.scratch/frames/entity-names-wide-dark.png`, `.scratch/frames/entity-descriptions-light.png`, `.scratch/frames/entity-descriptions-dark.png`.
+- [x] In Advanced mode on the World Editor, Stranger Name renders beside Name; in Simple mode and the library editor, Name renders alone. `EntityFields.stranger.test.tsx` (same row, Simple, library); DOM read in the preview: two columns wide, stacked narrow, no Stranger field in Simple.
+- [x] Stranger Description renders directly after Player-Facing Description with a blank Stranger Name. `EntityFields.stranger.test.tsx` field order; DOM label order in the preview.
+- [x] Stranger Name and Stranger Description each have one help button that opens its own topic; no inline hint remains. `EntityFields.stranger.test.tsx` (one `About` button each, no hint text).
+- [x] A search hit on either field opens the tab that holds it. `worldSearch.test.ts` (Entity Stranger fields) and `entityPanelTabs.test.ts`, with Advanced-only indexing per spec Q20.
+- [x] Clearing Stranger Name leaves Stranger Description unchanged. `EntityFields.stranger.test.tsx` (clear writes only `strangerName`).
+- [x] Frames of the entity Profile and Descriptions tabs at a narrow and a wide pane width, both themes: `.scratch/frames/entity-names-narrow-light.png`, `.scratch/frames/entity-names-wide-light.png`, `.scratch/frames/entity-names-narrow-dark.png`, `.scratch/frames/entity-names-wide-dark.png`, `.scratch/frames/entity-descriptions-light.png`, `.scratch/frames/entity-descriptions-dark.png`.
+
+## Landed
+
+**Not verified**
+
+- The jsdom tests (`EntityFields.stranger.test.tsx`, `worldSearch.test.ts`) run in prepare's gate list, not in the review gates. Typecheck and lint passed in the review gates.
+- The library entity editor was not opened in the preview; a unit test covers it.
+
+**For you**
+
+- Open an entity in the World Editor, Advanced mode. Stranger Name should sit beside Name and stack when the pane narrows. Frames: `.scratch/stranger-fields-03/frames/entity-names-narrow-dark.png`, `entity-names-wide-dark.png`, `entity-names-narrow-light.png`, `entity-names-wide-light.png`.
+- On the Descriptions tab, Stranger Description should sit under Player-Facing Description. Frames: `.scratch/stranger-fields-03/frames/entity-descriptions-dark.png`, `entity-descriptions-light.png`.
+- Read the two help topics (Stranger Name, Stranger Description) for tone.

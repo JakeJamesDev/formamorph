@@ -26,6 +26,11 @@ describe('entityTabForField', () => {
     expect(entityTabForField('aliases[12]')).toBe('profile');
   });
 
+  it('puts the Stranger Name on Profile and the Stranger Description on Descriptions', () => {
+    expect(entityTabForField('strangerName')).toBe('profile');
+    expect(entityTabForField('strangerDescription')).toBe('descriptions');
+  });
+
   it('puts the three prose fields on Descriptions', () => {
     expect(entityTabForField('playerDescription')).toBe('descriptions');
     expect(entityTabForField('aiDescription')).toBe('descriptions');

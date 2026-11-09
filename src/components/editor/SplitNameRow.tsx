@@ -12,14 +12,15 @@ const SplitNameLabel =({ children, helpTopicId }: { children: ReactNode; helpTop
 );
 
 /** A name field and the partner that replaces it, with the partner's own label and help button. */
-export const SplitNameField = ({ historyField, label, helpTopicId, children }: {
+export const SplitNameField = ({ historyField, label, helpTopicId, tourAnchor, children }: {
   /** History key of the field, for search and Reveal Origin. */
   historyField: string;
   label: string;
   helpTopicId?: string;
+  tourAnchor?: string;
   children: ReactNode;
 }) => (
-  <div className="min-w-0 space-y-2" {...fieldFrame(historyField)}>
+  <div className="min-w-0 space-y-2" data-tour-anchor={tourAnchor} {...fieldFrame(historyField)}>
     <SplitNameLabel helpTopicId={helpTopicId}>{label}</SplitNameLabel>
     {children}
   </div>

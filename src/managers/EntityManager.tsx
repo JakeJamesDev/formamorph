@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
-import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields } from './EntityFields';
+import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields, EntityStrangerDescriptionField } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import EntityStatsMirror from './EntityStatsMirror';
 import EntityTraitsMirror from './EntityTraitsMirror';
@@ -140,7 +140,7 @@ const EntityManager = ({
         </PanelTabContent>
 
         <PanelTabContent value="descriptions">
-          <EntityDescriptionFields {...groupProps} />
+          <EntityDescriptionFields {...groupProps} afterPlayer={<EntityStrangerDescriptionField {...groupProps} home="world" />} />
         </PanelTabContent>
 
         <PanelTabContent value="items">

@@ -71,8 +71,8 @@ Select an entity to open its panel.
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Profile** | **Name**, **Pronouns**, **Locations**, **Relationships**, the **Image** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). In Advanced mode, also **Aliases**, [**Stranger Name** and **Stranger Description**](#strangers), the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
-| **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also **AI-Facing Summary**. | Simple and Advanced |
+| **Profile** | **Name**, **Pronouns**, **Locations**, **Relationships**, the **Image** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). In Advanced mode, also **Aliases**, [**Stranger Name**](#stranger-name) beside **Name**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
+| **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also [**Stranger Description**](#stranger-description) under **Player-Facing Description**, and **AI-Facing Summary**. | Simple and Advanced |
 | **Items** | The entity's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
 | **Stats** | The entity's own [stats](#entity-stats) | Advanced only |
@@ -161,22 +161,37 @@ Two more rules:
 <!-- keywords: stranger name, stranger description, hidden identity, unknown npc, meet, met, start met, hooded figure, known in, introduction -->
 <!-- route: worldEditorEntity.profile -->
 
-Give an entity a **Stranger Name** to hide who it is until the player meets it. Until then, the player sees the Stranger Name, such as "a hooded figure", in place of the **Name**. The AI narrator uses the Stranger Name too. Both stranger fields are in Advanced mode, in the World Editor only, and take placeholders and rolls.
+A stranger is an entity the player hasn't met. Give an entity a **Stranger Name**, a **Stranger Description**, or both. Both fields are in Advanced mode, in the World Editor only, and take placeholders and rolls.
 
-**How the player meets the entity.** Once met, the player sees the Name for the rest of the game.
+### Stranger Name
 
-- The narration uses the entity's Name, or a distinctive part of it such as a first name, while the entity is at the player's location. Dialogue counts. Entries in **Aliases** don't.
-- A script calls [`meet()`](Scripts-Reference#meeting-entities) on the entity.
+The name the player sees until they meet the entity, such as "a hooded figure". It sits beside **Name** on the **Profile** tab, and stacks under it when the panel is narrow. The AI narrator uses the Stranger Name too.
+
+- Leave it blank to show the Name.
+- Clearing it never clears the Stranger Description.
 
 **Before the player meets the entity:**
 
 - If the AI tracks the entity under another name, such as "the tall woman", the player sees that name instead.
-- The entity's popup in the **Entities** tab shows the **Stranger Description** in place of the **Player-Facing Description**. Leave the Stranger Description blank to show no description.
-- The Map doesn't show the entity. The Help window shows it only under that other name, with no description.
+- The Map doesn't show an entity with a Stranger Name. The Help window shows it only under that other name, with no description.
 
 **The story's use of the Stranger Name brings the entity into the scene.** When the narration writes the whole Stranger Name, such as "a hooded woman" or "the hooded woman", the entity takes part in the turn, as it does for its Name or an alias. One word of it never counts on its own, and a Stranger Name inside quoted dialogue doesn't count.
 
-**Entities the player has already met.** The player has met an entity from the start when it has no Stranger Name, or when either of these is true:
+### Stranger Description
+
+The description the player reads until they meet the entity. It sits directly under **Player-Facing Description** on the **Descriptions** tab. It works alone: with no Stranger Name, the player knows the **Name** but reads this description until they meet the entity.
+
+- The entity's popup in the **Entities** tab shows it in place of the **Player-Facing Description**. The Help window shows it too, for an entity with no Stranger Name.
+- Leave it blank to show no description until the player meets the entity.
+- The AI narrator sees nothing new.
+- A script reads [`met`](Scripts-Reference#meeting-entities) as false for the entity until the player meets it.
+
+**How the player meets the entity.** Once met, the player sees the Name and the Player-Facing Description for the rest of the game.
+
+- The narration uses the entity's Name, or a distinctive part of it such as a first name, while the entity is at the player's location. Dialogue counts. Entries in **Aliases** don't.
+- A script calls [`meet()`](Scripts-Reference#meeting-entities) on the entity.
+
+**Entities the player has already met.** The player has met an entity from the start when it has no Stranger Name and no Stranger Description, or when either of these is true:
 
 - It has a relationship with the persona, in either direction.
 - One of its **Known In** picks is one of the persona's **Locations**, or contains one. The **Nearby** default doesn't count.
