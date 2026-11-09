@@ -36,6 +36,14 @@ describe('StrangerModal', () => {
     expect(screen.getByText('Face hidden.')).toBeTruthy();
   });
 
+  it('shows a stranger with only a Stranger Description under its real Name, with that description alone', () => {
+    const ivo = { ...sylvie, name: 'Ivo the Bold', strangerName: undefined, strangerDescription: 'A broad man in a dented helm.' } as Entity;
+    const { baseElement } = render(<StrangerModal entity={ivo} label="Ivo the Bold" isOpen onOpenChange={() => {}} />);
+    expect(screen.getByRole('heading', { name: 'Ivo the Bold' })).toBeTruthy();
+    expect(screen.getByText('A broad man in a dented helm.')).toBeTruthy();
+    expect(baseElement.textContent).not.toContain('A spy for the Crown.');
+  });
+
   it('lays the card out in two columns', () => {
     const { baseElement } = render(<StrangerModal entity={sylvie} label="a hooded figure" isOpen onOpenChange={() => {}} />);
     expect(baseElement.querySelector('.lg\\:flex-row')).not.toBeNull();

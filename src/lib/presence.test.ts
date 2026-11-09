@@ -218,6 +218,47 @@ describe('the named sets', () => {
   });
 });
 
+describe('a stranger with only a Stranger Description', () => {
+  const ivo: Entity = { id: 'ivo', name: 'Ivo the Bold', strangerDescription: 'A broad man in a dented helm.', locations: ['hall'] };
+
+  it('starts unmet, unless a relationship or a Known In pick meets it', () => {
+    expect(startsMet(ivo, persona, LOCATIONS)).toBe(false);
+    expect(startsMet({ ...ivo, relationships: [{ targetId: 'me', label: 'brother' }] }, persona, LOCATIONS)).toBe(true);
+    expect(startsMet({ ...ivo, knownIn: ['keep'] }, persona, LOCATIONS)).toBe(true);
+    expect(startsMet({ ...ivo, strangerDescription: '  ' }, persona, LOCATIONS)).toBe(true);
+  });
+
+  it('shows its real Name in the scene and Look Around, and stays on the known list', () => {
+    const p = presence({ entities: [ivo], turns: [turn(['Ivo the Bold'], 'hall')] });
+    expect(p.byId.get('ivo')).toMatchObject({ met: false, known: true, label: 'Ivo the Bold' });
+    expect(ids(p.inScene)).toEqual(['ivo']);
+    expect(ids(p.lookAround)).toEqual(['ivo']);
+    expect(ids(p.met)).toEqual([]);
+    expect(ids(presence({ entities: [ivo], locationId: 'harbor' }).known)).toEqual(['ivo']);
+  });
+
+  it('never takes a story alias', () => {
+    const none = {};
+    expect(strangerAliasesFromCast(none, [{ name: 'Ivo the Bold', alias: 'the helmed man' }], [ivo], () => false)).toBe(none);
+  });
+
+  it('is met when the narration names it while it is here', () => {
+    const met = withMet([], introducedIds('"Ivo, sit," Mara says.', [mara, ivo], ['mara', 'ivo']));
+    expect(presence({ entities: [mara, ivo], met }).byId.get('ivo')?.met).toBe(true);
+  });
+
+  it('gives the prompts nothing new', () => {
+    const { labels, reveal } = strangersInPlay([ivo], () => false, {});
+    expect(labels).toEqual({});
+    expect(reveal('Ivo the Bold')).toBeUndefined();
+  });
+
+  it('leaves a Stranger Name stranger off the known list', () => {
+    const sylvie: Entity = { id: 'sylvie', name: 'Sylvie', strangerName: 'a hooded woman', strangerDescription: 'Hooded.', locations: ['hall'] };
+    expect(presence({ entities: [sylvie] }).byId.get('sylvie')).toMatchObject({ met: false, known: false, label: 'a hooded woman' });
+  });
+});
+
 describe('introducedIds', () => {
   const sylvie: Entity = { id: 'sylvie', name: 'Sylvie Thornwhistle', aliases: ['the Matron'], strangerName: 'a hooded woman' };
 

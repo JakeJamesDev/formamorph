@@ -15,7 +15,7 @@ import { personaKey, samePersonaRef } from '@/lib/personaPick';
 import { metRosterByLocation } from '@/lib/metEntities';
 import { usePresence } from '@/lib/usePresence';
 import {
-  IN_SCENE_TURNS, introducedIds, labelsInPlay, metCheck, strangersInPlay, sceneAfterMove, strangerAliasesFromCast, withMet,
+  IN_SCENE_TURNS, hasStrangerFace, introducedIds, labelsInPlay, metCheck, strangersInPlay, sceneAfterMove, strangerAliasesFromCast, withMet,
 } from '@/lib/presence';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
@@ -995,10 +995,10 @@ const GameViewer = ({
     () => Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
     [traitLibrary, allEntities],
   );
-  // The Map's live roster: the Met set where each entity stands. A runtime character stands where it was met.
+  // The Map's live roster: everyone the player knows by name, where each stands. A runtime character stands where it was met.
   const presence = usePresence();
-  const { met: metPresence } = presence;
-  const metRoster = useMemo(() => metRosterByLocation(metPresence), [metPresence]);
+  const { known: knownPresence } = presence;
+  const metRoster = useMemo(() => metRosterByLocation(knownPresence), [knownPresence]);
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
   // narration name extractor so a place, a stat, a trait, a lore term, a wildcard value or the player
   // never gets promoted to a person. Location names include the whole world, not just here — the
@@ -1383,10 +1383,10 @@ const GameViewer = ({
     setSelectedEntity(entities[0].name);
     setIsEntityModalOpen(true);
   }, [devRoute?.modal, entities]);
-  // The stranger popup opens for the first entity with a Stranger Name, else the first entity.
+  // The stranger popup opens for the first entity with a stranger face, else the first entity.
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'stranger' || entities.length === 0) return;
-    const stranger = entities.find((e) => e.strangerName?.trim()) ?? entities[0];
+    const stranger = entities.find(hasStrangerFace) ?? entities[0];
     setSelectedStranger({ entityId: stranger.id, label: stranger.strangerName?.trim() || stranger.name });
   }, [devRoute?.modal, entities]);
   // DEV dev-router: boot mid-game from a canned fixture. DevFixtureLoader has loaded the world (so

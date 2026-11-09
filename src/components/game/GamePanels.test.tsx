@@ -340,6 +340,35 @@ describe('LeftPanel', () => {
     });
   });
 
+  describe('a stranger with only a Stranger Description', () => {
+    const IVO = { id: 'e1', name: 'Ivo the Bold', strangerDescription: 'A broad man in a dented helm.' };
+    const WORLD = LOOK_WORLD([IVO, { id: 'e2', name: 'Bram' }]);
+
+    it('shows by its real Name and opens the stranger popup under it', () => {
+      const view = renderLeftPanel({ entities: WORLD.entities as never }, { world: WORLD as never, seed: stageYard });
+
+      openEntitiesTab();
+      expect(rowNames()).toEqual(['Ivo the Bold', 'Bram']);
+      fireEvent.click(screen.getByText('Ivo the Bold'));
+      expect(view.props.onStrangerClick).toHaveBeenCalledWith('e1', 'Ivo the Bold');
+      expect(view.props.onEntityClick).not.toHaveBeenCalled();
+    });
+
+    it('opens the full popup once met', () => {
+      const view = renderLeftPanel({ entities: WORLD.entities as never }, {
+        world: WORLD as never,
+        seed: (gameplay) => { stageYard(gameplay); gameplay.setMetEntities(['e1']); },
+      });
+
+      openEntitiesTab();
+      // The first click selects the row; the second opens the popup.
+      fireEvent.click(screen.getByText('Ivo the Bold'));
+      fireEvent.click(screen.getByText('Ivo the Bold'));
+      expect(view.props.onStrangerClick).not.toHaveBeenCalled();
+      expect(view.props.onEntityClick).toHaveBeenCalledWith('Ivo the Bold');
+    });
+  });
+
   it('shows who stood here on a past page, not who stands here now', () => {
     const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }]);
     renderLeftPanel({ entities: world.entities as never }, {

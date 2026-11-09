@@ -105,17 +105,17 @@ Any world inhabitant the narrator can reference — person, creature, plant, or 
 _Avoid_: character (too narrow)
 
 **Stranger**:
-An entity the player has not met. Only an entity with a Stranger Name can be one. The player sees it under the latest alias the story gave it, else its Stranger Name, and never its true name. When both are blank it has no label and no player surface shows it. User copy says "stranger" and "the name you know"; "label" stays internal.
+An entity the player has not met. Only an entity with a Stranger Name or a Stranger Description can be one. One with a Stranger Name hides its true name: the player sees it under the latest alias the story gave it, else its Stranger Name. When the alias and the Stranger Name are both blank it has no label and no player surface shows it. One with only a Stranger Description shows its true name everywhere; only its description and the view that opens differ until met. User copy says "stranger" and "the name you know"; "label" stays internal.
 _Avoid_: unknown entity, hidden entity
 
 **Met**:
 Whether the player knows who an entity is. An entity starts met in any of these cases:
-- It has no Stranger Name.
+- It has neither a Stranger Name nor a Stranger Description.
 - It has a relationship with the played persona, on either side.
 - One of its Known In picks is one of the persona's Locations or contains one. Nearby and Nowhere pick nothing.
 - It is a runtime character.
 
-Otherwise the player meets it when the story names it while it is here. A name inside dialogue counts. A met entity stays met. The Met set lists every met entity, wherever it is. It feeds the map and the Help window.
+Otherwise the player meets it when the story names it while it is here. A name inside dialogue counts. A met entity stays met. The Met set lists every met entity, wherever it is. The map and the Help window list every entity whose name the player knows: the Met set plus each unmet entity with no Stranger Name.
 _Avoid_: known, discovered, revealed
 
 **In Scene**:

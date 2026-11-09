@@ -1,6 +1,6 @@
 # 01: Description-Only Strangers
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -26,13 +26,22 @@ Help topics and the editor layout belong to ticket 03. Leave the existing Strang
 
 ## Acceptance criteria
 
-- [ ] A description-only entity starts unmet; with a relationship to the persona, or a Known In pick that covers the persona's location, it starts met.
-- [ ] A description-only unmet entity shows its real Name in the scene list and Look Around.
-- [ ] A cast alias for a description-only unmet entity is not stored.
-- [ ] Narration that names a description-only entity while it is present meets it.
-- [ ] An entity with a Stranger Name behaves as before (existing presence tests pass unchanged).
-- [ ] The Stranger view for a description-only unmet entity shows its real Name and the Stranger Description.
-- [ ] The Formaquestion Player World shows a description-only unmet entity under its real Name with the Stranger Description.
-- [ ] Reinstating the old start rule makes the description-only start test fail.
+- [x] A description-only entity starts unmet; with a relationship to the persona, or a Known In pick that covers the persona's location, it starts met. (`presence.test.ts` "starts unmet, unless a relationship or a Known In pick meets it")
+- [x] A description-only unmet entity shows its real Name in the scene list and Look Around. (`presence.test.ts` "shows its real Name…"; `GamePanels.test.tsx` "shows by its real Name and opens the stranger popup under it")
+- [x] A cast alias for a description-only unmet entity is not stored. (`presence.test.ts` "never takes a story alias"; fails with the guard removed)
+- [x] Narration that names a description-only entity while it is present meets it. (`presence.test.ts` "is met when the narration names it while it is here")
+- [x] An entity with a Stranger Name behaves as before (existing presence tests pass unchanged). (no existing test edited; all 44 presence tests green)
+- [x] The Stranger view for a description-only unmet entity shows its real Name and the Stranger Description. (`StrangerModal.test.tsx`, plus the GamePanels click test for the real-Name label)
+- [x] The Formaquestion Player World shows a description-only unmet entity under its real Name with the Stranger Description. (`playerView.test.ts`, `playerViewWorld.test.ts`)
+- [x] Reinstating the old start rule makes the description-only start test fail. (mutation run: 5 tests red across presence, playerView, playerViewWorld, GamePanels)
 
-For you: play a world with a description-only character at the start location and check how soon the narration meets them.
+## Landed
+
+Rulings Q15 and Q16 from the spec session: a description-only stranger is known by name everywhere. `EntityPresence.known` and `Presence.known` carry it; the map roster and the Player World read `known`.
+
+**Not verified**
+- None of the criteria. The map roster's switch to `known` in `GameViewer` has no test of its own; it is one line feeding the tested `metRosterByLocation`.
+
+**For you**
+- Play a world with a description-only character at the start location and check how soon the narration meets them.
+- Open the Map while that character is unmet: it should list them under their real Name.

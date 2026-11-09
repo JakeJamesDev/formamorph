@@ -47,6 +47,8 @@ export interface EntityPresence {
   entity: Entity;
   where: Where;
   met: boolean;
+  /** Whether the player knows the entity's name: met, or unmet with no Stranger Name. */
+  known: boolean;
   inScene: boolean;
   /** What the player sees the entity as. Null for a stranger with no alias and no Stranger Name. */
   label: string | null;
@@ -58,11 +60,21 @@ export interface Presence {
   lookAround: EntityPresence[];
   /** Everyone here with a label who took part lately. */
   inScene: EntityPresence[];
-  /** Everyone the player knows, wherever they are. */
+  /** Everyone the player has met, wherever they are. */
   met: EntityPresence[];
+  /** Everyone whose name the player knows, wherever they are. */
+  known: EntityPresence[];
 }
 
 const nameKey = (name: string) => name.trim().toLowerCase();
+
+/** Whether `entity` hides its true name while unmet: it has a Stranger Name. */
+const hidesName = (entity: Pick<Entity, 'strangerName'>): boolean => entity.strangerName !== undefined;
+
+/** Whether `entity` has a face the player sees before meeting it, as an item's unidentified face. A Stranger
+ *  Name that resolves blank still counts. */
+export const hasStrangerFace = (entity: Pick<Entity, 'strangerName' | 'strangerDescription'>): boolean =>
+  hidesName(entity) || !!entity.strangerDescription?.trim();
 
 /** Whether the start rule meets `entity` under `persona`. Never stored. */
 export function startsMet(
@@ -71,8 +83,7 @@ export function startsMet(
   locations: readonly Pick<GameLocation, 'id' | 'parentId'>[],
   runtime = false,
 ): boolean {
-  // A Stranger Name that resolves blank still makes a stranger, one with no label.
-  if (runtime || entity.strangerName === undefined) return true;
+  if (runtime || !hasStrangerFace(entity)) return true;
   if (!persona) return false;
   const tied = entity.relationships?.some((r) => r.targetId === persona.id)
     || persona.relationships?.some((r) => r.targetId === entity.id);
@@ -187,7 +198,7 @@ export function strangersInPlay(
   const labels: Record<string, string> = {};
   const byName = new Map<string, StrangerReveal>();
   for (const entity of entities) {
-    if (entity.strangerName === undefined) continue;
+    if (!hidesName(entity)) continue;
     const met = isMet(entity);
     const label = met ? null : strangerLabel(entity, aliases);
     if (label) labels[entity.id] = label;
@@ -211,8 +222,9 @@ export function computePresence(input: PresenceInput): Presence {
     const where: Where = locationId && places.includes(locationId) ? 'here'
       : places.some((id) => near.has(id)) ? 'connected' : 'elsewhere';
     const met = isMet(entity);
-    const label = met ? entity.name : strangerLabel(entity, input.strangerAliases);
-    byId.set(entity.id, { entity, where, met, inScene: where === 'here' && recentIds.has(entity.id), label });
+    const known = met || !hidesName(entity);
+    const label = known ? entity.name : strangerLabel(entity, input.strangerAliases);
+    byId.set(entity.id, { entity, where, met, known, inScene: where === 'here' && recentIds.has(entity.id), label });
   }
   const all = [...byId.values()];
   const shown = all.filter((p) => p.where === 'here' && p.label !== null);
@@ -222,6 +234,7 @@ export function computePresence(input: PresenceInput): Presence {
     lookAround: [...inScene, ...shown.filter((p) => !p.inScene)],
     inScene,
     met: all.filter((p) => p.met),
+    known: all.filter((p) => p.known),
   };
 }
 
@@ -234,8 +247,8 @@ export function introducedIds(narration: string, entities: readonly Entity[], he
   return present.filter((e) => named.has(e.name)).map((e) => e.id);
 }
 
-/** `aliases` with the alias each cast member carries for an entity `isMet` rejects. The same record when
- *  nothing changes. */
+/** `aliases` with the alias each cast member carries for an unmet entity with a Stranger Name. The same record
+ *  when nothing changes. */
 export function strangerAliasesFromCast(
   aliases: StrangerLabels,
   cast: readonly { name: string; alias?: string; isPlayer?: boolean }[],
@@ -247,7 +260,7 @@ export function strangerAliasesFromCast(
     const alias = member.alias?.trim();
     if (member.isPlayer || !alias) continue;
     const entity = entities.find((e) => nameKey(e.name) === nameKey(member.name));
-    if (!entity || isMet(entity) || next[entity.id] === alias) continue;
+    if (!entity || !hidesName(entity) || isMet(entity) || next[entity.id] === alias) continue;
     next = { ...next, [entity.id]: alias };
   }
   return next;

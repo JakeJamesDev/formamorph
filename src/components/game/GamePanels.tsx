@@ -1450,7 +1450,7 @@ export const RightPanel = ({
   const traitTree = React.useMemo(() => {
     const resolveText = (text: string, owner: Entity, trait?: Trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text));
     // Strangers who share a label are numbered in scene order, as the stat picker numbers them.
-    const strangers = sceneNow.filter((p) => !p.met && p.label);
+    const strangers = sceneNow.filter((p) => !p.known && p.label);
     const labels = new Map(numbered(strangers.map((p) => ({ id: p.entity.id, label: p.label! }))).map((o) => [o.id, o.label]));
     const inScene = inSceneTraitTree(ownerTraitTree(ownerWorld, personaRef, traitLibrary), {
       scene: new Set(sceneNow.map((p) => p.entity.id)),

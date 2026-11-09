@@ -125,6 +125,17 @@ describe('buildPlayerView entities', () => {
     expect(names(view({ world: known, chain: [state()] }).entities)).toEqual(['Mara']);
   });
 
+  it('holds an unmet entity with only a Stranger Description under its name and that description, then its player text once met', () => {
+    const ivo = entity('ivo', 'Ivo', { strangerDescription: 'A broad man in a dented helm.' });
+    const world = { ...WORLD, entities: [ivo, WARDEN] };
+    expect(view({ world, chain: [state()] }).entities).toEqual([
+      { kind: 'entity', id: 'ivo', name: 'Ivo', description: 'A broad man in a dented helm.' },
+    ]);
+    expect(view({ world, chain: [state({ metEntities: ['ivo'] })] }).entities).toEqual([
+      { kind: 'entity', id: 'ivo', name: 'Ivo', description: 'Ivo player text.' },
+    ]);
+  });
+
   it('holds an entity with a whitespace-only Stranger Name as met', () => {
     const blank = { ...WORLD, entities: [entity('mara', 'Mara', { strangerName: '  ' }), WARDEN] };
     expect(names(view({ world: blank, chain: [state()] }).entities)).toEqual(['Mara']);

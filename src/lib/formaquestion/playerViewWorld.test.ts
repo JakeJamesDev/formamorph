@@ -84,6 +84,17 @@ describe('playerViewScene', () => {
     expect(cut.inSceneIds).toEqual([]);
   });
 
+  it('holds an unmet entity with only a Stranger Description under its name, with that description in both fields', () => {
+    const ivo = entity('ivo', 'Ivo', { strangerDescription: 'A broad man in a dented helm.' });
+    const view = buildPlayerView({
+      world: { entities: [ivo], locations: LOCATIONS, traits: [] }, chain: [reach().current], history: [], persona: null, resolve: (text) => text,
+    });
+    const shown = playerViewScene({ ...scene, entities: [ivo], presentIds: ['ivo'] }, { view, current: reach().current });
+    expect(shown.entities).toEqual([expect.objectContaining({
+      id: 'ivo', name: 'Ivo', playerDescription: 'A broad man in a dented helm.', aiDescription: 'A broad man in a dented helm.',
+    })]);
+  });
+
   it("keeps only the player's own stats and traits, and only the met entity's visible stats", () => {
     expect(ids(cut.stats)).toEqual(['nerve']);
     expect(ids(cut.traits)).toEqual(['brave']);
