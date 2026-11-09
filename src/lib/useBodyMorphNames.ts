@@ -98,18 +98,19 @@ export function useOwnerMorphSources(
   // Each reset starts a new generation; a load from an earlier one is dropped.
   const generation = useRef(0);
   const mounted = useMountedRef();
-  // A world pick names a model only when the store holds it.
-  const avatarNamed = !!pick && (pick.kind === "library" || !!store?.[pick.id]?.file.data);
+  // A world pick names a model only when the store holds it; a library pick, once the library returned it.
+  const avatarNamed = !!pick && (pick.kind === "library" ? !!avatar : !!store?.[pick.id]?.file.data);
 
   const load = useCallback(() => {
     if (loadedRef.current || (!model?.data && !pick)) return;
     loadedRef.current = true;
     const mine = generation.current;
     setLoading(true);
+    // Each source fails alone, so a broken Avatar keeps the 3D model's sliders.
     void Promise.all([
-      model?.data ? cachedLoad(dataKey("owner", model.data), () => ownerSplit(model)) : undefined,
-      pick ? avatarSplit(pick, store) : undefined,
-    ]).catch(() => [undefined, undefined] as const).then(([own, worn]) => {
+      model?.data ? cachedLoad(dataKey("owner", model.data), () => ownerSplit(model)).catch(() => undefined) : undefined,
+      pick ? avatarSplit(pick, store).catch(() => undefined) : undefined,
+    ]).then(([own, worn]) => {
       if (!mounted.current || generation.current !== mine) return;
       setMorphs(own?.body ?? []);
       setAvatar(worn);

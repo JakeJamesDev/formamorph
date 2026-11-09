@@ -13,7 +13,7 @@ const ownerEmptyText = (
   if (hasModel && hasAvatar) return "Neither this entity's 3D model nor its Avatar has sliders";
   if (hasModel) return "This entity's 3D model has no body sliders";
   if (hasAvatar) return "This entity's Avatar has no sliders";
-  return "Pick an Avatar or add a 3D model to bind this entity's sliders.";
+  return "Pick an Avatar or add a 3D model to bind this entity's sliders";
 };
 
 /** A new color row's start when the known model has no color of its own for the channel. */

@@ -44,7 +44,10 @@ const loads = vi.hoisted(() => ({
   ownerCalls: 0,
 }));
 vi.mock('@/lib/vrmMorphLoader', () => ({
-  loadMorphSplit: async (url: string) => loads.splits.get(url) ?? loads.player,
+  loadMorphSplit: async (url: string) => {
+    if (url.startsWith('data:broken')) throw new Error('unreadable VRM');
+    return loads.splits.get(url) ?? loads.player;
+  },
   loadMorphCatalog: async (url: string) => (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
   loadVrmLook: async (url: string) => ({
     catalog: (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
@@ -148,7 +151,7 @@ describe('the Body Sliders picker', () => {
     renderManager(entityStore(undefined));
     expect(await offered()).toEqual([]);
     expect(loads.ownerCalls).toBe(0);
-    expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders.")).toBeInTheDocument();
+    expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
   });
 
   describe("with the owner's Avatar", () => {
@@ -175,7 +178,7 @@ describe('the Body Sliders picker', () => {
     it('adds nothing for a device-default pick, and says so', async () => {
       renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'default' } } });
       expect(await offered()).toEqual([]);
-      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders.")).toBeInTheDocument();
+      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
     });
 
     it('lists a library Avatar by its library name', async () => {
@@ -190,7 +193,19 @@ describe('the Body Sliders picker', () => {
       worldParts.overview = { vrmStore: {} };
       renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'world', id: 'gone' } } });
       expect(await offered()).toEqual([]);
-      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders.")).toBeInTheDocument();
+      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
+    });
+
+    it('treats a library pick the library lacks as no Avatar', async () => {
+      renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'library', id: 'gone' } } });
+      expect(await offered()).toEqual([]);
+      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders")).toBeInTheDocument();
+    });
+
+    it("keeps the 3D model's sliders when the Avatar fails to load", async () => {
+      loads.owner.set('data:golem-broken', ['Cracks']);
+      renderManager(withAvatar({ name: 'golem.glb', data: 'data:golem-broken' }, 'data:broken-elf'));
+      expect(await offeredByGroup()).toEqual({ 'Golem · Body Sliders': ['Cracks'] });
     });
 
     it('says the Avatar has no sliders when it has none', async () => {
