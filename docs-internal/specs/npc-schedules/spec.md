@@ -1,6 +1,7 @@
 # Spec: NPC Schedules
 
 Status: ready-for-agent
+Spec session: npc-schedules — spec
 
 Each character in a world starts somewhere, keeps a daily routine of staying, wandering or patrolling, can be taken along or told to wait by the player, and is never in two places at once or stuck where the story can't reach them. Locations say which neighbors are near enough to call over.
 
@@ -109,7 +110,26 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q67** The editor is the prototype's D2: the routine as sentences in clock order, with free time inline, under a 24-hour strip with daypart icons (full name in a tooltip).
 - **Q68** The free-time line names only the uncovered hours ("Evening – Dawn, stays at X"). With no free hours it reads "Busy all day".
 - **Q69** Each timed row's band has drag handles on both ends. Dayparts snap to daypart edges; hours snap to whole hours. A handle's label shows its position in the row's own format, and it stops at the last valid spot.
-- **Q70** Clicking a band or a sentence selects that row. The selected row's handles win a shared edge; rows never drag together. Clicking elsewhere clears the selection.
+- **Q70** *Amended by Q80.* Clicking a band or a sentence selects that row. The selected row's handles win a shared edge; rows never drag together. Clicking elsewhere clears the selection.
+- **Q71** On the full-screen canvas, the entity card in the right panel holds the same Routine editor. Nothing floats beside it. The card's mode switch is Routine / Known In; Known In keeps today's picker.
+- **Q72** In Routine mode the canvas shows the routine of the Start on show. Connection lines, their labels and the starting-location star hide. Places the entity can never reach are faded.
+- **Q73** With no row selected the canvas shows an overview: one neutral ring on every routine place, a flag where the Start begins, an arrow for each move at a set time (colored by action, labeled with the time), and an arrow per Patrol move. No badges and no Wander lines.
+- **Q74** With a row selected the canvas shows that row only: its lines, its action color on its places, and its badges (Wander chances, Patrol stop numbers). The other routine places keep the neutral ring.
+- **Q75** A selected row is edited on the map.
+  - Click: Stay moves to the place. Wander adds or removes it. Patrol adds it as the next stop, and a click on the last stop removes it. An empty row takes its first place from one click.
+  - Drag: starts only on a place of the selected Wander or Patrol row, and those places show their connect grip without a hover. It ends on any connected place (Q43). Patrol puts the new stop right after the stop the drag left, after its last occurrence when the place repeats. A drag from the last stop to stop 1 does nothing. Wander adds the target. Stay has no drag.
+  - A Patrol may visit the same place more than once.
+- **Q76** With no row selected, a click adds the place to the Traversable list or removes it. With Traversable = Anywhere a click does nothing.
+- **Q77** A status line at the top of the map says what a click or a drag does right now.
+- **Q78** Hours use the themed time field (hour and minute columns), not the browser's time input.
+- **Q79** Wander and Patrol share one list control: drag to reorder, the place, then the action's own field on the right (Wander: weight and its percent; Patrol: idle), then remove. Patrol rows are numbered. Wander keeps its one idle field under the list. This replaces the weight chips for Wander places (story 6 now applies to Start weights only).
+- **Q80** A press on the map keeps the row selection, so the author can pan and edit with a row selected.
+- **Q81** The location Presence tab keeps its name and changes as follows.
+  - The Entities picker lists Groups only. It adds this place to a Group or removes it.
+  - Entities Here becomes a read-only list of who can be at this place, one line per entity with the reason (Group; begins here, with the chance when there are several Starts; stays, wanders or patrols here, with the time; can be led here). Each line opens that entity's Routine tab.
+  - Known Here is unchanged.
+  - Each Connection row gets the Nearby / Far choice.
+- **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
 
@@ -311,11 +331,12 @@ A good test drives a public seam with realistic input and asserts the outcome a 
 
 ## Further Notes
 
-- **Export shape:** the world `.json` loses `movement` and `presence` and gains kind, Starts, schedules, Traversable and Connection distance, through a migration. The save `.json` gains the position engine's state. `movement` and `presence` shipped in v3.4.0.
+- **Export shape:** the world `.json` loses `movement`, `presence` and a location's `nearbyUsesConnections` (Q82), and gains kind, Starts, schedules, Traversable and Connection distance, through a migration. The save `.json` gains the position engine's state. `movement` and `presence` shipped in v3.4.0.
 - This is the range feature ADR 0003 anticipated. `locations` stays the membership list and is derived for Individuals.
 - Labels in this spec (Group, Individual, Start, Stay, Wander, Patrol, Strict, Traversable, Nearby, Far, Part ways, All day) are working names. Final copy follows the Writing Guide in the tickets.
 - **New visual patterns need approval:** the Far link's look on the canvas and Map, and the weight chips outside the placeholder editor if they need a new variant.
 - **Other consumers to update:** the Test Bench (time-aware placement), the canvas picker's range warning (it only made sense for Moves Between), the Presence and Movement copy and pick card, the dev fixtures, the bundled worlds, the world format doc, the wiki pages on locations and the glossary, and the help vectors (`build:help-vectors`).
-- **Ticket order:** `movement` has about 15 readers, so the world shape, migration, position engine and reader swap land as one first ticket. Connection distance with its ADR can run beside it. The schedule editor, the request rework, the movement tag and the pull rule follow and can run in parallel.
+- **Ticket order:** Connection distance (01) and the pure position engine (02) start side by side. `movement` has about 15 readers, so the world shape, migration and reader swap land as one ticket (03) on top of the engine. The editor chain (04 → 05 → 06 → 07), the pull rule (08), the request rework (09), the movement tag (10) and the location Presence tab (11) follow.
 - **Request count:** every non-Strict Individual at the player's location now gets a request each turn. The batching probe also measures that count.
-- **Prototype:** the question was "what should the schedule editor look like". Verdict: D2 (Q65–Q70). Branch `prototype/npc-schedules` at `6703f901a` holds every variant (A, B, C1–C4, D1–D3) and the Nearby/Far toggle. Run it from its worktree with `npm run dev -- --port 5310`, then open an entity's Routine tab. The Far link's look is still unapproved.
+- **Prototype:** the question was "what should the schedule editor look like". Verdict: D2 (Q65–Q70). Branch `prototype/npc-schedules` at `4408ec845` holds every variant (A, B, C1–C4, D1–D3), the Nearby/Far toggle, and the canvas routine view with map editing (Q71–Q80). Run it from its worktree with `npm run dev -- --port 5310`, then open an entity's Routine tab, or pick an entity on the full-screen canvas. The Far link's look is still unapproved.
+- **Prototype findings to keep:** a tooltip that appears on a canvas connect grip at runtime remounts the grip and the canvas loses its measured position, so the drag never starts. The old picker's rule that draws canvas lines at 25% must not apply in Routine mode. Movement lines run straight between places; they do not follow the Connections the entity would walk.
