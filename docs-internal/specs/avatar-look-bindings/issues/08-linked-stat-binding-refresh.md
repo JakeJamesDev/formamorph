@@ -1,6 +1,6 @@
 # 08: Linked Stat Binding Refresh
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -16,7 +16,17 @@ A binding the author changes reaches saves in progress (Q17), for stats an entit
 
 ## Acceptance criteria
 
-- [ ] A Change By edited on a world stat reaches an entity that links it, after load.
-- [ ] A link override's Change By reaches that entity, after load.
-- [ ] An entity's own stat still refreshes as before.
-- [ ] Mutation: drop the linked-stat lookup, and the link test fails.
+- [x] A Change By edited on a world stat reaches an entity that links it, after load. (`src/lib/statBackfill.test.ts` > `refreshGameStateBindings`, world stat test)
+- [x] A link override's Change By reaches that entity, after load. (`src/lib/statBackfill.test.ts` > `refreshGameStateBindings`, link override test)
+- [x] An entity's own stat still refreshes as before. (`src/lib/statBackfill.test.ts` > `refreshGameStateBindings`, own stat test)
+- [x] Mutation: drop the linked-stat lookup, and the link test fails. (Reverted to `e.stats`: both link tests failed.)
+
+## Landed
+
+**Not verified**
+
+- Load of a real save through `loadGame`: only the `refreshGameStateBindings` unit is tested. Typecheck covers the new `worldStatGroups` argument.
+
+**For you**
+
+- None.

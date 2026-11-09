@@ -1,5 +1,6 @@
-import type { Entity, Stat, PlayerStat } from '@/types';
+import type { Entity, Stat, StatGroup, PlayerStat } from '@/types';
 import { statStartValue } from './statDescriptorGeometry';
+import { resolvedEntityStats } from './statLinks';
 import { refreshSavedBindings } from './traitEffects';
 
 /**
@@ -22,13 +23,16 @@ export function backfillPlayerStats(stats: PlayerStat[], worldStats: Stat[]): Pl
 }
 
 /** A saved state with every stat's bindings re-read from the world: global stats from `worldStats`, each entity's
- *  from that entity's authored stats. Owners the world lacks keep their saved bindings. */
+ *  from its stats as play reads them, its own and each stat link's with the link's overrides applied. Owners the
+ *  world lacks keep their saved bindings. */
 export function refreshGameStateBindings<S extends { globalStats?: PlayerStat[]; entityStats?: Record<string, PlayerStat[]> }>(
   state: S,
   worldStats: readonly Stat[],
-  entities: readonly Pick<Entity, 'id' | 'stats'>[] = [],
+  entities: readonly Pick<Entity, 'id' | 'stats' | 'statGroups' | 'statLinks'>[] = [],
+  statGroups: readonly StatGroup[] = [],
 ): S {
-  const authoredOf = new Map(entities.map((e) => [e.id, e.stats ?? []]));
+  const world = { stats: worldStats, statGroups };
+  const authoredOf = new Map(entities.map((e) => [e.id, resolvedEntityStats(world, e as Entity)]));
   const entityStats = state.entityStats && Object.fromEntries(Object.entries(state.entityStats).map(([id, stats]) => {
     const authored = authoredOf.get(id);
     return [id, authored && Array.isArray(stats) ? refreshSavedBindings(stats, authored) : stats];

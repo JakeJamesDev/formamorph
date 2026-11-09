@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { backfillPlayerStats, backfillGameStateStats } from './statBackfill';
-import type { Stat, PlayerStat } from '@/types';
+import { backfillPlayerStats, backfillGameStateStats, refreshGameStateBindings } from './statBackfill';
+import type { Entity, Stat, StatGroup, PlayerStat } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<Stat>): Stat => ({
@@ -62,5 +62,28 @@ describe('backfillGameStateStats', () => {
   it('leaves a state without globalStats untouched', () => {
     const s = { foo: 1, globalStats: undefined };
     expect(backfillGameStateStats(s, [stat({ id: 'a' })])).toBe(s);
+  });
+});
+
+describe('refreshGameStateBindings', () => {
+  const blueprints: StatGroup = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+  const trust = stat({ id: 'trust', groupId: 'bp', morphBindings: [{ name: 'Belly', by: 2 }] });
+  const own = stat({ id: 'own', morphBindings: [{ name: 'Hips', by: 3 }] });
+  const link = { id: 'l1', originalId: 'trust', kind: 'stat' as const, originalName: 'trust', groupId: null };
+  const entity = (over: Partial<Entity> = {}): Entity => ({ id: 'bram', name: 'Bram', ...over });
+  const state = { entityStats: { bram: [pstat({ id: 'trust', morphBindings: [{ name: 'Old' }] }), pstat({ id: 'own', morphBindings: [{ name: 'Old' }] })] } };
+  const refreshed = (e: Entity) => refreshGameStateBindings(state, [trust, own], [e], [blueprints]).entityStats.bram;
+
+  it('re-reads the bindings of a linked stat from the world stat', () => {
+    expect(refreshed(entity({ stats: [own], statLinks: [link] }))[0].morphBindings).toEqual([{ name: 'Belly', by: 2 }]);
+  });
+
+  it('lets the link override win over the world stat', () => {
+    const overridden = { ...link, overrides: { trust: { morphBindings: { value: [{ name: 'Belly', by: 9 }], blueprint: trust.morphBindings! } } } };
+    expect(refreshed(entity({ stats: [own], statLinks: [overridden] }))[0].morphBindings).toEqual([{ name: 'Belly', by: 9 }]);
+  });
+
+  it('still refreshes the own stat of an entity', () => {
+    expect(refreshed(entity({ stats: [own], statLinks: [link] }))[1].morphBindings).toEqual([{ name: 'Hips', by: 3 }]);
   });
 });

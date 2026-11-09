@@ -652,7 +652,9 @@ function useProvideGameplay() {
      *  chosen Avatar remapped. */
     const backfilled = (raw: GameState, persona?: PersonaRef) => {
       const state = withoutOrphans(withChosenVrmRemapped(raw), persona);
-      const players = refreshGameStateBindings(backfillGameStateStats(withoutEntityCodeBounds(state), worldStats), worldStats, worldEntities);
+      const players = refreshGameStateBindings(
+        backfillGameStateStats(withoutEntityCodeBounds(state), worldStats), worldStats, worldEntities, worldStatGroups,
+      );
       if (!worldEntities) return players;
       const cast = positionedCast(worldEntities, persona);
       return reconcileGameStateFollowers(
@@ -808,7 +810,7 @@ function useProvideGameplay() {
       addSystemLogEntry('Failed to load game');
       return false;
     }
-  }, [loadGameState, addSystemLogEntry, setPlaceholderRolls]);
+  }, [loadGameState, addSystemLogEntry, setPlaceholderRolls, worldStatGroups]);
 
   // Cleanup web worker when component unmounts
   useEffect(() => {
