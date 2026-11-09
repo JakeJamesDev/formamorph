@@ -1,6 +1,6 @@
 # Spec: Overview Right Tabs
 
-Status: in-progress
+Status: ready-for-human
 
 ## Problem Statement
 

@@ -38,7 +38,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
-  - **The World Editor's Overview tab puts Custom Prompts and Openings on tabs of their own.** In Advanced mode, the right column has Details, Custom Prompts and Openings tabs. Each prompt and the openings have a checkbox at the top that turns them on.
+  - **The World Editor's Overview tab puts Custom Prompts and Openings on tabs of their own.** In Advanced mode, the right column has Details, Custom Prompts and Openings tabs. Custom Prompts lists Narration, Choices and Stats with a checkbox each and shows which are Custom. Openings has its own checkbox.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
 
