@@ -6,7 +6,7 @@ This guide covers each tab in the World Editor. Each page says what the tab does
 
 On desktop, pick a tab from the rail on the left side of the list:
 
-- **Overview** and **Media** are at the top.
+- **Overview** and **Media** are at the top. In Advanced mode, **Openings** sits between them.
 - A line separates Entities, Items, Locations, Traits and Stats from Dictionary and Placeholders.
 - In Advanced mode, Scripts and Tools follow after one more line.
 
@@ -31,7 +31,7 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 On mobile:
 
 - The header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**.
-- Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** and **Media**, then Entities, Items, Locations, Traits and Stats, then Dictionary and Placeholders. Scripts and Tools follow in Advanced mode.
+- Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview**, **Openings** in Advanced mode, and **Media**, then Entities, Items, Locations, Traits and Stats, then Dictionary and Placeholders. Scripts and Tools follow in Advanced mode.
 - The footer holds **Save to Library** on Entities and Dictionary. When the selected entity or dictionary is already in your library, it reads **Open in Library**.
 - At the right of the footer is the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
 

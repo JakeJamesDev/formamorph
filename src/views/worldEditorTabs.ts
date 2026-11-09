@@ -25,6 +25,7 @@ export interface WorldEditorTab {
  *  `devRouter.test.ts`. */
 export const WORLD_EDITOR_TABS = [
   { value: 'overview', label: 'Overview', icon: ELEMENT_ICONS.world },
+  { value: 'openings', label: 'Openings', icon: ELEMENT_ICONS.opening, advancedOnly: true },
   { value: 'media', label: 'Media', icon: Images },
   { value: 'entities', label: 'Entities', group: 'content', icon: ELEMENT_ICONS.entities },
   { value: 'items', label: 'Items', group: 'content', icon: ELEMENT_ICONS.item },

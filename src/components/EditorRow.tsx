@@ -13,6 +13,9 @@ export const TREE_INDENT = 24;
  *  and a flat-list row start their content at the same place. Keep in step with `EDITOR_ROW_PADDING`. */
 const ROW_PADDING_X = 8;
 
+/** A tree row's left padding at `depth`, in px, for a row drawn beside EditorRows that isn't one. */
+export const treeRowPaddingLeft = (depth: number): number => ROW_PADDING_X + depth * TREE_INDENT;
+
 /** Padding and floor height, shared so a row is the same size whichever list drew it. The floor keeps a row
  *  with no actions as tall as one with them, rather than letting the icon buttons decide the height. */
 const EDITOR_ROW_PADDING = 'p-2 min-h-14';
@@ -124,7 +127,7 @@ export function EditorRow({
   return (
     <div
       ref={setNodeRef}
-      style={depth ? { ...style, paddingLeft: ROW_PADDING_X + depth * TREE_INDENT } : style}
+      style={depth ? { ...style, paddingLeft: treeRowPaddingLeft(depth) } : style}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       // Marks the row for anything that has to bring the selection on screen without owning the list —
       // the find bar selects an item in a tree it never rendered.

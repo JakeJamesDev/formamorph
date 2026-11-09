@@ -23,6 +23,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import {
   addOpening, DEFAULT_OPENING, hasAuthoredOpenings, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
   setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
+  type OpeningsEditorView,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -101,22 +102,7 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
       {hasMatch(world.rows) && (
         <section aria-label="This World" className="space-y-2">
           <h3 className="text-body font-semibold">This World</h3>
-          {view.defaultOpening && !search.typed && (
-            <div className="space-y-1">
-              <Hint>
-                {view.defaultStarts.length
-                  ? `No opening can come up at ${OR.format(view.defaultStarts.map((l) => label(l.name)))}, so a game there starts on the text below`
-                  : 'No opening can come up, so every game starts on the text below'}
-              </Hint>
-              <div
-                role="note"
-                aria-label="Default Opening"
-                className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
-              >
-                {DEFAULT_OPENING.text}
-              </div>
-            </div>
-          )}
+          {view.defaultOpening && !search.typed && <DefaultOpeningNote view={view} label={label} />}
           <OpeningsList
             owner={worldOverview}
             rows={world.rows}
@@ -189,14 +175,65 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
         );
       })}
 
-      <Hint>
-        {openingsEnabled(worldOverview, owners)
-          ? "Draws one opening by weight when a player starts this world. A Player Action fills the player's input box to edit and send. Narration shows as the first page, as written."
-          : anyOpenings
-            ? "Openings are off, so players start on the default opening. The percentages show each opening's odds once openings are on."
-            : 'Write an opening here, on a location, or on an entity to turn openings on. Until then, players start on the default opening.'}
-      </Hint>
+      <WorldOpeningsHint enabled={openingsEnabled(worldOverview, owners)} anyOpenings={anyOpenings} />
     </div>
+  );
+}
+
+/** What a game starts on where no opening can come up, and where that is. */
+export function DefaultOpeningNote({ view, label }: { view: OpeningsEditorView; label: (name: string) => string }) {
+  return (
+    <div className="space-y-1">
+      <Hint>
+        {view.defaultStarts.length
+          ? `No opening can come up at ${OR.format(view.defaultStarts.map((l) => label(l.name)))}, so a game there starts on the text below`
+          : 'No opening can come up, so every game starts on the text below'}
+      </Hint>
+      <div
+        role="note"
+        aria-label="Default Opening"
+        className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
+      >
+        {DEFAULT_OPENING.text}
+      </div>
+    </div>
+  );
+}
+
+/** How the world's openings draw, closing the world's list. */
+export function WorldOpeningsHint({ enabled, anyOpenings }: { enabled: boolean; anyOpenings: boolean }) {
+  return (
+    <Hint>
+      {enabled
+        ? "Draws one opening by weight when a player starts this world. A Player Action fills the player's input box to edit and send. Narration shows as the first page, as written."
+        : anyOpenings
+          ? "Openings are off, so players start on the default opening. The percentages show each opening's odds once openings are on."
+          : 'Write an opening here, on a location, or on an entity to turn openings on. Until then, players start on the default opening.'}
+    </Hint>
+  );
+}
+
+/** When an entity's openings draw, closing its list. `worldOwner` carries the marks as the world reads them. */
+export function EntityOpeningsHint({ worldOwner, showSelf }: { worldOwner: Entity; showSelf: boolean }) {
+  return (
+    <Hint>
+      {worldOwner.customPersona
+        ? <><strong>Self</strong> openings draw when played, or for a library persona without any.</>
+        : othersNeverDraw(worldOwner)
+          ? <><strong>Self</strong> openings draw when the player picks this entity.</>
+          : "Joins the world's openings when a game starts at one of this entity's locations."}
+      {" Turning off the world's openings turns these off too."}
+      {showSelf && !othersNeverDraw(worldOwner) && ' Mark one Self to make it the only opening for a player who plays this entity.'}
+    </Hint>
+  );
+}
+
+/** When a location's openings draw, closing its list. */
+export function LocationOpeningsHint() {
+  return (
+    <Hint>
+      {"Joins the world's openings when a game starts at this location, not at a location inside it. Turning off the world's openings turns these off too."}
+    </Hint>
   );
 }
 
@@ -234,15 +271,7 @@ export function EntityOpenings({ entity, library = false, onChange, placeholders
         selfSwitch={showSelf}
         empty={<Hint>No openings yet</Hint>}
       />
-      <Hint>
-        {worldOwner.customPersona
-          ? <><strong>Self</strong> openings draw when played, or for a library persona without any.</>
-          : othersNeverDraw(worldOwner)
-            ? <><strong>Self</strong> openings draw when the player picks this entity.</>
-            : "Joins the world's openings when a game starts at one of this entity's locations."}
-        {" Turning off the world's openings turns these off too."}
-        {showSelf && !othersNeverDraw(worldOwner) && ' Mark one Self to make it the only opening for a player who plays this entity.'}
-      </Hint>
+      <EntityOpeningsHint worldOwner={worldOwner} showSelf={showSelf} />
     </div>
   );
 }
@@ -273,9 +302,7 @@ export function LocationOpenings({ location, onChange, placeholders, names = { p
         addButton={false}
         empty={<Hint>No openings yet</Hint>}
       />
-      <Hint>
-        {"Joins the world's openings when a game starts at this location, not at a location inside it. Turning off the world's openings turns these off too."}
-      </Hint>
+      <LocationOpeningsHint />
     </div>
   );
 }

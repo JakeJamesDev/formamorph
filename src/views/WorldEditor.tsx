@@ -115,6 +115,7 @@ import {
 } from './dictionaryBookPanelTabs';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
+import { useWorldOpeningsEditor } from '../managers/useWorldOpeningsEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
@@ -1132,9 +1133,18 @@ const WorldEditorInner = ({
     publishBytes: bench.publishBytes,
     optimize: { progress: optimizeProgress, onRun: () => { void optimizeImages(); } },
   });
+  const selectOpeningsOwner = useCallback((id: string | null) => select('openings', id), [select]);
+  const openingsParts = useWorldOpeningsEditor({
+    selectedId: selections.openings ?? null,
+    onSelect: selectOpeningsOwner,
+    search,
+    defaultToWorld: !isMobile,
+    onOpenEntity: (id) => navigateToBenchItem('entities', id, 'openings'),
+    onOpenLocation: (id) => { navigateToBenchItem('locations', id); setLocationTab('openings'); },
+  });
   // The active tab's List Editor parts, on a tab that runs on it.
   const partsByTab: Partial<Record<string, ListEditorParts>> = {
-    media: mediaParts,
+    media: mediaParts, openings: openingsParts,
     traits: traitsParts, placeholders: placeholdersParts, stats: statsParts,
     entities: entitiesParts, items: itemsParts, locations: locationsParts, dictionary: dictionaryParts, scripts: scriptsParts,
     tools: toolsParts,

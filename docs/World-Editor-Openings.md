@@ -1,9 +1,10 @@
 # 🎬 World Editor: Openings
 <!-- keywords: first page, prewritten first turn, how story begins, starter prompt, prefilled input box, set the tone, write beginning myself, match my style -->
+<!-- route: worldEditor.openings -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-**Advanced mode only.** An opening is one way a playthrough can start. Write them on the **Openings** tab in the right column of the **Overview** tab. The world, each location and each entity can own openings. When a game starts, after **Start Game** (or **Continue to Avatar** and the Avatar step), the game draws one opening from the pool.
+**Advanced mode only.** An opening is one way a playthrough can start. The world, each location and each entity can own openings. Write them on the **Openings** tab, after **Overview**. When a game starts, after **Start Game** (or **Continue to Avatar** and the Avatar step), the game draws one opening from the pool.
 
 Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text goes:
 
@@ -23,14 +24,33 @@ After an Opening Narration, the input box is empty. A written page one works lik
 An Others opening is the normal kind. Every opening starts as one.
 
 1. Select **Advanced** at the top of the editor.
-2. Open the **Overview** tab.
-3. In the right column, select the **Openings** tab.
-4. Select the **+** button (**Add Opening**) at the top of the panel. The new opening belongs to the world.
+2. Open the **Openings** tab.
+3. In the list, select **This World**, or the location or entity the opening belongs to.
+4. Select **Add Opening** at the top of the right pane.
 5. Write the opening's text.
 6. Choose **Player Action** or **Narration**.
 7. Optional: set its weight in the number box.
 
-To add an opening to a location or an entity, select **Add Opening to** and its name under its group. You can also use the **Openings** tab on its own panel.
+You can also use the **Openings** tab on a location's or an entity's own panel.
+
+## The Openings tab
+<!-- keywords: openings list, owners with openings, nested list, opening count, find an opening, one owner at a time -->
+
+The **Openings** tab lists This World and every location and entity with openings on the left. The right pane shows the openings of the row you select.
+
+| In the list | What it shows |
+|---|---|
+| **This World** | Always first, even with no openings yet |
+| Locations | Each location with openings, nested as on the **Locations** tab |
+| Entities | Each entity with openings, in its folders as on the **Entities** tab |
+| Dimmed rows | A parent location or folder with no openings of its own. You can't select it. |
+
+Each row shows how many openings it has. The **No Starting Location** icon marks a row whose openings never come up: see [Starting Location filter](#starting-location-filter).
+
+- The owner's name at the top of the right pane opens its own **Openings** tab.
+- After you delete an owner's last opening, its row stays until you select another row.
+- Search finds an owner by its name or by the text of its openings. The right pane then shows only the matching openings.
+- With more than one starting location, the **Starting Location** filter shows above the list. A pick keeps only what can come up at that start.
 
 ## How to Add a Self Opening
 <!-- keywords: first message, greeting, intro, persona start, play as, player character start, protagonist beginning, main character opener, pov beginning, hero backstory opener, when i am them, own storyline kickoff -->
