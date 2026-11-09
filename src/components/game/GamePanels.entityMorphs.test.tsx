@@ -72,6 +72,12 @@ describe('LeftPanel — entity stat morphs', () => {
     expect(morphsOf(screen.getByTestId('model-viewer'))).toEqual({ Frown: 0.8 });
   });
 
+  it('ignores a color binding on a non-VRM model and still drives its sliders', () => {
+    const tinted = { ...wounds, colorBindings: [{ channel: 'skin' as const, color: '#ff0000' }] };
+    show({ ...golem, stats: [tinted, mood] });
+    expect(morphsOf(screen.getByTestId('model-viewer'))).toEqual({ Cracks: 0.6 });
+  });
+
   it('shows the paged-back turn’s stats on a past page', () => {
     show(golem, 1);
     expect(morphsOf(screen.getByTestId('model-viewer'))).toEqual({ Cracks: 0.2 });

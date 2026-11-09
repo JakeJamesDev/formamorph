@@ -205,10 +205,13 @@ Where one capacity unit of a Body entry sits on the Backdrop, stored as fraction
 The first Body in the world's list. Every owner without a pick uses it: an entity with no pick, a library character and a character the AI introduces. A world with no Bodies has no Default, so no owner has slots.
 
 **Body in force**:
-The Body an owner equips into right now, from the one resolver every slot reader uses. The latest-on active trait row wins, for Body rows as for Slider Pins, then a script's base Body, then the authored pick. An entity reads its own pick. The played Persona reads a world persona's own pick, or the Custom Persona entity's under None or a library persona. A pick whose Body is gone reads as the Default.
+The Body an owner equips into right now, from the one resolver every slot reader uses. The latest-on active trait row wins, for Body rows as for Slider Pins and Color Pins, then a script's base Body, then the authored pick. An entity reads its own pick. The played Persona reads a world persona's own pick, or the Custom Persona entity's under None or a library persona. A pick whose Body is gone reads as the Default.
 
 **Slider Pin**:
 A trait row that holds one Avatar slider at its Set To value while the trait is active, in place of the player's own value. Bound stats add on top. When two active traits pin one slider, the latest-on wins. A world trait pins the played Persona's Avatar, as does a played entity's own trait; any other entity's trait pins its own model. The editor labels the rows Body Sliders.
+
+**Color Pin**:
+A trait row that sets one Avatar color (skin, eye or hair) while the trait is active, in place of the player's own. Bound stats blend on from it in OKLab, in stat-tree order. When two active traits set one channel, the latest-on wins. Avatars only; a non-VRM model keeps its colors. The editor labels the rows Colors.
 
 **Persona**:
 The entity that fills the player slot for a playthrough. It comes from the player's library or from the world's entities that carry the Persona mark. A save names one, or an explicit None.

@@ -61,6 +61,21 @@ export interface MorphPin {
   value: number;
 }
 
+/** An Avatar color a stat or trait can drive. */
+export type ColorChannel = 'skin' | 'eye' | 'hair';
+
+/** One Avatar color a stat blends toward `color` (`#rrggbb`) as it rises. */
+export interface ColorBinding {
+  channel: ColorChannel;
+  color: string;
+}
+
+/** One Avatar color a trait sets to `color` (`#rrggbb`) while it is active. */
+export interface ColorPin {
+  channel: ColorChannel;
+  color: string;
+}
+
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
@@ -85,6 +100,9 @@ export interface Stat {
   scripts?: Script[];
   /** Avatar sliders this stat changes, each by `by` times its value's share of [min, authored max]. */
   morphBindings?: MorphBinding[];
+  /** Avatar colors this stat blends toward a target, by its value's share of [min, authored max], capped at 1.
+   *  One per channel. */
+  colorBindings?: ColorBinding[];
   /** `false` starts the stat inert — hidden from the player and the AI, regen and code paused — until a
    *  trait switches it on. Absent = enabled. */
   enabled?: boolean;
@@ -156,6 +174,7 @@ export interface StatLinkFields {
   thresholdUnit: ThresholdUnit;
   scripts: Script[];
   morphBindings: MorphBinding[];
+  colorBindings: ColorBinding[];
   enabled: boolean;
   hidden: boolean;
   noIncrease: boolean;
@@ -380,6 +399,8 @@ export interface Trait {
   body?: TraitBodyRow;
   /** Avatar sliders held while it is active. Absent = none. */
   morphPins?: MorphPin[];
+  /** Avatar colors set while it is active, one per channel. Absent = none. */
+  colorPins?: ColorPin[];
 }
 
 /** A trait's Body row. Absent `pick` = blank: the row sets no Body. */

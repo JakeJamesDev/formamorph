@@ -197,7 +197,7 @@ describe('LeftPanel — one entity view', () => {
     });
     await waitFor(() => expect(lastAvatarUrl()).toBe(store.wren.file.data));
     const props = vrmViewerRenders[vrmViewerRenders.length - 1];
-    expect(props.hairColor).toBe('#ff0000');
+    expect((props.colorPlan as Record<string, unknown>).hair).toEqual({ set: '#ff0000', steps: [] });
     expect(props.currentHairStyle).toBe('long');
     expect(props.bodyMorphValues).toEqual({ Belly: 0.4 });
   });

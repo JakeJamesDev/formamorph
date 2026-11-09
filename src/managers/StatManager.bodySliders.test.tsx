@@ -37,11 +37,17 @@ const loads = vi.hoisted(() => ({
   player: { body: ['Belly', 'Fat'], head: ['EarShape'] } as { body: string[]; head: string[] },
   owner: new Map<string, string[]>(),
   catalogs: new Map<string, string[]>(),
+  /** Each VRM's color channels and their own colors, by url. */
+  looks: new Map<string, { channels: string[]; colors: Record<string, string> }>(),
   ownerCalls: 0,
 }));
 vi.mock('@/lib/vrmMorphLoader', () => ({
   loadMorphSplit: async () => loads.player,
   loadMorphCatalog: async (url: string) => (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
+  loadVrmLook: async (url: string) => ({
+    catalog: (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
+    ...(loads.looks.get(url) ?? { channels: [], colors: {} }),
+  }),
 }));
 vi.mock('@/lib/modelLoader', () => ({
   loadModelMorphNames: async (model: Partial<MediaAsset>) => {
@@ -93,6 +99,7 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
   loads.owner.clear();
   loads.catalogs.clear();
+  loads.looks.clear();
   loads.ownerCalls = 0;
   worldParts.overview = {};
   worldParts.entities = [];
@@ -246,5 +253,79 @@ describe('the Change By rows', () => {
     renderManager(undefined, bound);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByText('Not on this model')).toBeNull();
+  });
+});
+
+describe('the Colors rows', () => {
+  /** A world stat editor whose writes land in `written`, re-rendered with each write as the World Editor does. */
+  const editing = (start: Stat) => {
+    const written: Stat[] = [];
+    const mounted: { view?: ReturnType<typeof renderManager> } = {};
+    worldParts.updateStat = (next) => {
+      const stat = next as Stat;
+      written.push(stat);
+      mounted.view?.rerender(
+        <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
+          <StatManager stat={stat} tab="details" onTabChange={() => {}} />
+        </EditorModeContext.Provider>,
+      );
+    };
+    mounted.view = renderManager(undefined, start);
+    return written;
+  };
+  // The known-model cache outlives a test, so each test's Avatar carries its own data.
+  const fixAvatar = (data: string, look: { channels: string[]; colors: Record<string, string> }) => {
+    loads.looks.set(data, look);
+    worldParts.overview = { startPersona: { source: 'none' }, vrmStore: { aki: { name: 'Aki', file: { data } } } };
+    worldParts.entities = [{ id: 'you', name: 'You', customPersona: true, locations: [], vrmPick: { kind: 'world', id: 'aki' } }];
+  };
+  const openColors = async () => {
+    await userEvent.click(within(screen.getByText('Colors').parentElement!).getByRole('combobox'));
+    // Let the known model load once the list opens.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+
+  it("seeds a picked channel with the world Avatar's own color and drops the field when it goes", async () => {
+    fixAvatar('data:aki-colors', { channels: ['skin', 'eye', 'hair'], colors: { skin: '#e8c8b0' } });
+    const written = editing(wounds);
+    await openColors();
+    await userEvent.click(await screen.findByRole('option', { name: /^Skin, not selected$/ }));
+    expect(written.at(-1)?.colorBindings).toEqual([{ channel: 'skin', color: '#e8c8b0' }]);
+    expect(screen.getByRole('button', { name: 'Target Color for Skin' })).toHaveTextContent('#e8c8b0');
+    await userEvent.click(screen.getByRole('option', { name: /^Skin, selected$/ }));
+    expect(written.at(-1)?.colorBindings).toBeUndefined();
+  });
+
+  it('seeds white when no Avatar is fixed', async () => {
+    const written = editing(wounds);
+    await openColors();
+    await userEvent.click(await screen.findByRole('option', { name: /^Hair, not selected$/ }));
+    expect(written.at(-1)?.colorBindings).toEqual([{ channel: 'hair', color: '#ffffff' }]);
+  });
+
+  it('writes a color typed in the picker', async () => {
+    const written = editing({ ...wounds, colorBindings: [{ channel: 'eye', color: '#000000' }] });
+    await userEvent.click(screen.getByRole('button', { name: 'Target Color for Eye' }));
+    const hex = await screen.findByRole('textbox', { name: 'Hex Color' });
+    await userEvent.clear(hex);
+    await userEvent.type(hex, '#3366cc');
+    expect(written.at(-1)?.colorBindings).toEqual([{ channel: 'eye', color: '#3366cc' }]);
+  });
+
+  it("marks a channel the world's player Avatar lacks", async () => {
+    fixAvatar('data:aki-bald', { channels: ['skin', 'eye'], colors: {} });
+    const bound = { ...wounds, colorBindings: [{ channel: 'skin' as const, color: '#ffffff' }, { channel: 'hair' as const, color: '#ffffff' }] };
+    worldParts.stats = [bound];
+    renderManager(undefined, bound);
+    const rowOf = (label: string) => screen.getByRole('button', { name: `Target Color for ${label}` }).previousElementSibling as HTMLElement;
+    expect(await within(rowOf('Hair')).findByText('Not on this model')).toBeInTheDocument();
+    expect(within(rowOf('Skin')).queryByText('Not on this model')).toBeNull();
+  });
+
+  it('marks every color on an entity whose model is not an Avatar', async () => {
+    loads.owner.set('data:golem', ['Cracks']);
+    const bound = { ...wounds, colorBindings: [{ channel: 'skin' as const, color: '#ffffff' }] };
+    renderManager({ ...entityStore({ name: 'golem.glb', data: 'data:golem' }), stats: [bound] }, bound);
+    expect(await screen.findByText('Not on this model')).toBeInTheDocument();
   });
 });

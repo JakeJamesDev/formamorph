@@ -33,6 +33,7 @@ const rexTraits = [
   trait('wolfForm', { body: sets('wolf') }), trait('catCurse', { body: sets('cat') }), trait('shrink', { body: sets('tiny') }),
   trait('ghost', { body: { pick: { kind: 'none' } } }), trait('blank', { body: {} }),
   trait('elfEars', { morphPins: [{ name: 'Ear Shape', value: 1 }] }),
+  trait('drowSkin', { colorPins: [{ channel: 'skin', color: '#606070' }] }),
 ];
 // Hidden acts as Automatic: on exactly while the moon is full.
 const moonlit = trait('moonlit', {
@@ -195,6 +196,13 @@ describe('trait Body rows', () => {
     const cured = rexOn(eared, ['elfEars']);
     expect(cured.bodyLog).toEqual(["Rex's Body: Humanoid"]);
     expect(cured.bodies.traitsOn).toEqual([{ ownerId: 'rex', traitId: 'elfEars' }]);
+  });
+
+  it('keeps a trait with only color pins in the switch-on order, and leaves Body picks alone', () => {
+    const cat = rexOn(start(), ['catCurse']);
+    const drow = rexOn(cat, ['catCurse', 'drowSkin']);
+    expect(drow.bodies.traitsOn).toEqual([{ ownerId: 'rex', traitId: 'catCurse' }, { ownerId: 'rex', traitId: 'drowSkin' }]);
+    expect(drow.bodyLog).toEqual([]);
   });
 
   it('unequips the most recently equipped copy first when a capacity drops', () => {

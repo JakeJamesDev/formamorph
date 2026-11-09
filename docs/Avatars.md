@@ -147,6 +147,15 @@ A world author can tie body sliders to a stat. As the stat changes, the Avatar's
 
 A trait can also set a slider while it is active, such as Ear Shape for an Elf. It replaces your own setting until the trait ends, and stats still add on top. See [Body Sliders](World-Editor-Traits#body-sliders).
 
+Stats and traits can change the skin, eye and hair colors too:
+
+- 🎨 A stat shifts a color toward its target as it rises. It starts from the color you picked, or the model's own colors if you picked none.
+- 🧝 A trait sets a color while it is active, such as gray skin for a Drow. Stats then shift on from that color.
+- 🧍 On a model with separate face and body skin, each part shifts from its own color.
+- 🧊 Colors work on Avatars only. An entity's 3D model keeps its colors.
+
+See [the stat fields](World-Editor-Stats#the-fields) and [trait Colors](World-Editor-Traits#colors).
+
 ## The Avatar Details Dialog
 <!-- keywords: model info, metadata, properties, inspect file, vrm version, remove a model, saves using it, right click options -->
 <!-- route: modelDetails -->

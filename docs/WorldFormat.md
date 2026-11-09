@@ -210,6 +210,7 @@ Each stat is a number the game tracks. A stat in the top-level `stats` is global
 | `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures. `"raw"` = the stat's own units. `"percent"` = a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
 | `scripts` | | [Script](#scripts)[] | Code with this stat as `self`. See the [Scripts Guide](ScriptsGuide) |
 | `morphBindings` | | `{ name, by? }`[] | Avatar sliders this stat changes. From `min` to `max`, the stat adds 0 up to `by` to slider `name`. Absent `by` = 1. A negative `by` makes the slider smaller. The changes of several stats on one slider add up |
+| `colorBindings` | | `{ channel, color }`[] | Avatar colors this stat blends toward `color` (`#rrggbb`), in OKLab. `channel` is `skin`, `eye` or `hair`, once each. From `min` to `max`, the blend goes from 0 to the full target, and stops there. Several stats on one channel apply in stat-tree order. Avatars only |
 | `enabled` | | Boolean | `false` starts the stat off. The player and the AI don't see it, and regen and code stop. A trait's `statToggles` switches it on. Absent = on |
 | `hidden` | | Boolean | `true` hides the stat from the player. The AI still reads it, and regen and code still run |
 | `noIncrease` / `noDecrease` | | Boolean | The AI can't raise or lower the value |
@@ -314,6 +315,7 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
 | `body` | | `{ "pick"? }` | The Body its owner takes while the trait is active. `pick` is a [Body pick](#slots-and-bodies) other than absent. No `pick` = the row sets no Body |
 | `morphPins` | | `{ "name", "value" }`[] | Avatar sliders held at `value` while the trait is active, in place of the player's own. Any number. Bound stats add on top. When two active traits set one slider, the one switched on last wins. A link can't override it |
+| `colorPins` | | `{ "channel", "color" }`[] | Avatar colors (`skin`, `eye` or `hair`, once each) set to `color` (`#rrggbb`) while the trait is active, in place of the player's own. Bound stats blend on from it. When two active traits set one channel, the one switched on last wins. A link can't override it. Avatars only |
 | `scripts` | | [Script](#scripts)[] | Code with this trait as `self`. It runs while the trait is active. See the [Scripts Guide](ScriptsGuide) |
 
 See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave during the game.
@@ -773,7 +775,7 @@ An entity's `body` picks its Body:
 
 The player's Body comes from the persona they play. A world persona uses its own `body`. With no persona, or with a library persona, the player uses the Custom Persona entity's `body`. Library entities and story-invented entities use the Default.
 
-A trait's `body` row overrides this while the trait is active. A world trait sets the player's Body, and an entity's own trait sets that entity's. When several active traits set one, the trait switched on last wins. A save records that order in `bodies.traitsOn`, for traits with a `body` pick or `morphPins`.
+A trait's `body` row overrides this while the trait is active. A world trait sets the player's Body, and an entity's own trait sets that entity's. When several active traits set one, the trait switched on last wins. A save records that order in `bodies.traitsOn`, for traits with a `body` pick, `morphPins` or `colorPins`.
 
 ```json
 "slots": [{ "id": "hand", "name": "Hand" }, { "id": "collar", "name": "Collar" }],

@@ -66,4 +66,18 @@ describe('A loaded save reads its stat bindings from the world', () => {
     expect(loaded).toMatchObject({ value: 40, morphBindings: [{ name: 'Belly', by: -0.5 }] });
     expect(live().gameplay.entityStats.golem[0]).toMatchObject({ value: 10, morphBindings: [{ name: 'Cracks', by: 3 }] });
   });
+
+  it('shows a color binding the author added after the save was made', async () => {
+    const live = mount();
+    await act(async () => {
+      live().gameData.loadWorldData(worldFixture({ stats: [hunger], entities: [golem], locations: [cellar] }));
+    });
+    await act(async () => { live().gameplay.setGlobalStats([{ ...hunger, value: 40 } as PlayerStat]); });
+    await act(async () => { await live().gameplay.saveGame('slot', 'World', 'w1', 'colors'); });
+
+    const flushed = { ...hunger, colorBindings: [{ channel: 'skin' as const, color: '#ff8080' }] };
+    await act(async () => { await live().gameplay.loadGame('colors', [cellar], [flushed], [golem]); });
+
+    expect(live().gameplay.globalStats[0]).toMatchObject({ value: 40, colorBindings: [{ channel: 'skin', color: '#ff8080' }] });
+  });
 });

@@ -133,10 +133,66 @@ describe("resolveAvatarLook: trait slider pins", () => {
   });
   it("ignores a pin on a slider the model lacks", () => {
     const out = look({ customization: { Belly: 0.2 }, catalog: ["Belly"], traits: { on: [], active: [elf(1)] } });
-    expect(out).toEqual({ morphs: { Belly: 0.2 }, holders: {} });
+    expect(out.morphs).toEqual({ Belly: 0.2 });
+    expect(out.holders).toEqual({});
   });
   it("accepts a value past the slider's range", () => {
     expect(look({ traits: { on: [], active: [elf(2.5)] } }).morphs).toEqual({ "Ear Shape": 2.5 });
+  });
+});
+
+describe("resolveAvatarLook: color plans", () => {
+  const pale = "#f0d0c0";
+  const drow: LookTrait = { ownerId: null, traitId: "drow", colorPins: [{ channel: "skin", color: "#606070" }] };
+  const tan: LookTrait = { ownerId: null, traitId: "tan", colorPins: [{ channel: "skin", color: "#a07050" }] };
+  const blush = (value: number, extra: Partial<Stat> = {}) =>
+    stat({ id: "blush", value, colorBindings: [{ channel: "skin", color: "#ff0000" }], ...extra });
+
+  it("is none on every channel when nothing applies", () => {
+    expect(look({}).colors).toEqual({ skin: null, eye: null, hair: null });
+  });
+  it("sets the player's color with no steps", () => {
+    expect(look({ colors: { hair: "#112233" } }).colors.hair).toEqual({ set: "#112233", steps: [] });
+  });
+  it("gives a stat at half its range one step at 0.5, from the model's own color", () => {
+    expect(look({ stats: [blush(50)] }).colors.skin).toEqual({ steps: [{ target: "#ff0000", t: 0.5 }] });
+  });
+  it("stops a stat past its max at the target", () => {
+    expect(look({ stats: [blush(250)] }).colors.skin).toEqual({ steps: [{ target: "#ff0000", t: 1 }] });
+  });
+  it("anchors the share to the authored max", () => {
+    const live = [blush(50, { max: 400 })];
+    expect(look({ stats: live, authored: [stat({ id: "blush", max: 100 })] }).colors.skin?.steps[0].t).toBe(0.5);
+  });
+  it("orders two stats on one channel by the authored order, not the live order", () => {
+    const sun = stat({ id: "sun", value: 100, colorBindings: [{ channel: "skin", color: "#804020" }] });
+    const authored = [stat({ id: "sun" }), stat({ id: "blush" })];
+    expect(look({ stats: [blush(50), sun], authored }).colors.skin?.steps).toEqual([
+      { target: "#804020", t: 1 }, { target: "#ff0000", t: 0.5 },
+    ]);
+  });
+  it("starts from a trait pin in place of the player's color, and stats blend on from it", () => {
+    const out = look({ colors: { skin: pale }, stats: [blush(50)], traits: { on: [], active: [drow] } });
+    expect(out.colors.skin).toEqual({ set: "#606070", steps: [{ target: "#ff0000", t: 0.5 }] });
+    expect(out.colorHolders).toEqual({ skin: { ownerId: null, traitId: "drow" } });
+  });
+  it("lets the latest switch-on pin win", () => {
+    const on = [{ ownerId: null, traitId: "tan" }, { ownerId: null, traitId: "drow" }];
+    expect(look({ traits: { on, active: [drow, tan] } }).colors.skin?.set).toBe("#606070");
+    expect(look({ traits: { on: [...on].reverse(), active: [drow, tan] } }).colors.skin?.set).toBe("#a07050");
+  });
+  it("adds no step for a stat that is off", () => {
+    expect(look({ stats: [blush(50, { enabled: false })] }).colors.skin).toBeNull();
+    expect(look({ stats: [blush(50)], enabled: { blush: false } }).colors.skin).toBeNull();
+  });
+  it("ignores every color on a model without the channel, as a non-VRM model", () => {
+    const out = look({ channels: [], colors: { skin: pale }, stats: [blush(100)], traits: { on: [], active: [drow] } });
+    expect(out.colors).toEqual({ skin: null, eye: null, hair: null });
+    expect(out.colorHolders).toEqual({});
+  });
+  it("counts a stat once per channel", () => {
+    const twice = stat({ id: "x", value: 100, colorBindings: [{ channel: "eye", color: "#00ff00" }, { channel: "eye", color: "#0000ff" }] });
+    expect(look({ stats: [twice] }).colors.eye?.steps).toEqual([{ target: "#00ff00", t: 1 }]);
   });
 });
 
@@ -149,6 +205,11 @@ describe("avatarLookTraits", () => {
   const on = [{ ownerId: "rex", traitId: "wolf" }];
   it("gives the played Persona the global traits and the played entity's own", () => {
     expect(avatarLookTraits(scope, on).player.active.map((t) => [t.ownerId, t.traitId])).toEqual([[null, "elf"], ["hero", "tall"]]);
+  });
+  it("carries a trait's color pins", () => {
+    const colorPins = [{ channel: "skin" as const, color: "#606070" }];
+    expect(avatarLookTraits({ global: [{ id: "drow", colorPins }], owners: {}, played: [] }, []).player.active)
+      .toEqual([{ ownerId: null, traitId: "drow", colorPins }]);
   });
   it("gives every other entity its own traits only", () => {
     const { owners } = avatarLookTraits(scope, on);

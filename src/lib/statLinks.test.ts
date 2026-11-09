@@ -88,6 +88,15 @@ describe('overrides', () => {
     expect(resolvedEntityStats(world, overridden)[0]).toMatchObject({ name: 'trust', value: 20, max: 50 });
   });
 
+  it('carries a color binding set through the link, and an emptied list overrides the Blueprint\'s', () => {
+    const colorBindings = [{ channel: 'skin' as const, color: '#ff0000' }];
+    const tinted = editStatLink(world, linked, 'l1', 'trust', { ...linkedStat(trust, linked.statLinks![0]), colorBindings });
+    expect(resolvedEntityStats(world, tinted)[0].colorBindings).toEqual(colorBindings);
+    const bound = { ...world, stats: [health, { ...trust, colorBindings }, fear] };
+    const cleared = editStatLink(bound, addStatLink(bound, bram(), 'trust', 'l1')!, 'l1', 'trust', { ...trust, colorBindings: undefined });
+    expect(resolvedEntityStats(bound, cleared)[0].colorBindings).toEqual([]);
+  });
+
   it('marks an override stale once the Blueprint changes that field', () => {
     expect(statLinkState(trust, link).stale).toEqual([]);
     expect(statLinkState({ ...trust, value: 7 }, link).stale).toEqual(['value']);

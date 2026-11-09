@@ -137,3 +137,19 @@ describe('the trait slider pins the Avatars read', () => {
     expect(gameplay().viewEntityLookTraits.ash).toBeUndefined();
   });
 });
+
+describe('the colors the Avatars read', () => {
+  const skinOf = () => resolveAvatarLook({ ...gameplay().playerLookStats, catalog: null }).colors.skin;
+
+  it("starts the player's skin from a chosen trait's pin, with the stats blending on in tree order", async () => {
+    const drow: Trait = { id: 'drow', name: 'Drow', statChanges: [], colorPins: [{ channel: 'skin', color: '#606070' }] };
+    // Listed out of tree order: the group's `order` puts Sun first.
+    const flush = statOf('flush', { order: 1, colorBindings: [{ channel: 'skin', color: '#ff0000' }] });
+    const sun = statOf('sun', { value: 100, order: 0, colorBindings: [{ channel: 'skin', color: '#804020' }] });
+    renderGameViewer({ ...harborWorld({ stats: [flush, sun] }), traits: [drow] }, { inGameplay: <Probe />, initialTraits: ['drow'] });
+    await screen.findByPlaceholderText(/Type your action/);
+    await waitFor(() => expect(skinOf()).toEqual({
+      set: '#606070', steps: [{ target: '#804020', t: 1 }, { target: '#ff0000', t: 0.5 }],
+    }));
+  });
+});

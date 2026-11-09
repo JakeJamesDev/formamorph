@@ -37,6 +37,11 @@ const loads = vi.hoisted(() => ({ catalogs: new Map<string, string[]>() }));
 vi.mock('@/lib/vrmMorphLoader', () => ({
   loadMorphSplit: async () => ({ body: ['Fat'], head: ['Ear Shape'] }),
   loadMorphCatalog: async (url: string) => (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
+  loadVrmLook: async (url: string) => ({
+    catalog: (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
+    channels: url.includes('bald') ? ['skin', 'eye'] : ['skin', 'eye', 'hair'],
+    colors: { skin: '#e8c8b0' },
+  }),
 }));
 vi.mock('@/services/ModelStorageService', () => ({
   default: {
@@ -119,5 +124,50 @@ describe('the slider overlap note', () => {
     world.traits = [{ ...elf, morphPins: [{ name: 'Thickness', value: 1 }] }, { ...human, morphPins: [{ name: 'Fat', value: 0 }] }];
     renderTrait();
     expect(await within(rowOf('Thickness')).findByText(/Also set by/)).toHaveTextContent('Also set by Human.');
+  });
+});
+
+describe("the trait's Colors", () => {
+  const drow: Trait = { id: 'drow', name: 'Drow', statChanges: [], colorPins: [{ channel: 'skin', color: '#606070' }] };
+  const colorsOf = (id = 'elf') => world.traits.find((t) => t.id === id)?.colorPins;
+  const colorRow = (label: string) => screen.getByRole('button', { name: `Set To for ${label}` }).previousElementSibling as HTMLElement;
+  const fixAvatar = (data: string) => {
+    world.overview = { startPersona: { source: 'none' }, vrmStore: { aki: { name: 'Aki', file: { data } } } };
+    world.entities = [{ id: 'you', name: 'You', customPersona: true, locations: [], vrmPick: { kind: 'world', id: 'aki' } }];
+  };
+
+  it("adds a picked channel at the world Avatar's own color", async () => {
+    fixAvatar('data:aki-colors');
+    renderTrait();
+    await userEvent.click(within(screen.getByText('Colors').parentElement!).getByRole('combobox'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await userEvent.click(await screen.findByRole('option', { name: 'Skin, not selected' }));
+    expect(colorsOf()).toEqual([{ channel: 'skin', color: '#e8c8b0' }]);
+  });
+
+  it("marks a channel the world's player Avatar lacks", async () => {
+    fixAvatar('data:aki-bald');
+    world.traits = [{ ...elf, colorPins: [{ channel: 'hair', color: '#ffffff' }, { channel: 'eye', color: '#ffffff' }] }];
+    renderTrait();
+    expect(await within(colorRow('Hair')).findByText('Not on this model')).toBeInTheDocument();
+    expect(within(colorRow('Eye')).queryByText('Not on this model')).toBeNull();
+  });
+
+  it('names another free trait on the same channel', () => {
+    world.traits = [{ ...elf, colorPins: [{ channel: 'skin', color: '#f0e0d0' }] }, drow];
+    renderTrait();
+    expect(within(colorRow('Skin')).getByRole('paragraph')).toHaveTextContent('Also set by Drow. The trait switched on last wins.');
+  });
+
+  it('stays silent for a pick-one pair and for another channel', () => {
+    world.traitGroups = [{ id: 'race', name: 'Race', maxPicks: 1 } as TraitGroup];
+    world.traits = [
+      { ...elf, groupId: 'race', colorPins: [{ channel: 'skin', color: '#f0e0d0' }, { channel: 'eye', color: '#00aa00' }] },
+      { ...drow, groupId: 'race' },
+      { id: 'tan', name: 'Tan', statChanges: [], colorPins: [{ channel: 'skin', color: '#a07050' }] },
+    ];
+    renderTrait();
+    expect(within(colorRow('Skin')).getByRole('paragraph')).toHaveTextContent('Also set by Tan.');
+    expect(within(colorRow('Eye')).queryByText(/Also set by/)).toBeNull();
   });
 });

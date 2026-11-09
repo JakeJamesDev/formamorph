@@ -1,6 +1,6 @@
 # 04: Colors for Stats and Traits
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,12 +23,21 @@ Stats blend skin, eye and hair colors, and traits set them (Q5, Q10).
 
 ## Acceptance criteria
 
-- [ ] The plan is "none" when nothing applies, and the model keeps its own colors.
-- [ ] A stat at half its range gives one blend step with `t` 0.5; past the max, `t` is 1.
-- [ ] Two stats on one channel give two steps in authored order.
-- [ ] A trait pin sets the start color, and stats blend on from it.
-- [ ] A non-VRM entity ignores color bindings without errors.
-- [ ] A color binding edited in the world shows in a loaded save.
-- [ ] Frames on a model with separate face and body skin materials at `t` 0, 0.5 and 1: `.scratch/frames/skin-blend-0.png`, `-50.png`, `-100.png` (Playwright, app light).
+- [x] The plan is "none" when nothing applies, and the model keeps its own colors. `avatarLook.test.ts` "is none on every channel when nothing applies"; the viewer resets a null plan.
+- [x] A stat at half its range gives one blend step with `t` 0.5; past the max, `t` is 1. "gives a stat at half its range one step at 0.5" and "stops a stat past its max at the target"; removing the clamp turns the second red.
+- [x] Two stats on one channel give two steps in authored order. "orders two stats on one channel by the authored order" and the GameViewer test on stat-tree order; dropping the sort turns both red.
+- [x] A trait pin sets the start color, and stats blend on from it. "starts from a trait pin in place of the player's color" and the GameViewer color test.
+- [x] A non-VRM entity ignores color bindings without errors. `GamePanels.entityMorphs.test.tsx` "ignores a color binding on a non-VRM model"; resolver test for a model with no channels.
+- [x] A color binding edited in the world shows in a loaded save. `GameplayContext.bindingRefresh.test.tsx` "shows a color binding the author added after the save was made".
+- [x] Frames on a model with separate face and body skin materials at `t` 0, 0.5 and 1: `.scratch/frames/skin-blend-0.png`, `-50.png`, `-100.png` (Playwright, app light). Aki (Face_00_SKIN and Body_00_SKIN), skin toward #6b4630 and hair toward #b5522a.
 
 For you: check that the halfway skin and hair colors look natural, not muddy (frames above, then in play).
+
+## Landed
+
+**Not verified**
+- Nothing unticked. The face and body skin blend apart as specified. The body skin frame shows the known median bug: Aki's body skin turns pale yellow, not tan, because the tights share its texture and set its median (#4c3c3b). Ticket 06, "Material Color From the Skin Cluster", fixes it, and the player's Skin Color picker with it.
+
+**For you**
+- For you: check that the halfway skin and hair colors look natural, not muddy (frames above, then in play). Frames: `.scratch/avatar-look-bindings-04/frames/skin-blend-0.png`, `skin-blend-50.png`, `skin-blend-100.png`.
+- An owned stat's or trait's Colors rows read "Not on this model" whenever the owner has a 3D model, though in play the entity's Avatar takes the colors. The editor checks the 3D model, as ticket 01 set up for sliders.

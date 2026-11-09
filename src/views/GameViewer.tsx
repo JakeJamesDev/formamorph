@@ -89,6 +89,7 @@ import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
 import { avatarLookTraits } from "@/lib/avatarLook";
+import { statsInTreeOrder } from "@/lib/statGroupTree";
 import { playedNames, worldEntitiesOf, type PersonaPick } from "@/lib/persona";
 import { resolveWorldPrompt, appliedWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { statTextFor } from "@/lib/statTextPrompts";
@@ -2486,12 +2487,14 @@ const GameViewer = ({
     return avatarLookTraits({ ...scope, global: inAuthoredOrder(scope.global, traitOrder) }, viewBodies.traitsOn ?? []);
   }, [viewChosenTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, viewBodies, traitOrder, gatedWorld]);
 
+  // Tree order, which orders color blends.
+  const authoredLookStats = useMemo(() => statsInTreeOrder(authoredStatGroups, stats), [authoredStatGroups, stats]);
   useEffect(() => {
     // Authored stats anchor the slider scale, so a max the AI raised grows the slider rather than shrinking it.
     // The traits in force already chose these stats, so each one is on whatever its authored flag says.
     const enabled = Object.fromEntries(viewActiveStats.map((s) => [s.id, true]));
-    setPlayerLookStats({ stats: viewActiveStats, authored: stats, enabled, traits: viewLookTraits.player });
-  }, [viewActiveStats, stats, viewLookTraits, setPlayerLookStats]);
+    setPlayerLookStats({ stats: viewActiveStats, authored: authoredLookStats, enabled, traits: viewLookTraits.player });
+  }, [viewActiveStats, authoredLookStats, viewLookTraits, setPlayerLookStats]);
 
   useEffect(() => { setViewEntityLookTraits(viewLookTraits.owners); }, [viewLookTraits, setViewEntityLookTraits]);
 

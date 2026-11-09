@@ -74,7 +74,7 @@ Select a trait to open its panel.
 |---|---|---|
 | **Details** | **Name** and the two descriptions | Simple and Advanced |
 | **Availability** | **Mode**, **Starts**, **In Game** and [**Requires**](#requirements) | Simple and Advanced |
-| **Stats** | **Stat Changes**, [**Body**](#body), [**Body Sliders**](#body-sliders), and **Stat Availability** in Advanced mode | Simple and Advanced |
+| **Stats** | **Stat Changes**, [**Body**](#body), [**Body Sliders**](#body-sliders), [**Colors**](#colors), and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 | **Scripts** | [Scripts](#scripts) | Advanced only |
 
@@ -173,6 +173,19 @@ When two active traits set a Body, the one switched on last wins. When it switch
 
 When two active traits set the same slider, the one switched on last wins. A row says **Also set by** and names the other traits. Traits in a group where only one can be picked never show it.
 
+## Colors
+<!-- keywords: skin color trait, drow skin, eye color, hair color, trait changes color, recolor avatar -->
+
+**Colors** set the [Avatar's](Avatars#in-the-game) skin, eye or hair color while the trait is active. For example, a *Drow* trait sets the skin to gray.
+
+- Pick **Skin**, **Eye** or **Hair** in the **Colors** list. Each gets a row with a **Set To** color, which starts at the model's own color, or white when the world doesn't set the player's Avatar.
+- The color replaces the player's own pick. A stat bound to that color still shifts it on from there.
+- When the trait switches off, the player's own color comes back.
+- Colors work on Avatars only. An entity's 3D model keeps its colors.
+- A row shows **Not on this model** when the model lacks that color.
+
+When two active traits set the same color, the one switched on last wins. The row says **Also set by**, as for [Body Sliders](#body-sliders).
+
 ## Placeholder Pins
 <!-- keywords: appearance from choice, force a word, lock random text, returns when off, type custom text, hair by perk -->
 <!-- route: worldEditorTrait.pins -->
@@ -209,7 +222,7 @@ Two active traits can change the availability of the same stat, or pin the same 
 
 For a pin on traits of different owners, a world trait wins, then the played persona's, then the entity lower in the entity list.
 
-[Body](#body) rows and [Body Sliders](#body-sliders) work differently: the trait switched on last wins.
+[Body](#body) rows, [Body Sliders](#body-sliders) and [Colors](#colors) work differently: the trait switched on last wins.
 
 ## Groups
 <!-- keywords: category, start button disabled, choose more message, cant begin game, none of these, swap mid game, over the limit, folders -->

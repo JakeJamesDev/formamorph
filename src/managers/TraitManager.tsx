@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ownerPreview } from '@/lib/ownedTraitsInPlay';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
@@ -18,7 +18,7 @@ import { TraitAvailabilityRule } from '@/components/editor/TraitAvailabilityRule
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { morphPinOverlaps, traitConflicts, type TraitConflict, type TraitName } from '@/lib/traitEffects';
+import { colorPinOverlaps, morphPinOverlaps, traitConflicts, type TraitConflict, type TraitName } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
 import { statRowSide, type StatRow, type StatRowSide } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
@@ -30,10 +30,11 @@ import { TraitScripts } from './TraitScripts';
 import { offWorldOf, traitPanelHome } from '@/lib/scriptBoxHome';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import type {
-  BodyPick, Entity, FocusFieldHint, MorphPin, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
+  BodyPick, ColorPin, Entity, FocusFieldHint, MorphPin, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { SliderNumberRow } from '@/components/editor/SliderNumberRow';
+import { ColorRowsField } from '@/components/editor/ColorRowsField';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useSliderPicker } from '@/lib/useSliderPicker';
 import { linkedTraits } from '@/lib/traitLinks';
@@ -100,6 +101,7 @@ const SliderOverlapNote = ({ others, placeholders, onOpen }: {
 };
 
 const NO_MORPH_PINS: readonly MorphPin[] = [];
+const NO_COLOR_PINS: readonly ColorPin[] = [];
 
 /** Whose stat each of an owner's trait rows moves, as play routes it. */
 const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: Entity) => {
@@ -274,7 +276,11 @@ const TraitManager = ({
     () => (traitOwnerName !== undefined ? { name: labelPlaceholders(traitOwnerName, placeholders), model: traitOwnerModel } : undefined),
     [traitOwnerName, traitOwnerModel, placeholders],
   );
-  const sliders = useSliderPicker(morphOwner, morphPins.length > 0);
+  const colorPins = editingTrait.colorPins ?? NO_COLOR_PINS;
+  // The model is read while the trait has rows, or once Colors opens to seed a row.
+  const [colorsOpened, setColorsOpened] = useState(false);
+  useEffect(() => { setColorsOpened(false); }, [trait.id]);
+  const sliders = useSliderPicker(morphOwner, morphPins.length > 0 || colorPins.length > 0 || colorsOpened);
   // A world trait rivals the world's traits; an owner's trait rivals the owner's own and linked ones.
   const pinRivals = useMemo(() => {
     if (!traitOwner) return { traits, groups: traitGroups };
@@ -282,6 +288,7 @@ const TraitManager = ({
     return { traits: [...(traitOwner.traits ?? []), ...linked], groups: [...traitGroups, ...(traitOwner.traitGroups ?? [])] };
   }, [traitOwner, traits, traitGroups]);
   const pinOverlaps = morphPinOverlaps(editingTrait, pinRivals.traits, pinRivals.groups, sliders.keyOf);
+  const colorOverlaps = colorPinOverlaps(editingTrait, pinRivals.traits, pinRivals.groups);
   const setMorphPins = (next: MorphPin[]) => apply({ morphPins: next.length ? next : undefined });
   // A picked slider keeps its Set To; a new one starts at 1.
   const pickMorphPins = (names: string[]) => setMorphPins(names.map((name) => morphPins.find((p) => p.name === name) ?? { name, value: 1 }));
@@ -524,6 +531,23 @@ const TraitManager = ({
             ))}
           </div>
         )}
+      </div>
+      )}
+
+      {(!readOnly || colorPins.length > 0) && (
+      <div {...fieldFrame('colorPins')}>
+        <ColorRowsField
+          id={trait.id}
+          label={<Label>Colors</Label>}
+          rows={colorPins}
+          column="Set To"
+          lacksChannel={sliders.lacksChannel}
+          seedColor={sliders.seedColor}
+          note={(channel) => <SliderOverlapNote others={colorOverlaps[channel]} placeholders={placeholders} onOpen={onOpenTrait} />}
+          disabled={readOnly}
+          onOpen={() => setColorsOpened(true)}
+          onChange={(rows) => apply({ colorPins: rows.length ? rows : undefined })}
+        />
       </div>
       )}
 

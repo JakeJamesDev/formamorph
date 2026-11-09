@@ -201,8 +201,9 @@ export interface BodyTraitScope {
   owners: Readonly<Record<string, readonly Trait[]>>;
 }
 
-/** Whether the trait's switch-on order matters: it picks a Body or holds an Avatar slider. */
-const ordered = (trait: Trait | undefined): boolean => !!trait?.body?.pick || !!trait?.morphPins?.length;
+/** Whether the trait's switch-on order matters: it picks a Body or holds an Avatar slider or color. */
+const ordered = (trait: Trait | undefined): boolean =>
+  !!trait?.body?.pick || !!trait?.morphPins?.length || !!trait?.colorPins?.length;
 
 /** `previous` without the Body- or look-setting traits no longer active, then the newly active ones in tree
  *  order, so the latest switch-on comes last (Q13, Q40). The same array when nothing moved. */

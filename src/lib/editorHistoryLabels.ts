@@ -66,6 +66,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     regenUnit: "Regen",
     descriptors: "Stat Descriptors",
     morphBindings: "Body Sliders",
+    colorBindings: "Colors",
     scripts: "Scripts",
   },
   locations: {
@@ -74,7 +75,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     isStarting: "Starting Location",
     canvasPosition: "Position",
   },
-  traits: { morphPins: "Body Sliders" },
+  traits: { morphPins: "Body Sliders", colorPins: "Colors" },
   connections: { aToB: "Travel Hint", bToA: "Travel Hint" },
   entities: { vrmPick: "Avatar" },
   statUpdates: { prompt: "Prompt", stats: "Stats" },

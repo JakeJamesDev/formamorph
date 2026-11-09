@@ -36,11 +36,12 @@ import { labelPlaceholders } from "@/lib/placementLetters";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
 import { useCodeUseReveal } from "@/lib/codeUseReveal";
-import type { FocusFieldHint, MorphBinding, RegenUnit, ScriptTiming, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import type { ColorBinding, FocusFieldHint, MorphBinding, RegenUnit, ScriptTiming, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
 import { REGEN_UNIT_LABELS, REGEN_UNITS, regenPer, regenPerHour, regenUnitOf } from "@/lib/regenUnits";
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { WorldInput } from '@/components/editor/WorldField';
 import { SliderNumberRow } from '@/components/editor/SliderNumberRow';
+import { ColorRowsField } from '@/components/editor/ColorRowsField';
 import { fieldFrame } from '@/lib/historyField';
 
 export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and scripts don't run.
@@ -81,6 +82,7 @@ const normalizeStat = (stat: EditingStat): EditingStat => ({
 });
 
 const NO_BINDINGS: readonly MorphBinding[] = [];
+const NO_COLOR_BINDINGS: readonly ColorBinding[] = [];
 
 /** `binding` with Change By `by`; the default of 1, or none, is stored as absent. */
 const withChangeBy = ({ name }: MorphBinding, by: number | undefined): MorphBinding =>
@@ -120,8 +122,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   const { draft: editingStat, apply } = useEditingDraft<EditingStat>(stat, writeStat, normalizeStat);
 
   const bindings = editingStat.morphBindings ?? NO_BINDINGS;
-  // The model the bindings play on is read only while the stat has any.
-  const sliders = useSliderPicker(store?.morphOwner, bindings.length > 0);
+  const colorBindings = editingStat.colorBindings ?? NO_COLOR_BINDINGS;
+  // The model the bindings play on is read only while the stat has any, or once Colors opens to seed a row.
+  const [colorsOpened, setColorsOpened] = useState(false);
+  const sliders = useSliderPicker(store?.morphOwner, bindings.length > 0 || colorBindings.length > 0 || colorsOpened);
   // A picked slider keeps its Change By; a new one starts at the default.
   const pickSliders = (names: string[]) =>
     handleChange("morphBindings", names.map((name) => bindings.find((b) => b.name === name) ?? { name }));
@@ -438,6 +442,19 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
                 ))}
               </div>
             )}
+          </div>
+          <div {...fieldFrame('colorBindings')}>
+            <ColorRowsField
+              id={stat.id}
+              label={fieldLabel('colorBindings', 'Colors')}
+              hint={<Hint>Shifts each color toward its target as the stat nears Max</Hint>}
+              rows={colorBindings}
+              column="Target Color"
+              lacksChannel={sliders.lacksChannel}
+              seedColor={sliders.seedColor}
+              onOpen={() => setColorsOpened(true)}
+              onChange={(rows) => handleChange("colorBindings", rows.length ? rows : undefined)}
+            />
           </div>
         </div>
       )}

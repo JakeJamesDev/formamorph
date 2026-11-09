@@ -7,11 +7,14 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
-import type { HairTypeDef } from '@/types';
+import type { ColorChannel, HairTypeDef } from '@/types';
 import { BUNDLED_DEFAULT_URL } from '@/lib/defaultAvatar';
 import { applyMorphInfluences } from '@/lib/modelMorphs';
 import { catalogNames, expressionBoundMorphs, vrmMorphCatalog } from '@/lib/vrmMorphCatalog';
 import { medianOpaqueRGB, tintFactors, tintSeedRGB, toByte } from '@/lib/textureMedian';
+import { channelMatch } from '@/lib/vrmColorChannels';
+import { blendColor } from '@/lib/oklab';
+import type { ColorPlan } from '@/lib/avatarLook';
 import { usePanelLoopGate } from '@/lib/panelShown';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
@@ -60,6 +63,9 @@ interface VRMViewerProps {
   hairColor?: string;
   eyeColor?: string;
   skinColor?: string;
+  /** Each channel's color plan, in place of its `*Color` prop. Applied per material, so separate materials in
+   *  one channel blend from their own colors. */
+  colorPlan?: Readonly<Record<ColorChannel, ColorPlan>>;
   hairTypes?: Record<string, HairTypeDef>;
   /** Absent, every hair mesh keeps the visibility its file gives it. */
   currentHairStyle?: string;
@@ -167,6 +173,7 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   hairColor,
   eyeColor,
   skinColor,
+  colorPlan,
   currentHairStyle,
   hairLength,
   modelUrl = BUNDLED_DEFAULT_URL,
@@ -257,22 +264,6 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     material.needsUpdate = true;
   };
 
-  // Whether a material belongs to a customization channel — by material name OR mesh name, so it works across
-  // VRoid (materials like *_SKIN/*_HAIR/EyeIris) and other rigs (meshes named Body/Hair/...). Clothing is excluded
-  // from skin so garments sharing the Body mesh aren't recolored.
-  const clothWords = ['cloth', 'top', 'bottom', 'shoe', 'skirt', 'pant', 'shirt', 'dress', 'jacket', 'sock', 'glove', 'sleeve', 'coat', 'bra', 'accessor'];
-  const channelMatch = (channel: string, matName: string, meshName: string) => {
-    const m = (matName || '').toLowerCase();
-    const mesh = (meshName || '').toLowerCase();
-    if (channel === 'hair') return m.includes('hair') || mesh.includes('hair');
-    if (channel === 'eye') return m.includes('iris') || (m.includes('eye') && !/white|highlight|lash|line|brow/.test(m));
-    if (channel === 'skin') {
-      if (m.includes('hair') || m.includes('eye') || m.includes('iris') || clothWords.some(w => m.includes(w))) return false;
-      return m.includes('skin') || mesh.includes('body') || mesh.includes('skin');
-    }
-    return false;
-  };
-
   // Run `fn` on every material in the current VRM that belongs to `channel`.
   const forEachChannelMaterial = (channel: string, fn: (m: VrmMaterial) => void) => {
     vrmRef.current?.scene.traverse((obj) => {
@@ -333,6 +324,15 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
   };
 
   const tintTarget = (target: string, hex: string) => forEachTargetMaterial(target, (m) => tintByMedian(m, hex));
+
+  // A channel's plan, per material: each starts from the plan's set color or its own, then blends in OKLab.
+  const applyColorPlan = (channel: ColorChannel, plan: ColorPlan) => {
+    if (!plan) return resetTarget(channel);
+    forEachChannelMaterial(channel, (m) => {
+      const start = plan.set ?? untintedColor(m);
+      if (start) tintByMedian(m, blendColor(start, plan.steps));
+    });
+  };
 
   // Restore a target's materials to their untinted colors (the "no color" / revert state).
   const resetTarget = (target: string) => forEachTargetMaterial(target, (m) => {
@@ -753,18 +753,19 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     }
   }, [bodyMorphValues]);
 
-  // Apply a channel color, or revert it to the model's own when unset (untouched / reverted).
-  useEffect(() => {
-    if (ready) { if (hairColor) tintTarget('hair', hairColor); else resetTarget('hair'); }
-  }, [hairColor, ready]);
-
-  useEffect(() => {
-    if (ready) { if (eyeColor) tintTarget('eye', eyeColor); else resetTarget('eye'); }
-  }, [eyeColor, ready]);
-
-  useEffect(() => {
-    if (ready) { if (skinColor) tintTarget('skin', skinColor); else resetTarget('skin'); }
-  }, [skinColor, ready]);
+  // Apply each channel's plan, or revert it to the model's own colors when it has none. Keyed by content, so a
+  // re-resolved plan that says the same thing doesn't re-tint.
+  const planOf = (channel: ColorChannel, color: string | undefined): ColorPlan =>
+    (colorPlan ? colorPlan[channel] : color ? { set: color, steps: [] } : null);
+  const hairPlan = planOf('hair', hairColor);
+  const eyePlan = planOf('eye', eyeColor);
+  const skinPlan = planOf('skin', skinColor);
+  const hairKey = JSON.stringify(hairPlan);
+  const eyeKey = JSON.stringify(eyePlan);
+  const skinKey = JSON.stringify(skinPlan);
+  useEffect(() => { if (ready) applyColorPlan('hair', hairPlan); }, [hairKey, ready]);
+  useEffect(() => { if (ready) applyColorPlan('eye', eyePlan); }, [eyeKey, ready]);
+  useEffect(() => { if (ready) applyColorPlan('skin', skinPlan); }, [skinKey, ready]);
 
   // Apply / revert extra-material colors (clothing, accessories, …).
   useEffect(() => {

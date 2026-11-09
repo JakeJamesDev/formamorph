@@ -112,6 +112,7 @@ export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   thresholdUnit: stat.thresholdUnit ?? 'raw',
   scripts: stat.scripts ?? [],
   morphBindings: stat.morphBindings ?? [],
+  colorBindings: stat.colorBindings ?? [],
   enabled: stat.enabled !== false,
   hidden: stat.hidden === true,
   noIncrease: !!stat.noIncrease,
