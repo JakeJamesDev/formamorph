@@ -104,6 +104,12 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q62** After its last stop, a Patrol loops back to stop 1.
 - **Q63** An off-screen Wander or Patrol move jumps straight to the next place.
 - **Q64** A script `.follow()` ignores Strict and Traversable.
+- **Q65** Timed rows can't overlap. Pickers and drags block any time another timed row holds. One All-day row may sit under them as the base layer, and it reads "The rest of the day" next to timed rows.
+- **Q66** The schedule editor lives in a Routine tab in the entity panel.
+- **Q67** The editor is the prototype's D2: the routine as sentences in clock order, with free time inline, under a 24-hour strip with daypart icons (full name in a tooltip).
+- **Q68** The free-time line names only the uncovered hours ("Evening – Dawn, stays at X"). With no free hours it reads "Busy all day".
+- **Q69** Each timed row's band has drag handles on both ends. Dayparts snap to daypart edges; hours snap to whole hours. A handle's label shows its position in the row's own format, and it stops at the last valid spot.
+- **Q70** Clicking a band or a sentence selects that row. The selected row's handles win a shared edge; rows never drag together. Clicking elsewhere clears the selection.
 
 ## User Stories
 
@@ -233,7 +239,7 @@ The bundled worlds and the dev fixtures migrate through the same path.
 One pure module answers where every Individual is now, from the world, the saved per-Individual state, the clock and a random source. It owns:
 
 - **Start roll:** once per playthrough, weighted (Q33). The chosen Start is saved.
-- **Row resolution:** the timed row covering now beats an All-day row. Between overlapping timed rows, the first listed wins. With no row, the character stays at its Start's place (Q52).
+- **Row resolution:** the timed row covering now beats an All-day row. Timed rows never overlap (Q65). With no row, the character stays at its Start's place (Q52).
 - **Actions:**
   - Stay → its place.
   - Wander → a weighted pick among its connected places, other than the current one when there is a choice. A new pick happens when the idle runs out.
@@ -312,3 +318,4 @@ A good test drives a public seam with realistic input and asserts the outcome a 
 - **Other consumers to update:** the Test Bench (time-aware placement), the canvas picker's range warning (it only made sense for Moves Between), the Presence and Movement copy and pick card, the dev fixtures, the bundled worlds, the world format doc, the wiki pages on locations and the glossary, and the help vectors (`build:help-vectors`).
 - **Ticket order:** `movement` has about 15 readers, so the world shape, migration, position engine and reader swap land as one first ticket. Connection distance with its ADR can run beside it. The schedule editor, the request rework, the movement tag and the pull rule follow and can run in parallel.
 - **Request count:** every non-Strict Individual at the player's location now gets a request each turn. The batching probe also measures that count.
+- **Prototype:** the question was "what should the schedule editor look like". Verdict: D2 (Q65–Q70). Branch `prototype/npc-schedules` at `6703f901a` holds every variant (A, B, C1–C4, D1–D3) and the Nearby/Far toggle. Run it from its worktree with `npm run dev -- --port 5310`, then open an entity's Routine tab. The Far link's look is still unapproved.
