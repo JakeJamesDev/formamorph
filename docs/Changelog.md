@@ -941,7 +941,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **History:**
     - **The World Editor has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.
     - **Undo in the World Editor returns you to the tab where you made the edit.** An edit made on another tab's record, such as a location's entities, opens that tab with the same record selected.
-    - **Undo in the World Editor returns you to the sub-tab or view where you made the edit.** An edit on the Openings sub-tab, an entity tab, or the Locations list or canvas opens that same sub-tab or view. An Overview edit with no prompt panel open closes the panel.
+    - **Undo in the World Editor returns you to the sub-tab or view where you made the edit.** An edit on an Overview or entity tab, or in the Locations list or canvas, opens that same tab or view.
     - **Undo and redo in the World Editor restore every location you had selected on the canvas.** Locations that no longer exist drop out of the selection.
     - **Undo and redo in the World Editor scroll to the text field you edited and pulse it.** It pulses on every press, even when you're already on the field. Keyboard focus stays where it was. With reduced motion, the field shows a still ring.
     - **Typing in a different field, tab or selection starts a new undo step in the World Editor.** Undo then takes you back to the field you edited. Typing in one field joins into one step.
