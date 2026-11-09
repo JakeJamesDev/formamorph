@@ -16,7 +16,9 @@ The location editor's Presence tab keeps its name and changes to fit routines.
 
 The list is read-only because an Individual's place belongs to a row with a time and an action, and this tab cannot say which row.
 
-Spec rulings: Q81, Q82.
+Ticket 03 already limits the Entities picker to Groups (Q97). This ticket keeps that and builds the rest.
+
+Spec rulings: Q81, Q82, Q97.
 
 ## Acceptance criteria
 
