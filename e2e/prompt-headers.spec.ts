@@ -13,7 +13,7 @@ async function openHost(page: Page, host: Host, reopen = false) {
       const dev = (window as unknown as { __fmDev: { listWorlds(): Promise<{ id: string }[]>; editWorld(id: string): Promise<void> } }).__fmDev;
       await dev.editWorld((await dev.listWorlds())[0].id);
     });
-    await page.getByRole('radio', { name: 'Narration', exact: true }).click();
+    await page.getByRole('tablist', { name: 'Overview Fields' }).getByRole('tab', { name: 'Custom Prompts' }).click();
   }
   else await openWorldNarrationPrompt(page);
   const editor = host === 'settings' ? page.locator('[contenteditable="true"]').first() : page.getByRole('textbox', { name: 'World narration prompt', exact: true });

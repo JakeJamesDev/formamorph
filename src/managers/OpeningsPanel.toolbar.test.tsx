@@ -48,7 +48,8 @@ const search = (placeholder: string, term: string) =>
 
 const cards = () => screen.queryAllByTestId('opening-row').map((row) => within(row).getAllByText(/^Opening \d+$/)[0].textContent);
 
-const openWorldOpenings = () => fireEvent.click(screen.getByRole('radio', { name: 'Openings' }));
+const openWorldOpenings = () =>
+  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Overview Fields' })).getByRole('tab', { name: 'Openings' }));
 
 const openEntityOpenings = () => {
   fireEvent.click(screen.getByText('Odd Wick'));

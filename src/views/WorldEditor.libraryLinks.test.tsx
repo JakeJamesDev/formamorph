@@ -698,7 +698,7 @@ describe('Adding an entity that brings openings', () => {
 
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
     expect(ctx().worldOverview.openingsEnabled).toBeUndefined();
-    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Openings” is now on.');
+    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Use These Openings” is now on.');
   });
 
   it('leaves the switch alone for a copy with no row that could come up', async () => {
@@ -719,7 +719,7 @@ describe('Adding an entity that brings openings', () => {
 
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
     expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(true);
-    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Openings” is now on.');
+    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Use These Openings” is now on.');
   });
 
   it('says nothing when the world already has an opening of its own', async () => {

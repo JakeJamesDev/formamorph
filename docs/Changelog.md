@@ -41,6 +41,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **An entity with a Stranger Description and no Stranger Name now starts as a stranger.** You see its Name, and its Stranger Description shows in place of its description until you meet it.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
+  - **The World Editor's Overview tab puts Custom Prompts and Openings on tabs of their own.** In Advanced mode, the right column has Details, Custom Prompts and Openings tabs. Each prompt and the openings have a checkbox at the top that turns them on.
 
 #### 🔧 Fixed
 

@@ -41,15 +41,32 @@ The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Ed
 | **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |
 
-## The right column: what you write
-<!-- keywords: blurb, synopsis, system prompt, setting lore, welcome text, instructions page, rules for narrator, markdown intro, override narration prompt -->
+## The right column: Details
+<!-- keywords: blurb, synopsis, system prompt, setting lore, welcome text, instructions page, markdown intro, what you write -->
+<!-- route: worldEditorOverview.details -->
+
+In Advanced mode, the right column has three tabs: **Details**, **Custom Prompts** and **Openings**. Simple mode shows only the **Details** fields, with no tabs.
 
 | Field | What it does |
 |---|---|
 | **Player-Facing Description** | The text on the library card and the community listing. Players read it before they play, so placeholders stay as plain text here. The AI never reads it. |
 | **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices. **Gameplay** shows when they enter the world. Both take markdown. |
 | **AI-Facing Description** | The world's description for the AI. The AI reads it on every turn. Players never see it. |
-| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Each item has a checkbox, and its text applies only while the box is checked. The player can decline it from the world's details window. **Reset** clears your text, so the item follows the player's prompt again. Its **Openings** item holds the world's [Openings](World-Editor-Openings). Its checkbox stays off until an opening exists. |
+
+## The right column: Custom Prompts
+<!-- keywords: rules for narrator, override narration prompt, replace choices prompt, world prompt -->
+<!-- route: worldEditorOverview.prompts -->
+
+**Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Each one has its own tab: **Narration**, **Choices** and **Stats**.
+
+- Your text applies only while **Use This Prompt** is checked. Unchecking it keeps your text.
+- The player can decline it from the world's details window.
+- **Reset** clears your text, so the prompt follows the player's prompt again.
+
+## The right column: Openings
+<!-- keywords: first message, starting scene, use these openings, openings checkbox -->
+
+**Advanced mode only.** Holds the world's [Openings](World-Editor-Openings). The **Use These Openings** checkbox stays off until an opening exists.
 
 ## Upload or link
 <!-- keywords: hotlink, external hosting, imgur, discord image broken, image not loading, dead url, shrink file size, embed vs host, works without internet -->

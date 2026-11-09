@@ -133,7 +133,7 @@ describe('an undo of an edit made through a mirror', () => {
   it('returns to the Overview tab for an entity opening added there', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
-    fireEvent.click(screen.getByRole('radio', { name: 'Openings' }));
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Overview Fields' })).getByRole('tab', { name: 'Openings' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add Opening to Odd Wick' }));
     expect(ctx().entities[0].openings).toHaveLength(2);
 

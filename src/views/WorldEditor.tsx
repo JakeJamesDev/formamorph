@@ -100,7 +100,10 @@ import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter
 import { useWorldMediaEditor } from '../managers/useWorldMediaEditor';
 import type { OptimizeControl } from '../managers/MediaHeader';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
-import { NO_OVERVIEW_PANEL, overviewPanelFor, type OverviewPanel } from './overviewPanels';
+import {
+  DEFAULT_OVERVIEW_PLACE, OVERVIEW_PANEL_TABS, overviewPanelTabsFor, overviewPlaceFor, overviewPlaceForField, overviewOriginValue,
+  type OverviewPanelTab, type OverviewPlace,
+} from './overviewPanelTabs';
 import { placeholderPanelTabsFor, type PlaceholderPanelTab } from './placeholderPanelTabs';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
@@ -164,11 +167,13 @@ export interface EditorExit {
 
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
-  initialTab, initialBenchTab, initialTarget, requestKey: landingKey, leaveRef, exitRef,
+  initialTab, initialOverviewTab, initialBenchTab, initialTarget, requestKey: landingKey, leaveRef, exitRef,
 }: {
   onClose: () => void;
   /** A tab an outside request selects. */
   initialTab?: string;
+  /** An Overview right-column tab an outside request selects. */
+  initialOverviewTab?: string;
   /** A Test Bench instrument an outside request opens. */
   initialBenchTab?: string;
   /** The route text of the control a Take Me There request opens. */
@@ -299,9 +304,14 @@ const WorldEditorInner = ({
   }, [visibleTabs, activeTab]);
   // Which of the Locations tab's two views is showing — the tree, or the canvas of the same locations.
   const [locationView, setLocationView] = useState<LocationView>('list');
-  // The Overview's open custom prompt panel and the Placeholders panel's tab, held here so a history reveal
-  // can return to the one an edit was made on.
-  const [overviewPanel, setOverviewPanel] = useState<OverviewPanel | null>(null);
+  // The Overview's right-column place and the Placeholders panel's tab, held here so a history reveal can
+  // return to the one an edit was made on. Simple mode shows Details; the kept place returns with Advanced.
+  const [overviewPlace, setOverviewPlace] = useState<OverviewPlace>(DEFAULT_OVERVIEW_PLACE);
+  const overviewTabs = useMemo(() => overviewPanelTabsFor(advanced), [advanced]);
+  const shownOverviewPlace = useMemo<OverviewPlace>(
+    () => (overviewTabs.some((t) => t.value === overviewPlace.tab) ? overviewPlace : { ...overviewPlace, tab: 'details' }),
+    [overviewTabs, overviewPlace],
+  );
   const [placeholderTab, setPlaceholderTab] = useState<PlaceholderPanelTab>('details');
   const placeholderTabs = useMemo(() => placeholderPanelTabsFor(advanced, true), [advanced]);
   const shownPlaceholderTab = placeholderTabs.some((t) => t.value === placeholderTab) ? placeholderTab : 'details';
@@ -394,6 +404,17 @@ const WorldEditorInner = ({
       setLocationTab(devSubtab as LocationPanelTab);
     }
   }, [devSubtab]);
+  // And over the Overview tab, where the slot names one of the right column's tabs.
+  useEffect(() => {
+    if (import.meta.env.DEV && OVERVIEW_PANEL_TABS.some((t) => t.value === devSubtab)) {
+      setOverviewPlace((held) => ({ ...held, tab: devSubtab as OverviewPanelTab }));
+    }
+  }, [devSubtab]);
+  // A Take Me There request that names a right-column tab.
+  useEffect(() => {
+    const tab = OVERVIEW_PANEL_TABS.find((t) => t.value === initialOverviewTab)?.value;
+    if (tab) setOverviewPlace((held) => ({ ...held, tab }));
+  }, [initialOverviewTab, requestKey]);
   // And over the Stats tab, where the slot names one of the stat panel's own tabs.
   useEffect(() => {
     if (import.meta.env.DEV && STAT_PANEL_TABS.some((t) => t.value === devSubtab)) {
@@ -538,6 +559,10 @@ const WorldEditorInner = ({
     // A panel that hides some of its fields behind its own tabs (the Readme pair) needs telling which one
     // was asked for; text alone can't reach a field that isn't rendered.
     setFindField({ fieldKey: match.target.fieldKey, itemId: match.target.itemId });
+    // Here, not in the panel: a panel effect would replay the hit each time Overview remounts.
+    if (match.target.tab === 'overview') {
+      setOverviewPlace((held) => overviewPlaceForField(match.target.fieldKey, held.kind) ?? held);
+    }
     const hit = {
       value: match.target.value,
       matchText: match.target.value.slice(match.start, match.end),
@@ -699,7 +724,7 @@ const WorldEditorInner = ({
     if (hasAuthoredOpenings(placed) && !openingsEnabled(worldOverview, [...entities, ...locations])) {
       updateWorldOverview(setOpeningsEnabled(true));
       const named = labelPlaceholders(placed.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
-      toast.info(`${named || 'This entity'} has openings, so “Openings” is now on.`);
+      toast.info(`${named || 'This entity'} has openings, so “Use These Openings” is now on.`);
     }
     select('entities', placed.id);
   };
@@ -838,7 +863,7 @@ const WorldEditorInner = ({
     const offered = <T extends string>(tabs: readonly { value: T }[], fallback: T): T =>
       tabs.find((t) => t.value === subTab)?.value ?? fallback;
     switch (tab) {
-      case 'overview': setOverviewPanel(overviewPanelFor(subTab)); break;
+      case 'overview': setOverviewPlace((held) => overviewPlaceFor(subTab, held.kind)); break;
       case 'entities': setEntityTab(offered(entityTabs, 'profile')); break;
       case 'items': setItemTab(offered(itemTabs, 'profile')); break;
       case 'locations': setLocationTab(offered(locationTabs, 'details')); break;
@@ -1125,7 +1150,7 @@ const WorldEditorInner = ({
   // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.
   const bookOpen = !!selections.dictionary && dictionaryEditor.book?.id === selections.dictionary;
   const placeSubTab: Partial<Record<string, string>> = {
-    overview: overviewPanel ?? NO_OVERVIEW_PANEL,
+    overview: overviewOriginValue(shownOverviewPlace),
     entities: shownEntityTab,
     items: shownItemTab,
     locations: shownLocationTab,
@@ -1156,7 +1181,8 @@ const WorldEditorInner = ({
   }, [historyPlace, activeTab, placeId, placeSub, placeView, locationView, fieldInUse]);
   useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
-  const detailFills = !!listEditorParts?.fills;
+  // The Overview's right column scrolls inside its own tabs, as a tabbed list panel does.
+  const detailFills = activeTab === 'overview' || !!listEditorParts?.fills;
   // Whose panel the palette covers: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
@@ -1199,8 +1225,9 @@ const WorldEditorInner = ({
         <WorldDetailsManager
           focusField={findField}
           fieldReveal={fieldReveal}
-          panel={overviewPanel}
-          onPanelChange={setOverviewPanel}
+          place={shownOverviewPlace}
+          onPlaceChange={setOverviewPlace}
+          tabs={overviewTabs}
           onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
           onOpenLocation={(id) => { navigateToBenchItem('locations', id); setLocationTab('openings'); }}
         />

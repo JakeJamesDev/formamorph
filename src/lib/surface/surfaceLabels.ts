@@ -22,6 +22,7 @@ import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/
 import { ITEM_PANEL_TABS } from '@/views/itemPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
+import { OVERVIEW_PANEL_TABS } from '@/views/overviewPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 
@@ -112,6 +113,7 @@ const ENTRIES: [string, string][] = [
   ['settingsPromptPreset.overview', OVERVIEW_LABEL],
   ...tabsOf('worldEditor', WORLD_EDITOR_TABS),
   ...tabsOf('worldEditorLocations', [{ value: 'list', label: 'List' }, { value: 'canvas', label: 'Canvas' }]),
+  ...tabsOf('worldEditorOverview', OVERVIEW_PANEL_TABS),
   ...tabsOf('worldEditorEntity', ENTITY_PANEL_TABS),
   ...tabsOf('worldEditorItem', ITEM_PANEL_TABS),
   ...tabsOf('worldEditorLocation', LOCATION_PANEL_TABS),

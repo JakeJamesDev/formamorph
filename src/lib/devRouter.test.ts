@@ -17,6 +17,7 @@ import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/
 import { ITEM_PANEL_TABS } from '@/views/itemPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
+import { OVERVIEW_PANEL_TABS } from '@/views/overviewPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
 import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 import { DICTIONARY_BOOK_PANEL_TABS } from '@/views/dictionaryBookPanelTabs';
@@ -200,6 +201,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the tabs a Tool’s edit mode switches between', () => {
     expect([...DEV_MODAL_TABS.settingsToolEdit]).toEqual(TOOL_EDIT_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the tabs the Overview right column switches between', () => {
+    expect([...DEV_MODAL_TABS.worldEditorOverview]).toEqual(OVERVIEW_PANEL_TABS.map((t) => t.value));
   });
 
   it('ledger lists exactly the tabs the stat panel switches between', () => {

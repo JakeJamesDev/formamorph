@@ -1,6 +1,6 @@
 # Spec: Overview Right Tabs
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 
@@ -11,8 +11,8 @@ The World Editor's Overview tab puts all of the world's writing in one long righ
 In Advanced mode, the right column becomes three tabs: **Details**, **Custom Prompts**, and **Openings**.
 
 - **Details** holds what the column holds today above Custom Prompts: the Player-Facing Description, the Readme with its Introduction and Gameplay sub-tabs, and the AI-Facing Description.
-- **Custom Prompts** has its own sub-tabs, Narration, Choices, and Stat Updates, with one always selected. Each prompt panel opens with a switch that turns that prompt on or off, then the prompt field, then the note-and-Reset footer.
-- **Openings** opens with a switch that turns the world's openings on or off, then the openings panel as it is today.
+- **Custom Prompts** has its own sub-tabs, Narration, Choices, and Stats, with one always selected. Each prompt panel opens with a checkbox that turns that prompt on or off, then the prompt field, then the note-and-Reset footer.
+- **Openings** opens with a checkbox that turns the world's openings on or off, then the openings panel as it is today.
 
 In Simple mode, the column shows no tab strip. It shows the Details content exactly as Simple mode shows today.
 
@@ -24,7 +24,7 @@ The editor remembers the right-column tab and the prompt sub-tab for the editing
 2. As a world author, I want the custom prompts on their own tab, so that I reach them without scrolling past the descriptions and the Readme.
 3. As a world author, I want the descriptions and the Readme on a Details tab, so that the text players and the AI read about my world sits together.
 4. As a world author, I want the Details tab to be the one I see first, so that the fields every world needs come before the optional ones.
-5. As a world author, I want to switch between Narration, Choices, and Stat Updates with sub-tabs, so that I edit one prompt at a time without a long scroll.
+5. As a world author, I want to switch between Narration, Choices, and Stats with sub-tabs, so that I edit one prompt at a time without a long scroll.
 6. As a world author, I want one prompt sub-tab always selected, so that the Custom Prompts tab never shows an empty panel.
 7. As a world author, I want Custom Prompts to open on Narration the first time, so that the tab always starts in the same place.
 8. As a world author, I want a switch at the top of each prompt panel, so that I turn that prompt on or off where I am editing it.
@@ -44,21 +44,21 @@ The editor remembers the right-column tab and the prompt sub-tab for the editing
 22. As a world author, I want undo and redo to open the tab and sub-tab where the edit was made, so that I see what changed.
 23. As a world author, I want an undo of an edit made on a tab that Simple mode does not offer to land on Details, so that undo never leaves me on a hidden tab.
 24. As a world author, I want the tabs to look like the editor's other tabs, so that the column reads as part of the same app.
-25. As a new author taking the authoring tour, I want the tour to point at the Custom Prompts tab, so that the step still finds what it describes.
+25. As an author using the help window's Take Me There, I want a link to Custom Prompts or Openings to open that tab, so that I land on what the help describes.
 26. As a world author with existing worlds, I want my prompts, their on/off state, and my openings unchanged, so that the new layout changes nothing about how my world plays.
 
 ## Implementation Decisions
 
 - **Rulings.** Q1: Simple mode hides the tab strip. Q2: Custom Prompts uses sub-tabs with one always selected; the toggle-group picker is removed. Q3: each prompt panel and the Openings tab carry their own switch at the top; no checkbox sits on any tab. Q4: the first tab is named Details. Q5: no tab or sub-tab shows an on-state marker. Q6: the editor remembers the last right-column tab for the editing session, not in the world. Q7: Custom Prompts opens on Narration the first time. Q8: the World Editor bench is the one test seam.
 - **Scope of the module change.** The Overview details manager splits its column into the three tabs. The Custom Prompts section loses the toggle group, the deselect-to-close behavior, the pipe separators and the container-query grid. The Openings panel itself is unchanged; it moves to its own tab and gains the switch above it.
-- **Overview state.** The editor holds two values: the right-column tab (Details, Custom Prompts, Openings) and the prompt kind (Narration, Choices, Stat Updates). The "no panel open" state goes away, because some tab is always shown and one prompt kind is always selected. The overview-panel module's type and its history helpers change to match.
+- **Overview state.** The editor holds two values: the right-column tab (Details, Custom Prompts, Openings) and the prompt kind (Narration, Choices, Stats). The "no panel open" state goes away, because some tab is always shown and one prompt kind is always selected. The overview-panel module's type and its history helpers change to match.
 - **History Origins.** A Step's Origin on Overview records the place the author saw: Details for the descriptions and the Readme, the prompt kind for a prompt edit, and Openings for an opening. Reveal maps that value back onto both the tab and the prompt kind. A value the mode does not offer falls back to Details, as other tabs fall back to their first sub-tab. Editor history is session-only, so the old "none" value needs no compatibility path.
-- **Find.** The existing focus-field handling extends to set the outer tab. A prompt field key opens Custom Prompts on that kind. An opening field key opens Openings. A description or Readme key opens Details, and the Readme's own sub-tab logic keeps working inside it.
+- **Find.** The editor sets the outer tab when Find navigates to an Overview hit, once per navigation, so a remount never replays an old hit over the remembered tab. A prompt field key opens Custom Prompts on that kind. An opening field key opens Openings. A description or Readme key opens Details, and the Readme's own sub-tab logic keeps working inside it.
 - **Simple mode.** Custom Prompts and Openings stay Advanced only. With no strip, Simple mode renders the Details content directly.
 - **Switch behavior is today's.** Prompt off clears only the enabled flag and keeps the text. Openings on/off writes the same world flag as today, and the switch stays disabled while the world has no authored opening.
-- **Design.** The tabs and sub-tabs reuse the app's existing tab component and the entity-panel tab pattern. The switch follows the settings off-state pattern. No new visual pattern is introduced.
-- **Copy.** The tab names are Details, Custom Prompts, Openings, Narration, Choices, Stat Updates. The switch labels and any hint text are written per the Writing Guide at build time.
-- **Authoring tour.** The `custom-prompts` target moves to the Custom Prompts tab trigger, and the step's copy is checked against the new layout.
+- **Design.** The tabs and sub-tabs reuse the app's existing tab component and the entity-panel tab pattern. The on/off control is the editor's labeled checkbox (“Use This Prompt”, “Use These Openings”); the app has no switch component, and the prompt field stays visible while off, as today. No new visual pattern is introduced.
+- **Copy.** The tab names are Details, Custom Prompts, Openings, Narration, Choices, Stats. Stats is the label players already see for that prompt. The switch labels and any hint text are written per the Writing Guide at build time.
+- **Take Me There.** The `custom-prompts` target was a help-window surface target, not a tour step. It is replaced by a `worldEditorOverview` tab ledger (Details, Custom Prompts, Openings), so help routes open the right tab; the Openings guide's route points at the Openings tab.
 - **Dev-router.** The World Editor's dev route reaches each right-column tab, so the UI can be verified per tab.
 - **Export shape.** No change to the world or save `.json`. The remembered tab is editor state only.
 
@@ -90,3 +90,16 @@ The editor remembers the right-column tab and the prompt sub-tab for the editing
 
 - The Readme keeps its own Introduction and Gameplay sub-tabs inside Details, so Details nests one tab set and Custom Prompts nests another. This is accepted.
 - In the editor, the entities and locations already have an Openings tab, so the world's Openings tab uses the same name for the same thing.
+
+## Landed
+
+Verified by the editor-bench suite `WorldEditor.overviewPanel.test.tsx` (tabs per mode, prompt sub-tabs, both checkboxes, remembered tab, Find to each tab, no replay on remount) and `WorldEditor.historySubView.test.tsx` (undo to Details, a prompt kind, Openings). Find, reveal, the Openings disable and the remount replay were each mutation-tested: the right test went red. Live preview at 1024×768 and 375×812: frames below.
+
+**Not verified**
+- Take Me There from the help window into the new tabs, end to end: the route tables are unit-tested, the click-through is not.
+- The Playwright helper in `e2e/app.ts` was updated but not run; the e2e suite sits outside the gates.
+- Light theme: no colors changed, so it was not checked.
+
+**For you**
+- Open a world in Advanced mode and look at the three tabs: `.scratch/overview-right-tabs/frames/details.jpg`, `custom-prompts.jpg`, `openings.jpg`.
+- The changelog's unreleased line "An Overview edit with no prompt panel open closes the panel" is now stale. It is fixed on main after this lands.

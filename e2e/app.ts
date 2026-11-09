@@ -116,10 +116,9 @@ export const chrome = {
  */
 export async function openWorldNarrationPrompt(page: Page): Promise<void> {
   await openWorldEditor(page);
-  const toggle = page.getByRole('checkbox', { name: "Use this world's narration prompt" });
-  // Switching the checkbox on opens the panel itself; only an already-armed prompt needs picking open.
+  await page.getByRole('tablist', { name: 'Overview Fields' }).getByRole('tab', { name: 'Custom Prompts' }).click();
+  const toggle = page.getByRole('checkbox', { name: 'Use This Prompt' });
   if ((await toggle.getAttribute('data-state')) !== 'checked') await toggle.click();
-  else await page.getByRole('radio', { name: 'Narration' }).click();
   await page.getByLabel('World narration prompt').waitFor();
 }
 
@@ -133,7 +132,7 @@ export async function openWorldEditor(page: Page): Promise<void> {
     const worlds = await dev.listWorlds();
     await dev.editWorld(worlds[0].id);
   });
-  await page.getByRole('checkbox', { name: "Use this world's narration prompt" }).waitFor();
+  await page.getByRole('tablist', { name: 'Overview Fields' }).waitFor();
 }
 
 /** Pick a World Editor section. Below the split layout the tabs fold into the Sections bar, so open it first. */

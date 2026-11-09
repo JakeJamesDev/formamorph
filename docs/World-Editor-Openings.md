@@ -3,7 +3,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a game starts, after **Start Game** (or **Continue to Avatar** and the Avatar step), the game draws one opening from the pool.
+**Advanced mode only.** An opening is one way a playthrough can start. Write them on the **Openings** tab in the right column of the **Overview** tab. The world, each location and each entity can own openings. When a game starts, after **Start Game** (or **Continue to Avatar** and the Avatar step), the game draws one opening from the pool.
 
 Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text goes:
 
@@ -18,13 +18,13 @@ After an Opening Narration, the input box is empty. A written page one works lik
 
 ## How to Add an Others Opening
 <!-- keywords: first message, greeting, intro, start, starting scene, scene, opener, prologue, kickoff, beginning, initial prompt, hook, first turn -->
-<!-- route: worldEditor.overview#custom-prompts -->
+<!-- route: worldEditorOverview.openings -->
 
 An Others opening is the normal kind. Every opening starts as one.
 
 1. Select **Advanced** at the top of the editor.
 2. Open the **Overview** tab.
-3. Under **Custom Prompts**, select **Openings**.
+3. In the right column, select the **Openings** tab.
 4. Select the **+** button (**Add Opening**) at the top of the panel. The new opening belongs to the world.
 5. Write the opening's text.
 6. Choose **Player Action** or **Narration**.
@@ -74,7 +74,7 @@ Every control works while the card is collapsed. You can drag cards and tune wei
 ## The list switch
 <!-- keywords: turn off all, master toggle, checkbox greyed out, wont check, disable without deleting, checked itself, not being used -->
 
-The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening. Off covers every opening in the world, including locations, entities and an entity the player picks at Enter World.
+The **Use These Openings** checkbox, at the top of the **Openings** tab, turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening. Off covers every opening in the world, including locations, entities and an entity the player picks at Enter World.
 
 **The box starts unchecked and is disabled until an opening with text exists.** Write one here, on a location or on an entity, and it checks itself. An empty opening doesn't count. Neither does an Others opening on the Custom Persona or a Persona-Only entity, because it never draws. A player who plays a library persona with Self openings also turns it on, unless you unchecked it. There is nothing to switch before that: a world with no openings plays the default opening either way.
 
@@ -87,7 +87,7 @@ The checkbox beside **Openings** turns the whole list on or off. Off keeps every
 
 The default opening is an Opening Action with a general instruction to write the opening scene. The game uses it at a start where nothing else can come up:
 
-- The **Openings** checkbox is unchecked.
+- The **Use These Openings** checkbox is unchecked.
 - The pool at that start is empty.
 
 A world with no openings reads unchecked, because the box follows whether openings exist.
@@ -146,7 +146,7 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 | Rule | Effect |
 |---|---|
 | **Exact start** | The openings join the draw only when the game starts at this location. A child location never draws its parent's openings. |
-| **The world switch** | The **Openings** checkbox turns them off too. |
+| **The world switch** | The **Use These Openings** checkbox turns them off too. |
 | **With Self openings** | Location openings stay out of the draw while a persona with Self openings is played. |
 
 ## Regenerate on page one
@@ -179,7 +179,7 @@ To check the draw before you play, use the **Opening** tab of the [Test Bench](T
 | Rule | Effect |
 |---|---|
 | **Starting location** | The entity's Others openings join the draw only when it is at the player's starting location. Those of the **Custom Persona** entity and a **Persona-Only** entity never join. |
-| **The world switch** | The world's **Openings** checkbox turns the entity's openings off too, and an entity's openings check that box. An entity has no switch of its own. |
+| **The world switch** | The world's **Use These Openings** checkbox turns the entity's openings off too, and an entity's openings check that box. An entity has no switch of its own. |
 | **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch turns them off with the rest. They also never draw when the world, its locations and its entities have no openings. That world plays the default opening. |
 | **Entity card** | The openings, their **Others** or **Self** switch and their weights travel with the entity in its [card file](Library#how-to-export-an-entity-or-a-dictionary) and in a published listing. |
 | **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#how-to-make-an-entity-playable), its **Others** openings leave the draw for that game. Its **Self** openings take over. See below. |

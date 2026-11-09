@@ -53,11 +53,6 @@ const panelTab = (strip: string, name: string) =>
 const openPanelTab = (strip: string, name: string) => fireEvent.mouseDown(panelTab(strip, name));
 const isShown = (tab: HTMLElement) => tab.getAttribute('aria-selected') === 'true';
 
-/** The Overview's custom prompt picker: a radio group apart from the other radios on the tab. */
-const promptKind = (name: string) => {
-  const group = screen.getByRole('radio', { name: 'Openings' }).closest('[role="radiogroup"]') as HTMLElement;
-  return within(group).getByRole('radio', { name });
-};
 
 const viewToggle = (name: 'List' | 'Canvas') => screen.getByRole('radio', { name });
 const canvasShown = () => document.querySelector('.react-flow') !== null;
@@ -117,32 +112,46 @@ describe('an undo of an edit made on a panel sub-tab', () => {
     expect(isShown(panelTab('Location Fields', 'Presence'))).toBe(true);
   });
 
-  it('returns to the Openings sub-tab of the Overview for an opening added there', async () => {
+  it('returns to the Overview Openings tab for an opening added there', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
-    fireEvent.click(screen.getByRole('radio', { name: 'Openings' }));
+    openPanelTab('Overview Fields', 'Openings');
     fireEvent.click(screen.getByRole('button', { name: 'Add Opening to Odd Wick' }));
     expect(ctx().entities[0].openings).toHaveLength(2);
-    fireEvent.click(promptKind('Narration'));
+    openPanelTab('Overview Fields', 'Details');
     openEditorTab(/Stats/);
 
     await undo();
     expect(shownEditorTab()).toMatch(/Overview/);
-    expect(promptKind('Openings')).toHaveAttribute('data-state', 'on');
-    expect(promptKind('Narration')).toHaveAttribute('data-state', 'off');
+    expect(isShown(panelTab('Overview Fields', 'Openings'))).toBe(true);
   });
 
-  it('closes an open Overview prompt panel for an edit made with none open', async () => {
+  it('returns to the Overview Details tab for an edit made there', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     await step(() => ctx().updateWorldOverview({ systemPrompt: 'Narrate the harbor.' }));
-    fireEvent.click(promptKind('Narration'));
-    expect(promptKind('Narration')).toHaveAttribute('data-state', 'on');
+    openPanelTab('Overview Fields', 'Custom Prompts');
     openEditorTab(/Stats/);
 
     await undo();
     expect(shownEditorTab()).toMatch(/Overview/);
-    expect(promptKind('Narration')).toHaveAttribute('data-state', 'off');
+    expect(isShown(panelTab('Overview Fields', 'Details'))).toBe(true);
+  });
+
+  it('returns to the prompt kind a custom prompt edit was made on', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    await screen.findByLabelText('World Name');
+    openPanelTab('Overview Fields', 'Custom Prompts');
+    openPanelTab('Custom Prompt Kinds', 'Choices');
+    await step(() => ctx().updateWorldOverview({ promptOverrides: { choicesPrompt: 'Offer three paths.', choicesPromptEnabled: true } }));
+    openPanelTab('Custom Prompt Kinds', 'Narration');
+    openPanelTab('Overview Fields', 'Details');
+    openEditorTab(/Stats/);
+
+    await undo();
+    expect(shownEditorTab()).toMatch(/Overview/);
+    expect(isShown(panelTab('Overview Fields', 'Custom Prompts'))).toBe(true);
+    expect(isShown(panelTab('Custom Prompt Kinds', 'Choices'))).toBe(true);
   });
 
   it('falls back to the default sub-tab when the editor mode no longer offers it', async () => {

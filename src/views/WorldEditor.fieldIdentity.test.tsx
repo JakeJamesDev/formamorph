@@ -75,11 +75,14 @@ function sweepPanelTabs() {
       collect();
     }
   }
-  // The Overview's custom prompts open from a radio group, not a strip.
-  const prompts = screen.queryByRole('radio', { name: 'Openings' })?.closest<HTMLElement>('[role="radiogroup"]');
-  for (const kind of prompts ? within(prompts).getAllByRole('radio') : []) {
-    fireEvent.click(kind);
-    collect();
+  // The Overview's prompt kinds mount only under Custom Prompts, after the walk above has moved on.
+  const overview = screen.queryByRole('tablist', { name: 'Overview Fields' });
+  if (overview) {
+    fireEvent.mouseDown(within(overview).getByRole('tab', { name: 'Custom Prompts' }));
+    for (const kind of within(screen.getByRole('tablist', { name: 'Custom Prompt Kinds' })).getAllByRole('tab')) {
+      fireEvent.mouseDown(kind);
+      collect();
+    }
   }
   return { seen: seen.size, misses: [...misses] };
 }

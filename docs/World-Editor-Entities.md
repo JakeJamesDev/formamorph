@@ -61,7 +61,7 @@ See [SillyTavern cards](#sillytavern-cards) for what each part of the card becom
 4. Choose **Player Action** or **Narration**. See [Openings](World-Editor-Openings) for the difference.
 5. Make sure the entity is in a **Starting Location**. Its openings draw only when it is at the player's starting location.
 
-The world's **Openings** checkbox turns on by itself once an opening has text, unless you unchecked it. See [Entity Openings](World-Editor-Openings#entity-openings).
+The world's **Use These Openings** checkbox turns on by itself once an opening has text, unless you unchecked it. See [Entity Openings](World-Editor-Openings#entity-openings).
 
 ## The panel
 <!-- keywords: pronouns, gender, profile tab, cast or playable, category, can player be them, seven tabs, relationships -->

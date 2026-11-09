@@ -201,7 +201,8 @@ describe('a surface request on the main menu', () => {
     renderMenu();
     await openWorld();
     requester.send('worldEditor.overview');
-    await waitFor(() => expect(registry.get().tabs).toEqual(['worldEditor.overview']));
+    // Simple mode's lone Overview tab still reports itself, as the stat panel's lone Details does.
+    await waitFor(() => expect(registry.get().tabs).toEqual(['worldEditor.overview', 'worldEditorOverview.details']));
     requester.send('worldEditor.placeholders');
     await waitFor(() => expect(registry.get().tabs).toEqual(['worldEditor.placeholders']));
     await settle();

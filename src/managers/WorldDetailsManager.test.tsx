@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { readValue, type TokenValues } from '@/lib/promptValues';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act, within } from '@testing-library/react';
+import { render, screen, act, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Dictionary, Entity, FocusFieldHint, GameLocation, Placeholder, Stat, StatGroup, Trait, WorldOverview } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import { openingFieldKey } from '@/lib/openings';
 import WorldDetailsManager from './WorldDetailsManager';
-import type { OverviewPanel } from '@/views/overviewPanels';
+import { overviewPanelTabsFor, type OverviewPlace } from '@/views/overviewPanelTabs';
 
 const PRESET_NARRATION = 'PRESET narration prompt';
 const PRESET_CHOICES = 'PRESET choices prompt';
@@ -109,23 +108,24 @@ type FocusField = FocusFieldHint | null;
 
 /** Renders the manager against the live `world`, re-rendering whenever the manager writes to it. */
 type OpenItem = (id: string) => void;
-const Harness = ({ focusField, onOpenEntity, onOpenLocation }: {
-  focusField?: FocusField; onOpenEntity?: OpenItem; onOpenLocation?: OpenItem;
+const Harness = ({ advanced, focusField, onOpenEntity, onOpenLocation }: {
+  advanced: boolean; focusField?: FocusField; onOpenEntity?: OpenItem; onOpenLocation?: OpenItem;
 }) => {
   const [, setTick] = useState(0);
-  // The World Editor holds the open panel in the app.
-  const [panel, setPanel] = useState<OverviewPanel | null>(null);
+  // The World Editor holds the shown tab and prompt kind in the app.
+  const [place, setPlace] = useState<OverviewPlace>({ tab: 'details', kind: 'narration' });
   world.rerender = () => setTick((n) => n + 1);
   return (
     <WorldDetailsManager
-      focusField={focusField} panel={panel} onPanelChange={setPanel} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation}
+      focusField={focusField} place={place} onPlaceChange={setPlace} tabs={overviewPanelTabsFor(advanced)}
+      onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation}
     />
   );
 };
 
 const renderManager = (advanced = true, focusField?: FocusField, onOpenEntity?: OpenItem, onOpenLocation?: OpenItem) => render(
   <EditorModeContext.Provider value={{ mode: advanced ? 'advanced' : 'simple', advanced, setMode: () => {} }}>
-    <Harness focusField={focusField} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
+    <Harness advanced={advanced} focusField={focusField} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
   </EditorModeContext.Provider>,
 );
 
@@ -137,11 +137,26 @@ const promptChips = (label: string) => field(label).promptChips as {
 };
 const edit = (label: string, text: string) =>
   act(() => (field(label).onChange as (v: string) => void)(text));
-const checkbox = (kind: string) => screen.getByRole('checkbox', { name: `Use this world's ${kind} prompt` });
-/** The segmented control's items are radios, not tabs — this picker clears on re-selection. */
-const picker = (name: string) => screen.getByRole('radio', { name });
-const openKind = () => screen.getAllByRole('radio').filter((r) => r.getAttribute('data-state') === 'on')
-  .map((r) => r.textContent);
+
+const overviewTab = (name: string) =>
+  within(screen.getByRole('tablist', { name: 'Overview Fields' })).getByRole('tab', { name });
+const kindTab = (name: string) =>
+  within(screen.getByRole('tablist', { name: 'Custom Prompt Kinds' })).getByRole('tab', { name });
+const KIND_LABELS: Record<string, string> = { narration: 'Narration', choices: 'Choices', stats: 'Stats' };
+/** The tab that shows a prompt kind or the openings, with the Custom Prompts tab opened on the way. Radix
+ *  tabs switch on mouseDown, which a userEvent click also sends. */
+const picker = (name: string) => {
+  if (name === 'Openings') return overviewTab('Openings');
+  if (overviewTab('Custom Prompts').getAttribute('aria-selected') !== 'true') fireEvent.mouseDown(overviewTab('Custom Prompts'));
+  return kindTab(name);
+};
+const openKind = () => within(screen.getByRole('tablist', { name: 'Custom Prompt Kinds' })).getAllByRole('tab')
+  .filter((t) => t.getAttribute('aria-selected') === 'true').map((t) => t.textContent);
+/** The shown kind's checkbox, after opening that kind's tab. */
+const checkbox = (kind: string) => {
+  fireEvent.mouseDown(picker(KIND_LABELS[kind]));
+  return screen.getByRole('checkbox', { name: 'Use This Prompt' });
+};
 
 beforeEach(() => {
   world.overview = { ...baseOverview, promptOverrides: { ...baseOverview.promptOverrides } };
@@ -150,85 +165,74 @@ beforeEach(() => {
   fieldProps.byLabel = {};
 });
 
-describe('the custom prompts section', () => {
+describe('the custom prompts tab', () => {
   it('is hidden in Simple mode, prompts or not', () => {
     renderManager(false);
-    expect(screen.queryByText('Custom Prompts')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: 'Overview Fields' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('World narration prompt')).not.toBeInTheDocument();
   });
 
-  it('opens with nothing selected, so an author not writing prompts sees no editor', () => {
+  it('opens on Details, and its own tab opens on Narration', () => {
     renderManager();
-
-    expect(screen.getByText('Custom Prompts')).toBeInTheDocument();
-    expect(openKind()).toEqual([]);
+    expect(overviewTab('Details')).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByTestId('World narration prompt')).not.toBeInTheDocument();
+
+    fireEvent.mouseDown(overviewTab('Custom Prompts'));
+    expect(openKind()).toEqual(['Narration']);
+    expect(screen.getByTestId('World narration prompt')).toBeInTheDocument();
   });
 
-  it('shows every kind’s enabled state without opening any of them', () => {
+  it('shows each kind’s enabled state on its own tab', () => {
     world.overview.promptOverrides = {
       systemPrompt: 'authored', systemPromptEnabled: true,
       choicesPrompt: 'authored but off', choicesPromptEnabled: false,
     };
     renderManager();
 
-    // Nothing is open, so the chrome is the only place these states can be read.
     expect(checkbox('narration')).toBeChecked();
     expect(checkbox('choices')).not.toBeChecked();
     expect(checkbox('stats')).not.toBeChecked();
   });
 
-  it('closes the open kind when it is picked again', async () => {
+  it('keeps the open kind open when it is picked again', async () => {
     const user = userEvent.setup();
     renderManager();
     await user.click(picker('Choices'));
-    expect(screen.getByTestId('World choices prompt')).toBeInTheDocument();
-
     await user.click(picker('Choices'));
-    expect(screen.queryByTestId('World choices prompt')).not.toBeInTheDocument();
-    expect(openKind()).toEqual([]);
+    expect(openKind()).toEqual(['Choices']);
+    expect(screen.getByTestId('World choices prompt')).toBeInTheDocument();
   });
 
-  it('opens the kind whose checkbox is switched on, and switches it on', async () => {
+  it('switches a kind on and stays on its panel', async () => {
     const user = userEvent.setup();
     renderManager();
     await user.click(checkbox('choices'));
 
     expect(world.overview.promptOverrides?.choicesPromptEnabled).toBe(true);
+    expect(openKind()).toEqual(['Choices']);
     expect(screen.getByTestId('World choices prompt')).toBeInTheDocument();
   });
 
-  it('does not open a kind whose checkbox is switched off', async () => {
+  it('switches a kind off and leaves its field in place', async () => {
     const user = userEvent.setup();
     world.overview.promptOverrides = { choicesPrompt: 'authored', choicesPromptEnabled: true };
     renderManager();
     await user.click(checkbox('choices'));
 
-    // Switching something off is not a request to look at it — the panel must not grow under the click.
     expect(world.overview.promptOverrides?.choicesPromptEnabled).toBe(false);
-    expect(openKind()).toEqual([]);
-    expect(screen.queryByTestId('World choices prompt')).not.toBeInTheDocument();
+    expect(openKind()).toEqual(['Choices']);
+    expect(field('World choices prompt').value).toBe('authored');
   });
 
-  it('leaves the open kind open when a different one is switched off', async () => {
+  it('writes nothing when the author only browses the kinds', async () => {
     const user = userEvent.setup();
-    world.overview.promptOverrides = { statUpdatesPrompt: 'authored', statUpdatesPromptEnabled: true };
-    renderManager();
-    await user.click(picker('Choices'));
-    await user.click(checkbox('stats'));
-
-    expect(screen.getByTestId('World choices prompt')).toBeInTheDocument();
-  });
-
-  it('only opens when the picker itself is clicked', async () => {
-    const user = userEvent.setup();
+    const before = world.overview;
     renderManager();
     await user.click(picker('Stats'));
 
     expect(screen.getByTestId('World stats prompt')).toBeInTheDocument();
-    // Browsing must never enable anything, and must not write to the world at all.
-    expect(checkbox('stats')).not.toBeChecked();
-    expect(world.overview.promptOverrides?.statUpdatesPromptEnabled).toBeUndefined();
+    expect(screen.getByRole('checkbox', { name: 'Use This Prompt' })).not.toBeChecked();
+    expect(world.overview).toBe(before);
   });
 
   it('keeps a switched-off kind editable, and says it is not applied', async () => {
@@ -238,7 +242,7 @@ describe('the custom prompts section', () => {
     await user.click(picker('Choices'));
 
     expect(field('World choices prompt').value).toBe('drafted');
-    expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
+    expect(screen.getByText(/Not applied until you select “Use This Prompt”/)).toBeInTheDocument();
   });
 
   it('switching a kind off keeps the text it holds', async () => {
@@ -442,7 +446,7 @@ describe('the world narration prompt field', () => {
   });
 });
 
-const openingsCheckbox = () => screen.getByRole('checkbox', { name: "Use this world's openings" });
+const openingsCheckbox = () => screen.getByRole('checkbox', { name: 'Use These Openings' });
 const ROWS = [
   { id: 'o1', text: 'You wake in the reed-beds.', kind: 'action' as const },
   { id: 'o2', text: 'The ferry bell rings twice.', kind: 'action' as const },
@@ -459,7 +463,7 @@ describe('the openings panel', () => {
 
   it('is hidden in Simple mode', () => {
     renderManager(false);
-    expect(screen.queryByRole('radio', { name: 'Openings' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Openings' })).not.toBeInTheDocument();
   });
 
   it('reads off and takes no click while the world has no opening, and browsing writes nothing', async () => {
@@ -564,13 +568,6 @@ describe('the openings panel', () => {
     expect(world.overview.openingsEnabled).toBeUndefined();
   });
 
-  it('opens the panel when the find bar navigates to a row', () => {
-    world.overview.openings = ROWS;
-    // The find bar is the only way to reach a panel that is not showing.
-    renderManager(true, { fieldKey: openingFieldKey('o2'), itemId: null });
-    expect(field('Opening 2').value).toBe('The ferry bell rings twice.');
-  });
-
   describe('collapsing', () => {
     const rows = (n: number) => Array.from({ length: n }, (_, i) => ({
       id: `c${i + 1}`, text: `Line ${i + 1}\nSecond line ${i + 1}`, kind: 'action' as const,
@@ -633,10 +630,12 @@ describe('the openings panel', () => {
 
     it('reorders collapsed cards by keyboard drag', async () => {
       world.overview.openings = rows(3);
-      // jsdom lays nothing out; stack the rows 40px apart so the keyboard sensor can find a neighbor.
+      // jsdom lays nothing out; stack the rows 40px apart so the keyboard sensor can find a neighbor. Every
+      // other element, the tab's scroll viewport among them, is a container tall enough to hold them.
       const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
         const row = this.closest<HTMLElement>('[data-testid="opening-row"]');
-        const i = row ? [...row.parentElement!.children].indexOf(row) : 0;
+        if (!row) return DOMRect.fromRect({ x: 0, y: 0, width: 300, height: 600 });
+        const i = [...row.parentElement!.children].indexOf(row);
         return DOMRect.fromRect({ x: 0, y: i * 40, width: 300, height: 36 });
       });
       const user = await browse();

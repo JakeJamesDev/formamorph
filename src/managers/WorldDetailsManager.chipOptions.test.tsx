@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import WorldDetailsManager from './WorldDetailsManager';
-import type { OverviewPanel } from '@/views/overviewPanels';
+import { overviewPanelTabsFor, type OverviewPlace } from '@/views/overviewPanelTabs';
 
 /** The World Editor hands Chip Options the authored world, never the sample world (spec Q22). */
 
@@ -37,10 +37,10 @@ vi.mock('@/contexts/SettingsContext', () => ({
 }));
 vi.mock('@/lib/useDanbooruTags', () => ({ useDanbooruTags: () => [] }));
 
-/** The World Editor holds the open panel in the app. */
+/** The World Editor holds the shown tab and prompt kind in the app. */
 function Harness() {
-  const [panel, setPanel] = useState<OverviewPanel | null>(null);
-  return <WorldDetailsManager panel={panel} onPanelChange={setPanel} />;
+  const [place, setPlace] = useState<OverviewPlace>({ tab: 'details', kind: 'narration' });
+  return <WorldDetailsManager place={place} onPlaceChange={setPlace} tabs={overviewPanelTabsFor(true)} />;
 }
 
 describe('Chip Options in the World Editor', () => {
@@ -51,7 +51,7 @@ describe('Chip Options in the World Editor', () => {
         <Harness />
       </EditorModeContext.Provider>,
     );
-    await user.click(screen.getByRole('radio', { name: 'Narration' }));
+    await user.click(screen.getByRole('tab', { name: 'Custom Prompts' }));
     // The editor mounts its chips after the first paint.
     const chip = await waitFor(() => {
       const found = document.querySelector<HTMLElement>('[data-chip]');
@@ -72,7 +72,7 @@ describe('Chip Options in the World Editor', () => {
         <Harness />
       </EditorModeContext.Provider>,
     );
-    await user.click(screen.getByRole('radio', { name: 'Narration' }));
+    await user.click(screen.getByRole('tab', { name: 'Custom Prompts' }));
     const chip = await waitFor(() => {
       const chips = document.querySelectorAll<HTMLElement>('[data-chip]');
       expect(chips.length).toBe(2);
