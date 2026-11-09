@@ -6,7 +6,7 @@ import { loadModelMorphNames } from "./modelLoader";
 import { useMountedRef } from "./useMountedRef";
 import ModelStorageService from "@/services/ModelStorageService";
 import type { MorphSource } from "./bodyMorphs";
-import type { MediaAsset, VrmPick } from "@/types";
+import type { MediaAsset, VrmPick, WorldVrmStore } from "@/types";
 
 // Morph names cached by a stable key (model id, or the custom VRM's data URL) so re-opening the picker —
 // or editing another stat — never reloads a model.
@@ -62,42 +62,80 @@ export interface MorphOwner {
   vrmPick?: VrmPick;
 }
 
+interface PickedAvatar {
+  name: string;
+  split: MorphSplit;
+}
+
+/** A picked Avatar's display name and sliders; undefined when the pick names no stored model. */
+async function avatarSplit(pick: Exclude<VrmPick, { kind: "default" }>, store: WorldVrmStore | undefined): Promise<PickedAvatar | undefined> {
+  if (pick.kind === "world") {
+    const vrm = store?.[pick.id];
+    return vrm?.file.data ? { name: vrm.name, split: await morphsForCustom(vrm.file.data) } : undefined;
+  }
+  const meta = (await ModelStorageService.getModelMetadata()).find((model) => model.id === pick.id);
+  return meta ? { name: meta.name, split: await morphsForModel(pick.id) } : undefined;
+}
+
 /**
- * Body slider names an owned stat can bind: the shape keys on its owner's model, across every mesh. No model,
- * or a model with no shape keys, lists none. Lazy and cached like `useBodyMorphSources`.
+ * Slider names an owned stat can bind: the shape keys on its owner's 3D model, across every mesh, and the Body
+ * Sliders and Head Features of its Avatar. A device-default Avatar pick names no model and adds nothing.
+ * Lazy and cached like `useBodyMorphSources`.
  */
-export function useOwnerMorphSources(owner: MorphOwner | undefined): { sources: MorphSource[]; loading: boolean; load: () => void } {
+export function useOwnerMorphSources(
+  owner: MorphOwner | undefined,
+): { sources: MorphSource[]; loading: boolean; load: () => void; avatarNamed: boolean } {
   const model = owner?.model?.data ? owner.model : undefined;
+  const pick = owner?.vrmPick && owner.vrmPick.kind !== "default" ? owner.vrmPick : undefined;
+  const pickKind = pick?.kind;
+  const pickId = pick?.id;
+  const store = useGameDataOptional()?.worldOverview?.vrmStore;
   const name = owner?.name ?? "";
   const [morphs, setMorphs] = useState<string[]>([]);
+  const [avatar, setAvatar] = useState<PickedAvatar>();
   const [loading, setLoading] = useState(false);
   const loadedRef = useRef(false);
-  const modelRef = useRef(model);
-  modelRef.current = model;
+  // Each reset starts a new generation; a load from an earlier one is dropped.
+  const generation = useRef(0);
   const mounted = useMountedRef();
+  // A world pick names a model only when the store holds it.
+  const avatarNamed = !!pick && (pick.kind === "library" || !!store?.[pick.id]?.file.data);
 
   const load = useCallback(() => {
-    if (loadedRef.current || !model?.data) return;
+    if (loadedRef.current || (!model?.data && !pick)) return;
     loadedRef.current = true;
+    const mine = generation.current;
     setLoading(true);
-    void cachedLoad(dataKey("owner", model.data), () => ownerSplit(model)).then(({ body: names }) => {
-      // A model swapped mid-load leaves this result to a model that's gone.
-      if (!mounted.current || modelRef.current !== model) return;
-      setMorphs(names);
+    void Promise.all([
+      model?.data ? cachedLoad(dataKey("owner", model.data), () => ownerSplit(model)) : undefined,
+      pick ? avatarSplit(pick, store) : undefined,
+    ]).catch(() => [undefined, undefined] as const).then(([own, worn]) => {
+      if (!mounted.current || generation.current !== mine) return;
+      setMorphs(own?.body ?? []);
+      setAvatar(worn);
       setLoading(false);
     });
-  }, [model, mounted]);
+    // The pick's kind and id name its Avatar; the object around them may be rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, pickKind, pickId, store, mounted]);
 
-  // A swapped model invalidates the loaded set; allow a reload on the next picker open.
+  // A swapped model or Avatar invalidates the loaded set; allow a reload on the next picker open.
   useEffect(() => {
+    generation.current++;
     loadedRef.current = false;
     setMorphs([]);
+    setAvatar(undefined);
     setLoading(false);
-  }, [model]);
+  }, [model, pickKind, pickId, store]);
 
   // The heading follows the owner's current name, so a rename after the load shows.
-  const sources = useMemo(() => (morphs.length ? [{ heading: name, morphs }] : []), [morphs, name]);
-  return { sources, loading, load };
+  const sources = useMemo(() => {
+    const built: MorphSource[] = [];
+    if (morphs.length) built.push({ heading: name, morphs });
+    if (avatar) pushSource(built, avatar.name, avatar.split);
+    return built;
+  }, [morphs, avatar, name]);
+  return { sources, loading, load, avatarNamed };
 }
 
 /**

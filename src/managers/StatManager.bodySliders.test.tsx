@@ -36,13 +36,15 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 const loads = vi.hoisted(() => ({
   player: { body: ['Belly', 'Fat'], head: ['EarShape'] } as { body: string[]; head: string[] },
   owner: new Map<string, string[]>(),
+  /** A VRM's Body Sliders and Head Features by url; the player split otherwise. */
+  splits: new Map<string, { body: string[]; head: string[] }>(),
   catalogs: new Map<string, string[]>(),
   /** Each VRM's color channels and their own colors, by url. */
   looks: new Map<string, { channels: string[]; colors: Record<string, string> }>(),
   ownerCalls: 0,
 }));
 vi.mock('@/lib/vrmMorphLoader', () => ({
-  loadMorphSplit: async () => loads.player,
+  loadMorphSplit: async (url: string) => loads.splits.get(url) ?? loads.player,
   loadMorphCatalog: async (url: string) => (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
   loadVrmLook: async (url: string) => ({
     catalog: (loads.catalogs.get(url) ?? []).map((name) => ({ name, group: 'body' })),
@@ -98,6 +100,7 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:model');
   URL.revokeObjectURL = vi.fn();
   loads.owner.clear();
+  loads.splits.clear();
   loads.catalogs.clear();
   loads.looks.clear();
   loads.ownerCalls = 0;
@@ -145,7 +148,58 @@ describe('the Body Sliders picker', () => {
     renderManager(entityStore(undefined));
     expect(await offered()).toEqual([]);
     expect(loads.ownerCalls).toBe(0);
-    expect(screen.getByText('This entity has no 3D model. Add one to bind its body sliders.')).toBeInTheDocument();
+    expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders.")).toBeInTheDocument();
+  });
+
+  describe("with the owner's Avatar", () => {
+    // Each test names its own data: the loaders cache by it for the life of the module.
+    const withAvatar = (model?: Partial<MediaAsset>, data = 'data:elf-solo'): StatEditorStore => {
+      worldParts.overview = { vrmStore: { elf: { name: 'Elf', file: { data } } } };
+      loads.splits.set(data, { body: ['Belly'], head: ['EarShape'] });
+      return { ...entityStore(model), morphOwner: { name: 'Golem', model, vrmPick: { kind: 'world', id: 'elf' } } };
+    };
+
+    it('lists its Body Sliders and Head Features on an entity with no 3D model', async () => {
+      renderManager(withAvatar());
+      expect(await offeredByGroup()).toEqual({ 'Elf · Body Sliders': ['Belly'], 'Elf · Head Features': ['EarShape'] });
+    });
+
+    it("lists both the 3D model's and the Avatar's groups", async () => {
+      loads.owner.set('data:golem-avatar', ['Cracks']);
+      renderManager(withAvatar({ name: 'golem.glb', data: 'data:golem-avatar' }, 'data:elf-both'));
+      expect(await offeredByGroup()).toEqual({
+        'Golem · Body Sliders': ['Cracks'], 'Elf · Body Sliders': ['Belly'], 'Elf · Head Features': ['EarShape'],
+      });
+    });
+
+    it('adds nothing for a device-default pick, and says so', async () => {
+      renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'default' } } });
+      expect(await offered()).toEqual([]);
+      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders.")).toBeInTheDocument();
+    });
+
+    it('lists a library Avatar by its library name', async () => {
+      // The mocked library holds one model, m1 "Library Model".
+      renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'library', id: 'm1' } } });
+      expect(await offeredByGroup()).toEqual({
+        'Library Model · Body Sliders': ['Belly', 'Fat'], 'Library Model · Head Features': ['EarShape'],
+      });
+    });
+
+    it('treats a world pick the store lacks as no Avatar', async () => {
+      worldParts.overview = { vrmStore: {} };
+      renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'world', id: 'gone' } } });
+      expect(await offered()).toEqual([]);
+      expect(screen.getByText("Pick an Avatar or add a 3D model to bind this entity's sliders.")).toBeInTheDocument();
+    });
+
+    it('says the Avatar has no sliders when it has none', async () => {
+      worldParts.overview = { vrmStore: { elf: { name: 'Elf', file: { data: 'data:elf-bare' } } } };
+      loads.splits.set('data:elf-bare', { body: [], head: [] });
+      renderManager({ ...entityStore(), morphOwner: { name: 'Golem', vrmPick: { kind: 'world', id: 'elf' } } });
+      expect(await offered()).toEqual([]);
+      expect(screen.getByText("This entity's Avatar has no sliders")).toBeInTheDocument();
+    });
   });
 
   it('offers nothing for an entity model with no shape keys', async () => {

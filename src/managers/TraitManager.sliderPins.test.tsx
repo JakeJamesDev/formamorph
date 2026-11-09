@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Trait, TraitGroup } from '@/types';
+import type { Entity, Trait, TraitGroup } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import TraitManager from './TraitManager';
 
@@ -50,15 +50,15 @@ vi.mock('@/services/ModelStorageService', () => ({
   },
 }));
 
-const Harness = ({ id }: { id: string }) => {
+const Harness = ({ id, owner }: { id: string; owner?: Entity }) => {
   const [, setTick] = useState(0);
   world.rerender = () => setTick((n) => n + 1);
-  return <TraitManager trait={world.traits.find((t) => t.id === id)!} onOpenTrait={() => {}} tab="stats" onTabChange={() => {}} />;
+  return <TraitManager trait={world.traits.find((t) => t.id === id)!} owner={owner} onOpenTrait={() => {}} tab="stats" onTabChange={() => {}} />;
 };
 
-const renderTrait = (id = 'elf') => render(
+const renderTrait = (id = 'elf', owner?: Entity) => render(
   <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-    <Harness id={id} />
+    <Harness id={id} owner={owner} />
   </EditorModeContext.Provider>,
 );
 
@@ -98,6 +98,20 @@ describe("the trait's Body Sliders", () => {
     renderTrait();
     expect(await within(rowOf('Ear Shape')).findByText('Not on this model')).toBeInTheDocument();
     expect(within(rowOf('Thickness')).queryByText('Not on this model')).toBeNull();
+  });
+});
+
+describe("an owned trait's Body Sliders", () => {
+  it("lists the owner's Avatar groups when the entity has no 3D model", async () => {
+    world.overview = { vrmStore: { aki: { name: 'Aki', file: { data: 'data:aki' } } } };
+    const owner = { id: 'ash', name: 'Ash', locations: [], vrmPick: { kind: 'world', id: 'aki' } } as unknown as Entity;
+    world.entities = [owner];
+    renderTrait('elf', owner);
+    const field = screen.getByText('Body Sliders').parentElement!.parentElement!;
+    await userEvent.click(within(field).getByRole('combobox'));
+    expect(await screen.findByText('Aki · Body Sliders')).toBeInTheDocument();
+    expect(screen.getByText('Aki · Head Features')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Ear Shape, not selected' })).toBeInTheDocument();
   });
 });
 

@@ -4,12 +4,16 @@ import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "./us
 import { useKnownMorphKeys } from "./useKnownMorphKeys";
 import type { ColorChannel } from "@/types";
 
-/** The picker's empty text when the owner's model offers nothing to bind; undefined otherwise. */
-const ownerEmptyText = (owner: MorphOwner | undefined, sources: readonly MorphSource[]): string | undefined => {
+/** The picker's empty text when the owner's models offer nothing to bind; undefined otherwise. */
+const ownerEmptyText = (
+  owner: MorphOwner | undefined, sources: readonly MorphSource[], hasAvatar: boolean,
+): string | undefined => {
   if (!owner || sources.length) return undefined;
-  return owner.model?.data
-    ? "This entity's 3D model has no body sliders"
-    : "This entity has no 3D model. Add one to bind its body sliders.";
+  const hasModel = !!owner.model?.data;
+  if (hasModel && hasAvatar) return "Neither this entity's 3D model nor its Avatar has sliders";
+  if (hasModel) return "This entity's 3D model has no body sliders";
+  if (hasAvatar) return "This entity's Avatar has no sliders";
+  return "Pick an Avatar or add a 3D model to bind this entity's sliders.";
 };
 
 /** A new color row's start when the known model has no color of its own for the channel. */
@@ -34,5 +38,5 @@ export function useSliderPicker(owner: MorphOwner | undefined, active: boolean) 
   );
   const lacksChannel = (channel: ColorChannel) => !!known && !known.channels.has(channel);
   const seedColor = (channel: ColorChannel) => known?.colors[channel] ?? FALLBACK_COLOR;
-  return { groups, loading, load, emptyText: ownerEmptyText(owner, sources), keyOf, lacksChannel, seedColor };
+  return { groups, loading, load, emptyText: ownerEmptyText(owner, sources, ownerMorphs.avatarNamed), keyOf, lacksChannel, seedColor };
 }

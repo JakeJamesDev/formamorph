@@ -1,6 +1,6 @@
 # 07: Owner Avatar in the Picker
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -18,7 +18,16 @@ An owned stat's or trait's slider picker lists the sliders of every model the lo
 
 ## Acceptance criteria
 
-- [ ] An entity with only an Avatar lists that Avatar's Body Sliders and Head Features in an owned stat's picker and an owned trait's picker.
-- [ ] An entity with both lists both models' groups.
-- [ ] An entity with only a device-default Avatar and no 3D model shows the empty text.
-- [ ] Mutation: drop the Avatar source, and the Avatar-only test fails.
+- [x] An entity with only an Avatar lists that Avatar's Body Sliders and Head Features in an owned stat's picker and an owned trait's picker. (StatManager.bodySliders and TraitManager.sliderPins tests)
+- [x] An entity with both lists both models' groups. (stat picker test; trait shares the hook)
+- [x] An entity with only a device-default Avatar and no 3D model shows the empty text. (stat picker test)
+- [x] Mutation: drop the Avatar source, and the Avatar-only test fails. (ran it: 3 tests red)
+
+## Landed
+
+**Not verified**
+- None. The empty text in the picker was not checked in a rendered editor, only in jsdom.
+
+**For you**
+- Open an entity with only an Avatar, add a stat, open its Body Sliders: the Avatar's two groups show.
+- Check the new empty text for an entity with no Avatar and no 3D model.
