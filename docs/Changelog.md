@@ -36,13 +36,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **In the World Editor, stats can now shift an Avatar's skin, eye or hair color, and traits can set one.** A stat blends toward its target as it rises, from the player's own color. Face and body skin each shift from their own tone.
     - **Avatar Customization now locks the sliders and colors that a trait you checked sets.** A note names the trait. Your own values come back when you uncheck it.
   - **Openings Tab:**
+    - **Openings have their own World Editor tab, after Overview.** In Advanced mode, it lists This World and each location and entity with openings, nested as on their own tabs. Select one to edit its openings, or search their text.
     - **The Openings tab's + gives a location or entity its first opening.** Pick Location or Entity, then find it in its folders or inside other locations. It's listed and selected with one blank opening.
     - **In the World Editor, Find and undo now open the Openings tab on the opening's owner.** The Overview tab's right column keeps Details and Custom Prompts. Help's Take Me There for openings lands on the Openings tab too.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
-  - **The World Editor's Overview tab puts Custom Prompts and Openings on tabs of their own.** In Advanced mode, the right column has Details, Custom Prompts and Openings tabs. Custom Prompts lists Narration, Choices and Stats with a checkbox each and shows which are Custom. Openings has its own checkbox.
-  - **Openings have their own World Editor tab, after Overview.** In Advanced mode, it lists This World and each location and entity with openings, nested as on their own tabs. Select one to edit its openings, or search their text.
+  - **The World Editor's Overview tab puts Custom Prompts on a tab of its own.** In Advanced mode, the right column has Details and Custom Prompts tabs. Custom Prompts lists Narration, Choices and Stats with a checkbox each and shows which are Custom.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
 
