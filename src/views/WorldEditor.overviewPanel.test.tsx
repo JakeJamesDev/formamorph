@@ -9,8 +9,8 @@ import type { World } from '@/types';
  * What the World Editor's Overview tab puts on screen, driven through the real editor.
  *
  * Overview is two forms rather than a list and a panel, so each column is read from its own pane: the
- * identity fields on the left, the writing on the right. The right column's Details, Custom Prompts and
- * Openings tabs each hold their own fields, so a field that moves between tabs fails as a changed label list.
+ * identity fields on the left, the writing on the right. The right column's Details and Custom Prompts tabs
+ * each hold their own fields, so a field that moves between tabs fails as a changed label list.
  * The Find cases prove a hit opens the tab that holds it.
  */
 
@@ -43,7 +43,7 @@ const WORLD: World = benchEditorWorld({
   },
 } as unknown as Partial<World>);
 
-/** The same world with an opening of its own, which is what lets its openings be switched. */
+/** The same world with an opening of its own. */
 const WITH_OPENING: World = benchEditorWorld({
   worldOverview: {
     ...WORLD.worldOverview,
@@ -130,23 +130,20 @@ describe('the World Editor Overview columns', () => {
     ]);
   });
 
-  it('splits the right column into Details, Custom Prompts and Openings, opening on Details', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
+  it('splits the right column into Details and Custom Prompts, opening on Details', async () => {
+    renderWorldEditorBench(WITH_OPENING, 'advanced');
     await screen.findByLabelText('World Name');
-    expect(tabNames(OVERVIEW)).toEqual(['Details', 'Custom Prompts', 'Openings']);
+    expect(tabNames(OVERVIEW)).toEqual(['Details', 'Custom Prompts']);
     expect(shownTab(OVERVIEW)).toBe('Details');
     expect(rightLabels()).toEqual(['Player-Facing Description', 'Readme', 'AI-Facing Description']);
   });
 
-  it('keeps the Details fields off the Custom Prompts and Openings tabs', async () => {
+  it('keeps the Details fields off the Custom Prompts tab', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openTab(OVERVIEW, 'Custom Prompts');
     expect(rightLabels()).toEqual([]);
     expect(screen.getByLabelText('World narration prompt')).toBeInTheDocument();
-    openTab(OVERVIEW, 'Openings');
-    expect(rightLabels()).toEqual([]);
-    expect(screen.queryByLabelText('World narration prompt')).toBeNull();
   });
 
   it('drops the Avatars and the persona rules from the left column in Simple mode, keeping the order', async () => {
@@ -219,30 +216,6 @@ describe('the Custom Prompts tab', () => {
   });
 });
 
-describe('the Openings tab', () => {
-  it('disables its switch while the world has no opening', async () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    openTab(OVERVIEW, 'Openings');
-    expect(screen.getByRole('checkbox', { name: 'Use These Openings' })).toBeDisabled();
-  });
-
-  it('switches the world openings off and on once one exists', async () => {
-    const { ctx } = renderWorldEditorBench(WITH_OPENING, 'advanced');
-    await screen.findByLabelText('World Name');
-    openTab(OVERVIEW, 'Openings');
-    const use = screen.getByRole('checkbox', { name: 'Use These Openings' });
-    expect(use).toBeEnabled();
-    expect(use).toHaveAttribute('data-state', 'checked');
-
-    await act(async () => { fireEvent.click(use); });
-    expect(ctx().worldOverview.openingsEnabled).toBe(false);
-    expect(ctx().worldOverview.openings).toHaveLength(1);
-    await act(async () => { fireEvent.click(screen.getByRole('checkbox', { name: 'Use These Openings' })); });
-    expect(ctx().worldOverview.openingsEnabled).not.toBe(false);
-  });
-});
-
 describe('the remembered Overview tab', () => {
   it('keeps the right-column tab and the prompt kind across a visit to another editor tab', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
@@ -260,14 +233,14 @@ describe('the remembered Overview tab', () => {
   it('shows Details in Simple mode and returns to the kept tab in Advanced', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
-    openTab(OVERVIEW, 'Openings');
+    openTab(OVERVIEW, 'Custom Prompts');
 
     pickEditorMode('Simple');
     await waitFor(() => expect(screen.queryByRole('tablist', { name: OVERVIEW })).toBeNull());
     expect(rightLabels()).toEqual(['Player-Facing Description', 'Readme', 'AI-Facing Description']);
 
     pickEditorMode('Advanced');
-    await waitFor(() => expect(shownTab(OVERVIEW)).toBe('Openings'));
+    await waitFor(() => expect(shownTab(OVERVIEW)).toBe('Custom Prompts'));
   });
 });
 
@@ -312,16 +285,5 @@ describe('a Find hit on the Overview tab', () => {
     openEditorTab(/Overview/);
     await screen.findByLabelText('World Name');
     expect(shownTab(OVERVIEW)).toBe('Details');
-  });
-
-  it('opens the Openings tab for a hit in a world opening', async () => {
-    renderWorldEditorBench(WITH_OPENING, 'advanced');
-    await screen.findByLabelText('World Name');
-
-    await openFind();
-    await findFirst('ferry');
-
-    await waitFor(() => expect(shownTab(OVERVIEW)).toBe('Openings'));
-    expect((await ringed()).textContent).toContain('ferry');
   });
 });

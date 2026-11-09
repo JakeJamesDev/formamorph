@@ -1,4 +1,5 @@
 import { openingFieldKey, setOpeningText } from '@/lib/openings';
+import { entityOwnerKey, locationOwnerKey, WORLD_OWNER_KEY } from '@/lib/openingsTab';
 import { decodePlaceholderToken, describePlaceholders, parsePlaceholderText } from '@/lib/placeholders';
 import { builtinLabel } from '@/lib/builtinPlaceholders';
 import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
@@ -16,7 +17,7 @@ import { homeKey, worldScriptEntries, type ScriptEdit } from '@/lib/worldScripts
 import { draftProblems } from '@/lib/tools/toolDraft';
 import { toolNameProblemText } from '@/lib/tools/toolValidation';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Placeholder, PlaceholderGroup, Script, Stat, StatGroup, Tool, Trait,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Item, Opening, Placeholder, PlaceholderGroup, Script, Stat, StatGroup, Tool, Trait,
   TraitGroup, WorldOverview,
 } from '@/types';
 
@@ -236,11 +237,6 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     // which one — the breadcrumb is all the author has to go on once both hold the same phrase.
     add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Introduction Readme', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
     add({ ...ovWhere, chipCapable: true }, 'readme', 'Gameplay Readme', ov.readme, (r, v) => ({ ...r, readme: v }));
-    // Every row, switched on or not; the default opening is not world text and is never a target.
-    (ov.openings ?? []).forEach((opening, i) => {
-      add({ ...ovWhere, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
-        (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));
-    });
     // One target per custom prompt the author has actually stored — a tab still tracking the preset holds
     // no world text to find, and replacing into it would silently freeze a prompt nobody wrote.
     WORLD_PROMPT_KINDS.forEach((kind) => {
@@ -249,6 +245,24 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
         (r, v) => ({ ...r, promptOverrides: setWorldPromptOverride(r.promptOverrides, kind, { text: v }) }));
     });
   }
+
+  // ── Openings ──────────────────────────────────────────────────────────────
+  // Each owner's openings sit on the Openings tab under its row: the world, then locations, then entities.
+  // The default opening is not world text and is never a target.
+  function addOpenings<T extends SearchRecord & { openings?: Opening[] }>(
+    itemKey: string, record: T, commit: (record: T) => void, itemId: string, itemLabel: string,
+  ) {
+    const { add } = bind(itemKey, record, commit);
+    (record.openings ?? []).forEach((opening, i) => {
+      add({ tab: 'openings', itemId, itemLabel, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
+        (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));
+    });
+  }
+  if (ov) addOpenings('overview', ov, src.updateWorldOverview, WORLD_OWNER_KEY, 'This World');
+  (src.locations ?? []).forEach((location) => addOpenings(
+    `location:${location.id}`, location, src.updateLocation, locationOwnerKey(location.id), labeled(location.name, 'Location')));
+  (src.entities ?? []).forEach((entity) => addOpenings(
+    `entity:${entity.id}`, entity, src.updateEntity, entityOwnerKey(entity.id), labeled(entity.name, 'Entity')));
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   (src.stats ?? []).forEach((stat) => {
@@ -297,10 +311,6 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       add({ ...where, chipCapable: true }, `relationships[${i}].label`, `Relationship to ${relationshipTargetName(targetId)}`, label,
         (r, v) => ({ ...r, relationships: (r.relationships ?? []).map((row, j) => (j === i ? { ...row, label: v } : row)) }));
     });
-    (entity.openings ?? []).forEach((opening, i) => {
-      add({ ...where, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
-        (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));
-    });
   });
   (src.entityGroups ?? []).forEach((group) => {
     const where = { tab: 'entities', itemId: group.id, itemLabel: labeled(group.name, 'Group') };
@@ -338,10 +348,6 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', location.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
     add({ ...where, chipCapable: true }, 'aiSummary', 'AI-Facing Summary', location.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', location.imageTags, (r, v) => ({ ...r, imageTags: v }));
-    (location.openings ?? []).forEach((opening, i) => {
-      add({ ...where, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
-        (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));
-    });
   });
 
   // A leg is found on the panel of the location it leaves. A linked pair is one target on its first leg,

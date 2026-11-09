@@ -6,7 +6,7 @@ import { scriptEntryKey } from '@/lib/worldScripts';
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /** The World Editor tabs a Step can reveal. */
-export type RevealTab = FindingSection;
+export type RevealTab = FindingSection | 'openings';
 
 /** Where the editor goes after an undo or redo. */
 export interface RevealTarget {
@@ -100,8 +100,8 @@ export interface RevealPlace {
   holds(tab: RevealTab, id: string): boolean;
 }
 
-// The Media tab owns no slice: its edits reveal it through their Origin.
-const REVEAL_TABS = new Set<string>([...Object.values(SLICE_TABS), 'media']);
+// The Media and Openings tabs own no slice: their edits reveal them through their Origin.
+const REVEAL_TABS = new Set<string>([...Object.values(SLICE_TABS), 'media', 'openings']);
 const isRevealTab = (tab: string): tab is RevealTab => REVEAL_TABS.has(tab);
 
 /** The Origin's sub-view and field, which belong to whichever target sits on the Origin's tab. */

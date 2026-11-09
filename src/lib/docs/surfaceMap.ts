@@ -184,7 +184,6 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditor.overview': { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   'worldEditorOverview.details': { page: 'World-Editor-Overview', anchor: 'the-right-column-details' },
   'worldEditorOverview.prompts': { page: 'World-Editor-Overview', anchor: 'the-right-column-custom-prompts' },
-  'worldEditorOverview.openings': { page: 'World-Editor-Openings', anchor: 'how-to-add-an-others-opening' },
   'worldEditor.openings': { page: 'World-Editor-Openings', anchor: '-world-editor-openings' },
   'worldEditor.media': { page: 'World-Editor-Media', anchor: '-world-editor-media' },
   'worldEditor.stats': { page: 'World-Editor-Stats', anchor: '-world-editor-stats' },

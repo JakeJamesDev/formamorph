@@ -206,9 +206,9 @@ export const DEV_MODAL_TABS = {
   // `fixture=entityPresence` loads a cast for the Presence tab's Entities Here rows; select The White Room.
   worldEditorLocation: ['details', 'presence', 'items', 'media', 'pins', 'openings'],
   // The World Editor's Overview right column does the same over the Overview tab
-  // (`#dev?modal=worldEditor&tab=overview&subtab=prompts`). `prompts` and `openings` are Advanced only, and
+  // (`#dev?modal=worldEditor&tab=overview&subtab=prompts`). `prompts` is Advanced only, and
   // Simple mode leaves one tab and no strip.
-  worldEditorOverview: ['details', 'prompts', 'openings'],
+  worldEditorOverview: ['details', 'prompts'],
   // The World Editor's stat panel does the same over the Stats tab
   // (`#dev?modal=worldEditor&tab=stats&subtab=code`). `descriptors` and `code` are Advanced only, and
   // Simple mode leaves one tab and no strip, so land those on an Advanced editor.

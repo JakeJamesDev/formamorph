@@ -114,20 +114,6 @@ describe('an undo of an edit made on a panel sub-tab', () => {
     expect(isShown(panelTab('Location Fields', 'Presence'))).toBe(true);
   });
 
-  it('returns to the Overview Openings tab for an opening added there', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    openPanelTab('Overview Fields', 'Openings');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Opening to Odd Wick' }));
-    expect(ctx().entities[0].openings).toHaveLength(2);
-    openPanelTab('Overview Fields', 'Details');
-    openEditorTab(/Stats/);
-
-    await undo();
-    expect(shownEditorTab()).toMatch(/Overview/);
-    expect(isShown(panelTab('Overview Fields', 'Openings'))).toBe(true);
-  });
-
   it('returns to the Overview Details tab for an edit made there', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');

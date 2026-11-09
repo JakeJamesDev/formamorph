@@ -942,7 +942,7 @@ Each panel groups its fields by what kind of thing they are:
 | Stat | Details · Descriptors · Code | Descriptors, Code |
 | Trait | Details · Stats · Pins | Pins |
 | Dictionary entry | Details · Matching | Matching |
-| Overview (right column) | Details · Custom Prompts · Openings | Custom Prompts, Openings |
+| Overview (right column) | Details · Custom Prompts | Custom Prompts |
 
 The library entity editor lifts Traits and Placeholders onto its own top strip, so its Entity sub-strip shows Profile, Descriptions, and Openings.
 

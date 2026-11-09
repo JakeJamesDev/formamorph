@@ -1,6 +1,6 @@
 # 03: Retire the Overview Openings Tab
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -20,8 +20,19 @@ Openings get one home in the tab strip (Q1, user story 26).
 
 ## Acceptance criteria
 
-- [ ] Overview shows Details and Custom Prompts only (editor-bench test)
-- [ ] Find on an opening match lands on the Openings tab with that owner selected, for This World, a location and an entity (editor-bench test, mutation-tested)
-- [ ] Undo of an opening edit, from another tab, opens the Openings tab on that owner (editor-bench test, mutation-tested)
-- [ ] The help window's openings route opens the Openings tab (route-table test)
-- [ ] Docs and help topics updated; a changelog fragment is written
+- [x] Overview shows Details and Custom Prompts only (editor-bench test): `WorldEditor.overviewPanel.test.tsx` "splits the right column into Details and Custom Prompts".
+- [x] Find on an opening match lands on the Openings tab with that owner selected, for This World, a location and an entity (editor-bench test, mutation-tested): `WorldEditor.openingsTabRoutes.test.tsx` "a Find hit in an opening"; routing the targets back to `overview` turns all three red.
+- [x] Undo of an opening edit, from another tab, opens the Openings tab on that owner (editor-bench test, mutation-tested): same file, undo and redo for all three owners; dropping `openings` from the reveal tabs turns all three red, and dropping the This World place fallback turns the This World case red. An edit on an entity's own Openings tab still returns there (Q22).
+- [x] The help window's openings route opens the Openings tab (route-table test): `surfaceRoute.test.ts` "opens a world's openings on the World Editor's Openings tab, not on Overview".
+- [x] Docs and help topics updated; a changelog fragment is written: Overview and Openings wiki pages, Design System strip table, both help baseline openings cases; `docs-internal/changelog.d/openings-tab-03.md`.
+
+## Landed
+
+**Not verified**
+
+- Nothing unticked. No browser frame: the change removes a tab and reroutes, and the bench reads cover it.
+
+**For you**
+
+- The unreleased changelog entry "The World Editor's Overview tab puts Custom Prompts and Openings on tabs of their own." still names the Overview Openings tab and its checkbox. A fragment can't edit it; it needs rewording on main.
+- Between this landing and ticket 04, a world with a stored off flag has no switch to turn its openings back on (accepted, Q23).

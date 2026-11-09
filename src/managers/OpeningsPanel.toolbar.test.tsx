@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
 import type { World } from '@/types';
-import { renderOverviewTab } from '@/test/overviewBench';
 import { renderEntitiesTab } from '@/test/entitiesTabBench';
 import { panelWorld, entityFieldsTab } from '@/test/panelBench';
 
-/** The Openings panels' toolbar: the world panel on the Overview tab, and the entity's Openings tab. */
+/** The toolbar on an entity's Openings tab. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -48,68 +47,12 @@ const search = (placeholder: string, term: string) =>
 
 const cards = () => screen.queryAllByTestId('opening-row').map((row) => within(row).getAllByText(/^Opening \d+$/)[0].textContent);
 
-const openWorldOpenings = () =>
-  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Overview Fields' })).getByRole('tab', { name: 'Openings' }));
-
 const openEntityOpenings = () => {
   fireEvent.click(screen.getByText('Odd Wick'));
   fireEvent.mouseDown(entityFieldsTab('Openings'));
 };
 
 beforeEach(() => { localStorage.clear(); });
-
-describe('the world Openings panel toolbar', () => {
-  it('filters every group by card text and hides a group with no match', async () => {
-    renderOverviewTab(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    openWorldOpenings();
-    expect(cards()).toEqual(['Opening 1', 'Opening 2', 'Opening 1', 'Opening 2']);
-
-    search('Search openings', 'ferry');
-    expect(cards()).toEqual(['Opening 2']);
-    expect(screen.getByLabelText('Draw weight for Opening 2')).toHaveValue(3);
-    expect(screen.queryByRole('region', { name: 'Odd Wick' })).toBeNull();
-
-    search('Search openings', 'gull');
-    expect(cards()).toEqual(['Opening 2']);
-    expect(screen.queryByRole('region', { name: 'This World' })).toBeNull();
-    expect(screen.getByRole('region', { name: 'Odd Wick' })).toBeInTheDocument();
-  });
-
-  it('shows a no-match line when no card matches', async () => {
-    renderOverviewTab(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    openWorldOpenings();
-
-    search('Search openings', 'lantern');
-    expect(cards()).toEqual([]);
-    expect(screen.getByText('No openings match “lantern”.')).toBeInTheDocument();
-  });
-
-  it('adds a world opening with the +, clears the box, and keeps the chances', async () => {
-    const { ctx } = renderOverviewTab(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    openWorldOpenings();
-
-    search('Search openings', 'ferry');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Opening' }));
-    expect(ctx().worldOverview.openings?.map((o) => o.id)).toEqual(['w1', 'w2', expect.any(String)]);
-    expect(ctx().worldOverview.openings?.[2]).toMatchObject({ text: '', kind: 'action' });
-    expect(ctx().worldOverview.openingWeights).toEqual({ w2: 3 });
-    expect(screen.getByPlaceholderText('Search openings')).toHaveValue('');
-    expect(ctx().entities[0].openings).toHaveLength(2);
-  });
-
-  it('keeps each entity group’s own add button', async () => {
-    const { ctx } = renderOverviewTab(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    openWorldOpenings();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Add Opening to Odd Wick' }));
-    expect(ctx().entities[0].openings).toHaveLength(3);
-    expect(ctx().worldOverview.openings).toHaveLength(2);
-  });
-});
 
 describe('the entity Openings tab toolbar', () => {
   it('filters the entity’s cards and shows a no-match line', () => {

@@ -68,7 +68,6 @@ import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import type { FindingSection } from '@/lib/testBench/rules';
 import { CodeCardNavigationContext, type CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeUse } from '@/lib/codeUses';
 import { clearCodeUseReveal, requestCodeUseReveal } from '@/lib/codeUseReveal';
@@ -131,6 +130,7 @@ import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
+import { resolveOwnerKey, WORLD_OWNER_KEY } from '@/lib/openingsTab';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
 import type { Entity, Dictionary, World, FocusFieldHint } from '@/types';
@@ -610,7 +610,7 @@ const WorldEditorInner = ({
   // the same way a search hit does. A filter left in the list box would hide the very row being navigated to.
   // `entityTab` is for a caller that means one of the entity panel's own tabs — the Placeholders tab's owner
   // node opens the entity where its placeholders are. A finding names none and keeps the author's tab.
-  const navigateToBenchItem = useCallback((section: FindingSection, itemId: string, entityTab?: EntityPanelTab) => {
+  const navigateToBenchItem = useCallback((section: RevealTab, itemId: string, entityTab?: EntityPanelTab) => {
     setActiveTab(section);
     clearSearch();
     select(section, itemId);
@@ -1155,6 +1155,12 @@ const WorldEditorInner = ({
     entities: entitiesEditor.adapter, items: itemsAdapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter,
     scripts: scriptsAdapter,
     tools: toolsAdapter, media: { holds: (id) => mediaHolds(getWorldData(), id) },
+    openings: {
+      holds: (id) => {
+        const { locations: held, entities: owners } = getWorldData();
+        return !!resolveOwnerKey(id, held, owners);
+      },
+    },
   };
   listHoldsRef.current = (tab, id) => !!adaptersByTab[tab]?.holds(id);
   // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.
@@ -1169,7 +1175,8 @@ const WorldEditorInner = ({
     placeholders: shownPlaceholderTab,
     dictionary: bookOpen ? shownBookTab : shownEntryTab,
   };
-  const placeId = selections[activeTab] ?? undefined;
+  // The Openings tab holds This World while nothing is selected on desktop.
+  const placeId = selections[activeTab] ?? (activeTab === 'openings' && !isMobile ? WORLD_OWNER_KEY : undefined);
   const placeSub = placeSubTab[activeTab];
   const placeView = activeTab === 'locations' ? locationView : undefined;
   // Passive, so a write's layout effect still reads the place from before a tab or focus switch in its commit.
@@ -1238,8 +1245,6 @@ const WorldEditorInner = ({
           place={shownOverviewPlace}
           onPlaceChange={setOverviewPlace}
           tabs={overviewTabs}
-          onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
-          onOpenLocation={(id) => { navigateToBenchItem('locations', id); setLocationTab('openings'); }}
         />
       )}
       {listEditorParts?.detail}

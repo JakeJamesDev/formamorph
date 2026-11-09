@@ -3,13 +3,11 @@
 import { ScrollText } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
-import { isOpeningFieldKey } from '@/lib/openings';
 import { WORLD_PROMPT_KINDS, worldPromptFieldKey, type WorldPromptKind } from '@/lib/worldPrompt';
 
 export const OVERVIEW_PANEL_TABS = [
   { value: 'details', label: 'Details', icon: ELEMENT_ICONS.world },
   { value: 'prompts', label: 'Custom Prompts', icon: ScrollText, advancedOnly: true },
-  { value: 'openings', label: 'Openings', icon: ELEMENT_ICONS.opening, advancedOnly: true },
 ] as const;
 
 export type OverviewPanelTab = (typeof OVERVIEW_PANEL_TABS)[number]['value'];
@@ -34,7 +32,7 @@ export const overviewOriginValue = ({ tab, kind }: OverviewPlace): string => (ta
 export function overviewPlaceFor(value: string, kind: WorldPromptKind): OverviewPlace {
   const named = WORLD_PROMPT_KINDS.find((k) => k === value);
   if (named) return { tab: 'prompts', kind: named };
-  return { tab: value === 'openings' ? 'openings' : 'details', kind };
+  return { tab: 'details', kind };
 }
 
 /** The find-bar keys of the Details fields. */
@@ -42,7 +40,6 @@ const DETAILS_FIELDS: ReadonlySet<string> = new Set(['description', 'systemPromp
 
 /** The place holding a find-bar field, or null for a key the right column doesn't hold. */
 export function overviewPlaceForField(fieldKey: string, kind: WorldPromptKind): OverviewPlace | null {
-  if (isOpeningFieldKey(fieldKey)) return { tab: 'openings', kind };
   const prompt = WORLD_PROMPT_KINDS.find((k) => worldPromptFieldKey(k) === fieldKey);
   if (prompt) return { tab: 'prompts', kind: prompt };
   return DETAILS_FIELDS.has(fieldKey) ? { tab: 'details', kind } : null;

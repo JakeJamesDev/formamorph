@@ -19,7 +19,7 @@ After an Opening Narration, the input box is empty. A written page one works lik
 
 ## How to Add an Others Opening
 <!-- keywords: first message, greeting, intro, start, starting scene, scene, opener, prologue, kickoff, beginning, initial prompt, hook, first turn -->
-<!-- route: worldEditorOverview.openings -->
+<!-- route: worldEditor.openings -->
 
 An Others opening is the normal kind. Every opening starts as one.
 

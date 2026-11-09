@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Ban, ChevronDown, GripVertical, MapPinOff, Plus, Trash2 } from 'lucide-react';
+import { Ban, ChevronDown, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { CollapseAllButton } from '@/components/CollapseAllButton';
 import { useCardCollapse } from '@/lib/cardCollapse';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
@@ -11,29 +11,21 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { SelectOptions } from '@/components/SelectOptions';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { ListSearchToolbar } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
-import { useGameData } from '@/contexts/GameDataContext';
 import {
-  addOpening, DEFAULT_OPENING, hasAuthoredOpenings, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
+  addOpening, DEFAULT_OPENING, moveOpening, ownerOpeningRows, removeOpening,
   setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, canOwnSelfOpenings, othersNeverDraw, type EditorOpeningRow, type OpeningOwner,
   type OpeningsEditorView,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
-import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
 import type { Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
-
-/** The Starting Location filter's value for every start at once. */
-const ALL_LOCATIONS = 'all-locations';
 
 const OR = new Intl.ListFormat('en', { type: 'disjunction' });
 
@@ -43,142 +35,6 @@ const TipBadge = ({ tip, children }: { tip: string; children: ReactNode }) => (
     <span tabIndex={0} className={cn(badgeVariants({ variant: 'outline' }), 'gap-1')}>{children}</span>
   </Tip>
 );
-
-/**
- * Every opening in the world, grouped by owner: the world's own rows, then each location with openings, then
- * each authored entity that has openings. Each edit lands on its owner. A world with several starts filters
- * the list to one of them, or shows them all; the pick is view state and is never stored.
- */
-export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
-  /** Opens that entity's Openings tab. */
-  onOpenEntity?: (entityId: string) => void;
-  /** Opens that location's Openings tab. */
-  onOpenLocation?: (locationId: string) => void;
-}) {
-  const {
-    worldOverview, updateWorldOverview, entities, updateEntity, locations, updateLocation, placeholders,
-    placementLetters, placeholderOwners,
-  } = useGameData();
-  const [filter, setFilter] = useState<string | null>(null);
-  const view = openingsEditorView({ overview: worldOverview, entities, locations }, filter);
-  const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
-  // A fresh array per render; the items inside skip their render while a start's id and label hold.
-  const startOptions = view.starts.map((l) => ({ value: l.id, label: label(l.name) }));
-  const [world, ...ownedGroups] = view.groups;
-  const owners = [...entities, ...locations];
-  const anyOpenings = hasAuthoredOpenings(worldOverview) || owners.some(hasAuthoredOpenings);
-  const search = useListSearch();
-  const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
-  const hasMatch = (rows: EditorOpeningRow[]) => !search.typed || matchingRows(rows, search.typed, names).length > 0;
-  const noMatch = !!search.typed && !view.groups.some((g) => hasMatch(g.rows));
-
-  return (
-    <div className="space-y-4">
-      <ListSearchToolbar
-        search={search}
-        add={{ label: 'Add Opening', onAdd: () => updateWorldOverview(addOpening(worldOverview)) }}
-        placeholder="Search openings"
-      />
-      {view.starts.length > 1 && (
-        <div className="flex items-center gap-2">
-          <Label htmlFor="openings-starting-location" className="shrink-0">Starting Location</Label>
-          <Select
-            value={view.startId ?? ALL_LOCATIONS}
-            onValueChange={(v) => setFilter(v === ALL_LOCATIONS ? null : v)}
-          >
-            <SelectTrigger id="openings-starting-location" className="h-8 min-w-0 flex-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_LOCATIONS}>All Locations</SelectItem>
-              <SelectOptions options={startOptions} />
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {noMatch && <NoMatch typed={search.typed} />}
-
-      {hasMatch(world.rows) && (
-        <section aria-label="This World" className="space-y-2">
-          <h3 className="text-body font-semibold">This World</h3>
-          {view.defaultOpening && !search.typed && <DefaultOpeningNote view={view} label={label} />}
-          <OpeningsList
-            owner={worldOverview}
-            rows={world.rows}
-            onChange={updateWorldOverview}
-            placeholders={placeholders}
-            search={search.typed}
-            names={names}
-            addButton={false}
-            empty={view.defaultOpening ? null : <Hint>No openings yet</Hint>}
-          />
-        </section>
-      )}
-
-      {ownedGroups.map(({ entity, location, name: rawName, rows, showSelf, atNoStart }) => {
-        if (!hasMatch(rows)) return null;
-        const owner = location ?? entity;
-        if (!owner) return null;
-        const name = label(rawName) || (location ? 'Unnamed location' : 'Unnamed entity');
-        return (
-          <section key={`${location ? 'location' : 'entity'}:${owner.id}`} aria-label={name} className="space-y-2" data-testid="opening-group">
-            <div className="flex flex-wrap items-center gap-2">
-              <Tip tip={location ? "Open this location's Openings tab" : "Open this entity's Openings tab"} labelsChild={false}>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="h-auto min-w-0 p-0 text-body font-semibold"
-                  onClick={() => (location ? onOpenLocation?.(location.id) : onOpenEntity?.(owner.id))}
-                >
-                  <span className="truncate">{name}</span>
-                </Button>
-              </Tip>
-              {atNoStart && (
-                <TipBadge
-                  tip={location
-                    ? "Isn't a starting location, so its openings never come up"
-                    : "Isn't at any starting location, so its openings never come up"}
-                >
-                  <MapPinOff className="h-3 w-3" aria-hidden /> No Starting Location
-                </TipBadge>
-              )}
-            </div>
-            {location ? (
-              <OpeningsList
-                owner={location}
-                rows={rows}
-                onChange={(patch) => updateLocation({ ...location, ...patch })}
-                placeholders={placeholders}
-                ownerLabel={name}
-                search={search.typed}
-                names={names}
-                empty={null}
-              />
-            ) : entity && (
-              <OpeningsList
-                owner={entity}
-                rows={rows}
-                onChange={(patch) => updateEntity({ ...entity, ...patch })}
-                placeholders={placeholders}
-                ownerId={entity.id}
-                ownerLabel={name}
-                ownerName={entity.name}
-                search={search.typed}
-                names={names}
-                selfSwitch={showSelf}
-                selfBadge
-                empty={null}
-              />
-            )}
-          </section>
-        );
-      })}
-
-      <WorldOpeningsHint enabled={openingsEnabled(worldOverview, owners)} anyOpenings={anyOpenings} />
-    </div>
-  );
-}
 
 /** What a game starts on where no opening can come up, and where that is. */
 export function DefaultOpeningNote({ view, label }: { view: OpeningsEditorView; label: (name: string) => string }) {

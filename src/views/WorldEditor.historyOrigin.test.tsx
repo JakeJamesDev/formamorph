@@ -130,16 +130,6 @@ describe('an undo of an edit made through a mirror', () => {
     });
   });
 
-  it('returns to the Overview tab for an entity opening added there', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Overview Fields' })).getByRole('tab', { name: 'Openings' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add Opening to Odd Wick' }));
-    expect(ctx().entities[0].openings).toHaveLength(2);
-
-    await expectReturnTo(/Stats/, () => expect(shownEditorTab()).toMatch(/Overview/));
-  });
-
   it('returns to the Traits tab for an entity-owned trait group', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Traits/);

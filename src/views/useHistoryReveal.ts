@@ -3,7 +3,6 @@ import type { HistoryMoveEvent, WorldHistoryControls } from '@/contexts/worldRec
 import { findHistoryField } from '@/lib/historyField';
 import { revealForMove, type RevealTab } from '@/lib/historyReveal';
 import { useLanding, type LandingOptions } from '@/lib/surface/useLanding';
-import type { FindingSection } from '@/lib/testBench/rules';
 import type { ConnectionReveal, SelectionReveal } from '@/managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from '@/views/locationViews';
 
@@ -26,7 +25,7 @@ export interface HistoryRevealOptions {
   /** Shows a panel sub-tab, or the Overview's prompt panel. The editor falls back to its default for one the mode doesn't offer. */
   showSubTab: (tab: string, subTab: string) => void;
   /** The find bar's route to a record: its tab, a clear list filter, the record selected and scrolled to. */
-  navigateToItem: (section: FindingSection, id: string) => void;
+  navigateToItem: (section: RevealTab, id: string) => void;
 }
 
 // Full screen moves a prompt field out of the editor's tree, so the field is looked up in the whole page.

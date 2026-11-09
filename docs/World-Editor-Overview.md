@@ -45,7 +45,7 @@ The world's Avatars are on the **Media** tab. See [World Editor: Media](World-Ed
 <!-- keywords: blurb, synopsis, system prompt, setting lore, welcome text, instructions page, markdown intro, what you write -->
 <!-- route: worldEditorOverview.details -->
 
-In Advanced mode, the right column has three tabs: **Details**, **Custom Prompts** and **Openings**. Simple mode shows only the **Details** fields, with no tabs.
+In Advanced mode, the right column has two tabs: **Details** and **Custom Prompts**. Simple mode shows only the **Details** fields, with no tabs. A world's openings have their own [Openings](World-Editor-Openings) tab, after **Overview**.
 
 | Field | What it does |
 |---|---|
@@ -62,11 +62,6 @@ In Advanced mode, the right column has three tabs: **Details**, **Custom Prompts
 - Check a prompt in the list to use your text. Unchecking it keeps your text.
 - The player can decline it from the world's details window.
 - **Reset** clears your text, so the prompt follows the player's prompt again.
-
-## The right column: Openings
-<!-- keywords: first message, starting scene, use these openings, openings checkbox -->
-
-**Advanced mode only.** Holds the world's [Openings](World-Editor-Openings). The **Use These Openings** checkbox stays off until an opening exists.
 
 ## Upload or link
 <!-- keywords: hotlink, external hosting, imgur, discord image broken, image not loading, dead url, shrink file size, embed vs host, works without internet -->

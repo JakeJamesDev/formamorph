@@ -23,8 +23,6 @@ import {
   clearWorldPromptOverride, setWorldPromptOverride, storedWorldPrompt, worldPromptEnabled,
   WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS, type WorldPromptKind,
 } from "@/lib/worldPrompt";
-import { openingsEnabled, setOpeningsEnabled } from "@/lib/openings";
-import { OpeningsPanel } from "./OpeningsPanel";
 import type { OverviewPanelTab, OverviewPlace } from '@/views/overviewPanelTabs';
 import type { FieldReveal } from '@/views/useHistoryReveal';
 import { fieldFrame, fieldPath } from '@/lib/historyField';
@@ -45,20 +43,6 @@ const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void 
       </Button>
     )}
   </div>
-);
-
-/** The checkbox at the top of a tab that says whether the world uses what the tab holds. */
-const EnableRow = ({ label, checked, disabled, onChange, frame }: {
-  label: string;
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (on: boolean) => void;
-  frame: ReturnType<typeof fieldFrame>;
-}) => (
-  <label className="flex w-fit cursor-pointer items-center space-x-2 has-[:disabled]:cursor-not-allowed" {...frame}>
-    <Checkbox checked={checked} disabled={disabled} onCheckedChange={(c) => onChange(c === true)} />
-    <span>{label}</span>
-  </label>
 );
 
 /**
@@ -216,30 +200,6 @@ const CustomPromptsSection = ({ kind, onKindChange }: {
   );
 };
 
-/** The world's openings, under the checkbox that says whether the world uses them. */
-const OpeningsTab = ({ onOpenEntity, onOpenLocation }: {
-  onOpenEntity?: (entityId: string) => void;
-  onOpenLocation?: (locationId: string) => void;
-}) => {
-  const { worldOverview, updateWorldOverview, entities, locations } = useGameData();
-  const enabled = openingsEnabled(worldOverview, [...entities, ...locations]);
-  // Nothing to switch until an opening exists: the box derives off, so a click would write a flag that
-  // reads off again. The world plays the default opening either way.
-  const noOpenings = !enabled && worldOverview.openingsEnabled !== false;
-  return (
-    <div className="space-y-4">
-      <EnableRow
-        label="Use These Openings"
-        checked={enabled}
-        disabled={noOpenings}
-        onChange={(on) => updateWorldOverview(setOpeningsEnabled(on))}
-        frame={fieldFrame('prompts', 'opening', 'enabled')}
-      />
-      <OpeningsPanel onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
-    </div>
-  );
-};
-
 /** The readme tab that shows each readme field, by its find-bar field key and its field identity alike. */
 const README_TABS: Partial<Record<string, 'introduction' | 'gameplay'>> = { introReadme: 'introduction', readme: 'gameplay' };
 
@@ -315,8 +275,8 @@ export const PLAYER_DESCRIPTION_INFO = 'Shows on your world\'s library card and 
 export const AI_DESCRIPTION_INFO = "Goes to the AI on every turn as your world's description. Players never see it.";
 
 /** The Overview's right column: the world's descriptions and readme on Details, then its custom prompts
- *  and its openings on tabs of their own. The listing fields live in WorldOverviewManager (left column). */
-const WorldDetailsManager = ({ focusField, fieldReveal, place, onPlaceChange, tabs, onOpenEntity, onOpenLocation }: {
+ *  on a tab of their own. The listing fields live in WorldOverviewManager (left column). */
+const WorldDetailsManager = ({ focusField, fieldReveal, place, onPlaceChange, tabs }: {
   focusField?: FocusFieldHint | null;
   /** The field the latest undo or redo returns to. */
   fieldReveal?: FieldReveal | null;
@@ -325,10 +285,6 @@ const WorldDetailsManager = ({ focusField, fieldReveal, place, onPlaceChange, ta
   onPlaceChange: Dispatch<SetStateAction<OverviewPlace>>;
   /** The tabs the editor mode offers. */
   tabs: readonly (PanelTab & { value: OverviewPanelTab })[];
-  /** Opens an entity's Openings tab, from the openings panel's group header. */
-  onOpenEntity?: (entityId: string) => void;
-  /** Opens a location's Openings tab, from the openings panel's group header. */
-  onOpenLocation?: (locationId: string) => void;
 }) => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   // The description shows in the library, before a playthrough exists — so placeholders can never be rolled
@@ -369,9 +325,6 @@ const WorldDetailsManager = ({ focusField, fieldReveal, place, onPlaceChange, ta
       </PanelTabContent>
       <PanelTabContent value="prompts">
         <CustomPromptsSection kind={place.kind} onKindChange={(kind) => onPlaceChange((held) => ({ ...held, kind }))} />
-      </PanelTabContent>
-      <PanelTabContent value="openings">
-        <OpeningsTab onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
       </PanelTabContent>
     </PanelTabs>
   );

@@ -238,7 +238,7 @@ describe('collectSearchTargets', () => {
     });
     const targets = collectSearchTargets(src);
     expect(targetFor(targets, openingFieldKey('o1')))
-      .toMatchObject({ value: 'You wake in the reed-beds.', fieldLabel: 'Opening 1', chipCapable: true });
+      .toMatchObject({ value: 'You wake in the reed-beds.', fieldLabel: 'Opening 1', chipCapable: true, tab: 'openings', itemId: 'world' });
     expect(targetFor(targets, openingFieldKey('o2'))).toMatchObject({ value: 'The ferry bell rings twice.' });
 
     targetFor(targets, openingFieldKey('o2')).write('The ferry bell rings once.');
@@ -254,7 +254,7 @@ describe('collectSearchTargets', () => {
     const openings = [{ id: 'o1', text: 'Mira waves from the jetty.', kind: 'narration' as const }];
     const { src, writes } = sources({ entities: [entity({ openings, openingWeights: { o1: 2 } })] });
     const target = targetFor(collectSearchTargets(src), openingFieldKey('o1'));
-    expect(target).toMatchObject({ itemId: 'e1', tab: 'entities', fieldLabel: 'Opening 1', chipCapable: true });
+    expect(target).toMatchObject({ itemId: 'entity:e1', tab: 'openings', fieldLabel: 'Opening 1', chipCapable: true });
 
     target.write('Mira waves from the pier.');
     expect(writes).toEqual([['entity', expect.objectContaining({

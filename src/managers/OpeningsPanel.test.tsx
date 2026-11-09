@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EntityOpenings, OpeningsList, OpeningsPanel } from './OpeningsPanel';
+import { EntityOpenings, OpeningsList } from './OpeningsPanel';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
@@ -63,44 +63,6 @@ describe('an entity opening’s Preview', () => {
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Persona Name.');
   });
 
-  it('reads the entity’s name on the World tab’s Openings panel too', async () => {
-    game.current = {
-      worldOverview: {}, updateWorldOverview: () => {}, entities: [greeting], updateEntity: () => {}, locations: [],
-      placeholders: [],
-    };
-    mount(<OpeningsPanel />);
-    await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
-    expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Persona Name.');
-  });
-});
-
-describe('the footer hint on the World tab’s Openings panel', () => {
-  const others: Opening = { id: 'o1', text: 'The Warden waves you in.', kind: 'action' };
-  const self: Opening = { id: 'o2', text: 'You wake as the Warden.', kind: 'narration', self: true };
-  const custom = { id: 'custom', name: 'You', customPersona: true } as Entity;
-  const hint = () => screen.getByText(/Draws one opening|Write an opening here|Openings are off/).textContent;
-  const showWith = (entities: Entity[]) => {
-    game.current = {
-      worldOverview: {}, updateWorldOverview: () => {}, entities, updateEntity: () => {}, locations: [],
-      placeholders: [],
-    };
-    mount(<OpeningsPanel />);
-  };
-
-  it('keeps the default-opening state when the only text is on Custom Persona Others rows', () => {
-    showWith([{ ...custom, openings: [others] } as Entity]);
-    expect(hint()).toMatch(/^Write an opening here/);
-  });
-
-  it('says one opening draws when a Custom Persona Self row has text', () => {
-    showWith([{ ...custom, openings: [others, self] } as Entity]);
-    expect(hint()).toMatch(/^Draws one opening/);
-  });
-
-  it('says one opening draws when another entity has a drawable row', () => {
-    showWith([{ ...custom, openings: [others] } as Entity, { ...keeper, openings: [others] } as Entity]);
-    expect(hint()).toMatch(/^Draws one opening/);
-  });
 });
 
 describe('the Others | Self switch on an entity’s Openings tab', () => {
@@ -156,18 +118,6 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
       expect(screen.queryByText('Never Draws')).toBeNull();
     });
 
-    it('marks the row in the World tab’s Openings panel too', () => {
-      game.current = {
-        worldOverview: {}, updateWorldOverview: () => {}, entities: [custom], updateEntity: () => {},
-        locations: [{ id: 'dock', name: 'Dock', isStarting: true }], updateLocation: () => {}, placeholders: [],
-      };
-      mount(<OpeningsPanel />);
-      const [others, self] = screen.getAllByTestId('opening-row');
-      expect(markOn(others)).toBeInTheDocument();
-      expect(markOn(self)).toBeNull();
-      expect(screen.queryByText('No Starting Location')).toBeNull();
-    });
-
     it('states in the hint which openings draw, in place of joining at its locations', () => {
       mount(<EntityOpenings entity={custom} onChange={() => {}} placeholders={[]} />);
       expect(document.body).toHaveTextContent('Self openings draw when played, or for a library persona without any.');
@@ -199,18 +149,6 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
       expect(markOn(others)).toBeInTheDocument();
       expect(markOn(self)).toBeNull();
       expect([chanceOf(1), chanceOf(2)]).toEqual(['—', '100%']);
-    });
-
-    it('marks the row in the World tab’s Openings panel too', () => {
-      game.current = {
-        worldOverview: {}, updateWorldOverview: () => {}, entities: [only], updateEntity: () => {},
-        locations: [{ id: 'dock', name: 'Dock', isStarting: true }], updateLocation: () => {}, placeholders: [],
-      };
-      mount(<OpeningsPanel />);
-      const [others, self] = screen.getAllByTestId('opening-row');
-      expect(markOn(others)).toBeInTheDocument();
-      expect(markOn(self)).toBeNull();
-      expect(screen.queryByText('No Starting Location')).toBeNull();
     });
 
     it.each<[string, Entity, string]>([

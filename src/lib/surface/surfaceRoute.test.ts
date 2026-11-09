@@ -36,6 +36,11 @@ describe('resolveSurface', () => {
     expect(resolveSurface('publish.prompt')).toEqual({ view: 'mainMenu', dialog: null, tabs: [] });
   });
 
+  it("opens a world's openings on the World Editor's Openings tab, not on Overview", () => {
+    expect(resolveSurface('worldEditor.openings')).toEqual({ view: null, dialog: 'worldEditor', tabs: ['worldEditor.openings'] });
+    expect(resolveSurface('worldEditorOverview.openings')).toBeNull();
+  });
+
   it('gives nothing for an unknown id, an excluded surface, or one only the app raises', () => {
     expect(resolveSurface('settings.nope')).toBeNull();
     expect(resolveSurface('nowhere')).toBeNull();
