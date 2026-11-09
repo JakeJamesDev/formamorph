@@ -32,6 +32,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Avatar Look Bindings:**
     - **A stat can now bind to an Avatar's Head Features, such as Ear Shape.** The stat's slider list splits each model into Body Sliders and Head Features.
     - **In the World Editor, a stat can now grow or shrink each Avatar slider by its own Change By amount.** Several stats can share one slider, and their changes add up. An amount of 1 keeps the look worlds have today.
+    - **In the World Editor, a trait can now set an Avatar slider while active, such as an Elf's Ear Shape.** Stats still add on top, and the player's own setting returns when the trait ends.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
 

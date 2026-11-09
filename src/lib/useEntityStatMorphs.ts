@@ -5,13 +5,17 @@ import type { Entity } from '@/types';
 
 const NO_STATS: LookStats['stats'] = [];
 
-/** The stats an entity's own Avatar reads, for the turn on screen: live, or paged back. */
+/** The stats and traits an entity's own Avatar reads, for the turn on screen: live, or paged back. */
 export function useEntityLookStats(entity: Pick<Entity, 'id' | 'stats'> | undefined): LookStats {
-  const { viewEntityStats, viewEntityStatEnabled } = useGameplay();
+  const { viewEntityStats, viewEntityStatEnabled, viewEntityLookTraits } = useGameplay();
   const values = entity ? viewEntityStats[entity.id] : undefined;
   const enabled = entity ? viewEntityStatEnabled[entity.id] : undefined;
+  const traits = entity ? viewEntityLookTraits[entity.id] : undefined;
   const authored = entity?.stats;
-  return useMemo(() => ({ stats: values ?? NO_STATS, authored: authored ?? NO_STATS, enabled }), [values, authored, enabled]);
+  return useMemo(
+    () => ({ stats: values ?? NO_STATS, authored: authored ?? NO_STATS, enabled, ...(traits && { traits }) }),
+    [values, authored, enabled, traits],
+  );
 }
 
 /** An Avatar's final slider values, re-resolved once its viewer reports the slider keys of `model`, the model shown. */

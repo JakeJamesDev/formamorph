@@ -5,6 +5,7 @@
 import { boxLabel, parseAspect, parseBackdrop, parseEntryLayout, type BoxRef } from '@/lib/bodyLayout';
 import { itemsInSlot, occupiedSlots, ruleGaps, ruleKeeps } from '@/lib/items';
 import { usedByText } from '@/lib/usedByText';
+import { sameTraitOn } from '@/lib/avatarLook';
 import type { Body, BodyEntry, BodyPick, BodyTraitOn, Item, ItemCopy, ItemCopyWhere, PersonaRef, Slot, SlotRule, Trait, TraitBodyRow } from '@/types';
 
 /** The authored slice the resolver reads. An absent slice reads as empty. */
@@ -200,18 +201,18 @@ export interface BodyTraitScope {
   owners: Readonly<Record<string, readonly Trait[]>>;
 }
 
-const setsBody = (trait: Trait | undefined): boolean => !!trait?.body?.pick;
-const sameOn = (a: BodyTraitOn, b: BodyTraitOn): boolean => a.ownerId === b.ownerId && a.traitId === b.traitId;
+/** Whether the trait's switch-on order matters: it picks a Body or holds an Avatar slider. */
+const ordered = (trait: Trait | undefined): boolean => !!trait?.body?.pick || !!trait?.morphPins?.length;
 
-/** `previous` without the Body-setting traits no longer active, then the newly active ones in tree order, so
- *  the latest switch-on comes last (Q13, Q40). The same array when nothing moved. */
+/** `previous` without the Body- or look-setting traits no longer active, then the newly active ones in tree
+ *  order, so the latest switch-on comes last (Q13, Q40). The same array when nothing moved. */
 export function nextTraitsOn(previous: readonly BodyTraitOn[], scope: BodyTraitScope): readonly BodyTraitOn[] {
   const active: BodyTraitOn[] = [
-    ...scope.global.filter(setsBody).map((t) => ({ ownerId: null, traitId: t.id })),
-    ...Object.entries(scope.owners).flatMap(([ownerId, traits]) => traits.filter(setsBody).map((t) => ({ ownerId, traitId: t.id }))),
+    ...scope.global.filter(ordered).map((t) => ({ ownerId: null, traitId: t.id })),
+    ...Object.entries(scope.owners).flatMap(([ownerId, traits]) => traits.filter(ordered).map((t) => ({ ownerId, traitId: t.id }))),
   ];
-  const kept = previous.filter((on) => active.some((a) => sameOn(a, on)));
-  const added = active.filter((a) => !kept.some((on) => sameOn(on, a)));
+  const kept = previous.filter((on) => active.some((a) => sameTraitOn(a, on)));
+  const added = active.filter((a) => !kept.some((on) => sameTraitOn(on, a)));
   return kept.length === previous.length && !added.length ? previous : [...kept, ...added];
 }
 

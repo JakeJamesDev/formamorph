@@ -215,6 +215,35 @@ export function traitConflicts(
   return { stats };
 }
 
+/** A trait as a note names it. */
+export type TraitName = Pick<Trait, 'id' | 'name'>;
+
+/**
+ * The other traits that can be active with `trait` and pin a slider it pins, by `trait`'s pin name, in tree
+ * order. Two names that land on one model key through `keyOf` count as one slider; a name it maps to null
+ * stands for itself. Pick-one siblings never rival (Q4). A pin with no rival is absent.
+ */
+export function morphPinOverlaps(
+  trait: Trait,
+  traits: readonly Trait[],
+  groups: readonly TraitGroup[],
+  keyOf: (name: string) => string | null = (name) => name,
+): Record<string, TraitName[]> {
+  const pins = trait.morphPins ?? [];
+  if (!pins.length) return {};
+  const order = traitOrderIndex(traits, groups);
+  const impossible = new Set(exclusiveSiblings(trait, traits, groups));
+  const rivals = inAuthoredOrder(traits.filter((t) => t.id !== trait.id && !impossible.has(t.id) && t.morphPins?.length), order);
+  const slider = (name: string) => keyOf(name) ?? name;
+  const out: Record<string, TraitName[]> = {};
+  for (const pin of pins) {
+    const key = slider(pin.name);
+    const others = rivals.filter((t) => t.morphPins!.some((p) => slider(p.name) === key));
+    if (others.length) out[pin.name] = others.map((t) => ({ id: t.id, name: t.name }));
+  }
+  return out;
+}
+
 /** One value-list edit that reads as a rename: the text a value held, and what replaced it. */
 export interface PlaceholderValueRename {
   from: string;

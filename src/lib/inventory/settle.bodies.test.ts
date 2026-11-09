@@ -32,6 +32,7 @@ const items = [sword, dagger, helm, greatsword, knife];
 const rexTraits = [
   trait('wolfForm', { body: sets('wolf') }), trait('catCurse', { body: sets('cat') }), trait('shrink', { body: sets('tiny') }),
   trait('ghost', { body: { pick: { kind: 'none' } } }), trait('blank', { body: {} }),
+  trait('elfEars', { morphPins: [{ name: 'Ear Shape', value: 1 }] }),
 ];
 // Hidden acts as Automatic: on exactly while the moon is full.
 const moonlit = trait('moonlit', {
@@ -184,6 +185,16 @@ describe('trait Body rows', () => {
     expect(loaded.bodies).toEqual(saved);
     const ending = rexOn({ ...wolf, bodies: saved }, ['catCurse']);
     expect(ending.bodyLog).toEqual(["Rex's Body: Cat"]);
+  });
+
+  it('keeps a trait with only slider pins in the switch-on order, and leaves Body picks alone', () => {
+    const cat = rexOn(start(), ['catCurse']);
+    const eared = rexOn(cat, ['catCurse', 'elfEars']);
+    expect(eared.bodies.traitsOn).toEqual([{ ownerId: 'rex', traitId: 'catCurse' }, { ownerId: 'rex', traitId: 'elfEars' }]);
+    expect(eared.bodyLog).toEqual([]);
+    const cured = rexOn(eared, ['elfEars']);
+    expect(cured.bodyLog).toEqual(["Rex's Body: Humanoid"]);
+    expect(cured.bodies.traitsOn).toEqual([{ ownerId: 'rex', traitId: 'elfEars' }]);
   });
 
   it('unequips the most recently equipped copy first when a capacity drops', () => {

@@ -74,6 +74,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     isStarting: "Starting Location",
     canvasPosition: "Position",
   },
+  traits: { morphPins: "Body Sliders" },
   connections: { aToB: "Travel Hint", bToA: "Travel Hint" },
   entities: { vrmPick: "Avatar" },
   statUpdates: { prompt: "Prompt", stats: "Stats" },

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { MorphBinding, Stat, Trait } from "@/types";
-import { resolveAvatarLook, type AvatarLookInput } from "./avatarLook";
+import { avatarLookTraits, resolveAvatarLook, type AvatarLookInput, type LookTrait } from "./avatarLook";
 import { activeStatEnabled } from "./traitEffects";
 
 function stat(partial: Partial<Stat> & Pick<Stat, "id">): Stat {
@@ -94,5 +94,65 @@ describe("resolveAvatarLook: the model's key catalog", () => {
   it("passes names through as given while the catalog is unknown", () => {
     const live = [stat({ id: "a", value: 100, morphBindings: bind("Thickness") })];
     expect(morphs({ stats: live, customization: { Fat: 0.2 } })).toEqual({ Fat: 0.2, Thickness: 1 });
+  });
+});
+
+const elf = (value = 1, name = "Ear Shape"): LookTrait => ({ ownerId: null, traitId: "elf", morphPins: [{ name, value }] });
+const human: LookTrait = { ownerId: null, traitId: "human", morphPins: [{ name: "Ear Shape", value: 0 }] };
+const look = (input: Partial<AvatarLookInput>) => resolveAvatarLook({ stats: [], authored: [], catalog: null, ...input });
+
+describe("resolveAvatarLook: trait slider pins", () => {
+  it("replaces the player's value while the trait is active, and a bound stat adds on top", () => {
+    const live = [stat({ id: "corruption", value: 50, morphBindings: bind("Ear Shape") })];
+    const out = look({ stats: live, customization: { "Ear Shape": 0.3 }, traits: { on: [], active: [elf(1)] } });
+    expect(out.morphs).toEqual({ "Ear Shape": 1.5 });
+    expect(out.holders).toEqual({ "Ear Shape": { ownerId: null, traitId: "elf" } });
+  });
+  it("leaves the player's value with no active trait", () => {
+    const out = look({ customization: { "Ear Shape": 0.3 }, traits: { on: [{ ownerId: null, traitId: "elf" }], active: [] } });
+    expect(out.morphs).toEqual({ "Ear Shape": 0.3 });
+    expect(out.holders).toEqual({});
+  });
+  it("lets the latest switch-on win over tree order", () => {
+    const on = [{ ownerId: null, traitId: "human" }, { ownerId: null, traitId: "elf" }];
+    expect(look({ traits: { on, active: [elf(1), human] } }).morphs).toEqual({ "Ear Shape": 1 });
+    expect(look({ traits: { on: [...on].reverse(), active: [elf(1), human] } }).morphs).toEqual({ "Ear Shape": 0 });
+  });
+  it("breaks a tie between traits switched on together by tree order", () => {
+    expect(look({ traits: { on: [], active: [human, elf(1)] } }).holders["Ear Shape"].traitId).toBe("elf");
+    expect(look({ traits: { on: [], active: [elf(1), human] } }).holders["Ear Shape"].traitId).toBe("human");
+  });
+  it("counts an active trait missing from the switch-on order as switched on after every listed one", () => {
+    const out = look({ traits: { on: [{ ownerId: null, traitId: "human" }], active: [elf(1), human] } });
+    expect(out.morphs).toEqual({ "Ear Shape": 1 });
+  });
+  it("replaces a Thickness customization with a Fat pin, under the model's own name", () => {
+    const out = look({ customization: { Thickness: 0.2 }, catalog: ["Fat"], traits: { on: [], active: [elf(0.9, "Fat")] } });
+    expect(out.morphs).toEqual({ Fat: 0.9 });
+    expect(Object.keys(out.holders)).toEqual(["Fat"]);
+  });
+  it("ignores a pin on a slider the model lacks", () => {
+    const out = look({ customization: { Belly: 0.2 }, catalog: ["Belly"], traits: { on: [], active: [elf(1)] } });
+    expect(out).toEqual({ morphs: { Belly: 0.2 }, holders: {} });
+  });
+  it("accepts a value past the slider's range", () => {
+    expect(look({ traits: { on: [], active: [elf(2.5)] } }).morphs).toEqual({ "Ear Shape": 2.5 });
+  });
+});
+
+describe("avatarLookTraits", () => {
+  const scope = {
+    global: [{ id: "elf", morphPins: [{ name: "Ear Shape", value: 1 }] }],
+    owners: { hero: [{ id: "tall" }], rex: [{ id: "wolf" }] },
+    played: ["hero"],
+  };
+  const on = [{ ownerId: "rex", traitId: "wolf" }];
+  it("gives the played Persona the global traits and the played entity's own", () => {
+    expect(avatarLookTraits(scope, on).player.active.map((t) => [t.ownerId, t.traitId])).toEqual([[null, "elf"], ["hero", "tall"]]);
+  });
+  it("gives every other entity its own traits only", () => {
+    const { owners } = avatarLookTraits(scope, on);
+    expect(Object.keys(owners)).toEqual(["rex"]);
+    expect(owners.rex).toEqual({ on, active: [{ ownerId: "rex", traitId: "wolf" }] });
   });
 });

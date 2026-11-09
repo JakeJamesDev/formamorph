@@ -371,6 +371,19 @@ When two active traits change the same stat, the trait lower in the trait list w
 
 When two active traits set a Body, the one switched on last wins. When it switches off, the one before it takes over. With none left, the Body goes back to the one the owner started with.`,
   },
+  'worldEditor.traitSliders': {
+    title: 'Body Sliders',
+    wikiPage: 'World-Editor-Traits',
+    wikiAnchor: 'body-sliders',
+    body: `Sets the Avatar's sliders while the trait is active. For example, an *Elf* trait sets Ear Shape to 1.
+
+- Each picked slider gets a **Set To** number, 1 by default. Any number works.
+- The slider takes this value in place of the player's own setting. A stat bound to the slider still adds on top.
+- When the trait switches off, the player's own setting comes back.
+- A world trait changes the player's Avatar. An entity's own trait changes that entity's model.
+
+When two active traits set the same slider, the one switched on last wins.`,
+  },
   'worldEditor.placeholderPins': {
     title: 'Placeholder Pins',
     wikiPage: 'World-Editor-Traits',

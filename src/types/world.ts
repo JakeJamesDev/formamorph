@@ -55,6 +55,12 @@ export interface MorphBinding {
   by?: number;
 }
 
+/** One Avatar slider a trait holds at `value` while it is active, by the model's slider name or an alias-mate. */
+export interface MorphPin {
+  name: string;
+  value: number;
+}
+
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
@@ -372,6 +378,8 @@ export interface Trait {
   scripts?: Script[];
   /** The Body its owner takes while it is active. Absent = no Body row. */
   body?: TraitBodyRow;
+  /** Avatar sliders held while it is active. Absent = none. */
+  morphPins?: MorphPin[];
 }
 
 /** A trait's Body row. Absent `pick` = blank: the row sets no Body. */

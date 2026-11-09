@@ -88,6 +88,7 @@ import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type Drawn
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { bodyPickEntities } from "@/lib/bodies";
+import { avatarLookTraits } from "@/lib/avatarLook";
 import { playedNames, worldEntitiesOf, type PersonaPick } from "@/lib/persona";
 import { resolveWorldPrompt, appliedWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { statTextFor } from "@/lib/statTextPrompts";
@@ -263,7 +264,7 @@ import {
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   activeTraits as traitsInForce, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, startingTraitLog,
-  gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn, traitSwitchEvents,
+  gateStatsOf, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitForceScope, traitNameIn, traitSwitchEvents,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import type { GateStats } from "../lib/traitGates";
@@ -828,11 +829,13 @@ const GameViewer = ({
     viewDisabledTraitIds,
     viewOwnedTraits,
     viewEntityStats,
+    viewBodies,
     viewLocationId,
     gameStates,
     setGameStates,
     setPlayerLookStats,
     setViewEntityStatEnabled,
+    setViewEntityLookTraits,
     playerNotes,
     setPlayerNotes,
     saveGame,
@@ -2467,20 +2470,30 @@ const GameViewer = ({
   );
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
+  const viewChosenTraits = useMemo(() => refreshChosenTraits(viewTraits, traits), [viewTraits, traits]);
   const viewActiveStats = useMemo(
     () => activeUnderTraits(
-      viewStats, refreshChosenTraits(viewTraits, traits), viewDisabledTraitIds, traitOrder,
+      viewStats, viewChosenTraits, viewDisabledTraitIds, traitOrder,
       globalRowTraits({ ownedTraits: viewOwnedTraits, entityStats: viewEntityStats }, gatedWorld()),
     ).activeStats,
-    [viewStats, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, traitOrder, traits, gatedWorld],
+    [viewStats, viewChosenTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, traitOrder, gatedWorld],
   );
+  // Each Avatar's active traits on the turn on screen, in the switch-on order that turn kept.
+  const viewLookTraits = useMemo(() => {
+    const scope = traitForceScope({
+      traits: viewChosenTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits, entityStats: viewEntityStats,
+    }, gatedWorld());
+    return avatarLookTraits({ ...scope, global: inAuthoredOrder(scope.global, traitOrder) }, viewBodies.traitsOn ?? []);
+  }, [viewChosenTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, viewBodies, traitOrder, gatedWorld]);
 
   useEffect(() => {
     // Authored stats anchor the slider scale, so a max the AI raised grows the slider rather than shrinking it.
     // The traits in force already chose these stats, so each one is on whatever its authored flag says.
     const enabled = Object.fromEntries(viewActiveStats.map((s) => [s.id, true]));
-    setPlayerLookStats({ stats: viewActiveStats, authored: stats, enabled });
-  }, [viewActiveStats, stats, setPlayerLookStats]);
+    setPlayerLookStats({ stats: viewActiveStats, authored: stats, enabled, traits: viewLookTraits.player });
+  }, [viewActiveStats, stats, viewLookTraits, setPlayerLookStats]);
+
+  useEffect(() => { setViewEntityLookTraits(viewLookTraits.owners); }, [viewLookTraits, setViewEntityLookTraits]);
 
   useEffect(() => {
     const inForce = entityInForceUnder(viewOwnedTraits);

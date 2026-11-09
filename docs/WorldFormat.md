@@ -313,6 +313,7 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `statToggles` | | `{ "statId", "enabled" }`[] | Stats switched on or off while the trait is active |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
 | `body` | | `{ "pick"? }` | The Body its owner takes while the trait is active. `pick` is a [Body pick](#slots-and-bodies) other than absent. No `pick` = the row sets no Body |
+| `morphPins` | | `{ "name", "value" }`[] | Avatar sliders held at `value` while the trait is active, in place of the player's own. Any number. Bound stats add on top. When two active traits set one slider, the one switched on last wins. A link can't override it |
 | `scripts` | | [Script](#scripts)[] | Code with this trait as `self`. It runs while the trait is active. See the [Scripts Guide](ScriptsGuide) |
 
 See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave during the game.
@@ -772,7 +773,7 @@ An entity's `body` picks its Body:
 
 The player's Body comes from the persona they play. A world persona uses its own `body`. With no persona, or with a library persona, the player uses the Custom Persona entity's `body`. Library entities and story-invented entities use the Default.
 
-A trait's `body` row overrides this while the trait is active. A world trait sets the player's Body, and an entity's own trait sets that entity's. When several active traits set one, the trait switched on last wins. A save records that order in `bodies.traitsOn`.
+A trait's `body` row overrides this while the trait is active. A world trait sets the player's Body, and an entity's own trait sets that entity's. When several active traits set one, the trait switched on last wins. A save records that order in `bodies.traitsOn`, for traits with a `body` pick or `morphPins`.
 
 ```json
 "slots": [{ "id": "hand", "name": "Hand" }, { "id": "collar", "name": "Collar" }],

@@ -18,7 +18,7 @@ import { TraitAvailabilityRule } from '@/components/editor/TraitAvailabilityRule
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
+import { morphPinOverlaps, traitConflicts, type TraitConflict, type TraitName } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
 import { statRowSide, type StatRow, type StatRowSide } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
@@ -30,9 +30,13 @@ import { TraitScripts } from './TraitScripts';
 import { offWorldOf, traitPanelHome } from '@/lib/scriptBoxHome';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import type {
-  BodyPick, Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
+  BodyPick, Entity, FocusFieldHint, MorphPin, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
+import { SliderNumberRow } from '@/components/editor/SliderNumberRow';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { useSliderPicker } from '@/lib/useSliderPicker';
+import { linkedTraits } from '@/lib/traitLinks';
 import { fieldFrame } from '@/lib/historyField';
 
 /** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
@@ -74,6 +78,28 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
     </Meta>
   );
 };
+
+/** Names the other traits that pin the same slider. The latest switch-on wins, so no winner is named. */
+const SliderOverlapNote = ({ others, placeholders, onOpen }: {
+  others?: readonly TraitName[];
+  placeholders: Placeholder[];
+  onOpen: (id: string) => void;
+}) => {
+  if (!others?.length) return null;
+  return (
+    <Meta as="p">
+      Also set by {others.map((t, i) => (
+        <span key={t.id}>{i > 0 && ', '}
+          <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => onOpen(t.id)}>
+            <PlaceholderText text={t.name} placeholders={placeholders} />
+          </button>
+        </span>
+      ))}. The trait switched on last wins.
+    </Meta>
+  );
+};
+
+const NO_MORPH_PINS: readonly MorphPin[] = [];
 
 /** Whose stat each of an owner's trait rows moves, as play routes it. */
 const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: Entity) => {
@@ -239,6 +265,28 @@ const TraitManager = ({
 
   const bodyRow = editingTrait.body;
   const setBodyPick = (pick: BodyPick) => apply({ body: { pick } });
+
+  // Slider pins act on the owner's model, else the player's; the picker lists the same sliders a stat's does.
+  const morphPins = editingTrait.morphPins ?? NO_MORPH_PINS;
+  const traitOwnerModel = traitOwner?.model;
+  const traitOwnerName = traitOwner?.name;
+  const morphOwner = useMemo(
+    () => (traitOwnerName !== undefined ? { name: labelPlaceholders(traitOwnerName, placeholders), model: traitOwnerModel } : undefined),
+    [traitOwnerName, traitOwnerModel, placeholders],
+  );
+  const sliders = useSliderPicker(morphOwner, morphPins.length > 0);
+  // A world trait rivals the world's traits; an owner's trait rivals the owner's own and linked ones.
+  const pinRivals = useMemo(() => {
+    if (!traitOwner) return { traits, groups: traitGroups };
+    const linked = (traitOwner.traitLinks ?? []).flatMap((l) => linkedTraits({ traits, traitGroups }, l, l.originalId));
+    return { traits: [...(traitOwner.traits ?? []), ...linked], groups: [...traitGroups, ...(traitOwner.traitGroups ?? [])] };
+  }, [traitOwner, traits, traitGroups]);
+  const pinOverlaps = morphPinOverlaps(editingTrait, pinRivals.traits, pinRivals.groups, sliders.keyOf);
+  const setMorphPins = (next: MorphPin[]) => apply({ morphPins: next.length ? next : undefined });
+  // A picked slider keeps its Set To; a new one starts at 1.
+  const pickMorphPins = (names: string[]) => setMorphPins(names.map((name) => morphPins.find((p) => p.name === name) ?? { name, value: 1 }));
+  const setPinValue = (name: string, value: number | undefined) =>
+    setMorphPins(morphPins.map((p) => (p.name === name ? { name, value: value ?? 1 } : p)));
 
   const pins = editingTrait.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
@@ -437,6 +485,44 @@ const TraitManager = ({
           </div>
         ) : !readOnly && (
           <Button size="sm" onClick={() => apply({ body: {} })}>Add Body</Button>
+        )}
+      </div>
+      )}
+
+      {(!readOnly || morphPins.length > 0) && (
+      <div className="space-y-2" {...fieldFrame('morphPins')}>
+        <div className="flex items-center gap-2">
+          <Label>Body Sliders</Label>
+          <HelpButton topicId="worldEditor.traitSliders" className="h-6 w-6" />
+        </div>
+        <MultiSelect
+          key={trait.id}
+          options={sliders.groups}
+          defaultValue={morphPins.map((p) => p.name)}
+          onValueChange={pickMorphPins}
+          onOpenChange={(open) => { if (open) sliders.load(); }}
+          placeholder="Select body sliders"
+          emptyIndicator={sliders.loading ? "Loading sliders…" : sliders.emptyText}
+          maxCount={6}
+          disabled={readOnly}
+        />
+        {morphPins.length > 0 && (
+          <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-x-3 gap-y-2 pt-1">
+            <span />
+            <Label className="text-meta text-muted-foreground">Set To</Label>
+            {morphPins.map((pin) => (
+              <SliderNumberRow
+                key={pin.name}
+                name={pin.name}
+                value={pin.value}
+                field="Set To"
+                missing={sliders.keyOf(pin.name) === null}
+                disabled={readOnly}
+                note={<SliderOverlapNote others={pinOverlaps[pin.name]} placeholders={placeholders} onOpen={onOpenTrait} />}
+                onCommit={(value) => setPinValue(pin.name, value)}
+              />
+            ))}
+          </div>
         )}
       </div>
       )}

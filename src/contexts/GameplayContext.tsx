@@ -15,7 +15,7 @@ import { setLiveReasoning } from '../lib/reasoningStreamStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
-import type { LookStats } from '../lib/avatarLook';
+import type { LookStats, LookTraits } from '../lib/avatarLook';
 import type { StrangerLabels } from '../lib/locationContext';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { restoreTells, type TellMap } from '../lib/scriptTells';
@@ -309,6 +309,8 @@ function useProvideGameplay() {
   const [playerLookStats, setPlayerLookStats] = useState<LookStats>(NO_LOOK_STATS);
   // Each entity's stats switched on or off under its own traits, on the turn on screen, by entity id.
   const [viewEntityStatEnabled, setViewEntityStatEnabled] = useState<Readonly<Record<string, Record<string, boolean>>>>({});
+  // Each entity's own active traits for its Avatar, on the turn on screen, by entity id.
+  const [viewEntityLookTraits, setViewEntityLookTraits] = useState<Readonly<Record<string, LookTraits>>>({});
   const [isFlashing, setIsFlashing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [choices, setChoices] = useState<Choice[]>([]);
@@ -836,6 +838,7 @@ function useProvideGameplay() {
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
   const viewOwnedTraits = viewedSnapshot ? (viewedSnapshot.ownedTraits ?? EMPTY_OWNED) : ownedTraits;
   const viewEntityStats = viewedSnapshot ? (viewedSnapshot.entityStats ?? EMPTY_ENTITY_STATS) : entityStats;
+  const viewBodies = viewedSnapshot ? (viewedSnapshot.bodies ?? NO_BODIES) : bodies;
   // What the shown turn moved each entity stat: live, this turn's; on a past page, that turn's record.
   const viewEntityStatChanges = viewedSnapshot ? (viewedSnapshot.entityStatChanges ?? EMPTY_ENTITY_CHANGES) : entityStatChanges;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
@@ -947,6 +950,8 @@ function useProvideGameplay() {
     setPlayerLookStats,
     viewEntityStatEnabled,
     setViewEntityStatEnabled,
+    viewEntityLookTraits,
+    setViewEntityLookTraits,
     visibleEntities,
     setVisibleEntities,
     discoveredEntities,
@@ -1089,6 +1094,7 @@ function useProvideGameplay() {
     viewDisabledTraitIds,
     viewOwnedTraits,
     viewEntityStats,
+    viewBodies,
     viewEntityStatChanges,
     viewCodePins,
     viewCharacterData,

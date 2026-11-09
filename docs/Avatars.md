@@ -145,6 +145,8 @@ See [The Game Screen](How-to-Play#the-game-screen).
 
 A world author can tie body sliders to a stat. As the stat changes, the Avatar's shape changes. Your Avatar follows your stats. Each other entity's Avatar follows that entity's stats. The sliders you set in **Initial Body Features** are the start point for your Avatar.
 
+A trait can also set a slider while it is active, such as Ear Shape for an Elf. It replaces your own setting until the trait ends, and stats still add on top. See [Body Sliders](World-Editor-Traits#body-sliders).
+
 ## The Avatar Details Dialog
 <!-- keywords: model info, metadata, properties, inspect file, vrm version, remove a model, saves using it, right click options -->
 <!-- route: modelDetails -->
