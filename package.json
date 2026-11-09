@@ -55,7 +55,8 @@
     "probe:world-question": "vite-node testing/baseline/harness/world-question-probe.cli.ts --",
     "probe:help-route": "vite-node testing/baseline/harness/help-route-probe.cli.ts",
     "screen": "node testing/baseline/harness/screen.mjs",
-    "title-card": "node scripts/captureTitleCard.mjs"
+    "title-card": "node scripts/captureTitleCard.mjs",
+    "itch-page": "node scripts/captureItchPage.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

@@ -1,0 +1,30 @@
+<!doctype html>
+<!--
+  itch.io description art: the gooey gradient wordmark, section headers and the formamorph.ai link
+  button, each exported as a transparent PNG at 1x (itch shows images at their natural size).
+  Every [data-art] element becomes <data-art>.png; `npm run itch-page` captures them.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Formamorph itch art</title>
+<style>
+  @font-face { font-family:'Baloo 2'; src:url(/hosting/site/fonts/baloo-2-latin-wght-normal.woff2) format('woff2'); font-weight:400 800; }
+  :root { --g1:#a78bfa; --g2:#f0abfc; --g3:#fb7185; --text:#e8eaed;
+    --grad:linear-gradient(95deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%); }
+  html, body { margin:0; background:transparent; }
+  [data-art] { display:inline-block; padding:12px 4px 4px; }
+  .wordmark { font-family:'Baloo 2',sans-serif; font-weight:500; letter-spacing:-.06em; line-height:.9;
+    padding-top:.12em; white-space:nowrap; color:var(--text); font-size:96px; filter:url(#goo); }
+  .wordmark i { font-style:normal; background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .wordmark b { font-weight:500; } .wordmark b:nth-child(2) { font-weight:575; } .wordmark b:nth-child(3) { font-weight:650; }
+  .wordmark b:nth-child(4) { font-weight:725; } .wordmark b:nth-child(5) { font-weight:800; }
+  .head { font-family:'Baloo 2',sans-serif; font-weight:700; font-size:38px; letter-spacing:-.02em; line-height:1.05;
+    white-space:nowrap; filter:url(#goo-sm); }
+  .head span { background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  /* Matches the Patreon and Discord buttons on the Fantasy Futanari page: 70px, #c184ff. */
+  [data-art="btn-site"] { display:block; padding:0; width:70px; height:70px; }
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b" /><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" result="g" /><feComposite in="SourceGraphic" in2="g" operator="atop" /></filter><filter id="goo-sm"><feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="b" /><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" result="g" /><feComposite in="SourceGraphic" in2="g" operator="atop" /></filter></svg>
+<div data-art="wordmark"><div class="wordmark">Forma<i><b>m</b><b>o</b><b>r</b><b>p</b><b>h</b></i></div></div><br>
+<div data-art="h-key-features"><div class="head"><span>Key Features</span></div></div><br>
+<div data-art="h-bring-any-ai"><div class="head"><span>Bring Any AI</span></div></div><br>
+<svg data-art="btn-site" viewBox="0 0 24 24" fill="none" stroke="#c184ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+</body></html>

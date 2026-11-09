@@ -1,0 +1,35 @@
+{
+  "aurelia": {
+    "vrm": "/build-assets/alternate-avatar.vrm", "side": "left", "yaw": 0.5,
+    "expr": {"relaxed": 0.6, "happy": 0.2},
+    "bones": {
+      "head": [0.05, -0.25, 0.12],
+      "leftUpperArm": [0, 0, -1.2],
+      "rightUpperArm": [0, 0.3, 0.6],
+      "rightLowerArm": [0, 0, 2.0],
+      "leftIndexProximal": [0, 0, -0.35],
+      "leftIndexIntermediate": [0, 0, -0.55],
+      "leftIndexDistal": [0, 0, -0.4],
+      "leftMiddleProximal": [0, 0, -0.4025],
+      "leftMiddleIntermediate": [0, 0, -0.6325],
+      "leftMiddleDistal": [0, 0, -0.46],
+      "leftRingProximal": [0, 0, -0.455],
+      "leftRingIntermediate": [0, 0, -0.715],
+      "leftRingDistal": [0, 0, -0.52],
+      "leftLittleProximal": [0, 0, -0.5075],
+      "leftLittleIntermediate": [0, 0, -0.7975],
+      "leftLittleDistal": [0, 0, -0.58]
+    }
+  },
+  "praline": {
+    "vrm": "/build-assets/praline-avatar.vrm", "side": "right", "yaw": -0.5,
+    "expr": {"happy": 0.5, "blinkRight": 1},
+    "bones": {
+      "head": [0.05, 0.25, -0.15],
+      "rightUpperArm": [0, 0, 1.2],
+      "leftUpperArm": [0, -0.3, -0.6],
+      "leftLowerArm": [0, 0, 2.0],
+      "leftHand": [-0.7, 0, 0]
+    }
+  }
+}

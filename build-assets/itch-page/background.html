@@ -1,0 +1,113 @@
+<!doctype html>
+<!--
+  itch.io page background: a blurred library shot, a plain strip behind itch's 960px column, and
+  two posed avatars standing in front of the strip's edges. The Vite dev server serves it from the
+  repo root (npm run dev -- --port 5180); `npm run itch-page` captures it.
+
+  window.renderBackground(opts?) resolves to a PNG data URL. Poses live in poses.json.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Formamorph itch background</title></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+// Canvas, strip and figure layout. Fixed attachment shows the top ~950px on a 1080p screen.
+const LAYOUT = { W: 3440, H: 2000, STRIP: 1000, figH: 1250, figTop: 40, figGap: -30 };
+
+// Transparent full-body render: pose offsets on normalized bones, expression weights, eyes on the camera.
+async function renderAvatar({ vrm: url, yaw = 0, bones = {}, expr = {} }, w = 900, h = 1800) {
+  const loader = new GLTFLoader();
+  loader.register((p) => new VRMLoaderPlugin(p));
+  const vrm = (await loader.loadAsync(url)).userData.vrm;
+  VRMUtils.rotateVRM0(vrm);
+  for (const [name, [x, y, z]] of Object.entries(bones)) vrm.humanoid.getNormalizedBoneNode(name)?.rotation.set(x, y, z);
+  for (const [name, v] of Object.entries(expr)) vrm.expressionManager?.setValue(name, v);
+  vrm.scene.rotation.y += yaw;
+  vrm.update(0);
+  vrm.scene.updateWorldMatrix(true, true);
+
+  const scene = new THREE.Scene();
+  scene.add(vrm.scene);
+  const key = new THREE.DirectionalLight(0xffffff, Math.PI);
+  key.position.set(1, 1, 1).normalize();
+  scene.add(key, new THREE.AmbientLight(0xffffff, 0.6));
+
+  const box = new THREE.Box3().setFromObject(vrm.scene);
+  const size = box.getSize(new THREE.Vector3());
+  const c = box.getCenter(new THREE.Vector3());
+  const fov = 20;
+  const dist = (Math.max(size.y, (size.x * h) / w) * 1.04) / 2 / Math.tan((fov * Math.PI) / 360);
+  const cam = new THREE.PerspectiveCamera(fov, w / h, 0.01, 100);
+  cam.position.set(c.x, c.y, c.z + dist);
+  cam.lookAt(c);
+  scene.add(cam);
+  if (vrm.lookAt) vrm.lookAt.target = cam;
+  vrm.update(0);
+
+  const canvas = document.createElement('canvas');
+  const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  r.setClearColor(0x000000, 0);
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  r.setSize(w, h, false);
+  r.render(scene, cam);
+  r.dispose();
+  return canvas;
+}
+
+function bbox(src) {
+  const c = Object.assign(document.createElement('canvas'), { width: src.width, height: src.height });
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(src, 0, 0);
+  const px = x.getImageData(0, 0, c.width, c.height).data;
+  let l = c.width, t = c.height, r = 0, b = 0;
+  for (let y = 0; y < c.height; y++) for (let k = 0; k < c.width; k++) {
+    if (px[(y * c.width + k) * 4 + 3] > 8) { if (k < l) l = k; if (k > r) r = k; if (y < t) t = y; if (y > b) b = y; }
+  }
+  return { l, t, w: r - l + 1, h: b - t + 1 };
+}
+
+const load = (src) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+
+window.renderBackground = async (opts = {}) => {
+  const { W, H, STRIP, figH, figTop, figGap } = { ...LAYOUT, ...opts };
+  const poses = await (await fetch('./poses.json')).json();
+  const CX = W / 2;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#0d0f12'; g.fillRect(0, 0, W, H);
+
+  // Backdrop: cover-scaled library shot, blurred and darkened like the formamorph.ai hero.
+  const bg = await load('./backdrop.webp');
+  const s = Math.max(W / bg.width, 1100 / bg.height);
+  g.filter = 'blur(10px) brightness(0.33) saturate(0.8)';
+  g.drawImage(bg, (W - bg.width * s) / 2, 0, bg.width * s, bg.height * s);
+  g.filter = 'none';
+
+  // Brand-gradient wash, then a fade to the page color below the fold.
+  const wash = g.createLinearGradient(0, 0, W, 0);
+  wash.addColorStop(0, '#a78bfa30'); wash.addColorStop(0.5, '#f0abfc18'); wash.addColorStop(1, '#fb718530');
+  g.fillStyle = wash; g.fillRect(0, 0, W, H);
+  const fade = g.createLinearGradient(0, 0, 0, H);
+  fade.addColorStop(0, '#0d0f1200'); fade.addColorStop(0.42, '#0d0f1200'); fade.addColorStop(0.62, '#0d0f12ff');
+  g.fillStyle = fade; g.fillRect(0, 0, W, H);
+
+  // Strip behind the column, with a thin gradient edge on each side.
+  g.fillStyle = '#111318'; g.fillRect(CX - STRIP / 2, 0, STRIP, H);
+  const edge = g.createLinearGradient(0, 0, 0, 1000);
+  edge.addColorStop(0, '#a78bfa'); edge.addColorStop(0.5, '#f0abfc'); edge.addColorStop(1, '#fb718500');
+  g.fillStyle = edge;
+  g.fillRect(CX - STRIP / 2 - 3, 0, 3, H); g.fillRect(CX + STRIP / 2, 0, 3, H);
+
+  // Avatars in front of the strip; the negative gap overlaps its edge but stays inside the column padding.
+  for (const pose of Object.values(poses)) {
+    const im = await renderAvatar(pose), b = bbox(im), w = (b.w * figH) / b.h;
+    const side = pose.side === 'left' ? -1 : 1;
+    const x = side < 0 ? CX - STRIP / 2 - figGap - w : CX + STRIP / 2 + figGap;
+    g.save(); g.shadowColor = '#000000c0'; g.shadowBlur = 40; g.shadowOffsetX = 12 * side; g.shadowOffsetY = 8;
+    g.drawImage(im, b.l, b.t, b.w, b.h, x, figTop, w, figH); g.restore();
+  }
+  return c.toDataURL('image/png');
+};
+window.__itchBackgroundReady = true;
+</script></body></html>

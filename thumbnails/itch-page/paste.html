@@ -1,0 +1,59 @@
+<!doctype html>
+<!--
+  Copy page for the itch.io description. Open thumbnails/itch-page/paste.html in a browser, press
+  Copy, and paste into itch's description editor. itch keeps inline centering and hosted images but
+  drops local ones, so the copy marks each local image as an upload to place by hand.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Itch Description Copy</title>
+<style>
+  body { background:#111318; color:#e8eaed; font:16px/1.5 Lato, sans-serif; max-width:760px; margin:24px auto; padding:0 16px; }
+  a { color:#c4b5fd; } .text-center { text-align:center; } li { margin:.35em 0; }
+  .bar { position:sticky; top:0; background:#111318; padding:10px 0; border-bottom:1px solid #2a2e35; display:flex; gap:12px; align-items:center; }
+  button { background:#a78bfa; color:#1a1025; border:0; border-radius:4px; padding:8px 14px; font-weight:700; cursor:pointer; }
+  #desc { border:1px dashed #3a3f47; padding:8px 24px; margin-top:16px; }
+</style></head><body>
+<div class="bar"><button id="copy">Copy</button><span id="msg">Preview below. Local images become upload markers in the copy.</span></div>
+<div id="desc"><p class="text-center"><img src="wordmark.png" alt="Formamorph"></p>
+<p class="text-center">An AI text RPG that brings your world to life. Create your own characters and locations, or download any of the hundreds created by the community to explore.</p>
+<p class="text-center"><a href="https://formamorph.ai" target="_blank"><img src="btn-site.png" alt="formamorph.ai" title="formamorph.ai"></a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<a href="https://patreon.com/JakeJamesNSFW" target="_blank"><img src="https://img.itch.zone/aW1nLzI0NTQ5Njk0LnBuZw==/original/5r6yco.png" alt="Patreon" title="Patreon"></a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<a href="https://discord.gg/Ac6uwzdes7" target="_blank"><img src="https://img.itch.zone/aW1nLzI0NTQ5ODQwLnBuZw==/original/Lcyacd.png" alt="Discord" title="Discord"></a></p>
+<p class="text-center">Type what you do, or pick a suggested action. The narrator answers in full prose, and your stats change with the story. Every playthrough follows your choices.</p>
+<p><img src="h-key-features.png" alt="Key Features"></p>
+<ul>
+<li><strong>A narrator that follows your lead.</strong> Stats, traits and locations update as the story moves.</li>
+<li><strong>Hundreds of worlds.</strong> Start with the worlds that come with the game, then download more from the community.</li>
+<li><strong>A full inventory.</strong> Equip gear, use a potion, drop what you don't need, or give it to someone in the scene.</li>
+<li><strong>A world editor.</strong> Write entities, locations, items, stats and scripts. Share your world as one file, or publish it to the community.</li>
+<li><strong>A 3D character of your own.</strong> Load any VRM model and shape its body, face and colors.</li>
+<li><strong>Your look.</strong> Pick a color theme, a font and how the story appears.</li>
+<li><strong>A built-in guide.</strong> Ask it questions as you play.</li>
+</ul>
+<p><img src="h-bring-any-ai.png" alt="Bring Any AI"></p>
+<p>Connect any OpenAI-compatible AI service, or run a model on your own computer. The <a href="https://github.com/JakeJamesDev/formamorph/wiki/Connect-Your-Own-AI" target="_blank">Connect Your Own AI</a> guide shows how.</p>
+<hr>
+<p class="text-center">Created by Jake James and FieryLion. <a href="https://github.com/JakeJamesDev/formamorph" target="_blank">Source on GitHub</a>.</p>
+</div>
+<script>
+  const desc = document.getElementById('desc');
+  const msg = document.getElementById('msg');
+  document.getElementById('copy').onclick = async () => {
+    const copy = desc.cloneNode(true);
+    copy.querySelectorAll('.text-center').forEach((el) => { el.style.textAlign = 'center'; });
+    const uploads = [];
+    copy.querySelectorAll('img').forEach((img) => {
+      const src = img.getAttribute('src');
+      if (/^https?:/.test(src)) return;
+      const link = img.closest('a');
+      const mark = document.createElement('mark');
+      mark.textContent = link ? `[upload ${src}, link to ${link.href}]` : `[upload ${src}]`;
+      (link ?? img).replaceWith(mark);
+      uploads.push(src);
+    });
+    const html = copy.innerHTML;
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([copy.innerText], { type: 'text/plain' }),
+    })]);
+    msg.textContent = `Copied. Upload by hand: ${uploads.join(', ')}`;
+  };
+</script>
+</body></html>
