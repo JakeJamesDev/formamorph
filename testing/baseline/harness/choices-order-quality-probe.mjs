@@ -8,7 +8,8 @@
 //
 // Usage: npx vite-node testing/baseline/harness/choices-order-quality-probe.mjs -- <dump.json> [...more]
 //          [--arms A,C,D] [--per-dump 8] [--runs 3] [--concurrency 4] [--server ../FormamorphServer]
-//          [--out FILE] [--rescore FILE] [--show]
+//          [--out FILE] [--rescore FILE] [--show] [--endpoint URL] [--model NAME]
+//   --endpoint An OpenAI-compatible base URL called directly (e.g. Demo AI), in place of the server run.
 //   --rescore  A stored run file: scores its replies again, sends nothing.
 //   --show     Prints every reply under its case.
 import { readFile, writeFile, mkdir, mkdtemp } from 'node:fs/promises';
@@ -22,7 +23,7 @@ import { messagesFor } from './choicesOrder.mjs';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const option = (name, fallback = null) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
-const valued = new Set(['--arms', '--per-dump', '--runs', '--concurrency', '--server', '--out', '--rescore']);
+const valued = new Set(['--arms', '--per-dump', '--runs', '--concurrency', '--server', '--out', '--rescore', '--endpoint', '--model']);
 const dumps = args.filter((a, i) => !a.startsWith('--') && !valued.has(args[i - 1]));
 const arms = option('--arms', 'A,C,D').split(',').map((s) => s.trim());
 const perDump = Number(option('--per-dump', '8'));
@@ -31,6 +32,8 @@ const concurrency = Number(option('--concurrency', '4'));
 const server = path.resolve(option('--server', path.resolve(process.cwd(), '../FormamorphServer')));
 const rescore = option('--rescore');
 const show = args.includes('--show');
+const endpoint = option('--endpoint')?.replace(/\/+$/, '');
+const model = option('--model', 'default');
 const out = option('--out', `.scratch/choices-order/run-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
 
 /** The turns of a dump whose choices request has a reply and is followed by the player's next action. */
@@ -82,6 +85,23 @@ function scoreReply(reply, kase) {
     grounded: names.length ? lines.some((l) => names.some((n) => l.toLowerCase().includes(n.toLowerCase()))) : null,
     recall: kase.next ? Math.max(0, ...lines.map((l) => overlap(l, kase.next))) : null,
   };
+}
+
+/** One direct call to an OpenAI-compatible endpoint; the reply, or the failure. */
+async function sendDirect(messages, seed) {
+  try {
+    const res = await fetch(`${endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model, messages, max_tokens: TURN_PASS_CAPS.choices, seed }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!res.ok) return { failure: `status_${res.status}` };
+    const body = await res.json();
+    return { reply: body.choices?.[0]?.message?.content ?? '', prompt: body.usage?.prompt_tokens ?? 0 };
+  } catch (error) {
+    return { failure: error.name === 'TimeoutError' ? 'timeout' : error.message };
+  }
 }
 
 /** One live call through the server's runner; the reply, or null with the failure. */
@@ -154,7 +174,7 @@ if (rescore) {
     for (let run = 0; run < runs; run++) {
       for (const arm of arms) {
         const seed = 1000 + run;
-        jobs.push(async () => ({ case: c.id, arm, seed, ...(await send(messagesFor(c.request, arm), seed, dir, `${ci}-${run}-${arm}`)) }));
+        jobs.push(async () => ({ case: c.id, arm, seed, ...(await (endpoint ? sendDirect(messagesFor(c.request, arm), seed) : send(messagesFor(c.request, arm), seed, dir, `${ci}-${run}-${arm}`))) }));
       }
     }
   });
