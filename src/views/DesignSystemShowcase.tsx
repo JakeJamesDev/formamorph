@@ -397,7 +397,7 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
     id: 'usage-report',
     label: 'Usage Report',
-    description: 'Figure tiles, day charts, ranked bars and their tables',
+    description: 'Section tabs, figure tiles, a day chart, ranked bars and their tables',
     Component: UsageReportReference,
   },
   {

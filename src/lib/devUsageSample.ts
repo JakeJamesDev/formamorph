@@ -22,6 +22,7 @@ export function createDevUsageApi(): Pick<HostedAiAdminApi, 'fetchUsageReport'> 
           accounts: 3 + Math.round(wave / 4),
           costMicros: wave * 100_000,
           providerMicros: last ? null : wave * 103_000,
+          installs: 400 + wave * 15,
         };
       });
       const sum = (pick: (day: HostedUsageReport['days'][number]) => number) => days.reduce((total, day) => total + pick(day), 0);
@@ -41,8 +42,15 @@ export function createDevUsageApi(): Pick<HostedAiAdminApi, 'fetchUsageReport'> 
         failed: promptType === 'narration' ? 3 : 0,
       });
 
+      const monday = today - ((new Date(today).getUTCDay() + 6) % 7) * DAY_MS;
+
       return {
         since: `${days[0].day}T00:00:00.000Z`,
+        week: { since: new Date(monday).toISOString(), resetAt: new Date(monday + 7 * DAY_MS).toISOString() },
+        activeUsers: {
+          installs: { today: 610, yesterday: 820, month: 1900, averageDay: 760 },
+          accounts: { today: 6, yesterday: 9, month: 18, averageDay: 7.5 },
+        },
         totals: { calls, turns, accounts: 16, costMicros, failed: 3, providerMicros: sum((day) => day.providerMicros ?? 0), cachedShare: 0.5 },
         days,
         promptTypes: [row('narration', 0.5, 2100), row('summary', 0.2, 1600), row('choices', 0.15, 1400), row('statUpdates', 0.1, 1300), row('help', 0.04, null), row(null, 0.01, null)],
@@ -69,6 +77,27 @@ export function createDevUsageApi(): Pick<HostedAiAdminApi, 'fetchUsageReport'> 
           { step: 'patreon_click', count: count * 3 },
           { step: 'checklist_finished', count: count },
         ],
+        reservations: {
+          overall: { calls: 400, reserveMicros: 4_000_000, costMicros: 1_400_000, ratio: 0.35 },
+          promptTypes: [
+            { promptType: 'narration', calls: 250, reserveMicros: 3_000_000, costMicros: 1_100_000, ratio: 1.1 / 3 },
+            { promptType: 'summary', calls: 150, reserveMicros: 1_000_000, costMicros: 300_000, ratio: 0.3 },
+          ],
+        },
+        clients: [
+          { clientVersion: '3.6.2', calls: 900, turns: 160, costMicros: 240_000, turnsWithoutNarration: 2 },
+          { clientVersion: '3.6.1', calls: 300, turns: 50, costMicros: 80_000, turnsWithoutNarration: 0 },
+          { clientVersion: null, calls: 4, turns: 1, costMicros: 1_000, turnsWithoutNarration: 1 },
+        ],
+        refusals: {
+          days: [],
+          tiers: [
+            { tier: 'supporter', code: 'budget_exhausted', count: 12, accounts: 2 },
+            { tier: null, code: 'not_entitled', count: 30, accounts: 9 },
+            { tier: 'supporter_plus', code: 'rate_limited', count: 4, accounts: 1 },
+          ],
+          budgetExhaustedAccounts: 2,
+        },
       };
     },
   };

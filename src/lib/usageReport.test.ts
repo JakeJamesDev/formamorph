@@ -47,10 +47,10 @@ describe('axisTop', () => {
 describe('the CSV exports', () => {
   it('writes plain dollars a spreadsheet can sum, and leaves an unknown provider figure empty', () => {
     const text = daysCsv([
-      { day: '2026-11-03', calls: 12, turns: 2, accounts: 1, costMicros: 1_500_000, providerMicros: null },
+      { day: '2026-11-03', calls: 12, turns: 2, accounts: 1, costMicros: 1_500_000, providerMicros: null, installs: 40 },
     ]);
 
-    expect(text).toBe('Day,Calls,Turns,Accounts,Recorded Dollars,Provider Dollars\r\n2026-11-03,12,2,1,1.5,\r\n');
+    expect(text).toBe('Day,Calls,Turns,Accounts,Installs,Recorded Dollars,Provider Dollars\r\n2026-11-03,12,2,1,40,1.5,\r\n');
   });
 
   it('quotes a cell that holds a comma', () => {

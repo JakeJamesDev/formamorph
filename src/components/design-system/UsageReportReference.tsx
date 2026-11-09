@@ -10,7 +10,7 @@ export function UsageReportReference() {
     <Card role="region" aria-labelledby="usage-report-title">
       <CardHeader>
         <CardTitle id="usage-report-title">Usage Report</CardTitle>
-        <CardDescription>Figure tiles, day charts, ranked bars and the tables that hold their exact figures.</CardDescription>
+        <CardDescription>Section tabs, figure tiles, a day chart, ranked bars and the tables that hold their exact figures.</CardDescription>
       </CardHeader>
       <CardContent>
         <UsagePanel active api={SAMPLE_API} />

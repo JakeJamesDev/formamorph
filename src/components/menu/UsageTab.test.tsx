@@ -19,10 +19,15 @@ const promptType = (promptTypeName: string | null, costMicros: number, calls: nu
 
 const report = (patch: Partial<HostedUsageReport> = {}): HostedUsageReport => ({
   since: '2026-01-01T00:00:00.000Z',
+  week: { since: '2025-12-29T00:00:00.000Z', resetAt: '2026-01-05T00:00:00.000Z' },
+  activeUsers: {
+    installs: { today: 120, yesterday: 300, month: 400, averageDay: 300 },
+    accounts: { today: 1, yesterday: 2, month: 3, averageDay: null },
+  },
   totals: { calls: 40, turns: 8, accounts: 3, costMicros: 2_000_000, failed: 2, providerMicros: 2_100_000, cachedShare: 0.5 },
   days: [
-    { day: '2026-01-01', calls: 30, turns: 6, accounts: 2, costMicros: 1_500_000, providerMicros: 1_600_000 },
-    { day: '2026-01-02', calls: 10, turns: 2, accounts: 1, costMicros: 500_000, providerMicros: null },
+    { day: '2026-01-01', calls: 30, turns: 6, accounts: 2, costMicros: 1_500_000, providerMicros: 1_600_000, installs: 300 },
+    { day: '2026-01-02', calls: 10, turns: 2, accounts: 1, costMicros: 500_000, providerMicros: null, installs: 120 },
   ],
   promptTypes: [promptType('narration', 1_500_000, 10), promptType('choices', 500_000, 30)],
   endings: [{ status: 'ok', calls: 38 }, { status: 'error', calls: 2 }],
@@ -31,6 +36,23 @@ const report = (patch: Partial<HostedUsageReport> = {}): HostedUsageReport => ({
   slowest: [{ startedAt: '2026-01-01T18:44:00.000Z', promptType: 'narration', firstTokenMs: 38_000, maxGapMs: 31_000, tokensPerSecond: 9, status: 'ok', failure: null }],
   heaviest: [{ tier: 'supporter', turns: 5, costMicros: 1_000_000, budgetShare: 0.74 }],
   offer: [{ step: 'offer_shown', count: 100 }, { step: 'see_levels', count: 40 }, { step: 'patreon_click', count: 0 }, { step: 'checklist_finished', count: 0 }],
+  reservations: {
+    overall: { calls: 3, reserveMicros: 3_000_000, costMicros: 900_000, ratio: 0.3 },
+    promptTypes: [{ promptType: 'narration', calls: 3, reserveMicros: 3_000_000, costMicros: 900_000, ratio: 0.3 }],
+  },
+  clients: [
+    { clientVersion: '3.6.2', calls: 30, turns: 6, costMicros: 1_500_000, turnsWithoutNarration: 1 },
+    { clientVersion: null, calls: 2, turns: 2, costMicros: 10_000, turnsWithoutNarration: 2 },
+  ],
+  refusals: {
+    days: [],
+    tiers: [
+      { tier: 'supporter', code: 'budget_exhausted', count: 2, accounts: 1 },
+      { tier: null, code: 'not_entitled', count: 5, accounts: 4 },
+      { tier: 'supporter_plus', code: 'budget_exhausted', count: 4, accounts: 1 },
+    ],
+    budgetExhaustedAccounts: 2,
+  },
   ...patch,
 });
 
@@ -45,6 +67,7 @@ const rowsOf = (name: string) => {
   const table = screen.getByRole('table', { name });
   return within(table).getAllByRole('row').slice(1).map((row) => within(row).getAllByRole('cell', { hidden: false }).map((cell) => cell.textContent));
 };
+const open = (user: ReturnType<typeof userEvent.setup>, section: string) => user.click(screen.getByRole('tab', { name: section }));
 const rowHeaders = (name: string) => within(screen.getByRole('table', { name })).getAllByRole('rowheader').map((cell) => cell.textContent);
 
 beforeEach(() => {
@@ -74,8 +97,8 @@ describe('the figures', () => {
 
     expect(rowHeaders('Per Day')).toEqual(['2026-01-02', '2026-01-01']);
     expect(rowsOf('Per Day')).toEqual([
-      ['10', '2', '1', '$0.5000', '—'],
-      ['30', '6', '2', '$1.50', '$1.60'],
+      ['10', '2', '1', '120', '$0.5000', '—'],
+      ['30', '6', '2', '300', '$1.50', '$1.60'],
     ]);
   });
 
@@ -100,18 +123,86 @@ describe('the figures', () => {
     expect(ticks('2026-01-02')).toBe(0);
   });
 
-  it('gives each offer step its share of the step before it', async () => {
+  it('shows daily and monthly active installs and accounts, with the daily share of the month', async () => {
     await mount();
+
+    expect(rowHeaders('Active Users')).toEqual(['App Installs', 'AI Accounts']);
+    expect(rowsOf('Active Users')).toEqual([
+      ['120', '300', '400', '300.0', '75%'],
+      ['1', '2', '3', '—', '—'],
+    ]);
+  });
+
+  it('charts the figure the reader picks', async () => {
+    const user = userEvent.setup();
+    await mount();
+
+    await user.click(screen.getByRole('radio', { name: 'Installs' }));
+
+    expect(screen.getByText('Jan 2: 120 Installs')).toBeTruthy();
+  });
+
+  it('gives each offer step its share of the step before it', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await open(user, 'Clients And Offer');
 
     expect(screen.getByText('40 (40%)')).toBeTruthy();
   });
 
   it('names a failure cause and a tier, and never an account', async () => {
+    const user = userEvent.setup();
     await mount();
 
+    await open(user, 'Performance');
     expect(screen.getByText('Provider Error 503')).toBeTruthy();
+
+    await open(user, 'Accounts');
     expect(rowsOf('Heaviest Accounts')[0]).toEqual([expect.any(String), '5', '$1.00', '74%']);
     expect(rowHeaders('Heaviest Accounts')).toEqual(['1']);
+  });
+});
+
+describe('the sections', () => {
+  it('shows the budget week in place of the range on Accounts, and brings the range back after', async () => {
+    const user = userEvent.setup();
+    await mount();
+
+    await open(user, 'Accounts');
+    expect(screen.getByText('Budget Week Dec 29 To Jan 5')).toBeTruthy();
+    expect(screen.queryByRole('radiogroup', { name: 'Range' })).toBeNull();
+
+    await open(user, 'Overview');
+    expect(screen.getByRole('radiogroup', { name: 'Range' })).toBeTruthy();
+  });
+
+  it('sums refusals per code across tiers, most first, with the accounts that used up their budget', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await open(user, 'Performance');
+
+    const refusals = screen.getByRole('group', { name: 'Refusals' });
+    expect(within(refusals).getAllByText(/Budget Used Up|Not Entitled/).map((node) => node.textContent)).toEqual(['Budget Used Up', 'Not Entitled']);
+    expect(within(refusals).getByText('6')).toBeTruthy();
+    expect(within(refusals).getByText('2 Accounts Used Up Their Budget')).toBeTruthy();
+  });
+
+  it('lists reservations per type with a row for all types', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await open(user, 'Performance');
+
+    expect(rowHeaders('Reservations')).toEqual(['Narration', 'All Types']);
+    expect(rowsOf('Reservations')[1]).toEqual(['3', '$3.00', '$0.9000', '30%']);
+  });
+
+  it('lists each client version, and a call with no header under its own name', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await open(user, 'Clients And Offer');
+
+    expect(rowHeaders('Client Versions')).toEqual(['3.6.2', 'No Header']);
+    expect(rowsOf('Client Versions')[1]).toEqual(['2', '2', '$0.0100', '2']);
   });
 });
 
@@ -119,6 +210,7 @@ describe('the prompt type table', () => {
   it('opens costliest first, and sorts by the column the reader picks', async () => {
     const user = userEvent.setup();
     await mount();
+    await open(user, 'Performance');
 
     expect(rowHeaders('Prompt Types')).toEqual(['Narration', 'Choices']);
 
@@ -176,26 +268,40 @@ describe('the exports', () => {
     await mount();
 
     await user.click(screen.getByRole('button', { name: 'Export Per Day As CSV' }));
+    await open(user, 'Performance');
     await user.click(screen.getByRole('button', { name: 'Export Prompt Types As CSV' }));
 
     expect(downloads.map((entry) => entry.name)).toEqual(['usage-days-14.csv', 'usage-prompt-types-14.csv']);
-    expect(await downloads[0].blob.text()).toContain('2026-01-01,30,6,2,1.5,1.6');
+    expect(await downloads[0].blob.text()).toContain('2026-01-01,30,6,2,300,1.5,1.6');
     expect(await downloads[1].blob.text()).toContain('Narration,10,1.5,');
   });
 });
 
 describe('an empty or failed read', () => {
   it('says so in each section rather than drawing empty tables', async () => {
+    const user = userEvent.setup();
     await mount(report({
       totals: { calls: 0, turns: 0, accounts: 0, costMicros: 0, failed: 0, providerMicros: 0, cachedShare: null },
       promptTypes: [], endings: [], failures: [], slowest: [], heaviest: [],
       offer: [{ step: 'offer_shown', count: 0 }],
+      reservations: { overall: { calls: 0, reserveMicros: 0, costMicros: 0, ratio: null }, promptTypes: [] },
+      clients: [],
+      refusals: { days: [], tiers: [], budgetExhaustedAccounts: 0 },
     }));
 
+    await open(user, 'Performance');
     expect(screen.getByText('No failures in this range')).toBeTruthy();
     expect(screen.getByText('No timed calls in this range')).toBeTruthy();
-    expect(screen.getByText('No offer steps in this range')).toBeTruthy();
+    expect(screen.getByText('No settled calls in this range')).toBeTruthy();
+    expect(screen.getByText('No refusals in this range')).toBeTruthy();
     expect(screen.queryByRole('table', { name: 'Prompt Types' })).toBeNull();
+
+    await open(user, 'Accounts');
+    expect(screen.getByText('No calls this week')).toBeTruthy();
+
+    await open(user, 'Clients And Offer');
+    expect(screen.getByText('No offer steps in this range')).toBeTruthy();
+    expect(screen.getByText('No versioned calls in this range')).toBeTruthy();
   });
 
   it('reports a read that fails', async () => {

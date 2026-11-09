@@ -61,6 +61,18 @@ const OFFER_LABELS: Record<string, string> = {
 
 export const offerLabel = (step: string): string => OFFER_LABELS[step] ?? step;
 
+const REFUSAL_LABELS: Record<string, string> = {
+  invalid_request: 'Invalid Request', age_gate_required: 'Age Check Needed', not_entitled: 'Not Entitled',
+  pledge_unconfirmed: 'Pledge Unconfirmed', service_paused: 'Service Paused', rate_limited: 'Rate Limited',
+  turn_expired: 'Turn Expired', budget_exhausted: 'Budget Used Up', window_exceeded: 'Prompt Too Long',
+  image_not_supported: 'Image Not Supported',
+};
+
+export const refusalLabel = (code: string): string => REFUSAL_LABELS[code] ?? code;
+
+/** A null version is a call with no readable client header. */
+export const clientLabel = (version: string | null): string => version ?? 'No Header';
+
 /** The next round axis top at or above a value: 1, 2 or 5 times a power of ten. Zero data still gets an axis. */
 export function axisTop(value: number): number {
   if (value <= 0) return 1;
@@ -83,8 +95,8 @@ const dollarCell = (micros: number | null) => (micros === null ? null : micros /
 /** Plain numbers rather than display text, so a spreadsheet can sum the columns. */
 export function daysCsv(days: readonly HostedUsageDay[]): string {
   return csv([
-    ['Day', 'Calls', 'Turns', 'Accounts', 'Recorded Dollars', 'Provider Dollars'],
-    ...days.map((day) => [day.day, day.calls, day.turns, day.accounts, dollarCell(day.costMicros), dollarCell(day.providerMicros)]),
+    ['Day', 'Calls', 'Turns', 'Accounts', 'Installs', 'Recorded Dollars', 'Provider Dollars'],
+    ...days.map((day) => [day.day, day.calls, day.turns, day.accounts, day.installs, dollarCell(day.costMicros), dollarCell(day.providerMicros)]),
   ]);
 }
 

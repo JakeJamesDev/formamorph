@@ -81,6 +81,24 @@ export interface HostedUsageDay {
   accounts: number;
   costMicros: number;
   providerMicros: number | null;
+  /** Distinct app installs that opened that day. */
+  installs: number;
+}
+
+/** One population's active counts by UTC calendar month. `averageDay` is the mean full day so far, null with none counted. */
+export interface HostedActiveFigures {
+  today: number;
+  yesterday: number;
+  month: number;
+  averageDay: number | null;
+}
+
+/** Settled cost over what admission reserved. `ratio` is null with nothing reserved. */
+export interface HostedReservation {
+  calls: number;
+  reserveMicros: number;
+  costMicros: number;
+  ratio: number | null;
 }
 
 /** One prompt type's sums. A speed figure is null when the type has no timed call in the range. */
@@ -100,6 +118,9 @@ export interface HostedPromptTypeUsage {
 /** Sums and call timings for a range of UTC days. It names no account. */
 export interface HostedUsageReport {
   since: string;
+  /** The budget week that `tiers` and `heaviest` cover. */
+  week: { since: string; resetAt: string };
+  activeUsers: { installs: HostedActiveFigures; accounts: HostedActiveFigures };
   totals: { calls: number; turns: number; accounts: number; costMicros: number; failed: number; providerMicros: number; cachedShare: number | null };
   days: HostedUsageDay[];
   promptTypes: HostedPromptTypeUsage[];
@@ -109,6 +130,14 @@ export interface HostedUsageReport {
   slowest: { startedAt: string; promptType: string | null; firstTokenMs: number | null; maxGapMs: number | null; tokensPerSecond: number | null; status: string; failure: string | null }[];
   heaviest: { tier: SupporterTier; turns: number; costMicros: number; budgetShare: number | null }[];
   offer: { step: string; count: number }[];
+  reservations: { overall: HostedReservation; promptTypes: (HostedReservation & { promptType: string | null })[] };
+  /** Per build. A null version is a call that sent no readable client header. */
+  clients: { clientVersion: string | null; calls: number; turns: number; costMicros: number; turnsWithoutNarration: number }[];
+  refusals: {
+    days: { day: string; code: string; count: number; accounts: number }[];
+    tiers: { tier: SupporterTier | null; code: string; count: number; accounts: number }[];
+    budgetExhaustedAccounts: number;
+  };
 }
 
 /** The admin surface of Formamorph AI: the setting, grants, the pause and the usage report. */

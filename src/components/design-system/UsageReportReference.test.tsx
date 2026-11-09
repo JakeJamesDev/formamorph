@@ -10,7 +10,7 @@ describe('Usage Report reference', () => {
     const { container } = render(<UsageReportReference />);
 
     expect(await screen.findByRole('table', { name: 'Per Day' })).toBeTruthy();
-    expect(container.querySelectorAll('[data-day]').length).toBe(14 * 3);
+    expect(container.querySelectorAll('[data-day]').length).toBe(14);
   });
 
   it('fills the columns with the theme primary, which every theme sets', async () => {
