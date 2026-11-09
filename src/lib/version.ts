@@ -370,21 +370,20 @@ function normalizeContentLinks(world: Record<string, unknown>): void {
 }
 
 /**
- * Move the single `openingCue` into the openings list as one Opening Action, and drop the old fields. A cue
- * switched off keeps its row and switches the list off. A blank cue opened on the default and adds no row;
- * its switch still carries over.
+ * Move the single `openingCue` into the openings list as one Opening Action, and drop the old fields. The
+ * old switches (`openingCueEnabled`, `openingsEnabled`) are dropped too: a world with any opening uses it.
+ * A blank cue adds no row.
  * Idempotent: a world without the old fields passes through untouched.
  */
 function migrateOpeningCue(world: Record<string, unknown>): void {
   const ov = world.worldOverview as Record<string, unknown> | undefined;
-  if (!ov || typeof ov !== 'object' || !('openingCue' in ov || 'openingCueEnabled' in ov)) return;
-  const { openingCue: cue, openingCueEnabled: enabled, ...rest } = ov;
+  if (!ov || typeof ov !== 'object' || !('openingCue' in ov || 'openingCueEnabled' in ov || 'openingsEnabled' in ov)) return;
+  const { openingCue: cue, openingCueEnabled: _cueSwitch, openingsEnabled: _listSwitch, ...rest } = ov;
   const next: Record<string, unknown> = { ...rest };
   if (typeof cue === 'string' && cue.trim()) {
     const row: Opening = { id: randomUUID(), text: cue, kind: 'action' };
     next.openings = [...(Array.isArray(rest.openings) ? rest.openings : []), row];
   }
-  if (enabled === false) next.openingsEnabled = false;
   world.worldOverview = next;
 }
 

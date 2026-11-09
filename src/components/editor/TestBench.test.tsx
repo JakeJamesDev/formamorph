@@ -784,10 +784,10 @@ describe('TestBench Opening instrument', () => {
     expect(screen.queryByRole('button', { name: /System Prompt/ })).toBeNull();
   });
 
-  it('says a switched-off list opens on the default Opening Action', () => {
-    const off: RuleWorld = { ...pooledWorld, worldOverview: { ...pooledWorld.worldOverview, openingsEnabled: false } };
-    renderBench(off, { tab: 'opening', opening: { data: buildOpening(off, buildLens(off, EMPTY_LENS), {}) } });
-    expect(screen.getByText(/“Openings” is off/)).toBeInTheDocument();
+  it('says a pool with no drawable opening starts on the default Opening Action', () => {
+    const none: RuleWorld = { ...pooledWorld, worldOverview: { ...pooledWorld.worldOverview, openings: [], openingWeights: undefined } };
+    renderBench(none, { tab: 'opening', opening: { data: buildOpening(none, buildLens(none, EMPTY_LENS), {}) } });
+    expect(screen.getByText(/No opening here can be drawn/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Prompt/ })).toBeInTheDocument();
   });
 

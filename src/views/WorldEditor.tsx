@@ -84,7 +84,6 @@ import { ListDetail } from "@/components/ui/list-detail";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
 import { useLeavePrompt } from "@/hooks/useLeavePrompt";
-import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
@@ -129,7 +128,6 @@ import AddEntityModal from '@/components/modals/AddEntityModal';
 import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
 import { resolveOwnerKey, WORLD_OWNER_KEY } from '@/lib/openingsTab';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
@@ -720,13 +718,6 @@ const WorldEditorInner = ({
   const addEntityToWorld = (entity: Entity) => {
     const placed = { ...entity, groupId: null, order: entityRootSiblingCount() };
     addEntity(placed);
-    // The copy's openings switch the world's list on, which clears an author's off. The box changes without
-    // the author touching it, so the add says which entity changed it.
-    if (hasAuthoredOpenings(placed) && !openingsEnabled(worldOverview, [...entities, ...locations])) {
-      updateWorldOverview(setOpeningsEnabled(true));
-      const named = labelPlaceholders(placed.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
-      toast.info(`${named || 'This entity'} has openings, so “Use These Openings” is now on.`);
-    }
     select('entities', placed.id);
   };
   const addBookToWorld = (book: Dictionary) => {

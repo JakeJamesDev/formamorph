@@ -58,11 +58,11 @@ beforeEach(() => {
 });
 
 describe("This World's footer hint", () => {
-  const hint = () => within(pane()).getByText(/Draws one opening|Write an opening here|Openings are off/).textContent;
+  const hint = () => within(pane()).getByText(/Draws one opening|Players start on the default opening/).textContent;
 
   it('keeps the default-opening state when the only text is on Custom Persona Others rows', async () => {
     await openOpeningsTab([{ ...custom, openings: [others] } as Entity]);
-    expect(hint()).toMatch(/^Write an opening here/);
+    expect(hint()).toMatch(/^Players start on the default opening/);
   });
 
   it('says one opening draws when a Custom Persona Self row has text', async () => {

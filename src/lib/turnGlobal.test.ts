@@ -109,8 +109,7 @@ describe('the opening an editor run reads', () => {
     expect(heaviestWorldOpening(overview({ openings: [action('n', 'Page one.', 'narration')] }))).toBeNull();
   });
 
-  it('reads the default opening when the list is off or empty', () => {
-    expect(heaviestWorldOpening(overview({ openings: [action('a', 'Off.')], openingsEnabled: false }))).toBe(DEFAULT_OPENING);
+  it('reads the default opening when the list is empty', () => {
     expect(heaviestWorldOpening(overview({}))).toBe(DEFAULT_OPENING);
   });
 

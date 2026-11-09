@@ -56,6 +56,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Items the story gives or takes now reach an entity it calls by an Alias or a Stranger Name.** Before, an entity named by a title, such as "The Captain", got none of the items the story gave it by its first name.
   - **World Editor:**
     - **An entity's stat and trait Body Sliders list now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
+  - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.
 - **🛠️ Developer tooling**
   - **The affected-test gate now runs the tests that import a deleted file.** Vitest can't follow an import to a file that is gone, so the gate adds each file that imports it or matches it through `import.meta.glob`.
 

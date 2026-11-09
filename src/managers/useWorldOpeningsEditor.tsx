@@ -15,7 +15,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { EntityIcon, GroupIcon, LocationIcon, WorldIcon } from '@/lib/elementIcons';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import {
-  addOpening, hasAuthoredOpenings, openingsEditorView, openingsEnabled, type EditorOpeningRow, type OpeningOwner,
+  addOpening, hasAuthoredOpenings, openingsEditorView, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
 import {
   entityOwnerKey, entityPickChoices, locationOwnerKey, locationPicker, openingsTabOwners, openingsTabRows, resolveOwnerKey,
@@ -196,7 +196,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
           : held.kind === 'world' && view.defaultOpening ? null : <Hint>No openings yet</Hint>}
       />
       {held.kind === 'world'
-        ? <WorldOpeningsHint enabled={openingsEnabled(worldOverview, ownersOfOpenings)} anyOpenings={[worldOverview, ...ownersOfOpenings].some(hasAuthoredOpenings)} />
+        ? <WorldOpeningsHint anyOpenings={[worldOverview, ...ownersOfOpenings].some(hasAuthoredOpenings)} />
         : held.group.location
           ? <LocationOpeningsHint />
           : held.group.entity && <EntityOpeningsHint worldOwner={held.group.entity} showSelf={held.group.showSelf} />}

@@ -143,11 +143,10 @@ At **Start Game**, the game draws one opening. **Quick Start** draws the same wa
 | One or more entities with openings in **Library Additions** | Only the picked entities' Others openings, by weight. They replace the world's openings. |
 | Nothing above | The world's openings, the openings of your starting location, and those of entities at your starting location |
 
-You start on the default opening in three cases:
+You start on the default opening in two cases:
 
 - No source has an opening for your start.
-- The author switched the world's openings list off. This turns off every row above, Self openings and Library Additions included.
-- The world, its entities and its locations have no openings, and your persona brings no Self openings. Openings that only Library Additions bring don't switch the list on.
+- The world, its entities and its locations have no openings, and your persona brings no Self openings. Openings that only Library Additions bring don't count.
 
 When you play an entity as your [persona](Personas#play-a-worlds-own-entity), its Others openings stay out of the draw. Page one never greets you as yourself. Its Self openings, if any, replace every other opening.
 

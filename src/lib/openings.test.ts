@@ -3,7 +3,7 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import type { Entity, GameLocation, Opening, WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, drawPoolEntry, openingOwner, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
-  drawUnseenOpening, hasAuthoredOpenings, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
+  drawUnseenOpening, hasAuthoredOpenings, openingPool, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
   othersNeverDraw, ownerOpeningRows, setOpeningText, setOpeningWeight,
 } from './openings';
 
@@ -21,6 +21,9 @@ const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
   name: 'W', description: '', author: '', thumbnail: null, bgm: null,
   systemPrompt: '', tags: [], ...over,
 });
+
+/** A world saved by an older build, still carrying the removed off flag. */
+const storedOff = (ov: WorldOverview): WorldOverview => ({ ...ov, openingsEnabled: false } as WorldOverview);
 
 /** How often each opening comes up over many seeded draws. */
 const tally = (ov: WorldOverview, draws = 20000, seed = 7) => {
@@ -42,11 +45,9 @@ describe('the draw', () => {
     expect(DEFAULT_OPENING).toMatchObject({ kind: 'action', text: OPENING_SCENE_CUE });
   });
 
-  it('returns the default when the list is switched off, and keeps the rows', () => {
-    const ov = overview({ openings: [action('a')], openingsEnabled: false });
-    expect(openingsEnabled(ov)).toBe(false);
-    expect(resolveOpening(ov, seeded(1))).toEqual(DEFAULT_OPENING);
-    expect(ov.openings).toHaveLength(1);
+  it('draws an authored opening whatever a stored off flag says', () => {
+    const ov = storedOff(overview({ openings: [action('a')] }));
+    expect(resolveOpening(ov, seeded(1)).id).toBe('a');
   });
 
   it('reads whether an owner has written an opening, counting a benched row', () => {
@@ -66,18 +67,9 @@ describe('the draw', () => {
     expect(hasAuthoredOpenings({ persona: true, openings: [action('a')] })).toBe(true);
   });
 
-  it('derives off for a world that has no opening anywhere, and on once one exists', () => {
-    expect(openingsEnabled(overview())).toBe(false);
-    expect(openingsEnabled(overview({ openings: [action('a', '   ')] }))).toBe(false);
-    expect(openingsEnabled(overview({ openings: [action('a')] }))).toBe(true);
-    // An entity's opening switches the world's list on by itself.
-    expect(openingsEnabled(overview(), [{ openings: [action('e1')] }])).toBe(true);
-    // The author's off still wins over both.
-    expect(openingsEnabled(overview({ openings: [action('a')], openingsEnabled: false }))).toBe(false);
-  });
-
-  it('draws an authored opening under an absent switch, which the rows themselves turn on', () => {
-    expect(openingsEnabled(overview({ openings: [action('a')] }))).toBe(true);
+  it('draws the default for a world with no opening anywhere, and an authored one once it exists', () => {
+    expect(resolveOpening(overview(), seeded(1))).toEqual(DEFAULT_OPENING);
+    expect(resolveOpening(overview({ openings: [action('a', '   ')] }), seeded(1))).toEqual(DEFAULT_OPENING);
     expect(resolveOpening(overview({ openings: [action('a')] }), seeded(1)).id).toBe('a');
   });
 
@@ -233,13 +225,13 @@ describe('the pool with entities', () => {
     expect(pool.map((e) => [e.opening.text, e.weight])).toEqual([['Often.', 3], ['Rarely.', 1]]);
   });
 
-  it('removes the entities’ rows along with the world’s when the world switch is off', () => {
+  it('keeps the world’s and the entities’ rows under a stored off flag', () => {
     const pool = openingPool({
-      overview: overview({ openings: [action('w1')], openingsEnabled: false }),
+      overview: storedOff(overview({ openings: [action('w1')] })),
       entities: [guide()],
       startingLocationId: 'dock',
     });
-    expect(pool).toEqual([]);
+    expect(pool).toHaveLength(2);
   });
 
   it('reads the entities it is handed, so a deleted entity’s rows are gone', () => {
@@ -308,13 +300,10 @@ describe('the pool with picked entities', () => {
     expect(texts(pool)).toEqual(['The world opens.', 'The guide waves.']);
   });
 
-  it('benches the picked entities’ rows too when the world switch is off', () => {
-    const off = overview({ openings: [action('w1')], openingsEnabled: false });
+  it('draws the picked entities’ rows under a stored off flag', () => {
+    const off = storedOff(overview({ openings: [action('w1')] }));
     const picked = [pick('bard', [action('b1', 'Bard.')])];
-    expect(openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked })).toEqual([]);
-    // The same pick draws once the switch is on, so the empty pool is the switch and not the pick.
-    const on = overview({ openings: [action('w1')] });
-    expect(texts(openingPool({ overview: on, entities: [guide], startingLocationId: 'dock', picked }))).toEqual(['Bard.']);
+    expect(texts(openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked }))).toEqual(['Bard.']);
   });
 });
 
@@ -385,8 +374,8 @@ describe('what the editor writes', () => {
 });
 
 describe('where openings are found', () => {
-  it('lists every row text for chip priming and search, switched off or not', () => {
-    const ov = overview({ openings: [action('a'), action('b')], openingsEnabled: false });
+  it('lists every row text for chip priming and search', () => {
+    const ov = overview({ openings: [action('a'), action('b')] });
     expect(openingTexts(ov)).toEqual(['Opening a.', 'Opening b.']);
     expect(openingTexts(null)).toEqual([]);
   });
@@ -451,11 +440,6 @@ describe('the editor view', () => {
       locations: [loc('dock', true), loc('cave', true)],
     }, 'dock');
     expect(chances(v)).toEqual([[null, [100, 0, 0]], ['near', [0]]]);
-  });
-
-  it('counts the rows of the switched-off list, so a draft reads the odds it will have', () => {
-    const v = view({ overview: overview({ openings: [action('w1'), action('w2')], openingsEnabled: false }) });
-    expect(chances(v)).toEqual([[null, [50, 50]]]);
   });
 
   const selfRow = (id: string): Opening => ({ ...action(id), self: true });
@@ -686,9 +670,9 @@ describe('the editor view', () => {
       expect(defaults(benched)).toEqual([true, ['dock', 'market', 'cave']]);
     });
 
-    it('ignores the switch and every Self row, which no start pool holds', () => {
+    it('ignores every Self row, which no start pool holds', () => {
       const persona = ent('p', ['cave'], [{ ...action('ps1'), self: true }], { persona: true });
-      const v = view({ overview: overview({ openingsEnabled: false }), entities: [...entities, persona], locations });
+      const v = view({ overview: overview(), entities: [...entities, persona], locations });
       expect(defaults(v)).toEqual([true, ['market', 'cave']]);
     });
 

@@ -4,7 +4,6 @@ import { benchEditorWorld, openAddFromLibrary, renderWorldEditorBench } from '@/
 import userEvent from '@testing-library/user-event';
 import { toastTexts } from '@/test/toastText';
 import { markHelpSeen } from '@/lib/helpSeenStore';
-import { openingsEnabled } from '@/lib/openings';
 import WorldStorageService from '../services/WorldStorageService';
 import type { Dictionary, Entity, World } from '@/types';
 
@@ -676,61 +675,16 @@ describe('Adding an entity that brings openings', () => {
     data: { id: 'lib-o', name: 'Tall Marn', playerDescription: 'A pilot.', openings },
   });
 
-  const OFF_WORLD = (): World => benchEditorWorld({
-    worldOverview: {
-      name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-      systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', tags: [],
-      openingsEnabled: false,
-    },
-  } as Partial<World>);
-
-  const addFromLibrary = async () => {
+  it('adds the entity with its openings and raises no toast', async () => {
+    seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
+    const { ctx } = renderWorldEditorBench(benchEditorWorld({}), 'advanced');
     openTab(/Entities/);
     openAddFromLibrary('entity');
     fireEvent.click(await screen.findByText('Tall Marn'));
     confirmPicker('Add Entity');
-  };
-
-  it('clears the author’s off and says so, since the copy would land benched', async () => {
-    seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
-    const { ctx } = renderWorldEditorBench(OFF_WORLD(), 'advanced');
-    await addFromLibrary();
 
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
-    expect(ctx().worldOverview.openingsEnabled).toBeUndefined();
-    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Use These Openings” is now on.');
-  });
-
-  it('leaves the switch alone for a copy with no row that could come up', async () => {
-    seedOpener([{ id: 'o1', text: '   ', kind: 'action' }]);
-    const { ctx } = renderWorldEditorBench(OFF_WORLD(), 'advanced');
-    await addFromLibrary();
-
-    await waitFor(() => expect(ctx().entities).toHaveLength(2));
-    expect(ctx().worldOverview.openingsEnabled).toBe(false);
-    expect(toast.info).not.toHaveBeenCalled();
-  });
-
-  it('says so for a world that has no opening yet, where the box also reads off', async () => {
-    seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
-    const { ctx } = renderWorldEditorBench(benchEditorWorld({}), 'advanced');
-    expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(false);
-    await addFromLibrary();
-
-    await waitFor(() => expect(ctx().entities).toHaveLength(2));
-    expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(true);
-    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so “Use These Openings” is now on.');
-  });
-
-  it('says nothing when the world already has an opening of its own', async () => {
-    seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
-    const world = benchEditorWorld({});
-    world.worldOverview.openings = [{ id: 'w1', text: 'The fen wakes.', kind: 'action' }];
-    const { ctx } = renderWorldEditorBench(world, 'advanced');
-    expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(true);
-    await addFromLibrary();
-
-    await waitFor(() => expect(ctx().entities).toHaveLength(2));
+    expect(ctx().entities.some((e) => e.openings?.[0]?.text === 'Marn hails you from the jetty.')).toBe(true);
     expect(toast.info).not.toHaveBeenCalled();
   });
 });

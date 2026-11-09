@@ -51,7 +51,6 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     introReadme: "Intro Readme",
     promptOverrides: "Prompt Overrides",
     openingWeights: "Opening Weights",
-    openingsEnabled: "Openings",
     allowedPersonas: "Allowed Personas",
     startPersona: "Starts On",
     mapBackground: "Map Background",

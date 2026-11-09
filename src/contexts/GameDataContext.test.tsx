@@ -655,7 +655,7 @@ describe('loadWorldData', () => {
     act(() => { result.current.loadWorldData(exported); });
     expect(result.current.worldOverview.openings).toEqual(OPENINGS);
     expect(result.current.worldOverview.openingWeights).toEqual({ o1: 3 });
-    expect(result.current.worldOverview.openingsEnabled).toBe(false);
+    expect('openingsEnabled' in result.current.worldOverview).toBe(false);
   });
 
   it("carries the Map Background's images, rules, frame and opacity through an export and load", () => {
@@ -680,7 +680,7 @@ describe('loadWorldData', () => {
     const legacy = world('a', { openingCue: 'You wake in the reed-beds.' });
     act(() => { result.current.loadWorldData(legacy); });
     expect(result.current.worldOverview.openings?.map((o) => o.text)).toEqual(['You wake in the reed-beds.']);
-    expect(result.current.worldOverview.openingsEnabled).toBeUndefined();
+    expect('openingsEnabled' in result.current.worldOverview).toBe(false);
   });
 
   it("does not leak one world's openings into the next", () => {
@@ -688,7 +688,7 @@ describe('loadWorldData', () => {
     act(() => { result.current.loadWorldData(world('a', { openings: OPENINGS, openingsEnabled: false })); });
     act(() => { result.current.loadWorldData(world('b', {})); });
     expect(result.current.worldOverview.openings).toBeUndefined();
-    expect(result.current.worldOverview.openingsEnabled).toBeUndefined();
+    expect('openingsEnabled' in result.current.worldOverview).toBe(false);
   });
 
   it("carries the world's persona rules through the load, and does not leak them into the next world", () => {

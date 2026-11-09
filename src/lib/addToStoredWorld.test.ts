@@ -5,7 +5,6 @@ import { addCopyToStoredWorld, storedWorldReferences } from './addToStoredWorld'
 import WorldStorageService from '@/services/WorldStorageService';
 import type { LibrarySource } from './linkedContent';
 import type { ConnectionPlan } from './worldReferences';
-import { openingsEnabled } from './openings';
 import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, WorldOverview } from '@/types';
 
 vi.mock('@/services/AuthService', () => ({ default: { getCurrentUser: () => null } }));
@@ -17,17 +16,14 @@ const empty: ConnectionPlan = { placeholders: {}, locations: {}, newLocations: [
 /** Store one world with the sections `storeWorld` insists on, plus whatever the case needs. */
 async function storeWorld(over: {
   entities?: Entity[]; dictionaries?: Dictionary[]; placeholders?: Placeholder[]; locations?: GameLocation[];
-  openingsEnabled?: boolean; traits?: Trait[]; placeholderGroups?: PlaceholderGroup[];
+  traits?: Trait[]; placeholderGroups?: PlaceholderGroup[];
 } = {}) {
   await WorldStorageService.storeWorld({
     id: 'w-1',
     name: 'Sedge Landing',
     author: 'Ann',
     data: {
-      worldOverview: {
-        name: 'Sedge Landing',
-        ...(over.openingsEnabled === false ? { openingsEnabled: false } : {}),
-      },
+      worldOverview: { name: 'Sedge Landing' },
       stats: [], traits: (over.traits ?? []) as unknown as unknown[], statUpdates: [],
       entities: (over.entities ?? []) as unknown as unknown[],
       dictionaries: (over.dictionaries ?? []) as unknown as unknown[],
@@ -227,30 +223,14 @@ describe('a copy that brings openings', () => {
     openings: [{ id: 'o1', text, kind: 'action' }],
   });
 
-  it('switches a benched list back on, so the arriving rows can draw', async () => {
-    await storeWorld({ openingsEnabled: false });
-
-    await addCopyToStoredWorld('w-1', opener('Marn hails you from the jetty.'), source, empty);
-
-    expect((await storedWorld()).worldOverview?.openingsEnabled).toBeUndefined();
-  });
-
-  it('leaves the switch alone for a copy with no opening written', async () => {
-    await storeWorld({ openingsEnabled: false });
-
-    await addCopyToStoredWorld('w-1', opener('   '), source, empty);
-
-    expect((await storedWorld()).worldOverview?.openingsEnabled).toBe(false);
-  });
-
-  it('writes no flag into a world that never switched the list off', async () => {
+  it('adds the copy with its openings and leaves the world overview as it was', async () => {
     await storeWorld();
+    const before = (await storedWorld()).worldOverview;
 
     await addCopyToStoredWorld('w-1', opener('Marn hails you from the jetty.'), source, empty);
 
-    // The rows themselves switch the list on, so the copy leaves the field absent.
     const after = await storedWorld();
-    expect(after.worldOverview?.openingsEnabled).toBeUndefined();
-    expect(openingsEnabled(after.worldOverview, after.entities)).toBe(true);
+    expect(after.worldOverview).toEqual(before);
+    expect(after.entities?.[0].openings?.[0].text).toBe('Marn hails you from the jetty.');
   });
 });

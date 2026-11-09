@@ -57,14 +57,12 @@ export function DefaultOpeningNote({ view, label }: { view: OpeningsEditorView; 
 }
 
 /** How the world's openings draw, closing the world's list. */
-export function WorldOpeningsHint({ enabled, anyOpenings }: { enabled: boolean; anyOpenings: boolean }) {
+export function WorldOpeningsHint({ anyOpenings }: { anyOpenings: boolean }) {
   return (
     <Hint>
-      {enabled
+      {anyOpenings
         ? "Draws one opening by weight when a player starts this world. A Player Action fills the player's input box to edit and send. Narration shows as the first page, as written."
-        : anyOpenings
-          ? "Openings are off, so players start on the default opening. The percentages show each opening's odds once openings are on."
-          : 'Write an opening here, on a location, or on an entity to turn openings on. Until then, players start on the default opening.'}
+        : 'Players start on the default opening until you write an opening here, on a location, or on an entity.'}
     </Hint>
   );
 }
@@ -78,7 +76,6 @@ export function EntityOpeningsHint({ worldOwner, showSelf }: { worldOwner: Entit
         : othersNeverDraw(worldOwner)
           ? <><strong>Self</strong> openings draw when the player picks this entity.</>
           : "Joins the world's openings when a game starts at one of this entity's locations."}
-      {" Turning off the world's openings turns these off too."}
       {showSelf && !othersNeverDraw(worldOwner) && ' Mark one Self to make it the only opening for a player who plays this entity.'}
     </Hint>
   );
@@ -88,7 +85,7 @@ export function EntityOpeningsHint({ worldOwner, showSelf }: { worldOwner: Entit
 export function LocationOpeningsHint() {
   return (
     <Hint>
-      {"Joins the world's openings when a game starts at this location, not at a location inside it. Turning off the world's openings turns these off too."}
+      {"Joins the world's openings when a game starts at this location, not at a location inside it."}
     </Hint>
   );
 }

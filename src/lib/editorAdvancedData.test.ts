@@ -87,10 +87,10 @@ describe('worldUsesAdvancedFeatures', () => {
     expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({ allowedPersonas: 'any' }) }))).toBe(false);
   });
 
-  it('says yes about a written opening, even with the list switched off', () => {
+  it('says yes about a written opening', () => {
     expect(worldUsesAdvancedFeatures(plain({
       worldOverview: overview({
-        openings: [{ id: 'o1', text: 'You wake in the reed-beds.', kind: 'action' }], openingsEnabled: false,
+        openings: [{ id: 'o1', text: 'You wake in the reed-beds.', kind: 'action' }],
       }),
     }))).toBe(true);
   });

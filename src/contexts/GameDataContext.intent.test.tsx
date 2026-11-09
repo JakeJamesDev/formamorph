@@ -281,8 +281,8 @@ describe('Steps that match intent', () => {
 
   it('labels a world setting by its field', async () => {
     const { ctx, history } = await open();
-    await act1(() => ctx().updateWorldOverview({ openingsEnabled: false }));
-    expect(labels(history())).toEqual(['Edit World: Openings']);
+    await act1(() => ctx().updateWorldOverview({ readme: 'A fen primer.' }));
+    expect(labels(history())).toEqual(['Edit World: Readme']);
   });
 
   it('labels an entity edit through its function by the one field it changed, and runs the function once', async () => {

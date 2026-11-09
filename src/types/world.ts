@@ -995,8 +995,6 @@ export interface WorldOverview {
   openings?: Opening[];
   /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
   openingWeights?: Record<string, number>;
-  /** `false` keeps `openings` on the world without drawing them. Absent = on. */
-  openingsEnabled?: boolean;
   /** Which personas the player can pick. Absent = any. */
   allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */

@@ -465,12 +465,11 @@ function useProvideGameData() {
       // Allowlisted like everything above — omitting it here would silently drop a world's authored
       // narration prompt on load, and the next saveWorld would write the loss back to disk.
       ...(overview.promptOverrides ? { promptOverrides: overview.promptOverrides } : {}),
-      // Same allowlist rule. The switch is spread only when it is actually a boolean: absent means on.
+      // Same allowlist rule.
       ...(Array.isArray(overview.openings) ? { openings: overview.openings } : {}),
       ...(overview.openingWeights ? { openingWeights: overview.openingWeights } : {}),
       ...(overview.vrmStore ? { vrmStore: overview.vrmStore } : {}),
       ...(overview.legacyVrmFallback ? { legacyVrmFallback: overview.legacyVrmFallback } : {}),
-      ...(typeof overview.openingsEnabled === 'boolean' ? { openingsEnabled: overview.openingsEnabled } : {}),
       ...(mapImages(overview).length && overview.mapBackground ? { mapBackground: overview.mapBackground } : {}),
       // Any and the player's default are the absent values.
       ...(allowedPersonas !== 'any' ? { allowedPersonas } : {}),

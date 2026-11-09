@@ -267,11 +267,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onOpeningChan
 
         <SectionHeading label="Opening Pool" note={`what a new game at ${data.locationName} draws from`} />
         {data.pool.length === 0 ? (
-          <Meta as="p">
-            {data.openingsEnabled
-              ? 'No opening here can be drawn, so the game starts with the default opening'
-              : '“Openings” is off, so the game starts with the default opening'}
-          </Meta>
+          <Meta as="p">No opening here can be drawn, so the game starts with the default opening</Meta>
         ) : (
           <div className="space-y-1">
             {data.pool.map((row) => (

@@ -234,7 +234,7 @@ describe('collectSearchTargets', () => {
       { id: 'o2', text: 'The ferry bell rings twice.', kind: 'action' as const },
     ];
     const { src, writes } = sources({
-      worldOverview: overview({ openings, openingWeights: { o2: 3 }, openingsEnabled: false }),
+      worldOverview: overview({ openings, openingWeights: { o2: 3 } }),
     });
     const targets = collectSearchTargets(src);
     expect(targetFor(targets, openingFieldKey('o1')))
@@ -242,11 +242,10 @@ describe('collectSearchTargets', () => {
     expect(targetFor(targets, openingFieldKey('o2'))).toMatchObject({ value: 'The ferry bell rings twice.' });
 
     targetFor(targets, openingFieldKey('o2')).write('The ferry bell rings once.');
-    // The switch and the weights are the author's; a replace edits one row's text and nothing else.
+    // The weights are the author's; a replace edits one row's text and nothing else.
     expect(writes).toEqual([['overview', expect.objectContaining({
       openings: [openings[0], { ...openings[1], text: 'The ferry bell rings once.' }],
       openingWeights: { o2: 3 },
-      openingsEnabled: false,
     })]]);
   });
 

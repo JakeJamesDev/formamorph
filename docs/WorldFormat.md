@@ -126,7 +126,7 @@ Import runs every world through a migration. The migration changes an older shap
 | A connection with `from`, `to`, `twoWay` and `aiHint` | A connection with `a`, `b` and legs |
 | A location `isStartLocation` flag | `isStarting` |
 | Placeholder `values` as strings, `weights` keyed by text | Value records, weights keyed by value `id` |
-| `worldOverview.openingCue` and `openingCueEnabled` | One Opening Action in `openings`, and `openingsEnabled` |
+| `worldOverview.openingCue` and `openingCueEnabled` | One Opening Action in `openings` |
 | `worldOverview.playerSetting` | `allowedPersonas` and `startPersona` |
 | A trait group `exclusive: true` | `maxPicks: 1` |
 | An entity link to a trait outside Blueprints | Removed, with its overrides |
@@ -163,7 +163,6 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `promptOverrides` | | Object | The world's **Custom Prompts**. See below. Absent = the player's prompts |
 | `openings` | | [Opening](#openings)[] | The world's own openings, in order |
 | `openingWeights` | | Object | Draw weight per opening `id`. A missing entry weighs 1. `0` keeps an opening and never draws it |
-| `openingsEnabled` | | Boolean | `false` stops every opening of the world, its locations and its entities from drawing. Absent = on |
 | `allowedPersonas` | | `"any"` \| `"world"` | Which personas the player can pick. `"world"` allows only this world's personas and its Custom Persona. Absent = `"any"` |
 | `startPersona` | | Object | The persona a new player starts on: `{ "source": "none" }`, or `{ "source": "world", "entityId": "<entity id>" }`. Absent = the player's default persona |
 | `mapBackground` | | Object | The picture behind the Locations canvas and the in-game Map. See below. Absent = none |

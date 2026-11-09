@@ -167,11 +167,12 @@ describe("This World's openings", () => {
     expect(world.overview.openingWeights).toEqual({ o1: 2 });
   });
 
-  it('says the openings are off for a world that stores them off, and keeps the rows', () => {
-    world.overview = { ...world.overview, openings: ROWS, openingsEnabled: false };
+  it('says how the openings draw for a world that stores them off', () => {
+    world.overview = { ...world.overview, openings: ROWS, openingsEnabled: false } as typeof world.overview;
     open();
     expect(detail().getAllByTestId('opening-row')).toHaveLength(2);
-    expect(screen.getByText(/Openings are off, so players start on the default opening/)).toBeInTheDocument();
+    expect(screen.getByText(/Draws one opening by weight when a player starts this world/)).toBeInTheDocument();
+    expect(screen.queryByText(/are off/)).toBeNull();
   });
 
   describe('collapsing', () => {

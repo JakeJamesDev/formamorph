@@ -301,12 +301,9 @@ describe('the assembled first prompt', () => {
     expect(opening.user).not.toContain(OPENING_SCENE_CUE);
   });
 
-  it('keeps the shipped cue for a world whose openings are switched off or blank', () => {
+  it('keeps the shipped cue for a world whose openings are blank', () => {
     const ov = (over: Partial<WorldOverview>) =>
       world({ worldOverview: { name: 'W', description: '', systemPrompt: '', ...over } as WorldOverview });
-    expect(openingFor(ov({
-      openings: [{ id: 'o1', text: 'Never applied.', kind: 'action' }], openingsEnabled: false,
-    })).user).toContain(OPENING_SCENE_CUE);
     expect(openingFor(ov({ openings: [{ id: 'o1', text: '   ', kind: 'action' }] })).user).toContain(OPENING_SCENE_CUE);
   });
 
@@ -470,19 +467,9 @@ describe('the opening pool', () => {
     expect(opening.system).not.toBe('');
   });
 
-  it('shows the default Opening Action for a switched-off list', () => {
-    const opening = at(pooled({ openingsEnabled: false }), 'market');
-    expect(opening.pool).toEqual([]);
-    expect(opening.openingsEnabled).toBe(false);
-    expect(opening.selectedKey).toBeNull();
-    expect(opening.opening).toEqual({ kind: 'action', text: OPENING_SCENE_CUE });
-    expect(opening.user).toContain(OPENING_SCENE_CUE);
-  });
-
   it('shows the default Opening Action for an empty pool', () => {
     const opening = at(pooled({ openings: [], openingWeights: undefined }), 'harbor');
     expect(opening.pool).toEqual([]);
-    expect(opening.openingsEnabled).toBe(true);
     expect(opening.opening).toEqual({ kind: 'action', text: OPENING_SCENE_CUE });
   });
 });
@@ -740,11 +727,6 @@ describe('the persona pick', () => {
   it('reads the Persona Name as "you" when the world has no persona to play', () => {
     const w = staged({ worldOverview: { ...ov, openings: [row('o-world', '{{user}} wake.')] } });
     expect(at(w, {}).opening.text).toBe('You wake.');
-  });
-
-  it('shows the default opening when the switch is off, whatever the persona', () => {
-    const off = staged({ worldOverview: { ...ov, openings: [row('o-world', 'The fen wakes.')], openingsEnabled: false } });
-    expect(at(off, { personaId: 'e-wren' }).pool).toEqual([]);
   });
 
   // The Bench reads the pool play draws from: every row a sweep of new-game draws can land on is a row

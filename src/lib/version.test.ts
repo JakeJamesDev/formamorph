@@ -656,10 +656,11 @@ describe('migrateWorld — single opening cue to the openings list', () => {
     expect(ov.openingsEnabled).toBeUndefined();
   });
 
-  it('keeps a switched-off cue as a row and switches the list off', () => {
+  it('keeps a switched-off cue as a row and carries no switch', () => {
     const ov = overviewOf({ openingCue: CUE, openingCueEnabled: false });
     expect(ov.openings).toEqual([{ id: expect.any(String), text: CUE, kind: 'action' }]);
-    expect(ov.openingsEnabled).toBe(false);
+    expect('openingsEnabled' in ov).toBe(false);
+    expect('openingCueEnabled' in ov).toBe(false);
   });
 
   it('adds no row for a blank cue, which opened on the default before', () => {
@@ -668,10 +669,19 @@ describe('migrateWorld — single opening cue to the openings list', () => {
     expect('openingCue' in ov).toBe(false);
   });
 
-  it('carries a switched-off blank cue over as a switched-off empty list', () => {
+  it('drops a switched-off blank cue without a trace', () => {
     const ov = overviewOf({ openingCue: '', openingCueEnabled: false });
     expect(ov.openings).toBeUndefined();
-    expect(ov.openingsEnabled).toBe(false);
+    expect('openingsEnabled' in ov).toBe(false);
+  });
+
+  it('strips a stored openingsEnabled flag, keeping the rows, and a second run changes nothing', () => {
+    const openings = [{ id: 'a', text: CUE, kind: 'action' }];
+    const once = migrateWorld({ worldOverview: { openings, openingsEnabled: false } });
+    const ov = once.worldOverview as unknown as Record<string, unknown>;
+    expect('openingsEnabled' in ov).toBe(false);
+    expect(ov.openings).toStrictEqual(openings);
+    expect(migrateWorld(structuredClone(once)).worldOverview).toEqual(once.worldOverview);
   });
 
   it('is idempotent — a second run changes nothing', () => {

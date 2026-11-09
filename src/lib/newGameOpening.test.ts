@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { drawNewGameOpening } from './newGameOpening';
-import { drawUnseenOpening, openingPool, openingsEnabled, poolKey } from './openings';
+import { drawUnseenOpening, openingPool, poolKey } from './openings';
 import { resolvePersona } from './persona';
 import { migrateWorld } from './version';
 import type { Entity, GameLocation, Opening, PersonaRef, WorldOverview } from '@/types';
@@ -198,15 +198,15 @@ describe('Self openings of a world persona', () => {
     expect(firstDraws(ref, worldEntities)).not.toContain('hero-self-b');
   });
 
-  it('never draw with the world switch off', () => {
+  it('draw under a stored off flag, which no longer switches anything', () => {
     const result = drawNewGameOpening({
-      pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview: { ...overview, openingsEnabled: false },
+      pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview: { ...overview, openingsEnabled: false } as typeof overview,
       startingLocationId: 'start', picked: [], random: always,
     });
-    expect(result.draw.opening.id).toBe('default');
+    expect(result.draw.opening.id).not.toBe('default');
   });
 
-  it('switch the list on by themselves when the persona is the only owner with openings', () => {
+  it('draw when the persona is the only owner with openings', () => {
     const alone = entity('alone', { persona: true, openings: [selfRow('alone-self')] });
     expect(firstDraws({ source: 'world', entityId: 'alone' }, [alone])).toEqual(new Set(['alone-self']));
   });
@@ -266,7 +266,7 @@ describe('a world whose openings carry no Self flag, as every shipped world', ()
   });
 });
 
-describe('the derived Openings switch in a world with no openings that can draw', () => {
+describe('the pool in a world with no openings that can draw', () => {
   // A Library Addition's row draws only once the world's list reads on, so it shows whether a row switched it on.
   const visitor = entity('visitor', { openings: [action('visitor-hello')] });
   const drawWith = (pick: PersonaRef, worldEntities: Entity[], libraryEntity?: Entity) => drawNewGameOpening({
@@ -286,16 +286,15 @@ describe('the derived Openings switch in a world with no openings that can draw'
 
   it('turns on for the Custom Persona entity’s Self rows under None', () => {
     const wanderer = entity('wanderer', { customPersona: true, openings: [selfRow('wanderer-self')] });
-    expect(openingsEnabled(overview, [wanderer])).toBe(true);
     expect(drawWith({ source: 'none' }, [wanderer])).toBe('wanderer-self');
   });
 
-  it('stays off under the world’s explicit off, whatever Self rows the player brings', () => {
+  it('draws the player’s Self rows under a stored off flag', () => {
     const own = entity('own', { persona: true, openings: [selfRow('own-self')] });
     expect(drawNewGameOpening({
       pick: { ref: { source: 'library', entityId: 'own' }, libraryEntity: own }, worldEntities: [],
-      overview: { ...overview, openingsEnabled: false }, startingLocationId: 'start', picked: [visitor], random: always,
-    }).draw.opening.id).toBe('default');
+      overview: { ...overview, openingsEnabled: false } as typeof overview, startingLocationId: 'start', picked: [visitor], random: always,
+    }).draw.opening.id).toBe('own-self');
   });
 
   it('stays off for the played world persona’s Others rows', () => {
@@ -305,13 +304,11 @@ describe('the derived Openings switch in a world with no openings that can draw'
 
   it('stays off for Self rows on an entity without the Persona mark', () => {
     const former = entity('former', { locations: ['start'], openings: [selfRow('former-self')] });
-    expect(openingsEnabled(overview, [former])).toBe(false);
     expect(drawWith({ source: 'none' }, [former])).toBe('default');
   });
 
   it('turns on for Self rows on an entity with the Persona mark, so the guards above can fail', () => {
     const marked = entity('marked', { persona: true, locations: ['start'], openings: [selfRow('marked-self')] });
-    expect(openingsEnabled(overview, [marked])).toBe(true);
     expect(drawWith({ source: 'none' }, [marked])).toBe('visitor-hello');
   });
 });
@@ -462,13 +459,12 @@ describe('location openings', () => {
     expect(drawsAt('child')).toEqual(new Map([['child-here', null]]));
   });
 
-  it('switch the list on by themselves', () => {
-    expect(openingsEnabled(overview, [start])).toBe(true);
+  it('draw with no other owner holding an opening', () => {
     expect(drawsAt('start', { worldEntities: [] })).toEqual(new Map([['start-here', null]]));
   });
 
-  it('never draw with the world switch off', () => {
-    expect(drawsAt('start', { over: { openingsEnabled: false } })).toEqual(new Map([['default', null]]));
+  it('draw under a stored off flag', () => {
+    expect(drawsAt('start', { over: { openingsEnabled: false } as unknown as Partial<WorldOverview> })).toEqual(new Map([['start-here', null], ['guide-hello', 'guide']]));
   });
 
   it('stay out when the played persona’s Self rows apply', () => {

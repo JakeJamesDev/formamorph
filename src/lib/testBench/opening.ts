@@ -35,7 +35,7 @@ import {
   placeholderChances, primeRolls, resolveEntityText, resolvePlaceholders,
   type PlaceholderPick,
 } from '@/lib/placeholders';
-import { DEFAULT_OPENING, openingOwner, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
+import { DEFAULT_OPENING, openingOwner, poolChances, poolKey } from '@/lib/openings';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
 import { allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
@@ -157,8 +157,6 @@ export interface OpeningData {
   selectedKey: string | null;
   /** The opening shown, resolved. */
   opening: Pick<Opening, 'kind' | 'text'>;
-  /** The world's openings switch. */
-  openingsEnabled: boolean;
   stats: OpeningStat[];
   /** Stats the world holds but this opening switches off, named as the stat list names them. */
   disabledStats: string[];
@@ -177,7 +175,7 @@ export interface OpeningData {
 /** What the instrument reads while it has nothing to assemble — a Bench closed, or closed on another tab. */
 export const EMPTY_OPENING: OpeningData = {
   location: null, locationName: '', startPool: 0, starts: [], personaName: null, pool: [], selectedKey: null,
-  opening: { kind: DEFAULT_OPENING.kind, text: '' }, openingsEnabled: true,
+  opening: { kind: DEFAULT_OPENING.kind, text: '' },
   stats: [], disabledStats: [], entityStats: [], traits: [], rolls: [], system: '', user: '', totalTokens: 0,
 };
 
@@ -515,7 +513,6 @@ export function buildOpening(
     pool,
     selectedKey: chosen?.key ?? null,
     opening,
-    openingsEnabled: openingsEnabled(world.worldOverview, world.entities),
     stats,
     disabledStats: globalStats
       .filter((stat) => !enabled[stat.id])
