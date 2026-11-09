@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { openingFold, openingPersonaOf, openingStateOf } from '@/lib/openingState';
 import {
-  applyInventoryOps, applyInventoryPass, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
+  applyInventoryOps, applyInventoryPass, passOwners, equipRequirement, settleInventory, settleTraitsWithItems, statEffectItems, traitPicksInPlay, timedEffectViews, type ItemUse, type InventoryOp, type ItemScriptEvent,
 } from '@/lib/inventory';
 import { hasCode, isItemTiming } from '@/lib/scripts';
 import { runRowKeys } from '@/lib/worldScripts';
@@ -1042,6 +1042,9 @@ const GameViewer = ({
   }, [presentIdsAt, allEntities, currentFollowers, setMetEntities]);
   const metEntitiesRef = useRef(metEntities);
   metEntitiesRef.current = metEntities;
+  // A turn's own cast writes ahead of the render, so its Inventory pass reads this turn's story aliases.
+  const strangerAliasesRef = useRef(strangerAliases);
+  strangerAliasesRef.current = strangerAliases;
   /** The met test for a met-in-play list, with the start rule for the played persona. */
   const metCheckFor = useCallback(
     (met: readonly string[]) => metCheck(met, persona?.entity ?? null, locations, new Set(discoveredEntities.map((d) => d.entity.id))),
@@ -3576,7 +3579,10 @@ const GameViewer = ({
         // still feeds stored participation and choices.
         setVisibleEntities(reading.visibleEntities);
         const plannedCast = sceneCast;
-        if (plannedCast) setStrangerAliases((prev) => strangerAliasesFromCast(prev, plannedCast, allEntities, isMetAtStart));
+        if (plannedCast) {
+          strangerAliasesRef.current = strangerAliasesFromCast(strangerAliasesRef.current, plannedCast, allEntities, isMetAtStart);
+          setStrangerAliases((prev) => strangerAliasesFromCast(prev, plannedCast, allEntities, isMetAtStart));
+        }
         return planHasPass(plan, "narratedMove") ? {} : settlePlace();
       };
 
@@ -5816,7 +5822,9 @@ const GameViewer = ({
     const entityStatsBefore = traitsBefore.entityStats ?? {};
     const inForce = entityInForceUnder(traitsBefore.ownedTraits ?? {});
     const result = applyInventoryPass(from.copies, ops, {
-      items: worldItems, runtimeItems: from.runtimeItems, playerNames: [...new Set([...playerNames, ...playedNames(playedEntities)])], owners,
+      items: worldItems, runtimeItems: from.runtimeItems, playerNames: [...new Set([...playerNames, ...playedNames(playedEntities)])],
+      // Rebuilt live from the ids, so a re-roll's stored owners match by Alias too (Q17).
+      owners: passOwners(owners, allEntities, strangerAliasesRef.current),
       location: location && { id: location.id, name: location.name }, resolve: resolvePH, told,
       money: {
         currencies: worldCurrencies, placements: worldPlacements,

@@ -12,7 +12,7 @@ import { guardTold } from './passGuard';
 import { coveredByMoney, settleListedBuy, settlePays } from './passMoney';
 import { candidates, distribute, gainId, itemNameKey, listedName, nameMatches, ownerOf, runOps, skip, startPass, type PassRun, type PassScene } from './passRun';
 
-export { itemNameKey, PASS_HERE, PASS_YOU, type PassMoney, type PassScene } from './passRun';
+export { itemNameKey, passOwners, PASS_HERE, PASS_YOU, type PassMoney, type PassOwner, type PassScene } from './passRun';
 
 export const PASS_OP_KINDS = ['gain', 'lose', 'transfer', 'equip', 'unequip', 'use', 'change', 'reveal', 'pay', 'buy'] as const satisfies readonly InventoryPassOpKind[];
 // Fails to compile when the union gains an operation the list lacks.

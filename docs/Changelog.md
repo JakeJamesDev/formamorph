@@ -47,6 +47,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Avatars:**
     - **The Skin Color picker now tints an Avatar's body and face to the same tone.** Before, an Avatar with dark clothing on the body, such as Aki, could get a pale yellow body.
+  - **In Game:**
+    - **Items the story gives or takes now reach an entity it calls by an Alias or a Stranger Name.** Before, an entity named by a title, such as "The Captain", got none of the items the story gave it by its first name.
 
 ---
 

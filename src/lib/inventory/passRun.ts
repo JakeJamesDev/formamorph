@@ -7,7 +7,7 @@ import type { SlotOwner } from '@/lib/bodies';
 import type { MoneyOwners, PaymentStats } from '@/lib/currency/payment';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { isUnidentified, sameState, sameWhere, usesLeft } from '@/lib/items';
-import type { Currency, InventoryPassOpKind, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
+import type { Currency, Entity, InventoryOwner, InventoryPassOpKind, Item, ItemCopy, ItemCopyWhere, RuntimeItem } from '@/types';
 import { applyInventoryOps, type InventoryCall, type InventoryOp, type InventoryResult } from './index';
 
 /** The owner word the pass writes for the player character, and the one for the location. */
@@ -25,6 +25,13 @@ export interface PassMoney extends MoneyOwners {
   stats: PaymentStats;
 }
 
+/** An owner the pass can name: by its Name, else by any of `aliases` (Q17). */
+export interface PassOwner {
+  id: string;
+  name: string;
+  aliases?: readonly string[];
+}
+
 /** What the pass names resolve against. Names are compared after `resolve`. */
 export interface PassScene {
   items: readonly Item[];
@@ -32,7 +39,7 @@ export interface PassScene {
   /** The played persona's names, which read as `you` beside "you" itself. */
   playerNames: readonly string[];
   /** The entities present after this turn's moves, discovered ones included (Q62). */
-  owners: readonly { id: string; name: string }[];
+  owners: readonly PassOwner[];
   location: { id: string; name: string } | null;
   resolve?: (text: string) => string;
   /** What a pay settles against. Absent, every pay is skipped. */
@@ -95,10 +102,29 @@ export function ownerOf(pass: PassRun, name: string): ItemCopyWhere | null {
   if (!key) return null;
   if (PLAYER_WORDS.has(key.replace(/^the\s+/, '')) || scene.playerNames.some((n) => itemNameKey(n) === key)) return { kind: 'you' };
   if (scene.location && (key === PASS_HERE || itemNameKey(scene.location.name) === key)) return { kind: 'location', id: scene.location.id };
+  // A Name beats an Alias; an Alias or a loose match counts only when it points at one owner.
   const exact = scene.owners.find((o) => itemNameKey(o.name) === key);
   if (exact) return { kind: 'entity', id: exact.id };
+  const soleOwner = (hits: readonly PassOwner[]): ItemCopyWhere | null => (hits.length === 1 ? { kind: 'entity', id: hits[0].id } : null);
+  const aliased = scene.owners.filter((o) => o.aliases?.some((a) => itemNameKey(a) === key));
+  if (aliased.length) return soleOwner(aliased);
   const loose = scene.owners.filter((o) => sameCharacterName(o.name, name));
-  return loose.length === 1 ? { kind: 'entity', id: loose[0].id } : null;
+  if (loose.length) return soleOwner(loose);
+  return soleOwner(scene.owners.filter((o) => o.aliases?.some((a) => sameCharacterName(a, name))));
+}
+
+/** The pass's owners from the stored ones: each entity's Aliases, Stranger Name and story alias, met or not (Q19). */
+export function passOwners(
+  owners: readonly InventoryOwner[],
+  entities: readonly Pick<Entity, 'id' | 'aliases' | 'strangerName'>[],
+  storyAliases: Readonly<Record<string, string>>,
+): PassOwner[] {
+  return owners.map((owner) => {
+    const entity = entities.find((e) => e.id === owner.id);
+    const names = [...(entity?.aliases ?? []), entity?.strangerName ?? '', storyAliases[owner.id] ?? '']
+      .map((n) => n.trim()).filter(Boolean);
+    return names.length ? { ...owner, aliases: [...new Set(names)] } : owner;
+  });
 }
 
 /** Who a pay or buy names. A name no one present answers to, or this place, holds no money and reads as no one (Q51). */

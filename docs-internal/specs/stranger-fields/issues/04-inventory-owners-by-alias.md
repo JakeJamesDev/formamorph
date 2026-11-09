@@ -1,6 +1,6 @@
 # 04: Inventory Owners by Alias
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -21,8 +21,22 @@ A playtest found the bug. The entity's Name was a role title, and its in-story f
 
 ## Acceptance criteria
 
-- [ ] An op owned by an entity's Alias, built from a placeholder, applies to that entity.
-- [ ] A transfer whose `to` is an Alias applies.
-- [ ] An op owned by an unmet stranger's Stranger Name applies to that stranger, and so does one owned by its latest story alias.
-- [ ] An op owned by a name no present owner carries is still skipped with today's reason.
-- [ ] Reinstating the Name-only owner list makes the Alias test fail.
+- [x] An op owned by an entity's Alias, built from a placeholder, applies to that entity. (`pass.owners.test.ts`: "applies an op owned by an Alias built from a placeholder", alias resolved through `resolveEntityNames`.)
+- [x] A transfer whose `to` is an Alias applies. ("applies a transfer whose `to` is an Alias, and a gain to one".)
+- [x] An op owned by a stranger's Stranger Name applies to that stranger, and so does one owned by its latest story alias, met or not (Q19). ("applies an op owned by a stranger's Stranger Name…"; dropping the Stranger Name from `passOwners` turns it red.)
+- [x] An op owned by a name no present owner carries is still skipped with today's reason. ("still skips a name no present owner carries".)
+- [x] Reinstating the Name-only owner list makes the Alias test fail. (Mutated `passOwners` to return Name-only owners: 4 of 6 tests red. Moving Aliases into the exact-Name step reddens the Name-precedence test.)
+
+## Landed
+
+The owner list on the turn stays `{ id, name }` (no save change). `inventoryPassOver` rebuilds Aliases and stranger names live from the ids, so a stat re-roll matches by Alias too. The printed `<INVENTORY>` chip is unchanged, so no probe ran.
+
+Change from the ticket text (Q19): the pass accepts the Stranger Name and the recorded story alias met or not, with no met check. Review found an unmet-only rule lost both names on a re-roll after the turn met the stranger. A Name still wins, and a name two owners share matches no one. The turn's own cast aliases reach its pass through `strangerAliasesRef`, ahead of the render.
+
+**Not verified**
+
+- The GameViewer wiring (`passOwners(owners, allEntities, strangerAliasesRef.current)` in `inventoryPassOver`, and the ref write beside `setStrangerAliases`) has no test of its own. It sits inside the god component; checked by reading the turn, re-roll and choice-rerun call sites.
+
+**For you**
+
+- Play a world where an entity's Name is a title and its first name is an Alias. Have the story give it an item, then check its Inventory tab.
