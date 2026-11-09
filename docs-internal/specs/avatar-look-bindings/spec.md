@@ -141,7 +141,7 @@ This keeps separate materials in one channel (face and body skin, two eyes) apar
   - Glossary: **Color Pin**.
 - Glossary: **Slider Pin**, a trait row that holds one Avatar slider at a Set To value while the trait is active. The Body rule widens to "the latest-on active trait row wins" for Body, slider and color rows.
 
-**Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model. The known model is the world's player Avatar (the one a new game uses) for world stats and traits, and the owner's model for owned stats and traits. A world with no fixed Avatar shows no mark.
+**Missing controls (Q14).** A binding whose slider or channel the model lacks has no effect in play. The editor marks the row "not on this model" when it knows the model. The known model is the world's player Avatar (the one a new game uses) for world stats and traits, and, for owned stats and traits, every model the look applies to on that owner (its Avatar and its 3D model): a row is marked only when none has the control. A world with no fixed Avatar shows no mark.
 
 **Stat-link overrides.** The override editor's Body Sliders field gets the same Change By rows (and, in ticket 04, the Colors list), so an override carries the full binding list.
 
