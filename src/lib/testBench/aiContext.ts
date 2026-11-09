@@ -238,7 +238,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   // roster that listed someone twice would disagree with the text beside it.
   const hereIds = scene.presentIds;
   const here = new Set(hereIds);
-  const subIds = sublocationEntityIds(location, locations, entities).filter((id) => !here.has(id));
+  const subIds = sublocationEntityIds(location, locations, connections, entities).filter((id) => !here.has(id));
   const shown = new Set([...hereIds, ...subIds]);
   const reachIds = reachableEntityIds(location, locations, connections, entities).filter((id) => !shown.has(id));
   const listed = new Set([...shown, ...reachIds]);

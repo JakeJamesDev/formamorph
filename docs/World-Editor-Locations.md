@@ -116,7 +116,7 @@ The **Locations** tab has two views. Switch between them with the **List** and *
 | View | Use it to |
 |---|---|
 | **List** | Edit a location's fields. Drag a location under another to nest it. |
-| **Canvas** | See how the world connects. Drag to nest, draw Connections, set their direction and Travel Hint, and arrange the layout. It marks a location that no starting location can reach. |
+| **Canvas** | See how the world connects. Drag to nest, draw Connections, set their direction, distance and Travel Hint, and arrange the layout. It marks a location that no starting location can reach. |
 
 **Edit Full Screen** opens the canvas at full size, with undo and redo, search and a minimap. Right-click a box and select **Edit Location** to open its panel.
 
@@ -157,7 +157,7 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
-| **Presence** | **Entities**, **Known Here**, **Connections** and **Nearby Through Connections** | Simple and Advanced |
+| **Presence** | **Entities**, **Known Here** and **Connections** | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
@@ -215,7 +215,6 @@ The **Entities** picker on the **Presence** tab lists the entities at this locat
 
 - **Entities Here** gives each entity at this location a **Movement** select. An entity at more than one location also gets a **Presence** switch: **Everywhere Listed** or **One, at Random**.
 - **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
-- **Nearby Through Connections** adds entities one Connection away to what the AI receives as nearby. It is on for a new location.
 
 ### Who Joins the Scene
 <!-- keywords: npc walks in, character comes over, pulled into scene, joins the player, comes down, comes from next room, wont come, stays at counter -->
@@ -252,6 +251,21 @@ The **Connections** section lists every link this location is part of, from this
 | **Incoming** | The story can arrive here from the other place. It can't go the other way. |
 
 Pick a place in **Connect to…**, then select the **+** button (**Add Connection**).
+
+### Nearby and Far
+
+Every link between two places is **Nearby** or **Far**. The AI receives the entities in Nearby places as nearby. It never hears about the entities across a Far link.
+
+| Distance | Means |
+|---|---|
+| **Nearby** | The AI receives the entities at the other end as nearby. Every nested link and every new Connection is this. |
+| **Far** | The AI gets nothing about the entities at the other end. Travel still works. |
+
+Only places one link away count. A place two links away is never nearby.
+
+To set it, select a Connection's arrow on the **Canvas** and pick **Nearby** or **Far**. A Far arrow draws as a dotted line, on the Canvas and on the player's Map.
+
+To make a nested link Far, select its dashed arrow on the Canvas. That turns it into a two-way Connection. Then pick **Far**. Delete the Connection to make the link Nearby again.
 
 ### Travel Hints
 

@@ -43,6 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.
   - **The World Editor's Overview tab puts Custom Prompts on a tab of its own.** In Advanced mode, the right column has Details and Custom Prompts tabs. Custom Prompts lists Narration, Choices and Stats with a checkbox each and shows which are Custom.
+  - **In the World Editor's Locations Canvas, a Connection can now be Nearby or Far.** The AI hears about entities one Nearby link away, and nothing across a Far one. Travel still works. Far links draw dotted on the Canvas and the Map. Nearby Through Connections is gone.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
 

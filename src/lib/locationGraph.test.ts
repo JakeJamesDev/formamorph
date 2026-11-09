@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  dropLocationFromConnections, effectiveDestinations, implicitPairs, overriddenPairs, pairKey,
+  dropLocationFromConnections, effectiveDestinations, implicitPairs, nearbyPlaces, overriddenPairs, pairKey,
   reachableFromStarts, walkableReach, WALK_MOVE_CAP,
 } from "./locationGraph";
 import type { Connection, GameLocation } from "@/types";
@@ -81,6 +81,48 @@ describe("effectiveDestinations", () => {
     expect(effectiveDestinations("shore", world, [portal]).get("house"))
       .toEqual({ via: "connection", connection: portal, leg: portal.bToA });
     expect(out.get("village")).toEqual({ via: "implicit" });
+  });
+});
+
+describe("nearbyPlaces", () => {
+  const near = (id: string, connections: Connection[] = []) => nearbyPlaces(id, world, connections).sort();
+  const road: Connection = { id: "road", a: "house", b: "landing", aToB: {}, bToA: {} };
+
+  it("reaches the implicit neighbors: parent, children and siblings", () => {
+    expect(near("tavern")).toEqual(["cellar", "house", "village"]);
+  });
+
+  it("reaches the other end of a Connection, from either end", () => {
+    expect(near("house", [road])).toEqual(["landing", "tavern", "village"]);
+    expect(near("landing", [road])).toEqual(["house"]);
+  });
+
+  it("reaches against a one-way leg, unlike travel", () => {
+    const oneWay: Connection = { id: "road", a: "house", b: "landing", aToB: {} };
+    expect(near("landing", [oneWay])).toEqual(["house"]);
+    expect(dests("landing", [oneWay])).toEqual([]);
+  });
+
+  it("never chains: a place two links away is out of reach", () => {
+    expect(near("tavern", [road])).not.toContain("landing");
+  });
+
+  it("never reaches across a Far Connection", () => {
+    const far: Connection = { ...road, distance: "far" };
+    expect(near("house", [far])).toEqual(["tavern", "village"]);
+    expect(near("landing", [far])).toEqual([]);
+  });
+
+  it("a Far Connection that replaces an implicit pair drops that neighbor", () => {
+    const farStair: Connection = { id: "stair", a: "tavern", b: "cellar", aToB: {}, bToA: {}, distance: "far" };
+    expect(near("tavern", [farStair])).toEqual(["house", "village"]);
+    expect(near("cellar", [farStair])).toEqual([]);
+  });
+
+  it("a Far link still allows travel", () => {
+    const far: Connection = { ...road, distance: "far" };
+    expect(dests("house", [far])).toContain("landing");
+    expect(walkableReach("landing", world, [far]).map((s) => s.id)).toContain("village");
   });
 });
 

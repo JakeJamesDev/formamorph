@@ -210,7 +210,6 @@
       "aiDescription": "The last stronghold before the wild hills, a squat square keep with a walled gate yard, stables, a smithy and a barracks. Captain Blackwell commands it. A written call for hands is nailed to the gate post: the barrow beyond the wall has opened, and the keep pays in gold and renown for anyone who will go and see why. Guards drill in the yard by day. The gate yard smells of horses, tar, woodsmoke and cold iron from the smithy. Since the barrow opened, the gate is barred at dark and the wall bell rings at every alarm.",
       "aiSummary": "The frontier stronghold and gate yard where the call for hands is posted.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "isStarting": true,
       "imageTags": "stone fortress, frontier keep, walled gate yard, banners, guards, overcast sky, high fantasy",
       "canvasPosition": {
@@ -230,7 +229,6 @@
       "aiDescription": "The market square of the small town that grew up south of Emberwatch Keep, below its walls. Timber stalls sell wool, salted fish and tools. A public well stands at the center, a notice board beside it. A stone plinth marks where a statue was pulled down and never replaced. Farmers, traders and off-duty guards cross it all day; rumors travel here faster than riders.",
       "aiSummary": "The town market under the keep, a well and a notice board at its center.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "market street, market stalls, canvas awnings, cobblestones, small town, evening",
       "canvasPosition": {
         "x": 880,
@@ -249,7 +247,6 @@
       "aiDescription": "A low-beamed tavern on the west side of Ashford Square, with a great hearth that has burned since the keep was raised. The taproom serves dark beer and mutton stew. A back table under the stairs belongs by custom to adventurers; maps get drawn on it in spilled beer. Rooms upstairs rent by the night. The tavern keeper hears everything and repeats half of it.",
       "aiSummary": "The town tavern, its hearth and back table where adventurers gather.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "medieval tavern interior, low wooden beams, great stone hearth, firelight, crowded taproom, high fantasy",
       "canvasPosition": {
         "x": 680,
@@ -268,7 +265,6 @@
       "aiDescription": "A small round stone chapel on the east side of Ashford Square. A brazier at its center holds the Ember's flame, tended day and night. Bundled herbs hang from the rafters, and cots line the walls for the sick and wounded. Mother Hesk runs it as a chapel and an infirmary at once. Blessings, healing and honest counsel are found here; so is a lecture for anyone who arrives bleeding from something stupid.",
       "aiSummary": "The round chapel and infirmary where Mother Hesk keeps the flame.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "small round stone chapel, central brazier, sacred flame, hanging herbs, infirmary cots, warm light",
       "canvasPosition": {
         "x": 1200,
@@ -318,7 +314,6 @@
       "aiDescription": "A cracked stone tower on the ridge west of Emberwatch Keep and above it, older than the keep itself. Its stair is sound but the roof is half gone. From the top the whole valley shows: the town, the river, the boundary wall, and beyond it the barrow field. The great mound's split side shows from here as a dark gash in the grass. A guard post here watches the boundary wall below, and since the barrow opened, the night watch reports cold lights moving among the mounds after dark.",
       "aiSummary": "The ridge tower above the keep with a view over the wall to the barrow field.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "cracked stone watchtower, broken roof, stone stairs, ridge, valley view, dusk, no humans",
       "canvasPosition": {
         "x": 520,
@@ -337,7 +332,6 @@
       "aiDescription": "A field of ancient grassy burial mounds a mile north of the keep's boundary wall. The largest mound has split open along its side where the keep quarried stone for the wall last spring, and a carved passage leads down into it. Cold air breathes out of the opening, and nothing grows near it now. Cold Lights drift among the mounds after dark. The passage leads down to the Hall of Shields, where the barrow dead guard the grave goods, and past it to the Bier Chamber.",
       "aiSummary": "The opened burial mound past the boundary wall, its halls held by the barrow dead.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "burial mound, grassy mound, stone doorway, field of mounds, dead grass, cold mist, gloomy sky, no humans",
       "canvasPosition": {
         "x": 760,
@@ -356,7 +350,6 @@
       "aiDescription": "The round burial chamber at the heart of the great barrow, at its north end, reached down a long stair from the Hall of Shields. King Haldren's stone bier stands at its center under a low dome. Grave goods lie heaped around it: rusted arms, gold cups, and a sealed iron chest. Frost covers every surface. The Barrow Wight keeps watch here over the king it served. An empty socket in the bier's head is shaped for the crown the king was buried in.",
       "aiSummary": "The frost-covered chamber at the barrow's heart, where the Wight guards the king's bier.",
       "parentId": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
-      "nearbyUsesConnections": true,
       "imageTags": "underground burial chamber, stone bier, low dome, frost, grave goods, dim cold light, dark fantasy",
       "canvasPosition": {
         "x": 180,
@@ -375,7 +368,6 @@
       "aiDescription": "A wall of quarried gray stone, twice a man's height, that runs a mile across the valley floor north of the keep, between Ashford and the barrow field. The keep mended its broken stretch last spring with stone taken from the barrow field. A walk runs along its top, with the wall bell on a post above the sally gate; the bell rings at every alarm, and lately with no hand on its rope. Sergeant Ilsa Marr keeps the night watch here, two to a post. Scratches on the field side of the stone show where the barrow dead have tried the wall. The night watch lost {{ph:f8646754-94c5-584b-b55d-3e48ad468f0f:world:8752af8a-fdb1-56e0-87e0-0e01cbbe99e8}} from this walk.",
       "aiSummary": "The boundary wall between the town and the barrow field, with its sally gate and its bell.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "stone defensive wall, iron gate, lanterns, small gate in the wall, night, no humans",
       "canvasPosition": {
         "x": 940,
@@ -430,7 +422,6 @@
       "aiDescription": "The river market south of Ashford Square, down the steps to the river, where barges from the lowlands tie up at a timber quay. Stalls along the bank sell rope, lamp oil, salt, wool and lowland wine. Behind the stalls, in a pawnshop with a green door, Jory Pike buys what adventurers bring up from the barrow and asks no questions. The townsfolk call barrow gold bad luck and buy it anyway.",
       "aiSummary": "The river quay and its stalls below the square, where Jory Pike buys barrow finds.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "riverside market, timber quay, moored barges, canvas stalls, lamp oil barrels, small pawnshop with green door, overcast, high fantasy",
       "canvasPosition": {
         "x": 1100,
@@ -449,7 +440,6 @@
       "aiDescription": "A crooked thatched cottage on the river path at the east edge of Ashford, behind a garden of feverfew, yarrow and wolfsbane. Bryony Fenn, a hedge healer, sells salves, poultices and tonics here. Her salve cures the grave chill that a wound from the barrow dead leaves behind. She treats anyone who pays, including those who would rather Mother Hesk did not hear of it.",
       "aiSummary": "The hedge healer's cottage, where Bryony Fenn cures the grave chill for coin.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "cottage, exterior, herb garden, drying herbs, clay pots, riverside path, warm window light",
       "canvasPosition": {
         "x": 1440,
@@ -468,7 +458,6 @@
       "aiDescription": "The frontier road runs west from the gate of Emberwatch Keep, a month's ride to the lowland towns. Its last miles cross open heath, with a mossy waystone where carters stop to water their oxen. Since the barrow opened, fewer travelers come up the road and more families go down it. Grave Hounds have been seen on the heath at dusk, and the carters now drive only by daylight.",
       "aiSummary": "The road to the lowlands, with its waystone and the carts that still come.",
       "parentId": null,
-      "nearbyUsesConnections": true,
       "imageTags": "dirt road, open heathland, mossy standing stone, rolling hills, gray sky, no humans",
       "canvasPosition": {
         "x": 200,
@@ -487,7 +476,6 @@
       "aiDescription": "The first great hall below the barrow's mouth, a long vault of fitted stone. Rusted shields hang along both walls, one above each burial niche of the old king's guard, and most niches are empty now. The barrow dead stand watch here, and Grave Hounds sleep among the bones. Two ways lead on: a long stair down to the Bier Chamber, and a carved stone door to the Sorcerer's Vault.",
       "aiSummary": "The barrow's hall of shields and burial niches, held by the barrow dead.",
       "parentId": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
-      "nearbyUsesConnections": true,
       "imageTags": "underground stone hall, arched vaults, scattered bones, skulls, torchlight, lone figure, dark fantasy",
       "canvasPosition": {
         "x": 20,
@@ -506,7 +494,6 @@
       "aiDescription": "The tomb of King Haldren's court sorcerer, a side vault east of the Hall of Shields behind a carved stone door. Spiral wards cover every wall, and the barrow dead do not cross them. A stone lectern stands at the center. The Shade of Maelis, the sorcerer's ghost, keeps the vault and holds his grimoire against his chest.",
       "aiSummary": "The court sorcerer's warded tomb, where his shade keeps the grimoire.",
       "parentId": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
-      "nearbyUsesConnections": true,
       "imageTags": "underground crypt, spiral rune carvings, stone lectern, floating dust, faint violet glow, cobwebs, dark fantasy",
       "canvasPosition": {
         "x": 360,

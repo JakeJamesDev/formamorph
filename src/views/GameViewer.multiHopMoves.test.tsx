@@ -169,3 +169,16 @@ describe('a move of more than one step in Suggest mode', () => {
     expect(play.entityPositions.bram).toBe('store');
   });
 });
+
+describe('a Far link', () => {
+  it('still carries the player and a follower across it', async () => {
+    await openInBarn(worldWith({ connections: [{ ...LANE, distance: 'far' }] }));
+    act(() => play.applyFollowerState({ followers: ['bram'], positions: { bram: 'barn' } }));
+    stubEndpoint('You walk the long lane into town and step into the store.', { router: 'Store', entities: { Bram: 'Keep following' } });
+
+    await playTurn('I walk the long lane to town and step into the store.');
+
+    await waitFor(() => expect(play.currentLocation?.id).toBe('store'));
+    expect(play.entityPositions.bram).toBe('store');
+  });
+});

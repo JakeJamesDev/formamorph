@@ -232,7 +232,18 @@ function migrateConnectionLegs(world: Record<string, unknown>): void {
       ? [record.a, record.b, legOf(record.aToB), legOf(record.bToA)]
       : [record.from, record.to, legWith(record.aiHint), record.twoWay ? legWith(record.aiHint) : undefined];
     if (typeof a !== 'string' || typeof b !== 'string' || (!aToB && !bToA)) return [];
-    return [{ id, a, b, ...(aToB ? { aToB } : {}), ...(bToA ? { bToA } : {}) }];
+    const far = record.distance === 'far';
+    return [{ id, a, b, ...(aToB ? { aToB } : {}), ...(bToA ? { bToA } : {}), ...(far ? { distance: 'far' as const } : {}) }];
+  });
+}
+
+/** Drop a location's `nearbyUsesConnections`: Nearby reach counts Connections for every location. Idempotent. */
+function dropNearbyUsesConnections(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.locations)) return;
+  world.locations = world.locations.map((raw: unknown) => {
+    if (!raw || typeof raw !== 'object' || !('nearbyUsesConnections' in raw)) return raw;
+    const { nearbyUsesConnections: _dropped, ...rest } = raw as Record<string, unknown>;
+    return rest;
   });
 }
 
@@ -802,6 +813,7 @@ export function migrateWorld(raw: unknown): World {
   flipEntityLocationMembership(world);
   migrateLocationConnections(world);
   migrateConnectionLegs(world);
+  dropNearbyUsesConnections(world);
   migrateStartLocationFlag(world);
   migrateWorldPlaceholders(world);
   migrateOpeningCue(world);

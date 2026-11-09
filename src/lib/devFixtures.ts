@@ -209,7 +209,7 @@ const ENTITY_PRESENCE_CAST: Entity[] = [
 ];
 /** The `entityFollowers` fixture's follower. */
 const ENTITY_FOLLOWER: Entity = { id: 'dev-scout', name: 'Scout', locations: [WHITE_ROOM_ID], movement: 'follow' };
-const DEV_KEEP: GameLocation = { id: 'dev-keep', name: 'The Keep', nearbyUsesConnections: true };
+const DEV_KEEP: GameLocation = { id: 'dev-keep', name: 'The Keep' };
 
 /** A hand-drawn-looking map for the `mapBackground` fixture: land, water and a road, labeled by fill. */
 const mapArt = (land: string, label: string) =>

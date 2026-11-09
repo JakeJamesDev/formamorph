@@ -347,6 +347,14 @@ _Avoid_: license check (the act), open license, free
 The rendered frame of a location that contains child locations on the Locations Canvas. Containment is shown by the frame itself, never by lines.
 _Avoid_: box, container
 
+**Nearby**:
+The distance of a link whose far end the narrator hears about: entities there reach context and can be called over. Every implicit link is Nearby, and so is a Connection with no distance. Nearby reach is one link from the player's place, in either direction, never chained.
+_Avoid_: close, adjacent, reachable (the `<LOCATION|reachable>` chip is the tree only)
+
+**Far**:
+The distance of a Connection whose far end the narrator never hears about: no context, no pulls. Travel and following are unchanged. Stored on the Connection for the pair, both legs.
+_Avoid_: distant, blocked, remote
+
 **Implicit Navigation**:
 The travel a location gets for free from containment — its parent, children, and siblings — without any authored Connection.
 _Avoid_: tree edges, default connections

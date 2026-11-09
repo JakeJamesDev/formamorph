@@ -8,8 +8,9 @@ import type { CanvasEdge } from './locationCanvas';
  */
 
 /**
- * Dashed and muted for free implicit travel, solid and primary-colored for an authored Connection. The chosen
- * shape rides on the edge itself, so changing it redraws the map through the same path every other edit takes.
+ * Dashed and muted for free implicit travel, solid and primary-colored for an authored Connection, and
+ * dotted for a Far one, drawn heavier so the dots read. The chosen shape rides on the edge itself, so
+ * changing it redraws the map through the same path every other edit takes.
  *
  * `selected` thickens the arrow whose record is open, and `interactive` is what says an arrow answers a click
  * at all — the player's Map draws the same travel structure as something to read rather than to edit.
@@ -21,6 +22,7 @@ export function toFlowEdge(
 ): Edge {
   const implicit = edge.kind === 'implicit';
   const color = implicit ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))';
+  const width = implicit ? 1.3 : edge.far ? 3 : 2;
   return {
     id: edge.id,
     source: edge.source,
@@ -31,9 +33,10 @@ export function toFlowEdge(
     selectable: interactive,
     style: {
       stroke: color,
-      strokeWidth: implicit ? 1.3 : selected ? 3.5 : 2,
+      strokeWidth: selected && !implicit ? width + 1.5 : width,
       ...(interactive ? { cursor: 'pointer' } : {}),
       ...(implicit ? { strokeDasharray: '5 5', opacity: 0.8 } : {}),
+      ...(edge.far ? { strokeDasharray: '1 7', strokeLinecap: 'round' as const } : {}),
     },
     markerEnd: { type: MarkerType.ArrowClosed, color, width: implicit ? 14 : 16, height: implicit ? 14 : 16 },
   };

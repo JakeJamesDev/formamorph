@@ -82,6 +82,8 @@ describe('description experiment controls', () => {
       "Descriptions of the player character's current stat values.",
       "The player character's active characteristics and conditions.",
       'The place where the player character currently is.',
+      // Tomas, one Connection away on the Far Bank, fills the reachable entities section.
+      'Summaries of characters, creatures, or objects associated with reachable locations.',
       'Additional authored information about the world, its concepts, and its terminology.',
     ];
     let system = variant.messages[0].content!;
@@ -116,7 +118,8 @@ describe('description experiment controls', () => {
     expect(system).toContain('- **Bram**\n  - **summary:**');
     expect(system).toContain('- **Odette**\n  - **summary:**');
     expect(system).toContain('- **Rope Ferry**\n  - **summary:**');
-    expect(system.match(/\*\*summary:\*\*/g)).toHaveLength(3);
+    expect(system).toContain('- **Tomas**\n  - **summary:**');
+    expect(system.match(/\*\*summary:\*\*/g)).toHaveLength(4);
     expect(variant).toEqual(baseline);
   });
 

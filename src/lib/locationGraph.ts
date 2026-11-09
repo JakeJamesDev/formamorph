@@ -147,6 +147,32 @@ function destinationsIn(
   return out;
 }
 
+/** The pair is Far: no pull reach or context across it. */
+export const isFar = (connection: Connection): boolean => connection.distance === "far";
+
+const farPairs = (connections: readonly Connection[]) =>
+  new Set(connections.flatMap((c) => (isFar(c) ? [pairKey(c.a, c.b)] : [])));
+
+/**
+ * The places one Nearby link from `id`: its implicit neighbors (parent, children, siblings) and the other
+ * end of every Connection touching it, in either direction. A Far Connection drops its pair, including the
+ * implicit link it replaces. Never chained.
+ */
+export function nearbyPlaces(
+  id: string,
+  locations: readonly LocationLink[],
+  connections: readonly Connection[],
+): string[] {
+  const far = farPairs(connections);
+  const out = new Set<string>(implicitNeighbors(id, parentIndex(locations)));
+  for (const { a, b } of connections) {
+    if (a === id) out.add(b);
+    if (b === id) out.add(a);
+  }
+  out.delete(id);
+  return [...out].filter((other) => !far.has(pairKey(id, other)));
+}
+
 /** How far a router or narrated move may carry the player in one turn. */
 export const WALK_MOVE_CAP = 3;
 

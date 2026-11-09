@@ -132,6 +132,17 @@ describe('the Entities chip', () => {
     expect(values('<ENTITIES|reachable.name>')).toBe('Watchman');
   });
 
+  it('lists someone one Nearby link away and leaves out someone across a Far link', () => {
+    const docks: GameLocation = { id: 'docks', name: 'Docks' };
+    const dockhand: Entity = { id: 'dockhand', name: 'Dockhand', locations: ['docks'] };
+    const pier: Connection = { id: 'pier', a: 'docks', b: 'north-gate', aToB: {} };
+    const farWalk: Connection = { id: 'walk', a: 'north-gate', b: 'market', aToB: {}, bToA: {}, distance: 'far' };
+    const values = chipValues(scene({
+      locations: [...locations, docks], connections: [pier, farWalk], entities: [...entities, dockhand],
+    }));
+    expect(values('<ENTITIES|reachable.name>')).toBe('Dockhand');
+  });
+
   it('lists a known entity only in Known, and never one a higher scope lists', () => {
     // Both are Known In Old Town, which holds the North Gate. The Guard is here, so Here wins for him.
     const herald: Entity = { id: 'herald', name: 'Herald', locations: ['market'], knownIn: ['old-town'], aiSummary: 'Reads the decrees.' };

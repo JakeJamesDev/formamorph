@@ -4,7 +4,7 @@ import {
   createConnection, directionFrom, withDirection, type ConnectionDirection,
 } from "./connectionEditing";
 import {
-  connectionLegs, implicitNeighbors, isTwoWay, pairKey, parentIndex, reachableFromStarts,
+  connectionLegs, implicitNeighbors, isFar, isTwoWay, pairKey, parentIndex, reachableFromStarts,
 } from "./locationGraph";
 import { holderOf } from "./locationTree";
 import type { StepKey } from "./editorHistory";
@@ -77,6 +77,8 @@ export interface CanvasEdge {
   leg?: LegKey;
   /** A partner arrow runs the other way beside this one. */
   paired?: true;
+  /** The Connection is Far. */
+  far?: true;
 }
 
 export interface LocationCanvasMap {
@@ -230,8 +232,17 @@ export function buildLocationCanvas(
     if (!known.has(connection.a) || !known.has(connection.b)) continue;
     const paired = isTwoWay(connection);
     const shared = paired && connection.aToB?.hint === connection.bToA?.hint;
-    for (const { key, from, to, leg } of connectionLegs(connection)) {
-      const label = shared && key === "bToA" ? undefined : leg.hint && describeHint(leg.hint);
+    const far = isFar(connection);
+    const legs = connectionLegs(connection);
+    const hints = legs.map(({ key, leg }) => (shared && key === "bToA" ? undefined : leg.hint && describeHint(leg.hint)));
+    const legLabel = (i: number): string | undefined => {
+      const hint = hints[i];
+      if (!far) return hint;
+      if (hint) return `Far · ${hint}`; // first, so a truncated hint never hides it
+      return i === 0 && !hints.some(Boolean) ? "Far" : undefined; // a hintless Far pair says Far once
+    };
+    for (const [i, { key, from, to }] of legs.entries()) {
+      const label = legLabel(i);
       edges.push({
         id: `connection:${connection.id}:${key}`,
         source: from,
@@ -240,6 +251,7 @@ export function buildLocationCanvas(
         connectionId: connection.id,
         leg: key,
         ...(paired ? { paired: true as const } : {}),
+        ...(far ? { far: true as const } : {}),
         ...(label ? { label, ...(paired && !shared ? { labelOuter: true as const } : {}) } : {}),
       });
     }
@@ -712,6 +724,17 @@ export function directionIntent(connection: Connection, direction: ConnectionDir
 /** A selected Connection as its Travel Hint pair rewrote it: a hint edit, a link, or an unlink. */
 export function updateIntent(connection: Connection): CanvasIntent {
   return { kind: "update", connection };
+}
+
+/** A pair's distance as the inspector's choice reads it. */
+export type ConnectionDistance = "nearby" | "far";
+
+export const distanceOf = (connection: Connection): ConnectionDistance => connection.distance ?? "nearby";
+
+/** The distance choice on a selected arrow. Nearby is stored as no field. */
+export function distanceIntent(connection: Connection, distance: ConnectionDistance): CanvasIntent {
+  const { distance: _old, ...rest } = connection;
+  return { kind: "update", connection: distance === "far" ? { ...rest, distance: "far" } : rest };
 }
 
 /** Deleting a selected arrow deletes the record both of the pair's directions came from, which hands the

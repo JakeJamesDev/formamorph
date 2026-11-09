@@ -21,7 +21,6 @@ import { LocationOpenings } from './OpeningsPanel';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { HintInfo } from '@/components/SettingsRows';
-import { Hint } from '@/components/ui/typography';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import PlacementsSection from './PlacementsSection';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
@@ -204,17 +203,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           locationLabel={locationLabel}
           onChange={updateEntity}
         />
-        <LocationConnections location={editingLocation}>
-          <div className="flex items-center gap-2" {...fieldFrame('nearbyUsesConnections')}>
-            <Checkbox
-              id={`location-nearby-${editingLocation.id}`}
-              checked={!!editingLocation.nearbyUsesConnections}
-              onCheckedChange={(checked) => apply({ nearbyUsesConnections: checked === true ? true : undefined })}
-            />
-            <Label htmlFor={`location-nearby-${editingLocation.id}`}>Nearby Through Connections</Label>
-          </div>
-          <Hint>Adds entities one Connection away to what the AI receives as nearby</Hint>
-        </LocationConnections>
+        <LocationConnections location={editingLocation} />
       </PanelTabContent>
 
       <PanelTabContent value="items">

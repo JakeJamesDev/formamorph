@@ -4,12 +4,14 @@ import { migrateWorld } from './version';
 import type { World } from '@/types';
 
 describe('newLocation', () => {
-  it('opts a location made in the editor into Nearby through Connections', () => {
-    expect(newLocation('l1').nearbyUsesConnections).toBe(true);
+  it('makes a location with no Nearby Through Connections field', () => {
+    expect(newLocation('l1')).not.toHaveProperty('nearbyUsesConnections');
   });
 
-  it('leaves the flag to the editor: migrating a world never sets it', () => {
-    const world = { locations: [{ id: 'old', name: 'Old Mill' }] } as unknown as World;
-    expect(migrateWorld(world).locations?.[0]).not.toHaveProperty('nearbyUsesConnections');
+  it('drops the removed Nearby Through Connections field on load, and a second load changes nothing', () => {
+    const world = { locations: [{ id: 'old', name: 'Old Mill', nearbyUsesConnections: true }] } as unknown as World;
+    const once = migrateWorld(world);
+    expect(once.locations?.[0]).toEqual({ id: 'old', name: 'Old Mill' });
+    expect(migrateWorld(once).locations).toEqual(once.locations);
   });
 });

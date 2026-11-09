@@ -3,7 +3,7 @@ import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces }
 import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { entityIdsAt, entityIdsAtAny, knownHere, knownInOf } from "./entityPresence";
 import type { RelationshipLines } from "./entityRelationships";
-import { effectiveDestinations, walkableReach, type LocationLink } from "./locationGraph";
+import { effectiveDestinations, nearbyPlaces, walkableReach, type LocationLink } from "./locationGraph";
 import { placeNameKey } from "./locationMatch";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
@@ -347,10 +347,14 @@ export function buildSublocationsContext(
 /** The entities a roster of places they aren't present at may list: those whose Known In is Nearby. */
 const nearbyKnown = (entities: Entity[]) => entities.filter((e) => knownInOf(e) === "nearby");
 
-/** The deduped ids of the Nearby entities across the current location's direct sub-locations. */
-export function sublocationEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[]): string[] {
+/** The deduped ids of the Nearby entities across the current location's direct sub-locations. A child the
+ *  location links to by a Far Connection is left out. */
+export function sublocationEntityIds(
+  current: MaybeLocation, locations: GameLocation[], connections: Connection[], entities: Entity[],
+): string[] {
   if (!current) return [];
-  const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
+  const nearby = new Set(nearbyPlaces(current.id, locations, connections));
+  const kids = locations.filter((l) => (l.parentId ?? null) === current.id && nearby.has(l.id));
   return entityIdsAtAny(kids.map((k) => k.id), nearbyKnown(entities));
 }
 
@@ -364,22 +368,24 @@ export function sublocationEntityIds(current: MaybeLocation, locations: GameLoca
 export function buildSublocationEntitiesContext(
   current: MaybeLocation,
   locations: GameLocation[],
+  connections: Connection[],
   entities: Entity[],
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
-  return textOf(sublocationEntityRuns(current, locations, entities, opts));
+  return textOf(sublocationEntityRuns(current, locations, connections, entities, opts));
 }
 
 /** {@link buildSublocationEntitiesContext} as marked runs. */
 export function sublocationEntityRuns(
   current: MaybeLocation,
   locations: GameLocation[],
+  connections: Connection[],
   entities: Entity[],
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): MarkedRun[] {
   if (!current) return runs(NONE_PLACEHOLDER);
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = sublocationEntityIds(current, locations, entities).filter((id) => !exclude.has(id));
+  const ids = sublocationEntityIds(current, locations, connections, entities).filter((id) => !exclude.has(id));
   return entityRosterRuns(ids, entities, opts);
 }
 
@@ -584,16 +590,12 @@ export function scenePresentHere(names: string[], entities: Entity[], hereIds: s
   });
 }
 
-/** The deduped ids of the Nearby entities across the current location's reachable locations: the parent and
- *  siblings, or its effective destinations when it sets `nearbyUsesConnections`. */
+/** The deduped ids of the Nearby entities across the places one Nearby link from the current location. */
 export function reachableEntityIds(
   current: MaybeLocation, locations: GameLocation[], connections: Connection[], entities: Entity[],
 ): string[] {
   if (!current) return [];
-  const reach = current.nearbyUsesConnections
-    ? [...effectiveDestinations(current.id, locations, connections).keys()]
-    : reachableLocations(current, locations).map((l) => l.id);
-  return entityIdsAtAny(reach, nearbyKnown(entities));
+  return entityIdsAtAny(nearbyPlaces(current.id, locations, connections), nearbyKnown(entities));
 }
 
 /** The ids of the entities known at the current location, in cast order: one of each one's Known In picks is

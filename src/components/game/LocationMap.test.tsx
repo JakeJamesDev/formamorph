@@ -121,6 +121,19 @@ describe('the Map', () => {
       expect(implicitEdges()).toHaveLength(2 * 149);
     });
 
+    it('draws a Far Connection dotted and a Nearby one solid, with no Far label', async () => {
+      show({ current: 's7', connections: [
+        { id: 'c1', a: 's7', b: 's8', aToB: {}, distance: 'far' },
+        { id: 'c2', a: 's7', b: 's9', aToB: {} },
+      ] });
+      await drawnAt(2 * 147);
+      const dashOf = (id: string) =>
+        document.querySelector<SVGPathElement>(`.react-flow__edge[data-id="${id}"] .react-flow__edge-path`)?.style.strokeDasharray;
+      expect(dashOf('connection:c1:aToB')).toBe('1 7');
+      expect(dashOf('connection:c2:aToB')).toBe('');
+      expect(screen.queryByText('Far')).toBeNull();
+    });
+
     it('draws a Connection without its travel hint', async () => {
       show({ current: 's7', connections: [{ id: 'c1', a: 's7', b: 's8', aToB: { hint: 'Behind the loose brick' } }] });
       await drawnAt(2 * 148);

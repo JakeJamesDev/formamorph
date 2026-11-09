@@ -391,7 +391,6 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
 | `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `locations` join the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
-| `nearbyUsesConnections` | | Boolean | **Nearby Through Connections**. `true` = the entities the AI reads as nearby include those one [Connection](#connections) away. Absent = only the parent's and the siblings'. The editor sets `true` on a new location |
 | `canvasPosition` | | `{ "x", "y" }` | Editor-only. The location's place on the Locations canvas, relative to its parent. Absent = automatic |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the player is here. A child location does not get its parent's pins |
 | `openings` | | [Opening](#openings)[] | Openings that draw when a game starts at this exact location |
@@ -408,6 +407,7 @@ A connection is a travel link between two locations. A connection between two lo
 | `b` | ✓ | String | The other location's `id` |
 | `aToB` | | Leg | Present when travel goes from `a` to `b` |
 | `bToA` | | Leg | Present when travel goes from `b` to `a` |
+| `distance` | | String | `"far"` = the AI gets nothing about the entities at the other end. Travel is unchanged. Absent = Nearby |
 
 A connection needs at least one leg. Both legs = two-way. A leg has one optional field, `hint`: how the trip is made, such as "through the old gate". The AI reads it after the destination's name when the destination is one step away.
 

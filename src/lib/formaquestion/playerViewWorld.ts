@@ -129,10 +129,12 @@ function playerLocation(met: Met, location: GameLocation, row: PlayerViewLocatio
 const playerLocations = (met: Met, locations: readonly GameLocation[]): GameLocation[] =>
   keepMet(locations, met.locations, (location, row) => playerLocation(met, location, row));
 
-/** Connections between met places, without their travel hints. */
+/** Connections between met places, without their travel hints. Distance stays: the player's Map shows it. */
 const playerConnections = (met: Met, connections: readonly Connection[] = []): Connection[] => connections
   .filter((c) => met.locations.has(c.a) && met.locations.has(c.b))
-  .map((c) => ({ id: c.id, a: c.a, b: c.b, ...(c.aToB && { aToB: {} }), ...(c.bToA && { bToA: {} }) }));
+  .map((c) => ({
+    id: c.id, a: c.a, b: c.b, ...(c.aToB && { aToB: {} }), ...(c.bToA && { bToA: {} }), ...(c.distance && { distance: c.distance }),
+  }));
 
 function playerItem(item: Item, row: PlayerViewItem): Item {
   const { stackable, uses, whenEmpty, state, bound, slotRule, placeholders } = item;

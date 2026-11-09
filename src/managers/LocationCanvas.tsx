@@ -39,10 +39,10 @@ import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, canvasFocus, CANVAS_GRID,
-  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, hintKey, implicitCanvasEdges,
+  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, distanceIntent, distanceOf, hintKey, implicitCanvasEdges,
   nudgeKey, updateIntent, isStationaryClick, leafTarget,
   LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
-  type CanvasDragSession, type CanvasIntent, type CanvasNodeData,
+  type CanvasDragSession, type CanvasIntent, type CanvasNodeData, type ConnectionDistance,
 } from '@/lib/locationCanvas';
 import { connectionLegs } from '@/lib/locationGraph';
 import { TravelHintPair, type TravelHintFocus } from '@/components/editor/TravelHintPair';
@@ -68,7 +68,7 @@ import { MapBackgroundLayer, type MapGesture } from '@/components/MapBackgroundL
 import { mapImages } from '@/lib/mapBackground';
 import { MapBackgroundPanel, type MapBackgroundPanelMode } from '@/managers/MapBackgroundPanel';
 import { useMapBackground } from '@/managers/useMapBackground';
-import { Meta } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 
 /**
  * The Locations canvas: the world's navigable shape as a map, and the primary place to draw on it. What a
@@ -307,9 +307,14 @@ const DIRECTIONS: { value: ConnectionDirection; Icon: typeof ArrowRight; label: 
   { value: 'incoming', Icon: ArrowLeft, label: (a, b) => `Travel one way, ${b} to ${a}` },
 ];
 
+const DISTANCE_HINTS: Record<ConnectionDistance, string> = {
+  nearby: 'Lists entities at the other end as nearby for the AI',
+  far: 'Hides entities at the other end from the AI; travel still works',
+};
+
 /**
- * The selected arrow's record, edited in place on the map: which way travel runs, how the narration should
- * describe making the trip, and whether the link exists at all. Every control hands its intent back, so the
+ * The selected arrow's record, edited in place on the map: which way travel runs, how far apart the pair is,
+ * how the narration should describe making the trip, and whether the link exists at all. Every control hands its intent back, so the
  * panel decides nothing about what an edit means.
  */
 const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose, placeholders }: {
@@ -323,6 +328,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose, pla
 }) => {
   const [a, b] = connectionEnds(connection);
   const names = [nameOf(a), nameOf(b)] as const;
+  const distance = distanceOf(connection);
   return (
     <div className="space-y-2 rounded-md border bg-card p-3 shadow-md">
       <div className="flex items-center gap-1">
@@ -361,6 +367,20 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose, pla
           </Tip>
         ))}
       </ToggleGroup>
+      <div className="space-y-1">
+        <ToggleGroup
+          type="single"
+          className="grid w-full grid-cols-2"
+          value={distance}
+          aria-label="Distance"
+          {...fieldFrame('connections', connection.id, 'distance')}
+          onValueChange={(v) => { if (v) onIntent(distanceIntent(connection, v as ConnectionDistance)); }}
+        >
+          <ToggleGroupItem value="nearby">Nearby</ToggleGroupItem>
+          <ToggleGroupItem value="far">Far</ToggleGroupItem>
+        </ToggleGroup>
+        <Hint>{DISTANCE_HINTS[distance]}</Hint>
+      </div>
       <TravelHintPair
         connection={connection}
         legs={connectionLegs(connection).map(({ key }) => {

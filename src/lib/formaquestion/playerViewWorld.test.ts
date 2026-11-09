@@ -35,7 +35,7 @@ const LOCATIONS: GameLocation[] = [
   { id: 'vault', name: 'Vault', playerDescription: 'Vault player text.', aiDescription: 'Vault AI secret.' },
 ];
 const CONNECTIONS: Connection[] = [
-  { id: 'c-hall', a: 'gate', b: 'hall', aToB: { hint: 'through the secret door' } },
+  { id: 'c-hall', a: 'gate', b: 'hall', aToB: { hint: 'through the secret door' }, distance: 'far' },
   { id: 'c-vault', a: 'gate', b: 'vault' },
 ];
 const BRAVE = trait('brave');
@@ -103,11 +103,11 @@ describe('playerViewScene', () => {
     expect(cut.entities[0].traits).toEqual([]);
   });
 
-  it('holds met places and their connections, without travel hints or an unmet parent', () => {
+  it('holds met places and their connections, with their distance but without travel hints or an unmet parent', () => {
     expect(ids(cut.locations)).toEqual(['gate', 'hall']);
     expect(cut.locations[1].parentId).toBeNull();
     expect(cut.location?.aiDescription).toBe('Gate player text.');
-    expect(cut.connections).toEqual([{ id: 'c-hall', a: 'gate', b: 'hall', aToB: {} }]);
+    expect(cut.connections).toEqual([{ id: 'c-hall', a: 'gate', b: 'hall', aToB: {}, distance: 'far' }]);
   });
 
   it('holds met items and visible copies, with no effects', () => {

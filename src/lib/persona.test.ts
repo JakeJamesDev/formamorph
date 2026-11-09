@@ -199,7 +199,7 @@ describe('the roster without the played entity', () => {
       expect(buildEntityContext(location, played.cast, { format: 'markdown' })).not.toContain('Mira');
     }
     expect(buildEntityContext(dock, played.cast, { format: 'markdown' })).toContain('Captain Vos');
-    expect(buildSublocationEntitiesContext(town, locations, played.cast, { format: 'markdown' })).not.toContain('Mira');
+    expect(buildSublocationEntitiesContext(town, locations, [], played.cast, { format: 'markdown' })).not.toContain('Mira');
   });
 
   it('lists the entity at its locations again after a switch away', () => {

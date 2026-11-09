@@ -2,13 +2,14 @@ import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, canvasFocus, connectIntent, connectionEnds, deleteIntent, directionIntent,
-  applyCanvasDrops, beginCanvasDrag, directionOf, dropIntent, dropTarget, updateIntent, isStationaryClick,
+  applyCanvasDrops, beginCanvasDrag, directionOf, distanceIntent, dropIntent, dropTarget, updateIntent, isStationaryClick,
   implicitCanvasEdges, isTravelClick, mapFocus, multiDropIntents, leafTarget,
   TOUCH_SLOP,
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
 } from "./locationCanvas";
 import { connectionsAt, withHint } from "./connectionEditing";
+import { toFlowEdge } from "./canvasEdges";
 import { describePlaceholders, encodePlaceholderToken } from "./placeholders";
 import { phValues } from "@/test/placeholderValues";
 import { buildLocationTree, flattenLocationTree } from "./locationTree";
@@ -333,6 +334,39 @@ describe("buildLocationCanvas edges", () => {
     expect(canvas([landing, shore], [twoWay]).edges.map((e) => e.paired)).toEqual([true, true]);
     expect(canvas([landing, shore], [oneWay]).edges.map((e) => e.paired)).toEqual([undefined]);
     expect(canvas([village, tavern, house]).edges.every((e) => e.paired)).toBe(true);
+  });
+
+  describe("a Far Connection", () => {
+    const far = (over: Partial<Connection> = {}): Connection =>
+      ({ id: "c8", a: "shore", b: "landing", aToB: {}, bToA: {}, distance: "far", ...over });
+    const labels = (c: Connection) => canvas([landing, shore], [c]).edges.map((e) => e.label);
+
+    it("marks both arrows Far, and draws them dotted where a Nearby arrow is solid", () => {
+      const [farEdge] = canvas([landing, shore], [far()]).edges;
+      const [nearEdge] = canvas([landing, shore], [far({ distance: undefined })]).edges;
+      expect(canvas([landing, shore], [far()]).edges.map((e) => e.far)).toEqual([true, true]);
+      expect(toFlowEdge(farEdge, "straight").style?.strokeDasharray).toBe("1 7");
+      expect(toFlowEdge(nearEdge, "straight").style?.strokeDasharray).toBeUndefined();
+    });
+
+    it("says Far once when the pair has no hint", () => {
+      expect(labels(far())).toEqual(["Far", undefined]);
+      expect(labels(far({ aToB: undefined }))).toEqual(["Far"]);
+    });
+
+    it("puts Far ahead of each hint the pair shows", () => {
+      expect(labels(far({ aToB: { hint: "by boat" }, bToA: { hint: "by boat" } }))).toEqual(["Far · by boat", undefined]);
+      expect(labels(far({ aToB: { hint: "by boat" }, bToA: { hint: "on foot" } }))).toEqual(["Far · by boat", "Far · on foot"]);
+      expect(labels(far({ aToB: {}, bToA: { hint: "on foot" } }))).toEqual([undefined, "Far · on foot"]);
+    });
+
+    it("sets Far and back to Nearby as one record update, storing nothing for Nearby", () => {
+      const near = far({ distance: undefined });
+      expect(distanceIntent(near, "far")).toEqual({ kind: "update", connection: far() });
+      const back = distanceIntent(far(), "nearby");
+      if (back.kind !== "update") throw new Error("expected an update");
+      expect(back.connection).not.toHaveProperty("distance");
+    });
   });
 
   it("drops an arrow whose far end no longer exists", () => {
