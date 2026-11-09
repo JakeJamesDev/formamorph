@@ -116,3 +116,6 @@ A good test drives a public seam with a world and a play state, and asserts what
 - **Q12** A description-only unmet entity shows its real Name to the player and the AI.
 - **Q13** The meeting rule is unchanged.
 - **Q14** A description-only unmet entity opens in the Stranger view under its real Name.
+- **Q15** (from Q12) A description-only unmet entity counts as known on every roster of people the player knows, the Formaquestion Player World included. It is listed wherever a met entity would be, under its real Name, with the Stranger Description.
+- **Q16** (from Q12) The map roster shows a description-only unmet entity under its real Name. Unmet only decides which description shows and which view opens.
+- **Q17** (moved in from NPC Schedules Q30) The Inventory pass resolves an owner by Name, by any Alias with placeholders resolved, and, for an unmet stranger, by its label. Ticket 04.
