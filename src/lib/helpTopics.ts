@@ -343,9 +343,9 @@ The field takes placeholders and rolls. It shows in Advanced mode, in the World 
 
 - Leave it blank to show no description until the player meets the entity. An entity with neither stranger field starts met.
 - The field works alone. With no **Stranger Name**, the player knows the Name but sees this description until they meet the entity.
-- The entity's popup in the **Entities** tab and the Help window show it. The Help window shows it only for an entity with no Stranger Name.
+- The entity's popup in the **Entities** tab shows it. The Help window shows it too when the entity has no Stranger Name.
 - The AI narrator sees nothing new. It keeps using the Name, or the Stranger Name when there is one.
-- A script reads \`met\` as false for the entity until the player meets it. \`meet()\` makes the player meet the entity, as for any stranger.
+- A script reads \`met\` as false for the entity until the player meets it. A relationship or a **Known In** pick can meet it at the start. \`meet()\` makes the player meet the entity, as for any stranger.
 - The player meets the entity the same way as any stranger: the narration uses its Name while it is at the player's location, or a script calls \`meet()\`. See **Stranger Name** for the rules.
 
 The field takes placeholders and rolls. It shows in Advanced mode, in the World Editor only.`,
@@ -358,8 +358,8 @@ The field takes placeholders and rolls. It shows in Advanced mode, in the World 
 
 - Leave it blank to show the Name.
 - Fill this field or the **Unidentified Description**, and every copy of the item starts unidentified.
-- The player sees the Unidentified Name in the **Inventory** tab, in the log and in Formaquestion.
-- The AI narrator sees both names. It can reveal the real one when the story does, or a script can call \`reveal()\`.
+- The player sees the Unidentified Name in the **Inventory** tab, in the log and in the Help window.
+- The AI narrator sees both names. It can reveal the real one when the story does, or a script can call \`copy.reveal()\`.
 - A copy that is out of sight first comes into view and stays unidentified. A second reveal identifies it.
 
 The field takes placeholders and rolls.`,

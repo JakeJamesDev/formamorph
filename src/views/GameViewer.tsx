@@ -5823,7 +5823,7 @@ const GameViewer = ({
     const inForce = entityInForceUnder(traitsBefore.ownedTraits ?? {});
     const result = applyInventoryPass(from.copies, ops, {
       items: worldItems, runtimeItems: from.runtimeItems, playerNames: [...new Set([...playerNames, ...playedNames(playedEntities)])],
-      // Rebuilt live from the ids, so a re-roll's stored owners match by Alias too (Q17).
+      // Rebuilt live from the ids, so a re-roll's stored owners match by Alias too (Q18).
       owners: passOwners(owners, allEntities, strangerAliasesRef.current),
       location: location && { id: location.id, name: location.name }, resolve: resolvePH, told,
       money: {

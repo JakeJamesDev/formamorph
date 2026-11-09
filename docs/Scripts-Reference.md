@@ -606,7 +606,7 @@ A `diary` call reads the key as an id first, then as a name. So `entities[id].di
 #### Meeting Entities
 <!-- keywords: met, meet, stranger, introduce, reveal identity, stranger name, known entity, hooded stranger -->
 
-The player sees an entity with a **Stranger Name** under that name until the player meets it. An entity with only a **Stranger Description** shows its Name and that description until then. The player meets it when the narration uses its name. [Strangers](World-Editor-Entities#strangers) lists the rules. `entities.<Entity>.met` reads false for an entity with either field until the player meets it, then true. It never turns false again.
+The player sees an entity with a **Stranger Name** under that name until the player meets it. An entity with only a **Stranger Description** shows its Name and that description until then. The player meets it when the narration uses its name. [Strangers](World-Editor-Entities#strangers) lists the rules. `entities.<Entity>.met` reads false for an entity with either field until the player meets it, then true. A relationship or a **Known In** pick can meet it at the start. It never turns false again.
 
 **`entities.<Entity>.meet()`** makes the player meet the entity, so the player sees its name from then on.
 
