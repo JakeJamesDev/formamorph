@@ -760,6 +760,7 @@ Open `#dev?modal=designSystem&tab=icon-grid-picker`. The reference uses local st
 | Edit or order authored items | Use `SortableList`, `SortableRow`, and `EditorRow`; preserve selection, metadata, duplicate/delete controls, and the detail editor. |
 | Open settings for a whole list | Pin one `EditorRow` above the list, with no grip, no actions and a divider under it, through the List Editor adapter's `pinned` rows. It never drags, stays under any search, and shows when the list is empty. The Items tab's **Equipment Settings** uses it. |
 | Edit records that hold their own ordered rows | Use an expandable `EditorRow` (chevron, grip, name, meta summary, delete) with an attached bordered body below it. The body holds the record's fields and a nested `EditorRowList` that is its own drag boundary. Morphie's layers and the World Editor's Bodies use it. |
+| Switch a few fixed options on and edit one at a time | Use status rows in one bordered list: a checkbox, the name, and a status word (**Custom** when on, **Default** when off). Clicking the row selects it and shows its editor below the list, with an accent fill and a chevron on the selected row. The checkbox never changes the selection. The Overview's **Custom Prompts** tab uses it. |
 | Choose and manage saved progress | Use `SaveList`; preserve the save name, timestamp, game time, Auto state, ordering, load/select action, export, and delete. |
 
 Keep controls that change the collection outside its scrolling pane when they must remain reachable. The live Save/Load reference keeps Save Name and Save above the list; the World Editor reference keeps the selected item's editor beside or below the list. Do not nest a second vertical scroller merely to imitate a scrollbar.
@@ -946,7 +947,7 @@ The library entity editor lifts Traits and Placeholders onto its own top strip, 
 
 Three panels can lose their strip: Simple mode leaves the stat panel, the dictionary entry panel and the Overview's right column a single tab, which is no choice to offer, so each renders that body bare.
 
-The Overview's Custom Prompts tab holds its own plain tabs (Narration, Choices, Stats), as its Readme field does (Introduction, Gameplay). A tab inside a panel tab is a field's own control, not a second Panel Tab Strip.
+The Overview's Readme field holds its own plain tabs (Introduction, Gameplay). A tab inside a panel tab is a field's own control, not a second Panel Tab Strip. The Custom Prompts tab uses status rows instead (see [Lists With Controls or Metadata](#pattern-lists-with-controls-or-metadata)).
 
 The dictionary entry panel splits by cadence rather than height. The panel is not tall, but its matching rules are set once and then sit between the keywords and the value on every later visit. Details holds Name, Trigger Keywords, and Value; Matching holds the rules. Whole Words and Case-Sensitive stay on Details on purpose: they are the only two matching switches Simple mode shows, they modify the keywords they sit under, and keeping them there is what leaves Simple one tab.
 

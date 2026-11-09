@@ -52,6 +52,8 @@ const panelTab = (strip: string, name: string) =>
   within(screen.getByRole('tablist', { name: strip })).getByRole('tab', { name });
 const openPanelTab = (strip: string, name: string) => fireEvent.mouseDown(panelTab(strip, name));
 const isShown = (tab: HTMLElement) => tab.getAttribute('aria-selected') === 'true';
+const kindRow = (kind: string) => within(screen.getByRole('list', { name: 'Custom Prompt Kinds' }))
+  .getByRole('button', { name: new RegExp(`^${kind},`) });
 
 
 const viewToggle = (name: 'List' | 'Canvas') => screen.getByRole('radio', { name });
@@ -142,16 +144,16 @@ describe('an undo of an edit made on a panel sub-tab', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openPanelTab('Overview Fields', 'Custom Prompts');
-    openPanelTab('Custom Prompt Kinds', 'Choices');
+    fireEvent.click(kindRow('Choices'));
     await step(() => ctx().updateWorldOverview({ promptOverrides: { choicesPrompt: 'Offer three paths.', choicesPromptEnabled: true } }));
-    openPanelTab('Custom Prompt Kinds', 'Narration');
+    fireEvent.click(kindRow('Narration'));
     openPanelTab('Overview Fields', 'Details');
     openEditorTab(/Stats/);
 
     await undo();
     expect(shownEditorTab()).toMatch(/Overview/);
     expect(isShown(panelTab('Overview Fields', 'Custom Prompts'))).toBe(true);
-    expect(isShown(panelTab('Custom Prompt Kinds', 'Choices'))).toBe(true);
+    expect(kindRow('Choices')).toHaveAttribute('aria-current', 'true');
   });
 
   it('falls back to the default sub-tab when the editor mode no longer offers it', async () => {

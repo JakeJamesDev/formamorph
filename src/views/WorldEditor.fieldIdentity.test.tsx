@@ -79,8 +79,8 @@ function sweepPanelTabs() {
   const overview = screen.queryByRole('tablist', { name: 'Overview Fields' });
   if (overview) {
     fireEvent.mouseDown(within(overview).getByRole('tab', { name: 'Custom Prompts' }));
-    for (const kind of within(screen.getByRole('tablist', { name: 'Custom Prompt Kinds' })).getAllByRole('tab')) {
-      fireEvent.mouseDown(kind);
+    for (const kind of within(screen.getByRole('list', { name: 'Custom Prompt Kinds' })).getAllByRole('button')) {
+      fireEvent.click(kind);
       collect();
     }
   }

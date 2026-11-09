@@ -3,6 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PanelTabContent, PanelTabs, type PanelTab } from "@/components/ui/panel-tabs";
 import PromptField from "@/components/prompt/PromptField";
@@ -14,6 +15,7 @@ import { chipValues } from "@/lib/chipValues/chipValues";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { layerValues, omitValues } from "@/lib/promptValues";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Hint } from "@/components/ui/typography";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { HintInfo } from "@/components/SettingsRows";
@@ -61,8 +63,8 @@ const EnableRow = ({ label, checked, disabled, onChange, frame }: {
 
 /**
  * The system prompts this world supplies in place of the player's own: narration, choices, and stat
- * updates, one sub-tab each. A prompt opens on the active preset's prompt as an unstored template, so an
- * author edits something that works; the first edit is what stores it on the world, and Reset drops it back
+ * updates, one status row each above the selected prompt. A prompt opens on the active preset's prompt as
+ * an unstored template, so an author edits something that works; the first edit is what stores it on the world, and Reset drops it back
  * to tracking the template. Only these three system prompts are replaceable; every other AI pass keeps
  * running on the player's own preset.
  */
@@ -126,59 +128,82 @@ const CustomPromptsSection = ({ kind, onKindChange }: {
     setResetKind(null);
   };
 
+  const stored = storedWorldPrompt(worldOverview, kind);
+  const enabled = worldPromptEnabled(worldOverview, kind);
+  const kindName = WORLD_PROMPT_KIND_LABELS[kind];
+  const label = kindName.toLowerCase();
+
   return (
-    <Tabs value={kind} onValueChange={(v) => onKindChange(v as WorldPromptKind)} className="space-y-2">
-      <TabsList aria-label="Custom Prompt Kinds">
-        {WORLD_PROMPT_KINDS.map((k) => <TabsTrigger key={k} value={k}>{WORLD_PROMPT_KIND_LABELS[k]}</TabsTrigger>)}
-      </TabsList>
-      {WORLD_PROMPT_KINDS.map((k) => {
-        const label = WORLD_PROMPT_KIND_LABELS[k].toLowerCase();
-        const stored = storedWorldPrompt(worldOverview, k);
-        const enabled = worldPromptEnabled(worldOverview, k);
-        return (
-          <TabsContent key={k} value={k} className="space-y-2">
-            <EnableRow
-              label="Use This Prompt"
-              checked={enabled}
-              onChange={(on) => write(k, { enabled: on })}
-              frame={fieldFrame('prompts', k, 'enabled')}
-            />
-            <PlaceholderField
-              historyField={fieldPath('prompts', k)}
-              value={stored ?? presetPrompts[k]}
-              // Storing on the first divergence is what keeps an untouched kind tracking the preset: a
-              // world only carries a prompt its author actually wrote.
-              onChange={(text) => {
-                if (stored === undefined && text === presetPrompts[k]) return;
-                write(k, { text, enabled });
-              }}
-              placeholders={placeholders}
-              promptChips={{
-                variables: PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[k]],
-                // The choices prompt's language chip names itself in the directive, so its preview says
-                // "choices" where the pool's default says "narration".
-                previewValues: k === 'choices'
-                  ? layerValues(previewValues, languagePreviewValue('choices', language))
-                  : previewValues,
-                sampleData: 'Your world, sample turn',
-              }}
-              ariaLabel={`World ${label} prompt`}
-              resizable
-            />
-            <PanelFooter
-              note={(
-                <>
-                  {enabled
-                    ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
-                    : `Not applied until you select “Use This Prompt”. Players use their own ${label} prompt.`}
-                  {stored === undefined && ` Shows your current ${label} prompt and follows it until you edit it here.`}
-                </>
-              )}
-              onReset={stored === undefined ? undefined : () => setResetKind(k)}
-            />
-          </TabsContent>
-        );
-      })}
+    <div className="space-y-2">
+      <ul aria-label="Custom Prompt Kinds" className="divide-y divide-border overflow-hidden rounded-md border border-border">
+        {WORLD_PROMPT_KINDS.map((k) => {
+          const rowName = WORLD_PROMPT_KIND_LABELS[k];
+          const rowEnabled = worldPromptEnabled(worldOverview, k);
+          const selected = k === kind;
+          const status = rowEnabled ? 'Custom' : 'Default';
+          return (
+            <li key={k} className={cn('flex items-center', selected ? 'bg-accent' : 'hover:bg-accent/60')}>
+              <span className="flex items-center pl-3" {...fieldFrame('prompts', k, 'enabled')}>
+                <Checkbox
+                  checked={rowEnabled}
+                  aria-label={`Use ${rowName} Prompt`}
+                  onCheckedChange={(c) => write(k, { enabled: c === true })}
+                />
+              </span>
+              <button
+                type="button"
+                aria-current={selected ? 'true' : undefined}
+                aria-label={`${rowName}, ${status}`}
+                onClick={() => onKindChange(k)}
+                className={cn(
+                  'flex min-w-0 flex-1 items-center gap-2 py-2 pl-2 pr-3 text-left text-label outline-none',
+                  'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                  selected && 'font-medium',
+                )}
+              >
+                <span className="flex-1 truncate">{rowName}</span>
+                <span className={cn('text-meta', rowEnabled ? 'text-foreground' : 'text-muted-foreground')}>{status}</span>
+                <ChevronRight aria-hidden className={cn('h-4 w-4 shrink-0', !selected && 'invisible')} />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="pt-1 text-helper font-medium text-muted-foreground">{kindName} Prompt</p>
+      <PlaceholderField
+        key={kind}
+        historyField={fieldPath('prompts', kind)}
+        value={stored ?? presetPrompts[kind]}
+        // Storing on the first divergence is what keeps an untouched kind tracking the preset: a
+        // world only carries a prompt its author actually wrote.
+        onChange={(text) => {
+          if (stored === undefined && text === presetPrompts[kind]) return;
+          write(kind, { text, enabled });
+        }}
+        placeholders={placeholders}
+        promptChips={{
+          variables: PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[kind]],
+          // The choices prompt's language chip names itself in the directive, so its preview says
+          // "choices" where the pool's default says "narration".
+          previewValues: kind === 'choices'
+            ? layerValues(previewValues, languagePreviewValue('choices', language))
+            : previewValues,
+          sampleData: 'Your world, sample turn',
+        }}
+        ariaLabel={`World ${label} prompt`}
+        resizable
+      />
+      <PanelFooter
+        note={(
+          <>
+            {enabled
+              ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
+              : `Not applied until you check ${kindName} above. Players use their own ${label} prompt.`}
+            {stored === undefined && ` Shows your current ${label} prompt and follows it until you edit it here.`}
+          </>
+        )}
+        onReset={stored === undefined ? undefined : () => setResetKind(kind)}
+      />
 
       <ConfirmDialog
         open={resetKind !== null}
@@ -187,7 +212,7 @@ const CustomPromptsSection = ({ kind, onKindChange }: {
         description="It goes back to following your own prompt. The text you wrote here is not kept."
         onConfirm={reset}
       />
-    </Tabs>
+    </div>
   );
 };
 

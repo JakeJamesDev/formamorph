@@ -57,9 +57,9 @@ In Advanced mode, the right column has three tabs: **Details**, **Custom Prompts
 <!-- keywords: rules for narrator, override narration prompt, replace choices prompt, world prompt -->
 <!-- route: worldEditorOverview.prompts -->
 
-**Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Each one has its own tab: **Narration**, **Choices** and **Stats**.
+**Advanced mode only.** Replaces the player's own narration, choices or stats prompt. A list at the top shows **Narration**, **Choices** and **Stats**, each marked **Custom** or **Default**. Select one to edit it below the list.
 
-- Your text applies only while **Use This Prompt** is checked. Unchecking it keeps your text.
+- Check a prompt in the list to use your text. Unchecking it keeps your text.
 - The player can decline it from the world's details window.
 - **Reset** clears your text, so the prompt follows the player's prompt again.
 

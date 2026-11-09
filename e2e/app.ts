@@ -117,7 +117,7 @@ export const chrome = {
 export async function openWorldNarrationPrompt(page: Page): Promise<void> {
   await openWorldEditor(page);
   await page.getByRole('tablist', { name: 'Overview Fields' }).getByRole('tab', { name: 'Custom Prompts' }).click();
-  const toggle = page.getByRole('checkbox', { name: 'Use This Prompt' });
+  const toggle = page.getByRole('checkbox', { name: 'Use Narration Prompt' });
   if ((await toggle.getAttribute('data-state')) !== 'checked') await toggle.click();
   await page.getByLabel('World narration prompt').waitFor();
 }

@@ -140,22 +140,26 @@ const edit = (label: string, text: string) =>
 
 const overviewTab = (name: string) =>
   within(screen.getByRole('tablist', { name: 'Overview Fields' })).getByRole('tab', { name });
-const kindTab = (name: string) =>
-  within(screen.getByRole('tablist', { name: 'Custom Prompt Kinds' })).getByRole('tab', { name });
+const kindList = () => within(screen.getByRole('list', { name: 'Custom Prompt Kinds' }));
+/** A kind's status row; its name reads "<Kind>, Custom" or "<Kind>, Default". */
+const kindRow = (name: string) => kindList().getByRole('button', { name: new RegExp(`^${name},`) });
 const KIND_LABELS: Record<string, string> = { narration: 'Narration', choices: 'Choices', stats: 'Stats' };
-/** The tab that shows a prompt kind or the openings, with the Custom Prompts tab opened on the way. Radix
- *  tabs switch on mouseDown, which a userEvent click also sends. */
+const openPrompts = () => {
+  // Radix tabs switch on mouseDown, which a userEvent click also sends.
+  if (overviewTab('Custom Prompts').getAttribute('aria-selected') !== 'true') fireEvent.mouseDown(overviewTab('Custom Prompts'));
+};
+/** The row that selects a prompt kind, or the Openings tab, with the Custom Prompts tab opened on the way. */
 const picker = (name: string) => {
   if (name === 'Openings') return overviewTab('Openings');
-  if (overviewTab('Custom Prompts').getAttribute('aria-selected') !== 'true') fireEvent.mouseDown(overviewTab('Custom Prompts'));
-  return kindTab(name);
+  openPrompts();
+  return kindRow(name);
 };
-const openKind = () => within(screen.getByRole('tablist', { name: 'Custom Prompt Kinds' })).getAllByRole('tab')
-  .filter((t) => t.getAttribute('aria-selected') === 'true').map((t) => t.textContent);
-/** The shown kind's checkbox, after opening that kind's tab. */
+const openKind = () => kindList().getAllByRole('button')
+  .filter((b) => b.getAttribute('aria-current') === 'true').map((b) => b.getAttribute('aria-label')?.split(',')[0]);
+/** A kind's checkbox in its status row; every row shows one, selected or not. */
 const checkbox = (kind: string) => {
-  fireEvent.mouseDown(picker(KIND_LABELS[kind]));
-  return screen.getByRole('checkbox', { name: 'Use This Prompt' });
+  openPrompts();
+  return screen.getByRole('checkbox', { name: `Use ${KIND_LABELS[kind]} Prompt` });
 };
 
 beforeEach(() => {
@@ -182,7 +186,7 @@ describe('the custom prompts tab', () => {
     expect(screen.getByTestId('World narration prompt')).toBeInTheDocument();
   });
 
-  it('shows each kind’s enabled state on its own tab', () => {
+  it('shows every kind’s state in its row at once: Custom when on, Default when off', () => {
     world.overview.promptOverrides = {
       systemPrompt: 'authored', systemPromptEnabled: true,
       choicesPrompt: 'authored but off', choicesPromptEnabled: false,
@@ -192,6 +196,21 @@ describe('the custom prompts tab', () => {
     expect(checkbox('narration')).toBeChecked();
     expect(checkbox('choices')).not.toBeChecked();
     expect(checkbox('stats')).not.toBeChecked();
+    expect(kindRow('Narration')).toHaveAccessibleName('Narration, Custom');
+    // Kept text does not make an off prompt Custom.
+    expect(kindRow('Choices')).toHaveAccessibleName('Choices, Default');
+    expect(kindRow('Stats')).toHaveAccessibleName('Stats, Default');
+  });
+
+  it('switches another row’s kind without changing the open prompt', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(checkbox('stats'));
+
+    expect(world.overview.promptOverrides?.statUpdatesPromptEnabled).toBe(true);
+    expect(kindRow('Stats')).toHaveAccessibleName('Stats, Custom');
+    expect(openKind()).toEqual(['Narration']);
+    expect(screen.getByTestId('World narration prompt')).toBeInTheDocument();
   });
 
   it('keeps the open kind open when it is picked again', async () => {
@@ -206,6 +225,7 @@ describe('the custom prompts tab', () => {
   it('switches a kind on and stays on its panel', async () => {
     const user = userEvent.setup();
     renderManager();
+    await user.click(picker('Choices'));
     await user.click(checkbox('choices'));
 
     expect(world.overview.promptOverrides?.choicesPromptEnabled).toBe(true);
@@ -217,6 +237,7 @@ describe('the custom prompts tab', () => {
     const user = userEvent.setup();
     world.overview.promptOverrides = { choicesPrompt: 'authored', choicesPromptEnabled: true };
     renderManager();
+    await user.click(picker('Choices'));
     await user.click(checkbox('choices'));
 
     expect(world.overview.promptOverrides?.choicesPromptEnabled).toBe(false);
@@ -231,7 +252,7 @@ describe('the custom prompts tab', () => {
     await user.click(picker('Stats'));
 
     expect(screen.getByTestId('World stats prompt')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Use This Prompt' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Use Stats Prompt' })).not.toBeChecked();
     expect(world.overview).toBe(before);
   });
 
@@ -242,7 +263,7 @@ describe('the custom prompts tab', () => {
     await user.click(picker('Choices'));
 
     expect(field('World choices prompt').value).toBe('drafted');
-    expect(screen.getByText(/Not applied until you select “Use This Prompt”/)).toBeInTheDocument();
+    expect(screen.getByText(/Not applied until you check Choices above/)).toBeInTheDocument();
   });
 
   it('switching a kind off keeps the text it holds', async () => {

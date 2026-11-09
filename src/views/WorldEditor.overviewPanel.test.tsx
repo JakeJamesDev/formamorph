@@ -79,7 +79,11 @@ const shownTab = (name: string) => within(strip(name)).getAllByRole('tab')
 const openTab = (name: string, tab: string) => fireEvent.mouseDown(within(strip(name)).getByRole('tab', { name: tab }));
 
 const OVERVIEW = 'Overview Fields';
-const PROMPTS = 'Custom Prompt Kinds';
+/** The Custom Prompts status rows; a row's name reads "<Kind>, Custom" or "<Kind>, Default". */
+const kindRows = () => within(screen.getByRole('list', { name: 'Custom Prompt Kinds' })).getAllByRole('button');
+const kindNames = () => kindRows().map((b) => b.getAttribute('aria-label')?.split(',')[0]);
+const shownKind = () => kindRows().find((b) => b.getAttribute('aria-current') === 'true')?.getAttribute('aria-label')?.split(',')[0];
+const pickKind = (kind: string) => fireEvent.click(kindRows().find((b) => b.getAttribute('aria-label')?.startsWith(`${kind},`))!);
 
 /** The readme's own strip, found by the tabs it holds. */
 const readmeStrip = () => {
@@ -181,14 +185,14 @@ describe('the Custom Prompts tab', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openTab(OVERVIEW, 'Custom Prompts');
-    expect(tabNames(PROMPTS)).toEqual(['Narration', 'Choices', 'Stats']);
-    expect(shownTab(PROMPTS)).toBe('Narration');
+    expect(kindNames()).toEqual(['Narration', 'Choices', 'Stats']);
+    expect(shownKind()).toBe('Narration');
 
-    // Picking the open kind again keeps it open: these are tabs, not a picker that clears.
-    openTab(PROMPTS, 'Narration');
-    expect(shownTab(PROMPTS)).toBe('Narration');
-    openTab(PROMPTS, 'Choices');
-    expect(shownTab(PROMPTS)).toBe('Choices');
+    // Picking the open kind again keeps it open: one prompt always shows.
+    pickKind('Narration');
+    expect(shownKind()).toBe('Narration');
+    pickKind('Choices');
+    expect(shownKind()).toBe('Choices');
     expect(screen.getByLabelText('World choices prompt')).toBeInTheDocument();
   });
 
@@ -196,19 +200,19 @@ describe('the Custom Prompts tab', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openTab(OVERVIEW, 'Custom Prompts');
-    const use = screen.getByRole('checkbox', { name: 'Use This Prompt' });
+    const use = screen.getByRole('checkbox', { name: 'Use Narration Prompt' });
     expect(use).toHaveAttribute('data-state', 'checked');
 
     await act(async () => { fireEvent.click(use); });
     expect(ctx().worldOverview.promptOverrides).toMatchObject({
       systemPrompt: 'Narrate in lamplight.', systemPromptEnabled: false,
     });
-    expect(screen.getByRole('checkbox', { name: 'Use This Prompt' })).toHaveAttribute('data-state', 'unchecked');
+    expect(screen.getByRole('checkbox', { name: 'Use Narration Prompt' })).toHaveAttribute('data-state', 'unchecked');
     // Switching off leaves the author on the panel, with the text still in its field.
-    expect(shownTab(PROMPTS)).toBe('Narration');
+    expect(shownKind()).toBe('Narration');
     expect(screen.getByLabelText('World narration prompt').textContent).toContain('Narrate in lamplight.');
 
-    await act(async () => { fireEvent.click(screen.getByRole('checkbox', { name: 'Use This Prompt' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('checkbox', { name: 'Use Narration Prompt' })); });
     expect(ctx().worldOverview.promptOverrides).toMatchObject({
       systemPrompt: 'Narrate in lamplight.', systemPromptEnabled: true,
     });
@@ -244,13 +248,13 @@ describe('the remembered Overview tab', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openTab(OVERVIEW, 'Custom Prompts');
-    openTab(PROMPTS, 'Stats');
+    pickKind('Stats');
 
     openEditorTab(/Stats/);
     openEditorTab(/Overview/);
     await screen.findByLabelText('World Name');
     expect(shownTab(OVERVIEW)).toBe('Custom Prompts');
-    expect(shownTab(PROMPTS)).toBe('Stats');
+    expect(shownKind()).toBe('Stats');
   });
 
   it('shows Details in Simple mode and returns to the kept tab in Advanced', async () => {
@@ -285,14 +289,14 @@ describe('a Find hit on the Overview tab', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     openTab(OVERVIEW, 'Custom Prompts');
-    openTab(PROMPTS, 'Choices');
+    pickKind('Choices');
     openTab(OVERVIEW, 'Details');
 
     await openFind();
     await findFirst('lamplight');
 
     await waitFor(() => expect(shownTab(OVERVIEW)).toBe('Custom Prompts'));
-    expect(shownTab(PROMPTS)).toBe('Narration');
+    expect(shownKind()).toBe('Narration');
     expect((await ringed()).textContent).toContain('lamplight');
   });
 
