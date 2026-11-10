@@ -17,6 +17,7 @@ A wide, mechanical rename. It runs last so it never crosses a running ticket.
 - **Save shape:** the per-kind state names follow the same rename.
 - **Code:** types, helpers, variables, test names and comments that say Individual or Group for the entity kind. Leave every other use of "group" alone: entity groups (folders), trait groups, stat groups, placeholder groups and history groups are different things.
 - **Text:** the glossary, the world format doc, the wiki pages, the unreleased changelog entries, the help topics and the script help. Rebuild the help vectors if a help topic changed.
+- **A stale paragraph:** the Locations wiki page still says the Presence tab's Entities picker lists entities that "stand at Every Location they list" and that an edit changes the entity's Locations field. Tickets 14 and 16 each left it for the other. Rewrite it from what the picker does now: it lists Generic entities, and an edit adds or removes where the entity begins.
 - **Spec and tickets:** leave them as written. Q162 records the rename.
 
 Do the rename with a script or the editor's rename, then read every hit of the old words by hand. A regex cannot tell an entity kind from an entity group.
