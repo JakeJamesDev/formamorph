@@ -1,6 +1,6 @@
 # 11: Location Presence Tab
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -22,13 +22,24 @@ Spec rulings: Q81, Q82, Q97.
 
 ## Acceptance criteria
 
-- [ ] The Entities picker offers Groups only, and adding or removing one is one undo step.
-- [ ] The list shows one line per entity with a place here, with the right reason for a Group, a Start place, a Stay, Wander and Patrol row, and a listed Traversable place. An entity with Traversable = Anywhere is not listed for that reason alone.
-- [ ] An entity here for several reasons shows them on one line.
-- [ ] The button on a line opens that entity's Routine tab.
-- [ ] The Nearby / Far choice on a Connection row and the canvas inspector show the same value after either changes it.
-- [ ] Known Here behaves as before; its existing tests pass untouched.
-- [ ] The tab's copy follows the Writing Guide. The locations wiki page describes the tab.
-- [ ] Frames: `.scratch/frames/location-presence-tab.png`, light and dark, at 1440 px and at 390 px wide.
+- [x] The Entities picker offers Groups only, and adding or removing one is one undo step. (`WorldEditor.locationPresence.test.tsx`: picker options, add then undo)
+- [x] The list shows one line per entity with a place here, with the right reason for a Group, a Start place, a Stay, Wander and Patrol row, and a listed Traversable place. An entity with Traversable = Anywhere is not listed for that reason alone. (`locationPresenceReasons.test.ts`, guard mutation-tested)
+- [x] An entity here for several reasons shows them on one line. (both test files; frames)
+- [x] The button on a line opens that entity's Routine tab. (test "opens the entity’s Routine tab from its line")
+- [x] The Nearby / Far choice on a Connection row and the canvas inspector show the same value after either changes it. Both read and write `connection.distance` through `withDistance`; row-side set, undo and far-from-either-end tests. The canvas inspector's own tests pass untouched.
+- [x] Known Here behaves as before; its existing tests pass untouched.
+- [x] The tab's copy follows the Writing Guide. The locations wiki page describes the tab. (Copy sweep by hand against the guide; wiki edited.)
+- [x] Frames: `.scratch/frames/location-presence-tab.png`, light and dark, at 1440 px and at 390 px wide. (Playwright, four files with `-light-1440`, `-dark-1440`, `-light-390`, `-dark-390` suffixes)
 
 For you: whether the reason lines read clearly for a busy place such as a tavern.
+
+## Landed
+
+**Not verified**
+- The Routine button was driven in jsdom only (the test lands on the entity's Routine tab). I did not click it in a live browser.
+- The `help vectors` for the locations page are not rebuilt (`build:help-vectors` is a release step).
+
+**For you**
+- Whether the reason lines read clearly for a busy place such as a tavern. Open a location's Presence tab: `.scratch/npc-schedules-11/frames/location-presence-tab-light-1440.png` and the three siblings.
+- The route icon on each line: whether it reads as "open Routine". A tooltip names it.
+- Hour-based rows show clock times, for example "18:00 – 06:00", the way the Routine tab shows them when a range is off the daypart edges.

@@ -20,7 +20,7 @@ import LocationTree from './LocationTree';
 /** The World Editor's Locations tab as a List Editor adapter: the tree or the canvas, a flat sortable search, and the location panel. */
 export function useWorldLocationsAdapter({
   selectedId, onSelect, search, view, tab, onTabChange, focusField, revealConnection, onConnectionRevealed,
-  revealSelection, onSelectionRevealed, onCanvasSelection,
+  revealSelection, onSelectionRevealed, onCanvasSelection, onOpenEntityRoutine,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -38,6 +38,8 @@ export function useWorldLocationsAdapter({
   onSelectionRevealed?: () => void;
   /** Every selection the canvas reports. */
   onCanvasSelection?: (ids: string[]) => void;
+  /** Opens an entity's Routine tab from the Presence tab. */
+  onOpenEntityRoutine?: (entityId: string) => void;
 }): ListEditorAdapter {
   const { locations, placeholders, placementLetters, placeholderOwners, addLocation, removeLocation, setLocations } = useGameData();
   const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
@@ -109,6 +111,7 @@ export function useWorldLocationsAdapter({
           tab={tab}
           onTabChange={onTabChange}
           focusField={focusFieldForItem(focusField, location.id)}
+          onOpenEntityRoutine={onOpenEntityRoutine}
         />
       );
     },

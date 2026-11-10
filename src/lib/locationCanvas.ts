@@ -731,10 +731,21 @@ export type ConnectionDistance = "nearby" | "far";
 
 export const distanceOf = (connection: Connection): ConnectionDistance => connection.distance ?? "nearby";
 
-/** The distance choice on a selected arrow. Nearby is stored as no field. */
-export function distanceIntent(connection: Connection, distance: ConnectionDistance): CanvasIntent {
+/** The line under a distance choice, on the inspector and on a Connection row. */
+export const DISTANCE_HINTS: Record<ConnectionDistance, string> = {
+  nearby: "Lists entities at the other end as nearby for the AI",
+  far: "Hides entities at the other end from the AI; travel still works",
+};
+
+/** `connection` at `distance`. Nearby is stored as no field. */
+export function withDistance(connection: Connection, distance: ConnectionDistance): Connection {
   const { distance: _old, ...rest } = connection;
-  return { kind: "update", connection: distance === "far" ? { ...rest, distance: "far" } : rest };
+  return distance === "far" ? { ...rest, distance: "far" } : rest;
+}
+
+/** The distance choice on a selected arrow. */
+export function distanceIntent(connection: Connection, distance: ConnectionDistance): CanvasIntent {
+  return { kind: "update", connection: withDistance(connection, distance) };
 }
 
 /** Deleting a selected arrow deletes the record both of the pair's directions came from, which hands the

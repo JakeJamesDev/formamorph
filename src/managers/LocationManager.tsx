@@ -17,6 +17,7 @@ import { LocationImageField } from './LocationImageField';
 import LocationConnections from './LocationConnections';
 import { isGroup } from '@/lib/entityKind';
 import LocationKnownHere from './LocationKnownHere';
+import LocationEntitiesHere from './LocationEntitiesHere';
 import { LocationOpenings } from './OpeningsPanel';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
@@ -46,11 +47,13 @@ export const STARTING_INFO = `**Starting Location** marks where a new game can b
 - With several, the player picks one, or the game picks at random
 - With none, any location can be the start`;
 
-const LocationManager = ({ location, tab, onTabChange, focusField }: {
+const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityRoutine }: {
   location: GameLocation;
   tab: LocationPanelTab;
   onTabChange: (tab: LocationPanelTab) => void;
   focusField?: FocusFieldHint | null;
+  /** Opens an entity's Routine tab from its line in Entities Here. */
+  onOpenEntityRoutine?: (entityId: string) => void;
 }) => {
   const world = useGameData();
   const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters, placeholderOwners } = world;
@@ -190,6 +193,12 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
             placeholder="Select entities"
           />
         </div>
+        <LocationEntitiesHere
+          locationId={editingLocation.id}
+          entities={treeOrder}
+          labelOf={entityLabel}
+          onOpenRoutine={onOpenEntityRoutine}
+        />
         <LocationKnownHere
           location={editingLocation}
           locations={world.locations}

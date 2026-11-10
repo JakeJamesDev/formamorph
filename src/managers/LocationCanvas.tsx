@@ -39,7 +39,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, canvasFocus, CANVAS_GRID,
-  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, distanceIntent, distanceOf, hintKey, implicitCanvasEdges,
+  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, DISTANCE_HINTS, distanceIntent, distanceOf, hintKey, implicitCanvasEdges,
   nudgeKey, updateIntent, isStationaryClick, leafTarget,
   LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
   type CanvasDragSession, type CanvasIntent, type CanvasNodeData, type ConnectionDistance,
@@ -306,11 +306,6 @@ const DIRECTIONS: { value: ConnectionDirection; Icon: typeof ArrowRight; label: 
   { value: 'outgoing', Icon: ArrowRight, label: (a, b) => `Travel one way, ${a} to ${b}` },
   { value: 'incoming', Icon: ArrowLeft, label: (a, b) => `Travel one way, ${b} to ${a}` },
 ];
-
-const DISTANCE_HINTS: Record<ConnectionDistance, string> = {
-  nearby: 'Lists entities at the other end as nearby for the AI',
-  far: 'Hides entities at the other end from the AI; travel still works',
-};
 
 /**
  * The selected arrow's record, edited in place on the map: which way travel runs, how far apart the pair is,

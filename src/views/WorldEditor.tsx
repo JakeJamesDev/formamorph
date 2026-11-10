@@ -1084,6 +1084,7 @@ const WorldEditorInner = ({
     revealSelection: selectionReveal,
     onSelectionRevealed: clearSelectionReveal,
     onCanvasSelection,
+    onOpenEntityRoutine: (id) => navigateToBenchItem('entities', id, 'routine'),
   });
   const locationsParts = useListEditor(locationsAdapter, {
     selectedId: selections.locations ?? null, onSelect: selectLocation, search,

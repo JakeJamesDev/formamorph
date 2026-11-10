@@ -17,6 +17,7 @@ import {
   type ConnectionDirection,
 } from '@/lib/connectionEditing';
 import { otherLeg } from '@/lib/locationGraph';
+import { DISTANCE_HINTS, distanceOf, withDistance, type ConnectionDistance } from '@/lib/locationCanvas';
 import type { Connection, GameLocation, LegKey } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { fieldFrame } from '@/lib/historyField';
@@ -120,6 +121,23 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
                 <ToggleGroupItem key={d.value} value={d.value} className="flex-1">{d.label}</ToggleGroupItem>
               ))}
             </ToggleGroup>
+            <div className="space-y-1">
+              <ToggleGroup
+                type="single"
+                className="grid w-full grid-cols-2"
+                value={distanceOf(connection)}
+                aria-label={`Distance of the Connection to ${partnerName}`}
+                {...fieldFrame('connections', connection.id, 'distance')}
+                // A Connection always has a distance; an empty result from re-clicking the active item is ignored.
+                onValueChange={(v) => {
+                  if (v) updateConnection(withDistance(connection, v as ConnectionDistance));
+                }}
+              >
+                <ToggleGroupItem value="nearby">Nearby</ToggleGroupItem>
+                <ToggleGroupItem value="far">Far</ToggleGroupItem>
+              </ToggleGroup>
+              <Hint>{DISTANCE_HINTS[distanceOf(connection)]}</Hint>
+            </div>
             <TravelHintPair
               connection={connection}
               legs={legsAt(connection, location.id).map(({ key, word }) => ({

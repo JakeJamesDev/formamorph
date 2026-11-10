@@ -157,7 +157,7 @@ Select a location in the list to open its panel. The tab you pick stays open whe
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
-| **Presence** | **Entities**, **Known Here** and **Connections** | Simple and Advanced |
+| **Presence** | **Entities**, **Entities Here**, **Known Here** and **Connections** | Simple and Advanced |
 | **Items** | The location's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
 | **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
@@ -214,6 +214,18 @@ The default prompt gives the **narrator** the current location in full. It gives
 The **Entities** picker on the **Presence** tab lists the entities that stand at **Every Location** they list, such as a crowd or a fixture. Each one stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
 
 An entity that stands in **One Location** isn't in this picker. Set where it starts on the entity's **Routine** tab, or click a location on the full-screen Locations Canvas.
+
+**Entities Here** lists every entity that can be at this location, one line each, with the reason. The list is read-only. Select the route icon on a line to open that entity's **Routine** tab and change it there.
+
+| Reason | Means |
+|---|---|
+| **Group** | The entity stands at every location it lists. |
+| **Begins here** | One of the entity's Starts is at this location. With several Starts, the line gives the chance as a percent. |
+| **Stays here**, **wanders here**, **patrols here** | A routine row uses this location. The line gives the row's time. |
+| **Can be led here** | The entity's **Traversable** list names this location. An entity that can go **Anywhere** isn't listed for that reason. |
+
+An entity with several reasons shows them on one line.
+
 - **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
 
 ### Who Joins the Scene
@@ -260,7 +272,7 @@ Every link between two places is **Nearby** or **Far**. The AI receives the enti
 
 Only places one link away count. A place two links away is never nearby.
 
-To set it, select a Connection's arrow on the **Canvas** and pick **Nearby** or **Far**. A Far arrow draws as a dotted line, on the Canvas and on the player's Map.
+To set it, pick **Nearby** or **Far** on the Connection's row in the **Presence** tab, or select the Connection's arrow on the **Canvas**. Both set the same value. A Far arrow draws as a dotted line, on the Canvas and on the player's Map.
 
 To make a nested link Far, select its dashed arrow on the Canvas. That turns it into a two-way Connection. Then pick **Far**. Delete the Connection to make the link Nearby again.
 
