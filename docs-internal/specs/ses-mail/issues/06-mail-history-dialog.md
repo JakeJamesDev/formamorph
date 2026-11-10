@@ -14,6 +14,13 @@ In the Admin Panel's user list, each row's menu gains Mail History, for all staf
 
 This ticket owns the client's mail-history service. The mail report in ticket 08 uses a separate one.
 
+The server routes landed in ticket 05:
+
+- `GET /api/users/:id/mail-history` answers `{ emailMarker, emailMarkedAt, mails: [{ kind, status, sentAt, statusAt, bounceType? }] }`, newest first. Any staff member may read any account.
+- `DELETE /api/users/:id/email-marker` answers `{ cleared }`. An SES failure answers 502 `MAIL_PROVIDER_FAILED` and the marker stays. A moderator gets 403 on an admin's or another staff account's marker.
+
+Ticket 08 exported the Usage tab's tile and table pieces. Reuse them where they fit.
+
 ## Acceptance criteria
 
 - [ ] Mail History shows in the row menu for moderators and admins.
@@ -21,6 +28,8 @@ This ticket owns the client's mail-history service. The mail report in ticket 08
 - [ ] A marked account shows the reason and date and the Clear Bounce action. An unmarked account shows neither.
 - [ ] After a successful clear, the marker section disappears and a note says the user must verify again.
 - [ ] A failed clear keeps the marker section and shows the failure.
+- [ ] A bounced row shows whether the bounce was hard or soft.
+- [ ] A moderator who views an admin's or another staff account's history sees no Clear Bounce action, or sees the refusal as a clear message.
 - [ ] A failed history read shows an error state, not an empty list.
 - [ ] No request is left running after the dialog closes.
 - [ ] The dialog shows no email address.

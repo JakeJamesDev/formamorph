@@ -175,7 +175,12 @@ SES reports what happens to each mail, and the server records it:
 - The server reads the address from the user row for that call and keeps no copy.
 - Verification is not restored. The user sends a new verification mail.
 - If the SES call fails, the marker stays and the staff member sees the failure.
-- Each clear writes an audit-log entry with the staff member and the account.
+- Each clear writes an audit-log entry with the staff member, the account, and the reason that was cleared.
+- Q13 settles who may use the tools, not whom they may act on. The clear follows the target rule of the other staff account actions: a moderator is refused on an admin. The history read follows the linked-accounts read.
+- Clearing an unmarked account changes nothing, calls SES for nothing, and writes no audit entry.
+- History rows show the bounce type on bounced rows.
+- A moderator is also refused on another staff account's marker. Any staff member may read any account's history.
+- With mail off, a clear removes the marker without an SES call.
 
 **Health (Q10)**
 
@@ -195,6 +200,10 @@ SES reports what happens to each mail, and the server records it:
 
 - The email section in the game's account settings and on the website account page shows the marker state and the notice, with a link to the feedback form (Q17).
 - The Resend Verification Email button is replaced by the notice while the marker is set.
+- The feedback link opens the Questions board. In the game it opens the in-game feedback tab when that tab posts to the same boards with the account attached, and the website otherwise.
+- The verify-email page has no reason to show and may have no signed-in reader. It uses one wording that covers both reasons, with links to the account page and the feedback form.
+- A surface that cannot read the reason uses that combined wording. It never states a reason it does not know.
+- While marked, the status line reads "Not verified." without "yet".
 - The user row's menu in the Admin Panel gains Mail History, for all staff (Q12, Q13). It opens a dialog with the rows, the marker, and Clear Bounce.
 - The Admin Panel gains an admin-only Mail tab (Q11), built from the Usage tab's tiles and tables.
 - All new copy follows the writing guide and is written from a facts list in the user's words.
