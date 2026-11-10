@@ -132,6 +132,13 @@ export function withoutGroupStartsAt(entity: Entity, place: string): Entity {
   return withDerivedLocations({ ...entity, starts: starts.filter((start) => start.place !== place) });
 }
 
+/** A Group without the Start `startId`, rows and all. The same entity when that is its last Start. */
+export function withoutGroupStart(entity: Entity, startId: string): Entity {
+  const starts = entity.starts ?? [];
+  if (starts.length < 2 || !starts.some((start) => start.id === startId)) return entity;
+  return withDerivedLocations({ ...entity, starts: starts.filter((start) => start.id !== startId) });
+}
+
 /** A Group with a Start added at `place`, or the Starts that begin there removed when there are any. */
 export const toggleGroupStart = (entity: Entity, place: string, newId: () => string): Entity =>
   ((entity.starts ?? []).some((start) => start.place === place) ? withoutGroupStartsAt(entity, place) : withGroupStart(entity, place, newId));

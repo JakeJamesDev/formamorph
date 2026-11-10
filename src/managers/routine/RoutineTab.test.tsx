@@ -308,55 +308,107 @@ describe('placement', () => {
     expect(screen.getByText('Lets the player start at any start location as this entity')).toBeInTheDocument();
   });
 
-  it('turns an entity in one location into one at every location, keeping its Starts and rows', async () => {
+  it('turns a Unique entity Generic, keeping its Starts and rows', async () => {
     const starts = oneStart([stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })]);
     const bench = mount(mira(starts));
-    await userEvent.click(screen.getByRole('radio', { name: 'Every Location' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
     expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'group', locations: ['smithy', 'inn'], starts, traversable: 'anywhere' }));
   });
 
-  it('tells a persona author of a group that any of its locations can be the start', () => {
+  it('tells a persona author of a group that any start can be the start', () => {
     mount(mira(oneStart([], 'inn'), { persona: true, kind: 'group' }));
-    expect(screen.getByText('Lets the player start at any of these as this entity')).toBeInTheDocument();
+    expect(screen.getByText('Lets the player start at any start location as this entity')).toBeInTheDocument();
   });
 
-  describe('a Group\'s place list', () => {
-    const herd = (starts: EntityStart[]) => mira(starts, { kind: 'group', traversable: undefined });
-    const twoStarts: EntityStart[] = [
-      { id: 'g1', place: 'smithy', weight: 1, schedule: [] },
-      { id: 'g2', place: 'inn', weight: 1, schedule: [stay('night', 'market', 'allDay')] },
+  it('keeps every Start, row, weight, lock and Can Also Go through a switch to Generic and back', async () => {
+    const starts: EntityStart[] = [
+      { id: 's1', place: 'smithy', weight: 3, schedule: [stay('day', 'inn', { start: MORNING, end: AFTERNOON_END }, true)] },
+      { id: 's2', place: 'market', weight: 1, schedule: [] },
     ];
-    const pick = async (name: string) => {
-      await userEvent.click(within(screen.getByText('Locations').parentElement!).getByRole('combobox'));
-      await userEvent.click(await screen.findByRole('option', { name: new RegExp(`^${name}`) }));
-    };
+    const original = mira(starts, { traversable: ['farm'] });
+    const bench = mount(original);
+    await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
+    expect(stored(bench).kind).toBe('group');
+    await userEvent.click(screen.getByRole('radio', { name: 'Unique' }));
+    const { locations: _derived, ...back } = stored(bench);
+    expect(back).toEqual(original);
+    expect(screen.getByRole('button', { name: 'Start 1 75%' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Locked' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Farm')).toBeInTheDocument();
+  });
 
-    it('adds a Start with no rows at a picked location', async () => {
-      const bench = mount(herd(twoStarts));
-      await pick('Farm');
-      expect(stored(bench).starts?.map((s) => [s.place, s.schedule.length])).toEqual([['smithy', 0], ['inn', 1], ['farm', 0]]);
+  describe('a Group\'s routine', () => {
+    const herd = (starts: EntityStart[]) => mira(starts, { kind: 'group', traversable: ['farm'] });
+    const twoStarts: EntityStart[] = [
+      { id: 'g1', place: 'smithy', weight: 3, schedule: [stay('day', 'inn', { start: MORNING, end: AFTERNOON_END }, true)] },
+      { id: 'g2', place: 'smithy', weight: 1, schedule: [stay('night', 'market', 'allDay')] },
+    ];
+
+    it('shows Start tabs, the sentence, the rows and the day strip, and says every start runs at once', () => {
+      mount(herd(twoStarts));
+      const tabs = within(screen.getByRole('group', { name: 'Starts' }));
+      expect(tabs.getByRole('button', { name: 'Start 1' })).toHaveAttribute('aria-pressed', 'true');
+      expect(tabs.getByRole('button', { name: 'Start 2' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Start location: Smithy' })).toBeInTheDocument();
+      expect(lines()).toEqual(['Morning – Afternoon, stays at Inn.', 'Evening – Dawn, stays at Smithy.']);
+      expect(screen.getByRole('button', { name: 'Morning – Afternoon: Stay' })).toBeInTheDocument();
+      expect(screen.getByText('Runs every start at the same time, each on its own routine')).toBeInTheDocument();
+      expect(screen.queryByText('Picks one start at random in each new game')).toBeNull();
     });
 
-    it('removes the Starts that begin at an unpicked location, and undo brings them back with their rows', async () => {
-      const bench = mount(herd(twoStarts));
-      await pick('Inn');
-      expect(stored(bench).starts).toEqual([twoStarts[0]]);
-      expect(stored(bench).locations).toEqual(['smithy']);
-      await act(async () => { bench.history().undo(); });
-      expect(stored(bench).starts).toEqual(twoStarts);
+    it('shows no chance chip and no weight', () => {
+      mount(herd(twoStarts));
+      expect(screen.queryByText(/%$/)).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Chance:/ })).toBeNull();
+      expect(screen.queryByText(/of new games/)).toBeNull();
     });
 
-    it('keeps the last Start', async () => {
-      const bench = mount(herd([twoStarts[0]]));
-      await pick('Smithy');
+    it('shows no lock on a row, on free time or on the strip, and keeps the stored flag', () => {
+      const bench = mount(herd(twoStarts));
+      expect(screen.queryByRole('button', { name: 'Locked' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Lock Free Time' })).toBeNull();
+      expect(document.querySelector('[data-band="day"] svg')).toBeNull();
+      expect(stored(bench).starts![0].schedule[0].strict).toBe(true);
+    });
+
+    it('shows no Can Also Go, and keeps the stored list', () => {
+      const bench = mount(herd(twoStarts));
+      expect(screen.queryByRole('combobox', { name: 'Can Also Go' })).toBeNull();
+      expect(stored(bench).traversable).toEqual(['farm']);
+    });
+
+    it('edits a row of the shown start', async () => {
+      const bench = mount(herd(twoStarts));
+      await userEvent.click(screen.getByRole('button', { name: 'Action: stays at' }));
+      await userEvent.click(screen.getByRole('radio', { name: 'Patrol' }));
+      expect(stored(bench).starts![0].schedule[0].action).toEqual({ kind: 'patrol', stops: [{ place: 'inn', idle: 60 }] });
+      await userEvent.click(screen.getByRole('button', { name: 'Add Wander' }));
+      expect(stored(bench).starts![0].schedule.map((r) => r.action.kind)).toEqual(['patrol', 'wander']);
+      expect(stored(bench).starts![1]).toEqual(twoStarts[1]);
+    });
+
+    it('adds a start with no rows at a picked location and shows it', async () => {
+      const bench = mount(herd(twoStarts));
+      await userEvent.click(screen.getByRole('button', { name: 'Add Start' }));
+      await userEvent.click(screen.getByRole('option', { name: /^Farm/ }));
+      expect(stored(bench).starts!.map((s) => [s.place, s.schedule.length])).toEqual([['smithy', 1], ['smithy', 1], ['farm', 0]]);
+      expect(screen.getByRole('button', { name: 'Start location: Farm' })).toBeInTheDocument();
+    });
+
+    it('deletes only the shown start when another begins at the same location, and never the last one', async () => {
+      const bench = mount(herd(twoStarts));
+      await userEvent.click(screen.getByRole('button', { name: 'Start 2' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Start' }));
       expect(stored(bench).starts).toEqual([twoStarts[0]]);
+      expect(stored(bench).locations).toEqual(['smithy', 'inn']);
+      expect(screen.queryByRole('button', { name: 'Delete Start' })).toBeNull();
     });
   });
 
   it('gives a custom persona only its locations, with no placement or routine', () => {
     mount(mira([], { customPersona: true, kind: undefined, starts: undefined, locations: ['inn'] }));
     expect(screen.getByText('Locations')).toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: 'Every Location' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Generic' })).toBeNull();
     expect(screen.queryByRole('list', { name: 'Routine' })).toBeNull();
   });
 

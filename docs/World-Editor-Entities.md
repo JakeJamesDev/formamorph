@@ -89,23 +89,26 @@ The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only
 Each entity in the list has **Duplicate** and **Delete** actions.
 
 ## Routine
-<!-- keywords: schedule, daily routine, where does the npc start, npc moves, wander, patrol, stays at, follow the player, called over, one location, every location -->
+<!-- keywords: schedule, daily routine, where does the npc start, npc moves, wander, patrol, stays at, follow the player, called over, unique, generic, crowd, herd -->
 <!-- route: worldEditorEntity.routine -->
 
 The **Routine** tab sets where the entity stands in the world.
 
 **Placement** has two choices:
 
-- **One Location**: one body in one location. A new entity is in **One Location**. During the game it can move, follow the player and be left waiting.
-- **Every Location**: at every picked location at once, such as a crowd or a fixture. It never moves and never follows. Pick its **Locations** under the switch.
+- **Unique**: one character in one location at a time. A new entity is **Unique**. During the game it can move, follow the player and be left waiting.
+- **Generic**: a type of character, such as a crowd or a herd. One begins at every start at the same time, and each moves on its start's routine. It never follows and is never called over.
 
 ### Starts
 
-An entity in **One Location** has one or more starts. Each start is a location and a routine kept from there.
+Every entity has one or more starts. Each start is a location and a routine kept from there.
 
-- 🎲 With several starts, each new game picks one at random. Each start's tab shows its chance.
-- ✏️ Click the location in **Starts at …** to change it. With several starts, click the percent to set the start's **Weight**.
+- 🎲 A **Unique** entity begins at one start, picked at random in each new game. Each start's tab shows its chance.
+- 👥 A **Generic** entity begins at every start at the same time. Its tabs show no chance, its rows have no lock, and it has no **Can Also Go**.
+- ✏️ Click the location in **Starts at …** to change it. For a **Unique** entity with several starts, click the percent to set the start's **Weight**.
 - ➕ Use **+** beside the tabs to add a start. A start's own delete button removes it. The last start can't be deleted.
+
+Switching between the two keeps every start and row. Chances, locks and **Can Also Go** come back as they were.
 
 ### The routine
 

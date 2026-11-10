@@ -141,7 +141,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Locations Canvas](World-Editor-Locations#list-and-canvas) | The visual view of the **Locations** tab, with boxes for locations and arrows for Connections |
 | [Auto Arrange](World-Editor-Locations#list-and-canvas) | The canvas command that lays out boxes for you. Nothing on the canvas moves without it or you. |
 | [Map](How-to-Play#the-change-location-dialog) | The read-only canvas the player sees during the game, on the **Map** tab |
-| [Placement](World-Editor-Entities) | How an entity stands in the world: in **One Location**, from where it starts, or at **Every Location** it lists at once |
+| [Placement](World-Editor-Entities) | How an entity stands in the world: **Unique**, one character that begins at one of its starts, or **Generic**, a type of character that begins at every start at the same time |
 | [Known In](World-Editor-Entities#locations) | Where the AI knows of an entity while the entity isn't present. The default is **Nearby**. |
 | [Known Here](World-Editor-Locations#entities) | A location's list of entities that aren't there, but that the entities there may speak of |
 | [Relationship](World-Editor-Entities#the-panel) | Another entity, or the persona, with its role toward this entity. The AI reads each one as a line. |

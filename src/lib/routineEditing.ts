@@ -3,7 +3,7 @@ import { placesOf } from '@/lib/positionEngine';
 import { firstFreeRange, ONE_DAYPART_MINUTES } from '@/lib/routineTime';
 import type { Entity, EntityStart, ScheduleAction, ScheduleRow } from '@/types';
 
-// The Routine tab's writes to an Individual. Each returns the whole entity with its `locations` rebuilt.
+// The Routine tab's writes to an entity's Starts and rows. Each returns the whole entity with its `locations` rebuilt.
 
 export type ActionKind = ScheduleAction['kind'];
 

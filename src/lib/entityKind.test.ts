@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, EntityStart } from '@/types';
 import {
-  canRemoveGroupStartsAt, castRoutines, toggleGroupStart, withGroupPlacesMapped, withGroupStart, withKind, withoutGroupStartsAt,
+  canRemoveGroupStartsAt, castRoutines, toggleGroupStart, withGroupPlacesMapped, withGroupStart, withKind, withoutGroupStart, withoutGroupStartsAt,
 } from './entityKind';
 
 let n = 0;
@@ -47,6 +47,16 @@ describe("a Group's Starts", () => {
     const one: Entity = { ...herd, starts: [starts[0]] };
     expect(canRemoveGroupStartsAt(one, 'barn')).toBe(false);
     expect(withoutGroupStartsAt(one, 'barn')).toBe(one);
+  });
+
+  it('removes one Start by id, leaving another at the same place, and keeps the last one', () => {
+    const twice = withGroupStart(herd, 'barn', newId);
+    const added = twice.starts![2];
+    expect(withoutGroupStart(twice, 'a').starts).toEqual([starts[1], added]);
+    expect(withoutGroupStart(twice, 'a').locations).toEqual(['field', 'barn']);
+    const one: Entity = { ...herd, starts: [starts[0]] };
+    expect(withoutGroupStart(one, 'a')).toBe(one);
+    expect(withoutGroupStart(herd, 'missing')).toBe(herd);
   });
 
   it('toggles a place: adds a Start where none begins, removes the ones that do', () => {

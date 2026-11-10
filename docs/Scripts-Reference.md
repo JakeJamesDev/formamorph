@@ -627,7 +627,7 @@ if (self.value >= 3) entities.Sylvie.meet();
 #### Moving Entities
 <!-- keywords: move npc, companion joins, follow player, leave party, schedule, patrol, entity location, send away -->
 
-Three calls on an entity's entry set its location. They work on an entity in **One Location**; an entity at **Every Location** ignores them.
+Three calls on an entity's entry set its location. They work on a **Unique** entity; a **Generic** entity ignores them.
 
 - **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following or waiting entity stops. It stays there for a while, then goes back to its usual places.
 - **`entities.<Entity>.follow()`** makes the entity follow the player, at the player's location. It follows even where its routine would not let it go.

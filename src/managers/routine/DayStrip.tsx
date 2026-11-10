@@ -132,8 +132,10 @@ const sameRange = (a: ScheduleRange, b: ScheduleRange) => a.start === b.start &&
 
 /** The Start's day on a 24-hour strip that begins at Dawn: a band per row in its action's color, the All-day row underneath, free time
  *  hatched. A band selects its row, a gap adds a row over it, each timed band's ends drag, and a timed band drags whole. */
-export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, onMove }: {
+export function DayStrip({ rows, free, lockable = true, asHoursOf, selected, onSelect, onFill, onMove }: {
   rows: readonly ScheduleRow[]; free: readonly FreeRange[];
+  /** Whether a band marks its row's Strict lock. */
+  lockable?: boolean;
   asHoursOf: (row: ScheduleRow) => boolean;
   selected: string | null;
   onSelect: (rowId: string) => void;
@@ -207,7 +209,7 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
           {rows.flatMap((row) => {
             const pieces: [number, number][] = row.time === 'allDay' ? [[0, MINUTES_PER_DAY]] : strip(row.time);
             return pieces.map(([a, b], i) => (
-              <Tip key={`${row.id}-${i}`} tip={`${timeOf(row)}: ${actionLabel(row)}${row.strict ? ', Locked' : ''}`}>
+              <Tip key={`${row.id}-${i}`} tip={`${timeOf(row)}: ${actionLabel(row)}${lockable && row.strict ? ', Locked' : ''}`}>
                 <button
                   type="button" {...{ [STRIP_PART]: '' }} data-band={row.id} aria-pressed={selected === row.id}
                   aria-label={`${timeOf(row)}: ${actionLabel(row)}`}
@@ -220,7 +222,7 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
                   )}
                   style={{ left: pct(a), width: pct(b - a), zIndex: row.time === 'allDay' ? 0 : 1 }}
                 >
-                  {row.strict && <Lock className="h-3 w-3 text-foreground" aria-hidden />}
+                  {lockable && row.strict && <Lock className="h-3 w-3 text-foreground" aria-hidden />}
                 </button>
               </Tip>
             ));

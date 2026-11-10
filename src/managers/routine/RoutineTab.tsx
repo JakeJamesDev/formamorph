@@ -13,7 +13,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
-import { withGroupStart, withKind, withoutGroupStartsAt } from '@/lib/entityKind';
+import { withGroupStart, withKind, withoutGroupStart } from '@/lib/entityKind';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
 import { holderOf, locationRows } from '@/lib/locationTree';
@@ -34,13 +34,26 @@ import { ACTIONS } from './routineActions';
 import { LocationPicker, Token, TOKEN_CLASS, type PlaceBook } from './RoutineFields';
 
 const KIND_OPTIONS = [
-  { value: 'individual', label: 'One Location' },
-  { value: 'group', label: 'Every Location' },
+  { value: 'individual', label: 'Unique' },
+  { value: 'group', label: 'Generic' },
 ] as const;
 
 const KIND_HINTS: Record<EntityKind, string> = {
-  individual: 'Stands in one location at a time and keeps a daily routine',
-  group: 'Stands at every picked location at once, like a crowd or a fixture',
+  individual: 'Places one character at one of the starts below',
+  group: 'Places one of this type of character at every start below',
+};
+
+/** What several Starts mean, by kind. */
+const STARTS_HINTS: Record<EntityKind, string> = {
+  individual: 'Picks one start at random in each new game',
+  group: 'Runs every start at the same time, each on its own routine',
+};
+
+/** The fields a kind edits. A Group keeps weight, Strict and Traversable in its data but hides them. */
+type KindFields = { chance: boolean; locks: boolean; canAlsoGo: boolean };
+const KIND_FIELDS: Record<EntityKind, KindFields> = {
+  individual: { chance: true, locks: true, canAlsoGo: true },
+  group: { chance: false, locks: false, canAlsoGo: false },
 };
 
 /** What a press may land on and keep the row selection: a sentence, the strip, an open editor, or the map. */
@@ -84,7 +97,7 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
   }, [locations, placeholders, placementLetters, placeholderOwners]);
 
   // An entity with no kind yet edits as a new Individual; its first write stores the kind.
-  const individual = useMemo(() => (entity.kind ? entity : withKind(entity, 'individual', randomUUID)), [entity]);
+  const kinded = useMemo(() => (entity.kind ? entity : withKind(entity, 'individual', randomUUID)), [entity]);
   // A custom persona moves with the player: it keeps only its locations, with no placement or routine.
   if (entity.customPersona) return <PersonaLocations entity={entity} book={book} commit={commit} />;
   const kind: EntityKind = entity.kind ?? 'individual';
@@ -99,16 +112,14 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
         />
         <Hint>{KIND_HINTS[kind]}</Hint>
       </div>
-      {kind === 'group'
-        ? <GroupStarts entity={entity} book={book} commit={commit} />
-        : <IndividualRoutine entity={individual} book={book} connections={connections} locations={locations} commit={commit} onChange={onChange} />}
+      <EntityRoutine entity={kinded} kind={kind} book={book} connections={connections} locations={locations} commit={commit} onChange={onChange} />
     </div>
   );
 }
 
-/** The Locations field: a pick list over every location. `version` remounts it so it shows `selected` again. */
-function PlaceList({ entity, book, selected, version = 0, onChange }: {
-  entity: Entity; book: PlaceBook; selected: string[]; version?: number; onChange: (ids: string[]) => void;
+/** The Locations field: a pick list over every location. */
+function PlaceList({ entity, book, selected, onChange }: {
+  entity: Entity; book: PlaceBook; selected: string[]; onChange: (ids: string[]) => void;
 }) {
   const options = book.rowsOf(book.all).map((r) => ({ label: r.name, value: r.value, depth: r.breadcrumb?.length ?? 0 }));
   return (
@@ -116,7 +127,7 @@ function PlaceList({ entity, book, selected, version = 0, onChange }: {
       <Label>Locations</Label>
       {entity.persona === true && <Hint>Lets the player start at any of these as this entity</Hint>}
       <MultiSelect
-        key={`${entity.id}:${version}`} options={options} defaultValue={selected.filter((id) => book.all.includes(id))}
+        key={entity.id} options={options} defaultValue={selected.filter((id) => book.all.includes(id))}
         placeholder="Select locations" onValueChange={onChange}
       />
     </div>
@@ -132,32 +143,20 @@ function PersonaLocations({ entity, book, commit }: { entity: Entity; book: Plac
   );
 }
 
-/** A Group's Starts as a place list: picking a place adds a Start with no rows there, and unpicking one removes the
- *  Starts that begin there. The last Start stays. */
-function GroupStarts({ entity, book, commit }: { entity: Entity; book: PlaceBook; commit: (label: string, next: Entity) => void }) {
-  // Remounts the list when a removal is refused, so it shows the Start that stayed.
-  const [refusals, setRefusals] = useState(0);
-  const places = [...new Set((entity.starts ?? []).map((s) => s.place))];
-  const change = (ids: string[]) => {
-    let next = entity;
-    for (const place of places) if (!ids.includes(place)) next = withoutGroupStartsAt(next, place);
-    for (const place of ids) if (!places.includes(place)) next = withGroupStart(next, place, randomUUID);
-    if (places.some((place) => !ids.includes(place) && next.starts?.some((s) => s.place === place))) setRefusals((n) => n + 1);
-    if (next !== entity) commit('Change Locations', next);
-  };
-  return <PlaceList entity={entity} book={book} selected={places} version={refusals} onChange={change} />;
-}
-
-function IndividualRoutine({ entity, book, locations, connections, commit, onChange }: {
-  entity: Entity; book: PlaceBook; locations: readonly GameLocation[]; connections: readonly Connection[];
+/** The Starts, the shown Start's routine and, for an Individual, Can Also Go. A Group hides weight, Strict and
+ *  Traversable but keeps them in the data. */
+function EntityRoutine({ entity, kind, book, locations, connections, commit, onChange }: {
+  entity: Entity; kind: EntityKind; book: PlaceBook; locations: readonly GameLocation[]; connections: readonly Connection[];
   commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void;
 }) {
+  const group = kind === 'group';
+  const fields = KIND_FIELDS[kind];
   const starts = entity.starts ?? [];
   const { startId, showStart } = useRoutineSelection(entity.id);
   const start = starts.find((s) => s.id === startId) ?? starts[0];
   const weights = starts.map((s) => s.weight);
   const addStart = (place: string) => {
-    const next = withNewStart(entity, place, randomUUID);
+    const next = group ? withGroupStart(entity, place, randomUUID) : withNewStart(entity, place, randomUUID);
     commit('Add Start', next);
     showStart(next.starts?.[next.starts.length - 1]?.id ?? null);
   };
@@ -176,37 +175,40 @@ function IndividualRoutine({ entity, book, locations, connections, commit, onCha
                 s.id === start?.id ? 'border-primary bg-accent' : 'border-transparent hover:bg-muted')}
             >
               Start {i + 1}
-              {starts.length > 1 && (
+              {fields.chance && starts.length > 1 && (
                 <span className={CHIP_BASE} style={chanceChipStyle(relativeChance(s.weight, weights))}>{chancePercent(s.weight, weights)}%</span>
               )}
             </button>
           ))}
           <LocationPicker book={book} places={book.all} onPick={addStart} trigger={addTrigger(starts.length ? '' : 'Add Start')} />
         </div>
-        {starts.length > 1 && <Hint>Picks one start at random in each new game</Hint>}
+        {starts.length > 1 && <Hint>{STARTS_HINTS[kind]}</Hint>}
         {entity.persona === true && <Hint>Lets the player start at any start location as this entity</Hint>}
         {!start && <Hint>Pick the location it starts at</Hint>}
       </div>
       {start && (
         <StartRoutine
-          entity={entity} start={start} weights={weights} book={book} commit={commit} onChange={onChange}
+          entity={entity} kind={kind} start={start} weights={weights} book={book} commit={commit} onChange={onChange}
           connected={[...connectedPlaces(start.place, { locations, connections })]}
           onDeleted={() => showStart(null)}
         />
       )}
-      <TraversableField
-        value={entity.traversable ?? 'anywhere'} book={book}
-        onChange={(traversable) => commit('Change Can Also Go', { ...entity, traversable })}
-      />
+      {fields.canAlsoGo && (
+        <TraversableField
+          value={entity.traversable ?? 'anywhere'} book={book}
+          onChange={(traversable) => commit('Change Can Also Go', { ...entity, traversable })}
+        />
+      )}
     </>
   );
 }
 
-function StartRoutine({ entity, start, weights, book, connected, commit, onChange, onDeleted }: {
-  entity: Entity; start: EntityStart; weights: number[]; book: PlaceBook; connected: string[];
+function StartRoutine({ entity, kind, start, weights, book, connected, commit, onChange, onDeleted }: {
+  entity: Entity; kind: EntityKind; start: EntityStart; weights: number[]; book: PlaceBook; connected: string[];
   commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void; onDeleted: () => void;
 }) {
   const many = (entity.starts?.length ?? 0) > 1;
+  const fields = KIND_FIELDS[kind];
   const percent = chancePercent(start.weight, weights);
   const free = freeRanges(start.schedule);
   type Line = { at: number; row: ScheduleRow; free?: undefined } | { at: number; row?: undefined; free: FreeRange };
@@ -277,7 +279,7 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
             </button>
           )}
         />
-        {many && (
+        {many && fields.chance && (
           <>
             {' in '}
             <Token label={`Chance: ${percent}%`} editor={(
@@ -298,7 +300,10 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
           <Tip tip="Delete Start">
             <Button
               variant="ghost" size="icon" className="ml-1 h-7 w-7 align-middle text-muted-foreground" aria-label="Delete Start"
-              onClick={() => { commit('Delete Start', withoutStart(entity, start.id)); onDeleted(); }}
+              onClick={() => {
+                commit('Delete Start', kind === 'group' ? withoutGroupStart(entity, start.id) : withoutStart(entity, start.id));
+                onDeleted();
+              }}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -307,14 +312,14 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
       </p>
 
       <DayStrip
-        rows={start.schedule} free={free} asHoursOf={asHoursOf} selected={selected}
+        rows={start.schedule} free={free} lockable={fields.locks} asHoursOf={asHoursOf} selected={selected}
         onSelect={showRow} onFill={fill} onMove={move}
       />
 
       <ol className="space-y-0.5 border-l pl-2" aria-label="Routine">
         {lines.map((line) => line.row ? (
           <RoutineRow
-            key={line.row.id} row={line.row} startPlace={start.place} book={book} connected={connected}
+            key={line.row.id} row={line.row} startPlace={start.place} book={book} connected={connected} lockable={fields.locks}
             asHours={asHoursOf(line.row)} onAsHours={(hours) => setFormats((f) => ({ ...f, [line.row.id]: hours }))}
             selected={selected === line.row.id} onSelect={() => selectRow(line.row.id)}
             rowRef={(el) => { if (el) rowEls.current.set(line.row.id, el); else rowEls.current.delete(line.row.id); }}
@@ -329,20 +334,22 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
           <li key={`free-${line.free.start}`} className="flex items-center gap-1 px-1 text-label leading-7 text-muted-foreground">
             <Coffee className="h-4 w-4 shrink-0" aria-hidden />
             {/* Free time has no row to lock, so locking it writes one: a locked All-day Stay under the timed rows. */}
-            <Tip tip="Unlocked: can be called over and follow the player">
-              <button
-                type="button" className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Lock Free Time"
-                onClick={() => {
-                  const added = withLockedRest(entity, start.id, randomUUID);
-                  commit('Lock Free Time', added.entity);
-                  scrollTo.current = added.rowId;
-                  selectRow(added.rowId);
-                }}
-              >
-                <LockOpen className="h-4 w-4" />
-              </button>
-            </Tip>
+            {fields.locks && (
+              <Tip tip="Unlocked: can be called over and follow the player">
+                <button
+                  type="button" className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Lock Free Time"
+                  onClick={() => {
+                    const added = withLockedRest(entity, start.id, randomUUID);
+                    commit('Lock Free Time', added.entity);
+                    scrollTo.current = added.rowId;
+                    selectRow(added.rowId);
+                  }}
+                >
+                  <LockOpen className="h-4 w-4" />
+                </button>
+              </Tip>
+            )}
             <span>{line.free.wholeDay ? 'All day' : rangeText({ start: line.free.start, end: line.free.end % MINUTES_PER_DAY })}, stays at {startName}.</span>
           </li>
         ))}

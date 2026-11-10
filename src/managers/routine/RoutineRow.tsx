@@ -182,8 +182,10 @@ function PlacesEditor({ row, book, connected, onChange, field }: {
 }
 
 /** One schedule row as a sentence. The time, the action and the locations each open their own editor. */
-export function RoutineRow({ row, others, startPlace, book, connected, asHours, onAsHours, selected, onSelect, rowRef, onChange, onDelete }: {
+export function RoutineRow({ row, others, startPlace, book, connected, lockable = true, asHours, onAsHours, selected, onSelect, rowRef, onChange, onDelete }: {
   row: ScheduleRow; others: readonly ScheduleRow[]; startPlace: string; book: PlaceBook; connected: readonly string[];
+  /** Whether the Strict lock shows. A Group's rows keep their flag but hide it. */
+  lockable?: boolean;
   /** Whether the row's time shows as hours. */
   asHours: boolean; onAsHours: (hours: boolean) => void;
   selected: boolean; onSelect: () => void; rowRef?: Ref<HTMLLIElement>;
@@ -209,15 +211,17 @@ export function RoutineRow({ row, others, startPlace, book, connected, asHours, 
       <span className="mt-1.5 flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
         <span className={cn('h-2.5 w-2.5 rounded-sm', ACTION_TONE[row.action.kind])} />
       </span>
-      <Tip tip={strictTip}>
-        <button
-          type="button" className="mt-1.5 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Locked" aria-pressed={!!row.strict}
-          onClick={() => onChange({ ...row, strict: !row.strict })}
-        >
-          {row.strict ? <Lock className="h-4 w-4 text-warning" /> : <LockOpen className="h-4 w-4 text-muted-foreground" />}
-        </button>
-      </Tip>
+      {lockable && (
+        <Tip tip={strictTip}>
+          <button
+            type="button" className="mt-1.5 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Locked" aria-pressed={!!row.strict}
+            onClick={() => onChange({ ...row, strict: !row.strict })}
+          >
+            {row.strict ? <Lock className="h-4 w-4 text-warning" /> : <LockOpen className="h-4 w-4 text-muted-foreground" />}
+          </button>
+        </Tip>
+      )}
       <p className="min-w-0 flex-1">
         <Token wide label={`Time: ${timeText}`} editor={(
           <RowTimeEditor time={row.time} asHours={asHours} onAsHours={onAsHours} others={others} onChange={(time) => onChange({ ...row, time })} />

@@ -247,7 +247,7 @@ A **Far** link never brings anyone over, even a nested one. See [Nearby and Far]
 
 The narration must use the entity's full Name, a full alias, or the full **Stranger Name**. A name said only inside dialogue doesn't count.
 
-Only an entity in **One Location** comes, and only to a location it may go to. An entity at **Every Location** never comes over. One that is following the player, or waiting where it was left, doesn't come either. Nor does one in a part of its routine that can't be interrupted.
+Only a **Unique** entity comes, and only to a location it may go to. A **Generic** entity never comes over. One that is following the player, or waiting where it was left, doesn't come either. Nor does one in a part of its routine that can't be interrupted.
 
 The entity goes back to its usual places later: when the player leaves, or after a while. Undo the turn, and it goes back at once.
 
