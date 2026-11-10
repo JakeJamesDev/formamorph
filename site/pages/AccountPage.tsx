@@ -8,6 +8,7 @@ import { PatreonSection, type PatreonReturn } from '@/components/PatreonSection'
 import AuthService, { emailMarkerOf, type EmailNoticeReason } from '@/services/AuthService';
 import { EmailMarkerNotice, QUESTIONS_BOARD_PATH } from '@/components/EmailMarkerNotice';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { useEmailRecheck } from '@/lib/useEmailRecheck';
 import { Field } from '../components/AccountForm';
 import { AllowanceSection } from '../components/AllowanceSection';
 import { NoteLine, type Note } from '../components/NoteLine';
@@ -84,6 +85,12 @@ function EmailSection({ suspended }: { suspended: boolean }) {
   const [note, setNote] = useState<Note>(null);
   const [busy, setBusy] = useState<'save' | 'resend' | null>(null);
 
+  const { recheckSoon, drop } = useEmailRecheck((fresh) => {
+    setAccount({ address: fresh.email, verified: fresh.emailVerified, marker: fresh.emailMarker });
+    // The status line or the notice now says what a "sent" note was waiting on.
+    if (fresh.emailMarker || fresh.emailVerified) setNote((held) => (held?.kind === 'success' ? null : held));
+  });
+
   // The cached account can predate emails entirely: a session held since before the field existed
   // carries neither the address nor its state, and would render as "none on file" for somebody who has
   // one. One read of the account on arrival settles it.
@@ -121,6 +128,9 @@ function EmailSection({ suspended }: { suspended: boolean }) {
     try {
       const { emailVerified, mailSent, undeliverable } = await AuthService.setEmail(address);
       if (!mounted.current) return;
+      // A read that started before this answer holds the account as it was.
+      drop();
+      if (mailSent) recheckSoon();
       // Read back from the adopted account rather than from what was typed: the server decides what is
       // stored, and this section is what the rest of the page believes about it.
       setAccount({ ...readEmail(), ...(undeliverable && { verified: false, marker: undeliverable }) });
@@ -149,6 +159,8 @@ function EmailSection({ suspended }: { suspended: boolean }) {
     try {
       const { emailVerified, mailSent, undeliverable } = await AuthService.resendVerification();
       if (!mounted.current) return;
+      drop();
+      if (mailSent) recheckSoon();
       setAccount((held) => ({ ...held, verified: emailVerified, marker: undeliverable ?? held.marker }));
 
       if (undeliverable) return;

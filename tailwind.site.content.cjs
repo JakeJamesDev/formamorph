@@ -121,6 +121,7 @@ const FILES = [
   'src/lib/resetTime.ts',
   'src/lib/thumbAspect.ts',
   'src/lib/useCachedThumbnail.tsx',
+  'src/lib/useEmailRecheck.ts',
   'src/lib/useMountedRef.ts',
   'src/lib/useRenameSubmit.ts',
   'src/lib/useResetOnOpen.ts',

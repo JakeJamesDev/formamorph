@@ -130,3 +130,66 @@ describe('the email section for an address mail no longer reaches', () => {
     expect(screen.getByRole('button', { name: 'Resend Verification Email' })).toBeTruthy();
   });
 });
+
+describe('a bounce that arrives after the send', () => {
+  const account = (over: Record<string, unknown> = {}) => res({ success: true, user: user(over) });
+
+  /** The server as it is while `marked` is false, and after the bounce once it is true. */
+  const server = (state: { marked: boolean }) => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      if (path.includes('/auth/resend-verification')) return res({ success: true, mailSent: true, emailVerified: false });
+      if (path.includes('/auth/me')) return account(state.marked ? { emailMarker: 'bounce' } : {});
+      throw new Error(`No stub for ${path}`);
+    });
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('replaces the sent note with the notice a few seconds after a resend', async () => {
+    const state = { marked: false };
+    server(state);
+    show();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Resend Verification Email' }));
+    expect(await screen.findByText(/Verification email sent\. Open the link/)).toBeTruthy();
+
+    state.marked = true;
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(await screen.findByText(/Email to this address bounced, so/)).toBeTruthy();
+    expect(screen.queryByText(/Verification email sent/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Resend Verification Email' })).toBeNull();
+  });
+
+  it('shows the notice when the window comes back into view', async () => {
+    const state = { marked: false };
+    server(state);
+    show();
+    await screen.findByRole('button', { name: 'Resend Verification Email' });
+
+    state.marked = true;
+    fireEvent(window, new Event('focus'));
+
+    expect(await screen.findByText(/Email to this address bounced, so/)).toBeTruthy();
+  });
+
+  it('reads nothing after the tab is gone', async () => {
+    const state = { marked: false };
+    server(state);
+    const { unmount } = show();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Resend Verification Email' }));
+    await screen.findByText(/Verification email sent\. Open the link/);
+    unmount();
+    const reads = vi.mocked(fetch).mock.calls.length;
+
+    await vi.advanceTimersByTimeAsync(10000);
+    fireEvent(window, new Event('focus'));
+
+    expect(vi.mocked(fetch).mock.calls.length).toBe(reads);
+  });
+});

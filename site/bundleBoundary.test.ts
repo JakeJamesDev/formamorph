@@ -71,6 +71,7 @@ const ALLOWED = [
   '@/lib/hostedAi/unconfirmedCopy',
   '@/lib/refusalWatch',
   '@/lib/serverDate',
+  '@/lib/useEmailRecheck',
   '@/lib/useMountedRef',
   '@/lib/useRenameSubmit',
   '@/lib/usernameRule',
@@ -205,7 +206,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 75: `SupportersWall`, the wall the page and the game's Credits dialog share; it reads only leaves already listed.
     // 76: `unconfirmedCopy`, the one sentence for an unconfirmed pledge, which the app and the allowance section share.
     // 78: `EmailMarkerNotice`, the marked-address notice the game and the site share, and `devEmailMarkerStub`, its DEV-only fixture; both read only `AuthService`.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(78);
+    // 79: `useEmailRecheck`, the account re-read both email sections run after a send; it reads only `AuthService`.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(79);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {
