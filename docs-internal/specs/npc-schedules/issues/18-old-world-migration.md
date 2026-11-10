@@ -22,6 +22,8 @@ The rule was checked by hand against four released community worlds; the spec's 
 
 The changelog entry and the docs explain the rule. They say plainly that a person who had several locations is now in one of them at a time, so they are not always where the player looks, and that the author changes this in the Routine tab.
 
+The first row writes the two fields ticket 17 built: the Start's place is the exported Player's Starting Location constant, and the Start carries the begins-Following flag. Use that constant; do not write the value by hand.
+
 User-facing text calls the kinds Unique and Generic (Q162). Code and stored values keep `individual` and `group` until ticket 19.
 
 Spec rulings: Q143, Q144, Q145, Q146, Q151, Q152, Q133, Q156, Q162, Q163.
