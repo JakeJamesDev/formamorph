@@ -7,6 +7,7 @@ import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
 import type { Connection, Entity, GameLocation, Placeholder, SaveObject, World } from '@/types';
+import { PLAYER_START } from '@/types';
 import { LEGACY_VRM_ID } from './legacyVrm';
 import { codeAt } from '@/test/scriptFixtures';
 
@@ -174,15 +175,6 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
   const one = (raw: Record<string, unknown>) => entitiesOf(migrateWorld(world([{ id: 'e', name: 'E', ...raw }])))[0];
   const OLD = ['presence', 'movement'];
 
-  it('makes an entity with no presence and several locations a Group with one Start per place and no rows', () => {
-    const e = one({ locations: ['keep', 'tower'] });
-    expect(e).toMatchObject({
-      kind: 'group', locations: ['keep', 'tower'],
-      starts: [{ place: 'keep', weight: 1, schedule: [] }, { place: 'tower', weight: 1, schedule: [] }],
-    });
-    expect(e).not.toHaveProperty('traversable');
-  });
-
   it('makes an entity with no presence and one location an Individual with one Start there', () => {
     const e = one({ locations: ['keep'] });
     expect(e).toMatchObject({ kind: 'individual', locations: ['keep'], starts: [{ place: 'keep', weight: 1, schedule: [] }] });
@@ -220,12 +212,6 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
     expect(one({ locations: ['keep'], movement: 'follow' }).traversable).toBe('anywhere');
   });
 
-  it('makes an Everywhere Listed Can Follow entity a Group that follows nobody', () => {
-    const e = one({ locations: ['keep', 'tower'], movement: 'follow' });
-    expect(e.kind).toBe('group');
-    expect(e).not.toHaveProperty('traversable');
-  });
-
   it('gives no kind to the Custom Persona or an entity with no locations, and drops their old fields', () => {
     const persona = one({ locations: ['keep'], customPersona: true, movement: 'follow' });
     const nowhere = one({ presence: 'random' });
@@ -256,6 +242,138 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
       starts: [{ id: 's', place: 'keep', weight: 1, schedule: [{ id: 'r', time: 'allDay', action: { kind: 'stay', place: 'tower' } }] }],
     });
     expect(e.locations).toEqual(['keep', 'tower']);
+  });
+});
+
+describe('migrateWorld — a released entity with several locations and no presence (Q143–Q151)', () => {
+  const PLACES = ['keep', 'tower', 'gate', 'mill'];
+  const migrate = (entities: Record<string, unknown>[], places = PLACES) => (migrateWorld({
+    worldOverview: {}, locations: places.map((id) => ({ id, name: id })), entities,
+  }) as unknown as { entities: Entity[] }).entities;
+  const byId = (entities: Entity[], id: string) => entities.find((e) => e.id === id)!;
+  const wander = (places: string[]) => [{
+    id: expect.any(String), time: 'allDay',
+    action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: 240 },
+  }];
+  // Uses pronouns, so the Group row can apply.
+  const narrator = { id: 'n', name: 'N', pronouns: 'she/her', locations: ['keep'] };
+
+  it('makes a person with a home and a workplace one wandering Individual starting at the first', () => {
+    const e = byId(migrate([narrator, { id: 'smith', name: 'Smith', pronouns: 'he/him', locations: ['mill', 'gate'] }]), 'smith');
+    expect(e).toMatchObject({ kind: 'individual', locations: ['mill', 'gate'], traversable: ['mill', 'gate'] });
+    expect(e.starts).toEqual([{ id: expect.any(String), place: 'mill', weight: 1, schedule: wander(['mill', 'gate']) }]);
+  });
+
+  it('makes a persona-marked entity with several locations the same wandering Individual', () => {
+    const e = byId(migrate([narrator, { id: 'p', name: 'P', persona: true, locations: ['keep', 'tower'] }]), 'p');
+    expect(e).toMatchObject({ kind: 'individual', traversable: ['keep', 'tower'] });
+    expect(e.starts?.[0].schedule).toEqual(wander(['keep', 'tower']));
+  });
+
+  it('makes an enemy with neither field a Group with one rowless Start per place, in a world that uses pronouns', () => {
+    const e = byId(migrate([narrator, { id: 'mimic', name: 'Mimic', locations: ['tower', 'gate'], movement: 'between' }]), 'mimic');
+    expect(e).toMatchObject({
+      kind: 'group', locations: ['tower', 'gate'],
+      starts: [{ place: 'tower', weight: 1, schedule: [] }, { place: 'gate', weight: 1, schedule: [] }],
+    });
+    expect(e).not.toHaveProperty('traversable');
+  });
+
+  it('counts a persona mark as the world using the fields', () => {
+    const entities = migrate([{ id: 'p', name: 'P', persona: true, locations: ['keep'] }, { id: 'mimic', name: 'Mimic', locations: ['tower', 'gate'] }]);
+    expect(byId(entities, 'mimic').kind).toBe('group');
+  });
+
+  it('counts the Custom Persona as the world using the fields', () => {
+    const entities = migrate([{ id: 'me', name: 'Me', customPersona: true }, { id: 'mimic', name: 'Mimic', locations: ['tower', 'gate'] }]);
+    expect(byId(entities, 'mimic').kind).toBe('group');
+  });
+
+  it('makes every multi-location entity a wandering Individual in a world with no pronouns or persona marks', () => {
+    const lists: Record<string, string[]> = { mimic: ['tower', 'gate'], blank: ['mill', 'keep'] };
+    const entities = migrate([
+      { id: 'mimic', name: 'Mimic', locations: lists.mimic },
+      { id: 'blank', name: 'Blank', pronouns: '  ', locations: lists.blank },
+    ]);
+    for (const e of entities) {
+      expect(e.kind).toBe('individual');
+      expect(e.starts?.[0].place).toBe(lists[e.id][0]);
+      expect(e.starts?.[0].schedule).toEqual(wander(lists[e.id]));
+      expect(e.traversable).toEqual(lists[e.id]);
+    }
+  });
+
+  it('makes an entity with "it" pronouns a Group, and keeps "they/them" a person', () => {
+    const entities = migrate([
+      narrator,
+      { id: 'slime', name: 'Slime', pronouns: ' It/Its ', locations: ['tower', 'gate'] },
+      { id: 'crew', name: 'Crew', pronouns: 'they/them', locations: ['keep', 'mill'] },
+    ]);
+    expect(byId(entities, 'slime')).toMatchObject({ kind: 'group', locations: ['tower', 'gate'] });
+    expect(byId(entities, 'crew')).toMatchObject({ kind: 'individual', traversable: ['keep', 'mill'] });
+  });
+
+  it('counts "it" pronouns as the world using the fields', () => {
+    const entities = migrate([
+      { id: 'golem', name: 'Golem', pronouns: 'it/its', locations: ['keep'] },
+      { id: 'mimic', name: 'Mimic', locations: ['tower', 'gate'] },
+    ]);
+    expect(byId(entities, 'mimic').kind).toBe('group');
+  });
+
+  it('gives a wandering Individual that Can Follow Traversable = Anywhere (Q55)', () => {
+    const e = byId(migrate([{ id: 'e', name: 'E', locations: ['keep', 'tower'], movement: 'follow' }]), 'e');
+    expect(e).toMatchObject({ kind: 'individual', traversable: 'anywhere' });
+    expect(e.starts?.[0].schedule).toEqual(wander(['keep', 'tower']));
+  });
+
+  it('adds no second Wander for Moves Between', () => {
+    const e = byId(migrate([{ id: 'e', name: 'E', locations: ['keep', 'tower'], movement: 'between' }]), 'e');
+    expect(e.starts).toHaveLength(1);
+    expect(e.starts?.[0].schedule).toEqual(wander(['keep', 'tower']));
+    expect(e.traversable).toEqual(['keep', 'tower']);
+  });
+
+  it('makes a companion listed at every location begin Following from the Player\'s Starting Location', () => {
+    const e = byId(migrate([narrator, { id: 'pal', name: 'Pal', locations: [...PLACES, 'gone'], movement: 'stays' }]), 'pal');
+    expect(e).toMatchObject({ kind: 'individual', traversable: 'anywhere' });
+    expect(e.starts).toEqual([{ id: expect.any(String), place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]);
+    expect(e).not.toHaveProperty('locations');
+  });
+
+  it('makes a person at both locations of a two-location world a follower', () => {
+    const e = byId(migrate([{ id: 'host', name: 'Host', pronouns: 'they/them', locations: ['keep', 'tower'] }], ['keep', 'tower']), 'host');
+    expect(e.starts).toEqual([{ id: expect.any(String), place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }]);
+  });
+
+  it('makes no follower in a one-location world, even with a stale id beside it', () => {
+    const entities = migrate([
+      { id: 'host', name: 'Host', locations: ['keep'] },
+      { id: 'stale', name: 'Stale', locations: ['keep', 'gone'] },
+    ], ['keep']);
+    expect(byId(entities, 'host').starts).toEqual([{ id: expect.any(String), place: 'keep', weight: 1, schedule: [] }]);
+    expect(byId(entities, 'stale').starts?.[0]).toMatchObject({ place: 'keep' });
+    expect(entities.some((e) => e.starts?.some((s) => s.beginsFollowing))).toBe(false);
+  });
+
+  it('gives random presence a Start per place and never a follower, even at every location', () => {
+    const e = byId(migrate([narrator, { id: 'r', name: 'R', presence: 'random', locations: PLACES }]), 'r');
+    expect(e.starts?.map((s) => s.place)).toEqual(PLACES);
+    expect(e.starts?.some((s) => s.beginsFollowing)).toBe(false);
+  });
+
+  it('changes nothing on a second run, and leaves a world that already has kinds alone', () => {
+    const rows = [
+      narrator,
+      { id: 'smith', name: 'Smith', pronouns: 'he/him', locations: ['mill', 'gate'] },
+      { id: 'mimic', name: 'Mimic', locations: ['tower', 'gate'] },
+      { id: 'pal', name: 'Pal', locations: PLACES, movement: 'follow' },
+    ];
+    const once = migrate(rows);
+    expect(migrate(JSON.parse(JSON.stringify(once)))).toEqual(once);
+    // Without the narrator the world has no pronouns, yet the kinds already stored stay.
+    const withoutNarrator = once.filter((e) => e.id !== 'n');
+    expect(migrate(JSON.parse(JSON.stringify(withoutNarrator)))).toEqual(withoutNarrator);
   });
 });
 

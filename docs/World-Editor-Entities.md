@@ -163,6 +163,21 @@ A **Generic** entity shows the same view for the start whose tab is open, with n
 - ⭕ A ring marks each location where another start begins. The key calls it **Is Here**.
 - ➕ With no row selected, click a location to add a start there with no rows. Click a location where starts begin to remove them. The last start can't be removed.
 
+### Entities from older worlds
+<!-- keywords: old world, older version, character moved, not where they were, missing npc, used to be everywhere, several locations, now wanders, became generic -->
+
+An older world can list an entity at several locations with no routine. When you open the world, that entity gets one:
+
+| The entity | Gets |
+|---|---|
+| 🤝 Is listed at every location of the world | **Unique**, starting at the **Player's Starting Location** with **Follows the Player** on. **Can Also Go** is **Anywhere**. |
+| 🚶 Has **Pronouns** that don't start with *it*, or the **Persona** mark | **Unique**, starting at its first location, with an **All Day** **Wander** between its locations that waits one daypart. **Can Also Go** lists those locations, or is **Anywhere** if it could follow the player. |
+| 👥 Has neither, or has *it/its*, in a world where some entity has **Pronouns** or a **Persona** mark | **Generic**, with a start at each of its locations and no rows. |
+
+In a world where no entity has **Pronouns** or a **Persona** mark, every such entity gets the **Wander**.
+
+⚠️ A **Unique** entity is in **one location at a time**, so it isn't always where the player looks. To keep it in one place, open its **Routine** tab and give it a **Stay** row, or switch it to **Generic**.
+
 ## What reaches the AI
 <!-- keywords: npc secret, hidden motive, character ignored, npc never appears, spoilers, does ai see image, private notes -->
 

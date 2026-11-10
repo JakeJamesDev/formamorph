@@ -1,6 +1,6 @@
 # 18: Old World Migration
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 13, 17
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -30,12 +30,31 @@ Spec rulings: Q143, Q144, Q145, Q146, Q151, Q152, Q133, Q156, Q162, Q163.
 
 ## Acceptance criteria
 
-- [ ] `migrateWorld` tests cover each row of the rule: a person with a home and a workplace, an enemy in two places in a world that uses pronouns, a companion at every location, and a world with no pronouns or persona flags.
-- [ ] A test covers a small world where a person is listed at all of its few locations, and the landing report states what the rule gives there.
-- [ ] The wandering Individual's Wander reaches every listed place it is connected to, and its first listed location is the Start.
-- [ ] Running the migration twice gives the same world, and a world that already has kinds is unchanged.
-- [ ] Each guard is proven by reinstating the old "always a Group" row and seeing the tests fail.
-- [ ] The bundled worlds and dev fixtures still load, and their kinds are reviewed against this rule in the landing report.
-- [ ] One changelog entry and the wiki's entity page explain the rule and the "one place at a time" change.
+- [x] `migrateWorld` tests cover each row of the rule: a person with a home and a workplace, an enemy in two places in a world that uses pronouns, a companion at every location, and a world with no pronouns or persona flags. (`version.test.ts`, "a released entity with several locations and no presence"; plus the "it" pronouns case, Q171.)
+- [x] A test covers a small world where a person is listed at all of its few locations, and the landing report states what the rule gives there. ("makes a person at both locations of a two-location world a follower"; see Landed.)
+- [x] The wandering Individual's Wander reaches every listed place it is connected to, and its first listed location is the Start. (The Wander lists every place; the engine skips unconnected ones per Q54.)
+- [x] Running the migration twice gives the same world, and a world that already has kinds is unchanged. ("changes nothing on a second run…")
+- [x] Each guard is proven by reinstating the old "always a Group" row and seeing the tests fail. (7 of 13 failed; the rest assert Group or other-row results. Extra mutations: dropping persona from the world check, `> 1` → `> 0` locations, and a case-sensitive untrimmed "it" check each fail their test.)
+- [x] The bundled worlds and dev fixtures still load, and their kinds are reviewed against this rule in the landing report. (`entityRoutineMigration.test.ts` green; see Landed.)
+- [x] One changelog entry and the wiki's entity page explain the rule and the "one place at a time" change. (`changelog.d/npc-schedules-18.md`, `World-Editor-Entities.md` "Entities from older worlds".)
 
 For you: import the released files of the four checked worlds into a build with this ticket and compare each with the spec's Migration section.
+
+## Landed
+
+**Small world.** In a world with two locations, an entity listed at both becomes a follower: one Start at Player's Starting Location with Begins Following, Traversable Anywhere. A one-location world makes no follower; a stale extra id there does not reach row 1.
+
+**Rulings applied:** Q171 ("it" pronouns are not a person on the entity, but count for the world check) and Q172 (no bundled world file changes here). Library entities have no world, so several locations always give the Wander.
+
+**Bundled worlds and fixtures.** Every bundled world and the three dev fixtures already store kinds, so the migration leaves them unchanged. Run as released (kinds stripped), the rule disagrees with these stored Groups, for ticket 20:
+- `drone.json`: Rustjaw, Ser Halden, Old Corwin (he/him) → wandering Unique.
+- `emberwatch.json`: Albus, Sylvie Thornwhistle, Corvin Vale, Captain Orrin Blackwell → wandering Unique.
+- `slime.json`: Quarantine Watch (they/them) → wandering Unique.
+- `valentines.json`: Coach Daizen, Rin Hayama, Ren Takeda, The Swarm (they/them) → wandering Unique.
+- The "it/its" entities in `slime.json` and `drone.json` stay Groups under Q171. `rampage`, `sugarscape`, `veilwood` and `open-chat` agree.
+
+**Not verified:** none of the criteria. The four community worlds were not imported (For you).
+
+**For you:**
+- Import the released files of the four checked worlds into a build with this ticket and compare each with the spec's Migration section.
+- Read the "Entities from older worlds" section of the wiki's entity page.

@@ -3,6 +3,7 @@ import type {
   World, SaveObject, Stat, StatGroup, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
   Opening, TraitRequirement, EntityStart, ScheduleRow,
 } from '@/types';
+import { PLAYER_START } from '@/types';
 import { withDerivedLocations } from './entityKind';
 import { isImplicitPair, parentIndex } from './locationGraph';
 import { LEGACY_DEFAULT_AVATAR_VALUES, migrateLegacyPlayerAvatar, type LegacyCharacterData } from './legacyVrm';
@@ -669,12 +670,56 @@ function dropEntityStartLocations(world: Record<string, unknown>): void {
 /** A daypart's length for a migrated Wander's idle: the day split six ways. */
 export const MIGRATED_IDLE_MINUTES = 240;
 
+/** What the routine migration reads from the world around an entity. */
+export interface RoutineMigrationWorld {
+  /** Every location id of the world. */
+  locationIds: string[];
+  /** Some entity of the world has pronouns or a persona mark (Q151). */
+  usesPeopleFields: boolean;
+}
+
+const hasPronouns = (entity: Partial<Entity>): boolean => typeof entity.pronouns === 'string' && entity.pronouns.trim() !== '';
+
+/** Pronouns or the persona mark name one person; "it" pronouns name a creature or a thing (Q146). */
+const isPerson = (entity: Entity): boolean => entity.persona === true || (hasPronouns(entity) && !/^it\b/i.test(entity.pronouns!.trim()));
+
+/** The world facts the routine migration reads, from a raw world's entities and locations. */
+function routineMigrationWorld(world: Record<string, unknown>): RoutineMigrationWorld {
+  const entities = (Array.isArray(world.entities) ? world.entities : []).filter(isRecordLike) as Partial<Entity>[];
+  const locations = Array.isArray(world.locations) ? world.locations.filter(hasStringId) : [];
+  return {
+    locationIds: locations.map((l) => l.id),
+    usesPeopleFields: entities.some((e) => hasPronouns(e) || e.persona === true || e.customPersona === true),
+  };
+}
+
+const allDayWander = (id: string, places: string[]): ScheduleRow => ({
+  id, time: 'allDay', action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: MIGRATED_IDLE_MINUTES },
+});
+
+/** The kind, Starts and Traversable of a released entity with several locations and no presence (Q143, Q144, Q146). */
+function migrateSeveralLocations(entity: Entity, movement: unknown, world: RoutineMigrationWorld): Entity {
+  const places = entity.locations ?? [];
+  const listed = new Set(places);
+  if (world.locationIds.length > 1 && world.locationIds.every((id) => listed.has(id))) {
+    const starts: EntityStart[] = [{ id: 'start-1', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }];
+    return { ...entity, kind: 'individual', starts, traversable: 'anywhere' };
+  }
+  if (world.usesPeopleFields && !isPerson(entity)) {
+    // One Start per place with no rows, so each presence stays where it was (Q133).
+    const starts: EntityStart[] = places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] }));
+    return { ...entity, kind: 'group', starts };
+  }
+  const starts: EntityStart[] = [{ id: 'start-1', place: places[0], weight: 1, schedule: [allDayWander('row-1', places)] }];
+  return { ...entity, kind: 'individual', starts, traversable: movement === 'follow' ? 'anywhere' : [...places] };
+}
+
 /**
  * One entity's shipped `presence` and `movement` mapped to a kind, Starts and Traversable (NPC Schedules
  * migration table), and an Individual's `locations` derived from its routine. Idempotent: an entity without the
- * old fields keeps its kind.
+ * old fields keeps its kind. Without `world`, as for a library entity, several locations always give the Wander.
  */
-export function migrateEntityRoutine<T>(raw: T): T {
+export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): T {
   if (!raw || typeof raw !== 'object') return raw;
   const { presence, movement, ...rest } = raw as Record<string, unknown> & Partial<Entity>;
   const entity = rest as Entity;
@@ -683,17 +728,10 @@ export function migrateEntityRoutine<T>(raw: T): T {
   if (entity.kind || entity.customPersona || !entity.locations?.length) return withDerivedLocations(legacy ? entity : raw as unknown as Entity) as T;
   const places = entity.locations;
   if (presence !== 'random' && places.length > 1) {
-    // One Start per place with no rows, so each presence stays where it was (Q133).
-    const starts: EntityStart[] = places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] }));
-    return withDerivedLocations({ ...entity, kind: 'group', starts }) as T;
+    return withDerivedLocations(migrateSeveralLocations(entity, movement, world ?? { locationIds: [], usesPeopleFields: false })) as T;
   }
   const startPlaces = presence === 'random' ? places : places.slice(0, 1);
-  const schedule = (n: number): ScheduleRow[] => (movement === 'between'
-    ? [{
-      id: `row-${n}`, time: 'allDay',
-      action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: MIGRATED_IDLE_MINUTES },
-    }]
-    : []);
+  const schedule = (n: number): ScheduleRow[] => (movement === 'between' ? [allDayWander(`row-${n}`, places)] : []);
   const starts: EntityStart[] = startPlaces.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: schedule(i + 1) }));
   return withDerivedLocations({
     ...entity, kind: 'individual', starts, ...(movement === 'follow' && { traversable: 'anywhere' as const }),
@@ -701,7 +739,9 @@ export function migrateEntityRoutine<T>(raw: T): T {
 }
 
 function migrateEntityRoutines(world: Record<string, unknown>): void {
-  if (Array.isArray(world.entities)) world.entities = world.entities.map(migrateEntityRoutine);
+  if (!Array.isArray(world.entities)) return;
+  const around = routineMigrationWorld(world);
+  world.entities = world.entities.map((raw) => migrateEntityRoutine(raw, around));
 }
 
 const hasStringId = (v: unknown): v is { id: string } => !!v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string';

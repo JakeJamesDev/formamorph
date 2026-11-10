@@ -286,7 +286,10 @@ describe('entity ↔ location membership', () => {
   // Membership is entity-owned (ADR-0003), so these worlds are stated the way the editor writes them.
   const worldWith = (entityIds: string[]) => ({
     ...world('w', {}),
-    entities: entityIds.map((id) => ({ id, name: id, locations: ['l1', 'l2'] })),
+    entities: entityIds.map((id) => ({
+      id, name: id, kind: 'group', locations: ['l1', 'l2'],
+      starts: ['l1', 'l2'].map((place) => ({ id: place, place, weight: 1, schedule: [] })),
+    })),
     locations: [
       { id: 'l1', name: 'Dock' },
       { id: 'l2', name: 'Green' },
