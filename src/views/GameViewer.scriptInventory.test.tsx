@@ -46,7 +46,7 @@ function stubEndpoint() {
     const { messages } = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
     const system = messages.find((m) => m.role === 'system')?.content ?? '';
     if (system.includes('location router')) return sseResponse(sseReply('NONE'));
-    if (system.includes('You track where one character goes')) return sseResponse(sseReply('Stay'));
+    if (system.includes('You track where the characters in an interactive story go')) return sseResponse(sseReply('{}'));
     if (system.includes('inventory keeper')) return sseResponse(sseReply(JSON.stringify({ operations: [] })));
     if (system.includes('stat tracker')) {
       calls.stats += 1;

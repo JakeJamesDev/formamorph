@@ -7,7 +7,7 @@ import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSett
 import type { ParsedDirector } from '@/lib/stagedPlanning';
 import { UNPARSEABLE_MESSAGE } from './turnErrors';
 import { navigableDestinations } from '@/lib/locationContext';
-import type { Connection, GameLocation, ImageAttachment, RequestMessage } from '@/types';
+import type { Connection, Entity, GameLocation, ImageAttachment, RequestMessage } from '@/types';
 
 /**
  * The runner through its own interface: a fake request adapter stands in for the model, and the real pass
@@ -295,25 +295,27 @@ describe('the concurrency knob', () => {
 });
 
 describe('the entity location requests', () => {
+  const sylvie: Entity = { id: 'sylvie', name: 'Sylvie' };
+  const albus: Entity = { id: 'albus', name: 'Albus' };
   const movers: TurnPassSubject[] = [
-    { name: 'Sylvie', moves: ['stay', 'comeAlong'], moveClock: 12 * 60 },
-    { name: 'Albus', moves: ['keepFollowing', 'waitHour', 'waitThisDaypart', 'waitNextDaypart', 'partWays'], moveClock: 12 * 60 },
+    { name: 'Sylvie', entity: sylvie, moves: ['stay', 'comeAlong'], moveClock: 12 * 60 },
+    { name: 'Albus', entity: albus, moves: ['keepFollowing', 'waitHour', 'waitThisDaypart', 'waitNextDaypart', 'partWays'], moveClock: 12 * 60 },
   ];
 
-  it('go out with the player router, one per entity, when parallel', async () => {
+  it('go out with the player router as one request for every entity, when parallel', async () => {
     const { result, seen } = await run({ subjects: { entityLocationAuto: movers } });
     const finished = ok(result);
     expect(seen.slice(0, 3).map((s) => [s.type, s.inFlight])).toEqual([
-      ['locationChange', 1], ['entityLocation', 2], ['entityLocation', 3],
+      ['locationChange', 1], ['entityLocation', 2], ['director', 1],
     ]);
-    expect(finished.passes.filter((p) => p.id === 'entityLocationAuto').map((p) => p.subject?.name)).toEqual(['Sylvie', 'Albus']);
+    expect(finished.passes.filter((p) => p.id === 'entityLocationAuto')).toHaveLength(1);
   });
 
-  it('go out one at a time after the player router when serial', async () => {
+  it('go out right after the player router when serial', async () => {
     const { result, seen } = await run({ subjects: { entityLocationAuto: movers }, settings: { concurrentTurnRequests: false } });
     ok(result);
     expect(seen.slice(0, 3).map((s) => [s.type, s.inFlight])).toEqual([
-      ['locationChange', 1], ['entityLocation', 1], ['entityLocation', 1],
+      ['locationChange', 1], ['entityLocation', 1], ['director', 1],
     ]);
   });
 
@@ -323,10 +325,12 @@ describe('the entity location requests', () => {
     expect(types).not.toContain('entityLocation');
   });
 
-  it('read each reply against its own entity’s options', async () => {
-    const { result } = await run({ subjects: { entityLocationAuto: movers }, answers: { entityLocation: 'Stay, then part ways' } });
+  it('read each entity’s reply against its own options', async () => {
+    const { result } = await run({
+      subjects: { entityLocationAuto: movers }, answers: { entityLocation: '{"Sylvie": "Stay", "Albus": "Part ways"}' },
+    });
     const replies = ok(result).passes.filter((p) => p.id === 'entityLocationAuto').map((p) => p.parsed);
-    expect(replies).toEqual(['stay', 'partWays']);
+    expect(replies).toEqual([[{ entity: sylvie, move: 'stay' }, { entity: albus, move: 'partWays' }]]);
   });
 
   it.each([true, false])('drop a failed entity request and carry on with the turn (parallel: %s)', async (parallel) => {
@@ -354,14 +358,14 @@ describe('the entity location requests', () => {
     });
     ok(result);
     const after = types.slice(types.indexOf('narration') + 1);
-    expect(after).toEqual(['choices', 'statUpdates', 'narratedMove', 'entityLocation', 'entityLocation', 'timePassed']);
+    expect(after).toEqual(['choices', 'statUpdates', 'narratedMove', 'entityLocation', 'timePassed']);
   });
 
   it('ask after the narration in the suggest batch', async () => {
     const { result, seen } = await run({ subjects: { entityLocationSuggest: movers }, settings: { locationAutoApply: false } });
     ok(result);
     const after = seen.slice(seen.findIndex((s) => s.type === 'narration') + 1);
-    expect(after.filter((s) => s.type === 'entityLocation')).toHaveLength(2);
+    expect(after.filter((s) => s.type === 'entityLocation')).toHaveLength(1);
     expect(after.map((s) => s.inFlight)).toEqual(after.map((_, i) => i + 1));
   });
 });

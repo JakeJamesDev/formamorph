@@ -25,12 +25,14 @@ export interface SentBody {
 /**
  * The scripted endpoint: each request kind answers from `replies`, and everything else with the narration.
  * `sent` lists the location requests in order; `after` keeps the latest system prompt of each pass that runs
- * after the narration; `entityBodies` keeps the latest entity location request body per character.
+ * after the narration; `entityRequests` lists every entity location request body; `entityBodies` keeps the latest
+ * one that asked about each character.
  */
 export function stubMoveEndpoint(narration: string, replies: MoveReplies, narratedFallback = 'Barn') {
   const sent: string[] = [];
   const after = { choices: '', stats: '', inventory: '' };
   const entityBodies: Record<string, SentBody> = {};
+  const entityRequests: SentBody[] = [];
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     if (!init?.body) return new Response(JSON.stringify({ data: [{ id: 'm' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     const body = JSON.parse(init.body as string) as SentBody;
@@ -43,13 +45,18 @@ export function stubMoveEndpoint(narration: string, replies: MoveReplies, narrat
       sent.push('narrated');
       return sseResponse(sseReply(replies.narrated ?? narratedFallback));
     }
-    const mover = /You track where one character goes in an interactive story: (\w+)/.exec(system)?.[1];
-    if (mover) {
-      entityBodies[mover] = body;
-      const script = replies.entities?.[mover] ?? 'Stay';
+    if (system.includes('You track where the characters in an interactive story go')) {
+      entityRequests.push(body);
       const user = body.messages.findLast((m) => m.role === 'user')?.content ?? '';
-      const offered = user.split('\n').flatMap((line) => (line.startsWith('- ') ? [line.slice(2)] : []));
-      return sseResponse(sseReply(typeof script === 'function' ? script(offered) : script));
+      // One block per character: "## Name", its state, then its offered lines.
+      const answer = Object.fromEntries(user.split('\n## ').slice(1).map((block) => {
+        const [mover, ...lines] = block.split('\n');
+        entityBodies[mover] = body;
+        const script = replies.entities?.[mover] ?? 'Stay';
+        const offered = lines.flatMap((line) => (line.startsWith('- ') ? [line.slice(2)] : []));
+        return [mover, typeof script === 'function' ? script(offered) : script];
+      }));
+      return sseResponse(sseReply(JSON.stringify(answer)));
     }
     if (system.includes('player choice writer')) {
       after.choices = system;
@@ -65,7 +72,7 @@ export function stubMoveEndpoint(narration: string, replies: MoveReplies, narrat
     }
     return sseResponse(sseReply(narration));
   }));
-  return { sent, after, entityBodies };
+  return { sent, after, entityBodies, entityRequests };
 }
 
 /** Clears saves and settings, and points the game at the scripted endpoint in Auto mode. */

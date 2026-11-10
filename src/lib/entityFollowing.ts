@@ -82,7 +82,7 @@ export const entityMoveCandidates = (
 export const entityMoveOptionsText = (moves: readonly EntityMoveReply[], destinations: readonly GameLocation[], now: number): string =>
   entityMoveCandidates(moves, destinations, now).map(([line]) => `- ${line}`).join("\n");
 
-/** The `<MOVE STATE>` chip: whether the entity already travels with the player. */
+/** One subject's state line in the entity location request: whether it already travels with the player. */
 export const entityMoveStateText = (name: string, following: boolean): string =>
   following ? `${name} is following the player character.` : `${name} is not with the player character.`;
 
@@ -198,6 +198,13 @@ export interface EntityReply {
   entity: Entity;
   move: EntityMove | null;
 }
+
+/** A parsed reply narrowed back from a pass outcome. */
+export const isEntityReply = (value: unknown): value is EntityReply => {
+  if (typeof value !== "object" || value === null) return false;
+  const { entity, move } = value as { entity?: unknown; move?: unknown };
+  return typeof entity === "object" && entity !== null && (move === null || isEntityMove(move));
+};
 
 /** The replies that change anything, by entity id. "Stay" and "keep following" change nothing. */
 export function entityMoveIntents(replies: readonly EntityReply[]): EntityMoveIntents {

@@ -239,7 +239,7 @@ describe('planTurn', () => {
 
   it('marks the passes that run once per subject', () => {
     const fanOut = TURN_PASSES.filter((p) => p.fanOut).map((p) => p.id);
-    expect(fanOut).toEqual(['entityLocationAuto', 'character', 'entityLocationSuggest', 'diary', 'discoverEntity']);
+    expect(fanOut).toEqual(['character', 'diary', 'discoverEntity']);
   });
 
   it('dispatches each pass at most once, fan-outs aside', () => {

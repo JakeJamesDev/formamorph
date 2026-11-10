@@ -252,6 +252,7 @@ function previewMaterial(values: TokenValues, action: string, plannerRecap: stri
     overflow: FIXTURE_OVERFLOW,
     sceneCast: FIXTURE_SCENE_CAST,
     subject: FIXTURE_SUBJECT,
+    subjects: { entityLocationAuto: [FIXTURE_SUBJECT], entityLocationSuggest: [FIXTURE_SUBJECT] },
     milestone: SAMPLE_MOMENTS,
   };
 }
@@ -314,7 +315,7 @@ const LOCATION_HUBS: Record<string, { id: TurnPassId; caption: string }[]> = {
 };
 
 /** The entity location prompt rides beside whichever location request the turn sends. */
-const ENTITY_LOCATION_CAPTION = `Sent with the location request, once per entity that can follow you. ${EXAMPLE_CAPTION}`;
+const ENTITY_LOCATION_CAPTION = `Sent once with the location request, for every entity that can follow you. ${EXAMPLE_CAPTION}`;
 const ENTITY_LOCATION_PASSES: { id: TurnPassId; caption: string }[] = [
   { id: 'entityLocationAuto', caption: ENTITY_LOCATION_CAPTION },
   { id: 'entityLocationSuggest', caption: ENTITY_LOCATION_CAPTION },

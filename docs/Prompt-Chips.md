@@ -24,13 +24,14 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 | **Dictionary**, **Length Guidance**, **Markdown Guidance** | **Narration** |
 | **Language** | **Narration** and **Choices**. It carries the **AI Language** setting, and sends nothing for English. |
 | **Active Character Guidance** | **Director** |
-| **Character** | **Character** and **Entity Location**, and the User Message of **Discover Entity** |
+| **Character** | **Character**, and the User Message of **Discover Entity** |
 | **Player Action** | User Messages that send your action |
 | **Narration** | User Messages that send the turn's narration |
-| **Move State** | The User Message of **Entity Location**. The game adds the list of answers after the message, so an older template's **Move Options** chip sends nothing. |
 | **In Frame** | The User Message of **Scene Tags** |
 | **First Passage**, **Later Material** | The User Message of **Discover Entity** |
 | **Remembered Moments**, **New Moments** | The User Message of **Milestone Select** |
+
+> 💡 **Entity Location** asks about every entity in one request, and the game adds each entity's state and answers after the User Message. An older template's **Move State** and **Move Options** chips send nothing, and its **Character** chip sends "each character listed".
 
 The **Now Message** offers **Location**, **Entities**, **Time** and **Notes**.
 

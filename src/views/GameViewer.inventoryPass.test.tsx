@@ -51,9 +51,9 @@ function stubEndpoint(inventoryReply = GAIN_KEY) {
     if (system.includes('location router') || system.includes('You keep track of where the player character is')) {
       return sseResponse(sseReply(calls.route));
     }
-    if (system.includes('You track where one character goes')) {
-      calls.askedToMove.push(system);
-      return sseResponse(sseReply('Stay'));
+    if (system.includes('You track where the characters in an interactive story go')) {
+      calls.askedToMove.push(messages.findLast((m) => m.role === 'user')?.content ?? '');
+      return sseResponse(sseReply('{}'));
     }
     if (system.includes('inventory keeper')) {
       calls.inventory += 1;
@@ -104,7 +104,7 @@ describe('a turn that starts with a discovered character', () => {
   it('asks whether they move while a recent turn names them, and never discovers them again', async () => {
     const calls = await playOneTurn(presenceWorld('discover("Ferryman", "A gruff ferryman.");'), JSON.stringify({ operations: [] }));
     const discovered = () => gameplay().discoveredEntities.map((d) => d.entity.name);
-    const askedAboutFerryman = () => calls.askedToMove.filter((system) => system.includes('Ferryman')).length;
+    const askedAboutFerryman = () => calls.askedToMove.filter((user) => user.includes('\n## Ferryman\n')).length;
     const play = async (action: string) => {
       const asked = calls.stats;
       fireEvent.change(screen.getByPlaceholderText(/Type your action/), { target: { value: action } });

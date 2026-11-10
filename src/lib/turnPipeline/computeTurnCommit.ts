@@ -9,7 +9,7 @@ import { randomUUID } from '@/lib/uuid';
 import type { parseStatUpdates } from '@/lib/statChanges';
 import { readStatResponse, savedStatAsks, statResponseChanges, type StatResponse } from '@/lib/statRequest';
 import {
-  applyAtOnce, applyEntityCodeWrites, entityMoveIntents, isEntityMove, joinEntityMoves, NO_ENTITY_OFFER, offerOf,
+  applyAtOnce, applyEntityCodeWrites, entityMoveIntents, isEntityReply, joinEntityMoves, NO_ENTITY_OFFER, offerOf,
   type EntityMoveIntents, type EntityMoveOffer, type FollowerState, type PlayerMove,
 } from '@/lib/entityFollowing';
 import { placeAll, withPlayerAt, type PositionWorld } from '@/lib/positionPlay';
@@ -230,7 +230,8 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
  *  change nothing. */
 export function entityMovesOf(passes: readonly TurnPassOutcome[]): EntityMoveIntents {
   return entityMoveIntents([...answers(passes, 'entityLocationAuto'), ...answers(passes, 'entityLocationSuggest')]
-    .flatMap(({ subject, parsed }) => subject?.entity ? [{ entity: subject.entity, move: isEntityMove(parsed) ? parsed : null }] : []));
+    .flatMap(({ parsed }) => (Array.isArray(parsed) ? parsed : []))
+    .flatMap((reply: unknown) => (isEntityReply(reply) ? [reply] : [])));
 }
 
 /**

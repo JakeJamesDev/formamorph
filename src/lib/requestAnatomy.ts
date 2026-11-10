@@ -44,7 +44,6 @@ export type ContextLabel =
   | 'diary-brief'
   | 'intents'
   | 'scene-cast'
-  | 'move-options'
   | 'reply-format'
   | 'placeholder'
   | 'listed-actions';
@@ -272,7 +271,6 @@ export const CONTEXT_LABELS: Record<ContextLabel, string> = {
   'diary-brief': 'Diary Brief',
   intents: 'Intents',
   'scene-cast': 'Scene Cast',
-  'move-options': 'Move Options',
   'reply-format': 'Reply Format',
   placeholder: 'Placeholder',
   'listed-actions': 'Since Last Turn',
@@ -294,7 +292,6 @@ export const CONTEXT_HINTS: Record<ContextLabel, string> = {
   'diary-brief': "Who's writing, and the turn they're writing about",
   intents: 'What each character said they want this turn',
   'scene-cast': "Who's in frame for this picture",
-  'move-options': 'The replies this entity can give',
   'reply-format': 'The reply lines the answer is read from',
   placeholder: 'A world placeholder, as this playthrough reads it',
   'listed-actions': 'What you did outside the action box since your last turn',

@@ -56,7 +56,7 @@ function stubEndpoint(inventoryReply: string, statReply = '{"Global Stats": {"Vi
     const { messages } = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
     const system = messages.find((m) => m.role === 'system')?.content ?? '';
     if (system.includes('location router')) return sseResponse(sseReply('NONE'));
-    if (system.includes('You track where one character goes')) return sseResponse(sseReply('Stay'));
+    if (system.includes('You track where the characters in an interactive story go')) return sseResponse(sseReply('{}'));
     if (system.includes('inventory keeper')) {
       calls.inventory += 1;
       return sseResponse(sseReply(calls.inventoryReply));

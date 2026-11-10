@@ -280,10 +280,9 @@ const LATER_MATERIAL: PromptVariable = { token: '<LATER MATERIAL>', label: 'Late
 const REMEMBERED_MOMENTS: PromptVariable = { token: '<REMEMBERED MOMENTS>', label: 'Remembered Moments', color: HIGHLIGHT_PALETTE[11] };
 const NEW_MOMENTS: PromptVariable = { token: '<NEW MOMENTS>', label: 'New Moments', color: HIGHLIGHT_PALETTE[15] };
 
-// Entity location request only, and parsed only: the reply list rides after the user message, and this chip
-// renders nothing.
+// Entity location request only, and parsed only: the reply lists ride after the user message, and these chips
+// render nothing.
 const MOVE_OPTIONS: PromptVariable = { token: '<MOVE OPTIONS>', label: 'Move Options', color: HIGHLIGHT_PALETTE[8] };
-// Entity location request only: one sentence saying whether the entity already follows the player.
 const MOVE_STATE: PromptVariable = { token: '<MOVE STATE>', label: 'Move State', color: HIGHLIGHT_PALETTE[7] };
 
 // The AI Language setting, as the directive the prompt actually carries (lib/languages `languageDirective`).
@@ -315,7 +314,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   statupdates: [...CONTEXT_VARS],
   location: [...CONTEXT_VARS],
   narratedmove: [...CONTEXT_VARS],
-  entitylocation: [CHARACTER, ...CONTEXT_VARS],
+  entitylocation: [...CONTEXT_VARS],
   summary: [...CONTEXT_VARS],
   milestone: [...CONTEXT_VARS],
   diary: [...CONTEXT_VARS],
@@ -338,7 +337,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   statupdates: [PLAYER_ACTION, NARRATION],
   location: [PLAYER_ACTION],
   narratedmove: [PLAYER_ACTION, NARRATION],
-  entitylocation: [CHARACTER, PLAYER_ACTION, NARRATION, MOVE_STATE],
+  entitylocation: [PLAYER_ACTION, NARRATION],
   summary: [PLAYER_ACTION, NARRATION],
   milestone: [REMEMBERED_MOMENTS, NEW_MOMENTS],
   director: [PLAYER_ACTION, NARRATION],

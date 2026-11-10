@@ -138,9 +138,11 @@ describe('turn plan parity with the recorded run', () => {
       const recorded = recordedPasses(fixture.turns[index as number]).map((p) => p.id);
       // Collapse repeats of a fan-out pass: how many characters the director named is the model's answer.
       const collapsed = recorded.filter((id, i) => id !== recorded[i - 1] || !record(id).fanOut);
-      // A due fan-out pass with no subjects sends nothing, so it may be absent from the recording.
+      // A due pass that asks about the turn's subjects sends nothing without one, so it may be absent from the
+      // recording: the fan-outs, and the one entity location request.
+      const asksSubjects = (p: TurnPassRecord) => p.fanOut || p.id === 'entityLocationAuto' || p.id === 'entityLocationSuggest';
       const expected = plan.passes
-        .filter((p) => !p.fanOut || collapsed.includes(p.id))
+        .filter((p) => !asksSubjects(p) || collapsed.includes(p.id))
         .map((p) => p.id);
       expect(collapsed).toEqual(expected);
     },

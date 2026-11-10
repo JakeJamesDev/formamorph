@@ -62,7 +62,7 @@ function stubEndpoint(pass: object[] = []) {
       ]);
     }
     if (system.includes('location router')) return sseResponse(sseReply('NONE'));
-    if (system.includes('You track where one character goes')) return sseResponse(sseReply('Stay'));
+    if (system.includes('You track where the characters in an interactive story go')) return sseResponse(sseReply('{}'));
     if (system.includes('inventory keeper')) {
       calls.passes += 1;
       return sseResponse(sseReply(JSON.stringify({ operations: calls.passes === 1 ? pass : [] })));

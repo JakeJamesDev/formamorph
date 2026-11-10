@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **In play, a follower can now wait for a set time or part ways with you.** Ask one to wait, and they stay about an hour, to the end of this part of the day, or to the end of the next. Then they return to their routine, or at once if you part ways.
   - **In game, the AI now reads which characters follow you, wait for you, or can't leave right now.** It's the Entities chip's Movement option, on by default in every prompt. Turn it off in Chip Options.
   - **A location's Presence tab lists the entities that can be there and why.** Each line opens that entity's Routine tab. Connection rows on the tab set Nearby or Far.
+  - **In play, asking one entity to come along now leaves the other entities here where they are.** The game asks about all of them in one request per turn, not one request each.
 - **🛠️ Developer tooling**
   - **`pov-rewrite-probe.mjs` measures whether the character and diary passes mix up the player's acts with their own.** It compares the player's words as typed, with today's note, and with "I" or "you" rewritten to the persona name.
   - **`movement-tag-probe.cli.ts` measures whether the narrator keeps a character with a strict shift where they belong.** It compares the Entities chip with and without its Movement tags on take-along, neighbor and ordinary turns.

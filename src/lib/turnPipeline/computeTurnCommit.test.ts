@@ -58,10 +58,11 @@ const answered = (
   input: TurnPlanInput,
   mat: TurnMaterial,
   subject?: TurnPassSubject,
+  subjects?: TurnPassSubject[],
 ): TurnPassOutcome => {
   const pass = TURN_PASSES.find((p) => p.id === id);
   if (!pass) throw new Error(`no such pass: ${id}`);
-  const scoped: TurnMaterial = { ...mat, ...(subject ? { subject } : {}) };
+  const scoped = scope(mat, id, subject, subjects);
   return {
     id,
     ...(subject ? { subject } : {}),
@@ -72,13 +73,15 @@ const answered = (
 };
 
 /** A request that came back empty-handed — what a batched failure leaves behind. */
-const failed = (id: TurnPassId, input: TurnPlanInput, mat: TurnMaterial, subject?: TurnPassSubject): TurnPassOutcome => {
+const failed = (
+  id: TurnPassId, input: TurnPlanInput, mat: TurnMaterial, subject?: TurnPassSubject, subjects?: TurnPassSubject[],
+): TurnPassOutcome => {
   const pass = TURN_PASSES.find((p) => p.id === id);
   if (!pass) throw new Error(`no such pass: ${id}`);
   return {
     id,
     ...(subject ? { subject } : {}),
-    request: pass.buildRequest(input, { ...mat, ...(subject ? { subject } : {}) }),
+    request: pass.buildRequest(input, scope(mat, id, subject, subjects)),
     raw: '',
     parsed: null,
     error: new Error('network'),
@@ -89,8 +92,15 @@ interface Answer {
   id: TurnPassId;
   raw?: string;
   subject?: TurnPassSubject;
+  /** Who a pass that asks about several subjects at once covers. */
+  subjects?: TurnPassSubject[];
   failed?: boolean;
 }
+
+/** The material a pass builds and parses against: its one subject, or its list of them. */
+const scope = (mat: TurnMaterial, id: TurnPassId, subject?: TurnPassSubject, subjects?: TurnPassSubject[]): TurnMaterial => ({
+  ...mat, ...(subject ? { subject } : {}), ...(subjects ? { subjects: { ...mat.subjects, [id]: subjects } } : {}),
+});
 
 const runOf = (answers: Answer[], over: Partial<TurnMaterial> = {}, settings: Partial<TurnSettings> = {}, inputOver: Partial<TurnPlanInput> = {}) => {
   const input = testInput(inputOver, settings);
@@ -99,8 +109,8 @@ const runOf = (answers: Answer[], over: Partial<TurnMaterial> = {}, settings: Pa
     material: mat,
     passes: answers.map((a) =>
       a.failed
-        ? failed(a.id, input, mat, a.subject)
-        : answered(a.id, a.raw ?? '', input, mat, a.subject),
+        ? failed(a.id, input, mat, a.subject, a.subjects)
+        : answered(a.id, a.raw ?? '', input, mat, a.subject, a.subjects),
     ),
   };
   return { plan: planTurn(input), run, result: { status: 'ok', run } as TurnResult };
@@ -413,16 +423,21 @@ describe('computeTurnCommit — entity movement', () => {
   const FOLLOWING = ['keepFollowing', 'waitHour', 'waitThisDaypart', 'waitNextDaypart', 'partWays'] as const;
   // The wait to the end of this daypart, as offered at noon.
   const WAIT = 'Wait here until 12:58, when afternoon begins';
-  /** The commit an auto-mode turn with these entity replies produces. */
-  const autoCommit = (replies: [TurnPassSubject, string | null][]) => {
+  /** The text reply for these subjects: one row each, a null line left out. */
+  const rows = (replies: [TurnPassSubject, string | null][]) =>
+    replies.flatMap(([subject, line]) => (line === null ? [] : [`${subject.name}: ${line}`])).join('\n');
+  /** The commit an auto-mode turn produces whose one entity request asked about `subjects` and read `raw`. */
+  const autoReply = (subjects: TurnPassSubject[], raw: string | null) => {
     const { plan, result } = runOf([
       { id: 'narration', raw: NARRATION },
-      ...replies.map(([subject, raw]): Answer => (raw === null
-        ? { id: 'entityLocationAuto', subject, failed: true }
-        : { id: 'entityLocationAuto', raw, subject })),
+      ...(subjects.length ? [raw === null
+        ? { id: 'entityLocationAuto' as const, subjects, failed: true }
+        : { id: 'entityLocationAuto' as const, raw, subjects }] : []),
     ]);
     return computeTurnCommit({ result, plan, context: context() })!;
   };
+  /** The commit an auto-mode turn with these entity replies produces, in the text form. */
+  const autoCommit = (replies: [TurnPassSubject, string | null][]) => autoReply(replies.map(([subject]) => subject), rows(replies));
 
   const NOON = storyMinute(4);
   // Every place sits in one town, so travel joins them all.
@@ -456,15 +471,30 @@ describe('computeTurnCommit — entity movement', () => {
   /** Wenna stands at the inn; Albus and Corvin follow the player there. */
   const atInn = book({ wenna: 'inn', albus: 'inn', corvin: 'inn' }, ['albus', 'corvin']);
 
-  it('reads each reply under its entity, and keeps only the ones that change something', () => {
+  it('reads each row of the one reply under its entity, and keeps only the ones that change something', () => {
     const commit = autoCommit([
       [who('wenna', [...NEW]), 'Come along'],
       [who('sylvie', [...NEW]), 'Stay'],
       [who('albus', [...FOLLOWING]), WAIT],
       [who('corvin', [...FOLLOWING]), 'Keep following'],
+      // Omitted from the reply: Mira stays where she is.
       [who('mira', [...NEW]), null],
     ]);
     expect(commit.entityMoves).toEqual({ wait: [{ id: 'albus', length: 'thisDaypart' }], partWays: [], comeAlong: ['wenna'], goTo: [] });
+  });
+
+  it('reads three subjects with mixed replies in the schema form, ignoring one it did not ask about', () => {
+    const subjects = [who('wenna', [...NEW]), who('albus', [...FOLLOWING]), who('corvin', [...FOLLOWING])];
+    const commit = autoReply(subjects, JSON.stringify({ wenna: 'Come along', albus: 'Part ways', corvin: WAIT, sylvie: 'Come along' }));
+    expect(commit.entityMoves).toEqual({ wait: [{ id: 'corvin', length: 'thisDaypart' }], partWays: ['albus'], comeAlong: ['wenna'], goTo: [] });
+  });
+
+  it('moves nobody when the one request fails, or the reply names no subject', () => {
+    const subjects = [who('wenna', [...NEW]), who('albus', [...FOLLOWING])];
+    const none = { wait: [], partWays: [], comeAlong: [], goTo: [] };
+    expect(autoReply(subjects, null).entityMoves).toEqual(none);
+    expect(autoReply(subjects, 'sylvie: Come along').entityMoves).toEqual(none);
+    expect(autoReply(subjects, 'Come along').entityMoves).toEqual(none);
   });
 
   it('joins in order: a wait starts where the player stood, followers go with the player, then come along joins', () => {
@@ -503,16 +533,14 @@ describe('computeTurnCommit — entity movement', () => {
     const worldAt = (now: number, playerAt: string) => ({ ...holding(atChapel), scene: { ...world.scene, now, playerAt } });
 
     it('reads each reply in the schema form and in the text form', () => {
+      const wenna = [who('wenna', [...FOLLOWING])];
+      const forms = (line: string) => [`wenna: ${line}`, JSON.stringify({ wenna: line })];
       for (const [line, length] of ENDS) {
-        for (const raw of [line, JSON.stringify({ reply: line })]) {
-          expect(autoCommit([[who('wenna', [...FOLLOWING]), raw]]).entityMoves.wait).toEqual([{ id: 'wenna', length }]);
-        }
+        for (const raw of forms(line)) expect(autoReply(wenna, raw).entityMoves.wait).toEqual([{ id: 'wenna', length }]);
       }
-      for (const raw of ['Part ways', '{"reply":"Part ways"}']) {
-        expect(autoCommit([[who('wenna', [...FOLLOWING]), raw]]).entityMoves.partWays).toEqual(['wenna']);
-      }
-      for (const raw of ['Keep following', '{"reply":"Keep following"}']) {
-        expect(autoCommit([[who('wenna', [...FOLLOWING]), raw]]).entityMoves).toEqual({ wait: [], partWays: [], comeAlong: [], goTo: [] });
+      for (const raw of forms('Part ways')) expect(autoReply(wenna, raw).entityMoves.partWays).toEqual(['wenna']);
+      for (const raw of forms('Keep following')) {
+        expect(autoReply(wenna, raw).entityMoves).toEqual({ wait: [], partWays: [], comeAlong: [], goTo: [] });
       }
     });
 
@@ -576,8 +604,8 @@ describe('computeTurnCommit — entity movement', () => {
         [
           { id: 'narration', raw: NARRATION },
           { id: 'locationSuggest', raw: 'The Long Pier' },
-          { id: 'entityLocationSuggest', raw: 'The Tower', subject: blackwell },
-          { id: 'entityLocationSuggest', raw: 'Come along', subject: { ...blackwell, entity: route('hale') } },
+          // Two subjects that share a name: the second is numbered in the request and read back by that key.
+          { id: 'entityLocationSuggest', raw: 'Blackwell: The Tower\nBlackwell (2): Come along', subjects: [blackwell, { ...blackwell, entity: route('hale') }] },
         ],
         {},
         { locationAutoApply: false },
@@ -603,7 +631,7 @@ describe('computeTurnCommit — entity movement', () => {
         [
           { id: 'narration', raw: NARRATION },
           { id: 'locationSuggest', raw: location },
-          ...replies.map(([subject, raw]): Answer => ({ id: 'entityLocationSuggest', raw, subject })),
+          { id: 'entityLocationSuggest', raw: rows(replies), subjects: replies.map(([subject]) => subject) },
         ],
         {},
         { locationAutoApply: false },

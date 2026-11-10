@@ -109,7 +109,10 @@ describe('a narrated move in Auto mode', () => {
     const body = endpoint.entityBodies.Maela;
     expect(body.messages.at(-1)?.content).toMatch(/\nThe time is \d\d:\d\d, (night|dawn|morning|midday|afternoon|evening)\.\n/);
     expect(body).toMatchObject({ temperature: 0.15, repetition_penalty: 1 });
-    expect(body.response_format).toMatchObject({ type: 'json_schema', json_schema: { name: 'entity_move' } });
+    expect(body.response_format).toMatchObject({ type: 'json_schema', json_schema: { name: 'entity_moves' } });
+    // One request asked about both characters.
+    expect(endpoint.entityRequests).toHaveLength(1);
+    expect(endpoint.entityBodies.Bram).toBe(body);
     // The passes after the narration already read the hut, with Bram beside the player and Maela left behind.
     const choices = endpoint.after.choices;
     expect(choices).toContain('## Current Location\n- **name:** Hut');

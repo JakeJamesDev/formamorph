@@ -29,17 +29,18 @@ const SETTINGS = {
 const LANGUAGE = '<LANGUAGE>';
 
 /** Parsed only, for saved templates: the entity location request sends its reply list after the user message. */
-const MOVE_OPTIONS = '<MOVE OPTIONS>';
+/** The entity location chips, which the request renders empty: each entity's state and replies ride after it. */
+const MOVE_CHIPS = ['<MOVE OPTIONS>', '<MOVE STATE>'];
 
 describe('the pool as a whole', () => {
   it('gives every token non-empty content', () => {
     const pool = composePreviewValues(SETTINGS);
-    const blank = everyToken.filter((t) => t !== MOVE_OPTIONS && !pool(t)?.trim());
+    const blank = everyToken.filter((t) => !MOVE_CHIPS.includes(t) && !pool(t)?.trim());
     expect(blank).toEqual([]);
   });
 
-  it('shows the move options chip as nothing, as the request sends it', () => {
-    expect(composePreviewValues(SETTINGS)(MOVE_OPTIONS)).toBe('');
+  it('shows the move chips as nothing, as the request sends them', () => {
+    for (const token of MOVE_CHIPS) expect(composePreviewValues(SETTINGS)(token)).toBe('');
   });
 
   it('shows the language chip as nothing on an English game, and as the directive otherwise', () => {

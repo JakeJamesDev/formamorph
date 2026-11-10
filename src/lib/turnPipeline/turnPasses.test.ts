@@ -197,9 +197,7 @@ describe('turn pass requests', () => {
   });
 
   describe('the entity location request', () => {
-    const sylvie: Entity = { id: 'e2', name: 'Sylvie', kind: 'individual', traversable: 'anywhere' };
     const NOON = 12 * 60;
-    const asking = (moves: TurnPassSubject['moves'], moveClock = NOON) => ({ subject: { name: 'Sylvie', entity: sylvie, moves, moveClock } });
     const FOLLOWER = ['keepFollowing', 'waitHour', 'waitThisDaypart', 'waitNextDaypart', 'partWays'] as TurnPassSubject['moves'];
     const NEWCOMER = ['stay', 'comeAlong'] as TurnPassSubject['moves'];
     const textPass = { entityLocationTextPass: true };
@@ -210,130 +208,146 @@ describe('turn pass requests', () => {
       'Wait here until 17:02, when evening begins',
       'Part ways',
     ];
+    const entity = (id: string, name: string): Entity => ({ id, name, kind: 'individual', traversable: 'anywhere' });
+    const albus = { name: 'Albus', entity: entity('e1', 'Albus'), moves: FOLLOWER, moveClock: NOON };
+    const sylvie = { name: 'Sylvie', entity: entity('e2', 'Sylvie'), moves: NEWCOMER, moveClock: NOON };
+    const blackwell: TurnPassSubject = {
+      name: 'Blackwell',
+      entity: { id: 'e3', name: 'Blackwell', kind: 'individual', locations: ['keep', 'wall', 'tower'] },
+      moves: ['stay', 'comeAlong'],
+      destinations: [{ id: 'keep', name: 'The Keep' }, { id: 'tower', name: 'The Watchtower' }],
+      moveClock: NOON,
+    };
+    const asking = (...subjects: TurnPassSubject[]) => ({ subjects: { entityLocationAuto: subjects, entityLocationSuggest: subjects } });
+    const scene = asking(albus, sylvie, blackwell);
 
-    it('asks one entity, before the move, from the action alone, with the time and its replies after the message', () => {
-      const request = build('entityLocationAuto', asking(NEWCOMER), {}, textPass);
+    it('asks every subject in one request, before the move, from the action alone', () => {
+      const request = build('entityLocationAuto', scene, {}, textPass);
+      expect(pass('entityLocationAuto').fanOut).toBe(false);
       expect(request.type).toBe('entityLocation');
-      expect(request.systemPrompt).toBe('MOVER CURRENT-LOCATION for Sylvie');
-      // The saved template's <MOVE OPTIONS> renders nothing; the list rides in the reply format.
+      // <CHARACTER NAME> names the whole list; <MOVE STATE> and <MOVE OPTIONS> render nothing in a saved template.
+      expect(request.systemPrompt).toBe('MOVER CURRENT-LOCATION for each character listed');
       expect(request.messages).toEqual([{
         role: 'user',
-        content: 'Move: Sylvie | I read the notices. |  | Sylvie is not with the player character. |\n\n'
-          + 'The time is 12:00, midday.\nReply for Sylvie with exactly one line from this list, and nothing else:\n- Stay\n- Come along',
+        content: 'Move: each character listed | I read the notices. |  |  |\n\n'
+          + 'The time is 12:00, midday.\n'
+          + 'Decide for each character alone. Reply with one row per character: the name, a colon, and one line from their own list. Write nothing else.\n\n'
+          + `## Albus\nAlbus is following the player character.\nLines for Albus:\n${FOLLOWER_LINES.map((l) => `- ${l}`).join('\n')}\n\n`
+          + '## Sylvie\nSylvie is not with the player character.\nLines for Sylvie:\n- Stay\n- Come along\n\n'
+          + '## Blackwell\nBlackwell is not with the player character.\nLines for Blackwell:\n- Stay\n- Come along\n- The Keep\n- The Watchtower',
       }]);
     });
 
     it('asks after the narration in suggest mode, from the turn context and the narration', () => {
-      const request = build('entityLocationSuggest', asking(NEWCOMER));
-      expect(request.systemPrompt).toBe('MOVER TURN-LOCATION for Sylvie');
+      const request = build('entityLocationSuggest', scene);
+      expect(request.systemPrompt).toBe('MOVER TURN-LOCATION for each character listed');
       expect(request.messages[0].content).toContain('| The notices are damp and half-illegible. |');
     });
 
-    it('offers a follower keep following, three waits that end at the clock, and part ways', () => {
-      expect(lastMessage('entityLocationAuto', asking(FOLLOWER), {}, textPass))
-        .toContain(`| Sylvie is following the player character. |\n\nThe time is 12:00, midday.\n`);
-      expect(lastMessage('entityLocationAuto', asking(FOLLOWER), {}, textPass))
-        .toMatch(new RegExp(`${FOLLOWER_LINES.map((l) => `- ${l}`).join('\n')}$`));
+    it('waits until the turn names subjects, and sends nothing without one', () => {
+      for (const id of ['entityLocationAuto', 'entityLocationSuggest'] as const) {
+        expect(pass(id).isReady?.(material(asking(sylvie)))).toBe(true);
+        expect(pass(id).isReady?.(material(asking()))).toBe(false);
+        expect(pass(id).isReady?.(material())).toBe(false);
+      }
     });
 
-    it('sends a schema of its own lines, with the text request as the fallback', () => {
-      const request = build('entityLocationAuto', asking(FOLLOWER));
+    it('sends a schema with one field per subject, each from its own lines, with the text request as the fallback', () => {
+      const request = build('entityLocationAuto', scene);
       expect(request.responseSchema).toEqual({
-        name: 'entity_move',
-        schema: { type: 'object', additionalProperties: false, required: ['reply'], properties: { reply: { type: 'string', enum: FOLLOWER_LINES } } },
+        name: 'entity_moves',
+        schema: {
+          type: 'object', additionalProperties: false, required: ['Albus', 'Sylvie', 'Blackwell'],
+          properties: {
+            Albus: { type: 'string', enum: FOLLOWER_LINES },
+            Sylvie: { type: 'string', enum: ['Stay', 'Come along'] },
+            Blackwell: { type: 'string', enum: ['Stay', 'Come along', 'The Keep', 'The Watchtower'] },
+          },
+        },
       });
-      expect(request.messages[0].content).toContain('Reply for Sylvie with the one line from this list that fits:\n- Keep following');
-      expect(request.textFallback?.messages[0].content).toBe(lastMessage('entityLocationAuto', asking(FOLLOWER), {}, textPass));
+      expect(request.messages[0].content).toContain('Reply for each character with the one line from their own list that fits.\n\n## Albus');
+      expect(request.textFallback?.messages[0].content).toBe(lastMessage('entityLocationAuto', scene, {}, textPass));
       expect(request.textFallback?.maxTokens).toBeLessThan(request.maxTokens!);
     });
 
+    it('numbers a later namesake, in the request and in the schema', () => {
+      const twin = { ...sylvie, entity: entity('e9', 'Sylvie') };
+      const request = build('entityLocationAuto', asking(sylvie, twin));
+      expect(request.responseSchema?.schema).toMatchObject({ required: ['Sylvie', 'Sylvie (2)'] });
+      expect(request.messages[0].content).toContain('## Sylvie (2)\nSylvie (2) is not with the player character.\nLines for Sylvie (2):');
+    });
+
     it('refuses to build without the story clock its time line reads', () => {
-      expect(() => build('entityLocationAuto', { subject: { name: 'Sylvie', entity: sylvie, moves: NEWCOMER } })).toThrow(/story clock/);
+      expect(() => build('entityLocationAuto', asking({ name: 'Sylvie', entity: sylvie.entity, moves: NEWCOMER }))).toThrow(/story clock/);
     });
 
     it('sends the text request alone to an endpoint that refused the schema', () => {
-      const request = build('entityLocationAuto', asking(FOLLOWER), {}, textPass);
+      const request = build('entityLocationAuto', scene, {}, textPass);
       expect(request.responseSchema).toBeUndefined();
       expect(request.textFallback).toBeUndefined();
     });
 
-    it('caps the reply at the longest option plus slack', () => {
-      const cap = (moves: TurnPassSubject['moves']) => build('entityLocationAuto', asking(moves), {}, textPass).maxTokens!;
-      expect(cap(FOLLOWER)).toBeGreaterThan(cap(NEWCOMER));
-      expect(cap(FOLLOWER)).toBeLessThan(24);
+    it('caps the reply at a row per subject, each sized to its longest line', () => {
+      const cap = (...subjects: TurnPassSubject[]) => build('entityLocationAuto', asking(...subjects), {}, textPass).maxTokens!;
+      expect(cap(albus)).toBeGreaterThan(cap(sylvie));
+      expect(cap(albus, sylvie)).toBeGreaterThan(cap(albus));
+      const far = { ...blackwell, destinations: [{ id: 'x', name: 'The Long Watchtower Above the Northern Gate' } as GameLocation] };
+      expect(cap(far)).toBeGreaterThan(cap({ ...blackwell, destinations: [] }));
     });
 
     it('rides the batch without a status label of its own, and shows in the request capture', () => {
-      const request = build('entityLocationAuto', asking(NEWCOMER));
+      const request = build('entityLocationAuto', scene);
       expect(request.quiet).toBe(true);
       expect(request.silent).toBe(false);
     });
 
-    describe('reads the reply against its own options only', () => {
-      const read = (raw: string, moves: TurnPassSubject['moves'], moveClock = NOON) =>
-        pass('entityLocationAuto').parseResponse(raw, material(asking(moves, moveClock)));
+    describe('reads each subject’s reply against its own options only', () => {
+      const read = (raw: string, over = scene) => pass('entityLocationAuto').parseResponse(raw, material(over));
+      const moves = (raw: string, over = scene) => (read(raw, over) as { entity: Entity; move: unknown }[]).map(({ entity: e, move }) => [e.id, move]);
 
-      it('in the text form', () => {
-        expect(read('Come along', NEWCOMER)).toBe('comeAlong');
-        expect(read('Stay.', NEWCOMER)).toBe('stay');
-        expect(read('keep following', FOLLOWER)).toBe('keepFollowing');
-        expect(read('- Wait here about an hour, until 13:00, afternoon', FOLLOWER)).toBe('waitHour');
-        expect(read('Wait here until 12:58, when afternoon begins', FOLLOWER)).toBe('waitThisDaypart');
-        expect(read('Wait here until 17:02, when evening begins.', FOLLOWER)).toBe('waitNextDaypart');
-        expect(read('Part ways', FOLLOWER)).toBe('partWays');
-        // A follower is never offered "come along", so the words mean nothing from one.
-        expect(read('Come along', FOLLOWER)).toBeNull();
-        expect(read('Stay', FOLLOWER)).toBeNull();
-        expect(read('Part ways', NEWCOMER)).toBeNull();
-        expect(read('NONE', NEWCOMER)).toBeNull();
+      it('in the schema form, with mixed replies', () => {
+        expect(moves('{"Albus": "Wait here until 17:02, when evening begins", "Sylvie": "Come along", "Blackwell": "The Watchtower"}'))
+          .toEqual([['e1', 'waitNextDaypart'], ['e2', 'comeAlong'], ['e3', { goTo: 'tower' }]]);
+        expect(moves('```json\n{"Albus":"Part ways","Sylvie":"Stay","Blackwell":"Stay"}\n```'))
+          .toEqual([['e1', 'partWays'], ['e2', 'stay'], ['e3', 'stay']]);
       });
 
-      it('in the schema form', () => {
-        expect(read('{"reply": "Come along"}', NEWCOMER)).toBe('comeAlong');
-        expect(read('{"reply":"Wait here until 17:02, when evening begins"}', FOLLOWER)).toBe('waitNextDaypart');
-        expect(read('{"reply":"Part ways"}', FOLLOWER)).toBe('partWays');
-        expect(read('{"reply":"Come along"}', FOLLOWER)).toBeNull();
-        expect(read('{"reply": 3}', FOLLOWER)).toBeNull();
+      it('in the text form, one row per subject', () => {
+        expect(moves('Albus: Keep following\n- **Sylvie:** Come along.\nblackwell: The Keep'))
+          .toEqual([['e1', 'keepFollowing'], ['e2', 'comeAlong'], ['e3', { goTo: 'keep' }]]);
+        // The first row for a subject wins.
+        expect(moves('Sylvie: Come along\nSylvie: Stay', asking(sylvie))).toEqual([['e2', 'comeAlong']]);
+      });
+
+      it('leaves a subject the reply omits where it is', () => {
+        expect(moves('{"Sylvie": "Come along"}')).toEqual([['e1', null], ['e2', 'comeAlong'], ['e3', null]]);
+        expect(moves('Sylvie: Come along')).toEqual([['e1', null], ['e2', 'comeAlong'], ['e3', null]]);
+        expect(moves('NONE')).toEqual([['e1', null], ['e2', null], ['e3', null]]);
+      });
+
+      it('ignores a character the request did not ask about', () => {
+        expect(moves('{"Corvin": "Come along", "Sylvie": "Stay"}')).toEqual([['e1', null], ['e2', 'stay'], ['e3', null]]);
+        expect(moves('Corvin: Come along\nSylvie: Stay')).toEqual([['e1', null], ['e2', 'stay'], ['e3', null]]);
+      });
+
+      it('matches a line only from the subject’s own list', () => {
+        // A follower is never offered "come along"; Sylvie is never offered a place.
+        expect(moves('{"Albus": "Come along", "Sylvie": "The Watchtower", "Blackwell": "The Barrow"}'))
+          .toEqual([['e1', null], ['e2', null], ['e3', null]]);
+        expect(moves('{"Albus": 3}')).toEqual([['e1', null], ['e2', null], ['e3', null]]);
+      });
+
+      it('maps a numbered namesake back to its own entity', () => {
+        const twin = { ...sylvie, entity: entity('e9', 'Sylvie') };
+        expect(moves('{"Sylvie": "Stay", "Sylvie (2)": "Come along"}', asking(sylvie, twin))).toEqual([['e2', 'stay'], ['e9', 'comeAlong']]);
+        expect(moves('Sylvie (2): Come along\nSylvie: Stay', asking(sylvie, twin))).toEqual([['e2', 'stay'], ['e9', 'comeAlong']]);
       });
 
       it('against the clock the request was sent at', () => {
+        const late = asking({ ...albus, moveClock: 20 * 60 });
         // At 20:00 the ends move: a line read against noon's clock no longer matches.
-        expect(read('Wait here until 06:00, when dawn begins', FOLLOWER, 20 * 60)).toBe('waitThisDaypart');
-        expect(read('Wait here until 12:58, when afternoon begins', FOLLOWER, 20 * 60)).toBeNull();
-      });
-    });
-
-    describe('for an entity on a Wander row', () => {
-      const blackwell: Entity = { id: 'e3', name: 'Blackwell', kind: 'individual', locations: ['keep', 'wall', 'tower'] };
-      const walking = {
-        subject: {
-          name: 'Blackwell',
-          entity: blackwell,
-          moves: ['stay', 'comeAlong'],
-          destinations: [{ id: 'keep', name: 'The Keep' }, { id: 'tower', name: 'The Watchtower' }],
-          moveClock: NOON,
-        } as TurnPassSubject,
-      };
-
-      it('offers stay, come along, then each of its places', () => {
-        expect(lastMessage('entityLocationAuto', walking, {}, textPass)).toMatch(/\n- Stay\n- Come along\n- The Keep\n- The Watchtower$/);
-      });
-
-      it('reads a place name as a walk there, in either form', () => {
-        const read = (raw: string) => pass('entityLocationAuto').parseResponse(raw, material(walking));
-        expect(read('The Watchtower')).toEqual({ goTo: 'tower' });
-        expect(read('{"reply":"The Keep"}')).toEqual({ goTo: 'keep' });
-        expect(read('Come along')).toBe('comeAlong');
-        // A place it isn't offered, so not allowed, means nothing.
-        expect(read('The Barrow')).toBeNull();
-        expect(read('{"reply":"The Barrow"}')).toBeNull();
-      });
-
-      it('caps the reply at its longest place', () => {
-        const cap = (destinations: GameLocation[]) =>
-          build('entityLocationAuto', { subject: { ...walking.subject, destinations } }).maxTokens!;
-        expect(cap([{ id: 'x', name: 'The Long Watchtower Above the Northern Gate' } as GameLocation]))
-          .toBeGreaterThan(cap([]));
+        expect(moves('Albus: Wait here until 06:00, when dawn begins', late)).toEqual([['e1', 'waitThisDaypart']]);
+        expect(moves('Albus: Wait here until 12:58, when afternoon begins', late)).toEqual([['e1', null]]);
       });
     });
   });
@@ -408,7 +422,8 @@ describe('turn pass requests', () => {
         const subject = { name: 'Bram', entity: BRAM, moves: [], moveClock: 0 };
         for (const record of TURN_PASSES) {
           if (record.id === 'narration') continue;
-          const request = record.buildRequest(input({ toldActions: told }, { thinkingMode: 'off' }), material({ subject }));
+          const subjects = { entityLocationAuto: [subject], entityLocationSuggest: [subject] };
+          const request = record.buildRequest(input({ toldActions: told }, { thinkingMode: 'off' }), material({ subject, subjects }));
           const text = [request.systemPrompt, ...request.messages.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))].join('\n');
           expect([record.id, text.includes('ACTION LIST'), text.includes('Healing Potion')]).toEqual([record.id, false, false]);
         }
@@ -667,9 +682,11 @@ describe('turn pass requests', () => {
     it('skips the storyboard when the director cast nobody — there is nothing to reconcile', () => {
       expect(pass('storyboard').isReady?.(material({ npcCastSize: 0 }))).toBe(false);
       expect(pass('storyboard').isReady?.(material())).toBe(true);
-      // Every other pass but the stat request and the narrated move is ready the moment it is due.
+      // Every other pass but the stat request, the narrated move and the entity location requests is ready the
+      // moment it is due.
+      const gated = ['storyboard', 'statUpdates', 'narratedMove', 'entityLocationAuto', 'entityLocationSuggest'];
       for (const record of TURN_PASSES) {
-        if (record.id !== 'storyboard' && record.id !== 'statUpdates' && record.id !== 'narratedMove') expect([record.id, record.isReady]).toEqual([record.id, undefined]);
+        if (!gated.includes(record.id)) expect([record.id, record.isReady]).toEqual([record.id, undefined]);
       }
     });
 
@@ -849,7 +866,8 @@ describe('every pass request anatomy', () => {
     inventory: { system: true, user: true },
   };
   const LABELED = Object.keys(SOURCES) as TurnPassId[];
-  const subject = { subject: { name: 'Bram', entity: BRAM, stance: 'at the rail', moveClock: 0 } };
+  const bram = { name: 'Bram', entity: BRAM, stance: 'at the rail', moveClock: 0 };
+  const subject = { subject: bram, subjects: { entityLocationAuto: [bram], entityLocationSuggest: [bram] } };
   const anatomyOf = (id: TurnPassId) => build(id, subject, {}, { thinkingMode: 'off' });
 
   it.each(LABELED)('tiles what it assembles itself, and lines the rest up by index (%s)', (id) => {

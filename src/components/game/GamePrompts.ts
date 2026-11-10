@@ -234,20 +234,19 @@ Find the place where the player character's body is when this narration ends. Re
 - The exact name of the place from the list whose description fits it.
 - Elsewhere when no place on the list fits it.`;
 
-// The entity location request (requestType 'entityLocation'): one per follower and per free character in the
-// scene, sent beside the location router. The game appends the time and the closed list of replies after the
-// user message.
-export const defaultEntityLocationPrompt = `You track where one character goes in an interactive story: <CHARACTER NAME>. From the player character's action, you decide whether <CHARACTER NAME> goes with the player character, waits, or goes their own way. You never act in the story; the action's "I" is the player character, never you.
+// The entity location request (requestType 'entityLocation'): one per turn for every follower and free
+// character in the scene, sent beside the location router. The game appends the time and each character's
+// state and closed list of replies after the user message.
+export const defaultEntityLocationPrompt = `You track where the characters in an interactive story go. From the player character's action, you decide for each character listed whether they go with the player character, wait, or go their own way. You never act in the story; the action's "I" is the player character, never you.
 <LOCATION|summary.markdown|header="Current Location">\
 <ENTITIES|summary.notraits.nostats.markdown|header="Characters Here">
-Decide for <CHARACTER NAME> alone, from what the action does with <CHARACTER NAME>, and answer with a line from the list you are given:
-- A list with Come along and Stay: <CHARACTER NAME> is not yet with the player character. Come along when the action takes <CHARACTER NAME> along, by name or as one of everyone present. Stay for every other action, including one that invites, leads or talks about someone else.
-- A list with Keep following: <CHARACTER NAME> already travels with the player character. Keep following wherever the player character goes. Wait here when the action asks <CHARACTER NAME> to wait or stay behind: each Wait here line ends at a time, so pick the line whose end is closest to the time asked for, and the latest one when the wait has no end. Part ways when the action releases <CHARACTER NAME> or sends them back to their own life.
-- A list that also names places: answer with the place when the action sends <CHARACTER NAME> there without the player character.`;
+Decide for each character alone, from what the action does with that character, and answer with a line from that character's own list:
+- A list with Come along and Stay: the character is not yet with the player character. Come along when the action takes that character along, by name or as one of everyone present. Stay for every other action, including one that invites, leads or talks about someone else.
+- A list with Keep following: the character already travels with the player character. Keep following wherever the player character goes. Wait here when the action asks the character to wait or stay behind: each Wait here line ends at a time, so pick the line whose end is closest to the time asked for, and the latest one when the wait has no end. Part ways when the action releases the character or sends them back to their own life.
+- A list that also names places: answer with the place when the action sends the character there without the player character.`;
 
 export const defaultEntityLocationUserPrompt = `The player character's action this turn ("I" = the player character): <PLAYER ACTION>
-<NARRATION|format=markdown|header="What Happened">
-<MOVE STATE>`;
+<NARRATION|format=markdown|header="What Happened">`;
 
 // The caller appends a lettered roster to the user turn: one line per entity, grouped by sublocation.
 export const defaultFocusClassifierPrompt = `You are the scene caster for an interactive story. Before the next scene is written, you sort each character and thing at the player's location by what this turn needs from it.
