@@ -80,7 +80,10 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
   4. The engine's device is discrete → `low` when its total is at or under 8,500 MB, else `ok`.
   5. Several discrete cards with no pin → their totals are added, then rule 4 applies.
 - For a discrete card that matches an `nvidia-smi` row, the `nvidia-smi` total is the total. This keeps the shipped behavior for NVIDIA players exactly as it is.
-- A failed listing and an empty listing must be told apart. Today both read as an empty list.
+- A failed listing and an empty listing must be told apart. Today both read as an empty list. A spawn error, a timeout or a non-zero exit is a failed listing. Exit 0 with no device lines is an empty one.
+- "The engine's device" means the device of the next start with the saved settings: the listing of the backend that start would use, and the pin from the saved device setting.
+- A manual pin on an integrated GPU beside a large card is `low`. The All GPUs setting adds the discrete totals and ignores integrated ones.
+- A runtime fallback to the CPU after a failed GPU load does not change the class.
 - A reported total is never trusted for an integrated GPU. Field reports range from about 2 GB to over 80 GB.
 - The device listing is already read once and cached. The class adds no second read.
 - The 8,500 MB limit has one definition, shared by the shell policy and the renderer facts.
@@ -89,7 +92,7 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
 
 - The lead reads the VRAM class, not the `nvidia-smi` total. `low` shows the lead. `ok` and `unknown` keep today's layout.
 - Every other condition of the lead stays (First-Time Flow Q52).
-- The lead's copy says "the models that fit your GPU". That is wrong for a CPU-only machine. The copy ticket fixes it with the card copy.
+- The lead's copy says "the models that fit your GPU". That is wrong for a CPU-only machine. Ticket 01 changes it with the smallest edit, and the user approves the words (Q8).
 
 **The card**
 
@@ -141,6 +144,6 @@ No render test of AI setup and no Playwright test are added (Q13).
 ## Further Notes
 
 - **Deploy order:** FormamorphServer first, then the client build.
-- **Forced CPU backend:** a player with a strong card who sets the engine backend to CPU has no GPU device in use, so the class is `low`. This follows "the device the engine uses". Say so if you want the card judged instead.
+- **No CPU backend setting:** the Backend setting is Auto, Vulkan or CUDA. A machine is CPU-only when its listing succeeds with no GPU device.
 - **Sources for the integrated GPU ruling:** a UHD 620 reporting about 2 GB, a Strix Halo APU reporting 87,722 MiB, and upstream llama.cpp issues 16092 and 18946 on dedicated-only and overflowed figures. The 47.8 GB figure in the device pin notes is an aggregate of a discrete card and an integrated GPU, not one device.
 - **Changelog:** one Added entry for the card and the wider low-VRAM lead.
