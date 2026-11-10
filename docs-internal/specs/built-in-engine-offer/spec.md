@@ -1,7 +1,7 @@
 # Spec: Built-In Engine Offer
 
 Status: done
-Status note: Closed 2026-11-09. Tickets 01–04, last landing fee78fb1b. Review: three gaps fixed by ticket 04, spec text corrected. Closed red: lint has 11 errors, all in the ignored worlds-wip folder and none in this effort; test exit 0 on 2026-11-09.
+Status note: Follow-up tickets 05 and 06 opened after the close on the user's call (Q15–Q17). Closed 2026-11-09. Tickets 01–04, last landing fee78fb1b. Review: three gaps fixed by ticket 04, spec text corrected. Closed red: lint has 11 errors, all in the ignored worlds-wip folder and none in this effort; test exit 0 on 2026-11-09.
 Spec session: built-in-engine-offer — spec
 
 A desktop player who runs narration on the built-in engine with little VRAM learns about Formamorph AI a second time, after 10 turns of their own play. AMD, Intel and CPU-only machines join the low-VRAM group for the first time. Spans both repos: the client and FormamorphServer.
@@ -40,6 +40,9 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
 | Q12 | Every integrated GPU counts as low. Strong APUs get no exception. |
 | Q13 | Tests use four existing seams and add none (see Testing Decisions). |
 | Q14 | The user approved both texts as landed, on 2026-11-09. Lead body: "Formamorph AI writes better narration and keeps characters more consistent than the models that fit your machine. Your support also helps fund new updates." Card: "Want a Bigger Model for This Story?" / "Your computer runs a small model that fits its memory. Formamorph AI runs a larger one on our servers, for sharper narration and characters who stay consistent. Your support includes it, and it helps fund new updates." |
+| Q15 | Replaces the Q14 texts. Lead body: "your machine" becomes "your computer". Card body: "Your computer runs a small model that fits its memory. Formamorph AI runs a larger one without turning your computer into a space heater, for sharper narration and characters who stay consistent. Your support includes it, and it helps fund new updates." The user chose the comedic line. "characters" stays. |
+| Q16 | The funnel step is named `engine_offer_shown`. `local_offer_shown` never shipped and gets no alias. |
+| Q17 | Four cleanups from the close review are done in ticket 05: one shape for both cards' facts, `useStoryCard` renamed `useDemoAIStoryCard`, one device list in the engine listing, and a test seam for the VRAM class ask. |
 
 **Carried over from First-Time Flow, unchanged:** no offer for a pledged player (Q44, Q66), in a build without hosted AI, or on Steam (Q6). The card uses Morphie (Q20), the Pages placement (Q19), and the lifetime of Q42: the seen record is written when the card first renders after the turn's reveal ends, and nothing brings the card back.
 
@@ -111,7 +114,7 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
 
 **Funnel**
 
-- A new step, `local_offer_shown`, joins the server's step list: the built-in engine card was shown. The route, the limiter and the totals table need no other change.
+- A new step, `engine_offer_shown` (Q16), joins the server's step list: the built-in engine card was shown. The route, the limiter and the totals table need no other change.
 - The Usage report lists steps from that list, so the new step appears there. Its label in the staff view is added on the client.
 - `see_levels` stays one step with no source.
 - The server change deploys before a client build that sends the step. The client marks a step as sent once, so a refused send is a lost count.
