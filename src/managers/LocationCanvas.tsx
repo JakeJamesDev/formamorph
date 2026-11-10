@@ -1679,8 +1679,8 @@ const CanvasInner = ({
         {/* In the toolbar's place, which picking hides. Clear of the entity card on the right. */}
         {routineStatus && (
           <Panel position="top-center" className="!m-2 md:!mt-[5px] max-w-[min(36rem,calc(100%-30rem))] max-md:max-w-[calc(100%-1rem)]">
-            <p data-testid="routine-status" role="status" className="rounded-md border bg-card px-3 py-1.5 text-label shadow-md">
-              {routineStatus.row && <strong className="mr-2 font-semibold">{routineStatus.row}</strong>}
+            <p data-testid="routine-status" role="status" className="rounded-md border bg-card px-3 py-1.5 text-center text-label shadow-md">
+              {routineStatus.row && <strong className="block font-semibold">{routineStatus.row}</strong>}
               {routineStatus.text}
             </p>
           </Panel>

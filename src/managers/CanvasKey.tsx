@@ -40,7 +40,6 @@ const ENTRIES: Record<KeyEntryId, { label: string; sample: ReactElement }> = {
   stop: { label: 'Stop Number', sample: <Chip text="1" /> },
   reach: { label: 'Can Also Go', sample: <Box className="outline-dashed outline-1 outline-offset-1 outline-muted-foreground" /> },
   here: { label: 'Is Here', sample: <Box className="ring-2 ring-muted-foreground" /> },
-  faded: { label: 'Never Here', sample: <Box className="opacity-30" /> },
   entityLocation: { label: 'Entity Location', sample: <LocationIcon aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" /> },
   knownIn: { label: 'Known In', sample: <Megaphone aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" /> },
 };

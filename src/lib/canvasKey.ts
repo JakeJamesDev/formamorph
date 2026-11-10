@@ -3,7 +3,7 @@ import type { PickMark } from '@/lib/entityPicking';
 
 /** The things a canvas view can draw that the key explains, in the order the key lists them. */
 const ORDER = [
-  'stay', 'wander', 'patrol', 'free', 'mixed', 'dayBar', 'start', 'chance', 'stop', 'reach', 'here', 'faded',
+  'stay', 'wander', 'patrol', 'free', 'mixed', 'dayBar', 'start', 'chance', 'stop', 'reach', 'here',
   'entityLocation', 'knownIn',
 ] as const;
 export type KeyEntryId = typeof ORDER[number];
@@ -14,7 +14,6 @@ const inOrder = (ids: ReadonlySet<KeyEntryId>) => ORDER.filter((id) => ids.has(i
 export function routineKeyEntries(view: RoutineView, group: boolean): KeyEntryId[] {
   const ids = new Set<KeyEntryId>();
   for (const mark of view.marks.values()) {
-    if (mark.kind === 'faded') ids.add('faded');
     if (mark.kind === 'reach') ids.add('reach');
     if (mark.kind !== 'routine') continue;
     if (group) { ids.add('here'); continue; }

@@ -26,8 +26,8 @@ describe('the key of the Routine view', () => {
     expect(key(farrier(day))).toEqual(['stay', 'wander', 'patrol', 'free', 'dayBar', 'start', 'reach']);
   });
 
-  it('leaves out an action no row uses, and names a place no row and no list reaches', () => {
-    expect(key(farrier([day[0]], []))).toEqual(['stay', 'free', 'dayBar', 'start', 'faded']);
+  it('leaves out an action no row uses, and says nothing for a place the entity never reaches', () => {
+    expect(key(farrier([day[0]], []))).toEqual(['stay', 'free', 'dayBar', 'start']);
   });
 
   it('names the neutral ring only when a place holds two actions', () => {
@@ -41,9 +41,9 @@ describe('the key of the Routine view', () => {
     expect(key(farrier(day), 'patrol')).toEqual(['patrol', 'dayBar', 'start', 'stop', 'reach']);
   });
 
-  it('says only where a Group is and is not', () => {
+  it('says only where a Group is', () => {
     const herd = { id: 'herd', name: 'Herd', kind: 'group', locations: ['inn'] } as Entity;
-    expect(key(herd)).toEqual(['here', 'faded']);
+    expect(key(herd)).toEqual(['here']);
   });
 });
 
