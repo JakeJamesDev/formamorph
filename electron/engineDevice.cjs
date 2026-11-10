@@ -123,12 +123,13 @@ function engineVramClass({ devices, listed, nvidiaGpus, setting } = {}) {
   const rows = [...gpus];
   const totals = [];
   for (const device of used) {
+    // An integrated GPU's reported total is unreliable in both directions, so it never counts, row or not.
+    if (isIntegrated(device.name)) continue;
     // An exact name first, so a "4060" never takes a "4060 Ti" row the containment match would also accept.
     const exact = rows.findIndex((gpu) => normalize(gpu && gpu.name) === normalize(device.name));
     const row = exact !== -1 ? exact : rows.findIndex((gpu) => namesMatch(device.name, gpu && gpu.name));
     if (row !== -1) totals.push(rows.splice(row, 1)[0].totalMB ?? device.totalMB);
-    // An integrated GPU's reported total is unreliable in both directions, so it never counts.
-    else if (!isIntegrated(device.name)) totals.push(device.totalMB);
+    else totals.push(device.totalMB);
   }
   if (!totals.length) return 'low';
   if (!totals.every((mb) => typeof mb === 'number' && Number.isFinite(mb))) return 'unknown';

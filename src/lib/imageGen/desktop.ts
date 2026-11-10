@@ -208,6 +208,9 @@ export interface LocalLlmOptions {
   engineBackend: LocalEngineBackend;
 }
 
+/** The Backend and Device settings that decide which device the next engine start uses. */
+export type EngineDeviceSettings = Pick<LocalLlmOptions, 'engineBackend' | 'gpuDevice'>;
+
 /** The device an engine state is pinned to, by name — null when nothing was pinned. Read from the list the
  *  pin was resolved against rather than from what the pinned backend reports, which is filtered. */
 export function pinnedEngineDevice(engine: LocalLlmState): string | null {
@@ -315,9 +318,9 @@ declare global {
         /** Set the Context Overflow policy for the next request; no reload. Resolves the policy applied. */
         setContextOverflow: (policy: LocalContextOverflow) => Promise<LocalContextOverflow>;
         /** Every GPU the next start's backend can pin to, for the device picker, given unsaved settings. */
-        listDevices: (pending?: Pick<LocalLlmOptions, 'engineBackend' | 'gpuDevice'>) => Promise<EngineDeviceList>;
+        listDevices: (pending?: EngineDeviceSettings) => Promise<EngineDeviceList>;
         /** The VRAM class of the device the next start uses with the saved settings. */
-        vramClass: () => Promise<VramClass>;
+        vramClass: (saved: EngineDeviceSettings) => Promise<VramClass>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
          *  the saved path. */
         download: (opts: LocalDownloadOptions) => Promise<{ path: string }>;
@@ -467,11 +470,11 @@ export const setLocalLlmContextOverflow = (policy: LocalContextOverflow): Promis
 
 /** Every GPU the engine can pin to. Off desktop, and on a machine whose backend can't enumerate, an empty
  *  list — which the picker states rather than showing an empty dropdown. */
-export const listLocalGpuDevices = (pending?: Pick<LocalLlmOptions, 'engineBackend' | 'gpuDevice'>): Promise<EngineDeviceList> =>
+export const listLocalGpuDevices = (pending?: EngineDeviceSettings): Promise<EngineDeviceList> =>
   isLocalLlmAvailable() ? requireLlm().listDevices(pending) : Promise.resolve({ backend: null, devices: [], autoPick: null });
 
 /** The shell's VRAM class for the built-in engine's device. Throws off desktop; read it through `readVramClass`. */
-export const desktopVramClass = (): Promise<VramClass> => requireLlm().vramClass();
+export const desktopVramClass = (saved: EngineDeviceSettings): Promise<VramClass> => requireLlm().vramClass(saved);
 
 /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
  *  saved path. */

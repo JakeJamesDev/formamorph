@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import engineDevice from './engineDevice.cjs';
+import { withDeviceSettings } from './engineBackend.cjs';
 
 const { selectEngineDevice, engineVramClass, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL, LOW_VRAM_LIMIT_MB } = engineDevice;
 
@@ -222,6 +223,24 @@ describe('engineVramClass', () => {
   it('reads a manual pin on the integrated GPU beside a large card as low', () => {
     const devices = [dev(IGPU, 2048), dev('AMD Radeon RX 7900 XTX', 24560)];
     expect(classOf({ devices, setting: IGPU })).toBe('low');
+  });
+
+  it('reads an integrated name as low even when an nvidia-smi row matches it with a large total', () => {
+    expect(classOf({ devices: [dev(IGPU, 2048)], nvidiaGpus: [smi(IGPU, 16000)] })).toBe('low');
+  });
+
+  it('judges a pin on the integrated GPU beside a large card with the saved settings, not defaults', () => {
+    // Saved pin on the integrated GPU: low. The shell's default copy (auto) would answer ok.
+    const devices = [dev(IGPU, 2048), dev('AMD Radeon RX 7900 XTX', 24560)];
+    const saved = withDeviceSettings({ gpuDevice: ENGINE_DEVICE_AUTO, engineBackend: 'auto' }, { gpuDevice: IGPU });
+    expect(classOf({ devices, setting: saved.gpuDevice })).toBe('low');
+    expect(classOf({ devices, setting: ENGINE_DEVICE_AUTO })).toBe('ok');
+  });
+
+  it('adds the discrete totals under a saved All GPUs setting', () => {
+    const devices = [dev(IGPU, 2048), dev('AMD Radeon RX 6600', 4500), dev('AMD Radeon RX 6500 XT', 4100)];
+    const saved = withDeviceSettings({ gpuDevice: ENGINE_DEVICE_AUTO }, { gpuDevice: ENGINE_DEVICE_ALL });
+    expect(classOf({ devices, setting: saved.gpuDevice })).toBe('ok');
   });
 
   it('takes the nvidia-smi total for a matching card, so the NVIDIA boundary stays at 8,500 and 8,501 MB', () => {

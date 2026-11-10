@@ -9,7 +9,7 @@ const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
 const { cudaSupport, nvidiaCards } = require('./nvidiaFacts.cjs');
 const { evaluateCudaSupport } = require('./cudaSupport.cjs');
-const { engineBackend } = require('./engineBackend.cjs');
+const { engineBackend, withDeviceSettings } = require('./engineBackend.cjs');
 const { createBackendChoice } = require('./engineBackendChoice.cjs');
 const { createCudaInstall, driverVersions } = require('./cudaInstall.cjs');
 const { createCudaStarts } = require('./cudaStart.cjs');
@@ -528,11 +528,13 @@ async function startEnumeration(options) {
   return { choice, enumeration };
 }
 
-// The VRAM class of the device the next start uses with the saved settings: 'low', 'ok' or 'unknown'.
-ipcMain.handle('llm-vram-class', async () => {
-  const { enumeration } = await startEnumeration(engineOptions);
+// The VRAM class of the device the next start uses: 'low', 'ok' or 'unknown'. `saved` is the renderer's saved
+// Backend and device settings; the shell's own copy holds defaults until the engine is wanted.
+ipcMain.handle('llm-vram-class', async (_event, saved) => {
+  const options = withDeviceSettings(engineOptions, saved);
+  const { enumeration } = await startEnumeration(options);
   return engineVramClass({
-    devices: enumeration.devices, listed: enumeration.listed, nvidiaGpus: await nvidiaGpus(), setting: engineOptions.gpuDevice,
+    devices: enumeration.devices, listed: enumeration.listed, nvidiaGpus: await nvidiaGpus(), setting: options.gpuDevice,
   });
 });
 
@@ -542,11 +544,7 @@ ipcMain.handle('llm-vram-class', async () => {
 // with no GPU, which the picker says rather than offering nothing. autoPick is the card Auto would use right
 // now, so the dropdown can show it next to the word.
 ipcMain.handle('llm-list-devices', async (_event, pending) => {
-  const options = {
-    ...engineOptions,
-    ...(typeof pending?.engineBackend === 'string' ? { engineBackend: engineBackend(pending.engineBackend) } : {}),
-    ...(typeof pending?.gpuDevice === 'string' ? { gpuDevice: pending.gpuDevice } : {}),
-  };
+  const options = withDeviceSettings(engineOptions, pending);
   const { choice, enumeration } = await startEnumeration(options);
   let autoPick = null;
   if (enumeration.gpuDeviceNames.length) {

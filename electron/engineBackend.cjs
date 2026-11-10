@@ -8,6 +8,13 @@ const ENGINE_BACKENDS = ['auto', 'vulkan', 'cuda'];
 /** Unknown values read as Auto. */
 const engineBackend = (value) => (ENGINE_BACKENDS.includes(value) ? value : 'auto');
 
+/** The engine options with a caller's Backend and Device settings laid over them; other fields stay as they are. */
+const withDeviceSettings = (options, settings) => ({
+  ...options,
+  ...(typeof settings?.engineBackend === 'string' ? { engineBackend: engineBackend(settings.engineBackend) } : {}),
+  ...(typeof settings?.gpuDevice === 'string' ? { gpuDevice: settings.gpuDevice } : {}),
+});
+
 const vulkan = (reason) => ({ backend: 'vulkan', reason });
 const CUDA = { backend: 'cuda', reason: null };
 
@@ -70,4 +77,4 @@ function backendForStart({ install, serverPath, failedLastTime = false, cards, v
   return { ...choice, cudaBinary };
 }
 
-module.exports = { chooseEngineBackend, backendForStart, engineBackend, ENGINE_BACKENDS };
+module.exports = { chooseEngineBackend, backendForStart, engineBackend, withDeviceSettings, ENGINE_BACKENDS };
