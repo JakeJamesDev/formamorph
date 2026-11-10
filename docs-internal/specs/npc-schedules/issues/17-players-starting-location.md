@@ -20,7 +20,9 @@ An author can make a companion that begins beside the player and travels with th
 
 Read `docs/Writing-Guide.md` ("Before you write") before naming the picker entry and the setting. The names here are working names.
 
-Spec rulings: Q147, Q148, Q149, Q150, Q64, Q54.
+User-facing text calls the kinds Unique and Generic (Q162). Code keeps `individual` and `group` until ticket 19.
+
+Spec rulings: Q147, Q148, Q149, Q150, Q64, Q54, Q162, Q163.
 
 ## Acceptance criteria
 
