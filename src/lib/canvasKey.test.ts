@@ -42,7 +42,7 @@ describe('the key of the Routine view', () => {
   });
 
   it('says only where a Group is', () => {
-    const herd = { id: 'herd', name: 'Herd', kind: 'group', locations: ['inn'] } as Entity;
+    const herd = { id: 'herd', name: 'Herd', kind: 'group', locations: ['inn'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }] } as Entity;
     expect(key(herd)).toEqual(['here']);
   });
 });

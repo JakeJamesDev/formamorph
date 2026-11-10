@@ -418,7 +418,7 @@ export interface GalleryImage {
   requires?: TraitRequirementRow[];
 }
 
-/** Group: at all its places at once and never moves. Individual: one body in one place, driven by Starts. */
+/** Group: every Start runs at once, one presence each. Individual: one body, from one Start rolled per playthrough. */
 export type EntityKind = 'group' | 'individual';
 
 /** A schedule row's hours, in minutes from midnight. `end` before `start` wraps past midnight. */
@@ -454,7 +454,7 @@ export interface ScheduleRow {
   action: ScheduleAction;
 }
 
-/** One weighted beginning for an Individual: a place and the daily schedule kept from there. */
+/** One beginning: a place and the daily schedule kept from there. An Individual rolls one by weight; a Group runs them all. */
 export interface EntityStart {
   id: string;
   place: string;
@@ -516,15 +516,15 @@ export interface Entity {
   /** The entity's Avatar. Absent = none. */
   vrmPick?: VrmPick;
   /** Ids of the locations this entity belongs to. Read it through `lib/entityPresence`, which inverts it into
-   *  per-location rosters. A Group is at every one at once. An Individual's list is derived from its Starts and
-   *  rows (`withDerivedLocations`); nothing else writes it. Under the Persona mark they are also where the
+   *  per-location rosters. For both kinds it is derived from the Starts and rows (`withDerivedLocations`);
+   *  nothing else writes it. Under the Persona mark they are also where the
    *  player can start as it (see `lib/personaPick`). */
   locations?: string[];
   /** Absent for an entity with no locations, the persona and the played entity. */
   kind?: EntityKind;
-  /** An Individual's weighted beginnings, in author order. One is rolled per playthrough. */
+  /** The beginnings, in author order. An Individual rolls one per playthrough; a Group runs every one. */
   starts?: EntityStart[];
-  /** An Individual's places beyond its schedule. Absent = an empty list. */
+  /** An Individual's places beyond its schedule. Absent = an empty list. A Group ignores it. */
   traversable?: Traversable;
   /** Where the AI knows of the entity while it isn't present: `nowhere`, or the picked location ids, each
    *  covering its whole subtree. Absent = Nearby, one step from where it is. */

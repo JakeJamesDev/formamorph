@@ -123,7 +123,7 @@ The entities here that took part in the story in one of the last 3 turns. An ent
 _Avoid_: present, visible, participants
 
 **Group (entity kind)**:
-An entity that is at all its places at once: a herd, a swarm, a fixture. It never moves, is never pulled and never follows.
+An entity met in several places at once: a herd, a swarm, an enemy type. Every Start runs at the same time as its own presence, each on its own Schedule, but it is one entity with one set of stats, inventory and memory. Two presences in one place count once. It is never pulled and never follows.
 _Avoid_: Everywhere Listed
 
 **Individual**:
@@ -131,7 +131,7 @@ An entity that is one body in one place. One of its Starts is rolled per playthr
 _Avoid_: One, random presence
 
 **Start**:
-One weighted beginning of an Individual: a place plus a Schedule. One Start is rolled per playthrough and kept for the whole save. A Start with an empty Schedule stays at its place.
+One beginning of an entity: a place plus a Schedule. An Individual rolls one by weight per playthrough and keeps it for the whole save; a Group runs all of them. A Start with an empty Schedule stays at its place.
 _Avoid_: spawn, presence
 
 **Schedule**:

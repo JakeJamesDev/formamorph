@@ -380,8 +380,8 @@ describe('presentEntityIds', () => {
       { id: 'a', name: 'A', locations: ['cellar'] }, { id: 'b', name: 'B', locations: ['cellar'] },
       { id: 'c', name: 'C', locations: ['hall'] },
     ] as Entity[];
-    expect(presentEntityIds(cast, { b: 'hall', c: 'cellar' }, 'cellar')).toEqual(['a', 'c']);
-    expect(presentEntityIds(cast, {}, null)).toEqual([]);
+    expect(presentEntityIds(cast, { positions: { b: 'hall', c: 'cellar' }, groups: {} }, 'cellar')).toEqual(['a', 'c']);
+    expect(presentEntityIds(cast, { positions: {}, groups: {} }, null)).toEqual([]);
   });
 });
 

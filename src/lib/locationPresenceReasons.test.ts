@@ -6,8 +6,10 @@ import { presenceLines } from './locationPresenceReasons';
 const DAY = { start: daypartStart('morning'), end: daypartEnd('afternoon') };
 const NIGHT = { start: daypartStart('evening'), end: daypartEnd('night') };
 
-const crowd: Entity = { id: 'crowd', name: 'Crowd', kind: 'group', locations: ['tavern', 'market'] };
-const moths: Entity = { id: 'moths', name: 'Moths', kind: 'group', locations: ['market'] };
+const crowd: Entity = {
+  id: 'crowd', name: 'Crowd', kind: 'group', locations: ['tavern', 'market'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }, { id: 's2', place: 'market', weight: 1, schedule: [] }],
+};
+const moths: Entity = { id: 'moths', name: 'Moths', kind: 'group', locations: ['market'], starts: [{ id: 's1', place: 'market', weight: 1, schedule: [] }] };
 
 /** Begins at the smithy or the tavern (3:1); works the smithy by day, wanders the tavern and the yard at night;
  *  may be led to the cellar. */

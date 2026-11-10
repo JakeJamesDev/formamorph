@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, DiscoveredEntity, ScheduleAction, ScheduleRow, Traversable } from '@/types';
 import {
-  advancePositions, allowedPlaces, connectedPlaces, isStrictNow, moveIndividualByScript, partWays, pullIndividual,
+  advancePositions, allowedPlaces, connectedPlaces, groupPlaces, isStrictNow, moveIndividualByScript, partWays, pullIndividual,
   runtimeRoutine, startFollowing, startWaiting, waitUntil, type PositionBook, type PositionScene, type Routine,
 } from './positionEngine';
 
@@ -41,7 +41,7 @@ const timed = (id: string, from: number, to: number, action: ScheduleAction, str
 const routine = (schedule: ScheduleRow[], place = 'inn', traversable: Traversable = []): Routine =>
   ({ id: 'mara', starts: [{ id: 's1', place, weight: 1, schedule }], traversable });
 
-const EMPTY: PositionBook = { positions: {}, individuals: {} };
+const EMPTY: PositionBook = { positions: {}, individuals: {}, groups: {} };
 const scene = (now: number, playerAt?: string): PositionScene => ({ locations, connections, now, playerAt });
 
 /** Drives one character through engine calls; `pos` reads where it stands. */
@@ -399,6 +399,100 @@ describe('reach', () => {
     expect(allowedPlaces(listed, play(listed, now).state, scene(now))).toEqual(new Set(['market', 'square']));
     expect(allowedPlaces(listed, play(listed, at(1, 20)).state, scene(at(1, 20)))).toEqual(new Set(['inn']));
     expect(allowedPlaces(extra, play(extra, now).state, scene(now))).toEqual(new Set(['inn', 'gate']));
+  });
+});
+
+describe('Groups', () => {
+  // A den by day that hunts at the square by night, a pack that wanders, and one that patrols the wall.
+  const wolves: Routine = {
+    id: 'wolves', group: true, traversable: [],
+    starts: [
+      { id: 'den', place: 'smithy', weight: 1, schedule: [timed('hunt', 20, 6, stay('square'))] },
+      { id: 'pack', place: 'inn', weight: 1, schedule: [allDay('roam', wander(['inn', 'market'], 60))] },
+      { id: 'watch', place: 'wall', weight: 1, schedule: [allDay('round', patrol([['wall', 30], ['gate', 30]]))] },
+    ],
+  };
+  const presences = (book: PositionBook) =>
+    Object.fromEntries(Object.entries(book.groups.wolves ?? {}).map(([id, p]) => [id, p.position]));
+  const run = (book: PositionBook, now: number, playerAt?: string, random = seeded(3)) =>
+    advancePositions([wolves], book, scene(now, playerAt), random);
+
+  it('runs every Start at once, each on its own row', () => {
+    expect(presences(run(EMPTY, at(1, 12)))).toEqual({ den: 'smithy', pack: 'inn', watch: 'wall' });
+    expect(presences(run(EMPTY, at(1, 21)))).toMatchObject({ den: 'square', watch: 'wall' });
+  });
+
+  it('keeps each presence on its own Wander idle and Patrol stop across calls', () => {
+    const first = run(EMPTY, at(1, 8));
+    const half = run(first, at(1, 8, 30));
+    expect(presences(half)).toEqual({ den: 'smithy', pack: 'inn', watch: 'gate' });
+    expect(half.groups.wolves.watch).toMatchObject({ rowId: 'round', stop: 1, idleEnd: at(1, 9) });
+    expect(half.groups.wolves.pack).toMatchObject({ rowId: 'roam', idleEnd: at(1, 9) });
+    const hour = run(half, at(1, 9));
+    expect(presences(hour)).toEqual({ den: 'smithy', pack: 'market', watch: 'wall' });
+  });
+
+  it('gives a Group no Start roll, no Individual state and no single position', () => {
+    const book = run(EMPTY, at(1, 8));
+    expect(book.individuals).toEqual({});
+    expect(book.positions).toEqual({});
+    expect(Object.keys(book.groups.wolves)).toEqual(['den', 'pack', 'watch']);
+  });
+
+  it('runs two Starts at the same place, each on its own rows', () => {
+    const pair: Routine = {
+      id: 'wolves', group: true, traversable: [],
+      starts: [
+        { id: 'a', place: 'inn', weight: 1, schedule: [] },
+        { id: 'b', place: 'inn', weight: 1, schedule: [allDay('round', patrol([['inn', 30], ['gate', 30]]))] },
+      ],
+    };
+    const book = advancePositions([pair], EMPTY, scene(at(1, 8)), seeded(1));
+    const later = advancePositions([pair], book, scene(at(1, 8, 30)), seeded(1));
+    expect(presences(book)).toEqual({ a: 'inn', b: 'inn' });
+    expect(presences(later)).toEqual({ a: 'inn', b: 'gate' });
+  });
+
+  it('moves no presence at the player location until the player leaves', () => {
+    const book = run(EMPTY, at(1, 8), 'wall');
+    expect(presences(run(book, at(1, 10), 'wall')).watch).toBe('wall');
+    expect(presences(run(run(book, at(1, 10), 'wall'), at(1, 10, 15), 'inn')).watch).toBe('gate');
+  });
+
+  it('leaves a presence the routine no longer puts here in the scene until the player leaves', () => {
+    // Saved at the inn before the author moved the den's routine away from it.
+    const saved = { ...EMPTY, groups: { wolves: { den: { position: 'inn', lastRun: at(1, 12) } } } };
+    expect(presences(run(saved, at(1, 12, 30), 'inn')).den).toBe('inn');
+    expect(presences(run(saved, at(1, 12, 30), 'gate')).den).toBe('smithy');
+  });
+
+  it('keeps a row change from taking a presence out of the scene', () => {
+    const evening = run(EMPTY, at(1, 19), 'smithy');
+    expect(presences(run(evening, at(1, 21), 'smithy')).den).toBe('smithy');
+    expect(presences(run(run(evening, at(1, 21), 'smithy'), at(1, 21, 5), 'inn')).den).toBe('square');
+  });
+
+  it('is never pulled, never follows and takes no script move', () => {
+    const book = run(EMPTY, at(1, 8));
+    const now = scene(at(1, 8), 'inn');
+    expect(pullIndividual(book, wolves, 'inn', now)).toBe(book);
+    expect(startFollowing(book, wolves, now, { script: true })).toBe(book);
+    expect(moveIndividualByScript(book, wolves, 'island', now)).toBe(book);
+  });
+
+  it('begins a new Start at its place and drops the record of a Start the world lost', () => {
+    const saved = run(EMPTY, at(1, 8, 30));
+    const withLost = { ...saved, groups: { wolves: { ...saved.groups.wolves, gone: { position: 'gate', lastRun: at(1, 8) } } } };
+    const grown: Routine = { ...wolves, starts: [...wolves.starts.slice(1), { id: 'cub', place: 'square', weight: 1, schedule: [] }] };
+    const book = advancePositions([grown], withLost, scene(at(1, 8, 30)), seeded(3));
+    expect(Object.keys(book.groups.wolves)).toEqual(['pack', 'watch', 'cub']);
+    expect(book.groups.wolves.cub.position).toBe('square');
+    expect(book.groups.wolves.watch).toEqual(saved.groups.wolves.watch);
+  });
+
+  it('lists the places its presences stand at, each once', () => {
+    expect(groupPlaces({ wolves: { a: { position: 'inn', lastRun: 0 }, b: { position: 'inn', lastRun: 0 }, c: { position: 'gate', lastRun: 0 } } }))
+      .toEqual({ wolves: ['inn', 'gate'] });
   });
 });
 

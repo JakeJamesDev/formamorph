@@ -1,6 +1,6 @@
 # 13: Group Starts In The Engine
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -25,12 +25,25 @@ Spec rulings: Q130, Q131, Q132, Q133, Q140, Q141. The spec's "World shape: entit
 
 ## Acceptance criteria
 
-- [ ] A Group with two Starts on different rows has a presence at each row's place at the same clock time, shown by position engine tests on a fixture world.
-- [ ] Each presence keeps its own Wander idle and Patrol stop across turns and across a save and load.
-- [ ] Two presences in one place list the Group once in the scene roster, the Entities chip and the script `locations` entry.
-- [ ] A Group is never pulled, never follows, and gets no location request; script `.follow()` and `.move()` on a Group do nothing.
-- [ ] A save made before a Start was added loads with the new presence at its Start's place, and drops the record of a deleted Start.
-- [ ] Two Starts of one Group at the same place are accepted and both run.
-- [ ] The Routine tab's place control for a Group adds and removes Starts, and undo restores a removed Start.
-- [ ] No bundled world or fixture still stores a Group as a place list, and no code reads that form.
-- [ ] The world format doc and the glossary describe a Group's Starts.
+- [x] A Group with two Starts on different rows has a presence at each row's place at the same clock time, shown by position engine tests on a fixture world. `positionEngine.test.ts` › Groups › runs every Start at once, each on its own row.
+- [x] Each presence keeps its own Wander idle and Patrol stop across turns and across a save and load. Groups › keeps each presence on its own Wander idle and Patrol stop; `GameplayContext.positions.test.tsx` › round-trips each presence.
+- [x] Two presences in one place list the Group once in the scene roster, the Entities chip and the script `locations` entry. `presence.test.ts` (Look Around), `entityPresence.test.ts` › entitiesInPlay (the chip and Test Bench read through it), `sandboxSnapshot.locations.test.ts`, `positionPlay.test.ts` (opening cast).
+- [x] A Group is never pulled, never follows, and gets no location request; script `.follow()` and `.move()` on a Group do nothing. Groups › is never pulled…; `narrationReading.test.ts` › never pulls a Group; `entityFollowing.test.ts` › never asks a Group, leaves a Group where its presences stand.
+- [x] A save made before a Start was added loads with the new presence at its Start's place, and drops the record of a deleted Start. `GameplayContext.positions.test.tsx` › begins a Start added after the save…
+- [x] Two Starts of one Group at the same place are accepted and both run. Groups › runs two Starts at the same place.
+- [x] The Routine tab's place control for a Group adds and removes Starts, and undo restores a removed Start. `RoutineTab.test.tsx` › a Group's place list.
+- [x] No bundled world or fixture still stores a Group as a place list, and no code reads that form. Seven bundled worlds (40 Groups) and `devFixtures.ts` converted; test fixtures swept by grep.
+- [x] The world format doc and the glossary describe a Group's Starts. `docs/WorldFormat.md`, `CONTEXT.md`.
+
+## Landed
+
+**Not verified**
+
+- Nothing in the live preview. Every criterion is covered by tests; no UI pattern changed beyond the stand-in's behavior.
+
+**For you**
+
+- Export shape: a Group in the world `.json` now holds `starts` (its `locations` is derived), and the save `.json` gains `groupStates` (one record per Start: position, row id, last run, idle end, Patrol stop). Both unreleased.
+- A library entity added to a world remaps a Group's Starts and rows through the location map. An Individual's Start places are still not remapped there; that gap is a follow-up (Q158).
+- No changelog entry: nothing a player or author sees changes until ticket 14 gives a Group its routine editor.
+- Follow-up: the Test Bench opening pool (`testBench/opening.ts`) reads raw `world.entities`, so a Group (and, as before, an Individual) counts at every routine place there. Play and the Bench's AI Context go through the placed cast.

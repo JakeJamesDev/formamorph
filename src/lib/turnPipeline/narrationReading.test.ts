@@ -122,7 +122,7 @@ describe('selectVisitorAdditions', () => {
   const pull = (prose: string, cast: Entity[], over: PullOptions = {}) => {
     const location = over.location ?? here;
     const positionsWorld = positionWorld(castRoutines(cast), NOON, location.id, world, over.connections ?? [ferryRoad], () => 0);
-    const placed = placeAll({ positions: {}, individuals: {} }, positionsWorld);
+    const placed = placeAll({ positions: {}, individuals: {}, groups: {} }, positionsWorld);
     const seated = { ...placed, positions: { ...placed.positions, ...over.positions } };
     const book = over.before ? over.before(seated, positionsWorld) : seated;
     const after = selectVisitorAdditions({
@@ -167,8 +167,13 @@ describe('selectVisitorAdditions', () => {
   });
 
   it('never pulls a Group, and anchors no copy of it', () => {
-    const herd: Entity = { ...ent('e3', 'Tamsin Reed'), kind: 'group', locations: ['l2', 'l3'] };
-    expect(pullWith('Tamsin Reed comes over to the jetty.', [herd])).toEqual([]);
+    const herd: Entity = {
+      ...ent('e3', 'Tamsin Reed'), kind: 'group', locations: ['l2', 'l3'],
+      starts: [{ id: 'a', place: 'l2', weight: 1, schedule: [] }, { id: 'b', place: 'l3', weight: 1, schedule: [] }],
+    };
+    const { book, after } = pull('Tamsin Reed comes over to the jetty.', [herd]);
+    expect(after).toBe(book);
+    expect(Object.values(after.groups.e3).map((p) => p.position)).toEqual(['l2', 'l3']);
   });
 
   describe('across links', () => {

@@ -12,7 +12,9 @@ import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { readLibraryDetails } from '@/lib/contentAuthor';
 import { contentLinkStatusLine } from '@/lib/contentLink';
 import { isHelpSeen } from '@/lib/helpSeenStore';
-import { withEntityLocations } from '@/lib/entityPresence';
+import { placedIn, withEntityLocations } from '@/lib/entityPresence';
+import { isGroup, withGroupPlacesMapped, withGroupStart } from '@/lib/entityKind';
+import { randomUUID } from '@/lib/uuid';
 import { adoptCardVrm, importCharacterFile, type CardVrmFields } from '@/lib/entityFile';
 import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
 import type { LiveWorld } from '@/lib/componentUpdateRun';
@@ -349,7 +351,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
           const id = plan.locations[ref.id] ?? ref.id;
           return placeIds.has(id) ? [[ref.id, id]] : [];
         }));
-        const placed = adoptOwnedTraits(withEntityLocations(rest as Entity, Object.values(used)), {
+        const placed = adoptOwnedTraits(placedIn(rest as Entity, used), {
           traits: current.traits, traitGroups: current.traitGroups, entities: [...current.entities, ...added],
           stats: current.stats, statGroups: current.statGroups,
         });
@@ -446,7 +448,11 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       const fresh = flow.rows
         .filter((r) => r.kind === 'location' && !held[r.key] && plan.locations[r.key])
         .map((r) => plan.locations[r.key]);
-      updateEntity({ ...withEntityLocations(entity, [...moved, ...fresh]), link });
+      if (isGroup(entity)) {
+        const map = Object.fromEntries((entity.locations ?? []).map((id, i) => [id, moved[i]]));
+        const placed = fresh.reduce((next, place) => withGroupStart(next, place, randomUUID), withGroupPlacesMapped(entity, map, randomUUID));
+        updateEntity({ ...placed, link });
+      } else updateEntity({ ...withEntityLocations(entity, [...moved, ...fresh]), link });
     }
   }, [updateDictionary, updateEntity]);
 

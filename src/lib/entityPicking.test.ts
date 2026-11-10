@@ -47,7 +47,10 @@ describe("pickMarks", () => {
 });
 
 describe("togglePick", () => {
-  const captain: Entity = { id: "captain", name: "Captain", locations: ["keep"], kind: "group" };
+  const captain: Entity = {
+    id: "captain", name: "Captain", locations: ["keep"], kind: "group", starts: [{ id: "c1", place: "keep", weight: 1, schedule: [] }],
+  };
+  const customPersona: Entity = { id: "me", name: "Me", customPersona: true, locations: ["keep"] };
   const scout: Entity = {
     id: "scout", name: "Scout", kind: "individual", locations: ["keep", "inn"],
     starts: [{ id: "s1", place: "keep", weight: 1, schedule: [] }, { id: "s2", place: "inn", weight: 2, schedule: [] }],
@@ -65,14 +68,22 @@ describe("togglePick", () => {
     expect(placed.locations).toEqual(["harbor"]);
   });
 
-  it("adds a location in Locations mode, and removes it on the next click", () => {
+  it("adds a Group's Start in Locations mode, and removes it on the next click", () => {
     const added = togglePick(captain, "locations", "watchtower");
+    expect(added.starts?.map((s) => [s.place, s.schedule])).toEqual([["keep", []], ["watchtower", []]]);
     expect(added.locations).toEqual(["keep", "watchtower"]);
-    expect(togglePick(added, "locations", "watchtower").locations).toEqual(["keep"]);
+    const removed = togglePick(added, "locations", "watchtower");
+    expect(removed.starts?.map((s) => s.id)).toEqual(["c1"]);
+    expect(removed.locations).toEqual(["keep"]);
   });
 
-  it("drops the field when the last location goes", () => {
-    expect(togglePick(captain, "locations", "keep")).not.toHaveProperty("locations");
+  it("keeps a Group's last Start", () => {
+    expect(togglePick(captain, "locations", "keep")).toBe(captain);
+  });
+
+  it("toggles a Custom Persona's locations, and drops the field when the last one goes", () => {
+    expect(togglePick(customPersona, "locations", "inn").locations).toEqual(["keep", "inn"]);
+    expect(togglePick(customPersona, "locations", "keep")).not.toHaveProperty("locations");
   });
 
   it("resets Moves Between once an Everywhere entity lists two places", () => {

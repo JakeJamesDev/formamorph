@@ -74,7 +74,7 @@ describe('entity positions in the save', () => {
   it('rolls one Start per Individual for a new game, saves it, and keeps it on load', async () => {
     const live = mount();
     // A draw at the top of the range takes each entity's last Start.
-    const book = placeAll({ positions: {}, individuals: {} }, positionWorld(castRoutines(WORLD), OPENING, 'keep', LOCATIONS, [], () => 0.99));
+    const book = placeAll({ positions: {}, individuals: {}, groups: {} }, positionWorld(castRoutines(WORLD), OPENING, 'keep', LOCATIONS, [], () => 0.99));
     expect(book.individuals.merchant.startId).toBe('at-tower');
     await act(async () => {
       live().setEntityPositions(book.positions);
@@ -191,5 +191,46 @@ describe('entity positions in the save', () => {
     await save(live, 'save-persona');
     await load(live, 'save-persona');
     expect('merchant' in live().entityPositions || 'merchant' in live().individualStates).toBe(false);
+  });
+});
+
+describe('Group presences in the save', () => {
+  // The tower stands in the keep, so a patrol can walk between them.
+  const linked = [keep, { ...tower, parentId: 'keep' }];
+  // One Start walks the keep and the tower, an hour at each; the other stays at the tower.
+  const herd: Entity = {
+    id: 'herd', name: 'Herd', kind: 'group', locations: ['keep', 'tower'],
+    starts: [
+      { id: 'walker', place: 'keep', weight: 1, schedule: [{
+        id: 'walk', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'keep', idle: 60 }, { place: 'tower', idle: 60 }] },
+      }] },
+      { id: 'sitter', place: 'tower', weight: 1, schedule: [] },
+    ],
+  };
+  const groups = { herd: { walker: { position: 'tower', rowId: 'walk', lastRun: OPENING, idleEnd: OPENING + 30, stop: 1 }, sitter: { position: 'tower', lastRun: OPENING } } };
+
+  it('round-trips each presence with its Patrol stop and idle end', async () => {
+    const live = mount();
+    await act(async () => { live().setGroupStates(groups); });
+    expect(live().saveCurrentGameState().groupStates).toEqual(groups);
+    await save(live, 'save-group');
+    await act(async () => { live().setGroupStates({}); });
+    await load(live, 'save-group', [herd], linked);
+    expect(live().groupStates).toEqual(groups);
+  });
+
+  it('begins a Start added after the save at its place, and drops the record of a deleted Start', async () => {
+    const live = mount();
+    await act(async () => { live().setGroupStates(groups); });
+    await save(live, 'save-group-grown');
+    const grown: Entity = { ...herd, starts: [herd.starts![0], { id: 'pup', place: 'keep', weight: 1, schedule: [] }] };
+    await load(live, 'save-group-grown', [grown], linked);
+    expect(Object.keys(live().groupStates.herd)).toEqual(['walker', 'pup']);
+    expect(live().groupStates.herd.pup.position).toBe('keep');
+    expect(live().groupStates.herd.walker).toMatchObject({ position: 'tower', stop: 1, idleEnd: OPENING + 30 });
+  });
+
+  it('writes no field when no Group has a presence', () => {
+    expect('groupStates' in mount()().saveCurrentGameState()).toBe(false);
   });
 });

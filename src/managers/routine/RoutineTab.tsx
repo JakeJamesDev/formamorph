@@ -13,7 +13,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
-import { withKind } from '@/lib/entityKind';
+import { withGroupStart, withKind, withoutGroupStartsAt } from '@/lib/entityKind';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
 import { holderOf, locationRows } from '@/lib/locationTree';
@@ -86,7 +86,7 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
   // An entity with no kind yet edits as a new Individual; its first write stores the kind.
   const individual = useMemo(() => (entity.kind ? entity : withKind(entity, 'individual', randomUUID)), [entity]);
   // A custom persona moves with the player: it keeps only its locations, with no placement or routine.
-  if (entity.customPersona) return <GroupLocations entity={entity} book={book} commit={commit} />;
+  if (entity.customPersona) return <PersonaLocations entity={entity} book={book} commit={commit} />;
   const kind: EntityKind = entity.kind ?? 'individual';
 
   return (
@@ -100,25 +100,52 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
         <Hint>{KIND_HINTS[kind]}</Hint>
       </div>
       {kind === 'group'
-        ? <GroupLocations entity={entity} book={book} commit={commit} />
+        ? <GroupStarts entity={entity} book={book} commit={commit} />
         : <IndividualRoutine entity={individual} book={book} connections={connections} locations={locations} commit={commit} onChange={onChange} />}
     </div>
   );
 }
 
-function GroupLocations({ entity, book, commit }: { entity: Entity; book: PlaceBook; commit: (label: string, next: Entity) => void }) {
+/** The Locations field: a pick list over every location. `version` remounts it so it shows `selected` again. */
+function PlaceList({ entity, book, selected, version = 0, onChange }: {
+  entity: Entity; book: PlaceBook; selected: string[]; version?: number; onChange: (ids: string[]) => void;
+}) {
   const options = book.rowsOf(book.all).map((r) => ({ label: r.name, value: r.value, depth: r.breadcrumb?.length ?? 0 }));
-  const selected = (entity.locations ?? []).filter((id) => book.all.includes(id));
   return (
     <div className="space-y-1.5" {...fieldFrame('locations')}>
       <Label>Locations</Label>
       {entity.persona === true && <Hint>Lets the player start at any of these as this entity</Hint>}
       <MultiSelect
-        key={entity.id} options={options} defaultValue={selected} placeholder="Select locations"
-        onValueChange={(ids) => commit('Change Locations', withEntityLocations(entity, ids))}
+        key={`${entity.id}:${version}`} options={options} defaultValue={selected.filter((id) => book.all.includes(id))}
+        placeholder="Select locations" onValueChange={onChange}
       />
     </div>
   );
+}
+
+function PersonaLocations({ entity, book, commit }: { entity: Entity; book: PlaceBook; commit: (label: string, next: Entity) => void }) {
+  return (
+    <PlaceList
+      entity={entity} book={book} selected={entity.locations ?? []}
+      onChange={(ids) => commit('Change Locations', withEntityLocations(entity, ids))}
+    />
+  );
+}
+
+/** A Group's Starts as a place list: picking a place adds a Start with no rows there, and unpicking one removes the
+ *  Starts that begin there. The last Start stays. */
+function GroupStarts({ entity, book, commit }: { entity: Entity; book: PlaceBook; commit: (label: string, next: Entity) => void }) {
+  // Remounts the list when a removal is refused, so it shows the Start that stayed.
+  const [refusals, setRefusals] = useState(0);
+  const places = [...new Set((entity.starts ?? []).map((s) => s.place))];
+  const change = (ids: string[]) => {
+    let next = entity;
+    for (const place of places) if (!ids.includes(place)) next = withoutGroupStartsAt(next, place);
+    for (const place of ids) if (!places.includes(place)) next = withGroupStart(next, place, randomUUID);
+    if (places.some((place) => !ids.includes(place) && next.starts?.some((s) => s.place === place))) setRefusals((n) => n + 1);
+    if (next !== entity) commit('Change Locations', next);
+  };
+  return <PlaceList entity={entity} book={book} selected={places} version={refusals} onChange={change} />;
 }
 
 function IndividualRoutine({ entity, book, locations, connections, commit, onChange }: {

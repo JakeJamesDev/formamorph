@@ -31,8 +31,13 @@ const WORLD: World = benchEditorWorld({
   ],
   connections: [{ id: 'c1', a: 'tavern', b: 'yard', aToB: {}, bToA: {} }],
   entities: [
-    { id: 'crowd', name: 'Crowd', kind: 'group', locations: ['tavern'] },
+    { id: 'crowd', name: 'Crowd', kind: 'group', locations: ['tavern'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }] },
     { id: 'moths', name: 'Moths', kind: 'group' },
+    // Begins in the yard and only visits the cellar on a row.
+    {
+      id: 'rats', name: 'Rats', kind: 'group', locations: ['yard', 'cellar'],
+      starts: [{ id: 'r1', place: 'yard', weight: 1, schedule: [{ id: 'dig', time: 'allDay', action: { kind: 'stay', place: 'cellar' } }] }],
+    },
     {
       id: 'farrier', name: 'Farrier', kind: 'individual', locations: ['yard', 'tavern', 'cellar'], traversable: ['cellar'],
       starts: [
@@ -66,7 +71,7 @@ describe('the Presence tab: Entities', () => {
     openPresence('Tavern');
     await user.click(screen.getByRole('combobox', { name: /Select entities/ }));
     const names = screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent ?? '');
-    expect(names.filter((n) => /, (not )?selected$/.test(n))).toEqual(['Crowd, selected', 'Moths, not selected']);
+    expect(names.filter((n) => /, (not )?selected$/.test(n))).toEqual(['Crowd, selected', 'Moths, not selected', 'Rats, not selected']);
 
     await user.click(await screen.findByRole('option', { name: 'Moths, not selected' }));
     await user.keyboard('{Escape}');
@@ -74,6 +79,20 @@ describe('the Presence tab: Entities', () => {
 
     await undo();
     expect(ctx().entities.find((e) => e.id === 'moths')!.locations).toBeUndefined();
+  });
+});
+
+describe('the Presence tab: Entities, for a Group that only visits', () => {
+  it('leaves a Group unticked when only a row brings it here, and adds it no Start when another Group is picked', async () => {
+    const user = userEvent.setup();
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openPresence('Cellar');
+    await user.click(screen.getByRole('combobox', { name: /Select entities/ }));
+    expect(screen.getByRole('option', { name: 'Rats, not selected' })).toBeTruthy();
+    await user.click(await screen.findByRole('option', { name: 'Moths, not selected' }));
+    await user.keyboard('{Escape}');
+    expect(ctx().entities.find((e) => e.id === 'rats')!.starts?.map((s) => s.place)).toEqual(['yard']);
+    expect(ctx().entities.find((e) => e.id === 'moths')!.starts?.map((s) => s.place)).toEqual(['cellar']);
   });
 });
 

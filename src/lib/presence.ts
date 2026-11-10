@@ -1,4 +1,4 @@
-import type { Connection, Entity, EntityPositions, GameLocation } from '@/types';
+import type { Connection, Entity, EntityPositions, GameLocation, GroupStates } from '@/types';
 import { ancestors, parentLookup } from './ancestors';
 import { entitiesInPlay } from './entityPresence';
 import { findNameMatches } from './entityMatch';
@@ -29,6 +29,8 @@ export interface PresenceInput {
   runtime: readonly Entity[];
   /** Where each positioned entity stands, runtime characters included. */
   positions: Readonly<EntityPositions>;
+  /** Where each Group's presences stand. */
+  groups: Readonly<GroupStates>;
   followers: readonly string[];
   locationId: string | null | undefined;
   locations: readonly Pick<GameLocation, 'id' | 'parentId'>[];
@@ -211,7 +213,7 @@ export function strangersInPlay(
 export function computePresence(input: PresenceInput): Presence {
   const { persona, locationId, locations } = input;
   const isMet = metCheck(input.met, persona, locations, new Set(input.runtime.map((e) => e.id)));
-  const cast = entitiesInPlay([...input.entities, ...input.runtime], input.positions)
+  const cast = entitiesInPlay([...input.entities, ...input.runtime], input)
     .filter((e) => !e.customPersona && e.id !== persona?.id);
   const near = locationId ? connectedPlaces(locationId, locations, input.connections) : new Set<string>();
   const recentIds = participantIds(input.turns, locationId, cast, new Set(input.followers));

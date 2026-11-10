@@ -1,21 +1,23 @@
 import type {
-  Connection, DiscoveredEntity, EntityPositions, EntityStart, IndividualState, IndividualStates, PatrolStop, PositionHold,
-  ScheduleAction, ScheduleRange, ScheduleRow, Traversable, WanderPlace,
+  Connection, DiscoveredEntity, EntityPositions, EntityStart, GroupStates, IndividualState, IndividualStates, PatrolStop, PositionHold,
+  PresenceState, ScheduleAction, ScheduleRange, ScheduleRow, Traversable, WanderPlace,
 } from "@/types";
 import { reachableFrom, type LocationLink } from "@/lib/locationGraph";
 import { MINUTES_PER_DAY, nextDaypartEdge } from "@/lib/gameClock";
 
 /**
- * The position engine: where every Individual is now. Pure: the same routines, book, scene and random source
- * give the same result. Times are story minutes (`storyMinute`). Moves jump straight to their target and are
- * silent; the caller decides what to show.
+ * The position engine: where every Individual and every presence of a Group is now. Pure: the same routines,
+ * book, scene and random source give the same result. Times are story minutes (`storyMinute`). Moves jump
+ * straight to their target and are silent; the caller decides what to show.
  */
 
-/** What the engine reads of an Individual. */
+/** What the engine reads of an entity with a kind. A Group runs every Start at once and ignores weight,
+ *  Strict and Traversable. */
 export interface Routine {
   id: string;
   starts: readonly EntityStart[];
   traversable: Traversable;
+  group?: true;
 }
 
 /** The places and links travel runs over. */
@@ -30,11 +32,15 @@ export interface PositionScene extends PlaceGraph {
   playerAt: string | undefined;
 }
 
-/** Where each character stands, and each Individual's engine state. */
+/** Where each Individual stands with its engine state, and each Group's presences. */
 export interface PositionBook {
   positions: EntityPositions;
   individuals: IndividualStates;
+  groups: GroupStates;
 }
+
+/** A book with nobody placed yet. */
+export const EMPTY_BOOK: PositionBook = { positions: {}, individuals: {}, groups: {} };
 
 /** The wait lengths a follower can be given (Q8). */
 export type WaitLength = "hour" | "thisDaypart" | "nextDaypart";
@@ -241,41 +247,76 @@ function advanceOne(
     body.st = { ...body.st, hold: undefined };
   }
 
-  // Replay every row edge and idle in clock order up to now (Q83).
+  replay(body, start, reach, cursor, scene, random);
+  return pause();
+}
+
+/** Every row edge and idle of `start` replayed in clock order from `cursor` up to now (Q83). */
+function replay(body: Body, start: EntityStart, reach: ReadonlySet<string>, cursor: number, scene: PositionScene, random: () => number): void {
   const live = (t: number) => liveRow(start, rowAt(start, t), reach);
   const first = live(cursor);
   if (first.rowId !== body.st.rowId) enterRow(body, first, cursor, random);
   else if (!body.pos || !placesOf(first.action).includes(body.pos)) stepRow(body, first, cursor, random);
-  while (body.pos !== playerAt) {
+  while (body.pos !== scene.playerAt) {
     const t = Math.max(cursor, Math.min(nextBoundary(start, cursor), body.st.idleEnd ?? Infinity));
-    if (!(t <= now)) break;
+    if (!(t <= scene.now)) break;
     cursor = t;
     const row = live(t);
     if (row.rowId !== body.st.rowId) enterRow(body, row, t, random);
     else if (body.st.idleEnd !== undefined && body.st.idleEnd <= t) stepRow(body, row, t, random);
   }
-  return pause();
+}
+
+/** One presence of a Group placed for now: a new one begins at its Start's place, and one at the player's place
+ *  stays until the player leaves. */
+function advancePresence(
+  start: EntityStart, saved: PresenceState | undefined, scene: PositionScene, random: () => number, connected: ConnectedCache,
+): PresenceState {
+  const { now, playerAt } = scene;
+  const body: Body = saved
+    ? { pos: saved.position, st: { startId: start.id, rowId: saved.rowId, lastRun: saved.lastRun, idleEnd: saved.idleEnd, stop: saved.stop } }
+    : { pos: start.place, st: { startId: start.id, lastRun: now } };
+  if (!(saved && playerAt !== undefined && body.pos === playerAt)) {
+    replay(body, start, connected(start.place), Math.min(body.st.lastRun, now), scene, random);
+  }
+  const { rowId, idleEnd, stop } = body.st;
+  return tidy({ position: body.pos ?? start.place, rowId, lastRun: now, idleEnd, stop });
+}
+
+/** Every presence of `routine`, one per Start. A record whose Start is gone is dropped. */
+function advanceGroup(
+  routine: Routine, saved: Readonly<Record<string, PresenceState>> | undefined, scene: PositionScene, random: () => number,
+  connected: ConnectedCache,
+): Record<string, PresenceState> {
+  return Object.fromEntries(routine.starts.map((start) => [start.id, advancePresence(start, saved?.[start.id], scene, random, connected)]));
 }
 
 /** Strips undefined fields, so a saved state carries only what it holds. */
-function tidy(st: IndividualState): IndividualState {
+function tidy<T extends object>(st: T): T {
   const out = { ...st };
-  for (const key of Object.keys(out) as (keyof IndividualState)[]) if (out[key] === undefined) delete out[key];
+  for (const key of Object.keys(out) as (keyof T)[]) if (out[key] === undefined) delete out[key];
   return out;
 }
 
 /**
- * Every Individual in `routines` placed for `scene.now`: the Start rolled on first sight, the schedule replayed
- * since the last run, followers led to the player or left waiting, holds and waits released. Characters
- * outside `routines` keep their positions.
+ * Every routine in `routines` placed for `scene.now`. An Individual: the Start rolled on first sight, the
+ * schedule replayed since the last run, followers led to the player or left waiting, holds and waits released.
+ * A Group: each Start's presence replayed the same way. Characters outside `routines` keep their positions.
  */
 export function advancePositions(
   routines: readonly Routine[], book: PositionBook, scene: PositionScene, random: () => number,
 ): PositionBook {
   const positions = { ...book.positions };
   const individuals = { ...book.individuals };
+  const groups = { ...book.groups };
   const connected = connectedCache(scene);
   for (const routine of routines) {
+    if (routine.group) {
+      const presences = advanceGroup(routine, book.groups[routine.id], scene, random, connected);
+      if (Object.keys(presences).length) groups[routine.id] = presences;
+      else delete groups[routine.id];
+      continue;
+    }
     const body = advanceOne(routine, book.individuals[routine.id], book.positions[routine.id], scene, random, connected);
     if (!body) {
       delete individuals[routine.id];
@@ -286,7 +327,13 @@ export function advancePositions(
     else positions[routine.id] = body.pos;
     individuals[routine.id] = tidy(body.st);
   }
-  return { positions, individuals };
+  return { positions, individuals, groups };
+}
+
+/** The places each Group's presences stand at, deduped, by Group id. */
+export function groupPlaces(groups: Readonly<GroupStates>): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(groups).map(([id, presences]) =>
+    [id, [...new Set(Object.values(presences).map((p) => p.position))]]));
 }
 
 /** The saved Start of `routine`, if it still has it. */
@@ -315,6 +362,7 @@ export function isStrictNow(routine: Routine, st: IndividualState | undefined, n
 }
 
 const withState = (book: PositionBook, id: string, st: IndividualState, pos?: string): PositionBook => ({
+  ...book,
   positions: pos === undefined ? book.positions : { ...book.positions, [id]: pos },
   individuals: { ...book.individuals, [id]: tidy(st) },
 });

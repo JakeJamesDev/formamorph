@@ -129,9 +129,10 @@ import {
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
-import { entitiesInPlay, entityIdsAt, positionedCast } from "../lib/entityPresence";
+import { entitiesInPlay, entityIdsAt, positionedCast, type Standings } from "../lib/entityPresence";
 import { castRoutines } from "../lib/entityKind";
 import { placeAll, positionWorld, reseatForOpening, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
+import { EMPTY_BOOK, groupPlaces } from "../lib/positionEngine";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve } from "../lib/outputLength";
 import { outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -779,6 +780,8 @@ const GameViewer = ({
     entityWaiting,
     individualStates,
     setIndividualStates,
+    groupStates,
+    setGroupStates,
     currentBook,
     applyFollowerState,
     placeCast,
@@ -3067,7 +3070,7 @@ const GameViewer = ({
       // Without a move the pass reads where everyone stood this turn, so only a pull changes it.
       const book = moved ?? moveApplied;
       const pulled = calledOver(book, turn.location, world);
-      return moved || pulled !== book ? pulled.positions : undefined;
+      return moved || pulled !== book ? pulled : undefined;
     };
     const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, ownerPositions()) : [];
     const commitTotals = startActionTotals();
@@ -3429,7 +3432,7 @@ const GameViewer = ({
       /** The world the turn's prompts read: the code view, with the followers at the player's side. */
       const sceneBox = (): SceneWrites | null => {
         if (!turnJoin) return codeView;
-        return { ...(codeView ?? {}), positions: turnJoin.positions, individuals: turnJoin.individuals };
+        return { ...(codeView ?? {}), positions: turnJoin.positions, individuals: turnJoin.individuals, groups: turnJoin.groups };
       };
       // An On Call write since the narration's context values were built, which later prompts must read (Q52).
       let narrationBuilt = false;
@@ -4168,6 +4171,7 @@ const GameViewer = ({
           owners,
           places: { locations, location: here && { id: here.id, name: here.name }, connections },
           positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
+          presences: groupPlaces(groupStates),
           followers: entityFollowers,
           waiting: entityWaiting,
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
@@ -5797,11 +5801,11 @@ const GameViewer = ({
   const inventoryOwnersAt = (
     location: GameLocation | null,
     discovered: readonly InventoryOwner[],
-    positions?: FollowerState["positions"],
+    standings?: Standings,
   ): InventoryOwner[] => {
     const scene = liveScene(location, null);
     const played = new Set([scene.persona?.entity.id, ...(scene.playedEntities ?? []).map((e) => e.id)]);
-    const here = new Set(positions ? entityIdsAt(location?.id, entitiesInPlay(scene.entities, positions)) : scene.presentIds);
+    const here = new Set(standings ? entityIdsAt(location?.id, entitiesInPlay(scene.entities, standings)) : scene.presentIds);
     return [
       ...scene.entities.filter((e) => here.has(e.id) && !played.has(e.id)).map((e) => ({ id: e.id, name: e.name })),
       ...discovered,
@@ -6067,18 +6071,19 @@ const GameViewer = ({
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
       // Each Individual rolls its Start, so the opening pool reads who stands at the start.
-      const startBook = placeAll({ positions: {}, individuals: {} }, positionWorld(
+      const startBook = placeAll(EMPTY_BOOK, positionWorld(
         castRoutines(positionedCast(codeEntities.world, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
       ));
       const startPositions = startBook.positions;
       setEntityPositions(startPositions);
       setIndividualStates(startBook.individuals);
+      setGroupStates(startBook.groups);
       setMetEntities([]);
       setStrangerAliases({});
       entityOfferRef.current = NO_ENTITY_OFFER;
       // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
-        pick: personaPick, worldEntities: entitiesInPlay(traitEntities, startPositions), overview: worldOverview, locations, startingLocationId: location?.id,
+        pick: personaPick, worldEntities: entitiesInPlay(traitEntities, startBook), overview: worldOverview, locations, startingLocationId: location?.id,
         picked, random: Math.random,
       });
       openingSessionRef.current = {

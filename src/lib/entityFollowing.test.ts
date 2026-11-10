@@ -28,7 +28,10 @@ const corvin = individual('corvin', [start('inn')], 'anywhere'); // a migrated C
 const wenna = individual('wenna', [start('inn')]); // a migrated Stays Put
 const tess = individual('tess', [start('inn', wander('inn', 'square', 'quay'))]); // a migrated Moves Between
 const clerk = individual('clerk', [start('inn', [{ id: 'shift', time: 'allDay', strict: true, action: { kind: 'stay', place: 'inn' } }])], 'anywhere');
-const moths: Entity = { id: 'moths', name: 'moths', kind: 'group', locations: ['inn', 'gate'] };
+const moths: Entity = {
+  id: 'moths', name: 'moths', kind: 'group', locations: ['inn', 'gate'],
+  starts: [{ id: 'm1', place: 'inn', weight: 1, schedule: [] }, { id: 'm2', place: 'gate', weight: 1, schedule: [] }],
+};
 const albus = individual('albus', [start('keep')], 'anywhere');
 const CAST = [corvin, wenna, tess, clerk, moths, albus];
 
@@ -39,12 +42,13 @@ const state = (positions: Record<string, string>, follow: string[] = []): Follow
     startId: e.starts![0].id, lastRun: NOON, ...(e.id === 'tess' && { rowId: 'w', idleEnd: NOON + 600 }),
     ...(follow.includes(e.id) && { follow: { mode: 'following' as const } }),
   }])) as IndividualStates,
+  groups: {},
 });
 const AT_INN = { corvin: 'inn', wenna: 'inn', tess: 'inn', clerk: 'inn', albus: 'keep' };
 
 describe('who gets an entity location request', () => {
   const subjects = (s: FollowerState, at = 'inn') =>
-    entityMoveSubjects(entitiesInPlay(CAST, s.positions), s, at, world(at)).map((e) => e.id);
+    entityMoveSubjects(entitiesInPlay(CAST, s), s, at, world(at)).map((e) => e.id);
 
   it('asks each follower and each Individual here whose row is not Strict', () => {
     // Wenna may go nowhere else, and is still asked: she can come along.
@@ -174,6 +178,14 @@ describe("a script's entity writes", () => {
     expect(followersOf(s)).toEqual(['wenna', 'clerk']);
     expect(s.individuals.clerk.follow).toEqual({ mode: 'following', script: true });
     expect('moths' in s.individuals).toBe(false);
+  });
+
+  it('leaves a Group where its presences stand on a script follow or move', () => {
+    const swarm = { m1: { position: 'inn', lastRun: NOON }, m2: { position: 'gate', lastRun: NOON } };
+    const before = { ...state(AT_INN), groups: { moths: swarm } };
+    const s = writes(before, { entity: 'moths', kind: 'follow' }, { entity: 'moths', kind: 'move', location: 'keep' });
+    expect(s.groups.moths).toEqual(swarm);
+    expect('moths' in s.positions || 'moths' in s.individuals).toBe(false);
   });
 
   it('parts ways on unfollow, leaving the character where it stands', () => {

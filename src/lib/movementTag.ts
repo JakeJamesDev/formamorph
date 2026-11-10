@@ -13,6 +13,7 @@ export function movementStates(
 ): MovementStates {
   const out: Record<string, MovementState> = {};
   for (const routine of routines) {
+    if (routine.group) continue;
     const st = individuals[routine.id];
     out[routine.id] = { ...(st?.follow && { follow: st.follow.mode }), strict: isStrictNow(routine, st, now) };
   }

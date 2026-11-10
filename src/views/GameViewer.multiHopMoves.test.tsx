@@ -34,6 +34,7 @@ const character = (id: string, name: string, movement: 'follow' | 'between' | un
 const following = (ids: string[], positions: Record<string, string>) => ({
   positions: { ...play.entityPositions, ...positions },
   individuals: { ...play.individualStates, ...Object.fromEntries(ids.map((id) => [id, { ...play.individualStates[id], follow: { mode: 'following' as const } }])) },
+  groups: play.groupStates,
 });
 const vigor: PlayerStat = { id: 'vigor', name: 'Vigor', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
 // Lies in the store; its stat effect puts its name in the stat request where it is present.

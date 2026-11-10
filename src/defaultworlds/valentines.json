@@ -945,7 +945,33 @@
           "label": "second-fastest sprinter"
         }
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-3",
+          "place": "8381bbd7-3818-4527-a0a7-4a86fe411057",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-4",
+          "place": "c115a222-8165-4635-b53c-ccb7fcbd38ac",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "50d3fe3f-11b1-4088-b7c4-c5b3cf05f75d",
@@ -976,7 +1002,39 @@
         "c115a222-8165-4635-b53c-ccb7fcbd38ac"
       ],
       "pronouns": "they/them",
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "9af8c8ce-feec-4010-bc7c-882991da47f0",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "8381bbd7-3818-4527-a0a7-4a86fe411057",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-3",
+          "place": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-4",
+          "place": "19853519-2c7f-45c0-80d6-330f41ab651f",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-5",
+          "place": "c115a222-8165-4635-b53c-ccb7fcbd38ac",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "3c7e1a95-d24b-4f08-9e6a-5b2f8c1d7a40",
@@ -1200,7 +1258,21 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "9af8c8ce-feec-4010-bc7c-882991da47f0",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "19853519-2c7f-45c0-80d6-330f41ab651f",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "540f9257-8fb7-438d-8336-05728a45900c",
@@ -1226,7 +1298,21 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "2e887c0c-6e74-447b-ad9d-791a63ed6db8",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "8381bbd7-3818-4527-a0a7-4a86fe411057",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "5a967743-0c9e-4ba9-90af-e17016dc92d1",

@@ -26,6 +26,7 @@ const character = (id: string, name: string, movement: 'follow' | 'between' | un
 const following = (ids: string[], positions: Record<string, string>) => ({
   positions: { ...play.entityPositions, ...positions },
   individuals: { ...play.individualStates, ...Object.fromEntries(ids.map((id) => [id, { ...play.individualStates[id], follow: { mode: 'following' as const } }])) },
+  groups: play.groupStates,
 });
 
 const worldWith = (over: Partial<World> = {}): World => ({

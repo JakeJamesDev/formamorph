@@ -7,7 +7,7 @@
  * one transaction.
  */
 
-import { withEntityLocations } from '@/lib/entityPresence';
+import { placedIn } from '@/lib/entityPresence';
 import { linkToSource, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import { kindOf } from '@/lib/librarySources';
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
@@ -117,7 +117,7 @@ export async function addCopyToStoredWorld(
     const connections = { ...adopted.connections, ...used };
     const kept = data.entities ?? [];
     const entity: Entity = {
-      ...adoptOwnedTraits(withEntityLocations(rest as Entity, Object.values(used)), {
+      ...adoptOwnedTraits(placedIn(rest as Entity, used), {
         traits: data.traits ?? [], traitGroups: data.traitGroups ?? [], entities: kept,
         stats: data.stats ?? [], statGroups: data.statGroups ?? [],
       }),

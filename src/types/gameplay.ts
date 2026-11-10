@@ -59,7 +59,7 @@ export type OwnedTraitStates = Record<string, OwnedTraitState>;
 /** Entity id → its stats during the game, in authored order. */
 export type EntityStatValues = Record<string, PlayerStat[]>;
 
-/** Entity id → the location id it stands at during the game. An absent entity is at every location it lists. */
+/** Individual id → the location id it stands at during the game. A Group's places come from `GroupStates`. */
 export type EntityPositions = Record<string, string>;
 
 /** An Individual traveling with the player, or left waiting at its position until `until`. `script`: a
@@ -88,6 +88,21 @@ export interface IndividualState {
 
 /** Individual id → its position engine state. */
 export type IndividualStates = Record<string, IndividualState>;
+
+/** Where one Start of a Group stands, and its schedule state. Times are story minutes. */
+export interface PresenceState {
+  position: string;
+  /** The row in force when the engine last ran. Absent = no row. */
+  rowId?: string;
+  lastRun: number;
+  /** When the current Wander or Patrol idle runs out. */
+  idleEnd?: number;
+  /** The Patrol stop last reached, as an index into the row's stops. */
+  stop?: number;
+}
+
+/** Group id → Start id → that presence's state. */
+export type GroupStates = Record<string, Record<string, PresenceState>>;
 
 /** Entity id → stat id → what one turn moved that stat's value. Unmoved stats are absent. */
 export type EntityStatChanges = Record<string, Record<string, number>>;
@@ -412,6 +427,8 @@ export interface GameState {
   entityPositions?: EntityPositions;
   /** The position engine's state per Individual, runtime characters included. Absent ⇒ none. */
   individualStates?: IndividualStates;
+  /** The position engine's state per Group, one record per Start. Absent ⇒ none. */
+  groupStates?: GroupStates;
   /** The ids of the entities the player has met, in the order they met. Absent ⇒ none. */
   metEntities?: string[];
   /** The latest alias each stranger was seen under, by entity id. Absent ⇒ none. */

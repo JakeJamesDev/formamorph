@@ -1049,7 +1049,27 @@
         "7669f491-6486-4012-b827-442f0b18c26d",
         "dde19988-f34e-4d9e-a6fe-8a86141d98c9"
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "7669f491-6486-4012-b827-442f0b18c26d",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-3",
+          "place": "dde19988-f34e-4d9e-a6fe-8a86141d98c9",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "1739140862574",
@@ -1075,7 +1095,27 @@
         "dec4e8c6-1154-4e81-bf05-425478e5fec4",
         "1eae497d-dbd0-48e8-978b-8b67f93745f8"
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-3",
+          "place": "1eae497d-dbd0-48e8-978b-8b67f93745f8",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "1739140929151",
@@ -1101,7 +1141,27 @@
         "dec4e8c6-1154-4e81-bf05-425478e5fec4",
         "541721dc-e269-4539-9da7-9dd2be608a16"
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-3",
+          "place": "541721dc-e269-4539-9da7-9dd2be608a16",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "1739140991471",
@@ -1263,7 +1323,27 @@
       "knownIn": [
         "1739141048247"
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "1739141048247",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-3",
+          "place": "7669f491-6486-4012-b827-442f0b18c26d",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "22578969-7992-441f-add8-fbd10f6e49c0",
@@ -1291,7 +1371,27 @@
         "7669f491-6486-4012-b827-442f0b18c26d",
         "f7a8a344-6986-42df-965b-0eac20820edc"
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "7669f491-6486-4012-b827-442f0b18c26d",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-3",
+          "place": "f7a8a344-6986-42df-965b-0eac20820edc",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "images": [
@@ -1316,7 +1416,21 @@
         "dec4e8c6-1154-4e81-bf05-425478e5fec4",
         "33edfb4b-2356-45fd-80b4-de75cbca7bb1"
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "33edfb4b-2356-45fd-80b4-de75cbca7bb1",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "images": [
@@ -1374,7 +1488,21 @@
         "5873058f-ec2d-42f2-8c9e-3657181c90d3",
         "542a8d1e-f045-432c-89e0-836be699b1dc"
       ],
-      "kind": "group"
+      "kind": "group",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "5873058f-ec2d-42f2-8c9e-3657181c90d3",
+          "weight": 1,
+          "schedule": []
+        },
+        {
+          "id": "start-2",
+          "place": "542a8d1e-f045-432c-89e0-836be699b1dc",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "images": [

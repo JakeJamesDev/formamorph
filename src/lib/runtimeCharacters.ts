@@ -1,11 +1,11 @@
 import { randomUUID } from "@/lib/uuid";
-import type { ChatMessage, Entity, EntityPositions, DiscoveredEntity } from '@/types';
+import type { ChatMessage, Entity, DiscoveredEntity } from '@/types';
 import { survivingTurnIds } from '@/lib/turnDigest';
 import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
 import { sameCharacterName } from '@/lib/entityMatch';
-import { entitiesInPlay, entityIdsAtAny } from '@/lib/entityPresence';
+import { entitiesInPlay, entityIdsAtAny, type Standings } from '@/lib/entityPresence';
 
 /** Labels in the character-note user message. Shared by the request builder and the response cleaner —
  *  a small model often parrots these back into its output. */
@@ -89,7 +89,7 @@ export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): E
 
 /**
  * "Bring-them-over" candidates: the authored entities standing in one of the `nearby` places, named by the
- * narration as participants, and not already present. Where they stand reads `positions` over their listed
+ * narration as participants, and not already present. Where they stand reads `standings` over their listed
  * locations. The position engine decides which of them may come. Pure.
  */
 export function selectReachableVisitors(
@@ -97,9 +97,9 @@ export function selectReachableVisitors(
   nearby: readonly string[],
   authoredEntities: Entity[],
   presentIds: string[],
-  positions: Readonly<EntityPositions> = {},
+  standings: Standings = { positions: {}, groups: {} },
 ): Entity[] {
-  const reachableIds = new Set(entityIdsAtAny(nearby,entitiesInPlay(authoredEntities, positions)));
+  const reachableIds = new Set(entityIdsAtAny(nearby, entitiesInPlay(authoredEntities, standings)));
   const present = new Set(presentIds);
   return authoredEntities.filter(
     (e) => reachableIds.has(e.id) && !present.has(e.id) && participants.some((p) => sameCharacterName(p, e.name)),

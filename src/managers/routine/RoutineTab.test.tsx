@@ -308,16 +308,49 @@ describe('placement', () => {
     expect(screen.getByText('Lets the player start at any start location as this entity')).toBeInTheDocument();
   });
 
-  it('turns an entity in one location into one at every location, keeping its places', async () => {
-    const bench = mount(mira(oneStart([stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })])));
+  it('turns an entity in one location into one at every location, keeping its Starts and rows', async () => {
+    const starts = oneStart([stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })]);
+    const bench = mount(mira(starts));
     await userEvent.click(screen.getByRole('radio', { name: 'Every Location' }));
-    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'group', locations: ['smithy', 'inn'] }));
-    expect(stored(bench)).not.toHaveProperty('starts');
+    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'group', locations: ['smithy', 'inn'], starts, traversable: 'anywhere' }));
   });
 
   it('tells a persona author of a group that any of its locations can be the start', () => {
-    mount(mira([], { persona: true, kind: 'group', starts: undefined, locations: ['inn'] }));
+    mount(mira(oneStart([], 'inn'), { persona: true, kind: 'group' }));
     expect(screen.getByText('Lets the player start at any of these as this entity')).toBeInTheDocument();
+  });
+
+  describe('a Group\'s place list', () => {
+    const herd = (starts: EntityStart[]) => mira(starts, { kind: 'group', traversable: undefined });
+    const twoStarts: EntityStart[] = [
+      { id: 'g1', place: 'smithy', weight: 1, schedule: [] },
+      { id: 'g2', place: 'inn', weight: 1, schedule: [stay('night', 'market', 'allDay')] },
+    ];
+    const pick = async (name: string) => {
+      await userEvent.click(within(screen.getByText('Locations').parentElement!).getByRole('combobox'));
+      await userEvent.click(await screen.findByRole('option', { name: new RegExp(`^${name}`) }));
+    };
+
+    it('adds a Start with no rows at a picked location', async () => {
+      const bench = mount(herd(twoStarts));
+      await pick('Farm');
+      expect(stored(bench).starts?.map((s) => [s.place, s.schedule.length])).toEqual([['smithy', 0], ['inn', 1], ['farm', 0]]);
+    });
+
+    it('removes the Starts that begin at an unpicked location, and undo brings them back with their rows', async () => {
+      const bench = mount(herd(twoStarts));
+      await pick('Inn');
+      expect(stored(bench).starts).toEqual([twoStarts[0]]);
+      expect(stored(bench).locations).toEqual(['smithy']);
+      await act(async () => { bench.history().undo(); });
+      expect(stored(bench).starts).toEqual(twoStarts);
+    });
+
+    it('keeps the last Start', async () => {
+      const bench = mount(herd([twoStarts[0]]));
+      await pick('Smithy');
+      expect(stored(bench).starts).toEqual([twoStarts[0]]);
+    });
   });
 
   it('gives a custom persona only its locations, with no placement or routine', () => {

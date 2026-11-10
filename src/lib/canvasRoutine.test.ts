@@ -131,7 +131,9 @@ describe('reach', () => {
 });
 
 it('lights a Group’s places and draws no lines', () => {
-  const herd = { id: 'herd', name: 'Herd', kind: 'group', locations: ['inn', 'market'] } as Entity;
+  const herd = {
+    id: 'herd', name: 'Herd', kind: 'group', locations: ['inn', 'market'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'market', weight: 1, schedule: [] }],
+  } as Entity;
   const v = view(herd);
   expect(markOf(v, 'inn')).toEqual({ kind: 'routine' });
   expect(markOf(v, 'market')).toEqual({ kind: 'routine' });

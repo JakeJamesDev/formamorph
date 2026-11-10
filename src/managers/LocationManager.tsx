@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
-import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
+import { setLocationRoster, startsAt } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -70,9 +70,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
   const pins = editingLocation?.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
 
-  // Membership is entity-owned, so location-first authoring reads the inversion and writes each changed
-  // entity's own list — the same edit, expressed from the other side.
-  const presentIds = entityIdsAt(location.id, entities);
+  // Membership is entity-owned, so location-first authoring writes each changed Group's own Starts.
   const treeOrder = entitiesInTreeOrder(entityGroups, entities);
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const entityLabel = (e: Entity) => label(e.name);
@@ -80,12 +78,18 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
     const found = world.locations.find((l) => l.id === id);
     return found ? label(found.name) : 'Unknown Location';
   };
+  // The Groups with a Start here: what the picker shows and what its write compares against.
+  const groupIdsHere = treeOrder.filter((e) => isGroup(e) && startsAt(e, location.id)).map((e) => e.id);
+  // Remounts the picker when a Group keeps its last Start, so it shows the Group still ticked.
+  const [refusals, setRefusals] = useState(0);
   const handleEntitiesChange = (ids: string[]) => {
     const before = new Map(entities.map((e) => [e.id, e]));
     // Only the entities whose membership actually moved are written through.
-    setLocationRoster(location.id, ids, entities).forEach((entity) => {
+    const next = setLocationRoster(location.id, ids, entities);
+    next.forEach((entity) => {
       if (before.get(entity.id) !== entity) updateEntity(entity);
     });
+    if (next.some((e) => isGroup(e) && !ids.includes(e.id) && startsAt(e, location.id))) setRefusals((n) => n + 1);
   };
 
   // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
@@ -186,9 +190,9 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
         <div className="space-y-2" {...fieldFrame('entities')}>
           <Label>Entities</Label>
           <MultiSelect
-            key={editingLocation.id}
+            key={`${editingLocation.id}:${refusals}`}
             options={treeOrder.filter(isGroup).map((e) => ({ label: entityLabel(e), value: e.id }))}
-            defaultValue={presentIds.filter((id) => treeOrder.some((e) => e.id === id && isGroup(e)))}
+            defaultValue={groupIdsHere}
             onValueChange={handleEntitiesChange}
             placeholder="Select entities"
           />

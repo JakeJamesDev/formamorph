@@ -133,10 +133,10 @@ export interface VisitorInput {
 export function selectVisitorAdditions(input: VisitorInput): PositionBook {
   const { prose, entities, allEntities, location, book, world } = input;
   const visitorParticipants = findEntityNames(prose, allEntities, { partial: false });
-  const presentIds = entityIdsAt(location.id, entitiesInPlay(allEntities, book.positions));
+  const presentIds = entityIdsAt(location.id, entitiesInPlay(allEntities, book));
   const { scene } = withPlayerAt(world, location.id);
   const nearby = nearbyPlaces(location.id, scene.locations, scene.connections);
-  const visitors = selectReachableVisitors(visitorParticipants, nearby, entities, presentIds, book.positions);
+  const visitors = selectReachableVisitors(visitorParticipants, nearby, entities, presentIds, book);
   let next = book;
   for (const entity of visitors) {
     const routine = world.routines.get(entity.id);

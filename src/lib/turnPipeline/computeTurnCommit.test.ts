@@ -452,7 +452,7 @@ describe('computeTurnCommit — entity movement', () => {
   const stranger = { entity: { id: 'mira', name: 'Mira', aiDescription: 'A ferry hand.' }, locationId: 'inn', sourceTurnId: 't0' };
   const CAST = [
     at('wenna', 'inn', 'anywhere'), at('albus', 'inn', 'anywhere'), at('corvin', 'inn', 'anywhere'), at('sylvie', 'keep', 'anywhere'),
-    route('blackwell'), route('hale'), { id: 'moths', name: 'moths', kind: 'group', locations: ['inn', 'gate'] } as Entity,
+    route('blackwell'), route('hale'), { id: 'moths', name: 'moths', kind: 'group', locations: ['inn', 'gate'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'gate', weight: 1, schedule: [] }] } as Entity,
   ];
   const world = positionWorld(castRoutines(CAST, [stranger]), NOON, 'inn', PLACES, [], () => 0);
   /** Everyone at `positions` with their engine state, `followers` following. */
@@ -463,9 +463,14 @@ describe('computeTurnCommit — entity movement', () => {
       ...((id === 'blackwell' || id === 'hale') && { rowId: 'w', idleEnd: NOON + 600 }),
       ...(followers.includes(id) && { follow: { mode: 'following' as const } }),
     }])),
+    groups: {},
   });
   /** The world with only the characters `state` holds, so the engine places no one else. */
-  const holding = (state: FollowerState) => ({ ...world, routines: new Map([...world.routines].filter(([id]) => id in state.individuals)) });
+  const holding = (state: FollowerState) => ({
+    ...world,
+    routines: new Map([...world.routines].filter(([id]) => id in state.individuals)),
+    groups: new Map([...world.groups].filter(([id]) => id in state.groups)),
+  });
   const move = (state: FollowerState, commit: ReturnType<typeof autoCommit>, from: string, to: string | undefined) =>
     commitEntityMoves(state, commit, { from, to }, holding(state));
   /** Wenna stands at the inn; Albus and Corvin follow the player there. */

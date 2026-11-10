@@ -260,7 +260,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     globalStats: rawGlobalStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, globalTraits, disabledTraitIds, ownedTraits, codePins,
-    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions, entityStats,
+    personaRef, libraryPersona, personaPending, discoveredEntities, entityPositions, groupStates, entityStats,
   } = useGameplay();
   const pinBlueprints = useMemo(
     () => pinBlueprintsOf({ stats: authoredStats, statGroups, placeholders: worldPlaceholders, placeholderGroups }),
@@ -316,7 +316,9 @@ export function useResolvedWorld(): ResolvedWorld {
     [personaRef, worldEntities, libraryEntities],
   );
   // The cast as it stands in play, so every roster reads each positioned entity at its position.
-  const entities = useMemo(() => entitiesInPlay(cast, entityPositions), [cast, entityPositions]);
+  const entities = useMemo(
+    () => entitiesInPlay(cast, { positions: entityPositions, groups: groupStates }), [cast, entityPositions, groupStates],
+  );
   const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
   const customPersona = useMemo(() => customPersonaEntity(worldEntities) ?? null, [worldEntities]);
   // The one Traits tree's entities, their owned trait names resolved as the world's are.

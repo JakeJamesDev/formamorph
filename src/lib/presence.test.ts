@@ -31,6 +31,7 @@ const presence = (over: Partial<PresenceInput> = {}) => computePresence({
   entities: [mara, bram],
   runtime: [],
   positions: {},
+  groups: {},
   followers: [],
   locationId: 'hall',
   locations: LOCATIONS,
@@ -211,6 +212,16 @@ describe('the named sets', () => {
     const p = presence({ entities: [mara, bram, tilly], turns: [turn(['Tilly'], 'hall')] });
     expect(ids(p.lookAround)).toEqual(['tilly', 'mara']);
     expect(ids(p.inScene)).toEqual(['tilly']);
+  });
+
+  it('lists a Group once where two of its presences stand, and not where its presences are gone', () => {
+    const rooks: Entity = {
+      id: 'rooks', name: 'Rooks', kind: 'group', locations: ['hall', 'smithy'],
+      starts: [{ id: 'a', place: 'hall', weight: 1, schedule: [] }, { id: 'b', place: 'smithy', weight: 1, schedule: [] }],
+    };
+    const both = { rooks: { a: { position: 'hall', lastRun: 0 }, b: { position: 'hall', lastRun: 0 } } };
+    expect(ids(presence({ entities: [mara, rooks], groups: both }).lookAround)).toEqual(['mara', 'rooks']);
+    expect(ids(presence({ entities: [mara, rooks], groups: both, locationId: 'smithy' }).lookAround)).toEqual([]);
   });
 
   it('holds met people wherever they are in Met', () => {

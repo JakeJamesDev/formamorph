@@ -174,10 +174,13 @@ describe('migrateWorld — entity kind and routine (NPC Schedules migration tabl
   const one = (raw: Record<string, unknown>) => entitiesOf(migrateWorld(world([{ id: 'e', name: 'E', ...raw }])))[0];
   const OLD = ['presence', 'movement'];
 
-  it('makes an entity with no presence and several locations a Group at the same places', () => {
+  it('makes an entity with no presence and several locations a Group with one Start per place and no rows', () => {
     const e = one({ locations: ['keep', 'tower'] });
-    expect(e).toMatchObject({ kind: 'group', locations: ['keep', 'tower'] });
-    expect(e).not.toHaveProperty('starts');
+    expect(e).toMatchObject({
+      kind: 'group', locations: ['keep', 'tower'],
+      starts: [{ place: 'keep', weight: 1, schedule: [] }, { place: 'tower', weight: 1, schedule: [] }],
+    });
+    expect(e).not.toHaveProperty('traversable');
   });
 
   it('makes an entity with no presence and one location an Individual with one Start there', () => {

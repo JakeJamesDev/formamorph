@@ -41,7 +41,7 @@ describe('entity readers in play', () => {
     { reader: 'in-game entity panel', source: viewer, pattern: /entities=\{allEntities\}/ },
     // The seed resolves the pick itself, so it reads every world entity: a picked persona-only one is in no cast yet.
     // It reads them where the new game placed them.
-    { reader: 'opening pool, new game', source: viewer, pattern: /drawNewGameOpening\(\{\s*pick: personaPick, worldEntities: entitiesInPlay\(traitEntities, startPositions\),/ },
+    { reader: 'opening pool, new game', source: viewer, pattern: /drawNewGameOpening\(\{\s*pick: personaPick, worldEntities: entitiesInPlay\(traitEntities, startBook\),/ },
     { reader: 'opening pool, regenerate and load', source: viewer, pattern: /const sessionPool = \(\) => openingPool\(\{\s*overview: worldOverview,\s*entities,/ },
     { reader: 'panels, scene list', source: panels, pattern: /const \{ entities: authoredEntities(?:, \w+)* \} = useResolvedWorld\(\)/ },
     { reader: 'narration edit rescan', source: viewer, pattern: /useNarrationRescan\(\{ entities: allEntities,/ },

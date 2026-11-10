@@ -1,14 +1,18 @@
 import { describe, it, expect } from "vitest";
 import {
   entityIdsAt, entityIdsAtAny, withEntityLocations, setLocationRoster, dropLocationFromEntities,
-  entitiesInPlay, positionedCast,
+  entitiesInPlay, positionedCast, placedIn,
   knownInOf, withKnownIn, toggleKnownInPick, knownHere,
 } from "./entityPresence";
 import type { Entity } from "@/types";
 
-const alice: Entity = { id: "alice", name: "Alice", locations: ["bar"], kind: "group" };
-const bartender: Entity = { id: "bar-keep", name: "Bartender", locations: ["bar", "docks"], kind: "group" };
-const gull: Entity = { id: "gull", name: "Gull", locations: ["docks"], kind: "group" };
+/** A Group with one Start per place, no rows. */
+const group = (id: string, name: string, places: string[]): Entity => ({
+  id, name, kind: "group", locations: places, starts: places.map((place, i) => ({ id: `${id}-${i + 1}`, place, weight: 1, schedule: [] })),
+});
+const alice = group("alice", "Alice", ["bar"]);
+const bartender = group("bar-keep", "Bartender", ["bar", "docks"]);
+const gull = group("gull", "Gull", ["docks"]);
 /** An Individual starting at the bar or the docks, standing at the bar by day and wandering the docks and the
  *  attic at night, and allowed into the cellar. */
 const sailor: Entity = {
@@ -64,10 +68,13 @@ describe("withEntityLocations", () => {
 });
 
 describe("setLocationRoster (location-first editing writes through to the entities)", () => {
-  it("adds the location to newcomers and removes it from anyone dropped", () => {
-    const next = setLocationRoster("bar", ["gull"], cast);
-    expect(entityIdsAt("bar", next)).toEqual(["gull"]);
-    // Removing Bartender from the Bar leaves their other membership alone.
+  it("adds a Start with no rows to newcomers and removes the Starts there from anyone dropped", () => {
+    const next = setLocationRoster("bar", ["gull", "alice"], cast);
+    expect(entityIdsAt("bar", next)).toEqual(["alice", "gull"]);
+    const newcomer = next.find((e) => e.id === "gull")!;
+    expect(newcomer.starts?.map((s) => [s.place, s.schedule])).toEqual([["docks", []], ["bar", []]]);
+    // Removing Bartender from the Bar leaves their other Start alone.
+    expect(next.find((e) => e.id === "bar-keep")!.starts?.map((s) => s.id)).toEqual(["bar-keep-2"]);
     expect(next.find((e) => e.id === "bar-keep")!.locations).toEqual(["docks"]);
   });
 
@@ -83,9 +90,10 @@ describe("setLocationRoster (location-first editing writes through to the entiti
     expect(setLocationRoster("cellar", ["sailor"], [sailor])[0]).toBe(sailor);
   });
 
-  it("clearing a roster leaves an entity that lives nowhere else with no locations field", () => {
+  it("keeps a Group's last Start when its only place is cleared", () => {
     const next = setLocationRoster("bar", [], cast);
-    expect("locations" in next.find((e) => e.id === "alice")!).toBe(false);
+    expect(next[0]).toBe(alice);
+    expect(entityIdsAt("bar", next)).toEqual(["alice"]);
   });
 });
 
@@ -119,25 +127,40 @@ describe("dropLocationFromEntities", () => {
   });
 });
 
+describe("placedIn", () => {
+  it("carries a Group's Starts through the map, and lists any other entity at the mapped places", () => {
+    expect(placedIn(bartender, { docks: "pier" }).starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
+    expect(placedIn(ghost, { a: "pier", b: "bar" }).locations).toEqual(["pier", "bar"]);
+  });
+});
+
 describe("entitiesInPlay", () => {
+  it("lists a Group once at each place its presences stand, and nowhere else it lists", () => {
+    const groups = { "bar-keep": { "bar-keep-1": { position: "docks", lastRun: 0 }, "bar-keep-2": { position: "docks", lastRun: 0 } } };
+    const placed = entitiesInPlay(cast, { positions: {}, groups });
+    expect(entityIdsAt("bar", placed)).toEqual(["alice"]);
+    expect(entityIdsAt("docks", placed)).toEqual(["bar-keep", "gull"]);
+    expect(placed[1].locations).toEqual(["docks"]);
+  });
+
   it("puts a positioned entity at its position only", () => {
-    const placed = entitiesInPlay(cast, { "bar-keep": "docks" });
+    const placed = entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, groups: {} });
     expect(entityIdsAt("bar", placed)).toEqual(["alice"]);
     expect(entityIdsAt("docks", placed)).toEqual(["bar-keep", "gull"]);
   });
 
   it("keeps an entity without a position at every location it lists", () => {
-    const placed = entitiesInPlay(cast, { gull: "bar" });
+    const placed = entitiesInPlay(cast, { positions: { gull: "bar" }, groups: {} });
     expect(entityIdsAt("bar", placed)).toEqual(["alice", "bar-keep", "gull"]);
     expect(entityIdsAt("docks", placed)).toEqual(["bar-keep"]);
   });
 
   it("returns the same array when nobody has a position", () => {
-    expect(entitiesInPlay(cast, {})).toBe(cast);
+    expect(entitiesInPlay(cast, { positions: {}, groups: {} })).toBe(cast);
   });
 
   it("reads through the multi-location scopes too", () => {
-    expect(entityIdsAtAny(["bar"], entitiesInPlay(cast, { "bar-keep": "docks" }))).toEqual(["alice"]);
+    expect(entityIdsAtAny(["bar"], entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, groups: {} }))).toEqual(["alice"]);
   });
 });
 

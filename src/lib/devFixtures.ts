@@ -194,10 +194,15 @@ const individual = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[], s
   ...entity, kind: 'individual', starts: places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule })),
 });
 
+/** A Group with one Start per place, no rows. */
+const group = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[]): Entity => withDerivedLocations({
+  ...entity, kind: 'group', starts: places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] })),
+});
+
 /** The `entityPresence` fixture's cast, all but the last two at the White Room. */
 const ENTITY_PRESENCE_CAST: Entity[] = [
   individual({ id: 'dev-warden', name: 'Warden' }, [WHITE_ROOM_ID, 'dev-corridor']),
-  { id: 'dev-moths', name: 'Lantern Moths', locations: [WHITE_ROOM_ID, 'dev-alcove'], kind: 'group' },
+  group({ id: 'dev-moths', name: 'Lantern Moths' }, [WHITE_ROOM_ID, 'dev-alcove']),
   // Relationships rows for the entity panel's Profile tab: one long label, one blank.
   individual({
     id: 'dev-archivist', name: 'Archivist',

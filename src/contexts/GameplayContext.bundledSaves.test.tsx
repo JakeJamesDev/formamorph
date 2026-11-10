@@ -149,7 +149,7 @@ async function saveTwoTurns(world: World): Promise<string> {
     gameplay.setBodies(opening.bodies);
     gameplay.setPersonaRef(NO_PERSONA);
     const start = resolveStartingLocation(locations, undefined);
-    const book = placeAll({ positions: {}, individuals: {} }, positionWorld(
+    const book = placeAll({ positions: {}, individuals: {}, groups: {} }, positionWorld(
       castRoutines(positionedCast(entities, NO_PERSONA)), storyMinute(0), start?.id, locations, world.connections ?? [],
     ));
     gameplay.setEntityPositions(book.positions);

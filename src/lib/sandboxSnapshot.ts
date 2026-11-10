@@ -208,14 +208,15 @@ function codePlaces(
 
 /** The fields `entity` adds from play: its text resolved, where it stands, and whether it follows. */
 function playFields(
-  entity: Entity, { positions, followers, waiting }: Pick<SandboxState, 'positions' | 'followers' | 'waiting'>, resolve: ResolveText,
+  entity: Entity, { positions, presences, followers, waiting }: Pick<SandboxState, 'positions' | 'presences' | 'followers' | 'waiting'>,
+  resolve: ResolveText,
 ): Partial<CodeEntity> {
   const at = positions?.[entity.id];
   return {
     description: resolve(entity.aiDescription ?? '', entity), summary: resolve(entity.aiSummary ?? '', entity),
     aliases: (entity.aliases ?? []).map((alias) => resolve(alias, entity)),
     pronouns: resolve(entity.pronouns ?? '', entity),
-    ...(at ? { locationId: at } : {}), locationIds: entity.locations ?? [],
+    ...(at ? { locationId: at } : {}), locationIds: presences?.[entity.id] ?? entity.locations ?? [],
     ...(followers?.includes(entity.id) ? { following: true } : {}),
     ...(waiting?.includes(entity.id) ? { waiting: true } : {}),
   };

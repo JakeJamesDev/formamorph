@@ -682,7 +682,11 @@ export function migrateEntityRoutine<T>(raw: T): T {
   // `raw` is any record a file holds; only its entity fields are read here.
   if (entity.kind || entity.customPersona || !entity.locations?.length) return withDerivedLocations(legacy ? entity : raw as unknown as Entity) as T;
   const places = entity.locations;
-  if (presence !== 'random' && places.length > 1) return { ...entity, kind: 'group' } as T;
+  if (presence !== 'random' && places.length > 1) {
+    // One Start per place with no rows, so each presence stays where it was (Q133).
+    const starts: EntityStart[] = places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] }));
+    return withDerivedLocations({ ...entity, kind: 'group', starts }) as T;
+  }
   const startPlaces = presence === 'random' ? places : places.slice(0, 1);
   const schedule = (n: number): ScheduleRow[] => (movement === 'between'
     ? [{
