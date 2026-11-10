@@ -390,7 +390,7 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 2. Under **Requires**, select **Add Requirement**, then pick **Time of Day**.
 3. Turn on each daypart that counts: **Night**, **Dawn**, **Morning**, **Midday**, **Afternoon** or **Evening**.
 
-| Daypart | On a 24-hour day, to the nearest hour |
+| Daypart | On a 24-hour day |
 |---|---|
 | 🌙 Night | 20:00 to 6:00 |
 | 🌅 Dawn | 6:00 to 8:00 |

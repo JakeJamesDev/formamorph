@@ -7,8 +7,8 @@ import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import type { Connection, Entity, EntityStart, GameLocation, ScheduleRow } from '@/types';
 import { RoutineTab } from './RoutineTab';
 
-// Daypart edges in minutes: dawn 360, morning 475, midday 662, afternoon 778, evening 1022, night 1195.
-const MORNING = 475; const AFTERNOON_END = 1022; const NIGHT = 1195;
+// Daypart edges in minutes: dawn 360, morning 480, midday 660, afternoon 780, evening 1020, night 1200.
+const MORNING = 480; const AFTERNOON_END = 1020; const NIGHT = 1200;
 
 const LOCATIONS: GameLocation[] = [
   { id: 'village', name: 'Village' },
@@ -178,7 +178,7 @@ describe('the time editor', () => {
     const bench = mount(mira(oneStart([stay('day', 'smithy', { start: MORNING, end: AFTERNOON_END })])));
     await openTime('Morning – Afternoon');
     await userEvent.click(screen.getByRole('button', { name: 'Use Hours' }));
-    expect(screen.getByRole('button', { name: 'Time: 07:55 – 17:02' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Time: 08:00 – 17:00' })).toBeInTheDocument();
     expect(schedule(bench)[0].time).toEqual({ start: MORNING, end: AFTERNOON_END });
 
     await userEvent.click(screen.getByRole('button', { name: 'Use Dayparts' }));

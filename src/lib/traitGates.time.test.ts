@@ -104,11 +104,11 @@ describe('the per-turn settle with a time gate', () => {
     expect(evening.log).toEqual(['Trait switched on: lantern']);
   });
 
-  it('reads the flat hour per turn with the AI clock off: ten turns from 8:00 reach evening', () => {
-    // The flat clock advances one hour per turn; 18:00 is the first evening hour on a 24-hour day.
+  it('reads the flat hour per turn with the AI clock off: nine turns from 8:00 reach evening', () => {
+    // The flat clock advances one hour per turn; 17:00 is the first evening hour on a 24-hour day.
     const turns = (n: number) => daypartAt(n);
-    expect(turns(9)).toBe('afternoon');
-    expect(turns(10)).toBe('evening');
+    expect(turns(8)).toBe('afternoon');
+    expect(turns(9)).toBe('evening');
     const midday = settleTraits(chosen, world(turns(4))).state;
     expect(on(midday)).toEqual([]);
     expect(on(settleTraits(midday, world(turns(10))).state)).toEqual(['lantern']);

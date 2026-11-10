@@ -204,8 +204,8 @@ describe('turn pass requests', () => {
     const FOLLOWER_LINES = [
       'Keep following',
       'Wait here about an hour, until 13:00, afternoon',
-      'Wait here until 12:58, when afternoon begins',
-      'Wait here until 17:02, when evening begins',
+      'Wait here until 13:00, when afternoon begins',
+      'Wait here until 17:00, when evening begins',
       'Part ways',
     ];
     const entity = (id: string, name: string): Entity => ({ id, name, kind: 'individual', traversable: 'anywhere' });
@@ -306,7 +306,7 @@ describe('turn pass requests', () => {
       const moves = (raw: string, over = scene) => (read(raw, over) as { entity: Entity; move: unknown }[]).map(({ entity: e, move }) => [e.id, move]);
 
       it('in the schema form, with mixed replies', () => {
-        expect(moves('{"Albus": "Wait here until 17:02, when evening begins", "Sylvie": "Come along", "Blackwell": "The Watchtower"}'))
+        expect(moves('{"Albus": "Wait here until 17:00, when evening begins", "Sylvie": "Come along", "Blackwell": "The Watchtower"}'))
           .toEqual([['e1', 'waitNextDaypart'], ['e2', 'comeAlong'], ['e3', { goTo: 'tower' }]]);
         expect(moves('```json\n{"Albus":"Part ways","Sylvie":"Stay","Blackwell":"Stay"}\n```'))
           .toEqual([['e1', 'partWays'], ['e2', 'stay'], ['e3', 'stay']]);
@@ -347,7 +347,7 @@ describe('turn pass requests', () => {
         const late = asking({ ...albus, moveClock: 20 * 60 });
         // At 20:00 the ends move: a line read against noon's clock no longer matches.
         expect(moves('Albus: Wait here until 06:00, when dawn begins', late)).toEqual([['e1', 'waitThisDaypart']]);
-        expect(moves('Albus: Wait here until 12:58, when afternoon begins', late)).toEqual([['e1', null]]);
+        expect(moves('Albus: Wait here until 13:00, when afternoon begins', late)).toEqual([['e1', null]]);
       });
     });
   });

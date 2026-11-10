@@ -17,8 +17,8 @@ const CONNECTED = ['smithy', 'inn', 'market', 'wall', 'gate'];
 
 const ROWS: ScheduleRow[] = [
   { id: 'base', time: 'allDay', action: { kind: 'stay', place: 'inn' } },
-  { id: 'work', time: { start: 475, end: 1022 }, strict: true, action: { kind: 'stay', place: 'smithy' } },
-  { id: 'drift', time: { start: 1022, end: 1195 }, action: { kind: 'wander', places: [{ place: 'market', weight: 3 }, { place: 'farm', weight: 1 }], idle: 240 } },
+  { id: 'work', time: { start: 480, end: 1020 }, strict: true, action: { kind: 'stay', place: 'smithy' } },
+  { id: 'drift', time: { start: 1020, end: 1200 }, action: { kind: 'wander', places: [{ place: 'market', weight: 3 }, { place: 'farm', weight: 1 }], idle: 240 } },
   { id: 'round', time: { start: 0, end: 360 }, action: { kind: 'patrol', stops: [{ place: 'wall', idle: 60 }, { place: 'gate', idle: 30 }] } },
 ];
 

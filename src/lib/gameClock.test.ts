@@ -35,10 +35,10 @@ describe('storyMinute', () => {
 
 describe('nextDaypartEdge', () => {
   it('returns the first daypart edge after a minute, where daypart() changes', () => {
-    expect(nextDaypartEdge(10 * 60)).toBe(662);
-    expect(daypart(661 / 60)).toBe('morning');
-    expect(daypart(663 / 60)).toBe('midday');
-    expect(nextDaypartEdge(662)).toBe(778);
+    expect(nextDaypartEdge(10 * 60)).toBe(660);
+    expect(daypart(659 / 60)).toBe('morning');
+    expect(daypart(660 / 60)).toBe('midday');
+    expect(nextDaypartEdge(660)).toBe(780);
     expect(nextDaypartEdge(23 * 60)).toBe(1440 + 360); // night runs past midnight to dawn
     expect(nextDaypartEdge(3 * 1440 + 100)).toBe(3 * 1440 + 360);
   });

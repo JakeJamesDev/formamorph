@@ -121,11 +121,11 @@ describe('the join of replies to the player move', () => {
       return (joined.individuals.corvin.follow as { until: number }).until % (24 * 60);
     };
     expect(until('hour')).toBe(13 * 60);
-    expect(until('thisDaypart')).toBe(12 * 60 + 58);
-    expect(until('nextDaypart')).toBe(17 * 60 + 2);
+    expect(until('thisDaypart')).toBe(13 * 60);
+    expect(until('nextDaypart')).toBe(17 * 60);
     // Across midnight, the longest wait is the end of the daypart after this one.
     expect(until('thisDaypart', 23 * 60 + 30)).toBe(6 * 60);
-    expect(until('nextDaypart', 23 * 60 + 30)).toBe(7 * 60 + 55);
+    expect(until('nextDaypart', 23 * 60 + 30)).toBe(8 * 60);
   });
 
   it('sends a follower who parts ways back to its routine, in the scene until the player leaves (Q106)', () => {

@@ -43,7 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Set up your AI offers Formamorph AI first on AMD, Intel and integrated GPUs, and on computers without a GPU.** It reads the GPU the built-in engine uses. A card with 8 GB of memory or less still counts.
     - **After 10 turns on the built-in engine with little GPU memory, a card offers Formamorph AI once.** It sits under the story and compares Formamorph AI with the model on your computer. Not Now hides it for good.
   - **Routine Tab:**
-    - **The Routine tab shows the day as a bar of colored bands above the sentences.** Drag a band's ends to change its time, click a band to find its row, or click free time to fill it.
+    - **The Routine tab shows the day as a bar of colored bands above the sentences.** Drag a band's ends to change its time, drag the band itself to move it, click a band to find its row, or click free time to fill it.
     - **The full-screen Locations Canvas now draws an entity's routine when you pick it.** Arrows show each move in its row's color, labeled with its time. Select a row to see only its locations, with Wander chances and Patrol stop numbers. It can never reach a faded location.
     - **Select a routine row on the full-screen Locations Canvas to edit its locations by clicking or dragging.** A line over the map says what a click or a drag does. With no row selected, a click adds the location to Can Also Go or removes it.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
@@ -69,6 +69,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Skin Color picker now tints an Avatar's body and face to the same tone.** Before, an Avatar with dark clothing on the body, such as Aki, could get a pale yellow body.
   - **In Game:**
     - **Items the story gives or takes now reach an entity it calls by an Alias or a Stranger Name.** Before, an entity named by a title, such as "The Captain", got none of the items the story gave it by its first name.
+    - **Each part of the day now starts on a whole hour, such as Midday at 11:00.** Before, some started a few minutes early or late, so a Time of Day requirement or a script could miss an hour you expected it to cover.
     - **A character the story calls over from one Nearby link away now joins the scene.** That includes the place around yours and the other end of a Connection. Their item changes land that turn. Nobody comes across a Far link.
   - **World Editor:**
     - **An entity's stat and trait Body Sliders list now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.

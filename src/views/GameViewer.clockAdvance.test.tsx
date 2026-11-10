@@ -146,7 +146,7 @@ describe('a clock advance mid-turn', () => {
 
     await playTurn('I sleep.');
     // 08:00 plus nine hours: 17:00.
-    expect(narrationSystem(sent.narration[0])).toContain('It is Day 1, afternoon.');
+    expect(narrationSystem(sent.narration[0])).toContain('It is Day 1, evening.');
     await waitFor(() => expect(gameTime).toBe(9));
     expect(valueOf('end')).toBe(9);
     expect(valueOf('rest')).toBe(9);

@@ -422,7 +422,7 @@ describe('computeTurnCommit — entity movement', () => {
   const NEW = ['stay', 'comeAlong'] as const;
   const FOLLOWING = ['keepFollowing', 'waitHour', 'waitThisDaypart', 'waitNextDaypart', 'partWays'] as const;
   // The wait to the end of this daypart, as offered at noon.
-  const WAIT = 'Wait here until 12:58, when afternoon begins';
+  const WAIT = 'Wait here until 13:00, when afternoon begins';
   /** The text reply for these subjects: one row each, a null line left out. */
   const rows = (replies: [TurnPassSubject, string | null][]) =>
     replies.flatMap(([subject, line]) => (line === null ? [] : [`${subject.name}: ${line}`])).join('\n');
@@ -525,8 +525,8 @@ describe('computeTurnCommit — entity movement', () => {
   describe('a follower told to wait or part ways', () => {
     const ENDS = [
       ['Wait here about an hour, until 13:00, afternoon', 'hour', NOON + 60],
-      [WAIT, 'thisDaypart', NOON + 58],
-      ['Wait here until 17:02, when evening begins', 'nextDaypart', NOON + 302],
+      [WAIT, 'thisDaypart', NOON + 60],
+      ['Wait here until 17:00, when evening begins', 'nextDaypart', NOON + 300],
     ] as const;
     // Wenna starts at the inn with an empty schedule, and follows the player at the chapel.
     const atChapel = book({ wenna: 'chapel' }, ['wenna']);

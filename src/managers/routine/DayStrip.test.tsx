@@ -8,8 +8,8 @@ import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import type { Entity, GameLocation, ScheduleRow } from '@/types';
 import { RoutineTab } from './RoutineTab';
 
-// Daypart edges in minutes: dawn 360, morning 475, midday 662, afternoon 778, evening 1022, night 1195.
-const DAWN = 360; const MORNING = 475; const MIDDAY = 662; const AFTERNOON = 778; const EVENING = 1022; const NIGHT = 1195;
+// Daypart edges in minutes: dawn 360, morning 480, midday 660, afternoon 780, evening 1020, night 1200.
+const DAWN = 360; const MORNING = 480; const MIDDAY = 660; const AFTERNOON = 780; const EVENING = 1020; const NIGHT = 1200;
 
 const LOCATIONS = [{ id: 'smithy', name: 'Smithy' }, { id: 'inn', name: 'Inn' }] as GameLocation[];
 const stay = (id: string, time: ScheduleRow['time'], place = 'smithy'): ScheduleRow => ({ id, time, action: { kind: 'stay', place } });
@@ -188,6 +188,36 @@ describe('dragging a handle', () => {
     expect(timeOf(bench, 'am')).toEqual({ start: 9 * 60, end: 10 * 60 });
   });
 
+  it('carries an end on the strip’s right edge round to its start, up to the next row', async () => {
+    const bench = mount([stay('day', { start: MORNING, end: NIGHT }), stay('late', { start: NIGHT, end: DAWN }, 'inn')]);
+    // The pointer is over Dawn at the left end, far past the day row.
+    drag(handle('late', 'end'), 9 * 60);
+    expect(timeOf(bench, 'late')).toEqual({ start: NIGHT, end: MORNING });
+    expect(bands('late')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: /^Add a Stay/ })).not.toBeInTheDocument();
+    drag(handle('late', 'end'), 3 * 60);
+    expect(timeOf(bench, 'late')).toEqual({ start: NIGHT, end: DAWN });
+    handle('late', 'end').focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(timeOf(bench, 'late')).toEqual({ start: NIGHT, end: MORNING });
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(timeOf(bench, 'late')).toEqual({ start: NIGHT, end: DAWN });
+  });
+
+  it('carries a start on the strip’s left edge round to its end', () => {
+    const bench = mount([stay('early', { start: DAWN, end: MIDDAY })]);
+    drag(handle('early', 'start'), 22 * 60);
+    expect(timeOf(bench, 'early')).toEqual({ start: NIGHT, end: MIDDAY });
+    drag(handle('early', 'start'), MORNING);
+    expect(timeOf(bench, 'early')).toEqual({ start: MORNING, end: MIDDAY });
+  });
+
+  it('keeps an end that is not on the strip’s edge from going round', () => {
+    const bench = mount([stay('am', { start: 8 * 60, end: 10 * 60 })]);
+    drag(handle('am', 'end'), 7 * 60);
+    expect(timeOf(bench, 'am')).toEqual({ start: 8 * 60, end: 9 * 60 });
+  });
+
   it('moves only the selected row on a shared edge', async () => {
     const bench = mount([stay('am', { start: MORNING, end: AFTERNOON }), stay('pm', { start: AFTERNOON, end: NIGHT }, 'inn')]);
     await userEvent.click(bands('pm')[0] as HTMLElement);
@@ -239,6 +269,83 @@ describe('dragging a handle', () => {
     expect(timeOf(bench, 'am')).toEqual({ start: MORNING, end: AFTERNOON });
     expect(handle('am', 'end')).toHaveAttribute('aria-valuetext', 'Through Midday');
     expect(handle('am', 'end')).toHaveAccessibleName('End of Morning – Midday');
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(timeOf(bench, 'am')).toEqual({ start: MORNING, end: MIDDAY });
+    await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 2));
+  });
+});
+
+describe('dragging a band', () => {
+  const bar = (id: string) => bands(id)[0].parentElement as HTMLElement;
+  /** Presses a row's band at clock minute `from` and drags it to `to`. The bar holds the pointer after the press. */
+  function slide(id: string, from: number, to: number) {
+    const el = bar(id);
+    fireEvent.pointerDown(bands(id)[0], { pointerId: 1, button: 0, clientX: px(from) });
+    fireEvent.pointerMove(el, { pointerId: 1, clientX: px(to) });
+    fireEvent.pointerUp(el, { pointerId: 1, clientX: px(to) });
+  }
+
+  it('moves an hours row by whole hours and keeps its length', () => {
+    const bench = mount([stay('am', { start: 8 * 60 + 30, end: 10 * 60 })]);
+    slide('am', 9 * 60, 12 * 60 + 10);
+    expect(timeOf(bench, 'am')).toEqual({ start: 11 * 60 + 30, end: 13 * 60 });
+    expect(isSelected('am')).toBe(true);
+  });
+
+  it('moves a daypart row to other dayparts and keeps how many it covers', () => {
+    const bench = mount([stay('am', { start: MORNING, end: AFTERNOON })]);
+    slide('am', MORNING + 20, MORNING + 220);
+    expect(timeOf(bench, 'am')).toEqual({ start: MIDDAY, end: EVENING });
+    expect(bands('am')[0]).toHaveAccessibleName('Midday – Afternoon: Stay');
+    slide('am', MIDDAY + 20, DAWN + 20);
+    expect(timeOf(bench, 'am')).toEqual({ start: DAWN, end: MIDDAY });
+  });
+
+  it('lands in the nearest free place past a neighbor, never on it', () => {
+    const bench = mount([stay('am', { start: 8 * 60 + 30, end: 10 * 60 + 30 }), stay('pm', { start: 10 * 60 + 30, end: 12 * 60 + 30 }, 'inn')]);
+    slide('am', 9 * 60, 11 * 60 + 30);
+    expect(timeOf(bench, 'am')).toEqual({ start: 12 * 60 + 30, end: 14 * 60 + 30 });
+    expect(timeOf(bench, 'pm')).toEqual({ start: 10 * 60 + 30, end: 12 * 60 + 30 });
+  });
+
+  it('carries a row past the strip’s end onto its start', () => {
+    const bench = mount([stay('late', { start: EVENING, end: DAWN })]);
+    slide('late', EVENING + 10, EVENING + 170);
+    expect(timeOf(bench, 'late')).toEqual({ start: NIGHT, end: MORNING });
+    expect(bands('late')).toHaveLength(2);
+  });
+
+  it('leaves an All-day row where it is', () => {
+    const bench = mount([{ id: 'base', time: 'allDay', action: { kind: 'stay', place: 'inn' } }]);
+    slide('base', 9 * 60, 15 * 60);
+    expect(timeOf(bench, 'base')).toBe('allDay');
+  });
+
+  it('makes a drag one undo step, and a press that moves nothing none', async () => {
+    const bench = mount([stay('am', { start: 8 * 60 + 30, end: 10 * 60 })]);
+    const before = bench.historyState().steps.length;
+    slide('am', 9 * 60, 9 * 60 + 2);
+    await act(async () => { await new Promise((r) => setTimeout(r, 5)); });
+    expect(bench.historyState().steps.length).toBe(before);
+    const el = bar('am');
+    fireEvent.pointerDown(bands('am')[0], { pointerId: 1, button: 0, clientX: px(9 * 60) });
+    for (const m of [10 * 60, 11 * 60, 13 * 60]) {
+      fireEvent.pointerMove(el, { pointerId: 1, clientX: px(m) });
+      await act(async () => { await new Promise((r) => setTimeout(r, 5)); });
+    }
+    fireEvent.pointerUp(el, { pointerId: 1, clientX: px(13 * 60) });
+    expect(timeOf(bench, 'am')).toEqual({ start: 12 * 60 + 30, end: 14 * 60 });
+    await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 1));
+    await act(async () => { bench.history().undo(); });
+    expect(timeOf(bench, 'am')).toEqual({ start: 8 * 60 + 30, end: 10 * 60 });
+  });
+
+  it('moves by arrow key to the next free place, each press its own step', async () => {
+    const bench = mount([stay('am', { start: MORNING, end: MIDDAY }), stay('pm', { start: MIDDAY, end: AFTERNOON }, 'inn')]);
+    const before = bench.historyState().steps.length;
+    (bands('am')[0] as HTMLElement).focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(timeOf(bench, 'am')).toEqual({ start: AFTERNOON, end: EVENING });
     await userEvent.keyboard('{ArrowLeft}');
     expect(timeOf(bench, 'am')).toEqual({ start: MORNING, end: MIDDAY });
     await waitFor(() => expect(bench.historyState().steps.length).toBe(before + 2));

@@ -4,7 +4,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
 import {
-  CLOCK_ORDER, DAYPART_LABELS, daypartEnd, daypartStart, edgeText, moveEdge, rangeText, stepEdge, strip, STRIP_START,
+  CLOCK_ORDER, DAYPART_LABELS, daypartEnd, daypartStart, edgeText, moveEdge, moveRange, rangeText, stepEdge, stepRange, strip, STRIP_START,
   timedCover, timePositions, toStrip, type FreeRange, type RangeEdge,
 } from '@/lib/routineTime';
 import { cn } from '@/lib/utils';
@@ -125,8 +125,13 @@ function EdgeHandle({ row, time, edge, asHours, covered, canFill, top, barRef, o
 
 const actionLabel = (row: ScheduleRow) => ACTIONS.find((a) => a.value === row.action.kind)?.label ?? '';
 
+/** Pointer travel, in pixels, before a press on a band becomes a move. */
+const MOVE_SLOP = 4;
+
+const sameRange = (a: ScheduleRange, b: ScheduleRange) => a.start === b.start && a.end === b.end;
+
 /** The Start's day on a 24-hour strip that begins at Dawn: a band per row in its action's color, the All-day row underneath, free time
- *  hatched. A band selects its row, a gap adds a row over it, and each timed band's ends drag. */
+ *  hatched. A band selects its row, a gap adds a row over it, each timed band's ends drag, and a timed band drags whole. */
 export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, onMove }: {
   rows: readonly ScheduleRow[]; free: readonly FreeRange[];
   asHoursOf: (row: ScheduleRow) => boolean;
@@ -137,6 +142,41 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
   onMove: (rowId: string, time: ScheduleRow['time'], gesture: boolean) => void;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
+  const history = useWorldHistoryMovesOptional();
+  // A band's move, measured from where the press began so the row lands the same whatever path the pointer took.
+  const moving = useRef<{ rowId: string; x: number; from: ScheduleRange; grouped: boolean } | null>(null);
+  const endMove = () => {
+    if (moving.current?.grouped) void history?.endGroup();
+    moving.current = null;
+  };
+  // A strip that unmounts mid-move closes its Step.
+  useEffect(() => () => { if (moving.current?.grouped) void history?.endGroup(); }, [history]);
+  const others = (rowId: string) => timedCover(rows.filter((r) => r.id !== rowId));
+  const grabBand = (e: PointerEvent<HTMLButtonElement>, row: ScheduleRow) => {
+    if (e.button !== 0 || row.time === 'allDay') return;
+    // The bar takes the pointer: a band that wraps is two pieces, and a move can merge them under the press.
+    barRef.current?.setPointerCapture?.(e.pointerId);
+    onSelect(row.id);
+    moving.current = { rowId: row.id, x: e.clientX, from: row.time, grouped: false };
+  };
+  const dragBand = (e: PointerEvent<HTMLDivElement>) => {
+    const move = moving.current;
+    const rect = barRef.current?.getBoundingClientRect();
+    const row = move && rows.find((r) => r.id === move.rowId);
+    if (!move || !row || row.time === 'allDay' || !rect || rect.width === 0) return;
+    const travel = e.clientX - move.x;
+    if (!move.grouped && Math.abs(travel) < MOVE_SLOP) return;
+    if (!move.grouped && history) { history.beginGroup('Move Routine Time'); move.grouped = true; }
+    const next = moveRange(move.from, (travel / rect.width) * MINUTES_PER_DAY, asHoursOf(row), others(row.id));
+    if (!sameRange(next, row.time)) onMove(row.id, next, true);
+  };
+  const stepBand = (e: KeyboardEvent<HTMLButtonElement>, row: ScheduleRow) => {
+    const direction = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+    if (!direction || row.time === 'allDay') return;
+    e.preventDefault();
+    const next = stepRange(row.time, direction, asHoursOf(row), others(row.id));
+    if (!sameRange(next, row.time)) { onSelect(row.id); onMove(row.id, next, false); }
+  };
   const timed = rows.some((r) => r.time !== 'allDay');
   const timeOf = (row: ScheduleRow) => (row.time === 'allDay' ? (timed ? 'The rest of the day' : 'All day') : rangeText(row.time, asHoursOf(row)));
 
@@ -144,7 +184,10 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
     <div className="space-y-0.5" aria-label="Day" role="group">
       <DaypartAxis />
       <div className="relative">
-        <div ref={barRef} className="relative h-6 overflow-hidden rounded bg-muted/40">
+        <div
+          ref={barRef} className="relative h-6 touch-none overflow-hidden rounded bg-muted/40"
+          onPointerMove={dragBand} onPointerUp={endMove} onPointerCancel={endMove} onLostPointerCapture={endMove}
+        >
           {CLOCK_ORDER.map((d) => <span key={d} aria-hidden className="absolute inset-y-0 w-px bg-border" style={{ left: pct(toStrip(daypartStart(d))) }} />)}
           {free.flatMap((gap) => {
             const range: ScheduleRange = { start: gap.start, end: gap.end % MINUTES_PER_DAY };
@@ -169,9 +212,10 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
                   type="button" {...{ [STRIP_PART]: '' }} data-band={row.id} aria-pressed={selected === row.id}
                   aria-label={`${timeOf(row)}: ${actionLabel(row)}`}
                   onClick={() => onSelect(row.id)}
+                  onPointerDown={(e) => grabBand(e, row)} onKeyDown={(e) => stepBand(e, row)}
                   className={cn(
                     'absolute inset-y-0 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                    ACTION_TONE[row.action.kind], row.time === 'allDay' && 'opacity-50',
+                    ACTION_TONE[row.action.kind], row.time === 'allDay' ? 'opacity-50' : 'cursor-grab active:cursor-grabbing',
                     selected === row.id && 'ring-2 ring-inset ring-primary',
                   )}
                   style={{ left: pct(a), width: pct(b - a), zIndex: row.time === 'allDay' ? 0 : 1 }}

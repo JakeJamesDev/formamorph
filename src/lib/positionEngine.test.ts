@@ -302,11 +302,11 @@ describe('following and waiting', () => {
   });
 
   it('caps a wait at the end of the next daypart', () => {
-    const morning = at(1, 10); // morning runs to 11:02, midday to 12:58
-    expect(waitUntil({ until: at(5, 0) }, morning)).toBe(at(1, 12, 58));
+    const morning = at(1, 10); // morning runs to 11:00, midday to 13:00
+    expect(waitUntil({ until: at(5, 0) }, morning)).toBe(at(1, 13));
     expect(waitUntil('hour', morning)).toBe(at(1, 11));
-    expect(waitUntil('thisDaypart', morning)).toBe(at(1, 11, 2));
-    expect(waitUntil('nextDaypart', morning)).toBe(at(1, 12, 58));
+    expect(waitUntil('thisDaypart', morning)).toBe(at(1, 11));
+    expect(waitUntil('nextDaypart', morning)).toBe(at(1, 13));
   });
 
   it('waits where it was left, then goes back to its schedule when the wait runs out', () => {
@@ -330,8 +330,8 @@ describe('following and waiting', () => {
     const game = play(bound, at(1, 9), 'smithy').apply(follow(bound, at(1, 9), 'smithy'));
     expect(game.advance(at(1, 9, 10), 'square').pos).toBe('square');
     expect(game.advance(at(1, 9, 20), 'gate').pos).toBe('square');
-    expect(game.state.follow).toEqual({ mode: 'waiting', until: at(1, 11, 2) });
-    expect(game.advance(at(1, 11, 2), 'gate').pos).toBe('smithy');
+    expect(game.state.follow).toEqual({ mode: 'waiting', until: at(1, 11) });
+    expect(game.advance(at(1, 11), 'gate').pos).toBe('smithy');
   });
 
   it('never leaves a script follower behind', () => {

@@ -127,9 +127,9 @@ export function daypart(hour: number, calendar?: WorldCalendar): Daypart {
   return part;
 }
 
-/** Where each daypart after midnight's night begins, as a fraction of the day. */
+/** Where each daypart after midnight's night begins, as a fraction of the day: whole hours of a 24-hour day. */
 const DAYPART_STARTS: readonly (readonly [number, Daypart])[] = [
-  [0.25, 'dawn'], [0.33, 'morning'], [0.46, 'midday'], [0.54, 'afternoon'], [0.71, 'evening'], [0.83, 'night'],
+  [6 / 24, 'dawn'], [8 / 24, 'morning'], [11 / 24, 'midday'], [13 / 24, 'afternoon'], [17 / 24, 'evening'], [20 / 24, 'night'],
 ];
 
 export const MINUTES_PER_DAY = 24 * 60;
