@@ -220,6 +220,10 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q166** Begins Following skips only the Strict check at the start. It is not a script follow: Traversable still applies, and a companion who can't enter a place stays behind and waits (Q42). (Ticket 17; narrows Q148.)
 - **Q167** A save from before the engine state loads a Player's Starting Location as its page-one location, else the player's current location. An Individual whose rolled Start has Begins Following is then placed with the player and starts Following, as the old play had that companion always present. (Ticket 17.)
 - **Q168** A new row on a Start at Player's Starting Location defaults to the first location of the world. On the canvas, a Group's click never adds or removes such a Start, and it never marks "Is Here". (Ticket 17.)
+- **Q169** Migration details. "Uses them" (Q151) reads every entity of the world: a non-blank pronouns string, the persona flag or a custom persona. On the entity itself (Q146) only pronouns and the persona flag count. "Every location" (Q144) needs a world with at least two locations and compares against the world's location ids, ignoring stale ids. (Ticket 18.)
+- **Q170** The four multi-location rows ignore `movement`, with one exception: a wandering Individual (Q143) that had Can Follow gets Traversable = Anywhere (Q55), not the list. Moves Between adds no second Wander. (Ticket 18.)
+- **Q171** Pronouns that start with "it" do not count as the person signal on an entity (Q146): authors give creatures "it/its". "They/them" still counts as a person. For the world-level check (Q151), any non-blank pronouns count. Found when ticket 18 ran the rule on the bundled worlds. (Ticket 18.)
+- **Q172** The bundled worlds already store kinds, so the migration skips them, and their named people with several locations are stored as Generic. Ticket 20 applies the rule to them and the user reviews each result by name. (Ticket 20.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
