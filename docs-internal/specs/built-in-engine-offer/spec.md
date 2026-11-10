@@ -1,7 +1,7 @@
 # Spec: Built-In Engine Offer
 
 Status: done
-Status note: Follow-up tickets 05 and 06 opened after the close on the user's call (Q15–Q17). Closed 2026-11-09. Tickets 01–04, last landing fee78fb1b. Review: three gaps fixed by ticket 04, spec text corrected. Closed red: lint has 11 errors, all in the ignored worlds-wip folder and none in this effort; test exit 0 on 2026-11-09.
+Status note: Follow-up tickets 05 and 06 (Q15–Q17) landed after the close as 381eaa504 and FormamorphServer b17f9ea, with no review or full gates after them. Closed 2026-11-09. Tickets 01–04, last landing fee78fb1b. Review: three gaps fixed by ticket 04, spec text corrected. Closed red: lint has 11 errors, all in the ignored worlds-wip folder and none in this effort; test exit 0 on 2026-11-09.
 Spec session: built-in-engine-offer — spec
 
 A desktop player who runs narration on the built-in engine with little VRAM learns about Formamorph AI a second time, after 10 turns of their own play. AMD, Intel and CPU-only machines join the low-VRAM group for the first time. Spans both repos: the client and FormamorphServer.
@@ -42,7 +42,7 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
 | Q14 | The user approved both texts as landed, on 2026-11-09. Lead body: "Formamorph AI writes better narration and keeps characters more consistent than the models that fit your machine. Your support also helps fund new updates." Card: "Want a Bigger Model for This Story?" / "Your computer runs a small model that fits its memory. Formamorph AI runs a larger one on our servers, for sharper narration and characters who stay consistent. Your support includes it, and it helps fund new updates." |
 | Q15 | Replaces the Q14 texts. Lead body: "your machine" becomes "your computer". Card body: "Your computer runs a small model that fits its memory. Formamorph AI runs a larger one without turning your computer into a space heater, for sharper narration and characters who stay consistent. Your support includes it, and it helps fund new updates." The user chose the comedic line. "characters" stays. |
 | Q16 | The funnel step is named `engine_offer_shown`. `local_offer_shown` never shipped and gets no alias. |
-| Q17 | Four cleanups from the close review are done in ticket 05: one shape for both cards' facts, `useStoryCard` renamed `useDemoAIStoryCard`, one device list in the engine listing, and a test seam for the VRAM class ask. |
+| Q17 | Four cleanups from the close review are done in ticket 05: one shape for both cards' facts, `useStoryCard` renamed `useDemoAIStoryCard`, one device list in the engine listing, and a test seam for the VRAM class ask. The shared facts shape may rename fields; every test case and expectation stays, and each card keeps its own counter and seen record. |
 
 **Carried over from First-Time Flow, unchanged:** no offer for a pledged player (Q44, Q66), in a build without hosted AI, or on Steam (Q6). The card uses Morphie (Q20), the Pages placement (Q19), and the lifetime of Q42: the seen record is written when the card first renders after the turn's reveal ends, and nothing brings the card back.
 

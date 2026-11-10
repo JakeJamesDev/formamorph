@@ -1,6 +1,6 @@
 # 06: Rename Funnel Step on the Server
 
-Status: ready-for-human
+Status: done
 Base: a8e7d04
 Repo: FormamorphServer
 Blocked by: None (can start immediately)
