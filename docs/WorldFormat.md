@@ -481,7 +481,12 @@ In hours no row covers, the entity stays at its Start's `place`.
 
 A Generic entity is one entity with one set of stats, items and memories. Each of its Starts plays as its own presence on its own schedule, and two Starts can share a place. Where two presences meet, the entity is listed once. A Generic entity is never called over and never follows.
 
-> 🔁 An older world file used `presence` and `movement`. The app maps them when it opens the world: an entity at one location, or with **One, at Random**, becomes a Unique entity with one Start per location; **Moves Between** becomes an all-day wander over its locations; **Can Follow** becomes `traversable: "anywhere"`. Any other entity at several locations becomes a Generic entity with one Start per location and no rows.
+> 🔁 An older world file used `presence` and `movement`. The app maps them when it opens the world: an entity at one location, or with **One, at Random**, becomes a Unique entity with one Start per location; **Moves Between** becomes an all-day wander over its locations; **Can Follow** becomes `traversable: "anywhere"`. An entity at several locations with no `presence` maps by what it looks like:
+>
+> - Listed at every location: a Unique entity that begins at the player's starting location and follows the player.
+> - With `pronouns` that don't start with "it", or the persona mark: a Unique entity that begins at its first location and wanders over the list all day.
+> - With neither, in a world where some entity has them: a Generic entity with one Start per location and no rows.
+> - In a world where no entity has them: the same wandering Unique entity.
 
 `statChanges` and `statToggles` on an entity's own traits act on the entity's own stats. A row acts on the global stat when its `target` is `"global"`, or when the entity has no stat with that `id`.
 
