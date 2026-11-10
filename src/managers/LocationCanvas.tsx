@@ -16,7 +16,10 @@ import {
 } from 'lucide-react';
 import EntityPickCard, { type PickState } from '@/managers/EntityPickCard';
 import { pickMarks, togglePick, type PickMark } from '@/lib/entityPicking';
-import { routineView, type RoutineMark } from '@/lib/canvasRoutine';
+import { routineView, type RoutineMark, type RoutineSpan } from '@/lib/canvasRoutine';
+import { MINUTES_PER_DAY } from '@/lib/gameClock';
+import { pickKeyEntries, routineKeyEntries } from '@/lib/canvasKey';
+import { CanvasKey } from '@/managers/CanvasKey';
 import { isGroup } from '@/lib/entityKind';
 import type { ActionKind } from '@/lib/routineEditing';
 import {
@@ -183,6 +186,31 @@ const RoutineIcons = ({ mark }: { mark: RoutineMark | undefined }) => (
   </>
 );
 
+const SPAN_FILL: Record<RoutineSpan['tone'], string> = {
+  stay: 'bg-routine-stay', wander: 'bg-routine-wander', patrol: 'bg-routine-patrol', free: 'bg-muted-foreground/60',
+};
+const SPAN_NAME: Record<RoutineSpan['tone'], string> = { stay: 'Stay', wander: 'Wander', patrol: 'Patrol', free: 'Free Time' };
+const dayPct = (minute: number) => `${(minute / MINUTES_PER_DAY) * 100}%`;
+
+/** A box's day on a thin Dawn-to-Dawn bar along its foot: colored where the entity can be there. `slim` fits the
+ *  name row of a box that holds others. */
+const RoutineDayBar = ({ mark, slim = false }: { mark: RoutineMark | undefined; slim?: boolean }) => {
+  if (!mark?.spans?.length) return null;
+  const text = mark.spans.map((s) => `${s.time}: ${SPAN_NAME[s.tone]}`).join(', ');
+  return (
+    <Tip tip={text} labelsChild={false}>
+      <span
+        role="img" aria-label={text} data-routine-day
+        className={cn('absolute inset-x-1.5 overflow-hidden rounded-full bg-muted-foreground/20', slim ? 'bottom-px h-1' : 'bottom-1 h-1.5')}
+      >
+        {mark.spans.flatMap((s, i) => s.pieces.map(([from, to]) => (
+          <span key={`${i}-${from}`} className={cn('absolute inset-y-0', SPAN_FILL[s.tone])} style={{ left: dayPct(from), width: dayPct(to - from) }} />
+        )))}
+      </span>
+    </Tip>
+  );
+};
+
 /** The data attributes a test or a dev read finds a box's Routine-view mark by. */
 const routineData = (mark: RoutineMark | undefined) => ({
   'data-routine-mark': mark?.kind,
@@ -282,7 +310,7 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
         data-pick-mark={mark?.kind}
         {...routineData(routine)}
         className={cn(
-          'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
+          'group/node relative flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
           data.unreachable && 'border-destructive',
           pickClass(mark),
           routineClass(routine),
@@ -295,6 +323,7 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
         <span className="truncate">{data.label}</span>
         <PickIcons mark={mark} />
         <RoutineIcons mark={routine} />
+        <RoutineDayBar mark={routine} />
       </div>
     </Tip>
   );
@@ -325,11 +354,12 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
         )}
       >
         <EdgeAnchors id={id} dropHeight="!h-9" />
-        <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
+        <div className="relative flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
           <NodeBadges data={data} />
           <span className="truncate">{data.label}</span>
           <PickIcons mark={mark} />
           <RoutineIcons mark={routine} />
+          <RoutineDayBar mark={routine} slim />
         </div>
       </div>
     </Tip>
@@ -1649,7 +1679,10 @@ const CanvasInner = ({
         {/* In the toolbar's place, which picking hides. Clear of the entity card on the right. */}
         {routineStatus && (
           <Panel position="top-center" className="!m-2 md:!mt-[5px] max-w-[min(36rem,calc(100%-30rem))] max-md:max-w-[calc(100%-1rem)]">
-            <p data-testid="routine-status" role="status" className="rounded-md border bg-card px-3 py-1.5 text-label shadow-md">{routineStatus}</p>
+            <p data-testid="routine-status" role="status" className="rounded-md border bg-card px-3 py-1.5 text-label shadow-md">
+              {routineStatus.row && <strong className="mr-2 font-semibold">{routineStatus.row}</strong>}
+              {routineStatus.text}
+            </p>
           </Panel>
         )}
         {/* The window's own orientation aids and power tools. The pane is a view of a map the author can
@@ -1679,6 +1712,9 @@ const CanvasInner = ({
           <CanvasMiniMap
             onNavigate={(at) => setCenter(at.x, at.y, { duration: reduceMotion ? 0 : 200 })}
           />
+        )}
+        {fullscreen && (routine || marks) && (
+          <CanvasKey entries={routine ? routineKeyEntries(routine, routineEntity?.kind === 'group') : pickKeyEntries(marks ?? new Map())} />
         )}
         {/* One column on the right: an open Connection above the entity card, so neither covers the other.
             Below the toolbar and the search box on a narrow window. */}

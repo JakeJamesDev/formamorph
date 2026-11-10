@@ -7,7 +7,6 @@ const ROUTINE_STROKE: Record<RoutineLine['tone'], string> = {
   stay: 'hsl(var(--routine-stay))',
   wander: 'hsl(var(--routine-wander))',
   patrol: 'hsl(var(--routine-patrol))',
-  free: 'hsl(var(--muted-foreground))',
 };
 
 /** A movement line of the Routine view: straight, full strength, in its action's color. */
@@ -18,7 +17,6 @@ export function routineFlowEdge(line: RoutineLine): Edge {
     source: line.source,
     target: line.target,
     type: 'floating',
-    label: line.label,
     data: { connectionStyle: 'straight', labelOuter: false, paired: false, tone: line.tone },
     selectable: false,
     focusable: false,

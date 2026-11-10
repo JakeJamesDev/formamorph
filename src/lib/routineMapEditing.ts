@@ -107,26 +107,32 @@ function timeOf(row: ScheduleRow, start: EntityStart): string {
   return start.schedule.some((r) => r.time !== 'allDay') ? 'the rest of the day' : 'all day';
 }
 
-/** The status line over the map: what a click or a drag does right now. */
-export function routineMapStatus(entity: Entity, selection: RoutineSelection): string {
-  if (entity.kind === 'group') return 'Click a location to add it or remove it';
+/** The status line over the map: the selected row, and what a click or a drag does right now. */
+export interface RoutineMapStatus {
+  /** The selected row's action and time. */
+  row?: string;
+  text: string;
+}
+
+export function routineMapStatus(entity: Entity, selection: RoutineSelection): RoutineMapStatus {
+  if (entity.kind === 'group') return { text: 'Click a location to add or remove it' };
   const target = targetOf(entity, selection);
-  if (!target) return 'Add a Start to give this entity a routine';
+  if (!target) return { text: 'Add a Start to give this entity a routine' };
   const selected = selectedOf(target);
   if (!selected) {
     return (entity.traversable ?? 'anywhere') === 'anywhere'
-      ? '"Can Also Go" is set to "Anywhere", so a click changes nothing. Select a row to edit it on the map.'
-      : 'Click a location to add it to "Can Also Go" or remove it';
+      ? { text: 'Select a row to edit its locations here' }
+      : { text: 'Click a location to add or remove it from "Can Also Go"' };
   }
   const { action } = selected.row;
-  const lead = `${ACTION_NAMES[action.kind]}, ${timeOf(selected.row, selected.start)}.`;
-  if (action.kind === 'stay') return `${lead} Click a location to stay there.`;
+  const row = `${ACTION_NAMES[action.kind]}, ${timeOf(selected.row, selected.start)}`;
+  if (action.kind === 'stay') return { row, text: 'Click a location to stay there' };
   if (action.kind === 'wander') {
     return action.places.length === 0
-      ? `${lead} Click a location to add it.`
-      : `${lead} Click a location to add it or remove it. Drag from one of its locations to add another.`;
+      ? { row, text: 'Click a location to add it' }
+      : { row, text: 'Click a location to add or remove it. Drag from one to add another.' };
   }
   return action.stops.length === 0
-    ? `${lead} Click a location to add the first stop.`
-    : `${lead} Click a location to add the next stop, or the last stop to remove it. Drag from a stop to add one after it.`;
+    ? { row, text: 'Click the first stop' }
+    : { row, text: 'Click the next stop, or the last stop to remove it. Drag from a stop to add one after it.' };
 }

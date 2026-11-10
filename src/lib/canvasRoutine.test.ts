@@ -38,49 +38,45 @@ const label = (from: number, to: number) => rangeText({ start: from * 60, end: t
 describe('the overview, with no row selected', () => {
   const v = view(farrier());
 
-  it('rings every routine place the same, flags where the Start begins, and gives no badges', () => {
-    for (const id of ['smithy', 'inn', 'market', 'square', 'wall', 'gate']) {
-      expect(markOf(v, id)).toMatchObject({ kind: 'routine' });
-      expect(markOf(v, id)?.tone).toBeUndefined();
-      expect(markOf(v, id)?.badge).toBeUndefined();
+  it('colors each place by its row’s action and says when the entity is there, with no badges', () => {
+    expect(markOf(v, 'inn')).toEqual({ kind: 'routine', tone: 'stay', spans: [{ tone: 'stay', time: label(6, 10), pieces: [[0, 240]] }] });
+    for (const id of ['market', 'square']) {
+      expect(markOf(v, id)).toEqual({ kind: 'routine', tone: 'wander', spans: [{ tone: 'wander', time: label(10, 14), pieces: [[240, 480]] }] });
     }
-    expect(markOf(v, 'smithy')?.begin).toBe(true);
+    for (const id of ['wall', 'gate']) {
+      expect(markOf(v, id)).toEqual({ kind: 'routine', tone: 'patrol', spans: [{ tone: 'patrol', time: label(14, 18), pieces: [[480, 720]] }] });
+    }
+  });
+
+  it('flags where the Start begins and marks the free time there, with no action color', () => {
+    expect(markOf(v, 'smithy')).toEqual({
+      kind: 'routine', begin: true, tone: undefined, spans: [{ tone: 'free', time: label(18, 6), pieces: [[720, 1440]] }],
+    });
     expect([...v.marks.values()].filter((m) => m.begin)).toHaveLength(1);
   });
 
-  it('draws each move at a set time as an arrow in its action color, labeled with its time', () => {
-    const moves = v.lines.filter((l) => l.label);
-    expect(moves.map((l) => [l.source, l.target, l.tone, l.label])).toEqual([
-      ['smithy', 'inn', 'stay', label(6, 10)],
-      ['inn', 'market', 'wander', label(10, 14)],
-      ['market', 'wall', 'patrol', label(14, 18)],
-      ['wall', 'smithy', 'free', label(18, 6)],
-    ]);
-    expect(v.lines.every((l) => l.arrow)).toBe(true);
-  });
-
-  it('draws one arrow per Wander place in and out, dashed, and no lines between Wander places', () => {
-    expect(pairs(v.lines)).toEqual([
-      'gate>wall:patrol', 'inn>market:wander', 'inn>square:wander', 'market>wall:patrol', 'smithy>inn:stay',
-      'square>wall:patrol', 'wall>gate:patrol', 'wall>smithy:free',
-    ]);
-    expect(v.lines.filter((l) => l.dashed).map((l) => `${l.source}>${l.target}`).sort())
-      .toEqual(['inn>market', 'inn>square', 'market>wall', 'square>wall']);
-  });
-
-  it('draws a Patrol that goes A, B, A as two arrows, one each way', () => {
-    const patrol = v.lines.filter((l) => l.tone === 'patrol' && !l.label && !l.dashed);
-    expect(patrol.map((l) => `${l.source}>${l.target}`).sort()).toEqual(['gate>wall', 'wall>gate']);
-  });
-
-  it('keeps a move’s time when it runs along a Patrol leg', () => {
-    const v = view(farrier('anywhere', [
-      timed('watch', 6, 10, { kind: 'stay', place: 'gate' }),
-      timed('round', 10, 14, { kind: 'patrol', stops: [{ place: 'wall', idle: 30 }, { place: 'gate', idle: 30 }] }),
+  it('gives a place two actions share the neutral ring and both times, in clock order', () => {
+    const shared = view(farrier('anywhere', [
+      timed('walk', 10, 14, { kind: 'wander', places: [{ place: 'inn', weight: 1 }, { place: 'market', weight: 1 }], idle: 60 }),
+      timed('rest', 6, 10, { kind: 'stay', place: 'inn' }),
     ]));
-    const leg = v.lines.find((l) => l.source === 'gate' && l.target === 'wall');
-    expect(leg).toMatchObject({ tone: 'patrol', label: label(10, 14) });
-    expect(v.lines.filter((l) => l.source === 'gate' && l.target === 'wall')).toHaveLength(1);
+    expect(markOf(shared, 'inn')?.tone).toBeUndefined();
+    expect(markOf(shared, 'inn')?.spans?.map((s) => [s.tone, s.time])).toEqual([['stay', label(6, 10)], ['wander', label(10, 14)]]);
+    expect(markOf(shared, 'market')?.tone).toBe('wander');
+  });
+
+  it('splits a time that runs across Dawn over both ends of the day', () => {
+    const late = view(farrier('anywhere', [timed('sleep', 22, 8, { kind: 'stay', place: 'inn' })]));
+    expect(markOf(late, 'inn')?.spans).toEqual([{ tone: 'stay', time: label(22, 8), pieces: [[960, 1440], [0, 120]] }]);
+  });
+
+  it('marks the whole day at the Start’s location when the schedule is empty', () => {
+    expect(markOf(view(farrier(), null, 's2'), 'gate')?.spans).toEqual([{ tone: 'free', time: 'All day', pieces: [[0, 1440]] }]);
+  });
+
+  it('draws only the Patrol’s legs as arrows, one each way for A, B, A, and no line from one row to the next', () => {
+    expect(pairs(v.lines)).toEqual(['gate>wall:patrol', 'wall>gate:patrol']);
+    expect(v.lines.every((l) => l.arrow && !l.dashed)).toBe(true);
   });
 
   it('shows the Start on show, and an unknown row as the overview', () => {
@@ -94,10 +90,12 @@ describe('the overview, with no row selected', () => {
 describe('the detail, with a row selected', () => {
   it('colors and badges the Wander row’s places and joins them without arrowheads', () => {
     const v = view(farrier(), 'wander');
-    expect(markOf(v, 'market')).toMatchObject({ kind: 'routine', tone: 'wander', badge: '75%' });
+    expect(markOf(v, 'market')).toMatchObject({ kind: 'routine', tone: 'wander', badge: '75%', spans: [{ tone: 'wander', time: label(10, 14) }] });
     expect(markOf(v, 'square')).toMatchObject({ kind: 'routine', tone: 'wander', badge: '25%' });
     for (const id of ['inn', 'wall', 'gate']) expect(markOf(v, id)).toEqual({ kind: 'routine' });
-    expect(pairs(v.lines)).toEqual(['inn>market:wander', 'inn>square:wander', 'market>square:wander:roam']);
+    expect(markOf(v, 'smithy')).toEqual({ kind: 'routine', begin: true });
+    expect(pairs(v.lines)).toEqual(['market>square:wander:roam']);
+    expect(v.lines[0]).toMatchObject({ arrow: false, dashed: true });
   });
 
   it('numbers the Patrol stops, a repeated place carrying each of its numbers', () => {
@@ -105,15 +103,13 @@ describe('the detail, with a row selected', () => {
     expect(markOf(v, 'wall')).toMatchObject({ tone: 'patrol', badge: '1, 3' });
     expect(markOf(v, 'gate')).toMatchObject({ tone: 'patrol', badge: '2' });
     expect(markOf(v, 'market')).toEqual({ kind: 'routine' });
-    expect(v.lines.every((l) => l.tone === 'patrol')).toBe(true);
-    expect(pairs(v.lines)).toEqual(['gate>wall:patrol', 'market>wall:patrol', 'square>wall:patrol', 'wall>gate:patrol']);
+    expect(pairs(v.lines)).toEqual(['gate>wall:patrol', 'wall>gate:patrol']);
   });
 
-  it('colors a Stay row’s place with no badge, keeping the Start flag elsewhere', () => {
+  it('colors a Stay row’s place with no badge and no line', () => {
     const v = view(farrier(), 'stay');
-    expect(markOf(v, 'inn')).toEqual({ kind: 'routine', tone: 'stay', badge: undefined });
-    expect(markOf(v, 'smithy')).toEqual({ kind: 'routine', begin: true });
-    expect(pairs(v.lines)).toEqual(['smithy>inn:stay']);
+    expect(markOf(v, 'inn')).toEqual({ kind: 'routine', tone: 'stay', badge: undefined, spans: [{ tone: 'stay', time: label(6, 10), pieces: [[0, 240]] }] });
+    expect(v.lines).toEqual([]);
   });
 });
 
@@ -148,6 +144,6 @@ it('draws movement lines straight and at full strength', () => {
     const edge = routineFlowEdge(line);
     expect(edge.data?.connectionStyle).toBe('straight');
     expect(edge.style?.opacity).toBeUndefined();
-    expect(edge.style?.stroke).toBe(line.tone === 'free' ? 'hsl(var(--muted-foreground))' : `hsl(var(--routine-${line.tone}))`);
+    expect(edge.style?.stroke).toBe(`hsl(var(--routine-${line.tone}))`);
   }
 });

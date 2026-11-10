@@ -1,7 +1,7 @@
 import { connectedPlaces, placesOf, type PlaceGraph } from '@/lib/positionEngine';
 import type { ActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
-import { chancePercent, freeRanges, rangeText, rowClockKey } from '@/lib/routineTime';
+import { chancePercent, freeRanges, rangeText, rowClockKey, strip } from '@/lib/routineTime';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
 import type { Entity, EntityStart, ScheduleRange, ScheduleRow } from '@/types';
 
@@ -14,25 +14,35 @@ import type { Entity, EntityStart, ScheduleRange, ScheduleRow } from '@/types';
  *  Anywhere. `faded`: it can never get there. */
 export type RoutinePlaceKind = 'routine' | 'reach' | 'plain' | 'faded';
 
+/** A stretch of the day the entity can be at a place. `free`: time no row covers, at the Start's location. */
+export interface RoutineSpan {
+  tone: ActionKind | 'free';
+  /** In words, as its row's sentence says it. */
+  time: string;
+  /** Where it sits on the Dawn-to-Dawn strip, in minutes: two pieces when it runs across Dawn. */
+  pieces: [number, number][];
+}
+
 export interface RoutineMark {
   kind: RoutinePlaceKind;
   /** Where the Start on show begins. */
   begin?: true;
-  /** The selected row's action, on that row's places. Absent is the neutral ring. */
+  /** The place's color: the selected row's action, or the one action every row here shares. Absent is the neutral ring. */
   tone?: ActionKind;
   /** Wander chances or Patrol stop numbers of the selected row. */
   badge?: string;
+  /** When the entity can be here, in clock order: the whole day's rows, or only the selected row. */
+  spans?: RoutineSpan[];
 }
 
+/** A Patrol's leg with an arrowhead, or the dashed link between two places of the selected Wander row. */
 export interface RoutineLine {
   id: string;
   source: string;
   target: string;
-  /** `free`: a move into time no row covers. */
-  tone: ActionKind | 'free';
+  tone: ActionKind;
   arrow: boolean;
   dashed: boolean;
-  label?: string;
 }
 
 export interface RoutineView {
@@ -43,24 +53,27 @@ export interface RoutineView {
 /** One stretch of the day in clock order: a timed row, or time between them under the All-day row or at the Start. */
 interface Block {
   row: ScheduleRow | null;
-  label: string;
+  span: Omit<RoutineSpan, 'tone'>;
   places: string[];
 }
 
 function blocks(start: EntityStart): Block[] {
   const base = start.schedule.find((r) => r.time === 'allDay') ?? null;
   const timed = start.schedule.filter((r): r is ScheduleRow & { time: ScheduleRange } => r.time !== 'allDay').sort((a, b) => rowClockKey(a) - rowClockKey(b));
-  const gaps = freeRanges(timed).map((g) => ({
-    at: g.start,
-    block: {
-      row: base,
-      label: rangeText({ start: g.start, end: g.end % MINUTES_PER_DAY }),
-      places: base ? placesOf(base.action) : [start.place],
-    },
-  }));
+  const gaps = freeRanges(timed).map((g) => {
+    const range = { start: g.start, end: g.end % MINUTES_PER_DAY };
+    return {
+      at: g.start,
+      block: {
+        row: base,
+        span: g.wholeDay ? { time: 'All day', pieces: [[0, MINUTES_PER_DAY]] as [number, number][] } : { time: rangeText(range), pieces: strip(range) },
+        places: base ? placesOf(base.action) : [start.place],
+      },
+    };
+  });
   const rows = timed.map((r) => ({
     at: rowClockKey(r),
-    block: { row: r, label: rangeText(r.time), places: placesOf(r.action) },
+    block: { row: r, span: { time: rangeText(r.time), pieces: strip(r.time) }, places: placesOf(r.action) },
   }));
   return [...gaps, ...rows].sort((a, b) => a.at - b.at).map((x) => x.block).filter((b) => b.places.length > 0);
 }
@@ -76,6 +89,13 @@ function badgeOf(row: ScheduleRow, place: string): string | undefined {
     return at ? `${chancePercent(at.weight, a.places.map((p) => p.weight))}%` : undefined;
   }
   return undefined;
+}
+
+/** The one action every span shares, when there is one. */
+function sharedTone(spans: readonly RoutineSpan[]): ActionKind | undefined {
+  const tones = new Set(spans.map((s) => s.tone));
+  const [only] = tones;
+  return tones.size === 1 && only !== 'free' ? only : undefined;
 }
 
 /** The Routine view of `entity` on a map of `graph`. A Group lights its places and draws no lines. */
@@ -102,49 +122,44 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
 
   const day = blocks(start);
   const focused = (row: ScheduleRow | null) => !!selected && row?.id === selected.id;
-  // The selected row marks last, so its color wins a place it shares.
-  for (const b of [...day].sort((x, y) => Number(focused(x.row)) - Number(focused(y.row)))) {
-    for (const id of b.places) {
-      mark(id, focused(b.row) && b.row
-        ? { kind: 'routine', tone: b.row.action.kind, badge: badgeOf(b.row, id) }
-        : { kind: 'routine' });
+
+  // Each place's day: every stretch it is used in, or only the selected row's.
+  const spansAt = new Map<string, RoutineSpan[]>();
+  for (const b of day) {
+    for (const id of new Set(b.places)) {
+      if (!marks.has(id)) continue;
+      const here = spansAt.get(id) ?? [];
+      spansAt.set(id, here);
+      if (!selected || focused(b.row)) here.push({ ...b.span, tone: b.row?.action.kind ?? 'free' });
+    }
+  }
+  for (const [id, spans] of spansAt) {
+    if (selected) {
+      const badge = spans.length ? badgeOf(selected, id) : undefined;
+      mark(id, spans.length ? { kind: 'routine', tone: selected.action.kind, badge, spans } : { kind: 'routine' });
+    } else {
+      mark(id, { kind: 'routine', tone: sharedTone(spans), spans });
     }
   }
   const at = marks.get(start.place);
   if (at) marks.set(start.place, { ...at, kind: 'routine', begin: true });
 
-  const byId = new Map<string, RoutineLine>();
-  const line = (source: string, target: string, row: ScheduleRow | null, o: { arrow: boolean; dashed: boolean; label?: string }) => {
+  const drawn = new Set<string>();
+  const line = (source: string, target: string, row: ScheduleRow, arrow: boolean) => {
     if (source === target || !marks.has(source) || !marks.has(target)) return;
-    if (selected && !focused(row)) return;
-    const key = row?.id ?? 'free';
-    const id = `routine:${source}>${target}:${key}:${o.arrow ? 'go' : 'roam'}`;
-    if (!o.arrow && byId.has(`routine:${target}>${source}:${key}:roam`)) return;
-    // A move that runs along a line already drawn, like a Patrol's own leg, adds its time to that line.
-    const drawn = byId.get(id);
-    if (drawn) {
-      if (o.label) drawn.label = drawn.label ? `${drawn.label}, ${o.label}` : o.label;
-      return;
-    }
-    const next: RoutineLine = { id, source, target, tone: row?.action.kind ?? 'free', ...o };
-    byId.set(id, next);
-    lines.push(next);
+    const id = `routine:${source}>${target}:${row.id}:${arrow ? 'go' : 'roam'}`;
+    if (drawn.has(id) || (!arrow && drawn.has(`routine:${target}>${source}:${row.id}:roam`))) return;
+    drawn.add(id);
+    lines.push({ id, source, target, tone: row.action.kind, arrow, dashed: !arrow });
   };
 
-  day.forEach((b, i) => {
+  // Only a Patrol moves in a set order, so only it draws arrows. No line joins one row to the next: the entity is
+  // simply where its row puts it when the time comes.
+  for (const b of day) {
     const r = b.row;
-    const a = r?.action;
-    if (a?.kind === 'patrol') b.places.forEach((p, j) => line(p, b.places[(j + 1) % b.places.length], r, { arrow: true, dashed: false }));
-    if (a?.kind === 'wander' && focused(r)) {
-      b.places.forEach((p, j) => b.places.slice(j + 1).forEach((q) => line(p, q, r, { arrow: false, dashed: true })));
-    }
-    if (day.length < 2) return;
-    // Into this stretch, from where the one before it leaves the entity.
-    const prev = day[(i + day.length - 1) % day.length];
-    const from = prev.row?.action.kind === 'wander' ? prev.places : [prev.places[0]];
-    const to = a?.kind === 'wander' ? b.places : [b.places[0]];
-    const many = from.length > 1 || to.length > 1;
-    from.forEach((s, si) => to.forEach((t, ti) => line(s, t, r, { arrow: true, dashed: many, label: si === 0 && ti === 0 ? b.label : undefined })));
-  });
+    if (!r || (selected && !focused(r))) continue;
+    if (r.action.kind === 'patrol') b.places.forEach((p, j) => line(p, b.places[(j + 1) % b.places.length], r, true));
+    if (r.action.kind === 'wander' && focused(r)) b.places.forEach((p, j) => b.places.slice(j + 1).forEach((q) => line(p, q, r, false)));
+  }
   return { marks, lines };
 }

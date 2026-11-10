@@ -185,29 +185,31 @@ describe('a drag', () => {
 describe('the status line', () => {
   const status = (rowId: string | null, entity = farrier()) => routineMapStatus(entity, at(rowId));
 
-  it('names the action and its time for each row', () => {
-    expect(status('stay')).toMatch(new RegExp(`^Stay, ${rangeText({ start: 360, end: 600 })}\\. Click a location to stay there\\.$`));
-    expect(status('wander')).toMatch(/^Wander, .*Click a location to add it or remove it\. Drag/);
-    expect(status('patrol')).toMatch(/^Patrol, .*add the next stop, or the last stop to remove it\. Drag from a stop/);
+  it('names the action and its time for each row, apart from what a click does', () => {
+    expect(status('stay')).toEqual({ row: `Stay, ${rangeText({ start: 360, end: 600 })}`, text: 'Click a location to stay there' });
+    expect(status('wander').row).toMatch(/^Wander, /);
+    expect(status('wander').text).toBe('Click a location to add or remove it. Drag from one to add another.');
+    expect(status('patrol').row).toMatch(/^Patrol, /);
+    expect(status('patrol').text).toBe('Click the next stop, or the last stop to remove it. Drag from a stop to add one after it.');
   });
 
   it('asks for the first place of an empty row', () => {
-    expect(status('emptyWander')).toMatch(/Click a location to add it\.$/);
-    expect(status('emptyPatrol')).toMatch(/add the first stop\.$/);
+    expect(status('emptyWander').text).toBe('Click a location to add it');
+    expect(status('emptyPatrol').text).toBe('Click the first stop');
   });
 
   it('reads the All-day row as the rest of the day next to timed rows', () => {
     const allDay: ScheduleRow = { id: 'base', time: 'allDay', action: { kind: 'stay', place: 'inn' } };
-    expect(status('base', farrier('anywhere', [allDay, ...day]))).toMatch(/^Stay, the rest of the day\./);
-    expect(status('base', farrier('anywhere', [allDay]))).toMatch(/^Stay, all day\./);
+    expect(status('base', farrier('anywhere', [allDay, ...day])).row).toBe('Stay, the rest of the day');
+    expect(status('base', farrier('anywhere', [allDay])).row).toBe('Stay, all day');
   });
 
   it('says what a click does with no row selected', () => {
-    expect(status(null, farrier(['inn']))).toBe('Click a location to add it to "Can Also Go" or remove it');
-    expect(status(null, farrier('anywhere'))).toMatch(/^"Can Also Go" is set to "Anywhere", so a click changes nothing\./);
+    expect(status(null, farrier(['inn']))).toEqual({ text: 'Click a location to add or remove it from "Can Also Go"' });
+    expect(status(null, farrier('anywhere'))).toEqual({ text: 'Select a row to edit its locations here' });
   });
 
   it('speaks to a Group', () => {
-    expect(status(null, { ...farrier(), kind: 'group' })).toBe('Click a location to add it or remove it');
+    expect(status(null, { ...farrier(), kind: 'group' })).toEqual({ text: 'Click a location to add or remove it' });
   });
 });
