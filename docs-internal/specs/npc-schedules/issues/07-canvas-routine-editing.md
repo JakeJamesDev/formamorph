@@ -1,6 +1,6 @@
 # 07: Canvas Routine Editing
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 06
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -23,14 +23,25 @@ Spec rulings: Q75–Q77.
 
 ## Acceptance criteria
 
-- [ ] Each click rule above changes the row as described and is one undo step. Tests cover Stay, Wander add and remove, Patrol add, Patrol remove-last, and the first place of an empty row.
-- [ ] A click on a place that is not connected to the Start changes nothing.
-- [ ] A drag from a Patrol stop inserts the target right after it. A drag from the last stop to stop 1 is refused. A drag from a place outside the row cannot start.
-- [ ] A drag onto a place that is not connected, or a Wander drag onto a place already in the set, shows as refused during the drag.
-- [ ] A real pointer drag adds a place for a Wander row and for a Patrol row. Playwright drives it, since a synthetic event does not start a canvas drag.
-- [ ] With no row selected, a click toggles a listed Traversable place, and does nothing under Anywhere.
-- [ ] The status line changes with the selection and names the action and its time.
-- [ ] The status line's copy follows the Writing Guide.
-- [ ] Frames: `.scratch/frames/canvas-routine-edit-patrol.png` and `.scratch/frames/canvas-routine-status.png`, light and dark, at 1440 px wide.
+- [x] Each click rule above changes the row as described and is one undo step. Tests cover Stay, Wander add and remove, Patrol add, Patrol remove-last, and the first place of an empty row. (`routineMapEditing.test.ts` "a click with a row selected"; one Step proven in `e2e/canvas-routine-edit.spec.ts` by Undo emptying the history after a drag)
+- [x] A click on a place that is not connected to the Start changes nothing. ("changes nothing on a place not connected to the Start", mutation-checked)
+- [x] A drag from a Patrol stop inserts the target right after it. A drag from the last stop to stop 1 is refused. A drag from a place outside the row cannot start. (unit "a drag" block; the grip shows only on the row's places, e2e)
+- [x] A drag onto a place that is not connected, or a Wander drag onto a place already in the set, shows as refused during the drag. (e2e reads the drop handle's `valid` class mid-drag; mutation-checked)
+- [x] A real pointer drag adds a place for a Wander row and for a Patrol row. Playwright drives it, since a synthetic event does not start a canvas drag. (`e2e/canvas-routine-edit.spec.ts`, desktop)
+- [x] With no row selected, a click toggles a listed Traversable place, and does nothing under Anywhere. (unit "a click with no row selected")
+- [x] The status line changes with the selection and names the action and its time. (unit "the status line"; frames)
+- [x] The status line's copy follows the Writing Guide. (period rule; quoted labels in a plain-text slot; reviewed)
+- [x] Frames: `.scratch/frames/canvas-routine-edit-patrol.png` and `.scratch/frames/canvas-routine-status.png`, light and dark, at 1440 px wide. (stored with `-light` / `-dark` suffixes)
 
 For you: whether dragging stop to stop feels like drawing Connections, and whether a click that does nothing under Anywhere needs more than the status line.
+
+## Landed
+
+Spec-session rulings for this ticket: the status line shows for a Group; no Patrol stop follows its own place, for a drag or a click, with the loop from the last stop to stop 1 counted; a no-row click toggles any place, connected or not; a click may empty a Wander or Patrol row.
+
+**Not verified**
+- Nothing open. The mobile Playwright project skips the drag tests: a grip drag is a mouse gesture.
+
+**For you**
+- Whether dragging stop to stop feels like drawing Connections, and whether a click that does nothing under Anywhere needs more than the status line. Look at `.scratch/npc-schedules-07/frames/canvas-routine-edit-patrol-light.png` and `.scratch/npc-schedules-07/frames/canvas-routine-status-light.png` (and `-dark`).
+- Undo of a map edit closes the full-screen canvas and opens the entity's Profile tab (the editor's Reveal Origin). Decide if a map edit should undo in place.

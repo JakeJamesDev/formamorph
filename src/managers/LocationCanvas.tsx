@@ -19,6 +19,9 @@ import { pickMarks, togglePick, type PickMark } from '@/lib/entityPicking';
 import { routineView, type RoutineMark } from '@/lib/canvasRoutine';
 import { isGroup } from '@/lib/entityKind';
 import type { ActionKind } from '@/lib/routineEditing';
+import {
+  routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, type RoutineMapEdit,
+} from '@/lib/routineMapEditing';
 import { KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import { LocationIcon } from '@/lib/elementIcons';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -147,6 +150,11 @@ const PickMarkContext = createContext<Map<string, PickMark> | null>(null);
 /** Every location's Routine-view mark while an entity's routine is on show; null otherwise. */
 const RoutineMarkContext = createContext<Map<string, RoutineMark> | null>(null);
 
+const NO_SOURCES: ReadonlySet<string> = new Set();
+
+/** Where a routine drag may start, as `routineDragSources` reads it. */
+const RoutineSourceContext = createContext<ReadonlySet<string>>(NO_SOURCES);
+
 const ROUTINE_RING: Record<ActionKind, string> = {
   stay: 'bg-routine-stay/20 ring-2 ring-routine-stay',
   wander: 'bg-routine-wander/20 ring-2 ring-routine-wander',
@@ -219,21 +227,24 @@ const NodeBadges = ({ data }: { data: CanvasNodeData }) => {
  * rather than at a dot. A group's cover is its title strip, so the sub-locations inside it stay their own
  * targets.
  */
-const EdgeAnchors = ({ dropHeight }: { dropHeight: string }) => {
+const EdgeAnchors = ({ id, dropHeight }: { id: string; dropHeight: string }) => {
   const drawing = useConnection((c) => c.inProgress);
   // Hidden rather than removed while picking: edges attach to the handles xyflow measured at mount.
   const pickMarksShown = useContext(PickMarkContext) !== null;
   const routineShown = useContext(RoutineMarkContext) !== null;
   const picking = pickMarksShown || routineShown;
+  const routineSource = useContext(RoutineSourceContext).has(id);
   return (
     <>
+      {/* No tip in the Routine view: a tip that appears at runtime remounts the grip and the drag never starts. */}
       <Tip tip={picking ? undefined : 'Drag To Connect'}>
         <Handle
           type="source"
           position={Position.Right}
+          data-routine-source={routineSource || undefined}
           className={cn(
             '!h-3 !w-3 !border-2 !border-background !bg-primary opacity-0 transition-opacity',
-            picking ? '!pointer-events-none' : 'group-hover/node:opacity-100',
+            routineSource ? '!h-3.5 !w-3.5 opacity-100' : picking ? '!pointer-events-none' : 'group-hover/node:opacity-100',
           )}
         />
       </Tip>
@@ -279,7 +290,7 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
           armed && 'bg-primary/10 ring-2 ring-primary',
         )}
       >
-        <EdgeAnchors dropHeight="!h-full" />
+        <EdgeAnchors id={id} dropHeight="!h-full" />
         <NodeBadges data={data} />
         <span className="truncate">{data.label}</span>
         <PickIcons mark={mark} />
@@ -313,7 +324,7 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
           willTakeTheDrop && 'bg-primary/10 ring-2 ring-primary',
         )}
       >
-        <EdgeAnchors dropHeight="!h-9" />
+        <EdgeAnchors id={id} dropHeight="!h-9" />
         <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
           <NodeBadges data={data} />
           <span className="truncate">{data.label}</span>
@@ -870,16 +881,21 @@ const CanvasInner = ({
   const routineSelection = useRoutineSelection(routineEntity?.id ?? '');
   const routineStartId = routineSelection.startId;
   const routineRowId = routineSelection.rowId;
+  const routineAt = useMemo(() => ({ startId: routineStartId, rowId: routineRowId }), [routineStartId, routineRowId]);
+  const placeGraph = useMemo(() => ({ locations, connections }), [locations, connections]);
   const routine = useMemo(
-    () => (routineEntity
-      ? routineView(routineEntity, { startId: routineStartId, rowId: routineRowId }, { locations, connections })
-      : null),
-    [routineEntity, routineStartId, routineRowId, locations, connections],
+    () => (routineEntity ? routineView(routineEntity, routineAt, placeGraph) : null),
+    [routineEntity, routineAt, placeGraph],
   );
   const marks = useMemo(
     () => (pickedEntity && !routine ? pickMarks(pickedEntity, locations) : null),
     [pickedEntity, routine, locations],
   );
+  const routineSources = useMemo(
+    () => (routineEntity ? routineDragSources(routineEntity, routineAt) : NO_SOURCES),
+    [routineEntity, routineAt],
+  );
+  const routineStatus = routineEntity ? routineMapStatus(routineEntity, routineAt) : null;
   const {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
   } = session;
@@ -1351,12 +1367,24 @@ const CanvasInner = ({
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [picking]);
 
+  // One Step per map edit of a routine, so each click or drag undoes on its own.
+  const applyRoutineEdit = (edit: RoutineMapEdit) => {
+    if (updateEntity) void history.batch(edit.label, () => updateEntity(edit.entity));
+  };
+  const routineDrag = (from: string, to: string) => (routineEntity
+    ? routineMapDrag(routineEntity, routineAt, from, to, placeGraph)
+    : null);
+
   // A canvas click on a location toggles it for the picked entity. A drag that ends on the box was a pan.
   const togglePicked = (event: React.MouseEvent, locationId: string) => {
     if (!pickedEntity || !updateEntity) return;
     if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) return;
-    // A routine is edited in the card; only a Group's places toggle from the map.
-    if (routine && !isGroup(pickedEntity)) return;
+    // A Group's places toggle below, as in a pick.
+    if (routineEntity && !isGroup(routineEntity)) {
+      const edit = routineMapClick(routineEntity, routineAt, locationId, placeGraph);
+      if (edit) applyRoutineEdit(edit);
+      return;
+    }
     // Keyed by the location, so each click is its own Step rather than a typing run on the entity.
     history.keyNext({
       slice: 'entities', id: pickedEntity.id, field: pickMode === 'knownIn' ? 'knownIn' : 'locations', ids: [locationId],
@@ -1532,6 +1560,7 @@ const CanvasInner = ({
       <FlashContext.Provider value={flashId}>
       <PickMarkContext.Provider value={marks}>
       <RoutineMarkContext.Provider value={routine?.marks ?? null}>
+      <RoutineSourceContext.Provider value={routineSources}>
       <ReactFlow<LocationNodeType, Edge>
         nodes={nodes}
         edges={edges}
@@ -1554,7 +1583,8 @@ const CanvasInner = ({
         // A picker is read-only: no drag, nesting, Connection or selection, and a drag with any button pans.
         // Adjusting the map holds the boxes still the same way, so every left press goes to the map.
         nodesDraggable={!boxesHeld}
-        nodesConnectable={!boxesHeld}
+        // A selected Wander or Patrol row draws from its own places' grips.
+        nodesConnectable={!boxesHeld || routineSources.size > 0}
         elementsSelectable={!boxesHeld}
         edgesFocusable={!picking}
         onNodeMouseEnter={(_, node) => hoverOn(node.id)}
@@ -1576,10 +1606,14 @@ const CanvasInner = ({
         // Snapping applies to the drag itself, so what the author sees land is exactly what is stored.
         snapToGrid={snap}
         snapGrid={[CANVAS_GRID, CANVAS_GRID]}
-        onConnect={({ source, target }) => applyIntent(connectIntent(source, target, connections))}
+        onConnect={({ source, target }) => {
+          if (!routine) { applyIntent(connectIntent(source, target, connections)); return; }
+          const edit = routineDrag(source, target);
+          if (edit) applyRoutineEdit(edit);
+        }}
         // The same rule the gesture obeys, so a drag onto a pair that already has a record reads as
         // refused while it is being drawn rather than landing and doing nothing.
-        isValidConnection={({ source, target }) => !!connectIntent(source, target, connections)}
+        isValidConnection={({ source, target }) => (routine ? !!routineDrag(source, target) : !!connectIntent(source, target, connections))}
         connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
         deleteKeyCode={null}
         // Under the zoom controls rather than alone in the far corner, where a lone bit of text on open canvas
@@ -1612,6 +1646,12 @@ const CanvasInner = ({
           )}
         </CanvasControls>
         <TopLevelDrop />
+        {/* In the toolbar's place, which picking hides. Clear of the entity card on the right. */}
+        {routineStatus && (
+          <Panel position="top-center" className="!m-2 md:!mt-[5px] max-w-[min(36rem,calc(100%-30rem))] max-md:max-w-[calc(100%-1rem)]">
+            <p data-testid="routine-status" role="status" className="rounded-md border bg-card px-3 py-1.5 text-label shadow-md">{routineStatus}</p>
+          </Panel>
+        )}
         {/* The window's own orientation aids and power tools. The pane is a view of a map the author can
             already take in; these are for the map that has grown past it. */}
         {fullscreen && !picking && (
@@ -1687,6 +1727,7 @@ const CanvasInner = ({
           </Panel>
         )}
       </ReactFlow>
+      </RoutineSourceContext.Provider>
       </RoutineMarkContext.Provider>
       </PickMarkContext.Provider>
       </FlashContext.Provider>
