@@ -2,19 +2,25 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LoginPage } from './LoginPage';
+import { RegisterPage } from './RegisterPage';
 import { ProfilePage } from './ProfilePage';
 import { leaveTo } from '../leaveSite';
-import { at, res, resetAccountPage } from '../test/support';
+import { at, res, resetAccountPage, signIn as signedIn } from '../test/support';
 import { SiteLayout } from '../components/SiteLayout';
 import { StrictMode } from 'react';
-import { AGE_GATE_VERSION } from '@/lib/ageGate';
+import { AGE_GATE_VERSION, acceptAgeGate } from '@/lib/ageGate';
 import AuthService from '@/services/AuthService';
 
 // jsdom implements no navigation, so where a finished sign-in sent the reader is only observable
 // through this seam.
 vi.mock('../leaveSite', () => ({ leaveTo: vi.fn() }));
+vi.mock('@/lib/communityCaches', () => ({ purgeCommunityCaches: vi.fn().mockResolvedValue(undefined) }));
 
-beforeEach(() => resetAccountPage('/login'));
+// Most readers here answered the age question on an earlier visit; the direct-visit tests clear it.
+beforeEach(() => {
+  resetAccountPage('/login');
+  acceptAgeGate();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -44,6 +50,7 @@ describe('a flagged account', () => {
 });
 
 const beginProfileSignIn = async () => {
+  localStorage.removeItem('FORMAMORPH_ageGate');
   at('/u/alice');
   vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
     String(input).includes('/by-username/')
@@ -372,5 +379,119 @@ describe('LoginPage', () => {
 
     expect(screen.getByRole('link', { name: 'Forgot password?' }))
       .toHaveAttribute('href', '/reset-password');
+  });
+});
+
+describe('a direct visit with no age answer', () => {
+  beforeEach(() => resetAccountPage('/login'));
+
+  const unanswered = () => res({ accepted: false, requiredVersion: AGE_GATE_VERSION, acceptedAt: null });
+  const answered = () => res({
+    accepted: true,
+    requiredVersion: AGE_GATE_VERSION,
+    acceptedAt: '2026-09-06T12:00:00.000Z',
+  });
+
+  it('asks the age question before the sign-in form, then saves the answer to the account', async () => {
+    render(<LoginPage />);
+
+    expect(screen.getByText('Adult Content Ahead')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sign In' })).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Accept' }));
+    expect(fetch).not.toHaveBeenCalled();
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({ token: 'tok', user: { id: 'u1', username: 'alice' } }))
+      .mockResolvedValueOnce(unanswered())
+      .mockResolvedValueOnce(answered());
+
+    await signIn();
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/auth\/login$/),
+      expect.stringMatching(/\/policies\/age-gate$/),
+      expect.stringMatching(/\/policies\/age-gate\/accept$/),
+    ]);
+    expect(vi.mocked(fetch).mock.calls[2]?.[1]).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ acceptanceVersion: AGE_GATE_VERSION }),
+    });
+  });
+
+  it('keeps the form and the answer when the first sign-in is refused', async () => {
+    render(<LoginPage />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Accept' }));
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({ message: 'Invalid credentials' }, false, 401))
+      .mockResolvedValueOnce(res({ token: 'tok', user: { id: 'u1', username: 'alice' } }))
+      .mockResolvedValueOnce(unanswered())
+      .mockResolvedValueOnce(answered());
+
+    await signIn();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid credentials');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Sign In' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/policies/age-gate/accept')))
+      .toHaveLength(1);
+  });
+
+  it('sends a visitor who declines to the home page, signed out and without a form', async () => {
+    render(<LoginPage />);
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Decline' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+    expect(AuthService.isAuthenticated()).toBe(false);
+    expect(localStorage.getItem('FORMAMORPH_ageGate')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('carries an answer given here across to the register page', async () => {
+    render(<LoginPage />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Accept' }));
+
+    const link = screen.getByRole('link', { name: 'Create one' });
+    const registerHref = link.getAttribute('href');
+    expect(registerHref).toMatch(/^\/register\?contentWarningFlow=/);
+    // The click starts the navigation; the page then hides, which drops an answer nobody carries on.
+    // jsdom cannot navigate, so the default action stops here.
+    link.addEventListener('click', (event) => event.preventDefault());
+    await user.click(link);
+    window.dispatchEvent(new Event('pagehide'));
+    cleanup();
+
+    at(registerHref!);
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({}, false, 404))
+      .mockResolvedValueOnce(res({ token: 'tok', user: { id: 'u1', username: 'alice' } }))
+      .mockResolvedValueOnce(unanswered())
+      .mockResolvedValueOnce(answered());
+    render(<RegisterPage />);
+    await user.type(screen.getByLabelText('Username'), 'alice');
+    await user.type(screen.getByLabelText('Password'), 'hunter22');
+    await user.type(screen.getByLabelText('Confirm Password'), 'hunter22');
+    await user.click(screen.getByRole('button', { name: 'Create Account' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).toMatch(/\/policies\/age-gate\/accept$/);
+  });
+
+  it('asks a signed-in account with no answer before the form, and saves the answer at once', async () => {
+    signedIn({ id: 'u1', username: 'alice' });
+    vi.mocked(fetch).mockResolvedValueOnce(unanswered()).mockResolvedValueOnce(answered());
+    render(<LoginPage />);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Accept' }));
+
+    expect(await screen.findByLabelText('Username')).toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/policies\/age-gate$/),
+      expect.stringMatching(/\/policies\/age-gate\/accept$/),
+    ]);
   });
 });

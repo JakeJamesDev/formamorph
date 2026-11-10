@@ -5,7 +5,11 @@ import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
 import { RENAME_PATH } from '../router';
 import { useNextPath } from '../useNextPath';
-import { useAgeGateAuthenticationHandoff } from '../ageGateAuthenticationContext';
+import { SiteAgeGate } from '../components/SiteAgeGate';
+import {
+  useAgeGateAuthenticationHandoff,
+  useSiteAgeGateAuthentication,
+} from '../ageGateAuthenticationContext';
 import { recordDeletionCancellation } from '@/lib/deletionCancellation';
 import {
   AgeGateAuthenticationChangedError,
@@ -21,16 +25,27 @@ interface PendingCompletion {
   deletionCancelled: boolean;
 }
 
-/** Sign in on the site. The session it stores is the one `/play/` reads, because both are one origin. */
+/** Sign in on the site, after the age question. */
 export function LoginPage() {
+  return <SiteAgeGate forAuthentication><LoginForm /></SiteAgeGate>;
+}
+
+/** The session it stores is the one `/play/` reads, because both are one origin. */
+function LoginForm() {
   const { next, carry } = useNextPath();
+  const gate = useSiteAgeGateAuthentication();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [authenticationFlow] = useState(readAgeGateAuthentication);
-  const continueAuthentication = useAgeGateAuthenticationHandoff(authenticationFlow);
+  // An answer carried in the address wins; one given on this page comes from the gate.
+  const [authenticationFlow] = useState(() => readAgeGateAuthentication() ?? gate.flow);
+  const keepOwnFlow = useAgeGateAuthenticationHandoff(authenticationFlow);
+  const continueAuthentication = () => {
+    keepOwnFlow();
+    gate.continueAuthentication();
+  };
   const [pendingCompletion, setPendingCompletion] = useState<PendingCompletion | null>(null);
 
   const finish = (deletionCancelled: boolean) => {

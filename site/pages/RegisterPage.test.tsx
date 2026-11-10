@@ -7,13 +7,18 @@ import { LoginPage } from './LoginPage';
 import { ProfilePage } from './ProfilePage';
 import { leaveTo } from '../leaveSite';
 import { at, res, resetAccountPage, signIn } from '../test/support';
-import { AGE_GATE_VERSION } from '@/lib/ageGate';
+import { AGE_GATE_VERSION, acceptAgeGate } from '@/lib/ageGate';
 import AuthService from '@/services/AuthService';
 import { USERNAME_RULE_HELP, USERNAME_TAKEN_MESSAGE } from '@/lib/usernameRule';
 
 vi.mock('../leaveSite', () => ({ leaveTo: vi.fn() }));
+vi.mock('@/lib/communityCaches', () => ({ purgeCommunityCaches: vi.fn().mockResolvedValue(undefined) }));
 
-beforeEach(() => resetAccountPage('/register'));
+// Most readers here answered the age question on an earlier visit; the direct-visit tests clear it.
+beforeEach(() => {
+  resetAccountPage('/register');
+  acceptAgeGate();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -36,8 +41,93 @@ const sentBody = () => {
   return JSON.parse(String((call?.[1] as RequestInit | undefined)?.body));
 };
 
+/** The account's stored answer to the age question, as the server reports it. */
+const ageAnswer = (accepted: boolean) => res({
+  accepted,
+  requiredVersion: AGE_GATE_VERSION,
+  acceptedAt: accepted ? '2026-09-06T12:00:00.000Z' : null,
+});
+
+describe('a direct visit with no age answer', () => {
+  beforeEach(() => resetAccountPage('/register'));
+
+  it('asks the age question before the form and the policy, then saves the answer to the new account', async () => {
+    render(<RegisterPage />);
+
+    expect(screen.getByText('Adult Content Ahead')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create Account' })).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Accept' }));
+    expect(fetch).not.toHaveBeenCalled();
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({ privacyPolicy: { title: 'Privacy Policy', body: 'What we store.' } }))
+      .mockResolvedValueOnce(res({ token: 'tok', user: { id: 'u1', username: 'alice' } }))
+      .mockResolvedValueOnce(res({ success: true, accepted: true }))
+      .mockResolvedValueOnce(ageAnswer(false))
+      .mockResolvedValueOnce(ageAnswer(true));
+
+    await fillIn('alice', 'hunter22');
+    await userEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/policies\/privacy-policy$/),
+      expect.stringMatching(/\/auth\/register$/),
+      expect.stringMatching(/\/policies\/privacy-policy\/accept$/),
+      expect.stringMatching(/\/policies\/age-gate$/),
+      expect.stringMatching(/\/policies\/age-gate\/accept$/),
+    ]);
+    expect(vi.mocked(fetch).mock.calls[4]?.[1]).toMatchObject({
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok' },
+      body: JSON.stringify({ acceptanceVersion: AGE_GATE_VERSION }),
+    });
+  });
+
+  it('sends a visitor who declines to the home page, with no account and no form', async () => {
+    render(<RegisterPage />);
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Decline' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+    expect(AuthService.isAuthenticated()).toBe(false);
+    expect(localStorage.getItem('FORMAMORPH_ageGate')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('asks a signed-in account with no answer before its policy step', async () => {
+    signIn({ id: 'u1', username: 'alice' });
+    let policyRequested = false;
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith('/policies/age-gate')) return Promise.resolve(ageAnswer(false));
+      if (url.endsWith('/policies/age-gate/accept')) return Promise.resolve(ageAnswer(true));
+      policyRequested = true;
+      return Promise.resolve(res({
+        privacyPolicy: { title: 'Privacy Policy', body: 'The current terms.', tags: [], accepted: false },
+      }));
+    });
+    render(<RegisterPage />);
+
+    const accept = await screen.findByRole('button', { name: 'Accept' });
+    expect(screen.getByText('Adult Content Ahead')).toBeInTheDocument();
+    expect(policyRequested).toBe(false);
+    await userEvent.setup().click(accept);
+
+    expect(await screen.findByRole('heading', { name: 'Privacy Policy' })).toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/policies\/age-gate$/),
+      expect.stringMatching(/\/policies\/age-gate\/accept$/),
+      expect.stringMatching(/\/policies$/),
+    ]);
+  });
+});
+
 describe('RegisterPage', () => {
   it('carries the warning answer through account creation after the Privacy Policy step', async () => {
+    localStorage.removeItem('FORMAMORPH_ageGate');
     at('/u/alice');
     vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
       String(input).includes('/by-username/')
@@ -98,6 +188,7 @@ describe('RegisterPage', () => {
   });
 
   it('cannot bind the pending answer to an account adopted while Privacy is being accepted', async () => {
+    localStorage.removeItem('FORMAMORPH_ageGate');
     at('/u/alice');
     vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
       String(input).includes('/by-username/')
@@ -147,6 +238,7 @@ describe('RegisterPage', () => {
   });
 
   it('retries only the warning persistence after the account has been created', async () => {
+    localStorage.removeItem('FORMAMORPH_ageGate');
     at('/u/alice');
     vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
       String(input).includes('/by-username/')
@@ -263,6 +355,7 @@ describe('RegisterPage', () => {
   it('asks an existing signed-in account for an outdated policy answer', async () => {
     signIn({ username: 'alice' });
     vi.mocked(fetch)
+      .mockResolvedValueOnce(ageAnswer(true))
       .mockResolvedValueOnce(res({
         privacyPolicy: {
           title: 'Updated Privacy Policy',
@@ -281,6 +374,7 @@ describe('RegisterPage', () => {
 
     await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
     expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/policies\/age-gate$/),
       expect.stringMatching(/\/policies$/),
       expect.stringMatching(/\/policies\/privacy-policy\/accept$/),
     ]);
@@ -288,12 +382,14 @@ describe('RegisterPage', () => {
 
   it('checks an existing account only once under the site entry StrictMode', async () => {
     signIn({ username: 'alice' });
-    vi.mocked(fetch).mockResolvedValue(res({ privacyPolicy: null }));
+    vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
+      String(input).endsWith('/policies/age-gate') ? ageAnswer(true) : res({ privacyPolicy: null }),
+    ));
 
     render(<StrictMode><RegisterPage /></StrictMode>);
 
     await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/policies'))).toHaveLength(1);
   });
 
   it('stores the session under the keys the game reads', async () => {

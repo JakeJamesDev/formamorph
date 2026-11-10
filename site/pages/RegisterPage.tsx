@@ -9,7 +9,11 @@ import { SiteMarkdown } from '../components/SiteMarkdown';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
 import { useNextPath } from '../useNextPath';
-import { useAgeGateAuthenticationHandoff } from '../ageGateAuthenticationContext';
+import { SiteAgeGate } from '../components/SiteAgeGate';
+import {
+  useAgeGateAuthenticationHandoff,
+  useSiteAgeGateAuthentication,
+} from '../ageGateAuthenticationContext';
 import {
   AgeGateAuthenticationChangedError,
   bindAgeGateAuthentication,
@@ -20,9 +24,15 @@ import {
 } from '@/lib/ageGateAuthentication';
 import type { BoundAgeGateAuthentication } from '@/types';
 
-/** Create an account on the site. Same rules as the game's own register form, and the same session. */
+/** Create an account on the site, after the age question. */
 export function RegisterPage() {
+  return <SiteAgeGate forAuthentication><RegisterForm /></SiteAgeGate>;
+}
+
+/** Same rules as the game's own register form, and the same session. */
+function RegisterForm() {
   const { next, carry } = useNextPath();
+  const gate = useSiteAgeGateAuthentication();
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -37,8 +47,14 @@ export function RegisterPage() {
   const checkedExisting = useRef(false);
   // The name the rule check passed, for the policy step's retry to send as the first attempt did.
   const checkedName = useRef('');
-  const [authenticationFlow] = useState(() => startedSignedIn ? null : readAgeGateAuthentication());
-  const continueAuthentication = useAgeGateAuthenticationHandoff(authenticationFlow);
+  // An answer carried in the address wins; one given on this page comes from the gate.
+  const [authenticationFlow] = useState(() =>
+    startedSignedIn ? null : readAgeGateAuthentication() ?? gate.flow);
+  const keepOwnFlow = useAgeGateAuthenticationHandoff(authenticationFlow);
+  const continueAuthentication = () => {
+    keepOwnFlow();
+    gate.continueAuthentication();
+  };
   const boundAgeGateAuthenticationRef = useRef<BoundAgeGateAuthentication | null>(null);
   const [pendingAgeGateCompletion, setPendingAgeGateCompletion] =
     useState<BoundAgeGateAuthentication | null>(null);

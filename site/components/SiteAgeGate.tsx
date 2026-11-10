@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AgeGateDialog } from '@/components/community/AgeGateDialog';
 import { Button } from '@/components/ui/button';
 import { AGE_GATE_VERSION, acceptAgeGate, isAgeAttested } from '@/lib/ageGate';
@@ -41,9 +41,15 @@ const initialState = (): GateState => {
  * The children are not rendered at all until the answer is in, rather than hidden behind the dialog: a
  * mounted profile fetches, and a fetch is the page having already been visited.
  */
-export function SiteAgeGate({ children }: { children: ReactNode }) {
+export function SiteAgeGate({ children, forAuthentication = false }: {
+  children: ReactNode;
+  /** The children sign the visitor in, so a session change after the answer is theirs to finish. */
+  forAuthentication?: boolean;
+}) {
   const [sessionToken, setSessionToken] = useState(AuthService.token);
   const [state, setState] = useState<GateState>(initialState);
+  const childrenOwnSession = useRef(false);
+  childrenOwnSession.current = forAuthentication && state === 'accepted';
   const [saving, setSaving] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
@@ -56,6 +62,7 @@ export function SiteAgeGate({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => AuthService.onSessionChanged(() => {
+    if (childrenOwnSession.current) return;
     setSessionToken(AuthService.token);
     setAuthenticationFlow((flow) => {
       if (flow) cancelAgeGateAuthentication(flow);
