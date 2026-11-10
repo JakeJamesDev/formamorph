@@ -30,7 +30,6 @@ The spec's R2, History, and Copy sections hold the rules.
 - [ ] The Usage tab's tests pass unchanged after any move of the day chart.
 - [ ] The copy passes the `copy-sweep` skill.
 - [ ] Frames exist for the dev fixture: `.scratch/frames/storage-history-light-wide.png`, `storage-history-dark-wide.png`, `storage-history-light-narrow.png`.
-- [ ] The changelog line from ticket 01 covers R2 and history. It stays one entry.
 - [ ] Each guard above was proved by reinstating its bug and watching its test fail.
 
 For you: look at the 365-day range in the dev fixture. Check that 365 columns stay readable at the narrow width.

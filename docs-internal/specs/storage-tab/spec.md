@@ -90,7 +90,9 @@ Rulings from the grill:
 - **Marks.** A mark at each value in the disk's `alertLevels`. The client does not hard-code 80 and 90.
 - **Tiles.** Used (percent and GB), Free, Days Until Full, Vacuum. A null forecast shows the no-value dash. Vacuum reads in words, not color.
 - A legend under the bar lists each segment with its size. The bar itself is hidden from screen readers; the parts table holds the figures.
-- The segmented bar is a new visual pattern. It needs the user's approval in the design system showcase before adoption. The mock from the grill is the reference: a flat bar, a 2px gap between segments, dashed marks, a legend grid.
+- The segmented bar is a new visual pattern. It needs the user's approval in the design system showcase before adoption. The mock from the grill was an inline chat widget, not a file. It showed a flat bar, a 2px gap between segments, dashed marks, and a legend grid of swatch, name, and size.
+- **Segment colors (ticket 01 ruling).** Each part has its own hue from the chart tokens. The remainder is neutral, and free space is the muted track. A part keeps its hue when the order changes. This is an exception to the Usage Report's one-color bar rule, for a part-to-whole bar only. There are 5 chart tokens and 8 parts, so the mapping is fixed: database, worlds, backups, and thumbnails each have a token. Pending, avatars, event posters, and supporter-private fold into one "other uploads" segment with the fifth token, in the bar and the legend only; the table lists each.
+- **Two disks (ticket 01 ruling).** Each disk has its own tile row above its own bar, headed by the disk. Vacuum shows once, with the disk that holds the data role. The parts table stays flat, with no disk column.
 
 ### Parts section
 
@@ -157,6 +159,7 @@ Each guard is proved by reinstating its bug and watching the test fail.
 
 ## Further Notes
 
+- No changelog entry (ticket 01 ruling). The changelog rules give staff and admin tools no entry, and the Usage and Mail tabs have none.
 - The server work is not deployed yet. Deploy it before a client release that has this tab.
 - The first days after the deploy have little history. The charts and the forecast fill in over a week.
 - The server counts `usedFraction` against the full disk. Root-reserved blocks on the server are not verified, so the tab's free space can differ a little from what a non-root process can write.
