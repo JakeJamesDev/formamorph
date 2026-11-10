@@ -205,7 +205,10 @@ export function RoutineRow({ row, others, startPlace, book, connected, asHours, 
       ref={rowRef} data-routine-row={row.id} aria-current={selected || undefined} onClickCapture={onSelect}
       className={cn('group flex items-start gap-1 rounded px-1 py-0.5 text-label leading-7 transition-colors', selected ? 'bg-accent/60' : 'hover:bg-muted/40')}
     >
-      <span className={cn('mt-2.5 inline-block h-2.5 w-2.5 shrink-0 rounded-sm', ACTION_TONE[row.action.kind])} aria-hidden />
+      {/* As wide as the free-time line's icon, so the swatch centers on it and the two locks line up. */}
+      <span className="mt-1.5 flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+        <span className={cn('h-2.5 w-2.5 rounded-sm', ACTION_TONE[row.action.kind])} />
+      </span>
       <Tip tip={strictTip}>
         <button
           type="button" className="mt-1.5 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -215,8 +218,7 @@ export function RoutineRow({ row, others, startPlace, book, connected, asHours, 
           {row.strict ? <Lock className="h-4 w-4 text-warning" /> : <LockOpen className="h-4 w-4 text-muted-foreground" />}
         </button>
       </Tip>
-      {/* No flex-1: Delete follows the sentence, not the far edge of a wide tab. */}
-      <p className="min-w-0">
+      <p className="min-w-0 flex-1">
         <Token wide label={`Time: ${timeText}`} editor={(
           <RowTimeEditor time={row.time} asHours={asHours} onAsHours={onAsHours} others={others} onChange={(time) => onChange({ ...row, time })} />
         )}>{timeText}</Token>

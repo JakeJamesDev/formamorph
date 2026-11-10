@@ -22,12 +22,12 @@ import { connectedPlaces } from '@/lib/positionEngine';
 import { withLockedRest, withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart } from '@/lib/routineEditing';
 import { KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import {
-  chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, rowClockKey, toWeight, type FreeRange,
+  chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, toStrip, toWeight, type FreeRange,
 } from '@/lib/routineTime';
 import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
-import type { Connection, Entity, EntityKind, EntityStart, GameLocation, ScheduleRange, ScheduleRow, Traversable } from '@/types';
+import type { Connection, Entity, EntityKind, EntityStart, GameLocation, ScheduleRow, Traversable } from '@/types';
 import { DayStrip, STRIP_PART } from './DayStrip';
 import { RoutineRow } from './RoutineRow';
 import { ACTIONS } from './routineActions';
@@ -181,12 +181,12 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
 }) {
   const many = (entity.starts?.length ?? 0) > 1;
   const percent = chancePercent(start.weight, weights);
-  const rows = [...start.schedule].sort((a, b) => rowClockKey(a) - rowClockKey(b));
   const free = freeRanges(start.schedule);
   type Line = { at: number; row: ScheduleRow; free?: undefined } | { at: number; row?: undefined; free: FreeRange };
+  // The sentences read from Dawn, the way the strip above them does.
   const lines: Line[] = [
-    ...rows.map((row) => ({ at: rowClockKey(row), row })),
-    ...free.map((f) => ({ at: f.start, free: f })),
+    ...start.schedule.map((row) => ({ at: row.time === 'allDay' ? -1 : toStrip(row.time.start), row })),
+    ...free.map((f) => ({ at: toStrip(f.start), free: f })),
   ].sort((a, b) => a.at - b.at);
   const full = dayFull(start.schedule);
   const startName = book.nameOf(start.place);
@@ -227,9 +227,10 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
     scrollTo.current = added.rowId;
     selectRow(added.rowId);
   };
-  const move = (id: string, range: ScheduleRange, gesture: boolean) => {
+  const move = (id: string, time: ScheduleRow['time'], gesture: boolean) => {
+    // The row keeps its format through a drag, All Day included, so it snaps the same way on the way back.
     setFormats((f) => (id in f ? f : { ...f, [id]: asHoursOf(start.schedule.find((r) => r.id === id)!) }));
-    const write = withRow(entity, start.id, id, (r) => ({ ...r, time: range }));
+    const write = withRow(entity, start.id, id, (r) => ({ ...r, time }));
     if (gesture) onChange(write); else commit('Move Routine Time', write);
   };
 

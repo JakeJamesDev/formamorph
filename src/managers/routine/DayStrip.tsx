@@ -4,8 +4,8 @@ import { Tip } from '@/components/ui/tooltip';
 import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
 import {
-  CLOCK_ORDER, DAYPART_LABELS, daypartEnd, daypartStart, edgePositions, edgeText, moveEdge, rangeText, stepEdge, strip,
-  timedCover, type FreeRange, type RangeEdge,
+  CLOCK_ORDER, DAYPART_LABELS, daypartEnd, daypartStart, edgeText, moveEdge, rangeText, stepEdge, strip, STRIP_START,
+  timedCover, timePositions, toStrip, type FreeRange, type RangeEdge,
 } from '@/lib/routineTime';
 import { cn } from '@/lib/utils';
 import type { Daypart, ScheduleRange, ScheduleRow } from '@/types';
@@ -20,12 +20,9 @@ export const STRIP_PART = 'data-routine-strip';
 
 const pct = (m: number) => `${(m / MINUTES_PER_DAY) * 100}%`;
 
-/** Daypart icons centered on their stretch of the day, full name in a tooltip. Night wraps, so it shows twice. */
+/** Daypart icons centered on their stretch of the strip, full name in a tooltip. */
 function DaypartAxis() {
-  const spans = CLOCK_ORDER.flatMap((d) => {
-    const a = daypartStart(d); const b = daypartEnd(d);
-    return a < b ? [{ d, a, b }] : [{ d, a, b: MINUTES_PER_DAY }, { d, a: 0, b }];
-  });
+  const spans = CLOCK_ORDER.flatMap((d) => strip({ start: daypartStart(d), end: daypartEnd(d) }).map(([a, b]) => ({ d, a, b })));
   return (
     <div className="relative h-5">
       {spans.map(({ d, a, b }) => {
@@ -45,13 +42,15 @@ function DaypartAxis() {
   );
 }
 
-/** One end of a timed row's band. A drag or an arrow key moves it by the row's format; it never crosses a timed row. */
-function EdgeHandle({ row, range, edge, asHours, covered, top, barRef, onGrab, onMove }: {
-  row: ScheduleRow; range: ScheduleRange; edge: RangeEdge; asHours: boolean; covered: readonly boolean[];
+/** One end of a row's band. A drag or an arrow key moves it by the row's format; it never crosses a timed row. */
+function EdgeHandle({ row, time, edge, asHours, covered, canFill, top, barRef, onGrab, onMove }: {
+  row: ScheduleRow; time: ScheduleRow['time']; edge: RangeEdge; asHours: boolean; covered: readonly boolean[];
+  /** Stretching the row over the whole strip makes it All Day. */
+  canFill: boolean;
   /** The selected row's handles sit on top, so it wins a shared edge. */
   top: boolean;
   barRef: RefObject<HTMLDivElement | null>;
-  onGrab: () => void; onMove: (next: ScheduleRange, gesture: boolean) => void;
+  onGrab: () => void; onMove: (next: ScheduleRow['time'], gesture: boolean) => void;
 }) {
   const history = useWorldHistoryMovesOptional();
   const [dragging, setDragging] = useState(false);
@@ -63,11 +62,12 @@ function EdgeHandle({ row, range, edge, asHours, covered, top, barRef, onGrab, o
   // A handle that unmounts mid-drag closes its Step.
   useEffect(() => () => { if (grouped.current) void history?.endGroup(); }, [history]);
 
-  const minute = range[edge];
-  const label = edgeText(minute, edge, asHours);
-  const write = (next: ScheduleRange, gesture: boolean) => {
-    if (next.start !== range.start || next.end !== range.end) onMove(next, gesture);
-  };
+  const position = timePositions(time)[edge];
+  const label = edgeText(time === 'allDay' ? STRIP_START : time[edge], edge, asHours);
+  const timeText = time === 'allDay' ? 'All day' : rangeText(time, asHours);
+  const same = (a: ScheduleRow['time'], b: ScheduleRow['time']) =>
+    (a === 'allDay' || b === 'allDay' ? a === b : a.start === b.start && a.end === b.end);
+  const write = (next: ScheduleRow['time'], gesture: boolean) => { if (!same(next, time)) onMove(next, gesture); };
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     // Stopping the default keeps text from selecting mid-drag, and with it the focus a press gives, so focus by hand.
@@ -83,28 +83,28 @@ function EdgeHandle({ row, range, edge, asHours, covered, top, barRef, onGrab, o
     const rect = barRef.current?.getBoundingClientRect();
     if (!dragging || !rect || rect.width === 0) return;
     const at = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1) * MINUTES_PER_DAY;
-    write(moveEdge(range, edge, at, asHours, covered), true);
+    write(moveEdge(time, edge, at, asHours, covered, canFill), true);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const direction = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : 0;
     if (!direction) return;
     e.preventDefault();
     onGrab();
-    write(stepEdge(range, edge, direction, asHours, covered), false);
+    write(stepEdge(time, edge, direction, asHours, covered, canFill), false);
   };
 
   return (
     <div
       {...{ [STRIP_PART]: '' }}
-      role="slider" tabIndex={0} aria-label={`${edge === 'start' ? 'Start' : 'End'} of ${rangeText(range, asHours)}`}
-      aria-valuemin={0} aria-valuemax={MINUTES_PER_DAY} aria-valuenow={edgePositions(range)[edge]} aria-valuetext={label}
+      role="slider" tabIndex={0} aria-label={`${edge === 'start' ? 'Start' : 'End'} of ${timeText}`}
+      aria-valuemin={0} aria-valuemax={MINUTES_PER_DAY} aria-valuenow={position} aria-valuetext={label}
       data-row={row.id} data-edge={edge}
       className={cn(
         'group/handle absolute inset-y-0 flex w-3 -translate-x-1/2 cursor-ew-resize touch-none items-center justify-center rounded-sm',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         top ? 'z-20' : 'z-10',
       )}
-      style={{ left: pct(edgePositions(range)[edge]) }}
+      style={{ left: pct(position) }}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove}
       onPointerUp={endGroup} onPointerCancel={endGroup} onLostPointerCapture={endGroup}
       onKeyDown={onKeyDown}
@@ -125,7 +125,7 @@ function EdgeHandle({ row, range, edge, asHours, covered, top, barRef, onGrab, o
 
 const actionLabel = (row: ScheduleRow) => ACTIONS.find((a) => a.value === row.action.kind)?.label ?? '';
 
-/** The Start's day on a 24-hour strip: a band per row in its action's color, the All-day row underneath, free time
+/** The Start's day on a 24-hour strip that begins at Dawn: a band per row in its action's color, the All-day row underneath, free time
  *  hatched. A band selects its row, a gap adds a row over it, and each timed band's ends drag. */
 export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, onMove }: {
   rows: readonly ScheduleRow[]; free: readonly FreeRange[];
@@ -134,7 +134,7 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
   onSelect: (rowId: string) => void;
   onFill: (time: ScheduleRow['time']) => void;
   /** `gesture` is true for a pointer drag, which the strip groups into one Step. */
-  onMove: (rowId: string, range: ScheduleRange, gesture: boolean) => void;
+  onMove: (rowId: string, time: ScheduleRow['time'], gesture: boolean) => void;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   const timed = rows.some((r) => r.time !== 'allDay');
@@ -145,7 +145,7 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
       <DaypartAxis />
       <div className="relative">
         <div ref={barRef} className="relative h-6 overflow-hidden rounded bg-muted/40">
-          {CLOCK_ORDER.map((d) => <span key={d} aria-hidden className="absolute inset-y-0 w-px bg-border" style={{ left: pct(daypartStart(d)) }} />)}
+          {CLOCK_ORDER.map((d) => <span key={d} aria-hidden className="absolute inset-y-0 w-px bg-border" style={{ left: pct(toStrip(daypartStart(d))) }} />)}
           {free.flatMap((gap) => {
             const range: ScheduleRange = { start: gap.start, end: gap.end % MINUTES_PER_DAY };
             const time: ScheduleRow['time'] = gap.wholeDay ? 'allDay' : range;
@@ -183,12 +183,13 @@ export function DayStrip({ rows, free, asHoursOf, selected, onSelect, onFill, on
           })}
         </div>
         {rows.map((row) => {
-          if (row.time === 'allDay') return null;
-          const range = row.time;
+          // An All-day row under timed rows is the rest of the day, with no ends of its own to drag.
+          if (row.time === 'allDay' && timed) return null;
           const covered = timedCover(rows.filter((r) => r.id !== row.id));
+          const canFill = !rows.some((r) => r.id !== row.id && r.time === 'allDay');
           return (['start', 'end'] as const).map((edge) => (
             <EdgeHandle
-              key={`${row.id}-${edge}`} row={row} range={range} edge={edge} asHours={asHoursOf(row)} covered={covered}
+              key={`${row.id}-${edge}`} row={row} time={row.time} edge={edge} asHours={asHoursOf(row)} covered={covered} canFill={canFill}
               top={row.id === selected} barRef={barRef}
               onGrab={() => onSelect(row.id)} onMove={(next, gesture) => onMove(row.id, next, gesture)}
             />

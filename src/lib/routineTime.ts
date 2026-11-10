@@ -112,54 +112,82 @@ export function firstFreeRange(rows: readonly ScheduleRow[]): ScheduleRange | nu
 
 export type RangeEdge = 'start' | 'end';
 
-/** Where each end of `range` sits on a 0–1440 strip. An end at midnight sits at the right edge. */
-export const edgePositions = (range: ScheduleRange): { start: number; end: number } =>
-  ({ start: range.start, end: range.end === 0 ? MINUTES_PER_DAY : range.end });
+/** The clock minute at the strip's left edge. The strip runs Dawn to Dawn, so Night is one stretch at its right end
+ *  and no daypart wraps. */
+export const STRIP_START = daypartStart('dawn');
 
-/** The pieces of `range` on a 0–1440 strip: two when it wraps past midnight. */
+/** A clock minute as a position on the strip, 0 at Dawn. */
+export const toStrip = (minute: number): number => dayMinute(minute - STRIP_START);
+const fromStrip = (position: number): number => dayMinute(position + STRIP_START);
+
+/** Where each end of `range` sits on the 0–1440 strip. An end at the strip's first minute sits at the right edge. */
+export const edgePositions = (range: ScheduleRange): { start: number; end: number } =>
+  ({ start: toStrip(range.start), end: toStrip(range.end) || MINUTES_PER_DAY });
+
+/** The pieces of `range` on the strip: two when it wraps past the strip's end. */
 export function strip(range: ScheduleRange): [number, number][] {
   const { start, end } = edgePositions(range);
   return start < end ? [[start, end]] : [[start, MINUTES_PER_DAY], [0, end]];
 }
 
-/** The strip positions an edge snaps to: daypart edges, or whole hours. */
+/** The strip positions an edge snaps to, both ends of the strip included: daypart edges, or whole hours. */
 function snapPoints(asHours: boolean): number[] {
-  if (asHours) return Array.from({ length: 25 }, (_, h) => h * 60);
-  return CLOCK_ORDER.map(daypartStart).sort((a, b) => a - b);
+  const minutes = asHours ? Array.from({ length: 24 }, (_, h) => h * 60) : CLOCK_ORDER.map(daypartStart);
+  return [...new Set([...minutes.map(toStrip), MINUTES_PER_DAY])].sort((a, b) => a - b);
 }
 
-/** The positions one `edge` of `range` may take: never at or past its other end. */
-function edgeBounds(range: ScheduleRange, edge: RangeEdge): [number, number] {
-  const pos = edgePositions(range);
+type RowTime = ScheduleRow['time'];
+
+/** An All-day row as a range: the whole strip, both ends at its first minute. */
+const WHOLE_STRIP: ScheduleRange = { start: STRIP_START, end: STRIP_START };
+const asRange = (time: RowTime): ScheduleRange => (time === 'allDay' ? WHOLE_STRIP : time);
+
+/** Where each end of a row's time sits on the strip. An All-day row holds both ends of the strip. */
+export const timePositions = (time: RowTime): { start: number; end: number } =>
+  (time === 'allDay' ? { start: 0, end: MINUTES_PER_DAY } : edgePositions(time));
+
+/** The positions one `edge` may take: never at or past its row's other end. */
+function edgeBounds(time: RowTime, edge: RangeEdge): [number, number] {
+  const pos = timePositions(time);
   const wraps = pos.start > pos.end;
   if (edge === 'start') return wraps ? [pos.end + 1, MINUTES_PER_DAY] : [0, pos.end - 1];
   return wraps ? [0, pos.start - 1] : [pos.start + 1, MINUTES_PER_DAY];
 }
 
-/** `range` with `edge` moved toward strip position `target`, snapped by the row's format. The edge walks one snap
- *  point at a time and stops at the last one that leaves the range clear of `covered`. */
-export function moveEdge(range: ScheduleRange, edge: RangeEdge, target: number, asHours: boolean, covered: readonly boolean[]): ScheduleRange {
-  const [lo, hi] = edgeBounds(range, edge);
+/**
+ * A row's time with `edge` moved toward strip position `target`, snapped by the row's format. The edge walks one snap
+ * point at a time and stops at the last one that leaves the row clear of `covered`.
+ *
+ * A row stretched over the whole strip becomes All Day when `canFill` allows it, and an All-day row dragged inward
+ * becomes a timed one: a timed range cannot say "every hour", since its two ends would be the same minute.
+ */
+export function moveEdge(time: RowTime, edge: RangeEdge, target: number, asHours: boolean, covered: readonly boolean[], canFill = false): RowTime {
+  const [lo, hi] = edgeBounds(time, edge);
   const points = snapPoints(asHours).filter((p) => p >= lo && p <= hi);
-  if (points.length === 0) return range;
+  if (points.length === 0) return time;
   const goal = points.reduce((best, p) => (Math.abs(p - target) < Math.abs(best - target) ? p : best));
-  const from = edgePositions(range)[edge];
+  const from = timePositions(time)[edge];
   const path = goal > from ? points.filter((p) => p > from && p <= goal) : points.filter((p) => p < from && p >= goal).reverse();
-  let out = range;
+  const range = asRange(time);
+  let out = time;
   for (const p of path) {
-    const next = edge === 'start' ? { start: p % MINUTES_PER_DAY, end: range.end } : { start: range.start, end: p % MINUTES_PER_DAY };
+    const next = edge === 'start' ? { start: fromStrip(p), end: range.end } : { start: range.start, end: fromStrip(p) };
+    if (next.start === next.end) {
+      if (canFill && !covered.some(Boolean)) out = 'allDay';
+      break;
+    }
     if (blocked(covered, next)) break;
     out = next;
   }
   return out;
 }
 
-/** `range` with `edge` moved one snap point left (-1) or right (1), when that point is free. */
-export function stepEdge(range: ScheduleRange, edge: RangeEdge, direction: -1 | 1, asHours: boolean, covered: readonly boolean[]): ScheduleRange {
-  const from = edgePositions(range)[edge];
+/** A row's time with `edge` moved one snap point left (-1) or right (1), when that point is free. */
+export function stepEdge(time: RowTime, edge: RangeEdge, direction: -1 | 1, asHours: boolean, covered: readonly boolean[], canFill = false): RowTime {
+  const from = timePositions(time)[edge];
   const points = snapPoints(asHours);
   const next = direction > 0 ? points.find((p) => p > from) : [...points].reverse().find((p) => p < from);
-  return next === undefined ? range : moveEdge(range, edge, next, asHours, covered);
+  return next === undefined ? time : moveEdge(time, edge, next, asHours, covered, canFill);
 }
 
 /** An edge's position in the row's own format: "From Morning", "Through Evening", "To 14:00". */

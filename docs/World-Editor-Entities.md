@@ -120,10 +120,10 @@ The routine reads as sentences in the order of the day, such as *Morning – Aft
 - 🔒 The lock beside a row stops the entity from being called over or starting to follow the player during that time. The lock on a free-time line does the same for every hour no row covers: it adds a locked **All Day** row at the start location.
 - ☕ Hours no row covers read *…, stays at* the start location. **All Day** covers the whole day, and reads *The rest of the day* beside timed rows.
 
-A bar above the sentences shows the whole day. Each row is a band in its action's color, and free hours are striped.
+A bar above the sentences shows the whole day, from **Dawn** on the left to the end of **Night** on the right. Each row is a band in its action's color, and free hours are striped.
 
 - 👆 Click a band or a sentence to select that row in both places.
-- ↔️ Drag either end of a band to change its time. It snaps to dayparts or to whole hours, whichever the row uses, and stops at the next row.
+- ↔️ Drag either end of a band to change its time. It snaps to dayparts or to whole hours, whichever the row uses, and stops at the next row. A band dragged across the whole bar becomes **All Day**; drag an end back in to give it hours again.
 - ➕ Click a striped stretch to add a **Stay** at the start location for exactly those hours.
 
 Two timed rows can't share an hour. Times another row uses are unavailable in the pickers, and the add buttons turn off once timed rows fill the day.
