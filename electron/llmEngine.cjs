@@ -149,7 +149,8 @@ function createEngine({ spawn = childProcess.spawn, binaryPath = llamaServer.bin
 
   /** Every device `llama-server --list-devices` reports, for the device picker. */
   async function listDevices() {
-    return llamaServer.deviceListing(await llamaServer.listServerDevices({ bin: binaryPath({ platform }), spawn }));
+    const { ok, devices } = await llamaServer.readServerDevices({ bin: binaryPath({ platform }), spawn });
+    return llamaServer.deviceListing(devices, ok);
   }
 
   /**

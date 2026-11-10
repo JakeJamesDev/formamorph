@@ -55,6 +55,8 @@ export interface DevRoute {
   avatars?: string;
   /** Report one GPU with this many MB of VRAM, so a build with no GPU reads shows the low-VRAM lead. */
   vram?: string;
+  /** Answer this VRAM class (`low`, `ok` or `unknown`) in place of the desktop shell. */
+  vramClass?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -81,6 +83,8 @@ function parseHash(hash: string): DevRoute | null {
   const avatars = params.get('avatars');
   const vram = params.get('vram');
   if (vram) route.vram = vram;
+  const vramClass = params.get('vramClass');
+  if (vramClass) route.vramClass = vramClass;
   if (avatars) route.avatars = avatars;
   if (allowance) route.allowance = allowance;
   if (pick) route.pick = pick;
@@ -145,7 +149,7 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; history?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string; allowance?: string; pick?: string; avatars?: string; vram?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; history?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string; allowance?: string; pick?: string; avatars?: string; vram?: string; vramClass?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
@@ -164,6 +168,7 @@ export function installDevRouter(): () => void {
       if (opts?.pick) params.set('pick', opts.pick);
       if (opts?.avatars) params.set('avatars', opts.avatars);
       if (opts?.vram) params.set('vram', opts.vram);
+      if (opts?.vramClass) params.set('vramClass', opts.vramClass);
       // A probe outlives the screen it was turned on over, so it carries across a goto unless replaced.
       const probe = opts?.probe ?? getDevRoute()?.probe;
       if (probe) params.set('probe', probe);

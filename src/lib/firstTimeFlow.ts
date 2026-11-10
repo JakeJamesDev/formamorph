@@ -2,11 +2,10 @@
  * What the First-Time Flow shows next, answered from plain facts. Callers read the facts and render the answer.
  */
 
+import type { VramClass } from '@/lib/vramClass';
+
 /** Player actions on the Demo AI before the card is due. */
 const DEMO_AI_CARD_TURNS = 5;
-
-/** The largest reported VRAM total, in MB, that counts as 8 GB. */
-const LOW_VRAM_LIMIT_MB = 8500;
 
 export interface FirstRunFacts {
   /** The intro-seen record existed when the app launched, so a replay or the intro's own end can't change this. */
@@ -66,13 +65,12 @@ export function cardDue({ demoAITurnCount, cardSeen, ...offer }: CardFacts): boo
 }
 
 export interface AiSetupFacts {
-  /** The reported total in MB; null when VRAM is unknown, as in a browser. */
-  totalVramMb: number | null;
+  vramClass: VramClass;
   hostedAvailable: boolean;
   /** The player's pledge already includes Formamorph AI. */
   pledged: boolean;
 }
 
-export function aiSetupLeadsWithHostedAi({ totalVramMb, hostedAvailable, pledged }: AiSetupFacts): boolean {
-  return hostedAvailable && !pledged && totalVramMb !== null && totalVramMb <= LOW_VRAM_LIMIT_MB;
+export function aiSetupLeadsWithHostedAi({ vramClass, hostedAvailable, pledged }: AiSetupFacts): boolean {
+  return hostedAvailable && !pledged && vramClass === 'low';
 }

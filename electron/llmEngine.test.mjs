@@ -1250,7 +1250,11 @@ describe('device listing', () => {
   it('lists every device --list-devices reports', async () => {
     setup({ listDevices: TWO_DEVICES });
     await expect(engine.listDevices()).resolves.toEqual({
-      gpuBackend: 'vulkan', gpuDeviceNames: ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'],
+      gpuBackend: 'vulkan', gpuDeviceNames: ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'], listed: true,
+      devices: [
+        { id: 'Vulkan0', name: 'Intel(R) UHD Graphics 770', totalMB: 16252, freeMB: 15000 },
+        { id: 'Vulkan1', name: 'NVIDIA GeForce RTX 4080', totalMB: 16376, freeMB: 15500 },
+      ],
     });
   });
 });

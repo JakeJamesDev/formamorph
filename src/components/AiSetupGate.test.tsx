@@ -17,6 +17,7 @@ const rig = vi.hoisted(() => ({
   engineStatus: 'stopped' as 'stopped' | 'loading' | 'ready' | 'error',
   engineError: null as string | null,
   gpuTotalMB: 16376 as number | null,
+  vramClass: 'ok' as 'low' | 'ok' | 'unknown',
   emitProgress: null as null | ((p: LocalDownloadProgress) => void),
   settleDownload: null as null | (() => void),
   failDownload: null as null | ((message: string) => void),
@@ -42,6 +43,12 @@ vi.mock('@/lib/useVramStats', async (orig) => ({
       : [{ index: 0, name: DISCRETE, totalMB: rig.gpuTotalMB, usedMB: 0, freeMB: rig.gpuTotalMB }],
     processes: [], selfPid: null, lastUpdated: 0,
   }),
+}));
+
+// The shell's answer; its rules are the engine device policy's tests.
+vi.mock('@/lib/vramClass', async (orig) => ({
+  ...(await orig<typeof import('@/lib/vramClass')>()),
+  useVramClass: () => rig.vramClass,
 }));
 
 // Only the download bridge is stubbed; the module's pure helpers stay real.
@@ -115,6 +122,7 @@ beforeEach(() => {
   rig.engineStatus = 'stopped';
   rig.engineError = null;
   rig.gpuTotalMB = 16376;
+  rig.vramClass = 'ok';
   rig.emitProgress = null;
   rig.settleDownload = null;
   rig.failDownload = null;
@@ -126,8 +134,9 @@ beforeEach(() => {
 describe('AiSetupGate — the low-VRAM lead', () => {
   const lead = () => screen.queryByTestId('ai-setup-lead');
 
-  it('leads with Formamorph AI at 8,500 MB, above the local download', async () => {
+  it('leads with Formamorph AI on a low VRAM class, above the local download', async () => {
     rig.gpuTotalMB = 8500;
+    rig.vramClass = 'low';
     mountGate();
     const card = await screen.findByTestId('ai-setup-lead');
     expect(within(card).getByRole('button', { name: 'See Levels' })).toBeInTheDocument();
@@ -137,15 +146,17 @@ describe('AiSetupGate — the low-VRAM lead', () => {
     expect(card.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps today’s layout at 8,501 MB', async () => {
-    rig.gpuTotalMB = 8501;
+  it('keeps today’s layout on an ok class, whatever nvidia-smi reports', async () => {
+    rig.gpuTotalMB = 6144;
+    rig.vramClass = 'ok';
     mountGate();
-    expect(await screen.findByText(/8\.\d GB VRAM/)).toBeInTheDocument();
+    expect(await screen.findByText(/6\.0 GB VRAM/)).toBeInTheDocument();
     expect(lead()).toBeNull();
   });
 
-  it('keeps today’s layout when VRAM is unknown', async () => {
+  it('keeps today’s layout when the class is unknown', async () => {
     rig.gpuTotalMB = null;
+    rig.vramClass = 'unknown';
     mountGate();
     expect(await screen.findByText('Set up your AI')).toBeInTheDocument();
     expect(lead()).toBeNull();
@@ -153,6 +164,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
 
   it('keeps today’s layout in a build without hosted AI', async () => {
     rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
     rig.hostedAvailable = false;
     mountGate();
     expect(await screen.findByText(/6\.0 GB VRAM/)).toBeInTheDocument();
@@ -161,6 +173,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
 
   it('hides the lead for a pledged player', async () => {
     rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
     rig.presetState = 'ready';
     mountGate();
     expect(await screen.findByText(/6\.0 GB VRAM/)).toBeInTheDocument();
@@ -169,6 +182,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
 
   it('opens the scene from See Levels and keeps the recommendation unchanged', async () => {
     rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
     const withLead = mountGate();
     const card = await screen.findByTestId('ai-setup-lead');
     const recommended = groupModelsByFit(tierForVram(6144)).recommended as LocalModelInfo;
@@ -181,6 +195,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
 
   it('leads in a world too, and in the full model list', async () => {
     rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
     mountGate({ reason: 'play' });
     expect(await screen.findByTestId('ai-setup-lead')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Show all models' }));
@@ -190,6 +205,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
 
   it('shows no lead when the model is installed but the engine did not load', async () => {
     rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
     mountGate({ blocker: 'engineDown' });
     expect(await screen.findByText('Your model didn’t load')).toBeInTheDocument();
     expect(lead()).toBeNull();
@@ -197,6 +213,7 @@ describe('AiSetupGate — the low-VRAM lead', () => {
 
   it('shows no lead on a custom endpoint', async () => {
     rig.gpuTotalMB = 6144;
+    rig.vramClass = 'low';
     mountGate({ mode: 'custom', blocker: 'unreachable' });
     expect(await screen.findByText('Can’t reach your endpoint')).toBeInTheDocument();
     expect(lead()).toBeNull();

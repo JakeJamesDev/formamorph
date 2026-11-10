@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import engineDevice from './engineDevice.cjs';
 
-const { selectEngineDevice, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL } = engineDevice;
+const { selectEngineDevice, engineVramClass, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL, LOW_VRAM_LIMIT_MB } = engineDevice;
 
 /** nvidia-smi rows carry more than a name; only the name is ever read, but pass the real shape. */
 const nvidia = (...names) => names.map((name, index) => ({ index, name, totalMB: 16376, usedMB: 1200, freeMB: 15176 }));
@@ -164,5 +164,87 @@ describe('selectEngineDevice · a chosen device', () => {
   it('reports the fallback even when Auto has no pick of its own either', () => {
     const pick = selectEngineDevice({ deviceNames: [], nvidiaGpus: [], setting: DISCRETE });
     expect(pick).toEqual({ index: null, origin: 'fallback-auto' });
+  });
+});
+
+describe('engineVramClass', () => {
+  /** A listing row as llama-server reports it. */
+  const dev = (name, totalMB) => ({ name, totalMB });
+  /** An nvidia-smi row with its own total. */
+  const smi = (name, totalMB) => ({ name, totalMB, usedMB: 0, freeMB: totalMB });
+  const classOf = (facts) => engineVramClass({ listed: true, nvidiaGpus: [], ...facts });
+
+  it('reads one discrete card at the limit as low and one above it as ok', () => {
+    expect(LOW_VRAM_LIMIT_MB).toBe(8500);
+    expect(classOf({ devices: [dev('AMD Radeon RX 7600', 8500)] })).toBe('low');
+    expect(classOf({ devices: [dev('AMD Radeon RX 7600', 8501)] })).toBe('ok');
+    expect(classOf({ devices: [dev('AMD Radeon RX 6600', 8176)] })).toBe('low');
+    expect(classOf({ devices: [dev('AMD Radeon RX 7900 XTX', 24560)] })).toBe('ok');
+  });
+
+  it('reads an integrated GPU alone as low, however large its reported total', () => {
+    // A Strix Halo APU reported 87,722 MiB; an integrated total is never trusted.
+    expect(classOf({ devices: [dev('AMD Radeon(TM) 8060S Graphics', 87722)] })).toBe('low');
+    expect(classOf({ devices: [dev(IGPU, 16000)] })).toBe('low');
+  });
+
+  it('reads a listing that succeeded with no GPU as low', () => {
+    expect(classOf({ devices: [] })).toBe('low');
+  });
+
+  it('reads a failed listing as unknown, apart from an empty one', () => {
+    expect(engineVramClass({ devices: [], listed: false, nvidiaGpus: [] })).toBe('unknown');
+    expect(engineVramClass({ devices: [dev(DISCRETE, 16000)], listed: false, nvidiaGpus: [] })).toBe('unknown');
+    expect(engineVramClass()).toBe('unknown');
+  });
+
+  it('judges the large discrete card beside an integrated GPU, not the integrated one', () => {
+    expect(classOf({ devices: [dev(IGPU, 2048), dev('AMD Radeon RX 7900 XTX', 24560)] })).toBe('ok');
+    expect(classOf({ devices: [dev(IGPU, 2048), dev('AMD Radeon RX 6600', 8176)] })).toBe('low');
+  });
+
+  it('ignores the integrated GPU on All GPUs too', () => {
+    const devices = [dev(IGPU, 30000), dev('AMD Radeon RX 6600', 8176)];
+    expect(classOf({ devices, setting: ENGINE_DEVICE_ALL })).toBe('low');
+  });
+
+  it('adds the totals of two discrete cards with no pin before the limit applies', () => {
+    expect(classOf({ devices: [dev('AMD Radeon RX 6600', 4500), dev('AMD Radeon RX 6500 XT', 4100)] })).toBe('ok');
+    expect(classOf({ devices: [dev('AMD Radeon RX 6600', 4400), dev('AMD Radeon RX 6500 XT', 4100)] })).toBe('low');
+  });
+
+  it('judges only the pinned card when the setting names one', () => {
+    const devices = [dev('AMD Radeon RX 6600', 8176), dev('AMD Radeon RX 7900 XTX', 24560)];
+    expect(classOf({ devices, setting: 'AMD Radeon RX 6600' })).toBe('low');
+    expect(classOf({ devices, setting: 'AMD Radeon RX 7900 XTX' })).toBe('ok');
+  });
+
+  it('reads a manual pin on the integrated GPU beside a large card as low', () => {
+    const devices = [dev(IGPU, 2048), dev('AMD Radeon RX 7900 XTX', 24560)];
+    expect(classOf({ devices, setting: IGPU })).toBe('low');
+  });
+
+  it('takes the nvidia-smi total for a matching card, so the NVIDIA boundary stays at 8,500 and 8,501 MB', () => {
+    // Vulkan reports less than nvidia-smi for the same card; the matching row's total wins.
+    const name = 'NVIDIA GeForce RTX 4060';
+    expect(classOf({ devices: [dev(name, 8400)], nvidiaGpus: [smi(name, 8500)] })).toBe('low');
+    expect(classOf({ devices: [dev(name, 8400)], nvidiaGpus: [smi(name, 8501)] })).toBe('ok');
+  });
+
+  it('gives each of two same-named NVIDIA cards its own nvidia-smi row', () => {
+    const name = 'NVIDIA GeForce RTX 3060';
+    const devices = [dev(name, 100), dev(name, 100)];
+    expect(classOf({ devices, nvidiaGpus: [smi(name, 4000), smi(name, 4501)] })).toBe('ok');
+    expect(classOf({ devices, nvidiaGpus: [smi(name, 4000), smi(name, 4500)] })).toBe('low');
+  });
+
+  it('gives a card the nvidia-smi row of its exact name before a longer one that contains it', () => {
+    const devices = [dev('NVIDIA GeForce RTX 4060', 100)];
+    const gpus = [smi('NVIDIA GeForce RTX 4060 Ti', 16380), smi('NVIDIA GeForce RTX 4060', 8188)];
+    expect(classOf({ devices, nvidiaGpus: gpus, setting: 'NVIDIA GeForce RTX 4060' })).toBe('low');
+  });
+
+  it('reads a discrete card with no known total as unknown', () => {
+    expect(classOf({ devices: [dev('AMD Radeon RX 7600', null)] })).toBe('unknown');
   });
 });

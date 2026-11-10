@@ -6,6 +6,8 @@
 // reported machine saw 47.8 GB total and 0 GB free while nvidia-smi showed 14.7 GB free on the card alone.
 // One visible adapter means the figure is that adapter's own.
 //
+// Pure on purpose: the renderer imports this file for LOW_VRAM_LIMIT_MB, so it uses no Node API and no require.
+//
 // Nothing else decides: llmEngine.cjs passes the device at whatever index this returns to llama-server's
 // `--device`, and null means "leave llama.cpp's own default alone", which is what a machine that can't be
 // told apart gets.
@@ -101,4 +103,38 @@ function selectEngineDevice({ deviceNames, nvidiaGpus, setting } = {}) {
   return { index, origin: index == null ? null : 'auto' };
 }
 
-module.exports = { selectEngineDevice, namesMatch, isIntegrated, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };
+/** The largest reported VRAM total, in MB, that counts as 8 GB. */
+const LOW_VRAM_LIMIT_MB = 8500;
+
+/**
+ * The VRAM class of the device the engine uses: `low`, `ok` or `unknown`.
+ *
+ * `devices` is the backend's listing as `{ name, totalMB }` in index order, `listed` false when that listing
+ * failed, `nvidiaGpus` the nvidia-smi rows, and `setting` the device setting the pin policy resolves.
+ */
+function engineVramClass({ devices, listed, nvidiaGpus, setting } = {}) {
+  if (listed !== true) return 'unknown';
+  const list = Array.isArray(devices) ? devices : [];
+  if (!list.length) return 'low';
+  const gpus = Array.isArray(nvidiaGpus) ? nvidiaGpus : [];
+  const { index } = selectEngineDevice({ deviceNames: list.map((d) => d.name), nvidiaGpus: gpus, setting });
+  const used = index != null ? [list[index]] : list;
+  // Each nvidia-smi row stands for one card, so two cards of one name take a row each.
+  const rows = [...gpus];
+  const totals = [];
+  for (const device of used) {
+    // An exact name first, so a "4060" never takes a "4060 Ti" row the containment match would also accept.
+    const exact = rows.findIndex((gpu) => normalize(gpu && gpu.name) === normalize(device.name));
+    const row = exact !== -1 ? exact : rows.findIndex((gpu) => namesMatch(device.name, gpu && gpu.name));
+    if (row !== -1) totals.push(rows.splice(row, 1)[0].totalMB ?? device.totalMB);
+    // An integrated GPU's reported total is unreliable in both directions, so it never counts.
+    else if (!isIntegrated(device.name)) totals.push(device.totalMB);
+  }
+  if (!totals.length) return 'low';
+  if (!totals.every((mb) => typeof mb === 'number' && Number.isFinite(mb))) return 'unknown';
+  return totals.reduce((sum, mb) => sum + mb, 0) <= LOW_VRAM_LIMIT_MB ? 'low' : 'ok';
+}
+
+module.exports = {
+  selectEngineDevice, engineVramClass, namesMatch, isIntegrated, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL, LOW_VRAM_LIMIT_MB,
+};

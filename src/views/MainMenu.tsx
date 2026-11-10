@@ -446,6 +446,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   });
   // DEV dev-router: open Settings (or the Load menu) when the hash asks. Tree-shaken in prod.
   const devRoute = useDevRoute();
+  // DEV: a faked VRAM read or class shows the AI setup gate's local walk.
+  const devLocalGate = import.meta.env.DEV && !!(devRoute?.vram || devRoute?.vramClass);
   const isMobile = useIsMobile();
   // Whether this build can install an update. The Android app is always "mobile", so its version line has
   // to stay in the footer rather than collapsing into the ⋯ menu — an update offer nobody opens is no offer.
@@ -2183,8 +2185,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <AiSetupGate
         open={gate !== null}
         reason={gate?.reason ?? 'firstRun'}
-        mode={import.meta.env.DEV && devRoute?.vram ? 'local' : mode}
-        blocker={import.meta.env.DEV && devRoute?.vram ? 'noModel' : blocker}
+        mode={devLocalGate ? 'local' : mode}
+        blocker={devLocalGate ? 'noModel' : blocker}
         reachable={reachable}
         recheck={recheck}
         onOpenChange={(v) => { if (!v) setGate(null); }}

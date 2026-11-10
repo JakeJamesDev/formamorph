@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('formamorphDesktop', {
     setOptions: (opts) => ipcRenderer.invoke('llm-set-options', opts),
     setContextOverflow: (policy) => ipcRenderer.invoke('llm-set-context-overflow', policy),
     listDevices: (pending) => ipcRenderer.invoke('llm-list-devices', pending),
+    vramClass: () => ipcRenderer.invoke('llm-vram-class'),
     download: (opts) => ipcRenderer.invoke('llm-download', opts),
     cancelDownload: () => ipcRenderer.invoke('llm-download-cancel'),
     listPartials: () => ipcRenderer.invoke('llm-list-partials'),

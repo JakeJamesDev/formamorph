@@ -142,6 +142,50 @@ describe('parseListDevices', () => {
   });
 });
 
+describe('readServerDevices', () => {
+  /** A spawn whose child prints `out`, then exits with `code`; `hang` never exits until killed. */
+  const fakeSpawn = ({ out = '', code = 0, hang = false, error = null } = {}) => () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = () => { setImmediate(() => child.emit('close', null)); };
+    setImmediate(() => {
+      if (error) { child.emit('error', error); return; }
+      child.stdout.emit('data', out);
+      if (!hang) child.emit('close', code);
+    });
+    return child;
+  };
+  const read = (spawnOptions, extra = {}) =>
+    llamaServer.readServerDevices({ bin: 'llama-server', spawn: fakeSpawn(spawnOptions), ...extra });
+
+  it('answers a clean listing with no device as listed and empty', async () => {
+    expect(await read({ out: 'Available devices:\n' })).toEqual({ ok: true, devices: [] });
+  });
+
+  it('answers a clean listing with its devices', async () => {
+    const answer = await read({ out: fixture.listDevices });
+    expect(answer.ok).toBe(true);
+    expect(answer.devices.map((d) => d.name)).toEqual(['NVIDIA GeForce RTX 4090']);
+  });
+
+  it.each([
+    ['a non-zero exit', { code: 1 }, {}],
+    ['a spawn error', { error: new Error('ENOENT') }, {}],
+    ['a hang past the timeout', { hang: true }, { timeoutMs: 5 }],
+  ])('answers %s as a failed listing', async (_, spawnOptions, extra) => {
+    expect(await read(spawnOptions, extra)).toEqual({ ok: false, devices: [] });
+  });
+
+  it('answers a missing binary as a failed listing', async () => {
+    expect(await llamaServer.readServerDevices({ bin: null })).toEqual({ ok: false, devices: [] });
+  });
+
+  it('keeps listServerDevices a plain device list', async () => {
+    expect(await llamaServer.listServerDevices({ bin: 'llama-server', spawn: fakeSpawn({ code: 1 }) })).toEqual([]);
+  });
+});
+
 describe('loadPercent', () => {
   it('spreads progress across every listed stage', () => {
     const stages = ['text_model', 'mmproj_model'];

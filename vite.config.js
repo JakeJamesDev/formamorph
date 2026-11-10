@@ -89,18 +89,20 @@ const docsIndexMarkdown = {
   },
 }
 
-// `electron/cacheTypes.cjs` is pure CommonJS that main and the renderer both load. Dev serves a .cjs raw,
-// so wrap it as an ES module with the names from its `module.exports = { ... }` line.
-const cacheTypesCjs = {
-  name: 'cache-types-cjs',
+// Pure CommonJS files that main and the renderer both load. Dev serves a .cjs raw, so wrap each as an ES
+// module with the names from its `module.exports = { ... }` statement.
+const SHARED_CJS = ['/electron/cacheTypes.cjs', '/electron/engineDevice.cjs']
+const sharedCjs = {
+  name: 'shared-cjs',
   apply: 'serve',
   enforce: 'pre',
   transform(code, id) {
-    if (!id.split('?')[0].endsWith('/electron/cacheTypes.cjs')) return null
+    const file = SHARED_CJS.find((f) => id.split('?')[0].endsWith(f))
+    if (!file) return null
     const names = /module\.exports\s*=\s*\{([^}]*)\}/.exec(code)?.[1].split(',').map((n) => n.trim()).filter(Boolean) ?? []
-    if (names.length === 0) this.error('electron/cacheTypes.cjs must end in a one-line `module.exports = { a, b }`')
+    if (names.length === 0) this.error(`${file} must end in \`module.exports = { a, b }\``)
     const exports = names.map((n) => `export const ${n} = shared.${n};`).join('\n')
-    return { moduleType: 'js', code: `const shared = (() => {\nconst module = { exports: {} };\n${code}\nreturn module.exports;\n})();\n${exports}\n` }
+    return { moduleType: 'js', code: `const shared = (() => {\nconst module = { exports: {} };\n${code}\nreturn module.exports;\n})();\nexport default shared;\n${exports}\n` }
   },
 }
 
@@ -108,7 +110,7 @@ const shippedWorlds = shipBundledWorlds(import.meta.dirname)
 const notices = shipNotices(import.meta.dirname)
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, cacheTypesCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, bundledAvatarCheck(), espeakCheck()],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, bundledAvatarCheck(), espeakCheck()],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).

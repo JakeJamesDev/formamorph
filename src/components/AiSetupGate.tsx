@@ -13,6 +13,7 @@ import {
   VRAM_TIERS, downloadBytes, formatModelSize, groupModelsByFit, tierForVram, type LocalModelInfo, type VramTier,
 } from '@/lib/localModels';
 import { fmtGB, useVramStats } from '@/lib/useVramStats';
+import { useVramClass } from '@/lib/vramClass';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useSettings } from '@/contexts/SettingsContext';
 import { StoryCard } from '@/components/road/StoryCard';
@@ -133,6 +134,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   // caller passing its own copy is how the two would drift apart.
   const { activeEndpointUrl, hostedAi } = useSettings();
   const vram = useVramStats('', { enabled: open && mode === 'local' });
+  const vramClass = useVramClass({ enabled: open && mode === 'local' });
   const [tier, setTier] = useState<VramTier>('tier8');
   const [showAll, setShowAll] = useState(false);
   const [phase, setPhase] = useState<SetupPhase>('choose');
@@ -306,7 +308,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
 
   const gpu = vram.status === 'online' ? vram.gpus[0] : undefined;
   const leadsWithHostedAi = localFlow && phase === 'choose' && aiSetupLeadsWithHostedAi({
-    totalVramMb: gpu?.totalMB ?? null, hostedAvailable: HOSTED_AI_AVAILABLE, pledged: isPledged(hostedAi),
+    vramClass, hostedAvailable: HOSTED_AI_AVAILABLE, pledged: isPledged(hostedAi),
   });
   const tierLabel = VRAM_TIERS.find((t) => t.value === tier)?.label;
   const detected = gpu?.name && gpu.totalMB ? (
@@ -371,7 +373,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
             testId="ai-setup-lead"
             className={cn(expanded && 'shrink-0')}
             title="Better Narration, Nothing to Download"
-            body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your GPU. Your support also helps fund new updates."
+            body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your machine. Your support also helps fund new updates."
             onSeeLevels={openRoadScene}
           />
         )}

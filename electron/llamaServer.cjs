@@ -125,19 +125,33 @@ function parseListDevices(text) {
   return devices;
 }
 
-/** Runs `<bin> --list-devices` and parses it. Answers [] when the binary is missing, fails or hangs. */
-function listServerDevices({ bin, spawn = require('node:child_process').spawn, timeoutMs = 20000 } = {}) {
-  if (!bin) return Promise.resolve([]);
+/**
+ * Runs `<bin> --list-devices` and parses it: `{ ok, devices }`. `ok` is false when the binary is missing, fails
+ * to spawn, exits non-zero or hangs, so a failed listing is told apart from one that found no GPU.
+ */
+function readServerDevices({ bin, spawn = require('node:child_process').spawn, timeoutMs = 20000 } = {}) {
+  const failed = { ok: false, devices: [] };
+  if (!bin) return Promise.resolve(failed);
   return new Promise((resolve) => {
     let out = '';
     let child;
-    try { child = spawn(bin, ['--list-devices'], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); } catch { return resolve([]); }
-    const timer = setTimeout(() => { try { child.kill(); } catch { /* already gone */ } }, timeoutMs);
+    let timedOut = false;
+    try { child = spawn(bin, ['--list-devices'], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); } catch { return resolve(failed); }
+    const timer = setTimeout(() => { timedOut = true; try { child.kill(); } catch { /* already gone */ } }, timeoutMs);
     child.stdout?.on('data', (c) => { out += c; });
     child.stderr?.on('data', (c) => { out += c; });
-    child.once('error', () => { clearTimeout(timer); resolve([]); });
-    child.once('close', () => { clearTimeout(timer); resolve(parseListDevices(out)); });
+    child.once('error', () => { clearTimeout(timer); resolve(failed); });
+    child.once('close', (code) => {
+      clearTimeout(timer);
+      const devices = parseListDevices(out);
+      resolve({ ok: !timedOut && code === 0, devices });
+    });
   });
+}
+
+/** The devices of `readServerDevices`, [] when the listing failed. */
+async function listServerDevices(options) {
+  return (await readServerDevices(options)).devices;
 }
 
 /** The backend name a device id carries (`Vulkan0` → `vulkan`), or `cpu` with no device. */
@@ -146,8 +160,13 @@ function backendOf(devices) {
   return id ? id.replace(/\d+$/, '').toLowerCase() : 'cpu';
 }
 
-/** The device picker's view of a device list. */
-const deviceListing = (devices) => ({ gpuBackend: backendOf(devices), gpuDeviceNames: devices.map((d) => d.name) });
+/**
+ * The device picker's view of a device list, with the devices and their totals for the VRAM class. `listed` is
+ * false when the listing failed.
+ */
+const deviceListing = (devices, listed) => ({
+  gpuBackend: backendOf(devices), gpuDeviceNames: devices.map((d) => d.name), devices, listed,
+});
 
 // The router's load-progress event. Its README calls it `model_status`; the pinned build emits this.
 const STATUS_EVENT = 'status_change';
@@ -312,6 +331,6 @@ module.exports = {
   GPU_LAYERS_AUTO, GPU_LAYERS_MAX, STATUS_EVENT,
   freePort, errorText, spawnCommand,
   buildId, cpuNeedsOwnBuild, binaryPath, presetIni, serverArgs, cacheType, effectiveVCacheType,
-  parseListDevices, listServerDevices, backendOf, deviceListing, sseReader, loadPercent, parseLogLine, describeLoadError,
+  parseListDevices, readServerDevices, listServerDevices, backendOf, deviceListing, sseReader, loadPercent, parseLogLine, describeLoadError,
   memoryTally, instancePid, parseProcessRows, listProcesses,
 };

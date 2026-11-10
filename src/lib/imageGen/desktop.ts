@@ -6,6 +6,7 @@ import type { LocalCacheType, LocalContextOverflow, LocalEngineBackend } from '@
 import type { ProjectorSource } from '@/lib/localModels';
 import type { ProfileMergeBridge } from '@/lib/profileMerge/bridge';
 import type { UpdateDownloadResult } from '@/lib/updates/updateBridge';
+import type { VramClass } from '@/lib/vramClass';
 import type { WindowChromeBridge } from '@/lib/windowChromeBridge';
 
 export interface DesktopFetchRequest {
@@ -315,6 +316,8 @@ declare global {
         setContextOverflow: (policy: LocalContextOverflow) => Promise<LocalContextOverflow>;
         /** Every GPU the next start's backend can pin to, for the device picker, given unsaved settings. */
         listDevices: (pending?: Pick<LocalLlmOptions, 'engineBackend' | 'gpuDevice'>) => Promise<EngineDeviceList>;
+        /** The VRAM class of the device the next start uses with the saved settings. */
+        vramClass: () => Promise<VramClass>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
          *  the saved path. */
         download: (opts: LocalDownloadOptions) => Promise<{ path: string }>;
@@ -466,6 +469,9 @@ export const setLocalLlmContextOverflow = (policy: LocalContextOverflow): Promis
  *  list — which the picker states rather than showing an empty dropdown. */
 export const listLocalGpuDevices = (pending?: Pick<LocalLlmOptions, 'engineBackend' | 'gpuDevice'>): Promise<EngineDeviceList> =>
   isLocalLlmAvailable() ? requireLlm().listDevices(pending) : Promise.resolve({ backend: null, devices: [], autoPick: null });
+
+/** The shell's VRAM class for the built-in engine's device. Throws off desktop; read it through `readVramClass`. */
+export const desktopVramClass = (): Promise<VramClass> => requireLlm().vramClass();
 
 /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
  *  saved path. */

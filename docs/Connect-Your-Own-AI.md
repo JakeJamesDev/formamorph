@@ -206,7 +206,7 @@ When the desktop engine has no model, the title stays **Set up your AI**.
 
 | Part | What it does |
 |---|---|
-| Formamorph AI card | Shows above the model list on the desktop app when your GPU reports 8 GB of memory or less and your Patreon support does not include Formamorph AI. **See Levels** opens the levels scene. The model download stays below it. |
+| Formamorph AI card | Shows above the model list on the desktop app when the built-in engine runs on a GPU with 8 GB of memory or less, on an integrated GPU, or with no GPU, and your Patreon support does not include Formamorph AI. **See Levels** opens the levels scene. The model download stays below it. |
 | Detected line | Shows your GPU, its memory and its class |
 | Recommended model | One model that fits your GPU, with a download button |
 | **Show all models** | Lists every model under **Best for Your GPU**, **Also Fits** and **Too Big for Your GPU** |

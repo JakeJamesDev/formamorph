@@ -39,6 +39,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Openings have their own World Editor tab, after Overview.** In Advanced mode, it lists This World and each location and entity with openings, nested as on their own tabs. Select one to edit its openings, or search their text.
     - **The Openings tab's + gives a location or entity its first opening.** Pick Location or Entity, then find it in its folders or inside other locations. It's listed and selected with one blank opening.
     - **In the World Editor, Find and undo now open the Openings tab on the opening's owner.** The Overview tab's right column keeps Details and Custom Prompts. Help's Take Me There for openings lands on the Openings tab too.
+  - **Formamorph AI:**
+    - **Set up your AI offers Formamorph AI first on AMD, Intel and integrated GPUs, and on computers without a GPU.** It reads the GPU the built-in engine uses. A card with 8 GB of memory or less still counts.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.

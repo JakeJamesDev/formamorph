@@ -17,10 +17,10 @@ const { readEnginePin } = require('./enginePin.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
 // exports. See llmEngineProxy.cjs.
 const llmEngine = require('./llmEngineProxy.cjs');
-const { selectEngineDevice, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
+const { selectEngineDevice, engineVramClass, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
 const llamaServer = require('./llamaServer.cjs');
 const { overflowPolicy, DEFAULT_POLICY: DEFAULT_OVERFLOW_POLICY } = require('./contextOverflow.cjs');
-const { binaryPath: llamaServerBinary, listServerDevices, deviceListing } = llamaServer;
+const { binaryPath: llamaServerBinary, readServerDevices, deviceListing } = llamaServer;
 const modelDownload = require('./modelDownload.cjs');
 const { scanModels, resolveModelRef, isRootRef, projectorFileName } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
@@ -113,11 +113,11 @@ async function enumerationOf(bin) {
   const cached = deviceEnumerations.get(bin);
   if (cached) return cached;
   if (!devicesInFlight.has(bin)) {
-    devicesInFlight.set(bin, listServerDevices({ bin }).then(deviceListing).finally(() => devicesInFlight.delete(bin)));
+    devicesInFlight.set(bin, readServerDevices({ bin }).then(({ ok, devices }) => deviceListing(devices, ok)).finally(() => devicesInFlight.delete(bin)));
   }
   const enumeration = await devicesInFlight.get(bin);
-  // An empty CUDA listing is asked again next time: a reinstall at the same path can list devices.
-  if (enumeration.gpuDeviceNames.length || bin === llamaServerBinary()) deviceEnumerations.set(bin, enumeration);
+  // A failed listing and an empty CUDA listing are asked again next time: a reinstall at the same path can list devices.
+  if (enumeration.listed && (enumeration.gpuDeviceNames.length || bin === llamaServerBinary())) deviceEnumerations.set(bin, enumeration);
   return enumeration;
 }
 
@@ -226,7 +226,10 @@ llmEngine.onStatus((state) => {
   // A start read the device list afresh; keep the picker's copy of that backend in step, so a card added or removed shows.
   if (Array.isArray(state.gpuDeviceOptions)) {
     for (const [bin, enumeration] of deviceEnumerations) {
-      if (enumeration.gpuBackend === state.gpuBackend) deviceEnumerations.set(bin, { ...enumeration, gpuDeviceNames: state.gpuDeviceOptions });
+      if (enumeration.gpuBackend !== state.gpuBackend) continue;
+      // A card new to this copy has no total yet, which the VRAM class reads as unknown.
+      const devices = state.gpuDeviceOptions.map((name) => enumeration.devices.find((d) => d.name === name) ?? { name, totalMB: null });
+      deviceEnumerations.set(bin, { ...enumeration, gpuDeviceNames: state.gpuDeviceOptions, devices, listed: true });
     }
   }
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-status', state);
@@ -512,6 +515,27 @@ ipcMain.handle('llm-restart', async () => {
   return startEngine(loaded);
 });
 
+/** The backend choice for `options` and the cached listing of the build that start would run. */
+async function startEnumeration(options) {
+  const { cudaBinary, ...picked } = await backendChoice(options);
+  let choice = picked;
+  let enumeration = cudaBinary ? await enumerationOf(cudaBinary) : null;
+  // A CUDA build that lists no devices starts on Vulkan, so the picker lists Vulkan's.
+  if (!enumeration?.gpuDeviceNames.length) {
+    if (cudaBinary) choice = { backend: 'vulkan', reason: 'no-cuda-devices' };
+    enumeration = await enumerationOf(llamaServerBinary());
+  }
+  return { choice, enumeration };
+}
+
+// The VRAM class of the device the next start uses with the saved settings: 'low', 'ok' or 'unknown'.
+ipcMain.handle('llm-vram-class', async () => {
+  const { enumeration } = await startEnumeration(engineOptions);
+  return engineVramClass({
+    devices: enumeration.devices, listed: enumeration.listed, nvidiaGpus: await nvidiaGpus(), setting: engineOptions.gpuDevice,
+  });
+});
+
 // Every GPU the engine could be pinned to, for the device picker: { backend, devices, autoPick, choice }. The
 // devices are those of the backend the next start runs with `pending` (the panel's unsaved Backend and device
 // settings), and `choice` is that backend with its reason. An empty list with a 'cpu' backend is a machine
@@ -523,14 +547,7 @@ ipcMain.handle('llm-list-devices', async (_event, pending) => {
     ...(typeof pending?.engineBackend === 'string' ? { engineBackend: engineBackend(pending.engineBackend) } : {}),
     ...(typeof pending?.gpuDevice === 'string' ? { gpuDevice: pending.gpuDevice } : {}),
   };
-  const { cudaBinary, ...picked } = await backendChoice(options);
-  let choice = picked;
-  let enumeration = cudaBinary ? await enumerationOf(cudaBinary) : null;
-  // A CUDA build that lists no devices starts on Vulkan, so the picker lists Vulkan's.
-  if (!enumeration?.gpuDeviceNames.length) {
-    if (cudaBinary) choice = { backend: 'vulkan', reason: 'no-cuda-devices' };
-    enumeration = await enumerationOf(llamaServerBinary());
-  }
+  const { choice, enumeration } = await startEnumeration(options);
   let autoPick = null;
   if (enumeration.gpuDeviceNames.length) {
     const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus: await nvidiaGpus() });
