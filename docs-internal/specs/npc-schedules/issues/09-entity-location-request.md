@@ -22,6 +22,8 @@ The request that decides who moves with the player is reworked.
 
 One call per character stays the default. A probe decides whether one batched call replaces it. The bar: an action that names one character, with two others present, moves only the named one.
 
+Ticket 03 left an interim request in place (Q94): today's four replies, a narrowed subject list, and a Go to that offers only the current row's places among neighbors. This ticket replaces all three. Widening Go to to every allowed place changes the prompt, so the probe covers it.
+
 Read `docs-internal/notes/prompt-writing-guide/notes.md` before writing the prompt.
 
 Spec rulings: Q3, Q4, Q8, Q16, Q27, Q36, Q42, Q49. Stories 43–52, 59–61. The spec's "Entity location request" section is the contract.

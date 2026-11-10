@@ -145,6 +145,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q96** Until ticket 08 lands, the narration pull keeps today's sibling and child reach but runs through the engine's rule: allowed place, not Strict, not Following or Waiting. A Group is never pulled and no longer gets a discovered copy. (Ticket 03.)
 - **Q97** Ticket 03 already limits the location Entities picker to Groups. Its stand-in edits the first Start's place and says how many Starts the entity has; a canvas click sets that place, and removing a place there does nothing for an Individual. (Ticket 03.)
 - **Q98** A script `.move()` on a follower ends the follow, then holds, as it does today. On a Group it does nothing. (Ticket 03.)
+- **Q99** As an idle length, "one daypart" is 240 minutes, a sixth of the day, because real dayparts are uneven. Migrated Moves Between Wanders get 240 (Q58), and the editor's "1 daypart" idle choice stores the same. (Ticket 03.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
