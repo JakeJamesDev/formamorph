@@ -224,6 +224,26 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q170** The four multi-location rows ignore `movement`, with one exception: a wandering Individual (Q143) that had Can Follow gets Traversable = Anywhere (Q55), not the list. Moves Between adds no second Wander. (Ticket 18.)
 - **Q171** Pronouns that start with "it" do not count as the person signal on an entity (Q146): authors give creatures "it/its". "They/them" still counts as a person. For the world-level check (Q151), any non-blank pronouns count. Found when ticket 18 ran the rule on the bundled worlds. (Ticket 18.)
 - **Q172** The bundled worlds already store kinds, so the migration skips them, and their named people with several locations are stored as Generic. Ticket 20 applies the rule to them and the user reviews each result by name. (Ticket 20.)
+- **Q173** The Connections tab, the Connection row and the Known In canvas view belong to this spec, as tickets from 21.
+- **Q174** Known In set to Nearby means near where the entity is now: the player is one Nearby link from the place the entity stands this turn (Q61, Q88). The rule does not change. Only the hint text under Known In changes; it must say "nearby", not "one location away".
+- **Q175** A location's panel gets a Connections tab, right after Presence. It holds the Connections and nothing else. Presence keeps Entities, the entities that are here, and Known Here.
+- **Q176** The Connections tab also lists the free links (parent, children, siblings) that no Connection replaces, in one folded group under the Connections, closed by default.
+- **Q177** A collapsed Connection row shows, in order: the fold chevron, the direction icon, the other location's name, the distance mark, and Delete. It shows no "one way" text and no hint marker. The distance mark is read-only.
+- **Q178** Amended by Q184.
+- **Q179** An open Connection row holds three fields, top to bottom:
+  - **Travel:** a three-choice segmented control, each choice an icon and a word (both ways, to there, to here). No line of text under it.
+  - **Distance:** a label with an ⓘ, then a two-choice segmented control. It is two thirds of the row wide, so its choices line up under the first two Travel choices and the third slot is empty. Each choice shows the distance mark. No line of text under it.
+  - **Travel Hints:** the two hint boxes labeled "To X" and "From X", with the link button. No group label above them.
+- **Q180** On the full-screen canvas, Known In set to Nearby marks every place the routine uses, and marks every place one Nearby link from those more lightly. The key says the lighter marks apply only while the entity is there.
+- **Q181** That view draws a Far link in the Far style and leaves its other end unmarked, so the author sees why the entity is not known there.
+- **Q182** Each free-link row has one button that makes it a Connection: two-way and Nearby. The new Connection joins the list above and the free row goes.
+- **Q183** The Connections tab and the Connection panel on the full-screen canvas use one widget for the open row (Q179). The canvas panel shows one Connection and has no fold.
+- **Q184** Every Connection row starts collapsed, whatever the count. A new Connection opens when it is added. The tab has the Collapse All button of the Openings list. (Amends Q178, which matched Openings: open below three rows.)
+- **Q185** The distance mark is a line, then the word, in one fixed width, so the shorter word gets the longer line. Nearby is a short straight line. Far is a dotted sine wave with few humps (one per 8 px in the prototype). Both values show the mark; Nearby is never blank. This is a new visual pattern, approved on 2026-11-10 in the prototype.
+- **Q186** Distance needs an in-depth explanation in its ⓘ: what the AI is told about the other end, who the narration can call over, and that travel works either way. The one-line hint under the control is removed. The copy is written in the ticket from a facts list (Writing Guide).
+- **Q187** The link button of the hint pair spans from the top of the first hint box to the bottom of the second. It does not cover the first label.
+- **Q188** The two hints keep the link button. The rule "an empty return hint uses the words of the way out" was tried and dropped.
+- **Q189** Rejected in the prototype: the direction as a click-to-cycle icon; distance as dropdowns, as a clickable header mark, as a menu on the mark, as a slider line, and as the list a row is in; sentences with inline picks; arrows the hint is typed on; a list with one editor; a checkbox grid; ways out and ways in; a small radial map; chips; groups by place with free links as ghost rows. Reason for the last two families: a row that moves or changes list while it is edited is bad to use.
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
@@ -316,6 +336,29 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 72. As an author of an old world, I want a companion I listed at every location to keep traveling with the player, so that my party still works.
 73. As a player, I want a Group that is here twice to show once, so that the scene list stays readable.
 74. As a player of an old world, I want to read what changed for characters with several locations, so that I understand why someone is not always where I look.
+
+### Connections tab and Known In
+
+75. As an author, I want a location's Connections on their own tab, so that the Presence tab is only about who is there.
+76. As an author, I want every Connection row closed when I open the tab, so that I can read a long list.
+77. As an author, I want a closed row to show the direction, the other location and the distance, so that I can scan the list without opening anything.
+78. As an author, I want both Nearby and Far drawn as a line and a word, so that I can tell them apart at a glance.
+79. As an author, I want one click to open a row, so that I can edit it in place.
+80. As an author, I want a new Connection to open when I add it, so that I can set it up at once.
+81. As an author, I want to close or open all rows with one button, so that I can reset a long list.
+82. As an author, I want labels on Travel and Distance, so that I know what each switch sets.
+83. As an author, I want a full explanation of Nearby and Far behind an info button, so that I can decide without guessing.
+84. As an author, I want the Distance switch to be smaller than the Travel switch, so that the row is not two equal bars.
+85. As an author, I want the link button to sit beside the two hint boxes only, so that it reads as joining them.
+86. As an author, I want to see the free links of a location, so that I know every way out of it.
+87. As an author, I want to turn a free link into a Connection with one click, so that I can make it one-way or Far.
+88. As an author, I want the free links folded by default, so that a location with many siblings stays short.
+89. As an author, I want the same Connection controls on the full-screen canvas, so that I learn them once.
+90. As an author, I want the search to take me to a Travel Hint on the Connections tab, so that Find still works.
+91. As an author, I want the Known In hint to say "nearby", so that it matches what the game does.
+92. As an author, I want the canvas to show where a Nearby entity can be known, so that Nearby is not an empty view.
+93. As an author, I want a Far link to draw as cut off in that view, so that I see why the entity is not known across it.
+94. As a new author, I want the tour's Connection step to open the Connections tab, so that the tour still points at the right place.
 
 ## Implementation Decisions
 
@@ -425,6 +468,26 @@ The save gains, per Individual: the chosen Start, follow state (with whether a s
 
 A Group saves one record per Start id: the position, the current idle's end, the patrol stop index and the current row id. A Start added to the world after the save begins at its place. A record whose Start is gone is dropped.
 
+### Connections tab (Q173–Q189)
+
+- The location panel's tab list gains Connections after Presence. The dev-router ledger, the tab-for-field lookup (a Travel Hint field now maps to Connections) and the Authoring Tour's Connection step follow the list.
+- The Presence tab loses the Connections block. Nothing else on it moves.
+- One Connection widget serves both surfaces (Q183). Its body is Travel, Distance and the hint pair (Q179). The tab wraps it in a fold with the header of Q177; the canvas panel shows the body under its own title bar.
+- The widget keeps taking a Connection and handing back a rewritten Connection. The tab writes through the editor's Connection update; the canvas keeps its intents. No new write path.
+- Fold state is view state, held while the tab is mounted. It starts empty (all closed); adding a Connection opens that row (Q184). It does not use the open-below-three rule of the shared card-collapse hook.
+- The free links come from the location graph: the implicit neighbors of the location, minus the pairs a Connection already covers. "Make Connection" creates the default Connection for the pair (two-way, Nearby) and opens it.
+- The "Connect to" picker stays under the list. It keeps offering the locations that have no Connection with this one.
+- The distance mark is one small component used by the row header and by both choices of the Distance control (Q185). It draws from the current text color, so it follows the theme.
+- The hint pair's link button gets a top offset equal to the first label and its gap (Q187). The change is in the shared hint pair, so the canvas panel gets it too.
+- No world or save shape change.
+
+### Known In on the canvas (Q174, Q180, Q181)
+
+- No engine or prompt change: the nearby roster already reads the entity's current place and the Nearby links.
+- The Known In view of the canvas, with Known In set to Nearby, computes: the places the entity's routine uses (every Start place and every row place; Player's Starting Location resolves to the starting locations), and for each the places one Nearby link away. Routine places draw the full mark, their Nearby neighbors the lighter mark. A Far link out of a routine place draws in the Far style.
+- The canvas key lists the two marks while that view shows them (Q128).
+- Nowhere and Picked Locations draw as today.
+
 ## Testing Decisions
 
 A good test drives a public seam with realistic input and asserts the outcome a player or author sees: where a character stands, who is in the scene, which ops land. Never assert on helpers or call order. Each guard is proven by reinstating the bug.
@@ -435,6 +498,8 @@ A good test drives a public seam with realistic input and asserts the outcome a 
 - **Migration** (existing seam): `migrateWorld` maps each row of the migration table and is idempotent. Fixtures copy the shapes of the four checked worlds with neutral names: a person with a home and a workplace, an enemy in two places, a companion at every location, and a world with no pronouns. One more case covers a small world where a person is listed at all of its few locations. Prior art: the existing migration tests.
 - **Groups** (position engine seam): two Starts move on their own rows, two presences in one place count once, a Group is never pulled and never follows, a kind switch keeps the Starts, a Start at Player's Starting Location resolves at game start, and Begins Following starts the follow.
 - **UI:** the Start and schedule editor, the swap, the weight chips and the distance control get component tests plus `verify-ui` on a dev route.
+- **Connections tab** (component tests on the location panel, the existing seam of the Connections tests): every row starts closed with one and with five Connections; a closed row names the direction, the place and the distance; opening shows Travel, Distance and the hints; each control rewrites the record; a new Connection opens; Collapse All works; a free link lists only while no Connection covers its pair, and its button creates a two-way Nearby Connection; a Travel Hint search lands on the Connections tab. The canvas panel test checks that it shows the same three fields. `verify-ui` covers both themes for the distance mark. Prior art: the location Connections tests and the hint pair's design-system reference.
+- **Known In canvas view** (the canvas mark model's tests): Nearby marks routine places and their Nearby neighbors, leaves a Far neighbor unmarked, and the key lists what is drawn. Prior art: the canvas key and entity picking tests.
 - **Prompts:** probe numbers on the cloud default, with in-batch controls, for the movement tag (a request to take a Strict character along → they stay; a Strict neighbor is not walked over; ordinary turns → no mention of staying) and for the location request (wait durations from narration, batching bar).
 
 ## Out of Scope
@@ -449,6 +514,9 @@ A good test drives a public seam with realistic input and asserts the outcome a 
 - Inventory owner aliases: moved to the Stranger Fields effort (Q30).
 - Releasing a follower while location routing is off (Q27).
 - Authorable calendars or day lengths.
+- A wider Known In reach ("near any place of the routine", Q174).
+- A filter box, drag to reorder, or grouping for the Connections list.
+- Placeholder chips and the link rule of the Travel Hints: unchanged.
 
 ## Further Notes
 
@@ -460,4 +528,6 @@ A good test drives a public seam with realistic input and asserts the outcome a 
 - **Ticket order:** Connection distance (01) and the pure position engine (02) start side by side. `movement` has about 15 readers, so the world shape, migration and reader swap land as one ticket (03) on top of the engine. The editor chain (04 → 05 → 06 → 07), the pull rule (08), the request rework (09), the movement tag (10) and the location Presence tab (11) follow.
 - **Request count:** every non-Strict Individual at the player's location now gets a request each turn. The batching probe also measures that count.
 - **Prototype:** the question was "what should the schedule editor look like". Verdict: D2 (Q65–Q70). Branch `prototype/npc-schedules` at `4408ec845` holds every variant (A, B, C1–C4, D1–D3), the Nearby/Far toggle, and the canvas routine view with map editing (Q71–Q80). Run it from its worktree with `npm run dev -- --port 5310`, then open an entity's Routine tab, or pick an entity on the full-screen canvas.
+- **Connection row prototype:** the question was "what does a Connection row look like, closed and open". Verdict: the box row with a read-only distance mark and a two-thirds Distance control (Q177, Q179, Q184–Q188); the switcher calls it B4. Branch `prototype/connection-rows` at `7743793dd` holds it with the rejected designs of Q189 (S2, S, X, M, C in the switcher; A to H and B1 to B3 in the history). Run it from its worktree with the `proto-connection-rows` launch entry (port 5312), open a world, select a location and open its Connections tab. Edits there stay in local state and the list is padded with sample Connections. The full-screen canvas panel is not built in the prototype.
+- **Connection row findings to keep:** the World Editor is a modal dialog and sets `pointer-events: none` on the body, so anything portaled to the body is dead unless it turns pointer events back on. That killed a popover menu on the distance mark. The Distance ⓘ text in the prototype is a placeholder (Q186).
 - **Prototype findings to keep:** a tooltip that appears on a canvas connect grip at runtime remounts the grip and the canvas loses its measured position, so the drag never starts. The old picker's rule that draws canvas lines at 25% must not apply in Routine mode. Movement lines run straight between places; they do not follow the Connections the entity would walk.
