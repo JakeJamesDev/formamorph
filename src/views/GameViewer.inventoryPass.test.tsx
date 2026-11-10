@@ -214,6 +214,24 @@ describe('the stats re-roll', () => {
     expect(placeOf('lantern')).toEqual({ kind: 'location', id: 'harbor' });
   });
 
+  it('lands a give to a character the narration calls over from the place around the player, as the live turn did', async () => {
+    // The playtest's inn: the farrier stands in the village the inn sits in, and the scene is about her.
+    const village = [{ id: 'village', name: 'Village' }, { id: 'harbor', name: 'Harbor', parentId: 'village', isStarting: true }];
+    const ferryman: Entity = { ...ferrymanAt('village'), kind: 'individual', starts: [{ id: 'v', place: 'village', weight: 1, schedule: [] }], traversable: 'anywhere' };
+    const world = { ...presenceWorld('', [ferryman]), locations: village, connections: [] } as World;
+    renderGameViewer(world, { inGameplay: <Probe /> });
+    const box = await screen.findByPlaceholderText(/Type your action/);
+    const calls = stubEndpoint(GIVE_KEY);
+    calls.narration = 'Ferryman ducks into the harbor office and holds out a hand for the key.';
+    fireEvent.change(box, { target: { value: 'I hand the Ferryman the key.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Regenerate Stats' })).toBeEnabled());
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));
+    expect(gameplay().entityPositions.ferryman).toBe('harbor');
+    await rerollAndSettle(calls);
+    await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));
+  });
+
   it('lands a give to an entity that moved in this turn, as the live turn did', async () => {
     const calls = await playOneTurn(presenceWorld('entities.Ferryman.move("Harbor");', [ferrymanAt('pier')]), GIVE_KEY);
     await waitFor(() => expect(placeOf('key')).toEqual({ kind: 'entity', id: 'ferryman' }));

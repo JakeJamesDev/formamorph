@@ -22,7 +22,7 @@ export function entityIdsAt(locationId: string | null | undefined, entities: Ent
 
 /** The deduped ids of the entities that belong to any of `locationIds` — the union a multi-location scope
  *  (sub-locations, reachable) rosters. Each entity appears once however many of the places it lists. */
-export function entityIdsAtAny(locationIds: string[], entities: Entity[]): string[] {
+export function entityIdsAtAny(locationIds: readonly string[], entities: Entity[]): string[] {
   const scope = new Set(locationIds);
   return entities.filter((e) => e.locations?.some((id) => scope.has(id))).map((e) => e.id);
 }

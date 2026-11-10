@@ -58,6 +58,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Skin Color picker now tints an Avatar's body and face to the same tone.** Before, an Avatar with dark clothing on the body, such as Aki, could get a pale yellow body.
   - **In Game:**
     - **Items the story gives or takes now reach an entity it calls by an Alias or a Stranger Name.** Before, an entity named by a title, such as "The Captain", got none of the items the story gave it by its first name.
+    - **A character the story calls over from one Nearby link away now joins the scene.** That includes the place around yours and the other end of a Connection. Their item changes land that turn. Nobody comes across a Far link.
   - **World Editor:**
     - **An entity's stat and trait Body Sliders list now shows the entity's Avatar sliders.** An entity with only an Avatar can bind its Body Sliders and Head Features.
   - **A world's written openings now always draw, even in a world that had them switched off.** The world file no longer stores an openings on/off setting.

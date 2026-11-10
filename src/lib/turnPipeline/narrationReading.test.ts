@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { readNarration, readEditedNarration, selectVisitorAdditions, splitParticipants, presentSceneEntities } from './narrationReading';
-import type { Entity, EntityStart, GameLocation } from '@/types';
+import type { Connection, Entity, EntityStart, GameLocation } from '@/types';
 import { castRoutines } from '../entityKind';
 import { storyMinute } from '../gameClock';
-import { placeAll, positionWorld } from '../positionPlay';
+import { placeAll, positionWorld, type PositionWorld } from '../positionPlay';
+import { startFollowing, startWaiting, type PositionBook } from '../positionEngine';
+import { migrateEntityRoutine } from '../version';
 
 const ent = (id: string, name: string): Entity => ({ id, name });
 const loc = (id: string, name: string, over: Partial<GameLocation> = {}): GameLocation =>
@@ -97,7 +99,9 @@ describe('selectVisitorAdditions', () => {
 
   const cabin = loc('l3', 'The Cabin', { parentId: 'l1' }); // a direct child of the Jetty
   const bunk = loc('l4', 'The Bunk', { parentId: 'l3' }); // two levels down
-  const world = [...locations, cabin, bunk];
+  const ferry = loc('l5', 'The Ferry Dock'); // top-level, joined to the Jetty only by a Connection
+  const world = [...locations, cabin, bunk, ferry];
+  const ferryRoad: Connection = { id: 'road', a: 'l1', b: 'l5', aToB: {}, bToA: {} };
   const NOON = storyMinute(4);
 
   /** An Individual starting at `place`, with an empty schedule unless `schedule` gives one. */
@@ -106,15 +110,31 @@ describe('selectVisitorAdditions', () => {
   });
   const maren = individual(MAREN, 'l2');
 
-  /** Who the pull brings to `location`: every id the pull moved there. */
-  const pullWith = (prose: string, cast: Entity[], over: { location?: GameLocation; positions?: Record<string, string> } = {}) => {
+  interface PullOptions {
+    location?: GameLocation;
+    positions?: Record<string, string>;
+    connections?: Connection[];
+    /** Engine state set before the narration, such as a follow. */
+    before?: (book: PositionBook, world: PositionWorld) => PositionBook;
+  }
+
+  /** The book before and after the pull, and the engine view it read. */
+  const pull = (prose: string, cast: Entity[], over: PullOptions = {}) => {
     const location = over.location ?? here;
-    const positionsWorld = positionWorld(castRoutines(cast), NOON, location.id, world, [], () => 0);
+    const positionsWorld = positionWorld(castRoutines(cast), NOON, location.id, world, over.connections ?? [ferryRoad], () => 0);
     const placed = placeAll({ positions: {}, individuals: {} }, positionsWorld);
-    const book = { ...placed, positions: { ...placed.positions, ...over.positions } };
+    const seated = { ...placed, positions: { ...placed.positions, ...over.positions } };
+    const book = over.before ? over.before(seated, positionsWorld) : seated;
     const after = selectVisitorAdditions({
-      prose: read(prose).prose, entities: cast, allEntities: cast, location, locations: world, book, world: positionsWorld,
+      prose: read(prose).prose, entities: cast, allEntities: cast, location, book, world: positionsWorld,
     });
+    return { book, after, world: positionsWorld };
+  };
+
+  /** Who the pull brings to the player's place: every name the pull moved there. */
+  const pullWith = (prose: string, cast: Entity[], over: PullOptions = {}) => {
+    const location = over.location ?? here;
+    const { book, after } = pull(prose, cast, over);
     return cast.filter((e) => book.positions[e.id] !== location.id && after.positions[e.id] === location.id).map((e) => e.name);
   };
 
@@ -131,10 +151,6 @@ describe('selectVisitorAdditions', () => {
     expect(pullWith('A hooded woman steps onto the boards.', [hooded])).toEqual(['Maren Vosk']);
     expect(pullWith('The woman steps onto the boards, hooded against the rain.', [hooded])).toEqual([]);
     expect(pullWith('The deckhand mutters, "a hooded woman steps onto the boards."', [hooded])).toEqual([]);
-  });
-
-  it("pulls a character named in prose from a direct child of the player's place", () => {
-    expect(pullWith('Tamsin Reed climbs up from the cabin.', [individual(ent('e3', 'Tamsin Reed'), 'l3')])).toEqual(['Tamsin Reed']);
   });
 
   it('pulls from a child at a top-level place, which has no siblings', () => {
@@ -155,14 +171,38 @@ describe('selectVisitorAdditions', () => {
     expect(pullWith('Tamsin Reed comes over to the jetty.', [herd])).toEqual([]);
   });
 
+  describe('across links', () => {
+    const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l5');
+    const named = 'Tamsin Reed comes over to the jetty.';
+    const far = (c: Connection): Connection => ({ ...c, distance: 'far' });
+
+    it('pulls across a Nearby Connection to a place outside the tree', () => {
+      expect(pullWith(named, [tamsin])).toEqual(['Tamsin Reed']);
+    });
+
+    it('never pulls across a Far Connection', () => {
+      expect(pullWith(named, [tamsin], { connections: [far(ferryRoad)] })).toEqual([]);
+    });
+
+    it('never pulls from a sibling a Far Connection sets apart', () => {
+      const shedRoad: Connection = { id: 'shed', a: 'l1', b: 'l2', aToB: {}, bToA: {} };
+      expect(pullWith('Maren Vosk steps onto the boards.', [maren], { connections: [far(shedRoad)] })).toEqual([]);
+    });
+  });
+
   describe.each([
     ['sibling', 'l2'],
     ['child', 'l3'],
+    ['parent', 'l0'],
   ])('the routine, from a %s', (_kind, from) => {
     const named = 'Tamsin Reed comes over to the jetty.';
     const tamsin = (over: Partial<Entity>, schedule: EntityStart['schedule'] = []) => individual(ent('e3', 'Tamsin Reed'), from, over, schedule);
     const wander = (...places: string[]): EntityStart['schedule'] =>
       [{ id: 'w', time: 'allDay', action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: 600 } }];
+
+    it('pulls a character whose routine allows the player’s place', () => {
+      expect(pullWith(named, [tamsin({})])).toEqual(['Tamsin Reed']);
+    });
 
     it('never pulls a character whose Traversable is empty into a place outside its schedule', () => {
       expect(pullWith(named, [tamsin({ traversable: [] })])).toEqual([]);
@@ -177,6 +217,62 @@ describe('selectVisitorAdditions', () => {
       const strict: EntityStart['schedule'] = [{ id: 'shift', time: 'allDay', strict: true, action: { kind: 'stay', place: from } }];
       expect(pullWith(named, [tamsin({}, strict)])).toEqual([]);
     });
+
+    const following = (book: PositionBook, w: PositionWorld) => startFollowing(book, w.routines.get('e3')!, w.scene);
+
+    it('never pulls a follower', () => {
+      expect(pullWith(named, [tamsin({})], { before: following })).toEqual([]);
+    });
+
+    it('never pulls a character waiting where a follow left them', () => {
+      const waiting = (book: PositionBook, w: PositionWorld) => startWaiting(following(book, w), 'e3', 'thisDaypart', NOON);
+      expect(pullWith(named, [tamsin({})], { before: waiting })).toEqual([]);
+    });
+  });
+
+  describe('a migrated one-place character that was Free (the window case)', () => {
+    // Seen through the window: the prose names them in full, from the shed next door.
+    const seen = 'Through the window, Tamsin Reed mends a net in the shed.';
+    const migrated = migrateEntityRoutine({ ...ent('e3', 'Tamsin Reed'), locations: ['l2'], movement: 'free' } as Entity);
+
+    it('is not pulled, since the player’s place is not allowed for them', () => {
+      expect(pullWith(seen, [migrated])).toEqual([]);
+    });
+
+    it('is pulled once the author adds the place to Traversable', () => {
+      expect(pullWith(seen, [{ ...migrated, traversable: ['l1'] }])).toEqual(['Tamsin Reed']);
+      expect(pullWith(seen, [{ ...migrated, traversable: 'anywhere' }])).toEqual(['Tamsin Reed']);
+    });
+  });
+
+  describe('going back', () => {
+    const named = 'Tamsin Reed comes over to the jetty.';
+    /** Where Tamsin stands once the player has left for the Ferry Dock, `minutes` after the pull. */
+    const afterLeaving = (cast: Entity[], minutes: number) => {
+      const { after, world: w } = pull(named, cast);
+      expect(after.positions.e3).toBe('l1');
+      const later = { ...w, scene: { ...w.scene, now: NOON + minutes, playerAt: 'l5' } };
+      return placeAll(after, later).positions.e3;
+    };
+
+    it('goes back from a Stay row once the player leaves', () => {
+      const stay: EntityStart['schedule'] = [{ id: 'mend', time: 'allDay', action: { kind: 'stay', place: 'l2' } }];
+      expect(afterLeaving([individual(ent('e3', 'Tamsin Reed'), 'l2', {}, stay)], 1)).toBe('l2');
+    });
+
+    it('goes back from a Wander row only when its idle runs out', () => {
+      const wander: EntityStart['schedule'] = [{ id: 'w', time: 'allDay', action: { kind: 'wander', places: [{ place: 'l2', weight: 1 }], idle: 120 } }];
+      const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l2', {}, wander);
+      expect(afterLeaving([tamsin], 60)).toBe('l1');
+      expect(afterLeaving([tamsin], 121)).toBe('l2');
+    });
+
+    it('goes back from a Patrol row only when its idle runs out', () => {
+      const patrol: EntityStart['schedule'] = [{ id: 'p', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'l2', idle: 120 }] } }];
+      const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l2', {}, patrol);
+      expect(afterLeaving([tamsin], 60)).toBe('l1');
+      expect(afterLeaving([tamsin], 121)).toBe('l2');
+    });
   });
 
   describe('where it stands in play', () => {
@@ -184,7 +280,7 @@ describe('selectVisitorAdditions', () => {
     const named = 'Tamsin Reed climbs up to the jetty.';
 
     it('reads its position over its listed locations', () => {
-      expect(pullWith(named, [tamsin], { positions: { e3: 'l0' } })).toEqual([]);
+      expect(pullWith(named, [tamsin], { positions: { e3: 'l4' } })).toEqual([]);
     });
 
     it("never pulls someone whose position is already the player's place", () => {

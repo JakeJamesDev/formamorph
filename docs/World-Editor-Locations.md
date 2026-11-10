@@ -219,14 +219,18 @@ An entity that stands in **One Location** isn't in this picker. Set where it sta
 ### Who Joins the Scene
 <!-- keywords: npc walks in, character comes over, pulled into scene, joins the player, comes down, comes from next room, wont come, stays at counter -->
 
-When the narration names an entity that stands close by, that entity comes to the player's location. Close by means one of two places:
+When the narration names an entity that stands one **Nearby** link away, that entity comes to the player's location. One link away means one of these places:
 
+- The location the player's location sits **inside**: one level up.
 - A location **beside** the player's: it shares the same parent.
 - A location **directly inside** the player's: one level down. Two levels down is too far.
+- The other end of a **Connection** from the player's location, in either direction.
+
+A **Far** link never brings anyone over, even a nested one. See [Nearby and Far](#nearby-and-far).
 
 The narration must use the entity's full Name, a full alias, or the full **Stranger Name**. A name said only inside dialogue doesn't count.
 
-Only an entity in **One Location** comes, and only to a location it may go to. An entity at **Every Location** never comes over. One that is following the player, or waiting where it was left, doesn't come either.
+Only an entity in **One Location** comes, and only to a location it may go to. An entity at **Every Location** never comes over. One that is following the player, or waiting where it was left, doesn't come either. Nor does one in a part of its routine that can't be interrupted.
 
 The entity goes back to its usual places later: when the player leaves, or after a while. Undo the turn, and it goes back at once.
 

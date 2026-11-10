@@ -20,28 +20,26 @@ function turn(fields: { turnId?: string; narration?: string; entities?: string[]
 }
 
 describe('selectReachableVisitors', () => {
-  // town > { houseA (current), Sarah's House (Sarah) } ; a top-level location has no siblings.
-  const houseA: GameLocation = { id: 'a', name: 'House A', parentId: 'town' };
-  const sarahs: GameLocation = { id: 'b', name: "Sarah's House", parentId: 'town' };
-  const locs = [houseA, sarahs];
+  // The player is at House A ('a'); Sarah's House ('b') is one Nearby link away.
   const alice: Entity = { id: 'alice', name: 'Alice', locations: ['a'] };
   const sarah: Entity = { id: 'sarah', name: 'Sarah', locations: ['b'] };
   const authored = [alice, sarah];
 
-  it('pulls in a reachable-sibling authored entity named this turn and not present', () => {
-    expect(selectReachableVisitors(['Sarah'], houseA, locs, authored, ['alice'])).toEqual([sarah]);
+  it('pulls in an authored entity in a Nearby place, named this turn and not present', () => {
+    expect(selectReachableVisitors(['Sarah'], ['b'], authored, ['alice'])).toEqual([sarah]);
   });
 
-  it('excludes those already present, not reachable, not authored, or not named', () => {
-    expect(selectReachableVisitors(['Sarah'], houseA, locs, authored, ['alice', 'sarah'])).toEqual([]); // already present
-    expect(selectReachableVisitors(['Alice'], houseA, locs, authored, ['alice'])).toEqual([]); // Alice is present here, not a sibling
-    expect(selectReachableVisitors(['Goblin'], houseA, locs, authored, ['alice'])).toEqual([]); // unauthored / unnamed
-    expect(selectReachableVisitors([], houseA, locs, authored, ['alice'])).toEqual([]); // nobody named
+  it('excludes those already present, not nearby, not authored, or not named', () => {
+    expect(selectReachableVisitors(['Sarah'], ['b'], authored, ['alice', 'sarah'])).toEqual([]); // already present
+    expect(selectReachableVisitors(['Alice'], ['b'], authored, ['alice'])).toEqual([]); // Alice is here, not nearby
+    expect(selectReachableVisitors(['Goblin'], ['b'], authored, ['alice'])).toEqual([]); // unauthored / unnamed
+    expect(selectReachableVisitors([], ['b'], authored, ['alice'])).toEqual([]); // nobody named
+    expect(selectReachableVisitors(['Sarah'], [], authored, [])).toEqual([]); // no Nearby place
   });
 
-  it('pulls no sibling at a top-level location', () => {
-    const top: GameLocation = { id: 'top', name: 'Overworld' };
-    expect(selectReachableVisitors(['Sarah'], top, [...locs, top], authored, [])).toEqual([]);
+  it('reads a moved position over the listed locations', () => {
+    expect(selectReachableVisitors(['Sarah'], ['b'], authored, [], { sarah: 'c' })).toEqual([]);
+    expect(selectReachableVisitors(['Alice'], ['b'], authored, [], { alice: 'b' })).toEqual([alice]);
   });
 });
 

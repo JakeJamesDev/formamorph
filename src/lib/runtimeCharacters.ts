@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import type { ChatMessage, Entity, EntityPositions, GameLocation, DiscoveredEntity } from '@/types';
+import type { ChatMessage, Entity, EntityPositions, DiscoveredEntity } from '@/types';
 import { survivingTurnIds } from '@/lib/turnDigest';
 import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
@@ -88,24 +88,18 @@ export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): E
 }
 
 /**
- * "Bring-them-over" candidates: the authored entities standing in a sibling (a location sharing the current
- * one's non-null parent) or a direct child, named by the narration as participants, and not already present.
- * Where they stand reads `positions` over their listed locations. The position engine decides which of them
- * may come. Pure.
+ * "Bring-them-over" candidates: the authored entities standing in one of the `nearby` places, named by the
+ * narration as participants, and not already present. Where they stand reads `positions` over their listed
+ * locations. The position engine decides which of them may come. Pure.
  */
 export function selectReachableVisitors(
   participants: string[],
-  current: GameLocation | null | undefined,
-  locations: GameLocation[],
+  nearby: readonly string[],
   authoredEntities: Entity[],
   presentIds: string[],
   positions: Readonly<EntityPositions> = {},
 ): Entity[] {
-  if (!current) return [];
-  const parent = current.parentId ?? null;
-  const pullFrom = locations.filter((l) => l.id !== current.id
-    && (l.parentId === current.id || (parent !== null && (l.parentId ?? null) === parent)));
-  const reachableIds = new Set(entityIdsAtAny(pullFrom.map((l) => l.id), entitiesInPlay(authoredEntities, positions)));
+  const reachableIds = new Set(entityIdsAtAny(nearby,entitiesInPlay(authoredEntities, positions)));
   const present = new Set(presentIds);
   return authoredEntities.filter(
     (e) => reachableIds.has(e.id) && !present.has(e.id) && participants.some((p) => sameCharacterName(p, e.name)),

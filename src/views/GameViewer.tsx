@@ -3040,15 +3040,26 @@ const GameViewer = ({
     const afterTriggers = toolCalls?.armed("after") ?? [];
     // The story's item changes land before the stat deltas, which then read their effects (Q53).
     const discovered = commit.discoveries.map((d) => ({ id: d.entity.id, name: d.entity.name }));
-    const { start: moveStart, from: moveFrom } = turn.entityMove;
+    const { start: moveStart, from: moveFrom, applied: moveApplied } = turn.entityMove;
     /** The engine's view at the turn's end, `hours` after it began. */
     const endWorld = (hours: number) => positionWorldAt(storyMinute(turn.context.gameTime + hours, commit.clock.calendar), moveFrom);
     /** The book the turn's moves start from: on the opening turn, placed again for the hour it measured. */
     const startBook = (book: FollowerState, hours: number) => (commit.isOpeningTurn ? reseatForOpening(book, endWorld(hours)) : book);
-    const movedTo = moveFrom
-      ? commitEntityMoves(startBook(moveStart, commit.turnHours), commit, { from: moveFrom, to: turn.location?.id }, endWorld(commit.turnHours)).state.positions
-      : undefined;
-    const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, movedTo) : [];
+    /** `book` with the characters the prose names called over to `location`. */
+    const calledOver = (book: FollowerState, location: GameLocation | null | undefined, world: PositionWorld) =>
+      (location && turn.prose ? selectVisitorAdditions({ prose: turn.prose, entities, allEntities, location, book, world }) : book);
+    /** Where everyone stands for the pass: after the turn's moves, with the characters the prose calls over (Q100). */
+    const ownerPositions = () => {
+      const world = endWorld(commit.turnHours);
+      const moved = moveFrom
+        ? commitEntityMoves(startBook(moveStart, commit.turnHours), commit, { from: moveFrom, to: turn.location?.id }, world).state
+        : undefined;
+      // Without a move the pass reads where everyone stood this turn, so only a pull changes it.
+      const book = moved ?? moveApplied;
+      const pulled = calledOver(book, turn.location, world);
+      return moved || pulled !== book ? pulled.positions : undefined;
+    };
+    const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, ownerPositions()) : [];
     const commitTotals = startActionTotals();
     const { kept: inventoryKept, landed: inventory } = landInventoryPass(
       commit.inventoryOps, turn.location, inventoryOwners, outputWritten,
@@ -3113,23 +3124,18 @@ const GameViewer = ({
       addLogEntry(`Moved to location: ${codeTarget.name}`);
     }
     const location = codeTarget ?? turn.location;
-    const { start, from, applied } = turn.entityMove;
     const meets = final.codeWrites?.entities?.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
     if (meets?.length) setMetEntities((met) => withMet(met, meets));
     // Every Individual is placed for the turn's end, after the replies and the code moved who they name.
     const world = endWorld(final.turnHours);
     let afterMoves: FollowerState;
-    if (from) {
-      const moves = commitEntityMoves(startBook(start, final.turnHours), final, { from, to: location?.id }, world);
+    if (moveFrom) {
+      const moves = commitEntityMoves(startBook(moveStart, final.turnHours), final, { from: moveFrom, to: location?.id }, world);
       afterMoves = moves.state;
       entityOfferRef.current = moves.offer;
-    } else afterMoves = placeAll(startBook(applied, final.turnHours), withPlayerAt(world, location?.id));
+    } else afterMoves = placeAll(startBook(moveApplied, final.turnHours), withPlayerAt(world, location?.id));
     // The characters the prose names join the place where the player ends the turn, after every move.
-    if (location && turn.prose) {
-      afterMoves = selectVisitorAdditions({
-        prose: turn.prose, entities, allEntities, location, locations, book: afterMoves, world,
-      });
-    }
+    afterMoves = calledOver(afterMoves, location, world);
     applyFollowerState(afterMoves);
 
     setFullMessageHistory((prev) => {
