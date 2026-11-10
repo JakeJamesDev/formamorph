@@ -215,7 +215,8 @@ export function RoutineRow({ row, others, startPlace, book, connected, asHours, 
           {row.strict ? <Lock className="h-4 w-4 text-warning" /> : <LockOpen className="h-4 w-4 text-muted-foreground" />}
         </button>
       </Tip>
-      <p className="min-w-0 flex-1">
+      {/* No flex-1: Delete follows the sentence, not the far edge of a wide tab. */}
+      <p className="min-w-0">
         <Token wide label={`Time: ${timeText}`} editor={(
           <RowTimeEditor time={row.time} asHours={asHours} onAsHours={onAsHours} others={others} onChange={(time) => onChange({ ...row, time })} />
         )}>{timeText}</Token>

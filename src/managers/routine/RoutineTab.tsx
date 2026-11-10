@@ -86,11 +86,11 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
   // An entity with no kind yet edits as a new Individual; its first write stores the kind.
   const individual = useMemo(() => (entity.kind ? entity : withKind(entity, 'individual', randomUUID)), [entity]);
   // A custom persona moves with the player: it keeps only its locations, with no placement or routine.
-  if (entity.customPersona) return <div className="max-w-2xl"><GroupLocations entity={entity} book={book} commit={commit} /></div>;
+  if (entity.customPersona) return <GroupLocations entity={entity} book={book} commit={commit} />;
   const kind: EntityKind = entity.kind ?? 'individual';
 
   return (
-    <div className="max-w-2xl space-y-4" data-tour-anchor="entity-locations">
+    <div className="space-y-4" data-tour-anchor="entity-locations">
       <div className="space-y-1.5" {...fieldFrame('kind')}>
         <Label>Placement</Label>
         <OptionSwitcher
