@@ -1202,6 +1202,32 @@ Tiles drop to three columns, then two. Paired sections stack on mobile. Charts k
 
 Labels use title case. Times state their zone once, at the top of the report.
 
+## Pattern: Segmented Bar
+
+> 📝 **Proposal.** The look was settled with the user in the Storage Tab spec (rulings Q2 and Q11). The user has not yet approved it in the showcase. Production already uses it, so approval is the next step.
+
+One flat bar that shows the parts of one whole: what fills a disk, or what fills a free tier.
+
+| Part | Treatment |
+| --- | --- |
+| Track | 22px high, rounded ends, `muted`. Its full width is the scale. What the segments leave is empty track. |
+| Segment | One per part, with a 2px gap between segments. Largest first, then the remainder. |
+| Remainder | The part of the whole that no named part explains, in `muted-foreground` at 50%. |
+| Mark | A dashed vertical line with a small percent label above the bar. |
+| Legend | A grid under the bar: a small square swatch, the name, and the size of every segment. |
+
+**Color:** Each part has its own `--chart-*` hue, and keeps it when the order changes. This is the one exception to the Usage Report's `bg-primary` rule, and it applies only to a part-to-whole bar: steps of one hue cannot tell eight parts apart. With more parts than hues, the extra parts share one segment.
+
+**Over the scale:** When the parts pass the scale, the bar is full and the segments keep their shares.
+
+**Access:** The bar is hidden from assistive technology. The legend and a table nearby hold the figures.
+
+| Need | Component |
+| --- | --- |
+| The bar and its legend | `SegmentedBar` in [`segmented-bar.tsx`](../src/components/ui/segmented-bar.tsx) |
+| A disk's segments | [`storageReport.ts`](../src/lib/storageReport.ts) |
+| Isolated reference | [`SegmentedBarReference.tsx`](../src/components/design-system/SegmentedBarReference.tsx) |
+
 ## Pattern: Header Line
 
 **Purpose:** Line every Surface's top row up on one height, so the app reads as one header and nothing sits under the window buttons.

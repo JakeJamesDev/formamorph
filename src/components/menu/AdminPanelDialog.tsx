@@ -18,6 +18,7 @@ import { type ModerationTab as ModerationSubTab } from "@/components/menu/modera
 import { AuditLogTab } from "@/components/menu/AuditLogTab";
 import { UsageTab } from "@/components/menu/UsageTab";
 import { MailTab } from "@/components/menu/MailTab";
+import { StorageTab } from "@/components/menu/StorageTab";
 import { ServerSettingsTab } from "@/components/menu/ServerSettingsTab";
 import { SectionTabs } from "@/components/SectionTabs";
 import { useSectionTabsRoot } from "@/components/useSectionTabsRoot";
@@ -62,8 +63,8 @@ export function AdminPanelDialog({
   open, onOpenChange, initialTab = 'users', initialPoliciesTab, initialFeedbackTab, initialModerationTab,
   initialReviewItemId, onOpenListing, onQueuesChanged,
 }: AdminPanelDialogProps) {
-  // Broadcasts, Policies, Server, Usage and Mail are an administrator's: speaking to everyone at once, writing
-  // what the site requires, changing what the server does, and reading its costs and mail health are not moderation.
+  // Broadcasts, Policies, Storage, Server, Usage and Mail are an administrator's: speaking to everyone at once, writing
+  // what the site requires, changing what the server does, and reading its costs, storage and mail health are not moderation.
   // The server's own routes allow any staff for the first three, so hiding those tabs is a courtesy
   // rather than the guard.
   // The rest of the panel is the everyday work, open to any staff —
@@ -155,6 +156,14 @@ export function AdminPanelDialog({
             <TabsContent value="policies" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               <ScrollArea className="flex-1 min-h-0 px-1">
                 <PoliciesTab active={open && tab === 'policies'} initialTab={initialPoliciesTab} />
+              </ScrollArea>
+            </TabsContent>
+          )}
+
+          {owner && (
+            <TabsContent value="storage" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <StorageTab active={open && tab === 'storage'} />
               </ScrollArea>
             </TabsContent>
           )}

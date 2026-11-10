@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import {
-  axisTop, dayLabel, daysCsv, failureLabel, instantLabel, money, percent, promptTypeLabel, promptTypesCsv,
+  axisTop, bytes, dayLabel, daysCsv, failureLabel, instantLabel, money, percent, promptTypeLabel, promptTypesCsv,
 } from './usageReport';
+
+describe('bytes', () => {
+  it('counts in decimal units, so a billion bytes is one GB', () => {
+    expect(bytes(1_000_000_000)).toBe('1.0 GB');
+    expect(bytes(1_073_741_824)).toBe('1.1 GB');
+  });
+
+  it('takes the largest unit that keeps the value at 1 or more, at each boundary', () => {
+    expect([0, 999, 1000, 999_949, 1_000_000, 999_949_999, 1_000_000_000_000].map(bytes))
+      .toEqual(['0 B', '999 B', '1.0 KB', '999.9 KB', '1.0 MB', '999.9 MB', '1.0 TB']);
+  });
+
+  it('never prints 1000.0 of a smaller unit', () => {
+    expect(bytes(999_950)).toBe('1.0 MB');
+    expect(bytes(999_960_000_000)).toBe('1.0 TB');
+  });
+
+  it('stops at TB', () => {
+    expect(bytes(1_234_500_000_000_000)).toBe('1,234.5 TB');
+  });
+
+  it('shows the dash for no value', () => {
+    expect(bytes(null)).toBe('—');
+  });
+});
 
 describe('money', () => {
   it('keeps enough places for an amount under a dollar to read as more than zero', () => {

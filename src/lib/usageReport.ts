@@ -80,6 +80,22 @@ export const share = (part: number, base: number | null): number | null => (base
 /** A null version is a call with no readable client header. */
 export const clientLabel = (version: string | null): string => version ?? 'No Header';
 
+const BYTE_UNITS = ['KB', 'MB', 'GB', 'TB'] as const;
+
+/** Decimal bytes (1 GB is 1,000,000,000) in the largest unit that keeps the value at 1 or more, up to TB. */
+export function bytes(value: number | null): string {
+  if (value === null) return NO_VALUE;
+  if (Math.abs(value) < 1000) return `${Math.round(value)} B`;
+  let unit = 0;
+  let scaled = value / 1000;
+  // Steps up when rounding would print 1000.0 of the smaller unit.
+  while (unit < BYTE_UNITS.length - 1 && Math.abs(Math.round(scaled * 10) / 10) >= 1000) {
+    scaled /= 1000;
+    unit += 1;
+  }
+  return `${scaled.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${BYTE_UNITS[unit]}`;
+}
+
 /** The next round axis top at or above a value: 1, 2 or 5 times a power of ten. Zero data still gets an axis. */
 export function axisTop(value: number): number {
   if (value <= 0) return 1;

@@ -64,6 +64,7 @@ import { TwoSegmentButtonReference } from '@/components/design-system/TwoSegment
 import { WindowCornerReference } from '@/components/design-system/WindowCornerReference';
 import { AllowanceRingReference } from '@/components/design-system/AllowanceRingReference';
 import { UsageReportReference } from '@/components/design-system/UsageReportReference';
+import { SegmentedBarReference } from '@/components/design-system/SegmentedBarReference';
 import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
 import { HistoryControlsReference } from '@/components/design-system/HistoryControlsReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
@@ -400,6 +401,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Usage Report',
     description: 'Section tabs, figure tiles, a day chart, ranked bars and their tables',
     Component: UsageReportReference,
+  },
+  {
+    id: 'segmented-bar',
+    label: 'Segmented Bar',
+    description: 'Parts of one whole on a flat track, with marks and a legend',
+    Component: SegmentedBarReference,
   },
   {
     id: 'surface-app-bar',

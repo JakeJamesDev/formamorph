@@ -88,7 +88,7 @@ async function chooser(page: import('@playwright/test').Page) {
   return { strip: !bar && await strip(page).isVisible(), bar };
 }
 
-const ADMIN_TABS = ['Users', 'Feedback', 'Moderation', 'Usage', 'Events', 'Broadcasts', 'Policies', 'Server', 'Log'];
+const ADMIN_TABS = ['Users', 'Feedback', 'Moderation', 'Usage', 'Events', 'Broadcasts', 'Policies', 'Storage', 'Server', 'Log'];
 const MODERATOR_TABS = ['Users', 'Events', 'Feedback', 'Moderation', 'Log'];
 
 /** Every trigger inside the strip, and the strip inside the dialog: a strip too narrow folds labels away rather than overflowing. */
