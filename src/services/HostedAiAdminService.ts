@@ -81,8 +81,8 @@ export interface HostedUsageDay {
   accounts: number;
   costMicros: number;
   providerMicros: number | null;
-  /** Distinct app installs that opened that day. */
-  installs: number;
+  /** Distinct app installs that opened that day. Null for a day before counting began. */
+  installs: number | null;
 }
 
 /** One population's active counts by UTC calendar month. `averageDay` is the mean full day so far, null with none counted. */
@@ -91,6 +91,15 @@ export interface HostedActiveFigures {
   yesterday: number;
   month: number;
   averageDay: number | null;
+}
+
+/** One platform and version's active installs. The month counts an install under its first build that month. */
+export interface HostedInstallBuild {
+  platform: string;
+  version: string;
+  today: number;
+  yesterday: number;
+  month: number;
 }
 
 /** Settled cost over what admission reserved. `ratio` is null with nothing reserved. */
@@ -120,7 +129,7 @@ export interface HostedUsageReport {
   since: string;
   /** The budget week that `tiers` and `heaviest` cover. */
   week: { since: string; resetAt: string };
-  activeUsers: { installs: HostedActiveFigures; accounts: HostedActiveFigures };
+  activeUsers: { installs: HostedActiveFigures; accounts: HostedActiveFigures; builds: HostedInstallBuild[] };
   totals: { calls: number; turns: number; accounts: number; costMicros: number; failed: number; providerMicros: number; cachedShare: number | null };
   days: HostedUsageDay[];
   promptTypes: HostedPromptTypeUsage[];

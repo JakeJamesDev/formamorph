@@ -50,6 +50,12 @@ export function createDevUsageApi(): Pick<HostedAiAdminApi, 'fetchUsageReport'> 
         activeUsers: {
           installs: { today: 610, yesterday: 820, month: 1900, averageDay: 760 },
           accounts: { today: 6, yesterday: 9, month: 18, averageDay: 7.5 },
+          builds: [
+            { platform: 'web', version: '3.6.2', today: 420, yesterday: 560, month: 1300 },
+            { platform: 'windows', version: '3.6.2', today: 130, yesterday: 180, month: 410 },
+            { platform: 'android', version: '3.6.1', today: 40, yesterday: 55, month: 130 },
+            { platform: 'linux', version: '3.6.2', today: 20, yesterday: 25, month: 60 },
+          ],
         },
         totals: { calls, turns, accounts: 16, costMicros, failed: 3, providerMicros: sum((day) => day.providerMicros ?? 0), cachedShare: 0.5 },
         days,

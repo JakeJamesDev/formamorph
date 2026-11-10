@@ -50,7 +50,15 @@ describe('the CSV exports', () => {
       { day: '2026-11-03', calls: 12, turns: 2, accounts: 1, costMicros: 1_500_000, providerMicros: null, installs: 40 },
     ]);
 
-    expect(text).toBe('Day,Calls,Turns,Accounts,Installs,Recorded Dollars,Provider Dollars\r\n2026-11-03,12,2,1,40,1.5,\r\n');
+    expect(text).toBe('Day,Calls,Turns,AI Users,Active Installs,Recorded Dollars,Provider Dollars\r\n2026-11-03,12,2,1,40,1.5,\r\n');
+  });
+
+  it('leaves the installs of a day before counting began empty', () => {
+    const text = daysCsv([
+      { day: '2026-11-03', calls: 12, turns: 2, accounts: 1, costMicros: 1_500_000, providerMicros: 1_600_000, installs: null },
+    ]);
+
+    expect(text.split('\r\n')[1]).toBe('2026-11-03,12,2,1,,1.5,1.6');
   });
 
   it('quotes a cell that holds a comma', () => {

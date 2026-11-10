@@ -11,10 +11,11 @@ import { useMountedRef } from "@/lib/useMountedRef";
 import { useTierName } from "@/lib/tierNames";
 import {
   NO_VALUE, axisTop, clientLabel, dayLabel, daysCsv, endingLabel, failureLabel, instantLabel, money, offerLabel, percent,
-  promptTypeLabel, promptTypesCsv, refusalLabel, seconds, whole,
+  platformLabel, promptTypeLabel, promptTypesCsv, refusalLabel, seconds, share, whole,
 } from "@/lib/usageReport";
 import HostedAiAdminService, {
-  type HostedActiveFigures, type HostedAiAdminApi, type HostedPromptTypeUsage, type HostedUsageDay, type HostedUsageReport,
+  type HostedActiveFigures, type HostedAiAdminApi, type HostedInstallBuild, type HostedPromptTypeUsage, type HostedUsageDay,
+  type HostedUsageReport,
 } from "@/services/HostedAiAdminService";
 
 // scroll-guard: allow horizontal: wide tables scroll sideways inside the panel's vertical ScrollArea
@@ -30,6 +31,9 @@ type Range = (typeof RANGES)[number]['value'];
 
 const CHART_HEIGHT = 120;
 const CHART_FILL = 'bg-primary';
+/** A day still in progress is drawn faint, so a low bar does not read as a drop. */
+const PARTIAL_OPACITY = 'opacity-40';
+const TODAY = 'Today So Far';
 
 /** A heading and its content, with an optional control on the heading's rule. */
 export function UsageSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
@@ -56,8 +60,10 @@ export function Tile({ label, value, meta }: { label: string; value: string; met
  * Columns per UTC day on one scale, with a readout of the day under the pointer. The chart is hidden from
  * assistive technology because the Per Day table holds the same figures.
  */
-function DayChart({ days, valueOf, tickOf, describe, format }: {
+function DayChart({ days, partialDay, valueOf, tickOf, describe, format }: {
   days: readonly HostedUsageDay[];
+  /** The day still in progress. */
+  partialDay?: string;
   valueOf: (day: HostedUsageDay) => number;
   /** A second figure, drawn as a tick across the column. Null draws none. */
   tickOf?: (day: HostedUsageDay) => number | null;
@@ -80,9 +86,9 @@ function DayChart({ days, valueOf, tickOf, describe, format }: {
             {days.map((day) => {
               const tick = tickOf?.(day) ?? null;
               return (
-                <div key={day.day} data-day={day.day} className="relative h-full max-w-6 flex-1" onPointerEnter={() => setHovered(day.day)}>
+                <div key={day.day} data-day={day.day} data-partial={day.day === partialDay || undefined} className="relative h-full max-w-6 flex-1" onPointerEnter={() => setHovered(day.day)}>
                   <div
-                    className={`absolute inset-x-0 bottom-0 rounded-t ${CHART_FILL} ${day.day === shown?.day ? '' : 'opacity-75'}`}
+                    className={`absolute inset-x-0 bottom-0 rounded-t ${CHART_FILL} ${day.day === partialDay ? PARTIAL_OPACITY : day.day === shown?.day ? '' : 'opacity-75'}`}
                     style={{ height: heightOf(valueOf(day)) }}
                   />
                   {tick !== null && <div className="absolute inset-x-0 h-0.5 bg-muted-foreground" style={{ bottom: heightOf(tick) }} />}
@@ -230,29 +236,50 @@ type Section = (typeof SECTIONS)[number]['value'];
 const DAY_METRICS = [
   { value: 'spend', label: 'Spend' },
   { value: 'turns', label: 'Turns' },
-  { value: 'accounts', label: 'Accounts' },
-  { value: 'installs', label: 'Installs' },
+  { value: 'accounts', label: 'AI Users' },
+  { value: 'installs', label: 'Active Installs' },
 ] as const;
 type DayMetric = (typeof DAY_METRICS)[number]['value'];
 
 /** Mean day over month: the share of the month's users back on a typical day. */
 const stickiness = (figures: HostedActiveFigures) => (figures.averageDay !== null && figures.month > 0 ? figures.averageDay / figures.month : null);
 
+const activeRow = (name: string, figures: HostedActiveFigures) => ({
+  name,
+  today: whole(figures.today),
+  yesterday: whole(figures.yesterday),
+  month: whole(figures.month),
+  averageDay: figures.averageDay === null ? NO_VALUE : figures.averageDay.toFixed(1),
+  stickiness: percent(stickiness(figures)),
+});
+
 function ActiveUsers({ installs, accounts }: { installs: HostedActiveFigures; accounts: HostedActiveFigures }) {
   return (
     <UsageSection title="Active Users">
       <FiguresTable
         label="Active Users"
-        minWidth="32rem"
-        rows={[{ name: 'App Installs', figures: installs }, { name: 'AI Accounts', figures: accounts }]}
+        minWidth="34rem"
+        rows={[
+          activeRow('Active Installs', installs),
+          activeRow('Formamorph AI Users', accounts),
+          {
+            name: 'AI Share Of Installs',
+            today: percent(share(accounts.today, installs.today)),
+            yesterday: percent(share(accounts.yesterday, installs.yesterday)),
+            month: percent(share(accounts.month, installs.month)),
+            // The two means can start on different days, so their ratio would mislead.
+            averageDay: NO_VALUE,
+            stickiness: NO_VALUE,
+          },
+        ]}
         rowKey={(row) => row.name}
         columns={[
           { label: 'Who', left: true, cell: (row) => row.name },
-          { label: 'Today', cell: (row) => whole(row.figures.today) },
-          { label: 'Yesterday', cell: (row) => whole(row.figures.yesterday) },
-          { label: 'This Month', cell: (row) => whole(row.figures.month) },
-          { label: 'Average Day', cell: (row) => (row.figures.averageDay === null ? NO_VALUE : row.figures.averageDay.toFixed(1)) },
-          { label: 'Daily / Monthly', cell: (row) => percent(stickiness(row.figures)) },
+          { label: TODAY, cell: (row) => row.today },
+          { label: 'Yesterday', cell: (row) => row.yesterday },
+          { label: 'This Month', cell: (row) => row.month },
+          { label: 'Average Day', cell: (row) => row.averageDay },
+          { label: 'Daily / Monthly', cell: (row) => row.stickiness },
         ]}
       />
       <Hint>Months are UTC calendar months. Average Day counts full days from the month&apos;s first counted day.</Hint>
@@ -265,17 +292,19 @@ function OverviewSection({ report, days }: { report: HostedUsageReport; days: Ra
   const { totals } = report;
   const entitled = report.tiers.reduce((sum, tier) => sum + tier.entitled, 0);
   const costPerTurn = totals.turns > 0 ? totals.costMicros / totals.turns : null;
+  const today = report.days[report.days.length - 1]?.day;
+  const dayName = (day: HostedUsageDay) => (day.day === today ? `${dayLabel(day.day)} So Far` : dayLabel(day.day));
   const count = (key: 'turns' | 'accounts' | 'installs', noun: string) => ({
-    valueOf: (day: HostedUsageDay) => day[key],
+    valueOf: (day: HostedUsageDay) => day[key] ?? 0,
     format: whole,
-    describe: (day: HostedUsageDay) => `${dayLabel(day.day)}: ${whole(day[key])} ${noun}`,
+    describe: (day: HostedUsageDay) => `${dayName(day)}: ${day[key] === null ? 'Not Counted' : `${whole(day[key])} ${noun}`}`,
   });
   const chart = metric === 'spend' ? {
     valueOf: (day: HostedUsageDay) => day.costMicros,
     tickOf: (day: HostedUsageDay) => day.providerMicros,
     format: (value: number) => money(value),
-    describe: (day: HostedUsageDay) => `${dayLabel(day.day)}: ${money(day.costMicros)} Recorded, ${day.providerMicros === null ? 'Provider Not Read Yet' : `${money(day.providerMicros)} Provider`}`,
-  } : metric === 'turns' ? count('turns', 'Turns') : metric === 'accounts' ? count('accounts', 'Accounts') : count('installs', 'Installs');
+    describe: (day: HostedUsageDay) => `${dayName(day)}: ${money(day.costMicros)} Recorded, ${day.providerMicros === null ? 'Provider Not Read Yet' : `${money(day.providerMicros)} Provider`}`,
+  } : metric === 'turns' ? count('turns', 'Turns') : metric === 'accounts' ? count('accounts', 'AI Users') : count('installs', 'Active Installs');
 
   return (
     <div className="grid gap-8">
@@ -285,7 +314,7 @@ function OverviewSection({ report, days }: { report: HostedUsageReport; days: Ra
         <Tile label="Spend" value={money(totals.costMicros)} meta={`${money(totals.providerMicros)} Provider`} />
         <Tile label="Turns" value={whole(totals.turns)} meta={`${whole(totals.calls)} Calls`} />
         <Tile label="Cost Per Turn" value={money(costPerTurn)} meta={totals.turns > 0 ? `${(totals.calls / totals.turns).toFixed(1)} Calls Per Turn` : NO_VALUE} />
-        <Tile label="Active Accounts" value={whole(totals.accounts)} meta={`${whole(entitled)} Entitled`} />
+        <Tile label="AI Users" value={whole(totals.accounts)} meta={`${whole(entitled)} Entitled`} />
         <Tile label="Failed Calls" value={percent(totals.calls > 0 ? totals.failed / totals.calls : null)} meta={`${whole(totals.failed)} Calls`} />
         <Tile label="Cached Tokens" value={percent(totals.cachedShare)} meta="Of Prompt Tokens" />
       </div>
@@ -294,24 +323,28 @@ function OverviewSection({ report, days }: { report: HostedUsageReport; days: Ra
         <div className="w-full sm:w-96">
           <OptionSwitcher ariaLabel="Chart" value={metric} onChange={setMetric} options={DAY_METRICS} />
         </div>
-        {metric === 'spend' && (
-          <div className="flex gap-4">
-            <Meta className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`h-2.5 w-2.5 rounded-sm ${CHART_FILL}`} />Recorded</Meta>
-            <Meta className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-0.5 w-3 bg-muted-foreground" />Provider</Meta>
-          </div>
-        )}
-        <DayChart days={report.days} {...chart} />
+        <div className="flex flex-wrap gap-4">
+          {metric === 'spend' && (
+            <>
+              <Meta className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`h-2.5 w-2.5 rounded-sm ${CHART_FILL}`} />Recorded</Meta>
+              <Meta className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-0.5 w-3 bg-muted-foreground" />Provider</Meta>
+            </>
+          )}
+          <Meta className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`h-2.5 w-2.5 rounded-sm ${CHART_FILL} ${PARTIAL_OPACITY}`} />{TODAY}</Meta>
+        </div>
+        <DayChart days={report.days} partialDay={today} {...chart} />
         <FiguresTable
           label="Per Day"
-          minWidth="36rem"
+          minWidth="44rem"
           rows={[...report.days].reverse()}
           rowKey={(day) => day.day}
           columns={[
-            { label: 'Day', left: true, cell: (day) => day.day },
+            { label: 'Day', left: true, cell: (day) => (day.day === today ? `${day.day} (So Far)` : day.day) },
             { label: 'Calls', cell: (day) => whole(day.calls) },
             { label: 'Turns', cell: (day) => whole(day.turns) },
-            { label: 'Accounts', cell: (day) => whole(day.accounts) },
-            { label: 'Installs', cell: (day) => whole(day.installs) },
+            { label: 'AI Users', cell: (day) => whole(day.accounts) },
+            { label: 'Active Installs', cell: (day) => whole(day.installs) },
+            { label: 'AI Share', cell: (day) => percent(share(day.accounts, day.installs)) },
             { label: 'Recorded', cell: (day) => money(day.costMicros) },
             { label: 'Provider', cell: (day) => money(day.providerMicros) },
           ]}
@@ -439,9 +472,41 @@ function PerformanceSection({ report, days }: { report: HostedUsageReport; days:
   );
 }
 
+/** This month's active installs per platform, most first, each with its share of the month. */
+const platformRows = (builds: readonly HostedInstallBuild[]) => {
+  const byPlatform = new Map<string, number>();
+  for (const build of builds) byPlatform.set(build.platform, (byPlatform.get(build.platform) ?? 0) + build.month);
+  const total = [...byPlatform.values()].reduce((sum, count) => sum + count, 0);
+  return [...byPlatform].filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1])
+    .map(([platform, count]) => ({ label: platformLabel(platform), amount: count, value: `${whole(count)} (${percent(count / total)})` }));
+};
+
 function ClientsSection({ report }: { report: HostedUsageReport }) {
+  const { builds } = report.activeUsers;
   return (
     <div className="grid gap-8">
+      <UsageSection title="Active Installs This Month">
+        <RankedBars empty="No active installs counted this month" rows={platformRows(builds)} />
+      </UsageSection>
+
+      {builds.length > 0 && (
+        <UsageSection title="Active Installs By Build">
+          <FiguresTable
+            label="Active Installs By Build"
+            minWidth="30rem"
+            rows={builds}
+            rowKey={(row) => `${row.platform} ${row.version}`}
+            columns={[
+              { label: 'Platform', left: true, cell: (row) => platformLabel(row.platform) },
+              { label: 'Version', left: true, cell: (row) => row.version },
+              { label: TODAY, cell: (row) => whole(row.today) },
+              { label: 'Yesterday', cell: (row) => whole(row.yesterday) },
+              { label: 'This Month', cell: (row) => whole(row.month) },
+            ]}
+          />
+        </UsageSection>
+      )}
+
       <UsageSection title="Client Versions">
         {report.clients.length === 0 ? <Meta>No versioned calls in this range</Meta> : (
           <FiguresTable

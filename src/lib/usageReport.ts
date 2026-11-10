@@ -70,6 +70,13 @@ const REFUSAL_LABELS: Record<string, string> = {
 
 export const refusalLabel = (code: string): string => REFUSAL_LABELS[code] ?? code;
 
+const PLATFORM_LABELS: Record<string, string> = { web: 'Web', windows: 'Windows', linux: 'Linux', mac: 'Mac', android: 'Android' };
+
+export const platformLabel = (platform: string): string => PLATFORM_LABELS[platform] ?? platform;
+
+/** One count over another, or null where the base is missing or zero. */
+export const share = (part: number, base: number | null): number | null => (base ? part / base : null);
+
 /** A null version is a call with no readable client header. */
 export const clientLabel = (version: string | null): string => version ?? 'No Header';
 
@@ -95,7 +102,7 @@ const dollarCell = (micros: number | null) => (micros === null ? null : micros /
 /** Plain numbers rather than display text, so a spreadsheet can sum the columns. */
 export function daysCsv(days: readonly HostedUsageDay[]): string {
   return csv([
-    ['Day', 'Calls', 'Turns', 'Accounts', 'Installs', 'Recorded Dollars', 'Provider Dollars'],
+    ['Day', 'Calls', 'Turns', 'AI Users', 'Active Installs', 'Recorded Dollars', 'Provider Dollars'],
     ...days.map((day) => [day.day, day.calls, day.turns, day.accounts, day.installs, dollarCell(day.costMicros), dollarCell(day.providerMicros)]),
   ]);
 }
