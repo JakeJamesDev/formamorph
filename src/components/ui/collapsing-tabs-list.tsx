@@ -1,6 +1,7 @@
 import { TabsList } from '@/components/ui/tabs';
-import { CollapsingSegment, SegmentMeasure, SegmentPill, type CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
+import { CollapsingSegment, SegmentMeasure, SegmentPill, type SegmentOption } from '@/components/ui/collapsing-segments';
 import { useCollapsingSegments } from '@/components/ui/useCollapsingSegments';
+import { iconlessFold } from '@/lib/collapsingSegments';
 import type { SwipeProgress } from '@/lib/swipeProgress';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +13,7 @@ import { cn } from '@/lib/utils';
  * basis, shrinks in a tight row down to its icons, and centers its tabs.
  */
 export function CollapsingTabsList<V extends string>({ tabs, value, className, hug = false, follow, 'aria-label': ariaLabel }: {
-  tabs: readonly CollapsingSegmentOption<V>[];
+  tabs: readonly SegmentOption<V>[];
   value: V;
   className?: string;
   hug?: boolean;
@@ -22,7 +23,7 @@ export function CollapsingTabsList<V extends string>({ tabs, value, className, h
 }) {
   const active = Math.max(0, tabs.findIndex((t) => t.value === value));
   const { rootRef, measureRef, ready, animate, fold, layout, minWidth, fullWidth } = useCollapsingSegments({
-    labels: tabs.map((t) => t.label), active, fill: !hug,
+    labels: tabs.map((t) => t.label), active, fill: !hug, fold: iconlessFold(tabs),
   });
 
   return (

@@ -1,9 +1,12 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { AppWindow, DollarSign, LayoutDashboard, MessagesSquare, MonitorSmartphone, Sparkles, Timer, Wallet } from "lucide-react";
 import { toastError } from "@/lib/linkToast";
-import { OptionSwitcher, SectionHeading } from "@/components/SettingsRows";
+import { SectionHeading } from "@/components/SettingsRows";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CollapsingTabsList } from "@/components/ui/collapsing-tabs-list";
+import { CollapsingToggleGroup } from "@/components/ui/collapsing-toggle-group";
+import { Tabs } from "@/components/ui/tabs";
 import { Hint, Meta } from "@/components/ui/typography";
 import { downloadBlob } from "@/lib/downloadBlob";
 import { useDevRoute } from "@/lib/devRouter";
@@ -226,18 +229,18 @@ function ExportButton({ label, onClick }: { label: string; onClick: () => void }
 }
 
 const SECTIONS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'accounts', label: 'Accounts' },
-  { value: 'performance', label: 'Performance' },
-  { value: 'clients', label: 'Clients And Offer' },
+  { value: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { value: 'accounts', label: 'Accounts', icon: Wallet },
+  { value: 'performance', label: 'Performance', icon: Timer },
+  { value: 'clients', label: 'Clients And Offer', icon: MonitorSmartphone },
 ] as const;
 type Section = (typeof SECTIONS)[number]['value'];
 
 const DAY_METRICS = [
-  { value: 'spend', label: 'Spend' },
-  { value: 'turns', label: 'Turns' },
-  { value: 'accounts', label: 'AI Users' },
-  { value: 'installs', label: 'Active Installs' },
+  { value: 'spend', label: 'Spend', icon: DollarSign },
+  { value: 'turns', label: 'Turns', icon: MessagesSquare },
+  { value: 'accounts', label: 'AI Users', icon: Sparkles },
+  { value: 'installs', label: 'Active Installs', icon: AppWindow },
 ] as const;
 type DayMetric = (typeof DAY_METRICS)[number]['value'];
 
@@ -320,8 +323,8 @@ function OverviewSection({ report, days }: { report: HostedUsageReport; days: Ra
       </div>
 
       <UsageSection title="Per Day" action={<ExportButton label="Export Per Day As CSV" onClick={() => exportCsv(daysCsv(report.days), `usage-days-${days}.csv`)} />}>
-        <div className="w-full sm:w-96">
-          <OptionSwitcher ariaLabel="Chart" value={metric} onChange={setMetric} options={DAY_METRICS} />
+        <div className="w-full sm:w-[30rem]">
+          <CollapsingToggleGroup aria-label="Chart" value={metric} onValueChange={setMetric} options={DAY_METRICS} />
         </div>
         <div className="flex flex-wrap gap-4">
           {metric === 'spend' && (
@@ -586,14 +589,12 @@ export function UsagePanel({ active, api }: { active: boolean; api: UsageApi }) 
           </Meta>
         ) : (
           <div className="w-full sm:w-72">
-            <OptionSwitcher ariaLabel="Range" value={range} onChange={setRange} options={RANGES} />
+            <CollapsingToggleGroup aria-label="Range" className="sm:justify-end" value={range} onValueChange={setRange} options={RANGES} />
           </div>
         )}
       </div>
       <Tabs value={section} onValueChange={(value) => setSection(value as Section)}>
-        <TabsList aria-label="Usage Sections" className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
-          {SECTIONS.map((entry) => <TabsTrigger key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
-        </TabsList>
+        <CollapsingTabsList aria-label="Usage Sections" tabs={SECTIONS} value={section} />
       </Tabs>
       {report ? <ReportView report={report.data} days={report.range} section={section} /> : unreadable ? <Meta>The usage report could not be read</Meta> : <Skeleton className="h-32 w-full" />}
     </div>

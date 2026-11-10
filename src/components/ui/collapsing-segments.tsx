@@ -17,6 +17,9 @@ export interface CollapsingSegmentOption<V extends string> {
   icon: LucideIcon;
 }
 
+/** What a strip draws: an option whose icon is optional. A strip with an iconless option shows every label at any width. */
+export type SegmentOption<V extends string> = Omit<CollapsingSegmentOption<V>, 'icon'> & { icon?: LucideIcon };
+
 /** The pill's box at `position` segments in, part way between two segments when fractional. */
 export function pillAt(layout: SegmentLayout, position: number) {
   const last = layout.widths.length - 1;
@@ -81,11 +84,11 @@ export function SegmentPill({ layout, active, animate, follow }: { layout: Segme
 }
 
 /** A segment's icon and its label, which opens and closes with the step. It moves only once `animate`, so the first measured step applies without a slide. */
-export function SegmentFace({ icon: Icon, label, shown, animate }: { icon: LucideIcon; label: string; shown: boolean; animate: boolean }) {
+export function SegmentFace({ icon: Icon, label, shown, animate }: { icon?: LucideIcon; label: string; shown: boolean; animate: boolean }) {
   return (
     <>
-      <Icon className="h-4 w-4 shrink-0" aria-hidden />
-      <span className={cn('grid', animate && SEGMENT_MOTION.label, shown ? 'ml-2 grid-cols-[1fr] opacity-100' : 'ml-0 grid-cols-[0fr] opacity-0')}>
+      {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden />}
+      <span className={cn('grid', animate && SEGMENT_MOTION.label, shown ? cn(Icon && 'ml-2', 'grid-cols-[1fr] opacity-100') : 'ml-0 grid-cols-[0fr] opacity-0')}>
         <span className="min-w-0 overflow-hidden">{label}</span>
       </span>
     </>
@@ -98,7 +101,7 @@ export function SegmentFace({ icon: Icon, label, shown, animate }: { icon: Lucid
  */
 export function CollapsingSegment<V extends string>({ kind, option, index, active, fold, layout, ready, animate }: {
   kind: 'toggle' | 'tab';
-  option: CollapsingSegmentOption<V>;
+  option: SegmentOption<V>;
   index: number;
   active: number;
   fold: SegmentFold;
@@ -126,7 +129,7 @@ export function CollapsingSegment<V extends string>({ kind, option, index, activ
 
 /** Hidden rows of every segment, labeled and icon-only, that `useCollapsingSegments` reads. */
 export function SegmentMeasure<V extends string>({ options, measureRef }: {
-  options: readonly CollapsingSegmentOption<V>[];
+  options: readonly SegmentOption<V>[];
   measureRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
@@ -135,8 +138,8 @@ export function SegmentMeasure<V extends string>({ options, measureRef }: {
         <div key={String(withLabel)} className="flex w-max">
           {options.map(({ value, label, icon: Icon }) => (
             <span key={value} className={cn('inline-flex items-center', SEGMENT_X)}>
-              <Icon className="h-4 w-4 shrink-0" />
-              {withLabel && <span className="ml-2">{label}</span>}
+              {Icon && <Icon className="h-4 w-4 shrink-0" />}
+              {withLabel && <span className={Icon && 'ml-2'}>{label}</span>}
             </span>
           ))}
         </div>

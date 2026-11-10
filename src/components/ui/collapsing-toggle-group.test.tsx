@@ -64,6 +64,17 @@ describe('CollapsingToggleGroup', () => {
     expect(pill().style.transform).toBe('translateX(84px)');
   });
 
+  it('shows every label at any width when an option has no icon to fold down to', () => {
+    stub.room = 150;
+    render(
+      <TooltipProvider>
+        <CollapsingToggleGroup options={OPTIONS.map(({ value, label }) => ({ value, label }))} value="worlds" onValueChange={() => {}} aria-label="Library" />
+      </TooltipProvider>,
+    );
+    expect(OPTIONS.map((o) => labelShown(o.label))).toEqual([true, true, true]);
+    expect(screen.getByRole('radio', { name: 'Worlds' }).querySelector('svg')).toBeNull();
+  });
+
   it('names the selected option in a tip when it shows its icon alone', async () => {
     stub.room = 150;
     render(<Harness />);

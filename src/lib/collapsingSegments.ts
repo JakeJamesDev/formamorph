@@ -32,6 +32,10 @@ export function segmentFold(full: readonly number[], icon: readonly number[], ro
   return room >= steps.active - 0.5 ? 'active' : 'icons';
 }
 
+/** The step a strip has to keep when an option has no icon to fold down to. */
+export const iconlessFold = (options: readonly { icon?: unknown }[]): SegmentFold | undefined =>
+  (options.some((option) => !option.icon) ? 'full' : undefined);
+
 /** Whether the segment at `index` shows its label at `fold`. */
 export function labelShown(fold: SegmentFold, index: number, active: number): boolean {
   return fold === 'full' || (fold === 'active' && index === active);

@@ -1,13 +1,13 @@
 import { ToggleGroup } from '@/components/ui/toggle-group';
-import { CollapsingSegment, SegmentMeasure, SegmentPill, type CollapsingSegmentOption } from '@/components/ui/collapsing-segments';
+import { CollapsingSegment, SegmentMeasure, SegmentPill, type CollapsingSegmentOption, type SegmentOption } from '@/components/ui/collapsing-segments';
 import { useCollapsingSegments } from '@/components/ui/useCollapsingSegments';
-import type { SegmentFold } from '@/lib/collapsingSegments';
+import { iconlessFold, type SegmentFold } from '@/lib/collapsingSegments';
 import { cn } from '@/lib/utils';
 
 export type CollapsingToggleOption<V extends string> = CollapsingSegmentOption<V>;
 
 interface CollapsingToggleGroupProps<V extends string> {
-  options: readonly CollapsingToggleOption<V>[];
+  options: readonly SegmentOption<V>[];
   value: V;
   onValueChange: (value: V) => void;
   'aria-label': string;
@@ -28,7 +28,7 @@ interface CollapsingToggleGroupProps<V extends string> {
 export function CollapsingToggleGroup<V extends string>({ options, value, onValueChange, className, fold: hostFold, onStepWidths, ...aria }: CollapsingToggleGroupProps<V>) {
   const active = Math.max(0, options.findIndex((o) => o.value === value));
   const { rootRef, measureRef, ready, animate, fold, layout, minWidth } = useCollapsingSegments({
-    labels: options.map((o) => o.label), active, fold: hostFold, onStepWidths,
+    labels: options.map((o) => o.label), active, fold: hostFold ?? iconlessFold(options), onStepWidths,
   });
 
   return (
