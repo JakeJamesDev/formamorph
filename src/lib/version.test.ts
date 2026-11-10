@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders, migrateEntityMorphBindings } from './version';
+import { APP_VERSION, MIGRATED_IDLE_MINUTES, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders, migrateEntityMorphBindings } from './version';
 import { placeholderWeight } from './placeholders';
 import { gateOf, gateStates, worldGateInput } from './traitGates';
 import { headingReachesAi } from './groupTree';
@@ -166,19 +166,93 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
   });
 });
 
-describe('migrateWorld — entity presence fields', () => {
+describe('migrateWorld — entity kind and routine (NPC Schedules migration table)', () => {
   const entitiesOf = (w: unknown) => (w as { entities: Entity[] }).entities;
-  const world = (entities: Entity[]) => ({ worldOverview: {}, locations: [{ id: 'keep', name: 'Keep' }, { id: 'tower', name: 'Tower' }], entities });
+  const world = (entities: Record<string, unknown>[]) => ({
+    worldOverview: {}, locations: [{ id: 'keep', name: 'Keep' }, { id: 'tower', name: 'Tower' }, { id: 'gate', name: 'Gate' }], entities,
+  });
+  const one = (raw: Record<string, unknown>) => entitiesOf(migrateWorld(world([{ id: 'e', name: 'E', ...raw }])))[0];
+  const OLD = ['presence', 'movement'];
 
-  it('adds no presence field to an old world', () => {
-    const [guard] = entitiesOf(migrateWorld(world([{ id: 'guard', name: 'Guard', locations: ['keep'] }])));
-    expect(['presence', 'movement', 'knownIn'].filter((key) => key in guard)).toEqual([]);
+  it('makes an entity with no presence and several locations a Group at the same places', () => {
+    const e = one({ locations: ['keep', 'tower'] });
+    expect(e).toMatchObject({ kind: 'group', locations: ['keep', 'tower'] });
+    expect(e).not.toHaveProperty('starts');
   });
 
-  it('keeps the fields an author set', () => {
-    const set: Entity = { id: 'cap', name: 'Captain', locations: ['keep', 'tower'], presence: 'random', movement: 'between', knownIn: ['keep'] };
-    const [cap] = entitiesOf(migrateWorld(world([set])));
-    expect([cap.presence, cap.movement, cap.knownIn]).toEqual(['random', 'between', ['keep']]);
+  it('makes an entity with no presence and one location an Individual with one Start there', () => {
+    const e = one({ locations: ['keep'] });
+    expect(e).toMatchObject({ kind: 'individual', locations: ['keep'], starts: [{ place: 'keep', weight: 1, schedule: [] }] });
+    expect(e).not.toHaveProperty('traversable');
+  });
+
+  it('gives a random-presence entity one weight-1 Start per listed place', () => {
+    const e = one({ locations: ['keep', 'tower', 'gate'], presence: 'random' });
+    expect(e.kind).toBe('individual');
+    expect(e.starts?.map((s) => [s.place, s.weight, s.schedule])).toEqual([['keep', 1, []], ['tower', 1, []], ['gate', 1, []]]);
+    expect(new Set(e.starts?.map((s) => s.id)).size).toBe(3);
+  });
+
+  it('gives Free and Stays Put empty schedules and an empty Traversable list', () => {
+    for (const movement of [undefined, 'stays']) {
+      const e = one({ locations: ['keep', 'tower'], presence: 'random', ...(movement && { movement }) });
+      expect(e.starts?.every((s) => s.schedule.length === 0)).toBe(true);
+      expect(e.traversable ?? []).toEqual([]);
+    }
+  });
+
+  it('gives each Start of a Moves Between entity an all-day Wander over the listed places, idle one daypart', () => {
+    const e = one({ locations: ['keep', 'tower'], presence: 'random', movement: 'between' });
+    for (const start of e.starts ?? []) {
+      expect(start.schedule).toEqual([{
+        id: expect.any(String), time: 'allDay',
+        action: { kind: 'wander', places: [{ place: 'keep', weight: 1 }, { place: 'tower', weight: 1 }], idle: MIGRATED_IDLE_MINUTES },
+      }]);
+    }
+    expect(e.traversable ?? []).toEqual([]);
+    expect(e.locations).toEqual(['keep', 'tower']);
+  });
+
+  it('gives a Can Follow Individual Traversable = Anywhere', () => {
+    expect(one({ locations: ['keep'], movement: 'follow' }).traversable).toBe('anywhere');
+  });
+
+  it('makes an Everywhere Listed Can Follow entity a Group that follows nobody', () => {
+    const e = one({ locations: ['keep', 'tower'], movement: 'follow' });
+    expect(e.kind).toBe('group');
+    expect(e).not.toHaveProperty('traversable');
+  });
+
+  it('gives no kind to the Custom Persona or an entity with no locations, and drops their old fields', () => {
+    const persona = one({ locations: ['keep'], customPersona: true, movement: 'follow' });
+    const nowhere = one({ presence: 'random' });
+    expect([persona.kind, nowhere.kind]).toEqual([undefined, undefined]);
+    expect(OLD.filter((key) => key in persona || key in nowhere)).toEqual([]);
+  });
+
+  it('keeps Known In and leaves no entity on the old fields', () => {
+    const e = one({ locations: ['keep', 'tower'], presence: 'random', movement: 'between', knownIn: ['keep'] });
+    expect(e.knownIn).toEqual(['keep']);
+    expect(OLD.filter((key) => key in e)).toEqual([]);
+  });
+
+  it('changes nothing on a second run', () => {
+    const rows = [
+      { id: 'a', name: 'A', locations: ['keep', 'tower'] },
+      { id: 'b', name: 'B', locations: ['keep'], movement: 'follow' },
+      { id: 'c', name: 'C', locations: ['keep', 'tower'], presence: 'random', movement: 'between' },
+      { id: 'd', name: 'D', locations: ['gate'], customPersona: true },
+    ];
+    const once = migrateWorld(world(rows));
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
+  it("rebuilds an Individual's locations from its Starts and rows on load", () => {
+    const e = one({
+      kind: 'individual', locations: ['gate'],
+      starts: [{ id: 's', place: 'keep', weight: 1, schedule: [{ id: 'r', time: 'allDay', action: { kind: 'stay', place: 'tower' } }] }],
+    });
+    expect(e.locations).toEqual(['keep', 'tower']);
   });
 });
 

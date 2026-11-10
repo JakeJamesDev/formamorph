@@ -1,6 +1,7 @@
 import { flattenEnabledBookEntries } from '../dictionaryUtils';
 import { ownerStatParts, statPlacementOf } from '../statContext';
 import { entityIdsAt } from '../entityPresence';
+import { openingCast } from '../positionPlay';
 import { allPlaceholders } from '../placeholderHomes';
 import { inCast, playsAs, resolveOwners, type Owner } from '../owners';
 import { characterAsPlayer } from '../builtinPlaceholders';
@@ -82,10 +83,12 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     worldOverview, locations = [], connections = [], traits = [], traitGroups = [], dictionaries = [],
   } = world;
   // Blueprint stats are not the player's, and each entity's links read through their Blueprints.
-  const { stats, entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
+  const { stats, entities: authored } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
   const placeholders = allPlaceholders(world);
   // A world with no locations yet previews as "nowhere" rather than failing.
   const location = options.location !== undefined ? options.location : resolveStartingLocation(locations, null) ?? null;
+  // Each Individual stands where a game opening here puts it.
+  const entities = openingCast(authored, locations, connections, location?.id);
   // Chips resolve against a fresh roll, since a world has no playthrough whose rolls could be reused.
   const resolve = options.resolve
     ?? ((text: string) => resolvePlaceholders(text, { placeholders, rolls: {} }));

@@ -864,6 +864,15 @@
           "targetId": "50d3fe3f-11b1-4088-b7c4-c5b3cf05f75d",
           "label": "fan club, with {{ph:7eeaf01f-f347-45df-815f-88c42de70de7:world:ebc8c7c5-bf1c-4633-a492-6979f72a8dad}} running the second floor today"
         }
+      ],
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "689d2ae9-cd48-42a6-b148-610abb6e1547",
+          "weight": 1,
+          "schedule": []
+        }
       ]
     },
     {
@@ -892,6 +901,15 @@
         {
           "targetId": "you",
           "label": "best friend since middle school"
+        }
+      ],
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "689d2ae9-cd48-42a6-b148-610abb6e1547",
+          "weight": 1,
+          "schedule": []
         }
       ]
     },
@@ -926,7 +944,8 @@
           "targetId": "540f9257-8fb7-438d-8336-05728a45900c",
           "label": "second-fastest sprinter"
         }
-      ]
+      ],
+      "kind": "group"
     },
     {
       "id": "50d3fe3f-11b1-4088-b7c4-c5b3cf05f75d",
@@ -956,7 +975,8 @@
         "19853519-2c7f-45c0-80d6-330f41ab651f",
         "c115a222-8165-4635-b53c-ccb7fcbd38ac"
       ],
-      "pronouns": "they/them"
+      "pronouns": "they/them",
+      "kind": "group"
     },
     {
       "id": "3c7e1a95-d24b-4f08-9e6a-5b2f8c1d7a40",
@@ -987,6 +1007,15 @@
           "targetId": "1739142165670",
           "label": "best tipster"
         }
+      ],
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "1739142346750",
+          "weight": 1,
+          "schedule": []
+        }
       ]
     },
     {
@@ -1011,7 +1040,16 @@
       "locations": [
         "19cc2ffa-aad7-49ac-9885-e7748b63f1f7"
       ],
-      "pronouns": "she/her"
+      "pronouns": "she/her",
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "19cc2ffa-aad7-49ac-9885-e7748b63f1f7",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "dadbf60b-d744-4660-8f6c-899637084a65",
@@ -1037,7 +1075,16 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "a1ea9990-57ed-472c-847c-37fc40187844",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "15c8798e-ad31-4779-8c6c-33d2ea8ac65c",
@@ -1069,7 +1116,16 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "d7ac697a-32f4-4e30-9fd9-307436c10539",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "75e546ae-c541-4ba2-b1e2-2483c9a082fc",
@@ -1099,7 +1155,16 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "d7ac697a-32f4-4e30-9fd9-307436c10539",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "0e74df9d-50a9-4949-a346-85660551af2f",
@@ -1134,7 +1199,8 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "group"
     },
     {
       "id": "540f9257-8fb7-438d-8336-05728a45900c",
@@ -1159,7 +1225,8 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "group"
     },
     {
       "id": "5a967743-0c9e-4ba9-90af-e17016dc92d1",
@@ -1182,7 +1249,16 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "19853519-2c7f-45c0-80d6-330f41ab651f",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "ccd570e8-6a66-476e-a8d1-a9b853d9c6e6",
@@ -1213,7 +1289,16 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "19853519-2c7f-45c0-80d6-330f41ab651f",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     },
     {
       "id": "cba31346-c715-4084-b3c1-ba8d80510cd6",
@@ -1236,7 +1321,16 @@
         }
       ],
       "sound": null,
-      "model": null
+      "model": null,
+      "kind": "individual",
+      "starts": [
+        {
+          "id": "start-1",
+          "place": "c115a222-8165-4635-b53c-ccb7fcbd38ac",
+          "weight": 1,
+          "schedule": []
+        }
+      ]
     }
   ],
   "traits": [],

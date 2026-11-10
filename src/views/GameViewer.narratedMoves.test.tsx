@@ -1,4 +1,5 @@
 import { act, screen, waitFor } from '@testing-library/react';
+import { migrateEntityRoutine } from '@/lib/version';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { playTurn as playOneTurn, resetMoveTurnStorage, stubMoveEndpoint, type MoveReplies } from '@/test/moveTurns';
@@ -18,14 +19,20 @@ vi.mock('react-toastify', () => ({
 const VILLAGE = { id: 'village', name: 'Village', isStarting: true } as GameLocation;
 const HUT = { id: 'hut', name: 'Hut', parentId: 'village' } as GameLocation;
 const WELL = { id: 'well', name: 'Well', parentId: 'village' } as GameLocation;
-const character = (id: string, name: string, movement: Entity['movement'], locations: string[]): Entity =>
-  ({ id, name, movement, locations } as unknown as Entity);
+// A shipped entity as a world file stores it, through the load migration.
+const character = (id: string, name: string, movement: 'follow' | 'between' | undefined, locations: string[], presence?: 'random'): Entity =>
+  migrateEntityRoutine({ id, name, locations, ...(movement && { movement }), ...(presence && { presence }) } as unknown as Entity);
+/** The live book with `ids` following the player and `positions` laid over. */
+const following = (ids: string[], positions: Record<string, string>) => ({
+  positions: { ...play.entityPositions, ...positions },
+  individuals: { ...play.individualStates, ...Object.fromEntries(ids.map((id) => [id, { ...play.individualStates[id], follow: { mode: 'following' as const } }])) },
+});
 
 const worldWith = (over: Partial<World> = {}): World => ({
   ...harborWorld({
     entities: [
-      // Free: no Movement set.
-      character('asha', 'Asha', undefined, ['hut']),
+      // Can Follow, so her routine lets the story call her anywhere.
+      character('asha', 'Asha', 'follow', ['hut']),
       character('bram', 'Bram', 'follow', ['village']),
       character('maela', 'Maela', 'follow', ['village']),
     ],
@@ -64,8 +71,7 @@ describe('a narrated move in Auto mode', () => {
     expect(endpoint.sent).toEqual(['narrated']);
     await waitFor(() => expect(play.currentLocation?.id).toBe('hut'));
     // Judged at the village, the child pull would have brought Asha down out of her own hut.
-    // She stays at the place she is listed in: nothing anchors her anywhere.
-    expect(whereIs('asha')).toBeUndefined();
+    expect(whereIs('asha')).toBe('hut');
   });
 
   it('leaves a pulled character at the place a script moved the player to after the narration', async () => {
@@ -85,7 +91,7 @@ describe('a narrated move in Auto mode', () => {
     await screen.findByPlaceholderText(/Type your action/);
     stubEndpoint('The square is quiet.', { narrated: 'Village' });
     await playTurn('Begin.');
-    act(() => play.applyFollowerState({ followers: ['bram', 'maela'], positions: { bram: 'village', maela: 'village' } }));
+    act(() => play.applyFollowerState(following(['bram', 'maela'], { bram: 'village', maela: 'village' })));
 
     const endpoint = stubEndpoint('Bram hoists you onto his shoulder and climbs into the hut.', {
       router: 'NONE', narrated: 'Hut', entities: { Bram: 'Keep following', Maela: 'Stay here' },
@@ -110,7 +116,7 @@ describe('a narrated move in Auto mode', () => {
     await screen.findByPlaceholderText(/Type your action/);
     stubEndpoint('The square is quiet.', { narrated: 'Village' });
     await playTurn('Begin.');
-    act(() => play.applyFollowerState({ followers: ['bram'], positions: { bram: 'village' } }));
+    act(() => play.applyFollowerState(following(['bram'], { bram: 'village' })));
 
     const endpoint = stubEndpoint('You walk past the hut and on over the far hills to a town of slate roofs.', {
       router: 'NONE', narrated: 'Elsewhere, past the Hut', entities: { Bram: 'Keep following' },

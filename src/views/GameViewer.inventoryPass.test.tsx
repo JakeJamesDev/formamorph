@@ -132,13 +132,16 @@ describe('a turn that starts with a discovered character', () => {
     const landing = [
       { id: 'landing', name: 'Sedge Landing' }, { id: 'harbor', name: 'Harbor', parentId: 'landing', isStarting: true }, { id: 'pier', name: 'Pier', parentId: 'landing' },
     ];
-    renderGameViewer({ ...presenceWorld('', [ferrymanAt('pier')]), locations: landing } as World, { inGameplay: <Probe /> });
+    // One body at the pier whose routine lets him go anywhere.
+    const ferryman: Entity = { ...ferrymanAt('pier'), kind: 'individual', starts: [{ id: 'pier', place: 'pier', weight: 1, schedule: [] }], traversable: 'anywhere' };
+    renderGameViewer({ ...presenceWorld('', [ferryman]), locations: landing } as World, { inGameplay: <Probe /> });
     const box = await screen.findByPlaceholderText(/Type your action/);
     const calls = stubEndpoint(JSON.stringify({ operations: [] }));
     calls.narration = 'Ferryman walks up from the pier.';
     fireEvent.change(box, { target: { value: 'I call out.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => expect(gameplay().discoveredEntities.map((d) => [d.entity.name, d.locationId])).toEqual([['Ferryman', 'harbor']]));
+    await waitFor(() => expect(gameplay().entityPositions.ferryman).toBe('harbor'));
+    expect(gameplay().discoveredEntities).toEqual([]);
   });
 });
 

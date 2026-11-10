@@ -1,14 +1,26 @@
 import { describe, it, expect } from "vitest";
 import {
   entityIdsAt, entityIdsAtAny, withEntityLocations, setLocationRoster, dropLocationFromEntities,
-  entitiesInPlay, startingPositions, reconcilePositions, positionedCast, movementOptions, withPresence, withMovement,
+  entitiesInPlay, positionedCast,
   knownInOf, withKnownIn, toggleKnownInPick, knownHere,
 } from "./entityPresence";
 import type { Entity } from "@/types";
 
-const alice: Entity = { id: "alice", name: "Alice", locations: ["bar"] };
-const bartender: Entity = { id: "bar-keep", name: "Bartender", locations: ["bar", "docks"] };
-const gull: Entity = { id: "gull", name: "Gull", locations: ["docks"] };
+const alice: Entity = { id: "alice", name: "Alice", locations: ["bar"], kind: "group" };
+const bartender: Entity = { id: "bar-keep", name: "Bartender", locations: ["bar", "docks"], kind: "group" };
+const gull: Entity = { id: "gull", name: "Gull", locations: ["docks"], kind: "group" };
+/** An Individual starting at the bar or the docks, standing at the bar by day and wandering the docks and the
+ *  attic at night, and allowed into the cellar. */
+const sailor: Entity = {
+  id: "sailor", name: "Sailor", kind: "individual", locations: ["bar", "docks", "attic"], traversable: ["cellar", "bar"],
+  starts: [
+    { id: "s1", place: "bar", weight: 1, schedule: [
+      { id: "day", time: { start: 360, end: 1080 }, action: { kind: "stay", place: "bar" } },
+      { id: "night", time: { start: 1080, end: 360 }, action: { kind: "wander", places: [{ place: "docks", weight: 1 }, { place: "attic", weight: 1 }], idle: 60 } },
+    ] },
+    { id: "s2", place: "docks", weight: 1, schedule: [{ id: "pier", time: "allDay", action: { kind: "patrol", stops: [{ place: "bar", idle: 30 }] } }] },
+  ],
+};
 const ghost: Entity = { id: "ghost", name: "Ghost" }; // placed nowhere
 const cast = [alice, bartender, gull, ghost];
 
@@ -65,6 +77,12 @@ describe("setLocationRoster (location-first editing writes through to the entiti
     expect(next[2]).toBe(gull);
   });
 
+  it("never writes an Individual, whose places come from its routine", () => {
+    const next = setLocationRoster("bar", [], [...cast, sailor]);
+    expect(next[4]).toBe(sailor);
+    expect(setLocationRoster("cellar", ["sailor"], [sailor])[0]).toBe(sailor);
+  });
+
   it("clearing a roster leaves an entity that lives nowhere else with no locations field", () => {
     const next = setLocationRoster("bar", [], cast);
     expect("locations" in next.find((e) => e.id === "alice")!).toBe(false);
@@ -81,32 +99,23 @@ describe("dropLocationFromEntities", () => {
   it("returns the same array when nobody listed the location", () => {
     expect(dropLocationFromEntities("attic", cast)).toBe(cast);
   });
-});
 
-describe("presence rules", () => {
-  const captain: Entity = { id: "cap", name: "Captain", locations: ["bar", "docks"], presence: "random", movement: "between" };
-
-  it("offers no Moves Between to an entity at every listed location", () => {
-    expect(movementOptions(bartender)).toEqual(["free", "stays", "follow"]);
-    expect(movementOptions(captain)).toEqual(["free", "stays", "between", "follow"]);
+  it("drops the place from an Individual's Starts, rows and Traversable, with the Start and the row it emptied", () => {
+    const [bar] = dropLocationFromEntities("bar", [sailor]);
+    // Start s1 began at the bar, and s2's only patrol stop was the bar.
+    expect(bar.starts).toEqual([{ id: "s2", place: "docks", weight: 1, schedule: [] }]);
+    expect(bar.traversable).toEqual(["cellar"]);
+    expect(bar.locations).toEqual(["docks"]);
+    const [docks] = dropLocationFromEntities("docks", [sailor]);
+    expect(docks.starts?.map((s) => s.id)).toEqual(["s1"]);
+    expect(docks.starts?.[0].schedule[1].action).toEqual({ kind: "wander", places: [{ place: "attic", weight: 1 }], idle: 60 });
+    expect(docks.locations).toEqual(["bar", "attic"]);
   });
 
-  it("resets Moves Between to Free on a switch to Everywhere Listed", () => {
-    const everywhere = withPresence(captain, undefined);
-    expect("presence" in everywhere).toBe(false);
-    expect("movement" in everywhere).toBe(false);
-    expect(withPresence({ ...captain, movement: "stays" }, undefined).movement).toBe("stays");
-  });
-
-  it("resets Moves Between when a location edit makes an Everywhere entity listed twice", () => {
-    const solo: Entity = { id: "solo", name: "Solo", locations: ["bar"], movement: "between" };
-    expect("movement" in withEntityLocations(solo, ["bar", "docks"])).toBe(false);
-    expect(withEntityLocations(captain, ["bar", "docks", "attic"]).movement).toBe("between");
-  });
-
-  it("stores Free as no field", () => {
-    expect("movement" in withMovement(captain, "free")).toBe(false);
-    expect(withMovement(bartender, "stays").movement).toBe("stays");
+  it("drops a place named only in an Individual's Traversable list", () => {
+    const [next] = dropLocationFromEntities("cellar", [sailor]);
+    expect(next.traversable).toEqual(["bar"]);
+    expect(next.starts).toBe(sailor.starts);
   });
 });
 
@@ -132,31 +141,7 @@ describe("entitiesInPlay", () => {
   });
 });
 
-/** A draw that always takes the option at `index` of `of`. */
-const pick = (index: number, of: number) => () => index / of;
-const wanderer: Entity = { id: "wanderer", name: "Wanderer", presence: "random", locations: ["bar", "docks", "attic"] };
-
-describe("startingPositions", () => {
-  it("draws a One entity's start from its locations", () => {
-    expect(startingPositions([...cast, wanderer], ["bar", "docks", "attic"], pick(1, 3))).toEqual({ wanderer: "docks" });
-    expect(startingPositions([...cast, wanderer], ["bar", "docks", "attic"], pick(2, 3))).toEqual({ wanderer: "attic" });
-  });
-
-  it("places a one-location entity with a Movement at that location, and a Free one nowhere", () => {
-    const rooted: Entity = { ...alice, movement: "stays" };
-    expect(startingPositions([rooted, alice], ["bar", "docks"], pick(0, 1))).toEqual({ alice: "bar" });
-  });
-
-  it("gives an Everywhere entity no position, even with a Movement", () => {
-    const rooted: Entity = { ...bartender, movement: "stays" };
-    expect(startingPositions([rooted], ["bar", "docks"], pick(0, 2))).toEqual({});
-  });
-
-  it("draws only from locations the world still has", () => {
-    expect(startingPositions([wanderer], ["attic"], pick(0, 3))).toEqual({ wanderer: "attic" });
-    expect(startingPositions([wanderer], [], pick(0, 3))).toEqual({});
-  });
-});
+const wanderer: Entity = { id: "wanderer", name: "Wanderer", kind: "individual", locations: ["bar"] };
 
 describe("positionedCast", () => {
   const sylvie: Entity = { ...wanderer, id: "sylvie", persona: true };
@@ -167,47 +152,6 @@ describe("positionedCast", () => {
     expect(ids({ source: "world", entityId: "sylvie" })).toEqual(["wanderer"]);
     expect(ids({ source: "none" })).toEqual(["wanderer", "sylvie"]);
     expect(ids(undefined)).toEqual(["wanderer", "sylvie"]);
-  });
-
-  it("gives the played persona no starting position", () => {
-    expect(startingPositions(positionedCast([sylvie], { source: "world", entityId: "sylvie" }), ["bar"], pick(0, 1))).toEqual({});
-  });
-});
-
-describe("reconcilePositions", () => {
-  const locationIds = ["bar", "docks", "attic"];
-
-  it("keeps a position on a live entity and a live location", () => {
-    expect(reconcilePositions({ wanderer: "attic" }, [wanderer], locationIds, pick(0, 3))).toEqual({ wanderer: "attic" });
-  });
-
-  it("re-places a One entity whose location is gone by the Presence rule", () => {
-    expect(reconcilePositions({ wanderer: "cellar" }, [wanderer], locationIds, pick(1, 3))).toEqual({ wanderer: "docks" });
-  });
-
-  it("places a One entity the save holds no position for", () => {
-    expect(reconcilePositions({}, [wanderer], locationIds, pick(2, 3))).toEqual({ wanderer: "attic" });
-  });
-
-  it("places a one-location entity with a Movement the save holds no position for", () => {
-    expect(reconcilePositions({}, [{ ...gull, movement: "follow" }], locationIds, pick(0, 1))).toEqual({ gull: "docks" });
-  });
-
-  it("drops a stale position of an Everywhere entity, so it is back at every listed location", () => {
-    expect(reconcilePositions({ "bar-keep": "cellar" }, cast, locationIds, pick(0, 3))).toEqual({});
-  });
-
-  it("keeps a valid position of an entity that is no longer One", () => {
-    expect(reconcilePositions({ "bar-keep": "docks" }, cast, locationIds, pick(0, 3))).toEqual({ "bar-keep": "docks" });
-  });
-
-  it("drops the position of a deleted entity", () => {
-    expect(reconcilePositions({ gone: "bar" }, cast, locationIds, pick(0, 3))).toEqual({});
-  });
-
-  it("returns the saved map itself when nothing changes", () => {
-    const saved = { wanderer: "bar" };
-    expect(reconcilePositions(saved, [wanderer], locationIds, pick(0, 3))).toBe(saved);
   });
 });
 

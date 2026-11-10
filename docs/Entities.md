@@ -12,7 +12,7 @@ During the game, the story counts some entities as present with you. They come f
 
 1. During the game, open the side panel's **Entities** tab. On mobile, the panel opens on **View**; select **Entities** next to it.
 2. Read the list. Your persona is first, marked **You**. **In Scene** lists the entities at your location that took part in the story in the last 3 turns. **Also Here** lists the others.
-3. Look for the footprints icon on an entry. Its tooltip reads **Following you**. That entity follows you. See [Movement](World-Editor-Locations#entities).
+3. Look for the footprints icon on an entry. Its tooltip reads **Following you**. That entity follows you. See [Who Joins the Scene](World-Editor-Locations#entities).
 4. Select an entry to show it in the entity view. An entry under **In Scene** also shows in the **Stats**, **Traits** and **Inventory** tabs. Select it again to open its details. On mobile, one selection does both. See [The Entity Dialog](How-to-Play#the-entity-dialog).
 
 A stranger shows under the name you know. Its entry opens [The Stranger Dialog](How-to-Play#the-stranger-dialog).

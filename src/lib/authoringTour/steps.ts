@@ -21,10 +21,11 @@ import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
 import { withEntityLocations } from '@/lib/entityPresence';
+import { isIndividual, withFirstStartPlace } from '@/lib/entityKind';
+import { randomUUID } from '@/lib/uuid';
 import { createConnection, legFrom, withHint } from '@/lib/connectionEditing';
 import { connectionLegs, isTwoWay, travelEnds } from '@/lib/locationGraph';
 import { followRename } from '@/lib/statDescriptors';
-import { randomUUID } from '@/lib/uuid';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
 import type { InPlaySpec, ReaderSpec } from './inPlay';
 import { loadTourImage } from './tourImages';
@@ -535,7 +536,9 @@ const ENTITY_STEPS: readonly TourStep[] = [
     useExample: (api, world, items) => {
       const entity = tourEntity(world, items);
       const place = liveTourItem(world, items, 'location');
-      if (entity && place) api.updateEntity(withEntityLocations(entity, [...(entity.locations ?? []), place]));
+      if (!entity || !place) return;
+      // An entity in one location starts there; one at every location gains it.
+      api.updateEntity(isIndividual(entity) ? withFirstStartPlace(entity, place, randomUUID) : withEntityLocations(entity, [...(entity.locations ?? []), place]));
     },
     inPlay: {
       sees: 'entityRowAndCard',

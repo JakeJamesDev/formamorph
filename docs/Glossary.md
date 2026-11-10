@@ -141,8 +141,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Locations Canvas](World-Editor-Locations#list-and-canvas) | The visual view of the **Locations** tab, with boxes for locations and arrows for Connections |
 | [Auto Arrange](World-Editor-Locations#list-and-canvas) | The canvas command that lays out boxes for you. Nothing on the canvas moves without it or you. |
 | [Map](How-to-Play#the-change-location-dialog) | The read-only canvas the player sees during the game, on the **Map** tab |
-| [Presence](World-Editor-Locations#entities) | Where an entity with several locations is in a new game: **Everywhere Listed** or **One, at Random** |
-| [Movement](World-Editor-Locations#entities) | How an entity moves during the game: **Free**, **Stays Put**, **Moves Between Its Locations** or **Can Follow the Player** |
+| [Placement](World-Editor-Entities) | How an entity stands in the world: in **One Location**, from where it starts, or at **Every Location** it lists at once |
 | [Known In](World-Editor-Entities#locations) | Where the AI knows of an entity while the entity isn't present. The default is **Nearby**. |
 | [Known Here](World-Editor-Locations#entities) | A location's list of entities that aren't there, but that the entities there may speak of |
 | [Relationship](World-Editor-Entities#the-panel) | Another entity, or the persona, with its role toward this entity. The AI reads each one as a line. |

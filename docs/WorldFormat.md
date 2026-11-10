@@ -435,9 +435,10 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `sound` | | [MediaAsset](#media-fields) | A sound |
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
-| `locations` | | String[] | The `id`s of the locations where the entity is. It is at all of them |
-| `presence` | | `"random"` | **Presence**. `"random"` = **One, at Random**: one of `locations`, picked in each new game. Absent = **Everywhere Listed**. The played persona ignores it |
-| `movement` | | `"stays"` \| `"between"` \| `"follow"` | **Movement**: **Stays Put**, **Moves Between Its Locations** or **Can Follow the Player**. Absent = **Free**. The played persona ignores it |
+| `locations` | | String[] | The `id`s of the locations where the entity is. A group is at all of them. For an individual the app writes it from `starts`: every Start place and every schedule place |
+| `kind` | | `"group"` \| `"individual"` | A group is at all its `locations` at once and never moves. An individual is one body in one place. Absent for the Custom Persona and an entity with no locations |
+| `starts` | | [Start](#starts)[] | An individual's beginnings, in author order. One is picked by `weight` in each new game |
+| `traversable` | | `"anywhere"` \| String[] | Where an individual may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only |
 | `knownIn` | | `"nowhere"` \| String[] | **Known In**: where the AI knows of the entity while it isn't present. `"nowhere"`, or location `id`s, each with every location below it. Absent = **Nearby** |
 | `relationships` | | `{ "targetId", "label" }`[] | **Relationships**, in author order, at most one per target. `targetId` is another entity's `id`, or `"you"` for the played persona. `label` is the target's role toward this entity |
 | `groupId` | | String \| `null` | Editor-only. The [entity group's](#entity-groups) `id`. Absent or `null` = no group |
@@ -454,6 +455,28 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `statLinks` | | [StatLink](#stat-links)[] | Links to Blueprint stats and stat groups |
 | `statPlacement` | | `{ "groupId", "order" }` | Where the entity's node sits in the world's Stats tree, as `traitPlacement` does for Traits |
 | `link` | | [ContentLink](#linked-copies) | What library item this copy follows. Absent = it follows nothing |
+
+#### Starts
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | String | Unique within the entity |
+| `place` | String | The location `id` where the individual begins |
+| `weight` | Number | A positive whole number. Higher is picked more often |
+| `schedule` | Row[] | The daily routine kept from there. Empty = it stays at `place` |
+
+Each schedule row:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | String | Unique within the Start |
+| `time` | `"allDay"` \| `{ "start", "end" }` | Minutes from midnight. An `end` before `start` runs past midnight. A timed row wins over the All-day row for its hours |
+| `strict` | Boolean | During the row the individual can't be called over and won't start following |
+| `action` | Object | `{ "kind": "stay", "place" }`, `{ "kind": "wander", "places": [{ "place", "weight" }], "idle" }` or `{ "kind": "patrol", "stops": [{ "place", "idle" }] }`. `idle` is in minutes |
+
+In hours no row covers, the individual stays at its Start's `place`.
+
+> 🔁 An older world file used `presence` and `movement`. The app maps them when it opens the world: an entity at one location, or with **One, at Random**, becomes an individual with one Start per location; **Moves Between** becomes an all-day wander over its locations; **Can Follow** becomes `traversable: "anywhere"`. Any other entity at several locations becomes a group.
 
 `statChanges` and `statToggles` on an entity's own traits act on the entity's own stats. A row acts on the global stat when its `target` is `"global"`, or when the entity has no stat with that `id`.
 

@@ -1606,9 +1606,6 @@ const CanvasInner = ({
               <EntityPickCard
                 entities={entities}
                 entityLabel={entityLabel}
-                locationName={nameOf}
-                locations={locations}
-                connections={connections}
                 picking={pickedEntity && pickState ? { ...pickState, mode: pickMode } : null}
                 onPickingChange={setPickState}
                 onChange={updateEntity}

@@ -1,6 +1,7 @@
 import type { SandboxMemory, WorldWrites } from './statCodeExecutor';
 import type { SandboxState } from './statCodeTurn';
-import { applyEntityCodeWrites } from './entityFollowing';
+import { chainEntityWrites } from './entityFollowing';
+import { isGroup } from './entityKind';
 import { sameCharacterName } from './entityMatch';
 import { dayAndHour, daypart, FLAT_HOURS_PER_TURN } from './gameClock';
 import { startsMet } from './presence';
@@ -93,10 +94,12 @@ export function withWorldWrites(state: SandboxState, writes: WorldWrites | undef
   }
 
   if (writes.entities?.length) {
-    const moved = applyEntityCodeWrites(
-      { positions: next.positions ?? {}, followers: next.followers ?? [] }, writes.entities, next.places?.location?.id,
+    const groups = new Set((next.ownerTraits.entities ?? []).filter(isGroup).map((entity) => entity.id));
+    const moved = chainEntityWrites(
+      { positions: next.positions ?? {}, followers: next.followers ?? [], waiting: next.waiting ?? [] },
+      writes.entities, next.places?.location?.id, (id) => !groups.has(id),
     );
-    next = { ...next, positions: moved.positions, followers: moved.followers };
+    next = { ...next, positions: moved.positions, followers: moved.followers, waiting: moved.waiting };
     const meets = writes.entities.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
     if (meets.length) {
       const { ownerTraits } = next;

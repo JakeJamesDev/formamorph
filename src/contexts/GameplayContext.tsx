@@ -32,8 +32,11 @@ import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/t
 import { backfillGameStateStats, refreshGameStateBindings } from '../lib/statBackfill';
 import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withEntityStatValue, withoutEntityCodeBounds } from '../lib/entityStats';
-import { positionedCast, reconcileGameStatePositions, type PlaceableEntity } from '../lib/entityPresence';
-import { reconcileGameStateFollowers, withRuntimePositions, type FollowerState } from '../lib/entityFollowing';
+import { positionedCast } from '../lib/entityPresence';
+import { movedPositions, runtimePositions, withRuntimePositions, type FollowerState } from '../lib/entityFollowing';
+import { castRoutines, type RoutineEntity } from '../lib/entityKind';
+import { followerIds, placeAll, positionWorld, reconcileBook, waitingIds, type PositionWorld } from '../lib/positionPlay';
+import { storyMinute } from '../lib/gameClock';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -53,6 +56,8 @@ import type {
   CodePins,
   LoreToggles,
   Entity,
+  Connection,
+  IndividualStates,
   EntityStatChanges,
   EntityStatValues,
   EntityPositions,
@@ -144,18 +149,26 @@ function useProvideGameplay() {
   const [ownedTraits, setOwnedTraits] = useState<OwnedTraitStates>({});
   // Entity id → its stat values. Snapshotted per turn too.
   const [entityStats, setEntityStats] = useState<EntityStatValues>({});
-  // Entity id → where it stands, for each positioned entity. Snapshotted per turn too.
-  const [entityPositions, setEntityPositions] = useState<EntityPositions>({});
-  // The ids of the entities following the player. Snapshotted per turn too. The ref is read by a move made in
-  // the same batch as a followers write.
-  const [entityFollowers, setFollowersState] = useState<readonly string[]>([]);
-  const entityFollowersRef = useRef<readonly string[]>([]);
-  const setEntityFollowers = useCallback((followers: readonly string[]) => {
-    entityFollowersRef.current = followers;
-    setFollowersState(followers);
+  // Entity id → where it stands, for each world Individual. Snapshotted per turn too. The ref is read by a write
+  // made in the same batch as another.
+  const [entityPositions, setPositionsState] = useState<EntityPositions>({});
+  const entityPositionsRef = useRef<EntityPositions>({});
+  const setEntityPositions = useCallback((next: EntityPositions | ((prev: EntityPositions) => EntityPositions)) => {
+    const value = typeof next === 'function' ? next(entityPositionsRef.current) : next;
+    entityPositionsRef.current = value;
+    setPositionsState(value);
   }, []);
+  // The position engine's state per Individual, runtime characters included. Snapshotted per turn too.
+  const [individualStates, setIndividualStatesState] = useState<IndividualStates>({});
+  const individualStatesRef = useRef<IndividualStates>({});
+  const setIndividualStates = useCallback((next: IndividualStates) => {
+    individualStatesRef.current = next;
+    setIndividualStatesState(next);
+  }, []);
+  const entityFollowers = useMemo(() => followerIds(individualStates), [individualStates]);
+  const entityWaiting = useMemo(() => waitingIds(individualStates), [individualStates]);
   /** The followers as the latest write left them, ahead of the render. */
-  const currentFollowers = useCallback(() => entityFollowersRef.current, []);
+  const currentFollowers = useCallback(() => followerIds(individualStatesRef.current), []);
   // The ids of the entities the player has met. Snapshotted per turn too.
   const [metEntities, setMetEntities] = useState<readonly string[]>([]);
   // The latest alias each stranger was seen under, by entity id. Snapshotted per turn too.
@@ -164,30 +177,41 @@ function useProvideGameplay() {
   // peeled ids at once, so a move in the same batch reads them.
   const runtimeIdsRef = useRef<ReadonlySet<string>>(new Set());
   runtimeIdsRef.current = new Set([...runtimeIdsRef.current, ...discoveredEntities.map((d) => d.entity.id)]);
+  const discoveredRef = useRef<readonly DiscoveredEntity[]>(discoveredEntities);
+  discoveredRef.current = discoveredEntities;
   /** Writes `moved` over the live positions: a runtime character's onto its anchor, `added` ones included. */
   const placeMoved = useCallback((moved: Readonly<EntityPositions>, added: readonly DiscoveredEntity[] = []) => {
     if (added.length) runtimeIdsRef.current = new Set([...runtimeIdsRef.current, ...added.map((d) => d.entity.id)]);
     const runtimeIds = runtimeIdsRef.current;
     const world = Object.fromEntries(Object.entries(moved).filter(([id]) => !runtimeIds.has(id)));
     if (Object.keys(world).length) setEntityPositions((positions) => ({ ...positions, ...world }));
+    const runtimeMoved = Object.keys(moved).filter((id) => runtimeIds.has(id));
+    if (runtimeMoved.length) discoveredRef.current = withRuntimePositions([...discoveredRef.current], moved);
     if (added.length || Object.keys(world).length < Object.keys(moved).length) {
       setDiscoveredEntities((prev) => {
         const fresh = added.filter((d) => !prev.some((known) => known.entity.id === d.entity.id));
         return withRuntimePositions(fresh.length ? [...prev, ...fresh] : prev, moved);
       });
     }
-  }, []);
-  /** Brings every follower to `locationId`: the player just moved there. */
-  const carryFollowersTo = useCallback((locationId: string) => {
-    const followers = entityFollowersRef.current;
-    if (followers.length) placeMoved(Object.fromEntries(followers.map((id) => [id, locationId])));
-  }, [placeMoved]);
-  /** Puts a join in place: its followers, the positions it moved over the live ones, and the characters it
-   *  peeled off. */
-  const applyFollowerState = useCallback((state: FollowerState, peeled: readonly DiscoveredEntity[] = []) => {
-    setEntityFollowers(state.followers);
-    placeMoved(state.positions, peeled);
-  }, [setEntityFollowers, placeMoved]);
+  }, [setEntityPositions]);
+  /** Where every Individual stands and its engine state, as the latest write left them. */
+  const currentBook = useCallback((): FollowerState => ({
+    positions: { ...runtimePositions(discoveredRef.current), ...entityPositionsRef.current },
+    individuals: individualStatesRef.current,
+  }), []);
+  /** Puts a book in place: its engine state, and the positions that differ from the live ones. */
+  const applyFollowerState = useCallback((state: FollowerState) => {
+    const live = currentBook();
+    setIndividualStates(state.individuals);
+    const moved = movedPositions(state.positions, live.positions);
+    const gone = Object.keys(live.positions).filter((id) => !(id in state.positions) && !runtimeIdsRef.current.has(id));
+    if (gone.length) setEntityPositions((positions) => Object.fromEntries(Object.entries(positions).filter(([id]) => !gone.includes(id))));
+    if (Object.keys(moved).length) placeMoved(moved);
+  }, [currentBook, setIndividualStates, setEntityPositions, placeMoved]);
+  /** Every Individual placed by the engine for `world`: the clock moved or the player did. */
+  const placeCast = useCallback((world: PositionWorld) => {
+    applyFollowerState(placeAll(currentBook(), world));
+  }, [applyFollowerState, currentBook]);
   // The entity stats as this turn found them, which the turn's entity deltas count from. Runtime only.
   const [entityStatBaseline, setEntityStatBaseline] = useState<EntityStatValues>({});
   const entityStatChanges = useMemo(() => entityStatDeltas(entityStats, entityStatBaseline), [entityStats, entityStatBaseline]);
@@ -362,9 +386,8 @@ function useProvideGameplay() {
 
   const changeLocation = useCallback((newLocation: GameLocation) => {
     setCurrentLocation(newLocation);
-    carryFollowersTo(newLocation.id);
     addLogEntry(`Entered new location: ${newLocation.name}`);
-  }, [addLogEntry, carryFollowersTo]);
+  }, [addLogEntry]);
 
   // Note: flattenNestedGameStates has been moved to a web worker to prevent UI freezing
 
@@ -384,7 +407,7 @@ function useProvideGameplay() {
       ...(Object.keys(ownedTraits).length ? { ownedTraits } : {}),
       ...(Object.keys(entityStats).length ? { entityStats } : {}),
       ...(Object.keys(entityPositions).length ? { entityPositions } : {}),
-      ...(entityFollowers.length ? { entityFollowers: [...entityFollowers] } : {}),
+      ...(Object.keys(individualStates).length ? { individualStates } : {}),
       ...(metEntities.length ? { metEntities: [...metEntities] } : {}),
       ...(Object.keys(strangerAliases).length ? { strangerAliases: { ...strangerAliases } } : {}),
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
@@ -414,7 +437,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, entityFollowers, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityPositions, individualStates, metEntities, strangerAliases, entityStatChanges, codePins, loreToggles, itemCopies, runtimeItems, itemEffects, bodies, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries,
       currentLocation, gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -440,7 +463,7 @@ function useProvideGameplay() {
       setOwnedTraits(gameState.ownedTraits ?? {});
       resetEntityStats(gameState.entityStats ?? {});
       setEntityPositions(gameState.entityPositions ?? {});
-      setEntityFollowers(gameState.entityFollowers ?? []);
+      setIndividualStates(gameState.individualStates ?? {});
       setMetEntities(gameState.metEntities ?? []);
       setStrangerAliases(gameState.strangerAliases ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
@@ -511,7 +534,7 @@ function useProvideGameplay() {
       addSystemLogEntry('Failed to load game state');
       return false;
     }
-  }, [addSystemLogEntry, resetEntityStats, clearStatDeltas]);
+  }, [addSystemLogEntry, resetEntityStats, clearStatDeltas, setEntityPositions, setIndividualStates]);
 
   /** Persist the current turn to IndexedDB as a flat envelope (`currentState` + `stateHistory` +
    *  `APP_VERSION`), stamping `worldName`/`worldId` for per-world folders. A fresh `id` creates a new save;
@@ -604,8 +627,9 @@ function useProvideGameplay() {
    *  are dropped, and each authored entity's missing stats are backfilled. `vrmStore` is the world's Avatar
    *  store, which a pre-per-entity-Avatar save's chosen Avatar remaps against. */
   const loadGame = useCallback(async (
-    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (PlaceableEntity & Pick<Entity, 'stats'>)[],
+    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly (RoutineEntity & Pick<Entity, 'locations' | 'customPersona' | 'stats'>)[],
     vrmStore?: WorldVrmStore, items?: readonly Item[], ownerStatTraits?: (state: GameState, persona?: PersonaRef) => OwnerStatTraits,
+    connections: readonly Connection[] = [],
   ) => {
     const locationIds = locations.map((l) => l.id);
     const orphanIds = new Set<string>();
@@ -656,11 +680,28 @@ function useProvideGameplay() {
         backfillGameStateStats(withoutEntityCodeBounds(state), worldStats), worldStats, worldEntities, worldStatGroups,
       );
       if (!worldEntities) return players;
-      const cast = positionedCast(worldEntities, persona);
-      return reconcileGameStateFollowers(
-        reconcileGameStatePositions(backfillGameStateEntityStats(players, worldEntities), cast, locationIds),
-        new Set([...cast.map((entity) => entity.id), ...(state.discoveredEntities ?? []).map((d) => d.entity.id)]),
+      return withPlacedCast(backfillGameStateEntityStats(players, worldEntities), positionedCast(worldEntities, persona));
+    };
+    /** The state with every Individual placed by the engine for its own clock, the save's positions and engine
+     *  state kept against the world, and followers from before the engine joining as Following. */
+    const withPlacedCast = (state: GameState, cast: readonly RoutineEntity[]): GameState => {
+      const discovered = state.discoveredEntities ?? [];
+      const now = storyMinute(state.gameTime ?? 0, state.startHour != null ? { startHour: state.startHour } : undefined);
+      const world = positionWorld(castRoutines(cast, discovered), now, state.locationId, locations, connections);
+      const { entityFollowers: legacy, ...rest } = state as GameState & { entityFollowers?: string[] };
+      const book = reconcileBook(
+        { positions: { ...runtimePositions(discovered), ...(state.entityPositions ?? {}) }, individuals: state.individualStates ?? {} },
+        world, legacy ?? [],
       );
+      const runtimeIds = new Set(discovered.map((d) => d.entity.id));
+      const positions = Object.fromEntries(Object.entries(book.positions).filter(([id]) => !runtimeIds.has(id)));
+      const { entityPositions: _p, individualStates: _i, ...base } = rest;
+      return {
+        ...base,
+        ...(Object.keys(positions).length && { entityPositions: positions }),
+        ...(Object.keys(book.individuals).length && { individualStates: book.individuals }),
+        discoveredEntities: withRuntimePositions([...discovered], book.positions),
+      };
     };
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
@@ -844,7 +885,9 @@ function useProvideGameplay() {
   // What the shown turn moved each entity stat: live, this turn's; on a past page, that turn's record.
   const viewEntityStatChanges = viewedSnapshot ? (viewedSnapshot.entityStatChanges ?? EMPTY_ENTITY_CHANGES) : entityStatChanges;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
-  const viewEntityFollowers: readonly string[] = viewedSnapshot ? (viewedSnapshot.entityFollowers ?? EMPTY_IDS) : entityFollowers;
+  const viewEntityFollowers: readonly string[] = useMemo(
+    () => (viewedSnapshot ? followerIds(viewedSnapshot.individualStates ?? {}) : entityFollowers), [viewedSnapshot, entityFollowers],
+  );
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
   const viewVisibleEntities = useMemo(
     () => (viewedSnapshot ? normalizeVisibleEntities(viewedSnapshot.visibleEntities) : visibleEntities),
@@ -998,9 +1041,12 @@ function useProvideGameplay() {
     entityPositions,
     setEntityPositions,
     entityFollowers,
-    setEntityFollowers,
-    carryFollowersTo,
+    entityWaiting,
+    individualStates,
+    setIndividualStates,
+    currentBook,
     applyFollowerState,
+    placeCast,
     currentFollowers,
     viewEntityFollowers,
     metEntities,

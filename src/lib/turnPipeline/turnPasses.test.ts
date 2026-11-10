@@ -197,7 +197,7 @@ describe('turn pass requests', () => {
   });
 
   describe('the entity location request', () => {
-    const sylvie: Entity = { id: 'e2', name: 'Sylvie', movement: 'follow' } as Entity;
+    const sylvie: Entity = { id: 'e2', name: 'Sylvie', kind: 'individual', traversable: 'anywhere' };
     const asking = (moves: TurnPassSubject['moves']) => ({ subject: { name: 'Sylvie', entity: sylvie, moves } });
 
     it('asks one entity, before the move, from the action alone', () => {
@@ -242,8 +242,8 @@ describe('turn pass requests', () => {
       expect(read('NONE', ['stay', 'comeAlong'])).toBeNull();
     });
 
-    describe('for a Moves Between entity', () => {
-      const blackwell: Entity = { id: 'e3', name: 'Blackwell', movement: 'between', locations: ['keep', 'wall', 'tower'] } as Entity;
+    describe('for an entity on a Wander row', () => {
+      const blackwell: Entity = { id: 'e3', name: 'Blackwell', kind: 'individual', locations: ['keep', 'wall', 'tower'] };
       const walking = {
         subject: {
           name: 'Blackwell',

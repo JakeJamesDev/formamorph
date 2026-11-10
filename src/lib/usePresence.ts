@@ -5,6 +5,7 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { computePresence, IN_SCENE_TURNS, type Presence } from '@/lib/presence';
 import type { StrangerLabels } from '@/lib/locationContext';
 import { discoveredAsEntities } from '@/lib/runtimeCharacters';
+import { followerIds } from '@/lib/positionPlay';
 import { recentSceneTurns } from '@/lib/turnDigest';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 
@@ -34,7 +35,9 @@ export function usePresence(viewedPage?: number): Presence {
   const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
   const runtime = useMemo(() => discoveredAsEntities(runtimeSource), [runtimeSource]);
   const positions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
-  const followers = snapshot ? (snapshot.entityFollowers ?? NONE) : entityFollowers;
+  const followers = useMemo(
+    () => (snapshot ? followerIds(snapshot.individualStates ?? {}) : entityFollowers), [snapshot, entityFollowers],
+  );
   const met = snapshot ? (snapshot.metEntities ?? NONE) : metEntities;
   const aliases = snapshot ? (snapshot.strangerAliases ?? NO_ALIASES) : strangerAliases;
   // A snapshot from an older save carries no location; the live one stands in, as the viewed location does.

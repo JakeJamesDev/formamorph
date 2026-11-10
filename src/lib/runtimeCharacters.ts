@@ -87,18 +87,11 @@ export function discoveredAsEntities(discovered: readonly DiscoveredEntity[]): E
   return discovered.map((d) => (d.locationId ? { ...d.entity, locations: [d.locationId] } : d.entity));
 }
 
-/** Whether `entity`'s Movement lets the scene pull bring it to `locationId`. */
-function mayBePulledTo(entity: Entity, locationId: string): boolean {
-  if (entity.movement === 'stays') return false;
-  if (entity.movement === 'between') return entity.locations?.includes(locationId) ?? false;
-  return true;
-}
-
 /**
- * "Bring-them-over": the authored entities that should join the current location as visitors this turn —
- * those standing in a sibling (a location sharing the current one's non-null parent) or a direct child,
- * named by the narration as participants, not already present, and whose Movement lets them come. Where
- * they stand reads `positions` over their listed locations. Pure.
+ * "Bring-them-over" candidates: the authored entities standing in a sibling (a location sharing the current
+ * one's non-null parent) or a direct child, named by the narration as participants, and not already present.
+ * Where they stand reads `positions` over their listed locations. The position engine decides which of them
+ * may come. Pure.
  */
 export function selectReachableVisitors(
   participants: string[],
@@ -115,7 +108,6 @@ export function selectReachableVisitors(
   const reachableIds = new Set(entityIdsAtAny(pullFrom.map((l) => l.id), entitiesInPlay(authoredEntities, positions)));
   const present = new Set(presentIds);
   return authoredEntities.filter(
-    (e) => reachableIds.has(e.id) && !present.has(e.id) && mayBePulledTo(e, current.id)
-      && participants.some((p) => sameCharacterName(p, e.name)),
+    (e) => reachableIds.has(e.id) && !present.has(e.id) && participants.some((p) => sameCharacterName(p, e.name)),
   );
 }

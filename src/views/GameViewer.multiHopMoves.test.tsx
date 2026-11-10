@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { migrateEntityRoutine } from '@/lib/version';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { playTurn as playOneTurn, resetMoveTurnStorage, stubMoveEndpoint as stubEndpoint } from '@/test/moveTurns';
@@ -26,8 +27,14 @@ const BACKROOM = { id: 'backroom', name: 'Backroom', parentId: 'store' } as Game
 const LANE: Connection = { id: 'lane', a: 'yard', b: 'town', aToB: { hint: 'down the lane' }, bToA: {} };
 
 // Partial fixtures: the move path reads only these fields.
-const character = (id: string, name: string, movement: Entity['movement'], locations: string[]): Entity =>
-  ({ id, name, movement, locations } as unknown as Entity);
+// A shipped entity as a world file stores it, through the load migration.
+const character = (id: string, name: string, movement: 'follow' | 'between' | undefined, locations: string[], presence?: 'random'): Entity =>
+  migrateEntityRoutine({ id, name, locations, ...(movement && { movement }), ...(presence && { presence }) } as unknown as Entity);
+/** The live book with `ids` following the player and `positions` laid over. */
+const following = (ids: string[], positions: Record<string, string>) => ({
+  positions: { ...play.entityPositions, ...positions },
+  individuals: { ...play.individualStates, ...Object.fromEntries(ids.map((id) => [id, { ...play.individualStates[id], follow: { mode: 'following' as const } }])) },
+});
 const vigor: PlayerStat = { id: 'vigor', name: 'Vigor', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
 // Lies in the store; its stat effect puts its name in the stat request where it is present.
 const ledger: Item = {
@@ -44,7 +51,7 @@ const worldWith = (over: Partial<World> = {}): World => ({
       character('bram', 'Bram', 'follow', ['barn']),
       character('maela', 'Maela', 'follow', ['barn']),
       // Moves Between the barn and the town, never the store.
-      character('wren', 'Wren', 'between', ['barn', 'town']),
+      character('wren', 'Wren', 'between', ['barn', 'town'], 'random'),
     ],
   }),
   locations: [FARM, BARN, YARD, TOWN, STORE, BACKROOM],
@@ -136,7 +143,7 @@ describe('a move of more than one step in Auto mode', () => {
 
   it('brings a follower to the final place, leaves the one told to stay, and leaves a Moves Between character the store is not hers', async () => {
     await openInBarn();
-    act(() => play.applyFollowerState({ followers: ['bram', 'maela'], positions: { bram: 'barn', maela: 'barn', wren: 'barn' } }));
+    act(() => play.applyFollowerState(following(['bram', 'maela'], { bram: 'barn', maela: 'barn', wren: 'barn' })));
     stubEndpoint('You walk down the lane into town and into the store.', {
       router: 'Store', entities: { Bram: 'Keep following', Maela: 'Stay here', Wren: 'Come along' },
     });
@@ -156,7 +163,7 @@ describe('a move of more than one step in Suggest mode', () => {
   it('offers the final place, and Go moves the player there with the follower', async () => {
     localStorage.setItem('FORMAMORPH_locationAutoApply', 'false');
     await openInBarn();
-    act(() => play.applyFollowerState({ followers: ['bram'], positions: { bram: 'barn' } }));
+    act(() => play.applyFollowerState(following(['bram'], { bram: 'barn' })));
     stubEndpoint('You walk down the lane into town and step into the store.', { narrated: 'Store', entities: { Bram: 'Keep following' } });
 
     await playTurn('I walk to the store in town.');
@@ -173,7 +180,7 @@ describe('a move of more than one step in Suggest mode', () => {
 describe('a Far link', () => {
   it('still carries the player and a follower across it', async () => {
     await openInBarn(worldWith({ connections: [{ ...LANE, distance: 'far' }] }));
-    act(() => play.applyFollowerState({ followers: ['bram'], positions: { bram: 'barn' } }));
+    act(() => play.applyFollowerState(following(['bram'], { bram: 'barn' })));
     stubEndpoint('You walk the long lane into town and step into the store.', { router: 'Store', entities: { Bram: 'Keep following' } });
 
     await playTurn('I walk the long lane to town and step into the store.');

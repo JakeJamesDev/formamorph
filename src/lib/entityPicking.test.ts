@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { pickMarks, rangeGap, rangeWarning, togglePick } from "./entityPicking";
-import type { Connection, Entity, GameLocation } from "@/types";
+import { pickMarks, togglePick } from "./entityPicking";
+import type { Entity, GameLocation } from "@/types";
 
 // rosewood > { keep > throne, inn } ; harbor and watchtower are top-level.
 const rosewood: GameLocation = { id: "rosewood", name: "Rosewood" };
@@ -47,7 +47,23 @@ describe("pickMarks", () => {
 });
 
 describe("togglePick", () => {
-  const captain: Entity = { id: "captain", name: "Captain", locations: ["keep"], presence: "random", movement: "between" };
+  const captain: Entity = { id: "captain", name: "Captain", locations: ["keep"], kind: "group" };
+  const scout: Entity = {
+    id: "scout", name: "Scout", kind: "individual", locations: ["keep", "inn"],
+    starts: [{ id: "s1", place: "keep", weight: 1, schedule: [] }, { id: "s2", place: "inn", weight: 2, schedule: [] }],
+  };
+
+  it("moves an Individual's first Start to the clicked location in Locations mode, keeping the others", () => {
+    const moved = togglePick(scout, "locations", "watchtower");
+    expect(moved.starts?.map((s) => [s.id, s.place, s.weight])).toEqual([["s1", "watchtower", 1], ["s2", "inn", 2]]);
+    expect(moved.locations).toEqual(["watchtower", "inn"]);
+  });
+
+  it("gives an Individual with no Start its first one at the clicked location", () => {
+    const placed = togglePick({ id: "new", name: "New", kind: "individual", traversable: "anywhere" }, "locations", "harbor");
+    expect(placed.starts).toEqual([expect.objectContaining({ place: "harbor", weight: 1, schedule: [] })]);
+    expect(placed.locations).toEqual(["harbor"]);
+  });
 
   it("adds a location in Locations mode, and removes it on the next click", () => {
     const added = togglePick(captain, "locations", "watchtower");
@@ -73,44 +89,5 @@ describe("togglePick", () => {
 
   it("falls back to Nearby when the last pick is removed", () => {
     expect(togglePick({ ...captain, knownIn: ["rosewood"] }, "knownIn", "rosewood")).not.toHaveProperty("knownIn");
-  });
-});
-
-describe("rangeGap", () => {
-  const captain: Entity = { id: "captain", name: "Captain", locations: ["keep", "watchtower"], presence: "random", movement: "between" };
-  const road: Connection = { id: "road", a: "keep", b: "watchtower", aToB: {}, bToA: {} };
-
-  it("names each location the first one can't reach through the entity's own locations", () => {
-    expect(rangeGap(captain, world, [])).toEqual({ from: "keep", unreachable: ["watchtower"] });
-    expect(rangeGap({ ...captain, locations: ["keep", "watchtower", "harbor"] }, world, [road]))
-      .toEqual({ from: "keep", unreachable: ["harbor"] });
-  });
-
-  it("is clear when a Connection or the tree joins them", () => {
-    expect(rangeGap(captain, world, [road])).toBeNull();
-    expect(rangeGap({ ...captain, locations: ["keep", "inn"] }, world, [])).toBeNull();
-  });
-
-  it("only walks through the entity's own locations", () => {
-    // throne → keep → inn joins them, but the keep is not one of its own.
-    expect(rangeGap({ ...captain, locations: ["throne", "inn"] }, world, []))
-      .toEqual({ from: "throne", unreachable: ["inn"] });
-  });
-
-  it("respects one-way Connections", () => {
-    const oneWay: Connection = { id: "ladder", a: "watchtower", b: "keep", aToB: {} };
-    expect(rangeGap(captain, world, [oneWay])).toEqual({ from: "keep", unreachable: ["watchtower"] });
-  });
-
-  it("only applies to Moves Between", () => {
-    expect(rangeGap({ ...captain, movement: "follow" }, world, [])).toBeNull();
-  });
-});
-
-describe("rangeWarning", () => {
-  it("reads the copy table's line, listing every unreachable location", () => {
-    expect(rangeWarning("Aldric", "Barracks", ["City Gate", "Barbican"])).toBe(
-      "Aldric can’t reach City Gate and Barbican from Barracks through its own locations. Add the location between them, or a Connection.",
-    );
   });
 });

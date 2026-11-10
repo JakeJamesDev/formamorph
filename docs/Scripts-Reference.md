@@ -12,7 +12,7 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `hidden`, `descriptor`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
-| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `hour`, `minute`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
 | `turn` | `action`, `number`, `narration`, `choices` | `turn.number` | `turn.choices = [<text>]`, After the AI only |
 | `locations` | `id`, `name`, `description`, `summary`, `starting`, `present`, `parent`, `children`, `exits`, `items` | `locations.<Location>.present` | Read-only |
@@ -21,8 +21,8 @@ A script can use only these objects. In the table, a word in angle brackets is a
 | `memories` | `id`, `turn`, `timestamp`, `day`, `daypart`, `text`, `custom`, `kept`, `inContext`, `pinned`, `forgotten`, `add()`, `pin()`, `forget()`, `edit()`, `remove()` | `memories.length` | `memories.pin(<text>)` |
 | `notes` | — | `notes` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()`, `diary()` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `enabled`, `entries`, `placeholders` | `dictionaries.<Dictionary>.enabled` | `dictionaries.<Dictionary>.enabled = true` |
 | `items` | `id`, `name`, `unidentifiedName`, `unidentifiedDescription`, `placeholders`, `copies`, `give()` | `items.<Item>.copies.length` | `items.<Item>.give(persona)` |
@@ -92,7 +92,7 @@ Each entry has the [same members as `self`](#stat-properties). Each entry takes 
 <!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
 <!-- route: worldEditorStat.code -->
 
-`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
+`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `traits`, `placeholders`, `stats`, `items`, `body`, `move()`, `follow()`, `unfollow()`, `meet()` and `diary()`.
 
 The entity's own stats are under `owner.stats`, its own traits under `owner.traits`, and its own placeholders under `owner.placeholders`.
 
@@ -497,7 +497,7 @@ A write to an unknown trait name is ignored. **Test Code** and the **Test Bench*
 | `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
 | `stats` | The persona's own stats by name, as an [entity's `stats`](#entities). Entries take writes |
 
-`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `description`, `summary`, `aliases`, `items` and `body` of an [entity entry](#entities).
+`persona` also has the `id`, `type`, `pronouns`, `inScene`, `met`, `location`, `following`, `waiting`, `description`, `summary`, `aliases`, `items` and `body` of an [entity entry](#entities).
 
 - `inScene` and `met` are always true for the played persona.
 - `location` is where the player is. `following` is always false.
@@ -544,6 +544,7 @@ When the player plays no entity, `persona` is an empty entry:
 | `met` | True when the player has met the entity. Never turns false. Read-only |
 | `location` | The code name of the location the entity is at. A follower reads the player's location. Empty when the entity has no position of its own and is at every location it lists. Read-only |
 | `following` | True when the entity follows the player. Read-only |
+| `waiting` | True when the entity stopped following and waits where it was left. Read-only |
 | `description` | The full AI description, with each placeholder chip filled in. Read-only |
 | `summary` | The short AI summary, with each placeholder chip filled in. Read-only |
 | `aliases` | The entity's other names, as a list, with each placeholder chip filled in. Read-only |
@@ -554,7 +555,7 @@ When the player plays no entity, `persona` is an empty entry:
 | `body` | The entity's Body in force, or `null`. Assign a Body name to set its base Body. See [Bodies](#bodies) |
 | `move()` | Moves the entity to a location. See [Moving Entities](#moving-entities) |
 | `follow()` | Makes the entity follow the player |
-| `unfollow()` | Stops the entity following the player |
+| `unfollow()` | Stops the entity following or waiting, so it goes back to its usual places |
 | `meet()` | The player meets the entity. See [Meeting Entities](#meeting-entities) |
 | `diary(line)` | Adds a line to the entity's diary. See [Diary](#diary) |
 
@@ -626,17 +627,16 @@ if (self.value >= 3) entities.Sylvie.meet();
 #### Moving Entities
 <!-- keywords: move npc, companion joins, follow player, leave party, schedule, patrol, entity location, send away -->
 
-Three calls on an entity's entry set its location. Each one works on any entity, whatever its **Movement**.
+Three calls on an entity's entry set its location. They work on an entity in **One Location**; an entity at **Every Location** ignores them.
 
-- **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following entity stops following.
-- **`entities.<Entity>.follow()`** makes the entity follow the player, at the player's location.
-- **`entities.<Entity>.unfollow()`** stops the entity following and leaves it at the player's location. An entity that is not following keeps its location.
+- **`entities.<Entity>.move("<Location>")`** puts the entity at a location of your world, by id, else by name. A following or waiting entity stops. It stays there for a while, then goes back to its usual places.
+- **`entities.<Entity>.follow()`** makes the entity follow the player, at the player's location. It follows even where its routine would not let it go.
+- **`entities.<Entity>.unfollow()`** stops the entity following or waiting. It goes back to its usual places once the player leaves. An entity that is not following keeps its location.
 
 How the calls apply:
 
 - **The writes apply when the turn ends**, after the player's move, the followers and the AI's entity answers. So a script's write wins over the AI's answer. Prompts in the same turn read the entities at their earlier locations.
 - **Calls apply in call order**, across every script of the turn. The last call on an entity wins.
-- **A `move` or a `follow` gives the entity a position of its own from then on.** A **Free** entity is then at one location, not at every listed one.
 - **Three targets stop the script with an error:** a location your world does not have, the persona (which moves with the player), and an unknown entity name.
 - **A When a Trait Switches script that runs outside a turn applies none of them.**
 - **In suggest mode, a script's write wins over a waiting "come along".** The AI can ask an entity to come along, and that entity waits for **Go**. A write on the entity ends its wait.

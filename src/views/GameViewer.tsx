@@ -129,7 +129,9 @@ import {
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
-import { entitiesInPlay, entityIdsAt, positionedCast, startingPositions } from "../lib/entityPresence";
+import { entitiesInPlay, entityIdsAt, positionedCast } from "../lib/entityPresence";
+import { castRoutines } from "../lib/entityKind";
+import { placeAll, positionWorld, reseatForOpening, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve } from "../lib/outputLength";
 import { outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -204,9 +206,9 @@ import {
   commitEntityMoves, computeTurnCommit, entityMovesOf, withCodeLines, withCodeWrites, type TurnCommit, type TurnCommitContext,
 } from "../lib/turnPipeline/computeTurnCommit";
 import {
-  entityMoveRequests, hasEntityOffer, joinEntityMoves, movedPositions, moveWithPlayer,
-  NO_ENTITY_MOVES, NO_ENTITY_OFFER, peelIntents, peeledCharacters, runtimePositions, turnPeelOff,
-  type EntityMoveOffer, type FollowerState, type PeelOff,
+  entityMoveRequests, hasEntityOffer, joinEntityMoves, moveWithPlayer,
+  NO_ENTITY_MOVES, NO_ENTITY_OFFER, runtimePositions,
+  type EntityMoveOffer, type FollowerState,
 } from "../lib/entityFollowing";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlan, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
@@ -216,7 +218,7 @@ import type { PromptJumpTarget } from "../lib/promptJump";
 import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
 } from "@/lib/findMarks";
-import { buildStamper, daypartAt, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
+import { buildStamper, daypartAt, hoursByPosition, FLAT_HOURS_PER_TURN, storyMinute } from "../lib/gameClock";
 import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildMemoryLedger, closedTurns, scriptMemories } from "../lib/memoryView";
@@ -776,9 +778,11 @@ const GameViewer = ({
     entityPositions,
     setEntityPositions,
     entityFollowers,
-    setEntityFollowers,
-    carryFollowersTo,
+    entityWaiting,
+    setIndividualStates,
+    currentBook,
     applyFollowerState,
+    placeCast,
     currentFollowers,
     metEntities,
     setMetEntities,
@@ -1407,9 +1411,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems);
+      await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, undefined, connections);
     })();
-  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore, worldItems]);
+  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame, worldOverview.vrmStore, worldItems, connections]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
@@ -1471,12 +1475,14 @@ const GameViewer = ({
   const [suggestedLocation, setSuggestedLocation] = useState<GameLocation | null>(null);
   // The entities whose "come along" waits on the offered move: Go brings them, Dismiss drops them.
   const entityOfferRef = useRef<EntityMoveOffer>(NO_ENTITY_OFFER);
-  // The peel-off of the turn that made the offer, so Go creates the follower it promised.
-  const followerPeelRef = useRef<{ peelOff: PeelOff; turnId: string } | undefined>(undefined);
-  /** Where tracked entities and runtime characters stand, and who follows the player. */
-  const liveFollowerState = (): FollowerState => ({
-    positions: { ...runtimePositions(discoveredEntities), ...entityPositions }, followers: entityFollowers,
-  });
+  /** Where tracked entities and runtime characters stand, and their engine state. */
+  const liveFollowerState = (): FollowerState => currentBook();
+  // The story minute the clock reads now.
+  const storyNow = storyMinute(gameTime, calendar);
+  /** The position engine's view of the world at `now`, with the player at `playerAt`. */
+  const positionWorldAt = useCallback((now: number, playerAt: string | undefined): PositionWorld => positionWorld(
+    castRoutines(positionedCast(authoredCast, personaRef), discoveredEntities), now, playerAt, locations, connections,
+  ), [authoredCast, personaRef, discoveredEntities, locations, connections]);
   // AI progress feedback: which request is running, its streamed output estimate (null = indeterminate), and
   // whether the player may already type their next action (choices done, background requests still finishing).
   const [aiRequestType, setAiRequestType] = useState<AIRequestType | null>(null);
@@ -3035,7 +3041,13 @@ const GameViewer = ({
     // The story's item changes land before the stat deltas, which then read their effects (Q53).
     const discovered = commit.discoveries.map((d) => ({ id: d.entity.id, name: d.entity.name }));
     const { start: moveStart, from: moveFrom } = turn.entityMove;
-    const movedTo = moveFrom ? commitEntityMoves(moveStart, commit, { from: moveFrom, to: turn.location?.id }).state.positions : undefined;
+    /** The engine's view at the turn's end, `hours` after it began. */
+    const endWorld = (hours: number) => positionWorldAt(storyMinute(turn.context.gameTime + hours, commit.clock.calendar), moveFrom);
+    /** The book the turn's moves start from: on the opening turn, placed again for the hour it measured. */
+    const startBook = (book: FollowerState, hours: number) => (commit.isOpeningTurn ? reseatForOpening(book, endWorld(hours)) : book);
+    const movedTo = moveFrom
+      ? commitEntityMoves(startBook(moveStart, commit.turnHours), commit, { from: moveFrom, to: turn.location?.id }, endWorld(commit.turnHours)).state.positions
+      : undefined;
     const inventoryOwners = commit.inventoryOps.length ? inventoryOwnersAt(turn.location, discovered, movedTo) : [];
     const commitTotals = startActionTotals();
     const { kept: inventoryKept, landed: inventory } = landInventoryPass(
@@ -3104,41 +3116,21 @@ const GameViewer = ({
     const { start, from, applied } = turn.entityMove;
     const meets = final.codeWrites?.entities?.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
     if (meets?.length) setMetEntities((met) => withMet(met, meets));
-    let afterMoves: FollowerState = applied;
+    // Every Individual is placed for the turn's end, after the replies and the code moved who they name.
+    const world = endWorld(final.turnHours);
+    let afterMoves: FollowerState;
     if (from) {
-      const { state, offer } = commitEntityMoves(start, final, { from, to: location?.id });
-      afterMoves = state;
-      const { peel } = turn.context;
-      const turnId = final.turn.turnId ?? currentTurnIdRef.current;
-      const anyKnown = new Set<string>();
-      if (state !== applied) {
-        applyFollowerState(
-          { followers: state.followers, positions: movedPositions(state.positions, applied.positions) },
-          peeledCharacters(state, peel, anyKnown, turnId),
-        );
-        // Removes peeled followers the final move dropped.
-        const unmade = peeledCharacters(applied, peel, anyKnown, turnId).filter((d) => !state.followers.includes(d.entity.id));
-        if (unmade.length) setDiscoveredEntities((prev) => prev.filter((d) => !unmade.some((gone) => gone.entity.id === d.entity.id)));
-      }
-      entityOfferRef.current = offer;
-      followerPeelRef.current = offer.comeAlong.length && peel ? { peelOff: peel, turnId } : undefined;
-    }
+      const moves = commitEntityMoves(startBook(start, final.turnHours), final, { from, to: location?.id }, world);
+      afterMoves = moves.state;
+      entityOfferRef.current = moves.offer;
+    } else afterMoves = placeAll(startBook(applied, final.turnHours), withPlayerAt(world, location?.id));
     // The characters the prose names join the place where the player ends the turn, after every move.
     if (location && turn.prose) {
-      const pulled = selectVisitorAdditions({
-        prose: turn.prose,
-        entities,
-        allEntities,
-        location,
-        locations,
-        positions: afterMoves.positions,
-        discovered: discoveredEntities,
-        turnId: final.turn.turnId ?? currentTurnIdRef.current,
+      afterMoves = selectVisitorAdditions({
+        prose: turn.prose, entities, allEntities, location, locations, book: afterMoves, world,
       });
-      if (pulled.discovered.length || Object.keys(pulled.positions).length) {
-        applyFollowerState({ followers: afterMoves.followers, positions: pulled.positions }, pulled.discovered);
-      }
     }
+    applyFollowerState(afterMoves);
 
     setFullMessageHistory((prev) => {
       const updatedHistory = [...prev];
@@ -3323,7 +3315,8 @@ const GameViewer = ({
     let playerInFrame: boolean | undefined;
     let turnParticipants: string[] = [];
     // Where tracked entities stood and who followed when the turn began; every join this turn starts here.
-    const moveStart = liveFollowerState();
+    // Placed for now, so a character met since the last commit has its engine state before it is asked or pulled.
+    const moveStart = placeAll(liveFollowerState(), positionWorldAt(storyNow, currentLocation?.id));
     const moveFrom = currentLocation?.id;
     let entityIntents = NO_ENTITY_MOVES;
     // The join the narration is written over: followers already beside the player. Null when it moves nobody.
@@ -3333,18 +3326,16 @@ const GameViewer = ({
     let turnProse = "";
     let placeSettled = false;
     const movingCast = positionedCast(allEntities, personaRef);
-    const peel = turnPeelOff(movingCast, randomUUID);
+    /** The engine's view of the turn: the routines at the turn's start, at `now`. */
+    const turnWorld = (now = storyNow) => positionWorldAt(now, moveFrom);
     // The runtime characters the scene list names, the only ones asked unless they already follow.
     const runtimeInScene = new Set(discoveredEntities
       .filter((d) => participants.some((name) => sameCharacterName(name, d.entity.name)))
       .map((d) => d.entity.id));
     /** Each entity the turn asks whether it moves, with the replies it is offered. */
     const moveSubjects = (): TurnPassSubject[] => entityMoveRequests(
-      movingCast, authoredCast, moveStart, moveFrom, locations, connections, { runtime: discoveredEntities, inScene: runtimeInScene },
+      movingCast, authoredCast, moveStart, moveFrom, turnWorld(), locations, connections, { runtime: discoveredEntities, inScene: runtimeInScene },
     );
-    /** The characters `join` peels off, born this turn. */
-    const peeledBy = (join: FollowerState) =>
-      peeledCharacters(join, peel, new Set(discoveredEntities.map((d) => d.entity.id)), currentTurnIdRef.current);
 
     const reportFailure = (error: unknown) =>
       reportTurnFailure(classifyTurnError(error), error, false, isOpeningTurn);
@@ -3362,7 +3353,6 @@ const GameViewer = ({
       setChoicesReady(false);
       setSuggestedLocation(null);
       entityOfferRef.current = NO_ENTITY_OFFER;
-      followerPeelRef.current = undefined;
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
       // The attachments leave the action box with the text, and the turn keeps the ones it may carry.
@@ -3423,8 +3413,7 @@ const GameViewer = ({
       /** The world the turn's prompts read: the code view, with the followers at the player's side. */
       const sceneBox = (): SceneWrites | null => {
         if (!turnJoin) return codeView;
-        const peeled = peeledBy(turnJoin);
-        return { ...(codeView ?? {}), positions: turnJoin.positions, ...(peeled.length && { addedEntities: discoveredAsEntities(peeled) }) };
+        return { ...(codeView ?? {}), positions: turnJoin.positions };
       };
       // An On Call write since the narration's context values were built, which later prompts must read (Q52).
       let narrationBuilt = false;
@@ -3593,7 +3582,7 @@ const GameViewer = ({
         placeSettled = true;
         // The narration succeeded, so an aborted or empty turn leaves the location unchanged.
         if (turnJoin) {
-          applyFollowerState({ followers: turnJoin.followers, positions: movedPositions(turnJoin.positions, moveStart.positions) }, peeledBy(turnJoin));
+          applyFollowerState(turnJoin);
         }
         if (turnLocation && turnLocation.id !== currentLocation?.id) {
           changeLocation(turnLocation);
@@ -3700,7 +3689,7 @@ const GameViewer = ({
           if (event.stage === "planning") {
             // The router has settled the move, so the followers and "come along" can stand beside the player.
             if (moveFrom) {
-              const joined = joinEntityMoves(moveStart, { from: moveFrom, to: turnLocation?.id }, entityIntents);
+              const joined = joinEntityMoves(moveStart, { from: moveFrom, to: turnLocation?.id }, entityIntents, turnWorld());
               turnJoin = joined === moveStart ? null : joined;
             }
             return assembleNarration();
@@ -3765,7 +3754,7 @@ const GameViewer = ({
             const target = destinationNamed(first.parsed);
             if (target && moveFrom && target.id !== moveFrom) {
               moveTurnTo(target);
-              const joined = joinEntityMoves(moveStart, { from: moveFrom, to: target.id }, entityIntents);
+              const joined = joinEntityMoves(moveStart, { from: moveFrom, to: target.id }, entityIntents, turnWorld());
               turnJoin = joined === moveStart ? null : joined;
               // The passes after the narration read the place the story took the player.
               ctxStale = true;
@@ -3773,7 +3762,7 @@ const GameViewer = ({
             return settlePlace();
           }
           case "entityLocationAuto":
-            entityIntents = peelIntents(entityMovesOf(event.outcomes), peel);
+            entityIntents = entityMovesOf(event.outcomes);
             return;
           case "thinking": {
             if (!first.raw) return;
@@ -3912,7 +3901,6 @@ const GameViewer = ({
         heldNames: [...entities.map((entity) => entity.name), ...suppressedCharacterNames],
         diaryNames,
         toolCalls: worldToolTurn.calls(),
-        peel,
       };
       const commit = computeTurnCommit({ result, plan, context: commitContext });
       if (!commit) return;
@@ -4164,6 +4152,7 @@ const GameViewer = ({
           places: { locations, location: here && { id: here.id, name: here.name }, connections },
           positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
           followers: entityFollowers,
+          waiting: entityWaiting,
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
           memories: turnMemoriesRef.current ?? scriptMemoriesRef.current,
           notes: liveScene().notes,
@@ -4304,7 +4293,7 @@ const GameViewer = ({
       }
     },
     [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, setLoreToggles, resolvePH, resolveFor, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, scriptTabWorld, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, presence, libraryIn, locations, currentLocation, discoveredEntities,
-      entityPositions, entityFollowers, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState,
+      entityPositions, entityFollowers, entityWaiting, resolveEntityText, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState,
       worldItems, worldSlots, inventoryWorld, personaRef, startActionTotals],
   );
 
@@ -5927,7 +5916,7 @@ const GameViewer = ({
   const changeLocation = useCallback(
     (newLocation: GameLocation) => {
       setCurrentLocation(newLocation);
-      carryFollowersTo(newLocation.id);
+      placeCast(positionWorldAt(storyNow, newLocation.id));
       // Read in the updater, so followers a move offer adds after this call keep their rows.
       setVisibleEntities((rows) => sceneAfterMove(rows, currentFollowers(), allEntities));
 
@@ -5937,7 +5926,7 @@ const GameViewer = ({
         setAmbientSound(null);
       }
     },
-    [setCurrentLocation, carryFollowersTo, setVisibleEntities, currentFollowers, allEntities],
+    [setCurrentLocation, placeCast, positionWorldAt, storyNow, setVisibleEntities, currentFollowers, allEntities],
   );
   /** Travel through the map, a listed action (Q42). */
   const travel = useCallback(
@@ -5969,7 +5958,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits)
+        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections)
           .then((loaded) => { if (loaded && mounted.current) rebaseRightDots(); });
         return;
       }
@@ -6060,14 +6049,16 @@ const GameViewer = ({
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
-      // Each One entity starts at one of its locations, so the opening pool reads who stands at the start.
-      const startPositions = startingPositions(positionedCast(codeEntities.world, personaPick.ref), locations.map((l) => l.id));
+      // Each Individual rolls its Start, so the opening pool reads who stands at the start.
+      const startBook = placeAll({ positions: {}, individuals: {} }, positionWorld(
+        castRoutines(positionedCast(codeEntities.world, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
+      ));
+      const startPositions = startBook.positions;
       setEntityPositions(startPositions);
-      setEntityFollowers([]);
+      setIndividualStates(startBook.individuals);
       setMetEntities([]);
       setStrangerAliases({});
       entityOfferRef.current = NO_ENTITY_OFFER;
-      followerPeelRef.current = undefined;
       // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
         pick: personaPick, worldEntities: entitiesInPlay(traitEntities, startPositions), overview: worldOverview, locations, startingLocationId: location?.id,
@@ -6090,6 +6081,8 @@ const GameViewer = ({
   }, [
     initialSaveId,
     loadGame,
+    connections,
+    setIndividualStates,
     resetEntityStats,
     setSelectedEntityId,
     initialTraits,
@@ -6294,16 +6287,9 @@ const GameViewer = ({
           changeLocation(suggestedLocation);
           addLogEntry(`Moved to location: ${suggestedLocation.name}`);
           const offer = entityOfferRef.current;
-          const offered = followerPeelRef.current;
           entityOfferRef.current = NO_ENTITY_OFFER;
-          followerPeelRef.current = undefined;
           if (hasEntityOffer(offer)) {
-            const live = liveFollowerState();
-            const went = moveWithPlayer(live, offer, suggestedLocation.id);
-            applyFollowerState(
-              { followers: went.followers, positions: movedPositions(went.positions, live.positions) },
-              offered ? peeledCharacters(went, offered.peelOff, new Set(), offered.turnId) : [],
-            );
+            applyFollowerState(moveWithPlayer(liveFollowerState(), offer, suggestedLocation.id, positionWorldAt(storyNow, suggestedLocation.id)));
           }
           setSuggestedLocation(null);
         }}
@@ -6315,7 +6301,6 @@ const GameViewer = ({
         variant="ghost"
         onClick={() => {
           entityOfferRef.current = NO_ENTITY_OFFER;
-          followerPeelRef.current = undefined;
           setSuggestedLocation(null);
         }}
       >
@@ -6514,7 +6499,7 @@ const GameViewer = ({
         const loaded = await loadGame(
           id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : [],
           Array.isArray(migrated.entities) ? migrated.entities : [], migrated.worldOverview?.vrmStore,
-          Array.isArray(migrated.items) ? migrated.items : [],
+          Array.isArray(migrated.items) ? migrated.items : [], undefined, Array.isArray(migrated.connections) ? migrated.connections : [],
         );
         if (loaded && mounted.current) rebaseRightDots();
         return loaded;
@@ -6524,7 +6509,7 @@ const GameViewer = ({
         return false;
       }
     }
-    const loaded = await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits);
+    const loaded = await loadGame(id, locations, stats, codeEntities.world, worldOverview.vrmStore, worldItems, savedOwnerTraits, connections);
     // A loaded game starts with no dots, from its own state.
     if (loaded && mounted.current) rebaseRightDots();
     return loaded;

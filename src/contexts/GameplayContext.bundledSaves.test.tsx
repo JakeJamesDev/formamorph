@@ -5,9 +5,11 @@ import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { toast } from 'react-toastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
-import { daypartAt } from '@/lib/gameClock';
+import { daypartAt, storyMinute } from '@/lib/gameClock';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
-import { positionedCast, startingPositions } from '@/lib/entityPresence';
+import { positionedCast } from '@/lib/entityPresence';
+import { castRoutines } from '@/lib/entityKind';
+import { placeAll, positionWorld } from '@/lib/positionPlay';
 import { settleTraitsWithItems } from '@/lib/inventory';
 import { openingFold } from '@/lib/openingState';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
@@ -146,8 +148,12 @@ async function saveTwoTurns(world: World): Promise<string> {
     gameplay.setItemEffects(opening.itemEffects.ledger);
     gameplay.setBodies(opening.bodies);
     gameplay.setPersonaRef(NO_PERSONA);
-    gameplay.setEntityPositions(startingPositions(positionedCast(entities, NO_PERSONA), locations.map((l) => l.id)));
     const start = resolveStartingLocation(locations, undefined);
+    const book = placeAll({ positions: {}, individuals: {} }, positionWorld(
+      castRoutines(positionedCast(entities, NO_PERSONA)), storyMinute(0), start?.id, locations, world.connections ?? [],
+    ));
+    gameplay.setEntityPositions(book.positions);
+    gameplay.setIndividualStates(book.individuals);
     if (start) gameplay.changeLocation(start);
     gameplay.setFullMessageHistory(TURNS);
     gameplay.setMilestoneSelection(VERDICTS);

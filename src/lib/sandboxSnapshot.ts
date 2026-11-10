@@ -208,7 +208,7 @@ function codePlaces(
 
 /** The fields `entity` adds from play: its text resolved, where it stands, and whether it follows. */
 function playFields(
-  entity: Entity, { positions, followers }: Pick<SandboxState, 'positions' | 'followers'>, resolve: ResolveText,
+  entity: Entity, { positions, followers, waiting }: Pick<SandboxState, 'positions' | 'followers' | 'waiting'>, resolve: ResolveText,
 ): Partial<CodeEntity> {
   const at = positions?.[entity.id];
   return {
@@ -217,6 +217,7 @@ function playFields(
     pronouns: resolve(entity.pronouns ?? '', entity),
     ...(at ? { locationId: at } : {}), locationIds: entity.locations ?? [],
     ...(followers?.includes(entity.id) ? { following: true } : {}),
+    ...(waiting?.includes(entity.id) ? { waiting: true } : {}),
   };
 }
 

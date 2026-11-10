@@ -159,7 +159,7 @@ What the AI makes each turn, and what it carries forward. Most of these settings
 |---|---|
 | **System Prompts** | Three checkboxes for the requests that run after the narration: **Choices**, **Stat Updates** and **Location Change**. Turn one off and its feature stops, and its editor in the **Prompts** tab hides. |
 | **Move Automatically** | Applies the move in your action before the scene is written, and a move the narration makes after it. It skips the **Move to…?** question. Shows when **Location Change** is on. |
-| **Entity Movement** | Asks the AI each turn which entities come with you. Each one that can follow adds a request. Shows when **Location Change** is on. |
+| **Entity Movement** | Asks the AI each turn which entities come with you. Each follower, and each entity here that can go somewhere else, adds a request. Shows when **Location Change** is on. |
 
 ### Reasoning
 

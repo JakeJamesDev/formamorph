@@ -286,7 +286,7 @@ describe('LeftPanel', () => {
     const world = LOOK_WORLD([{ id: 'e1', name: 'Bram' }, { id: 'e2', name: 'Hesk' }]);
     renderLeftPanel({ entities: world.entities as never }, {
       world: world as never,
-      seed: (gameplay) => { stageYard(gameplay); gameplay.setEntityFollowers(['e1']); },
+      seed: (gameplay) => { stageYard(gameplay); gameplay.setIndividualStates({ e1: { startId: 's', lastRun: 0, follow: { mode: 'following' } } }); },
     });
 
     openEntitiesTab();

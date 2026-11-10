@@ -515,15 +515,17 @@ export interface Entity {
   model?: MediaAsset;
   /** The entity's Avatar. Absent = none. */
   vrmPick?: VrmPick;
-  /** Ids of the locations this entity belongs to. The entity is present at every one of them
-   *  simultaneously. Read it through `lib/entityPresence`, which inverts it into per-location rosters. Under
-   *  the Persona mark they are also where the player can start as it (see `lib/personaPick`). */
+  /** Ids of the locations this entity belongs to. Read it through `lib/entityPresence`, which inverts it into
+   *  per-location rosters. A Group is at every one at once. An Individual's list is derived from its Starts and
+   *  rows (`withDerivedLocations`); nothing else writes it. Under the Persona mark they are also where the
+   *  player can start as it (see `lib/personaPick`). */
   locations?: string[];
-  /** `random`: one individual, placed at one of `locations` at random in each new game. Absent = present at
-   *  every listed location at once. The persona ignores it. */
-  presence?: EntityPresence;
-  /** How the entity moves during play. Absent = Free: no position, no AI request. The persona ignores it. */
-  movement?: EntityMovement;
+  /** Absent for an entity with no locations, the persona and the played entity. */
+  kind?: EntityKind;
+  /** An Individual's weighted beginnings, in author order. One is rolled per playthrough. */
+  starts?: EntityStart[];
+  /** An Individual's places beyond its schedule. Absent = an empty list. */
+  traversable?: Traversable;
   /** Where the AI knows of the entity while it isn't present: `nowhere`, or the picked location ids, each
    *  covering its whole subtree. Absent = Nearby, one step from where it is. */
   knownIn?: 'nowhere' | string[];
@@ -580,12 +582,6 @@ export interface Entity {
   /** What this copy follows, where it follows anything (see `ContentLink`). Absent = independent copy. */
   link?: ContentLink;
 }
-
-/** An entity's Presence beyond the default, Everywhere Listed. */
-export type EntityPresence = 'random';
-
-/** An entity's Movement beyond the default, Free. */
-export type EntityMovement = 'stays' | 'between' | 'follow';
 
 /** One authored link from an entity to another. `label` is the target's role toward the owner, read as
  *  "<target> is <owner>'s <label>". */

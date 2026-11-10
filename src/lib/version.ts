@@ -1,8 +1,9 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
   World, SaveObject, Stat, StatGroup, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
-  Opening, TraitRequirement,
+  Opening, TraitRequirement, EntityStart, ScheduleRow,
 } from '@/types';
+import { withDerivedLocations } from './entityKind';
 import { isImplicitPair, parentIndex } from './locationGraph';
 import { LEGACY_DEFAULT_AVATAR_VALUES, migrateLegacyPlayerAvatar, type LegacyCharacterData } from './legacyVrm';
 import { autoBindLegacyBodyStats, migrateMorphBindingList, migrateStatListMorphBindings } from './bodyMorphs';
@@ -665,6 +666,40 @@ function dropEntityStartLocations(world: Record<string, unknown>): void {
   });
 }
 
+/** A daypart's length for a migrated Wander's idle: the day split six ways. */
+export const MIGRATED_IDLE_MINUTES = 240;
+
+/**
+ * One entity's shipped `presence` and `movement` mapped to a kind, Starts and Traversable (NPC Schedules
+ * migration table), and an Individual's `locations` derived from its routine. Idempotent: an entity without the
+ * old fields keeps its kind.
+ */
+export function migrateEntityRoutine<T>(raw: T): T {
+  if (!raw || typeof raw !== 'object') return raw;
+  const { presence, movement, ...rest } = raw as Record<string, unknown> & Partial<Entity>;
+  const entity = rest as Entity;
+  const legacy = presence !== undefined || movement !== undefined;
+  // `raw` is any record a file holds; only its entity fields are read here.
+  if (entity.kind || entity.customPersona || !entity.locations?.length) return withDerivedLocations(legacy ? entity : raw as unknown as Entity) as T;
+  const places = entity.locations;
+  if (presence !== 'random' && places.length > 1) return { ...entity, kind: 'group' } as T;
+  const startPlaces = presence === 'random' ? places : places.slice(0, 1);
+  const schedule = (n: number): ScheduleRow[] => (movement === 'between'
+    ? [{
+      id: `row-${n}`, time: 'allDay',
+      action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: MIGRATED_IDLE_MINUTES },
+    }]
+    : []);
+  const starts: EntityStart[] = startPlaces.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: schedule(i + 1) }));
+  return withDerivedLocations({
+    ...entity, kind: 'individual', starts, ...(movement === 'follow' && { traversable: 'anywhere' as const }),
+  }) as T;
+}
+
+function migrateEntityRoutines(world: Record<string, unknown>): void {
+  if (Array.isArray(world.entities)) world.entities = world.entities.map(migrateEntityRoutine);
+}
+
 const hasStringId = (v: unknown): v is { id: string } => !!v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string';
 
 const groupRecords = (groups: unknown): StatGroup[] => (Array.isArray(groups) ? groups.filter(hasStringId) : []) as StatGroup[];
@@ -821,6 +856,7 @@ export function migrateWorld(raw: unknown): World {
   migrateRequirementRows(world);
   dropRootTraitLinks(world);
   dropEntityStartLocations(world);
+  migrateEntityRoutines(world);
   migrateStatLists(world);
   migrateGlobalScope(world);
   normalizeContentLinks(world);

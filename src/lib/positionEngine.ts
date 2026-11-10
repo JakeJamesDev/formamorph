@@ -1,6 +1,6 @@
 import type {
   Connection, DiscoveredEntity, EntityPositions, EntityStart, IndividualState, IndividualStates, PatrolStop, PositionHold,
-  ScheduleRange, ScheduleRow, Traversable, WanderPlace,
+  ScheduleAction, ScheduleRange, ScheduleRow, Traversable, WanderPlace,
 } from "@/types";
 import { reachableFrom, type LocationLink } from "@/lib/locationGraph";
 import { MINUTES_PER_DAY, nextDaypartEdge } from "@/lib/gameClock";
@@ -87,7 +87,8 @@ function liveRow(start: EntityStart, row: ScheduleRow | undefined, connected: Re
   return { ...base, action: stops.length ? { kind: "patrol", stops } : atStart };
 }
 
-const placesOf = (action: LiveAction): string[] =>
+/** The places a schedule action uses, in order. */
+export const placesOf = (action: ScheduleAction | LiveAction): string[] =>
   action.kind === "stay" ? [action.place] : action.kind === "wander" ? action.places.map((p) => p.place) : action.stops.map((s) => s.place);
 
 /** The first time after `t` a timed row starts or ends. */
@@ -297,6 +298,14 @@ export function allowedPlaces(routine: Routine, st: IndividualState | undefined,
   const start = startOf(routine, st);
   if (!start) return new Set();
   return allowedOn(routine, start, scene.now, scene, connectedPlaces(start.place, scene));
+}
+
+/** The places the row in force for `routine` uses right now, unconnected ones dropped: the Start's place in free
+ *  time. Empty without a saved Start. */
+export function rowPlacesNow(routine: Routine, st: IndividualState | undefined, scene: PositionScene): string[] {
+  const start = startOf(routine, st);
+  if (!start) return [];
+  return placesOf(liveRow(start, rowAt(start, scene.now), connectedPlaces(start.place, scene)).action);
 }
 
 /** Whether the row in force for `routine` right now is Strict. */

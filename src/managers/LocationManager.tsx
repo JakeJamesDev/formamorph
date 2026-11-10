@@ -15,7 +15,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { SoundUpload } from '../lib/UtilityComponents';
 import { LocationImageField } from './LocationImageField';
 import LocationConnections from './LocationConnections';
-import LocationEntitiesHere from './LocationEntitiesHere';
+import { isGroup } from '@/lib/entityKind';
 import LocationKnownHere from './LocationKnownHere';
 import { LocationOpenings } from './OpeningsPanel';
 import { useEditorMode } from '@/lib/editorMode';
@@ -184,17 +184,12 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           <Label>Entities</Label>
           <MultiSelect
             key={editingLocation.id}
-            options={treeOrder.map((e) => ({ label: entityLabel(e), value: e.id }))}
-            defaultValue={presentIds}
+            options={treeOrder.filter(isGroup).map((e) => ({ label: entityLabel(e), value: e.id }))}
+            defaultValue={presentIds.filter((id) => treeOrder.some((e) => e.id === id && isGroup(e)))}
             onValueChange={handleEntitiesChange}
             placeholder="Select entities"
           />
         </div>
-        <LocationEntitiesHere
-          entities={treeOrder.filter((e) => presentIds.includes(e.id))}
-          labelOf={entityLabel}
-          onChange={updateEntity}
-        />
         <LocationKnownHere
           location={editingLocation}
           locations={world.locations}

@@ -112,7 +112,7 @@ const WORLD: World = benchEditorWorld({
 const openTab = openEditorTab;
 
 const FIELD_LABELS =
-  /^(Name|Aliases|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Image|Image Tags|3D Model)$/;
+  /^(Name|Aliases|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Placement|Starts At|Image|Image Tags|3D Model)$/;
 
 /** Every field label the panel shows, in document order. The editor's own Locations tab shares a label with
  *  the picker, so the match is taken from the panel body rather than the whole editor. */
@@ -150,7 +150,7 @@ describe('the World Editor entity panel tabs', () => {
     pickEditorMode('Simple');
     expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Image', 'Name', 'Locations']);
+    expect(panelLabels()).toEqual(['Image', 'Name', 'Placement', 'Starts At']);
   });
 
 });

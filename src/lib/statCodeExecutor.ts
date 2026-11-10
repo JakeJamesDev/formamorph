@@ -328,6 +328,8 @@ export interface SandboxEntity {
   locationIds?: readonly string[];
   /** Whether the entity follows the player, which places it where the player stands. */
   following?: boolean;
+  /** Whether the entity is a follower left waiting where it stands. */
+  waiting?: boolean;
   /** The entity's owner node in the placeholder tree. Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
   /** What its `stats` reads and takes writes on. Absent, it holds no stats. */
@@ -929,8 +931,8 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = [
-  'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'description', 'summary', 'aliases', 'traits', 'placeholders', 'stats',
-  'items', 'body', 'move', 'follow', 'unfollow', 'meet', 'diary',
+  'id', 'name', 'type', 'pronouns', 'inScene', 'met', 'location', 'following', 'waiting', 'description', 'summary', 'aliases', 'traits', 'placeholders',
+  'stats', 'items', 'body', 'move', 'follow', 'unfollow', 'meet', 'diary',
 ] as const;
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
@@ -1023,6 +1025,7 @@ const entitiesPrelude = (
     const played = isPlayed(entity, persona);
     return {
       id, type, pronouns, inScene, met: played || met, location: standing.nameOf(entity, played), following: !played && !!entity.following,
+      waiting: !played && !!entity.waiting,
       description: reads.text(description), summary: reads.text(summary), aliases, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
       stats: owner ? {} : statMapData(statEntriesOf(entity)), owner, played, body: entity.body ?? null,
     };
@@ -1055,7 +1058,7 @@ const entitiesPrelude = (
     `  const who = { id: data.id || '', name: data.own ? data.name || '' : key, played: !!data.played, unknown: unknown || !!data.absent };`,
     `  const write = (kind) => (target) => { ${ENTITY_WRITE}(who, kind, target); if (kind === 'meet') meets.add(who.id || who.name); };`,
     `  const moves = { move: write('move'), follow: write('follow'), unfollow: write('unfollow'), meet: write('meet'), diary: write('diary') };`,
-    `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, description: -1, summary: -1 };`,
+    `  const blank = { id: '', type: '', pronouns: '', inScene: false, met: false, location: '', following: false, waiting: false, description: -1, summary: -1 };`,
     `  const aliases = Object.freeze([...(data.aliases || [])]);`,
     `  const values = { ...blank, ...data, name: data.own ? data.name || '' : unknown ? '' : key, aliases, traits, placeholders, stats, ...moves };`,
     // A meet in this run shows on a later read of `met`; the commit lands it.

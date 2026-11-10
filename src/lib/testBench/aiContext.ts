@@ -27,6 +27,7 @@ import type { ValueLookup } from '@/lib/promptValues';
 import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
+import { openingCast } from '@/lib/positionPlay';
 import { inCast } from '@/lib/owners';
 import { openingPersonaOf } from '@/lib/openingState';
 import { lensActiveTraits, lensOwnerScopes, lensPersonaRef, resolveLensEntityText, resolveLensText, type BenchLens } from './lens';
@@ -228,8 +229,9 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const locations = world.locations ?? [];
   const connections = world.connections ?? [];
   // The played persona is no one's neighbor, so it stays off every roster.
-  const entities = (world.entities ?? []).filter((e) => !lens.persona || inCast(e, lensPersonaRef(lens.persona.id)));
   const location = lens.location;
+  const cast = (world.entities ?? []).filter((e) => !lens.persona || inCast(e, lensPersonaRef(lens.persona.id)));
+  const entities = openingCast(cast, locations, connections, location?.id);
   const scene = lensScene(world, lens);
   const values = chipValues(scene);
   const resolve = scene.resolve;

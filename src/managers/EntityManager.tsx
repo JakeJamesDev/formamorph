@@ -123,9 +123,10 @@ const EntityManager = ({
                   options={locationOptions}
                   selectedIds={selectedLocationIds}
                   onLocationsChange={handleLocationsChange}
+                  onEntityChange={writeWhole}
                 />
                 {!editingEntity.customPersona && (
-                  <Hint>Set <b>Presence</b>, <b>Movement</b> and <b>Known In</b> on the full-screen <b>Locations Canvas</b></Hint>
+                  <Hint>Set <b>Known In</b> on the full-screen <b>Locations Canvas</b></Hint>
                 )}
                 <EntityRelationshipsField
                   entity={editingEntity}

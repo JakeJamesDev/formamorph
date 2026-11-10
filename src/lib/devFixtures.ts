@@ -4,7 +4,8 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, Slot, World, SaveObject } from '@/types';
+import type { Body, Currency, Entity, EntityStatValues, GameLocation, Item, Placement, ScheduleRow, Slot, World, SaveObject } from '@/types';
+import { withDerivedLocations } from './entityKind';
 import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 import { DEFAULT_WORLDS, seedWorldData, type DefaultWorldSeed } from './defaultWorlds';
 
@@ -188,27 +189,34 @@ const DEV_VRM_STORE = {
 };
 const AVATAR_PERSONA: Entity = { id: 'dev-wren', name: 'Wren', locations: [], persona: true, vrmPick: { kind: 'default' } };
 
+/** An Individual with one empty-schedule Start per place in `places`, its locations derived. */
+const individual = (entity: Omit<Entity, 'kind' | 'starts'>, places: string[], schedule: ScheduleRow[] = []): Entity => withDerivedLocations({
+  ...entity, kind: 'individual', starts: places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule })),
+});
+
 /** The `entityPresence` fixture's cast, all but the last two at the White Room. */
 const ENTITY_PRESENCE_CAST: Entity[] = [
-  { id: 'dev-warden', name: 'Warden', locations: [WHITE_ROOM_ID, 'dev-corridor'], presence: 'random', movement: 'stays' },
-  { id: 'dev-moths', name: 'Lantern Moths', locations: [WHITE_ROOM_ID, 'dev-alcove'], movement: 'follow' },
+  individual({ id: 'dev-warden', name: 'Warden' }, [WHITE_ROOM_ID, 'dev-corridor']),
+  { id: 'dev-moths', name: 'Lantern Moths', locations: [WHITE_ROOM_ID, 'dev-alcove'], kind: 'group' },
   // Relationships rows for the entity panel's Profile tab: one long label, one blank.
-  {
-    id: 'dev-archivist', name: 'Archivist', locations: [WHITE_ROOM_ID],
+  individual({
+    id: 'dev-archivist', name: 'Archivist',
     // The one stranger here: the Entities tab lists it by this label.
     strangerName: 'a stooped scholar', strangerDescription: 'Ink-stained fingers and a satchel of scrolls.',
     relationships: [['dev-warden', 'mentor and former employer'], ['dev-queen', '']].map(([targetId, label]) => ({ targetId, label })),
-  },
-  { id: 'dev-tamsin', name: 'Tamsin', locations: [WHITE_ROOM_ID], persona: true },
+  }, [WHITE_ROOM_ID]),
+  individual({ id: 'dev-tamsin', name: 'Tamsin', persona: true }, [WHITE_ROOM_ID]),
   { id: 'dev-self', name: 'Visitor', locations: [WHITE_ROOM_ID], customPersona: true },
-  // Off the White Room: the canvas's range warning (no path back from the Corridor) and a pick on a group.
-  // It is also the White Room's own Known Here pick.
-  { id: 'dev-sentry', name: 'Sentry', locations: ['dev-corridor', 'dev-alcove'], presence: 'random', movement: 'between', knownIn: [WHITE_ROOM_ID] },
+  // Off the White Room, wandering between the Corridor and the Alcove. It is also the White Room's own Known Here pick.
+  individual({ id: 'dev-sentry', name: 'Sentry', knownIn: [WHITE_ROOM_ID] }, ['dev-corridor', 'dev-alcove'], [{
+    id: 'row-1', time: 'allDay',
+    action: { kind: 'wander', places: [{ place: 'dev-corridor', weight: 1 }, { place: 'dev-alcove', weight: 1 }], idle: 240 },
+  }]),
   // A Known Here row inherited from the Keep, which holds the White Room.
-  { id: 'dev-queen', name: 'Queen', locations: ['dev-keep'], knownIn: ['dev-keep'] },
+  individual({ id: 'dev-queen', name: 'Queen', knownIn: ['dev-keep'] }, ['dev-keep']),
 ];
 /** The `entityFollowers` fixture's follower. */
-const ENTITY_FOLLOWER: Entity = { id: 'dev-scout', name: 'Scout', locations: [WHITE_ROOM_ID], movement: 'follow' };
+const ENTITY_FOLLOWER: Entity = { ...individual({ id: 'dev-scout', name: 'Scout' }, [WHITE_ROOM_ID]), traversable: 'anywhere' };
 const DEV_KEEP: GameLocation = { id: 'dev-keep', name: 'The Keep' };
 
 /** A hand-drawn-looking map for the `mapBackground` fixture: land, water and a road, labeled by fill. */
@@ -357,9 +365,9 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       };
     }
     case 'entityPresence': {
-      // The white room with a cast for every Entities Here row: One with a Movement, a two-place entity
-      // that can follow, a one-place entity, a world persona and the Custom Persona; then two Known Here rows,
-      // with the White Room nested in the Keep.
+      // The white room with a cast of every placement: an Individual with two Starts, a Group, one-place
+      // Individuals, a world persona and the Custom Persona; then two Known Here rows, with the White Room nested
+      // in the Keep.
       const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
       const locations = world.locations.map((l) => (l.id === WHITE_ROOM_ID ? { ...l, parentId: DEV_KEEP.id } : l));
       return { world: { ...world, locations: [DEV_KEEP, ...locations], entities: [...world.entities, ...ENTITY_PRESENCE_CAST] } };
@@ -399,7 +407,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
               { name: 'Warden', alias: 'a figure by the door', revealed: false },
             ],
             entityPositions: { [ENTITY_FOLLOWER.id]: WHITE_ROOM_ID, 'dev-warden': WHITE_ROOM_ID, 'dev-sentry': 'dev-corridor' },
-            entityFollowers: [ENTITY_FOLLOWER.id],
+            individualStates: { [ENTITY_FOLLOWER.id]: { startId: 'start-1', lastRun: 0, follow: { mode: 'following' } } },
             metEntities: [ENTITY_FOLLOWER.id, 'dev-archivist', 'dev-sentry'],
           },
         },

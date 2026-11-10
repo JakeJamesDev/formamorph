@@ -98,7 +98,7 @@ With **Move Automatically** on in Settings, the game moves the player itself:
 
 - 🚶 **The player's action** moves them before the scene is written, so the scene happens in the new place. A place more than one step away counts only when the AI answers with its name alone. An answer that mentions it in a sentence moves the player nowhere.
 - 📖 **The narration** moves them too. When the action moves them nowhere but the narration ends with them in a connected place, the game moves them there after the narration. This includes the opening narration.
-- 👥 Followers come along either way, and an entity told to stay stays. On a walk of several steps they arrive at the last place. A **Moves Between** entity comes along only when that last place is one of its locations.
+- 👥 Followers come along either way, and an entity told to stay waits where it is. On a walk of several steps they arrive at the last place. A follower that may not go there stays behind and waits.
 
 Two results to know:
 
@@ -211,9 +211,9 @@ The default prompt gives the **narrator** the current location in full. It gives
 <!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
 <!-- route: worldEditorLocation.presence -->
 
-The **Entities** picker on the **Presence** tab lists the entities at this location. Each entity stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
+The **Entities** picker on the **Presence** tab lists the entities that stand at **Every Location** they list, such as a crowd or a fixture. Each one stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
 
-- **Entities Here** gives each entity at this location a **Movement** select. An entity at more than one location also gets a **Presence** switch: **Everywhere Listed** or **One, at Random**.
+An entity that stands in **One Location** isn't in this picker. Set where it starts in the entity's **Starts At** field, or click a location on the full-screen Locations Canvas.
 - **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
 
 ### Who Joins the Scene
@@ -226,16 +226,9 @@ When the narration names an entity that stands close by, that entity comes to th
 
 The narration must use the entity's full Name, a full alias, or the full **Stranger Name**. A name said only inside dialogue doesn't count.
 
-The entity's **Movement** decides whether it comes:
+Only an entity in **One Location** comes, and only to a location it may go to. An entity at **Every Location** never comes over. One that is following the player, or waiting where it was left, doesn't come either.
 
-| Movement | Comes to the player |
-|---|---|
-| **Free** | Always |
-| **Stays Put** | Never |
-| **Moves Between Its Locations** | Only when the player's location is one of its locations |
-| **Can Follow the Player** | Always |
-
-The entity stays at the player's location after that turn. Undo the turn, and it goes back.
+The entity goes back to its usual places later: when the player leaves, or after a while. Undo the turn, and it goes back at once.
 
 ## Connections
 <!-- keywords: no way back, both directions, trip description, how you get there, return trip wording, arrow labels, trapdoor, shortcut across branches -->

@@ -83,6 +83,8 @@ export interface SandboxState {
   positions?: Readonly<EntityPositions>;
   /** The ids of the entities following the player. Absent ⇒ none. */
   followers?: readonly string[];
+  /** The ids of the followers left waiting. Absent ⇒ none. */
+  waiting?: readonly string[];
   /** Absent, text reads as authored. */
   resolveText?: ResolveText;
   /** The story clock: the hours this turn consumed, the hours elapsed, and the calendar. */

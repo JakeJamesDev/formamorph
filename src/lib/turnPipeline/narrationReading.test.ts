@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readNarration, readEditedNarration, selectVisitorAdditions, splitParticipants, presentSceneEntities } from './narrationReading';
-import type { Entity, GameLocation } from '@/types';
+import type { Entity, EntityStart, GameLocation } from '@/types';
+import { castRoutines } from '../entityKind';
+import { storyMinute } from '../gameClock';
+import { placeAll, positionWorld } from '../positionPlay';
 
 const ent = (id: string, name: string): Entity => ({ id, name });
 const loc = (id: string, name: string, over: Partial<GameLocation> = {}): GameLocation =>
@@ -95,115 +98,97 @@ describe('selectVisitorAdditions', () => {
   const cabin = loc('l3', 'The Cabin', { parentId: 'l1' }); // a direct child of the Jetty
   const bunk = loc('l4', 'The Bunk', { parentId: 'l3' }); // two levels down
   const world = [...locations, cabin, bunk];
+  const NOON = storyMinute(4);
 
-  type Input = Parameters<typeof selectVisitorAdditions>[0];
-  const pullWith = (prose: string, cast: Entity[], over: Partial<Input> = {}) =>
-    selectVisitorAdditions({
-      prose: read(prose).prose,
-      entities: cast,
-      allEntities: cast,
-      location: here,
-      locations: world,
-      positions: {},
-      discovered: [],
-      turnId: 't1',
-      ...over,
+  /** An Individual starting at `place`, with an empty schedule unless `schedule` gives one. */
+  const individual = (base: Entity, place: string, over: Partial<Entity> = {}, schedule: EntityStart['schedule'] = []): Entity => ({
+    ...base, kind: 'individual', locations: [place], starts: [{ id: 's', place, weight: 1, schedule }], traversable: 'anywhere', ...over,
+  });
+  const maren = individual(MAREN, 'l2');
+
+  /** Who the pull brings to `location`: every id the pull moved there. */
+  const pullWith = (prose: string, cast: Entity[], over: { location?: GameLocation; positions?: Record<string, string> } = {}) => {
+    const location = over.location ?? here;
+    const positionsWorld = positionWorld(castRoutines(cast), NOON, location.id, world, [], () => 0);
+    const placed = placeAll({ positions: {}, individuals: {} }, positionsWorld);
+    const book = { ...placed, positions: { ...placed.positions, ...over.positions } };
+    const after = selectVisitorAdditions({
+      prose: read(prose).prose, entities: cast, allEntities: cast, location, locations: world, book, world: positionsWorld,
     });
-  const pulledNames = (additions: ReturnType<typeof selectVisitorAdditions>, cast: Entity[]) => [
-    ...additions.discovered.map((d) => d.entity.name),
-    ...Object.keys(additions.positions).map((id) => cast.find((e) => e.id === id)?.name),
-  ];
-  const visitors = (prose: string, discovered: Input['discovered'] = []) =>
-    pullWith(prose, [MAREN, SERANA], { discovered }).discovered;
+    return cast.filter((e) => book.positions[e.id] !== location.id && after.positions[e.id] === location.id).map((e) => e.name);
+  };
 
   it('walks a reachable neighbor over on a full-name hit', () => {
-    const added = visitors('Maren Vosk steps onto the boards.');
-    expect(added.map((d) => d.entity.name)).toEqual(['Maren Vosk']);
-    expect(added[0]).toMatchObject({ locationId: 'l1', sourceTurnId: 't1' });
+    expect(pullWith('Maren Vosk steps onto the boards.', [maren, SERANA])).toEqual(['Maren Vosk']);
   });
 
   it('refuses a partial name, so a loose match cannot teleport someone in', () => {
-    expect(visitors('Maren steps onto the boards.')).toEqual([]);
+    expect(pullWith('Maren steps onto the boards.', [maren])).toEqual([]);
   });
 
   it('counts a full Stranger Name as a full-name hit, and one word of it as none', () => {
-    const hooded = { ...MAREN, strangerName: 'a hooded woman' };
-    const pull = (prose: string) => pullWith(prose, [hooded]).discovered;
-    expect(pull('A hooded woman steps onto the boards.').map((d) => d.entity.name)).toEqual(['Maren Vosk']);
-    expect(pull('The woman steps onto the boards, hooded against the rain.')).toEqual([]);
-    expect(pull('The deckhand mutters, "a hooded woman steps onto the boards."')).toEqual([]);
+    const hooded = { ...maren, strangerName: 'a hooded woman' };
+    expect(pullWith('A hooded woman steps onto the boards.', [hooded])).toEqual(['Maren Vosk']);
+    expect(pullWith('The woman steps onto the boards, hooded against the rain.', [hooded])).toEqual([]);
+    expect(pullWith('The deckhand mutters, "a hooded woman steps onto the boards."', [hooded])).toEqual([]);
   });
 
-  it('never adds someone already anchored here', () => {
-    const already = [{ entity: MAREN, locationId: 'l1', sourceTurnId: 't0' }];
-    expect(visitors('Maren Vosk steps onto the boards.', already)).toEqual([]);
-  });
-
-  it('pulls a character named in prose from a direct child of the player\'s place', () => {
-    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l3'] };
-    const added = pullWith('Tamsin Reed climbs up from the cabin.', [tamsin]).discovered;
-    expect(added).toEqual([{ entity: tamsin, locationId: 'l1', sourceTurnId: 't1' }]);
+  it("pulls a character named in prose from a direct child of the player's place", () => {
+    expect(pullWith('Tamsin Reed climbs up from the cabin.', [individual(ent('e3', 'Tamsin Reed'), 'l3')])).toEqual(['Tamsin Reed']);
   });
 
   it('pulls from a child at a top-level place, which has no siblings', () => {
-    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l1'] };
-    const top = loc('l0', 'Sedge Landing');
-    expect(pulledNames(pullWith('Tamsin Reed walks in.', [tamsin], { location: top }), [tamsin])).toEqual(['Tamsin Reed']);
+    const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l1');
+    expect(pullWith('Tamsin Reed walks in.', [tamsin], { location: loc('l0', 'Sedge Landing') })).toEqual(['Tamsin Reed']);
   });
 
   it('never pulls a character two levels down', () => {
-    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l4'] };
-    expect(pulledNames(pullWith('Tamsin Reed climbs up from the bunk.', [tamsin]), [tamsin])).toEqual([]);
+    expect(pullWith('Tamsin Reed climbs up from the bunk.', [individual(ent('e3', 'Tamsin Reed'), 'l4')])).toEqual([]);
   });
 
   it('never pulls a name spoken only inside dialogue', () => {
-    const tamsin = { ...ent('e3', 'Tamsin Reed'), locations: ['l3'] };
-    expect(pulledNames(pullWith('The deckhand calls, "Tamsin Reed, up here!"', [tamsin]), [tamsin])).toEqual([]);
+    expect(pullWith('The deckhand calls, "Tamsin Reed, up here!"', [individual(ent('e3', 'Tamsin Reed'), 'l3')])).toEqual([]);
+  });
+
+  it('never pulls a Group, and anchors no copy of it', () => {
+    const herd: Entity = { ...ent('e3', 'Tamsin Reed'), kind: 'group', locations: ['l2', 'l3'] };
+    expect(pullWith('Tamsin Reed comes over to the jetty.', [herd])).toEqual([]);
   });
 
   describe.each([
     ['sibling', 'l2'],
     ['child', 'l3'],
-  ])('Movement, from a %s', (_kind, from) => {
+  ])('the routine, from a %s', (_kind, from) => {
     const named = 'Tamsin Reed comes over to the jetty.';
-    const pulls = (over: Partial<Entity>, positions: Input['positions'] = {}) => {
-      const tamsin: Entity = { ...ent('e3', 'Tamsin Reed'), locations: [from], ...over };
-      return pulledNames(pullWith(named, [tamsin], { positions }), [tamsin]).length > 0;
-    };
+    const tamsin = (over: Partial<Entity>, schedule: EntityStart['schedule'] = []) => individual(ent('e3', 'Tamsin Reed'), from, over, schedule);
+    const wander = (...places: string[]): EntityStart['schedule'] =>
+      [{ id: 'w', time: 'allDay', action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: 600 } }];
 
-    it('never pulls Stays Put', () => {
-      expect(pulls({ movement: 'stays' })).toBe(false);
+    it('never pulls a character whose Traversable is empty into a place outside its schedule', () => {
+      expect(pullWith(named, [tamsin({ traversable: [] })])).toEqual([]);
     });
 
-    it('pulls Moves Between only into one of its own locations', () => {
-      expect(pulls({ movement: 'between' }, { e3: from })).toBe(false);
-      expect(pulls({ movement: 'between', locations: [from, 'l1'], presence: 'random' }, { e3: from })).toBe(true);
+    it("pulls into a place its row uses or its Traversable lists", () => {
+      expect(pullWith(named, [tamsin({ traversable: [] }, wander(from, 'l1'))])).toEqual(['Tamsin Reed']);
+      expect(pullWith(named, [tamsin({ traversable: ['l1'] })])).toEqual(['Tamsin Reed']);
     });
 
-    it('always pulls Free and Can Follow the Player', () => {
-      expect(pulls({})).toBe(true);
-      expect(pulls({ movement: 'follow' })).toBe(true);
-      expect(pulls({ movement: 'follow' }, { e3: from })).toBe(true);
+    it('never pulls a character on a Strict row', () => {
+      const strict: EntityStart['schedule'] = [{ id: 'shift', time: 'allDay', strict: true, action: { kind: 'stay', place: from } }];
+      expect(pullWith(named, [tamsin({}, strict)])).toEqual([]);
     });
   });
 
   describe('where it stands in play', () => {
-    const tamsin: Entity = { ...ent('e3', 'Tamsin Reed'), locations: ['l3', 'l2'], movement: 'between', presence: 'random' };
-    const route: Entity = { ...tamsin, locations: ['l3', 'l1'] };
+    const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l3');
     const named = 'Tamsin Reed climbs up to the jetty.';
 
-    it('moves a positioned character to the player\'s place instead of anchoring a copy', () => {
-      const added = pullWith(named, [route], { positions: { e3: 'l3' } });
-      expect(added).toEqual({ discovered: [], positions: { e3: 'l1' } });
-    });
-
     it('reads its position over its listed locations', () => {
-      const elsewhere = pullWith(named, [{ ...tamsin, movement: undefined }], { positions: { e3: 'l0' } });
-      expect(pulledNames(elsewhere, [tamsin])).toEqual([]);
+      expect(pullWith(named, [tamsin], { positions: { e3: 'l0' } })).toEqual([]);
     });
 
-    it('never pulls someone whose position is already the player\'s place', () => {
-      expect(pulledNames(pullWith(named, [route], { positions: { e3: 'l1' } }), [route])).toEqual([]);
+    it("never pulls someone whose position is already the player's place", () => {
+      expect(pullWith(named, [tamsin], { positions: { e3: 'l1' } })).toEqual([]);
     });
   });
 });

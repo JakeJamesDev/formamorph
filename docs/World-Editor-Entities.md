@@ -83,7 +83,14 @@ The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only
 
 **Relationships** lists how the entity relates to others. Pick a target, **Persona** or another entity, then type what the target is to this entity. See [Relationships](#relationships).
 
-**Presence**, **Movement** and **Known In** are set from the location side: on a location's **Presence** tab, or on the full-screen Locations Canvas. See [World Editor: Locations](World-Editor-Locations#entities).
+**Placement** decides how the entity stands in the world:
+
+- **One Location**: one body in one place. **Starts At** is where it stands when a game begins. A new entity is in **One Location**. During the game it can move, follow the player and be left waiting.
+- **Every Location**: at every picked location at once, such as a crowd or a fixture. It never moves and never follows.
+
+An entity from an older world can have several start locations. One of them is picked in each new game, and **Starts At** shows the first.
+
+**Known In** is set on the full-screen Locations Canvas. See [World Editor: Locations](World-Editor-Locations#entities).
 
 Each entity in the list has **Duplicate** and **Delete** actions.
 

@@ -41,7 +41,7 @@ const WORLD: World = benchEditorWorld({
   ],
   entities: [
     {
-      id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'],
+      id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'], kind: 'group',
       openings: [{ id: 'o-lamp', text: 'Wick trims a lamp.', kind: 'narration' }],
     },
     {

@@ -410,8 +410,8 @@ export interface GameState {
   entityStats?: EntityStatValues;
   /** Where each positioned entity stands, by entity id. Absent ⇒ none. */
   entityPositions?: EntityPositions;
-  /** The ids of the entities following the player, in the order they joined. Absent ⇒ none. */
-  entityFollowers?: string[];
+  /** The position engine's state per Individual, runtime characters included. Absent ⇒ none. */
+  individualStates?: IndividualStates;
   /** The ids of the entities the player has met, in the order they met. Absent ⇒ none. */
   metEntities?: string[];
   /** The latest alias each stranger was seen under, by entity id. Absent ⇒ none. */

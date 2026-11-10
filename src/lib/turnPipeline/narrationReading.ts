@@ -1,10 +1,11 @@
-import type { Entity, EntityPositions, GameLocation, SceneEntity } from "@/types";
+import type { Entity, GameLocation, SceneEntity } from "@/types";
 import { entitiesInPlay, entityIdsAt } from "../entityPresence";
-import type { DiscoveredEntity } from "@/types/gameplay";
 import { findEntityNames, matchNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech } from "../entityMatch";
 import { extractCharacterCandidates, collectCandidateEvidence, type CandidateExclusions } from "../characterCandidates";
 import { buildSceneList, type DirectorCastMember } from "../stagedPlanning";
 import { selectReachableVisitors } from "../runtimeCharacters";
+import { pullIndividual, type PositionBook } from "../positionEngine";
+import { withPlayerAt, type PositionWorld } from "../positionPlay";
 import type { TurnPassSubject } from "./turnPlan";
 
 export interface NarrationReadingInput {
@@ -113,43 +114,34 @@ export interface VisitorInput {
   allEntities: Entity[];
   location: GameLocation;
   locations: GameLocation[];
-  /** Where each tracked entity stands after the turn's moves, runtime characters included. */
-  positions: Readonly<EntityPositions>;
-  /** Already-anchored discoveries, so a visitor is never added twice. */
-  discovered: DiscoveredEntity[];
-  turnId: string;
-}
-
-/** The scene pull's writes: anchors for characters without a position, and new positions for those with one. */
-export interface VisitorAdditions {
-  discovered: DiscoveredEntity[];
-  positions: EntityPositions;
+  /** Where each tracked character stands after the turn's moves, and its engine state. */
+  book: PositionBook;
+  /** The routines and scene the pull reads. */
+  world: PositionWorld;
 }
 
 /**
- * Bring-them-over: an authored character standing in a sibling or a direct child that the narration named
- * joins the current location as a visitor, when its Movement allows. One with a position moves there; one
- * without is anchored via the discovered-entity path. Both persist and roll back with the turn.
+ * Bring-them-over: an Individual standing in a sibling or a direct child that the narration named joins the
+ * current location, when the position engine allows the pull. A Group is never pulled. Returns the book with
+ * each pull applied; the same book when nobody comes.
  *
  * Fed by a stricter parse than `participants`: this path physically relocates an authored NPC, so it takes
  * full-name hits only — a loose single-word match must not teleport someone into the scene. Prose-only for the
  * same reason presence is: `partial: false` bounds how loosely a name may match, not whether it was merely
- * spoken about, and a full name inside dialogue still hits. Once someone is anchored here they count as
- * present, so a dialogue-only mention would otherwise walk them into the scene permanently and past the
- * now-line's location filter.
+ * spoken about, and a full name inside dialogue still hits.
  */
-export function selectVisitorAdditions(input: VisitorInput): VisitorAdditions {
-  const { prose, entities, allEntities, location, locations, positions, discovered, turnId } = input;
+export function selectVisitorAdditions(input: VisitorInput): PositionBook {
+  const { prose, entities, allEntities, location, locations, book, world } = input;
   const visitorParticipants = findEntityNames(prose, allEntities, { partial: false });
-  const presentIds = entityIdsAt(location.id, entitiesInPlay(allEntities, positions));
-  const visitors = selectReachableVisitors(visitorParticipants, location, locations, entities, presentIds, positions)
-    .filter((v) => !discovered.some((d) => d.locationId === location.id && sameCharacterName(d.entity.name, v.name)));
-  const additions: VisitorAdditions = { discovered: [], positions: {} };
+  const presentIds = entityIdsAt(location.id, entitiesInPlay(allEntities, book.positions));
+  const visitors = selectReachableVisitors(visitorParticipants, location, locations, entities, presentIds, book.positions);
+  const { scene } = withPlayerAt(world, location.id);
+  let next = book;
   for (const entity of visitors) {
-    if (positions[entity.id] === undefined) additions.discovered.push({ entity, locationId: location.id, sourceTurnId: turnId });
-    else additions.positions[entity.id] = location.id;
+    const routine = world.routines.get(entity.id);
+    if (routine) next = pullIndividual(next, routine, location.id, scene);
   }
-  return additions;
+  return next;
 }
 
 /**
