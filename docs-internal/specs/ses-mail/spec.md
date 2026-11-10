@@ -45,6 +45,7 @@ SES reports what happens to each mail, and the server records it:
 | Q17 | The bounce notice points to the website feedback form. |
 | Q18 | The password-reset page stays silent about bounces. |
 | Q19 | A rate alert needs at least 200 mails in the 7-day window. |
+| Q20 | The privacy policy is published once, at the ticket 01 deploy, with both the processor change and the delivery-records wording. |
 
 ## User Stories
 
@@ -189,6 +190,13 @@ SES reports what happens to each mail, and the server records it:
 
 - The processor section names Amazon SES in place of the old provider.
 - It says the server records whether each account mail was delivered, delayed, bounced or reported as spam, keeps that for 90 days, and stores no address with it.
+- Both changes land in ticket 01 and are published once at its deploy (Q20), because a publish makes every user accept the policy again. The policy describes delivery records a few days before the server keeps them.
+
+**Ticket 01 rulings**
+
+- Ticket 01 sends with the configuration set only. Tags and the new `sendMail` arguments belong to ticket 02.
+- AWS keys set but no configuration set name: mail is off, and the start-up log names the missing key.
+- Region unset: the server uses `us-east-2`.
 
 **Not affected**
 

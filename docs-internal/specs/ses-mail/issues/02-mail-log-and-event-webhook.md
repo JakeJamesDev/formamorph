@@ -11,7 +11,7 @@ Model rationale: a public route that changes account-related state, a status mac
 
 ## What to build
 
-The server writes one mail-log row each time SES accepts a mail: user id (empty for staff alerts), kind, SES message id, status and times. The row's own id rides on the mail as a tag. SES events arrive at a new webhook through EventBridge with a shared secret, and each event moves its row's status. Rows expire after 90 days and go with a deleted account. The privacy policy says delivery results are recorded.
+The server writes one mail-log row each time SES accepts a mail: user id (empty for staff alerts), kind, SES message id, status and times. The row's own id rides on the mail as a tag. SES events arrive at a new webhook through EventBridge with a shared secret, and each event moves its row's status. Rows expire after 90 days and go with a deleted account.
 
 This ticket records status only. Marking the address is ticket 03.
 
@@ -30,7 +30,7 @@ Before the handler is final, check the two open facts in the spec against a live
 - [ ] An event with an unknown tag, and an event of any other type, get a success answer and change nothing.
 - [ ] After every webhook test, no table and no log line holds the recipient address from the payload.
 - [ ] Rows older than 90 days go in the retention sweep. Deleting an account removes its rows.
-- [ ] The privacy policy says the server records whether each account mail was delivered, delayed, bounced or reported as spam, for 90 days, with no address.
+- [ ] What the server now stores matches the delivery-records wording that ticket 01 put in the privacy policy (Q20). This ticket does not edit the policy.
 - [ ] The webhook secret key and the EventBridge setup steps are documented with the server's other keys.
 - [ ] The spec's "Not verified yet" list is replaced by what the live event showed.
 - [ ] Removing the secret check turns a webhook test red.
