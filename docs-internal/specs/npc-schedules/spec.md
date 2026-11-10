@@ -21,13 +21,17 @@ Authors can't say the simple things: "the farrier is at the smithy by day and th
 
 A character is either a **Group** or an **Individual**.
 
-- A **Group** is today's Everywhere Listed entity: a herd, a swarm, a fixture. It is at all its places at once, never moves, is never pulled and never follows.
-- An **Individual** is one body in one place. It has one or more weighted **Starts**. One Start is rolled per playthrough. Each Start is a place plus a **schedule**: rows of a time range and an action.
+Both kinds have one or more **Starts**. Each Start is a place plus a **schedule**: rows of a time range and an action. The kind decides how the Starts play (Q130–Q141).
+
+- A **Group** is a kind of creature or a crowd: a herd, a swarm, an enemy met in several places. Every Start runs at the same time, so the Group has one presence per Start, each on its own schedule. It is still one entity. It is never pulled and never follows.
+- An **Individual** is one body in one place. Its Starts are weighted, and one Start is rolled per playthrough.
+
+The actions:
   - **Stay** at one place.
   - **Wander** among weighted places, idling between moves.
   - **Patrol** a list of stops in order, idling at each, then looping.
 
-  A Start with an empty schedule stays at its place. Duplicate Starts at the same place with different schedules are fine.
+  A Start with an empty schedule stays at its place. Duplicate Starts at the same place with different schedules are fine. A Start's place can be **Player's Starting Location**, and such a Start of an Individual can begin Following (Q147, Q148).
 
 An Individual has a **Traversable** list: the places it may go beyond its schedule, or Anywhere. Pulls and follows reach only the places the current schedule row uses plus the Traversable places. A row can be **Strict**: during it the character can't be called over and won't start following.
 
@@ -35,7 +39,7 @@ The player can take a character along. A follower can be told to **wait** somewh
 
 Every link between two locations has a **distance**: **Nearby** or **Far**. Narration can call a character over only across one Nearby link, and the narrator hears about characters only in Nearby places. Far still allows travel. Implicit links are Nearby; an author makes one Far by clicking its arrow on the canvas, which turns it into a Connection.
 
-Shipped worlds migrate so they play as they do today.
+Shipped worlds migrate to the nearest form. One thing changes in play: an old character with several locations and no presence setting was present at all of them, and a person among those now wanders between them (Q143, Q152).
 
 ## Rulings
 
@@ -71,7 +75,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q28** *Amended by Q64.* Scripts: `.follow()` works on any Individual and is ignored on a Group. `.unfollow()` is Part ways. The entity entry exposes a read-only waiting state.
 - **Q29** *Superseded by Q46.* Group followers.
 - **Q30** Inventory owner aliases move to the Stranger Fields effort. Moved: Stranger Fields Q17 and ticket 04, Inventory Owners by Alias (e173b21c2).
-- **Q31** Group stays beside Individual. Group = a place list, present at all of them, never moves. Individual = Starts.
+- **Q31** *Amended by Q130–Q141.* Group stays beside Individual. Group = a place list, present at all of them, never moves. Individual = Starts.
 - **Q32** No "moves or not" toggle. A Start with an empty schedule stays at its place.
 - **Q33** The weighted Start roll happens once per playthrough.
 - **Q34** Traversable belongs to the entity, one list for all its Starts.
@@ -177,6 +181,29 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q127** With no row selected, a place takes its action's color when every row there shares one action, and the neutral ring otherwise. Each routine place carries a thin Dawn-to-Night bar, colored where the entity can be there, with the times in its tooltip. Free time shows muted on the Start's location. With a row selected, the bar shows that row only. (After the tickets.)
 - **Q128** The full-screen canvas has a key at the bottom center for the Routine and Known In views. It lists only what the view draws now, folds to its title, and remembers that on the device. The status line (Q77) still says what a click does. (After the tickets.)
 - **Q129** A press in the canvas's right panel clears the selected row, as on the Routine tab. A press on the map still keeps it (Q80). (After the tickets.)
+- **Q130** Groups and Individuals share one model. A Group has Starts, and every Start runs at once: one presence per Start, each on its own schedule. A Group is still one entity with one set of stats, inventory and memory. (Group grill; amends Q6 and Q31.)
+- **Q131** Two presences of one Group in the same location show the Group once, in context, panels and the canvas.
+- **Q132** Q46 stays. A Group moves only by its schedules: no pull, no follow, no location request. Script `.follow()` and `.move()` still do nothing on a Group.
+- **Q133** A Group made from a released entity's location list gets one Start per location with no rows, so each presence stays in place (see Q146).
+- **Q134** The Routine tab hides a Start's chance chip and weight for a Group. The weight stays in the data. (Amends Q111.)
+- **Q135** A kind switch keeps every Start and row. It only changes "roll one" to "run all".
+- **Q136** Traversable is hidden for a Group and stays in the data. The canvas shows no Traversable marks for a Group.
+- **Q137** Strict is hidden on a Group's rows and stays in the data.
+- **Q138** For a Group, the canvas shows the routine of the Start on show. The other Starts' places take the "Is Here" mark.
+- **Q139** The location editor's Entities picker adds a Start with no rows at this place to a Group. Its remove deletes every Start of that Group that begins here, with its rows. The last Start can't be removed (Q111). (Amends Q97.)
+- **Q140** No limit on the number of Starts.
+- **Q141** A Group can have two Starts at the same place, as an Individual can.
+- **Q142** These rulings land in this spec, with new tickets after it.
+- **Q143** A released entity with several locations, no presence setting, and the look of one person (Q146, Q151) becomes an Individual: one Start at the first listed location, an All-day Wander over the list with an idle of one daypart, and Traversable set to the same list. Before the Group split, authors listed several locations to say "can be met here", never "is in all of them".
+- **Q144** A released entity listed at every location of the world becomes an Individual with one Start at Player's Starting Location, Traversable = Anywhere, and Begins Following on. These are companions that travel with the player. This check runs before Q146.
+- **Q145** The migration is silent. The changelog and the docs explain the rule, and they say plainly that a migrated person is now present by chance (Q152).
+- **Q146** A released entity with several locations and neither pronouns nor the persona flag becomes a Group with one Start per location (Q133), in a world that uses those fields (Q151). These are random-encounter enemies, such as a Mimic listed in two dungeons. With either field, Q143 applies.
+- **Q147** Player's Starting Location is a choice for any Start's place. It resolves at New Game to the location where the player begins.
+- **Q148** Begins Following is a setting on a Start. It shows only when the Start's place is Player's Starting Location, and only for an Individual. With it on, the follow state starts as Following in a new game, ignoring Strict, as a script `.follow()` does (Q64).
+- **Q149** A Start at Player's Starting Location can have rows. Its pickers offer every location, because the connected filter (Q44) has no fixed place to start from. Play skips a place the entity can't reach from the real start (Q54). The canvas draws no "Starts Here" flag for it.
+- **Q150** A Group's Start can use Player's Starting Location too. It never follows.
+- **Q151** The Q146 split applies only in a world where at least one entity has pronouns or the persona flag. In a world with none, every multi-location entity follows Q143, because the world is older than both fields.
+- **Q152** Q61 stays for a Wander row: narration pulls an Individual only from a Nearby place, not from any place its row uses. A migrated person is present by chance until the author writes a routine.
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
@@ -254,21 +281,37 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 60. As the location request, I want a closed list of replies with wait durations, so that a small model answers reliably.
 61. As the location request, I want a JSON reply with a text fallback, so that endpoints without schema support still work.
 
+### Groups and old worlds
+
+62. As an author, I want a Group to have a Start in each place it begins, so that an enemy type can be met in several places at once.
+63. As an author, I want each Start of a Group to have its own routine, so that the wolves leave the forest for the road at night while the ones in the hills stay.
+64. As an author, I want to switch a character between Group and Individual without losing its Starts and rows, so that a wrong kind costs one click.
+65. As an author, I want the Routine tab to hide chance, Strict and Traversable for a Group, so that I only see settings that do something.
+66. As an author, I want the canvas to mark where a Group's other Starts are, so that I see the whole Group while I edit one routine.
+67. As an author, I want to add a Group to a location from the location editor, so that placing an enemy type stays quick.
+68. As an author, I want to pick Player's Starting Location as a Start's place, so that a companion begins beside the player in a world with several starting locations.
+69. As an author, I want a companion to begin Following, so that a party member travels with the player from the first turn.
+70. As an author of an old world, I want a named person with a home and a workplace to become one Individual, so that nobody is labeled a group of people.
+71. As an author of an old world, I want an enemy listed in several places to stay in all of them, so that random encounters play as before.
+72. As an author of an old world, I want a companion I listed at every location to keep traveling with the player, so that my party still works.
+73. As a player, I want a Group that is here twice to show once, so that the scene list stays readable.
+74. As a player of an old world, I want to read what changed for characters with several locations, so that I understand why someone is not always where I look.
+
 ## Implementation Decisions
 
 ### World shape: entities
 
 - An entity gains a Group / Individual kind. It replaces `presence`. The persona, the played entity and an entity with no locations have no kind; they stay outside positions as today.
 - `movement` is removed.
-- A Group keeps `locations` as its place list and nothing else.
-- An Individual gains:
-  - **Starts:** an ordered list. Each has an id, a place, a weight (positive integer, default 1) and a schedule.
+- Both kinds hold Starts, rows and Traversable in one shape (Q130). A Group ignores weight, Strict and Traversable, and the editor hides them (Q134, Q136, Q137); the data keeps them for a kind switch (Q135).
+- An entity with a kind gains:
+  - **Starts:** an ordered list. Each has an id, a place, a weight (positive integer, default 1) and a schedule. The place is a location id or the Player's Starting Location value (Q147). A Start at Player's Starting Location can carry Begins Following (Q148).
   - **Schedule rows:** an ordered list per Start. Each row has an id, a time (All day, or start and end in minutes from midnight; a range may wrap past midnight), a Strict flag, and one action:
     - Stay: one place.
     - Wander: weighted places (place plus weight) and one idle duration.
     - Patrol: ordered stops, each a place plus an idle duration.
   - **Traversable:** Anywhere, or a list of exact place ids. An empty list means schedule places only.
-- An Individual's `locations` stays the entity's membership list (ADR 0003), so its readers keep working: roster indexes, the location-first roster editor, canvas picking, the persona start and Known In "Nearby". For an Individual it is derived: every Start place and every row place. The editor and the load normalizer rewrite it; nothing else writes it.
+- An entity's `locations` stays its membership list (ADR 0003), so its readers keep working: roster indexes, the location-first roster editor, canvas picking, the persona start and Known In "Nearby". For both kinds it is derived: every Start place and every row place. Player's Starting Location adds no place to it. The editor and the load normalizer rewrite it; nothing else writes it.
 - Deleting a location drops it from Starts, rows and Traversable. A Start whose place is deleted is dropped. A row left with no places is dropped.
 - Idle and wait durations are stored in minutes. Daypart edges are fractions of a 24-hour day; a daypart pick stores those edges rounded to the minute, and the UI shows a row as dayparts when both stored ends are within one minute of daypart edges.
 
@@ -291,7 +334,10 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 
 | Today | Becomes |
 |---|---|
-| No presence, more than one location | Group, same places |
+| No presence, listed at every location | Individual, one Start at Player's Starting Location, Traversable = Anywhere, Begins Following (Q144) |
+| No presence, several locations, in a world where no entity has pronouns or the persona flag | Individual, one Start at the first listed location, an all-day Wander over the list, idle one daypart, Traversable = the list (Q143, Q151) |
+| No presence, several locations, with pronouns or the persona flag | The same wandering Individual (Q143) |
+| No presence, several locations, with neither, in a world that uses them | Group, one Start per location, no rows (Q146, Q133) |
 | No presence, one location | Individual, one Start at that place |
 | `presence: random` | Individual, one weight-1 Start per listed place (Q57) |
 | Free, Stays Put | Empty schedules |
@@ -299,6 +345,8 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 | Can Follow | Traversable = Anywhere (Q55) |
 | Free, Stays Put, Moves Between | Traversable = empty list (Q55) |
 | Any Connection | Nearby (no field) |
+
+The rows are checked top to bottom, and the Traversable rows from `movement` do not apply to the first four. The rule was checked against four released community worlds: Realms of Arcadia (19 companions wander, the Mimic is a Group, 2 party members follow), Beyond the Mists (15 people wander, 5 enemy types are Groups, 1 companion follows), Praetoria Academy and Monster Girl Brothel Remake (no pronouns in the world, so all wander). A world file that already carries the unreleased Group form does not migrate again.
 
 The bundled worlds and the dev fixtures migrate through the same path.
 
@@ -317,6 +365,8 @@ One pure module answers where every Individual is now, from the world, the saved
 - **Off-row correction:** a character outside its row's places goes to where the action puts it now, unless a hold applies. A pull holds a Stay-row character until the player leaves, and a Wander or Patrol character until its idle runs out (Q40). A script move holds the same way (Q53).
 - **Follow states:** Not following → Following → Waiting (place, until-time) → Not following on timeout or Part ways. Following and Waiting pause the schedule. Starting a follow needs a non-Strict row (Q36); a running follow ignores Strict.
 - **Blocked follower:** when the player moves to a place not allowed for a follower, the follower stays at its current place and becomes Waiting until the end of this daypart (Q42).
+- **Groups:** every Start of a Group runs as its own presence, with its own row resolution, Wander picks and Patrol stop. No follow state, hold or pull applies. A Group is at a place when any presence is there (Q131).
+- **Player's Starting Location:** resolved once at game start to the place where the player begins, for both kinds. A Start with Begins Following starts in the Following state (Q148).
 - **Runtime characters:** one Start at their discovery place, empty schedule, Traversable = Anywhere (Q56).
 - **Scripts:** `.follow()` makes any Individual follow, ignoring Strict and Traversable (Q64); on a Group it does nothing. `.unfollow()` is Part ways. `.move()` sets a hold and ends a wait. The script entity entry exposes a read-only waiting state.
 
@@ -353,6 +403,8 @@ The Entities chip gains a Movement include, on by default in every prompt that u
 
 The save gains, per Individual: the chosen Start, follow state (with whether a script started it, Q85), wait until-time, hold and its end, the current idle's end, the patrol stop index, the current row id and the time the engine last ran (Q86). The waiting place is the saved position.
 
+A Group saves one record per Start id: the position, the current idle's end, the patrol stop index and the current row id. A Start added to the world after the save begins at its place. A record whose Start is gone is dropped.
+
 ## Testing Decisions
 
 A good test drives a public seam with realistic input and asserts the outcome a player or author sees: where a character stands, who is in the scene, which ops land. Never assert on helpers or call order. Each guard is proven by reinstating the bug.
@@ -360,7 +412,8 @@ A good test drives a public seam with realistic input and asserts the outcome a 
 - **Position engine** (new seam): fixture worlds and clocks. Covers the weighted Start roll with a seeded source, row precedence, gaps at the Start, Wander picks and idle, Patrol order, loop and resume, no moves at the player's location, off-row correction, pull and script holds, the wait cap, timeout, Part ways, blocked followers, Strict on new and running follows, skipped unreachable places, and runtime characters. Prior art: the follower state tests beside the follower module.
 - **Reach** (part of the position engine seam, or the location graph's own tests): connected through Far links, Nearby one hop only, implicit pairs Nearby, a Far Connection out of reach. Prior art: the location graph and neighbor tests.
 - **Turn pipeline** (existing seam, ADR 0001): recorded AI replies through plan and run, then the entity-move commit. Covers the pull rule (the playtest's inn case; the window case; a mention across a Far link; a Strict character next door), the reworked location request with both reply forms, and pulls refused into places that aren't allowed. Start and load placement are tested through the load-time position reconciler. Prior art: the turn pipeline parity and turn-read tests, and the multi-hop move tests.
-- **Migration** (existing seam): `migrateWorld` maps each row of the migration table and is idempotent. Prior art: the existing migration tests.
+- **Migration** (existing seam): `migrateWorld` maps each row of the migration table and is idempotent. Fixtures copy the shapes of the four checked worlds with neutral names: a person with a home and a workplace, an enemy in two places, a companion at every location, and a world with no pronouns. One more case covers a small world where a person is listed at all of its few locations. Prior art: the existing migration tests.
+- **Groups** (position engine seam): two Starts move on their own rows, two presences in one place count once, a Group is never pulled and never follows, a kind switch keeps the Starts, a Start at Player's Starting Location resolves at game start, and Begins Following starts the follow.
 - **UI:** the Start and schedule editor, the swap, the weight chips and the distance control get component tests plus `verify-ui` on a dev route.
 - **Prompts:** probe numbers on the cloud default, with in-batch controls, for the movement tag (a request to take a Strict character along → they stay; a Strict neighbor is not walked over; ordinary turns → no mention of staying) and for the location request (wait durations from narration, batching bar).
 
@@ -379,7 +432,7 @@ A good test drives a public seam with realistic input and asserts the outcome a 
 
 ## Further Notes
 
-- **Export shape:** the world `.json` loses `movement`, `presence` and a location's `nearbyUsesConnections` (Q82), and gains kind, Starts, schedules, Traversable and Connection distance, through a migration. The save `.json` gains the position engine's state. `movement` and `presence` shipped in v3.4.0.
+- **Export shape:** the world `.json` loses `movement`, `presence` and a location's `nearbyUsesConnections` (Q82), and gains kind, Starts, schedules, Traversable and Connection distance, through a migration. The save `.json` gains the position engine's state. `movement` and `presence` shipped in v3.4.0. The Group rulings add, still unreleased: Starts on a Group (its stored place list becomes derived), the Player's Starting Location value for a Start's place, Begins Following on a Start, and one saved position record per Start of a Group.
 - This is the range feature ADR 0003 anticipated. `locations` stays the membership list and is derived for Individuals.
 - Labels in this spec (Group, Individual, Start, Stay, Wander, Patrol, Strict, Traversable, Nearby, Far, Part ways, All day) are working names. Final copy follows the Writing Guide in the tickets.
 - **New visual patterns need approval:** the weight chips outside the placeholder editor if they need a new variant. The Far link's look was approved on 2026-11-09 with ticket 01: a dotted line, with "Far ·" ahead of the hint.
