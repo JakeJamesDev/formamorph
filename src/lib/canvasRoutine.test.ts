@@ -130,15 +130,48 @@ describe('reach', () => {
   });
 });
 
-it('lights a Group’s places and draws no lines', () => {
-  const herd = {
-    id: 'herd', name: 'Herd', kind: 'group', locations: ['inn', 'market'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'market', weight: 1, schedule: [] }],
-  } as Entity;
-  const v = view(herd);
-  expect(markOf(v, 'inn')).toEqual({ kind: 'routine' });
-  expect(markOf(v, 'market')).toEqual({ kind: 'routine' });
-  expect(markOf(v, 'smithy')?.kind).toBe('faded');
-  expect(v.lines).toEqual([]);
+describe('a Group with two Starts', () => {
+  // The farrier's routine on its first Start, a second Start on the ridge, and a Can Also Go list a Group ignores.
+  const herd = (secondPlace = 'ridge'): Entity => ({
+    ...farrier(['island']), id: 'herd', kind: 'group',
+    starts: [{ id: 's1', place: 'smithy', weight: 1, schedule: day }, { id: 's2', place: secondPlace, weight: 1, schedule: [] }],
+  });
+  const individual = view(farrier());
+
+  it('draws the Start on show as an Individual’s, spans, tones, flag and Patrol arrows alike', () => {
+    const v = view(herd());
+    for (const id of ['smithy', 'inn', 'market', 'square', 'wall', 'gate']) expect(markOf(v, id)).toEqual(markOf(individual, id));
+    expect(pairs(v.lines)).toEqual(pairs(individual.lines));
+  });
+
+  it('marks where the other Start begins as Is Here, and nothing of its routine', () => {
+    expect(markOf(view(herd()), 'ridge')).toEqual({ kind: 'here' });
+    const second = view(herd(), null, 's2');
+    expect(markOf(second, 'ridge')).toMatchObject({ kind: 'routine', begin: true });
+    expect(markOf(second, 'smithy')).toEqual({ kind: 'here' });
+    expect(markOf(second, 'inn')?.kind).toBe('plain');
+  });
+
+  it('falls back to the first Start once the Start on show is gone', () => {
+    expect(view(herd(), null, 'removed')).toEqual(view(herd()));
+  });
+
+  it('keeps the routine look where the other Start begins at a place the Start on show uses', () => {
+    expect(markOf(view(herd('gate')), 'gate')).toEqual(markOf(individual, 'gate'));
+  });
+
+  it('draws no Can Also Go mark and reaches what an Anywhere Individual reaches', () => {
+    const v = view(herd());
+    expect([...v.marks.values()].some((m) => m.kind === 'reach')).toBe(false);
+    expect(markOf(v, 'village')?.kind).toBe('plain');
+    expect(markOf(v, 'island')?.kind).toBe('faded');
+  });
+
+  it('keeps the selected row’s detail', () => {
+    const v = view(herd(), 'patrol');
+    expect(markOf(v, 'wall')).toMatchObject({ tone: 'patrol', badge: '1, 3' });
+    expect(markOf(v, 'ridge')).toEqual({ kind: 'here' });
+  });
 });
 
 it('draws movement lines straight and at full strength', () => {

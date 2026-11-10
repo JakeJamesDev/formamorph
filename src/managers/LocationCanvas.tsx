@@ -20,7 +20,6 @@ import { routineView, type RoutineMark, type RoutineSpan } from '@/lib/canvasRou
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
 import { pickKeyEntries, routineKeyEntries } from '@/lib/canvasKey';
 import { CanvasKey } from '@/managers/CanvasKey';
-import { isGroup } from '@/lib/entityKind';
 import type { ActionKind } from '@/lib/routineEditing';
 import {
   routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, type RoutineMapEdit,
@@ -163,14 +162,16 @@ const ROUTINE_RING: Record<ActionKind, string> = {
   wander: 'bg-routine-wander/20 ring-2 ring-routine-wander',
   patrol: 'bg-routine-patrol/20 ring-2 ring-routine-patrol',
 };
+const NEUTRAL_RING = 'ring-2 ring-muted-foreground';
 const ROUTINE_BADGE: Record<ActionKind, string> = {
   stay: 'bg-routine-stay/25 ring-routine-stay', wander: 'bg-routine-wander/25 ring-routine-wander', patrol: 'bg-routine-patrol/25 ring-routine-patrol',
 };
 
-/** How a box draws in the Routine view: its action's color or the neutral ring, a dashed outline where it can be
- *  led, and a fade where it can never go. */
+/** How a box draws in the Routine view: its action's color or the neutral ring, the same ring where another Start
+ *  of a Group begins, a dashed outline where it can be led, and a fade where it can never go. */
 const routineClass = (mark: RoutineMark | undefined) => cn(
-  mark?.kind === 'routine' && (mark.tone ? ROUTINE_RING[mark.tone] : 'ring-2 ring-muted-foreground'),
+  mark?.kind === 'routine' && (mark.tone ? ROUTINE_RING[mark.tone] : NEUTRAL_RING),
+  mark?.kind === 'here' && NEUTRAL_RING,
   mark?.kind === 'reach' && 'outline-dashed outline-2 outline-offset-2 outline-muted-foreground',
   mark?.kind === 'faded' && 'opacity-30',
 );
@@ -1409,8 +1410,7 @@ const CanvasInner = ({
   const togglePicked = (event: React.MouseEvent, locationId: string) => {
     if (!pickedEntity || !updateEntity) return;
     if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) return;
-    // A Group's places toggle below, as in a pick.
-    if (routineEntity && !isGroup(routineEntity)) {
+    if (routineEntity) {
       const edit = routineMapClick(routineEntity, routineAt, locationId, placeGraph);
       if (edit) applyRoutineEdit(edit);
       return;
@@ -1714,7 +1714,7 @@ const CanvasInner = ({
           />
         )}
         {fullscreen && (routine || marks) && (
-          <CanvasKey entries={routine ? routineKeyEntries(routine, routineEntity?.kind === 'group') : pickKeyEntries(marks ?? new Map())} />
+          <CanvasKey entries={routine ? routineKeyEntries(routine) : pickKeyEntries(marks ?? new Map())} />
         )}
         {/* One column on the right: an open Connection above the entity card, so neither covers the other.
             Below the toolbar and the search box on a narrow window. */}

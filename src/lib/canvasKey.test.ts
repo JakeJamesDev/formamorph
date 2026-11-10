@@ -19,7 +19,7 @@ const farrier = (schedule: ScheduleRow[], traversable: Traversable = ['island'])
   starts: [{ id: 's1', place: 'smithy', weight: 1, schedule }],
 } as Entity);
 const key = (entity: Entity, rowId: string | null = null) =>
-  routineKeyEntries(routineView(entity, { startId: null, rowId }, graph), entity.kind === 'group');
+  routineKeyEntries(routineView(entity, { startId: null, rowId }, graph));
 
 describe('the key of the Routine view', () => {
   it('lists each action on show, the free time, the day bar, the Start flag and the listed place, in a set order', () => {
@@ -41,9 +41,14 @@ describe('the key of the Routine view', () => {
     expect(key(farrier(day), 'patrol')).toEqual(['patrol', 'dayBar', 'start', 'stop', 'reach']);
   });
 
-  it('says only where a Group is', () => {
-    const herd = { id: 'herd', name: 'Herd', kind: 'group', locations: ['inn'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }] } as Entity;
-    expect(key(herd)).toEqual(['here']);
+  it('lists Is Here for a Group’s other Start and never Can Also Go', () => {
+    const herd = (places: string[]): Entity => ({
+      ...farrier(day), kind: 'group',
+      starts: places.map((place, i) => ({ id: `s${i}`, place, weight: 1, schedule: i === 0 ? day : [] })),
+    });
+    expect(key(herd(['smithy', 'island']))).toEqual(['stay', 'wander', 'patrol', 'free', 'dayBar', 'start', 'here']);
+    expect(key(herd(['smithy']))).not.toContain('here');
+    expect(key(herd(['smithy', 'gate']))).not.toContain('here');
   });
 });
 

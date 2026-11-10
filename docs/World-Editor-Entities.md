@@ -139,6 +139,18 @@ Two timed rows can't share an hour. Times another row uses are unavailable in th
 - **Anywhere**: any location.
 - **Only Listed Locations**: its routine locations and the ones you list. A listed location doesn't include the locations inside it.
 
+### On the Locations Canvas
+
+On the full-screen Locations Canvas, choose the entity and pick **Routine**. The map shows the routine of the start whose tab is open. Each location takes its action's color, a bar shows when the entity is there, and a flag marks **Starts Here**. A key at the bottom lists what the map shows.
+
+- 👆 Select a row to edit its locations: click a location, or drag from one. The line over the map says what a click does.
+- 📍 Under **Only Listed Locations** with no row selected, a click adds the location to **Can Also Go** or removes it.
+
+An entity in **Every Location** shows the same view for the start whose tab is open, with no **Can Also Go**.
+
+- ⭕ A ring marks each location where another start begins. The key calls it **Is Here**.
+- ➕ With no row selected, click a location to add a start there with no rows. Click a location where starts begin to remove them. The last start can't be removed.
+
 ## What reaches the AI
 <!-- keywords: npc secret, hidden motive, character ignored, npc never appears, spoilers, does ai see image, private notes -->
 

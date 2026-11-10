@@ -1,3 +1,4 @@
+import { isGroup } from '@/lib/entityKind';
 import { connectedPlaces, placesOf, type PlaceGraph } from '@/lib/positionEngine';
 import type { ActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -10,9 +11,9 @@ import type { Entity, EntityStart, ScheduleRange, ScheduleRow } from '@/types';
  * for the Start on show and its selected row.
  */
 
-/** `routine`: a place the routine uses. `reach`: a listed place it can be led to. `plain`: reachable under
- *  Anywhere. `faded`: it can never get there. */
-export type RoutinePlaceKind = 'routine' | 'reach' | 'plain' | 'faded';
+/** `routine`: a place the routine uses. `here`: where another Start of a Group begins. `reach`: a listed place it
+ *  can be led to. `plain`: reachable under Anywhere. `faded`: it can never get there. */
+export type RoutinePlaceKind = 'routine' | 'here' | 'reach' | 'plain' | 'faded';
 
 /** A stretch of the day the entity can be at a place. `free`: time no row covers, at the Start's location. */
 export interface RoutineSpan {
@@ -98,22 +99,20 @@ function sharedTone(spans: readonly RoutineSpan[]): ActionKind | undefined {
   return tones.size === 1 && only !== 'free' ? only : undefined;
 }
 
-/** The Routine view of `entity` on a map of `graph`. A Group lights its places and draws no lines. */
+/** The Routine view of `entity` on a map of `graph`. A Group has no Traversable, and its other Starts' places
+ *  show as `here`. */
 export function routineView(entity: Entity, selection: RoutineSelection, graph: PlaceGraph): RoutineView {
   const marks = new Map<string, RoutineMark>(graph.locations.map((l) => [l.id, { kind: 'faded' }]));
   const lines: RoutineLine[] = [];
   const mark = (id: string, next: RoutineMark) => { if (marks.has(id)) marks.set(id, next); };
 
-  if (entity.kind === 'group') {
-    for (const id of entity.locations ?? []) mark(id, { kind: 'routine' });
-    return { marks, lines };
-  }
+  const group = isGroup(entity);
   const starts = entity.starts ?? [];
   const start = starts.find((s) => s.id === selection.startId) ?? starts[0];
   if (!start) return { marks, lines };
   const selected = start.schedule.find((r) => r.id === selection.rowId) ?? null;
 
-  const traversable = entity.traversable ?? 'anywhere';
+  const traversable = group ? 'anywhere' : entity.traversable ?? 'anywhere';
   if (traversable === 'anywhere') {
     for (const id of connectedPlaces(start.place, graph)) mark(id, { kind: 'plain' });
   } else {
@@ -143,6 +142,11 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   }
   const at = marks.get(start.place);
   if (at) marks.set(start.place, { ...at, kind: 'routine', begin: true });
+  if (group) {
+    for (const other of starts) {
+      if (other !== start && marks.get(other.place)?.kind !== 'routine') mark(other.place, { kind: 'here' });
+    }
+  }
 
   const drawn = new Set<string>();
   const line = (source: string, target: string, row: ScheduleRow, arrow: boolean) => {

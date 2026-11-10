@@ -10,13 +10,13 @@ export type KeyEntryId = typeof ORDER[number];
 
 const inOrder = (ids: ReadonlySet<KeyEntryId>) => ORDER.filter((id) => ids.has(id));
 
-/** What the Routine view draws right now. A Group has places and nothing else. */
-export function routineKeyEntries(view: RoutineView, group: boolean): KeyEntryId[] {
+/** What the Routine view draws right now. */
+export function routineKeyEntries(view: RoutineView): KeyEntryId[] {
   const ids = new Set<KeyEntryId>();
   for (const mark of view.marks.values()) {
     if (mark.kind === 'reach') ids.add('reach');
+    if (mark.kind === 'here') ids.add('here');
     if (mark.kind !== 'routine') continue;
-    if (group) { ids.add('here'); continue; }
     if (mark.begin) ids.add('start');
     if (mark.tone) ids.add(mark.tone);
     for (const span of mark.spans ?? []) ids.add(span.tone);

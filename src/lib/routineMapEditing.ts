@@ -1,10 +1,12 @@
+import { isGroup, toggleGroupStart } from '@/lib/entityKind';
 import { connectedPlaces, placesOf, type PlaceGraph } from '@/lib/positionEngine';
 import { NEW_STOP_IDLE, withRow } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
 import { rangeText } from '@/lib/routineTime';
+import { randomUUID } from '@/lib/uuid';
 import type { Entity, EntityStart, PatrolStop, ScheduleAction, ScheduleRow } from '@/types';
 
-// What a click or a drag on the canvas does to an Individual's routine.
+// What a click or a drag on the canvas does to an entity's routine.
 
 /** A map edit: the whole entity after it, and the undo label. */
 export interface RoutineMapEdit {
@@ -20,7 +22,7 @@ interface Target {
 type Selected = Target & { row: ScheduleRow };
 
 function targetOf(entity: Entity, selection: RoutineSelection): Target | null {
-  if (entity.kind === 'group' || entity.customPersona) return null;
+  if (entity.customPersona) return null;
   const starts = entity.starts ?? [];
   const start = starts.find((s) => s.id === selection.startId) ?? starts[0];
   if (!start) return null;
@@ -51,12 +53,17 @@ function withStopAfter(stops: readonly PatrolStop[], after: number, place: strin
 
 /**
  * A click on `place`. With a row selected: Stay moves there, Wander adds or removes it, Patrol adds the next stop
- * or removes the last one. With none: it joins or leaves the Can Also Go list. Null when nothing changes.
+ * or removes the last one. With none: a Group adds a Start there or removes the ones that begin there, and an
+ * Individual adds it to or removes it from the Can Also Go list. Null when nothing changes.
  */
 export function routineMapClick(entity: Entity, selection: RoutineSelection, place: string, graph: PlaceGraph): RoutineMapEdit | null {
   const target = targetOf(entity, selection);
-  if (!target) return null;
   const selected = selectedOf(target);
+  if (!selected && isGroup(entity)) {
+    const next = toggleGroupStart(entity, place, randomUUID);
+    return next === entity ? null : { entity: next, label: 'Change Locations' };
+  }
+  if (!target) return null;
   if (!selected) {
     const list = entity.traversable ?? 'anywhere';
     if (list === 'anywhere') return null;
@@ -115,10 +122,10 @@ export interface RoutineMapStatus {
 }
 
 export function routineMapStatus(entity: Entity, selection: RoutineSelection): RoutineMapStatus {
-  if (entity.kind === 'group') return { text: 'Click a location to add or remove it' };
   const target = targetOf(entity, selection);
-  if (!target) return { text: 'Add a Start to give this entity a routine' };
   const selected = selectedOf(target);
+  if (!selected && isGroup(entity)) return { text: 'Click a location to add or remove it' };
+  if (!target) return { text: 'Add a Start to give this entity a routine' };
   if (!selected) {
     return (entity.traversable ?? 'anywhere') === 'anywhere'
       ? { text: 'Select a row to edit its locations here' }

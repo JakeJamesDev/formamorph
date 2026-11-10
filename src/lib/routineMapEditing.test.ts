@@ -128,9 +128,43 @@ describe('a click with no row selected', () => {
   it('does nothing under Anywhere', () => {
     expect(click(null, 'inn', farrier('anywhere'))).toBeNull();
   });
+});
 
-  it('does nothing for a Group', () => {
-    expect(click(null, 'inn', { ...farrier(['inn']), kind: 'group' })).toBeNull();
+describe('a Group on the map', () => {
+  // The farrier's two Starts, run at once; its Can Also Go list stays in the data and plays no part.
+  const herd = (starts = farrier().starts!): Entity => ({ ...farrier(['inn']), kind: 'group', starts });
+  const startPlaces = (e: Entity | undefined) => e?.starts?.map((s) => s.place);
+
+  it('edits a selected row by an Individual’s rules, clicks and drags alike', () => {
+    const clicks: [string, string][] = [
+      ['stay', 'market'], ['stay', 'inn'], ['wander', 'inn'], ['wander', 'market'], ['patrol', 'gate'], ['patrol', 'wall'],
+      ['emptyPatrol', 'inn'], ['stay', 'island'], ['stay', 'ridge'],
+    ];
+    for (const [row, place] of clicks) {
+      expect(click(row, place, herd())?.entity.starts).toEqual(click(row, place)?.entity.starts);
+    }
+    const drags: [string, string, string][] = [['wander', 'market', 'inn'], ['patrol', 'wall', 'market'], ['patrol', 'wall', 'island'], ['stay', 'inn', 'market']];
+    for (const [row, from, to] of drags) {
+      expect(drag(row, from, to, herd())?.entity.starts).toEqual(drag(row, from, to)?.entity.starts);
+    }
+    expect([...routineDragSources(herd(), at('patrol'))].sort()).toEqual(['gate', 'wall']);
+  });
+
+  it('adds a Start with no rows at any place, unconnected ones included, with no row selected', () => {
+    const edit = click(null, 'island', herd());
+    expect(startPlaces(edit?.entity)).toEqual(['smithy', 'gate', 'island']);
+    expect(edit?.entity.starts?.[2].schedule).toEqual([]);
+    expect(edit?.entity.traversable).toEqual(['inn']);
+    expect(edit?.label).toBe('Change Locations');
+  });
+
+  it('removes every Start that begins at the place, the one on show included', () => {
+    const twice = herd([...farrier().starts!, { id: 's3', place: 'smithy', weight: 1, schedule: [] }]);
+    expect(startPlaces(click(null, 'smithy', twice)?.entity)).toEqual(['gate']);
+  });
+
+  it('keeps the last Start', () => {
+    expect(click(null, 'smithy', herd([farrier().starts![0]]))).toBeNull();
   });
 });
 
@@ -209,7 +243,9 @@ describe('the status line', () => {
     expect(status(null, farrier('anywhere'))).toEqual({ text: 'Select a row to edit its locations here' });
   });
 
-  it('speaks to a Group', () => {
-    expect(status(null, { ...farrier(), kind: 'group' })).toEqual({ text: 'Click a location to add or remove it' });
+  it('speaks to a Group, and reads its selected row as an Individual’s', () => {
+    const herd: Entity = { ...farrier(), kind: 'group' };
+    expect(status(null, herd)).toEqual({ text: 'Click a location to add or remove it' });
+    expect(status('patrol', herd)).toEqual(status('patrol'));
   });
 });
