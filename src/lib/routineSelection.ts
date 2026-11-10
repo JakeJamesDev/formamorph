@@ -10,6 +10,9 @@ export interface RoutineSelection {
 /** Marks a surface whose presses keep the row selection, like the canvas showing the routine. */
 export const KEEPS_ROUTINE_SELECTION = 'data-keeps-routine-selection';
 
+/** Marks a panel inside such a surface whose presses clear the row selection again, like the editor over the canvas. */
+export const CLEARS_ROUTINE_SELECTION = 'data-clears-routine-selection';
+
 const NONE: RoutineSelection = { startId: null, rowId: null };
 const byEntity = new Map<string, RoutineSelection>();
 const listeners = new Set<() => void>();

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useGameData } from '@/contexts/GameDataContext';
-import { KEEPS_ROUTINE_SELECTION, resetRoutineSelections } from '@/lib/routineSelection';
+import { CLEARS_ROUTINE_SELECTION, KEEPS_ROUTINE_SELECTION, resetRoutineSelections } from '@/lib/routineSelection';
 import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import type { Entity, GameLocation, ScheduleRow } from '@/types';
 import { RoutineTab } from './RoutineTab';
@@ -122,6 +122,20 @@ describe('selecting a row', () => {
     fireEvent.pointerDown(box);
     expect(isSelected('late')).toBe(true);
     map.remove();
+  });
+
+  it('clears the selection on a press in the editor panel that sits over that map', async () => {
+    renderPanelBench(panelWorld({ locations: LOCATIONS, entities: [mira(rows)] }), 'simple', (
+      <div {...{ [KEEPS_ROUTINE_SELECTION]: '' }}>
+        <div {...{ [CLEARS_ROUTINE_SELECTION]: '' }}><Host /></div>
+      </div>
+    ));
+    await userEvent.click(bands('late')[0] as HTMLElement);
+    // The row's own sentence still keeps it.
+    fireEvent.pointerDown(sentence('late'));
+    expect(isSelected('late')).toBe(true);
+    fireEvent.pointerDown(screen.getByText('Placement'));
+    expect(isSelected('late')).toBe(false);
   });
 });
 

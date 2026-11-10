@@ -20,7 +20,7 @@ import { holderOf, locationRows } from '@/lib/locationTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { connectedPlaces } from '@/lib/positionEngine';
 import { withLockedRest, withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart } from '@/lib/routineEditing';
-import { KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
+import { CLEARS_ROUTINE_SELECTION, KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import {
   chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, toStrip, toWeight, type FreeRange,
 } from '@/lib/routineTime';
@@ -202,7 +202,9 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
   useEffect(() => {
     if (!selected) return;
     const onDown = (e: PointerEvent) => {
-      if (e.target instanceof Element && e.target.closest(KEEPS_SELECTION)) return;
+      // The nearest marked ancestor decides, so a panel that clears wins over the surface around it.
+      const marked = e.target instanceof Element ? e.target.closest(`${KEEPS_SELECTION}, [${CLEARS_ROUTINE_SELECTION}]`) : null;
+      if (marked && !marked.hasAttribute(CLEARS_ROUTINE_SELECTION)) return;
       selectRow(null);
     };
     document.addEventListener('pointerdown', onDown);

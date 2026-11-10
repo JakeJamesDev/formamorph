@@ -22,7 +22,7 @@ import type { ActionKind } from '@/lib/routineEditing';
 import {
   routineDragSources, routineMapClick, routineMapDrag, routineMapStatus, type RoutineMapEdit,
 } from '@/lib/routineMapEditing';
-import { KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
+import { CLEARS_ROUTINE_SELECTION, KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import { LocationIcon } from '@/lib/elementIcons';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
@@ -1685,6 +1685,8 @@ const CanvasInner = ({
         {((selectedConnection && !picking) || (fullscreen && entities && updateEntity) || shownMapPanel) && (
           <Panel
             position="top-right"
+            // A press on the editor's own blank space clears the selected routine row, as on the Routine tab.
+            {...{ [CLEARS_ROUTINE_SELECTION]: '' }}
             // Full screen drops the column under the window's corner button.
             // The Routine editor needs the width of its day strip.
             className={cn('!m-2 flex max-h-[calc(100%-1rem)] flex-col gap-2 overflow-y-auto', routine ? 'w-[27rem] max-w-[calc(100%-1rem)]' : 'w-72', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-[calc(var(--header-line)+0.5rem)] md:max-h-[calc(100%-var(--header-line)-1rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
