@@ -7,6 +7,9 @@ export interface RoutineSelection {
   rowId: string | null;
 }
 
+/** Marks a surface whose presses keep the row selection, like the canvas showing the routine. */
+export const KEEPS_ROUTINE_SELECTION = 'data-keeps-routine-selection';
+
 const NONE: RoutineSelection = { startId: null, rowId: null };
 const byEntity = new Map<string, RoutineSelection>();
 const listeners = new Set<() => void>();

@@ -8,11 +8,12 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { knownInOf, withKnownIn } from '@/lib/entityPresence';
-import { isIndividual } from '@/lib/entityKind';
+import { isGroup } from '@/lib/entityKind';
 import type { PickMode } from '@/lib/entityPicking';
-import { KNOWN_IN_HELP, KNOWN_IN_LABEL, PICK_MODE_HELP, PICK_START_HELP, type KnownInChoice } from '@/lib/entityPresenceCopy';
+import { KNOWN_IN_HELP, KNOWN_IN_LABEL, PICK_MODE_HELP, ROUTINE_MAP_HELP, type KnownInChoice } from '@/lib/entityPresenceCopy';
 import { fieldFrame } from '@/lib/historyField';
 import PersonaPresenceHint from '@/managers/PersonaPresenceHint';
+import { RoutineTab } from '@/managers/routine/RoutineTab';
 import type { Entity } from '@/types';
 
 /** The entity the canvas is picking for, and what a click on a location writes. */
@@ -22,7 +23,7 @@ export interface PickState {
 }
 
 const MODES = [
-  { value: 'locations', label: 'Locations', Icon: LocationIcon },
+  { value: 'locations', label: 'Routine', Icon: LocationIcon },
   { value: 'knownIn', label: 'Known In', Icon: Megaphone },
 ] as const;
 
@@ -123,18 +124,18 @@ export default function EntityPickCard({
               ))}
             </ToggleGroup>
           )}
-          <Hint>{mode === 'locations' && isIndividual(entity) ? PICK_START_HELP : PICK_MODE_HELP[mode]}</Hint>
-          {entity.customPersona
-            ? <PersonaPresenceHint />
-            : (
-              <PickFields
-                key={entity.id}
-                entity={entity}
-                mode={mode}
-                onModeChange={(next) => onPickingChange({ entityId: entity.id, mode: next })}
-                onChange={onChange}
-              />
-            )}
+          <Hint>{mode === 'locations' && !entity.customPersona && !isGroup(entity) ? ROUTINE_MAP_HELP : PICK_MODE_HELP[mode]}</Hint>
+          {entity.customPersona && <PersonaPresenceHint />}
+          {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} />}
+          {!entity.customPersona && mode === 'knownIn' && (
+            <PickFields
+              key={entity.id}
+              entity={entity}
+              mode={mode}
+              onModeChange={(next) => onPickingChange({ entityId: entity.id, mode: next })}
+              onChange={onChange}
+            />
+          )}
         </>
       )}
     </div>

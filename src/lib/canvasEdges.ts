@@ -1,6 +1,31 @@
 import { MarkerType, type Edge } from '@xyflow/react';
 import type { ConnectionStyle } from './canvasEdgePath';
 import type { CanvasEdge } from './locationCanvas';
+import type { RoutineLine } from './canvasRoutine';
+
+const ROUTINE_STROKE: Record<RoutineLine['tone'], string> = {
+  stay: 'hsl(var(--routine-stay))',
+  wander: 'hsl(var(--routine-wander))',
+  patrol: 'hsl(var(--routine-patrol))',
+  free: 'hsl(var(--muted-foreground))',
+};
+
+/** A movement line of the Routine view: straight, full strength, in its action's color. */
+export function routineFlowEdge(line: RoutineLine): Edge {
+  const color = ROUTINE_STROKE[line.tone];
+  return {
+    id: line.id,
+    source: line.source,
+    target: line.target,
+    type: 'floating',
+    label: line.label,
+    data: { connectionStyle: 'straight', labelOuter: false, paired: false, tone: line.tone },
+    selectable: false,
+    focusable: false,
+    style: { stroke: color, strokeWidth: 2.5, ...(line.dashed ? { strokeDasharray: '6 5' } : {}) },
+    ...(line.arrow ? { markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 } } : {}),
+  };
+}
 
 /**
  * What one arrow on the map says, as the flow renderer reads it. Pure mapping: the drawing itself is

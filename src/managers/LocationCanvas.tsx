@@ -10,17 +10,21 @@ import {
 import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Grid2x2, ImagePlus,
+  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Flag, Grid2x2, ImagePlus,
   LayoutGrid, Magnet, Maximize2, Megaphone, Minus, Pencil, Redo2, Spline, SquareCheck, Star,
   Trash2, Undo2, X,
 } from 'lucide-react';
 import EntityPickCard, { type PickState } from '@/managers/EntityPickCard';
 import { pickMarks, togglePick, type PickMark } from '@/lib/entityPicking';
+import { routineView, type RoutineMark } from '@/lib/canvasRoutine';
+import { isGroup } from '@/lib/entityKind';
+import type { ActionKind } from '@/lib/routineEditing';
+import { KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import { LocationIcon } from '@/lib/elementIcons';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
 import { FloatingEdge } from '@/components/FloatingEdge';
-import { toFlowEdge } from '@/lib/canvasEdges';
+import { routineFlowEdge, toFlowEdge } from '@/lib/canvasEdges';
 import { fieldFrame } from '@/lib/historyField';
 import { useCanvasConnectionStyle, useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
 import { CONNECTION_STYLES, isConnectionStyle, type ConnectionStyle } from '@/lib/canvasEdgePath';
@@ -140,6 +144,43 @@ const UNREACHABLE_TITLE = 'No starting location can reach here';
 /** Every location's mark while an entity is picked; null when none is. */
 const PickMarkContext = createContext<Map<string, PickMark> | null>(null);
 
+/** Every location's Routine-view mark while an entity's routine is on show; null otherwise. */
+const RoutineMarkContext = createContext<Map<string, RoutineMark> | null>(null);
+
+const ROUTINE_RING: Record<ActionKind, string> = {
+  stay: 'bg-routine-stay/20 ring-2 ring-routine-stay',
+  wander: 'bg-routine-wander/20 ring-2 ring-routine-wander',
+  patrol: 'bg-routine-patrol/20 ring-2 ring-routine-patrol',
+};
+const ROUTINE_BADGE: Record<ActionKind, string> = {
+  stay: 'bg-routine-stay/25 ring-routine-stay', wander: 'bg-routine-wander/25 ring-routine-wander', patrol: 'bg-routine-patrol/25 ring-routine-patrol',
+};
+
+/** How a box draws in the Routine view: its action's color or the neutral ring, a dashed outline where it can be
+ *  led, and a fade where it can never go. */
+const routineClass = (mark: RoutineMark | undefined) => cn(
+  mark?.kind === 'routine' && (mark.tone ? ROUTINE_RING[mark.tone] : 'ring-2 ring-muted-foreground'),
+  mark?.kind === 'reach' && 'outline-dashed outline-2 outline-offset-2 outline-muted-foreground',
+  mark?.kind === 'faded' && 'opacity-30',
+);
+
+const RoutineIcons = ({ mark }: { mark: RoutineMark | undefined }) => (
+  <>
+    {mark?.begin && <Flag className="h-4 w-4 shrink-0 text-foreground" aria-label="Starts Here" />}
+    {mark?.badge && mark.tone && (
+      <span data-routine-badge className={cn('shrink-0 rounded px-1 text-meta font-medium text-foreground ring-1', ROUTINE_BADGE[mark.tone])}>
+        {mark.badge}
+      </span>
+    )}
+  </>
+);
+
+/** The data attributes a test or a dev read finds a box's Routine-view mark by. */
+const routineData = (mark: RoutineMark | undefined) => ({
+  'data-routine-mark': mark?.kind,
+  'data-routine-tone': mark?.tone,
+});
+
 /** How a box draws its pick mark: a solid tint for the entity's locations, a dashed outline over each pick
  *  (a group's box encloses its whole subtree), and a fade for the rest. */
 const pickClass = (mark: PickMark | undefined) => cn(
@@ -156,14 +197,18 @@ const PickIcons = ({ mark }: { mark: PickMark | undefined }) => (
 );
 
 /** The badges a node carries: where a new game may begin, and where a player can never arrive. */
-const NodeBadges = ({ data }: { data: CanvasNodeData }) => (
-  <>
-    {data.isStarting && <Star className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Starting location" />}
-    {data.unreachable && (
-      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" aria-label={UNREACHABLE_TITLE} />
-    )}
-  </>
-);
+const NodeBadges = ({ data }: { data: CanvasNodeData }) => {
+  // The Routine view puts its own Start flag in place of the star.
+  const routine = useContext(RoutineMarkContext) !== null;
+  return (
+    <>
+      {data.isStarting && !routine && <Star className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Starting location" />}
+      {data.unreachable && (
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" aria-label={UNREACHABLE_TITLE} />
+      )}
+    </>
+  );
+};
 
 /**
  * Where a Connection is drawn from and dropped onto. Edges attach to a node's center and are clipped to its
@@ -177,7 +222,9 @@ const NodeBadges = ({ data }: { data: CanvasNodeData }) => (
 const EdgeAnchors = ({ dropHeight }: { dropHeight: string }) => {
   const drawing = useConnection((c) => c.inProgress);
   // Hidden rather than removed while picking: edges attach to the handles xyflow measured at mount.
-  const picking = useContext(PickMarkContext) !== null;
+  const pickMarksShown = useContext(PickMarkContext) !== null;
+  const routineShown = useContext(RoutineMarkContext) !== null;
+  const picking = pickMarksShown || routineShown;
   return (
     <>
       <Tip tip={picking ? undefined : 'Drag To Connect'}>
@@ -214,6 +261,7 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
   // so before the release is what lets the author bail by moving away.
   const armed = useContext(ArmedLeafContext) === id;
   const mark = useContext(PickMarkContext)?.get(id);
+  const routine = useContext(RoutineMarkContext)?.get(id);
   return (
     // The box already carries its own name; the tip only says it cannot be reached.
     <Tip tip={data.unreachable ? UNREACHABLE_TITLE : undefined} labelsChild={false}>
@@ -221,10 +269,12 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
         data-drop-target={armed || undefined}
         data-flash={flashing || undefined}
         data-pick-mark={mark?.kind}
+        {...routineData(routine)}
         className={cn(
           'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
           data.unreachable && 'border-destructive',
           pickClass(mark),
+          routineClass(routine),
           flashing ? flashRing : selected && 'ring-2 ring-ring',
           armed && 'bg-primary/10 ring-2 ring-primary',
         )}
@@ -233,6 +283,7 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
         <NodeBadges data={data} />
         <span className="truncate">{data.label}</span>
         <PickIcons mark={mark} />
+        <RoutineIcons mark={routine} />
       </div>
     </Tip>
   );
@@ -245,16 +296,19 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
   const willTakeTheDrop = useContext(DropTargetContext).into.includes(id);
   const flashing = useContext(FlashContext) === id;
   const mark = useContext(PickMarkContext)?.get(id);
+  const routine = useContext(RoutineMarkContext)?.get(id);
   return (
     <Tip tip={data.unreachable ? UNREACHABLE_TITLE : undefined} labelsChild={false}>
       <div
         data-drop-target={willTakeTheDrop || undefined}
         data-flash={flashing || undefined}
         data-pick-mark={mark?.kind}
+        {...routineData(routine)}
         className={cn(
           'group/node h-full w-full rounded-md border bg-muted/40',
           data.unreachable && 'border-destructive',
           pickClass(mark),
+          routineClass(routine),
           flashing ? flashRing : selected && 'ring-2 ring-ring',
           willTakeTheDrop && 'bg-primary/10 ring-2 ring-primary',
         )}
@@ -264,6 +318,7 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
           <NodeBadges data={data} />
           <span className="truncate">{data.label}</span>
           <PickIcons mark={mark} />
+          <RoutineIcons mark={routine} />
         </div>
       </div>
     </Tip>
@@ -810,7 +865,21 @@ const CanvasInner = ({
   const pickedEntity = fullscreen && pickState ? entities?.find((e) => e.id === pickState.entityId) : undefined;
   const picking = !!pickedEntity;
   const pickMode = pickedEntity?.customPersona ? 'locations' : pickState?.mode ?? 'locations';
-  const marks = useMemo(() => (pickedEntity ? pickMarks(pickedEntity, locations) : null), [pickedEntity, locations]);
+  // Routine mode draws the entity's routine in place of the Connections. A custom persona has no routine.
+  const routineEntity = pickedEntity && pickMode === 'locations' && !pickedEntity.customPersona ? pickedEntity : undefined;
+  const routineSelection = useRoutineSelection(routineEntity?.id ?? '');
+  const routineStartId = routineSelection.startId;
+  const routineRowId = routineSelection.rowId;
+  const routine = useMemo(
+    () => (routineEntity
+      ? routineView(routineEntity, { startId: routineStartId, rowId: routineRowId }, { locations, connections })
+      : null),
+    [routineEntity, routineStartId, routineRowId, locations, connections],
+  );
+  const marks = useMemo(
+    () => (pickedEntity && !routine ? pickMarks(pickedEntity, locations) : null),
+    [pickedEntity, routine, locations],
+  );
   const {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
   } = session;
@@ -1053,10 +1122,12 @@ const CanvasInner = ({
   );
 
   const edges = useMemo(
-    () => [...map.edges, ...implicitEdges].map(
-      (edge) => toFlowEdge(edge, connectionStyle, { selected: edge.connectionId === selectedConnectionId }),
-    ),
-    [map, implicitEdges, selectedConnectionId, connectionStyle],
+    () => (routine
+      ? routine.lines.map(routineFlowEdge)
+      : [...map.edges, ...implicitEdges].map(
+        (edge) => toFlowEdge(edge, connectionStyle, { selected: edge.connectionId === selectedConnectionId }),
+      )),
+    [routine, map, implicitEdges, selectedConnectionId, connectionStyle],
   );
 
   // A dashed arrow is a click away from being authored; a solid one opens the record it came from.
@@ -1284,6 +1355,8 @@ const CanvasInner = ({
   const togglePicked = (event: React.MouseEvent, locationId: string) => {
     if (!pickedEntity || !updateEntity) return;
     if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) return;
+    // A routine is edited in the card; only a Group's places toggle from the map.
+    if (routine && !isGroup(pickedEntity)) return;
     // Keyed by the location, so each click is its own Step rather than a typing run on the entity.
     history.keyNext({
       slice: 'entities', id: pickedEntity.id, field: pickMode === 'knownIn' ? 'knownIn' : 'locations', ids: [locationId],
@@ -1458,6 +1531,7 @@ const CanvasInner = ({
       <ArmedLeafContext.Provider value={armedLeaf}>
       <FlashContext.Provider value={flashId}>
       <PickMarkContext.Provider value={marks}>
+      <RoutineMarkContext.Provider value={routine?.marks ?? null}>
       <ReactFlow<LocationNodeType, Edge>
         nodes={nodes}
         edges={edges}
@@ -1513,7 +1587,10 @@ const CanvasInner = ({
         attributionPosition="bottom-left"
         minZoom={0.2}
         fitView
-        className={cn('h-full w-full', picking && 'canvas-picking', adjustingMap && 'canvas-adjusting')}
+        // Routine lines draw at full strength; the fade is for the Connections behind a pick.
+        className={cn('h-full w-full', picking && !routine && 'canvas-picking', adjustingMap && 'canvas-adjusting')}
+        // A press or pan on the map keeps the selected routine row.
+        {...{ [KEEPS_ROUTINE_SELECTION]: routine ? '' : undefined }}
       >
         {/* The dots mark the grid's own intersections; hiding it keeps the pane's color and drops the pattern. */}
         <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
@@ -1569,7 +1646,8 @@ const CanvasInner = ({
           <Panel
             position="top-right"
             // Full screen drops the column under the window's corner button.
-            className={cn('!m-2 flex max-h-[calc(100%-1rem)] w-72 flex-col gap-2 overflow-y-auto', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-[calc(var(--header-line)+0.5rem)] md:max-h-[calc(100%-var(--header-line)-1rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
+            // The Routine editor needs the width of its day strip.
+            className={cn('!m-2 flex max-h-[calc(100%-1rem)] flex-col gap-2 overflow-y-auto', routine ? 'w-[27rem] max-w-[calc(100%-1rem)]' : 'w-72', fullscreen && 'sm:!mt-10 sm:max-h-[calc(100%-3rem)] md:!mt-[calc(var(--header-line)+0.5rem)] md:max-h-[calc(100%-var(--header-line)-1rem)] max-sm:!mt-28 max-sm:max-h-[40%]')}
           >
             {shownMapPanel && worldOverview && (
               <MapBackgroundPanel
@@ -1609,6 +1687,7 @@ const CanvasInner = ({
           </Panel>
         )}
       </ReactFlow>
+      </RoutineMarkContext.Provider>
       </PickMarkContext.Provider>
       </FlashContext.Provider>
       </ArmedLeafContext.Provider>

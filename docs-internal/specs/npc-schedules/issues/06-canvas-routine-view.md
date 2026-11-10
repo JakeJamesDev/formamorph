@@ -1,6 +1,6 @@
 # 06: Canvas Routine View
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -26,15 +26,29 @@ Spec rulings: Q71–Q74, Q80, Q113.
 
 ## Acceptance criteria
 
-- [ ] The canvas card renders the Routine editor inside the right panel, and the panel scrolls when the editor is taller than the window.
-- [ ] In Routine mode no Connection line, Connection label or starting-location star is on the map, and they return in Known In mode and when the entity is closed.
-- [ ] The overview and the detail draw as described, for a Start with a Stay row, a Wander row and a Patrol row. A test reads the marks and the lines in both states.
-- [ ] A Patrol that goes A, B, A draws both directions as separate arrows.
-- [ ] Movement lines draw at full strength.
-- [ ] Faded, outlined and plain places follow the reach rules above, for a listed Traversable and for Anywhere.
-- [ ] A press or a pan on the map keeps the selected row.
-- [ ] The dev-router's canvas pick route opens this view.
-- [ ] The card's copy follows the Writing Guide.
-- [ ] Frames: `.scratch/frames/canvas-routine-overview.png` and `.scratch/frames/canvas-routine-detail.png`, light and dark, at 1440 px wide.
+- [x] The canvas card renders the Routine editor inside the right panel, and the panel scrolls when the editor is taller than the window. DOM read: the editor is in the card; the panel is `overflow-y: auto`, 945 px of content in 680 px.
+- [x] In Routine mode no Connection line, Connection label or starting-location star is on the map, and they return in Known In mode and when the entity is closed. DOM read on Emberwatch: Routine has only `routine:` edges and no star; Known In and closed have 26 Connection edges and the star.
+- [x] The overview and the detail draw as described, for a Start with a Stay row, a Wander row and a Patrol row. A test reads the marks and the lines in both states. `canvasRoutine.test.ts`, "the overview" and "the detail".
+- [x] A Patrol that goes A, B, A draws both directions as separate arrows. Test "draws a Patrol that goes A, B, A as two arrows"; the frames show the pair side by side.
+- [x] Movement lines draw at full strength. Test "draws movement lines straight and at full strength"; DOM read: edge opacity 1 and no `canvas-picking` class in Routine mode.
+- [x] Faded, outlined and plain places follow the reach rules above, for a listed Traversable and for Anywhere. Tests under "reach".
+- [x] A press or a pan on the map keeps the selected row. `DayStrip.test.tsx` "keeps the selection through a press on the map"; Playwright: a real pan with the Patrol row selected keeps it.
+- [x] The dev-router's canvas pick route opens this view. `#dev?modal=worldEditor&tab=locations&subtab=canvas&fullscreen=1&pick=<id>` lands in Routine mode.
+- [x] The card's copy follows the Writing Guide. Mode label "Routine"; help line checked against the help-line test.
+- [x] Frames: `.scratch/frames/canvas-routine-overview.png` and `.scratch/frames/canvas-routine-detail.png`, light and dark, at 1440 px wide. Stored with `-light` and `-dark` suffixes.
 
 For you: whether the overview reads at a glance on a world with twelve or more locations, and the mark colors against a Map Background image.
+
+## Landed
+
+**Not verified**
+
+- None.
+
+**For you**
+
+- For you: whether the overview reads at a glance on a world with twelve or more locations, and the mark colors against a Map Background image.
+- Frames (Emberwatch, Bram Oakes with a Stay, a Wander and a Patrol row, two listed Can Also Go locations): `.scratch/npc-schedules-06/frames/canvas-routine-overview-light.png`, `canvas-routine-overview-dark.png`, `canvas-routine-detail-light.png`, `canvas-routine-detail-dark.png` (Patrol row selected).
+- The neutral ring is a gray ring, and a badge is a tinted chip in the row's color. Both are new marks on the canvas.
+- In Routine mode a map click on an Individual does nothing until ticket 07. A click on a Group still adds or removes its location.
+- A press anywhere on the full-screen canvas keeps the row, the card included, because the card sits on the map.

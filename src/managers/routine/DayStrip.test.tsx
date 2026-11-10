@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useGameData } from '@/contexts/GameDataContext';
-import { resetRoutineSelections } from '@/lib/routineSelection';
+import { KEEPS_ROUTINE_SELECTION, resetRoutineSelections } from '@/lib/routineSelection';
 import { panelWorld, renderPanelBench } from '@/test/panelBench';
 import type { Entity, GameLocation, ScheduleRow } from '@/types';
 import { RoutineTab } from './RoutineTab';
@@ -102,6 +102,18 @@ describe('selecting a row', () => {
     expect(isSelected('day')).toBe(true);
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Add Start' }));
     expect(isSelected('day')).toBe(false);
+  });
+
+  it('keeps the selection through a press on the map that shows the routine', async () => {
+    mount(rows);
+    const map = document.createElement('div');
+    map.setAttribute(KEEPS_ROUTINE_SELECTION, '');
+    const box = map.appendChild(document.createElement('div'));
+    document.body.appendChild(map);
+    await userEvent.click(bands('late')[0] as HTMLElement);
+    fireEvent.pointerDown(box);
+    expect(isSelected('late')).toBe(true);
+    map.remove();
   });
 });
 

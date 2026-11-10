@@ -20,7 +20,7 @@ import { holderOf, locationRows } from '@/lib/locationTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { connectedPlaces } from '@/lib/positionEngine';
 import { withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart } from '@/lib/routineEditing';
-import { useRoutineSelection } from '@/lib/routineSelection';
+import { KEEPS_ROUTINE_SELECTION, useRoutineSelection } from '@/lib/routineSelection';
 import {
   chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, rowClockKey, toWeight, type FreeRange,
 } from '@/lib/routineTime';
@@ -43,8 +43,8 @@ const KIND_HINTS: Record<EntityKind, string> = {
   group: 'Stands at every picked location at once, like a crowd or a fixture',
 };
 
-/** What a press may land on and keep the row selection: a sentence, the strip, or an open editor. */
-const KEEPS_SELECTION = `[data-routine-row], [${STRIP_PART}], [data-radix-popper-content-wrapper], [role="listbox"]`;
+/** What a press may land on and keep the row selection: a sentence, the strip, an open editor, or the map. */
+const KEEPS_SELECTION = `[data-routine-row], [${STRIP_PART}], [data-radix-popper-content-wrapper], [role="listbox"], [${KEEPS_ROUTINE_SELECTION}]`;
 
 /** The parent locations of `location`, outermost first. */
 function pathOf(locations: readonly GameLocation[], location: GameLocation): string[] {
