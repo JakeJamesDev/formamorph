@@ -174,7 +174,8 @@ export const DEV_MODAL_TABS = {
   // `fixture=serverSettings` serves every row from memory (`devServerSettingsStub.ts`); a Burst Size under 2 is refused.
   // `fixture=hostedAi` adds the Formamorph AI panel over canned routes (`devHostedAiSample.ts`).
   // `tab=usage&fixture=usage` draws the Usage tab over canned figures (`devUsageSample.ts`).
-  adminPanel: ['users', 'feedback', 'moderation', 'usage', 'events', 'broadcasts', 'policies', 'serverSettings', 'log'],
+  // `tab=mail` with `fixture=mail` (healthy) or `fixture=mailReview` (SES under review) draws the Mail tab over canned figures (`devMailSample.ts`).
+  adminPanel: ['users', 'feedback', 'moderation', 'usage', 'mail', 'events', 'broadcasts', 'policies', 'serverSettings', 'log'],
   // Admin Panel → Events uses the `subtab=…` slot for which of its two role views to render over the
   // canned calendar, so the moderator's read-only half is reachable without a second account.
   adminPanelEvents: ['admin', 'staff'],

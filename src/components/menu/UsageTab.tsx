@@ -32,7 +32,7 @@ const CHART_HEIGHT = 120;
 const CHART_FILL = 'bg-primary';
 
 /** A heading and its content, with an optional control on the heading's rule. */
-function UsageSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+export function UsageSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   const titleId = useId();
   return (
     <section role="group" aria-labelledby={titleId} className="grid content-start gap-3 min-w-0">
@@ -42,7 +42,7 @@ function UsageSection({ title, action, children }: { title: string; action?: Rea
   );
 }
 
-function Tile({ label, value, meta }: { label: string; value: string; meta: string }) {
+export function Tile({ label, value, meta }: { label: string; value: string; meta: string }) {
   return (
     <div className="min-w-0 rounded-md border bg-card p-3">
       <Meta as="div">{label}</Meta>
@@ -127,7 +127,7 @@ interface Column<Row> {
 }
 
 /** A plain figures table. `rowKey` names each row; the first column is its row header. */
-function FiguresTable<Row>({ label, columns, rows, rowKey, minWidth, header }: {
+export function FiguresTable<Row>({ label, columns, rows, rowKey, minWidth, header }: {
   label: string;
   columns: readonly Column<Row>[];
   rows: readonly Row[];

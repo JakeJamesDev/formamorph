@@ -27,6 +27,7 @@ vi.mock('./AutoApprovedTab', () => ({ AutoApprovedTab: () => <div data-testid="a
 vi.mock('./EventsTab', () => ({ EventsTab: () => <div data-testid="events" /> }));
 vi.mock('./ServerSettingsTab', () => ({ ServerSettingsTab: () => <div data-testid="server-settings" /> }));
 vi.mock('./UsageTab', () => ({ UsageTab: () => <div data-testid="usage" /> }));
+vi.mock('./MailTab', () => ({ MailTab: () => <div data-testid="mail" /> }));
 vi.mock('./FeedbackQueueTab', () => ({
   FeedbackQueueTab: ({ type, active }: { type: string; active: boolean }) => (
     <div data-testid={`queue-${type}`} data-active={String(active)} />
@@ -103,6 +104,13 @@ describe('the tab strip', () => {
     expect(screen.getByTestId('usage')).toBeTruthy();
   });
 
+  it('carries the mail report, which only an administrator reaches', () => {
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="mail" />);
+
+    expect(screen.getByRole('tab', { name: 'Mail' })).toBeTruthy();
+    expect(screen.getByTestId('mail')).toBeTruthy();
+  });
+
   it('carries the record of what was done', () => {
     render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="log" />);
 
@@ -138,6 +146,17 @@ describe('what a moderator sees', () => {
     expect(screen.queryByRole('tab', { name: 'Policies' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Server' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Usage' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Mail' })).toBeNull();
+  });
+
+  it('lands on Users when pointed at the mail report', async () => {
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="mail" />);
+
+    expect(activeTab()).toBe('Users');
+    expect(screen.queryByTestId('mail')).toBeNull();
   });
 
   it('lands on Users when pointed at the usage report', async () => {
