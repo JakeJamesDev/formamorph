@@ -86,8 +86,9 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
 - A manual pin on an integrated GPU beside a large card is `low`. The All GPUs setting adds the discrete totals and ignores integrated ones.
 - A runtime fallback to the CPU after a failed GPU load does not change the class.
 - A reported total is never trusted for an integrated GPU. Field reports range from about 2 GB to over 80 GB.
-- The device listing is already read once and cached. The class adds no second read.
-- The 8,500 MB limit has one definition, shared by the shell policy and the renderer facts.
+- A successful device listing is read once and cached, and the class adds no second read. A failed listing is not cached, so the next ask lists again.
+- A discrete card with no known total answers `unknown`.
+- The 8,500 MB limit of the VRAM class has one definition, shared by the shell policy and the renderer facts. The model tier boundary in the download recommendation is a separate number (Out of Scope).
 
 **AI setup lead**
 
@@ -149,4 +150,5 @@ No render test of AI setup and no Playwright test are added (Q13).
 - **Deploy order:** FormamorphServer first, then the client build.
 - **No CPU backend setting:** the Backend setting is Auto, Vulkan or CUDA. A machine is CPU-only when its listing succeeds with no GPU device.
 - **Sources for the integrated GPU ruling:** a UHD 620 reporting about 2 GB, a Strix Halo APU reporting 87,722 MiB, and upstream llama.cpp issues 16092 and 18946 on dedicated-only and overflowed figures. The 47.8 GB figure in the device pin notes is an aggregate of a discrete card and an integrated GPU, not one device.
-- **Changelog:** one Added entry for the card and the wider low-VRAM lead.
+- **Changelog:** each ticket lands its own Added entry in one Formamorph AI group. The close organizes the group.
+- **Close review, 2026-11-09:** three gaps went to ticket 04. The close waits for it.
