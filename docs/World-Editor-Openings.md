@@ -112,32 +112,18 @@ The default opening is an Opening Action with a general instruction to write the
 - The world, its locations and its entities have no opening that can draw.
 - The pool at that start is empty.
 
-The **Openings** panel shows its text under **This World**. It shows the text only where it can draw:
+The **Openings** tab shows its text under **This World**. It shows the text only where it can draw:
 
-| Panel view | The default opening shows |
+| World | The default opening shows |
 |---|---|
 | A world with one start whose pool is empty | Yes |
 | A world with several starts, some with an empty pool | Yes, with the names of those starts |
 | No start has an empty pool | No |
 
-## Every opening in one place
-<!-- keywords: see all at once, grouped by owner, filter by start, dash instead of percent, badge, never comes up, master list, adds up to 100 -->
+## Chances and starting locations
+<!-- keywords: see all at once, dash instead of percent, badge, never comes up, master list, adds up to 100 -->
 
-The **Openings** panel shows every opening in the world, grouped by owner:
-
-| Group | Holds |
-|---|---|
-| **This World** | The world's own openings |
-| One group per location with openings | The openings on that location's **Openings** tab. The location's name opens that tab. |
-| One group per entity with openings | The openings on that entity's **Openings** tab. The entity's name opens that tab. |
-
-Groups run in this order: World, Locations, Entities. Each location and entity group has a button that reads **Add Opening to** and the owner's name. Add a world opening with the **+** button (**Add Opening**) at the top of the panel. Search reaches every group.
-
-An edit in the panel changes the owner's opening.
-
-### Chances and starting locations
-
-The panel lists every opening in the world. A chance is the share of the whole draw at one starting location. A world with several starting locations has no single draw to describe, so an Others opening shows a dash. Self openings keep their chance.
+A chance is the share of the whole draw at one starting location. A world with several starting locations has no single draw to describe, so an Others opening shows a dash. Self openings keep their chance.
 
 A world with one starting location shows chances as at that start. World, location and entity rows add up to 100% together.
 
@@ -227,9 +213,9 @@ The game looks for Self openings in this order. The first source that has one wi
 - **A world persona with no Self openings starts on the normal pool.** Its Others openings still stay out.
 - **A library persona with no Self openings uses the Custom Persona's Self openings.** With none there, it starts on the normal pool.
 - **A Persona-Only entity's Self openings draw when the player picks it.**
-- **The Others openings of the Custom Persona entity and a Persona-Only entity never draw.** Each one shows a **Never Draws** badge and a dash for its chance. Select **Self** on one to draw it. A filter on one location hides these rows.
+- **The Others openings of the Custom Persona entity and a Persona-Only entity never draw.** Each one shows a **Never Draws** badge and a dash for its chance. Select **Self** on one to draw it.
 - **Setting it back to Cast keeps the text.** An entity set back to **Cast** keeps its Self openings in the file. The editor hides them until you set it to a persona choice again.
 
-In the panel, Self openings stay in their owner's group with a **Self** badge.
+On the **Openings** tab, Self openings stay with their owner and carry a **Self** badge.
 
 > 💡 **Write a start for each persona.** Set each persona to **Playable**, add an opening, and select **Self** on it. A player who picks that persona then starts on it.
