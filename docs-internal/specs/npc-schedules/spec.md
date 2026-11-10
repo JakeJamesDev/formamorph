@@ -163,6 +163,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q114** On the cloud default the movement tag alone does not change what the narrator writes (12 runs per arm, no gain over no tag). Ticket 10 may add one sentence to the default narration and choices templates that gives the movement line its meaning, and lands it only if it beats the no-tag control without more mentions of staying on ordinary turns. Two wordings at most; if neither wins, the tag ships as built and the "they stay" bar is recorded as not met. (Ticket 10.)
 - **Q115** Ticket 09's probe: one batched call met the one-named bar in 24 of 24 runs, and one call per character in 16 of 24. Ticket 12 switches the request to one batched call. (Ticket 09.)
 - **Q116** A row's two handles never cross. A drag cannot turn a row into one that wraps midnight; the time editor sets a wrapping range, and a row that already wraps drags both its ends. The prototype let an end pass its own start, which was not intended. (Ticket 05.)
+- **Q117** In the batched request, each character has a block in the appended format with its state sentence and its own reply list. The character-name and move-state chips leave the default template; in a saved template the first reads "each character listed" and the second renders empty. Two subjects with one name are numbered in the request. (Ticket 12; amends Q108.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories

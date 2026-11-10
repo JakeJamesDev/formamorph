@@ -20,7 +20,9 @@ A press on the map keeps the row selection, so the author can pan with a row sel
 
 The prototype's canvas view is the reference. Two findings from it apply: the old picker's rule that draws canvas lines at 25% must not apply in Routine mode, and movement lines run straight between places.
 
-Spec rulings: Q71–Q74, Q80.
+Ticket 05 left two things to use: the shared selection store (the Start on show and the selected row, per entity), which this ticket only reads, and the three approved action-color tokens for the map's lines and marks. A press on the map must count as "inside" for the store's click-away rule (Q80).
+
+Spec rulings: Q71–Q74, Q80, Q113.
 
 ## Acceptance criteria
 
