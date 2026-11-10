@@ -110,6 +110,65 @@ export function firstFreeRange(rows: readonly ScheduleRow[]): ScheduleRange | nu
   return { start: free[0].start, end: free[0].end % MINUTES_PER_DAY };
 }
 
+export type RangeEdge = 'start' | 'end';
+
+/** Where each end of `range` sits on a 0–1440 strip. An end at midnight sits at the right edge. */
+export const edgePositions = (range: ScheduleRange): { start: number; end: number } =>
+  ({ start: range.start, end: range.end === 0 ? MINUTES_PER_DAY : range.end });
+
+/** The pieces of `range` on a 0–1440 strip: two when it wraps past midnight. */
+export function strip(range: ScheduleRange): [number, number][] {
+  const { start, end } = edgePositions(range);
+  return start < end ? [[start, end]] : [[start, MINUTES_PER_DAY], [0, end]];
+}
+
+/** The strip positions an edge snaps to: daypart edges, or whole hours. */
+function snapPoints(asHours: boolean): number[] {
+  if (asHours) return Array.from({ length: 25 }, (_, h) => h * 60);
+  return CLOCK_ORDER.map(daypartStart).sort((a, b) => a - b);
+}
+
+/** The positions one `edge` of `range` may take: never at or past its other end. */
+function edgeBounds(range: ScheduleRange, edge: RangeEdge): [number, number] {
+  const pos = edgePositions(range);
+  const wraps = pos.start > pos.end;
+  if (edge === 'start') return wraps ? [pos.end + 1, MINUTES_PER_DAY] : [0, pos.end - 1];
+  return wraps ? [0, pos.start - 1] : [pos.start + 1, MINUTES_PER_DAY];
+}
+
+/** `range` with `edge` moved toward strip position `target`, snapped by the row's format. The edge walks one snap
+ *  point at a time and stops at the last one that leaves the range clear of `covered`. */
+export function moveEdge(range: ScheduleRange, edge: RangeEdge, target: number, asHours: boolean, covered: readonly boolean[]): ScheduleRange {
+  const [lo, hi] = edgeBounds(range, edge);
+  const points = snapPoints(asHours).filter((p) => p >= lo && p <= hi);
+  if (points.length === 0) return range;
+  const goal = points.reduce((best, p) => (Math.abs(p - target) < Math.abs(best - target) ? p : best));
+  const from = edgePositions(range)[edge];
+  const path = goal > from ? points.filter((p) => p > from && p <= goal) : points.filter((p) => p < from && p >= goal).reverse();
+  let out = range;
+  for (const p of path) {
+    const next = edge === 'start' ? { start: p % MINUTES_PER_DAY, end: range.end } : { start: range.start, end: p % MINUTES_PER_DAY };
+    if (blocked(covered, next)) break;
+    out = next;
+  }
+  return out;
+}
+
+/** `range` with `edge` moved one snap point left (-1) or right (1), when that point is free. */
+export function stepEdge(range: ScheduleRange, edge: RangeEdge, direction: -1 | 1, asHours: boolean, covered: readonly boolean[]): ScheduleRange {
+  const from = edgePositions(range)[edge];
+  const points = snapPoints(asHours);
+  const next = direction > 0 ? points.find((p) => p > from) : [...points].reverse().find((p) => p < from);
+  return next === undefined ? range : moveEdge(range, edge, next, asHours, covered);
+}
+
+/** An edge's position in the row's own format: "From Morning", "Through Evening", "To 14:00". */
+export function edgeText(minute: number, edge: RangeEdge, asHours: boolean): string {
+  const d = asHours ? null : edgeDaypart(minute, edge);
+  if (d) return `${edge === 'start' ? 'From' : 'Through'} ${DAYPART_LABELS[d]}`;
+  return `${edge === 'start' ? 'From' : 'To'} ${hhmm(minute)}`;
+}
+
 /** Sort key for clock order: the All-day row first, then timed rows by their start. */
 export const rowClockKey = (row: ScheduleRow): number => (row.time === 'allDay' ? -1 : row.time.start);
 

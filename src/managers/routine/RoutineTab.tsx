@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Coffee, Plus, Trash2, X } from 'lucide-react';
 import { LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
@@ -19,12 +19,16 @@ import { fieldFrame } from '@/lib/historyField';
 import { holderOf, locationRows } from '@/lib/locationTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { connectedPlaces } from '@/lib/positionEngine';
-import { withNewRow, withNewStart, withoutRow, withoutStart, withRow, withStart } from '@/lib/routineEditing';
-import { chancePercent, dayFull, freeRanges, rangeText, rowClockKey, toWeight, type FreeRange } from '@/lib/routineTime';
+import { withNewRow, withNewStart, withoutRow, withoutStart, withRow, withRowAt, withStart } from '@/lib/routineEditing';
+import { useRoutineSelection } from '@/lib/routineSelection';
+import {
+  chancePercent, dayFull, freeRanges, onDaypartEdges, rangeText, rowClockKey, toWeight, type FreeRange,
+} from '@/lib/routineTime';
 import { cn } from '@/lib/utils';
 import { randomUUID } from '@/lib/uuid';
 import { MINUTES_PER_DAY } from '@/lib/gameClock';
-import type { Connection, Entity, EntityKind, EntityStart, GameLocation, ScheduleRow, Traversable } from '@/types';
+import type { Connection, Entity, EntityKind, EntityStart, GameLocation, ScheduleRange, ScheduleRow, Traversable } from '@/types';
+import { DayStrip, STRIP_PART } from './DayStrip';
 import { RoutineRow } from './RoutineRow';
 import { ACTIONS } from './routineActions';
 import { LocationPicker, Token, TOKEN_CLASS, type PlaceBook } from './RoutineFields';
@@ -38,6 +42,9 @@ const KIND_HINTS: Record<EntityKind, string> = {
   individual: 'Stands in one location at a time and keeps a daily routine',
   group: 'Stands at every picked location at once, like a crowd or a fixture',
 };
+
+/** What a press may land on and keep the row selection: a sentence, the strip, or an open editor. */
+const KEEPS_SELECTION = `[data-routine-row], [${STRIP_PART}], [data-radix-popper-content-wrapper], [role="listbox"]`;
 
 /** The parent locations of `location`, outermost first. */
 function pathOf(locations: readonly GameLocation[], location: GameLocation): string[] {
@@ -119,13 +126,13 @@ function IndividualRoutine({ entity, book, locations, connections, commit, onCha
   commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void;
 }) {
   const starts = entity.starts ?? [];
-  const [shownId, setShownId] = useState<string | null>(null);
-  const start = starts.find((s) => s.id === shownId) ?? starts[0];
+  const { startId, showStart } = useRoutineSelection(entity.id);
+  const start = starts.find((s) => s.id === startId) ?? starts[0];
   const weights = starts.map((s) => s.weight);
   const addStart = (place: string) => {
     const next = withNewStart(entity, place, randomUUID);
     commit('Add Start', next);
-    setShownId(next.starts?.[next.starts.length - 1]?.id ?? null);
+    showStart(next.starts?.[next.starts.length - 1]?.id ?? null);
   };
   const addTrigger = (label: string) => (
     <Button variant="ghost" size="sm" className="h-8 gap-1 px-2" aria-label="Add Start"><Plus className="h-4 w-4" aria-hidden />{label}</Button>
@@ -137,7 +144,7 @@ function IndividualRoutine({ entity, book, locations, connections, commit, onCha
         <div className="flex flex-wrap items-center gap-1 border-b pb-2" role="group" aria-label="Starts">
           {starts.map((s, i) => (
             <button
-              key={s.id} type="button" aria-pressed={s.id === start?.id} onClick={() => setShownId(s.id)}
+              key={s.id} type="button" aria-pressed={s.id === start?.id} onClick={() => showStart(s.id)}
               className={cn('flex items-center gap-1.5 rounded-md border px-2 py-1 text-label',
                 s.id === start?.id ? 'border-primary bg-accent' : 'border-transparent hover:bg-muted')}
             >
@@ -157,7 +164,7 @@ function IndividualRoutine({ entity, book, locations, connections, commit, onCha
         <StartRoutine
           entity={entity} start={start} weights={weights} book={book} commit={commit} onChange={onChange}
           connected={[...connectedPlaces(start.place, { locations, connections })]}
-          onDeleted={() => setShownId(null)}
+          onDeleted={() => showStart(null)}
         />
       )}
       <TraversableField
@@ -183,6 +190,48 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
   ].sort((a, b) => a.at - b.at);
   const full = dayFull(start.schedule);
   const startName = book.nameOf(start.place);
+
+  const { rowId, selectRow } = useRoutineSelection(entity.id);
+  const selected = start.schedule.some((r) => r.id === rowId) ? rowId : null;
+  // A row shows as hours when its ends sit off daypart edges, until its swap button says otherwise.
+  const [formats, setFormats] = useState<Record<string, boolean>>({});
+  const asHoursOf = (row: ScheduleRow) => formats[row.id] ?? (row.time !== 'allDay' && !onDaypartEdges(row.time));
+  const rowEls = useRef(new Map<string, HTMLLIElement>());
+
+  // A press outside the rows, their bands, their handles and their open editors clears the selection.
+  useEffect(() => {
+    if (!selected) return;
+    const onDown = (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest(KEEPS_SELECTION)) return;
+      selectRow(null);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [selected, selectRow]);
+
+  // A filled gap's new sentence exists only after the write renders, so it scrolls into view then.
+  const scrollTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selected || scrollTo.current !== selected) return;
+    scrollTo.current = null;
+    rowEls.current.get(selected)?.scrollIntoView?.({ block: 'nearest' });
+  }, [selected, start.schedule]);
+
+  const showRow = (id: string) => {
+    selectRow(id);
+    rowEls.current.get(id)?.scrollIntoView?.({ block: 'nearest' });
+  };
+  const fill = (time: ScheduleRow['time']) => {
+    const added = withRowAt(entity, start.id, time, randomUUID);
+    commit('Add Routine Row', added.entity);
+    scrollTo.current = added.rowId;
+    selectRow(added.rowId);
+  };
+  const move = (id: string, range: ScheduleRange, gesture: boolean) => {
+    setFormats((f) => (id in f ? f : { ...f, [id]: asHoursOf(start.schedule.find((r) => r.id === id)!) }));
+    const write = withRow(entity, start.id, id, (r) => ({ ...r, time: range }));
+    if (gesture) onChange(write); else commit('Move Routine Time', write);
+  };
 
   return (
     <div className="space-y-3">
@@ -227,10 +276,18 @@ function StartRoutine({ entity, start, weights, book, connected, commit, onChang
         )}
       </p>
 
+      <DayStrip
+        rows={start.schedule} free={free} asHoursOf={asHoursOf} selected={selected}
+        onSelect={showRow} onFill={fill} onMove={move}
+      />
+
       <ol className="space-y-0.5 border-l pl-2" aria-label="Routine">
         {lines.map((line) => line.row ? (
           <RoutineRow
             key={line.row.id} row={line.row} startPlace={start.place} book={book} connected={connected}
+            asHours={asHoursOf(line.row)} onAsHours={(hours) => setFormats((f) => ({ ...f, [line.row.id]: hours }))}
+            selected={selected === line.row.id} onSelect={() => selectRow(line.row.id)}
+            rowRef={(el) => { if (el) rowEls.current.set(line.row.id, el); else rowEls.current.delete(line.row.id); }}
             others={start.schedule.filter((r) => r.id !== line.row.id)}
             onChange={(next, typed) => {
               const write = withRow(entity, start.id, line.row.id, () => next);

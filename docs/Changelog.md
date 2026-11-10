@@ -42,6 +42,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Formamorph AI:**
     - **Set up your AI offers Formamorph AI first on AMD, Intel and integrated GPUs, and on computers without a GPU.** It reads the GPU the built-in engine uses. A card with 8 GB of memory or less still counts.
     - **After 10 turns on the built-in engine with little GPU memory, a card offers Formamorph AI once.** It sits under the story and compares Formamorph AI with the model on your computer. Not Now hides it for good.
+  - **Routine Tab:**
+    - **The Routine tab shows the day as a bar of colored bands above the sentences.** Drag a band's ends to change its time, click a band to find its row, or click free time to fill it.
   - **In the World Editor, an entity with only a Stranger Description now starts as a stranger.** In play, you see its Name and that description until you meet it. Stranger Name now sits beside Name, and Stranger Description under Player-Facing Description. Items' Unidentified fields match, and each field has its own help button.
   - **Avatar customization and the model library show Head Features sliders for a model's face and hair shapes.** A slider such as Ear Shape runs from 0 to 1 and moves the face and the hair together. Expression and lip-sync shapes stay hidden.
   - **Choices cost less on Formamorph AI in worlds with many stats.** The choices prompt now keeps its fixed parts first and the stat lines last, so the AI reuses more of it each turn. Choice quality held in testing.

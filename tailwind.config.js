@@ -112,6 +112,12 @@ module.exports = {
         },
         // The filled heart on a liked listing. Deliberately one pink across every theme — see index.css.
         like: "hsl(var(--like))",
+        // Routine actions: Stay, Wander, Patrol bands and swatches.
+        routine: {
+          stay: "hsl(var(--routine-stay))",
+          wander: "hsl(var(--routine-wander))",
+          patrol: "hsl(var(--routine-patrol))",
+        },
         overlay: "hsl(var(--overlay))",
         muted: {
           DEFAULT: "hsl(var(--muted))",

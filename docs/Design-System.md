@@ -1709,6 +1709,15 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 - 🗑️ **Delete.** A ghost trash button ends each sentence, always visible so touch can reach it.
 - ⚠️ **Disconnected location.** The token gets a warning icon; the location list shows the name in the warning color with the same icon.
 
+### Day strip
+
+A 24-hour bar sits above the sentences, with daypart icons over it (full name in a tooltip).
+
+- 🎨 **Action colors.** Each row is a band in its action's token: `routine-stay`, `routine-wander`, `routine-patrol`, at 70% fill. A matching swatch leads its sentence. The tokens are set once per mode, never per palette.
+- 🧱 **Layers.** An All-day row sits under the timed rows at half strength. Free time is hatched; clicking it adds a Stay over exactly that time.
+- 🎯 **Selection.** Clicking a band or a sentence selects that row in both places: the band takes a primary inset ring, the sentence an accent fill. A press anywhere else, except an open row editor, clears it.
+- ↔️ **Handles.** Each timed band has a handle on both ends. A drag snaps to daypart edges or whole hours, by the row's format, and stops before another timed row. A label above the handle names its place (*From Morning*, *To 14:00*). The selected row's handles sit on top at a shared edge. Arrow keys move a focused handle one snap.
+
 ### Location list
 
 Wander and Patrol share one list inside the locations popover: grip, an optional stop number, the location, the action's own field, then remove. Wander's field is a weight box and its percent; Patrol's is a wait (number plus **Minutes** / **Hours** / **Dayparts**). The grip reorders by drag or keyboard. **Add Location** opens a Breadcrumb Picker.
@@ -1723,10 +1732,11 @@ A swap button leads the row: **Use Hours** or **Use Dayparts**. Dayparts use two
 | --- | --- |
 | Sentence, time editor, action toggle | `RoutineRow`, `RowTimeEditor` in [`RoutineRow.tsx`](../src/managers/routine/RoutineRow.tsx) |
 | Tokens, location list, wait field | `Token`, `RoutinePlaceList`, `IdleField` in [`RoutineFields.tsx`](../src/managers/routine/RoutineFields.tsx) |
+| Day strip and handles | `DayStrip` in [`DayStrip.tsx`](../src/managers/routine/DayStrip.tsx) |
 | The tab | `RoutineTab` in [`RoutineTab.tsx`](../src/managers/routine/RoutineTab.tsx) |
 | Isolated reference | [`RoutineSentenceReference.tsx`](../src/components/design-system/RoutineSentenceReference.tsx) |
 
-Open `#dev?modal=designSystem&tab=routine-sentences` for a Stay, a locked row, a Wander with a disconnected location and a Patrol, in local state.
+Open `#dev?modal=designSystem&tab=routine-sentences` for a Stay, a locked row, a Wander with a disconnected location and a Patrol under their day strip, in local state.
 
 ## Pattern: Formaquestion Window
 

@@ -65,6 +65,10 @@
     --supporter: 318 75% 30%;
     --supporter-plus: 268 70% 32%;
     --supporter-top: 40 95% 18%;
+    /* Routine actions: Stay, Wander, Patrol bands and swatches. One set per mode, never per palette. */
+    --routine-stay: 199 89% 48%;
+    --routine-wander: 160 84% 39%;
+    --routine-patrol: 38 92% 50%;
     /* Theme-independent dark scrim for overlays on imagery + modal backdrops (light text must stay readable). */
     --overlay: 0 0% 0%;
     --border: 214.3 31.8% 91.4%;
@@ -111,6 +115,9 @@
     --supporter: 318 75% 85%;
     --supporter-plus: 268 85% 87%;
     --supporter-top: 45 90% 78%;
+    --routine-stay: 198 93% 60%;
+    --routine-wander: 158 64% 52%;
+    --routine-patrol: 43 96% 56%;
     --overlay: 0 0% 0%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;

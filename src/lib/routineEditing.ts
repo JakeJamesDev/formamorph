@@ -50,6 +50,13 @@ export function withNewRow(entity: Entity, startId: string, kind: ActionKind, ne
   return withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: newId(), time, action: newAction(kind, s.place) }] }));
 }
 
+/** `entity` with a new Stay at the Start's location over exactly `time`, and that row's id. */
+export function withRowAt(entity: Entity, startId: string, time: ScheduleRow['time'], newId: () => string): { entity: Entity; rowId: string } {
+  const rowId = newId();
+  const next = withStart(entity, startId, (s) => ({ ...s, schedule: [...s.schedule, { id: rowId, time, action: newAction('stay', s.place) }] }));
+  return { entity: next, rowId };
+}
+
 /** `entity` with a new empty Start at `place`. */
 export const withNewStart = (entity: Entity, place: string, newId: () => string): Entity =>
   write(entity, [...(entity.starts ?? []), { id: newId(), place, weight: 1, schedule: [] }]);

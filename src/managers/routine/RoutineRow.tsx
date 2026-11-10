@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import { ArrowLeftRight, Lock, LockOpen, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DateTimeField } from '@/components/ui/date-time-field';
@@ -6,16 +6,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
+import { cn } from '@/lib/utils';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
 import { NEW_STOP_IDLE, switchAction, type ActionKind } from '@/lib/routineEditing';
 import {
-  blocked, CLOCK_ORDER, chancePercent, DAYPART_LABELS, daypartEnd, daypartStart, edgeDaypart, hhmm, idleText, onDaypartEdges,
+  blocked, CLOCK_ORDER, chancePercent, DAYPART_LABELS, daypartEnd, daypartStart, edgeDaypart, hhmm, idleText,
   parseHhmm, rangeText, snapToDayparts, timedCover, toWeight,
 } from '@/lib/routineTime';
 import { placesOf } from '@/lib/positionEngine';
 import type { Daypart, ScheduleRange, ScheduleRow } from '@/types';
-import { ACTIONS } from './routineActions';
+import { ACTION_TONE, ACTIONS } from './routineActions';
 import { IdleField, LocationPicker, RoutinePlaceList, Token, UnconnectedFlag, type PlaceBook } from './RoutineFields';
 
 const VERBS: Record<ActionKind, string> = { stay: 'stays at', wander: 'wanders', patrol: 'patrols' };
@@ -181,12 +182,14 @@ function PlacesEditor({ row, book, connected, onChange, field }: {
 }
 
 /** One schedule row as a sentence. The time, the action and the locations each open their own editor. */
-export function RoutineRow({ row, others, startPlace, book, connected, onChange, onDelete }: {
+export function RoutineRow({ row, others, startPlace, book, connected, asHours, onAsHours, selected, onSelect, rowRef, onChange, onDelete }: {
   row: ScheduleRow; others: readonly ScheduleRow[]; startPlace: string; book: PlaceBook; connected: readonly string[];
+  /** Whether the row's time shows as hours. */
+  asHours: boolean; onAsHours: (hours: boolean) => void;
+  selected: boolean; onSelect: () => void; rowRef?: Ref<HTMLLIElement>;
   /** `typed` is true for a keystroke in a number box, which joins the typing run; a pick is its own Step. */
   onChange: (row: ScheduleRow, typed?: boolean) => void; onDelete: () => void;
 }) {
-  const [asHours, setAsHours] = useState(() => row.time !== 'allDay' && !onDaypartEdges(row.time));
   const timeText = row.time === 'allDay'
     ? (others.some((r) => r.time !== 'allDay') ? 'The rest of the day' : 'All day')
     : rangeText(row.time, asHours);
@@ -198,7 +201,11 @@ export function RoutineRow({ row, others, startPlace, book, connected, onChange,
   const strictTip = row.strict ? 'Locked: can’t be called over or follow the player' : 'Unlocked: can be called over and follow the player';
 
   return (
-    <li className="group flex items-start gap-1 rounded px-1 py-0.5 text-label leading-7 hover:bg-muted/40" data-routine-row={row.id}>
+    <li
+      ref={rowRef} data-routine-row={row.id} aria-current={selected || undefined} onClickCapture={onSelect}
+      className={cn('group flex items-start gap-1 rounded px-1 py-0.5 text-label leading-7 transition-colors', selected ? 'bg-accent/60' : 'hover:bg-muted/40')}
+    >
+      <span className={cn('mt-2.5 inline-block h-2.5 w-2.5 shrink-0 rounded-sm', ACTION_TONE[row.action.kind])} aria-hidden />
       <Tip tip={strictTip}>
         <button
           type="button" className="mt-1.5 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -210,7 +217,7 @@ export function RoutineRow({ row, others, startPlace, book, connected, onChange,
       </Tip>
       <p className="min-w-0 flex-1">
         <Token wide label={`Time: ${timeText}`} editor={(
-          <RowTimeEditor time={row.time} asHours={asHours} onAsHours={setAsHours} others={others} onChange={(time) => onChange({ ...row, time })} />
+          <RowTimeEditor time={row.time} asHours={asHours} onAsHours={onAsHours} others={others} onChange={(time) => onChange({ ...row, time })} />
         )}>{timeText}</Token>
         {', '}
         <Token label={`Action: ${VERBS[row.action.kind]}`} editor={(
