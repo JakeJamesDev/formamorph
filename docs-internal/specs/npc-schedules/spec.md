@@ -146,6 +146,18 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q97** Ticket 03 already limits the location Entities picker to Groups. Its stand-in edits the first Start's place and says how many Starts the entity has; a canvas click sets that place, and removing a place there does nothing for an Individual. (Ticket 03.)
 - **Q98** A script `.move()` on a follower ends the follow, then holds, as it does today. On a Group it does nothing. (Ticket 03.)
 - **Q99** As an idle length, "one daypart" is 240 minutes, a sixth of the day, because real dayparts are uneven. Migrated Moves Between Wanders get 240 (Q58), and the editor's "1 daypart" idle choice stores the same. (Ticket 03.)
+- **Q100** A character the narration calls over owns items in that same turn: the Inventory pass counts them as present. (Ticket 08, story 35.)
+- **Q101** The pull cannot tell "seen" from "called over". A character named in full is refused only by the rule itself: a Far link, a Strict row, a place that is not allowed, or a follow or wait. The playtest's window case holds because the office was not an allowed place for those characters (Q23). A character with Traversable = Anywhere on a non-Strict row next door is pulled when named. (Ticket 08.)
+- **Q102** A character in the parent place is one Nearby link away and can be pulled (Q88). (Ticket 08.)
+- **Q103** Ticket 09 lands one call per character and records the batching verdict. A switch to one batched call is a follow-up ticket. (Ticket 09.)
+- **Q104** A follower's replies are exactly Keep following, Wait here and Part ways. Go to a place alone is offered to non-followers only, as today. (Ticket 09.)
+- **Q105** Go to offers the places one travel link from where the character stands that are also allowed for them. It does not list every allowed place in the world. (Ticket 09.)
+- **Q106** Part ways resumes the routine at once. A character at the player's place still leaves only when the player does. (Ticket 09.)
+- **Q107** The request states the current clock time and daypart, and names each wait's end as a clock time and daypart. (Ticket 09.)
+- **Q108** The closed reply list and the reply instruction live in the appended format. The move-state chip stays an author chip. The move-options chip leaves the default template and renders empty in a saved template that still holds it. (Ticket 09.)
+- **Q109** The idle control is a number box with a unit: minutes, hours or dayparts. This is the prototype's control and it replaces Q50's "presets plus a box". (Ticket 04.)
+- **Q110** In hours mode the hour column disables hours that would make the range touch another timed row. A write that still overlaps is refused with a one-line note. (Ticket 04.)
+- **Q111** The kind switch, a Group's places and the Starts all live in the Routine tab; nothing of them stays in the Profile tab. The last Start can't be deleted. Changing a Start's place keeps its rows, and places it can no longer reach get the flag (Q54). Each Start tab shows its chance as a chance chip, and the weight edits from the "begins at" sentence. (Ticket 04.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
