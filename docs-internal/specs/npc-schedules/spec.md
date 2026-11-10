@@ -204,6 +204,12 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q150** A Group's Start can use Player's Starting Location too. It never follows.
 - **Q151** The Q146 split applies only in a world where at least one entity has pronouns or the persona flag. In a world with none, every multi-location entity follows Q143, because the world is older than both fields.
 - **Q152** Q61 stays for a Wander row: narration pulls an Individual only from a Nearby place, not from any place its row uses. A migrated person is present by chance until the author writes a routine.
+- **Q153** A Group's saved record per Start also holds the time the engine last ran for it, so idles and row edges replay per presence (Q83). (Ticket 13.)
+- **Q154** The rule that nobody moves at the player's location until the player leaves applies to each presence of a Group. The opening reseat leaves a presence at the player's place where it is. (Ticket 13.)
+- **Q155** Ticket 13 makes the kind switch keep Starts, rows, weights, Strict and Traversable in both directions (Q135), because a Group with no Starts is present nowhere. A kindless entity switched to Group gets one Start per listed location, no rows. Ticket 14 keeps the round-trip test and the UI. (Ticket 13.)
+- **Q156** Ticket 13 changes the output of today's "several locations, no presence → Group" migration row to one Start per location with no rows. Ticket 18 owns which entities become Groups. (Ticket 13.)
+- **Q157** Every writer of a Group's places goes through ticket 13's helper: the canvas Locations pick mode, the canvas Routine view's Group click (Q75), the authoring tour's place step and the location Entities picker. Until ticket 15, the canvas Routine view for a Group lights every presence's Start and row places. (Ticket 13.)
+- **Q158** A Group added to a world from the library keeps the Starts whose place maps into the world, with Start and row places remapped; a row left with no places is dropped, and a Group left with no Starts gets one per mapped location. An Individual's Start places are not remapped on that path today; that gap is a follow-up, not ticket 13. (Ticket 13.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
