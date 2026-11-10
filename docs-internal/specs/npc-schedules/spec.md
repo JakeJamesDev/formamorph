@@ -244,6 +244,15 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q187** The link button of the hint pair spans from the top of the first hint box to the bottom of the second. It does not cover the first label.
 - **Q188** The two hints keep the link button. The rule "an empty return hint uses the words of the way out" was tried and dropped.
 - **Q189** Rejected in the prototype: the direction as a click-to-cycle icon; distance as dropdowns, as a clickable header mark, as a menu on the mark, as a slider line, and as the list a row is in; sentences with inline picks; arrows the hint is typed on; a list with one editor; a checkbox grid; ways out and ways in; a small radial map; chips; groups by place with free links as ghost rows. Reason for the last two families: a row that moves or changes list while it is edited is bad to use.
+- **Q190** The Known In canvas view (Q180) uses the whole day of every Start, never the Routine tab's selection, and for a Generic entity all its Starts. It marks only places the engine can use: a row place that is not connected to its Start (Q54) gets no mark. (Ticket 24.)
+- **Q191** In that view, Player's Starting Location stands for every location when no location is flagged as starting, as in the engine. (Ticket 24.)
+- **Q192** That view fades unmarked places the way the Picked Locations view fades non-picks. (Ticket 24.)
+- **Q193** In that view the routine-place mark replaces the member mark. Nowhere and Picked Locations keep the member mark. (Ticket 24.)
+- **Q194** The Known In hint and the two key labels use the word Nearby, the word the Distance control uses, and no "next door". Working text: "Sends its summary to the AI at locations Nearby to where it is", "Can Be Here", "Known Here While It Is Nearby". The user approves the final copy. (Ticket 24.)
+- **Q195** The Connection widget takes its Travel choice labels from the surface: icon and word on the location panel, icon and a tooltip that names both ends on the canvas. The canvas has no "here", and two choices that both read "one way" would mislead. (Ticket 21; narrows Q183.)
+- **Q196** The widget takes its hint labels from the surface too: "To X" and "From X" on the location panel, an arrow and the destination on the canvas. (Ticket 21.)
+- **Q197** The one-line distance hints are deleted. The Distance ⓘ is the only place that explains Nearby and Far (Q186). (Ticket 21.)
+- **Q198** Tickets 21 and 24 share no primitive. Ticket 21 owns the distance mark; ticket 24 draws Far links in the canvas's existing Far style. (Tickets 21, 24.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
