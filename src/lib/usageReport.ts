@@ -56,7 +56,7 @@ export function failureLabel(failure: string): string {
 }
 
 const OFFER_LABELS: Record<string, string> = {
-  offer_shown: 'Offer Shown', local_offer_shown: 'Built-In Engine Offer Shown', see_levels: 'See Levels', patreon_click: 'Patreon Click', checklist_finished: 'Checklist Finished',
+  offer_shown: 'Offer Shown', engine_offer_shown: 'Built-In Engine Offer Shown', see_levels: 'See Levels', patreon_click: 'Patreon Click', checklist_finished: 'Checklist Finished',
 };
 
 export const offerLabel = (step: string): string => OFFER_LABELS[step] ?? step;

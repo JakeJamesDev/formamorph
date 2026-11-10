@@ -9,7 +9,7 @@ const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
 const { cudaSupport, nvidiaCards } = require('./nvidiaFacts.cjs');
 const { evaluateCudaSupport } = require('./cudaSupport.cjs');
-const { engineBackend, withDeviceSettings } = require('./engineBackend.cjs');
+const { engineBackend, withDeviceSettings, createVramClassAsk } = require('./engineBackend.cjs');
 const { createBackendChoice } = require('./engineBackendChoice.cjs');
 const { createCudaInstall, driverVersions } = require('./cudaInstall.cjs');
 const { createCudaStarts } = require('./cudaStart.cjs');
@@ -17,7 +17,7 @@ const { readEnginePin } = require('./enginePin.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
 // exports. See llmEngineProxy.cjs.
 const llmEngine = require('./llmEngineProxy.cjs');
-const { selectEngineDevice, engineVramClass, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
+const { selectEngineDevice, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
 const llamaServer = require('./llamaServer.cjs');
 const { overflowPolicy, DEFAULT_POLICY: DEFAULT_OVERFLOW_POLICY } = require('./contextOverflow.cjs');
 const { binaryPath: llamaServerBinary, readServerDevices, deviceListing } = llamaServer;
@@ -109,6 +109,8 @@ const deviceEnumerations = new Map();
 // One read at a time per binary: a desktop boot can ask twice at once (a model starting while the picker fills).
 const devicesInFlight = new Map();
 
+const deviceNames = (enumeration) => enumeration.devices.map((d) => d.name);
+
 async function enumerationOf(bin) {
   const cached = deviceEnumerations.get(bin);
   if (cached) return cached;
@@ -117,7 +119,7 @@ async function enumerationOf(bin) {
   }
   const enumeration = await devicesInFlight.get(bin);
   // A failed listing and an empty CUDA listing are asked again next time: a reinstall at the same path can list devices.
-  if (enumeration.listed && (enumeration.gpuDeviceNames.length || bin === llamaServerBinary())) deviceEnumerations.set(bin, enumeration);
+  if (enumeration.listed && (enumeration.devices.length || bin === llamaServerBinary())) deviceEnumerations.set(bin, enumeration);
   return enumeration;
 }
 
@@ -130,7 +132,7 @@ const chooseBackend = createBackendChoice({
   platform: process.platform,
   install: cuda,
   readCards: nvidiaCards,
-  vulkanDeviceNames: async () => (await enumerationOf(llamaServerBinary())).gpuDeviceNames,
+  vulkanDeviceNames: async () => deviceNames(await enumerationOf(llamaServerBinary())),
 });
 /** The backend the next start runs for `options`, the engine options by default. */
 const backendChoice = (options = engineOptions) => chooseBackend(options);
@@ -229,7 +231,7 @@ llmEngine.onStatus((state) => {
       if (enumeration.gpuBackend !== state.gpuBackend) continue;
       // A card new to this copy has no total yet, which the VRAM class reads as unknown.
       const devices = state.gpuDeviceOptions.map((name) => enumeration.devices.find((d) => d.name === name) ?? { name, totalMB: null });
-      deviceEnumerations.set(bin, { ...enumeration, gpuDeviceNames: state.gpuDeviceOptions, devices, listed: true });
+      deviceEnumerations.set(bin, { ...enumeration, devices, listed: true });
     }
   }
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-status', state);
@@ -521,22 +523,16 @@ async function startEnumeration(options) {
   let choice = picked;
   let enumeration = cudaBinary ? await enumerationOf(cudaBinary) : null;
   // A CUDA build that lists no devices starts on Vulkan, so the picker lists Vulkan's.
-  if (!enumeration?.gpuDeviceNames.length) {
+  if (!enumeration?.devices.length) {
     if (cudaBinary) choice = { backend: 'vulkan', reason: 'no-cuda-devices' };
     enumeration = await enumerationOf(llamaServerBinary());
   }
   return { choice, enumeration };
 }
 
-// The VRAM class of the device the next start uses: 'low', 'ok' or 'unknown'. `saved` is the renderer's saved
-// Backend and device settings; the shell's own copy holds defaults until the engine is wanted.
-ipcMain.handle('llm-vram-class', async (_event, saved) => {
-  const options = withDeviceSettings(engineOptions, saved);
-  const { enumeration } = await startEnumeration(options);
-  return engineVramClass({
-    devices: enumeration.devices, listed: enumeration.listed, nvidiaGpus: await nvidiaGpus(), setting: options.gpuDevice,
-  });
-});
+// The shell's own copy of the options holds defaults until the engine is wanted, so the ask takes the saved ones.
+const vramClassAsk = createVramClassAsk({ engineOptions: () => engineOptions, startEnumeration, nvidiaGpus });
+ipcMain.handle('llm-vram-class', (_event, saved) => vramClassAsk(saved));
 
 // Every GPU the engine could be pinned to, for the device picker: { backend, devices, autoPick, choice }. The
 // devices are those of the backend the next start runs with `pending` (the panel's unsaved Backend and device
@@ -547,11 +543,12 @@ ipcMain.handle('llm-list-devices', async (_event, pending) => {
   const options = withDeviceSettings(engineOptions, pending);
   const { choice, enumeration } = await startEnumeration(options);
   let autoPick = null;
-  if (enumeration.gpuDeviceNames.length) {
-    const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus: await nvidiaGpus() });
-    if (pick.index != null) autoPick = enumeration.gpuDeviceNames[pick.index] ?? null;
+  const names = deviceNames(enumeration);
+  if (names.length) {
+    const pick = selectEngineDevice({ deviceNames: names, nvidiaGpus: await nvidiaGpus() });
+    if (pick.index != null) autoPick = names[pick.index] ?? null;
   }
-  return { backend: enumeration.gpuBackend, devices: enumeration.gpuDeviceNames, autoPick, choice };
+  return { backend: enumeration.gpuBackend, devices: names, autoPick, choice };
 });
 
 // Installed GGUF filenames across every searched folder (used where only names matter).

@@ -373,7 +373,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
             testId="ai-setup-lead"
             className={cn(expanded && 'shrink-0')}
             title="Better Narration, Nothing to Download"
-            body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your machine. Your support also helps fund new updates."
+            body="Formamorph AI writes better narration and keeps characters more consistent than the models that fit your computer. Your support also helps fund new updates."
             onSeeLevels={openRoadScene}
           />
         )}

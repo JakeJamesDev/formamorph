@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import engineDevice from './engineDevice.cjs';
-import { withDeviceSettings } from './engineBackend.cjs';
+import { createVramClassAsk, withDeviceSettings } from './engineBackend.cjs';
 
 const { selectEngineDevice, engineVramClass, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL, LOW_VRAM_LIMIT_MB } = engineDevice;
 
@@ -265,5 +265,36 @@ describe('engineVramClass', () => {
 
   it('reads a discrete card with no known total as unknown', () => {
     expect(classOf({ devices: [dev('AMD Radeon RX 7600', null)] })).toBe('unknown');
+  });
+});
+
+describe('createVramClassAsk', () => {
+  const devices = [{ name: IGPU, totalMB: 2048 }, { name: 'AMD Radeon RX 7900 XTX', totalMB: 24560 }];
+  const SHELL = { gpuDevice: ENGINE_DEVICE_AUTO, engineBackend: 'auto', contextSize: 8192 };
+
+  function ask(listed = true) {
+    const asked = [];
+    const vramClass = createVramClassAsk({
+      engineOptions: () => SHELL,
+      startEnumeration: async (options) => { asked.push(options); return { enumeration: { devices, listed } }; },
+      nvidiaGpus: async () => [],
+    });
+    return { vramClass, asked };
+  }
+
+  it("judges the saved device pin, not the shell's default copy", async () => {
+    const { vramClass } = ask();
+    await expect(vramClass({ gpuDevice: IGPU })).resolves.toBe('low');
+    await expect(vramClass(undefined)).resolves.toBe('ok');
+  });
+
+  it('lists devices for the saved backend over the shell options', async () => {
+    const { vramClass, asked } = ask();
+    await vramClass({ engineBackend: 'vulkan', gpuDevice: IGPU });
+    expect(asked).toEqual([{ ...SHELL, engineBackend: 'vulkan', gpuDevice: IGPU }]);
+  });
+
+  it('answers unknown when the listing failed', async () => {
+    await expect(ask(false).vramClass({ gpuDevice: IGPU })).resolves.toBe('unknown');
   });
 });

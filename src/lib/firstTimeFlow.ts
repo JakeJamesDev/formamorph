@@ -29,77 +29,63 @@ export function entryLineDue({ narrationIsDemoAI, demoAISeen, aiGateDue }: Entry
   return narrationIsDemoAI && !demoAISeen && aiGateDue === false;
 }
 
-export interface DemoAITurnFacts {
-  narrationIsDemoAI: boolean;
-  isOpeningTurn: boolean;
-  /** The commit adds a turn; false for a regenerate, which replaces one, and a canned test turn. */
-  isNewTurn: boolean;
-  cardSeen: boolean;
-}
-
-/** Whether a committed turn adds to the Demo AI count: only one that follows a player action. */
-export function countsAsDemoAITurn({ narrationIsDemoAI, isOpeningTurn, isNewTurn, cardSeen }: DemoAITurnFacts): boolean {
-  return narrationIsDemoAI && !isOpeningTurn && isNewTurn && !cardSeen;
-}
-
-export interface OfferFacts {
-  narrationIsDemoAI: boolean;
-  /** The player's pledge already includes Formamorph AI. */
-  pledged: boolean;
-  /** This build has a hosted URL and community accounts. */
-  hostedAvailable: boolean;
-}
-
-/** Whether this player can be offered the levels: the card, and See Levels in the longer Demo AI dialog. */
-export function offerAvailable({ narrationIsDemoAI, pledged, hostedAvailable }: OfferFacts): boolean {
-  return narrationIsDemoAI && hostedAvailable && !pledged;
-}
-
-export interface CardFacts extends OfferFacts {
-  demoAITurnCount: number;
-  cardSeen: boolean;
-}
-
-export function cardDue({ demoAITurnCount, cardSeen, ...offer }: CardFacts): boolean {
-  return offerAvailable(offer) && !cardSeen && demoAITurnCount >= DEMO_AI_CARD_TURNS;
-}
-
 /** Player actions on the built-in engine before its card is due. */
 const ENGINE_CARD_TURNS = 10;
 
-export interface EngineTurnFacts {
-  narrationIsBuiltInEngine: boolean;
+/** A committed turn as one card sees it. Each card has its own count and seen record. */
+export interface CardTurnFacts {
+  /** Narration runs on the AI this card offers an upgrade from: the Demo AI or the built-in engine. */
+  onCardAI: boolean;
   isOpeningTurn: boolean;
   /** The commit adds a turn; false for a regenerate, which replaces one, and a canned test turn. */
   isNewTurn: boolean;
   cardSeen: boolean;
 }
 
-/** Whether a committed turn adds to the built-in engine count. The VRAM class and the pledge gate the card, not the count. */
-export function countsAsEngineTurn({ narrationIsBuiltInEngine, isOpeningTurn, isNewTurn, cardSeen }: EngineTurnFacts): boolean {
-  return narrationIsBuiltInEngine && !isOpeningTurn && isNewTurn && !cardSeen;
+/** Whether a committed turn adds to a card's count: only one that follows a player action. The offer gates the card, not the count. */
+export function countsAsCardTurn({ onCardAI, isOpeningTurn, isNewTurn, cardSeen }: CardTurnFacts): boolean {
+  return onCardAI && !isOpeningTurn && isNewTurn && !cardSeen;
 }
 
-export interface EngineOfferFacts {
-  narrationIsBuiltInEngine: boolean;
-  vramClass: VramClass;
+export interface OfferFacts {
+  /** Narration runs on the AI this offer upgrades from: the Demo AI or the built-in engine. */
+  onCardAI: boolean;
   /** The player's pledge already includes Formamorph AI. */
   pledged: boolean;
   /** This build has a hosted URL and community accounts. */
   hostedAvailable: boolean;
 }
 
-export function engineOfferAvailable({ narrationIsBuiltInEngine, vramClass, pledged, hostedAvailable }: EngineOfferFacts): boolean {
-  return narrationIsBuiltInEngine && vramClass === 'low' && hostedAvailable && !pledged;
+/** Whether this player can be offered the levels: a card, and on the Demo AI also See Levels in its longer dialog. */
+export function offerAvailable({ onCardAI, pledged, hostedAvailable }: OfferFacts): boolean {
+  return onCardAI && hostedAvailable && !pledged;
 }
 
-export interface EngineCardFacts extends EngineOfferFacts {
-  engineTurnCount: number;
+export interface EngineOfferFacts extends OfferFacts {
+  vramClass: VramClass;
+}
+
+export function engineOfferAvailable({ vramClass, ...offer }: EngineOfferFacts): boolean {
+  return offerAvailable(offer) && vramClass === 'low';
+}
+
+interface CardProgress {
+  turnCount: number;
   cardSeen: boolean;
 }
 
-export function engineCardDue({ engineTurnCount, cardSeen, ...offer }: EngineCardFacts): boolean {
-  return engineOfferAvailable(offer) && !cardSeen && engineTurnCount >= ENGINE_CARD_TURNS;
+export type CardFacts = OfferFacts & CardProgress;
+export type EngineCardFacts = EngineOfferFacts & CardProgress;
+
+const earned = (available: boolean, { turnCount, cardSeen }: CardProgress, dueTurns: number): boolean =>
+  available && !cardSeen && turnCount >= dueTurns;
+
+export function cardDue(facts: CardFacts): boolean {
+  return earned(offerAvailable(facts), facts, DEMO_AI_CARD_TURNS);
+}
+
+export function engineCardDue(facts: EngineCardFacts): boolean {
+  return earned(engineOfferAvailable(facts), facts, ENGINE_CARD_TURNS);
 }
 
 export interface AiSetupFacts {

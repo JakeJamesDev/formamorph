@@ -1,7 +1,8 @@
 // Which llama-server build an engine start runs: the bundled Vulkan build, or the downloaded CUDA build.
 // Pure policy beside engineDevice.cjs; main feeds it and passes the CUDA binary to the engine when it says CUDA.
+// Also the VRAM class ask, which judges the start these options make.
 const { evaluateCudaSupport } = require('./cudaSupport.cjs');
-const { namesMatch, isIntegrated, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL } = require('./engineDevice.cjs');
+const { namesMatch, isIntegrated, engineVramClass, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL } = require('./engineDevice.cjs');
 
 const ENGINE_BACKENDS = ['auto', 'vulkan', 'cuda'];
 
@@ -77,4 +78,15 @@ function backendForStart({ install, serverPath, failedLastTime = false, cards, v
   return { ...choice, cudaBinary };
 }
 
-module.exports = { chooseEngineBackend, backendForStart, engineBackend, withDeviceSettings, ENGINE_BACKENDS };
+/** The `llm-vram-class` answer: the VRAM class of the next start's device, with the saved settings over the shell's. */
+function createVramClassAsk({ engineOptions, startEnumeration, nvidiaGpus }) {
+  return async (saved) => {
+    const options = withDeviceSettings(engineOptions(), saved);
+    const { enumeration } = await startEnumeration(options);
+    return engineVramClass({
+      devices: enumeration.devices, listed: enumeration.listed, nvidiaGpus: await nvidiaGpus(), setting: options.gpuDevice,
+    });
+  };
+}
+
+module.exports = { chooseEngineBackend, backendForStart, engineBackend, withDeviceSettings, createVramClassAsk, ENGINE_BACKENDS };

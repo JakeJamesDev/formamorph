@@ -152,7 +152,7 @@ describe('the figures', () => {
 
   it('labels the built-in engine offer step', async () => {
     const user = userEvent.setup();
-    await mount(report({ offer: [{ step: 'offer_shown', count: 100 }, { step: 'local_offer_shown', count: 30 }] }));
+    await mount(report({ offer: [{ step: 'offer_shown', count: 100 }, { step: 'engine_offer_shown', count: 30 }] }));
     await open(user, 'Clients And Offer');
 
     expect(screen.getByText('Built-In Engine Offer Shown')).toBeTruthy();

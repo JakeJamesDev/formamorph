@@ -160,13 +160,8 @@ function backendOf(devices) {
   return id ? id.replace(/\d+$/, '').toLowerCase() : 'cpu';
 }
 
-/**
- * The device picker's view of a device list, with the devices and their totals for the VRAM class. `listed` is
- * false when the listing failed.
- */
-const deviceListing = (devices, listed) => ({
-  gpuBackend: backendOf(devices), gpuDeviceNames: devices.map((d) => d.name), devices, listed,
-});
+/** A device list with its backend, for the device picker and the VRAM class. `listed` is false when the listing failed. */
+const deviceListing = (devices, listed) => ({ gpuBackend: backendOf(devices), devices, listed });
 
 // The router's load-progress event. Its README calls it `model_status`; the pinned build emits this.
 const STATUS_EVENT = 'status_change';

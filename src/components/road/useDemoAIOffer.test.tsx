@@ -1,13 +1,13 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
-import { isDemoAICardSeen, isEngineCardSeen, markDemoAICardSeen } from '@/lib/firstTimeFlowStore';
+import { demoAITurnCount, engineTurnCount, isDemoAICardSeen, isEngineCardSeen, markDemoAICardSeen } from '@/lib/firstTimeFlowStore';
 import { hostedSession } from '@/lib/hostedAi/hostedSession';
 import { HOSTED_STATE_URL } from '@/lib/hostedAi/hostedUrls';
 import { BUILTIN_ENGINE_PRESET_ID, DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
 import type { VramClass } from '@/lib/vramClass';
 import AuthService from '@/services/AuthService';
-import { useDemoAIOfferAvailable, useEngineStoryCard, useStoryCard } from './useDemoAIOffer';
+import { useCardTurnCounts, useDemoAIOfferAvailable, useDemoAIStoryCard, useEngineStoryCard, type CommittedTurn } from './useDemoAIOffer';
 
 // The hosted build: the Default preset is the Demo AI.
 vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
@@ -29,7 +29,7 @@ let settings: ReturnType<typeof useSettings>;
 function Offer({ turnCount, settled }: { turnCount: number; settled: boolean }) {
   settings = useSettings();
   const available = useDemoAIOfferAvailable();
-  const card = useStoryCard({ turnCount, settled });
+  const card = useDemoAIStoryCard({ turnCount, settled });
   return (
     <>
       <span data-testid="available">{String(available)}</span>
@@ -111,7 +111,7 @@ describe('who counts as pledged', () => {
   });
 });
 
-describe('useStoryCard', () => {
+describe('useDemoAIStoryCard', () => {
   it('waits for the turn to settle, then writes the seen record', () => {
     const view = mount(5, false);
     expect(showing()).toBe(false);
@@ -156,11 +156,45 @@ describe('useStoryCard', () => {
   });
 });
 
+describe('useCardTurnCounts', () => {
+  let counts: ReturnType<typeof useCardTurnCounts>;
+  function Counts() {
+    counts = useCardTurnCounts();
+    return null;
+  }
+  const turn: CommittedTurn = { narrationIsDemoAI: true, narrationIsBuiltInEngine: false, isOpeningTurn: false, isNewTurn: true };
+
+  it('counts a turn for the card whose AI narrated it, and only that card', () => {
+    render(<Counts />);
+    act(() => counts.countTurn(turn));
+    act(() => counts.countTurn({ ...turn, narrationIsDemoAI: false, narrationIsBuiltInEngine: true }));
+    act(() => counts.countTurn({ ...turn, narrationIsDemoAI: false, narrationIsBuiltInEngine: true }));
+    expect([counts.demoAI, counts.engine]).toEqual([1, 2]);
+    expect([demoAITurnCount(), engineTurnCount()]).toEqual([1, 2]);
+  });
+
+  it("stops one card's count at its own seen record and leaves the other counting", () => {
+    markDemoAICardSeen();
+    render(<Counts />);
+    act(() => counts.countTurn({ ...turn, narrationIsBuiltInEngine: true }));
+    expect([counts.demoAI, counts.engine]).toEqual([0, 1]);
+  });
+
+  it.each<[string, Partial<CommittedTurn>]>([
+    ['the opening turn', { isOpeningTurn: true }],
+    ['a regenerate', { isNewTurn: false }],
+  ])('counts nothing for %s', (_, change) => {
+    render(<Counts />);
+    act(() => counts.countTurn({ ...turn, narrationIsBuiltInEngine: true, ...change }));
+    expect([counts.demoAI, counts.engine]).toEqual([0, 0]);
+  });
+});
+
 describe('useEngineStoryCard', () => {
   function EngineOffer({ turnCount, settled }: { turnCount: number; settled: boolean }) {
     settings = useSettings();
     const card = useEngineStoryCard({ turnCount, settled });
-    const demo = useStoryCard({ turnCount, settled });
+    const demo = useDemoAIStoryCard({ turnCount, settled });
     return (
       <>
         <span data-testid="showing">{String(card.showing)}</span>
@@ -185,7 +219,7 @@ describe('useEngineStoryCard', () => {
   });
   afterEach(() => { delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop; });
 
-  it('shows once at 10 settled turns, writes its own seen record and sends local_offer_shown once', () => {
+  it('shows once at 10 settled turns, writes its own seen record and sends engine_offer_shown once', () => {
     const view = mountEngine(9, true);
     expect(settings.narrationIsBuiltInEngine).toBe(true);
     expect(showing()).toBe(false);
@@ -196,7 +230,7 @@ describe('useEngineStoryCard', () => {
     expect(isEngineCardSeen()).toBe(true);
     expect(isDemoAICardSeen()).toBe(false);
     view.update(11, true);
-    expect(funnelPosts('local_offer_shown')).toBe(1);
+    expect(funnelPosts('engine_offer_shown')).toBe(1);
     expect(funnelPosts('offer_shown')).toBe(0);
   });
 

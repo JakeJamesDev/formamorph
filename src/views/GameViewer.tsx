@@ -297,11 +297,9 @@ import { MusicOffIcon } from "../components/game/MusicOffIcon";
 import { AiSetupGate } from "../components/AiSetupGate";
 import { DemoAIBadge, DemoAIEntryLine, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
 import { useDemoAIEntryLine } from "../components/game/demoAISeen";
-import { countsAsDemoAITurn, countsAsEngineTurn } from "@/lib/firstTimeFlow";
-import { demoAITurnCount, engineTurnCount, isDemoAICardSeen, isEngineCardSeen, recordDemoAITurn, recordEngineTurn } from "@/lib/firstTimeFlowStore";
 import { ENGINE_CARD_COPY, StoryCard } from "../components/road/StoryCard";
 import { openRoadScene } from "../components/road/roadSceneStore";
-import { useEngineStoryCard, useStoryCard } from "../components/road/useDemoAIOffer";
+import { useCardTurnCounts, useDemoAIStoryCard, useEngineStoryCard } from "../components/road/useDemoAIOffer";
 import { LikePrompt } from "../components/game/LikePrompt";
 import { useLikePrompt } from "../components/game/useLikePrompt";
 import { useNarrationRescan } from "../components/game/useNarrationRescan";
@@ -1361,11 +1359,10 @@ const GameViewer = ({
     }
   }, [nextEntry, aiGateOpen, isSettingsOpen, settingsRequestPending]);
 
-  const [demoAITurns, setDemoAITurns] = useState(demoAITurnCount);
-  const [engineTurns, setEngineTurns] = useState(engineTurnCount);
+  const cardTurns = useCardTurnCounts();
   const turnSettled = totalPages > 0 && !isWaitingForAI && !isRevealingNarration && !isViewingPast;
-  const storyCard = useStoryCard({ turnCount: demoAITurns, settled: turnSettled });
-  const engineCard = useEngineStoryCard({ turnCount: engineTurns, settled: turnSettled });
+  const storyCard = useDemoAIStoryCard({ turnCount: cardTurns.demoAI, settled: turnSettled });
+  const engineCard = useEngineStoryCard({ turnCount: cardTurns.engine, settled: turnSettled });
 
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
@@ -3188,18 +3185,12 @@ const GameViewer = ({
     // The pass's item scripts run over the committed turn, and the snapshot holds their writes.
     await runItemEvents(inventory?.events ?? [], commitTotals);
     armTurnSnapshot();
-    if (countsAsDemoAITurn({
+    cardTurns.countTurn({
       narrationIsDemoAI: settings.narrationIsDemoAI,
-      isOpeningTurn: commit.isOpeningTurn,
-      isNewTurn: turn.isNewTurn,
-      cardSeen: isDemoAICardSeen(),
-    })) setDemoAITurns(recordDemoAITurn());
-    if (countsAsEngineTurn({
       narrationIsBuiltInEngine: settings.narrationIsBuiltInEngine,
       isOpeningTurn: commit.isOpeningTurn,
       isNewTurn: turn.isNewTurn,
-      cardSeen: isEngineCardSeen(),
-    })) setEngineTurns(recordEngineTurn());
+    });
     // The turn committed, so the before box's writes stand.
     beforeBoxUndoRef.current = null;
     turnStartItemsRef.current = null;
