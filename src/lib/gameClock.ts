@@ -137,6 +137,11 @@ export const MINUTES_PER_DAY = 24 * 60;
 /** The daypart edges of a 24-hour day, in minutes from midnight, rounded to the minute. */
 const DAYPART_EDGE_MINUTES: readonly number[] = DAYPART_STARTS.map(([f]) => Math.round(f * MINUTES_PER_DAY));
 
+/** Where each daypart begins in a 24-hour day, in minutes from midnight. */
+export const DAYPART_START_MINUTE = Object.fromEntries(
+  DAYPART_STARTS.map(([f, d]) => [d, Math.round(f * MINUTES_PER_DAY)]),
+) as Record<Daypart, number>;
+
 /** The first daypart edge after story minute `minute`. */
 export function nextDaypartEdge(minute: number): number {
   const day = Math.floor(minute / MINUTES_PER_DAY) * MINUTES_PER_DAY;

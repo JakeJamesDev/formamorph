@@ -110,8 +110,8 @@ describe('the two entity editors', () => {
 
     expect(libraryTop).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
     expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
-    // Placements are world records, so only the World Editor has Items.
-    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Items', 'Traits', 'Stats', 'Placeholders', 'Openings']);
+    // Placements and routines are world records, so only the World Editor has Items and Routine.
+    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Items', 'Routine', 'Traits', 'Stats', 'Placeholders', 'Openings']);
   });
 
   it('drop Traits, Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
@@ -121,7 +121,7 @@ describe('the two entity editors', () => {
       </SettingsProvider>
     );
     render(simple(<WorldPanel />));
-    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
+    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Routine']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
     expect(topTabNames()).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
@@ -164,19 +164,19 @@ describe('the two entity editors', () => {
     expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('put each field in the same tab, with Locations only in the World Editor', async () => {
+  it('put each field in the same tab, with the routine only in the World Editor', async () => {
     renderLibrary();
     const library = await fieldsByTab(['Openings']);
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
-    // Items, Traits and Stats hold lists of the entity's own placements, traits and stats, not fields.
-    const worldFields = await fieldsByTab(['Items', 'Traits', 'Stats', 'Openings', 'Placeholders']);
+    // Items, Routine, Traits and Stats hold the entity's own placements, routine, traits and stats, not fields.
+    const worldFields = await fieldsByTab(['Items', 'Routine', 'Traits', 'Stats', 'Openings', 'Placeholders']);
 
     expect(library).toEqual({
       Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Type', 'Image Tags', 'Persona', '3D Model'],
       Descriptions: ['Player-Facing Description', 'AI-Facing Description', 'AI-Facing Summary'],
     });
-    expect({ ...worldFields, Profile: worldFields.Profile.filter((l) => l !== 'Locations') }).toEqual(library);
+    expect(worldFields).toEqual(library);
 
     // The find bar's field-to-tab map agrees with where each searchable field renders.
     for (const [tabName, labels] of Object.entries(library)) {

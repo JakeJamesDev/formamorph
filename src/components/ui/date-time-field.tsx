@@ -90,7 +90,7 @@ function TimeColumn({ children }: { children: ReactNode }) {
 }
 
 /** One value in an hour or minute column. */
-function TimeCell({ selected, label, onClick }: { selected: boolean; label: string; onClick: () => void }) {
+function TimeCell({ selected, label, onClick, disabled = false }: { selected: boolean; label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <Button
       // Button defers to the element default, which inside a <form> is submit — and this field is meant
@@ -109,6 +109,7 @@ function TimeCell({ selected, label, onClick }: { selected: boolean; label: stri
       // The fill is the only thing saying which value is the chosen one; a reader who cannot see it needs
       // to be told the same thing.
       aria-pressed={selected}
+      disabled={disabled}
       onClick={onClick}
       ref={selected ? centerInColumn : undefined}
     >
@@ -123,15 +124,15 @@ function TimeCell({ selected, label, onClick }: { selected: boolean; label: stri
  * Every click writes through and the popover stays open, so an hour, a minute and a half of the day are
  * three separate corrections rather than one transaction to confirm.
  */
-function TimeColumns({ time, hour12, onCommit }: {
-  time: string; hour12: boolean; onCommit: (next: string) => void;
+function TimeColumns({ time, hour12, onCommit, hourDisabled }: {
+  time: string; hour12: boolean; onCommit: (next: string) => void; hourDisabled?: (hour: number) => boolean;
 }) {
   const { hour, minute } = parseTime(time || DEFAULT_TIME);
   const isPM = hour >= 12;
   const shownHour = hour12 ? (hour % 12 === 0 ? 12 : hour % 12) : hour;
 
-  const pickHour = (shown: number) =>
-    onCommit(`${pad(hour12 ? (shown % 12) + (isPM ? 12 : 0) : shown)}:${pad(minute)}`);
+  const hourOf = (shown: number) => (hour12 ? (shown % 12) + (isPM ? 12 : 0) : shown);
+  const pickHour = (shown: number) => onCommit(`${pad(hourOf(shown))}:${pad(minute)}`);
   const pickMinute = (next: number) => onCommit(`${pad(hour)}:${pad(next)}`);
   const pickMeridiem = (pm: boolean) => onCommit(`${pad((hour % 12) + (pm ? 12 : 0))}:${pad(minute)}`);
 
@@ -143,6 +144,7 @@ function TimeColumns({ time, hour12, onCommit }: {
             key={candidate}
             selected={shownHour === candidate}
             label={hour12 ? String(candidate) : pad(candidate)}
+            disabled={hourDisabled?.(hourOf(candidate)) ?? false}
             onClick={() => pickHour(candidate)}
           />
         ))}
@@ -186,6 +188,10 @@ interface DateTimeFieldProps {
    *  For something dated to the day — a changelog entry — where an hour would be a control that changes
    *  nothing and a clock beside it a question nobody asked. */
   dateOnly?: boolean;
+  /** Ask for a time of day alone: no date control, and the value is a bare `HH:mm`. */
+  timeOnly?: boolean;
+  /** Under `timeOnly`, the hours (0–23) the hour column offers but won't take. */
+  hourDisabled?: (hour: number) => boolean;
   /** Shown but not editable — a window that has already opened, say. */
   readOnly?: boolean;
   /** Ties a caller's `<Label htmlFor>` to the date button. */
@@ -205,7 +211,7 @@ interface DateTimeFieldProps {
  * than the only one — a popover is slower than knowing the number you want.
  */
 export function DateTimeField({
-  value, onChange, label, readOnly = false, dateOnly = false, id, className,
+  value, onChange, label, readOnly = false, dateOnly = false, timeOnly = false, hourDisabled, id, className,
 }: DateTimeFieldProps) {
   const generatedId = useId();
   const buttonId = id ?? generatedId;
@@ -215,7 +221,7 @@ export function DateTimeField({
   const hour12 = useMemo(usesTwelveHourClock, []);
 
   const Calendar = loadedCalendar?.default ?? LazyCalendar;
-  const { day, time } = splitLocal(value);
+  const { day, time } = timeOnly ? { day: '', time: value.slice(0, 5) } : splitLocal(value);
   const selected = dayToDate(day);
 
   // A day-only field has no second half to wait for and writes the bare day.
@@ -225,13 +231,13 @@ export function DateTimeField({
   // An hour alone is not a moment either, but in a visual picker a click that writes nothing reads as a
   // broken control — so the first one starts at today and the calendar corrects it from there.
   const emitTime = (nextTime: string) =>
-    onChange(`${day || dateToDay(new Date())}T${nextTime || DEFAULT_TIME}`);
+    onChange(timeOnly ? nextTime || DEFAULT_TIME : `${day || dateToDay(new Date())}T${nextTime || DEFAULT_TIME}`);
 
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
       {/* Read-only is applied to what is shown rather than to what opens it, so a field that turns
           read-only while a popover is up closes it rather than leaving a live control behind. */}
-      <Popover open={dateOpen && !readOnly} onOpenChange={setDateOpen}>
+      {!timeOnly && <Popover open={dateOpen && !readOnly} onOpenChange={setDateOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -268,7 +274,7 @@ export function DateTimeField({
             />
           </Suspense>
         </PopoverContent>
-      </Popover>
+      </Popover>}
 
       {!dateOnly && (
         <div className="relative">
@@ -296,7 +302,7 @@ export function DateTimeField({
                 </Button>
               </PopoverTrigger>
               <PopoverContent portal={false} className="w-auto p-2" align="end">
-                <TimeColumns time={time} hour12={hour12} onCommit={emitTime} />
+                <TimeColumns time={time} hour12={hour12} onCommit={emitTime} hourDisabled={timeOnly ? hourDisabled : undefined} />
               </PopoverContent>
             </Popover>
           </div>

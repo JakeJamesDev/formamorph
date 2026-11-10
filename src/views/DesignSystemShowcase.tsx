@@ -4,6 +4,7 @@ import { OwnerFlyoutReference } from '@/components/design-system/OwnerFlyoutRefe
 import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
 import { ItemIconPickerReference } from '@/components/design-system/ItemIconPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
+import { RoutineSentenceReference } from '@/components/design-system/RoutineSentenceReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
 import { SupporterFlairReference } from '@/components/design-system/SupporterFlairReference';
@@ -459,6 +460,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Travel Hints',
     description: 'Two Travel Hint boxes joined by a link toggle',
     Component: TravelHintPairReference,
+  },
+  {
+    id: 'routine-sentences',
+    label: 'Routine Sentences',
+    description: 'A schedule read as sentences whose parts open their own editors',
+    Component: RoutineSentenceReference,
   },
   {
     id: 'formaquestion',

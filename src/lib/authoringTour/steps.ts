@@ -529,9 +529,9 @@ const ENTITY_STEPS: readonly TourStep[] = [
     tab: 'entities',
     anchor: 'entity-locations',
     item: 'entity',
-    panelTab: 'profile',
-    title: 'Locations',
-    body: 'Place the entity in one of your locations. The AI reads an entity only at its locations.',
+    panelTab: 'routine',
+    title: 'Routine',
+    body: 'Pick where the entity starts. The AI reads an entity only where it stands.',
     isComplete: (world, items) => tourEntityPlaces(world, items).length > 0,
     useExample: (api, world, items) => {
       const entity = tourEntity(world, items);

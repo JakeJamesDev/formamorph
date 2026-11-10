@@ -3,7 +3,6 @@ import { useEntityRuleHost, type RuleHost } from '@/components/editor/ImageRuleC
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
-import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -19,14 +18,11 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, type PersonaRole } from '@/lib/customPersona';
 import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
-import type { Entity, EntityKind, Placeholder, VrmPick } from '@/types';
+import type { Entity, Placeholder, VrmPick } from '@/types';
 import { vrmPickFromValue, vrmPickValue } from '@/lib/worldVrmStore';
 import { pickLabel } from '@/lib/vrmPickMatch';
 import { WorldInput } from '@/components/editor/WorldField';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { OptionSwitcher } from "@/components/SettingsRows";
-import { withFirstStartPlace, withKind } from "@/lib/entityKind";
-import { randomUUID } from "@/lib/uuid";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SelectOptions } from "@/components/SelectOptions";
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
@@ -314,79 +310,6 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
         />
       )}
     </>
-  );
-};
-
-/** The world's locations to pick from, and the entity's own membership in them. */
-export interface EntityLocationsFieldProps extends EntityFieldGroupProps {
-  options: MultiSelectOption[];
-  selectedIds?: string[];
-  onLocationsChange?: (ids: string[]) => void;
-  /** Writes the whole entity: its placement and Start. */
-  onEntityChange?: (next: Entity) => void;
-}
-
-const PLACEMENT_OPTIONS = [
-  { value: 'individual', label: 'One Location' },
-  { value: 'group', label: 'Every Location' },
-] as const;
-
-const PLACEMENT_HELP: Record<EntityKind, string> = {
-  individual: 'Stands in one location at a time and can move during the game',
-  group: 'Stands at every picked location at once, like a crowd or a fixture',
-};
-
-/** Where the entity stands: at every picked location at once, or in one location from where it starts. Where the
- *  player can start as it under the Persona mark. World Editor only: a library character has no world locations. */
-export const EntityLocationsField = ({ value, options, selectedIds, onLocationsChange, onEntityChange }: EntityLocationsFieldProps) => {
-  const kind = value.customPersona ? undefined : value.kind ?? 'individual';
-  const starts = value.starts ?? [];
-  const startPlace = starts[0]?.place;
-  return (
-    <div data-tour-anchor="entity-locations" className="space-y-2" {...fieldFrame('locations')}>
-      {kind && (
-        <div className="space-y-1.5" {...fieldFrame('kind')}>
-          <Label>Placement</Label>
-          <OptionSwitcher
-            ariaLabel="Placement"
-            value={kind}
-            onChange={(next) => onEntityChange?.(withKind(value, next, randomUUID))}
-            options={PLACEMENT_OPTIONS}
-          />
-          <Hint>{PLACEMENT_HELP[kind]}</Hint>
-        </div>
-      )}
-      {kind === 'individual' ? (
-        <div className="space-y-1.5" {...fieldFrame('starts')}>
-          <Label>Starts At</Label>
-          <Select
-            value={startPlace ?? ''}
-            onValueChange={(id) => onEntityChange?.(withFirstStartPlace(value.kind ? value : withKind(value, 'individual', randomUUID), id, randomUUID))}
-          >
-            <SelectTrigger aria-label="Starts At"><SelectValue placeholder="Select a location" /></SelectTrigger>
-            <SelectContent>
-              {options.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {starts.length > 1 && <Hint>Starts at one of {starts.length} locations, picked at random in each new game. This sets the first.</Hint>}
-          {value.persona === true && <Hint>Lets the player start at any of its start locations when they play this entity</Hint>}
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          <Label>Locations</Label>
-          {value.persona === true && <Hint>Lets the player start at any of these when they play this entity</Hint>}
-          <MultiSelect
-            key={`${value.id}-${kind ?? 'none'}`}
-            options={options}
-            defaultValue={selectedIds}
-            onValueChange={(ids) => onLocationsChange?.(ids)}
-            placeholder="Select locations"
-          />
-        </div>
-      )}
-    </div>
   );
 };
 

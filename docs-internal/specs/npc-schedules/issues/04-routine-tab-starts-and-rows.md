@@ -1,6 +1,6 @@
 # 04: Routine Tab: Starts and Rows
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -24,16 +24,35 @@ Spec rulings: Q5, Q9, Q32, Q34, Q35, Q44, Q50, Q54, Q59, Q60, Q65–Q68, Q78, Q7
 
 ## Acceptance criteria
 
-- [ ] The Routine tab is in the entity panel for world entities and has a dev-router entry.
-- [ ] Adding, editing and deleting Starts and rows writes the world, and each edit is one undo step.
-- [ ] A time pick that would overlap another timed row is disabled, and the add buttons disable when timed rows fill the day. A component test covers both.
-- [ ] The swap to hours and back keeps the stored minutes, and snaps with a note when the hours miss daypart edges.
-- [ ] The free-time line names the uncovered hours, reads "Busy all day" with none, and an All-day row reads "The rest of the day" next to timed rows.
-- [ ] Place pickers list only connected places. A row place that a link edit disconnects stays, shows a flag, and returns to normal when the edit is undone.
-- [ ] The Wander and Patrol list reorders by drag, and the order is what Patrol walks.
-- [ ] The themed time field takes a time of day alone, and its existing date and date-time uses are unchanged.
-- [ ] Every label, hint and tooltip is written under the Writing Guide from a facts list, not from the spec's working names.
-- [ ] The Design System showcase lists any new pattern this adds.
-- [ ] Frames: `.scratch/frames/routine-tab.png` and `.scratch/frames/routine-row-editor.png`, light and dark, at 1440 px and at 390 px wide.
+- [x] The Routine tab is in the entity panel for world entities and has a dev-router entry. `useWorldEntitiesAdapter.panelTabs.test.tsx`, `devRouter.test.ts` (`worldEditorEntity.routine`).
+- [x] Adding, editing and deleting Starts and rows writes the world, and each edit is one undo step. `RoutineTab.test.tsx`: adds a row as one undo step, keeps two quick picks as two undo steps, deletes a row as one undo step; picks run as labeled History Steps, typing joins the typing run.
+- [x] A time pick that would overlap another timed row is disabled, and the add buttons disable when timed rows fill the day. A component test covers both. `RoutineTab.test.tsx`: disables a daypart another timed row holds; refuses typed hours that overlap and greys out those hours; closes the add buttons when timed rows fill the day.
+- [x] The swap to hours and back keeps the stored minutes, and snaps with a note when the hours miss daypart edges. `RoutineTab.test.tsx`: swaps to hours and back; snaps odd hours and says so.
+- [x] The free-time line names the uncovered hours, reads "Busy all day" with none, and an All-day row reads "The rest of the day" next to timed rows. `RoutineTab.test.tsx`, the "routine as sentences" block.
+- [x] Place pickers list only connected places. A row place that a link edit disconnects stays, shows a flag, and returns to normal when the edit is undone. `RoutineTab.test.tsx`: lists only connected locations; flags a location a link removal disconnects and clears it on undo.
+- [x] The Wander and Patrol list reorders by drag, and the order is what Patrol walks. `RoutineTab.test.tsx`: reorders Patrol stops by keyboard drag; the stored `stops` order is what the engine walks.
+- [x] The themed time field takes a time of day alone, and its existing date and date-time uses are unchanged. `date-time-field.test.tsx`: the time-only block, beside the unchanged existing suite.
+- [x] Every label, hint and tooltip is written under the Writing Guide from a facts list, not from the spec's working names. Copy uses location, start, lock and Can Also Go; hints are 12 words or fewer; the standards review checked it.
+- [x] The Design System showcase lists any new pattern this adds. Routine Sentences: `RoutineSentenceReference.tsx` and the Design-System page.
+- [x] Frames: `.scratch/frames/routine-tab.png` and `.scratch/frames/routine-row-editor.png`, light and dark, at 1440 px and at 390 px wide. Each PNG holds four frames: 1440 light and dark stacked, 390 light and dark beside them.
 
 For you: the editor's wording and feel on a real character, and whether the weight field in the Wander list reads as clearly as the chips did.
+
+## Landed
+
+**Rulings this ticket added:** Q109 (the idle control is a number plus a unit), Q110 (disabled hours plus a refused overlapping write), Q111 (the stand-in leaves Profile; the tour step moves; the last Start stays).
+
+**Not verified**
+
+- None of the acceptance lines. The frames come from the Browser pane, which captures at reduced size.
+
+**For you**
+
+- For you: the editor's wording and feel on a real character, and whether the weight field in the Wander list reads as clearly as the chips did.
+- Frames: `.scratch/npc-schedules-04/frames/routine-tab.png` and `.scratch/npc-schedules-04/frames/routine-row-editor.png`.
+- With an All-day row, the list reads *The rest of the day, …* and then *Busy all day.* (Q68 read literally). Check that the pair doesn't read as a contradiction.
+- The sentence shows hours on a 24-hour clock (*07:55 – 17:02*); the time field follows your locale, which may be 12-hour.
+- Wander lists each location once. Patrol may repeat stops.
+- The lock icon is the Strict control; its tooltip reads *Locked: can't be called over or follow the player*.
+- A custom persona's Routine tab holds only its **Locations**, as the Profile tab did before.
+

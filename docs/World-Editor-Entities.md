@@ -71,9 +71,10 @@ Select an entity to open its panel.
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Profile** | **Name**, **Pronouns**, **Locations**, **Relationships**, the **Image** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). In Advanced mode, also **Aliases**, [**Stranger Name**](#stranger-name) beside **Name**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
+| **Profile** | **Name**, **Pronouns**, **Relationships**, the **Image** and the **Avatar** dropdown (**None**, **User's Default**, or an Avatar of the world; see [World Avatars](Avatars#world-avatars)). In Advanced mode, also **Aliases**, [**Stranger Name**](#stranger-name) beside **Name**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
 | **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also [**Stranger Description**](#stranger-description) under **Player-Facing Description**, and **AI-Facing Summary**. | Simple and Advanced |
 | **Items** | The entity's [Starting Items](World-Editor-Items#starting-items) | Simple and Advanced |
+| **Routine** | Where the entity stands, where it starts, and its [daily routine](#routine) | Simple and Advanced |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
 | **Stats** | The entity's own [stats](#entity-stats) | Advanced only |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
@@ -83,16 +84,52 @@ The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only
 
 **Relationships** lists how the entity relates to others. Pick a target, **Persona** or another entity, then type what the target is to this entity. See [Relationships](#relationships).
 
-**Placement** decides how the entity stands in the world:
-
-- **One Location**: one body in one place. **Starts At** is where it stands when a game begins. A new entity is in **One Location**. During the game it can move, follow the player and be left waiting.
-- **Every Location**: at every picked location at once, such as a crowd or a fixture. It never moves and never follows.
-
-An entity from an older world can have several start locations. One of them is picked in each new game, and **Starts At** shows the first.
-
 **Known In** is set on the full-screen Locations Canvas. See [World Editor: Locations](World-Editor-Locations#entities).
 
 Each entity in the list has **Duplicate** and **Delete** actions.
+
+## Routine
+<!-- keywords: schedule, daily routine, where does the npc start, npc moves, wander, patrol, stays at, follow the player, called over, one location, every location -->
+<!-- route: worldEditorEntity.routine -->
+
+The **Routine** tab sets where the entity stands in the world.
+
+**Placement** has two choices:
+
+- **One Location**: one body in one location. A new entity is in **One Location**. During the game it can move, follow the player and be left waiting.
+- **Every Location**: at every picked location at once, such as a crowd or a fixture. It never moves and never follows. Pick its **Locations** under the switch.
+
+### Starts
+
+An entity in **One Location** has one or more starts. Each start is a location and a routine kept from there.
+
+- 🎲 With several starts, each new game picks one at random. Each start's tab shows its chance.
+- ✏️ Click the location in **Starts at …** to change it. With several starts, click the percent to set the start's **Weight**.
+- ➕ Use **+** beside the tabs to add a start. A start's own delete button removes it. The last start can't be deleted.
+
+### The routine
+
+The routine reads as sentences in the order of the day, such as *Morning – Afternoon, stays at Smithy.*
+
+- 🕑 Click the time to change it. Times use dayparts. **Use Hours** switches the row to exact hours, and **Use Dayparts** switches back, snapping to the dayparts that cover those hours.
+- 🚶 Click the verb to pick **Stay**, **Wander** or **Patrol**.
+  - **Stay** keeps it at one location.
+  - **Wander** moves it between locations at random. A higher **Weight** picks a location more often. It waits the set time between moves.
+  - **Patrol** walks the stops in order, waits at each, then starts over. Drag a stop to change the order.
+- 📍 Click the locations to change them. The pickers list only locations the start location connects to.
+- 🔒 The lock beside a row stops the entity from being called over or starting to follow the player during that time.
+- ☕ Hours no row covers read *…, stays at* the start location. **All Day** covers the whole day, and reads *The rest of the day* beside timed rows.
+
+Two timed rows can't share an hour. Times another row uses are unavailable in the pickers, and the add buttons turn off once timed rows fill the day.
+
+⚠️ A listed location that a later link change disconnects stays in its row with a warning. The game skips it until it connects again.
+
+### Can Also Go
+
+**Can Also Go** sets where the entity may go beyond its routine: following the player, or being called over.
+
+- **Anywhere**: any location.
+- **Only Listed Locations**: its routine locations and the ones you list. A listed location doesn't include the locations inside it.
 
 ## What reaches the AI
 <!-- keywords: npc secret, hidden motive, character ignored, npc never appears, spoilers, does ai see image, private notes -->

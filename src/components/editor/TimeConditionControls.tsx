@@ -1,10 +1,7 @@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DAYPARTS, daypartSet, isDaypart } from '@/lib/gameClock';
+import { DAYPART_LABELS as LABELS } from '@/lib/routineTime';
 import type { Daypart, TimeRequirement } from '@/types';
-
-const LABELS: Record<Daypart, string> = {
-  night: 'Night', dawn: 'Dawn', morning: 'Morning', midday: 'Midday', afternoon: 'Afternoon', evening: 'Evening',
-};
 
 /**
  * The daypart multi-select a time Condition chip carries, in clock order. The last daypart on stays on, so the

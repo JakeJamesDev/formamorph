@@ -486,3 +486,34 @@ describe('reaching a distant month', () => {
     expect(onChange).toHaveBeenLastCalledWith('2026-11-25T14:30');
   });
 });
+
+/** A time of day alone: a routine's hours carry no date. */
+describe('a time-only field', () => {
+  const timeOnly = (value: string, hourDisabled?: (hour: number) => boolean) => {
+    const onChange = vi.fn();
+    function Host() {
+      const [v, setV] = useState(value);
+      return <DateTimeField timeOnly label="Starts" value={v} hourDisabled={hourDisabled} onChange={(next) => { setV(next); onChange(next); }} />;
+    }
+    render(<Host />);
+    return onChange;
+  };
+
+  it('offers no date and writes the bare time', async () => {
+    const onChange = timeOnly('08:30');
+    expect(screen.queryByRole('button', { name: 'Starts date' })).not.toBeInTheDocument();
+    expect(timeField().value).toBe('08:30');
+    await userEvent.click(clockButton());
+    await userEvent.click(cell('9'));
+    expect(onChange).toHaveBeenLastCalledWith('09:30');
+  });
+
+  it('greys out the hours it was told it cannot take', async () => {
+    timeOnly('08:30', (hour) => hour >= 12);
+    await userEvent.click(clockButton());
+    // 12-hour clock in the AM half: 9 is 09:00, open; switch to PM and 1 is 13:00, closed.
+    expect(cell('9')).toBeEnabled();
+    await userEvent.click(meridiem('PM'));
+    expect(cell('1')).toBeDisabled();
+  });
+});

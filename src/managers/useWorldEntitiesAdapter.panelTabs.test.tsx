@@ -36,7 +36,7 @@ const GROUPED_WORLD: World = panelWorld({
 });
 
 const FIELD_LABELS =
-  /^(Name|Aliases|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Placement|Starts At|Image|Image Tags|3D Model)$/;
+  /^(Name|Aliases|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Placement|Can Also Go|Image|Image Tags|3D Model)$/;
 
 /** Every field label the panel shows, in document order. The editor's own Locations tab shares a label with
  *  the picker, so the match is taken from the panel body rather than the whole editor. */
@@ -66,25 +66,32 @@ const selectEntity = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor entity panel tabs', () => {
-  it('offers seven tabs in Advanced mode and opens on Profile', () => {
+  it('offers eight tabs in Advanced mode and opens on Profile', () => {
     renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Traits', 'Stats', 'Placeholders', 'Openings']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Routine', 'Traits', 'Stats', 'Placeholders', 'Openings']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('offers three tabs in Simple mode', () => {
+  it('offers four tabs in Simple mode', () => {
     renderEntitiesTab(WORLD, 'simple');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Routine']);
   });
 
   it('puts the identity fields, the picture and its tags on Profile, and no description', () => {
     renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Wren');
     expect(panelLabels()).toEqual([
-      'Image', 'Name', 'Aliases', 'Type', 'Image Tags', 'Placement', 'Starts At', '3D Model',
+      'Image', 'Name', 'Aliases', 'Type', 'Image Tags', '3D Model',
     ]);
+  });
+
+  it('puts where the entity stands on Routine', () => {
+    renderEntitiesTab(WORLD, 'simple');
+    selectEntity('Wren');
+    openPanelTab('Routine');
+    expect(panelLabels()).toEqual(['Placement', 'Can Also Go']);
   });
 
   it('puts the three prose fields and nothing else on Descriptions', () => {
@@ -107,7 +114,7 @@ describe('the World Editor entity panel tabs', () => {
   it('drops the Advanced-only fields from both tabs in Simple mode, keeping Generate with AI', () => {
     renderEntitiesTab(WORLD, 'simple');
     selectEntity('Wren');
-    expect(panelLabels()).toEqual(['Image', 'Name', 'Placement', 'Starts At']);
+    expect(panelLabels()).toEqual(['Image', 'Name']);
     expect(screen.getByRole('button', { name: /Generate with AI/ })).toBeInTheDocument();
     openPanelTab('Descriptions');
     expect(panelLabels()).toEqual(['Player-Facing Description', 'AI-Facing Description']);

@@ -213,7 +213,7 @@ The default prompt gives the **narrator** the current location in full. It gives
 
 The **Entities** picker on the **Presence** tab lists the entities that stand at **Every Location** they list, such as a crowd or a fixture. Each one stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
 
-An entity that stands in **One Location** isn't in this picker. Set where it starts in the entity's **Starts At** field, or click a location on the full-screen Locations Canvas.
+An entity that stands in **One Location** isn't in this picker. Set where it starts on the entity's **Routine** tab, or click a location on the full-screen Locations Canvas.
 - **Known Here** lists entities that aren't at this location but that the entities here may speak of. Their summaries reach the AI anywhere inside this location. Add one with **Make an entity known here**.
 
 ### Who Joins the Scene

@@ -80,7 +80,6 @@ vi.mock('./EntityFields', async (importOriginal) => {
   return {
     ...real,
     EntityDescriptionFields: () => null,
-    EntityLocationsField: () => null,
     EntityModelField: () => null,
   };
 });

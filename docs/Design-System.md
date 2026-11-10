@@ -1699,6 +1699,35 @@ The link state is never saved. The pair opens linked when both hints are equal, 
 
 Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-way samples in local state. The **Locations** tab's quay-to-garden pair has different hints, so its arrow labels sit on their outer sides.
 
+## Pattern: Routine Sentences
+
+**Purpose:** Edit an entity's daily routine as plain sentences, such as *Morning – Afternoon, stays at Smithy.*
+
+- 📝 **One row, one sentence.** Rows sort by time of day. Free hours sit between them as muted lines with a cup icon, or one *Busy all day.* line.
+- 🔗 **Tokens.** The time, the verb and the locations are dotted-underline buttons. Each opens a popover with its own editor: the time editor, the **Stay** / **Wander** / **Patrol** toggle, or the location editor.
+- 🔒 **Lock.** A lock button leads each sentence. Its tooltip says what the locked state does.
+- 🗑️ **Delete.** A ghost trash button ends each sentence, always visible so touch can reach it.
+- ⚠️ **Disconnected location.** The token gets a warning icon; the location list shows the name in the warning color with the same icon.
+
+### Location list
+
+Wander and Patrol share one list inside the locations popover: grip, an optional stop number, the location, the action's own field, then remove. Wander's field is a weight box and its percent; Patrol's is a wait (number plus **Minutes** / **Hours** / **Dayparts**). The grip reorders by drag or keyboard. **Add Location** opens a Breadcrumb Picker.
+
+### Time editor
+
+A swap button leads the row: **Use Hours** or **Use Dayparts**. Dayparts use two selects; hours use two time-only Date Time Fields. Choices another timed row holds are disabled, and a typed overlap is refused with a note.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Sentence, time editor, action toggle | `RoutineRow`, `RowTimeEditor` in [`RoutineRow.tsx`](../src/managers/routine/RoutineRow.tsx) |
+| Tokens, location list, wait field | `Token`, `RoutinePlaceList`, `IdleField` in [`RoutineFields.tsx`](../src/managers/routine/RoutineFields.tsx) |
+| The tab | `RoutineTab` in [`RoutineTab.tsx`](../src/managers/routine/RoutineTab.tsx) |
+| Isolated reference | [`RoutineSentenceReference.tsx`](../src/components/design-system/RoutineSentenceReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=routine-sentences` for a Stay, a locked row, a Wander with a disconnected location and a Patrol, in local state.
+
 ## Pattern: Formaquestion Window
 
 **Purpose:** Keep help in view while the player works. The window is not a dialog: it does not dim the app, it does not take the keyboard, and it stays usable above every dialog.

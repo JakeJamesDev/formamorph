@@ -188,7 +188,7 @@ export const DEV_MODAL_TABS = {
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
   // panel, so pair it with a world that has an entity to select. `openings` and `placeholders` are Advanced only.
   // `fixture=entityPresence` gives the Archivist Relationships rows on `profile`.
-  worldEditorEntity: ['profile', 'descriptions', 'items', 'traits', 'stats', 'placeholders', 'openings'],
+  worldEditorEntity: ['profile', 'descriptions', 'items', 'routine', 'traits', 'stats', 'placeholders', 'openings'],
   // The item panel's own tabs, in the same `subtab=…` slot over the Items tab
   // (`#dev?modal=worldEditor&tab=items&subtab=properties`). `fixture=items` gives a world with items and slots.
   // `subtab=equipment` and `subtab=currencies` open their pinned entries instead of an item.

@@ -148,9 +148,9 @@ describe('the World Editor entity panel tabs', () => {
     selectEntity('Wren');
     openPanelTab('Placeholders');
     pickEditorMode('Simple');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Items', 'Routine']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Image', 'Name', 'Placement', 'Starts At']);
+    expect(panelLabels()).toEqual(['Image', 'Name']);
   });
 
 });

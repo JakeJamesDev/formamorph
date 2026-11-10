@@ -99,7 +99,7 @@ describe('the entity Stats tab', () => {
     const view = renderEntitiesTab(WORLD, 'advanced');
     selectEntity('Ash');
     const tabs = within(screen.getByRole('tablist', { name: 'Entity Fields' })).getAllByRole('tab').map((t) => t.textContent);
-    expect(tabs).toEqual(['Profile', 'Descriptions', 'Items', 'Traits', 'Stats', 'Placeholders', 'Openings']);
+    expect(tabs).toEqual(['Profile', 'Descriptions', 'Items', 'Routine', 'Traits', 'Stats', 'Placeholders', 'Openings']);
     view.unmount();
 
     renderEntitiesTab(WORLD, 'simple');
