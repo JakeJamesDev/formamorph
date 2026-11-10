@@ -1,14 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { MapPinOff, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPinOff, Plus } from 'lucide-react';
 import { EditorRow, EditorRowList, treeRowPaddingLeft } from '@/components/EditorRow';
 import { ListSearchToolbar } from '@/components/ListToolbar';
 import type { ListEditorParts } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
-import { SelectOptions } from '@/components/SelectOptions';
+import { CollapseAllButton } from '@/components/CollapseAllButton';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { ListDetailBack } from '@/components/ui/list-detail';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -18,8 +16,8 @@ import {
   addOpening, hasAuthoredOpenings, openingsEditorView, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
 import {
-  entityOwnerKey, entityPickChoices, locationOwnerKey, locationPicker, openingsTabOwners, openingsTabRows, resolveOwnerKey,
-  rowlessOwner, WORLD_OWNER_KEY, type OpeningsTabOwner, type OwnerKind,
+  entityOwnerKey, entityPickChoices, foldKey, locationOwnerKey, locationPicker, openingsTabOwners, openingsTabRows,
+  resolveOwnerKey, WORLD_OWNER_KEY, type OpeningsTabOwner, type OwnerKind,
 } from '@/lib/openingsTab';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
@@ -28,8 +26,7 @@ import {
 } from './OpeningsPanel';
 import { OpeningsAddMenu } from './OpeningsAddMenu';
 
-/** The Starting Location filter's value for every start at once. */
-const ALL_LOCATIONS = 'all-locations';
+const NONE_COLLAPSED: ReadonlySet<string> = new Set();
 
 const KIND_ICON = { world: WorldIcon, location: LocationIcon, entity: EntityIcon } as const;
 
@@ -41,8 +38,8 @@ const NO_START_TIP: Record<Exclude<OwnerKind, 'world'>, string> = {
 /**
  * The World Editor's Openings tab: This World and every location and entity with openings, in their own
  * nesting, beside the selected owner's openings. With nothing selected, desktop shows This World. A search
- * keeps an owner whose name or opening text matches; the Starting Location filter keeps what can draw at
- * one start. Neither moves the selection.
+ * keeps an owner whose name or opening text matches, and a parent folds its rows away until a search is typed.
+ * Neither moves the selection.
  */
 export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultToWorld, onOpenEntity, onOpenLocation }: {
   selectedId: string | null;
@@ -59,10 +56,9 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
     worldOverview, updateWorldOverview, entities, entityGroups, updateEntity, locations, updateLocation, placeholders,
     placementLetters, placeholderOwners,
   } = useGameData();
-  // The filter lasts while the editor is open.
-  const [filter, setFilter] = useState<string | null>(null);
-  const view = openingsEditorView({ overview: worldOverview, entities, locations }, filter);
-  const allView = filter === null ? view : openingsEditorView({ overview: worldOverview, entities, locations }, null);
+  // Folded rows last while the editor is open, like the selection.
+  const [folded, setFolded] = useState<ReadonlySet<string>>(NONE_COLLAPSED);
+  const view = openingsEditorView({ overview: worldOverview, entities, locations });
   const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const typed = search.typed;
@@ -76,16 +72,21 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
 
   const heldKey = resolved && selectedId ? selectedId : defaultToWorld || ownerGone ? WORLD_OWNER_KEY : null;
   const owners = openingsTabOwners(view, resolved && selectedId ? { key: selectedId, owner: resolved } : null);
-  const rows = openingsTabRows({ owners, locations, entities, entityGroups, matches });
-  const held = heldKey ? owners.get(heldKey) ?? filteredOwner() : undefined;
-
-  // An owner the filter leaves out keeps its pane, with none of its rows and its note from the unfiltered view.
-  function filteredOwner(): OpeningsTabOwner | undefined {
-    if (!resolved || resolved.kind === 'world' || !selectedId) return undefined;
-    const id = resolved.kind === 'location' ? resolved.location.id : resolved.entity.id;
-    const atNoStart = allView.groups.some((g) => (g.location?.id ?? g.entity?.id) === id && g.atNoStart);
-    return rowlessOwner(selectedId, resolved, atNoStart);
-  }
+  // A search shows every match, so it ignores the folds.
+  const collapsed = typed ? NONE_COLLAPSED : folded;
+  const rowsArgs = { owners, locations, entities, entityGroups, matches };
+  const rows = openingsTabRows({ ...rowsArgs, collapsed });
+  // Collapse All acts on every parent, whatever the search shows.
+  const parentKeys = openingsTabRows({ ...rowsArgs, matches: () => true, collapsed: NONE_COLLAPSED })
+    .flatMap((row) => (row.kind !== 'rule' && row.parent ? [foldKey(row)] : []));
+  const anyOpen = parentKeys.some((key) => !folded.has(key));
+  const toggleAll = () => setFolded(anyOpen ? new Set(parentKeys) : NONE_COLLAPSED);
+  const toggleFold = (key: string) => setFolded((was) => {
+    const next = new Set(was);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  });
+  const held = heldKey ? owners.get(heldKey) : undefined;
 
   const displayName = (owner: OpeningsTabOwner) => (owner.kind === 'world'
     ? 'This World'
@@ -97,7 +98,9 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
     </span>
   );
 
-  const ownerRow = (owner: OpeningsTabOwner, depth: number) => {
+  const lead = (parent: boolean) => (parent ? 'chevron' : parentKeys.length ? 'spacer' : undefined);
+
+  const ownerRow = (owner: OpeningsTabOwner, depth: number, parent = false, isCollapsed = false) => {
     const Icon = KIND_ICON[owner.kind];
     const count = owner.group.rows.length;
     const name = displayName(owner);
@@ -106,6 +109,10 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
         key={owner.key}
         grip={false}
         depth={depth}
+        lead={lead(parent)}
+        collapsed={isCollapsed}
+        onToggleCollapse={() => toggleFold(owner.key)}
+        collapseLabels={[`Expand ${name}`, `Collapse ${name}`]}
         selected={heldKey === owner.key}
         onSelect={() => onSelect(owner.key)}
         selectionLabel={`Select ${name}`}
@@ -133,20 +140,31 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
       {anyOwned && (
         <EditorRowList>
           {ownedRows.map((row) => {
-            if (row.kind === 'owner') return ownerRow(row.owner, row.depth);
+            if (row.kind === 'owner') return ownerRow(row.owner, row.depth, row.parent, row.collapsed);
             if (row.kind === 'rule') return <div key={row.key} role="separator" className="my-1 border-b" />;
             const Icon = row.context === 'location' ? LocationIcon : GroupIcon;
+            const name = label(row.name) || (row.context === 'location' ? 'Unnamed Location' : 'Unnamed Folder');
             return (
-              // Context only: a parent that holds no listed owner. It never selects.
+              // Context only: a parent that holds no listed owner. It never selects, but it folds.
               <div
                 key={row.key}
                 data-testid="openings-context-row"
                 className="flex items-center gap-1 px-2 py-1 text-label text-muted-foreground"
                 style={{ paddingLeft: treeRowPaddingLeft(row.depth) }}
               >
+                {row.parent ? (
+                  <button
+                    type="button"
+                    className="shrink-0"
+                    aria-label={row.collapsed ? `Expand ${name}` : `Collapse ${name}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFold(row.key); }}
+                  >
+                    {row.collapsed ? <ChevronRight className="h-4 w-4" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
+                  </button>
+                ) : <span className="w-4 shrink-0" aria-hidden />}
                 <span className="w-6 shrink-0" aria-hidden />
                 <Icon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-                <span className="min-w-0 truncate opacity-70">{label(row.name) || (row.context === 'location' ? 'Unnamed Location' : 'Unnamed Folder')}</span>
+                <span className="min-w-0 truncate opacity-70">{name}</span>
               </div>
             );
           })}
@@ -166,8 +184,6 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
     owner.kind === 'world' ? worldOverview : owner.group.location ?? owner.group.entity ?? {};
 
   const ownersOfOpenings = [...entities, ...locations];
-  const startName = view.startId ? label(view.starts.find((l) => l.id === view.startId)?.name ?? '') : '';
-  const filteredOut = !!held && held.group.rows.length === 0 && hasAuthoredOpenings(ownerOf(held)) && view.starts.length > 1 && !!view.startId;
   const detail = held ? (
     <OwnerPane
       owner={held}
@@ -191,9 +207,7 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
         names={names}
         addButton={false}
         selfSwitch={held.group.showSelf}
-        empty={filteredOut
-          ? <Hint>None of these openings come up at {startName}</Hint>
-          : held.kind === 'world' && view.defaultOpening ? null : <Hint>No openings yet</Hint>}
+        empty={held.kind === 'world' && view.defaultOpening ? null : <Hint>No openings yet</Hint>}
       />
       {held.kind === 'world'
         ? <WorldOpeningsHint anyOpenings={[worldOverview, ...ownersOfOpenings].some(hasAuthoredOpenings)} />
@@ -203,8 +217,8 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
     </OwnerPane>
   ) : null;
 
-  // The + offers what the tab doesn't list with no search and no filter (Q7, Q21).
-  const listedKeys = new Set(openingsTabOwners(allView, null).keys());
+  // The + offers what the tab doesn't list with no search (Q7, Q21).
+  const listedKeys = new Set(openingsTabOwners(view, null).keys());
   const addMenu = (
     <OpeningsAddMenu
       locations={locationPicker(locations, (id) => listedKeys.has(locationOwnerKey(id)))}
@@ -219,37 +233,24 @@ export function useWorldOpeningsEditor({ selectedId, onSelect, search, defaultTo
     />
   );
 
-  const startOptions = view.starts.map((l) => ({ value: l.id, label: label(l.name) }));
-  const startFilter = view.starts.length > 1 && (
-    <div className="flex items-center gap-2">
-      <Label htmlFor="openings-tab-starting-location" className="shrink-0">Starting Location</Label>
-      <Select value={view.startId ?? ALL_LOCATIONS} onValueChange={(v) => setFilter(v === ALL_LOCATIONS ? null : v)}>
-        <SelectTrigger id="openings-tab-starting-location" className="h-8 min-w-0 flex-1">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL_LOCATIONS}>All Locations</SelectItem>
-          <SelectOptions options={startOptions} />
-        </SelectContent>
-      </Select>
-    </div>
-  );
-
   return {
     search,
     toolbar: (className, extras) => (
-      <div className={cn('flex flex-shrink-0 flex-col gap-2', className)}>
-        <ListSearchToolbar
-          search={search}
-          placeholder="Search openings"
-          add={{ label: 'Add to Openings', menu: addMenu }}
-          after={extras?.after}
-          target={extras?.target}
-        >
-          {extras?.children}
-        </ListSearchToolbar>
-        {startFilter}
-      </div>
+      <ListSearchToolbar
+        className={className}
+        search={search}
+        placeholder="Search openings"
+        add={{ label: 'Add to Openings', menu: addMenu }}
+        after={(
+          <>
+            {parentKeys.length > 0 && <CollapseAllButton anyOpen={anyOpen} noun="groups" onClick={toggleAll} />}
+            {extras?.after}
+          </>
+        )}
+        target={extras?.target}
+      >
+        {extras?.children}
+      </ListSearchToolbar>
     ),
     list,
     detail,

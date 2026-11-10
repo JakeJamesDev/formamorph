@@ -45,21 +45,48 @@ export interface OpeningsTabOwner {
   group: EditorOpeningGroup;
 }
 
+/** What a row that can hold others carries: whether rows nest under it, and whether they are folded away. */
+interface Foldable {
+  parent: boolean;
+  collapsed: boolean;
+}
+
 export type OpeningsTabRow =
-  | { kind: 'owner'; owner: OpeningsTabOwner; depth: number }
+  | ({ kind: 'owner'; owner: OpeningsTabOwner; depth: number } & Foldable)
   /** A parent location or entity folder that holds no listed owner but contains one. */
-  | { kind: 'context'; key: string; context: 'location' | 'group'; name: string; depth: number }
+  | ({ kind: 'context'; key: string; context: 'location' | 'group'; name: string; depth: number } & Foldable)
   | { kind: 'rule'; key: string };
 
-/** A location or entity owner with none of its rows shown: a fresh owner, or one the Starting Location filter
- *  leaves out. `atNoStart` comes from the unfiltered view. */
-export function rowlessOwner(key: string, owner: Exclude<ResolvedOwner, { kind: 'world' }>, atNoStart = false): OpeningsTabOwner {
+type TreeRow = Exclude<OpeningsTabRow, { kind: 'rule' }>;
+
+/** The key a row folds under: an owner's selection key, or the context row's own. */
+export const foldKey = (row: TreeRow): string => (row.kind === 'owner' ? row.owner.key : row.key);
+
+/** Marks each row that has rows nested under it, and drops the rows under a collapsed one. */
+function foldTree(rows: TreeRow[], collapsed: ReadonlySet<string>): TreeRow[] {
+  const out: TreeRow[] = [];
+  let hiddenUnder: number | null = null;
+  rows.forEach((row, i) => {
+    if (hiddenUnder !== null) {
+      if (row.depth > hiddenUnder) return;
+      hiddenUnder = null;
+    }
+    const parent = (rows[i + 1]?.depth ?? 0) > row.depth;
+    const folded = parent && collapsed.has(foldKey(row));
+    if (folded) hiddenUnder = row.depth;
+    out.push({ ...row, parent, collapsed: folded });
+  });
+  return out;
+}
+
+/** A location or entity owner with none of its rows shown: a fresh owner. `atNoStart` comes from the view. */
+export function rowlessOwner(key: string, owner: Exclude<ResolvedOwner, { kind: 'world' }>): OpeningsTabOwner {
   const location = owner.kind === 'location' ? owner.location : undefined;
   const entity = owner.kind === 'entity' ? owner.entity : undefined;
   const name = (location ?? entity)?.name ?? '';
   return {
     key, kind: owner.kind, name,
-    group: { entity: entity ?? null, location, name, rows: [], showSelf: !!entity && canOwnSelfOpenings(entity), atNoStart },
+    group: { entity: entity ?? null, location, name, rows: [], showSelf: !!entity && canOwnSelfOpenings(entity), atNoStart: false },
   };
 }
 
@@ -120,19 +147,21 @@ export const entityPickChoices = (entityGroups: readonly EntityGroup[], entities
   ownerChoices([...entityGroups], entities.filter((e) => !listed(e.id)));
 
 /** The tab's list rows, top to bottom. `matches` says whether an owner row stays under the search; This World
- *  always does. */
-export function openingsTabRows({ owners, locations, entities, entityGroups, matches }: {
+ *  always does. Rows under a key in `collapsed` are left out; pass an empty set to get every row. */
+export function openingsTabRows({ owners, locations, entities, entityGroups, matches, collapsed }: {
   owners: Map<string, OpeningsTabOwner>;
   locations: readonly GameLocation[];
   entities: readonly Entity[];
   entityGroups: readonly EntityGroup[];
   matches: (name: string, rows: EditorOpeningRow[]) => boolean;
+  collapsed: ReadonlySet<string>;
 }): OpeningsTabRow[] {
+  const leaf = { parent: false, collapsed: false } as const;
   const shown = (owner: OpeningsTabOwner | undefined): owner is OpeningsTabOwner =>
     !!owner && matches(owner.name, owner.group.rows);
 
   const world = owners.get(WORLD_OWNER_KEY);
-  const rows: OpeningsTabRow[] = world ? [{ kind: 'owner', owner: world, depth: 0 }] : [];
+  const rows: OpeningsTabRow[] = world ? [{ kind: 'owner', owner: world, depth: 0, ...leaf }] : [];
 
   const flat = locationRows([...locations]);
   const parentOf = new Map(flat.map((n) => [n.id, n.parentId]));
@@ -141,23 +170,23 @@ export function openingsTabRows({ owners, locations, entities, entityGroups, mat
   for (const owner of listedLocations) {
     for (let at: string | null | undefined = owner.group.location?.id; at && !keep.has(at); at = parentOf.get(at)) keep.add(at);
   }
-  const locationTree: OpeningsTabRow[] = flat.filter((n) => keep.has(n.id)).map((n) => {
+  const locationTree = foldTree(flat.filter((n) => keep.has(n.id)).map((n): TreeRow => {
     const owner = owners.get(locationOwnerKey(n.id));
     return shown(owner)
-      ? { kind: 'owner', owner, depth: n.depth }
-      : { kind: 'context', key: `context:location:${n.id}`, context: 'location', name: n.location.name, depth: n.depth };
-  });
+      ? { kind: 'owner', owner, depth: n.depth, ...leaf }
+      : { kind: 'context', key: `context:location:${n.id}`, context: 'location', name: n.location.name, depth: n.depth, ...leaf };
+  }), collapsed);
 
   const listedEntities = entities.filter((e) => shown(owners.get(entityOwnerKey(e.id))));
   const depthOf = new Map<string, number>();
-  const entityTree = ownerChoices([...entityGroups], listedEntities).map((choice): OpeningsTabRow => {
+  const entityTree = foldTree(ownerChoices([...entityGroups], listedEntities).map((choice): TreeRow => {
     const depth = choice.parentId ? (depthOf.get(choice.parentId) ?? 0) + 1 : 0;
     depthOf.set(choice.id, depth);
     const owner = owners.get(entityOwnerKey(choice.id));
     return choice.kind === 'owner' && owner
-      ? { kind: 'owner', owner, depth }
-      : { kind: 'context', key: `context:group:${choice.id}`, context: 'group', name: choice.name, depth };
-  });
+      ? { kind: 'owner', owner, depth, ...leaf }
+      : { kind: 'context', key: `context:group:${choice.id}`, context: 'group', name: choice.name, depth, ...leaf };
+  }), collapsed);
 
   rows.push(...locationTree);
   if (locationTree.length && entityTree.length) rows.push({ kind: 'rule', key: 'rule' });

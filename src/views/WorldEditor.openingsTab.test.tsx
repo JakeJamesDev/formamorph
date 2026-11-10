@@ -192,34 +192,113 @@ describe('the World Editor Openings tab', () => {
     expect(pane('editor-detail')).toHaveTextContent('No openings match');
   });
 
-  it('narrows the rows to what can come up at one start', async () => {
-    const user = userEvent.setup();
+  it('has no Starting Location filter, and counts the openings an owner has authored', async () => {
     await openOpeningsTab();
-    await user.click(within(pane('editor-list')).getByRole('combobox', { name: 'Starting Location' }));
-    await user.click(screen.getByRole('option', { name: 'Black Fen' }));
-    expect(listRows()).toEqual(['This World 1', '(River Folk)', 'Ferryman 1']);
+    expect(within(pane('editor-list')).queryByRole('combobox', { name: 'Starting Location' })).toBeNull();
+    expect(listRows()).toContain('Harbor Steps 2');
+    expect(listRows()).toContain('Ferryman 1');
   });
 
-  it('keeps a selection the filter hides, with its pane', async () => {
-    const user = userEvent.setup();
+  it('shows a dash for an Others chance with several starts', async () => {
     await openOpeningsTab();
     selectOwner('Harbor Steps');
-    await user.click(within(pane('editor-list')).getByRole('combobox', { name: 'Starting Location' }));
-    await user.click(screen.getByRole('option', { name: 'Black Fen' }));
-    expect(listRows()).not.toContain('Harbor Steps 2');
-    expect(paneHeading()).toBe('Harbor Steps');
-    expect(pane('editor-detail')).toHaveTextContent('None of these openings come up at Black Fen');
+    expect(paneCards()[0]).toHaveTextContent('—');
+    expect(paneCards()[0]).not.toHaveTextContent('%');
   });
 
-  it('keeps the No Starting Location note on a selection the filter hides', async () => {
-    const user = userEvent.setup();
-    await openOpeningsTab();
-    selectOwner('Old Mill');
-    await user.click(within(pane('editor-list')).getByRole('combobox', { name: 'Starting Location' }));
-    await user.click(screen.getByRole('option', { name: 'Harbor Steps' }));
-    expect(listRows().some((row) => row.startsWith('Old Mill'))).toBe(false);
-    expect(paneHeading()).toBe('Old Mill');
-    expect(pane('editor-detail')).toHaveTextContent("Isn't a starting location, so its openings never come up");
+  it('shows a percentage for an Others chance with one start', async () => {
+    await openOpeningsTab(benchEditorWorld({
+      locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, openings: [{ id: 'h1', text: 'Gulls.', kind: 'action' }] }],
+    } as unknown as Partial<World>));
+    selectOwner('Harbor Steps');
+    expect(paneCards()[0]).toHaveTextContent(/\d+%/);
+    expect(paneCards()[0]).not.toHaveTextContent('—');
+  });
+
+  describe('collapsing groups', () => {
+    /** WORLD plus a Cellar under Harbor Steps, so an owner row is a parent as well as the Black Fen and River Folk. */
+    const TREE_WORLD: World = {
+      ...WORLD,
+      locations: [...WORLD.locations, { id: 'cellar', name: 'Cellar', parentId: 'harbor', openings: [{ id: 'c1', text: 'Casks knock.', kind: 'action' }] }],
+    } as World;
+    const FULL = [
+      'This World 1', 'Harbor Steps 2', 'Cellar 1!', '(Black Fen)', 'Old Mill 1!', '—', '(River Folk)', 'Ferryman 1', 'Odd Wick 1', 'Hermit 1!',
+    ];
+    const ALL_FOLDED = ['This World 1', 'Harbor Steps 2', '(Black Fen)', '—', '(River Folk)', 'Odd Wick 1', 'Hermit 1!'];
+    const chevron = (name: string) => within(pane('editor-list')).getByRole('button', { name });
+    const collapseAll = () => within(pane('editor-list')).getByRole('button', { name: /^(Collapse|Expand) all groups$/ });
+
+    it('opens with every row expanded', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      expect(listRows()).toEqual(FULL);
+    });
+
+    it("hides and shows a parent's rows with its chevron, for an owner, a location folder and an entity folder", async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.click(chevron('Collapse Harbor Steps'));
+      expect(listRows()).not.toContain('Cellar 1!');
+      fireEvent.click(chevron('Collapse Black Fen'));
+      expect(listRows()).not.toContain('Old Mill 1!');
+      fireEvent.click(chevron('Collapse River Folk'));
+      expect(listRows()).not.toContain('Ferryman 1');
+      expect(listRows()).toEqual(ALL_FOLDED);
+
+      fireEvent.click(chevron('Expand Harbor Steps'));
+      fireEvent.click(chevron('Expand Black Fen'));
+      fireEvent.click(chevron('Expand River Folk'));
+      expect(listRows()).toEqual(FULL);
+    });
+
+    it('gives no chevron to This World or a row with nothing under it', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      for (const name of ['This World', 'Cellar', 'Ferryman', 'Hermit']) {
+        expect(within(pane('editor-list')).queryByRole('button', { name: `Collapse ${name}` })).toBeNull();
+      }
+    });
+
+    it('folds every parent with Collapse All, then opens them all, and its name follows', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.click(collapseAll());
+      expect(listRows()).toEqual(ALL_FOLDED);
+      expect(collapseAll()).toHaveAccessibleName('Expand all groups');
+      fireEvent.click(collapseAll());
+      expect(listRows()).toEqual(FULL);
+      expect(collapseAll()).toHaveAccessibleName('Collapse all groups');
+    });
+
+    it('folds the rest when one parent is already folded', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.click(chevron('Collapse Black Fen'));
+      expect(collapseAll()).toHaveAccessibleName('Collapse all groups');
+      fireEvent.click(collapseAll());
+      expect(listRows()).toEqual(ALL_FOLDED);
+    });
+
+    it('shows a match inside a collapsed parent while the search has text', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.click(chevron('Collapse Black Fen'));
+      fireEvent.change(tabSearch(), { target: { value: 'creaks' } });
+      expect(listRows()).toEqual(['This World 1', '(Black Fen)', 'Old Mill 1!']);
+      fireEvent.change(tabSearch(), { target: { value: '' } });
+      expect(listRows()).not.toContain('Old Mill 1!');
+    });
+
+    it('folds every parent with Collapse All typed over a search, which shows once the search clears', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      fireEvent.change(tabSearch(), { target: { value: 'creaks' } });
+      fireEvent.click(collapseAll());
+      fireEvent.change(tabSearch(), { target: { value: '' } });
+      expect(listRows()).toEqual(ALL_FOLDED);
+    });
+
+    it('keeps a selected owner selected, with its pane, when its parent collapses', async () => {
+      await openOpeningsTab(TREE_WORLD);
+      selectOwner('Old Mill');
+      fireEvent.click(chevron('Collapse Black Fen'));
+      expect(listRows()).not.toContain('Old Mill 1!');
+      expect(paneHeading()).toBe('Old Mill');
+      expect(paneCards()).toHaveLength(1);
+    });
   });
 
   it("shows an edit made here on the owner's own Openings tab", async () => {
@@ -319,12 +398,9 @@ describe('the World Editor Openings tab', () => {
       expect(listRows()).toContain('Ghost 1!');
     });
 
-    it('ignores the search and the Starting Location filter, and a pick clears the search', async () => {
-      const user = userEvent.setup();
+    it('ignores the search, and a pick clears the search', async () => {
       await openOpeningsTab(PICK_WORLD);
-      // The Black Fen filter hides Harbor Steps and the Old Mill; the search hides every owner row.
-      await user.click(within(pane('editor-list')).getByRole('combobox', { name: 'Starting Location' }));
-      await user.click(screen.getByRole('option', { name: 'Black Fen' }));
+      // The search hides every owner row.
       fireEvent.change(tabSearch(), { target: { value: 'zzz' } });
       openPlus();
       fireEvent.click(menuRow('Location'));
@@ -333,7 +409,7 @@ describe('the World Editor Openings tab', () => {
       expect(level('Locations')).toEqual(['Add to Black Fen', 'Reed Bed']);
       fireEvent.click(menuRow('Reed Bed'));
       expect(tabSearch()).toHaveValue('');
-      // Selected, though the filter hides its row (Q16).
+      // Selected, though the search hides its row (Q16).
       expect(paneHeading()).toBe('Reed Bed');
     });
 

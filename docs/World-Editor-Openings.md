@@ -45,13 +45,16 @@ The **Openings** tab lists This World and every location and entity with opening
 | Entities | Each entity with openings, in its folders as on the **Entities** tab |
 | Dimmed rows | A parent location or folder with no openings of its own. You can't select it. |
 
-Each row shows how many openings it has. The **No Starting Location** icon marks a row whose openings never come up: see [Starting Location filter](#starting-location-filter).
+Each row shows how many openings it has. The **No Starting Location** icon marks a row whose openings never come up: see [Chances and starting locations](#chances-and-starting-locations).
 
 - To give a location or entity its first opening, select **+**, then **Location** or **Entity**, and pick it. It's listed and selected with one blank opening. A location with locations inside it opens a list of them. To add to the location itself, pick **Add to <name>** at the top of that list.
 - The owner's name at the top of the right pane opens its own **Openings** tab.
 - After you delete an owner's last opening, its row stays until you select another row.
 - Search finds an owner by its name or by the text of its openings. The right pane then shows only the matching openings.
-- With more than one starting location, the **Starting Location** filter shows above the list. A pick keeps only what can come up at that start.
+- A row with rows inside it, dimmed or not, has an arrow. Select the arrow to hide or show those rows. **This World** has none.
+- **Collapse all groups** sits right of the search. It folds every row that has rows inside it. When all are folded, the same button reads **Expand all groups** and opens them.
+- While the search has text, a folded row still shows the rows that match. A folded row keeps its selection and its right pane.
+- Folds aren't saved with the world. The list opens with every row expanded.
 
 ## How to Add a Self Opening
 <!-- keywords: first message, greeting, intro, persona start, play as, player character start, protagonist beginning, main character opener, pov beginning, hero backstory opener, when i am them, own storyline kickoff -->
@@ -113,8 +116,8 @@ The **Openings** panel shows its text under **This World**. It shows the text on
 
 | Panel view | The default opening shows |
 |---|---|
-| A **Starting Location** with an empty pool | Yes |
-| **All Locations** | Yes, with the names of the starts that have an empty pool |
+| A world with one start whose pool is empty | Yes |
+| A world with several starts, some with an empty pool | Yes, with the names of those starts |
 | No start has an empty pool | No |
 
 ## Every opening in one place
@@ -132,23 +135,17 @@ Groups run in this order: World, Locations, Entities. Each location and entity g
 
 An edit in the panel changes the owner's opening.
 
-### Starting Location filter
+### Chances and starting locations
 
-With more than one starting location, the **Starting Location** filter shows above the list. It opens on **All Locations**. The pick only changes what the panel shows, and it isn't saved with the world.
+The panel lists every opening in the world. A chance is the share of the whole draw at one starting location. A world with several starting locations has no single draw to describe, so an Others opening shows a dash. Self openings keep their chance.
 
-| Pick | The panel shows |
-|---|---|
-| **All Locations** | Every opening in the world. Chances hide, except on Self openings. |
-| **A location** | The openings that can come up at that start, with chances |
-
-A chance is the share of the whole draw at one starting location. World, location and entity rows add up to 100% together.
+A world with one starting location shows chances as at that start. World, location and entity rows add up to 100% together.
 
 | The chance shows | Means |
 |---|---|
-| **A percentage** | The row can come up at that location |
+| **A percentage** | The row can come up at the start |
 | **0%** | The row has weight 0, or no text |
-
-A world with one starting location has no filter. The panel shows chances as at that start. A row that can't come up there shows a dash.
+| **A dash** | The world has several starts, or the row can't come up at the start |
 
 An entity at no starting location shows a **No Starting Location** badge. A location that isn't a starting location shows it too. Their openings never come up. The **Custom Persona** entity and a **Persona-Only** entity never show this badge. Their Others openings show a **Never Draws** badge: see [Self Openings](#self-openings).
 

@@ -39,6 +39,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Openings have their own World Editor tab, after Overview.** In Advanced mode, it lists This World and each location and entity with openings, nested as on their own tabs. Select one to edit its openings, or search their text.
     - **The Openings tab's + gives a location or entity its first opening.** Pick Location or Entity, then find it in its folders or inside other locations. It's listed and selected with one blank opening.
     - **In the World Editor, Find and undo now open the Openings tab on the opening's owner.** The Overview tab's right column keeps Details and Custom Prompts. Help's Take Me There for openings lands on the Openings tab too.
+    - **On the Openings tab, a parent row folds its rows away, and Collapse All folds every parent at once.** A search still shows its matches. The Starting Location filter is gone. In a world with several starts, an Others chance shows a dash.
   - **Formamorph AI:**
     - **Set up your AI offers Formamorph AI first on AMD, Intel and integrated GPUs, and on computers without a GPU.** It reads the GPU the built-in engine uses. A card with 8 GB of memory or less still counts.
     - **After 10 turns on the built-in engine with little GPU memory, a card offers Formamorph AI once.** It sits under the story and compares Formamorph AI with the model on your computer. Not Now hides it for good.

@@ -1,6 +1,6 @@
 # 05: Collapse Owner Groups
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -21,10 +21,18 @@ The Openings tab trades its Starting Location filter for collapsible groups (Q24
 
 ## Acceptance criteria
 
-- [ ] No Starting Location filter in a world with several starts; counts are authored openings; an Others card shows a dash in a multi-start world and a percentage in a single-start world (editor-bench test)
-- [ ] A parent's chevron hides and shows its rows, for a location and an entity folder (editor-bench test)
-- [ ] Collapse All folds every parent, then opens them all, and its name follows (editor-bench test)
-- [ ] Search shows a match inside a collapsed parent (editor-bench test, mutation-tested: dropping the search rule turns it red)
-- [ ] Collapsing the selected owner's parent keeps the selection and pane (editor-bench test)
+- [x] No Starting Location filter in a world with several starts; counts are authored openings; an Others card shows a dash in a multi-start world and a percentage in a single-start world (editor-bench tests: "has no Starting Location filter…", "shows a dash…", "shows a percentage…")
+- [x] A parent's chevron hides and shows its rows, for a location and an entity folder (editor-bench test "hides and shows a parent's rows with its chevron")
+- [x] Collapse All folds every parent, then opens them all, and its name follows (editor-bench test "folds every parent with Collapse All…")
+- [x] Search shows a match inside a collapsed parent (editor-bench test, mutation-tested: dropping the search rule turned it red, then restored)
+- [x] Collapsing the selected owner's parent keeps the selection and pane (editor-bench test)
 - [ ] Frame at 1280×800 dark on Fantasy Futanari with some groups collapsed
-- [ ] Openings wiki page updated; changelog fragment written
+- [x] Openings wiki page updated; changelog fragment written (`docs/World-Editor-Openings.md`, `docs-internal/changelog.d/openings-tab-05.md`)
+
+## Landed
+
+**Not verified**
+- Frame at 1280×800 dark on Fantasy Futanari: the Browser pane was hidden, so screenshots came back blank, and the editor did not reach the Openings tab by script. No frame was stored.
+
+**For you**
+- Open Fantasy Futanari's Openings tab in dark mode at 1280×800. Check the chevron and spacer alignment of owner rows, dim rows and This World, and that Collapse all groups sits right of the search.

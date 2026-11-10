@@ -9,7 +9,7 @@ import { useWorldOpeningsEditor } from './useWorldOpeningsEditor';
 
 /**
  * The Openings tab's panes against a mutable world: each owner's openings, their chances, weights, kinds,
- * order and collapse, the Starting Location filter and the default opening. The list's nesting and the
+ * order and collapse, the view with several starts and the default opening. The list's nesting and the
  * editor wiring are the bench's (`WorldEditor.openingsTab.test.tsx`).
  */
 
@@ -417,7 +417,7 @@ describe("a location's or entity's openings", () => {
     });
   });
 
-  describe('the Starting Location filter', () => {
+  describe('with several starting locations', () => {
     const dockRow = { id: 'd1', text: 'Gulls fight over the nets.', kind: 'narration' as const };
     const warden = {
       id: 'warden', name: 'Warden', persona: true, locations: ['market'],
@@ -428,11 +428,6 @@ describe("a location's or entity's openings", () => {
       ],
       openingWeights: { s2: 3 },
     } as unknown as Entity;
-    const filter = () => screen.getByRole('combobox', { name: 'Starting Location' });
-    const pick = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
-      await user.click(filter());
-      await user.click(screen.getByRole('option', { name }));
-    };
     const defaultCard = () => screen.queryByRole('note', { name: 'Default Opening' });
     /** Each listed owner's row chances, in list order. */
     const chancesByOwner = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -449,53 +444,20 @@ describe("a location's or entity's openings", () => {
       world.entities = [guide, { ...hermit, locations: ['market'] }, warden];
     });
 
-    it('opens on All Locations, listed before each starting location by name', async () => {
-      const user = open();
-      expect(filter()).toHaveTextContent('All Locations');
-      await user.click(filter());
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['All Locations', 'The Dock', 'The Market']);
+    it('offers no Starting Location filter, and lists every owner', () => {
+      open();
+      expect(screen.queryByRole('combobox', { name: 'Starting Location' })).not.toBeInTheDocument();
+      expect(owners()).toEqual(['This World', 'The Dock', 'Guide', 'Hermit', 'Warden']);
     });
 
-    it('shows every owner under All Locations, with a chance on Self rows only', async () => {
+    it('shows every owner, with a chance on Self rows only', async () => {
       const user = open();
       expect(await chancesByOwner(user)).toEqual({
         'This World': ['—'], 'The Dock': ['—'], Guide: ['—', '—'], Hermit: ['—'], Warden: ['—', '25%', '75%'],
       });
     });
 
-    it('keeps what can draw at a picked start, and an absent persona’s Self rows, with their chances', async () => {
-      const user = open();
-      await pick(user, 'The Dock');
-      expect(await chancesByOwner(user)).toEqual({
-        'This World': ['25%'], 'The Dock': ['25%'], Guide: ['25%', '25%'], Warden: ['25%', '75%'],
-      });
-
-      await pick(user, 'The Market');
-      await select(user, 'This World');
-      expect(await chancesByOwner(user)).toEqual({
-        'This World': ['33%'], Hermit: ['33%'], Warden: ['33%', '25%', '75%'],
-      });
-
-      await pick(user, 'All Locations');
-      expect(owners()).toEqual(['This World', 'The Dock', 'Guide', 'Hermit', 'Warden']);
-      expect(world.overview).not.toHaveProperty('startingLocationId');
-    });
-
-    it('shows the default opening at a picked start only when nothing can come up there', async () => {
-      world.overview = { ...world.overview, openings: [] };
-      world.locations = [dock, market];
-      world.entities = [guide];
-      const user = open();
-      await pick(user, 'The Dock');
-      expect(defaultCard()).not.toBeInTheDocument();
-      expect(detail().getByText('No openings yet')).toBeInTheDocument();
-
-      await pick(user, 'The Market');
-      expect(defaultCard()).toHaveTextContent(OPENING_SCENE_CUE);
-      expect(screen.getByText('No opening can come up at The Market, so a game there starts on the text below')).toBeInTheDocument();
-    });
-
-    it('names, under All Locations, every start that gets the default opening, and hides it when none does', () => {
+    it('names every start that gets the default opening, and hides it when none does', () => {
       world.overview = { ...world.overview, openings: [] };
       world.locations = [dock, market];
       world.entities = [];

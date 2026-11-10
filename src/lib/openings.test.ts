@@ -391,8 +391,8 @@ describe('the editor view', () => {
   const loc = (id: string, isStarting = false) => ({ id, name: `Place ${id}`, isStarting }) as unknown as GameLocation;
   const ent = (id: string, locations: string[] | undefined, openings: Opening[], over: Partial<Entity> = {}): Entity =>
     ({ id, name: `Entity ${id}`, locations, openings, ...over });
-  const view = (over: Partial<Parameters<typeof openingsEditorView>[0]> = {}, startId?: string | null) =>
-    openingsEditorView({ overview: overview(), entities: [], locations: [], ...over }, startId);
+  const view = (over: Partial<Parameters<typeof openingsEditorView>[0]> = {}) =>
+    openingsEditorView({ overview: overview(), entities: [], locations: [], ...over });
   const chances = (v: ReturnType<typeof view>) => v.groups.map((g) => [g.entity?.id ?? null, g.rows.map((r) => r.chance)]);
 
   it('lists location groups in the location tree’s order, a child under its parent', () => {
@@ -437,8 +437,8 @@ describe('the editor view', () => {
     const v = view({
       overview: overview({ openings: [action('w1'), action('blank', ''), action('bench')], openingWeights: { bench: 0 } }),
       entities: [ent('near', ['dock'], [action('n1', '')])],
-      locations: [loc('dock', true), loc('cave', true)],
-    }, 'dock');
+      locations: [loc('dock', true), loc('cave')],
+    });
     expect(chances(v)).toEqual([[null, [100, 0, 0]], ['near', [0]]]);
   });
 
@@ -476,15 +476,10 @@ describe('the editor view', () => {
       }
     });
 
-    it('shows its Others rows with the mark under All Locations and at a lone start', () => {
+    it('shows its Others rows with the mark with several starts and at a lone start', () => {
       const several = [loc('dock', true), loc('cave', true)];
       expect(marks(view({ entities: [custom()], locations: several }))).toEqual([[], [true, false, false]]);
       expect(marks(view({ entities: [custom()], locations: [loc('dock', true)] }))).toEqual([[], [true, false, false]]);
-    });
-
-    it('hides its Others rows at a picked start, even the one it stands at', () => {
-      const v = view({ entities: [custom()], locations: [loc('dock', true), loc('cave', true)] }, 'dock');
-      expect(v.groups[1].rows.map((r) => r.opening.id)).toEqual(['cs1', 'cs2']);
     });
 
     it('gives the entity’s own list a dash and the mark on those rows', () => {
@@ -528,15 +523,10 @@ describe('the editor view', () => {
       }
     });
 
-    it('shows its Others rows with the mark under All Locations and at a lone start', () => {
+    it('shows its Others rows with the mark with several starts and at a lone start', () => {
       const several = [loc('dock', true), loc('cave', true)];
       expect(marks(view({ entities: [only()], locations: several }))).toEqual([[], [true, false, false]]);
       expect(marks(view({ entities: [only()], locations: [loc('dock', true)] }))).toEqual([[], [true, false, false]]);
-    });
-
-    it('hides its Others rows at a picked start, even the one it stands at', () => {
-      const v = view({ entities: [only()], locations: [loc('dock', true), loc('cave', true)] }, 'dock');
-      expect(v.groups[1].rows.map((r) => r.opening.id)).toEqual(['os1', 'os2']);
     });
 
     it('gives the entity’s own list a dash and the mark on those rows', () => {
@@ -589,7 +579,7 @@ describe('the editor view', () => {
     };
     const owners = (v: ReturnType<typeof view>) => v.groups.map((g) => g.location?.id ?? g.entity?.id ?? null);
 
-    it('open on All Locations, listing every group with chances on Self rows only', () => {
+    it('list every group, with chances on Self rows only', () => {
       const v = view(sources);
       expect(v.allLocations).toBe(true);
       expect(v.startId).toBeNull();
@@ -598,21 +588,6 @@ describe('the editor view', () => {
       expect(v.groups.map((g) => g.atNoStart)).toEqual([false, false, false, true, false, false, false]);
       expect(chances(v)).toEqual([[null, [null]], [null, [null]], [null, [null]], [null, [null]],
         ['d', [null]], ['m', [null]], ['p', [null, 25, 75]]]);
-      expect(view(sources, 'gone').allLocations).toBe(true);
-      expect(view(sources, 'cave').allLocations).toBe(true);
-    });
-
-    it('keep, at a picked start, only what draws there and every Self row', () => {
-      const dock = view(sources, 'dock');
-      expect(dock.allLocations).toBe(false);
-      expect(dock.startId).toBe('dock');
-      expect(owners(dock)).toEqual([null, 'dock', 'd', 'p']);
-      expect(chances(dock)).toEqual([[null, [33.33333333333333]], [null, [33.33333333333333]], ['d', [33.33333333333333]], ['p', [25, 75]]]);
-      expect(dock.groups.every((g) => !g.atNoStart)).toBe(true);
-
-      const market = view(sources, 'market');
-      expect(owners(market)).toEqual([null, 'market', 'm', 'p']);
-      expect(chances(market)).toEqual([[null, [25]], [null, [25]], ['m', [25]], ['p', [25, 25, 75]]]);
     });
 
     it('treat every location as a start when none is flagged, as the start of play does', () => {
@@ -623,18 +598,17 @@ describe('the editor view', () => {
     });
   });
 
-  it('describes a lone start whatever the filter says, filtering nothing and marking what it never reaches', () => {
+  it('describes a lone start with percentages and marks what it never reaches', () => {
     const sources = {
       overview: overview({ openings: [action('w1')] }),
       entities: [ent('d', ['dock'], [action('d1')]), ent('far', ['cave'], [action('f1')])],
       locations: [loc('dock', true), { ...loc('cave'), openings: [action('cave1')] }],
     };
-    for (const v of [view(sources), view(sources, 'cave')]) {
-      expect(v.allLocations).toBe(false);
-      expect(v.startId).toBe('dock');
-      expect(chances(v)).toEqual([[null, [50]], [null, [null]], ['d', [50]], ['far', [null]]]);
-      expect(v.groups.map((g) => g.atNoStart)).toEqual([false, true, false, true]);
-    }
+    const v = view(sources);
+    expect(v.allLocations).toBe(false);
+    expect(v.startId).toBe('dock');
+    expect(chances(v)).toEqual([[null, [50]], [null, [null]], ['d', [50]], ['far', [null]]]);
+    expect(v.groups.map((g) => g.atNoStart)).toEqual([false, true, false, true]);
   });
 
   it('filters nothing in a world with no locations, marking the entities no start reaches', () => {
@@ -654,13 +628,8 @@ describe('the editor view', () => {
     const entities = [ent('d', ['dock'], [action('d1')]), ent('m', ['market'], [action('m1', '')])];
     const defaults = (v: ReturnType<typeof view>) => [v.defaultOpening, v.defaultStarts.map((l) => l.id)];
 
-    it('names, under All Locations, every start whose pool is empty', () => {
+    it('names every start whose pool is empty', () => {
       expect(defaults(view({ entities, locations }))).toEqual([true, ['market', 'cave']]);
-    });
-
-    it('shows at a picked start only when its pool is empty', () => {
-      expect(defaults(view({ entities, locations }, 'dock'))).toEqual([false, []]);
-      expect(defaults(view({ entities, locations }, 'market'))).toEqual([true, ['market']]);
     });
 
     it('shows nowhere when every start draws something, benched rows aside', () => {
