@@ -158,6 +158,7 @@ Rulings Q1–Q30 came from the first grill. The rebase grill (Q31–Q64) superse
 - **Q109** The idle control is a number box with a unit: minutes, hours or dayparts. This is the prototype's control and it replaces Q50's "presets plus a box". (Ticket 04.)
 - **Q110** In hours mode the hour column disables hours that would make the range touch another timed row. A write that still overlaps is refused with a one-line note. (Ticket 04.)
 - **Q111** The kind switch, a Group's places and the Starts all live in the Routine tab; nothing of them stays in the Profile tab. The last Start can't be deleted. Changing a Start's place keeps its rows, and places it can no longer reach get the flag (Q54). Each Start tab shows its chance as a chance chip, and the weight edits from the "begins at" sentence. (Ticket 04.)
+- **Q112** The movement tag is a field line in an Individual's block, like the stranger-name field. Name-only content appends it in parentheses. Its wording addresses the model, so it reads "following the player", "waiting here", "stays here" at the player's place and "stays there" in a Nearby place. The tag follows where the character stands, the same in every scope of the chip. (Ticket 10; amends Q21 and Q47's wording.)
 - **Q82** Nearby Through Connections is removed, checkbox and field. Nearby reach already counts Connections (Q61), and migrated Connections stay Nearby (Q48).
 
 ## User Stories
