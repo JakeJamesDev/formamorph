@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '@/lib/apiBase';
 import { USERNAME_RENAME_FAILED_MESSAGE, USERNAME_RULE_HELP, USERNAME_TAKEN_MESSAGE, checkUsername } from '@/lib/usernameRule';
-import type { AuthUser } from '@/types';
+import type { AuthUser, EmailMarker } from '@/types';
+import { DetailedError } from '@/lib/errorDetails';
 import { codedResponseError, readFailure, responseError } from './responseError';
 
 /** The code the server returns when a flagged account's write is refused until it renames. */
@@ -12,6 +13,23 @@ async function usernameRefusal(response: Response, fallback: string) {
   if (failure.code === 'USERNAME_TAKEN') failure.message = USERNAME_TAKEN_MESSAGE;
   if (failure.code === 'USERNAME_INVALID') failure.message = USERNAME_RULE_HELP;
   return failure;
+}
+
+/** The code the server refuses a mail with when the address is marked undeliverable. */
+export const EMAIL_UNDELIVERABLE = 'EMAIL_UNDELIVERABLE';
+
+/** Why mail to the address stopped, or `unknown` when the refusal came without a reason. */
+export type EmailNoticeReason = EmailMarker | 'unknown';
+
+/** Whether a value names a marker reason the client knows. */
+export function isEmailMarker(value: unknown): value is EmailMarker {
+  return value === 'bounce' || value === 'complaint';
+}
+
+/** The marker an account record carries, read defensively off the server's field. */
+export function emailMarkerOf(user: AuthUser | null | undefined): EmailMarker | null {
+  const marker = user?.emailMarker;
+  return isEmailMarker(marker) ? marker : null;
 }
 
 /** What a sign-in tells the caller beyond the session it establishes. */
@@ -27,6 +45,8 @@ export interface EmailOutcome {
   /** Whether the verification mail went out. Delivery runs through somebody else's service, so an
    *  address can be saved and the mail still not sent; the caller offers another try. */
   mailSent: boolean;
+  /** Set when the server refused because the address is marked; nothing was sent. */
+  undeliverable: EmailNoticeReason | null;
 }
 
 /** How opening a verification link ended. A dead link is an expected outcome rather than a failure, so
@@ -38,6 +58,8 @@ export type VerifyEmailResult =
       /** The server refused the link itself — expired, or already used. False when the request never
        *  reached an answer, which is a different sentence and a different next step. */
       spent: boolean;
+      /** The server refused the link because mail to the address bounced or was reported as spam. */
+      undeliverable: boolean;
       message: string;
     };
 
@@ -396,13 +418,19 @@ class AuthService {
     });
 
     // A taken address and a spent mail budget both land here, and each sentence is the one thing the
-    // reader has to act on.
-    if (!response.ok) throw await responseError(response, 'Failed to save the email address');
+    // reader has to act on. A marked address is saved and answered with the account, so it is an outcome.
+    if (!response.ok) {
+      const failure = await readFailure(response, 'Failed to save the email address');
+      const user = (failure.body as { user?: AuthUser }).user;
+      if (failure.body.code !== EMAIL_UNDELIVERABLE) throw new DetailedError(failure.message, failure.details, response.status);
+      if (user) this.adoptUser(user);
+      return { emailVerified: false, mailSent: false, undeliverable: emailMarkerOf(user) ?? 'unknown' };
+    }
 
     const data = await response.json().catch(() => ({}));
     if (data.user) this.adoptUser(data.user as AuthUser);
 
-    return { emailVerified: data.user?.emailVerified === true, mailSent: data.mailSent === true };
+    return { emailVerified: data.user?.emailVerified === true, mailSent: data.mailSent === true, undeliverable: null };
   }
 
   /**
@@ -446,7 +474,7 @@ class AuthService {
    * the old record back would undo it. Answers null when there is no session or the read fails, which
    * both mean "keep showing what the cached account said".
    */
-  async fetchEmailState(): Promise<{ email: string | null; emailVerified: boolean } | null> {
+  async fetchEmailState(): Promise<{ email: string | null; emailVerified: boolean; emailMarker: EmailMarker | null } | null> {
     if (!this.token) return null;
 
     try {
@@ -460,7 +488,8 @@ class AuthService {
 
       return {
         email: (user.email as string | null | undefined) ?? null,
-        emailVerified: user.emailVerified === true
+        emailVerified: user.emailVerified === true,
+        emailMarker: emailMarkerOf(user)
       };
     } catch (error) {
       console.error('Could not read the account email state:', (error as Error).message);
@@ -477,10 +506,16 @@ class AuthService {
       headers: { 'Authorization': `Bearer ${this.token}` }
     });
 
-    if (!response.ok) throw await responseError(response, 'Failed to send the verification email');
+    if (!response.ok) {
+      const failure = await codedResponseError(response, 'Failed to send the verification email');
+      if (failure.code !== EMAIL_UNDELIVERABLE) throw failure;
+      // This refusal names no reason, so the account read supplies it.
+      const fresh = await this.fetchEmailState();
+      return { emailVerified: false, mailSent: false, undeliverable: fresh?.emailMarker ?? 'unknown' };
+    }
 
     const data = await response.json().catch(() => ({}));
-    return { emailVerified: data.emailVerified === true, mailSent: data.mailSent === true };
+    return { emailVerified: data.emailVerified === true, mailSent: data.mailSent === true, undeliverable: null };
   }
 
   /**
@@ -504,13 +539,14 @@ class AuthService {
       return {
         verified: false,
         spent: false,
+        undeliverable: false,
         message: (error as Error).message || 'Could not reach the server'
       };
     }
 
     if (!response.ok) {
       const { body, message } = await readFailure(response, 'That verification link could not be used');
-      return { verified: false, spent: body.code === 'TOKEN_INVALID', message };
+      return { verified: false, spent: body.code === 'TOKEN_INVALID', undeliverable: body.code === EMAIL_UNDELIVERABLE, message };
     }
 
     const data = await response.json().catch(() => ({}));

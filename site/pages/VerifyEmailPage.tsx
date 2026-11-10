@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AuthService from '@/services/AuthService';
+import { EmailMarkerLines, QUESTIONS_BOARD_PATH } from '@/components/EmailMarkerNotice';
 import { NoteLine, type Note } from '../components/NoteLine';
 import { SiteLayout } from '../components/SiteLayout';
 import { useSiteLocation } from '../router';
@@ -16,6 +17,7 @@ type Stage =
   | { name: 'checking' }
   | { name: 'verified'; email: string | null }
   | { name: 'spent'; message: string }
+  | { name: 'undeliverable' }
   | { name: 'failed'; message: string };
 
 /**
@@ -99,6 +101,8 @@ export function VerifyEmailPage() {
     void AuthService.verifyEmail(token).then((result) => {
       if (result.verified) {
         setStage({ name: 'verified', email: result.email });
+      } else if (result.undeliverable) {
+        setStage({ name: 'undeliverable' });
       } else if (result.spent) {
         setStage({ name: 'spent', message: result.message });
       } else {
@@ -128,6 +132,21 @@ export function VerifyEmailPage() {
           {' · '}
           <a className="text-primary hover:underline" href="/play/">Play</a>
         </p>
+      </SiteLayout>
+    );
+  }
+
+  // A fresh link would go to the same address, so the way out is another address or staff.
+  if (stage.name === 'undeliverable') {
+    return (
+      <SiteLayout title="Address Not Reachable">
+        <div role="alert" className="space-y-4 text-body text-muted-foreground">
+          <EmailMarkerLines
+            reason="unknown"
+            feedback={(text) => <a className="text-primary hover:underline" href={QUESTIONS_BOARD_PATH}>{text}</a>}
+            account={(text) => <a className="text-primary hover:underline" href="/account">{text}</a>}
+          />
+        </div>
       </SiteLayout>
     );
   }

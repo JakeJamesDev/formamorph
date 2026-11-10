@@ -444,3 +444,89 @@ describe('the email address', () => {
       .toBeTruthy();
   });
 });
+
+describe('an address mail no longer reaches', () => {
+  const account = (over: Record<string, unknown> = {}) =>
+    res({ success: true, user: { username: 'wren_hallow', email: 'wren@example.com', emailVerified: false, ...over } });
+  const UNDELIVERABLE = { success: false, code: 'EMAIL_UNDELIVERABLE', error: 'Mail to this address bounced or was reported as spam' };
+
+  beforeEach(() => signIn({ username: 'wren_hallow' }));
+
+  it('shows the bounce notice in place of the resend, with the feedback link', async () => {
+    routeFetch({ '/auth/me': account({ emailMarker: 'bounce' }) });
+    render(<AccountPage />);
+
+    expect(await screen.findByText(/Email to this address bounced, so/)).toBeTruthy();
+    expect(screen.getByText(/Not verified\./)).toBeTruthy();
+    expect(screen.queryByText(/Not verified yet/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Resend Verification Email' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'ask staff in Feedback' }).getAttribute('href')).toBe('/feedback?board=questions');
+  });
+
+  it('shows the notice from the signed-in account when the account read fails', async () => {
+    signIn({ username: 'wren_hallow', email: 'wren@example.com', emailVerified: false, emailMarker: 'bounce' });
+    routeFetch({ '/auth/me': res({ error: 'Server error' }, false, 500) });
+    render(<AccountPage />);
+
+    expect(screen.getByText(/Email to this address bounced, so/)).toBeTruthy();
+    await waitFor(() => expect(asked('/auth/me')).toBe(true));
+    expect(screen.getByText(/Email to this address bounced, so/)).toBeTruthy();
+  });
+
+  it('names a spam report as the cause for a complaint', async () => {
+    routeFetch({ '/auth/me': account({ emailMarker: 'complaint' }) });
+    render(<AccountPage />);
+
+    expect(await screen.findByText(/marked an email from Formamorph as spam/)).toBeTruthy();
+    expect(screen.queryByText(/Email to this address bounced/)).toBeNull();
+  });
+
+  it('shows the notice, not the could-not-send note, when saving the marked address again', async () => {
+    routeFetch({
+      '/auth/me': account(),
+      '/auth/email': res({ ...UNDELIVERABLE, user: { username: 'wren_hallow', email: 'wren@example.com', emailVerified: false, emailMarker: 'bounce' } }, false, 409),
+    });
+    render(<AccountPage />);
+    await screen.findByText(/Not verified yet\./);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
+
+    expect(await screen.findByText(/Email to this address bounced, so/)).toBeTruthy();
+    expect(screen.queryByText(/couldn.t be sent/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Resend Verification Email' })).toBeNull();
+  });
+
+  it('shows the notice with its reason when a resend is refused for the marker', async () => {
+    let reads = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = String(url);
+      if (path.includes('/users/me/patreon')) return res({ success: true, data: { linked: false } });
+      if (path.includes('/auth/resend-verification')) return res(UNDELIVERABLE, false, 409);
+      if (path.includes('/auth/me')) return account(reads++ === 0 ? {} : { emailMarker: 'complaint' });
+      throw new Error(`No stub for ${path}`);
+    });
+    render(<AccountPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Resend Verification Email' }));
+
+    expect(await screen.findByText(/marked an email from Formamorph as spam/)).toBeTruthy();
+    expect(screen.queryByText(/couldn.t be sent/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Resend Verification Email' })).toBeNull();
+  });
+
+  it('removes the notice once a different address is saved', async () => {
+    routeFetch({
+      '/auth/me': account({ emailMarker: 'bounce' }),
+      '/auth/email': res({ success: true, user: { username: 'wren_hallow', email: 'new@example.com', emailVerified: false, emailMarker: null }, mailSent: true }),
+    });
+    render(<AccountPage />);
+    await screen.findByText(/Email to this address bounced, so/);
+
+    type('Email Address', 'new@example.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
+
+    expect(await screen.findByText(/Verification email sent to new@example\.com/)).toBeTruthy();
+    expect(screen.queryByText(/Email to this address bounced/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Resend Verification Email' })).toBeTruthy();
+  });
+});

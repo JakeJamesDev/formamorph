@@ -260,9 +260,14 @@ export interface UsernameRename {
   suggestion: string | null;
 }
 
+/** Why the server stopped mailing an account's address: a hard bounce, or a spam report. */
+export type EmailMarker = 'bounce' | 'complaint';
+
 /** An authenticated account as returned by the auth server; extra server fields pass through the index signature. */
 export interface AuthUser {
   username: string;
+  /** Set while the address is marked undeliverable; null or absent otherwise. */
+  emailMarker?: EmailMarker | null;
   /** When a timed suspension ends, as a server timestamp; null or absent for none. */
   suspendedUntil?: string | null;
   /** Set when the name breaks the username rule and must change; null or absent otherwise. */

@@ -75,6 +75,7 @@ const FEEDBACK_FILES = [
  * none in it costs nothing, and deciding which those are is the guess that goes wrong.
  */
 const FILES = [
+  'src/components/EmailMarkerNotice.tsx',
   'src/components/EntityPlaceholderArt.tsx',
   'src/components/PatreonSection.tsx',
   'src/components/RoleBadge.tsx',
@@ -96,6 +97,7 @@ const FILES = [
   'src/lib/avatarCrop.ts',
   'src/lib/catalogKinds.ts',
   'src/lib/deletionCancellation.ts',
+  'src/lib/dev/devEmailMarkerStub.ts',
   'src/lib/fetchTarget.ts',
   'src/lib/filesFrom.ts',
   'src/lib/hostedAi/unconfirmedCopy.ts',

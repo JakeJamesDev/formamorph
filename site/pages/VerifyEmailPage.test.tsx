@@ -133,3 +133,20 @@ describe('a server that never answered', () => {
     expect(screen.queryByRole('button', { name: 'Send a New Link' })).toBeNull();
   });
 });
+
+describe('a link for an address mail no longer reaches', () => {
+  it('says mail stopped, not that the link expired, and offers no new link', async () => {
+    signIn({ username: 'wren_hallow', email: 'wren@example.com', emailVerified: false });
+    vi.mocked(fetch).mockResolvedValue(res({
+      success: false, code: 'EMAIL_UNDELIVERABLE', error: 'Mail to this address bounced or was reported as spam',
+    }, false, 409));
+    render(<VerifyEmailPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Address Not Reachable' })).toBeTruthy();
+    expect(screen.getByRole('alert')).toHaveTextContent('bounced or was marked as spam');
+    expect(screen.queryByText('Link Expired')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send a New Link' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'your account' }).getAttribute('href')).toBe('/account');
+    expect(screen.getByRole('link', { name: 'ask staff in Feedback' }).getAttribute('href')).toBe('/feedback?board=questions');
+  });
+});

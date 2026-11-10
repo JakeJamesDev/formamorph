@@ -48,6 +48,8 @@ interface AuthModalsProps {
   onNotificationsRead?: () => void;
   /** Opens a listing from the feed; the host closes this dialog and takes them to it. */
   onOpenListing?: (listing: { id: string; kind: string }) => void;
+  /** Opens the Feedback window on its Questions tab, over this dialog. */
+  onOpenFeedback?: () => void;
 }
 
 /** The user-profile dialog and its change-password popup. Owns the password form state; the parent
@@ -56,7 +58,7 @@ interface AuthModalsProps {
 export function AuthModals({
   showProfileDialog, setShowProfileDialog,
   currentUser, onLogout,
-  onUnreadChange, onAvatarChanged, onNotificationsRead, onOpenListing,
+  onUnreadChange, onAvatarChanged, onNotificationsRead, onOpenListing, onOpenFeedback,
   initialTab, requestKey: landingKey,
 }: AuthModalsProps) {
   const requestKey = useRequestKey(landingKey);
@@ -261,7 +263,7 @@ export function AuthModals({
 
             <TabsContent value="settings" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               <ScrollArea className="flex-1 min-h-0 px-1">
-                <AccountSettingsTab suspended={isSuspended} onChangePassword={() => setShowPasswordDialog(true)} />
+                <AccountSettingsTab suspended={isSuspended} onChangePassword={() => setShowPasswordDialog(true)} onOpenFeedback={onOpenFeedback} />
               </ScrollArea>
             </TabsContent>
           </Tabs>

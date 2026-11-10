@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import AuthService from './AuthService';
+import AuthService, { emailMarkerOf } from './AuthService';
 import { USERNAME_RULE_HELP } from '@/lib/usernameRule';
 
 // Minimal fetch Response stub (only the bits AuthService reads).
@@ -442,7 +442,7 @@ describe('setEmail', () => {
     const [url, init] = vi.mocked(fetch).mock.calls[0];
     expect(String(url)).toMatch(/\/auth\/email$/);
     expect(JSON.parse(String((init as RequestInit).body))).toEqual({ email: 'a@b.co' });
-    expect(outcome).toEqual({ emailVerified: false, mailSent: true });
+    expect(outcome).toEqual({ emailVerified: false, mailSent: true, undeliverable: null });
     // Adopted into storage as well, because the account page and an open /play/ read it from there.
     expect(JSON.parse(localStorage.getItem('currentUser') as string).email).toBe('a@b.co');
   });
@@ -468,14 +468,14 @@ describe('resendVerification', () => {
     AuthService.token = 'tok';
     vi.mocked(fetch).mockResolvedValue(res({ success: true, emailVerified: false, mailSent: true }));
 
-    expect(await AuthService.resendVerification()).toEqual({ emailVerified: false, mailSent: true });
+    expect(await AuthService.resendVerification()).toEqual({ emailVerified: false, mailSent: true, undeliverable: null });
   });
 
   it('reports an address that needed no mail', async () => {
     AuthService.token = 'tok';
     vi.mocked(fetch).mockResolvedValue(res({ success: true, emailVerified: true, mailSent: false }));
 
-    expect(await AuthService.resendVerification()).toEqual({ emailVerified: true, mailSent: false });
+    expect(await AuthService.resendVerification()).toEqual({ emailVerified: true, mailSent: false, undeliverable: null });
   });
 
   it('throws the limiter sentence, which is the whole point of the limiter', async () => {
@@ -493,7 +493,7 @@ describe('fetchEmailState', () => {
     vi.mocked(fetch).mockResolvedValue(
       res({ success: true, user: { username: 'alice', email: 'a@b.co', emailVerified: true } }));
 
-    expect(await AuthService.fetchEmailState()).toEqual({ email: 'a@b.co', emailVerified: true });
+    expect(await AuthService.fetchEmailState()).toEqual({ email: 'a@b.co', emailVerified: true, emailMarker: null });
   });
 
   it('leaves the cached account alone, so a late read cannot undo a change made since', async () => {
@@ -568,6 +568,7 @@ describe('verifyEmail', () => {
     expect(outcome).toEqual({
       verified: false,
       spent: true,
+      undeliverable: false,
       message: 'That verification link has expired or has already been used',
     });
   });
@@ -578,5 +579,64 @@ describe('verifyEmail', () => {
     vi.mocked(fetch).mockRejectedValue(new Error('Failed to fetch'));
 
     expect(await AuthService.verifyEmail('t0ken')).toMatchObject({ verified: false, spent: false });
+  });
+});
+
+describe('the undeliverable marker', () => {
+  const UNDELIVERABLE = { success: false, code: 'EMAIL_UNDELIVERABLE', error: 'Mail to this address bounced or was reported as spam' };
+
+  it('keeps the marker a sign-in returns on the cached account', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({
+      token: 'tok',
+      user: { username: 'alice', email: 'a@b.co', emailVerified: false, emailMarker: 'bounce' },
+    }));
+
+    await AuthService.login('alice', 'pw');
+
+    expect(emailMarkerOf(AuthService.getCurrentUser())).toBe('bounce');
+  });
+
+  it('reads the marker off the account read', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(
+      res({ success: true, user: { username: 'alice', email: 'a@b.co', emailVerified: false, emailMarker: 'complaint' } }));
+
+    expect(await AuthService.fetchEmailState()).toEqual({ email: 'a@b.co', emailVerified: false, emailMarker: 'complaint' });
+  });
+
+  it('answers a marked set-email as an outcome and adopts the account it carries', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({
+      ...UNDELIVERABLE,
+      user: { username: 'alice', email: 'a@b.co', emailVerified: false, emailMarker: 'complaint' },
+    }, false, 409));
+
+    expect(await AuthService.setEmail('a@b.co')).toEqual({ emailVerified: false, mailSent: false, undeliverable: 'complaint' });
+    expect(JSON.parse(localStorage.getItem('currentUser') as string).emailMarker).toBe('complaint');
+  });
+
+  it('reads the reason for a marked resend from the account', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockImplementation(async (url) => (String(url).includes('/auth/me')
+      ? res({ success: true, user: { username: 'alice', email: 'a@b.co', emailVerified: false, emailMarker: 'bounce' } })
+      : res(UNDELIVERABLE, false, 409)));
+
+    expect(await AuthService.resendVerification()).toEqual({ emailVerified: false, mailSent: false, undeliverable: 'bounce' });
+  });
+
+  it('names no reason for a marked resend when the account read fails', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (String(url).includes('/auth/me')) throw new Error('Failed to fetch');
+      return res(UNDELIVERABLE, false, 409);
+    });
+
+    expect(await AuthService.resendVerification()).toMatchObject({ undeliverable: 'unknown', mailSent: false });
+  });
+
+  it('tells a link refused for a marked address from a spent link', async () => {
+    vi.mocked(fetch).mockResolvedValue(res(UNDELIVERABLE, false, 409));
+
+    expect(await AuthService.verifyEmail('t0ken')).toMatchObject({ verified: false, spent: false, undeliverable: true });
   });
 });

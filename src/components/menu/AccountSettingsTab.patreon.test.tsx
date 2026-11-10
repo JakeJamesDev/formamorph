@@ -6,7 +6,8 @@ import { openExternal } from '@/lib/openExternal';
 
 vi.mock('@/lib/openExternal', () => ({ openExternal: vi.fn() }));
 vi.mock('@/contexts/AccountDeletionContext', () => ({ useAccountDeletion: () => ({ startDeletion: vi.fn() }) }));
-vi.mock('@/services/AuthService', () => ({
+vi.mock('@/services/AuthService', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/services/AuthService')>(),
   default: {
     getCurrentUser: () => ({ id: 1, username: 'wren_hallow', email: null, emailVerified: false }),
     fetchEmailState: vi.fn().mockResolvedValue(null),

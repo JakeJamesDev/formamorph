@@ -383,8 +383,8 @@ describe('the settings tab', () => {
   });
 
   it('saves a new address and says the mail was sent', async () => {
-    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue({ email: null, emailVerified: false });
-    const set = vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: false, mailSent: true });
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue({ email: null, emailVerified: false, emailMarker: null });
+    const set = vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: false, mailSent: true, undeliverable: null });
     openSettings();
 
     fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'new@example.com' } });
@@ -420,7 +420,7 @@ describe('the settings tab', () => {
   it('resends the verification mail', async () => {
     AuthService.currentUser = { username: 'finder', email: 'me@example.com', emailVerified: false };
     vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
-    const resend = vi.spyOn(AuthService, 'resendVerification').mockResolvedValue({ emailVerified: false, mailSent: true });
+    const resend = vi.spyOn(AuthService, 'resendVerification').mockResolvedValue({ emailVerified: false, mailSent: true, undeliverable: null });
     openSettings();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Resend Verification Email' }));
@@ -450,7 +450,7 @@ describe('the settings tab', () => {
 
   it('says so when the saved address is already verified', async () => {
     vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
-    vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: true, mailSent: false });
+    vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: true, mailSent: false, undeliverable: null });
     openSettings();
 
     fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'same@example.com' } });
@@ -461,7 +461,7 @@ describe('the settings tab', () => {
 
   it('names the Resend button when the mail could not be sent', async () => {
     vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
-    vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: false, mailSent: false });
+    vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: false, mailSent: false, undeliverable: null });
     openSettings();
 
     fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'new@example.com' } });
@@ -471,7 +471,7 @@ describe('the settings tab', () => {
   });
 
   it('fills the address from the server read when the cached account has none', async () => {
-    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue({ email: 'server@example.com', emailVerified: true });
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue({ email: 'server@example.com', emailVerified: true, emailMarker: null });
     openSettings();
 
     expect(await screen.findByText('server@example.com')).toBeTruthy();

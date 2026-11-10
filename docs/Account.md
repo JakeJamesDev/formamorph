@@ -95,7 +95,7 @@ The dialog shows your profile image, **Member since** and your stats. Select you
 | **Messages** | Messages from the Formamorph team, such as Report Outcomes. Dismiss a message with its button. |
 | **Notifications** | The [follow feed](Community-Creations#the-follow-feed). |
 | **Terms** | The [publishing terms](Community-Creations#publishing-terms). **Accept** or **Decline** them here. The tab shows only when terms exist. |
-| **Settings** | Your **Email Address**, with **Save Email**. **Resend Verification Email** shows while the address is unverified. Your Patreon link, **Change Password** and **Delete Account** are here too. |
+| **Settings** | Your **Email Address**, with **Save Email**. **Resend Verification Email** shows while the address is unverified. If email to the address bounced or was marked as spam, an **Email Stopped** note shows in its place: save a different address, or ask in Feedback if the address is correct. Your Patreon link, **Change Password** and **Delete Account** are here too. |
 
 ## Account Deletion
 <!-- route: deleteAccount -->

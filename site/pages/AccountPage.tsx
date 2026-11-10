@@ -5,7 +5,9 @@ import { Hint } from '@/components/ui/typography';
 import { DeleteAccountDialog } from '@/components/menu/DeleteAccountDialog';
 import { ProfileAvatarEditor } from '@/components/menu/ProfileAvatarEditor';
 import { PatreonSection, type PatreonReturn } from '@/components/PatreonSection';
-import AuthService from '@/services/AuthService';
+import AuthService, { emailMarkerOf, type EmailNoticeReason } from '@/services/AuthService';
+import { EmailMarkerNotice, QUESTIONS_BOARD_PATH } from '@/components/EmailMarkerNotice';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { Field } from '../components/AccountForm';
 import { AllowanceSection } from '../components/AllowanceSection';
 import { NoteLine, type Note } from '../components/NoteLine';
@@ -58,16 +60,16 @@ function AvatarSection({ username, suspended }: { username: string | null; suspe
 }
 
 /** The address on file and whether it is proven, as the cached account currently says. */
-const readEmail = () => {
+const readEmail = (): { address: string | null; verified: boolean; marker: EmailNoticeReason | null } => {
   const user = AuthService.getCurrentUser();
   return {
     // Cast because `AuthUser` types everything past `username` as `unknown`; the server sends a string
     // or null.
     address: (user?.email as string | null | undefined) ?? null,
     verified: user?.emailVerified === true,
+    marker: emailMarkerOf(user),
   };
 };
-
 /**
  * The address password reset runs on: what is on file, whether it is proven, and the two ways to move
  * it forward.
@@ -76,6 +78,7 @@ const readEmail = () => {
  * one that never arrived.
  */
 function EmailSection({ suspended }: { suspended: boolean }) {
+  const mounted = useMountedRef();
   const [account, setAccount] = useState(readEmail);
   const [typed, setTyped] = useState(() => readEmail().address ?? '');
   const [note, setNote] = useState<Note>(null);
@@ -92,7 +95,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       // below answers for itself, so there is nothing to say.
       if (cancelled || !fresh) return;
 
-      setAccount({ address: fresh.email, verified: fresh.emailVerified });
+      setAccount({ address: fresh.email, verified: fresh.emailVerified, marker: fresh.emailMarker });
       // Only fills an untouched box, so a read that lands late cannot overwrite what is being typed.
       setTyped((held) => held || fresh.email || '');
     });
@@ -116,11 +119,14 @@ function EmailSection({ suspended }: { suspended: boolean }) {
 
     setBusy('save');
     try {
-      const { emailVerified, mailSent } = await AuthService.setEmail(address);
+      const { emailVerified, mailSent, undeliverable } = await AuthService.setEmail(address);
+      if (!mounted.current) return;
       // Read back from the adopted account rather than from what was typed: the server decides what is
       // stored, and this section is what the rest of the page believes about it.
-      setAccount(readEmail());
+      setAccount({ ...readEmail(), ...(undeliverable && { verified: false, marker: undeliverable }) });
 
+      // The notice says it all for a marked address.
+      if (undeliverable) return;
       if (emailVerified) {
         setNote({ kind: 'success', text: 'That address is already saved and verified.' });
       } else if (mailSent) {
@@ -130,9 +136,10 @@ function EmailSection({ suspended }: { suspended: boolean }) {
         setNote({ kind: 'error', text: "Address saved, but the verification email couldn't be sent. Select “Resend Verification Email” in a moment." });
       }
     } catch (failure) {
+      if (!mounted.current) return;
       setNote({ kind: 'error', text: (failure as Error).message || 'Failed to save the email address' });
     } finally {
-      setBusy(null);
+      if (mounted.current) setBusy(null);
     }
   };
 
@@ -140,9 +147,11 @@ function EmailSection({ suspended }: { suspended: boolean }) {
     setNote(null);
     setBusy('resend');
     try {
-      const { emailVerified, mailSent } = await AuthService.resendVerification();
-      setAccount((held) => ({ ...held, verified: emailVerified }));
+      const { emailVerified, mailSent, undeliverable } = await AuthService.resendVerification();
+      if (!mounted.current) return;
+      setAccount((held) => ({ ...held, verified: emailVerified, marker: undeliverable ?? held.marker }));
 
+      if (undeliverable) return;
       if (emailVerified) {
         setNote({ kind: 'success', text: 'Your email address is already verified.' });
       } else if (mailSent) {
@@ -151,9 +160,10 @@ function EmailSection({ suspended }: { suspended: boolean }) {
         setNote({ kind: 'error', text: "The verification email couldn't be sent. Try again in a moment." });
       }
     } catch (failure) {
+      if (!mounted.current) return;
       setNote({ kind: 'error', text: (failure as Error).message || 'Failed to send the verification email' });
     } finally {
-      setBusy(null);
+      if (mounted.current) setBusy(null);
     }
   };
 
@@ -165,12 +175,19 @@ function EmailSection({ suspended }: { suspended: boolean }) {
         {account.address ? (
           <>
             On file: <span className="text-foreground">{account.address}</span>.{' '}
-            {account.verified ? 'Verified.' : 'Not verified yet.'}
+            {account.marker ? 'Not verified.' : account.verified ? 'Verified.' : 'Not verified yet.'}
           </>
         ) : (
           'No email address on file. Add one so you can reset your password.'
         )}
       </p>
+
+      {account.address && account.marker && (
+        <EmailMarkerNotice
+          reason={account.marker}
+          feedback={(text) => <a className="text-primary hover:underline" href={QUESTIONS_BOARD_PATH}>{text}</a>}
+        />
+      )}
 
       {suspended && (
         <Hint>You can&rsquo;t change your email address while your account is suspended.</Hint>
@@ -192,8 +209,8 @@ function EmailSection({ suspended }: { suspended: boolean }) {
           <Button type="submit" disabled={busy !== null || suspended}>
             {busy === 'save' ? 'Saving…' : 'Save Email'}
           </Button>
-          {/* Only where it can do something: there is an address, and it is still unproven. */}
-          {account.address && !account.verified && (
+          {/* Only where it can do something: there is an address, it is still unproven, and it gets mail. */}
+          {account.address && !account.verified && !account.marker && (
             <Button
               type="button"
               variant="outline"

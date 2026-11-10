@@ -158,7 +158,8 @@ export const DEV_MODAL_TABS = {
   // The publish dialog's canned payload: a world by default, or a prompt with `tab=prompt`.
   publish: ['world', 'prompt'],
   // The account dialog: admin messages, the follow feed, the terms, and the account settings. Log Out is a
-  // header button rather than a tab, so it is not routable.
+  // header button rather than a tab, so it is not routable. `tab=settings&fixture=emailMarker-bounce` (or
+  // `-complaint`) shows a marked address on a sample account (`devEmailMarkerStub.ts`).
   profile: ['messages', 'notifications', 'terms', 'settings'],
   // `tab=supporters` needs the age gate accepted. Add `fixture=supporters` for a canned wall (`devSupportersSample.ts`).
   credits: ['credits', 'supporters', 'licenses'],

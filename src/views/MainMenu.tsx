@@ -313,7 +313,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
   // The preset list, and the store prompt listings download into; the pin is applied by GameViewer.
-  const { builtinPresets, promptPresets, userPromptPresets, storeDownloadedPreset, activePresetId, selectPreset } = useSettings();
+  const { builtinPresets, promptPresets, userPromptPresets, storeDownloadedPreset, activePresetId, selectPreset, requestSurface } = useSettings();
   const promptTarget = useMemo(
     () => promptLibraryTarget({ presets: userPromptPresets, store: storeDownloadedPreset }),
     [userPromptPresets, storeDownloadedPreset],
@@ -3177,6 +3177,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onUnreadChange={setUnreadMessages}
             onNotificationsRead={handleNotificationsRead}
             onOpenListing={handleOpenListing}
+            onOpenFeedback={() => requestSurface({ id: 'feedbackHub.questions' })}
             initialTab={surfaceNav.tab('profile') ?? (devRoute?.modal === 'profile' ? (devRoute.tab as ProfileTab | undefined) : undefined)}
             requestKey={surfaceNav.key}
           />
