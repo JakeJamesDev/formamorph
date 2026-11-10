@@ -1,6 +1,6 @@
 # 02: Built-In Engine Card Funnel Step
 
-Status: ready-for-human
+Status: done
 Base: a202ce5
 Repo: FormamorphServer
 Blocked by: None (can start immediately)

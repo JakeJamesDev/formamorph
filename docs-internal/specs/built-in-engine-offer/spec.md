@@ -1,6 +1,7 @@
 # Spec: Built-In Engine Offer
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-09. Tickets 01–04, last landing fee78fb1b. Review: three gaps fixed by ticket 04, spec text corrected. Closed red: lint has 11 errors, all in the ignored worlds-wip folder and none in this effort; test exit 0 on 2026-11-09.
 Spec session: built-in-engine-offer — spec
 
 A desktop player who runs narration on the built-in engine with little VRAM learns about Formamorph AI a second time, after 10 turns of their own play. AMD, Intel and CPU-only machines join the low-VRAM group for the first time. Spans both repos: the client and FormamorphServer.
@@ -151,4 +152,4 @@ No render test of AI setup and no Playwright test are added (Q13).
 - **No CPU backend setting:** the Backend setting is Auto, Vulkan or CUDA. A machine is CPU-only when its listing succeeds with no GPU device.
 - **Sources for the integrated GPU ruling:** a UHD 620 reporting about 2 GB, a Strix Halo APU reporting 87,722 MiB, and upstream llama.cpp issues 16092 and 18946 on dedicated-only and overflowed figures. The 47.8 GB figure in the device pin notes is an aggregate of a discrete card and an integrated GPU, not one device.
 - **Changelog:** each ticket lands its own Added entry in one Formamorph AI group. The close organizes the group.
-- **Close review, 2026-11-09:** three gaps went to ticket 04. The close waits for it.
+- **Close review, 2026-11-09:** three gaps went to ticket 04, which landed as fee78fb1b.
