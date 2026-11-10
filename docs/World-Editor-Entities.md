@@ -146,7 +146,7 @@ On the full-screen Locations Canvas, choose the entity and pick **Routine**. The
 - 👆 Select a row to edit its locations: click a location, or drag from one. The line over the map says what a click does.
 - 📍 Under **Only Listed Locations** with no row selected, a click adds the location to **Can Also Go** or removes it.
 
-An entity in **Every Location** shows the same view for the start whose tab is open, with no **Can Also Go**.
+A **Generic** entity shows the same view for the start whose tab is open, with no **Can Also Go**.
 
 - ⭕ A ring marks each location where another start begins. The key calls it **Is Here**.
 - ➕ With no row selected, click a location to add a start there with no rows. Click a location where starts begin to remove them. The last start can't be removed.
