@@ -79,7 +79,7 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
   3. The engine's device is integrated, by the existing name patterns → `low`.
   4. The engine's device is discrete → `low` when its total is at or under 8,500 MB, else `ok`.
   5. Several discrete cards with no pin → their totals are added, then rule 4 applies.
-- For a discrete card that matches an `nvidia-smi` row, the `nvidia-smi` total is the total. This keeps the shipped behavior for NVIDIA players exactly as it is.
+- For a discrete card that matches an `nvidia-smi` row, the `nvidia-smi` total is the total. This keeps the shipped answer at the limit for NVIDIA players. Two cases differ from the shipped code: the class judges the device the engine uses, not the first `nvidia-smi` GPU, and a failed device listing shows no lead.
 - A failed listing and an empty listing must be told apart. Today both read as an empty list. A spawn error, a timeout or a non-zero exit is a failed listing. Exit 0 with no device lines is an empty one.
 - "The engine's device" means the device of the next start with the saved settings: the listing of the backend that start would use, and the pin from the saved device setting.
 - A manual pin on an integrated GPU beside a large card is `low`. The All GPUs setting adds the discrete totals and ignores integrated ones.
@@ -99,6 +99,8 @@ We also cannot tell which offer leads to a pledge. The funnel counts one "offer 
 - Settings exposes whether narration resolves to the built-in engine, next to the existing Demo AI fact. Only the narration route decides.
 - The card is due when all are true: narration is on the built-in engine, the VRAM class is `low`, hosted AI is available, the player is not pledged, the card is not seen, and the count is at least 10.
 - The count and the seen record are two new per-install records, kept with the First-Time Flow records. The count stops once the card is seen.
+- The count needs only the narration route and an unseen card. The VRAM class, the pledge and hosted availability gate the card, not the count. A player who becomes eligible later with 10 or more turns gets the card at the next settled turn.
+- A turn that falls back to the CPU on the built-in engine still counts.
 - The card reuses the story card component with its own title and body. Placement, buttons and lifetime match the Demo AI card.
 - The two cards cannot show together: narration resolves to one endpoint.
 - The card hides when the offer stops being available, as the Demo AI card does.
