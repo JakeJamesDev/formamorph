@@ -1,6 +1,6 @@
 # 20: Bundled World Kinds
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 18
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -22,10 +22,34 @@ Spec rulings: Q143, Q144, Q146, Q151, Q171, Q172.
 
 ## Acceptance criteria
 
-- [ ] The landing report holds the full table: world, entity, old kind, new kind and form, and "user confirmed" or "user changed" for each.
-- [ ] No bundled world file changed before the user answered the list.
-- [ ] Every changed entity's Starts and rows reach only places connected to its Start, checked by the existing bundled-world tests or a new one.
-- [ ] The bundled saves still load and play their first turn in the existing bundled-save tests.
-- [ ] Each changed world's readme or notes say what changed for its characters, where the house style asks for it.
+- [x] The landing report holds the full table: world, entity, old kind, new kind and form, and "user confirmed" or "user changed" for each. (Landed section.)
+- [x] No bundled world file changed before the user answered the list. (Three review rounds in the ticket session, then one write script.)
+- [x] Every changed entity's Starts and rows reach only places connected to its Start, checked by the existing bundled-world tests or a new one. (`bundledRoutines.test.ts`, with a case that goes red on a disconnected place.)
+- [x] The bundled saves still load and play their first turn in the existing bundled-save tests. (`GameplayContext.bundledSaves.test.tsx` in the affected-tests gate.)
+- [x] Each changed world's readme or notes say what changed for its characters, where the house style asks for it. (One Routines bullet in "How this world is built" for drone, emberwatch and valentines, per the spec session.)
 
-For you: open each changed bundled world and check that its named characters are where their story says.
+## Landed
+
+| World | Entity | Old kind | New kind and form | Review |
+|---|---|---|---|---|
+| drone | Rustjaw | Generic | Unique, All-day Wander | user confirmed |
+| drone | Ser Halden | Generic | Unique, Stay Fort Graywatch, 08:00–16:00 Patrol with the Demon Frontier | user changed |
+| drone | Old Corwin | Generic | Unique, All-day Wander | user confirmed |
+| drone | Blightspawn | Generic | Generic (it/its, Q171) | not reviewed, rule agrees |
+| emberwatch | Albus | Generic | Unique, All-day Wander | user confirmed |
+| emberwatch | Sylvie Thornwhistle | Generic | Unique, Wander, 22:00–08:00 Stay The Cinder and Crown | user changed |
+| emberwatch | Corvin Vale | Generic | Unique, Wander, 17:00–02:00 Stay The Cinder and Crown | user changed |
+| emberwatch | Captain Orrin Blackwell | Generic | Unique, Stay the keep, 18:00–22:00 The Old Watchtower, 22:00–06:00 The Captain's Hall | user changed |
+| slime | Quarantine Watch | Generic | Generic | user changed (kept against the rule) |
+| valentines | Coach Daizen | Generic | Unique, All-day Patrol of the four exits, 1 hour each | user changed |
+| valentines | The Swarm | Generic | Generic | user changed (kept against the rule) |
+| valentines | Rin Hayama | Generic | Unique, All-day Patrol hallway and cafeteria, 1 hour each | user changed |
+| valentines | Ren Takeda | Generic | Unique, All-day Wander | user confirmed |
+
+Every new Unique has Traversable set to its old location list. rampage, sugarscape, veilwood and open-chat agree with the rule and are unchanged.
+
+**Not verified:** none.
+
+**For you:**
+- Open each changed bundled world and check that its named characters are where their story says.
+- Play Emberwatch into the evening and check that the captain moves to the Old Watchtower.

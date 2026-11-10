@@ -13,7 +13,7 @@
       "school",
       "survival"
     ],
-    "readme": "## Valentines Survival\n\nEvery desk around you hides a ribboned box, and you eat every chocolate you take on the spot. Get out of school before the swarm catches you.\n\n🎯 **Goal:** get past the **Front Gate** and off school grounds.\n\n**Playing**\n- **Sugar** rises with every chocolate you eat and fades slowly. A full stomach slows you down.\n- **Stamina** pays for running, dodging and climbing. Rest somewhere quiet to get it back.\n- **Agility** is how fast you are right now. It follows your Stamina and drops as your Sugar climbs. Check it before you commit to a dash.\n- The swarm closes in when you're seen or loud, and it loses you when you hide or blend in.\n- **All-Out Sprint** switches on and off from your traits at any time. You're much faster, but your Stamina drains each turn.\n\n## How this world is built\n\nOpen this world in the World Editor with Advanced mode on, then select **The Student** entity.\n\n- **Scripts.** **Agility** has an After the AI script on the **Stats** tab. Each turn it sets Agility from your Stamina and Sugar, read as shares of their max, plus a burst while All-Out Sprint is on. The AI never sets it.\n- **Player toggle.** **All-Out Sprint** is a trait you switch on and off in play.\n- **Hidden stat.** **Pursuit** is a world stat that stays off your stat bar. The AI reads it to decide how close the swarm is.\n- **Custom Persona.** The Student carries the Custom Persona mark, so its stats and traits are yours under None and under a library persona.\n- **Rolled placeholders.** **Best Friend**, **Front-Page Rumor** and **Guard Post** each roll once per playthrough. Your best friend's name is a placeholder, so they're someone new each time.\n- **Relationship labels.** Several entities' **Relationships** name a rival, a best friend or a mentor. The narrator reads each one as a sentence: Hana Sakuragi is Rin Hayama's rival since first year. A label that ends on you prints with your persona, so it follows you to every scene.\n- **Rolled label.** Hana's label to **The Swarm** carries her own **Vice President** placeholder, and so does her description, so both read the same name each game.\n- **Connections.** Every place inside the school joins the map through Connections with a hint each way. The **Bus Loop** has its own way to the **Front Gate** along the fence, and the **Art Wing** fire escape drops down to it.\n- **Lorebook.** **The Ashburn Almanac** dictionary holds the chocolate rule, the fan club, today's rumors and an entry for each place.",
+    "readme": "## Valentines Survival\n\nEvery desk around you hides a ribboned box, and you eat every chocolate you take on the spot. Get out of school before the swarm catches you.\n\n🎯 **Goal:** get past the **Front Gate** and off school grounds.\n\n**Playing**\n- **Sugar** rises with every chocolate you eat and fades slowly. A full stomach slows you down.\n- **Stamina** pays for running, dodging and climbing. Rest somewhere quiet to get it back.\n- **Agility** is how fast you are right now. It follows your Stamina and drops as your Sugar climbs. Check it before you commit to a dash.\n- The swarm closes in when you're seen or loud, and it loses you when you hide or blend in.\n- **All-Out Sprint** switches on and off from your traits at any time. You're much faster, but your Stamina drains each turn.\n\n## How this world is built\n\nOpen this world in the World Editor with Advanced mode on, then select **The Student** entity.\n\n- **Scripts.** **Agility** has an After the AI script on the **Stats** tab. Each turn it sets Agility from your Stamina and Sugar, read as shares of their max, plus a burst while All-Out Sprint is on. The AI never sets it.\n- **Player toggle.** **All-Out Sprint** is a trait you switch on and off in play.\n- **Hidden stat.** **Pursuit** is a world stat that stays off your stat bar. The AI reads it to decide how close the swarm is.\n- **Custom Persona.** The Student carries the Custom Persona mark, so its stats and traits are yours under None and under a library persona.\n- **Rolled placeholders.** **Best Friend**, **Front-Page Rumor** and **Guard Post** each roll once per playthrough. Your best friend's name is a placeholder, so they're someone new each time.\n- **Relationship labels.** Several entities' **Relationships** name a rival, a best friend or a mentor. The narrator reads each one as a sentence: Hana Sakuragi is Rin Hayama's rival since first year. A label that ends on you prints with your persona, so it follows you to every scene.\n- **Rolled label.** Hana's label to **The Swarm** carries her own **Vice President** placeholder, and so does her description, so both read the same name each game.\n- **Connections.** Every place inside the school joins the map through Connections with a hint each way. The **Bus Loop** has its own way to the **Front Gate** along the fence, and the **Art Wing** fire escape drops down to it.\n- **Routines.** Coach Daizen patrols the Front Gate, the Bus Loop, the Courtyard and the Gymnasium in turn. Rin Hayama patrols the second-floor hallway and the cafeteria, and Ren Takeda moves between the locker rooms and the gym. Open an entity's **Routine** tab to see its day.\n- **Lorebook.** **The Ashburn Almanac** dictionary holds the chocolate rule, the fan club, today's rumors and an entry for each place.",
     "introReadme": "💌 **It's Valentine's Day at Ashburn High, and you are the most popular student in school.**\n\nThe new rule says any chocolate you're handed must be eaten on the spot. The final bell rings in three minutes, and your fan club has planned this for weeks.\n\nPick who you are before the bell:\n- **Reputation** (pick one) is why the whole school is after you. The **Star Athlete** has the most Stamina and gets it back fastest. The **Class Idol** leaves admirers too starstruck to grab you, but every sighting draws more of them. The **Student Council President** bluffs with the rules and slows the swarm down.\n- **Constitution** (pick one) is how much chocolate you can survive. An **Iron Stomach** burns Sugar off fastest, a **Sweet Tooth** holds the most, and a **Dainty Appetite** fills up after a few pieces.\n- **Bag Check** (take any) is what you brought today: **Running Shoes** for faster recovery, **Decoy Chocolates** to throw, and an **Annotated School Map** of every shortcut.\n\n**All-Out Sprint** stays off at the start. You can switch it on whenever you need to run.\n\nEach playthrough also rolls your best friend, this morning's front-page rumor, and where Coach Daizen stands guard.",
     "openings": [
       {
@@ -933,10 +933,10 @@
       "sound": null,
       "model": null,
       "locations": [
-        "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
         "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
-        "8381bbd7-3818-4527-a0a7-4a86fe411057",
-        "c115a222-8165-4635-b53c-ccb7fcbd38ac"
+        "c115a222-8165-4635-b53c-ccb7fcbd38ac",
+        "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+        "8381bbd7-3818-4527-a0a7-4a86fe411057"
       ],
       "pronouns": "he/him",
       "relationships": [
@@ -945,32 +945,46 @@
           "label": "second-fastest sprinter"
         }
       ],
-      "kind": "group",
+      "kind": "individual",
       "starts": [
         {
           "id": "start-1",
-          "place": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
           "place": "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
           "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-3",
-          "place": "8381bbd7-3818-4527-a0a7-4a86fe411057",
-          "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-4",
-          "place": "c115a222-8165-4635-b53c-ccb7fcbd38ac",
-          "weight": 1,
-          "schedule": []
+          "schedule": [
+            {
+              "id": "row-1",
+              "time": "allDay",
+              "action": {
+                "kind": "patrol",
+                "stops": [
+                  {
+                    "place": "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
+                    "idle": 60
+                  },
+                  {
+                    "place": "c115a222-8165-4635-b53c-ccb7fcbd38ac",
+                    "idle": 60
+                  },
+                  {
+                    "place": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+                    "idle": 60
+                  },
+                  {
+                    "place": "8381bbd7-3818-4527-a0a7-4a86fe411057",
+                    "idle": 60
+                  }
+                ]
+              }
+            }
+          ]
         }
+      ],
+      "traversable": [
+        "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+        "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
+        "8381bbd7-3818-4527-a0a7-4a86fe411057",
+        "c115a222-8165-4635-b53c-ccb7fcbd38ac"
       ]
     },
     {
@@ -1258,20 +1272,36 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "group",
+      "kind": "individual",
       "starts": [
         {
           "id": "start-1",
           "place": "9af8c8ce-feec-4010-bc7c-882991da47f0",
           "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "19853519-2c7f-45c0-80d6-330f41ab651f",
-          "weight": 1,
-          "schedule": []
+          "schedule": [
+            {
+              "id": "row-1",
+              "time": "allDay",
+              "action": {
+                "kind": "patrol",
+                "stops": [
+                  {
+                    "place": "9af8c8ce-feec-4010-bc7c-882991da47f0",
+                    "idle": 60
+                  },
+                  {
+                    "place": "19853519-2c7f-45c0-80d6-330f41ab651f",
+                    "idle": 60
+                  }
+                ]
+              }
+            }
+          ]
         }
+      ],
+      "traversable": [
+        "9af8c8ce-feec-4010-bc7c-882991da47f0",
+        "19853519-2c7f-45c0-80d6-330f41ab651f"
       ]
     },
     {
@@ -1298,20 +1328,37 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "group",
+      "kind": "individual",
       "starts": [
         {
           "id": "start-1",
           "place": "2e887c0c-6e74-447b-ad9d-791a63ed6db8",
           "weight": 1,
-          "schedule": []
-        },
-        {
-          "id": "start-2",
-          "place": "8381bbd7-3818-4527-a0a7-4a86fe411057",
-          "weight": 1,
-          "schedule": []
+          "schedule": [
+            {
+              "id": "row-1",
+              "time": "allDay",
+              "action": {
+                "kind": "wander",
+                "places": [
+                  {
+                    "place": "2e887c0c-6e74-447b-ad9d-791a63ed6db8",
+                    "weight": 1
+                  },
+                  {
+                    "place": "8381bbd7-3818-4527-a0a7-4a86fe411057",
+                    "weight": 1
+                  }
+                ],
+                "idle": 240
+              }
+            }
+          ]
         }
+      ],
+      "traversable": [
+        "2e887c0c-6e74-447b-ad9d-791a63ed6db8",
+        "8381bbd7-3818-4527-a0a7-4a86fe411057"
       ]
     },
     {
