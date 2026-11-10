@@ -418,8 +418,8 @@ export interface GalleryImage {
   requires?: TraitRequirementRow[];
 }
 
-/** Group: every Start runs at once, one presence each. Individual: one body, from one Start rolled per playthrough. */
-export type EntityKind = 'group' | 'individual';
+/** Generic: every Start runs at once, one presence each. Unique: one body, from one Start rolled per playthrough. */
+export type EntityKind = 'generic' | 'unique';
 
 /** A schedule row's hours, in minutes from midnight. `end` before `start` wraps past midnight. */
 export interface ScheduleRange {
@@ -457,7 +457,7 @@ export interface ScheduleRow {
 /** The Start place that resolves at New Game to where the player begins. Never a location id. */
 export const PLAYER_START = '@playerStart';
 
-/** One beginning: a place and the daily schedule kept from there. An Individual rolls one by weight; a Group runs them all. */
+/** One beginning: a place and the daily schedule kept from there. A Unique entity rolls one by weight; a Generic entity runs them all. */
 export interface EntityStart {
   id: string;
   /** A location id, or `PLAYER_START`. */
@@ -465,11 +465,11 @@ export interface EntityStart {
   /** Positive integer. */
   weight: number;
   schedule: ScheduleRow[];
-  /** At `PLAYER_START`, an Individual that rolls this Start begins the game Following. */
+  /** At `PLAYER_START`, a Unique entity that rolls this Start begins the game Following. */
   beginsFollowing?: true;
 }
 
-/** Where an Individual may go beyond its schedule. An empty list means schedule places only. */
+/** Where a Unique entity may go beyond its schedule. An empty list means schedule places only. */
 export type Traversable = 'anywhere' | string[];
 
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
@@ -528,9 +528,9 @@ export interface Entity {
   locations?: string[];
   /** Absent for an entity with no locations, the persona and the played entity. */
   kind?: EntityKind;
-  /** The beginnings, in author order. An Individual rolls one per playthrough; a Group runs every one. */
+  /** The beginnings, in author order. A Unique entity rolls one per playthrough; a Generic entity runs every one. */
   starts?: EntityStart[];
-  /** An Individual's places beyond its schedule. Absent = an empty list. A Group ignores it. */
+  /** A Unique entity's places beyond its schedule. Absent = an empty list. A Generic entity ignores it. */
   traversable?: Traversable;
   /** Where the AI knows of the entity while it isn't present: `nowhere`, or the picked location ids, each
    *  covering its whole subtree. Absent = Nearby, one step from where it is. */

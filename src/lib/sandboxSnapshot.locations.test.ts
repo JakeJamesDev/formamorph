@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { snapshotOf, type SnapshotOptions } from './sandboxSnapshot';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { openingStateOf } from './openingState';
-import { groupPlaces } from './positionEngine';
+import { genericPlaces } from './positionEngine';
 import type { SandboxState } from './statCodeTurn';
 import type { Entity, GameLocation, PersonaRef } from '@/types';
 
@@ -52,8 +52,8 @@ describe('the snapshot’s locations in play', () => {
     expect(await read(playState(), PRESENT)).toEqual([['Hero', 'Tor', 'Sela'], ['Mira', 'Tor']]);
   });
 
-  it('lists a Group once at each place its presences stand, and nowhere else it lists', async () => {
-    const presences = groupPlaces({ tor: { a: { position: 'gate', lastRun: 0 }, b: { position: 'gate', lastRun: 0 } } });
+  it('lists a Generic entity once at each place its presences stand, and nowhere else it lists', async () => {
+    const presences = genericPlaces({ tor: { a: { position: 'gate', lastRun: 0 }, b: { position: 'gate', lastRun: 0 } } });
     expect(await read(playState({ presences }), PRESENT)).toEqual([['Hero', 'Sela'], ['Mira', 'Tor']]);
   });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_START, type Connection, type DiscoveredEntity, type ScheduleAction, type ScheduleRow, type Traversable } from '@/types';
 import {
-  advancePositions, allowedPlaces, connectedPlaces, groupPlaces, isStrictNow, moveIndividualByScript, partWays, pullIndividual,
+  advancePositions, allowedPlaces, connectedPlaces, genericPlaces, isStrictNow, moveUniqueByScript, partWays, pullUnique,
   runtimeRoutine, startFollowing, startWaiting, waitUntil, type PositionBook, type PositionScene, type Routine,
 } from './positionEngine';
 
@@ -41,7 +41,7 @@ const timed = (id: string, from: number, to: number, action: ScheduleAction, str
 const routine = (schedule: ScheduleRow[], place = 'inn', traversable: Traversable = []): Routine =>
   ({ id: 'mara', starts: [{ id: 's1', place, weight: 1, schedule }], traversable });
 
-const EMPTY: PositionBook = { positions: {}, individuals: {}, groups: {} };
+const EMPTY: PositionBook = { positions: {}, uniques: {}, generics: {} };
 const scene = (now: number, playerAt?: string): PositionScene => ({ locations, connections, now, playerAt });
 
 /** Drives one character through engine calls; `pos` reads where it stands. */
@@ -50,7 +50,7 @@ function play(r: Routine, now: number, playerAt?: string, random = seeded(7)) {
   const game = {
     get book() { return book; },
     get pos() { return book.positions[r.id]; },
-    get state() { return book.individuals[r.id]; },
+    get state() { return book.uniques[r.id]; },
     advance(t: number, player?: string) {
       book = advancePositions([r], book, scene(t, player), random);
       return game;
@@ -76,7 +76,7 @@ describe('the Start roll', () => {
   it('weights the pick', () => {
     let forge = 0;
     for (let seed = 1; seed <= 400; seed++) {
-      if (advancePositions([twoStarts], EMPTY, scene(at(1, 8)), seeded(seed)).individuals.mara.startId === 'forge') forge++;
+      if (advancePositions([twoStarts], EMPTY, scene(at(1, 8)), seeded(seed)).uniques.mara.startId === 'forge') forge++;
     }
     expect(forge).toBeGreaterThan(260);
     expect(forge).toBeLessThan(340);
@@ -91,14 +91,14 @@ describe('the Start roll', () => {
     const first = advancePositions([twoStarts], EMPTY, scene(at(1, 8)), () => 0);
     expect(first.positions.mara).toBe('smithy');
     const later = advancePositions([twoStarts], first, scene(at(3, 8)), () => 0.99);
-    expect(later.individuals.mara.startId).toBe('forge');
+    expect(later.uniques.mara.startId).toBe('forge');
     expect(later.positions.mara).toBe('smithy');
   });
 
   it('rolls again for a Start the world no longer has', () => {
     const first = advancePositions([twoStarts], EMPTY, scene(at(1, 8)), () => 0);
     const edited = { ...twoStarts, starts: [twoStarts.starts[1]] };
-    expect(advancePositions([edited], first, scene(at(1, 9)), () => 0).individuals.mara.startId).toBe('tavern');
+    expect(advancePositions([edited], first, scene(at(1, 9)), () => 0).uniques.mara.startId).toBe('tavern');
   });
 });
 
@@ -186,7 +186,7 @@ describe('Patrol', () => {
   it('resumes at the stop after the last one reached when a pull ends', () => {
     const game = play(guard, at(1, 8), 'inn').advance(at(1, 8, 40), 'inn');
     expect(game.pos).toBe('gate');
-    game.apply((b) => pullIndividual(b, guard, 'inn', scene(at(1, 8, 45), 'inn')));
+    game.apply((b) => pullUnique(b, guard, 'inn', scene(at(1, 8, 45), 'inn')));
     expect(game.advance(at(1, 9, 20), 'square').pos).toBe('inn'); // held for the gate's idle
     expect(game.advance(at(1, 9, 31), 'square').pos).toBe('market');
   });
@@ -229,20 +229,20 @@ describe('off-row correction and holds', () => {
   });
 
   it('holds a pulled Stay character until the player leaves', () => {
-    const game = play(smith, at(1, 9), 'inn').apply((b) => pullIndividual(b, smith, 'inn', scene(at(1, 9), 'inn')));
+    const game = play(smith, at(1, 9), 'inn').apply((b) => pullUnique(b, smith, 'inn', scene(at(1, 9), 'inn')));
     expect(game.advance(at(1, 12), 'inn').pos).toBe('inn');
     expect(game.advance(at(1, 13), 'gate').pos).toBe('smithy');
   });
 
   it('holds a pulled Wander character until its idle runs out, even after the player leaves', () => {
     const r = routine([allDay('drift', wander(['market', 'square'], 60))], 'market', ['inn']);
-    const game = play(r, at(1, 8), 'inn').apply((b) => pullIndividual(b, r, 'inn', scene(at(1, 8, 30), 'inn')));
+    const game = play(r, at(1, 8), 'inn').apply((b) => pullUnique(b, r, 'inn', scene(at(1, 8, 30), 'inn')));
     expect(game.advance(at(1, 8, 40), 'gate').pos).toBe('inn');
     expect(['market', 'square']).toContain(game.advance(at(1, 9), 'gate').pos);
   });
 
   it('refuses a pull into a place not allowed, on a Strict row, or of a follower', () => {
-    const pull = (r: Routine, b: PositionBook, t: number) => pullIndividual(b, r, 'inn', scene(t, 'inn'));
+    const pull = (r: Routine, b: PositionBook, t: number) => pullUnique(b, r, 'inn', scene(t, 'inn'));
     const bound = routine([allDay('rest', stay('square')), timed('work', 8, 17, stay('smithy'))], 'square', []);
     const strict = routine([allDay('rest', stay('square')), timed('shift', 8, 17, stay('smithy'), true)], 'square', ['inn']);
     const free = routine([allDay('rest', stay('square'))], 'square', ['inn']);
@@ -258,34 +258,34 @@ describe('off-row correction and holds', () => {
   it('gives a pull a fresh idle when the current one already ran out', () => {
     const r = routine([allDay('drift', wander(['market', 'square'], 60))], 'market', ['inn']);
     const game = play(r, at(1, 8), 'market').advance(at(1, 11), 'market');
-    game.apply((b) => pullIndividual(b, r, 'inn', scene(at(1, 11), 'inn')));
+    game.apply((b) => pullUnique(b, r, 'inn', scene(at(1, 11), 'inn')));
     expect(game.advance(at(1, 11, 30), 'gate').pos).toBe('inn');
     expect(game.advance(at(1, 12), 'gate').pos).not.toBe('inn');
   });
 
   it('holds a script move on a Stay row until that stretch of the day ends', () => {
-    const game = play(smith, at(1, 10)).apply((b) => moveIndividualByScript(b, smith, 'gate', scene(at(1, 10))));
+    const game = play(smith, at(1, 10)).apply((b) => moveUniqueByScript(b, smith, 'gate', scene(at(1, 10))));
     expect(game.advance(at(1, 16, 59)).pos).toBe('gate');
     expect(game.advance(at(1, 17, 30)).pos).toBe('inn');
   });
 
   it('holds a script move in All-day time until the next timed row starts', () => {
-    const game = play(smith, at(1, 20)).apply((b) => moveIndividualByScript(b, smith, 'gate', scene(at(1, 20))));
+    const game = play(smith, at(1, 20)).apply((b) => moveUniqueByScript(b, smith, 'gate', scene(at(1, 20))));
     expect(game.advance(at(2, 7, 59)).pos).toBe('gate');
     expect(game.advance(at(2, 8)).pos).toBe('smithy');
   });
 
   it('holds a script move of a character with no rows until a script moves it again', () => {
     const still = routine([], 'inn');
-    const game = play(still, at(1, 10)).apply((b) => moveIndividualByScript(b, still, 'gate', scene(at(1, 10))));
+    const game = play(still, at(1, 10)).apply((b) => moveUniqueByScript(b, still, 'gate', scene(at(1, 10))));
     expect(game.advance(at(9, 10)).pos).toBe('gate');
-    game.apply((b) => moveIndividualByScript(b, still, 'square', scene(at(9, 10))));
+    game.apply((b) => moveUniqueByScript(b, still, 'square', scene(at(9, 10))));
     expect(game.advance(at(12, 10)).pos).toBe('square');
   });
 
   it('holds a script move on a Wander row until the idle runs out', () => {
     const r = routine([allDay('drift', wander(['market', 'square'], 60))], 'market');
-    const game = play(r, at(1, 8)).apply((b) => moveIndividualByScript(b, r, 'gate', scene(at(1, 8, 20))));
+    const game = play(r, at(1, 8)).apply((b) => moveUniqueByScript(b, r, 'gate', scene(at(1, 8, 20))));
     expect(game.advance(at(1, 8, 59)).pos).toBe('gate');
     expect(game.advance(at(1, 9)).pos).not.toBe('gate');
   });
@@ -353,9 +353,9 @@ describe('following and waiting', () => {
     const game = play(clerk, at(1, 9), 'market');
     expect(isStrictNow(clerk, game.state, at(1, 9))).toBe(true);
     expect(startFollowing(game.book, clerk, scene(at(1, 9), 'market'))).toBe(game.book);
-    expect(startFollowing(game.book, clerk, scene(at(1, 9), 'market'), { script: true }).individuals.mara.follow)
+    expect(startFollowing(game.book, clerk, scene(at(1, 9), 'market'), { script: true }).uniques.mara.follow)
       .toEqual({ mode: 'following', script: true });
-    expect(startFollowing(game.book, clerk, scene(at(1, 18), 'inn')).individuals.mara.follow).toEqual({ mode: 'following' });
+    expect(startFollowing(game.book, clerk, scene(at(1, 18), 'inn')).uniques.mara.follow).toEqual({ mode: 'following' });
   });
 
   it('keeps a running follow going into a Strict row', () => {
@@ -367,7 +367,7 @@ describe('following and waiting', () => {
   it('ends a wait on a script move', () => {
     const game = play(smith, at(1, 9), 'square').apply(follow(smith, at(1, 9), 'square'));
     game.apply((b) => startWaiting(b, 'mara', 'nextDaypart', at(1, 9)));
-    game.apply((b) => moveIndividualByScript(b, smith, 'gate', scene(at(1, 9, 5), 'square')));
+    game.apply((b) => moveUniqueByScript(b, smith, 'gate', scene(at(1, 9, 5), 'square')));
     expect(game.state.follow).toBeUndefined();
     expect(game.advance(at(1, 9, 30), 'square').pos).toBe('gate');
   });
@@ -402,10 +402,10 @@ describe('reach', () => {
   });
 });
 
-describe('Groups', () => {
+describe('Generic entities', () => {
   // A den by day that hunts at the square by night, a pack that wanders, and one that patrols the wall.
   const wolves: Routine = {
-    id: 'wolves', group: true, traversable: [],
+    id: 'wolves', generic: true, traversable: [],
     starts: [
       { id: 'den', place: 'smithy', weight: 1, schedule: [timed('hunt', 20, 6, stay('square'))] },
       { id: 'pack', place: 'inn', weight: 1, schedule: [allDay('roam', wander(['inn', 'market'], 60))] },
@@ -413,7 +413,7 @@ describe('Groups', () => {
     ],
   };
   const presences = (book: PositionBook) =>
-    Object.fromEntries(Object.entries(book.groups.wolves ?? {}).map(([id, p]) => [id, p.position]));
+    Object.fromEntries(Object.entries(book.generics.wolves ?? {}).map(([id, p]) => [id, p.position]));
   const run = (book: PositionBook, now: number, playerAt?: string, random = seeded(3)) =>
     advancePositions([wolves], book, scene(now, playerAt), random);
 
@@ -426,22 +426,22 @@ describe('Groups', () => {
     const first = run(EMPTY, at(1, 8));
     const half = run(first, at(1, 8, 30));
     expect(presences(half)).toEqual({ den: 'smithy', pack: 'inn', watch: 'gate' });
-    expect(half.groups.wolves.watch).toMatchObject({ rowId: 'round', stop: 1, idleEnd: at(1, 9) });
-    expect(half.groups.wolves.pack).toMatchObject({ rowId: 'roam', idleEnd: at(1, 9) });
+    expect(half.generics.wolves.watch).toMatchObject({ rowId: 'round', stop: 1, idleEnd: at(1, 9) });
+    expect(half.generics.wolves.pack).toMatchObject({ rowId: 'roam', idleEnd: at(1, 9) });
     const hour = run(half, at(1, 9));
     expect(presences(hour)).toEqual({ den: 'smithy', pack: 'market', watch: 'wall' });
   });
 
-  it('gives a Group no Start roll, no Individual state and no single position', () => {
+  it('gives a Generic entity no Start roll, no Unique entity state and no single position', () => {
     const book = run(EMPTY, at(1, 8));
-    expect(book.individuals).toEqual({});
+    expect(book.uniques).toEqual({});
     expect(book.positions).toEqual({});
-    expect(Object.keys(book.groups.wolves)).toEqual(['den', 'pack', 'watch']);
+    expect(Object.keys(book.generics.wolves)).toEqual(['den', 'pack', 'watch']);
   });
 
   it('runs two Starts at the same place, each on its own rows', () => {
     const pair: Routine = {
-      id: 'wolves', group: true, traversable: [],
+      id: 'wolves', generic: true, traversable: [],
       starts: [
         { id: 'a', place: 'inn', weight: 1, schedule: [] },
         { id: 'b', place: 'inn', weight: 1, schedule: [allDay('round', patrol([['inn', 30], ['gate', 30]]))] },
@@ -461,7 +461,7 @@ describe('Groups', () => {
 
   it('leaves a presence the routine no longer puts here in the scene until the player leaves', () => {
     // Saved at the inn before the author moved the den's routine away from it.
-    const saved = { ...EMPTY, groups: { wolves: { den: { position: 'inn', lastRun: at(1, 12) } } } };
+    const saved = { ...EMPTY, generics: { wolves: { den: { position: 'inn', lastRun: at(1, 12) } } } };
     expect(presences(run(saved, at(1, 12, 30), 'inn')).den).toBe('inn');
     expect(presences(run(saved, at(1, 12, 30), 'gate')).den).toBe('smithy');
   });
@@ -475,23 +475,23 @@ describe('Groups', () => {
   it('is never pulled, never follows and takes no script move', () => {
     const book = run(EMPTY, at(1, 8));
     const now = scene(at(1, 8), 'inn');
-    expect(pullIndividual(book, wolves, 'inn', now)).toBe(book);
+    expect(pullUnique(book, wolves, 'inn', now)).toBe(book);
     expect(startFollowing(book, wolves, now, { script: true })).toBe(book);
-    expect(moveIndividualByScript(book, wolves, 'island', now)).toBe(book);
+    expect(moveUniqueByScript(book, wolves, 'island', now)).toBe(book);
   });
 
   it('begins a new Start at its place and drops the record of a Start the world lost', () => {
     const saved = run(EMPTY, at(1, 8, 30));
-    const withLost = { ...saved, groups: { wolves: { ...saved.groups.wolves, gone: { position: 'gate', lastRun: at(1, 8) } } } };
+    const withLost = { ...saved, generics: { wolves: { ...saved.generics.wolves, gone: { position: 'gate', lastRun: at(1, 8) } } } };
     const grown: Routine = { ...wolves, starts: [...wolves.starts.slice(1), { id: 'cub', place: 'square', weight: 1, schedule: [] }] };
     const book = advancePositions([grown], withLost, scene(at(1, 8, 30)), seeded(3));
-    expect(Object.keys(book.groups.wolves)).toEqual(['pack', 'watch', 'cub']);
-    expect(book.groups.wolves.cub.position).toBe('square');
-    expect(book.groups.wolves.watch).toEqual(saved.groups.wolves.watch);
+    expect(Object.keys(book.generics.wolves)).toEqual(['pack', 'watch', 'cub']);
+    expect(book.generics.wolves.cub.position).toBe('square');
+    expect(book.generics.wolves.watch).toEqual(saved.generics.wolves.watch);
   });
 
   it('lists the places its presences stand at, each once', () => {
-    expect(groupPlaces({ wolves: { a: { position: 'inn', lastRun: 0 }, b: { position: 'inn', lastRun: 0 }, c: { position: 'gate', lastRun: 0 } } }))
+    expect(genericPlaces({ wolves: { a: { position: 'inn', lastRun: 0 }, b: { position: 'inn', lastRun: 0 }, c: { position: 'gate', lastRun: 0 } } }))
       .toEqual({ wolves: ['inn', 'gate'] });
   });
 });
@@ -533,12 +533,12 @@ describe("the player's starting location", () => {
   it('places nobody while the player start is unknown', () => {
     const book = run(companion([], [], false), EMPTY, begin(at(1, 8), 'inn', null));
     expect(book.positions.kit).toBeUndefined();
-    expect(book.individuals.kit).toBeUndefined();
+    expect(book.uniques.kit).toBeUndefined();
   });
 
   it('begins Following and moves with the player on the first move', () => {
     const first = run(companion(), EMPTY, begin(at(1, 8), 'inn'));
-    expect(first.individuals.kit.follow).toEqual({ mode: 'following' });
+    expect(first.uniques.kit.follow).toEqual({ mode: 'following' });
     expect(first.positions.kit).toBe('inn');
     expect(run(companion(), first, begin(at(1, 9), 'market', 'inn')).positions.kit).toBe('market');
   });
@@ -546,8 +546,8 @@ describe("the player's starting location", () => {
   it('begins Following on a Strict row', () => {
     const guarded = companion([allDay('guard', stay('inn'), true)]);
     const first = run(guarded, EMPTY, begin(at(1, 8), 'inn'));
-    expect(isStrictNow(guarded, first.individuals.kit, at(1, 8))).toBe(true);
-    expect(first.individuals.kit.follow?.mode).toBe('following');
+    expect(isStrictNow(guarded, first.uniques.kit, at(1, 8))).toBe(true);
+    expect(first.uniques.kit.follow?.mode).toBe('following');
     expect(run(guarded, first, begin(at(1, 9), 'gate', 'inn')).positions.kit).toBe('gate');
   });
 
@@ -556,7 +556,7 @@ describe("the player's starting location", () => {
     const first = run(homebody, EMPTY, begin(at(1, 8), 'inn'));
     const moved = run(homebody, first, begin(at(1, 9), 'market', 'inn'));
     expect(moved.positions.kit).toBe('inn');
-    expect(moved.individuals.kit.follow?.mode).toBe('waiting');
+    expect(moved.uniques.kit.follow?.mode).toBe('waiting');
   });
 
   it('follows only in a game that rolled the Start with the setting', () => {
@@ -568,17 +568,17 @@ describe("the player's starting location", () => {
       ],
     };
     const rolledBeside = run(either, EMPTY, begin(at(1, 8), 'inn'), () => 0);
-    expect(rolledBeside.individuals.kit).toMatchObject({ startId: 'beside', follow: { mode: 'following' } });
+    expect(rolledBeside.uniques.kit).toMatchObject({ startId: 'beside', follow: { mode: 'following' } });
     const rolledHome = run(either, EMPTY, begin(at(1, 8), 'inn'), () => 0.99);
-    expect(rolledHome.individuals.kit.startId).toBe('home');
-    expect(rolledHome.individuals.kit.follow).toBeUndefined();
+    expect(rolledHome.uniques.kit.startId).toBe('home');
+    expect(rolledHome.uniques.kit.follow).toBeUndefined();
     expect(rolledHome.positions.kit).toBe('smithy');
   });
 
   it('ignores Begins Following on a Start at a fixed location', () => {
     const fixed: Routine = { id: 'kit', traversable: 'anywhere', starts: [{ id: 'home', place: 'smithy', weight: 1, schedule: [], beginsFollowing: true }] };
     const book = run(fixed, EMPTY, begin(at(1, 8), 'inn'));
-    expect(book.individuals.kit.follow).toBeUndefined();
+    expect(book.uniques.kit.follow).toBeUndefined();
     expect(book.positions.kit).toBe('smithy');
   });
 
@@ -588,16 +588,16 @@ describe("the player's starting location", () => {
     expect(run(islander, EMPTY, begin(at(1, 8), 'island')).positions.kit).toBe('island');
   });
 
-  it('runs a Group presence from beside the player, then its rows, and never follows', () => {
+  it('runs a Generic presence from beside the player, then its rows, and never follows', () => {
     const crowd: Routine = {
-      id: 'crowd', group: true, traversable: [],
+      id: 'crowd', generic: true, traversable: [],
       starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [timed('market', 12, 14, stay('square'))], beginsFollowing: true }],
     };
     const first = run(crowd, EMPTY, begin(at(1, 8), 'inn'));
-    expect(first.groups.crowd.beside.position).toBe('inn');
-    expect(first.individuals.crowd).toBeUndefined();
+    expect(first.generics.crowd.beside.position).toBe('inn');
+    expect(first.uniques.crowd).toBeUndefined();
     const moved = run(crowd, first, begin(at(1, 9), 'gate', 'inn'));
-    expect(moved.groups.crowd.beside.position).toBe('inn');
-    expect(run(crowd, moved, begin(at(1, 13), 'gate', 'inn')).groups.crowd.beside.position).toBe('square');
+    expect(moved.generics.crowd.beside.position).toBe('inn');
+    expect(run(crowd, moved, begin(at(1, 13), 'gate', 'inn')).generics.crowd.beside.position).toBe('square');
   });
 });

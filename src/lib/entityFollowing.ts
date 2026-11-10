@@ -3,7 +3,7 @@ import { effectiveDestinations } from "@/lib/locationGraph";
 import type { EntityCodeWrite } from "@/lib/statCodeExecutor";
 import { daypart, MINUTES_PER_DAY } from "@/lib/gameClock";
 import {
-  allowedPlaces, isStrictNow, moveIndividualByScript, partWays, startFollowing, startWaiting, waitUntil, type PositionBook, type WaitLength,
+  allowedPlaces, isStrictNow, moveUniqueByScript, partWays, startFollowing, startWaiting, waitUntil, type PositionBook, type WaitLength,
 } from "@/lib/positionEngine";
 import { followerIds, placeAll, withPlayerAt, type PositionWorld } from "@/lib/positionPlay";
 
@@ -90,7 +90,7 @@ export const entityMoveStateText = (name: string, following: boolean): string =>
 export type FollowerState = PositionBook;
 
 /** The ids following the player in `state`. */
-export const followersOf = (state: FollowerState): string[] => followerIds(state.individuals);
+export const followersOf = (state: FollowerState): string[] => followerIds(state.uniques);
 
 /** The runtime characters beside the world's entities, and which of them the scene list holds this turn. */
 export interface RuntimeCast {
@@ -101,7 +101,7 @@ export interface RuntimeCast {
 const NO_RUNTIME_CAST: RuntimeCast = { runtime: [], inScene: new Set() };
 
 /**
- * The entities that get a location request this turn: each follower, and each Individual at the player's place
+ * The entities that get a location request this turn: each follower, and each Unique entity at the player's place
  * whose row is not Strict. A runtime character counts only while the scene list holds it. In `entities` order.
  */
 export function entityMoveSubjects(
@@ -114,8 +114,8 @@ export function entityMoveSubjects(
   const scene = withPlayerAt(world, playerLocationId).scene;
   return entities.filter((entity) => {
     if (following.has(entity.id)) return true;
-    const routine = world.routines.get(entity.id);
-    const st = state.individuals[entity.id];
+    const routine = world.uniques.get(entity.id);
+    const st = state.uniques[entity.id];
     if (!routine || !st || st.follow || state.positions[entity.id] !== playerLocationId) return false;
     if (runtimeIds.has(entity.id) && !cast.inScene.has(entity.id)) return false;
     return !isStrictNow(routine, st, scene.now);
@@ -127,8 +127,8 @@ export function entityMoveSubjects(
 export function entityMoveDestinations(
   entity: Entity, standingAt: string, state: FollowerState, world: PositionWorld, locations: GameLocation[], connections: Connection[],
 ): GameLocation[] {
-  const routine = world.routines.get(entity.id);
-  const own = routine ? allowedPlaces(routine, state.individuals[entity.id], world.scene) : new Set<string>();
+  const routine = world.uniques.get(entity.id);
+  const own = routine ? allowedPlaces(routine, state.uniques[entity.id], world.scene) : new Set<string>();
   const byId = new Map(locations.map((place) => [place.id, place]));
   return [...effectiveDestinations(standingAt, locations, connections).keys()].flatMap((id) => {
     const place = own.has(id) ? byId.get(id) : undefined;
@@ -225,9 +225,9 @@ export function applyAtOnce(state: FollowerState, intents: EntityMoveIntents, fr
   for (const { id, length } of intents.wait) next = startWaiting(next, id, length, scene.now);
   for (const id of intents.partWays) next = partWays(next, id);
   for (const { id, to } of intents.goTo) {
-    const routine = world.routines.get(id);
-    if (!routine || !allowedPlaces(routine, next.individuals[id], scene).has(to)) continue;
-    next = moveIndividualByScript(next, routine, to, scene);
+    const routine = world.uniques.get(id);
+    if (!routine || !allowedPlaces(routine, next.uniques[id], scene).has(to)) continue;
+    next = moveUniqueByScript(next, routine, to, scene);
   }
   return next;
 }
@@ -270,7 +270,7 @@ export function moveWithPlayer(state: FollowerState, offer: EntityMoveOffer, to:
   const at = withPlayerAt(world, to);
   let next = state;
   for (const id of offer.comeAlong) {
-    const routine = world.routines.get(id);
+    const routine = world.uniques.get(id);
     if (routine) next = startFollowing(next, routine, at.scene);
   }
   return placeAll(next, at);
@@ -294,8 +294,8 @@ export function joinEntityMoves(state: FollowerState, move: PlayerMove, intents:
 
 /**
  * `state` with code's entity writes applied in call order, the player standing at `playerAt`. `move` ends a
- * follow or a wait and holds the character there; `follow` makes any Individual follow, past Strict and
- * Traversable; `unfollow` is Part ways. A Group takes none of them.
+ * follow or a wait and holds the character there; `follow` makes any Unique entity follow, past Strict and
+ * Traversable; `unfollow` is Part ways. A Generic entity takes none of them.
  */
 export function applyEntityCodeWrites(
   state: FollowerState, writes: readonly EntityCodeWrite[] | undefined, playerAt: string | undefined, world: PositionWorld,
@@ -303,18 +303,18 @@ export function applyEntityCodeWrites(
   const { scene } = withPlayerAt(world, playerAt);
   let next = state;
   for (const write of writes ?? []) {
-    const routine = world.routines.get(write.entity);
+    const routine = world.uniques.get(write.entity);
     if (!routine) continue;
     switch (write.kind) {
       case "move":
-        next = moveIndividualByScript(partWays(next, routine.id), routine, write.location, scene);
+        next = moveUniqueByScript(partWays(next, routine.id), routine, write.location, scene);
         break;
       case "unfollow":
         next = partWays(next, routine.id);
         break;
       case "follow":
         next = startFollowing(next, routine, scene, { script: true });
-        if (playerAt && next.individuals[routine.id]?.follow?.mode === "following") next = { ...next, positions: placeAt(next.positions, [routine.id], playerAt) };
+        if (playerAt && next.uniques[routine.id]?.follow?.mode === "following") next = { ...next, positions: placeAt(next.positions, [routine.id], playerAt) };
         break;
       case "meet": // lands on the met list at commit
         break;
@@ -330,15 +330,15 @@ export interface ChainPositions {
   waiting: readonly string[];
 }
 
-/** `state` with code's entity writes laid over for the next script of the chain to read. `individual` says which
+/** `state` with code's entity writes laid over for the next script of the chain to read. `unique` says which
  *  ids take them. */
 export function chainEntityWrites(
-  state: ChainPositions, writes: readonly EntityCodeWrite[] | undefined, playerAt: string | undefined, individual: (id: string) => boolean,
+  state: ChainPositions, writes: readonly EntityCodeWrite[] | undefined, playerAt: string | undefined, unique: (id: string) => boolean,
 ): ChainPositions {
   let next = state;
   for (const write of writes ?? []) {
     const { entity } = write;
-    if (write.kind === "meet" || !individual(entity)) continue;
+    if (write.kind === "meet" || !unique(entity)) continue;
     const without = (ids: readonly string[]) => ids.filter((id) => id !== entity);
     if (write.kind === "move") {
       next = { positions: placeAt(next.positions, [entity], write.location), followers: without(next.followers), waiting: without(next.waiting) };

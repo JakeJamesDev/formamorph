@@ -50,7 +50,7 @@ export const NEW_ENTITY_NAME = 'New Entity';
 /** An entity as the editor's Add button makes it, placed `order`th among the ungrouped entities. */
 export function newEntity(id: string, order: number, name = NEW_ENTITY_NAME): Entity {
   return {
-    id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order, kind: 'individual', traversable: 'anywhere',
+    id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order, kind: 'unique', traversable: 'anywhere',
   };
 }
 

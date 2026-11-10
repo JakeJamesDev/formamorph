@@ -14,7 +14,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryStep } from '@/contexts/worldRecorder';
 import { chanceChipStyle, relativeChance } from '@/lib/chanceColor';
-import { withBeginsFollowing, withGroupStart, withKind, withoutGroupStart, withStartPlace } from '@/lib/entityKind';
+import { withBeginsFollowing, withGenericStart, withKind, withoutGenericStart, withStartPlace } from '@/lib/entityKind';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { fieldFrame } from '@/lib/historyField';
 import { holderOf, locationRows } from '@/lib/locationTree';
@@ -37,26 +37,26 @@ import { ACTIONS } from './routineActions';
 import { LocationPicker, PLAYER_START_NAME, Token, TOKEN_CLASS, type PlaceBook } from './RoutineFields';
 
 const KIND_OPTIONS = [
-  { value: 'individual', label: 'Unique' },
-  { value: 'group', label: 'Generic' },
+  { value: 'unique', label: 'Unique' },
+  { value: 'generic', label: 'Generic' },
 ] as const;
 
 const KIND_HINTS: Record<EntityKind, string> = {
-  individual: 'Places one character at one of the starts below',
-  group: 'Places one of this type of character at every start below',
+  unique: 'Places one character at one of the starts below',
+  generic: 'Places one of this type of character at every start below',
 };
 
 /** What several Starts mean, by kind. */
 const STARTS_HINTS: Record<EntityKind, string> = {
-  individual: 'Picks one start at random in each new game',
-  group: 'Runs every start at the same time, each on its own routine',
+  unique: 'Picks one start at random in each new game',
+  generic: 'Runs every start at the same time, each on its own routine',
 };
 
-/** The fields a kind edits. A Group keeps weight, Strict and Traversable in its data but hides them. */
+/** The fields a kind edits. A Generic entity keeps weight, Strict and Traversable in its data but hides them. */
 type KindFields = { chance: boolean; locks: boolean; canAlsoGo: boolean };
 const KIND_FIELDS: Record<EntityKind, KindFields> = {
-  individual: { chance: true, locks: true, canAlsoGo: true },
-  group: { chance: false, locks: false, canAlsoGo: false },
+  unique: { chance: true, locks: true, canAlsoGo: true },
+  generic: { chance: false, locks: false, canAlsoGo: false },
 };
 
 /** What a press may land on and keep the row selection: a sentence, the strip, an open editor, or the map. */
@@ -101,11 +101,11 @@ export function RoutineTab({ entity, onChange }: { entity: Entity; onChange: (ne
     };
   }, [locations, placeholders, placementLetters, placeholderOwners]);
 
-  // An entity with no kind yet edits as a new Individual; its first write stores the kind.
-  const kinded = useMemo(() => (entity.kind ? entity : withKind(entity, 'individual', randomUUID)), [entity]);
+  // An entity with no kind yet edits as a new Unique entity; its first write stores the kind.
+  const kinded = useMemo(() => (entity.kind ? entity : withKind(entity, 'unique', randomUUID)), [entity]);
   // A custom persona moves with the player: it keeps only its locations, with no placement or routine.
   if (entity.customPersona) return <PersonaLocations entity={entity} book={book} commit={commit} />;
-  const kind: EntityKind = entity.kind ?? 'individual';
+  const kind: EntityKind = entity.kind ?? 'unique';
 
   return (
     <div className="space-y-4" data-tour-anchor="entity-locations">
@@ -148,20 +148,20 @@ function PersonaLocations({ entity, book, commit }: { entity: Entity; book: Plac
   );
 }
 
-/** The Starts, the shown Start's routine and, for an Individual, Can Also Go. A Group hides weight, Strict and
+/** The Starts, the shown Start's routine and, for a Unique entity, Can Also Go. A Generic entity hides weight, Strict and
  *  Traversable but keeps them in the data. */
 function EntityRoutine({ entity, kind, book, locations, connections, commit, onChange }: {
   entity: Entity; kind: EntityKind; book: PlaceBook; locations: readonly GameLocation[]; connections: readonly Connection[];
   commit: (label: string, next: Entity) => void; onChange: (next: Entity) => void;
 }) {
-  const group = kind === 'group';
+  const generic = kind === 'generic';
   const fields = KIND_FIELDS[kind];
   const starts = entity.starts ?? [];
   const { startId, showStart } = useRoutineSelection(entity.id);
   const start = starts.find((s) => s.id === startId) ?? starts[0];
   const weights = starts.map((s) => s.weight);
   const addStart = (place: string) => {
-    const next = group ? withGroupStart(entity, place, randomUUID) : withNewStart(entity, place, randomUUID);
+    const next = generic ? withGenericStart(entity, place, randomUUID) : withNewStart(entity, place, randomUUID);
     commit('Add Start', next);
     showStart(next.starts?.[next.starts.length - 1]?.id ?? null);
   };
@@ -309,7 +309,7 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
             <Button
               variant="ghost" size="icon" className="ml-1 h-7 w-7 align-middle text-muted-foreground" aria-label="Delete Start"
               onClick={() => {
-                commit('Delete Start', kind === 'group' ? withoutGroupStart(entity, start.id) : withoutStart(entity, start.id));
+                commit('Delete Start', kind === 'generic' ? withoutGenericStart(entity, start.id) : withoutStart(entity, start.id));
                 onDeleted();
               }}
             >
@@ -318,7 +318,7 @@ function StartRoutine({ entity, kind, start, weights, book, connected, commit, o
           </Tip>
         )}
       </p>
-      {kind === 'individual' && start.place === PLAYER_START && (
+      {kind === 'unique' && start.place === PLAYER_START && (
         <div className="space-y-0.5" {...fieldFrame('starts', start.id, 'beginsFollowing')}>
           <div className="flex items-center gap-2">
             <Checkbox

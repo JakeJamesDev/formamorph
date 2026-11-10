@@ -133,7 +133,7 @@ describe('a turn that starts with a discovered character', () => {
       { id: 'landing', name: 'Sedge Landing' }, { id: 'harbor', name: 'Harbor', parentId: 'landing', isStarting: true }, { id: 'pier', name: 'Pier', parentId: 'landing' },
     ];
     // One body at the pier whose routine lets him go anywhere.
-    const ferryman: Entity = { ...ferrymanAt('pier'), kind: 'individual', starts: [{ id: 'pier', place: 'pier', weight: 1, schedule: [] }], traversable: 'anywhere' };
+    const ferryman: Entity = { ...ferrymanAt('pier'), kind: 'unique', starts: [{ id: 'pier', place: 'pier', weight: 1, schedule: [] }], traversable: 'anywhere' };
     renderGameViewer({ ...presenceWorld('', [ferryman]), locations: landing } as World, { inGameplay: <Probe /> });
     const box = await screen.findByPlaceholderText(/Type your action/);
     const calls = stubEndpoint(JSON.stringify({ operations: [] }));
@@ -217,7 +217,7 @@ describe('the stats re-roll', () => {
   it('lands a give to a character the narration calls over from the place around the player, as the live turn did', async () => {
     // The playtest's inn: the farrier stands in the village the inn sits in, and the scene is about her.
     const village = [{ id: 'village', name: 'Village' }, { id: 'harbor', name: 'Harbor', parentId: 'village', isStarting: true }];
-    const ferryman: Entity = { ...ferrymanAt('village'), kind: 'individual', starts: [{ id: 'v', place: 'village', weight: 1, schedule: [] }], traversable: 'anywhere' };
+    const ferryman: Entity = { ...ferrymanAt('village'), kind: 'unique', starts: [{ id: 'v', place: 'village', weight: 1, schedule: [] }], traversable: 'anywhere' };
     const world = { ...presenceWorld('', [ferryman]), locations: village, connections: [] } as World;
     renderGameViewer(world, { inGameplay: <Probe /> });
     const box = await screen.findByPlaceholderText(/Type your action/);

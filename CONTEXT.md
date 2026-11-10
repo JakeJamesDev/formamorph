@@ -122,16 +122,16 @@ _Avoid_: known, discovered, revealed
 The entities here that took part in the story in one of the last 3 turns. An entity takes part when the prose shows it or the planner casts it. A name inside dialogue does not count. When the player moves, only followers keep the turns from before the move. An entity that leaves the player's place is out of scene at once. The In Scene set feeds the stat picker, the Traits tab and Give.
 _Avoid_: present, visible, participants
 
-**Group (entity kind)**:
-An entity met in several places at once: a herd, a swarm, an enemy type. Every Start runs at the same time as its own presence, each on its own Schedule, but it is one entity with one set of stats, inventory and memory. Two presences in one place count once. It is never pulled and never follows.
-_Avoid_: Everywhere Listed
+**Generic (entity kind)**:
+An entity met in several places at once: a herd, a swarm, an enemy type, one Mimic in each dungeon. Every Start runs at the same time as its own presence, each on its own Schedule, but it is one entity with one set of stats, inventory and memory. Two presences in one place count once. It is never pulled and never follows.
+_Avoid_: Group (entity kind), Everywhere Listed
 
-**Individual**:
-An entity that is one body in one place. One of its Starts is rolled per playthrough, and its Schedule moves it through the day.
-_Avoid_: One, random presence
+**Unique (entity kind)**:
+An entity that is one body in one place. One of its Starts is rolled per playthrough, and its Schedule moves it through the day. Not the Unique mode of a placeholder chip.
+_Avoid_: Individual, One, random presence
 
 **Start**:
-One beginning of an entity: a place plus a Schedule. An Individual rolls one by weight per playthrough and keeps it for the whole save; a Group runs all of them. A Start with an empty Schedule stays at its place.
+One beginning of an entity: a place plus a Schedule. A Unique entity rolls one by weight per playthrough and keeps it for the whole save; a Generic entity runs all of them. A Start with an empty Schedule stays at its place.
 _Avoid_: spawn, presence
 
 **Schedule**:
@@ -155,7 +155,7 @@ A Schedule row flag: during the row the character can't be called over by narrat
 _Avoid_: locked, busy
 
 **Traversable**:
-The places an Individual may go beyond its Schedule, or Anywhere. Pulls and follows reach only its current row's places plus these. An empty list means Schedule places only.
+The places a Unique entity may go beyond its Schedule, or Anywhere. Pulls and follows reach only its current row's places plus these. An empty list means Schedule places only.
 _Avoid_: range, Can Follow
 
 **Look Around**:

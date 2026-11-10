@@ -15,7 +15,7 @@ const day: ScheduleRow[] = [
   timed('patrol', 14, 18, { kind: 'patrol', stops: [{ place: 'wall', idle: 30 }, { place: 'gate', idle: 30 }] }),
 ];
 const farrier = (schedule: ScheduleRow[], traversable: Traversable = ['island']): Entity => ({
-  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'individual', traversable,
+  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique', traversable,
   starts: [{ id: 's1', place: 'smithy', weight: 1, schedule }],
 } as Entity);
 const key = (entity: Entity, rowId: string | null = null) =>
@@ -41,9 +41,9 @@ describe('the key of the Routine view', () => {
     expect(key(farrier(day), 'patrol')).toEqual(['patrol', 'dayBar', 'start', 'stop', 'reach']);
   });
 
-  it('lists Is Here for a Group’s other Start and never Can Also Go', () => {
+  it('lists Is Here for a Generic entity’s other Start and never Can Also Go', () => {
     const herd = (places: string[]): Entity => ({
-      ...farrier(day), kind: 'group',
+      ...farrier(day), kind: 'generic',
       starts: places.map((place, i) => ({ id: `s${i}`, place, weight: 1, schedule: i === 0 ? day : [] })),
     });
     expect(key(herd(['smithy', 'island']))).toEqual(['stay', 'wander', 'patrol', 'free', 'dayBar', 'start', 'here']);

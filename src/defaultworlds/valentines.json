@@ -865,7 +865,7 @@
           "label": "fan club, with {{ph:7eeaf01f-f347-45df-815f-88c42de70de7:world:ebc8c7c5-bf1c-4633-a492-6979f72a8dad}} running the second floor today"
         }
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -903,7 +903,7 @@
           "label": "best friend since middle school"
         }
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -945,7 +945,7 @@
           "label": "second-fastest sprinter"
         }
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1016,7 +1016,7 @@
         "c115a222-8165-4635-b53c-ccb7fcbd38ac"
       ],
       "pronouns": "they/them",
-      "kind": "group",
+      "kind": "generic",
       "starts": [
         {
           "id": "start-1",
@@ -1080,7 +1080,7 @@
           "label": "best tipster"
         }
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1113,7 +1113,7 @@
         "19cc2ffa-aad7-49ac-9885-e7748b63f1f7"
       ],
       "pronouns": "she/her",
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1148,7 +1148,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1189,7 +1189,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1228,7 +1228,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1272,7 +1272,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1328,7 +1328,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1383,7 +1383,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1423,7 +1423,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1455,7 +1455,7 @@
       ],
       "sound": null,
       "model": null,
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",

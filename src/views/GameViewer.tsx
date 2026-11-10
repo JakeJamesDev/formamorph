@@ -132,7 +132,7 @@ import { findEntityByCharacterName, materializeDiscoveredEntity, discoveredAsEnt
 import { entitiesInPlay, entityIdsAt, positionedCast, type Standings } from "../lib/entityPresence";
 import { castRoutines } from "../lib/entityKind";
 import { placeAll, positionWorld, reseatForOpening, withPlayerAt, type PositionWorld } from "../lib/positionPlay";
-import { EMPTY_BOOK, groupPlaces } from "../lib/positionEngine";
+import { EMPTY_BOOK, genericPlaces } from "../lib/positionEngine";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve } from "../lib/outputLength";
 import { outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -769,10 +769,10 @@ const GameViewer = ({
     setEntityPositions,
     entityFollowers,
     entityWaiting,
-    individualStates,
-    setIndividualStates,
-    groupStates,
-    setGroupStates,
+    uniqueStates,
+    setUniqueStates,
+    genericStates,
+    setGenericStates,
     currentBook,
     applyFollowerState,
     placeCast,
@@ -1473,7 +1473,7 @@ const GameViewer = ({
   const liveFollowerState = (): FollowerState => currentBook();
   // The story minute the clock reads now.
   const storyNow = storyMinute(gameTime, calendar);
-  // Every Individual's routine: the authored cast the engine positions, then the runtime characters.
+  // Every Unique entity's routine: the authored cast the engine positions, then the runtime characters.
   const routines = useMemo(
     () => castRoutines(positionedCast(authoredCast, personaRef), discoveredEntities),
     [authoredCast, personaRef, discoveredEntities],
@@ -2648,10 +2648,10 @@ const GameViewer = ({
     ),
     [allEntities, metEntities, persona, locations, discoveredEntities, strangerAliases],
   );
-  // What the Entities chip's Movement tags read: every Individual's routine and follow state, now.
+  // What the Entities chip's Movement tags read: every Unique entity's routine and follow state, now.
   const sceneMovement = useMemo(
-    () => ({ routines, individuals: individualStates, now: storyNow }),
-    [routines, individualStates, storyNow],
+    () => ({ routines, uniques: uniqueStates, now: storyNow }),
+    [routines, uniqueStates, storyNow],
   );
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
@@ -3132,7 +3132,7 @@ const GameViewer = ({
     const location = codeTarget ?? turn.location;
     const meets = final.codeWrites?.entities?.flatMap((write) => (write.kind === 'meet' ? [write.entity] : []));
     if (meets?.length) setMetEntities((met) => withMet(met, meets));
-    // Every Individual is placed for the turn's end, after the replies and the code moved who they name.
+    // Every Unique entity is placed for the turn's end, after the replies and the code moved who they name.
     const world = endWorld(final.turnHours);
     let afterMoves: FollowerState;
     if (moveFrom) {
@@ -3425,7 +3425,7 @@ const GameViewer = ({
       /** The world the turn's prompts read: the code view, with the followers at the player's side. */
       const sceneBox = (): SceneWrites | null => {
         if (!turnJoin) return codeView;
-        return { ...(codeView ?? {}), positions: turnJoin.positions, individuals: turnJoin.individuals, groups: turnJoin.groups };
+        return { ...(codeView ?? {}), positions: turnJoin.positions, uniques: turnJoin.uniques, generics: turnJoin.generics };
       };
       // An On Call write since the narration's context values were built, which later prompts must read (Q52).
       let narrationBuilt = false;
@@ -4164,7 +4164,7 @@ const GameViewer = ({
           owners,
           places: { locations, location: here && { id: here.id, name: here.name }, connections },
           positions: { ...runtimePositions(discoveredEntities), ...entityPositions },
-          presences: groupPlaces(groupStates),
+          presences: genericPlaces(genericStates),
           followers: entityFollowers,
           waiting: entityWaiting,
           resolveText: (text, owner) => (owner ? resolveEntityText(owner, text) : resolvePH(text)),
@@ -6063,7 +6063,7 @@ const GameViewer = ({
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
-      // Each Individual rolls its Start, so the opening pool reads who stands at the start.
+      // Each Unique entity rolls its Start, so the opening pool reads who stands at the start.
       setPlayerStartLocationId(location?.id);
       const startBook = placeAll(EMPTY_BOOK, positionWorld(
         castRoutines(positionedCast(codeEntities.world, personaPick.ref)), storyMinute(0), location?.id, locations, connections,
@@ -6071,8 +6071,8 @@ const GameViewer = ({
       ));
       const startPositions = startBook.positions;
       setEntityPositions(startPositions);
-      setIndividualStates(startBook.individuals);
-      setGroupStates(startBook.groups);
+      setUniqueStates(startBook.uniques);
+      setGenericStates(startBook.generics);
       setMetEntities([]);
       setStrangerAliases({});
       entityOfferRef.current = NO_ENTITY_OFFER;
@@ -6099,7 +6099,7 @@ const GameViewer = ({
     initialSaveId,
     loadGame,
     connections,
-    setIndividualStates,
+    setUniqueStates,
     setPlayerStartLocationId,
     resetEntityStats,
     setSelectedEntityId,

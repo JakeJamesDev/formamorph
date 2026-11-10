@@ -184,7 +184,7 @@ function PlacesEditor({ row, book, connected, onChange, field }: {
 /** One schedule row as a sentence. The time, the action and the locations each open their own editor. */
 export function RoutineRow({ row, others, startPlace, book, connected, lockable = true, asHours, onAsHours, selected, onSelect, rowRef, onChange, onDelete }: {
   row: ScheduleRow; others: readonly ScheduleRow[]; startPlace: string; book: PlaceBook; connected: readonly string[];
-  /** Whether the Strict lock shows. A Group's rows keep their flag but hide it. */
+  /** Whether the Strict lock shows. A Generic entity's rows keep their flag but hide it. */
   lockable?: boolean;
   /** Whether the row's time shows as hours. */
   asHours: boolean; onAsHours: (hours: boolean) => void;

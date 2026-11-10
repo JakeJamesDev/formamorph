@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
-/** The location Presence tab: the Groups-only picker, who can be here and why, and the Connection distance. */
+/** The location Presence tab: the Generic entities-only picker, who can be here and why, and the Connection distance. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -31,15 +31,15 @@ const WORLD: World = benchEditorWorld({
   ],
   connections: [{ id: 'c1', a: 'tavern', b: 'yard', aToB: {}, bToA: {} }],
   entities: [
-    { id: 'crowd', name: 'Crowd', kind: 'group', locations: ['tavern'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }] },
-    { id: 'moths', name: 'Moths', kind: 'group' },
+    { id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }] },
+    { id: 'moths', name: 'Moths', kind: 'generic' },
     // Begins in the yard and only visits the cellar on a row.
     {
-      id: 'rats', name: 'Rats', kind: 'group', locations: ['yard', 'cellar'],
+      id: 'rats', name: 'Rats', kind: 'generic', locations: ['yard', 'cellar'],
       starts: [{ id: 'r1', place: 'yard', weight: 1, schedule: [{ id: 'dig', time: 'allDay', action: { kind: 'stay', place: 'cellar' } }] }],
     },
     {
-      id: 'farrier', name: 'Farrier', kind: 'individual', locations: ['yard', 'tavern', 'cellar'], traversable: ['cellar'],
+      id: 'farrier', name: 'Farrier', kind: 'unique', locations: ['yard', 'tavern', 'cellar'], traversable: ['cellar'],
       starts: [
         { id: 's1', place: 'yard', weight: 3, schedule: [
           { id: 'r1', time: 'allDay', action: { kind: 'wander', places: [{ place: 'yard', weight: 1 }, { place: 'tavern', weight: 1 }], idle: 60 } },
@@ -47,7 +47,7 @@ const WORLD: World = benchEditorWorld({
         { id: 's2', place: 'tavern', weight: 1, schedule: [] },
       ],
     },
-    { id: 'queen', name: 'Queen', kind: 'individual', locations: ['yard'], traversable: 'anywhere', starts: [{ id: 'q1', place: 'yard', weight: 1, schedule: [] }] },
+    { id: 'queen', name: 'Queen', kind: 'unique', locations: ['yard'], traversable: 'anywhere', starts: [{ id: 'q1', place: 'yard', weight: 1, schedule: [] }] },
   ],
 } as Partial<World>);
 
@@ -65,7 +65,7 @@ function openPresence(name: string) {
 }
 
 describe('the Presence tab: Entities', () => {
-  it('offers Groups only, and adding one is one undo step', async () => {
+  it('offers Generic entities only, and adding one is one undo step', async () => {
     const user = userEvent.setup();
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Tavern');
@@ -82,8 +82,8 @@ describe('the Presence tab: Entities', () => {
   });
 });
 
-describe('the Presence tab: Entities, for a Group that only visits', () => {
-  it('leaves a Group unticked when only a row brings it here, and adds it no Start when another Group is picked', async () => {
+describe('the Presence tab: Entities, for a Generic entity that only visits', () => {
+  it('leaves a Generic entity unticked when only a row brings it here, and adds it no Start when another Generic entity is picked', async () => {
     const user = userEvent.setup();
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openPresence('Cellar');

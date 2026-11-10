@@ -6,17 +6,17 @@ import {
 } from "./entityPresence";
 import type { Entity } from "@/types";
 
-/** A Group with one Start per place, no rows. */
-const group = (id: string, name: string, places: string[]): Entity => ({
-  id, name, kind: "group", locations: places, starts: places.map((place, i) => ({ id: `${id}-${i + 1}`, place, weight: 1, schedule: [] })),
+/** A Generic entity with one Start per place, no rows. */
+const generic = (id: string, name: string, places: string[]): Entity => ({
+  id, name, kind: "generic", locations: places, starts: places.map((place, i) => ({ id: `${id}-${i + 1}`, place, weight: 1, schedule: [] })),
 });
-const alice = group("alice", "Alice", ["bar"]);
-const bartender = group("bar-keep", "Bartender", ["bar", "docks"]);
-const gull = group("gull", "Gull", ["docks"]);
-/** An Individual starting at the bar or the docks, standing at the bar by day and wandering the docks and the
+const alice = generic("alice", "Alice", ["bar"]);
+const bartender = generic("bar-keep", "Bartender", ["bar", "docks"]);
+const gull = generic("gull", "Gull", ["docks"]);
+/** A Unique entity starting at the bar or the docks, standing at the bar by day and wandering the docks and the
  *  attic at night, and allowed into the cellar. */
 const sailor: Entity = {
-  id: "sailor", name: "Sailor", kind: "individual", locations: ["bar", "docks", "attic"], traversable: ["cellar", "bar"],
+  id: "sailor", name: "Sailor", kind: "unique", locations: ["bar", "docks", "attic"], traversable: ["cellar", "bar"],
   starts: [
     { id: "s1", place: "bar", weight: 1, schedule: [
       { id: "day", time: { start: 360, end: 1080 }, action: { kind: "stay", place: "bar" } },
@@ -84,13 +84,13 @@ describe("setLocationRoster (location-first editing writes through to the entiti
     expect(next[2]).toBe(gull);
   });
 
-  it("never writes an Individual, whose places come from its routine", () => {
+  it("never writes a Unique entity, whose places come from its routine", () => {
     const next = setLocationRoster("bar", [], [...cast, sailor]);
     expect(next[4]).toBe(sailor);
     expect(setLocationRoster("cellar", ["sailor"], [sailor])[0]).toBe(sailor);
   });
 
-  it("keeps a Group's last Start when its only place is cleared", () => {
+  it("keeps a Generic entity's last Start when its only place is cleared", () => {
     const next = setLocationRoster("bar", [], cast);
     expect(next[0]).toBe(alice);
     expect(entityIdsAt("bar", next)).toEqual(["alice"]);
@@ -108,7 +108,7 @@ describe("dropLocationFromEntities", () => {
     expect(dropLocationFromEntities("attic", cast)).toBe(cast);
   });
 
-  it("drops the place from an Individual's Starts, rows and Traversable, with the Start and the row it emptied", () => {
+  it("drops the place from a Unique entity's Starts, rows and Traversable, with the Start and the row it emptied", () => {
     const [bar] = dropLocationFromEntities("bar", [sailor]);
     // Start s1 began at the bar, and s2's only patrol stop was the bar.
     expect(bar.starts).toEqual([{ id: "s2", place: "docks", weight: 1, schedule: [] }]);
@@ -120,7 +120,7 @@ describe("dropLocationFromEntities", () => {
     expect(docks.locations).toEqual(["bar", "attic"]);
   });
 
-  it("drops a place named only in an Individual's Traversable list", () => {
+  it("drops a place named only in a Unique entity's Traversable list", () => {
     const [next] = dropLocationFromEntities("cellar", [sailor]);
     expect(next.traversable).toEqual(["bar"]);
     expect(next.starts).toBe(sailor.starts);
@@ -128,43 +128,43 @@ describe("dropLocationFromEntities", () => {
 });
 
 describe("placedIn", () => {
-  it("carries a Group's Starts through the map, and lists any other entity at the mapped places", () => {
+  it("carries a Generic entity's Starts through the map, and lists any other entity at the mapped places", () => {
     expect(placedIn(bartender, { docks: "pier" }).starts).toEqual([{ id: "bar-keep-2", place: "pier", weight: 1, schedule: [] }]);
     expect(placedIn(ghost, { a: "pier", b: "bar" }).locations).toEqual(["pier", "bar"]);
   });
 });
 
 describe("entitiesInPlay", () => {
-  it("lists a Group once at each place its presences stand, and nowhere else it lists", () => {
-    const groups = { "bar-keep": { "bar-keep-1": { position: "docks", lastRun: 0 }, "bar-keep-2": { position: "docks", lastRun: 0 } } };
-    const placed = entitiesInPlay(cast, { positions: {}, groups });
+  it("lists a Generic entity once at each place its presences stand, and nowhere else it lists", () => {
+    const generics = { "bar-keep": { "bar-keep-1": { position: "docks", lastRun: 0 }, "bar-keep-2": { position: "docks", lastRun: 0 } } };
+    const placed = entitiesInPlay(cast, { positions: {}, generics });
     expect(entityIdsAt("bar", placed)).toEqual(["alice"]);
     expect(entityIdsAt("docks", placed)).toEqual(["bar-keep", "gull"]);
     expect(placed[1].locations).toEqual(["docks"]);
   });
 
   it("puts a positioned entity at its position only", () => {
-    const placed = entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, groups: {} });
+    const placed = entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, generics: {} });
     expect(entityIdsAt("bar", placed)).toEqual(["alice"]);
     expect(entityIdsAt("docks", placed)).toEqual(["bar-keep", "gull"]);
   });
 
   it("keeps an entity without a position at every location it lists", () => {
-    const placed = entitiesInPlay(cast, { positions: { gull: "bar" }, groups: {} });
+    const placed = entitiesInPlay(cast, { positions: { gull: "bar" }, generics: {} });
     expect(entityIdsAt("bar", placed)).toEqual(["alice", "bar-keep", "gull"]);
     expect(entityIdsAt("docks", placed)).toEqual(["bar-keep"]);
   });
 
   it("returns the same array when nobody has a position", () => {
-    expect(entitiesInPlay(cast, { positions: {}, groups: {} })).toBe(cast);
+    expect(entitiesInPlay(cast, { positions: {}, generics: {} })).toBe(cast);
   });
 
   it("reads through the multi-location scopes too", () => {
-    expect(entityIdsAtAny(["bar"], entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, groups: {} }))).toEqual(["alice"]);
+    expect(entityIdsAtAny(["bar"], entitiesInPlay(cast, { positions: { "bar-keep": "docks" }, generics: {} }))).toEqual(["alice"]);
   });
 });
 
-const wanderer: Entity = { id: "wanderer", name: "Wanderer", kind: "individual", locations: ["bar"] };
+const wanderer: Entity = { id: "wanderer", name: "Wanderer", kind: "unique", locations: ["bar"] };
 
 describe("positionedCast", () => {
   const sylvie: Entity = { ...wanderer, id: "sylvie", persona: true };

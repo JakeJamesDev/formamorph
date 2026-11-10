@@ -20,7 +20,7 @@ const HUT = { id: 'hut', name: 'Hut', parentId: 'village' } as GameLocation;
 const WELL = { id: 'well', name: 'Well', parentId: 'village' } as GameLocation;
 // Tess starts at the well and wanders between the well and the hut, an hour at each: one turn's time.
 const TESS: Entity = {
-  id: 'tess', name: 'Tess', kind: 'individual', locations: ['well', 'hut'],
+  id: 'tess', name: 'Tess', kind: 'unique', locations: ['well', 'hut'],
   starts: [{ id: 'start', place: 'well', weight: 1, schedule: [{
     id: 'rounds', time: 'allDay', action: { kind: 'wander', places: [{ place: 'well', weight: 1 }, { place: 'hut', weight: 1 }], idle: 60 },
   }] }],
@@ -56,7 +56,7 @@ describe('a character on a Wander row', () => {
       await quietTurn('Village');
       seen.push(play.entityPositions.tess);
       // The engine placed her for the clock the turn ended on, not the one it began on.
-      expect(play.individualStates.tess.lastRun).toBe(storyMinute(play.gameTime, play.calendar));
+      expect(play.uniqueStates.tess.lastRun).toBe(storyMinute(play.gameTime, play.calendar));
     }
     expect(play.currentLocation?.id).toBe('village');
     // Each hour her idle runs out, and with two places she always goes to the other one.
@@ -73,6 +73,6 @@ describe('a character on a Wander row', () => {
       expect(play.currentLocation?.id).toBe('well');
       expect(play.entityPositions.tess).toBe('well');
     }
-    expect(play.individualStates.tess.startId).toBe('start');
+    expect(play.uniqueStates.tess.startId).toBe('start');
   });
 });

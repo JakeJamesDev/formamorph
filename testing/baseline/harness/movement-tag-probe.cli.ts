@@ -77,7 +77,7 @@ const place = (id: string) => {
 const EELHOUSE = place('loc-eelhouse');
 const GREEN = place('loc-green');
 const AT: Record<string, string> = { 'ent-odette': 'loc-eelhouse', 'ent-bram': 'loc-cottage', 'ent-wick': 'loc-green' };
-const cast: Entity[] = world.entities.flatMap((e) => (AT[e.id] ? [{ ...e, kind: 'individual' as const, locations: [AT[e.id]] }] : []));
+const cast: Entity[] = world.entities.flatMap((e) => (AT[e.id] ? [{ ...e, kind: 'unique' as const, locations: [AT[e.id]] }] : []));
 // Odette's shift and Bram's watch are Strict rows; Wick has none.
 const STATES: MovementStates = { 'ent-odette': { strict: true }, 'ent-bram': { strict: true }, 'ent-wick': { strict: false } };
 

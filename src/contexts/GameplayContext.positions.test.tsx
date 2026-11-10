@@ -11,7 +11,7 @@ import { castRoutines } from '@/lib/entityKind';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { storyMinute } from '@/lib/gameClock';
 import { placeAll, positionWorld } from '@/lib/positionPlay';
-import { PLAYER_START, type ChatMessage, type Entity, type GameLocation, type IndividualStates, type SaveRecord } from '@/types';
+import { PLAYER_START, type ChatMessage, type Entity, type GameLocation, type UniqueStates, type SaveRecord } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -47,16 +47,16 @@ const LOCATIONS = [keep, tower];
 const OPENING = storyMinute(0);
 // Two Starts, one at each place, and no schedule.
 const merchant: Entity = {
-  id: 'merchant', name: 'Merchant', kind: 'individual', locations: ['keep', 'tower'],
+  id: 'merchant', name: 'Merchant', kind: 'unique', locations: ['keep', 'tower'],
   starts: [{ id: 'at-keep', place: 'keep', weight: 1, schedule: [] }, { id: 'at-tower', place: 'tower', weight: 1, schedule: [] }],
 };
 const guard: Entity = {
-  id: 'guard', name: 'Guard', kind: 'individual', locations: ['keep'], traversable: 'anywhere',
+  id: 'guard', name: 'Guard', kind: 'unique', locations: ['keep'], traversable: 'anywhere',
   starts: [{ id: 'post', place: 'keep', weight: 1, schedule: [] }],
 };
 // Walks the keep and the tower, an hour at each.
 const watch: Entity = {
-  id: 'watch', name: 'Watch', kind: 'individual', locations: ['keep', 'tower'],
+  id: 'watch', name: 'Watch', kind: 'unique', locations: ['keep', 'tower'],
   starts: [{ id: 'round', place: 'keep', weight: 1, schedule: [{
     id: 'walk', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'keep', idle: 60 }, { place: 'tower', idle: 60 }] },
   }] }],
@@ -71,38 +71,38 @@ const load = async (live: () => Gameplay, id: string, entities: Entity[] = WORLD
 };
 
 describe('entity positions in the save', () => {
-  it('rolls one Start per Individual for a new game, saves it, and keeps it on load', async () => {
+  it('rolls one Start per Unique entity for a new game, saves it, and keeps it on load', async () => {
     const live = mount();
     // A draw at the top of the range takes each entity's last Start.
-    const book = placeAll({ positions: {}, individuals: {}, groups: {} }, positionWorld(castRoutines(WORLD), OPENING, 'keep', LOCATIONS, [], () => 0.99));
-    expect(book.individuals.merchant.startId).toBe('at-tower');
+    const book = placeAll({ positions: {}, uniques: {}, generics: {} }, positionWorld(castRoutines(WORLD), OPENING, 'keep', LOCATIONS, [], () => 0.99));
+    expect(book.uniques.merchant.startId).toBe('at-tower');
     await act(async () => {
       live().setEntityPositions(book.positions);
-      live().setIndividualStates(book.individuals);
+      live().setUniqueStates(book.uniques);
     });
     await save(live, 'save-roll');
-    await act(async () => { live().setEntityPositions({}); live().setIndividualStates({}); });
+    await act(async () => { live().setEntityPositions({}); live().setUniqueStates({}); });
     await load(live, 'save-roll');
-    expect(live().individualStates.merchant.startId).toBe('at-tower');
+    expect(live().uniqueStates.merchant.startId).toBe('at-tower');
     expect(live().entityPositions).toMatchObject({ merchant: 'tower', guard: 'keep', watch: 'keep' });
   });
 
   it('round-trips the chosen Start, follow state, wait until-time, hold, idle end and patrol stop', async () => {
     const live = mount();
-    const states: IndividualStates = {
+    const states: UniqueStates = {
       merchant: { startId: 'at-tower', lastRun: OPENING, follow: { mode: 'waiting', until: OPENING + 120, script: true } },
       guard: { startId: 'post', lastRun: OPENING, follow: { mode: 'following' } },
       watch: { startId: 'round', rowId: 'walk', lastRun: OPENING, hold: { until: OPENING + 90 }, idleEnd: OPENING + 90, stop: 1 },
     };
     await act(async () => {
       live().setEntityPositions({ merchant: 'tower', guard: 'keep', watch: 'keep' });
-      live().setIndividualStates(states);
+      live().setUniqueStates(states);
     });
-    expect(live().saveCurrentGameState().individualStates).toEqual(states);
+    expect(live().saveCurrentGameState().uniqueStates).toEqual(states);
     await save(live, 'save-states');
-    await act(async () => { live().setIndividualStates({}); live().setEntityPositions({}); });
+    await act(async () => { live().setUniqueStates({}); live().setEntityPositions({}); });
     await load(live, 'save-states');
-    expect(live().individualStates).toEqual(states);
+    expect(live().uniqueStates).toEqual(states);
     expect(live().entityPositions).toEqual({ merchant: 'tower', guard: 'keep', watch: 'keep' });
     expect(live().entityFollowers).toEqual(['guard']);
     expect(live().entityWaiting).toEqual(['merchant']);
@@ -111,26 +111,26 @@ describe('entity positions in the save', () => {
   it('writes no fields when nobody has a position or a state', () => {
     const live = mount();
     const state = live().saveCurrentGameState();
-    expect(['entityPositions', 'individualStates'].filter((key) => key in state)).toEqual([]);
+    expect(['entityPositions', 'uniqueStates'].filter((key) => key in state)).toEqual([]);
   });
 
-  it('places every Individual from the engine when a save from before it loads, its followers Following', async () => {
+  it('places every Unique entity from the engine when a save from before it loads, its followers Following', async () => {
     const live = mount();
     await act(async () => { live().setEntityPositions({ merchant: 'tower', guard: 'tower' }); });
     await save(live, 'save-legacy');
     // A save written before the engine: positions and a followers list, no engine state.
     const record = await getSaveRecord('save-legacy') as SaveRecord;
-    const { individualStates: _none, ...current } = record.currentState;
+    const { uniqueStates: _none, ...current } = record.currentState;
     await putSaveRecord({ ...record, currentState: { ...current, locationId: 'tower', entityFollowers: ['guard', 'gone'] } as typeof current });
     // A draw at the bottom of the range would roll the merchant's first Start, at the keep.
     const draw = vi.spyOn(Math, 'random').mockReturnValue(0);
     await load(live, 'save-legacy');
     draw.mockRestore();
-    expect(Object.keys(live().individualStates).sort()).toEqual(['guard', 'merchant', 'watch']);
+    expect(Object.keys(live().uniqueStates).sort()).toEqual(['guard', 'merchant', 'watch']);
     expect(live().entityFollowers).toEqual(['guard']);
     // A saved place that a Start begins at keeps that Start; a follower stays with the player.
     expect(live().entityPositions).toMatchObject({ merchant: 'tower', guard: 'tower', watch: 'keep' });
-    expect(live().individualStates.merchant.startId).toBe('at-tower');
+    expect(live().uniqueStates.merchant.startId).toBe('at-tower');
     expect('entityFollowers' in live().saveCurrentGameState()).toBe(false);
   });
 
@@ -138,13 +138,13 @@ describe('entity positions in the save', () => {
     const live = mount();
     await act(async () => {
       live().setEntityPositions({ merchant: 'tower', gone: 'keep' });
-      live().setIndividualStates({ merchant: { startId: 'at-tower', lastRun: OPENING }, gone: { startId: 'x', lastRun: OPENING } });
+      live().setUniqueStates({ merchant: { startId: 'at-tower', lastRun: OPENING }, gone: { startId: 'x', lastRun: OPENING } });
     });
     await save(live, 'save-deleted');
     await load(live, 'save-deleted', dropLocationFromEntities('tower', WORLD), [keep]);
-    expect(live().individualStates.merchant.startId).toBe('at-keep');
+    expect(live().uniqueStates.merchant.startId).toBe('at-keep');
     expect(live().entityPositions.merchant).toBe('keep');
-    expect('gone' in live().entityPositions || 'gone' in live().individualStates).toBe(false);
+    expect('gone' in live().entityPositions || 'gone' in live().uniqueStates).toBe(false);
   });
 
   it('keeps the met set across a save and a load', async () => {
@@ -162,7 +162,7 @@ describe('entity positions in the save', () => {
     const live = mount();
     await act(async () => {
       live().setEntityPositions({ merchant: 'keep', guard: 'keep' });
-      live().setIndividualStates({
+      live().setUniqueStates({
         merchant: { startId: 'at-keep', lastRun: OPENING }, guard: { startId: 'post', lastRun: OPENING, follow: { mode: 'following' } },
       });
     });
@@ -175,7 +175,7 @@ describe('entity positions in the save', () => {
     const mira = { entity: { id: 'mira', name: 'Mira', aiDescription: 'A ferry hand.' }, locationId: 'keep', sourceTurnId: 't1' };
     await act(async () => {
       live().setDiscoveredEntities([mira]);
-      live().setIndividualStates({ mira: { startId: 'discovered', lastRun: OPENING, follow: { mode: 'following' } } });
+      live().setUniqueStates({ mira: { startId: 'discovered', lastRun: OPENING, follow: { mode: 'following' } } });
     });
     await act(async () => { live().placeCast(positionWorld(castRoutines([], [mira]), OPENING, 'tower', LOCATIONS, [])); });
     expect(live().discoveredEntities[0].locationId).toBe('tower');
@@ -190,16 +190,16 @@ describe('entity positions in the save', () => {
     });
     await save(live, 'save-persona');
     await load(live, 'save-persona');
-    expect('merchant' in live().entityPositions || 'merchant' in live().individualStates).toBe(false);
+    expect('merchant' in live().entityPositions || 'merchant' in live().uniqueStates).toBe(false);
   });
 });
 
-describe('Group presences in the save', () => {
+describe('Generic presences in the save', () => {
   // The tower stands in the keep, so a patrol can walk between them.
   const linked = [keep, { ...tower, parentId: 'keep' }];
   // One Start walks the keep and the tower, an hour at each; the other stays at the tower.
   const herd: Entity = {
-    id: 'herd', name: 'Herd', kind: 'group', locations: ['keep', 'tower'],
+    id: 'herd', name: 'Herd', kind: 'generic', locations: ['keep', 'tower'],
     starts: [
       { id: 'walker', place: 'keep', weight: 1, schedule: [{
         id: 'walk', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'keep', idle: 60 }, { place: 'tower', idle: 60 }] },
@@ -207,55 +207,55 @@ describe('Group presences in the save', () => {
       { id: 'sitter', place: 'tower', weight: 1, schedule: [] },
     ],
   };
-  const groups = { herd: { walker: { position: 'tower', rowId: 'walk', lastRun: OPENING, idleEnd: OPENING + 30, stop: 1 }, sitter: { position: 'tower', lastRun: OPENING } } };
+  const generics = { herd: { walker: { position: 'tower', rowId: 'walk', lastRun: OPENING, idleEnd: OPENING + 30, stop: 1 }, sitter: { position: 'tower', lastRun: OPENING } } };
 
   it('round-trips each presence with its Patrol stop and idle end', async () => {
     const live = mount();
-    await act(async () => { live().setGroupStates(groups); });
-    expect(live().saveCurrentGameState().groupStates).toEqual(groups);
-    await save(live, 'save-group');
-    await act(async () => { live().setGroupStates({}); });
-    await load(live, 'save-group', [herd], linked);
-    expect(live().groupStates).toEqual(groups);
+    await act(async () => { live().setGenericStates(generics); });
+    expect(live().saveCurrentGameState().genericStates).toEqual(generics);
+    await save(live, 'save-generic');
+    await act(async () => { live().setGenericStates({}); });
+    await load(live, 'save-generic', [herd], linked);
+    expect(live().genericStates).toEqual(generics);
   });
 
   it('begins a Start added after the save at its place, and drops the record of a deleted Start', async () => {
     const live = mount();
-    await act(async () => { live().setGroupStates(groups); });
-    await save(live, 'save-group-grown');
+    await act(async () => { live().setGenericStates(generics); });
+    await save(live, 'save-generic-grown');
     const grown: Entity = { ...herd, starts: [herd.starts![0], { id: 'pup', place: 'keep', weight: 1, schedule: [] }] };
-    await load(live, 'save-group-grown', [grown], linked);
-    expect(Object.keys(live().groupStates.herd)).toEqual(['walker', 'pup']);
-    expect(live().groupStates.herd.pup.position).toBe('keep');
-    expect(live().groupStates.herd.walker).toMatchObject({ position: 'tower', stop: 1, idleEnd: OPENING + 30 });
+    await load(live, 'save-generic-grown', [grown], linked);
+    expect(Object.keys(live().genericStates.herd)).toEqual(['walker', 'pup']);
+    expect(live().genericStates.herd.pup.position).toBe('keep');
+    expect(live().genericStates.herd.walker).toMatchObject({ position: 'tower', stop: 1, idleEnd: OPENING + 30 });
   });
 
-  it('writes no field when no Group has a presence', () => {
-    expect('groupStates' in mount()().saveCurrentGameState()).toBe(false);
+  it('writes no field when no Generic entity has a presence', () => {
+    expect('genericStates' in mount()().saveCurrentGameState()).toBe(false);
   });
 });
 
 describe("the player's starting location in the save", () => {
   const linked = [keep, { ...tower, parentId: 'keep' }];
   const companion: Entity = {
-    id: 'kit', name: 'Kit', kind: 'individual', traversable: 'anywhere',
+    id: 'kit', name: 'Kit', kind: 'unique', traversable: 'anywhere',
     starts: [{ id: 'beside', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }],
   };
 
   it('round-trips the resolved place and the follow state', async () => {
     const live = mount();
-    const states: IndividualStates = { kit: { startId: 'beside', lastRun: OPENING, follow: { mode: 'following' } } };
+    const states: UniqueStates = { kit: { startId: 'beside', lastRun: OPENING, follow: { mode: 'following' } } };
     await act(async () => {
       live().setPlayerStartLocationId('keep');
       live().setEntityPositions({ kit: 'keep' });
-      live().setIndividualStates(states);
+      live().setUniqueStates(states);
     });
     expect(live().saveCurrentGameState().playerStartLocationId).toBe('keep');
     await save(live, 'save-start');
-    await act(async () => { live().setPlayerStartLocationId(undefined); live().setIndividualStates({}); });
+    await act(async () => { live().setPlayerStartLocationId(undefined); live().setUniqueStates({}); });
     await load(live, 'save-start', [companion], linked);
     expect(live().playerStartLocationId).toBe('keep');
-    expect(live().individualStates.kit).toEqual(states.kit);
+    expect(live().uniqueStates.kit).toEqual(states.kit);
     expect(live().entityFollowers).toEqual(['kit']);
   });
 
@@ -264,7 +264,7 @@ describe("the player's starting location in the save", () => {
     await act(async () => { live().setEntityPositions({ kit: 'keep' }); });
     await save(live, id);
     const record = await getSaveRecord(id) as SaveRecord;
-    const { individualStates: _none, playerStartLocationId: _start, ...current } = record.currentState;
+    const { uniqueStates: _none, playerStartLocationId: _start, ...current } = record.currentState;
     await putSaveRecord({ ...record, messageHistory, currentState: { ...current, locationId: 'tower' } });
   };
 

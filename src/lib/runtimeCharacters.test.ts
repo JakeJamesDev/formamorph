@@ -38,8 +38,8 @@ describe('selectReachableVisitors', () => {
   });
 
   it('reads a moved position over the listed locations', () => {
-    expect(selectReachableVisitors(['Sarah'], ['b'], authored, [], { positions: { sarah: 'c' }, groups: {} })).toEqual([]);
-    expect(selectReachableVisitors(['Alice'], ['b'], authored, [], { positions: { alice: 'b' }, groups: {} })).toEqual([alice]);
+    expect(selectReachableVisitors(['Sarah'], ['b'], authored, [], { positions: { sarah: 'c' }, generics: {} })).toEqual([]);
+    expect(selectReachableVisitors(['Alice'], ['b'], authored, [], { positions: { alice: 'b' }, generics: {} })).toEqual([alice]);
   });
 });
 

@@ -8,7 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { knownInOf, withKnownIn } from '@/lib/entityPresence';
-import { isGroup } from '@/lib/entityKind';
+import { isGeneric } from '@/lib/entityKind';
 import type { PickMode } from '@/lib/entityPicking';
 import { KNOWN_IN_HELP, KNOWN_IN_LABEL, PICK_MODE_HELP, ROUTINE_MAP_HELP, type KnownInChoice } from '@/lib/entityPresenceCopy';
 import { fieldFrame } from '@/lib/historyField';
@@ -124,7 +124,7 @@ export default function EntityPickCard({
               ))}
             </ToggleGroup>
           )}
-          <Hint>{mode === 'locations' && !entity.customPersona && !isGroup(entity) ? ROUTINE_MAP_HELP : PICK_MODE_HELP[mode]}</Hint>
+          <Hint>{mode === 'locations' && !entity.customPersona && !isGeneric(entity) ? ROUTINE_MAP_HELP : PICK_MODE_HELP[mode]}</Hint>
           {entity.customPersona && <PersonaPresenceHint />}
           {!entity.customPersona && mode === 'locations' && <RoutineTab entity={entity} onChange={onChange} />}
           {!entity.customPersona && mode === 'knownIn' && (

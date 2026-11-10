@@ -1,4 +1,4 @@
-import { isGroup } from '@/lib/entityKind';
+import { isGeneric } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import type { ActionKind } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -11,7 +11,7 @@ import type { Entity, EntityStart, ScheduleRange, ScheduleRow } from '@/types';
  * for the Start on show and its selected row.
  */
 
-/** `routine`: a place the routine uses. `here`: where another Start of a Group begins. `reach`: a listed place it
+/** `routine`: a place the routine uses. `here`: where another Start of a Generic entity begins. `reach`: a listed place it
  *  can be led to. `plain`: reachable under Anywhere. `faded`: it can never get there. */
 export type RoutinePlaceKind = 'routine' | 'here' | 'reach' | 'plain' | 'faded';
 
@@ -99,20 +99,20 @@ function sharedTone(spans: readonly RoutineSpan[]): ActionKind | undefined {
   return tones.size === 1 && only !== 'free' ? only : undefined;
 }
 
-/** The Routine view of `entity` on a map of `graph`. A Group has no Traversable, and its other Starts' places
+/** The Routine view of `entity` on a map of `graph`. A Generic entity has no Traversable, and its other Starts' places
  *  show as `here`. */
 export function routineView(entity: Entity, selection: RoutineSelection, graph: PlaceGraph): RoutineView {
   const marks = new Map<string, RoutineMark>(graph.locations.map((l) => [l.id, { kind: 'faded' }]));
   const lines: RoutineLine[] = [];
   const mark = (id: string, next: RoutineMark) => { if (marks.has(id)) marks.set(id, next); };
 
-  const group = isGroup(entity);
+  const generic = isGeneric(entity);
   const starts = entity.starts ?? [];
   const start = starts.find((s) => s.id === selection.startId) ?? starts[0];
   if (!start) return { marks, lines };
   const selected = start.schedule.find((r) => r.id === selection.rowId) ?? null;
 
-  const traversable = group ? 'anywhere' : entity.traversable ?? 'anywhere';
+  const traversable = generic ? 'anywhere' : entity.traversable ?? 'anywhere';
   if (traversable === 'anywhere') {
     for (const id of startReach(start.place, graph)) mark(id, { kind: 'plain' });
   } else {
@@ -142,7 +142,7 @@ export function routineView(entity: Entity, selection: RoutineSelection, graph: 
   }
   const at = marks.get(start.place);
   if (at) marks.set(start.place, { ...at, kind: 'routine', begin: true });
-  if (group) {
+  if (generic) {
     for (const other of starts) {
       if (other !== start && marks.get(other.place)?.kind !== 'routine') mark(other.place, { kind: 'here' });
     }

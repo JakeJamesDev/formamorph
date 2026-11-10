@@ -50,7 +50,7 @@ vi.mock('../lib/UtilityComponents', () => ({ SoundUpload: () => null }));
 
 const place = (id: string, name: string): GameLocation => ({ id, name } as GameLocation);
 const start = (id: string, at: string, schedule: EntityStart['schedule'] = []): EntityStart => ({ id, place: at, weight: 1, schedule });
-const group = (id: string, starts: EntityStart[]): Entity => ({ id, name: id, kind: 'group', starts, locations: [...new Set(starts.map((s) => s.place))] });
+const generic = (id: string, starts: EntityStart[]): Entity => ({ id, name: id, kind: 'generic', starts, locations: [...new Set(starts.map((s) => s.place))] });
 
 const DAY = { start: daypartStart('morning'), end: daypartEnd('afternoon') };
 
@@ -97,18 +97,18 @@ const open = async (entities: Entity[], locationId = 'tavern') => {
 const starts = (ctx: Handle, id: string) => ctx.entities.find((e) => e.id === id)!.starts!;
 const box = (name: string) => screen.getByRole('checkbox', { name });
 
-describe('the location Entities picker, for a Group', () => {
-  it('adds a Start with no rows here when a Group is picked', async () => {
-    const { ctx } = await open([group('Crowd', [start('c1', 'market')])]);
+describe('the location Entities picker, for a Generic entity', () => {
+  it('adds a Start with no rows here when a Generic entity is picked', async () => {
+    const { ctx } = await open([generic('Crowd', [start('c1', 'market')])]);
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Crowd' }));
     const added = starts(ctx(), 'Crowd').find((s) => s.place === 'tavern');
     expect(added).toMatchObject({ place: 'tavern', schedule: [] });
     expect(starts(ctx(), 'Crowd')).toHaveLength(2);
   });
 
-  it('removes every Start of the Group that begins here with its rows, keeps the others, and undoes in one step', async () => {
+  it('removes every Start of the Generic entity that begins here with its rows, keeps the others, and undoes in one step', async () => {
     const stay = { id: 'r1', time: DAY, action: { kind: 'stay', place: 'tavern' } } as const;
-    const crowd = group('Crowd', [start('c1', 'tavern', [stay]), start('c2', 'tavern'), start('c3', 'market')]);
+    const crowd = generic('Crowd', [start('c1', 'tavern', [stay]), start('c2', 'tavern'), start('c3', 'market')]);
     const { ctx, history } = await open([crowd]);
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Crowd' }));
     expect(starts(ctx(), 'Crowd').map((s) => s.id)).toEqual(['c3']);
@@ -117,8 +117,8 @@ describe('the location Entities picker, for a Group', () => {
     expect(starts(ctx(), 'Crowd')[0].schedule).toEqual([stay]);
   });
 
-  it('refuses to remove the last Start, keeps the Group ticked and says why', async () => {
-    const { ctx } = await open([group('Crowd', [start('c1', 'tavern')]), group('Moths', [start('m1', 'tavern'), start('m2', 'market')])]);
+  it('refuses to remove the last Start, keeps the Generic entity ticked and says why', async () => {
+    const { ctx } = await open([generic('Crowd', [start('c1', 'tavern')]), generic('Moths', [start('m1', 'tavern'), start('m2', 'market')])]);
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Crowd' }));
     expect(starts(ctx(), 'Crowd').map((s) => s.id)).toEqual(['c1']);
     await waitFor(() => expect(box('Crowd')).toBeChecked());
@@ -126,9 +126,9 @@ describe('the location Entities picker, for a Group', () => {
     expect(box('Moths')).toBeChecked();
   });
 
-  it('names every refused Group and still removes the Group that has another place', async () => {
+  it('names every refused Generic entity and still removes the Generic entity that has another place', async () => {
     const { ctx } = await open([
-      group('Crowd', [start('c1', 'tavern')]), group('Moths', [start('m1', 'tavern')]), group('Rats', [start('r1', 'tavern'), start('r2', 'market')]),
+      generic('Crowd', [start('c1', 'tavern')]), generic('Moths', [start('m1', 'tavern')]), generic('Rats', [start('r1', 'tavern'), start('r2', 'market')]),
     ]);
     await userEvent.click(await screen.findByRole('button', { name: 'Clear All' }));
     expect(starts(ctx(), 'Rats').map((s) => s.id)).toEqual(['r2']);
@@ -137,7 +137,7 @@ describe('the location Entities picker, for a Group', () => {
   });
 
   it('clears the refusal on the next pick that is not refused', async () => {
-    await open([group('Crowd', [start('c1', 'tavern')]), group('Moths', [start('m1', 'market')])]);
+    await open([generic('Crowd', [start('c1', 'tavern')]), generic('Moths', [start('m1', 'market')])]);
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Crowd' }));
     expect(await screen.findByTestId('entities-refusal')).toBeInTheDocument();
     await userEvent.click(box('Moths'));

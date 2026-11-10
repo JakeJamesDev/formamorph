@@ -1,9 +1,9 @@
-import type { Entity, EntityPositions, GameLocation, GroupStates, PersonaRef } from "@/types";
+import type { Entity, EntityPositions, GameLocation, GenericStates, PersonaRef } from "@/types";
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import {
-  isGroup, routineNames, withGroupPlacesMapped, withGroupStart, withoutGroupStartsAt, withoutRoutinePlace,
+  isGeneric, routineNames, withGenericPlacesMapped, withGenericStart, withoutGenericStartsAt, withoutRoutinePlace,
 } from "@/lib/entityKind";
-import { groupPlaces } from "@/lib/positionEngine";
+import { genericPlaces } from "@/lib/positionEngine";
 import { randomUUID } from "@/lib/uuid";
 
 /**
@@ -11,7 +11,7 @@ import { randomUUID } from "@/lib/uuid";
  * they belong to; every roster that asks "who is at this place" reads it through here, so there is one
  * inversion rather than one per caller.
  *
- * During play a runtime layer sits on top: an Individual is at its position only, and a Group at the places its
+ * During play a runtime layer sits on top: a Unique entity is at its position only, and a Generic entity at the places its
  * presences stand, each once. `entitiesInPlay` applies it, so the rosters read it unchanged.
  *
  * Roster order is the entity array's own order — the author's ordering of the cast — since an
@@ -43,44 +43,44 @@ export function withEntityLocations(entity: Entity, locationIds: string[]): Enti
 }
 
 /** `entity` carried into a world, `map` naming each of its locations the world can place (source id → world id).
- *  A Group keeps its routine through the map; any other entity belongs to the mapped places. */
+ *  A Generic entity keeps its routine through the map; any other entity belongs to the mapped places. */
 export function placedIn(entity: Entity, map: Readonly<Record<string, string>>): Entity {
-  return isGroup(entity) ? withGroupPlacesMapped(entity, map, randomUUID) : withEntityLocations(entity, Object.values(map));
+  return isGeneric(entity) ? withGenericPlacesMapped(entity, map, randomUUID) : withEntityLocations(entity, Object.values(map));
 }
 
 /** Whether a Start of `entity` begins at `locationId`. */
 export const startsAt =(entity: Entity, locationId: string) => (entity.starts ?? []).some((start) => start.place === locationId);
 
-/** `entities` with a Start added at `locationId` to each picked Group that has none there, and the Starts there
- *  removed from each Group not picked — the write side of a location-first edit. A Group keeps its last Start,
- *  and an Individual is never touched. Entities that don't change are returned by reference. */
+/** `entities` with a Start added at `locationId` to each picked Generic entity that has none there, and the Starts there
+ *  removed from each Generic entity not picked — the write side of a location-first edit. A Generic entity keeps its last Start,
+ *  and a Unique entity is never touched. Entities that don't change are returned by reference. */
 export function setLocationRoster(locationId: string, entityIds: string[], entities: Entity[]): Entity[] {
   const wanted = new Set(entityIds);
   return entities.map((entity) => {
-    if (!isGroup(entity)) return entity;
+    if (!isGeneric(entity)) return entity;
     const has = startsAt(entity, locationId);
     const should = wanted.has(entity.id);
     if (has === should) return entity;
-    return should ? withGroupStart(entity, locationId, randomUUID) : withoutGroupStartsAt(entity, locationId);
+    return should ? withGenericStart(entity, locationId, randomUUID) : withoutGenericStartsAt(entity, locationId);
   });
 }
 
-/** Where entities stand in play: each Individual's position, and each Group's presences. */
+/** Where entities stand in play: each Unique entity's position, and each Generic entity's presences. */
 export interface Standings {
   positions: Readonly<EntityPositions>;
-  groups: Readonly<GroupStates>;
+  generics: Readonly<GenericStates>;
 }
 
-/** `entities` as they stand in play: an Individual with a position lists that location only, and a Group with
+/** `entities` as they stand in play: a Unique entity with a position lists that location only, and a Generic entity with
  *  presences the places they stand at, each once (Q131). The same array when nobody is placed. */
-export function entitiesInPlay(entities: Entity[], { positions, groups }: Standings): Entity[] {
-  if (!entities.some((e) => e.id in positions || e.id in groups)) return entities;
-  const places = groupPlaces(groups);
+export function entitiesInPlay(entities: Entity[], { positions, generics }: Standings): Entity[] {
+  if (!entities.some((e) => e.id in positions || e.id in generics)) return entities;
+  const places = genericPlaces(generics);
   return entities.map((entity) => {
     const at = positions[entity.id];
     if (at !== undefined) return { ...entity, locations: [at] };
-    const group = places[entity.id];
-    return group ? { ...entity, locations: group } : entity;
+    const generic = places[entity.id];
+    return generic ? { ...entity, locations: generic } : entity;
   });
 }
 

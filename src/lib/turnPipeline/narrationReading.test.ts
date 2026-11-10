@@ -104,11 +104,11 @@ describe('selectVisitorAdditions', () => {
   const ferryRoad: Connection = { id: 'road', a: 'l1', b: 'l5', aToB: {}, bToA: {} };
   const NOON = storyMinute(4);
 
-  /** An Individual starting at `place`, with an empty schedule unless `schedule` gives one. */
-  const individual = (base: Entity, place: string, over: Partial<Entity> = {}, schedule: EntityStart['schedule'] = []): Entity => ({
-    ...base, kind: 'individual', locations: [place], starts: [{ id: 's', place, weight: 1, schedule }], traversable: 'anywhere', ...over,
+  /** A Unique entity starting at `place`, with an empty schedule unless `schedule` gives one. */
+  const unique = (base: Entity, place: string, over: Partial<Entity> = {}, schedule: EntityStart['schedule'] = []): Entity => ({
+    ...base, kind: 'unique', locations: [place], starts: [{ id: 's', place, weight: 1, schedule }], traversable: 'anywhere', ...over,
   });
-  const maren = individual(MAREN, 'l2');
+  const maren = unique(MAREN, 'l2');
 
   interface PullOptions {
     location?: GameLocation;
@@ -122,7 +122,7 @@ describe('selectVisitorAdditions', () => {
   const pull = (prose: string, cast: Entity[], over: PullOptions = {}) => {
     const location = over.location ?? here;
     const positionsWorld = positionWorld(castRoutines(cast), NOON, location.id, world, over.connections ?? [ferryRoad], () => 0);
-    const placed = placeAll({ positions: {}, individuals: {}, groups: {} }, positionsWorld);
+    const placed = placeAll({ positions: {}, uniques: {}, generics: {} }, positionsWorld);
     const seated = { ...placed, positions: { ...placed.positions, ...over.positions } };
     const book = over.before ? over.before(seated, positionsWorld) : seated;
     const after = selectVisitorAdditions({
@@ -154,30 +154,30 @@ describe('selectVisitorAdditions', () => {
   });
 
   it('pulls from a child at a top-level place, which has no siblings', () => {
-    const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l1');
+    const tamsin = unique(ent('e3', 'Tamsin Reed'), 'l1');
     expect(pullWith('Tamsin Reed walks in.', [tamsin], { location: loc('l0', 'Sedge Landing') })).toEqual(['Tamsin Reed']);
   });
 
   it('never pulls a character two levels down', () => {
-    expect(pullWith('Tamsin Reed climbs up from the bunk.', [individual(ent('e3', 'Tamsin Reed'), 'l4')])).toEqual([]);
+    expect(pullWith('Tamsin Reed climbs up from the bunk.', [unique(ent('e3', 'Tamsin Reed'), 'l4')])).toEqual([]);
   });
 
   it('never pulls a name spoken only inside dialogue', () => {
-    expect(pullWith('The deckhand calls, "Tamsin Reed, up here!"', [individual(ent('e3', 'Tamsin Reed'), 'l3')])).toEqual([]);
+    expect(pullWith('The deckhand calls, "Tamsin Reed, up here!"', [unique(ent('e3', 'Tamsin Reed'), 'l3')])).toEqual([]);
   });
 
-  it('never pulls a Group, and anchors no copy of it', () => {
+  it('never pulls a Generic entity, and anchors no copy of it', () => {
     const herd: Entity = {
-      ...ent('e3', 'Tamsin Reed'), kind: 'group', locations: ['l2', 'l3'],
+      ...ent('e3', 'Tamsin Reed'), kind: 'generic', locations: ['l2', 'l3'],
       starts: [{ id: 'a', place: 'l2', weight: 1, schedule: [] }, { id: 'b', place: 'l3', weight: 1, schedule: [] }],
     };
     const { book, after } = pull('Tamsin Reed comes over to the jetty.', [herd]);
     expect(after).toBe(book);
-    expect(Object.values(after.groups.e3).map((p) => p.position)).toEqual(['l2', 'l3']);
+    expect(Object.values(after.generics.e3).map((p) => p.position)).toEqual(['l2', 'l3']);
   });
 
   describe('across links', () => {
-    const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l5');
+    const tamsin = unique(ent('e3', 'Tamsin Reed'), 'l5');
     const named = 'Tamsin Reed comes over to the jetty.';
     const far = (c: Connection): Connection => ({ ...c, distance: 'far' });
 
@@ -201,7 +201,7 @@ describe('selectVisitorAdditions', () => {
     ['parent', 'l0'],
   ])('the routine, from a %s', (_kind, from) => {
     const named = 'Tamsin Reed comes over to the jetty.';
-    const tamsin = (over: Partial<Entity>, schedule: EntityStart['schedule'] = []) => individual(ent('e3', 'Tamsin Reed'), from, over, schedule);
+    const tamsin = (over: Partial<Entity>, schedule: EntityStart['schedule'] = []) => unique(ent('e3', 'Tamsin Reed'), from, over, schedule);
     const wander = (...places: string[]): EntityStart['schedule'] =>
       [{ id: 'w', time: 'allDay', action: { kind: 'wander', places: places.map((place) => ({ place, weight: 1 })), idle: 600 } }];
 
@@ -223,7 +223,7 @@ describe('selectVisitorAdditions', () => {
       expect(pullWith(named, [tamsin({}, strict)])).toEqual([]);
     });
 
-    const following = (book: PositionBook, w: PositionWorld) => startFollowing(book, w.routines.get('e3')!, w.scene);
+    const following = (book: PositionBook, w: PositionWorld) => startFollowing(book, w.uniques.get('e3')!, w.scene);
 
     it('never pulls a follower', () => {
       expect(pullWith(named, [tamsin({})], { before: following })).toEqual([]);
@@ -262,26 +262,26 @@ describe('selectVisitorAdditions', () => {
 
     it('goes back from a Stay row once the player leaves', () => {
       const stay: EntityStart['schedule'] = [{ id: 'mend', time: 'allDay', action: { kind: 'stay', place: 'l2' } }];
-      expect(afterLeaving([individual(ent('e3', 'Tamsin Reed'), 'l2', {}, stay)], 1)).toBe('l2');
+      expect(afterLeaving([unique(ent('e3', 'Tamsin Reed'), 'l2', {}, stay)], 1)).toBe('l2');
     });
 
     it('goes back from a Wander row only when its idle runs out', () => {
       const wander: EntityStart['schedule'] = [{ id: 'w', time: 'allDay', action: { kind: 'wander', places: [{ place: 'l2', weight: 1 }], idle: 120 } }];
-      const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l2', {}, wander);
+      const tamsin = unique(ent('e3', 'Tamsin Reed'), 'l2', {}, wander);
       expect(afterLeaving([tamsin], 60)).toBe('l1');
       expect(afterLeaving([tamsin], 121)).toBe('l2');
     });
 
     it('goes back from a Patrol row only when its idle runs out', () => {
       const patrol: EntityStart['schedule'] = [{ id: 'p', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'l2', idle: 120 }] } }];
-      const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l2', {}, patrol);
+      const tamsin = unique(ent('e3', 'Tamsin Reed'), 'l2', {}, patrol);
       expect(afterLeaving([tamsin], 60)).toBe('l1');
       expect(afterLeaving([tamsin], 121)).toBe('l2');
     });
   });
 
   describe('where it stands in play', () => {
-    const tamsin = individual(ent('e3', 'Tamsin Reed'), 'l3');
+    const tamsin = unique(ent('e3', 'Tamsin Reed'), 'l3');
     const named = 'Tamsin Reed climbs up to the jetty.';
 
     it('reads its position over its listed locations', () => {

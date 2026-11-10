@@ -23,7 +23,7 @@ const day: ScheduleRow[] = [
   timed('patrol', 14, 18, { kind: 'patrol', stops: [{ place: 'wall', idle: 30 }, { place: 'gate', idle: 30 }, { place: 'wall', idle: 30 }] }),
 ];
 const farrier = (traversable: Traversable = 'anywhere', schedule = day): Entity => ({
-  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'individual', traversable,
+  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique', traversable,
   starts: [
     { id: 's1', place: 'smithy', weight: 1, schedule },
     { id: 's2', place: 'gate', weight: 1, schedule: [] },
@@ -37,12 +37,12 @@ const pairs = (lines: RoutineLine[]) => lines.map((l) => `${l.source}>${l.target
 const label = (from: number, to: number) => rangeText({ start: from * 60, end: to * 60 });
 
 describe("a Start at the player's starting location", () => {
-  const companion = (kind: 'individual' | 'group'): Entity => ({
+  const companion = (kind: 'unique' | 'generic'): Entity => ({
     ...farrier(), kind, starts: [{ id: 'p', place: PLAYER_START, weight: 1, schedule: [timed('stay', 6, 10, { kind: 'stay', place: 'island' })] }],
   });
 
   it('draws no Starts Here flag, so the key lists none, and offers every place', () => {
-    for (const kind of ['individual', 'group'] as const) {
+    for (const kind of ['unique', 'generic'] as const) {
       const v = view(companion(kind));
       expect([...v.marks.values()].some((m) => m.kind === 'routine' && m.begin)).toBe(false);
       expect(routineKeyEntries(v)).not.toContain('start');
@@ -147,18 +147,18 @@ describe('reach', () => {
   });
 });
 
-describe('a Group with two Starts', () => {
-  // The farrier's routine on its first Start, a second Start on the ridge, and a Can Also Go list a Group ignores.
+describe('a Generic entity with two Starts', () => {
+  // The farrier's routine on its first Start, a second Start on the ridge, and a Can Also Go list a Generic entity ignores.
   const herd = (secondPlace = 'ridge'): Entity => ({
-    ...farrier(['island']), id: 'herd', kind: 'group',
+    ...farrier(['island']), id: 'herd', kind: 'generic',
     starts: [{ id: 's1', place: 'smithy', weight: 1, schedule: day }, { id: 's2', place: secondPlace, weight: 1, schedule: [] }],
   });
-  const individual = view(farrier());
+  const unique = view(farrier());
 
-  it('draws the Start on show as an Individual’s, spans, tones, flag and Patrol arrows alike', () => {
+  it('draws the Start on show as a Unique entity’s, spans, tones, flag and Patrol arrows alike', () => {
     const v = view(herd());
-    for (const id of ['smithy', 'inn', 'market', 'square', 'wall', 'gate']) expect(markOf(v, id)).toEqual(markOf(individual, id));
-    expect(pairs(v.lines)).toEqual(pairs(individual.lines));
+    for (const id of ['smithy', 'inn', 'market', 'square', 'wall', 'gate']) expect(markOf(v, id)).toEqual(markOf(unique, id));
+    expect(pairs(v.lines)).toEqual(pairs(unique.lines));
   });
 
   it('marks where the other Start begins as Is Here, and nothing of its routine', () => {
@@ -174,10 +174,10 @@ describe('a Group with two Starts', () => {
   });
 
   it('keeps the routine look where the other Start begins at a place the Start on show uses', () => {
-    expect(markOf(view(herd('gate')), 'gate')).toEqual(markOf(individual, 'gate'));
+    expect(markOf(view(herd('gate')), 'gate')).toEqual(markOf(unique, 'gate'));
   });
 
-  it('draws no Can Also Go mark and reaches what an Anywhere Individual reaches', () => {
+  it('draws no Can Also Go mark and reaches what an Anywhere Unique entity reaches', () => {
     const v = view(herd());
     expect([...v.marks.values()].some((m) => m.kind === 'reach')).toBe(false);
     expect(markOf(v, 'village')?.kind).toBe('plain');

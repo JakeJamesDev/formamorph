@@ -435,10 +435,10 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `sound` | | [MediaAsset](#media-fields) | A sound |
 | `model` | | [MediaAsset](#media-fields) | A 3D model |
 | `vrmPick` | | [Avatar pick](#avatar-picks) | The entity's Avatar. Absent = none |
-| `locations` | | String[] | The `id`s of the locations where the entity can be. For a group or an individual the app writes it from `starts`: every Start place and every schedule place |
-| `kind` | | `"group"` \| `"individual"` | A group runs every Start at once, one presence each. An individual is one body in one place. Absent for the Custom Persona and an entity with no locations |
-| `starts` | | [Start](#starts)[] | The entity's beginnings, in author order. An individual picks one by `weight` in each new game. A group runs all of them |
-| `traversable` | | `"anywhere"` \| String[] | Where an individual may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only. A group ignores it |
+| `locations` | | String[] | The `id`s of the locations where the entity can be. For a Unique or a Generic entity the app writes it from `starts`: every Start place and every schedule place |
+| `kind` | | `"unique"` \| `"generic"` | A Unique entity is one body in one place. A Generic entity runs every Start at once, one presence each. Absent for the Custom Persona and an entity with no locations |
+| `starts` | | [Start](#starts)[] | The entity's beginnings, in author order. A Unique entity picks one by `weight` in each new game. A Generic entity runs all of them |
+| `traversable` | | `"anywhere"` \| String[] | Where a Unique entity may be led or called beyond its schedule: anywhere, or exact location `id`s. Absent = an empty list: its schedule places only. A Generic entity ignores it |
 | `knownIn` | | `"nowhere"` \| String[] | **Known In**: where the AI knows of the entity while it isn't present. `"nowhere"`, or location `id`s, each with every location below it. Absent = **Nearby** |
 | `relationships` | | `{ "targetId", "label" }`[] | **Relationships**, in author order, at most one per target. `targetId` is another entity's `id`, or `"you"` for the played persona. `label` is the target's role toward this entity |
 | `groupId` | | String \| `null` | Editor-only. The [entity group's](#entity-groups) `id`. Absent or `null` = no group |
@@ -462,9 +462,9 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 |---|---|---|
 | `id` | String | Unique within the entity |
 | `place` | String | The location `id` where the entity begins, or `"@playerStart"`: wherever the player begins, fixed when the game starts |
-| `weight` | Number | A positive whole number. Higher is picked more often. A group ignores it |
+| `weight` | Number | A positive whole number. Higher is picked more often. A Generic entity ignores it |
 | `schedule` | Row[] | The daily routine kept from there. Empty = it stays at `place` |
-| `beginsFollowing` | `true` | Only with `"@playerStart"`, on an individual: a game that picks this Start begins with the entity following the player, even on a `strict` row. `traversable` still applies. Absent = not following |
+| `beginsFollowing` | `true` | Only with `"@playerStart"`, on a Unique entity: a game that picks this Start begins with the entity following the player, even on a `strict` row. `traversable` still applies. Absent = not following |
 
 A Start at `"@playerStart"` adds no place to `locations`. Its schedule can name any location; play skips one the player's real start doesn't connect to.
 
@@ -474,14 +474,14 @@ Each schedule row:
 |---|---|---|
 | `id` | String | Unique within the Start |
 | `time` | `"allDay"` \| `{ "start", "end" }` | Minutes from midnight. An `end` before `start` runs past midnight. A timed row wins over the All-day row for its hours |
-| `strict` | Boolean | During the row the individual can't be called over and won't start following. A group ignores it |
+| `strict` | Boolean | During the row a Unique entity can't be called over and won't start following. A Generic entity ignores it |
 | `action` | Object | `{ "kind": "stay", "place" }`, `{ "kind": "wander", "places": [{ "place", "weight" }], "idle" }` or `{ "kind": "patrol", "stops": [{ "place", "idle" }] }`. `idle` is in minutes |
 
 In hours no row covers, the entity stays at its Start's `place`.
 
-A group is one entity with one set of stats, items and memories. Each of its Starts plays as its own presence on its own schedule, and two Starts can share a place. Where two presences meet, the group is listed once. A group is never called over and never follows.
+A Generic entity is one entity with one set of stats, items and memories. Each of its Starts plays as its own presence on its own schedule, and two Starts can share a place. Where two presences meet, the entity is listed once. A Generic entity is never called over and never follows.
 
-> 🔁 An older world file used `presence` and `movement`. The app maps them when it opens the world: an entity at one location, or with **One, at Random**, becomes an individual with one Start per location; **Moves Between** becomes an all-day wander over its locations; **Can Follow** becomes `traversable: "anywhere"`. Any other entity at several locations becomes a group with one Start per location and no rows.
+> 🔁 An older world file used `presence` and `movement`. The app maps them when it opens the world: an entity at one location, or with **One, at Random**, becomes a Unique entity with one Start per location; **Moves Between** becomes an all-day wander over its locations; **Can Follow** becomes `traversable: "anywhere"`. Any other entity at several locations becomes a Generic entity with one Start per location and no rows.
 
 `statChanges` and `statToggles` on an entity's own traits act on the entity's own stats. A row acts on the global stat when its `target` is `"global"`, or when the entity has no stat with that `id`.
 

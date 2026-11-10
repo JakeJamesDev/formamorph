@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type {
-  Connection, Currency, Entity, EntityPositions, GameLocation, GroupStates, IndividualStates, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+  Connection, Currency, Entity, EntityPositions, GameLocation, GenericStates, UniqueStates, Item, ItemCopy, Placement, RuntimeItem, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import { movementStates } from '../movementTag';
 import type { Routine } from '../positionEngine';
@@ -71,8 +71,8 @@ export interface LiveSceneSources {
   strangerLabels?: StrangerLabels;
   /** What each owner's slots in force read. No slots when absent. */
   equipment?: SceneEquipment;
-  /** The Individuals' routines, saved engine states and the story minute the Movement tags read. No tags when absent. */
-  movement?: { routines: readonly Routine[]; individuals: Readonly<IndividualStates>; now: number };
+  /** The Unique entities' routines, saved engine states and the story minute the Movement tags read. No tags when absent. */
+  movement?: { routines: readonly Routine[]; uniques: Readonly<UniqueStates>; now: number };
 }
 
 /** The world under a running turn's code writes, which React has not rendered yet. Each absent field keeps
@@ -93,9 +93,9 @@ export interface SceneWrites {
   /** Runtime characters the turn made before they reach the live cast. */
   addedEntities?: readonly Entity[];
   /** The follow states the turn's moves left, over the live ones. */
-  individuals?: Readonly<IndividualStates>;
-  /** Where the turn's moves left each Group's presences, over the live ones. */
-  groups?: Readonly<GroupStates>;
+  uniques?: Readonly<UniqueStates>;
+  /** Where the turn's moves left each Generic entity's presences, over the live ones. */
+  generics?: Readonly<GenericStates>;
 }
 
 /**
@@ -114,7 +114,7 @@ export function liveChipScene(
   const ownText = (entities: Entity[]) => resolveOwnedTraitTexts(
     resolveEntityTexts(withOwnerTrees(entities, sources.owners), resolveEntity), resolveTrait, resolveEntity,
   );
-  const placed = (entities: Entity[]) => (box?.positions ? entitiesInPlay(entities, { positions: box.positions, groups: box.groups ?? {} }) : entities);
+  const placed = (entities: Entity[]) => (box?.positions ? entitiesInPlay(entities, { positions: box.positions, generics: box.generics ?? {} }) : entities);
   const allEntities = ownText(placed(box?.addedEntities ? [...sources.allEntities, ...box.addedEntities] : sources.allEntities));
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
@@ -175,7 +175,7 @@ export function liveChipScene(
     inSceneNames,
     strangerLabels: sources.strangerLabels,
     ...(sources.movement && {
-      movement: movementStates(sources.movement.routines, box?.individuals ?? sources.movement.individuals, sources.movement.now),
+      movement: movementStates(sources.movement.routines, box?.uniques ?? sources.movement.uniques, sources.movement.now),
     }),
   };
 }

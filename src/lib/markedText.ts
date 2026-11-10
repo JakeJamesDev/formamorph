@@ -9,7 +9,7 @@ export type TextOrigin =
   | 'traits'
   /** An entity's owned stats lines. */
   | 'stats'
-  /** An Individual's movement line. */
+  /** A Unique entity's movement line. */
   | 'movement'
   /** One Stat Detail piece of a stat line. */
   | 'range' | 'descriptor' | 'meaning'

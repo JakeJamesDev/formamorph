@@ -59,20 +59,20 @@ export type OwnedTraitStates = Record<string, OwnedTraitState>;
 /** Entity id → its stats during the game, in authored order. */
 export type EntityStatValues = Record<string, PlayerStat[]>;
 
-/** Individual id → the location id it stands at during the game. A Group's places come from `GroupStates`. */
+/** Unique entity id → the location id it stands at during the game. A Generic entity's places come from `GenericStates`. */
 export type EntityPositions = Record<string, string>;
 
-/** An Individual traveling with the player, or left waiting at its position until `until`. `script`: a
+/** A Unique entity traveling with the player, or left waiting at its position until `until`. `script`: a
  *  script started it, so Strict and Traversable don't apply. */
 export type FollowState =
   | { mode: 'following'; script?: boolean }
   | { mode: 'waiting'; until: number; script?: boolean };
 
-/** What keeps a pulled or script-moved Individual off its schedule: a time, or nothing but the next script move. */
+/** What keeps a pulled or script-moved Unique entity off its schedule: a time, or nothing but the next script move. */
 export type PositionHold = { until: number } | { untilScriptMove: true };
 
-/** The position engine's saved state for one Individual. Times are story minutes (see `storyMinute`). */
-export interface IndividualState {
+/** The position engine's saved state for one Unique entity. Times are story minutes (see `storyMinute`). */
+export interface UniqueState {
   startId: string;
   /** The row in force when the engine last ran. Absent = no row. */
   rowId?: string;
@@ -86,10 +86,10 @@ export interface IndividualState {
   stop?: number;
 }
 
-/** Individual id → its position engine state. */
-export type IndividualStates = Record<string, IndividualState>;
+/** Unique entity id → its position engine state. */
+export type UniqueStates = Record<string, UniqueState>;
 
-/** Where one Start of a Group stands, and its schedule state. Times are story minutes. */
+/** Where one Start of a Generic entity stands, and its schedule state. Times are story minutes. */
 export interface PresenceState {
   position: string;
   /** The row in force when the engine last ran. Absent = no row. */
@@ -101,8 +101,8 @@ export interface PresenceState {
   stop?: number;
 }
 
-/** Group id → Start id → that presence's state. */
-export type GroupStates = Record<string, Record<string, PresenceState>>;
+/** Generic entity id → Start id → that presence's state. */
+export type GenericStates = Record<string, Record<string, PresenceState>>;
 
 /** Entity id → stat id → what one turn moved that stat's value. Unmoved stats are absent. */
 export type EntityStatChanges = Record<string, Record<string, number>>;
@@ -425,10 +425,10 @@ export interface GameState {
   entityStats?: EntityStatValues;
   /** Where each positioned entity stands, by entity id. Absent ⇒ none. */
   entityPositions?: EntityPositions;
-  /** The position engine's state per Individual, runtime characters included. Absent ⇒ none. */
-  individualStates?: IndividualStates;
-  /** The position engine's state per Group, one record per Start. Absent ⇒ none. */
-  groupStates?: GroupStates;
+  /** The position engine's state per Unique entity, runtime characters included. Absent ⇒ none. */
+  uniqueStates?: UniqueStates;
+  /** The position engine's state per Generic entity, one record per Start. Absent ⇒ none. */
+  genericStates?: GenericStates;
   /** The ids of the entities the player has met, in the order they met. Absent ⇒ none. */
   metEntities?: string[];
   /** The latest alias each stranger was seen under, by entity id. Absent ⇒ none. */

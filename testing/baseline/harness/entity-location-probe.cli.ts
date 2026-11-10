@@ -72,15 +72,15 @@ const tavern = placeNamed('The Cinder and Crown');
 const keep = placeNamed('Emberwatch Keep');
 // Companions: one Start at the tavern, an empty schedule, Anywhere. Blackwell keeps his migrated Wander.
 const companion = (name: string): Entity => ({
-  ...byName(name), kind: 'individual', starts: [{ id: 'probe', place: tavern.id, weight: 1, schedule: [] }], traversable: 'anywhere', locations: [tavern.id],
+  ...byName(name), kind: 'unique', starts: [{ id: 'probe', place: tavern.id, weight: 1, schedule: [] }], traversable: 'anywhere', locations: [tavern.id],
 });
 const sylvie = companion('Sylvie Thornwhistle');
 const corvin = companion('Corvin Vale');
 const albus = companion('Albus');
-// Blackwell ships as a Group; the probe makes him an Individual on an all-day Wander over his three places.
+// Blackwell ships as a Generic entity; the probe makes him a Unique entity on an all-day Wander over his three places.
 const captain = byName('Captain Orrin Blackwell');
 const blackwell: Entity = {
-  ...captain, kind: 'individual', traversable: [],
+  ...captain, kind: 'unique', traversable: [],
   starts: [{
     id: 'probe', place: keep.id, weight: 1,
     schedule: [{ id: 'w', time: 'allDay', action: { kind: 'wander', places: (captain.locations ?? []).map((place) => ({ place, weight: 1 })), idle: 240 } }],
@@ -94,11 +94,11 @@ const short = (entity: Entity) => entity.name.split(' ').at(-1)!;
 /** The book with everyone placed for `playerAt`, Albus following there. */
 function bookAt(playerAt: string) {
   const w = positionWorld(castRoutines(entities), NOW, playerAt, world.locations, connections, () => 0);
-  const rolled = placeAll({ positions: { [sylvie.id]: tavern.id, [corvin.id]: tavern.id, [albus.id]: tavern.id }, individuals: {} }, w);
+  const rolled = placeAll({ positions: { [sylvie.id]: tavern.id, [corvin.id]: tavern.id, [albus.id]: tavern.id }, uniques: {} }, w);
   // Blackwell's Wander may roll him anywhere on it; the keep scenes stand him at the keep.
   const placed = { ...rolled, positions: { ...rolled.positions, [blackwell.id]: keep.id } };
-  const follows = playerAt === tavern.id ? { [albus.id]: { ...placed.individuals[albus.id], follow: { mode: 'following' as const } } } : {};
-  return { w, book: { ...placed, individuals: { ...placed.individuals, ...follows } } };
+  const follows = playerAt === tavern.id ? { [albus.id]: { ...placed.uniques[albus.id], follow: { mode: 'following' as const } } } : {};
+  return { w, book: { ...placed, uniques: { ...placed.uniques, ...follows } } };
 }
 
 interface Scene { location: GameLocation }

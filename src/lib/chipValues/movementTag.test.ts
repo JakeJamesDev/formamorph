@@ -4,7 +4,7 @@ import { splitToken } from '../promptVariables';
 import { chipValues, sceneEntityChipValues } from './chipValues';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
 import type { ChipScene } from './chipScene';
-import type { Connection, Entity, FollowState, GameLocation, IndividualStates } from '@/types';
+import type { Connection, Entity, FollowState, GameLocation, UniqueStates } from '@/types';
 
 // The inn, the smithy one Nearby link away, and the ridge one Far link away.
 const inn: GameLocation = { id: 'inn', name: 'Inn', aiDescription: 'A low room.' };
@@ -15,25 +15,25 @@ const connections: Connection[] = [
   { id: 'climb', a: 'inn', b: 'ridge', aToB: {}, bToA: {}, distance: 'far' },
 ];
 
-/** An Individual at `place` whose one All-day row stays there, Strict or not. */
-const individual = (id: string, place: string, strict: boolean): Entity => ({
-  id, name: id[0].toUpperCase() + id.slice(1), kind: 'individual', locations: [place], aiSummary: `The ${id}.`,
+/** A Unique entity at `place` whose one All-day row stays there, Strict or not. */
+const unique = (id: string, place: string, strict: boolean): Entity => ({
+  id, name: id[0].toUpperCase() + id.slice(1), kind: 'unique', locations: [place], aiSummary: `The ${id}.`,
   starts: [{ id: 's1', place, weight: 1, schedule: [{ id: 'r1', time: 'allDay', action: { kind: 'stay', place }, ...(strict && { strict }) }] }],
 });
 
-const clerk = individual('clerk', 'inn', true);
-const companion = individual('companion', 'inn', false);
-const guard = individual('guard', 'inn', true);
-const waiter = individual('waiter', 'inn', false);
-const idler = individual('idler', 'inn', false);
+const clerk = unique('clerk', 'inn', true);
+const companion = unique('companion', 'inn', false);
+const guard = unique('guard', 'inn', true);
+const waiter = unique('waiter', 'inn', false);
+const idler = unique('idler', 'inn', false);
 const crowd: Entity = { id: 'crowd', name: 'Crowd', locations: ['inn'], aiSummary: 'Drinkers.' };
-const smith = individual('smith', 'smithy', true);
-const helper = individual('helper', 'smithy', false);
-const hermit = individual('hermit', 'ridge', true);
+const smith = unique('smith', 'smithy', true);
+const helper = unique('helper', 'smithy', false);
+const hermit = unique('hermit', 'ridge', true);
 const cast = [clerk, companion, guard, waiter, idler, crowd, smith, helper, hermit];
 
 const state = (follow?: FollowState) => ({ startId: 's1', lastRun: 0, ...(follow && { follow }) });
-const individuals: IndividualStates = {
+const uniques: UniqueStates = {
   clerk: state(),
   companion: state({ mode: 'following' }),
   guard: state({ mode: 'following' }),
@@ -49,7 +49,7 @@ const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   resolve: (text) => text, resolveTrait: (_t, text) => text, resolveEntity: (_e, text) => text,
   persona: null, location: inn, locations: [inn, smithy, ridge], connections,
   entities: cast, allEntities: cast, participants: ['Clerk', 'Companion'], notes: '', time: null, placeholders: [],
-  movement: { routines: castRoutines(cast), individuals, now: 480 },
+  movement: { routines: castRoutines(cast), uniques, now: 480 },
   ...over,
 });
 
@@ -68,7 +68,7 @@ const tagOf = (block: string, name: string) => {
 describe('the Movement tag on the Entities chip', () => {
   const values = lookup(liveChipScene(sources()));
 
-  it('tags each Individual at the player place: following, waiting, Strict; following wins over Strict', () => {
+  it('tags each Unique entity at the player place: following, waiting, Strict; following wins over Strict', () => {
     const here = values('<ENTITIES|markdown>');
     expect(tagOf(here, 'Companion')).toBe('following the player');
     expect(tagOf(here, 'Guard')).toBe('following the player');
@@ -76,7 +76,7 @@ describe('the Movement tag on the Entities chip', () => {
     expect(tagOf(here, 'Clerk')).toBe('stays here');
   });
 
-  it('leaves a Group and an Individual with no state untagged', () => {
+  it('leaves a Generic entity and a Unique entity with no state untagged', () => {
     const here = values('<ENTITIES|markdown>');
     expect(here).toContain('- **Crowd**');
     expect(tagOf(here, 'Crowd')).toBeUndefined();
@@ -84,7 +84,7 @@ describe('the Movement tag on the Entities chip', () => {
     expect(tagOf(here, 'Idler')).toBeUndefined();
   });
 
-  it('tags a Strict Individual one Nearby link away "stays there", and nothing else there', () => {
+  it('tags a Strict Unique entity one Nearby link away "stays there", and nothing else there', () => {
     const nearby = values('<ENTITIES|reachable.markdown>');
     expect(tagOf(nearby, 'Smith')).toBe('stays there');
     expect(nearby).toContain('- **Helper**');
@@ -92,11 +92,11 @@ describe('the Movement tag on the Entities chip', () => {
   });
 
   it('lets following win over Strict in a Nearby place too', () => {
-    const scene = liveChipScene(sources({ movement: { routines: castRoutines(cast), individuals: { ...individuals, smith: state({ mode: 'following' }) }, now: 480 } }));
+    const scene = liveChipScene(sources({ movement: { routines: castRoutines(cast), uniques: { ...uniques, smith: state({ mode: 'following' }) }, now: 480 } }));
     expect(tagOf(lookup(scene)('<ENTITIES|reachable.markdown>'), 'Smith')).toBeUndefined();
   });
 
-  it('leaves a Strict Individual across a Far link out of every scope', () => {
+  it('leaves a Strict Unique entity across a Far link out of every scope', () => {
     for (const scope of ['', 'sublocations', 'reachable', 'known', 'inscene']) {
       expect(values(`<ENTITIES|${[scope, 'markdown'].filter(Boolean).join('.')}>`)).not.toContain('Hermit');
     }
@@ -126,7 +126,7 @@ describe('the Movement tag on the Entities chip', () => {
   });
 
   it('reads the turn box follow states over the live ones', () => {
-    const scene = liveChipScene(sources(), null, { individuals: { ...individuals, idler: state({ mode: 'following' }), companion: state() } });
+    const scene = liveChipScene(sources(), null, { uniques: { ...uniques, idler: state({ mode: 'following' }), companion: state() } });
     const here = lookup(scene)('<ENTITIES|markdown>');
     expect(tagOf(here, 'Idler')).toBe('following the player');
     expect(tagOf(here, 'Companion')).toBeUndefined();
@@ -138,7 +138,7 @@ describe('the Movement tag on the Entities chip', () => {
     };
     const roster = [offShift, ...cast.slice(1)];
     const read = (now: number) => tagOf(lookup(liveChipScene(sources({
-      entities: roster, allEntities: roster, movement: { routines: castRoutines(roster), individuals, now },
+      entities: roster, allEntities: roster, movement: { routines: castRoutines(roster), uniques, now },
     })))('<ENTITIES|markdown>'), 'Clerk');
     expect(read(600)).toBe('stays here');
     expect(read(480)).toBeUndefined();

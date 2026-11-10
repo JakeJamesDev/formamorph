@@ -87,7 +87,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const placeholders = allPlaceholders(world);
   // A world with no locations yet previews as "nowhere" rather than failing.
   const location = options.location !== undefined ? options.location : resolveStartingLocation(locations, null) ?? null;
-  // Each Individual stands where a game opening here puts it.
+  // Each Unique entity stands where a game opening here puts it.
   const entities = openingCast(authored, locations, connections, location?.id);
   // Chips resolve against a fresh roll, since a world has no playthrough whose rolls could be reused.
   const resolve = options.resolve

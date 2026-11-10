@@ -1,4 +1,4 @@
-import { isGroup, isIndividual } from '@/lib/entityKind';
+import { isGeneric, isUnique } from '@/lib/entityKind';
 import { chancePercent, rangeText } from '@/lib/routineTime';
 import type { Entity, ScheduleAction, ScheduleRow } from '@/types';
 
@@ -24,14 +24,14 @@ function timeText(row: ScheduleRow, schedule: readonly ScheduleRow[]): string {
 const rowReason = (row: ScheduleRow, schedule: readonly ScheduleRow[]): string =>
   `${ROW_VERB[row.action.kind]} here (${timeText(row, schedule)})`;
 
-/** Why an entity can be at `locationId`, from its Starts and rows. A Group has no chance and no led-to line. */
+/** Why an entity can be at `locationId`, from its Starts and rows. A Generic entity has no chance and no led-to line. */
 function routineReasons(entity: Entity, locationId: string): string[] {
   const starts = entity.starts ?? [];
   const reasons: string[] = [];
   const here = starts.filter((s) => s.place === locationId);
   if (here.length) {
     const chance = chancePercent(here.reduce((sum, s) => sum + s.weight, 0), starts.map((s) => s.weight));
-    reasons.push(starts.length > 1 && isIndividual(entity) ? `begins here (${chance}%)` : 'begins here');
+    reasons.push(starts.length > 1 && isUnique(entity) ? `begins here (${chance}%)` : 'begins here');
   }
   for (const start of starts) {
     for (const row of start.schedule) {
@@ -40,7 +40,7 @@ function routineReasons(entity: Entity, locationId: string): string[] {
       if (!reasons.includes(reason)) reasons.push(reason);
     }
   }
-  if (!isGroup(entity) && Array.isArray(entity.traversable) && entity.traversable.includes(locationId)) reasons.push('can be led here');
+  if (!isGeneric(entity) && Array.isArray(entity.traversable) && entity.traversable.includes(locationId)) reasons.push('can be led here');
   return reasons;
 }
 
@@ -50,7 +50,7 @@ function routineReasons(entity: Entity, locationId: string): string[] {
  */
 export function presenceLines(locationId: string, entities: readonly Entity[]): PresenceLine[] {
   return entities.flatMap((entity) => {
-    if (!(isGroup(entity) || isIndividual(entity))) return [];
+    if (!(isGeneric(entity) || isUnique(entity))) return [];
     const reasons = routineReasons(entity, locationId);
     return reasons.length ? [{ entity, reasons }] : [];
   });

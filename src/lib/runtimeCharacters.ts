@@ -97,7 +97,7 @@ export function selectReachableVisitors(
   nearby: readonly string[],
   authoredEntities: Entity[],
   presentIds: string[],
-  standings: Standings = { positions: {}, groups: {} },
+  standings: Standings = { positions: {}, generics: {} },
 ): Entity[] {
   const reachableIds = new Set(entityIdsAtAny(nearby, entitiesInPlay(authoredEntities, standings)));
   const present = new Set(presentIds);

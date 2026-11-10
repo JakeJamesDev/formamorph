@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { DiscoveredEntity, GroupStates } from '@/types';
+import type { DiscoveredEntity, GenericStates } from '@/types';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { computePresence, IN_SCENE_TURNS, type Presence } from '@/lib/presence';
@@ -12,7 +12,7 @@ import { pageAssistantIndex } from '@/lib/turnHistory';
 const NONE: readonly string[] = [];
 const NO_RUNTIME: readonly DiscoveredEntity[] = [];
 const NO_POSITIONS: Readonly<Record<string, string>> = {};
-const NO_GROUPS: Readonly<GroupStates> = {};
+const NO_GENERICS: Readonly<GenericStates> = {};
 const NO_ALIASES: StrangerLabels = {};
 
 /**
@@ -23,7 +23,7 @@ export function usePresence(viewedPage?: number): Presence {
   const { authoredCast, locations, connections, persona, currentLocation } = useResolvedWorld();
   const {
     gameStates, fullMessageHistory, totalPages, discoveredEntities,
-    entityPositions, groupStates, entityFollowers, metEntities, strangerAliases,
+    entityPositions, genericStates, entityFollowers, metEntities, strangerAliases,
   } = useGameplay();
 
   const snapshot = viewedPage !== undefined && viewedPage < totalPages ? (gameStates[viewedPage - 1] ?? null) : null;
@@ -36,9 +36,9 @@ export function usePresence(viewedPage?: number): Presence {
   const runtimeSource = snapshot ? (snapshot.discoveredEntities ?? NO_RUNTIME) : discoveredEntities;
   const runtime = useMemo(() => discoveredAsEntities(runtimeSource), [runtimeSource]);
   const positions = snapshot ? (snapshot.entityPositions ?? NO_POSITIONS) : entityPositions;
-  const groups = snapshot ? (snapshot.groupStates ?? NO_GROUPS) : groupStates;
+  const generics = snapshot ? (snapshot.genericStates ?? NO_GENERICS) : genericStates;
   const followers = useMemo(
-    () => (snapshot ? followerIds(snapshot.individualStates ?? {}) : entityFollowers), [snapshot, entityFollowers],
+    () => (snapshot ? followerIds(snapshot.uniqueStates ?? {}) : entityFollowers), [snapshot, entityFollowers],
   );
   const met = snapshot ? (snapshot.metEntities ?? NONE) : metEntities;
   const aliases = snapshot ? (snapshot.strangerAliases ?? NO_ALIASES) : strangerAliases;
@@ -47,8 +47,8 @@ export function usePresence(viewedPage?: number): Presence {
   const personaEntity = persona?.entity ?? null;
 
   return useMemo(() => computePresence({
-    entities: authoredCast, runtime, positions, groups, followers, locationId, locations, connections,
+    entities: authoredCast, runtime, positions, generics, followers, locationId, locations, connections,
     persona: personaEntity, met, strangerAliases: aliases,
     turns: recentSceneTurns(history, IN_SCENE_TURNS),
-  }), [authoredCast, runtime, positions, groups, followers, locationId, locations, connections, personaEntity, met, aliases, history]);
+  }), [authoredCast, runtime, positions, generics, followers, locationId, locations, connections, personaEntity, met, aliases, history]);
 }

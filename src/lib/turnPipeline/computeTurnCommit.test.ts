@@ -444,7 +444,7 @@ describe('computeTurnCommit — entity movement', () => {
   const PLACES = [{ id: 'town', name: 'town' }, ...['inn', 'square', 'keep', 'chapel', 'tower', 'pier', 'wall', 'barrow', 'gate']
     .map((id) => ({ id, name: id, parentId: 'town' }))];
   const at = (id: string, place: string, traversable: Entity['traversable'], schedule: EntityStart['schedule'] = []): Entity =>
-    ({ id, name: id, kind: 'individual', locations: [place], starts: [{ id: 's', place, weight: 1, schedule }], traversable });
+    ({ id, name: id, kind: 'unique', locations: [place], starts: [{ id: 's', place, weight: 1, schedule }], traversable });
   // Blackwell is a shipped Moves Between: a Wander over the keep, the wall and the tower, and no Traversable.
   const route = (id: string): Entity => at(id, 'wall', [], [{
     id: 'w', time: 'allDay', action: { kind: 'wander', places: ['keep', 'wall', 'tower'].map((place) => ({ place, weight: 1 })), idle: 600 },
@@ -452,24 +452,24 @@ describe('computeTurnCommit — entity movement', () => {
   const stranger = { entity: { id: 'mira', name: 'Mira', aiDescription: 'A ferry hand.' }, locationId: 'inn', sourceTurnId: 't0' };
   const CAST = [
     at('wenna', 'inn', 'anywhere'), at('albus', 'inn', 'anywhere'), at('corvin', 'inn', 'anywhere'), at('sylvie', 'keep', 'anywhere'),
-    route('blackwell'), route('hale'), { id: 'moths', name: 'moths', kind: 'group', locations: ['inn', 'gate'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'gate', weight: 1, schedule: [] }] } as Entity,
+    route('blackwell'), route('hale'), { id: 'moths', name: 'moths', kind: 'generic', locations: ['inn', 'gate'], starts: [{ id: 's1', place: 'inn', weight: 1, schedule: [] }, { id: 's2', place: 'gate', weight: 1, schedule: [] }] } as Entity,
   ];
   const world = positionWorld(castRoutines(CAST, [stranger]), NOON, 'inn', PLACES, [], () => 0);
   /** Everyone at `positions` with their engine state, `followers` following. */
   const book = (positions: Record<string, string>, followers: string[] = []): FollowerState => ({
     positions,
-    individuals: Object.fromEntries(Object.keys(positions).map((id) => [id, {
+    uniques: Object.fromEntries(Object.keys(positions).map((id) => [id, {
       startId: id === 'mira' ? 'discovered' : 's', lastRun: NOON,
       ...((id === 'blackwell' || id === 'hale') && { rowId: 'w', idleEnd: NOON + 600 }),
       ...(followers.includes(id) && { follow: { mode: 'following' as const } }),
     }])),
-    groups: {},
+    generics: {},
   });
   /** The world with only the characters `state` holds, so the engine places no one else. */
   const holding = (state: FollowerState) => ({
     ...world,
-    routines: new Map([...world.routines].filter(([id]) => id in state.individuals)),
-    groups: new Map([...world.groups].filter(([id]) => id in state.groups)),
+    uniques: new Map([...world.uniques].filter(([id]) => id in state.uniques)),
+    generics: new Map([...world.generics].filter(([id]) => id in state.generics)),
   });
   const move = (state: FollowerState, commit: ReturnType<typeof autoCommit>, from: string, to: string | undefined) =>
     commitEntityMoves(state, commit, { from, to }, holding(state));
@@ -507,7 +507,7 @@ describe('computeTurnCommit — entity movement', () => {
     const { state, offer } = move(atInn, commit, 'inn', 'square');
     expect(state.positions).toEqual({ wenna: 'square', albus: 'inn', corvin: 'square' });
     expect(followersOf(state)).toEqual(['wenna', 'corvin']);
-    expect(state.individuals.albus.follow).toMatchObject({ mode: 'waiting' });
+    expect(state.uniques.albus.follow).toMatchObject({ mode: 'waiting' });
     expect(offer.comeAlong).toEqual([]);
   });
 
@@ -523,7 +523,7 @@ describe('computeTurnCommit — entity movement', () => {
     const commit = autoCommit([[who('wenna', [...NEW]), 'Come along'], [who('albus', [...FOLLOWING]), WAIT]]);
     const { state } = move(atInn, commit, 'inn', 'inn');
     expect(followersOf(state)).toEqual(['corvin']);
-    expect(state.individuals.albus.follow).toMatchObject({ mode: 'waiting' });
+    expect(state.uniques.albus.follow).toMatchObject({ mode: 'waiting' });
     expect(state.positions).toEqual(atInn.positions);
   });
 
@@ -553,11 +553,11 @@ describe('computeTurnCommit — entity movement', () => {
       for (const [line, , until] of ENDS) {
         const left = move(atChapel, autoCommit([[who('wenna', [...FOLLOWING]), line]]), 'chapel', 'pier').state;
         expect(left.positions.wenna).toBe('chapel');
-        expect(left.individuals.wenna.follow).toEqual({ mode: 'waiting', until });
+        expect(left.uniques.wenna.follow).toEqual({ mode: 'waiting', until });
         expect(placeAll(left, worldAt(until - 1, 'pier')).positions.wenna).toBe('chapel');
         const after = placeAll(left, worldAt(until, 'pier'));
         expect(after.positions.wenna).toBe('inn');
-        expect(after.individuals.wenna.follow).toBeUndefined();
+        expect(after.uniques.wenna.follow).toBeUndefined();
       }
     });
 
@@ -601,7 +601,7 @@ describe('computeTurnCommit — entity movement', () => {
       expect(followersOf(went)).toEqual(['blackwell', 'albus']);
       const blocked = move(went, autoCommit([]), 'keep', 'barrow').state;
       expect(blocked.positions).toEqual({ blackwell: 'keep', albus: 'barrow' });
-      expect(blocked.individuals.blackwell.follow).toMatchObject({ mode: 'waiting' });
+      expect(blocked.uniques.blackwell.follow).toMatchObject({ mode: 'waiting' });
     });
 
     it('in suggest mode, goes to a place at once and holds come along for Go', () => {
@@ -711,14 +711,14 @@ describe('computeTurnCommit — entity movement', () => {
       expect(followersOf(state)).toEqual(['albus']);
     });
 
-    it('move and follow every Individual, and no Group', () => {
+    it('move and follow every Unique entity, and no Generic entity', () => {
       const start = book({ ...atInn.positions, sylvie: 'keep' }, ['albus', 'corvin']);
       const { state } = move(start, coded([], [
         { entity: 'sylvie', kind: 'follow' }, { entity: 'moths', kind: 'follow' }, { entity: 'moths', kind: 'move', location: 'barrow' },
       ]), 'inn', 'keep');
       expect(state.positions).toMatchObject({ sylvie: 'keep' });
       expect(followersOf(state)).toEqual(['albus', 'corvin', 'sylvie']);
-      expect('moths' in state.positions || 'moths' in state.individuals).toBe(false);
+      expect('moths' in state.positions || 'moths' in state.uniques).toBe(false);
     });
 
     it('leave an entity that is not following where it is on unfollow', () => {

@@ -7,14 +7,14 @@ const DAY = { start: daypartStart('morning'), end: daypartEnd('afternoon') };
 const NIGHT = { start: daypartStart('evening'), end: daypartEnd('night') };
 
 const crowd: Entity = {
-  id: 'crowd', name: 'Crowd', kind: 'group', locations: ['tavern', 'market'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }, { id: 's2', place: 'market', weight: 1, schedule: [] }],
+  id: 'crowd', name: 'Crowd', kind: 'generic', locations: ['tavern', 'market'], starts: [{ id: 's1', place: 'tavern', weight: 1, schedule: [] }, { id: 's2', place: 'market', weight: 1, schedule: [] }],
 };
-const moths: Entity = { id: 'moths', name: 'Moths', kind: 'group', locations: ['market'], starts: [{ id: 's1', place: 'market', weight: 1, schedule: [] }] };
+const moths: Entity = { id: 'moths', name: 'Moths', kind: 'generic', locations: ['market'], starts: [{ id: 's1', place: 'market', weight: 1, schedule: [] }] };
 
 /** Begins at the smithy or the tavern (3:1); works the smithy by day, wanders the tavern and the yard at night;
  *  may be led to the cellar. */
 const farrier: Entity = {
-  id: 'farrier', name: 'Farrier', kind: 'individual', traversable: ['cellar'],
+  id: 'farrier', name: 'Farrier', kind: 'unique', traversable: ['cellar'],
   locations: ['smithy', 'tavern', 'yard', 'cellar'],
   starts: [
     { id: 's1', place: 'smithy', weight: 3, schedule: [
@@ -27,7 +27,7 @@ const farrier: Entity = {
 
 /** One Start, a patrol of the tavern at all hours, free to go anywhere. */
 const guard: Entity = {
-  id: 'guard', name: 'Guard', kind: 'individual', traversable: 'anywhere', locations: ['gate', 'tavern'],
+  id: 'guard', name: 'Guard', kind: 'unique', traversable: 'anywhere', locations: ['gate', 'tavern'],
   starts: [{ id: 'g1', place: 'gate', weight: 1, schedule: [
     { id: 'round', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'gate', idle: 30 }, { place: 'tavern', idle: 30 }] } },
   ] }],
@@ -38,32 +38,32 @@ const cast = [crowd, moths, farrier, guard, persona];
 const reasonsAt = (place: string) => Object.fromEntries(presenceLines(place, cast).map((l) => [l.entity.id, l.reasons]));
 
 describe('presenceLines', () => {
-  it('lists a Group once where a Start begins, with no chance however many Starts it has', () => {
+  it('lists a Generic entity once where a Start begins, with no chance however many Starts it has', () => {
     expect(reasonsAt('market')).toEqual({ crowd: ['begins here'], moths: ['begins here'] });
     expect(reasonsAt('tavern').crowd).toEqual(['begins here']);
   });
 
-  it('merges the Starts of a Group beginning here into one begins-here line and one line per distinct row', () => {
+  it('merges the Starts of a Generic entity beginning here into one begins-here line and one line per distinct row', () => {
     const rows = (id: string) => ({ id, time: DAY, action: { kind: 'stay' as const, place: 'tavern' } });
-    const flock: Entity = { id: 'flock', name: 'Flock', kind: 'group', starts: [
+    const flock: Entity = { id: 'flock', name: 'Flock', kind: 'generic', starts: [
       { id: 'a', place: 'tavern', weight: 1, schedule: [rows('r1')] }, { id: 'b', place: 'tavern', weight: 3, schedule: [rows('r2')] },
     ] };
     expect(presenceLines('tavern', [flock])[0].reasons).toEqual(['begins here', 'stays here (Morning – Afternoon)']);
   });
 
-  it('lists a Group that only patrols through the place, with the row’s time and no begins line', () => {
-    const patrol: Entity = { id: 'watch', name: 'Watch', kind: 'group', starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [
+  it('lists a Generic entity that only patrols through the place, with the row’s time and no begins line', () => {
+    const patrol: Entity = { id: 'watch', name: 'Watch', kind: 'generic', starts: [{ id: 'w1', place: 'gate', weight: 1, schedule: [
       { id: 'p', time: NIGHT, action: { kind: 'patrol', stops: [{ place: 'gate', idle: 30 }, { place: 'tavern', idle: 30 }] } },
     ] }] };
     expect(presenceLines('tavern', [patrol])[0].reasons).toEqual(['patrols here (Evening – Night)']);
   });
 
-  it('gives a Group no can-be-led-here line', () => {
+  it('gives a Generic entity no can-be-led-here line', () => {
     const led: Entity = { ...crowd, traversable: ['cellar'] };
     expect(presenceLines('cellar', [led])).toEqual([]);
   });
 
-  it('leaves out a Group no Start or row names at the place', () => {
+  it('leaves out a Generic entity no Start or row names at the place', () => {
     expect(reasonsAt('smithy').moths).toBeUndefined();
   });
 

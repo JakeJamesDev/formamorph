@@ -14,7 +14,7 @@ const DAWN = 360; const MORNING = 480; const MIDDAY = 660; const AFTERNOON = 780
 const LOCATIONS = [{ id: 'smithy', name: 'Smithy' }, { id: 'inn', name: 'Inn' }] as GameLocation[];
 const stay = (id: string, time: ScheduleRow['time'], place = 'smithy'): ScheduleRow => ({ id, time, action: { kind: 'stay', place } });
 const mira = (schedule: ScheduleRow[]): Entity => ({
-  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'individual', traversable: 'anywhere',
+  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'unique', traversable: 'anywhere',
   starts: [{ id: 's1', place: 'smithy', weight: 1, schedule }],
 } as Entity);
 

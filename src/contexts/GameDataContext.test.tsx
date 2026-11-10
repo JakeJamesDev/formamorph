@@ -287,7 +287,7 @@ describe('entity ↔ location membership', () => {
   const worldWith = (entityIds: string[]) => ({
     ...world('w', {}),
     entities: entityIds.map((id) => ({
-      id, name: id, kind: 'group', locations: ['l1', 'l2'],
+      id, name: id, kind: 'generic', locations: ['l1', 'l2'],
       starts: ['l1', 'l2'].map((place) => ({ id: place, place, weight: 1, schedule: [] })),
     })),
     locations: [

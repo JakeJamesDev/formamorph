@@ -24,7 +24,7 @@ const day: ScheduleRow[] = [
   timed('emptyPatrol', 20, 22, { kind: 'patrol', stops: [] }),
 ];
 const farrier = (traversable: Traversable = 'anywhere', schedule = day): Entity => ({
-  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'individual', traversable,
+  id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique', traversable,
   starts: [
     { id: 's1', place: 'smithy', weight: 1, schedule },
     { id: 's2', place: 'gate', weight: 1, schedule: [] },
@@ -130,12 +130,12 @@ describe('a click with no row selected', () => {
   });
 });
 
-describe('a Group on the map', () => {
+describe('a Generic entity on the map', () => {
   // The farrier's two Starts, run at once; its Can Also Go list stays in the data and plays no part.
-  const herd = (starts = farrier().starts!): Entity => ({ ...farrier(['inn']), kind: 'group', starts });
+  const herd = (starts = farrier().starts!): Entity => ({ ...farrier(['inn']), kind: 'generic', starts });
   const startPlaces = (e: Entity | undefined) => e?.starts?.map((s) => s.place);
 
-  it('edits a selected row by an Individual’s rules, clicks and drags alike', () => {
+  it('edits a selected row by a Unique entity’s rules, clicks and drags alike', () => {
     const clicks: [string, string][] = [
       ['stay', 'market'], ['stay', 'inn'], ['wander', 'inn'], ['wander', 'market'], ['patrol', 'gate'], ['patrol', 'wall'],
       ['emptyPatrol', 'inn'], ['stay', 'island'], ['stay', 'ridge'],
@@ -243,8 +243,8 @@ describe('the status line', () => {
     expect(status(null, farrier('anywhere'))).toEqual({ text: 'Select a row to edit its locations here' });
   });
 
-  it('speaks to a Group, and reads its selected row as an Individual’s', () => {
-    const herd: Entity = { ...farrier(), kind: 'group' };
+  it('speaks to a Generic entity, and reads its selected row as a Unique entity’s', () => {
+    const herd: Entity = { ...farrier(), kind: 'generic' };
     expect(status(null, herd)).toEqual({ text: 'Click a location to add or remove it' });
     expect(status('patrol', herd)).toEqual(status('patrol'));
   });

@@ -168,7 +168,7 @@ const ROUTINE_BADGE: Record<ActionKind, string> = {
 };
 
 /** How a box draws in the Routine view: its action's color or the neutral ring, the same ring where another Start
- *  of a Group begins, a dashed outline where it can be led, and a fade where it can never go. */
+ *  of a Generic entity begins, a dashed outline where it can be led, and a fade where it can never go. */
 const routineClass = (mark: RoutineMark | undefined) => cn(
   mark?.kind === 'routine' && (mark.tone ? ROUTINE_RING[mark.tone] : NEUTRAL_RING),
   mark?.kind === 'here' && NEUTRAL_RING,

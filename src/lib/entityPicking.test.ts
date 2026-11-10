@@ -48,27 +48,27 @@ describe("pickMarks", () => {
 
 describe("togglePick", () => {
   const captain: Entity = {
-    id: "captain", name: "Captain", locations: ["keep"], kind: "group", starts: [{ id: "c1", place: "keep", weight: 1, schedule: [] }],
+    id: "captain", name: "Captain", locations: ["keep"], kind: "generic", starts: [{ id: "c1", place: "keep", weight: 1, schedule: [] }],
   };
   const customPersona: Entity = { id: "me", name: "Me", customPersona: true, locations: ["keep"] };
   const scout: Entity = {
-    id: "scout", name: "Scout", kind: "individual", locations: ["keep", "inn"],
+    id: "scout", name: "Scout", kind: "unique", locations: ["keep", "inn"],
     starts: [{ id: "s1", place: "keep", weight: 1, schedule: [] }, { id: "s2", place: "inn", weight: 2, schedule: [] }],
   };
 
-  it("moves an Individual's first Start to the clicked location in Locations mode, keeping the others", () => {
+  it("moves a Unique entity's first Start to the clicked location in Locations mode, keeping the others", () => {
     const moved = togglePick(scout, "locations", "watchtower");
     expect(moved.starts?.map((s) => [s.id, s.place, s.weight])).toEqual([["s1", "watchtower", 1], ["s2", "inn", 2]]);
     expect(moved.locations).toEqual(["watchtower", "inn"]);
   });
 
-  it("gives an Individual with no Start its first one at the clicked location", () => {
-    const placed = togglePick({ id: "new", name: "New", kind: "individual", traversable: "anywhere" }, "locations", "harbor");
+  it("gives a Unique entity with no Start its first one at the clicked location", () => {
+    const placed = togglePick({ id: "new", name: "New", kind: "unique", traversable: "anywhere" }, "locations", "harbor");
     expect(placed.starts).toEqual([expect.objectContaining({ place: "harbor", weight: 1, schedule: [] })]);
     expect(placed.locations).toEqual(["harbor"]);
   });
 
-  it("adds a Group's Start in Locations mode, and removes it on the next click", () => {
+  it("adds a Generic entity's Start in Locations mode, and removes it on the next click", () => {
     const added = togglePick(captain, "locations", "watchtower");
     expect(added.starts?.map((s) => [s.place, s.schedule])).toEqual([["keep", []], ["watchtower", []]]);
     expect(added.locations).toEqual(["keep", "watchtower"]);
@@ -77,7 +77,7 @@ describe("togglePick", () => {
     expect(removed.locations).toEqual(["keep"]);
   });
 
-  it("keeps a Group's last Start", () => {
+  it("keeps a Generic entity's last Start", () => {
     expect(togglePick(captain, "locations", "keep")).toBe(captain);
   });
 

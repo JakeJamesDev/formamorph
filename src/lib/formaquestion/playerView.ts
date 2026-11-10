@@ -150,8 +150,8 @@ function knownIds(
   const runtime = discovered.filter((d) => !worldIds.has(d.entity.id) && poolIds.has(d.entity.id));
   const { known } = computePresence({
     entities: authored, runtime: discoveredAsEntities(runtime), positions: current.entityPositions ?? {},
-    groups: current.groupStates ?? {},
-    followers: followerIds(current.individualStates ?? {}), locationId: current.locationId, locations: world.locations,
+    generics: current.genericStates ?? {},
+    followers: followerIds(current.uniqueStates ?? {}), locationId: current.locationId, locations: world.locations,
     connections: world.connections ?? [], persona, met: current.metEntities ?? [],
     strangerAliases: current.strangerAliases ?? {}, turns: [],
   });

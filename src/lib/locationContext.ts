@@ -155,7 +155,7 @@ export type RosterOpts = {
   relationshipLines?: RelationshipLines;
   /** The label each unmet stranger's block prints. None when absent. */
   strangerLabels?: StrangerLabels;
-  /** The Movement tag each Individual's block prints. None when absent. */
+  /** The Movement tag each Unique entity's block prints. None when absent. */
   movementLabels?: MovementLabels;
   /** Leave the Movement tags out. */
   noMovement?: boolean;

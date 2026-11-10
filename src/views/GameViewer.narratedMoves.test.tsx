@@ -25,8 +25,8 @@ const character = (id: string, name: string, movement: 'follow' | 'between' | un
 /** The live book with `ids` following the player and `positions` laid over. */
 const following = (ids: string[], positions: Record<string, string>) => ({
   positions: { ...play.entityPositions, ...positions },
-  individuals: { ...play.individualStates, ...Object.fromEntries(ids.map((id) => [id, { ...play.individualStates[id], follow: { mode: 'following' as const } }])) },
-  groups: play.groupStates,
+  uniques: { ...play.uniqueStates, ...Object.fromEntries(ids.map((id) => [id, { ...play.uniqueStates[id], follow: { mode: 'following' as const } }])) },
+  generics: play.genericStates,
 });
 
 const worldWith = (over: Partial<World> = {}): World => ({
@@ -105,7 +105,7 @@ describe('a narrated move in Auto mode', () => {
     expect(play.entityPositions.bram).toBe('hut');
     expect(play.entityFollowers).toEqual(['bram']);
     expect(play.entityPositions.maela).toBe('village');
-    expect(play.individualStates.maela.follow).toMatchObject({ mode: 'waiting' });
+    expect(play.uniqueStates.maela.follow).toMatchObject({ mode: 'waiting' });
     // The request carried the time, the daypart, and its pinned samplers.
     const body = endpoint.entityBodies.Maela;
     expect(body.messages.at(-1)?.content).toMatch(/\nThe time is \d\d:\d\d, (night|dawn|morning|midday|afternoon|evening)\.\n/);

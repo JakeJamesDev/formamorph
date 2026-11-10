@@ -1,4 +1,4 @@
-import { isGroup, toggleGroupStart } from '@/lib/entityKind';
+import { isGeneric, toggleGenericStart } from '@/lib/entityKind';
 import { placesOf, startReach, type PlaceGraph } from '@/lib/positionEngine';
 import { NEW_STOP_IDLE, withRow } from '@/lib/routineEditing';
 import type { RoutineSelection } from '@/lib/routineSelection';
@@ -53,14 +53,14 @@ function withStopAfter(stops: readonly PatrolStop[], after: number, place: strin
 
 /**
  * A click on `place`. With a row selected: Stay moves there, Wander adds or removes it, Patrol adds the next stop
- * or removes the last one. With none: a Group adds a Start there or removes the ones that begin there, and an
- * Individual adds it to or removes it from the Can Also Go list. Null when nothing changes.
+ * or removes the last one. With none: a Generic entity adds a Start there or removes the ones that begin there, and a
+ * Unique entity adds it to or removes it from the Can Also Go list. Null when nothing changes.
  */
 export function routineMapClick(entity: Entity, selection: RoutineSelection, place: string, graph: PlaceGraph): RoutineMapEdit | null {
   const target = targetOf(entity, selection);
   const selected = selectedOf(target);
-  if (!selected && isGroup(entity)) {
-    const next = toggleGroupStart(entity, place, randomUUID);
+  if (!selected && isGeneric(entity)) {
+    const next = toggleGenericStart(entity, place, randomUUID);
     return next === entity ? null : { entity: next, label: 'Change Locations' };
   }
   if (!target) return null;
@@ -124,7 +124,7 @@ export interface RoutineMapStatus {
 export function routineMapStatus(entity: Entity, selection: RoutineSelection): RoutineMapStatus {
   const target = targetOf(entity, selection);
   const selected = selectedOf(target);
-  if (!selected && isGroup(entity)) return { text: 'Click a location to add or remove it' };
+  if (!selected && isGeneric(entity)) return { text: 'Click a location to add or remove it' };
   if (!target) return { text: 'Add a Start to give this entity a routine' };
   if (!selected) {
     return (entity.traversable ?? 'anywhere') === 'anywhere'

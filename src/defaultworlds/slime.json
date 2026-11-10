@@ -929,7 +929,7 @@
         }
       ],
       "pronouns": "it/its",
-      "kind": "group",
+      "kind": "generic",
       "starts": [
         {
           "id": "start-1",
@@ -981,7 +981,7 @@
         "9dff7815-d46e-4900-990e-cd9c93a6cf1d"
       ],
       "pronouns": "it/its",
-      "kind": "group",
+      "kind": "generic",
       "starts": [
         {
           "id": "start-1",
@@ -1020,7 +1020,7 @@
         "9dff7815-d46e-4900-990e-cd9c93a6cf1d"
       ],
       "pronouns": "it/its",
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1231,7 +1231,7 @@
           "ownerId": "7eff0496-e095-4088-af2b-e0abf1e86bab"
         }
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1267,7 +1267,7 @@
         "c233770b-e963-4b4e-bab8-fb8077f30599"
       ],
       "pronouns": "they/them",
-      "kind": "group",
+      "kind": "generic",
       "starts": [
         {
           "id": "start-1",
@@ -1348,7 +1348,7 @@
           "label": "niece"
         }
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1382,7 +1382,7 @@
       "locations": [
         "b466e00a-68d1-47db-9424-979de478ae7f"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1416,7 +1416,7 @@
       "locations": [
         "c233770b-e963-4b4e-bab8-fb8077f30599"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1448,7 +1448,7 @@
       "locations": [
         "c233770b-e963-4b4e-bab8-fb8077f30599"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1516,7 +1516,7 @@
       "locations": [
         "e2c60e4d-28a9-4416-afc3-3ad0c5419844"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1550,7 +1550,7 @@
         "e2c60e4d-28a9-4416-afc3-3ad0c5419844",
         "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec"
       ],
-      "kind": "group",
+      "kind": "generic",
       "starts": [
         {
           "id": "start-1",
@@ -1599,7 +1599,7 @@
       "locations": [
         "d8cff883-aa18-4680-91ca-b3e19fe3add6"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1641,7 +1641,7 @@
       "locations": [
         "f5a68b0f-9da9-4d99-86d1-8e7d3b84ebea"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1674,7 +1674,7 @@
       "locations": [
         "f5a68b0f-9da9-4d99-86d1-8e7d3b84ebea"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1716,7 +1716,7 @@
       "locations": [
         "5e1d2563-e94e-402c-8e50-ff52477c0c63"
       ],
-      "kind": "individual",
+      "kind": "unique",
       "starts": [
         {
           "id": "start-1",
@@ -1749,7 +1749,7 @@
         "5e1d2563-e94e-402c-8e50-ff52477c0c63",
         "87697a8b-2d2b-4031-ad2a-6c8a94edf23d"
       ],
-      "kind": "group",
+      "kind": "generic",
       "starts": [
         {
           "id": "start-1",

@@ -204,7 +204,7 @@ function entityScopes(scene: ChipScene, cast = sceneRelationshipCast(scene)): Re
   const inSceneLines = relationshipLines(cast, inSceneIds, personaId);
   // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
   // scope, since Only With counts them; whether a scope lists them is `noStats`.
-  // The Movement tags follow where each Individual stands, so every scope reads one map.
+  // The Movement tags follow where each Unique entity stands, so every scope reads one map.
   const movementLabelsHere = scene.movement && movementLabels(scene.movement, presentIds, nearbyIds);
   const roster = (opts: ContextOpts, lines = chainLines) => ({
     ...opts, ownedTraits, ownedStats, relationshipLines: lines, strangerLabels, movementLabels: movementLabelsHere,

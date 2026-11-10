@@ -703,20 +703,20 @@ function migrateSeveralLocations(entity: Entity, movement: unknown, world: Routi
   const listed = new Set(places);
   if (world.locationIds.length > 1 && world.locationIds.every((id) => listed.has(id))) {
     const starts: EntityStart[] = [{ id: 'start-1', place: PLAYER_START, weight: 1, schedule: [], beginsFollowing: true }];
-    return { ...entity, kind: 'individual', starts, traversable: 'anywhere' };
+    return { ...entity, kind: 'unique', starts, traversable: 'anywhere' };
   }
   if (world.usesPeopleFields && !isPerson(entity)) {
     // One Start per place with no rows, so each presence stays where it was (Q133).
     const starts: EntityStart[] = places.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: [] }));
-    return { ...entity, kind: 'group', starts };
+    return { ...entity, kind: 'generic', starts };
   }
   const starts: EntityStart[] = [{ id: 'start-1', place: places[0], weight: 1, schedule: [allDayWander('row-1', places)] }];
-  return { ...entity, kind: 'individual', starts, traversable: movement === 'follow' ? 'anywhere' : [...places] };
+  return { ...entity, kind: 'unique', starts, traversable: movement === 'follow' ? 'anywhere' : [...places] };
 }
 
 /**
  * One entity's shipped `presence` and `movement` mapped to a kind, Starts and Traversable (NPC Schedules
- * migration table), and an Individual's `locations` derived from its routine. Idempotent: an entity without the
+ * migration table), and a Unique entity's `locations` derived from its routine. Idempotent: an entity without the
  * old fields keeps its kind. Without `world`, as for a library entity, several locations always give the Wander.
  */
 export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): T {
@@ -734,7 +734,7 @@ export function migrateEntityRoutine<T>(raw: T, world?: RoutineMigrationWorld): 
   const schedule = (n: number): ScheduleRow[] => (movement === 'between' ? [allDayWander(`row-${n}`, places)] : []);
   const starts: EntityStart[] = startPlaces.map((place, i) => ({ id: `start-${i + 1}`, place, weight: 1, schedule: schedule(i + 1) }));
   return withDerivedLocations({
-    ...entity, kind: 'individual', starts, ...(movement === 'follow' && { traversable: 'anywhere' as const }),
+    ...entity, kind: 'unique', starts, ...(movement === 'follow' && { traversable: 'anywhere' as const }),
   }) as T;
 }
 

@@ -172,7 +172,7 @@ describe('the Map', () => {
       const entity = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
       /** The roster the game builds for the map from a state where the player stands at s7. */
       const rosterOf = (input: Partial<PresenceInput>) => metRosterByLocation(computePresence({
-        entities: [], runtime: [], positions: {}, groups: {}, followers: [], locationId: 's7', locations: crowd, connections: [],
+        entities: [], runtime: [], positions: {}, generics: {}, followers: [], locationId: 's7', locations: crowd, connections: [],
         persona: null, met: [], strangerAliases: {}, turns: [], ...input,
       }).met);
       const badges = () => [...document.querySelectorAll('.react-flow__node [role="img"]')].map((b) => b.getAttribute('aria-label'));

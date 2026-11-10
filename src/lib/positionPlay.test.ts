@@ -9,16 +9,16 @@ import { openingCast, placeAll, positionWorld, reconcileBook, reseatForOpening }
 const locations = [{ id: 'yard', parentId: null }, { id: 'barn', parentId: 'yard' }, { id: 'field', parentId: 'yard' }];
 // One Start grazes in the field from 08:00 to 18:00 and stays in the barn otherwise; one stays in the barn.
 const herd: Entity = {
-  id: 'herd', name: 'Herd', kind: 'group', locations: ['barn', 'field'],
+  id: 'herd', name: 'Herd', kind: 'generic', locations: ['barn', 'field'],
   starts: [
     { id: 'grazer', place: 'barn', weight: 1, schedule: [{ id: 'graze', time: { start: 480, end: 1080 }, action: { kind: 'stay', place: 'field' } }] },
     { id: 'sleeper', place: 'barn', weight: 1, schedule: [] },
   ],
 };
 const world = (now: number, playerAt?: string, cast: Entity[] = [herd]) => positionWorld(castRoutines(cast), now, playerAt, locations, []);
-const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(book.groups.herd ?? {}).map(([id, p]) => [id, p.position]));
+const where = (book: typeof EMPTY_BOOK) => Object.fromEntries(Object.entries(book.generics.herd ?? {}).map(([id, p]) => [id, p.position]));
 
-describe('a Group in play', () => {
+describe('a Generic entity in play', () => {
   it('stands once at each place a presence holds', () => {
     const cast = openingCast([herd], locations, [], 'yard');
     // The opening hour is 08:00, so the grazer is out in the field and the sleeper in the barn.
@@ -36,7 +36,7 @@ describe('a Group in play', () => {
 
   it('starts a presence away from the player on its Patrol afresh at the real hour, not from the opening hour\'s idle', () => {
     const flock: Entity = {
-      id: 'herd', name: 'Flock', kind: 'group', locations: ['barn', 'field'],
+      id: 'herd', name: 'Flock', kind: 'generic', locations: ['barn', 'field'],
       starts: [{ id: 'grazer', place: 'barn', weight: 1, schedule: [{
         id: 'round', time: 'allDay', action: { kind: 'patrol', stops: [{ place: 'barn', idle: 60 }, { place: 'field', idle: 60 }] },
       }] }],
@@ -45,18 +45,18 @@ describe('a Group in play', () => {
     expect(where(reseatForOpening(opening, world(600, 'yard', [flock])))).toEqual({ grazer: 'barn' });
   });
 
-  it('sends a presence at a deleted place where its row puts it, and drops a Group the world lost', () => {
-    const saved = { ...EMPTY_BOOK, groups: { herd: { grazer: { position: 'meadow', lastRun: 300 } }, lost: { a: { position: 'barn', lastRun: 300 } } } };
+  it('sends a presence at a deleted place where its row puts it, and drops a Generic entity the world lost', () => {
+    const saved = { ...EMPTY_BOOK, generics: { herd: { grazer: { position: 'meadow', lastRun: 300 } }, lost: { a: { position: 'barn', lastRun: 300 } } } };
     const book = reconcileBook(saved, world(300));
     expect(where(book)).toEqual({ grazer: 'barn', sleeper: 'barn' });
-    expect('lost' in book.groups).toBe(false);
+    expect('lost' in book.generics).toBe(false);
   });
 
-  it('drops the single position and state of an Individual the world has since made a Group', () => {
-    const saved = { ...EMPTY_BOOK, positions: { herd: 'field' }, individuals: { herd: { startId: 'grazer', lastRun: 300 } } };
+  it('drops the single position and state of a Unique entity the world has since made a Generic entity', () => {
+    const saved = { ...EMPTY_BOOK, positions: { herd: 'field' }, uniques: { herd: { startId: 'grazer', lastRun: 300 } } };
     const book = reconcileBook(saved, world(300), ['herd']);
     expect(book.positions).toEqual({});
-    expect(book.individuals).toEqual({});
+    expect(book.uniques).toEqual({});
     expect(where(book)).toEqual({ grazer: 'barn', sleeper: 'barn' });
   });
 });

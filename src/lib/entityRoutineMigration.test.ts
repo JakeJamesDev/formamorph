@@ -15,7 +15,7 @@ function shapeProblems(world: World): string[] {
     const old = OLD_FIELDS.filter((key) => key in entity);
     if (old.length) problems.push(`${entity.id} keeps ${old.join(', ')}`);
     if (!entity.customPersona && entity.locations?.length && !entity.kind) problems.push(`${entity.id} has places and no kind`);
-    if (entity.kind === 'individual') {
+    if (entity.kind === 'unique') {
       const places = routinePlaces(entity.starts ?? []);
       if (JSON.stringify(places) !== JSON.stringify(entity.locations ?? [])) problems.push(`${entity.id} locations are not its routine places`);
     }

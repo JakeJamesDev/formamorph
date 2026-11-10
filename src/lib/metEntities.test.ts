@@ -9,7 +9,7 @@ const LOCATIONS = [{ id: 'market' }, { id: 'keep' }, { id: 'mound-a' }, { id: 'm
 
 /** The Met set of a state where the player stands at the market. */
 const metSet = (input: Partial<PresenceInput>) => computePresence({
-  entities: [], runtime: [], positions: {}, groups: {}, followers: [], locationId: 'market', locations: LOCATIONS, connections: [],
+  entities: [], runtime: [], positions: {}, generics: {}, followers: [], locationId: 'market', locations: LOCATIONS, connections: [],
   persona: null, met: [], strangerAliases: {}, turns: [], ...input,
 }).met;
 

@@ -27,7 +27,7 @@ const WORLD = {
   ],
   stats: [],
   entities: [{
-    id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'individual', traversable: 'anywhere',
+    id: 'farrier', name: 'Farrier', playerDescription: '', aiDescription: '', kind: 'unique', traversable: 'anywhere',
     starts: [{
       id: 's1', place: 'smithy', weight: 1, schedule: [
         { id: 'wander', time: { start: 360, end: 720 }, action: { kind: 'wander', places: [{ place: 'market', weight: 1 }], idle: 60 } },

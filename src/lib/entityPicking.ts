@@ -1,5 +1,5 @@
 import { knownInOf, toggleKnownInPick, withEntityLocations } from "@/lib/entityPresence";
-import { isGroup, isIndividual, toggleGroupStart, withFirstStartPlace } from "@/lib/entityKind";
+import { isGeneric, isUnique, toggleGenericStart, withFirstStartPlace } from "@/lib/entityKind";
 import { randomUUID } from "@/lib/uuid";
 import { holderOf } from "@/lib/locationTree";
 import type { Entity, GameLocation } from "@/types";
@@ -15,12 +15,12 @@ const toggled = (ids: readonly string[], id: string) => (ids.includes(id) ? ids.
 /** What a canvas click writes while an entity is picked. */
 export type PickMode = "locations" | "knownIn";
 
-/** `entity` with `locationId` toggled for `mode`. For an Individual, a location click sets where it starts; for a
- *  Group it adds a Start there or removes the ones that begin there. */
+/** `entity` with `locationId` toggled for `mode`. For a Unique entity, a location click sets where it starts; for a
+ *  Generic entity it adds a Start there or removes the ones that begin there. */
 export function togglePick(entity: Entity, mode: PickMode, locationId: string): Entity {
   if (mode === "knownIn") return toggleKnownInPick(entity, locationId);
-  if (isIndividual(entity)) return withFirstStartPlace(entity, locationId, randomUUID);
-  if (isGroup(entity)) return toggleGroupStart(entity, locationId, randomUUID);
+  if (isUnique(entity)) return withFirstStartPlace(entity, locationId, randomUUID);
+  if (isGeneric(entity)) return toggleGenericStart(entity, locationId, randomUUID);
   return withEntityLocations(entity, toggled(entity.locations ?? [], locationId));
 }
 

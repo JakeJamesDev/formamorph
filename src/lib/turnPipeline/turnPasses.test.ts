@@ -215,12 +215,12 @@ describe('turn pass requests', () => {
       'Wait here until 17:00, when evening begins',
       'Part ways',
     ];
-    const entity = (id: string, name: string): Entity => ({ id, name, kind: 'individual', traversable: 'anywhere' });
+    const entity = (id: string, name: string): Entity => ({ id, name, kind: 'unique', traversable: 'anywhere' });
     const albus = { name: 'Albus', entity: entity('e1', 'Albus'), moves: FOLLOWER, moveClock: NOON };
     const sylvie = { name: 'Sylvie', entity: entity('e2', 'Sylvie'), moves: NEWCOMER, moveClock: NOON };
     const blackwell: TurnPassSubject = {
       name: 'Blackwell',
-      entity: { id: 'e3', name: 'Blackwell', kind: 'individual', locations: ['keep', 'wall', 'tower'] },
+      entity: { id: 'e3', name: 'Blackwell', kind: 'unique', locations: ['keep', 'wall', 'tower'] },
       moves: ['stay', 'comeAlong'],
       destinations: [{ id: 'keep', name: 'The Keep' }, { id: 'tower', name: 'The Watchtower' }],
       moveClock: NOON,

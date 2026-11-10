@@ -5,7 +5,7 @@ import { extractCharacterCandidates, collectCandidateEvidence, type CandidateExc
 import { buildSceneList, type DirectorCastMember } from "../stagedPlanning";
 import { selectReachableVisitors } from "../runtimeCharacters";
 import { nearbyPlaces } from "../locationGraph";
-import { pullIndividual, type PositionBook } from "../positionEngine";
+import { pullUnique, type PositionBook } from "../positionEngine";
 import { withPlayerAt, type PositionWorld } from "../positionPlay";
 import type { TurnPassSubject } from "./turnPlan";
 
@@ -121,8 +121,8 @@ export interface VisitorInput {
 }
 
 /**
- * Bring-them-over: an Individual standing one Nearby link away that the narration named joins the current
- * location, when the position engine allows the pull. A Group is never pulled. Returns the book with each
+ * Bring-them-over: a Unique entity standing one Nearby link away that the narration named joins the current
+ * location, when the position engine allows the pull. A Generic entity is never pulled. Returns the book with each
  * pull applied; the same book when nobody comes.
  *
  * Fed by a stricter parse than `participants`: this path physically relocates an authored NPC, so it takes
@@ -139,8 +139,8 @@ export function selectVisitorAdditions(input: VisitorInput): PositionBook {
   const visitors = selectReachableVisitors(visitorParticipants, nearby, entities, presentIds, book);
   let next = book;
   for (const entity of visitors) {
-    const routine = world.routines.get(entity.id);
-    if (routine) next = pullIndividual(next, routine, location.id, scene);
+    const routine = world.uniques.get(entity.id);
+    if (routine) next = pullUnique(next, routine, location.id, scene);
   }
   return next;
 }

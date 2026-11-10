@@ -211,9 +211,9 @@ The default prompt gives the **narrator** the current location in full. It gives
 <!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
 <!-- route: worldEditorLocation.presence -->
 
-The **Entities** picker on the **Presence** tab lists the entities that stand at **Every Location** they list, such as a crowd or a fixture. Each one stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
+The **Entities** picker on the **Presence** tab lists your Generic entities, such as a crowd or a herd. An edit here adds or removes where an entity begins, the same as on its **Routine** tab.
 
-An entity that stands in **One Location** isn't in this picker. Set where it starts on the entity's **Routine** tab, or click a location on the full-screen Locations Canvas.
+A Unique entity isn't in this picker. Set where it begins on the entity's **Routine** tab, or click a location on the full-screen Locations Canvas.
 
 Pick a Generic entity to make it begin at this location. It gets a new place to begin here with no rows, and you add rows on its **Routine** tab. Clear it to remove every place it begins at here, with their rows. Its other places stay as they are. **Undo** brings them all back in one step.
 

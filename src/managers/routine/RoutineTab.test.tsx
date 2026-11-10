@@ -21,7 +21,7 @@ const stay = (id: string, place: string, time: ScheduleRow['time'], strict?: boo
   ({ id, time, action: { kind: 'stay', place }, ...(strict && { strict }) });
 
 const mira = (starts: EntityStart[], over: Partial<Entity> = {}): Entity => ({
-  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'individual', starts, traversable: 'anywhere', ...over,
+  id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', kind: 'unique', starts, traversable: 'anywhere', ...over,
 } as Entity);
 
 const oneStart = (schedule: ScheduleRow[], place = 'smithy'): EntityStart[] => [{ id: 's1', place, weight: 1, schedule }];
@@ -329,7 +329,7 @@ describe("the player's starting location", () => {
   });
 
   it('shows no Follows the Player for a Generic entity', () => {
-    mount(mira(beside({ beginsFollowing: true }), { kind: 'group' }));
+    mount(mira(beside({ beginsFollowing: true }), { kind: 'generic' }));
     expect(follows()).toBeNull();
   });
 
@@ -354,11 +354,11 @@ describe('placement', () => {
     const starts = oneStart([stay('day', 'inn', { start: MORNING, end: AFTERNOON_END })]);
     const bench = mount(mira(starts));
     await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
-    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'group', locations: ['smithy', 'inn'], starts, traversable: 'anywhere' }));
+    expect(stored(bench)).toEqual(expect.objectContaining({ kind: 'generic', locations: ['smithy', 'inn'], starts, traversable: 'anywhere' }));
   });
 
-  it('tells a persona author of a group that any start can be the start', () => {
-    mount(mira(oneStart([], 'inn'), { persona: true, kind: 'group' }));
+  it('tells a persona author of a Generic entity that any start can be the start', () => {
+    mount(mira(oneStart([], 'inn'), { persona: true, kind: 'generic' }));
     expect(screen.getByText('Lets the player start at any start location as this entity')).toBeInTheDocument();
   });
 
@@ -370,7 +370,7 @@ describe('placement', () => {
     const original = mira(starts, { traversable: ['farm'] });
     const bench = mount(original);
     await userEvent.click(screen.getByRole('radio', { name: 'Generic' }));
-    expect(stored(bench).kind).toBe('group');
+    expect(stored(bench).kind).toBe('generic');
     await userEvent.click(screen.getByRole('radio', { name: 'Unique' }));
     const { locations: _derived, ...back } = stored(bench);
     expect(back).toEqual(original);
@@ -379,8 +379,8 @@ describe('placement', () => {
     expect(screen.getByText('Farm')).toBeInTheDocument();
   });
 
-  describe('a Group\'s routine', () => {
-    const herd = (starts: EntityStart[]) => mira(starts, { kind: 'group', traversable: ['farm'] });
+  describe('a Generic entity\'s routine', () => {
+    const herd = (starts: EntityStart[]) => mira(starts, { kind: 'generic', traversable: ['farm'] });
     const twoStarts: EntityStart[] = [
       { id: 'g1', place: 'smithy', weight: 3, schedule: [stay('day', 'inn', { start: MORNING, end: AFTERNOON_END }, true)] },
       { id: 'g2', place: 'smithy', weight: 1, schedule: [stay('night', 'market', 'allDay')] },

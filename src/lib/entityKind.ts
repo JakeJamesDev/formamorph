@@ -2,12 +2,12 @@ import { PLAYER_START, type DiscoveredEntity, type Entity, type EntityKind, type
 import { placesOf, runtimeRoutine, type Routine } from "@/lib/positionEngine";
 
 /**
- * An entity's kind and routine: an Individual is one body placed from one rolled Start; a Group runs every Start
+ * An entity's kind and routine: a Unique entity is one body placed from one rolled Start; a Generic entity runs every Start
  * at once, one presence each. The `locations` of both is derived here and nowhere else.
  */
 
-export const isGroup = (entity: Pick<Entity, "kind">): boolean => entity.kind === "group";
-export const isIndividual = (entity: Pick<Entity, "kind">): boolean => entity.kind === "individual";
+export const isGeneric = (entity: Pick<Entity, "kind">): boolean => entity.kind === "generic";
+export const isUnique = (entity: Pick<Entity, "kind">): boolean => entity.kind === "unique";
 
 /** Every Start place and every row place of `starts`, deduped, in order. `PLAYER_START` adds none. */
 export const routinePlaces = (starts: readonly EntityStart[]): string[] =>
@@ -41,12 +41,12 @@ export type RoutineEntity = Pick<Entity, "id" | "kind" | "starts" | "traversable
 
 /** The engine's view of an entity with a kind. Undefined for anything else. */
 export function routineOf(entity: RoutineEntity): Routine | undefined {
-  if (isGroup(entity)) return { id: entity.id, starts: entity.starts ?? [], traversable: [], group: true };
-  if (!isIndividual(entity)) return undefined;
+  if (isGeneric(entity)) return { id: entity.id, starts: entity.starts ?? [], traversable: [], generic: true };
+  if (!isUnique(entity)) return undefined;
   return { id: entity.id, starts: entity.starts ?? [], traversable: entity.traversable ?? [] };
 }
 
-/** The routines of every Individual and Group in `cast`, then of every runtime character. */
+/** The routines of every Unique entity and Generic entity in `cast`, then of every runtime character. */
 export function castRoutines(cast: readonly RoutineEntity[], runtime: readonly DiscoveredEntity[] = []): Routine[] {
   return [
     ...cast.flatMap((entity) => routineOf(entity) ?? []),
@@ -91,16 +91,16 @@ export function withoutRoutinePlace(entity: Entity, placeId: string): Entity {
 const blankStart = (place: string, newId: () => string): EntityStart => ({ id: newId(), place, weight: 1, schedule: [] });
 
 /** A copy of `entity` of `kind`, keeping every Start, row, weight, Strict flag and Traversable (Q135). Without
- *  Starts, an Individual takes one at its first place and a Group one per place. */
+ *  Starts, a Unique entity takes one at its first place and a Generic entity one per place. */
 export function withKind(entity: Entity, kind: EntityKind, newId: () => string): Entity {
   if (entity.kind === kind) return entity;
   const places = entity.locations ?? [];
   const starts = entity.starts?.length ? entity.starts
-    : (kind === "group" ? places : places.slice(0, 1)).map((place) => blankStart(place, newId));
+    : (kind === "generic" ? places : places.slice(0, 1)).map((place) => blankStart(place, newId));
   const { starts: _s, ...rest } = entity;
   return withDerivedLocations({
     ...rest, kind, ...(starts.length && { starts }),
-    ...(kind === "individual" && { traversable: entity.traversable ?? "anywhere" }),
+    ...(kind === "unique" && { traversable: entity.traversable ?? "anywhere" }),
   });
 }
 
@@ -116,9 +116,9 @@ function rowMapped(row: ScheduleRow, map: Readonly<Record<string, string>>): Sch
   return stops.length ? { ...row, action: { ...action, stops } } : undefined;
 }
 
-/** A Group carried into another world, its places renamed through `map` (source id → world id): the Starts whose
+/** A Generic entity carried into another world, its places renamed through `map` (source id → world id): the Starts whose
  *  place maps are kept with their rows remapped, and with none kept it takes one Start per mapped place. */
-export function withGroupPlacesMapped(entity: Entity, map: Readonly<Record<string, string>>, newId: () => string): Entity {
+export function withGenericPlacesMapped(entity: Entity, map: Readonly<Record<string, string>>, newId: () => string): Entity {
   const placeOf = (start: EntityStart) => (start.place === PLAYER_START ? PLAYER_START : map[start.place]);
   const kept = (entity.starts ?? []).flatMap((start) => (placeOf(start)
     ? [{ ...start, place: placeOf(start), schedule: start.schedule.flatMap((row) => rowMapped(row, map) ?? []) }]
@@ -128,35 +128,35 @@ export function withGroupPlacesMapped(entity: Entity, map: Readonly<Record<strin
   return withDerivedLocations({ ...rest, ...(starts.length && { starts }) });
 }
 
-/** A Group with a new Start with no rows at `place`. */
-export function withGroupStart(entity: Entity, place: string, newId: () => string): Entity {
+/** A Generic entity with a new Start with no rows at `place`. */
+export function withGenericStart(entity: Entity, place: string, newId: () => string): Entity {
   return withDerivedLocations({ ...entity, starts: [...(entity.starts ?? []), blankStart(place, newId)] });
 }
 
 /** Whether removing the Starts that begin at `place` leaves `entity` at least one. */
-export const canRemoveGroupStartsAt = (entity: Pick<Entity, "starts">, place: string): boolean =>
+export const canRemoveGenericStartsAt = (entity: Pick<Entity, "starts">, place: string): boolean =>
   (entity.starts ?? []).some((start) => start.place !== place);
 
-/** A Group without the Starts that begin at `place`, rows and all. The same entity when that would remove its
+/** A Generic entity without the Starts that begin at `place`, rows and all. The same entity when that would remove its
  *  last Start, or none begins there. */
-export function withoutGroupStartsAt(entity: Entity, place: string): Entity {
+export function withoutGenericStartsAt(entity: Entity, place: string): Entity {
   const starts = entity.starts ?? [];
-  if (!starts.some((start) => start.place === place) || !canRemoveGroupStartsAt(entity, place)) return entity;
+  if (!starts.some((start) => start.place === place) || !canRemoveGenericStartsAt(entity, place)) return entity;
   return withDerivedLocations({ ...entity, starts: starts.filter((start) => start.place !== place) });
 }
 
-/** A Group without the Start `startId`, rows and all. The same entity when that is its last Start. */
-export function withoutGroupStart(entity: Entity, startId: string): Entity {
+/** A Generic entity without the Start `startId`, rows and all. The same entity when that is its last Start. */
+export function withoutGenericStart(entity: Entity, startId: string): Entity {
   const starts = entity.starts ?? [];
   if (starts.length < 2 || !starts.some((start) => start.id === startId)) return entity;
   return withDerivedLocations({ ...entity, starts: starts.filter((start) => start.id !== startId) });
 }
 
-/** A Group with a Start added at `place`, or the Starts that begin there removed when there are any. */
-export const toggleGroupStart = (entity: Entity, place: string, newId: () => string): Entity =>
-  ((entity.starts ?? []).some((start) => start.place === place) ? withoutGroupStartsAt(entity, place) : withGroupStart(entity, place, newId));
+/** A Generic entity with a Start added at `place`, or the Starts that begin there removed when there are any. */
+export const toggleGenericStart = (entity: Entity, place: string, newId: () => string): Entity =>
+  ((entity.starts ?? []).some((start) => start.place === place) ? withoutGenericStartsAt(entity, place) : withGenericStart(entity, place, newId));
 
-/** An Individual with its first Start at `placeId`, made when it has none. */
+/** A Unique entity with its first Start at `placeId`, made when it has none. */
 export function withFirstStartPlace(entity: Entity, placeId: string, newId: () => string): Entity {
   const starts = entity.starts ?? [];
   const next = starts.length

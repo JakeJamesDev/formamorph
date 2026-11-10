@@ -15,7 +15,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { SoundUpload } from '../lib/UtilityComponents';
 import { LocationImageField } from './LocationImageField';
 import LocationConnections from './LocationConnections';
-import { isGroup } from '@/lib/entityKind';
+import { isGeneric } from '@/lib/entityKind';
 import { Hint } from '@/components/ui/typography';
 import LocationKnownHere from './LocationKnownHere';
 import LocationEntitiesHere from './LocationEntitiesHere';
@@ -71,7 +71,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
   const pins = editingLocation?.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
 
-  // Membership is entity-owned, so location-first authoring writes each changed Group's own Starts.
+  // Membership is entity-owned, so location-first authoring writes each changed Generic entity's own Starts.
   const treeOrder = entitiesInTreeOrder(entityGroups, entities);
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const entityLabel = (e: Entity) => label(e.name);
@@ -79,11 +79,11 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
     const found = world.locations.find((l) => l.id === id);
     return found ? label(found.name) : 'Unknown Location';
   };
-  // The Groups with a Start here: what the picker shows and what its write compares against.
-  const groupIdsHere = treeOrder.filter((e) => isGroup(e) && startsAt(e, location.id)).map((e) => e.id);
-  // Remounts the picker when a Group keeps its last Start, so it shows the Group still ticked.
+  // The Generic entities with a Start here: what the picker shows and what its write compares against.
+  const genericIdsHere = treeOrder.filter((e) => isGeneric(e) && startsAt(e, location.id)).map((e) => e.id);
+  // Remounts the picker when a Generic entity keeps its last Start, so it shows the Generic entity still ticked.
   const [refusals, setRefusals] = useState(0);
-  // The Groups the last pick could not remove, for the location they were refused at.
+  // The Generic entities the last pick could not remove, for the location they were refused at.
   const [refused, setRefused] = useState<{ locationId: string; names: string[] }>({ locationId: '', names: [] });
   const handleEntitiesChange = (ids: string[]) => {
     const before = new Map(entities.map((e) => [e.id, e]));
@@ -92,7 +92,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
     next.forEach((entity) => {
       if (before.get(entity.id) !== entity) updateEntity(entity);
     });
-    const kept = next.filter((e) => isGroup(e) && !ids.includes(e.id) && startsAt(e, location.id));
+    const kept = next.filter((e) => isGeneric(e) && !ids.includes(e.id) && startsAt(e, location.id));
     setRefused({ locationId: location.id, names: kept.map(entityLabel) });
     if (kept.length) setRefusals((n) => n + 1);
   };
@@ -197,8 +197,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField, onOpenEntityR
           <Label>Entities</Label>
           <MultiSelect
             key={`${editingLocation.id}:${refusals}`}
-            options={treeOrder.filter(isGroup).map((e) => ({ label: entityLabel(e), value: e.id }))}
-            defaultValue={groupIdsHere}
+            options={treeOrder.filter(isGeneric).map((e) => ({ label: entityLabel(e), value: e.id }))}
+            defaultValue={genericIdsHere}
             onValueChange={handleEntitiesChange}
             placeholder="Select entities"
           />

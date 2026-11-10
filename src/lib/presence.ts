@@ -1,4 +1,4 @@
-import type { Connection, Entity, EntityPositions, GameLocation, GroupStates } from '@/types';
+import type { Connection, Entity, EntityPositions, GameLocation, GenericStates } from '@/types';
 import { ancestors, parentLookup } from './ancestors';
 import { entitiesInPlay } from './entityPresence';
 import { findNameMatches } from './entityMatch';
@@ -29,8 +29,8 @@ export interface PresenceInput {
   runtime: readonly Entity[];
   /** Where each positioned entity stands, runtime characters included. */
   positions: Readonly<EntityPositions>;
-  /** Where each Group's presences stand. */
-  groups: Readonly<GroupStates>;
+  /** Where each Generic entity's presences stand. */
+  generics: Readonly<GenericStates>;
   followers: readonly string[];
   locationId: string | null | undefined;
   locations: readonly Pick<GameLocation, 'id' | 'parentId'>[];

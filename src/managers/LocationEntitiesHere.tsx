@@ -11,7 +11,7 @@ const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(
 
 /**
  * The Entities Here list on a location's Presence tab: every entity that can be at this location, one line each
- * with its reasons, and a button that opens that entity's Routine tab. Read-only, because an Individual's place
+ * with its reasons, and a button that opens that entity's Routine tab. Read-only, because a Unique entity's place
  * belongs to a row with a time and an action, and this tab cannot say which row.
  */
 export default function LocationEntitiesHere({ locationId, entities, labelOf, onOpenRoutine }: {

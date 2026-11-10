@@ -1,6 +1,6 @@
 # 19: Rename Kinds To Unique And Generic
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 14, 15, 16, 17, 18, 20
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -26,9 +26,26 @@ Spec rulings: Q162, Q163.
 
 ## Acceptance criteria
 
-- [ ] No source, test, fixture or bundled world stores or reads `individual` or `group` as an entity kind. The landing report gives the search used and its remaining hits, each explained.
-- [ ] Entity groups, trait groups, stat groups, placeholder groups and history groups are unchanged, shown by their existing tests.
-- [ ] A released world still migrates, and its entities get `unique` or `generic` by ticket 18's rule.
-- [ ] The save's per-kind state uses the new names, and a new game saves and loads with them.
-- [ ] No user-facing string, doc, wiki page or unreleased changelog entry calls a kind Individual or Group.
-- [ ] The glossary defines Unique and Generic and drops the old entries.
+- [x] No source, test, fixture or bundled world stores or reads `individual` or `group` as an entity kind. The landing report gives the search used and its remaining hits, each explained. (`EntityKind` is `'unique' | 'generic'`, so tsc caught typed sites; searches below caught the untyped ones.)
+- [x] Entity groups, trait groups, stat groups, placeholder groups and history groups are unchanged, shown by their existing tests. (Their tests ran unchanged and green in the gates; the diff touches none of their code.)
+- [x] A released world still migrates, and its entities get `unique` or `generic` by ticket 18's rule. (`version.test.ts` routine-migration cases.)
+- [x] The save's per-kind state uses the new names, and a new game saves and loads with them. (`GameplayContext.positions.test.tsx`: rolls, saves and loads `uniqueStates` and `genericStates`.)
+- [x] No user-facing string, doc, wiki page or unreleased changelog entry calls a kind Individual or Group. (Grep of `docs/`, `src/` strings and the In Progress section.)
+- [x] The glossary defines Unique and Generic and drops the old entries. (`CONTEXT.md`: Unique (entity kind), Generic (entity kind); old words in `_Avoid_`.)
+
+## Landed
+
+**Search used:** `git grep -n -E "kind: ?['\"](individual|group)['\"]|\"kind\": ?\"(individual|group)\"|[Ii]ndividual"` over `src`, `e2e`, `testing`, `scripts`, `docs`, `CONTEXT.md`. Remaining hits:
+- `kind: 'group'` in trait links, gate conditions (`{ kind: 'group', id }`), group-tree nodes, stat links, the script variable tree and placeholder scopes. None is the entity kind.
+- `"kind": "group"` in `emberwatch.json` and `src/lib/__parity__/ownerTreeLinks.json`: trait links.
+- "individual" in `GamePrompts.ts`, `testing/parity/*.json` and `testing/baseline/fantasy-futanari.json`: plain English in prompts and world prose (out of scope by the spec session's answer).
+- `Individual` and `Group (entity kind)` in the `CONTEXT.md` `_Avoid_` lines.
+
+**Script surface:** scripts expose no kind. No entity entry field, sandbox global or script-help text names it. `docs/Scripts-Reference.md` already said Unique and Generic in prose.
+
+**Not verified:** nothing left unticked.
+
+**For you:**
+- Export shape: the world's entity `kind` is now `"unique"` or `"generic"`, and the save's `individualStates`/`groupStates` are now `uniqueStates`/`genericStates`. Neither shipped (absent from v3.6.2), so no compat.
+- `sectionVectors.json` re-embedded about 60 sections, most from earlier tickets' doc edits that had left vectors stale.
+- `docs/WorldFormat.md`: the "older world file" callout describes the several-locations migration from before ticket 18's pronoun rule. Only its words were renamed here.

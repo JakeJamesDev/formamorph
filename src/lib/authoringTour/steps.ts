@@ -21,7 +21,7 @@ import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { locationImages } from '@/lib/locationImages';
 import { withEntityLocations } from '@/lib/entityPresence';
-import { isGroup, isIndividual, withFirstStartPlace, withGroupStart } from '@/lib/entityKind';
+import { isGeneric, isUnique, withFirstStartPlace, withGenericStart } from '@/lib/entityKind';
 import { randomUUID } from '@/lib/uuid';
 import { createConnection, legFrom, withHint } from '@/lib/connectionEditing';
 import { connectionLegs, isTwoWay, travelEnds } from '@/lib/locationGraph';
@@ -537,9 +537,9 @@ const ENTITY_STEPS: readonly TourStep[] = [
       const entity = tourEntity(world, items);
       const place = liveTourItem(world, items, 'location');
       if (!entity || !place) return;
-      // An Individual starts there; a Group gains a Start there.
-      api.updateEntity(isIndividual(entity) ? withFirstStartPlace(entity, place, randomUUID)
-        : isGroup(entity) ? withGroupStart(entity, place, randomUUID)
+      // A Unique entity starts there; a Generic entity gains a Start there.
+      api.updateEntity(isUnique(entity) ? withFirstStartPlace(entity, place, randomUUID)
+        : isGeneric(entity) ? withGenericStart(entity, place, randomUUID)
         : withEntityLocations(entity, [...(entity.locations ?? []), place]));
     },
     inPlay: {
